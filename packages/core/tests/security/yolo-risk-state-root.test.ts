@@ -123,6 +123,40 @@ describe('isClearlyDestructiveBashCommand — state-root write detection', () =>
     });
   });
 
+  // Archive extraction INTO the trust anchor. `tar -C ~/.wrongstack` names a
+  // DIRECTORY, not one of the protected basenames, so the basename checks
+  // above decline it — while the extraction can drop `config.json`, a `hooks`
+  // entry, or a plugin closure inside. `-C` and `--directory` are the SAME GNU
+  // tar option (`-C, --directory=DIR`), so every documented spelling must gate
+  // identically; the glued long form used to be the one that did not, which
+  // made `tar --directory=~/.wrongstack -xf payload.tar` a silent bypass of a
+  // kind that is gated by default precisely because a write there can disable
+  // the approval system itself.
+  describe('archive extraction into the state root is destructive in every option spelling', () => {
+    const pluginsRoot = path.join(stateRoot, 'plugins');
+    it.each([
+      [`tar -C ${stateRoot} -xf a.tar`],
+      [`tar -xf a.tar -C ${stateRoot}`],
+      [`tar --directory ${stateRoot} -xf a.tar`],
+      [`tar --directory=${stateRoot} -xf a.tar`],
+      [`tar -xf a.tar --directory=${stateRoot}`],
+      [`tar --directory=${pluginsRoot} -xf a.tar`],
+      ['tar --directory=~/.wrongstack -xf a.tar'],
+      [`unzip -d ${stateRoot} a.zip`],
+      [`unzip -d${stateRoot} a.zip`],
+    ])('%j → destructive=true', (cmd) => {
+      expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(true);
+    });
+
+    // The widened recognizer must not invent danger for an in-project target.
+    it.each([['tar -C ./dist -xf a.tar'], ['tar --directory=./dist -xf a.tar'], ['tar -xf a.tar']])(
+      '%j → destructive=false',
+      (cmd) => {
+        expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(false);
+      },
+    );
+  });
+
   describe('non-state-root paths are NOT flagged by this detector', () => {
     it.each([
       ['echo "x" > src/output.txt'],

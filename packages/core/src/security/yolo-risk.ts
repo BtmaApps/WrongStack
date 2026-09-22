@@ -649,12 +649,25 @@ function hasWriteToAgentStateRoot(command: string): boolean {
     if (base !== 'tar' && base !== 'unzip' && base !== '7z') continue;
     for (const arg of commandSegment(tokens, i + 1)) {
       if (SHELL_OPERATORS.has(arg)) break;
-      const value = /^-(?:C|d)(.+)$/.exec(arg)?.[1] ?? (arg.startsWith('-') ? undefined : arg);
+      // The extraction directory is spelled `-C DIR` or `--directory=DIR` by
+      // GNU tar (`-d` is unzip's spelling; 7z uses `-o`). Matching only the
+      // short letters left the long spelling ungated, so
+      // `tar --directory=~/.wrongstack -xf payload.tar` extracted into the
+      // trust anchor while the identical `-C` form was classified
+      // 'agent-state'.
+      const value =
+        /^(?:-(?:C|d)|--directory=)(.+)$/.exec(arg)?.[1] ?? (arg.startsWith('-') ? undefined : arg);
       if (value && resolvesInsideAgentStateRoot(value)) return true;
     }
     const dashC = commandSegment(tokens, i + 1);
     for (let j = 0; j < dashC.length - 1; j++) {
-      if (/^-(?:C|d)$/.test(dashC[j] ?? '') && resolvesInsideAgentStateRoot(dashC[j + 1] ?? '')) {
+      // Same option, space-separated spelling. The bare-operand branch above
+      // also happens to catch this form, but stating it here keeps the rule
+      // independent of that over-inclusive fallback.
+      if (
+        /^(?:-(?:C|d)|--directory)$/.test(dashC[j] ?? '') &&
+        resolvesInsideAgentStateRoot(dashC[j + 1] ?? '')
+      ) {
         return true;
       }
     }

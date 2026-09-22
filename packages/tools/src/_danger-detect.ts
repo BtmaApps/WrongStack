@@ -582,6 +582,16 @@ const RULES: readonly DangerRule[] = [
  * `numericOperand` marks the launchers that also take a positional of their
  * own before the command (`timeout 5 rm …`).
  */
+/**
+ * GNU coreutils `timeout` DURATION: "a floating point number with an optional
+ * suffix" ('s' seconds, 'm' minutes, 'h' hours, 'd' days).
+ *
+ * Matching only the integer spelling mis-parsed every decimal form, and a
+ * mis-parsed operand does not merely fail to unwrap — it is taken FOR the
+ * command, so the wrapped command disappears from the cmd-keyed rules.
+ */
+const TIMEOUT_DURATION = /^(?:\d+(?:\.\d*)?|\.\d+)[smhd]?$/;
+
 const ARGV_LAUNCHERS: ReadonlyMap<
   string,
   { valueFlags: ReadonlySet<string>; numericOperand: boolean }
@@ -637,7 +647,14 @@ export function unwrapArgvLaunchers(
       i += 1;
       if (spec.valueFlags.has(name) && !token.includes('=')) i += 1;
     }
-    if (spec.numericOperand && /^\d+[smhd]?$/.test(currentArgs[i] ?? '')) i += 1;
+    // `timeout`'s own positional. Accepting only the integer spelling left the
+    // decimal forms unparsed, and an unparsed operand is taken FOR the command:
+    // `timeout 0.5s rm -rf ./build` unwrapped to cmd `0.5s`, so the wrapped
+    // `rm -rf` never reached the cmd-keyed rules and the same delete that
+    // `timeout 5 rm -rf ./build` reports as 'destructive' reported 'safe'.
+    // Over-accepting a malformed number is harmless — this token position is
+    // definitionally the duration, so a skipped token can only be the duration.
+    if (spec.numericOperand && TIMEOUT_DURATION.test(currentArgs[i] ?? '')) i += 1;
     const next = currentArgs[i];
     if (next === undefined) break;
     currentCmd = next;

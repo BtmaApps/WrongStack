@@ -33,6 +33,33 @@ describe('transparent launchers do not hide the real command', () => {
     expect(detectDanger('nohup', ['git', 'push', '--force']).matchedRule).toBe('git-push-force');
   });
 
+  // `timeout`'s own positional is a DURATION, and coreutils documents it as "a
+  // floating point number with an optional suffix" — so `0.5s`, `1.5` and
+  // `2.5m` are the same shape as `5`. Matching only the integer spelling did
+  // not merely skip the unwrap: the duration was taken FOR the command
+  // (`{ cmd: '0.5s', args: ['rm', …] }`), so the wrapped `rm -rf` never reached
+  // the cmd-keyed rules and this identical delete reported `safe` while
+  // `timeout 5 rm -rf ./build` reported `destructive`.
+  it.each([
+    ['fractional seconds', '0.5s'],
+    ['fractional, no suffix', '1.5'],
+    ['fractional minutes', '2.5m'],
+  ])('unwraps a %s duration to the real command', (_name, duration) => {
+    expect(unwrapArgvLaunchers('timeout', [duration, 'rm', '-rf', './build'])).toEqual({
+      cmd: 'rm',
+      args: ['-rf', './build'],
+    });
+  });
+
+  it.each([
+    ['0.5s', ['0.5s', 'rm', '-rf', './build']],
+    ['1.5', ['1.5', 'rm', '-rf', './build']],
+    ['2.5m', ['2.5m', 'rm', '-rf', '/']],
+    ['0.5s after an option', ['--foreground', '0.5s', 'rm', '-rf', './build']],
+  ])('sees the destructive command behind a %s duration', (_name, args) => {
+    expect(detectDanger('timeout', args).level).toBe('destructive');
+  });
+
   // Unwrapping must not invent danger: a launcher in front of ordinary work
   // stays safe, and an unrecognised leading token is never dropped.
   it.each([

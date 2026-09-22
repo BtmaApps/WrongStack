@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T15:18:40.011Z
+**Generated:** 2026-09-22T15:36:28.474Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 4075 |
-| Production source lines | 963934 |
+| Production source lines | 964017 |
 | Test files | 3595 |
 | Workspace dependency edges | 129 |
 | Relative module edges | 13259 |
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- packages/core/src/security/yolo-risk.ts: hotspot grew from 996 to 1049 lines; review and update the ratchet in the same change
 
 ## Workspace packages
 
@@ -85,7 +85,7 @@ None.
 
 | Lines | File |
 |---:|---|
-| 983 | `packages/core/src/security/yolo-risk.ts` |
+| 1049 | `packages/core/src/security/yolo-risk.ts` |
 | 981 | `packages/sage/src/sqlite-store.ts` |
 | 969 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 968 | `packages/core/src/coordination/director.ts` |
