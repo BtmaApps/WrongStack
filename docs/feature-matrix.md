@@ -69,6 +69,40 @@ pick the right one for a job without scrolling through 56 entries.
 | 54 | [`test-flake-detector`](../packages/plugins/src/test-flake-detector) | quality | — | `flake_detect`, `flake_status` |
 | 55 | [`test-generator`](../packages/plugins/src/test-generator) | quality | — | `generate_unit_tests` |
 | 56 | [`gitignore-guard`](../packages/plugins/src/gitignore-guard) | developer workflow | `PostToolUse` (`write\|edit`) | `gitignore_guard_append`, `gitignore_guard_status` |
+| 57 | [`acceptance-verifier`](../packages/plugins/src/acceptance-verifier) | developer workflow | — | `acceptance_verify` |
+| 58 | [`api-consumer-replay`](../packages/plugins/src/api-consumer-replay) | developer workflow | — | `api_consumer_replay` |
+| 59 | [`architecture-boundary-checker`](../packages/plugins/src/architecture-boundary-checker) | developer workflow | — | `architecture_boundaries` |
+| 60 | [`bug-reproducer`](../packages/plugins/src/bug-reproducer) | developer workflow | — | `bug_reproduce` |
+| 61 | [`bundle-budget-guard`](../packages/plugins/src/bundle-budget-guard) | developer workflow | — | `bundle-budget-guard` |
+| 62 | [`change-risk-classifier`](../packages/plugins/src/change-risk-classifier) | developer workflow | — | `change-risk-classifier` |
+| 63 | [`ci-failure-triage`](../packages/plugins/src/ci-failure-triage) | developer workflow | — | `ci-failure-triage` |
+| 64 | [`concurrency-scenario-tester`](../packages/plugins/src/concurrency-scenario-tester) | developer workflow | — | `concurrency_test` |
+| 65 | [`config-migration-assistant`](../packages/plugins/src/config-migration-assistant) | developer workflow | — | `config_migration_preview` |
+| 66 | [`decision-journal`](../packages/plugins/src/decision-journal) | developer workflow | — | `decision_lookup`, `decision_record` |
+| 67 | [`dependency-drift-detector`](../packages/plugins/src/dependency-drift-detector) | developer workflow | — | `dependency-drift-detector` |
+| 68 | [`dependency-upgrade-sandbox`](../packages/plugins/src/dependency-upgrade-sandbox) | developer workflow | — | `dependency_upgrade_try` |
+| 69 | [`developer-environment-doctor`](../packages/plugins/src/developer-environment-doctor) | developer workflow | — | `developer_environment_check` |
+| 70 | [`env-contract-guard`](../packages/plugins/src/env-contract-guard) | developer workflow | — | `env-contract-guard` |
+| 71 | [`executable-documentation`](../packages/plugins/src/executable-documentation) | developer workflow | — | `documentation_verify` |
+| 72 | [`failure-injection-lab`](../packages/plugins/src/failure-injection-lab) | developer workflow | — | `failure_inject` |
+| 73 | [`feature-flag-lifecycle`](../packages/plugins/src/feature-flag-lifecycle) | developer workflow | — | `feature_flag_inventory` |
+| 74 | [`generated-artifact-tracker`](../packages/plugins/src/generated-artifact-tracker) | developer workflow | — | `generated_artifacts` |
+| 75 | [`localization-completeness`](../packages/plugins/src/localization-completeness) | developer workflow | — | `localization_compare` |
+| 76 | [`lockfile-consistency-guard`](../packages/plugins/src/lockfile-consistency-guard) | developer workflow | — | `lockfile-consistency-guard` |
+| 77 | [`migration-rehearsal`](../packages/plugins/src/migration-rehearsal) | developer workflow | — | `migration_rehearse` |
+| 78 | [`monorepo-change-planner`](../packages/plugins/src/monorepo-change-planner) | developer workflow | — | `monorepo_change_plan` |
+| 79 | [`plugin-workbench`](../packages/plugins/src/plugin-workbench) | developer workflow | — | `plugin_workbench_run` |
+| 80 | [`public-api-auditor`](../packages/plugins/src/public-api-auditor) | developer workflow | — | `public-api-auditor` |
+| 81 | [`release-readiness`](../packages/plugins/src/release-readiness) | developer workflow | — | `release-readiness` |
+| 82 | [`resource-lifecycle-inspector`](../packages/plugins/src/resource-lifecycle-inspector) | developer workflow | — | `resource_lifecycle_inspect` |
+| 83 | [`responsive-journey-tester`](../packages/plugins/src/responsive-journey-tester) | developer workflow | — | `responsive_journey_test` |
+| 84 | [`runtime-trace-explorer`](../packages/plugins/src/runtime-trace-explorer) | developer workflow | — | `runtime_trace_explore` |
+| 85 | [`service-topology-inspector`](../packages/plugins/src/service-topology-inspector) | developer workflow | — | `service_topology_inspect` |
+| 86 | [`test-impact-analyzer`](../packages/plugins/src/test-impact-analyzer) | developer workflow | — | `test-impact-analyzer` |
+| 87 | [`verification-ledger`](../packages/plugins/src/verification-ledger) | developer workflow | — | `verification_record`, `verification_status` |
+| 88 | [`visual-regression-reviewer`](../packages/plugins/src/visual-regression-reviewer) | developer workflow | — | `visual_regression_compare` |
+| 89 | [`workspace-health`](../packages/plugins/src/workspace-health) | developer workflow | — | `workspace-health` |
+| 90 | [`workspace-recipe-runner`](../packages/plugins/src/workspace-recipe-runner) | developer workflow | — | `workspace_recipe_run`, `workspace_recipes` |
 
 ---
 
@@ -320,7 +354,7 @@ consistency.
 | `test-flake-detector` | yes | test runs analyzed, flakes flagged |
 | `test-generator` | yes | tests generated, last generation |
 
-**All 56 plugins follow the H1 pattern** — every `setup()` re-zeros
+**All 90 plugins follow the H1 pattern** — every `setup()` re-zeros
 state, every `teardown()` releases it, and every `health()` reports
 it. `/diag plugins` therefore gives a uniform view.
 
