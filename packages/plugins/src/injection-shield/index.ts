@@ -107,7 +107,7 @@ interface InjectionPattern {
 const PATTERNS: InjectionPattern[] = [
   {
     name: 'instruction-override',
-    re: /\b(?:ignore|disregard|forget|override)\b[^.\n]{0,40}\b(?:previous|prior|above|all|earlier|original)\b[^.\n]{0,40}\b(?:instructions?|prompts?|rules?|directives?)\b/i,
+    re: /\b(?:ignore|disregard|forget|override)\b(?:[^.\n]|\n(?!\s*\n)){0,40}\b(?:previous|prior|above|all|earlier|original)\b(?:[^.\n]|\n(?!\s*\n)){0,40}\b(?:instructions?|prompts?|rules?|directives?)\b/i,
   },
   {
     name: 'new-instructions',
@@ -127,11 +127,11 @@ const PATTERNS: InjectionPattern[] = [
   },
   {
     name: 'exfiltration-bait',
-    re: /\b(?:send|post|upload|forward|exfiltrate|transmit)\b[^.\n]{0,60}\b(?:conversation|chat\s+history|system\s+prompt|api\s+keys?|credentials?|secrets?|tokens?|passwords?)\b[^.\n]{0,60}\b(?:to|at)\s+(?:https?:\/\/|[a-z0-9.-]+\.[a-z]{2,})/i,
+    re: /\b(?:send|post|upload|forward|exfiltrate|transmit)\b(?:[^.\n]|\n(?!\s*\n)){0,60}\b(?:conversation|chat\s+history|system\s+prompt|api\s+keys?|credentials?|secrets?|tokens?|passwords?)\b(?:[^.\n]|\n(?!\s*\n)){0,60}\b(?:to|at)\s+(?:https?:\/\/|[a-z0-9.-]+\.[a-z]{2,})/i,
   },
   {
     name: 'reveal-prompt',
-    re: /\b(?:reveal|print|output|repeat|show)\b[^.\n]{0,30}\b(?:your\s+)?(?:system\s+prompt|initial\s+instructions|hidden\s+instructions)\b/i,
+    re: /\b(?:reveal|print|output|repeat|show)\b(?:[^.\n]|\n(?!\s*\n)){0,30}\b(?:your\s+)?(?:system\s+prompt|initial\s+instructions|hidden\s+instructions)\b/i,
   },
   {
     name: 'hidden-html-directive',
@@ -171,6 +171,74 @@ const INVISIBLE_CHARS = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g
  * payloads, and the original still catches the flood rule (whose whole
  * purpose is to notice the invisible characters themselves).
  */
+/**
+ * Latin lookalikes from other scripts, folded to ASCII before scanning.
+ *
+ * The sibling of {@link stripInvisible}, and the same argument: every pattern
+ * here is written against readable English words, so `Ignor\u0435 all previous
+ * instructions` -- a Cyrillic `\u0435` where the `e` belongs -- reads
+ * identically to the model it targets and matched nothing. Probe-verified
+ * (2026-09-22).
+ *
+ * Deliberately a SMALL fixed table of well-known confusables (Cyrillic and
+ * Greek letters that are visually identical to ASCII in common fonts), not a
+ * full Unicode confusables database: the cost of a wrong fold is a false
+ * warning, but the cost of an unbounded normalisation pass is unpredictable
+ * behaviour on every non-English tool result that legitimately contains these
+ * scripts. Folding is applied only for SCANNING; the original text is what the
+ * model receives either way.
+ */
+const CONFUSABLE_FOLD: ReadonlyMap<string, string> = new Map(
+  Object.entries({
+    '\u0430': 'a',
+    '\u0435': 'e',
+    '\u043E': 'o',
+    '\u0440': 'p',
+    '\u0441': 'c',
+    '\u0443': 'y',
+    '\u0445': 'x',
+    '\u0456': 'i',
+    '\u0455': 's',
+    '\u04BB': 'h',
+    '\u0410': 'A',
+    '\u0412': 'B',
+    '\u0415': 'E',
+    '\u041A': 'K',
+    '\u041C': 'M',
+    '\u041D': 'H',
+    '\u041E': 'O',
+    '\u0420': 'P',
+    '\u0421': 'C',
+    '\u0422': 'T',
+    '\u0425': 'X',
+    '\u03B1': 'a',
+    '\u03BF': 'o',
+    '\u03C1': 'p',
+    '\u03BD': 'v',
+    '\u0391': 'A',
+    '\u0392': 'B',
+    '\u0395': 'E',
+    '\u0396': 'Z',
+    '\u0397': 'H',
+    '\u0399': 'I',
+    '\u039A': 'K',
+    '\u039C': 'M',
+    '\u039D': 'N',
+    '\u039F': 'O',
+    '\u03A1': 'P',
+    '\u03A4': 'T',
+    '\u03A7': 'X',
+  }),
+);
+
+const CONFUSABLE_RE = new RegExp(`[${[...CONFUSABLE_FOLD.keys()].join('')}]`, 'g');
+
+/** Fold confusable letters to ASCII so a homoglyph cannot break a keyword. */
+export function foldConfusables(text: string): string {
+  CONFUSABLE_RE.lastIndex = 0;
+  return text.replace(CONFUSABLE_RE, (ch) => CONFUSABLE_FOLD.get(ch) ?? ch);
+}
+
 export function stripInvisible(text: string): string {
   INVISIBLE_CHARS.lastIndex = 0;
   return text.replace(INVISIBLE_CHARS, '');
@@ -178,11 +246,16 @@ export function stripInvisible(text: string): string {
 
 export function scanForInjection(text: string): string[] {
   const hits = new Set<string>();
-  const cleaned = stripInvisible(text);
+  // Two normalisations, each undoing a different way of hiding a keyword in
+  // plain sight: zero-width characters INSIDE a word, and letters swapped for
+  // identical-looking ones from another script. Both forms are scanned in
+  // addition to the original, because `zero-width-flood` exists precisely to
+  // notice the invisible characters that stripping removes.
+  const cleaned = foldConfusables(stripInvisible(text));
   for (const p of PATTERNS) {
     // `p.re` carries no /g flag, so `test` is stateless and safe to reuse.
     if (p.re.test(text)) hits.add(p.name);
-    // Only re-scan when stripping actually changed something.
+    // Only re-scan when normalising actually changed something.
     else if (cleaned !== text && p.re.test(cleaned)) hits.add(p.name);
   }
   return [...hits];

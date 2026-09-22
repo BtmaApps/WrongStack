@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T09:36:19.433Z",
+  "generatedAt": "2026-09-22T09:55:36.386Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 36,
     "sourceFiles": 4010,
     "testFiles": 3587,
-    "sourceLines": 958748,
+    "sourceLines": 958847,
     "workspaceEdges": 129,
     "moduleEdges": 12961,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 942
+    "testOnlyExports": 943
   },
   "errors": [],
   "packageCycles": [],
@@ -25265,6 +25265,10 @@
     {
       "file": "packages/plugins/src/gitignore-guard/index.ts",
       "name": "matchGitignorePattern"
+    },
+    {
+      "file": "packages/plugins/src/injection-shield/index.ts",
+      "name": "foldConfusables"
     },
     {
       "file": "packages/plugins/src/injection-shield/index.ts",

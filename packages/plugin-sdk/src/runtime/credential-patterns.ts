@@ -163,6 +163,32 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
   { type: 'mysql_uri', regex: /mysql:\/\/[^\s:/@"'`]*:[^\s/@"'`]+@[^\s"'`]+/g },
   { type: 'redis_uri', regex: /redis:\/\/[^\s:/@"'`]*:[^\s/@"'`]+@[^\s"'`]+/g },
   {
+    // The ENV counterpart to `json_credential_key` below, and the half of that
+    // pair that never made it across.
+    //
+    // `@wrongstack/core` -> `security/secret-scrubber.ts` carries both
+    // `high_entropy_env` and `json_credential_key`, and its docblock calls the
+    // JSON one "the JSON counterpart to high_entropy_env". Only the JSON half
+    // was ported here, so the two lists disagreed about the single most common
+    // way a secret is written down: a `.env` file, a `docker-compose`
+    // environment block, a `printenv` dump, a shell `export`. Probe-verified
+    // (2026-09-22): core scrubbed 4 of 5 such samples, this table caught 0 --
+    // and this table is what `secret-scanner` (default-ACTIVE) uses to scan
+    // tool OUTPUT, so `cat .env` handed the values straight to the model.
+    //
+    // Deliberately conservative, matching core: the key must be SCREAMING_CASE
+    // ending in a credential word, and the value at least 20 chars, so
+    // `DEBUG=true` and `NODE_ENV=production` stay untouched.
+    //
+    // Written with a lookbehind rather than core's capture groups because this
+    // table forbids capturing groups -- `secret-scanner` maps a combined-regex
+    // group index back to the pattern that fired, and an inner group shifts
+    // that mapping (enforced by credential-pattern-parity.test.ts).
+    type: 'high_entropy_env',
+    regex:
+      /(?<=(?:^|\s)[A-Z_]{4,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE)\s{0,8}[:=]\s{0,8}['"]?)[A-Za-z0-9_/+=-]{20,512}(?=['"]?(?:\s|$))/gm,
+  },
+  {
     // Credentials serialised as JSON, keyed rather than prefixed. Every other
     // entry in this table recognises a credential by its SHAPE (`ghp_`, `sk-`,
     // `eyJ`), which means a key with no distinctive prefix — Azure, a

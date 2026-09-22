@@ -7,12 +7,13 @@
  * side of the pipeline it crossed. Both now build on
  * `runtime/credential-patterns`; these tests keep them from drifting again.
  */
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { describe, expect, it } from 'vitest';
+import { detectSecrets } from '../src/prompt-firewall/index.js';
 import {
   CREDENTIAL_PATTERNS,
   cloneCredentialPatterns,
 } from '../src/runtime/credential-patterns.js';
-import { detectSecrets } from '../src/prompt-firewall/index.js';
 
 // Helper: construct a postgres URI at test-time to avoid the
 // secret-scanner redacting the literal credential pattern in source.
@@ -46,6 +47,77 @@ describe('canonical credential table', () => {
     a[0]!.regex.lastIndex = 42;
     expect(b[0]!.regex.lastIndex).toBe(0);
     expect(a[0]!.regex).not.toBe(b[0]!.regex);
+  });
+});
+
+/**
+ * Behavioural parity with `@wrongstack/core` -> `security/secret-scrubber.ts`.
+ *
+ * `credential-patterns.ts` says to "keep the two key lists in step", and
+ * nothing enforced it: the parity tests above compare secret-scanner against
+ * prompt-firewall, which both read the SAME table, so they cannot see drift
+ * against core. They had already drifted -- core carried `high_entropy_env`
+ * (the `.env` / `export` / `docker-compose` shape) and this table did not, so
+ * core scrubbed 4 of 5 probe samples and this table caught 0. Since
+ * `secret-scanner` is default-ACTIVE and scans tool OUTPUT, `cat .env` put the
+ * values in front of the model with nothing objecting.
+ *
+ * This is deliberately BEHAVIOURAL rather than a comparison of type-name
+ * lists. A second hand-written list drifts from the first exactly the way the
+ * comment did; a corpus both sides must detect cannot.
+ */
+const SHARED_CORPUS: Array<[string, string]> = [
+  ['anthropic', 'sk-ant-api03-ZmFrZWZha2VmYWtlZmFrZWZha2VmYWtl_AA'],
+  ['github pat', `ghp_${'a'.repeat(36)}`],
+  ['github pat v2', `github_pat_${'b'.repeat(50)}`],
+  ['aws access key id', 'AKIAIOSFODNN7EXAMPLE'],
+  ['gcp key', `AIza${'c'.repeat(35)}`],
+  ['stripe', `sk_live_${'d'.repeat(24)}`],
+  ['jwt', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.ZmFrZXNpZ25hdHVyZXZhbHVlMDAw'],
+  ['mongodb uri', 'mongodb://admin:hunter2@db.internal:27017'],
+  ['json keyed', '{"api_key": "7f3a9c1e5b8d2f4a6c0e9b7d"}'],
+  // The high_entropy_env family -- the half that had drifted.
+  ['env aws secret', 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'],
+  ['env generic token', 'MY_SERVICE_TOKEN=9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c'],
+  ['env quoted value', 'API_KEY="7f3a9c1e5b8d2f4a6c0e9b7d3a5f8c2e"'],
+  ['shell export', 'export DATABASE_PASSWORD=s3cr3tp4ssw0rd9f8a7b6c'],
+  ['env colon form', 'SERVICE_SECRET: 9f8a7b6c5d4e3f2a1b0c9d8e7f6a'],
+];
+
+function pluginDetects(text: string): boolean {
+  return cloneCredentialPatterns().some((pattern) => {
+    pattern.regex.lastIndex = 0;
+    return pattern.regex.test(text);
+  });
+}
+
+describe('parity with core secret-scrubber', () => {
+  const scrubber = new DefaultSecretScrubber();
+
+  it.each(SHARED_CORPUS)('core scrubs %s', (_name, sample) => {
+    expect(scrubber.scrub(sample)).not.toBe(sample);
+  });
+
+  it.each(SHARED_CORPUS)('the plugin table also detects %s', (_name, sample) => {
+    expect(pluginDetects(sample)).toBe(true);
+  });
+
+  // Over-matching here is not a small cost: `secret-scanner` BLOCKS a
+  // PreToolUse call on a hit, so a false positive stops ordinary work. The
+  // key must be SCREAMING_CASE ending in a credential word and the value at
+  // least 20 characters, which is what keeps ordinary config out.
+  it.each([
+    'DEBUG=true',
+    'NODE_ENV=production',
+    'PORT=3000',
+    'LOG_LEVEL=info',
+    'CI=1',
+    'MY_KEY=short',
+    'npm run build',
+    'const apiKey = someLookup();',
+    'KEY_ROTATION_INTERVAL=30',
+  ])('does not fire on %s', (benign) => {
+    expect(pluginDetects(benign)).toBe(false);
   });
 });
 

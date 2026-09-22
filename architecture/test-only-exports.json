@@ -875,6 +875,7 @@
       "matchGitignorePattern"
     ],
     "packages/plugins/src/injection-shield/index.ts": [
+      "foldConfusables",
       "scanForInjection",
       "stripInvisible"
     ],

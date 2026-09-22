@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 161,
+      "files": 162,
       "typeOnly": 27,
-      "runtimeOrMixed": 137
+      "runtimeOrMixed": 138
     },
     "@wrongstack/core/session-catalog": {
       "files": 12,
@@ -9478,6 +9478,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/mcp/tests/wrap-tool.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/plugins/tests/credential-pattern-parity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
