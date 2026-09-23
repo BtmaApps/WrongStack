@@ -1,8 +1,8 @@
-import { TaskTracker } from '@wrongstack/core/tasking';
-import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { TaskTracker } from '@wrongstack/core/tasking';
+import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TaskGraphStore } from '../src/task-graph-store.js';
 
@@ -168,10 +168,13 @@ describe('TaskGraphStore', () => {
     tracker.updateNodeStatus('node-1', 'in_progress', 'started');
     tracker.updateNodeStatus('node-1', 'completed', 'finished');
 
+    // loadGraph waits for this store's queued fire-and-forget tracker writes.
+    expect((await store.loadGraph(graph.id))?.nodes.get('node-1')?.status).toBe('completed');
+
     const recoveredStore = new TaskGraphStore({ baseDir: dir });
-    await expect
-      .poll(async () => (await recoveredStore.loadGraph(graph.id))?.nodes.get('node-1')?.status)
-      .toBe('completed');
+    expect((await recoveredStore.loadGraph(graph.id))?.nodes.get('node-1')?.status).toBe(
+      'completed',
+    );
     expect(await recoveredStore.listGraphs()).toMatchObject([{ id: graph.id, title: graph.title }]);
   });
 
