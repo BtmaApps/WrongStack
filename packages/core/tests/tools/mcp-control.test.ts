@@ -1,10 +1,10 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
-import { createMcpControlTool, type MCPRegistryHandle } from '../../src/tools/mcp-control.js';
-import { ToolCapabilities } from '../../src/security/capabilities.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Config } from '../../src/index.js';
+import { ToolCapabilities } from '../../src/security/capabilities.js';
+import { createMcpControlTool, type MCPRegistryHandle } from '../../src/tools/mcp-control.js';
 
 function fakeConfig(overrides: Partial<Config> = {}): Config {
   return {
@@ -122,6 +122,32 @@ describe('createMcpControlTool', () => {
     });
     expect(result).toContain('github');
     expect(result).toContain('connected');
+  });
+
+  it('list and search: show a running server that has no config entry', async () => {
+    // Started for this run only (`--mcp-config`): live in the registry, absent
+    // from config. It used to be invisible, so in token-saving mode its tools
+    // could never be activated.
+    const activateServer = vi.fn();
+    registry = fakeRegistry({
+      describe: () => [{ name: 'elicit', state: 'connected', toolCount: 1, enabled: true }],
+      activateServer,
+      isActivated: () => false,
+    });
+    tool = createMcpControlTool({ getConfig, configPath, registry });
+    const run = (input: Record<string, unknown>) =>
+      tool.execute(input as never, undefined as never, { signal: new AbortController().signal });
+
+    const listed = await run({ action: 'list' });
+    expect(listed).not.toContain('No MCP servers configured');
+    expect(listed).toMatch(/elicit.*this run only.*connected.*1 tools/);
+
+    const found = await run({ action: 'search', query: 'elic' });
+    expect(found).toContain('Running servers matching "elic"');
+    expect(found).toContain('elicit');
+
+    await run({ action: 'activate', server: 'elicit' });
+    expect(activateServer).toHaveBeenCalledWith('elicit');
   });
 
   // ── search action ─────────────────────────────────────────────────────────

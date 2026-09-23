@@ -1,6 +1,4 @@
-import { expectDefined } from '../utils/expect-defined.js';
-import { toErrorMessage } from '../utils/error.js';
-import { ToolCapabilities } from '../security/capabilities.js';
+import type { Config, JSONSchema, MCPServerConfig, Tool } from '../index.js';
 /**
  * `mcp_control` — LLM-driven MCP server lifecycle management.
  *
@@ -15,8 +13,10 @@ import { ToolCapabilities } from '../security/capabilities.js';
  * own capabilities at runtime — e.g. "I need GitHub access, let me enable it."
  */
 import { allServers, resolveMcpServerConfig } from '../infrastructure/mcp-servers.js';
+import { ToolCapabilities } from '../security/capabilities.js';
 import { readJsonObjectFile, setJsonPath, updateJsonObjectFile } from '../utils/config-json.js';
-import type { Config, JSONSchema, MCPServerConfig, Tool } from '../index.js';
+import { toErrorMessage } from '../utils/error.js';
+import { expectDefined } from '../utils/expect-defined.js';
 export interface MCPRegistryHandle {
   start(cfg: MCPServerConfig): Promise<void>;
   stop(name: string): Promise<void>;
@@ -174,8 +174,9 @@ async function renderList(deps: {
 }): Promise<string> {
   const configured = await getConfiguredMcpServers(deps);
   const live = deps.registry.describe();
+  const runOnly = runOnlyServers(live, configured);
 
-  if (Object.keys(configured).length === 0) {
+  if (Object.keys(configured).length === 0 && runOnly.length === 0) {
     return [
       'No MCP servers configured.',
       '  Use `mcp_control({ action: "search" })` to see available presets,',
@@ -194,6 +195,7 @@ async function renderList(deps: {
     lines.push(`  ${bold(name)}  ${enabled}${stateStr}${toolCount}`);
     if (cfg.description) lines.push(`    ${dim(cfg.description)}`);
   }
+  for (const server of runOnly) lines.push(runOnlyLine(server));
 
   lines.push('');
   lines.push(dim('  Use `mcp_control({ action: "search", query: "<keyword>" })` to find servers.'));
@@ -224,7 +226,17 @@ async function renderSearch(
         name.toLowerCase().includes(q) || (cfg.description ?? '').toLowerCase().includes(q),
     );
 
+  const runOnly = runOnlyServers(deps.registry.describe(), configured).filter((s) =>
+    s.name.toLowerCase().includes(q),
+  );
+
   const lines: string[] = [];
+
+  if (runOnly.length > 0) {
+    lines.push(bold('Running servers matching "') + query + '":');
+    for (const server of runOnly) lines.push(runOnlyLine(server));
+    lines.push('');
+  }
 
   if (configuredEntries.length > 0) {
     lines.push(bold('Configured servers matching "') + query + '":');
@@ -243,15 +255,32 @@ async function renderSearch(
     lines.push('');
   }
 
-  if (configuredEntries.length === 0 && unconfiguredEntries.length === 0) {
+  if (runOnly.length === 0 && configuredEntries.length === 0 && unconfiguredEntries.length === 0) {
     return `No servers match "${query}". Try a shorter keyword or \`mcp_control({ action: "list" })\`.`;
   }
 
-  const total = configuredEntries.length + unconfiguredEntries.length;
+  const total = runOnly.length + configuredEntries.length + unconfiguredEntries.length;
   lines.push(
     dim(`  ${total} server${total !== 1 ? 's' : ''} shown. Run \`enable\` on one to activate it.`),
   );
   return lines.join('\n');
+}
+
+/**
+ * Live servers with no config entry — started for this run only
+ * (`--mcp-config`, an ACP session's servers). They were missing from list and
+ * search, so in token-saving mode, where tools stay hidden until `activate`,
+ * a running server could never be found and its tools never reached.
+ */
+function runOnlyServers(
+  live: ReturnType<MCPRegistryHandle['describe']>,
+  configured: Record<string, unknown>,
+): ReturnType<MCPRegistryHandle['describe']> {
+  return live.filter((server) => !Object.hasOwn(configured, server.name));
+}
+
+function runOnlyLine(server: ReturnType<MCPRegistryHandle['describe']>[number]): string {
+  return `  ${bold(server.name)}  ${dim('this run only')}  ${badge(server.state)} (${server.toolCount} tools) — use \`activate\` to expose its tools`;
 }
 
 /** Cap on the rendered schema per tool so one huge schema cannot flood the context. */
