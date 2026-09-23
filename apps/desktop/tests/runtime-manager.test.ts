@@ -35,7 +35,6 @@ interface DesktopStateFile {
 
 // Runtime constants (matching actual implementation)
 const HTTP_PORT_START = 34560;
-const WS_PORT_START = 34660;
 
 afterEach(() => {
   vi.useRealTimers();
@@ -79,10 +78,6 @@ describe('waitForChildExit', () => {
 describe('Port allocation', () => {
   it('should start HTTP ports from correct base', () => {
     expect(HTTP_PORT_START).toBe(34560);
-  });
-
-  it('should start WS ports from correct base', () => {
-    expect(WS_PORT_START).toBe(34660);
   });
 
   it('should allocate ports sequentially', () => {

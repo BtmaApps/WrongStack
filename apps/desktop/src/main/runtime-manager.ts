@@ -75,7 +75,6 @@ interface OpenProjectOptions {
 }
 
 const HTTP_PORT_START = 34560;
-const WS_PORT_START = 34660;
 const START_TIMEOUT_MS = 30_000;
 const MIN_WINDOW_WIDTH = 760;
 const MIN_WINDOW_HEIGHT = 520;
@@ -304,10 +303,7 @@ export class DesktopRuntimeManager extends EventEmitter {
         : `${slug}-${randomBytes(3).toString('hex')}`;
     const name = options.name ?? nextRuntimeName(this.runtimes, resolved, kind);
     const httpPort = await findFreePort(HTTP_PORT_START, usedPorts(this.runtimes));
-    const wsPort = await findFreePort(
-      WS_PORT_START,
-      new Set([...usedPorts(this.runtimes), httpPort]),
-    );
+    const wsPort = httpPort;
     const token = randomBytes(24).toString('hex');
     const runtime: RuntimeInternal = {
       id: runtimeId,
@@ -347,8 +343,6 @@ export class DesktopRuntimeManager extends EventEmitter {
           '127.0.0.1',
           '--port',
           String(httpPort),
-          '--ws-port',
-          String(wsPort),
           '--dist-dir',
           distDir,
           '--require-token',

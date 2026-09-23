@@ -164,9 +164,9 @@
       "runtimeOrMixed": 28
     },
     "@wrongstack/core/storage": {
-      "files": 127,
+      "files": 128,
       "typeOnly": 33,
-      "runtimeOrMixed": 126
+      "runtimeOrMixed": 127
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 635,
+      "files": 636,
       "typeOnly": 59,
-      "runtimeOrMixed": 605
+      "runtimeOrMixed": 606
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -11146,6 +11146,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/src/server/session-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-server/src/server/session-prompt-queue.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -22522,6 +22528,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/session-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/session-prompt-queue.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

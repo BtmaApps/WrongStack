@@ -128,7 +128,7 @@ export function waitForHttpReady(baseUrl: string, token: string, timeoutMs: numb
 
       const req = http.get(url, (res) => {
         res.resume();
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 500) {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
           if (!done) {
             done = true;
             cleanup();

@@ -1560,7 +1560,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
       "sourceFiles": 7,
-      "sourceLines": 2499
+      "sourceLines": 2519
     },
     {
       "directory": "plugins",
@@ -1651,7 +1651,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 76,
-      "sourceLines": 14329
+      "sourceLines": 14331
     },
     {
       "directory": "typesafe",

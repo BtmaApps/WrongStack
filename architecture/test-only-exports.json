@@ -342,6 +342,7 @@
     ],
     "packages/cli/src/wiring/plugins.ts": [
       "_resetDeprecatedWarningsForTests",
+      "BUILTIN_PLUGIN_NAME_HINTS",
       "builtinPluginNameFromSpec",
       "DEPRECATED_PLUGIN_NAMES",
       "pluginNameFromSpec",
@@ -875,15 +876,13 @@
       "extractErrorLine",
       "extractFrames"
     ],
-    "packages/plugins/src/factories/index.ts": [
-      "OFFICIAL_PLUGIN_SPECIFIERS"
-    ],
     "packages/plugins/src/gitignore-guard/index.ts": [
       "classifyArtifact",
       "DEFAULT_ARTIFACT_PATTERNS",
       "matchGitignorePattern"
     ],
     "packages/plugins/src/injection-shield/index.ts": [
+      "extractToolContent",
       "foldConfusables",
       "scanForInjection",
       "stripInvisible"

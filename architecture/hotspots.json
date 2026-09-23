@@ -239,7 +239,7 @@
       "relativeImports": 3
     },
     "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 828,
+      "lines": 833,
       "relativeImports": 19
     },
     "packages/simpleui/src/use-simple-ui-session.tsx": {
@@ -343,8 +343,8 @@
       "relativeImports": 5
     },
     "packages/webui/src/hooks/ws-handlers.ts": {
-      "lines": 913,
-      "relativeImports": 7
+      "lines": 916,
+      "relativeImports": 8
     },
     "packages/webui/src/lib/fonts.ts": {
       "lines": 873,
@@ -359,16 +359,16 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 911,
-      "relativeImports": 7
+      "lines": 913,
+      "relativeImports": 8
     },
     "packages/webui-server/src/server/backend-services.ts": {
       "lines": 881,
       "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 957,
-      "relativeImports": 56
+      "lines": 965,
+      "relativeImports": 57
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1161,

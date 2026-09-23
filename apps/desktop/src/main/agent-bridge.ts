@@ -125,12 +125,28 @@ export class DesktopAgentBridge extends EventEmitter {
   async ensureConnected(runtimeId: string, wsUrl: string): Promise<DesktopConversationSnapshot> {
     const conversation = this.getOrCreate(runtimeId);
 
-    // If already connected, return immediately
-    if (conversation.ws?.readyState === WebSocket.OPEN) return publicConversation(conversation);
+    // A runtime may restart on a different port while the previous socket is
+    // still open. Never send a user action to the previous runtime's endpoint.
+    if (conversation.ws?.readyState === WebSocket.OPEN) {
+      if (conversation.reconnectUrl === wsUrl) return publicConversation(conversation);
+      const previous = conversation.ws;
+      conversation.ws = null;
+      conversation.socketGeneration++;
+      if (conversation.onMessage) previous.off('message', conversation.onMessage);
+      conversation.onMessage = null;
+      previous.close();
+    }
 
-    // If currently connecting, wait for it
+    // A new target can arrive while the old socket is still connecting.
     if (conversation.connectPromise) {
-      await conversation.connectPromise;
+      try {
+        await conversation.connectPromise;
+      } catch (error) {
+        // A failed connection to the previous URL must not block a user
+        // action aimed at a new, healthy runtime endpoint.
+        if (conversation.reconnectUrl === wsUrl) throw error;
+      }
+      if (conversation.reconnectUrl !== wsUrl) return this.ensureConnected(runtimeId, wsUrl);
       return publicConversation(conversation);
     }
 
@@ -138,6 +154,7 @@ export class DesktopAgentBridge extends EventEmitter {
     // sendMessage() would otherwise write to a closed socket.
     if (conversation.reconnectTimer) {
       this.cancelReconnect(conversation);
+      conversation.reconnectUrl = wsUrl;
       await this.connect(runtimeId, wsUrl);
       return publicConversation(conversation);
     }
@@ -217,6 +234,7 @@ export class DesktopAgentBridge extends EventEmitter {
 
       ws.once('error', (err) => {
         clearTimeout(timeout);
+        if (conversation.ws !== ws) return;
         conversation.status = 'error';
         conversation.error = err instanceof Error ? err.message : String(err);
         conversation.connectPromise = null;
@@ -231,14 +249,6 @@ export class DesktopAgentBridge extends EventEmitter {
 
       ws.once('close', () => {
         clearTimeout(timeout);
-        // Only the socket that currently owns the conversation invalidates
-        // the generation — a superseded socket closing must not clobber its
-        // successor's generation, or late messages from the successor would
-        // be wrongly dropped. RAM-leak audit 2026-08-11, HIGH (chimera review).
-        if (conversation.ws === ws) {
-          conversation.socketGeneration++;
-          conversation.ws = null;
-        }
         // Detach our named message handler so the closure (which retains
         // conversation) is releasable even if the ws is kept alive by the
         // runtime or pending GC. RAM-leak audit 2026-08-11, HIGH.
@@ -251,6 +261,11 @@ export class DesktopAgentBridge extends EventEmitter {
         if (conversation.onMessage === onMessage) {
           conversation.onMessage = null;
         }
+        // A replaced endpoint can close after its successor starts connecting.
+        // Its late close must not clear that connect or schedule a retry.
+        if (conversation.ws !== ws) return;
+        conversation.socketGeneration++;
+        conversation.ws = null;
         conversation.connectPromise = null;
 
         if (conversation.status !== 'error') {
