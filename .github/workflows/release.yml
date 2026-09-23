@@ -289,8 +289,27 @@ jobs:
           cd desktop-assets
           cat DESKTOP-SHA256SUMS-* | sort -k2,2 > DESKTOP-SHA256SUMS
           sha256sum --check DESKTOP-SHA256SUMS
-          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
-            wrongstack-desktop-* DESKTOP-SHA256SUMS
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .id)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
+            --jq '.[] | [.name, .digest] | @tsv' > "$RUNNER_TEMP/release-asset-digests"
+          complete=true
+          while read -r hash name; do
+            name="${name#\*}"
+            if ! grep -Fqx "$(printf '%s\tsha256:%s' "$name" "$hash")" "$RUNNER_TEMP/release-asset-digests"; then
+              complete=false
+              break
+            fi
+          done < DESKTOP-SHA256SUMS
+          manifest_hash="$(sha256sum DESKTOP-SHA256SUMS | cut -d' ' -f1)"
+          if ! grep -Fqx "$(printf 'DESKTOP-SHA256SUMS\tsha256:%s' "$manifest_hash")" "$RUNNER_TEMP/release-asset-digests"; then
+            complete=false
+          fi
+          if [ "$complete" = true ]; then
+            echo "Desktop assets already match the checksums; upload skipped."
+          else
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+              wrongstack-desktop-* DESKTOP-SHA256SUMS
+          fi
 
   publish:
     name: Publish to npm
@@ -435,6 +454,24 @@ jobs:
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
           fi
-          # --clobber: a manual re-run replaces assets instead of failing.
-          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
-            dist-bin/wstack-* dist-bin/SHA256SUMS dist-bin/install.sh dist-bin/install.ps1
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .id)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
+            --jq '.[] | [.name, .digest] | @tsv' > "$RUNNER_TEMP/release-asset-digests"
+          complete=true
+          while read -r hash name; do
+            name="${name#\*}"
+            if ! grep -Fqx "$(printf '%s\tsha256:%s' "$name" "$hash")" "$RUNNER_TEMP/release-asset-digests"; then
+              complete=false
+              break
+            fi
+          done < dist-bin/SHA256SUMS
+          manifest_hash="$(sha256sum dist-bin/SHA256SUMS | cut -d' ' -f1)"
+          if ! grep -Fqx "$(printf 'SHA256SUMS\tsha256:%s' "$manifest_hash")" "$RUNNER_TEMP/release-asset-digests"; then
+            complete=false
+          fi
+          if [ "$complete" = true ]; then
+            echo "Standalone assets already match the checksums; upload skipped."
+          else
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+              dist-bin/wstack-* dist-bin/SHA256SUMS dist-bin/install.sh dist-bin/install.ps1
+          fi
