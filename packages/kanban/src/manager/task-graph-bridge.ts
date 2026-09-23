@@ -88,8 +88,17 @@ export async function createBoardFromTaskGraph(
     taskIdMap.set(node.id, task.id);
   }
   for (const task of board.tasks) {
-    if (task.parentTaskId)
-      task.parentTaskId = taskIdMap.get(task.parentTaskId) ?? task.parentTaskId;
+    if (task.parentTaskId) {
+      const mappedParent = taskIdMap.get(task.parentTaskId);
+      if (mappedParent) {
+        task.parentTaskId = mappedParent;
+      } else {
+        // The parent node was excluded from the import (e.g. completed tasks
+        // filtered). A graph id is not a board task id — keeping it would
+        // leave a dangling reference nothing can resolve.
+        delete task.parentTaskId;
+      }
+    }
     if (task.childTaskIds?.length) {
       task.childTaskIds = task.childTaskIds
         .map((childId) => taskIdMap.get(childId))

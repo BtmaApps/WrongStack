@@ -423,7 +423,17 @@ function ensureTaskRelation(
   if (node.kind === 'verification') return;
   const type = relationForNodeKind(node.kind);
   const from = taskContractEndpoint(node.taskId);
-  if (graph.edges.some((edge) => edge.from === from && edge.to === node.id && edge.type === type)) {
+  const relation = graph.edges.find(
+    (edge) => edge.from === from && edge.to === node.id && edge.type === type,
+  );
+  if (relation) {
+    // The relation edge is derived metadata: it mirrors the node's current
+    // enforcement. An upsert that changed the enforcement must not leave the
+    // stale verdict on the edge.
+    if (relation.enforcement !== node.enforcement) {
+      relation.enforcement = node.enforcement;
+      graph.updatedAt = at;
+    }
     return;
   }
   graph.edges.push({
