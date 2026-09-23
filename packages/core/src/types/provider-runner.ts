@@ -27,6 +27,13 @@ export interface RunProviderOptions {
    * quota-exhausted route off the wire no matter which extensions are loaded.
    */
   statusTracker?: ProviderModelStatusTracker | undefined;
+  /**
+   * Stable id for this logical step. Every retry, and every fallback hop an
+   * extension takes for the same agent-loop iteration, shares it — so
+   * Chronicle, cost and HQ count one step, not one per attempt. Generated
+   * when absent (direct callers outside the loop).
+   */
+  logicalRequestId?: string | undefined;
 }
 
 /**

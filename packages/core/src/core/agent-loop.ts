@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { RunController } from '../kernel/run-controller.js';
 import { TOKENS } from '../kernel/tokens.js';
 import { drainLeaderDeliveries } from '../leader-delivery-attach.js';
@@ -321,6 +322,10 @@ export function createAgentLoopHandler(
     // tracker, but only this hand-off stops a request that was already in
     // flight through a path with no fallback extension attached.
     const statusTracker = a.container.safeResolve(TOKENS.ProviderModelStatusTracker);
+    // One id per loop iteration, shared by every attempt at that step —
+    // provider retries AND the fallback extension's hops, which call back into
+    // this runner — so a retried step is attributed as one logical request.
+    let stepRequestId: string | undefined;
     const baseRunner = diRunner
       ? (ctx: typeof a.ctx, req: Request) =>
           diRunner.run({
@@ -333,6 +338,7 @@ export function createAgentLoopHandler(
             logger: a.logger,
             tracer: a.tracer,
             ...(statusTracker ? { statusTracker } : {}),
+            ...(stepRequestId ? { logicalRequestId: stepRequestId } : {}),
           })
       : async (ctx: typeof a.ctx, req: Request) =>
           runProviderWithRetry({
@@ -345,6 +351,7 @@ export function createAgentLoopHandler(
             logger: a.logger,
             tracer: a.tracer,
             ...(statusTracker ? { statusTracker } : {}),
+            ...(stepRequestId ? { logicalRequestId: stepRequestId } : {}),
           });
 
     const customRunner = a.extensions.wrapProviderRunner(baseRunner);
@@ -451,6 +458,7 @@ export function createAgentLoopHandler(
         let res: Response;
         try {
           const historyVersion = requestHistoryVersion(req) ?? contextHistoryVersion(a.ctx);
+          stepRequestId = randomUUID();
           res = await customRunner(a.ctx, req);
           // Usage belongs to the route captured for this request, even if the
           // user switched providers while its response was in flight.

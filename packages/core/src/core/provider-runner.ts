@@ -54,6 +54,13 @@ export interface RunProviderOptions {
    * wire outcome back into it. See {@link runProviderWithRetry}.
    */
   statusTracker?: ProviderModelStatusTracker | undefined;
+  /**
+   * Stable id for this logical step. Every retry, and every fallback hop an
+   * extension takes for the same agent-loop iteration, shares it — so
+   * Chronicle, cost and HQ count one step, not one per attempt. Generated
+   * when absent (direct callers outside the loop).
+   */
+  logicalRequestId?: string | undefined;
 }
 
 /**
@@ -115,7 +122,7 @@ function markProviderFailureTracked(err: unknown): void {
  */
 export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Response> {
   const { provider, request, signal, ctx, events, retry, logger, tracer, statusTracker } = opts;
-  const logicalRequestId = randomUUID();
+  const logicalRequestId = opts.logicalRequestId ?? randomUUID();
   const promptManifest = createChroniclePromptManifest(request);
   // Keep the request identity alive after the provider response returns: the
   // following tool calls are the materialized effects of this exact prompt.
