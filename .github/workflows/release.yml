@@ -179,6 +179,11 @@ jobs:
         # the repo and refuse to run lifecycle scripts.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Install Playwright browser for live plugin journeys
+        # release:check includes the responsive browser plugin test. Its child
+        # process uses buildChildEnv(), so use Playwright's default HOME cache.
+        run: npx playwright install --with-deps chromium
+
       - name: Release gate
         run: pnpm release:check
 
