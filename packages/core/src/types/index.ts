@@ -28,7 +28,13 @@ export {
   markVolatileSystemBlock,
   VOLATILE_SYSTEM_BLOCKS,
 } from './blocks.js';
-export type { Compactor, CompactReport } from './compactor.js';
+export type {
+  CompactionObserver,
+  CompactionTrigger,
+  CompactOptions,
+  Compactor,
+  CompactReport,
+} from './compactor.js';
 export type {
   AdaptiveConcurrencyConfig,
   AgentLearningConfig,
@@ -221,7 +227,7 @@ export {
 } from './errors.js';
 // ── file-event-record (1 symbols) ──
 export type { FileEventRecord } from './file-event-record.js';
-// ── hooks (15 symbols) ──
+// ── hooks (18 symbols) ──
 export type {
   AnyHookOutcome,
   ConfiguredHook,
@@ -235,10 +241,12 @@ export type {
   HookRegistrationOptions,
   HttpHook,
   InProcessHook,
+  ObservationalHookEvent,
   PreToolUseOutcome,
   PreToolUseStage,
   ShellHook,
 } from './hooks.js';
+export { HOOK_EVENTS, isHookEvent } from './hooks.js';
 // ── input-reader (2 symbols) ──
 export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';
 // ── logger (2 symbols) ──
@@ -563,9 +571,10 @@ export type {
   ToolFinalEvent,
   ToolIconId,
   ToolProgressEvent,
+  ToolSettlement,
   ToolStreamEvent,
 } from './tool.js';
-// ── tool (10 symbols) ──
+// ── tool (11 symbols) ──
 export { ToolErrorCategory } from './tool.js';
 export type {
   ConfirmAwaiter,
