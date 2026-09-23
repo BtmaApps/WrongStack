@@ -51,28 +51,31 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.24
+### What's new in 1.0.25
 
-Highlights since 1.0.23:
+Highlights since 1.0.24:
+
+- **Choose GPT-6 Sol or Luna with ChatGPT sign-in.** Both models appear in the
+  Codex picker with their supported reasoning efforts.
+- **Set up connected tools more easily.** MCP servers report resource updates,
+  OAuth prompts explain next steps, and the CLI can import Claude Code settings.
+- **Follow active work in the WebUI.** Goal and Kanban views make task execution
+  and state easier to inspect; provider profiles and MCP settings have clearer
+  controls.
+- **Run commands with stronger safeguards.** Danger detection handles wrapped
+  shell commands and inline interpreter payloads, and secret redaction covers
+  compound flags.
+- **Trust dependency findings.** npm audit and OSV advisories retain their real
+  package identities and severity in the techstack adapter.
+
+Earlier additions:
 
 - **Give agents a typed decision specialist.** A configured Jev account exposes
-  `jev` for batched yes/no, alternative-choice and ordered-score judgments over
-  supplied evidence. `jev_status` checks local readiness without a network call;
-  invalid or incomplete answers never become decisions.
-- **Manage Jev where you work.** `/jev` in the TUI and **Settings → Jev** in the
-  WebUI configure the account, model, timeout and individual features. Activity
-  views show timing, usage, answers and safe failure categories.
-- **Keep SAGE triage scoped and complete.** Daily dry runs paginate the full
-  candidate set, use the owning session's corpus and injector evidence, preserve
-  tagged glossary provenance, and protect revived records during session GC.
-- **See who owns active goal work.** TUI goal runs retain task-to-agent
-  assignment even when start and assignment events arrive in the same render
-  tick.
-- **Harden outbound fetch redirects.** The guarded fetch path rejects embedded
-  username/password credentials on every redirect hop, not only the first URL.
-
-Recent additions retained from 1.0.23:
-
+  `jev` for validated judgments, while `jev_status` checks readiness offline.
+- **Manage Jev where you work.** `/jev` and **Settings → Jev** configure features
+  and show decision activity in the terminal and browser.
+- **Keep SAGE triage scoped and complete.** Daily dry runs carry the owning
+  session's evidence and protect revived records during cleanup.
 - **Use fast judgments with safe fallbacks.** Optional TypeSafe System One
   decisions support Brain choices, memory triage and recall, topic shifts,
   compaction, Kanban verification, model-tier routing and semantic linting.

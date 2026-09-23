@@ -353,9 +353,23 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.25',
+    date: '2026-09-23',
+    latest: true,
+    tagline: 'More model choices, clearer connected tools, and safer commands',
+    highlights: [
+      'GPT-6 Sol and Luna join the ChatGPT sign-in model picker',
+      'MCP resource updates and clearer OAuth prompts improve connected tool setup',
+      'Import compatible Claude Code configuration from the CLI',
+      'Goal and Kanban views make active task execution easier to inspect',
+      'Provider profiles, MCP settings and session navigation get clearer WebUI controls',
+      'Danger detection unwraps launchers and inline payloads; secret redaction covers compound flags',
+      'Dependency findings preserve npm audit and OSV package identity and severity',
+    ],
+  },
+  {
     version: '1.0.24',
     date: '2026-09-20',
-    latest: true,
     tagline: 'Agent-callable Jev decisions, scoped SAGE triage, and safer redirects',
     highlights: [
       'Configure Jev accounts, models, timeouts and feature switches through /jev or the WebUI settings panel',

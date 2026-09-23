@@ -305,11 +305,11 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Decide with evidence. Keep memory scoped.
+                More ways to work. Clearer ways to inspect.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In 1.0.24: agent-callable Jev judgments, inspectable decision activity,
-                session-correct SAGE triage, and safer outbound redirects.
+                In 1.0.25: GPT-6 Sol and Luna, clearer MCP setup and active-work views, plus
+                stronger command safeguards.
               </p>
             </div>
             <a
@@ -323,16 +323,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Typed Jev decisions',
-                'Ask bounded yes/no, choice, or score questions over supplied evidence, with validated answers and safe fallbacks.',
+                'More model choices',
+                'Choose GPT-6 Sol or Luna through ChatGPT sign-in, with live model discovery at runtime.',
               ],
               [
-                'Visible decision activity',
-                'Configure Jev in the TUI or WebUI and inspect timing, usage, answers, readiness, and safe failure states.',
+                'Connected tool setup',
+                'Follow MCP resource updates, use clearer OAuth prompts, and import compatible Claude Code settings.',
               ],
               [
-                'Session-correct memory',
-                'Daily triage paginates every candidate, carries the owning session evidence, and protects revived records during cleanup.',
+                'Safer commands',
+                'Wrapped shell commands and inline payloads receive stronger danger checks, with broader secret redaction.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">

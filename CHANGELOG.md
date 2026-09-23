@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.25] — 2026-09-23
+
 ### Added
 
 - **`gpt-6-sol` and `gpt-6-luna` are available under the ChatGPT sign-in
@@ -17,6 +19,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   872K Codex window as the rest of the GPT-6/5.6 line, and the live
   `/codex/models` probe remains the runtime authority.
   (`packages/core/src/models/codex-catalog.ts`, `packages/cli/data/providers.json`)
+- **Richer MCP and CLI setup.** MCP resource update notifications, clearer OAuth
+  prompts, and expanded CLI startup options improve connected workflows.
+- **Claude Code import.** The CLI can import compatible local configuration
+  through a dedicated subcommand.
+
+### Changed
+
+- **Goal and Kanban work is easier to inspect.** Goal controls and task
+  execution views expose more of the active state in the TUI and WebUI.
+- **WebUI settings and session navigation are more direct.** Provider profiles,
+  MCP server setup, and session activity received updated controls and copy.
+- **Website catalogs cover more runtime tools and plugins.** Tool parameter
+  details and plugin workflows now reflect the expanded catalog.
+
+### Fixed
+
+- **Safer command and secret handling.** Dangerous command detection unwraps
+  launchers and inline payloads, while redaction covers compound secret flags.
+- **More reliable shutdown and coverage.** MCP demand wakes and SAGE stopping
+  rejections drain on shutdown; coverage locking tracks a live owner.
+
+### Security
+
+- **Dependency advisories retain their real identities and severity.** The
+  techstack adapter uses npm audit data and hydrates OSV records without losing
+  their package identities.
 
 ## [1.0.24] — 2026-09-20
 
