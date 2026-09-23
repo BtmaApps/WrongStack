@@ -158,6 +158,8 @@ export interface PluginCouncilOptions {
   options?: readonly import('./council.js').CouncilOption[] | undefined;
   /** Abort signal propagated to every Council seat and judge. */
   signal?: AbortSignal | undefined;
+  /** Hard Council deadline in milliseconds. Defaults to 30000 and is capped by the host. */
+  timeoutMs?: number | undefined;
 }
 
 /**

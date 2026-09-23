@@ -844,6 +844,21 @@ describe('DefaultPluginAPI.llm', () => {
     expect(api.llm!.defaults()).toEqual({ provider: 'default-prov', model: 'default-model' });
   });
 
+  it('settles at the deadline when a minimal provider ignores abort', async () => {
+    const { api, setHost } = mkApiWithLLM();
+    let observedSignal: AbortSignal | undefined;
+    const slowProvider = {
+      id: 'default-prov',
+      complete: vi.fn((_request: unknown, options: { signal: AbortSignal }) => {
+        observedSignal = options.signal;
+        return new Promise<never>(() => {});
+      }),
+    } as never as import('../../src/index.js').Provider;
+    setHost(slowProvider, 'default-model');
+    await expect(api.llm!.complete('slow', { timeoutMs: 25 })).rejects.toThrow(/timed out/);
+    expect(observedSignal?.aborted).toBe(true);
+  });
+
   it('prefers the host One Shot runtime and preserves fallback metadata', async () => {
     const oneShot = vi.fn(async () => ({
       text: 'from fallback',
@@ -885,6 +900,17 @@ describe('DefaultPluginAPI.llm', () => {
     });
   });
 
+  it('settles an injected One Shot request that ignores abort', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const oneShot = vi.fn((input: { signal?: AbortSignal }) => {
+      observedSignal = input.signal;
+      return new Promise<never>(() => {});
+    });
+    const { api } = mkApiWithLLM({ oneShot: oneShot as never });
+    await expect(api.llm!.complete('slow', { timeoutMs: 25 })).rejects.toThrow(/timed out/);
+    expect(observedSignal?.aborted).toBe(true);
+  });
+
   it('exposes the host Council runtime without silently accepting failed calls', async () => {
     const council = vi.fn(async () => ({
       status: 'decided' as const,
@@ -911,6 +937,19 @@ describe('DefaultPluginAPI.llm', () => {
         profile: 'risk-review',
       }),
     );
+  });
+
+  it('settles a Council request when the host ignores abort', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const council = vi.fn((question: { signal?: AbortSignal }) => {
+      observedSignal = question.signal;
+      return new Promise<never>(() => {});
+    });
+    const { api } = mkApiWithLLM({ council: council as never });
+    await expect(api.llm!.council!('Review this change', { timeoutMs: 25 })).rejects.toThrow(
+      /timed out/,
+    );
+    expect(observedSignal?.aborted).toBe(true);
   });
 
   it('uses the current host provider and model after a runtime switch', async () => {

@@ -1,3 +1,4 @@
+import { callWithDeadline } from '../execution/llm-call-deadline.js';
 import type { ProviderRegistry } from '../registry/provider-registry.js';
 
 import type { Config } from '../types/config.js';
@@ -161,23 +162,29 @@ export function makePluginLLM(
 
       if (hostLLM.oneShot) {
         metrics.counter('llm.calls', 1, { provider: providerName, model, engine: 'one-shot' });
-        const result = await hostLLM.oneShot({
-          userPrompt: prompt,
-          providerId: providerName,
-          model,
-          maxTokens,
+        const result = await callWithDeadline(
+          (signal) =>
+            hostLLM.oneShot!({
+              userPrompt: prompt,
+              providerId: providerName,
+              model,
+              maxTokens,
+              timeoutMs,
+              ...(temperature !== undefined ? { temperature } : {}),
+              ...(opts?.system ? { system: opts.system } : {}),
+              ...(opts?.responseFormat === 'json'
+                ? { responseFormat: { type: 'json_object' as const } }
+                : {}),
+              signal,
+              ...((opts?.role ?? defaults.role) ? { role: opts?.role ?? defaults.role } : {}),
+              ...((opts?.fallbackModels ?? defaults.fallbackModels)
+                ? { fallbackModels: [...(opts?.fallbackModels ?? defaults.fallbackModels ?? [])] }
+                : {}),
+            }),
+          opts?.signal,
           timeoutMs,
-          ...(temperature !== undefined ? { temperature } : {}),
-          ...(opts?.system ? { system: opts.system } : {}),
-          ...(opts?.responseFormat === 'json'
-            ? { responseFormat: { type: 'json_object' as const } }
-            : {}),
-          ...(opts?.signal ? { signal: opts.signal } : {}),
-          ...((opts?.role ?? defaults.role) ? { role: opts?.role ?? defaults.role } : {}),
-          ...((opts?.fallbackModels ?? defaults.fallbackModels)
-            ? { fallbackModels: [...(opts?.fallbackModels ?? defaults.fallbackModels ?? [])] }
-            : {}),
-        });
+          `Plugin "${owner}" One Shot request timed out`,
+        );
         if (result.error) {
           metrics.counter('llm.errors', 1, { provider: result.provider, model: result.model });
           throw new Error(result.error);
@@ -209,11 +216,14 @@ export function makePluginLLM(
           ? { responseFormat: { type: 'json_object' as const } }
           : {}),
       };
-      const timeoutSignal = AbortSignal.timeout(timeoutMs);
-      const signal = opts?.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
       metrics.counter('llm.calls', 1, { provider: providerName, model });
       try {
-        const response = await provider.complete(request, { signal });
+        const response = await callWithDeadline(
+          (signal) => provider.complete(request, { signal }),
+          opts?.signal,
+          timeoutMs,
+          `Plugin "${owner}" LLM request timed out`,
+        );
         const text = response.content
           .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
           .map((b) => b.text)
@@ -254,16 +264,26 @@ export function makePluginLLM(
         throw new Error('Plugin Council context must not exceed 80000 characters.');
       }
       const defaults = pluginDefaults();
+      const timeoutMs = Math.min(
+        HARD_TIMEOUT_MS,
+        Math.max(1, opts?.timeoutMs ?? defaults.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      );
       metrics.counter('llm.council.calls', 1, { plugin: owner });
-      const result = await council({
-        question: trimmed,
-        ...(opts?.context ? { context: opts.context } : {}),
-        ...(opts?.options ? { options: opts.options } : {}),
-        ...((opts?.profile ?? defaults.councilProfile)
-          ? { profile: opts?.profile ?? defaults.councilProfile }
-          : {}),
-        ...(opts?.signal ? { signal: opts.signal } : {}),
-      });
+      const result = await callWithDeadline(
+        (signal) =>
+          council({
+            question: trimmed,
+            ...(opts?.context ? { context: opts.context } : {}),
+            ...(opts?.options ? { options: opts.options } : {}),
+            ...((opts?.profile ?? defaults.councilProfile)
+              ? { profile: opts?.profile ?? defaults.councilProfile }
+              : {}),
+            signal,
+          }),
+        opts?.signal,
+        timeoutMs,
+        `Plugin "${owner}" Council request timed out`,
+      );
       metrics.counter('llm.tokens_in', result.usage.inputTokens);
       metrics.counter('llm.tokens_out', result.usage.outputTokens);
       if (result.status === 'failed') metrics.counter('llm.errors', 1, { provider: 'council' });
