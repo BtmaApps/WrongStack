@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 338,
-      "typeOnly": 268,
+      "files": 339,
+      "typeOnly": 269,
       "runtimeOrMixed": 91
     },
     "@wrongstack/core/agent-catalog": {
@@ -39,13 +39,13 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 8,
+      "files": 9,
       "typeOnly": 1,
-      "runtimeOrMixed": 9
+      "runtimeOrMixed": 10
     },
     "@wrongstack/core/execution": {
-      "files": 68,
-      "typeOnly": 18,
+      "files": 69,
+      "typeOnly": 19,
       "runtimeOrMixed": 66
     },
     "@wrongstack/core/extension": {
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 48
     },
     "@wrongstack/core/kernel": {
-      "files": 292,
-      "typeOnly": 146,
-      "runtimeOrMixed": 160
+      "files": 294,
+      "typeOnly": 147,
+      "runtimeOrMixed": 161
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/models": {
-      "files": 34,
+      "files": 37,
       "typeOnly": 9,
-      "runtimeOrMixed": 26
+      "runtimeOrMixed": 29
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -124,9 +124,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 135,
+      "files": 136,
       "typeOnly": 64,
-      "runtimeOrMixed": 74
+      "runtimeOrMixed": 75
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1171,
-      "typeOnly": 1045,
-      "runtimeOrMixed": 343
+      "files": 1176,
+      "typeOnly": 1049,
+      "runtimeOrMixed": 344
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 634,
-      "typeOnly": 60,
-      "runtimeOrMixed": 603
+      "files": 635,
+      "typeOnly": 59,
+      "runtimeOrMixed": 605
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2097,6 +2097,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/mode-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3927,6 +3933,12 @@
     },
     {
       "specifier": "@wrongstack/core/design",
+      "file": "packages/tools/tests/design.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
       "file": "packages/tui/src/hooks/use-design-kit-slash-commands.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -4314,6 +4326,12 @@
       "file": "packages/webui-server/src/server/create-session-agent-manager.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -6687,6 +6705,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/elicitation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/http-fault-soak.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7389,6 +7413,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/src/server/pre-context-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7629,6 +7659,12 @@
     },
     {
       "specifier": "@wrongstack/core/models",
+      "file": "packages/cli/src/context-limit.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
       "file": "packages/cli/src/pre-launch/first-run.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7713,6 +7749,12 @@
     },
     {
       "specifier": "@wrongstack/core/models",
+      "file": "packages/providers/tests/catalog-change-invalidation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
       "file": "packages/providers/tests/factories.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7756,6 +7798,12 @@
     {
       "specifier": "@wrongstack/core/models",
       "file": "packages/webui-server/src/server/config-pref-updates.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8742,6 +8790,12 @@
       "file": "packages/mcp/src/registry.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/elicitation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -13911,6 +13965,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/elicitation-form.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/elicitation.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/manage.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14014,6 +14080,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/wrap-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/elicitation.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15160,6 +15232,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/capabilities.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/catalog-change-invalidation.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17736,6 +17814,12 @@
       "file": "packages/webui-server/src/server/kanban-run-mirror.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -20356,8 +20440,8 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/wiring/lifecycle-plugins.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -22306,6 +22390,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/kanban-supervisor.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/max-context-updater.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

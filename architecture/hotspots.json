@@ -159,11 +159,11 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 956,
-      "relativeImports": 14
+      "lines": 954,
+      "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 905,
+      "lines": 908,
       "relativeImports": 21
     },
     "packages/mcp/src/server.ts": {
@@ -207,7 +207,7 @@
       "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
-      "lines": 807,
+      "lines": 815,
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -219,7 +219,7 @@
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 878,
+      "lines": 887,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -267,7 +267,7 @@
       "relativeImports": 26
     },
     "packages/tools/src/json.ts": {
-      "lines": 886,
+      "lines": 888,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
@@ -303,7 +303,7 @@
       "relativeImports": 50
     },
     "packages/vector-memory/src/store.ts": {
-      "lines": 807,
+      "lines": 810,
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -363,8 +363,8 @@
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 947,
-      "relativeImports": 14
+      "lines": 881,
+      "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
       "lines": 957,
@@ -383,7 +383,7 @@
       "relativeImports": 35
     },
     "apps/desktop/src/main/runtime-manager.ts": {
-      "lines": 857,
+      "lines": 851,
       "relativeImports": 8
     }
   }
