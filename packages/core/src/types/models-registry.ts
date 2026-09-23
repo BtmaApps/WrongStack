@@ -158,4 +158,23 @@ export interface ModelsRegistry {
   suggestModel(providerId: string): Promise<string | undefined>;
   /** Cache freshness in seconds since last successful network fetch (Infinity if never). */
   ageSeconds(): Promise<number>;
+  /**
+   * Serve the on-disk cache (within the stale-age limit) without touching the
+   * network. Resolves `true` when a base catalog was loaded, `false` when
+   * there is no usable cache and the caller must fetch. Optional: minimal
+   * registries (tests, stubs) omit it and callers fall back to `refresh()`.
+   */
+  loadCached?(): Promise<boolean>;
+  /**
+   * Monotonic counter bumped every time the served payload changes (first
+   * load, refresh, runtime overlay merge). Derived caches compare it to know
+   * they are stale without depending on listener registration order.
+   */
+  catalogGeneration?(): number;
+  /**
+   * Subscribe to payload replacements. Fired after the new payload is live,
+   * so a listener reading the registry sees the new catalog. Returns an
+   * unsubscribe function.
+   */
+  onCatalogChanged?(listener: (payload: ModelsDevPayload) => void): () => void;
 }

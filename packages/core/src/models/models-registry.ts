@@ -186,6 +186,9 @@ export class DefaultModelsRegistry implements ModelsRegistry {
   private readonly overlayFile?: string | undefined;
   private readonly overlayCacheFile?: string | undefined;
   private readonly logger: Logger;
+  private refreshInFlight?: Promise<ModelsDevPayload> | undefined;
+  private generation = 0;
+  private readonly catalogListeners = new Set<(payload: ModelsDevPayload) => void>();
 
   constructor(opts: DefaultModelsRegistryOptions) {
     this.cacheFile = opts.cacheFile;
@@ -218,9 +221,8 @@ export class DefaultModelsRegistry implements ModelsRegistry {
     // first `load()` — the exact ordering a local gateway hits offline.
     if (this.seed) {
       this.catalogPayload = annotatePayload(this.seed, 'models-dev');
-      this.payload = this.withExtraOverlay(this.catalogPayload);
       this.fetchedAt = new Date();
-      return this.payload;
+      return this.publish(this.withExtraOverlay(this.catalogPayload));
     }
     // Load the overlay first so base degradation can tell whether there is
     // actually curated data to serve when models.dev is unreachable.
@@ -230,8 +232,7 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       annotatePayload(base, 'models-dev'),
       annotatePayload(overlay, 'wrongstack-overlay'),
     );
-    this.payload = this.withExtraOverlay(this.catalogPayload);
-    return this.payload;
+    return this.publish(this.withExtraOverlay(this.catalogPayload));
   }
 
   /**
@@ -257,7 +258,7 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       const cloned = mergeModelsPayload({}, { [providerId]: incoming })[providerId];
       if (cloned) this.extraOverlay[providerId] = cloned;
     }
-    if (this.catalogPayload) this.payload = this.withExtraOverlay(this.catalogPayload);
+    if (this.catalogPayload) this.publish(this.withExtraOverlay(this.catalogPayload));
   }
 
   private withExtraOverlay(payload: ModelsDevPayload): ModelsDevPayload {
@@ -462,7 +463,19 @@ export class DefaultModelsRegistry implements ModelsRegistry {
     }
   }
 
-  async refresh(): Promise<ModelsDevPayload> {
+  refresh(): Promise<ModelsDevPayload> {
+    // Single-flight: boot's background refresh, a model switch and the model
+    // picker can all ask at once — they share one network round-trip instead
+    // of racing three fetches (and three cache writes) against each other.
+    if (this.refreshInFlight) return this.refreshInFlight;
+    const run = this.refreshOnce().finally(() => {
+      this.refreshInFlight = undefined;
+    });
+    this.refreshInFlight = run;
+    return run;
+  }
+
+  private async refreshOnce(): Promise<ModelsDevPayload> {
     // Refresh the models.dev base (throws on failure so `wstack models refresh`
     // can report it), then recompute the merged payload with a fresh overlay.
     const base = await this.refreshBase();
@@ -471,8 +484,80 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       annotatePayload(base, 'models-dev'),
       annotatePayload(overlay, 'wrongstack-overlay'),
     );
-    this.payload = this.withExtraOverlay(this.catalogPayload);
-    return this.payload;
+    return this.publish(this.withExtraOverlay(this.catalogPayload));
+  }
+
+  /**
+   * Serve the cached catalog with NO network I/O: the models.dev base cache
+   * (within `maxStaleAgeSeconds`, whatever the TTL) plus the overlay from its
+   * cache or the bundled file. Lets a long-lived process start instantly and
+   * refresh in the background. Resolves `false` — and leaves the registry
+   * untouched — when there is no usable base cache; the caller then fetches.
+   */
+  async loadCached(): Promise<boolean> {
+    if (this.seed) {
+      await this.load();
+      return true;
+    }
+    const cached = await this.readCacheAt(this.cacheFile);
+    if (!cached || !this.isWithinMaxStaleAge(cached.fetchedAt)) return false;
+    if (!looksLikeModelsPayload(cached.payload, true)) return false;
+    const overlay = await this.loadCachedOverlay();
+    this.fetchedAt = new Date(cached.fetchedAt);
+    this.catalogPayload = mergeModelsPayload(
+      annotatePayload(cached.payload, 'models-dev'),
+      annotatePayload(overlay, 'wrongstack-overlay'),
+    );
+    this.publish(this.withExtraOverlay(this.catalogPayload));
+    return true;
+  }
+
+  /** Overlay resolution without network: in-memory → URL cache → bundled file. */
+  private async loadCachedOverlay(): Promise<ModelsDevPayload> {
+    if (hasEntries(this.overlay)) return this.overlay;
+    if (this.overlayCacheFile) {
+      const cached = await this.readCacheAt(this.overlayCacheFile);
+      if (
+        cached &&
+        this.isWithinMaxStaleAge(cached.fetchedAt) &&
+        looksLikeModelsPayload(cached.payload, false) &&
+        hasEntries(cached.payload)
+      ) {
+        return cached.payload;
+      }
+    }
+    return (await this.readOverlayFile()) ?? {};
+  }
+
+  catalogGeneration(): number {
+    return this.generation;
+  }
+
+  onCatalogChanged(listener: (payload: ModelsDevPayload) => void): () => void {
+    this.catalogListeners.add(listener);
+    return () => {
+      this.catalogListeners.delete(listener);
+    };
+  }
+
+  /**
+   * The single write path for the served payload: swap it in, bump the
+   * generation, then notify. Listeners run after the swap so they read the new
+   * catalog; one throwing listener never blocks the rest or the caller.
+   */
+  private publish(next: ModelsDevPayload): ModelsDevPayload {
+    this.payload = next;
+    this.generation += 1;
+    for (const listener of [...this.catalogListeners]) {
+      try {
+        listener(next);
+      } catch (err) {
+        this.logger.warn(`ModelsRegistry: catalog listener failed: ${toErrorMessage(err)}`, {
+          event: 'models_registry.listener_failed',
+        });
+      }
+    }
+    return next;
   }
 
   async listProviders(): Promise<ResolvedProvider[]> {

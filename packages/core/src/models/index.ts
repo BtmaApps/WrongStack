@@ -5,6 +5,15 @@ export {
   type AlibabaTokenPlanModelMeta,
   alibabaTokenPlanModelMeta,
 } from './alibaba-token-plan-catalog.js';
+export {
+  BACKGROUND_CATALOG_REFRESH_INTERVAL_MS,
+  type CatalogRefreshOutcome,
+  type CatalogStartupOptions,
+  type CatalogStartupResult,
+  RECENT_CATALOG_REFRESH_SECONDS,
+  refreshCatalogIfStale,
+  startCatalog,
+} from './catalog-refresh.js';
 export { CODEX_MODELS, type CodexModelMeta, codexModelMeta } from './codex-catalog.js';
 export { LLMSelector, type LLMSelectorOptions } from './llm-selector.js';
 export {
