@@ -95,6 +95,11 @@ const BOOLEAN_PREF_KEYS = new Set([
   // Excluded providers (openai-codex) flow through unchanged.
   'wrongProxyEnabled',
   'keyboardShortcuts',
+  // v16 SimpleUI display parity: tab-strip presence (running marker + unread
+  // mailbox prefix in document.title). Pure browser display toggle with no
+  // TUI counterpart — accepted here so the key survives `prefs.update`
+  // round-trips without tripping the "unknown preference key" rejection.
+  'showTabTitle',
 ]);
 
 /** Keys whose value must be an array of strings (e.g. an ordered model list). */

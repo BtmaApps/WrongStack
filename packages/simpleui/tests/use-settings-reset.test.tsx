@@ -79,6 +79,7 @@ describe('useSettings — resetPrefs', () => {
         yolo: true,
         enhanceEnabled: true,
         showModelReasoning: false,
+        showTabTitle: false,
       });
       captured.current?.switchAutonomy('auto');
     });

@@ -7,6 +7,8 @@ export interface UseTabTitleOptions {
   running: boolean;
   /** Unread mailbox messages — shown as a `(n)` prefix, browser convention. */
   unreadCount: number;
+  /** Master switch (the "Tab title activity" pref). False pins the base title. */
+  enabled?: boolean | undefined;
 }
 
 /**
@@ -16,13 +18,17 @@ export interface UseTabTitleOptions {
  * restores the base title on unmount so a torn-down session never leaves a
  * stale marker behind.
  */
-export function useTabTitle({ running, unreadCount }: UseTabTitleOptions): void {
+export function useTabTitle({ running, unreadCount, enabled = true }: UseTabTitleOptions): void {
   useEffect(() => {
+    if (!enabled) {
+      document.title = BASE_TITLE;
+      return;
+    }
     const parts: string[] = [];
     if (unreadCount > 0) parts.push(`(${unreadCount})`);
     if (running) parts.push('●');
     document.title = parts.length > 0 ? `${parts.join(' ')} ${BASE_TITLE}` : BASE_TITLE;
-  }, [running, unreadCount]);
+  }, [running, unreadCount, enabled]);
 
   useEffect(
     () => () => {

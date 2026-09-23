@@ -114,6 +114,23 @@ describe('useSettings — updatePrefs', () => {
 
     roots.push(root);
   });
+
+  it('applies a showTabTitle patch, pushes prefs.update, and flags isAtDefaults', () => {
+    const captured: Captured = { current: null };
+    const socket = makeSocketStub();
+    const root = renderProbe(captured, socket);
+
+    expect(captured.current?.isAtDefaults).toBe(true);
+    act(() => {
+      captured.current?.updatePrefs({ showTabTitle: false });
+    });
+
+    expect(captured.current?.prefs.showTabTitle).toBe(false);
+    expect(captured.current?.isAtDefaults).toBe(false);
+    expect(socket.sends).toEqual([{ type: 'prefs.update', payload: { showTabTitle: false } }]);
+
+    roots.push(root);
+  });
 });
 
 describe('useSettings — switchAutonomy', () => {

@@ -322,6 +322,17 @@ describe('WebUI payload validation', () => {
       expect(result).toMatchObject({ ok: true });
     });
 
+    // v16 SimpleUI display parity regression: the SimpleUI settings panel
+    // sends the tab-title toggle through `prefs.update`, and the pre-refine
+    // countdown offers 0 ("send immediately") as a legal value.
+    it('accepts the v16 SimpleUI display parity keys', () => {
+      const result = validatePrefsUpdatePayload({
+        showTabTitle: false,
+        preRefineSeconds: 0,
+      });
+      expect(result).toMatchObject({ ok: true });
+    });
+
     it('rejects v13 Display parity keys with the wrong type', () => {
       expectInvalid(validatePrefsUpdatePayload, [
         { readSymbols: 'yes' },

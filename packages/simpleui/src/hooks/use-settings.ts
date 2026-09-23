@@ -118,6 +118,7 @@ function shallowEqualPrefs(a: SimplePrefs, b: SimplePrefs): boolean {
     'preRefineSeconds',
     'showModelReasoning',
     'showTimestamps',
+    'showTabTitle',
     'chime',
     'confirmExit',
     'refinerProvider',

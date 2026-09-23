@@ -427,6 +427,68 @@ export function SettingsPanel({
               settingId="refine.enhanceEnabled"
               hidden={rowHidden('refine.enhanceEnabled')}
             />
+            <label
+              className="settings-field"
+              data-setting-id="refine.preRefineSeconds"
+              style={rowHidden('refine.preRefineSeconds') ? { display: 'none' } : undefined}
+            >
+              <span>Pre-refine countdown</span>
+              <select
+                value={String(prefs.preRefineSeconds)}
+                disabled={offline}
+                onChange={(event) => onPrefChange({ preRefineSeconds: Number(event.target.value) })}
+              >
+                {[0, 3, 5, 10].map((seconds) => (
+                  <option key={seconds} value={String(seconds)}>
+                    {seconds === 0 ? 'Off — send immediately' : `${seconds} seconds`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label
+              className="settings-field"
+              data-setting-id="refine.refinerModel"
+              style={rowHidden('refine.refinerModel') ? { display: 'none' } : undefined}
+            >
+              <span>Refiner model</span>
+              <select
+                value={
+                  prefs.refinerProvider && prefs.refinerModel
+                    ? `${prefs.refinerProvider}/${prefs.refinerModel}`
+                    : ''
+                }
+                disabled={offline}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value.startsWith('profile:')) {
+                    // A refiner profile pinned on another surface — re-selecting
+                    // the passthrough just clears the concrete model fields.
+                    onPrefChange({ refinerProvider: '', refinerModel: '' });
+                    return;
+                  }
+                  const lane = laneFromValue(value);
+                  onPrefChange({
+                    refinerProvider: lane.provider ?? '',
+                    refinerModel: lane.model ?? '',
+                  });
+                }}
+              >
+                <option value="">Session model</option>
+                {(modelOptions ?? []).map((option) => (
+                  <option
+                    key={`${option.provider}/${option.model}`}
+                    value={`${option.provider}/${option.model}`}
+                  >
+                    {option.provider}/{option.model}
+                  </option>
+                ))}
+                {prefs.refinerFallbackProfile && !prefs.refinerProvider ? (
+                  <option value={`profile:${prefs.refinerFallbackProfile}`}>
+                    profile:{prefs.refinerFallbackProfile}
+                  </option>
+                ) : null}
+              </select>
+            </label>
             <small className="settings-hint">
               Refine adds a review step before sending. Language follows the saved server
               preference.
@@ -632,6 +694,15 @@ export function SettingsPanel({
               onChange={(showTimestamps) => onPrefChange({ showTimestamps })}
               settingId="session.showTimestamps"
               hidden={rowHidden('session.showTimestamps')}
+            />
+            <ToggleRow
+              label="Tab title activity"
+              hint="Reflect runs and unread mailbox mail in the browser tab title."
+              checked={prefs.showTabTitle}
+              disabled={offline}
+              onChange={(showTabTitle) => onPrefChange({ showTabTitle })}
+              settingId="session.showTabTitle"
+              hidden={rowHidden('session.showTabTitle')}
             />
             <ToggleRow
               label="Chime"

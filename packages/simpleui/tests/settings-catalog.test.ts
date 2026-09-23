@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  groupCatalog,
+  matchesQuery,
   SETTINGS_CATALOG,
   SETTINGS_GROUPS,
   type SettingsEntry,
-  groupCatalog,
-  matchesQuery,
 } from '../src/lib/settings-catalog.js';
 
 describe('settings-catalog', () => {
@@ -42,6 +42,22 @@ describe('settings-catalog', () => {
   it('groupCatalog() preserves the declared display order', () => {
     const grouped = groupCatalog();
     expect(grouped.map((g) => g.group.id)).toEqual([...SETTINGS_GROUPS].map((g) => g.id));
+  });
+
+  it('exposes the v16 Refine and Session additions with the right shapes', () => {
+    const byId = new Map(SETTINGS_CATALOG.map((e) => [e.id, e]));
+    expect(byId.get('refine.preRefineSeconds')).toMatchObject({ group: 'refine', kind: 'select' });
+    expect(byId.get('refine.refinerModel')).toMatchObject({ group: 'refine', kind: 'select' });
+    expect(byId.get('session.showTabTitle')).toMatchObject({ group: 'session', kind: 'toggle' });
+  });
+
+  it('finds the new entries through the search predicate', () => {
+    const countdown = SETTINGS_CATALOG.find((e) => e.id === 'refine.preRefineSeconds')!;
+    expect(matchesQuery(countdown, 'Refine', 'countdown')).toBe(true);
+    const refiner = SETTINGS_CATALOG.find((e) => e.id === 'refine.refinerModel')!;
+    expect(matchesQuery(refiner, 'Refine', 'refiner')).toBe(true);
+    const tabTitle = SETTINGS_CATALOG.find((e) => e.id === 'session.showTabTitle')!;
+    expect(matchesQuery(tabTitle, 'Session', 'tab')).toBe(true);
   });
 });
 

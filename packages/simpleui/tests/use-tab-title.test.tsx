@@ -21,6 +21,7 @@ const BASE_TITLE = 'WrongStack SimpleUI';
 interface TabTitleProps {
   running: boolean;
   unreadCount: number;
+  enabled?: boolean | undefined;
 }
 
 const roots: Root[] = [];
@@ -93,5 +94,17 @@ describe('useTabTitle', () => {
     expect(document.title).toBe(`(5) ● ${BASE_TITLE}`);
     act(() => h.root.unmount());
     expect(document.title).toBe(BASE_TITLE);
+  });
+
+  it('pins the base title while disabled even with activity', () => {
+    mountHook({ running: true, unreadCount: 3, enabled: false });
+    expect(document.title).toBe(BASE_TITLE);
+  });
+
+  it('restores the markers when re-enabled', () => {
+    const h = mountHook({ running: true, unreadCount: 0, enabled: false });
+    expect(document.title).toBe(BASE_TITLE);
+    h.set({ running: true, unreadCount: 0, enabled: true });
+    expect(document.title).toBe(`● ${BASE_TITLE}`);
   });
 });

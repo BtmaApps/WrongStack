@@ -84,6 +84,22 @@ export const SETTINGS_CATALOG: readonly SettingsEntry[] = [
     keywords: ['refine', 'enhance', 'rewrite', 'prompt', 'review'],
     kind: 'toggle',
   },
+  {
+    id: 'refine.preRefineSeconds',
+    group: 'refine',
+    label: 'Pre-refine countdown',
+    hint: 'Seconds to review the rewritten prompt before it sends. 0 sends immediately.',
+    keywords: ['refine', 'countdown', 'delay', 'seconds', 'cancel'],
+    kind: 'select',
+  },
+  {
+    id: 'refine.refinerModel',
+    group: 'refine',
+    label: 'Refiner model',
+    hint: 'Model that rewrites prompts. Empty uses the session model.',
+    keywords: ['refiner', 'model', 'provider', 'routing', 'enhance'],
+    kind: 'select',
+  },
 
   // ── Mode ────────────────────────────────────────────────────────────
   {
@@ -136,6 +152,14 @@ export const SETTINGS_CATALOG: readonly SettingsEntry[] = [
     label: 'Message timestamps',
     hint: 'Show the local time next to each chat message.',
     keywords: ['timestamp', 'time', 'clock', 'chat', 'show'],
+    kind: 'toggle',
+  },
+  {
+    id: 'session.showTabTitle',
+    group: 'session',
+    label: 'Tab title activity',
+    hint: 'Reflect runs and unread mailbox mail in the browser tab title.',
+    keywords: ['tab', 'title', 'browser', 'activity', 'unread', 'running'],
     kind: 'toggle',
   },
   {

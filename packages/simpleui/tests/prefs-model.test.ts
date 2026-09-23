@@ -57,4 +57,13 @@ describe('parsePrefs', () => {
     expect(parsePrefs('nope', seeded)).toEqual(seeded);
     expect(parsePrefs(undefined)).toEqual(DEFAULT_PREFS);
   });
+
+  it('reads showTabTitle from the snapshot and defaults to on', () => {
+    expect(parsePrefs({}).showTabTitle).toBe(true);
+    expect(parsePrefs({ showTabTitle: false }, seeded).showTabTitle).toBe(false);
+  });
+
+  it('holds the previous showTabTitle for malformed values', () => {
+    expect(parsePrefs({ showTabTitle: 'nope' }, seeded).showTabTitle).toBe(true);
+  });
 });

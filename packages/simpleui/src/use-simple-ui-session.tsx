@@ -181,7 +181,7 @@ export function useSimpleUiSession() {
   }, [setContextBreakdownOpen, setMailboxOpen, setSettingsOpen]);
 
   // Tab-strip presence: running marker + unread mailbox count (D10).
-  useTabTitle({ running, unreadCount: mailboxUnreadCount });
+  useTabTitle({ running, unreadCount: mailboxUnreadCount, enabled: prefs.showTabTitle });
 
   /** Send a message to the agent and reflect it locally. The single send
    *  path — the composer, the queue drain, and every refine decision all

@@ -91,6 +91,8 @@ export const PREF_KEYS = [
   'statuslineMode',
   'animationStyle',
   'showModelReasoning',
+  // v16 SimpleUI tab-strip presence: browser-only display toggle.
+  'showTabTitle',
   // Safety / system prefs (parity with /settings breaker, fs-access, debug-stream).
   'breakerEnabled',
   'breakerAutoKillResetMs',
@@ -275,6 +277,10 @@ const DISPLAY_ONLY_KEYS = new Set([
   'allowOutsideProjectRoot',
   'enhanceCountdownMs',
   'keyboardShortcuts',
+  // v16 SimpleUI tab-strip presence: browser-only display toggle with no
+  // TUI/CLI counterpart, so it is reported in snapshots but never written
+  // to config.json.
+  'showTabTitle',
 ]);
 
 export async function persistPrefsToConfig(
