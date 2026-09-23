@@ -1,8 +1,9 @@
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  createMessage,
   InMemoryAgentBridge,
   InMemoryBridgeTransport,
-  createMessage,
 } from '../../src/coordination/agent-bridge.js';
 
 describe('InMemoryBridgeTransport', () => {
@@ -88,6 +89,28 @@ describe('InMemoryBridgeTransport', () => {
     expect(count).toBe(0);
   });
 
+  it('isolates rejected async transport subscribers for direct sends and broadcasts', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      let delivered = 0;
+      transport.subscribe('agent1', async () => {
+        throw new Error('async transport failure');
+      });
+      transport.subscribe('agent1', () => {
+        delivered++;
+      });
+      await transport.send(createMessage('task', 'sender', {}, 'agent1'), 'agent1');
+      await transport.send(createMessage('task', 'sender', {}), '*');
+      await nextTurn();
+      expect(delivered).toBe(2);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('send to unknown agent does not throw', async () => {
     await expect(
       transport.send(
@@ -139,6 +162,32 @@ describe('InMemoryAgentBridge', () => {
 
     expect(messages).toHaveLength(1);
     expect(messages[0].payload.data).toBe('hello');
+  });
+
+  it('isolates a rejected async bridge subscriber without losing other deliveries', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    const otherBridge = new InMemoryAgentBridge(
+      { agentId: 'agent2', coordinatorId: 'coord1' },
+      transport,
+    );
+    try {
+      let delivered = 0;
+      bridge.subscribe(async () => {
+        throw new Error('async bridge failure');
+      });
+      bridge.subscribe(() => {
+        delivered++;
+      });
+      await otherBridge.send(createMessage('task', 'agent2', {}, 'agent1'));
+      await nextTurn();
+      expect(delivered).toBe(1);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandled);
+      await otherBridge.stop();
+    }
   });
 
   it('broadcast reaches every other subscriber but not the sender', async () => {

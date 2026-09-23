@@ -51,7 +51,9 @@ export class InMemoryAgentBridge implements AgentBridge {
 
       for (const h of this.subscriptions) {
         try {
-          h(msg);
+          void Promise.resolve(h(msg)).catch(() => {
+            /* ignore subscriber rejection */
+          });
         } catch {
           /* ignore */
         }

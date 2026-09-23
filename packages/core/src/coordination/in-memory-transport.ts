@@ -14,7 +14,9 @@ export class InMemoryBridgeTransport implements BridgeTransport {
         if (id === msg.from) continue;
         for (const h of handlers) {
           try {
-            h(msg);
+            void Promise.resolve(h(msg)).catch(() => {
+              /* ignore subscriber rejection */
+            });
           } catch {
             /* ignore */
           }
@@ -26,7 +28,9 @@ export class InMemoryBridgeTransport implements BridgeTransport {
     if (handlers) {
       for (const h of handlers) {
         try {
-          h(msg);
+          void Promise.resolve(h(msg)).catch(() => {
+            /* ignore subscriber rejection */
+          });
         } catch {
           /* ignore */
         }
