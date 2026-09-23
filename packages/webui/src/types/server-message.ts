@@ -41,6 +41,7 @@ import type {
   WSWorktreeOrphans,
   WSWorktreeState,
 } from './goal-kanban-worktree.js';
+import type { WSQueueDrained, WSQueueState } from './prompt-queue.js';
 import type {
   WSCodeMapToolExecuted,
   WSCodeMapToolStarted,
@@ -163,6 +164,8 @@ import type {
 } from './system.js';
 
 export type WSServerMessage =
+  | WSQueueState
+  | WSQueueDrained
   | WSSessionStart
   | WSSessionEnd
   | WSTextDelta

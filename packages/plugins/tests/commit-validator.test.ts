@@ -37,6 +37,7 @@ function getHook(
   api: MockApi,
 ): (
   input: unknown,
+  runtime?: { signal: AbortSignal; deadlineAt: number },
 ) => Promise<{ decision?: string; reason?: string; additionalContext?: string } | void> {
   const call = api.registerHook.mock.calls[0];
   if (!call) throw new Error('hook not registered');
@@ -54,6 +55,22 @@ function getStatusTool(api: MockApi): { execute: (input: unknown) => Promise<unk
 beforeEach(() => vi.clearAllMocks());
 
 describe('commit-validator plugin', () => {
+  it('bounds an optional model suggestion by the hook deadline', async () => {
+    const api = makeApi({ extensions: { 'commit-validator': { mode: 'warn', suggestFix: true } } });
+    const complete = vi.fn().mockResolvedValue({ text: 'fix: correct subject', model: 'reviewer' });
+    Object.assign(api, { llm: { complete } });
+    commitValidatorPlugin.setup(api as never);
+    const abort = new AbortController();
+    const result = await getHook(api)(
+      { toolName: 'bash', toolInput: { command: 'git commit -m "bad subject"' } },
+      { signal: abort.signal, deadlineAt: Date.now() + 5000 },
+    );
+    expect(result?.additionalContext).toContain('Suggested rewrite');
+    expect(complete.mock.calls[0]?.[1]).toMatchObject({
+      timeoutMs: 3000,
+      signal: abort.signal,
+    });
+  });
   it('registers commit_validator_status tool and a PreToolUse hook', async () => {
     const api = makeApi();
     commitValidatorPlugin.setup(api as never);

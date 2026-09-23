@@ -89,6 +89,15 @@ describe('planConnectionReconnect', () => {
     expect(plan).toBeNull();
   });
 
+  it('keeps planning after ten retries when the caller chooses an unlimited cap', () => {
+    const unlimited = { ...DEFAULT_SURFACE_CONNECTION_CONFIG, maxReconnectAttempts: Infinity };
+    const state = { ...createSurfaceConnectionState(), reconnectAttempt: 10 };
+    expect(planConnectionReconnect(state, unlimited, 1_000, () => 0.5).plan?.attempt).toBe(11);
+    expect(
+      planConnectionReconnect(state, DEFAULT_SURFACE_CONNECTION_CONFIG, 1_000).plan,
+    ).toBeNull();
+  });
+
   it('grows backoff exponentially up to the cap', () => {
     const cfg = { ...DEFAULT_SURFACE_CONNECTION_CONFIG, jitterRatio: 0 };
     let state = createSurfaceConnectionState();

@@ -748,7 +748,9 @@ async function handlePrevSessions(
             ? color.red('✗')
             : color.dim('?');
 
-    lines.push(`  ${marker} ${color.bold(s.id)}  ${date}`);
+    lines.push(
+      `  ${marker} ${color.bold(s.id)}${s.name ? ` ${color.cyan(`(${s.name})`)}` : ''}  ${date}`,
+    );
     lines.push(`       ${stats}  ${outcome}  ${color.dim(s.title)}`);
     lines.push('');
   }

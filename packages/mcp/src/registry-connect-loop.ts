@@ -3,8 +3,10 @@ import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Logger } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 import { MCPClient } from './client.js';
+import { expandMcpEnvPlaceholders } from './config-env.js';
 import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
+import type { MCPClientElicitationHandler } from './elicitation.js';
 import { manifestConfigHash, writeCapabilityManifest } from './manifest-cache.js';
 import {
   MCP_OPERATION_LIMITS,
@@ -27,6 +29,7 @@ export interface RegistryConnectContext {
   cacheDir?: string | undefined;
   cwd?: string | undefined;
   authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'] | undefined;
+  elicitationHandler?: MCPRegistryOptions['elicitationHandler'] | undefined;
   operationListeners: Set<MCPOperationListener>;
   ensureConnected: (name: string) => Promise<MCPClient>;
   recordOperation: (
@@ -77,7 +80,8 @@ export function applySlotTools(
   const clientArg = slot.lazy ? () => ctx.ensureConnected(slot.cfg.name) : expectDefined(client);
   const wrapped = filtered.map((t) =>
     wrapMCPTool(slot.cfg.name, t, clientArg, slot.cfg.permission ?? 'confirm', {
-      onStart: () => {
+      onStart: (caller) => {
+        if (caller) slot.activeCallers = [...(slot.activeCallers ?? []), caller];
         slot.operations.inFlightCalls++;
         slot.operations.peakInFlightCalls = Math.max(
           slot.operations.peakInFlightCalls,
@@ -85,7 +89,9 @@ export function applySlotTools(
         );
         ctx.recordOperation(slot, 'call', 'started', undefined, undefined, false);
       },
-      onFinish: ({ durationMs, ok }) => {
+      onFinish: ({ durationMs, ok }, caller) => {
+        const at = caller ? (slot.activeCallers?.lastIndexOf(caller) ?? -1) : -1;
+        if (at >= 0) slot.activeCallers?.splice(at, 1);
         slot.operations.inFlightCalls = Math.max(0, slot.operations.inFlightCalls - 1);
         slot.lastUsed = Date.now();
         pushBounded(slot.operations.callSamples, durationMs, MCP_OPERATION_LIMITS.LATENCY_SAMPLES);
@@ -220,11 +226,9 @@ export async function attemptConnectSlot(
       client = new MCPClient({
         name: slot.cfg.name,
         transport: slot.cfg.transport,
-        command: slot.cfg.command,
-        args: slot.cfg.args,
-        env: slot.cfg.env,
-        url: slot.cfg.url,
-        headers: slot.cfg.headers,
+        // `${VAR}` placeholders resolve here, per connect — never into the
+        // stored config (see config-env.ts).
+        ...expandMcpEnvPlaceholders(slot.cfg),
         bearerTokenEnv: slot.cfg.bearerTokenEnv,
         startupTimeoutMs: slot.cfg.startupTimeoutMs,
         requestTimeoutMs: slot.cfg.requestTimeoutMs,
@@ -232,6 +236,7 @@ export async function attemptConnectSlot(
         allowPrivateNetworks: slot.cfg.allowPrivateNetworks,
         passthroughEnv: slot.cfg.passthroughEnv,
         authorizationProvider: ctx.authorizationProviderFactory?.(slot.cfg),
+        elicitation: slotElicitation(ctx, slot),
       });
       if (slot.cfg.transport === 'stdio') {
         client.addExitListener(ctx.onChildExit);
@@ -335,4 +340,15 @@ export async function attemptConnectSlot(
       }
     }
   }
+}
+
+/** The registry's elicitation handler, bound to one server and its newest caller. */
+function slotElicitation(
+  ctx: RegistryConnectContext,
+  slot: ServerSlot,
+): MCPClientElicitationHandler | undefined {
+  const handler = ctx.elicitationHandler;
+  if (!handler) return undefined;
+  return (form) =>
+    handler({ ...form, server: slot.cfg.name, requester: slot.activeCallers?.at(-1) });
 }

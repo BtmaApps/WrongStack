@@ -1,3 +1,4 @@
+import type { WSQueuedPromptView } from '@/types/prompt-queue';
 import type { QueuedItem, ToolExecution } from './chat-store-types';
 
 import type { ChatMessage } from './types.js';
@@ -12,6 +13,8 @@ export interface ChatLaneData {
   executions: Map<string, ToolExecution>;
   toolMessageIdsByUseId: Map<string, string>;
   queue: QueuedItem[];
+  /** Prompts queued on the server for this session (it owns and drains them). */
+  serverQueue: WSQueuedPromptView[];
   runStart: { at: number; cost: number } | null;
   refining: boolean;
   pendingRefinement: {
@@ -77,6 +80,7 @@ export function createLaneData(): ChatLaneData {
     executions: new Map(),
     toolMessageIdsByUseId: new Map(),
     queue: [],
+    serverQueue: [],
     runStart: null,
     refining: false,
     pendingRefinement: null,
@@ -103,6 +107,7 @@ export interface ChatLaneActions {
   readonly executions: Map<string, ToolExecution>;
   readonly toolMessageIdsByUseId: Map<string, string>;
   readonly queue: QueuedItem[];
+  readonly serverQueue: WSQueuedPromptView[];
   readonly runStart: { at: number; cost: number } | null;
   readonly refining: boolean;
   readonly pendingRefinement: ChatLaneData['pendingRefinement'];

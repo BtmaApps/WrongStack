@@ -5,7 +5,9 @@ import {
   getEmptySessionIds,
   getSessionHistoryStats,
   groupSessionHistory,
+  splitSessionHistoryColumns,
 } from '../../src/components/SidePanel/SessionList';
+import type { SessionHistoryGroup } from '../../src/components/SidePanel/session-history';
 import { i18n } from '../../src/i18n';
 import type { SessionHistoryEntry } from '../../src/stores';
 
@@ -254,6 +256,56 @@ describe('groupSessionHistory', () => {
     expect(
       groups.flatMap((group) => group.rows).filter((entry) => entry.id === 'pinned'),
     ).toHaveLength(1);
+  });
+});
+
+describe('splitSessionHistoryColumns', () => {
+  const makeGroup = (label: SessionHistoryGroup['label'], count: number): SessionHistoryGroup => ({
+    label,
+    rows: Array.from({ length: count }, (_, index) =>
+      makeHistoryEntry({ id: `${label}-${index + 1}` }),
+    ),
+  });
+  const ids = (groups: SessionHistoryGroup[]) =>
+    groups.flatMap((group) => group.rows.map((row) => row.id));
+
+  it('returns two empty columns for an empty page', () => {
+    expect(splitSessionHistoryColumns([])).toEqual({ left: [], right: [] });
+  });
+
+  it('splits one dominating group across both columns at the midpoint', () => {
+    const { left, right } = splitSessionHistoryColumns([makeGroup('today', 5)]);
+    expect(left.map((group) => group.rows.length)).toEqual([3]);
+    expect(right.map((group) => group.rows.length)).toEqual([2]);
+    // Reading order continues across the column boundary: the page stays
+    // one timeline instead of one towering column beside an empty one.
+    expect(ids(left)).toEqual(['today-1', 'today-2', 'today-3']);
+    expect(ids(right)).toEqual(['today-4', 'today-5']);
+  });
+
+  it('keeps whole groups when they already balance around the midpoint', () => {
+    const { left, right } = splitSessionHistoryColumns([
+      makeGroup('today', 3),
+      makeGroup('yesterday', 3),
+    ]);
+    expect(left.map((group) => group.label)).toEqual(['today']);
+    expect(right.map((group) => group.label)).toEqual(['yesterday']);
+  });
+
+  it('fills the left column to the midpoint, then the right, slicing a straddling group', () => {
+    const { left, right } = splitSessionHistoryColumns([
+      makeGroup('today', 2),
+      makeGroup('yesterday', 2),
+      makeGroup('earlier', 2),
+    ]);
+    expect(ids(left)).toEqual(['today-1', 'today-2', 'yesterday-1']);
+    expect(ids(right)).toEqual(['yesterday-2', 'earlier-1', 'earlier-2']);
+  });
+
+  it('keeps a single row in the left column', () => {
+    const { left, right } = splitSessionHistoryColumns([makeGroup('today', 1)]);
+    expect(ids(left)).toEqual(['today-1']);
+    expect(right).toEqual([]);
   });
 });
 

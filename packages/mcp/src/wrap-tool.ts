@@ -3,6 +3,8 @@ import type { Permission, Tool } from '@wrongstack/core/types';
 import { mcpQualifiedToolName } from '@wrongstack/core/utils';
 import type { MCPClient } from './client.js';
 import type { MCPTool } from './contracts.js';
+import type { ElicitationRequester } from './elicitation.js';
+import { renderStructuredResult } from './structured-result.js';
 
 /**
  * Keywords that indicate a mutating operation.
@@ -34,8 +36,12 @@ function isMutatingTool(mcpTool: MCPTool): boolean {
 export type MCPClientResolver = MCPClient | (() => Promise<MCPClient>);
 
 export interface MCPToolCallObserver {
-  onStart(): void;
-  onFinish(result: { durationMs: number; ok: boolean }): void;
+  /** `caller` is the run making the call — who a server elicitation mid-call should ask. */
+  onStart(caller?: ElicitationRequester | undefined): void;
+  onFinish(
+    result: { durationMs: number; ok: boolean },
+    caller?: ElicitationRequester | undefined,
+  ): void;
 }
 
 export function wrapMCPTool(
@@ -60,7 +66,7 @@ export function wrapMCPTool(
     inputSchema: mcpTool.inputSchema ?? { type: 'object', properties: {} },
     async execute(input, ctx, opts) {
       const startedAt = Date.now();
-      observer?.onStart();
+      observer?.onStart(ctx);
       let ok = false;
       try {
         // For a dormant lazy server this spawns the process + handshakes before
@@ -76,9 +82,14 @@ export function wrapMCPTool(
           throw new Error(errText || `MCP tool "${qualifiedName}" failed`);
         }
         ok = true;
-        return stringify(res.content);
+        return renderStructuredResult(
+          stringify(res.content),
+          res.content,
+          res.structuredContent,
+          mcpTool.outputSchema,
+        );
       } finally {
-        observer?.onFinish({ durationMs: Date.now() - startedAt, ok });
+        observer?.onFinish({ durationMs: Date.now() - startedAt, ok }, ctx);
       }
     },
   };

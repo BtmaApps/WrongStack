@@ -195,6 +195,12 @@ export interface AgentContext extends RunEnv {
   waitForModelTransition(): Promise<void>;
   /** True when conversation gained new tool_use/tool_result blocks (adjacency repair). */
   pendingPostToolContext: string | undefined;
+  /**
+   * Directory instruction files (`packages/foo/AGENTS.md`) already delivered
+   * in the conversation: file → content hash. Cleared with file tracking
+   * after compaction so summarized-away instructions are delivered again.
+   */
+  deliveredDirectoryInstructions?: Map<string, string> | undefined;
   /** Provider-bound memory evidence outside conversation/tool history. */
   memoryEvidence: ProviderMemoryEvidence[];
   setMemoryEvidence(source: string, text: string | undefined, maxChars?: number): void;

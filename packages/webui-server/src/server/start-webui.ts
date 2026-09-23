@@ -10,6 +10,7 @@
 
 import * as path from 'node:path';
 import { createDefaultPipelines } from '@wrongstack/core/agent';
+import { startOtlpExport } from '@wrongstack/core/observability';
 import { createCompatibilityTrustBoundary } from '@wrongstack/core/security';
 import { expectDefined, startSharedHeapWatchdog } from '@wrongstack/core/utils';
 import { ensureSessionShell } from '@wrongstack/tools';
@@ -335,7 +336,9 @@ export async function startWebUI(
    */
   let displayedSessionIds: (() => Set<string>) | undefined;
 
+  const otlpExport = startOtlpExport(config.observability, { logger });
   const agentServices = await createAgentServices({
+    tracer: otlpExport?.tracer,
     trustBoundary,
     config,
     wpaths,
@@ -714,6 +717,13 @@ export async function startWebUI(
   });
 
   const routes = buildRoutes(state, deps, cb);
+  const refreshSessionHistory = async (): Promise<void> => {
+    const list = await state.getSessionStore().list(200);
+    broadcast(clients, {
+      type: 'sessions.list',
+      payload: { sessions: toSessionHistoryEntries(list, state.getSession().id) },
+    });
+  };
   const stopEmptySessionCleanup = scheduleOwnerlessEmptySessionCleanup({
     getSessionStore: state.getSessionStore,
     getActiveSessionId: () => state.getSession().id,
@@ -723,14 +733,13 @@ export async function startWebUI(
     getActiveSessionIds: () =>
       collectDisplayedSessionIds({ getSession: state.getSession, clients }),
     hasParticipants: (sessionId) => collabHandler.hasParticipants(sessionId),
-    refreshSessions: async () => {
-      const list = await state.getSessionStore().list(200);
-      broadcast(clients, {
-        type: 'sessions.list',
-        payload: { sessions: toSessionHistoryEntries(list, state.getSession().id) },
-      });
-    },
+    refreshSessions: refreshSessionHistory,
     logger,
+  });
+  // A session the model renamed (`session_rename`) shows its new name in
+  // every open history list, as a rename from the list itself does.
+  const offSessionRenamed = events.on('session.renamed', () => {
+    void refreshSessionHistory().catch(() => undefined);
   });
 
   let kanbanSupervisorDispose: (() => void | Promise<void>) | null = null;
@@ -773,6 +782,7 @@ export async function startWebUI(
   if (wssSecondary) wssSecondary.on('connection', handleConnection);
 
   setupWebuiShutdown({
+    stopTelemetryExport: otlpExport ? () => otlpExport.stop() : undefined,
     session,
     tokenCounter,
     clients,
@@ -780,7 +790,12 @@ export async function startWebUI(
     companionServer,
     wssPrimary,
     wssSecondary,
-    stopEmptySessionCleanup,
+    stopEmptySessionCleanup: {
+      dispose: async () => {
+        offSessionRenamed();
+        await stopEmptySessionCleanup.dispose();
+      },
+    },
     getKanbanSupervisorDispose: () => kanbanSupervisorDispose,
     todosCheckpoint,
     stopHeapWatchdog,

@@ -12,6 +12,7 @@ import type {
   SkillLoader,
   SystemPromptBuilder,
   TokenCounter,
+  Tracer,
 } from '@wrongstack/core/types';
 
 export interface MultiAgentDeps {
@@ -33,6 +34,8 @@ export interface MultiAgentDeps {
   projectRoot: string;
   cwd: string;
   secretScrubber: SecretScrubber;
+  /** OTLP tracer shared with the leader, so worker runs join its traces. */
+  tracer?: Tracer | undefined;
   /** Loader used to resolve the roster's per-role skill names. */
   skillLoader?: SkillLoader | undefined;
   renderer?: Renderer | undefined;

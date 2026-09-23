@@ -248,6 +248,7 @@ export class RequirementIntakeService {
 
     return this.store
       .update(id, this.updateMeta(ctx, 'updated', changedKeys, expectedVersion), (next) => {
+        this.assertMutable(next, 'updateIntake');
         if (validated.title !== undefined) {
           next.title = validated.title.trim();
           next.fieldSources.title = 'user';
@@ -294,6 +295,7 @@ export class RequirementIntakeService {
         id,
         this.updateMeta(ctx, 'answer_added', [validated.field], expectedVersion),
         (next) => {
+          this.assertMutable(next, 'addAnswer');
           applyAnswerToRecord(next, validated, ctx.id, Date.now());
         },
       )
@@ -321,6 +323,7 @@ export class RequirementIntakeService {
 
     return this.store
       .update(id, this.updateMeta(ctx, 'answer_updated', [answerId], expectedVersion), (next) => {
+        this.assertMutable(next, 'updateAnswer');
         applyAnswerUpdateToRecord(next, answerId, validated.answer);
       })
       .then((updated) => {
@@ -346,6 +349,7 @@ export class RequirementIntakeService {
           id,
           this.updateMeta(ctx, 'attachment_added', ['attachments'], expectedVersion),
           (next) => {
+            this.assertMutable(next, 'attachResource');
             applyAttachmentToRecord(next, validated, ctx.id, now);
           },
         )
@@ -360,6 +364,7 @@ export class RequirementIntakeService {
         id,
         this.updateMeta(ctx, 'related_resource_added', ['related_resources'], expectedVersion),
         (next) => {
+          this.assertMutable(next, 'attachResource');
           applyRelatedResourceToRecord(next, validated, ctx.id, now);
         },
       )
@@ -429,6 +434,7 @@ export class RequirementIntakeService {
         to: previousStatus === nextStatus ? undefined : nextStatus,
       },
       (next) => {
+        this.assertMutable(next, 'generateSuggestions');
         next.llmSuggestions.push(...proposals);
         if (next.llmSuggestions.length > MAX_SUGGESTIONS) {
           next.llmSuggestions = next.llmSuggestions.slice(
@@ -479,6 +485,7 @@ export class RequirementIntakeService {
         id,
         this.updateMeta(ctx, 'suggestion_accepted', [proposal.kind], expectedVersion),
         (next) => {
+          this.assertMutable(next, 'acceptSuggestion');
           const target = next.llmSuggestions.find((candidate) => candidate.id === proposalId);
           if (!target) {
             throw new IntakeValidationError([
@@ -511,6 +518,7 @@ export class RequirementIntakeService {
         id,
         this.updateMeta(ctx, 'suggestion_rejected', [proposalId], expectedVersion),
         (next) => {
+          this.assertMutable(next, 'rejectSuggestion');
           const target = next.llmSuggestions.find((candidate) => candidate.id === proposalId);
           if (!target) {
             throw new IntakeValidationError([

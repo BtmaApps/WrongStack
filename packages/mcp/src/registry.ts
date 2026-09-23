@@ -77,6 +77,7 @@ export class MCPRegistry {
   private readonly idleTimeoutMs: number;
   private readonly authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'];
   private readonly authorizationManager?: MCPAuthorizationManager | undefined;
+  private readonly elicitationHandler?: MCPRegistryOptions['elicitationHandler'];
   private readonly operationListeners = new Set<MCPOperationListener>();
   /** Single shared idle sweep timer (started lazily; unref'd; cleared on stopAll). */
   private idleTimer?: ReturnType<typeof setInterval> | undefined;
@@ -91,6 +92,7 @@ export class MCPRegistry {
     this.idleTimeoutMs = opts.idleTimeoutMs ?? MCP_CONSTANTS.IDLE.DEFAULT_TIMEOUT_MS;
     this.authorizationProviderFactory = opts.authorizationProviderFactory;
     this.authorizationManager = opts.authorizationManager;
+    this.elicitationHandler = opts.elicitationHandler;
   }
 
   private requireSlot(name: string): ServerSlot {
@@ -614,6 +616,7 @@ export class MCPRegistry {
       cacheDir: this.cacheDir,
       cwd: this.cwd,
       authorizationProviderFactory: this.authorizationProviderFactory,
+      elicitationHandler: this.elicitationHandler,
       operationListeners: this.operationListeners,
       ensureConnected: (name) => this.ensureConnected(name),
       recordOperation: (slot, kind, reason, failureKind, durationMs, retain) =>

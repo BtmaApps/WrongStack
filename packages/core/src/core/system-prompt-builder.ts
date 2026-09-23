@@ -31,6 +31,7 @@ import {
 } from './instruction-bundle.js';
 import { type InstructionTemplateContext, renderInstructionLayer } from './instruction-template.js';
 import { PROMPT as DEFAULT_PROMPT, LEADER_AFTER_TASK_PROMPT } from './modes/default.js';
+import { RootInstructionsCache } from './project-instructions.js';
 import { tagBlock } from './system-prompt-blocks.js';
 import { buildEnvironment } from './system-prompt-environment.js';
 import { renderDomainGlossary } from './system-prompt-glossary.js';
@@ -212,6 +213,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
    * state into a later call against an unrelated project.
    */
   private envCacheByRoot = new Map<string, string>();
+  private readonly rootInstructions = new RootInstructionsCache();
   private skillCache?: string | undefined;
   /** Cached full skill bodies (after frontmatter), built once per session. */
   private skillBodyCache?: string | undefined;
@@ -417,6 +419,12 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         'environment',
       ),
     ];
+    // Root AGENTS.md / CLAUDE.md; subdirectory files arrive as deltas with
+    // tool results instead (see project-instructions.ts).
+    const projectInstructions = await this.rootInstructions.load(ctx.projectRoot);
+    if (projectInstructions) {
+      session.push(tagBlock({ type: 'text', text: projectInstructions }, 'project-instructions'));
+    }
     const appended = this.opts.appendedInstructions?.trim();
     if (appended && !ctx.subagent) {
       // No cache breakpoint of its own: it still rides inside the prefix cached

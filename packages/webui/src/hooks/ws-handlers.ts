@@ -36,6 +36,7 @@ import { filesMailboxHandlerMap, queryMailbox } from './ws-handlers/files-mailbo
 import { fleetHandlerMap } from './ws-handlers/fleet-handlers.js';
 // Misc domain handlers extracted to misc-handlers.ts
 import { handleMemoryEvent, miscHandlerMap } from './ws-handlers/misc-handlers.js';
+import { promptQueueHandlerMap, requestPromptQueue } from './ws-handlers/prompt-queue-handlers.js';
 // Session domain handlers extracted to session-handlers.ts
 import {
   handleProviderResponse,
@@ -604,10 +605,12 @@ export const WS_HANDLERS: Partial<Record<WSServerMessage['type'], (msg: WSServer
     ...miscHandlerMap,
     ...coordinatorHandlerMap,
     ...techStackHandlerMap,
+    ...promptQueueHandlerMap,
     'config.doctor.result': handleConfigDoctorResult,
     'session.start': (msg: WSServerMessage) => {
       handleSessionStart(msg);
       queryMailbox();
+      requestPromptQueue(msg);
     },
     'specs.list': (msg: WSServerMessage) => {
       const p = msg.payload as { specs?: import('@/stores/specs-store').SpecListItem[] };

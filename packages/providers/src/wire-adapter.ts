@@ -8,6 +8,7 @@ import type {
 } from '@wrongstack/core/types';
 import { ConfigError, ParseError, ProviderError, StreamHangError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { warmConnection } from './connection-warmup.js';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { isNodeReadable } from './object-utils.js';
@@ -234,6 +235,10 @@ export abstract class WireAdapter implements Provider {
       `Provider "${this.id}" maxTools limit (${this.maxToolsCount}) dropped ${droppedNames.length} tool(s): ${preview}${suffix}. Conversation history may reference unavailable tools.`,
       'MaxToolsWarning',
     );
+  }
+
+  warm(_model: string): Promise<void> {
+    return warmConnection(this.baseUrl, this.fetchImpl);
   }
 
   async complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {

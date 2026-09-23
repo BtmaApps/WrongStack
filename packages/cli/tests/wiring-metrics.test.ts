@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { EventBus } from '@wrongstack/core/kernel';
 import { InMemoryMetricsSink } from '@wrongstack/core/observability';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerMcpHealthCheck, registerMcpMetrics, setupMetrics } from '../src/wiring/metrics.js';
@@ -52,6 +53,43 @@ describe('setupMetrics', () => {
       metricsStatus: { collectionEnabled: false, httpExporter: 'disabled' },
     });
     expect(startMetricsServerMock).not.toHaveBeenCalled();
+  });
+
+  it('starts OTLP export from config: a tracer, and metrics collected without --metrics', () => {
+    const teardownHandlers: Array<() => void> = [];
+    const out = setupMetrics({
+      flags: {},
+      wpaths: makeWpaths('/tmp'),
+      events: new EventBus(),
+      logger: makeLogger(),
+      config: { provider: 'a', model: 'm' },
+      observability: {
+        config: { otlp: { endpoint: 'http://127.0.0.1:1' } },
+        serviceVersion: '0.0.0-test',
+        teardownHandlers,
+      },
+    });
+    expect(out.tracer).toBeDefined();
+    expect(out.metricsSink).toBeDefined();
+    expect(out.metricsStatus).toEqual({ collectionEnabled: true, httpExporter: 'disabled' });
+    expect(startMetricsServerMock).not.toHaveBeenCalled();
+    // Teardown stops the exporters.
+    expect(teardownHandlers).toHaveLength(1);
+    for (const stop of teardownHandlers) stop();
+    out.dispose?.();
+  });
+
+  it('leaves OTLP off when the config does not ask for it', () => {
+    const out = setupMetrics({
+      flags: {},
+      wpaths: makeWpaths('/tmp'),
+      events: new EventBus(),
+      logger: makeLogger(),
+      config: { provider: 'a', model: 'm' },
+      observability: { config: undefined, serviceVersion: '0', teardownHandlers: [] },
+    });
+    expect(out.tracer).toBeUndefined();
+    expect(out.metricsSink).toBeUndefined();
   });
 
   it('enables metrics implicitly when metrics-port is provided', async () => {

@@ -63,7 +63,7 @@ export const plugin = {
 | `definePlugin` | Typed authoring helper (infers options, injects `apiVersion`) |
 | `KERNEL_API_VERSION` | The host's plugin contract version |
 | `Plugin`, `PluginAPI`, `PluginCapabilities`, … | The full plugin contract types |
-| `HookEvent`, `HookOutcome`, `InProcessHook`, … | Lifecycle hook types (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`) |
+| `HookEvent`, `HookOutcome`, `InProcessHook`, … | Lifecycle hook types (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`, and the observational `Notification`, `SubagentStart`/`SubagentStop`, `PreCompact`/`PostCompact`, `SessionEnd`) |
 | `AgentExtension`, `ProviderRunnerWrapper`, … | Agent-loop extension point types |
 | `Tool`, `EventName`, `Config`, `ConfigStore` | Registry, event, and config types |
 | `@wrongstack/plugin-sdk/runtime` | Bounded collections, `releaseHandles`, sandboxed paths (`safePath`, `isInsideProject`), ReDoS guards (`withReDoSGuard`), safe runner spawning (`resolveRunnerCommand`, `runRunnerCommand`), optional-LLM helpers (`runOptionalPluginLlm`, `runOptionalPluginCouncil`) |

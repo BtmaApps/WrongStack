@@ -1,4 +1,27 @@
-import type { MCPTool } from './contracts.js';
+import type { MCPTool, ToolCallResult } from './contracts.js';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The ONE reading of a `tools/call` response, shared by every transport. A
+ * JSON-RPC error becomes an error result; `structuredContent` is kept only
+ * when it is the object the spec requires.
+ */
+export function toToolCallResult(response: {
+  result?: unknown | undefined;
+  error?: { message: string } | undefined;
+}): ToolCallResult {
+  if (response.error) return { content: response.error.message, isError: true };
+  const result = isPlainObject(response.result) ? response.result : {};
+  const structured = result['structuredContent'];
+  return {
+    content: result['content'] ?? '',
+    isError: Boolean(result['isError']),
+    ...(isPlainObject(structured) ? { structuredContent: structured } : {}),
+  };
+}
 
 const MAX_TOOL_PAGES = 100;
 const MAX_TOOLS = 10_000;
@@ -55,6 +78,7 @@ export function normalizeMCPTools(value: unknown): MCPTool[] {
       name?: unknown | undefined;
       description?: unknown | undefined;
       inputSchema?: unknown | undefined;
+      outputSchema?: unknown | undefined;
     };
     if (typeof t.name !== 'string') continue;
     const name = t.name.trim();
@@ -81,6 +105,7 @@ export function normalizeMCPTools(value: unknown): MCPTool[] {
       name,
       ...(typeof t.description === 'string' ? { description: t.description } : {}),
       inputSchema,
+      ...(isPlainObject(t.outputSchema) ? { outputSchema: t.outputSchema } : {}),
     });
   }
   return tools;

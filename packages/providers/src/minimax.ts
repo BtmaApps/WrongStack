@@ -64,6 +64,10 @@ export class MiniMaxProvider implements Provider {
     return provider.stream(req, opts);
   }
 
+  async warm(model: string): Promise<void> {
+    await (isMiniMaxMessagesModel(model) ? this.messages : this.chat).warm?.(model);
+  }
+
   complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
     const provider = isMiniMaxMessagesModel(req.model) ? this.messages : this.chat;
     this.syncCapabilities(provider);

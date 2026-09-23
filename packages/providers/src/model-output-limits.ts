@@ -264,8 +264,42 @@ export async function installCatalogModelOutputLimits(
     }
   };
 
+  // Registries that publish catalog changes drive the rebuild directly: a
+  // refresh, a cache load or a runtime overlay merge each hand over the full
+  // served payload, so the index can never lag the catalog — including a
+  // background refresh started before this resolver was installed. Subscribe
+  // BEFORE the first prime so a refresh landing mid-prime is not missed.
+  if (typeof registry.onCatalogChanged === 'function') {
+    if (!SUBSCRIBED.has(registry)) {
+      SUBSCRIBED.add(registry);
+      registry.onCatalogChanged((payload) => {
+        state.index = indexPayload(payload);
+      });
+    }
+  } else {
+    wrapLegacyRegistry(registry, state);
+  }
+
   await prime(false);
 
+  setModelOutputLimitResolver((providerId, modelId) => {
+    if (!providerId) return undefined;
+    const config = getConfig?.();
+    const override = overrideMaxOutput(config, providerId, modelId);
+    if (override !== undefined) return override;
+    for (const catalogId of catalogIdsFor(config, providerId)) {
+      const limit = state.index.get(catalogId)?.get(modelId);
+      if (limit !== undefined) return limit;
+    }
+    return undefined;
+  });
+}
+
+/**
+ * Fallback for registries without `onCatalogChanged` (minimal stubs): wrap
+ * `refresh` / `mergeOverlay` so the index still follows the catalog.
+ */
+function wrapLegacyRegistry(registry: ModelsRegistry, state: OutputLimitState): void {
   // A catalog refresh replaces every limit — rebuild rather than serve stale
   // numbers. Mirrors the cache invalidation `capabilitiesFor` installs.
   if (typeof registry.refresh === 'function' && !WRAPPED_REFRESH.has(registry)) {
@@ -298,19 +332,8 @@ export async function installCatalogModelOutputLimits(
     };
     WRAPPED_OVERLAY.add(registry);
   }
-
-  setModelOutputLimitResolver((providerId, modelId) => {
-    if (!providerId) return undefined;
-    const config = getConfig?.();
-    const override = overrideMaxOutput(config, providerId, modelId);
-    if (override !== undefined) return override;
-    for (const catalogId of catalogIdsFor(config, providerId)) {
-      const limit = state.index.get(catalogId)?.get(modelId);
-      if (limit !== undefined) return limit;
-    }
-    return undefined;
-  });
 }
 
 const WRAPPED_REFRESH = new WeakSet<ModelsRegistry>();
 const WRAPPED_OVERLAY = new WeakSet<ModelsRegistry>();
+const SUBSCRIBED = new WeakSet<ModelsRegistry>();

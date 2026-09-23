@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/ws-client', () => ({
-  getWSClient: () => ({ send: vi.fn(), consumeRequestedSwitch: () => true }),
+  getWSClient: () => ({
+    send: vi.fn(),
+    supportsCapability: () => false,
+    consumeRequestedSwitch: () => true,
+  }),
 }));
 
 import { WS_HANDLERS } from '../../src/hooks/ws-handlers';

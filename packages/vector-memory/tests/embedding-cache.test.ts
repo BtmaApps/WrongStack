@@ -4,8 +4,8 @@
  * Pin:
  *  - repeated `embed()` calls for the same text skip the provider
  *  - the cache survives entry deletes (independent table)
- *  - `remember()` is idempotent on content_hash
- *  - the UNIQUE index on `entries.content_hash` is a real constraint
+ *  - `remember()` is idempotent on (content_hash, scope)
+ *  - the UNIQUE index on `(entries.content_hash, entries.scope)` is a real constraint
  *  - LRU eviction respects `last_used_at`
  */
 import * as os from 'node:os';
@@ -138,7 +138,7 @@ describe('idempotent remember', () => {
     expect(b.id).toBe(a.id);
   });
 
-  it('the UNIQUE index on content_hash is enforced by SQLite', async () => {
+  it('the UNIQUE index on content_hash and scope is enforced by SQLite', async () => {
     await store.remember({ text: 'unique-test' });
     // Bypass the dedup check by writing a row with a different id but
     // same content_hash — the UNIQUE index must reject it.

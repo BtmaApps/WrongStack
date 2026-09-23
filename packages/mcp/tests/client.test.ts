@@ -438,7 +438,7 @@ describe('MCPClient', () => {
       expect(tools.map((t) => t.name)).toEqual(['fresh_tool']);
     });
 
-    it('does not resolve a pending call from a colliding server request', () => {
+    it('does not resolve a pending call from a colliding server request', async () => {
       const c = new MCPClient({ name: 'request-collision', transport: 'stdio', command: 'echo' });
       const resolve = vi.fn();
       const reject = vi.fn();
@@ -470,7 +470,7 @@ describe('MCPClient', () => {
 
       expect(resolve).not.toHaveBeenCalled();
       expect(internals.pending.has(42)).toBe(true);
-      expect(write).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(write).toHaveBeenCalledOnce());
       expect(JSON.parse(String(write.mock.calls[0]?.[0]))).toMatchObject({
         jsonrpc: '2.0',
         id: 42,
@@ -481,7 +481,7 @@ describe('MCPClient', () => {
       internals.pending.delete(42);
     });
 
-    it('returns method-not-found for unknown server requests', () => {
+    it('returns method-not-found for unknown server requests', async () => {
       const c = new MCPClient({ name: 'unknown-request', transport: 'stdio', command: 'echo' });
       const write = vi.fn((_value: string) => true);
       const internals = c as never as {
@@ -493,6 +493,7 @@ describe('MCPClient', () => {
       internals.onLine(
         JSON.stringify({ jsonrpc: '2.0', id: 'server-1', method: 'roots/list', params: {} }),
       );
+      await vi.waitFor(() => expect(write).toHaveBeenCalledOnce());
 
       expect(JSON.parse(String(write.mock.calls[0]?.[0]))).toMatchObject({
         jsonrpc: '2.0',

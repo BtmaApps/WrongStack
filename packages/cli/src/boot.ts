@@ -33,7 +33,7 @@ const GITHUB_PROVIDERS_OVERLAY_URL =
 
 import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { TOKENS } from '@wrongstack/core/kernel';
-import { DefaultModelsRegistry } from '@wrongstack/core/models';
+import { DefaultModelsRegistry, startCatalog } from '@wrongstack/core/models';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import type { Config, ModelsRegistry, SecretVault } from '@wrongstack/core/types';
 import { normalizeTokenSavingTier } from '@wrongstack/core/types';
@@ -338,17 +338,18 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // which has a 2-second timeout and prints the "Update available" notice.
   // No fire-and-forget here — the preflight phase owns update notifications.
 
-  // Blocking models.dev refresh — fetches fresh catalog before app starts.
-  // --no-models-refresh skips this. On timeout (15s default) or network failure,
-  // falls back to cache and logs a warning; the app still boots normally.
+  // models.dev catalog. With a usable cache on disk the app boots from it at
+  // once and refreshes in the background; the capability cache, output-limit
+  // index and active context window follow the refresh through the
+  // registry's catalog-change signal. No cache, or a single-shot run that
+  // cannot outlive a background fetch → the blocking refresh (15s timeout,
+  // cache/overlay fallback). --no-models-refresh skips the network entirely.
   if (!flags['no-models-refresh']) {
-    try {
-      await modelsRegistry.refresh();
-      logger.info('models.dev catalog refreshed');
-    } catch (err) {
-      const msg = toErrorMessage(err);
-      logger.warn(`models.dev refresh failed (${msg}); using cached catalog`);
-    }
+    await startCatalog({
+      registry: modelsRegistry,
+      logger,
+      shortLived: positional.length > 0 || typeof flags['prompt'] === 'string',
+    });
   }
 
   // Auto-discover model lists for openai-compatible gateways (omniroute, …)

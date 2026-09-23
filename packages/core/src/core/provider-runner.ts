@@ -15,6 +15,7 @@ import {
   waitForProxyRoutingSettle,
 } from '../wiring/proxy-rewrite.js';
 import { resolveEventSessionId } from './context.js';
+import { spanSessionAttributes } from './span-session.js';
 import { streamProviderToResponse } from './streaming-response-builder.js';
 
 /** Fields worth including in every provider-run log for cross-correlation. */
@@ -192,6 +193,7 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
       startedAt,
     });
     const span = tracer?.startSpan('provider.complete', {
+      ...spanSessionAttributes(ctx),
       'provider.id': currentProvider.id,
       'provider.model': request.model,
       'provider.streaming': currentProvider.capabilities.streaming,

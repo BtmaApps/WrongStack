@@ -10,6 +10,7 @@ const installSpy = vi.hoisted(() => vi.fn());
 const connectSpy = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const onStatusSpy = vi.hoisted(() => vi.fn(() => () => {}));
 const getPrefsSpy = vi.hoisted(() => vi.fn());
+const getSystemPromptSpy = vi.hoisted(() => vi.fn());
 
 function makeFakeClient() {
   // Each on() records an install; returns an off() that's a no-op here.
@@ -18,6 +19,10 @@ function makeFakeClient() {
     onStatus: onStatusSpy,
     connect: connectSpy,
     getPrefs: getPrefsSpy,
+    // The bootstrap pulls the identity-prompt catalogue on connect too; a
+    // stub without it made the connect catch log ws_connection_failed on
+    // every run (getSystemPrompt is not a function).
+    getSystemPrompt: getSystemPromptSpy,
   };
 }
 
@@ -54,6 +59,7 @@ describe('useWebSocketBootstrap — handler re-install on wsUrl change', () => {
     connectSpy.mockClear();
     onStatusSpy.mockClear();
     getPrefsSpy.mockClear();
+    getSystemPromptSpy.mockClear();
     useConfigStore.getState().setConfig({ wsUrl: 'ws://127.0.0.1:3457' });
     useConfigStore.getState().setConfig({ autoConnect: true });
   });

@@ -47,6 +47,51 @@ describe('VectorMemoryStore', () => {
     expect(entry.providerId).toMatch(/^fake-v1-/);
   });
 
+  it('keeps identical text independently recallable in each scope', async () => {
+    const text = 'The same content has separate visibility in each scope';
+    const project = await store.remember({ text, scope: 'project' });
+    const user = await store.remember({ text, scope: 'user' });
+    const session = await store.remember({ text, scope: 'session' });
+    expect(new Set([project.id, user.id, session.id]).size).toBe(3);
+    expect(new Set([project.contentHash, user.contentHash, session.contentHash]).size).toBe(1);
+    expect((await store.remember({ text, scope: 'user' })).id).toBe(user.id);
+    expect((await store.search(text, { scope: 'user' })).map((hit) => hit.entry.id)).toEqual([
+      user.id,
+    ]);
+    expect((await store.search(text, { scope: 'session' })).map((hit) => hit.entry.id)).toEqual([
+      session.id,
+    ]);
+    await store.forget(project.id);
+    expect((await store.search(text, { scope: 'user' })).map((hit) => hit.entry.id)).toEqual([
+      user.id,
+    ]);
+  });
+
+  it('migrates the legacy global hash index when opening an existing database', async () => {
+    const text = 'A memory already persisted before scoped deduplication';
+    const project = await store.remember({ text, scope: 'project' });
+    const projectRoot = path.resolve(store.directory, '..', '..');
+    const db = (store as unknown as { db: { exec(sql: string): void } }).db;
+    db.exec('DROP INDEX idx_entries_hash_scope');
+    db.exec('CREATE UNIQUE INDEX idx_entries_hash ON entries(content_hash)');
+    store.close();
+
+    const reopened = new VectorMemoryStore({
+      provider: new FakeEmbeddingProvider({ dimensions: 64 }),
+      projectRoot,
+    });
+    try {
+      expect(reopened.get(project.id)?.scope).toBe('project');
+      const user = await reopened.remember({ text, scope: 'user' });
+      expect(user.scope).toBe('user');
+      expect(user.id).not.toBe(project.id);
+      expect(reopened.findByContentHash(project.contentHash, 'project')?.id).toBe(project.id);
+      expect(reopened.findByContentHash(project.contentHash, 'user')?.id).toBe(user.id);
+    } finally {
+      reopened.close();
+    }
+  });
+
   it('retrieves an entry by id with its vector', async () => {
     const created = await store.remember({ text: 'foo bar' });
     const fetched = store.get(created.id);
@@ -132,11 +177,25 @@ describe('VectorMemoryStore', () => {
     expect(report2.skipped).toBe(2);
   });
 
+  it('syncs a project-scoped SAGE memory even when user scope has identical text', async () => {
+    const text = 'A fact also stored privately by the user';
+    const user = await store.remember({ text, scope: 'user' });
+    const source: SageSyncSource = {
+      listActiveMemories: async () => [{ id: 'sage-project', text }],
+    };
+    const report = await store.syncFromSage(source);
+    expect(report).toMatchObject({ scanned: 1, indexed: 1, skipped: 0, failed: 0 });
+    const project = store.findByContentHash(VectorMemoryStore.contentHash(text), 'project');
+    expect(project?.scope).toBe('project');
+    expect(project?.id).not.toBe(user.id);
+    expect((await store.syncFromSage(source)).skipped).toBe(1);
+  });
+
   it('serializes concurrent syncFromSage calls — no spurious UNIQUE failures', async () => {
     // Regression: syncFromSage used to run its dedup-check → INSERT pair
     // outside the host-OS file lock. Two concurrent syncs (e.g. two surfaces
     // force-syncing) both passed the pre-check across the `await embed()`
-    // gap and the loser died on the UNIQUE content_hash index — a spurious
+    // gap and the loser died on the UNIQUE (content_hash, scope) index — a spurious
     // partial-failure that kept the first-boot sync marker from completing.
     class LatentFakeProvider extends FakeEmbeddingProvider {
       override async embed(texts: string[]): Promise<Float32Array[]> {

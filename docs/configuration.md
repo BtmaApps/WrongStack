@@ -132,6 +132,7 @@ boundary while preserving encrypted credential material.
 | `themePreset` | `string` | `"catppuccin"` | TUI colour theme, applied on boot and written by `/theme` in both the CLI REPL and the TUI. Unconstrained at the config layer: the TUI owns the canonical preset list and falls back to `catppuccin` for an unknown value, so a forward-compat drift never breaks the round-trip. |
 | `modelTiers` | `ModelTiersConfig` | — | Deterministic model-tier layer: named levels (`budget` / `standard` / `premium`) each binding a fallback profile, a spend/iteration budget, and runtime overrides, plus a role/phase routing table. Consumed by the subagent spawn path, `spawn_subagent`, Kanban dispatch, and the leader's self-switch policy. Opt-in via `modelTiers.enabled`. |
 | `chronicle` | `object` | `{ retentionDays: 30 }` | Chronicle durable-journal retention. Rotated partitions older than `retentionDays` are auto-purged after append batches. `0` disables auto-purge; positive values below `7` are clamped up to `7` so a repo-committed config cannot flush recent evidence. |
+| `observability` | `ObservabilityConfig` | — | OTLP export of traces and metrics. See [`observability`](#observability--otlp-export) below. User config only; stripped from in-project config. |
 | `cloudSync` | `CloudSyncConfig` | — | my.wrongstack.com config synchronization. Carries the machine bearer token and portal endpoint, so it is on the in-project deny list and honoured only from the active profile config. Distinct from `sync` (GitHub-repo based, stored in `sync.json`). |
 
 ---
@@ -149,10 +150,10 @@ only things you already configured:
 
 `version`, `model`, `cwd`, `context`, `tools`, `features`, `Sage`, `skills`, `autonomy`, `indexing`, `session`, `chronicle`, `log`, `launch`, `nextPrediction`, `hints`, `debugStream`, `configScope`, `maxConcurrent`, `uiLocale`, `themePreset`, `fallbackModels`, `fallbackBridge`, `fallbackProfiles`, `fallbackProfile`, `favoriteModels`, `favoriteModelsOnly`, `modelAvailabilitySchedule`, `fallbackAuto`, `fallbackStickiness`, `fallbackGateSeconds`, `models`, `modelMatrix`, `modelTiers`, `circuitBreaker`, `adaptiveConcurrency`, `modelRuntime`
 
-**Denied** (20) — each carries a credential, an exec surface, or a control the
+**Denied** (21) — each carries a credential, an exec surface, or a control the
 operator owns:
 
-`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`
+`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`, `observability`
 
 `systemPrompt` is denied for a reason worth stating: the `lite` variant omits
 whole sections of `system.md`, among them **Tool output trust boundary** — the
@@ -610,6 +611,7 @@ Controls compaction behavior, token thresholds, and context window modes.
 | `autoCompact` | `boolean` | `true` | Automatically compact when thresholds are crossed. |
 | `preserveK` | `number` | `10` | Number of recent message pairs to preserve during compaction. |
 | `eliseThreshold` | `number` | `2000` | Token count above which old tool results are elided (a token count, not a fraction). |
+| `keepTokens` | `number` | unset | Keep at least this many of the most recent message tokens verbatim when compacting: no collapse, summary or tool-output elision in that tail. `preserveK` stays the floor, so this only ever keeps more. It's capped at half the policy's target load so a pass can still free room. The hard-budget emergency trim ignores it, so a context overflow still can't happen. |
 | `strategy` | `string` | `"hybrid"` | Compaction strategy. `hybrid` (default) is **lossless rule-based, no LLM** — it elides oversized old tool results and collapses ancient turns into a digest that keeps all text and drops only raw tool I/O (still in the session log). `intelligent` adds LLM summarization (needs a provider; falls back to the lossless digest on failure). `selective` adds LLM-driven keep/collapse selection. |
 | `llmSelector` | `boolean` | `false` | Shortcut for `strategy: "selective"` when `strategy` is unset. An explicit `strategy` wins. |
 | `effectiveMaxContext` | `number` | provider-reported or unknown for custom `baseUrl` | Override the effective context window size in tokens. Use this for proxies/account-gated endpoints whose real limit differs from models.dev. Runtime override: `/context limit`. |
@@ -719,6 +721,20 @@ Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`)
 | `requestTimeoutMs` | `number` | `60000` | Timeout for individual tool calls. |
 | `tls.ca` | `string` | — | Path to CA certificate file (HTTPS transports). |
 | `tls.rejectUnauthorized` | `boolean` | `true` | Verify server certificate (set `false` for self-signed). |
+
+`command`, `args`, `env`, `url` and `headers` may reference environment
+variables as `${VAR}` or `${VAR:-default}`, the `.mcp.json` convention. They
+resolve each time the server connects, so the value never goes into a config
+file or `mcp list` output. An unset variable with no default stops that
+server with an error naming it; it is not sent through as literal text.
+
+```json
+{ "name": "gh", "transport": "streamable-http", "url": "https://api.githubcopilot.com/mcp/",
+  "headers": { "Authorization": "Bearer ${GITHUB_TOKEN}" } }
+```
+
+`import-claude-code` keeps placeholders exactly as written, and its plan lists
+the variables each imported server will read.
 
 ### Per-run servers (`--mcp-config`)
 
@@ -1141,6 +1157,56 @@ mechanism with `features.pluginsTrust: false`. Plugins discovered under
 | `file` | `string` | auto | Log file path. Defaults to `~/.wrongstack/logs/wrongstack.log`. |
 
 Override with `--verbose` (`debug`), `--trace` (`trace`), or `--log-level <level>`.
+
+---
+
+## `observability` — OTLP export
+
+Send traces and metrics to an OpenTelemetry collector or a vendor that accepts
+OTLP over HTTP (Grafana, Honeycomb, Datadog, Jaeger, …).
+
+```jsonc
+{
+  "observability": {
+    "otlp": {
+      "endpoint": "http://localhost:4318",
+      "serviceName": "wrongstack-ersin"
+    }
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | `boolean` | — | `false` switches export off. `true` without an `endpoint` uses `OTEL_EXPORTER_OTLP_ENDPOINT`. |
+| `endpoint` | `string` | — | Base URL; `/v1/traces` and `/v1/metrics` are appended. Setting it turns export on. |
+| `headers` | `Record<string,string>` | — | Request headers, merged over `OTEL_EXPORTER_OTLP_HEADERS` (`k=v,k2=v2`). |
+| `serviceName` | `string` | `"wrongstack"` | `service.name` resource attribute. Falls back to `OTEL_SERVICE_NAME`. |
+| `traces` | `boolean` | `true` | Export spans. |
+| `metrics` | `boolean` | `true` | Export metrics. Collection turns on for this even without `--metrics`. |
+
+- **Opt-in.** The config must ask for export. `OTEL_EXPORTER_OTLP_ENDPOINT` on
+  its own does nothing, because it is often set for other programs.
+  `OTEL_SDK_DISABLED=true` switches export off.
+- **What a trace looks like.** Each turn is one trace. `agent.run` is the root;
+  `provider.complete` and `tool.<name>` spans are its children; in the CLI/TUI
+  and `--webui`, a subagent's run nests under the leader turn that was open
+  when it started. Spans carry `session.id` (and `agent.session.id` for a
+  subagent), model, provider and tool names, and the error message of a failed
+  call — not prompt text or tool input and output.
+- **When data leaves.** A finished turn's trace and the current metrics are
+  pushed as soon as the turn ends, so a one-shot `--prompt` run exports before
+  it exits. Otherwise spans go every 5 s and metrics every 30 s.
+- **Credentials.** Header names that look like credentials (`Authorization`,
+  `x-api-key`, …) are encrypted in the saved config. A vendor header with
+  another name (for example `x-honeycomb-team`) is not, so put that one in
+  `OTEL_EXPORTER_OTLP_HEADERS`.
+- **Failures.** A bad endpoint is a warning at startup, not a failed boot. A
+  failed push is warned about once.
+- **Where it applies.** The CLI/TUI, `--webui` and the standalone WebUI server.
+  Read at startup; restart after changing it. Logs are not exported.
+- **Trust.** Denied in `<project>/.wrongstack/config.json`: a repository must
+  not be able to choose where a record of your session goes.
 
 ---
 

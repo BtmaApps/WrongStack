@@ -7,6 +7,206 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--ascii`: plain-ASCII output everywhere.**
+  - **What changed.** The ASCII icon style (`WRONGSTACK_TUI_ICON_STYLE=ascii`) used to swap only the ~150 named glyphs; the ~3,000 symbols hard-coded elsewhere still printed. In ASCII mode all of them are now converted: box drawing, arrows, bullets, braille spinners (they still animate), emoji, Nerd Font icons and typographic punctuation. Letters and digits in any script are left alone.
+  - **TUI.** Text is converted before Ink measures it, and bordered boxes use a `+-|` border.
+  - **Everything else.** stdout/stderr are wrapped with a width-preserving mapping, which covers `--help`, the plain REPL and one-shot `--prompt` output. `--ascii` sets the env var, so subprocesses inherit it.
+  - **Verified in a real pseudo-terminal:** the TUI's first screen plus the command palette went from 8,143 non-ASCII characters to 0. (`packages/core/src/utils/ascii-fallback.ts`)
+- **Project and directory instruction files (`AGENTS.md`, or `CLAUDE.md`).**
+  - **Root file.** The project root's file goes into the system prompt, fenced as instructions supplied by the repository. A repo's root `AGENTS.md` used to be read by `/tuneup` and nothing else. Verified: before this change the model answered "UNKNOWN" when asked for a codeword stated there; now it answers with the codeword.
+  - **Directory files.** A file in a subdirectory such as `packages/foo/AGENTS.md` is sent the first time a file tool (read, edit, write, grep, glob, tree, …) touches a path under that directory. It arrives as a text block next to the tool results and is sent again only if the file changes. The system prompt is not changed, so the provider's prompt cache is kept. After compaction the files are sent again on the next touch, since the summary may have dropped them. Each file is capped: 32k characters for the root file, 16k for a directory file.
+  - `/context` lists the root file as its own line. (`packages/core/src/core/project-instructions.ts`)
+- **Shell commands with no time limit, and a hermetic mode.**
+  - **No time limit.** `bash` and `pwsh` accept `timeout_ms: 0`, meaning no time limit, for a long build or migration the model has to wait on. The run still streams its output and the user can still interrupt it. Before this, `bash` turned 0 into a 1 ms timeout and `pwsh` turned it into 1 s.
+  - **Hermetic mode.** `bash` accepts `hermetic: true`. The command then runs without shell startup files (zsh `-f`, fish `--no-config`, bash `--noprofile --norc`, cmd.exe `/d` to skip AutoRun; PowerShell already runs `-NoProfile`). Its environment is a fixed minimum: PATH, home, temp, locale, the Windows system variables, the session id and the configured git identity. Inherited `NODE_*`, `NPM_*` and `GIT_*` settings are dropped.
+  - (`packages/tools/src/bash-hermetic.ts`)
+- **OTLP export of traces and metrics.** Set `observability.otlp.endpoint` (or
+  `enabled: true` with the standard `OTEL_EXPORTER_OTLP_*` variables) to send
+  telemetry to an OpenTelemetry collector or vendor. Each turn is one trace:
+  provider and tool calls nest under the turn, and a subagent's run nests
+  under the leader turn that spawned it. The trace and current metrics go out
+  as soon as the turn ends, so a one-shot `--prompt` run exports before
+  exiting. Works in the CLI/TUI, `--webui` and the standalone WebUI server.
+  Repository configs cannot set it. The exporters had shipped without being
+  wired: no host ever passed a tracer, so the agent's spans went nowhere.
+  (`packages/core/src/observability/otlp-setup.ts`)
+- **Warm provider connection while you type.** In the TUI and the WebUI, the
+  first keystroke of a prompt opens the connection to the model's endpoint
+  (DNS, TCP, TLS), so the request sent on Enter reuses it. Measured to time to
+  response headers: api.z.ai 242 → 164 ms median, and its ~900 ms cold-DNS
+  outliers were gone; a nearby CDN endpoint (api.openai.com) showed no change.
+  It is a small `GET /` to the endpoint's origin, at most one every 3 s per
+  endpoint, and never costs tokens. Slash commands, `!` shell lines and
+  running turns do not trigger it. When provider traffic goes through a local
+  proxy, only the proxy connection is warmed.
+  (`packages/providers/src/connection-warmup.ts`)
+- **First-token time in the session report.** The report printed after a run
+  now shows how long each turn waited for its first streamed output (text,
+  thinking or a tool call) after it started, as the median and range across
+  turns. Subagent runs are not counted. (`packages/cli/src/session-stats.ts`)
+- **`session_rename` tool.** The model can title the session it is working in
+  once the task is clear. The title shows in `/sessions`, `wstack sessions`,
+  and the WebUI history, and open history lists update right away. It renames
+  only the current session and is not given to subagents.
+  (`packages/core/src/tools/session-rename.ts`)
+- **Copying from the TUI works over SSH.** When no clipboard tool is available
+  (an SSH session, or a Linux box without `wl-copy`/`xclip`), the TUI asks the
+  terminal to copy with OSC 52, so the text reaches the clipboard of the
+  machine you are sitting at. Inside tmux this needs
+  `set -g set-clipboard on`. (`packages/tui/src/clipboard.ts`)
+- **MCP structured tool output.** Tools that declare an `outputSchema` and
+  return `structuredContent` now get that typed result to the model. It was
+  dropped before, and many servers put only a one-line summary in the text
+  blocks. When the text already holds the same JSON it isn't repeated. The
+  result is checked against the declared schema, and a mismatch is reported in
+  the tool output rather than failing the call.
+  (`packages/mcp/src/structured-result.ts`)
+- **The WebUI queue lives on the server.** Queued prompts used to wait in the
+  browser tab and ran only while that tab stayed open and connected. No other
+  tab or device could see them. Now the host holds the queue for each
+  session: the next prompt starts as soon as the current turn ends, even if
+  every page is closed. Every page showing the session sees the same list and
+  can remove from it. The queue is saved per session
+  (`<project dir>/prompt-queue/`), so after a host restart the leftover
+  prompts run when you reopen the session. Prompts queued in the browser
+  before this change move to the server on first connect. `btw` notes still
+  go through the mailbox as before, and older servers keep the browser-side
+  queue. (`packages/webui-server/src/server/session-prompt-queue.ts`)
+- **MCP elicitation.** An MCP server can now ask the user for a few values
+  mid-call (`elicitation/create`, form mode). The request shows up as the
+  same structured form `clarify` uses in the TUI and WebUI, on the run that
+  made the call. It's titled with the server's name and reminds you to share
+  only what you're comfortable sending. Answers are checked against the
+  server's schema (required fields, choices, bounds) before they go back, and
+  a rejected answer is asked again. The call's request timeout holds while
+  the form is open, capped at 10 minutes. With no one to ask (`-p`), the
+  answer is `cancel`. URL-mode elicitation and nested schemas are refused.
+  Over HTTP, the SSE and Streamable HTTP clients also now answer server
+  requests at all (including `ping`). Streamable HTTP replies are read event
+  by event, so a request the server puts ahead of its response no longer
+  stalls the call. (`packages/mcp/src/elicitation.ts`,
+  `packages/mcp/src/elicitation-form.ts`)
+- **`context.keepTokens`: a verbatim tail measured in tokens.** When set,
+  compaction keeps at least that many of the most recent message tokens
+  untouched: no collapse, summary or tool-output elision. `preserveK` still
+  counts pairs and stays the floor. A single huge tool result no longer
+  decides how much recent work survives. The same rule applies to all three
+  strategies (hybrid, intelligent, selective). It's capped at half the target
+  load so a pass can still free room, and the hard-budget emergency trim
+  ignores it. (`packages/core/src/execution/compaction-tail.ts`)
+- **Line-comment review in the WebUI Changes view.** Hover a line in the
+  unified diff and click **+** to leave a comment. Comments show inline under
+  their line. If a line changes after you commented, its comment moves to an
+  "outdated" list instead of attaching to whatever text is there now. The
+  **Review (N)** tray lists all comments by file, and **Send to chat** puts
+  them into the composer as one message with file, line and a quote of the
+  line. From there you send it the usual way: a normal send, or queue/`btw`
+  while a run is going. Comments are per project and survive a reload.
+  (`packages/webui/src/components/review/`,
+  `packages/webui/src/stores/review-store.ts`)
+- **Six new hook events.** `Notification` fires when a permission prompt or a
+  structured question is waiting on the user. `SubagentStart` and
+  `SubagentStop` fire when a delegated subagent starts and settles.
+  `PreCompact` and `PostCompact` fire around every compaction pass, whether it
+  was automatic, `/compact`, overflow recovery or the `context_manager` tool.
+  `SessionEnd` fires on close, and the close waits for it. These events are
+  observational, so they can't block or add context. Matchers target the
+  subagent role, the notification kind or the compaction trigger. The names
+  follow Claude Code's hook vocabulary. A `config.hooks` key that isn't a known
+  event now logs a warning at load instead of never firing.
+  (`packages/core/src/hooks/lifecycle-bridge.ts`, `docs/hooks.md`)
+- **Every tool call is recorded with a typed outcome.** `tool.executed` and the
+  journaled `tool_result` now carry a `settlement`: `completed`, `failed`,
+  `unknown_tool`, `invalid_input`, `blocked_by_hook`, `denied_by_policy`,
+  `declined` or `aborted`. Before, a call that never ran looked the same as a
+  tool that ran and failed, apart from the wording of its error text. Chronicle
+  records refused calls as `denied` and aborted ones as `cancelled` instead of
+  `failure`. Each agent-loop iteration also keeps one `logicalRequestId`
+  across provider retries and fallback hops, so a retried step counts as one
+  logical request. (`packages/core/src/types/tool.ts`,
+  `packages/core/src/core/agent-tools.ts`, `packages/core/src/core/agent-loop.ts`)
+
+### Fixed
+
+- **Shell timeouts above 5 minutes were cut short.** `bash` and `pwsh`
+  advertise `timeout_ms` up to 600000 and `exec` advertises `timeout` up to
+  600000. The executor still aborted all three at `tools.maxToolTimeoutMs`,
+  which defaults to 300 s, so a 10-minute build was killed at 5 minutes. It
+  was a blunt abort, not the tool's own `timed_out` result. The three tools
+  now own their timeout, and the executor only passes the user's interrupt
+  through. Verified with the executor ceiling at 2 s: a 4 s `bash` call ran to
+  completion. (`packages/tools/src/bash.ts`, `pwsh.ts`, `exec.ts`)
+- **Cached tokens were billed as full-price input for several providers.**
+  Kimi (`cached_tokens`), DashScope/Qwen explicit caching
+  (`prompt_tokens_details.cache_creation_input_tokens`), Anthropic-backed
+  proxies such as LiteLLM (top-level `cache_read_input_tokens` /
+  `cache_creation_input_tokens`) and Mistral (`prompt_tokens_details.cached_tokens`)
+  report cache counts under names the OpenAI-compatible parser did not read.
+  Those tokens stayed in `input`, so the cost was overstated and the cache-hit
+  ratio showed 0%. One shared normalizer now reads all of them
+  (`packages/providers/src/openai-chat-usage.ts`); it replaces two copies of
+  the same parser. Mistral also now sends `prompt_cache_key`, so prefix-sharing
+  requests reach its cache.
+- **Cache tokens were free when the catalog listed no cache price.** Cache
+  counts are kept out of `input`, and without a `cache_read`/`cache_write`
+  price they cost $0, so a model looked cheaper the better its cache worked.
+  They are now billed at the input rate, and `savedUsd` counts only a real
+  catalog discount. The WebUI's cost figures had the same fallback and now
+  include cache writes. (`packages/core/src/infrastructure/token-counter.ts`,
+  `packages/webui-server/src/server/usage-cost.ts`)
+- **Renaming a live session did not stick.** A rename wrote the name into the
+  session's summary file, but the session's own periodic checkpoint then
+  rewrote that file from its in-memory copy, which had no name, and the name
+  was gone when the session ended. Checkpoints now keep the name already on
+  disk. This affected `/sessions rename` and the WebUI history rename of the
+  session in use, as well as the new `session_rename` tool.
+  (`packages/core/src/storage/session-writer-checkpoint.ts`)
+- **Copied text was cut at a NUL byte.** Copying tool output that held a NUL
+  or other control bytes put only the text before the first NUL on the Windows
+  clipboard. Copies now drop ANSI styling and control bytes, keeping tabs and
+  line breaks. (`packages/tui/src/clipboard.ts`)
+- **`wstack sessions` ignored session names.** The listing showed only the
+  first prompt; a named session now shows its name first, as does the
+  recent-sessions list in the `/project` picker.
+- **`${VAR}` in MCP server configs was sent literally.** `.mcp.json` files
+  (via `--mcp-config` or `import-claude-code`) write secrets as `${VAR}` or
+  `${VAR:-default}`. WrongStack passed them through untouched, so
+  `Authorization: Bearer ${GITHUB_TOKEN}` reached the server as that exact
+  text and failed as an opaque 401. Placeholders in `command`, `args`, `env`,
+  `url` and `headers` now resolve from the environment each time the server
+  connects, so the secret never lands in a config file. A missing variable
+  stops that server with an error naming it. The import plan now lists the
+  variables each server reads. (`packages/mcp/src/config-env.ts`)
+- **`--mcp-config` servers were unreachable in token-saving mode.** A
+  server started for one run (`--mcp-config`) was running, but
+  `mcp_control` `list` and `search` read only the config file, so the model
+  couldn't find it. In token-saving mode, tools stay hidden until
+  `activate`, so none of its tools could be used. Running servers with no
+  config entry now show up as "this run only". (`packages/core/src/tools/mcp-control.ts`)
+- **Quoted arguments in command hooks.** Hook commands were split on bare
+  whitespace, so any quoted argument broke into fragments with stray quote
+  characters. That included `node "C:/path with space/hook.js"` and the
+  documented `sh -c "…"` escape hatch for pipes and redirects. Quotes now
+  group arguments the way you'd expect. There's still no shell involved, and
+  an unterminated quote rejects the hook. `docs/hooks.md` also claimed hooks
+  ran with `shell: true`, which was wrong. (`packages/core/src/hooks/shell-executor.ts`)
+
+### Changed
+
+- **Startup no longer waits on models.dev.** With a usable catalog cache on
+  disk, the CLI and WebUI server boot from it right away and refresh the
+  catalog in the background, then re-check every 30 minutes while running.
+  When the refresh lands, the capability cache, the per-request output-limit
+  index and the active context window update from it. There's no fixed window
+  where stale numbers are used. A first run with no cache, and single-shot
+  prompts, still fetch in the foreground. Model switches and picker opens skip
+  the network when the catalog is under 10 minutes old, and concurrent
+  refreshes share one request.
+  (`packages/core/src/models/catalog-refresh.ts`,
+  `packages/core/src/models/models-registry.ts`)
+
 ## [1.0.25] — 2026-09-23
 
 ### Added

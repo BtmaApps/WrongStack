@@ -19,6 +19,9 @@ interface ToolStat {
  */
 const SESSION_STATS_MAX_PATHS = 10_000;
 
+/** First-token samples kept; one per leader turn. */
+const SESSION_STATS_MAX_FIRST_TOKEN_SAMPLES = 1_000;
+
 /**
  * Add `path` to a bounded Set, evicting the oldest entry past the cap.
  * Set preserves insertion order, so the first iterator value is the oldest.
@@ -54,6 +57,17 @@ export class SessionStats {
   private bytesWritten = 0;
   private bashCommands = 0;
   private fetches = 0;
+
+  /**
+   * First token after submit: from a leader turn's start to its first
+   * streamed text, thinking or tool call — what the user actually waits for,
+   * the provider's latency plus everything the agent does before the request.
+   * The leader is the context of the first run; subagent runs are not turns
+   * anyone typed.
+   */
+  private leaderCtx: unknown;
+  private turnStartedAt: number | undefined;
+  private readonly firstTokenMs: number[] = [];
 
   // Stored handler refs so destroy() can remove them.
   private readonly _handlers: Array<{ event: string; handler: (e: unknown) => void }> = [];
@@ -98,16 +112,45 @@ export class SessionStats {
       }
     };
 
+    const onRunStarted = (e: unknown) => {
+      const { ctx } = e as { ctx: unknown };
+      this.leaderCtx ??= ctx;
+      if (ctx === this.leaderCtx) this.turnStartedAt = Date.now();
+    };
+    const onRunEnded = (e: unknown) => {
+      if ((e as { ctx?: unknown }).ctx === this.leaderCtx) this.turnStartedAt = undefined;
+    };
+    const onFirstOutput = (e: unknown) => {
+      if (this.turnStartedAt === undefined || (e as { ctx: unknown }).ctx !== this.leaderCtx)
+        return;
+      if (this.firstTokenMs.length >= SESSION_STATS_MAX_FIRST_TOKEN_SAMPLES)
+        this.firstTokenMs.shift();
+      this.firstTokenMs.push(Date.now() - this.turnStartedAt);
+      this.turnStartedAt = undefined;
+    };
+
     events.on('provider.response', onResponse);
     events.on('iteration.completed', onIteration);
     events.on('error', onError);
     events.on('tool.executed', onTool);
+    events.on('agent.run.started', onRunStarted);
+    events.on('agent.run.completed', onRunEnded);
+    events.on('agent.run.error', onRunEnded);
+    events.on('provider.text_delta', onFirstOutput);
+    events.on('provider.thinking_delta', onFirstOutput);
+    events.on('provider.tool_use_start', onFirstOutput);
 
     this._handlers.push(
       { event: 'provider.response', handler: onResponse },
       { event: 'iteration.completed', handler: onIteration },
       { event: 'error', handler: onError },
       { event: 'tool.executed', handler: onTool },
+      { event: 'agent.run.started', handler: onRunStarted },
+      { event: 'agent.run.completed', handler: onRunEnded },
+      { event: 'agent.run.error', handler: onRunEnded },
+      { event: 'provider.text_delta', handler: onFirstOutput },
+      { event: 'provider.thinking_delta', handler: onFirstOutput },
+      { event: 'provider.tool_use_start', handler: onFirstOutput },
     );
   }
 
@@ -125,6 +168,7 @@ export class SessionStats {
       this.apiRequests > 0 ||
       this.iterations > 0 ||
       this.toolStats.size > 0 ||
+      this.firstTokenMs.length > 0 ||
       this.tokenCounter.total().input > 0
     );
   }
@@ -149,6 +193,8 @@ export class SessionStats {
     lines.push(`  Elapsed:       ${elapsedSec}s`);
     lines.push(`  Iterations:    ${this.iterations}`);
     lines.push(`  API requests:  ${this.apiRequests}`);
+    const firstToken = firstTokenLine(this.firstTokenMs);
+    if (firstToken) lines.push(`  First token:   ${firstToken}`);
     if (this.errors > 0) {
       lines.push(`  Errors:        ${color.yellow(String(this.errors))}`);
     }
@@ -233,4 +279,18 @@ function samplePaths(set: Set<string>): string {
   const arr = [...set];
   if (arr.length <= 2) return arr.join(', ');
   return `${arr[0]}, … (+${arr.length - 1} more)`;
+}
+
+/** `1.2s`, or `1.2s median · 0.9s–3.4s over 5 turns`. */
+function firstTokenLine(samples: readonly number[]): string | undefined {
+  if (samples.length === 0) return undefined;
+  const sec = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+  if (samples.length === 1) return sec(samples[0] ?? 0);
+  const sorted = [...samples].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median =
+    sorted.length % 2 === 1
+      ? (sorted[mid] ?? 0)
+      : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+  return `${sec(median)} median ${color.dim(`· ${sec(sorted[0] ?? 0)}–${sec(sorted.at(-1) ?? 0)} over ${sorted.length} turns`)}`;
 }

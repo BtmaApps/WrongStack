@@ -18,6 +18,8 @@ export interface SessionEventMap {
     waitUntil?: ((work: Promise<void>) => void) | undefined;
   };
   'session.damaged': { sessionId: string; detail: string };
+  /** The session got a new name (e.g. from `session_rename`); history lists refresh. */
+  'session.renamed': { sessionId: string; name: string };
   /**
    * Fired by AgentStatusTracker after every flush with the full agent list
    * (leader + subagents). In-process consumers (e.g. the HQ session-telemetry

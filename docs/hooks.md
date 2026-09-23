@@ -41,6 +41,22 @@ These are the lifecycle points a hook can attach to:
 | `UserPromptSubmit` | Before a user turn is processed | ✅ (turn ends, no model call) | append `additionalContext` to the user message |
 | `SessionStart` | Once, on the first turn of the session | — | append `additionalContext` to the system prompt (persists for the session) |
 | `Stop` | At the end of every turn | — | side effects only |
+| `Notification` | The run is waiting on the user: a permission prompt or a structured question | — | side effects only |
+| `SubagentStart` | A delegated subagent starts | — | side effects only |
+| `SubagentStop` | A delegated subagent settles (success, timeout, error, …) | — | side effects only |
+| `PreCompact` | Before every compaction pass (awaited) | — | side effects only |
+| `PostCompact` | After every compaction pass (awaited) | — | side effects only |
+| `SessionEnd` | The session closes; the close waits for the hook to finish | — | side effects only |
+
+The last six are **observational**: they fire with a typed payload, but their
+outcome is ignored — they cannot block, rewrite, or add context, and a failing
+hook is logged and skipped whatever its `failurePolicy`. `PreCompact` and
+`PostCompact` run around *every* compaction path (automatic, `/compact`, a UI
+button, context-overflow recovery, the `context_manager` tool), so they delay a
+pass by at most their deadline. The bus-driven ones (`Notification`,
+`Subagent*`) run detached and never slow the run down. The names follow the
+Claude Code hook vocabulary. A `config.hooks` key that is not one of these
+events is dropped at config load with a warning naming it.
 
 ### Trigger ordering within an event
 
@@ -162,6 +178,21 @@ hooks see the same shape.
   "toolInput": { "command": "ls" },                     // PreToolUse / PostToolUse
   "toolResult": { "content": "...", "isError": false }, // PostToolUse only
   "prompt": "user text",                                // UserPromptSubmit only
+  "compaction": {                                       // PreCompact / PostCompact
+    "trigger": "auto",                                  // auto | manual | overflow | tool
+    "aggressive": false,
+    "tokensBefore": 182000, "tokensAfter": 41000        // PostCompact only
+  },
+  "subagent": {                                         // SubagentStart / SubagentStop
+    "target": "reviewer", "task": "review the diff",
+    "subagentId": "reviewer@1", "delegationId": "d-1", "mode": "background",
+    "ok": true, "status": "success", "summary": "...", "durationMs": 5400  // SubagentStop only
+  },
+  "notification": {                                     // Notification
+    "kind": "permission",                               // permission | input
+    "message": "Permission needed to run bash",
+    "toolName": "bash"                                  // permission only
+  },
   "cwd": "/abs/project",
   "sessionId": "01J..."                                 // when known
 }
@@ -206,8 +237,12 @@ an error so it can self-correct.
 
 ## Filters / preconditions (matchers)
 
-`PreToolUse` and `PostToolUse` entries take a `matcher`. All other events ignore
-it (every registered hook for that event runs).
+`PreToolUse` and `PostToolUse` entries take a `matcher` on the tool name. A few
+observational events match on something else: `SubagentStart`/`SubagentStop` on
+the subagent target (roster role or name), `Notification` on the kind
+(`permission` | `input`), and `PreCompact`/`PostCompact` on the trigger (`auto` |
+`manual` | `overflow` | `tool`). The remaining events ignore it (every registered
+hook for that event runs).
 
 A matcher is one of:
 
@@ -219,7 +254,7 @@ Matching is by **exact tool name**, not substring or regex. `"edit"` matches the
 tool named `edit`; it does **not** match `editFile`. The comparison is
 case-insensitive on both sides, so `"Bash"` matches a tool registered as `bash`.
 
-For non-tool events (`UserPromptSubmit`, `SessionStart`, `Stop`) the matcher is
+For `UserPromptSubmit`, `SessionStart`, `Stop` and `SessionEnd` the matcher is
 treated as `*` and every registered hook runs. There is no content-based filter
 on `prompt` or `additionalContext` — if you need one, write it inside your hook.
 
@@ -283,13 +318,17 @@ ended) and the `reason` is shown to the model.
 - Command hooks run arbitrary commands **you** put in your own config — they are
   not model-controlled and cannot be installed by a prompt. Still: keep hook
   scripts in version control and review them like any other automation.
-- `runShellHook` checks the **first whitespace-delimited token** against a
-  command allowlist (shells, interpreters, common utilities, git). Because the
-  accepted string is then executed with `shell: true`, this is a convenience
-  filter, **not a security boundary**: an allowed first command can still use
-  shell chaining, substitution, or redirection to execute other commands.
-  Treat the complete command string as trusted operator code. The two
-  documented escape hatches for operator-authored executables are:
+- `runShellHook` splits the command into argv — quote-aware (`"a b"` and
+  `'a b'` are one argument; inside double quotes only `\"` and `\\` are
+  escapes, so Windows paths keep their backslashes; an unterminated quote
+  rejects the hook) — and checks the executable against a command allowlist
+  (shells, interpreters, common utilities, git). It then spawns it **without a
+  shell**: `&&`, `|`, `>`, `$(...)` reach the program as literal arguments.
+  For pipes or redirects, say so explicitly with `sh -c "..."` (or
+  `pwsh -Command "..."`). The allowlist is a convenience filter, **not a
+  security boundary** — `sh`, `node` and friends are on it — so treat the
+  complete command string as trusted operator code. The two documented escape
+  hatches for operator-authored executables are:
   1. Reference a script by **absolute path** (POSIX `/...` or Windows
      `C:\...`/`C:/...`).
   2. Drop a wrapper under `.wrongstack/hooks/` and reference it by absolute
@@ -439,9 +478,19 @@ declare every subsystem they touch.
     (`createLifecycleHooksExtension`). `SessionStart` fires on the first
     `beforeRun` and appends its `additionalContext` to `ctx.systemPrompt` for
     the rest of the session. `Stop` fires on every `afterRun`.
-- **Boot wiring:** `packages/cli/src/cli-main.ts` calls
-  `hookRegistry.loadShellHooks(config.hooks)` when hooks are enabled, and
-  installs the middleware + extension into the agent.
+  - The observational events come from `bridgeLifecycleHooks`
+    (`core/src/hooks/lifecycle-bridge.ts`): `PreCompact`/`PostCompact` attach
+    to the compactor's `observe()` seam (the journaled compactor every
+    compaction path goes through), and the rest subscribe to bus events —
+    `delegate.started`/`delegate.completed`, `tool.confirm_needed`,
+    `user.input_requested`, and `session.ended` (joined via its `waitUntil`).
+    `HookRunner.observe()` runs them.
+- **Boot wiring:** `packages/cli/src/wiring/lifecycle-plugins.ts` calls
+  `hookRegistry.loadShellHooks(config.hooks)` (policy hooks only under
+  `--no-hooks`), installs the middleware + extension into the agent, and calls
+  `bridgeLifecycleHooks`. Configured hooks run in the CLI host (REPL, TUI, and
+  the WebUI it serves); the standalone WebUI server does not load
+  `config.hooks`.
 
 ### Public exports
 
@@ -457,9 +506,13 @@ import {
   hookMatcherMatches,     // (matcher, toolName?) => boolean
   shellHooksEqual,        // (a, b) => boolean — structural configured-hook equality
   countShellHooks,        // (hooks) => number — total entries across events
+  bridgeLifecycleHooks,   // wires the observational events to a HookRunner
+  HOOK_EVENTS,            // every event name, in lifecycle order
+  isHookEvent,            // (value) => value is HookEvent
 } from '@wrongstack/core';
 import type {
-  HookEvent,              // 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'SessionStart' | 'Stop'
+  HookEvent,              // see HOOK_EVENTS for the full list
+  ObservationalHookEvent, // the six events whose outcome is ignored
   HookMatcher,            // string
   HookInput,              // the payload
   HookOutcome,            // legacy/non-PreToolUse return shape
@@ -556,6 +609,24 @@ api.registerHook('SessionStart', undefined, async () => ({
 api.registerHook('Stop', undefined, async () => {
   await flushCoverageReport();
 });
+```
+
+### Get a desktop ping when the agent is waiting on you, and log compactions
+
+```jsonc
+{
+  "hooks": {
+    // Only permission prompts, not structured questions. Commands run without
+    // a shell, so pipes and $(...) need an explicit `sh -c "..."`.
+    "Notification": [
+      { "matcher": "permission", "command": "sh -c \"notify-send wstack \\\"$(jq -r .notification.message)\\\"\"" }
+    ],
+    // Every pass, whatever triggered it; the payload carries the token counts.
+    "PostCompact": [{ "command": "sh -c \"jq -c .compaction >> .wrongstack/compactions.log\"" }],
+    // Only when the reviewer subagent finishes.
+    "SubagentStop": [{ "matcher": "reviewer", "command": "node ./scripts/on-review-done.mjs" }]
+  }
+}
 ```
 
 ---

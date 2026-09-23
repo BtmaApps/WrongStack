@@ -14,8 +14,8 @@
  * plugins use a name-derived label, so their switch aria-labels are stable.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PLUGIN_AUDIT_ENTRIES } from '@wrongstack/plugins/plugin-audit-catalog';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginToggleList } from '../../src/components/SettingsPanel/PluginToggleList';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 
@@ -38,7 +38,35 @@ afterEach(() => {
   localStorage.removeItem(STORAGE_KEY);
 });
 
+import { i18n } from '../../src/i18n';
 describe('PluginToggleList — full catalog rendering', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+  it('filters by plugin name and reports an empty result', () => {
+    render(<PluginToggleList />);
+    const search = screen.getByRole('searchbox', { name: /search plugins/i });
+    fireEvent.change(search, { target: { value: 'agent-handoff' } });
+    expect(screen.getAllByRole('switch')).toHaveLength(1);
+    expect(getSwitchByLabel('Agent Handoff')).toBeDefined();
+    fireEvent.change(search, { target: { value: 'no-such-plugin-name' } });
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.getByText('No plugins match this filter.')).toBeDefined();
+  });
+
+  it('shows effective enabled plugins and includes local overrides', () => {
+    useLocalPrefs.setState({ pluginsEnabled: { 'agent-handoff': true } });
+    render(<PluginToggleList />);
+    fireEvent.click(screen.getByRole('button', { name: /enabled only/i }));
+    const defaultActive = PLUGIN_AUDIT_ENTRIES.filter((entry) => entry.defaultState === 'active');
+    expect(screen.getAllByRole('switch')).toHaveLength(defaultActive.length + 1);
+    expect(getSwitchByLabel('Agent Handoff')).toBeDefined();
+    expect(
+      screen.getByText(`${defaultActive.length + 1} / ${PLUGIN_AUDIT_ENTRIES.length}`),
+    ).toBeDefined();
+  });
   it('renders one toggle for every plugin in the shared catalog (active and inactive)', () => {
     render(<PluginToggleList />);
     const switches = screen.getAllByRole('switch');
@@ -67,6 +95,16 @@ describe('PluginToggleList — full catalog rendering', () => {
 });
 
 describe('PluginToggleList — toggle write-side', () => {
+  it('keeps preference sync working from a filtered result', () => {
+    const syncPref = vi.fn();
+    render(<PluginToggleList syncPref={syncPref} />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'agent-handoff' } });
+    fireEvent.click(getSwitchByLabel('Agent Handoff'));
+    expect(syncPref).toHaveBeenCalledWith(
+      'pluginsEnabled',
+      expect.objectContaining({ 'agent-handoff': true }),
+    );
+  });
   it('writes the flipped state to localPrefs.pluginsEnabled on click', () => {
     render(<PluginToggleList />);
     const switchEl = getSwitchByLabel('Agent Handoff');

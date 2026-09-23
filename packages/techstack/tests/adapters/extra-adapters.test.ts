@@ -473,11 +473,11 @@ describe('RubyAdapter', () => {
     const { dir, ws } = mkWorkspace('ruby', { Gemfile: GEMFILE });
     await withCleanup(async () => {
       const deps = await new RubyAdapter().inventory(ws, {});
-      // 'rails' is explicitly skipped by the parser (hard-coded filter)
       const names = deps.map((d) => d.name);
       expect(names).toContain('puma');
       expect(names).toContain('redis');
-      expect(names).not.toContain('rails');
+      expect(names).toContain('rails');
+      expect(deps.find((d) => d.name === 'rails')?.requested).toBe('7.1.0');
     }, dir);
   });
 
@@ -486,6 +486,9 @@ describe('RubyAdapter', () => {
     await withCleanup(async () => {
       const deps = await new RubyAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'puma')?.locked).toBe('6.4.2');
+      const rails = deps.find((d) => d.name === 'rails');
+      expect(rails?.locked).toBe('7.1.0');
+      expect(rails?.purl).toBe('pkg:gem/rails@7.1.0');
     }, dir);
   });
 

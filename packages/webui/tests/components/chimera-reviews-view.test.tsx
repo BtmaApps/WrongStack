@@ -13,9 +13,15 @@ vi.mock('@/lib/ws-client', () => ({
 }));
 
 import { ChimeraReviewsView } from '../../src/components/ChimeraReviewsView';
+import { i18n } from '../../src/i18n';
 import { useChimeraHubStore } from '../../src/stores/chimera-hub-store';
 
 describe('ChimeraReviewsView', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     useChimeraHubStore.setState({

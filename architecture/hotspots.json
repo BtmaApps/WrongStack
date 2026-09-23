@@ -19,12 +19,12 @@
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 889,
+      "lines": 892,
       "relativeImports": 37
     },
     "packages/cli/src/execution.ts": {
-      "lines": 946,
-      "relativeImports": 43
+      "lines": 963,
+      "relativeImports": 44
     },
     "packages/cli/src/fleet/host.ts": {
       "lines": 875,
@@ -51,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 878,
+      "lines": 894,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
@@ -131,7 +131,7 @@
       "relativeImports": 40
     },
     "packages/core/src/types/provider.ts": {
-      "lines": 906,
+      "lines": 913,
       "relativeImports": 7
     },
     "packages/core/src/worktree/worktree-manager.ts": {
@@ -159,11 +159,11 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 956,
-      "relativeImports": 14
+      "lines": 945,
+      "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 905,
+      "lines": 908,
       "relativeImports": 21
     },
     "packages/mcp/src/server.ts": {
@@ -207,7 +207,7 @@
       "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
-      "lines": 807,
+      "lines": 815,
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -219,7 +219,7 @@
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 878,
+      "lines": 887,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -239,16 +239,12 @@
       "relativeImports": 3
     },
     "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 828,
+      "lines": 833,
       "relativeImports": 19
     },
-    "packages/simpleui/src/use-simple-ui-session.tsx": {
-      "lines": 874,
-      "relativeImports": 40
-    },
     "packages/tools/src/bash.ts": {
-      "lines": 849,
-      "relativeImports": 7
+      "lines": 866,
+      "relativeImports": 8
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
       "lines": 879,
@@ -267,11 +263,11 @@
       "relativeImports": 26
     },
     "packages/tools/src/json.ts": {
-      "lines": 886,
+      "lines": 888,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 835,
+      "lines": 842,
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {
@@ -299,11 +295,11 @@
       "relativeImports": 6
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 943,
-      "relativeImports": 50
+      "lines": 946,
+      "relativeImports": 51
     },
     "packages/vector-memory/src/store.ts": {
-      "lines": 807,
+      "lines": 810,
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -343,8 +339,8 @@
       "relativeImports": 5
     },
     "packages/webui/src/hooks/ws-handlers.ts": {
-      "lines": 913,
-      "relativeImports": 7
+      "lines": 916,
+      "relativeImports": 8
     },
     "packages/webui/src/lib/fonts.ts": {
       "lines": 873,
@@ -359,16 +355,16 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 911,
-      "relativeImports": 7
+      "lines": 915,
+      "relativeImports": 8
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 947,
-      "relativeImports": 14
+      "lines": 885,
+      "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 957,
-      "relativeImports": 56
+      "lines": 965,
+      "relativeImports": 57
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1161,
@@ -379,7 +375,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 812,
+      "lines": 827,
       "relativeImports": 35
     },
     "apps/desktop/src/main/runtime-manager.ts": {

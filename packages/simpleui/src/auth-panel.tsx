@@ -264,6 +264,7 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
               </label>
               <button
                 type="submit"
+                className="primary"
                 disabled={busy || !accountType.trim() || !accountAlias.trim() || !accountKey.trim()}
               >
                 Save auth profile
@@ -307,6 +308,7 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
               </label>
               <button
                 type="submit"
+                className="primary"
                 disabled={busy || !providerId.trim() || !label.trim() || !apiKey.trim()}
               >
                 Save key
@@ -470,7 +472,11 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
                     onChange={(e) => setCustomApiKey(e.target.value)}
                   />
                 </label>
-                <button type="submit" disabled={busy || !customId.trim() || !baseUrl.trim()}>
+                <button
+                  type="submit"
+                  className="primary"
+                  disabled={busy || !customId.trim() || !baseUrl.trim()}
+                >
                   Save provider
                 </button>
               </form>

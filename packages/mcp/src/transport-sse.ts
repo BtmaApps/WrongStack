@@ -5,10 +5,9 @@ import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import { SSEReader } from './sse-reader.js';
-import { listAllTools } from './tool-schema.js';
+import { listAllTools, toToolCallResult } from './tool-schema.js';
 import {
   BaseHTTPTransport,
-  createTimeoutSignal,
   type HttpTransportOptions,
   makeAbortError,
   nextJsonRpcId,
@@ -145,9 +144,21 @@ export class SSETransport extends BaseHTTPTransport {
       });
       sseReader.onMessage((msg) => {
         this.streamSignal?.();
+        // A server request (method + id), e.g. elicitation: answered by POST.
+        const id: unknown = msg.id;
+        if (msg.method && (typeof id === 'number' || typeof id === 'string')) {
+          void this.replyToServer(
+            { id, method: msg.method, params: msg.params },
+            this.endpointUrl ?? this.url,
+            this.headers,
+          );
+          return;
+        }
         // Server-initiated notifications (no id). Handle list_changed for L2-C.
-        if (msg.method && !msg.id) {
-          if (msg.method === 'notifications/tools/list_changed') {
+        if (msg.method) {
+          if (msg.method === 'notifications/cancelled') {
+            this.serverRequests.cancel(msg.params);
+          } else if (msg.method === 'notifications/tools/list_changed') {
             void this.handleToolsListChanged();
           } else if (msg.method === 'notifications/resources/list_changed') {
             this.notifyResourcesChanged();
@@ -180,9 +191,9 @@ export class SSETransport extends BaseHTTPTransport {
 
       const initRes = await this.httpPost('initialize', {
         protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-        // Client capabilities (roots/sampling/elicitation) — none are offered.
+        // Client capabilities: elicitation when the host can ask its user.
         // `tools` is a SERVER capability and never belonged here.
-        capabilities: {},
+        capabilities: this.serverRequests.capabilities(),
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       });
 
@@ -352,7 +363,7 @@ export class SSETransport extends BaseHTTPTransport {
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = createTimeoutSignal(parent, timeoutMs);
+    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs);
     const streamed = isNotification
       ? undefined
       : this.awaitStreamResponse(id, timeoutSignal.signal);
@@ -469,16 +480,7 @@ export class SSETransport extends BaseHTTPTransport {
       });
     }
     const res = await this.httpPost('tools/call', { name, arguments: input }, opts);
-    if (res.error) {
-      return { content: res.error.message, isError: true };
-    }
-    const result = res.result as
-      | { content?: unknown | undefined; isError?: boolean | undefined }
-      | undefined;
-    return {
-      content: result?.content ?? '',
-      isError: Boolean(result?.isError),
-    };
+    return toToolCallResult(res);
   }
 
   /** Generic JSON-RPC request — used by MCPClient.request() for SSE transports. */

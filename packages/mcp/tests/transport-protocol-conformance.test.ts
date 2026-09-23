@@ -76,7 +76,7 @@ describe('listAllTools', () => {
 });
 
 describe('stdio client server requests', () => {
-  it('answers a server ping with an empty result', () => {
+  it('answers a server ping with an empty result', async () => {
     const client = new MCPClient({ name: 'ping', transport: 'stdio', command: 'echo' });
     const write = vi.fn((_value: string) => true);
     const internals = client as never as {
@@ -85,6 +85,7 @@ describe('stdio client server requests', () => {
     };
     internals.child = { stdin: { write } };
     internals.onLine(JSON.stringify({ jsonrpc: '2.0', id: 9, method: 'ping' }));
+    await vi.waitFor(() => expect(write).toHaveBeenCalledOnce());
     expect(JSON.parse(String(write.mock.calls[0]?.[0]))).toEqual({
       jsonrpc: '2.0',
       id: 9,

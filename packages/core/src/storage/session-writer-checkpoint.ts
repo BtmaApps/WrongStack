@@ -1,4 +1,4 @@
-import type * as fsp from 'node:fs/promises';
+import * as fsp from 'node:fs/promises';
 import type { SessionMetadata, SessionSummary } from '../types/session.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/index.js';
@@ -16,6 +16,26 @@ export interface MetadataCheckpointContext {
   onMetadataCheckpointCb?: ((summary: SessionSummary) => void | Promise<void>) | undefined;
 }
 
+/**
+ * The name the on-disk manifest carries: `{ name }` (possibly undefined —
+ * the name was cleared), or `null` when there is no readable manifest.
+ *
+ * A session's name is written straight into its manifest by a rename (the
+ * history list, `/sessions rename`, the `session_rename` tool), never through
+ * the writer, so the tracker's copy is stale the moment a live session is
+ * renamed. A checkpoint that wrote its snapshot as-is erased the new name, and
+ * `finalize()` — which resolves the name from this same manifest — then found
+ * it gone.
+ */
+async function manifestName(manifestFile: string): Promise<Pick<SessionSummary, 'name'> | null> {
+  try {
+    const parsed = JSON.parse(await fsp.readFile(manifestFile, 'utf8')) as { name?: unknown };
+    return typeof parsed.name === 'string' ? { name: parsed.name } : {};
+  } catch {
+    return null;
+  }
+}
+
 export async function runMetadataCheckpointOperation(
   ctx: MetadataCheckpointContext,
   onSuccess: () => void,
@@ -24,8 +44,9 @@ export async function runMetadataCheckpointOperation(
   const {
     endedAt: _priorEndedAt,
     outcome: _priorOutcome,
-    ...snapshot
+    ...tracked
   } = ctx.summaryTracker.snapshot();
+  let snapshot: SessionSummary = tracked;
 
   const t0 = Date.now();
   let outcome: 'success' | 'failure' = 'success';
@@ -33,6 +54,11 @@ export async function runMetadataCheckpointOperation(
   try {
     if (ctx.manifestFile) {
       await withFileLock(ctx.manifestFile, async () => {
+        const onDisk = await manifestName(ctx.manifestFile);
+        if (onDisk) {
+          const { name: _trackedName, ...rest } = tracked;
+          snapshot = onDisk.name !== undefined ? { ...rest, name: onDisk.name } : rest;
+        }
         await atomicWrite(ctx.manifestFile, JSON.stringify(snapshot), { mode: 0o600 });
       });
     }

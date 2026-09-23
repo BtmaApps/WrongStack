@@ -207,6 +207,46 @@ describe('queryOsvBatch', () => {
     ]);
   });
 
+  it('propagates cancellation during hydration instead of returning degraded advisories', async () => {
+    const controller = new AbortController();
+    requestWithRetry.mockImplementation(
+      async (opts: { method?: string; path?: string; signal?: AbortSignal }) => {
+        if (opts.method === 'POST') {
+          return ok([{ vulns: [{ id: 'HYDRA-ABORT-FIRST' }, { id: 'HYDRA-ABORT-SECOND' }] }]);
+        }
+        if (opts.method === 'GET') {
+          controller.abort();
+          opts.signal?.throwIfAborted();
+        }
+        throw new Error(`unexpected HTTP call ${opts.method} ${opts.path}`);
+      },
+    );
+
+    await expect(
+      queryOsvBatch(['pkg:npm/abort-hydration@1.0.0'], { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(
+      requestWithRetry.mock.calls
+        .map(([opts]) => opts as { method?: string; path?: string })
+        .filter((opts) => opts.method === 'GET')
+        .map((opts) => opts.path),
+    ).toEqual(['/v1/vulns/HYDRA-ABORT-FIRST']);
+  });
+
+  it('honors cancellation when a hydration response wins the transport race', async () => {
+    const controller = new AbortController();
+    requestWithRetry.mockImplementation(async (opts: { method?: string }) => {
+      if (opts.method === 'POST') return ok([{ vulns: [{ id: 'HYDRA-ABORT-RESPONSE' }] }]);
+      controller.abort();
+      return { statusCode: 404, headers: {}, body: 'not found' };
+    });
+
+    await expect(
+      queryOsvBatch(['pkg:npm/abort-response@1.0.0'], { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(requestWithRetry).toHaveBeenCalledTimes(2);
+  });
+
   it('caches hydrations across calls (no repeated GETs for the same id)', async () => {
     requestWithRetry.mockImplementation(async (opts: { method?: string; path?: string }) => {
       if (opts.method === 'POST' && opts.path === '/v1/querybatch') {

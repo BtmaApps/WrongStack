@@ -1,5 +1,5 @@
 import { BrainCircuit, Monitor, Palette, Sparkles, Type } from 'lucide-react';
-import { useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
@@ -53,20 +53,34 @@ const MULTI_DIFF_PRESETS = [0, 3, 5, 8, 10, 15] as const;
 export function DisplaySection({ syncPref }: DisplaySectionProps) {
   const { t } = useAppTranslation();
   const localPrefs = useLocalPrefs();
+  const [thinkingWordDraft, setThinkingWordDraft] = useState(localPrefs.thinkingWord);
+  const [thinkingWordEditing, setThinkingWordEditing] = useState(false);
+  const [thinkingWordError, setThinkingWordError] = useState(false);
 
-  const setThinkingWord = useCallback(
-    (raw: string) => {
-      const next = raw.trim().toLowerCase().slice(0, 32);
-      // Empty string or whitespace-only → no-op; keep the previous value.
-      // The TUI's RefinePanel validates that the word is single-token
-      // letters/digits/_- and rejects anything else; the WebUI mirrors that
-      // by clamping length + lowercasing, but does not enforce the regex
-      // (a user typing "hello!" is allowed; the next session just keeps
-      // the previous valid value if the core refuses it).
-      if (next.length > 0) syncPref('thinkingWord', next);
-    },
-    [syncPref],
-  );
+  useEffect(() => {
+    if (!thinkingWordEditing) setThinkingWordDraft(localPrefs.thinkingWord);
+  }, [localPrefs.thinkingWord, thinkingWordEditing]);
+
+  const commitThinkingWord = () => {
+    const next = thinkingWordDraft.trim();
+    if (!next) {
+      setThinkingWordDraft(localPrefs.thinkingWord);
+      setThinkingWordEditing(false);
+      setThinkingWordError(false);
+      return;
+    }
+    // Match the TUI's single-token, 16-character contract. Keep an invalid
+    // draft visible so the user can correct it instead of silently saving a
+    // value that the TUI will later replace with its default.
+    if (next.length > 16 || !/^[\p{L}\p{N}_-]+$/u.test(next)) {
+      setThinkingWordError(true);
+      return;
+    }
+    setThinkingWordDraft(next);
+    setThinkingWordEditing(false);
+    setThinkingWordError(false);
+    if (next !== localPrefs.thinkingWord) syncPref('thinkingWord', next);
+  };
 
   return (
     <div className="space-y-6">
@@ -155,17 +169,44 @@ export function DisplaySection({ syncPref }: DisplaySectionProps) {
               <Type className="h-3.5 w-3.5 text-muted-foreground" />
               {t('settings:display.thinkingWordLabel')}
             </label>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            <p
+              id="display-thinking-word-hint"
+              className="text-xs text-muted-foreground mt-0.5 mb-2"
+            >
               {t('settings:display.thinkingWordHint')}
             </p>
             <Input
               id="display-thinking-word"
-              value={localPrefs.thinkingWord}
-              maxLength={32}
-              onChange={(e) => setThinkingWord(e.target.value)}
+              value={thinkingWordDraft}
+              maxLength={16}
+              aria-invalid={thinkingWordError}
+              aria-describedby={`display-thinking-word-hint${thinkingWordError ? ' display-thinking-word-error' : ''}`}
+              onChange={(e) => {
+                setThinkingWordDraft(e.target.value);
+                setThinkingWordEditing(true);
+                setThinkingWordError(false);
+              }}
+              onBlur={commitThinkingWord}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitThinkingWord();
+                if (e.key === 'Escape') {
+                  setThinkingWordDraft(localPrefs.thinkingWord);
+                  setThinkingWordEditing(false);
+                  setThinkingWordError(false);
+                }
+              }}
               className="font-mono text-sm"
               placeholder={t('activity:displaySection.thinking')}
             />
+            {thinkingWordError && (
+              <p
+                id="display-thinking-word-error"
+                role="alert"
+                className="mt-1 text-xs text-destructive"
+              >
+                {t('settings:display.thinkingWordInvalid')}
+              </p>
+            )}
           </div>
           {/* TUI field 34 — statuslineMode */}
           <div className="py-3">

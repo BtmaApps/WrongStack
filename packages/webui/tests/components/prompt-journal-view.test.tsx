@@ -11,7 +11,7 @@
  * `setLoading(true)`), and leave the page stuck on the loading state.
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PromptJournalView } from '../../src/components/PromptJournalView';
 import type { WSPromptJournalEntry, WSPromptsJournalPayload } from '../../src/types/server-message';
 
@@ -73,7 +73,14 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('PromptJournalView', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('requests the journal on mount and renders the loading state', () => {
     render(<PromptJournalView />);
 

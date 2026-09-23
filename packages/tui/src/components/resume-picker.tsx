@@ -118,6 +118,16 @@ export function ResumePicker({
                   {...(isSelected ? { color: isCurrent || live ? 'gray' : 'cyan' } : {})}
                 >
                   {isSelected ? '› ' : '  '}
+                  {s.treePrefix ? <Text dimColor>{s.treePrefix}</Text> : null}
+                  {s.worktree ? (
+                    <Text color="magenta">
+                      [{s.worktree.name}
+                      {s.worktree.branch && s.worktree.branch !== s.worktree.name
+                        ? ` · ${s.worktree.branch}`
+                        : ''}
+                      ]{' '}
+                    </Text>
+                  ) : null}
                   <Text bold dimColor={(isCurrent ?? false) || live !== undefined}>
                     {displayName}
                   </Text>

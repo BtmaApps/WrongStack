@@ -71,6 +71,7 @@ export const BOOLEAN_FLAGS = new Set([
   'skip',
   'skip-index',
   'mouse',
+  'ascii',
   'no-interactive',
   'token-saving-mode',
   'system-lite',

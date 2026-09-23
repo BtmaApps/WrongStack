@@ -70,7 +70,14 @@ function makeStat(role: string) {
   };
 }
 
+import { i18n } from '@/i18n';
+
 describe('AgentRosterView — bulk optimize refreshes the selected consolidated doc', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     sendRosterMessage.mockReset();
     sendRosterMessage.mockImplementation(async (type: string) => {

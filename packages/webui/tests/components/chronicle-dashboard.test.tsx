@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ChroniclePipelineStrip } from '@/components/ChroniclePipelineStrip';
 import type { ChronicleStatus } from '@/types/chronicle';
@@ -8,7 +8,14 @@ afterEach(() => {
   cleanup();
 });
 
+import { i18n } from '@/i18n';
+
 describe('ChronicleDashboard ownership visibility', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders the authoritative collect-process-serve pipeline', () => {
     const status: ChronicleStatus = {
       mode: 'server',

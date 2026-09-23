@@ -19,6 +19,7 @@ import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
+import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from '../openai-chat-usage.js';
 import { isOpenAIEffort } from '../openai-shared.js';
 import { applyPromptCacheKey } from '../prompt-cache-key.js';
 import { normalizeOpenAI } from '../stop-reason.js';
@@ -254,68 +255,8 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
       state.sawTerminal = true;
     }
 
-    const u = obj['usage'] as
-      | {
-          prompt_tokens?: number | undefined;
-          input_tokens?: number | undefined;
-          completion_tokens?: number | undefined;
-          total_tokens?: number | undefined;
-          prompt_tokens_details?: {
-            cached_tokens?: number | undefined;
-            cache_write_tokens?: number | undefined;
-          };
-          prompt_cache_hit_tokens?: number | undefined;
-          prompt_cache_miss_tokens?: number | undefined;
-        }
-      | undefined;
-    if (u) {
-      // Mirror openai.ts: disjoint semantics: input is fresh-only,
-      // cacheRead is the cached subset. Subtracting prevents the cost
-      // calc / cache-hit-ratio from double-counting cached tokens.
-      const hasDeepSeekCacheFields =
-        u.prompt_cache_hit_tokens !== undefined || u.prompt_cache_miss_tokens !== undefined;
-      const cached = nonNegative(
-        u.prompt_tokens_details?.cached_tokens ?? u.prompt_cache_hit_tokens,
-      );
-      const cacheWrite = nonNegative(u.prompt_tokens_details?.cache_write_tokens);
-      const completion = nonNegative(u.completion_tokens, state.usage.output);
-      // MiniMax (and other lean OpenAI-compatible endpoints) may report only
-      // `total_tokens` + `completion_tokens` with no `prompt_tokens`; derive
-      // prompt = total − completion so the input count is recovered instead of
-      // collapsing to 0. Ordered after the explicit prompt fields.
-      const hasPromptTotal = u.prompt_tokens !== undefined;
-      const hasFreshInputDelta = !hasPromptTotal && u.input_tokens !== undefined;
-      const cacheMiss = optionalNonNegative(u.prompt_cache_miss_tokens);
-      const reportedPromptTotal = hasPromptTotal
-        ? nonNegative(u.prompt_tokens)
-        : hasDeepSeekCacheFields
-          ? nonNegative(u.prompt_cache_hit_tokens) + nonNegative(u.prompt_cache_miss_tokens)
-          : u.total_tokens !== undefined
-            ? Math.max(0, u.total_tokens - completion)
-            : state.usage.input + cached + cacheWrite;
-      // Some hybrid gateways expose Anthropic/MiniMax semantics through an
-      // OpenAI-shaped envelope: input_tokens is fresh-only and cache tokens
-      // are separate. prompt_tokens, when present, remains OpenAI's total.
-      // If a broken gateway reports cached > prompt total, preserve both
-      // counters instead of producing a >100% cache ratio.
-      const promptTotal =
-        hasPromptTotal && cached > reportedPromptTotal
-          ? reportedPromptTotal + cached
-          : reportedPromptTotal;
-      const nextUsage: Usage = {
-        input:
-          cacheMiss ??
-          (hasFreshInputDelta
-            ? Math.max(0, u.input_tokens ?? 0)
-            : Math.max(0, promptTotal - cached - cacheWrite)),
-        output: completion,
-        cacheRead: cached || state.usage.cacheRead,
-      };
-      if (cacheWrite || state.usage.cacheWrite !== undefined) {
-        nextUsage.cacheWrite = cacheWrite || state.usage.cacheWrite;
-      }
-      state.usage = nextUsage;
-    }
+    const u = obj['usage'] as OpenAIChatUsageWire | undefined;
+    if (u) state.usage = normalizeOpenAIChatUsage(u, state.usage);
 
     return out;
   },
@@ -350,14 +291,6 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
   // OpenAI SSE contract this reliably means truncation.
   isTruncated: (state) => state.started && !state.sawTerminal,
 });
-
-function nonNegative(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
-}
-
-function optionalNonNegative(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
-}
 
 /**
  * Translate a canonical `ResponseFormat` to OpenAI's `response_format` body field.

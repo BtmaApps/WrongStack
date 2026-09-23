@@ -46,9 +46,9 @@ function parseGemfile(content: string): Array<{
     .join('\n');
   for (const match of code.matchAll(gemRegex)) {
     const name = match[1]!;
-    // Hard-coded name skip, pinned by tests/adapters/extra-adapters.test.ts: a
-    // declaration named `rails`/`ruby` is dropped regardless of its syntax.
-    if (name === 'rails' || name === 'ruby') continue;
+    // Preserve the existing `ruby` exclusion; Rails is an ordinary gem and
+    // must remain visible to inventory and advisory enrichment.
+    if (name === 'ruby') continue;
     const tail = match[2] ?? '';
     const version = /^\s*,\s*['"]([^'"]+)['"]/.exec(tail)?.[1];
     const sourceType = /\b(?:git|github):/.test(tail)

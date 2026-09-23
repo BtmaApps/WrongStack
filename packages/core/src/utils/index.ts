@@ -1,3 +1,4 @@
+export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';
 export * from './assert-never.js';
 export * from './atomic-write.js';
 export { deriveCachePrefixKey } from './cache-key.js';

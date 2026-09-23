@@ -13,10 +13,10 @@ import {
 import { useMemo, useState } from 'react';
 import {
   ExternalDoc,
+  heroTitleFontSize,
   PageHero,
   PageNext,
   SectionIntro,
-  heroTitleFontSize,
 } from '@/components/site/primitives';
 import { pluginDetails } from '@/data/plugin-details';
 import { pluginLlmProfile, pluginSearchTerms } from '@/data/plugin-operational';
@@ -42,7 +42,7 @@ const filterOptions: Array<{ value: PluginFilter; label: string }> = [
   { value: 'low', label: 'Low risk' },
   { value: 'medium', label: 'Medium risk' },
   { value: 'high', label: 'High risk' },
-  { value: 'llm', label: 'LLM / provider aware' },
+  { value: 'llm', label: 'Model / provider aware' },
   { value: 'mutating', label: 'Mutating tools' },
   { value: 'hooks', label: 'Lifecycle hooks' },
 ];
@@ -64,11 +64,11 @@ const catalogStats = {
 const sourceDetails = {
   Core: {
     title: 'Core first-party plugins',
-    body: 'Six host-level feature plugins composed by WrongStack itself: prompts, sync, cloud config sync, Chimera, skills and mid-session auto-review.',
+    body: `${catalogStats.core} host-level feature plugins composed by WrongStack itself, including prompts, sync, skills and bounded review workflows.`,
   },
   Suite: {
     title: '@wrongstack/plugins suite',
-    body: 'Sixty-five focused workflow, quality, security, provider-wire and developer-experience plugins available from one package.',
+    body: `${catalogStats.suite} focused workflow, quality, security, provider-wire and developer-experience plugins available from one package.`,
   },
   Bridge: {
     title: 'Interface bridges',
@@ -146,7 +146,7 @@ export function PluginsPage() {
             [String(catalogStats.bridges), 'bridges'],
             [String(catalogStats.active), 'active defaults'],
             [String(catalogStats.inactive), 'explicit opt-in'],
-            [String(catalogStats.llmAware), 'LLM / provider aware'],
+            [String(catalogStats.llmAware), 'model / provider aware'],
             [String(catalogStats.mutating), 'mutating plugins'],
           ].map(([value, label], index) => (
             <div key={label} className="bg-surface px-4 py-7 text-center">

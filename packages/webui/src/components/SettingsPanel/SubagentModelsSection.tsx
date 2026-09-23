@@ -31,6 +31,10 @@ export function SubagentModelsSection({
   const plan = prefs.subagentModelPlan ?? { enabled: true, lock: true, slots: [] };
   const lanes: SubagentLane[] =
     plan.slots.length > 0 ? plan.slots : Array.from({ length: DEFAULT_LANES }, () => ({}));
+  const minimumLaneCount = Math.max(
+    1,
+    lanes.reduce((last, lane, index) => (isPinned(lane) ? index + 1 : last), 0),
+  );
   const patch = useCallback(
     (next: Partial<SubagentModelPlan>) =>
       syncPref('subagentModelPlan', { ...plan, slots: lanes, ...next }),
@@ -43,7 +47,9 @@ export function SubagentModelsSection({
   );
   const setLaneCount = useCallback(
     (count: number) => {
-      const next = Math.max(1, Math.min(MAX_LANES, count));
+      // Reducing the count must not silently discard a pinned model. Clear
+      // those lanes explicitly before shrinking past them.
+      const next = Math.max(minimumLaneCount, Math.min(MAX_LANES, count));
       patch({
         slots:
           next <= lanes.length
@@ -51,7 +57,7 @@ export function SubagentModelsSection({
             : [...lanes, ...Array.from({ length: next - lanes.length }, (): SubagentLane => ({}))],
       });
     },
-    [lanes, patch],
+    [lanes, minimumLaneCount, patch],
   );
   const pinnedCount = lanes.filter(isPinned).length;
   const following = plan.followSessionModel === true;
@@ -102,7 +108,7 @@ export function SubagentModelsSection({
           Lanes
           <input
             type="number"
-            min={1}
+            min={minimumLaneCount}
             max={MAX_LANES}
             value={lanes.length}
             disabled={following}
@@ -116,6 +122,11 @@ export function SubagentModelsSection({
             : `${pinnedCount} pinned`}
         </span>
       </div>
+      {minimumLaneCount > 1 && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Clear pinned lanes before reducing the count below {minimumLaneCount}.
+        </p>
+      )}
       <div className={`space-y-1.5 ${following ? 'pointer-events-none opacity-50' : ''}`}>
         {lanes.map((lane, index) => {
           const value = laneValue(lane);

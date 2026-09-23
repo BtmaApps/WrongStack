@@ -35,7 +35,7 @@
  *
  * @public
  */
-import type { Plugin } from '@wrongstack/core/types';
+import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -377,7 +377,10 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['dep-guard']);
 
-    const hook = async (input: { toolName?: string | undefined; toolInput?: unknown }) => {
+    const hook = async (
+      input: { toolName?: string | undefined; toolInput?: unknown },
+      hookContext?: HookInvocationContext,
+    ) => {
       if (!cfg.enabled) return;
       state.invocations += 1;
       const ti = (input.toolInput ?? {}) as Record<string, unknown>;
@@ -421,9 +424,14 @@ const plugin: Plugin = {
             const baseNote = `"${pkg.name}" is one edit away from the well-known package "${lookalike}" — possible typosquat. Verify the name before installing.`;
             if (cfg.confirmTyposquatsWithLlm && api.llm) {
               try {
+                const reviewSignal = hookContext?.signal
+                  ? AbortSignal.any([hookContext.signal, AbortSignal.timeout(3000)])
+                  : AbortSignal.timeout(3000);
                 const question = `Classify whether npm package "${pkg.name}" is likely a typo or typosquat of "${lookalike}".`;
                 const council = api.llm.council
                   ? await api.llm.council(question, {
+                      signal: reviewSignal,
+                      timeoutMs: 3000,
                       context:
                         'The only supplied evidence is that the names have edit distance 1. Do not invent registry, download, ownership, or provenance facts.',
                       profile: 'risk-review',
@@ -448,9 +456,12 @@ const plugin: Plugin = {
                             'You are a supply-chain security assistant. Use only supplied evidence and preserve uncertainty.',
                           role: 'security-reviewer',
                           maxTokens: 100,
+                          timeoutMs: 3000,
+                          signal: reviewSignal,
                         },
                       )
                     ).text.trim();
+                reviewSignal.throwIfAborted();
                 if (t) {
                   state.llmConfirmCount += 1;
                   api.metrics.counter('llm_confirm');

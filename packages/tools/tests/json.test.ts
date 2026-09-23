@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MAX_SUBJECT_LEN } from '../src/_regex.js';
 import { jsonTool as rawJsonTool } from '../src/json.js';
 
 let tmpDir: string;
@@ -352,6 +353,26 @@ describe('jsonTool action: validate', () => {
     expect(bad.errors?.some((e) => e.includes('missing required property "age"'))).toBe(true);
   });
 
+  it('does not count inherited object properties as JSON Schema required fields', async () => {
+    const missing = await jsonTool.execute({
+      action: 'validate',
+      data: '{}',
+      schema: { type: 'object', required: ['constructor', 'toString'] },
+    });
+    expect(missing.valid).toBe(false);
+    expect(missing.errors).toEqual([
+      '$: missing required property "constructor"',
+      '$: missing required property "toString"',
+    ]);
+
+    const present = await jsonTool.execute({
+      action: 'validate',
+      data: '{"constructor":"own","toString":"own"}',
+      schema: { type: 'object', required: ['constructor', 'toString'] },
+    });
+    expect(present.valid).toBe(true);
+  });
+
   it('accepts omitted optional object properties', async () => {
     const result = await jsonTool.execute({
       action: 'validate',
@@ -395,6 +416,35 @@ describe('jsonTool action: validate', () => {
       });
       expect(bad.valid).toBe(false);
       expect(bad.errors?.some((e) => e.includes('does not match pattern'))).toBe(true);
+    });
+
+    it('never validates an over-cap string by matching only its prefix', async () => {
+      const schema = { type: 'string', pattern: '^a+$' };
+      const withinCap = await jsonTool.execute({
+        action: 'validate',
+        data: JSON.stringify('a'.repeat(MAX_SUBJECT_LEN)),
+        schema,
+      });
+      expect(withinCap.valid).toBe(true);
+
+      const mismatchWithinCap = await jsonTool.execute({
+        action: 'validate',
+        data: JSON.stringify(`${'a'.repeat(MAX_SUBJECT_LEN - 1)}b`),
+        schema,
+      });
+      expect(mismatchWithinCap.valid).toBe(false);
+
+      for (const text of [`${'a'.repeat(MAX_SUBJECT_LEN)}b`, 'a'.repeat(MAX_SUBJECT_LEN + 1)]) {
+        const overCap = await jsonTool.execute({
+          action: 'validate',
+          data: JSON.stringify(text),
+          schema,
+        });
+        expect(overCap.valid).toBe(false);
+        expect(overCap.errors).toContain(
+          `$: pattern cannot be checked beyond ${MAX_SUBJECT_LEN} characters`,
+        );
+      }
     });
 
     it('refuses a catastrophic-backtracking pattern instead of running it', async () => {

@@ -32,6 +32,7 @@ import { useCodemapIndexStore } from '@/stores/codemap-index-store';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useAppTranslation } from '@/i18n';
 import { CodeMapActivityDrawer } from './CodeMapActivityDrawer';
 import {
   activityFingerprint,
@@ -175,6 +176,7 @@ function CodeMapInner(): React.ReactElement {
   const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { fitView } = useReactFlow();
 
+  const { t } = useAppTranslation();
   const fetchGraph = useCallback(
     async (targetScope: CodeMapScope, force = false): Promise<CodeMapGraphResponse> => {
       const key = scopeKey(targetScope);
@@ -197,12 +199,20 @@ function CodeMapInner(): React.ReactElement {
         const body = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(body.error ?? `HTTP ${response.status}`);
       }
-      const nextGraph = (await response.json()) as CodeMapGraphResponse;
+      // A 200 whose body is HTML is the SPA fallback, not a graph — surface
+      // the friendly server-unavailable message instead of a parse exception.
+      const nextGraph = await response.json().catch(() => {
+        throw new Error(
+          t('activity:codeMap.snapshotUnavailable', {
+            defaultValue: 'CodeMap graph unavailable — start the WebUI server to load it.',
+          }),
+        );
+      }) as CodeMapGraphResponse;
       touchClientGraphCache(cache.current, key, nextGraph, MAX_CLIENT_GRAPH_CACHE);
       setCacheRevision((revision) => revision + 1);
       return nextGraph;
     },
-    [],
+    [t],
   );
 
   useEffect(() => {

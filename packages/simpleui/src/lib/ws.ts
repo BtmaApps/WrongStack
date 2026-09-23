@@ -243,6 +243,16 @@ const SIMPLE_CONNECTION_CONFIG = {
   queueCharLimit: 8 * 1024 * 1024,
 };
 
+/** Handle for retracting a still-queued outgoing frame, returned by
+ *  {@link SimpleSocket.send} when the frame was parked in the disconnected
+ *  send queue instead of being transmitted. `retract()` removes it so a
+ *  cancelled or timed-out request does not still execute after reconnect.
+ *  Frames already on the wire cannot be unsent — send() returns undefined
+ *  for those (and when the frame was dropped for queue overflow). */
+export interface SendRetractHandle {
+  retract(): void;
+}
+
 export class SimpleSocket {
   private socket: WebSocket | null = null;
   private connectionState: SurfaceConnectionState = createSurfaceConnectionState();
@@ -265,6 +275,14 @@ export class SimpleSocket {
   async connect(): Promise<void> {
     if (this.connectionState.stopped) return;
     const generation = ++this.connectGeneration;
+    // A reconnect timer from an earlier close may still be pending. If it
+    // fired after THIS connect() opened a fresh socket, its own connect()
+    // would bump the generation and tear the healthy socket down via
+    // `previousSocket?.close()`. Starting a connect retires the timer.
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
     this.connectionState = markConnectionConnecting(this.connectionState);
     this.options.onState('connecting');
     const url = await exchangeAuthCookie(defaultWsUrl());
@@ -325,7 +343,7 @@ export class SimpleSocket {
     });
   }
 
-  send(type: string, payload: Record<string, unknown> = {}): void {
+  send(type: string, payload: Record<string, unknown> = {}): SendRetractHandle | undefined {
     const decoded = decodeProtocolMessage({ type, payload }, 'client');
     if (!decoded.ok) {
       throw new Error(decoded.issue.message);
@@ -369,6 +387,14 @@ export class SimpleSocket {
     }
     this.queue.push(serialized);
     this.queueChars += serialized.length;
+    return {
+      retract: (): void => {
+        const index = this.queue.indexOf(serialized);
+        if (index < 0) return;
+        this.queue.splice(index, 1);
+        this.queueChars = Math.max(0, this.queueChars - serialized.length);
+      },
+    };
   }
 
   close(): void {

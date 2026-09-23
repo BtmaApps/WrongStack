@@ -56,10 +56,14 @@ export function handleSessionStartMessage(params: {
   } = deps;
 
   const payload = message.payload ?? {};
+  const sessionProjection = projectSessionMessage(message);
+  // Bookkeeping resets must wait until the frame proved projectable: a
+  // malformed session.start used to clear the in-flight next-steps state
+  // while leaving every other piece of session state untouched — a partial
+  // reset.
+  if (!sessionProjection) return;
   nextStepsByToolId.clear();
   resetCompletedToolNextSteps();
-  const sessionProjection = projectSessionMessage(message);
-  if (!sessionProjection) return;
   const {
     id,
     provider,

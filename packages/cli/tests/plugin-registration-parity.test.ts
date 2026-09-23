@@ -5,7 +5,7 @@ import { OFFICIAL_PLUGIN_SPECIFIERS } from '@wrongstack/plugins/factories';
 import { OFFICIAL_PLUGIN_MANIFEST } from '@wrongstack/plugins/manifest';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_AUDIT_ENTRIES } from '../src/plugin-management.js';
-import { BUILTIN_PLUGIN_FACTORIES } from '../src/wiring/plugins.js';
+import { BUILTIN_PLUGIN_FACTORIES, BUILTIN_PLUGIN_NAME_HINTS } from '../src/wiring/plugins.js';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const pluginsRoot = path.resolve(testDir, '..', '..', 'plugins');
@@ -81,11 +81,11 @@ function expectSameNames(surface: string, expected: string[], actual: Iterable<s
 describe('@wrongstack/plugins registration parity', () => {
   it('keeps host-owned runtime factories and audit rows in sync', async () => {
     const official = new Set(OFFICIAL_PLUGIN_MANIFEST.map((entry) => entry.name));
-    const runtimeHostNames = (
+    const runtimeNames = (
       await Promise.all(BUILTIN_PLUGIN_FACTORIES.map((factory) => factory()))
-    )
-      .map((plugin) => plugin.name)
-      .filter((name) => !official.has(name));
+    ).map((plugin) => plugin.name);
+    expect(BUILTIN_PLUGIN_NAME_HINTS).toEqual(runtimeNames);
+    const runtimeHostNames = runtimeNames.filter((name) => !official.has(name));
     const auditHostNames = PLUGIN_AUDIT_ENTRIES.map((entry) => entry.name).filter(
       (name) => !official.has(name),
     );

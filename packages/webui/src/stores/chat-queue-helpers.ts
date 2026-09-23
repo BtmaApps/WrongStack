@@ -46,3 +46,25 @@ export function normalizeQueuedItem(value: unknown): QueuedItem | null {
 }
 
 export const BTW_DISPATCH_GRACE_MS = 1_800;
+
+/**
+ * Hands a `queue`-mode prompt to the server's session queue. Returns false
+ * when the server cannot take it (older server, disconnected, no session yet),
+ * and the lane then keeps it locally the way it always has.
+ */
+export type RemotePromptQueue = (
+  sessionId: string,
+  text: string,
+  images: QueuedItem['images'],
+) => boolean;
+
+let remotePromptQueue: RemotePromptQueue | null = null;
+
+/** Installed by the WebSocket layer, which knows whether the server has a queue. */
+export function setRemotePromptQueue(queue: RemotePromptQueue | null): void {
+  remotePromptQueue = queue;
+}
+
+export function getRemotePromptQueue(): RemotePromptQueue | null {
+  return remotePromptQueue;
+}

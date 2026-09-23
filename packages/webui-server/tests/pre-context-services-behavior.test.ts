@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
     installCatalogModelOutputLimits: vi.fn(),
     createMcpControlTool: vi.fn(() => ({ name: 'mcp_control' })),
     createMcpUseTool: vi.fn(() => ({ name: 'mcp_use' })),
+    createSessionRenameTool: vi.fn(() => ({ name: 'session_rename' })),
     registerCanonicalHostTools: vi.fn(),
     resolveProviderModelMetadata: vi.fn(),
     resolveSetupProvider: vi.fn(),
@@ -97,6 +98,8 @@ vi.mock('@wrongstack/core/skills', () => ({ SkillInstaller: class SkillInstaller
 vi.mock('@wrongstack/core/tools', () => ({
   createMcpControlTool: mocks.createMcpControlTool,
   createMcpUseTool: mocks.createMcpUseTool,
+  createSessionRenameTool: mocks.createSessionRenameTool,
+  SESSION_RENAME_TOOL_NAME: 'session_rename',
 }));
 vi.mock('@wrongstack/core/storage', () => ({
   AnnotationsStore: class AnnotationsStoreMock {},
@@ -201,6 +204,7 @@ describe('createPreContextServices', () => {
     const sessionStore = {
       create: vi.fn().mockResolvedValue(session),
       prune: vi.fn(),
+      rename: vi.fn().mockResolvedValue(undefined),
     };
     const touchProject = vi.fn().mockResolvedValue(undefined);
     const logger = { info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
@@ -271,6 +275,13 @@ describe('createPreContextServices', () => {
       provider: 'openai',
     });
     expect(touchProject).toHaveBeenCalledWith('D:/repo', 'D:/repo/src');
+    // session_rename renames through the host's session store.
+    expect(toolRegistry.registerDefault).toHaveBeenCalledWith({ name: 'session_rename' });
+    const renameOpts = mocks.createSessionRenameTool.mock.calls[0]?.[0] as unknown as {
+      rename: (id: string, name: string) => Promise<unknown>;
+    };
+    await renameOpts.rename('session-1', 'Named');
+    expect(sessionStore.rename).toHaveBeenCalledWith('session-1', 'Named');
     expect(mocks.systemPromptBuild).toHaveBeenCalledWith({
       cwd: 'D:/repo',
       projectRoot: 'D:/repo',

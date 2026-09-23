@@ -55,6 +55,7 @@ export {
   type MCPRequestOptions,
   type Transport,
 } from './client.js';
+export { mcpEnvPlaceholders } from './config-env.js';
 export {
   MCP_CONSTANTS,
   negotiateProtocolVersion,
@@ -76,6 +77,14 @@ export type {
   MCPTool,
   ToolCallResult,
 } from './contracts.js';
+export type {
+  ElicitationField,
+  ElicitationRequester,
+  MCPElicitationHandler,
+  MCPElicitationRequest,
+  MCPElicitationResult,
+} from './elicitation.js';
+export { elicitViaUserInput } from './elicitation-form.js';
 export {
   addMcp,
   disableMcp,

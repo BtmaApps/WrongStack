@@ -190,6 +190,14 @@ export interface PluginLLM {
   ): Promise<import('./council.js').CouncilResult>;
 }
 
+/** Structured, opt-in Jev judgments through the host's configured account. */
+export interface PluginJev {
+  judge(
+    input: Pick<import('../typesafe/client.js').SystemOneRequest, 'state' | 'questions'>,
+    opts?: { signal?: AbortSignal | undefined; timeoutMs?: number | undefined },
+  ): Promise<import('../typesafe/client.js').SystemOneResult>;
+}
+
 export interface PluginPipelines {
   request: ReadonlyPipeline<Request>;
   response: ReadonlyPipeline<Response>;
@@ -303,6 +311,8 @@ export interface PluginAPI {
    * `config.extensions[<name>].llm = { provider, model }`.
    */
   llm?: PluginLLM | undefined;
+  /** Available to first-party plugins; a call still requires a ready Jev account. */
+  jev?: PluginJev | undefined;
 }
 
 /**

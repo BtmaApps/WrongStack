@@ -373,6 +373,7 @@ export function createSessionAgentRegistry(
       loopDetection: template.loopDetection,
       refreshSystemPrompt: true,
       toolExecutor: template.toolExecutor,
+      tracer: template.tracer,
     });
     opts.onCreate?.(agent, sessionId);
     return agent;

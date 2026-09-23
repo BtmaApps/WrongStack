@@ -3042,6 +3042,7 @@
     "unsupportedNote": "elden geldiğince"
   },
   "codeMap": {
+    "snapshotUnavailable": "CodeMap grafı kullanılamıyor — yüklemek için WebUI sunucusunu başlatın.",
     "codeAtlas": "Kod Atlası",
     "architectureIntelligence": "Mimari zekâsı",
     "codeMapBreadcrumb": "Kod haritası içerik yolu",
@@ -3881,5 +3882,19 @@
     "customAnswerPlaceholder": "Diğer / özel yanıt (isteğe bağlı)",
     "youDecide": "Sen karar ver",
     "youDecideHint": "Bu soruyu yanıtlamak istemiyorum. Seçimi modele bırakıyorum."
+  },
+  "review": {
+    "addComment": "Bu satıra yorum ekle",
+    "placeholder": "İnceleme yorumu yaz… (Ctrl+Enter kaydeder, Esc iptal eder)",
+    "trayButton": "İnceleme ({{count}})",
+    "trayTitle": "İnceleme yorumları",
+    "empty": "Henüz yorum yok. Bir diff satırının üzerine gelip + ile yorum ekleyin.",
+    "sendToChat": "Sohbete gönder",
+    "sendToChatTitle": "İncelemenin tamamını tek mesaj olarak sohbet kutusuna koy",
+    "confirmClearTitle": "Tüm inceleme yorumları silinsin mi?",
+    "confirmClearMsg": "Yorumlar hiçbir yere gönderilmez.",
+    "outdated": "Güncel değil: bu yorum yazıldıktan sonra satır değişti",
+    "outdatedHeader": "Değişen satırlardaki yorumlar",
+    "removedLine": "silinen satır"
   }
 }

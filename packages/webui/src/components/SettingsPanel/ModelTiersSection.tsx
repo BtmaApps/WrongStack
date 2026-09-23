@@ -79,9 +79,15 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
       const nextRouting = Object.fromEntries(
         Object.entries(routing).filter(([, value]) => value !== id),
       );
-      syncPref('modelTiers', { ...tiers, levels: nextLevels, routing: nextRouting });
+      syncPref('modelTiers', {
+        ...tiers,
+        levels: nextLevels,
+        routing: nextRouting,
+        ...(tiers.default === id ? { default: undefined } : {}),
+        ...(leader.maxTier === id ? { leader: { ...leader, maxTier: undefined } } : {}),
+      });
     },
-    [syncPref, tiers, levels, routing],
+    [syncPref, tiers, levels, routing, leader],
   );
 
   const addLevel = () => {
@@ -105,11 +111,13 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
     patch({ routing: next });
   };
 
-  const numeric = (raw: string): number | undefined => {
+  const numeric = (raw: string, min = 0, integer = false): number | undefined => {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
-    const parsed = Number.parseFloat(trimmed);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) && parsed >= min && (!integer || Number.isSafeInteger(parsed))
+      ? parsed
+      : undefined;
   };
 
   return (
@@ -175,6 +183,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <select
+                  aria-label={`Fallback profile for ${id}`}
                   value={level.fallbackProfile ?? ''}
                   onChange={(e) => patchLevel(id, { fallbackProfile: e.target.value || undefined })}
                   className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
@@ -189,6 +198,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
                 </select>
 
                 <input
+                  aria-label={`Maximum cost for ${id}`}
                   type="number"
                   min={0}
                   step="0.01"
@@ -199,18 +209,26 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
                   data-testid={`model-tier-cost-${id}`}
                 />
                 <input
+                  aria-label={`Maximum iterations for ${id}`}
                   type="number"
-                  min={0}
+                  min={1}
+                  step={1}
                   value={level.maxIterations ?? ''}
-                  onChange={(e) => patchLevel(id, { maxIterations: numeric(e.target.value) })}
+                  onChange={(e) =>
+                    patchLevel(id, { maxIterations: numeric(e.target.value, 1, true) })
+                  }
                   placeholder="iters"
                   className="w-16 rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
                 />
                 <input
+                  aria-label={`Maximum tool calls for ${id}`}
                   type="number"
-                  min={0}
+                  min={1}
+                  step={1}
                   value={level.maxToolCalls ?? ''}
-                  onChange={(e) => patchLevel(id, { maxToolCalls: numeric(e.target.value) })}
+                  onChange={(e) =>
+                    patchLevel(id, { maxToolCalls: numeric(e.target.value, 1, true) })
+                  }
                   placeholder="tools"
                   className="w-16 rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
                 />
@@ -227,6 +245,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
         <div className="flex items-center gap-1.5">
           <input
+            aria-label="New level name"
             value={newLevelName}
             onChange={(e) => setNewLevelName(e.target.value)}
             onKeyDown={(e) => {
@@ -236,7 +255,12 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
             className="min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
             data-testid="model-tier-new-name"
           />
-          <Button size="sm" variant="outline" onClick={addLevel} disabled={!newLevelName.trim()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={addLevel}
+            disabled={!newLevelName.trim() || Boolean(levels[newLevelName.trim()])}
+          >
             <Plus className="mr-1 h-3 w-3" /> Add
           </Button>
         </div>
@@ -281,6 +305,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
 
         <div className="flex items-center gap-1.5">
           <input
+            aria-label="New route key"
             value={newRouteKey}
             onChange={(e) => setNewRouteKey(e.target.value)}
             placeholder="role, phase, or *"
@@ -288,6 +313,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
             data-testid="model-tier-new-route-key"
           />
           <select
+            aria-label="New route tier"
             value={newRouteTier}
             onChange={(e) => setNewRouteTier(e.target.value)}
             className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
@@ -303,6 +329,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
           <Button
             size="sm"
             variant="outline"
+            aria-label="Add route"
             onClick={addRoute}
             disabled={!newRouteKey.trim() || !newRouteTier}
           >
@@ -313,6 +340,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
         <div className="flex items-center gap-1.5 text-[11px]">
           <span className="text-muted-foreground">Default tier</span>
           <select
+            aria-label="Default tier"
             value={tiers.default ?? ''}
             onChange={(e) => patch({ default: e.target.value || undefined })}
             className="rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px]"
@@ -364,7 +392,7 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
               min={0}
               value={leader.dwellTurns ?? ''}
               onChange={(e) =>
-                patch({ leader: { ...leader, dwellTurns: numeric(e.target.value) } })
+                patch({ leader: { ...leader, dwellTurns: numeric(e.target.value, 0, true) } })
               }
               placeholder="6"
               className="w-14 rounded-sm border border-border bg-background px-1.5 py-0.5"

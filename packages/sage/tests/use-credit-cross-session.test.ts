@@ -27,6 +27,28 @@ describe('InjectionTracker — cross-session attribution', () => {
     expect(used).toEqual(['mem_a']);
   });
 
+  it('credits each session once when both independently received the same memory', () => {
+    const tracker = new InjectionTracker();
+    const now = Date.now();
+    tracker.record('mem_shared', TEXT, now, 'leader', TEXT);
+    tracker.record('mem_shared', TEXT, now, 'subagent-1', TEXT);
+    tracker.snapshotContextParts([TEXT], 'leader', now);
+    tracker.snapshotContextParts([TEXT], 'subagent-1', now);
+    const leaderIds = tracker.activeMemoryIds('leader');
+    const subagentIds = tracker.activeMemoryIds('subagent-1');
+
+    expect(tracker.consumeMatches(REPLY, now + 1, 'leader', { onlyIds: leaderIds })).toEqual([
+      'mem_shared',
+    ]);
+    expect(tracker.consumeMatches(REPLY, now + 2, 'leader', { onlyIds: leaderIds })).toEqual([]);
+    expect(tracker.consumeMatches(REPLY, now + 3, 'subagent-1', { onlyIds: subagentIds })).toEqual([
+      'mem_shared',
+    ]);
+    expect(tracker.consumeMatches(REPLY, now + 4, 'subagent-1', { onlyIds: subagentIds })).toEqual(
+      [],
+    );
+  });
+
   it('still refuses a memory that only another session received', () => {
     const tracker = new InjectionTracker();
     const now = Date.now();

@@ -370,7 +370,7 @@ export function createHostSubagentFactory(
       iterationTimeoutMs: config.tools?.iterationTimeoutMs ?? 120_000,
       maxToolTimeoutMs: config.tools?.maxToolTimeoutMs ?? 300_000,
       perIterationOutputCapBytes: config.tools?.perIterationOutputCapBytes ?? 100_000,
-      tracer: undefined,
+      tracer: host.deps.tracer,
       // Kanban tracks work; it does not gate it. Off unless the operator opts
       // in — and then subagents inherit it, because a worker dispatched by
       // `kanban_queue` already carries board/task/lease identity in ctx.meta
@@ -412,6 +412,7 @@ export function createHostSubagentFactory(
       context: ctx,
       permissionPolicy: new AutoApprovePermissionPolicy(subAllowedCaps),
       toolExecutor,
+      tracer: host.deps.tracer,
       loopDetection: config.tools?.loopDetection,
       // `tools.maxIterations` was never read on this host, so an operator who
       // set a turn budget got it honoured on the CLI and WebUI hosts and

@@ -15,6 +15,7 @@ const requestedSwitches = new Set<string>();
 vi.mock('@/lib/ws-client', () => ({
   getWSClient: () => ({
     send: () => {},
+    supportsCapability: () => false,
     consumeRequestedSwitch: (id: string) => requestedSwitches.delete(id),
     subscribeSessions: () => {},
     focusSessionById: () => {},

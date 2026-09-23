@@ -42,9 +42,42 @@ import githubLight from 'shiki/themes/github-light.mjs';
 
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 
+/**
+ * github-light with the four token colors that miss WCAG AA on SimpleUI's
+ * light code background (`--code-bg` #f0ede5, 12px code text) deepened in
+ * place — same hues, deeper values, every other token stock:
+ *
+ *   #d73a49 keyword/storage/operator punctuation → #b32d3d  (3.91 → ~5.3:1)
+ *   #6a737d comment                              → #59636d  (4.12 → ~5.2:1)
+ *   #e36209 variable / markdown list markers     → #a34a00  (2.98 → ~5.1:1)
+ *   #22863a entity.name.tag / regexp escapes     → #1a6b2e  (3.95 → ~5.6:1)
+ *
+ * Registered under its own name so `codeTheme('light')` can opt into it
+ * explicitly; dark ships the untouched github-dark-dimmed theme.
+ */
+const AA_LIGHT_TOKEN_COLORS: Readonly<Record<string, string>> = {
+  '#d73a49': '#b32d3d',
+  '#6a737d': '#59636d',
+  '#e36209': '#a34a00',
+  '#22863a': '#1a6b2e',
+};
+
+const githubLightAa: typeof githubLight = {
+  ...githubLight,
+  name: 'github-light-aa',
+  tokenColors: (githubLight.tokenColors ?? []).map((token) => {
+    const foreground = token.settings?.foreground?.toLowerCase();
+    const replacement =
+      foreground !== undefined ? AA_LIGHT_TOKEN_COLORS[foreground] : undefined;
+    return replacement
+      ? { ...token, settings: { ...token.settings, foreground: replacement } }
+      : token;
+  }),
+};
+
 export function getMarkdownHighlighter(): Promise<HighlighterCore> {
   highlighterPromise ??= createHighlighterCore({
-    themes: [githubDarkDimmed, githubLight],
+    themes: [githubDarkDimmed, githubLightAa],
     langs: [
       bash,
       c,

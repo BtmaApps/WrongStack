@@ -39,7 +39,14 @@ afterEach(() => {
   cleanup();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('MCPSection Edit dialog', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('loads stdio config details from the selected server', () => {
     render(<MCPSection />);
     emitServerList([

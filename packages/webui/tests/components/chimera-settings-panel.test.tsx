@@ -38,7 +38,14 @@ afterEach(() => {
   clearPersisted();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('ChimeraSettingsPanel — typed contract', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders every PrefKey it binds to (catches drift between panel and store)', () => {
     render(
       <ChimeraSettingsPanel

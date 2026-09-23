@@ -354,8 +354,10 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
   // (MAX_TIMEOUT_MS): the tool's own timer resolves with exit 124 + registry
   // tree-kill; the executor's AbortSignal.timeout is a blunt abort that would
   // otherwise fire first and discard the structured timeout result. The 10s
-  // margin covers the kill/teardown window. (The executor additionally clamps
-  // to config `tools.maxToolTimeoutMs`.)
+  // margin covers the kill/teardown window. The tool owns that timer, so the
+  // executor must not also clamp to `tools.maxToolTimeoutMs` (300s by
+  // default), which cut every `timeout` above 5 minutes short.
+  managesOwnTimeout: true,
   timeoutMs: MAX_TIMEOUT_MS + 10_000,
   capabilities: ['shell.restricted'],
   icon: 'terminal',

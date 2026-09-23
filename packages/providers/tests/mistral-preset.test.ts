@@ -85,6 +85,37 @@ describe('Mistral preset', () => {
     ]);
   });
 
+  it('sends prompt_cache_key so prefix-sharing requests hit one cache', () => {
+    const body = mistralWireFormat.buildBody({
+      model: 'mistral-large-latest',
+      maxTokens: 100,
+      messages: [{ role: 'user', content: 'hello' }],
+      cache: { key: 'prefix-abc' },
+    } as Parameters<typeof mistralWireFormat.buildBody>[0]);
+    expect(body['prompt_cache_key']).toBe('prefix-abc');
+  });
+
+  it('reports cached prompt tokens as cacheRead, not full-price input', async () => {
+    const events = await collectEvents(
+      sseBody([
+        JSON.stringify({ choices: [{ delta: { content: 'ok' } }] }),
+        JSON.stringify({
+          choices: [{ delta: {}, finish_reason: 'stop' }],
+          usage: {
+            prompt_tokens: 4000,
+            completion_tokens: 5,
+            prompt_tokens_details: { cached_tokens: 3500 },
+          },
+        }),
+        '[DONE]',
+      ]),
+    );
+    const stop = events.find((e) => e.type === 'message_stop') as
+      | { usage: Record<string, number> }
+      | undefined;
+    expect(stop?.usage).toMatchObject({ input: 500, output: 5, cacheRead: 3500 });
+  });
+
   it('parses text-only completion', async () => {
     const events = await collectEvents(
       sseBody([

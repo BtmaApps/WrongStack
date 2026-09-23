@@ -1,6 +1,22 @@
 {
   "title": "Settings",
   "subtitle": "Configure every aspect of your agent workspace",
+  "navigation": {
+    "browse": "Browse",
+    "search": "Find a setting…",
+    "clearSearch": "Clear search",
+    "noResults": "No matching settings",
+    "workspace": "Workspace",
+    "models": "Models & connections",
+    "behavior": "Agent behavior",
+    "system": "System & safety",
+    "label": "Settings sections"
+  },
+  "providerTest": {
+    "title": "Provider Test",
+    "description": "Test saved providers and subscriptions; inspect quota, authentication, latency, and token-limit failures.",
+    "open": "Open Provider Test"
+  },
   "tabs": {
     "general": "General",
     "provider": "Provider",
@@ -680,6 +696,9 @@
     "tokenSavingMedium": "Medium — significant savings",
     "tokenSavingAggressive": "Aggressive — smallest direct surface and prompt",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
+    "pluginSearch": "Search plugins",
+    "pluginEnabledOnly": "Enabled only",
+    "pluginNoMatches": "No plugins match this filter.",
     "pluginsPerPluginHint": "Enable or disable individual plugins. Changes take effect on next session.",
     "pluginChimera": "Chimera — post-session code review",
     "pluginSkills": "Skills — skill library & authoring",
@@ -760,6 +779,7 @@
     "statusChipHint": "Visual style for the TUI/CLI statusline and working-state chip.",
     "thinkingWordLabel": "Thinking word",
     "thinkingWordHint": "Single short word shown in the TUI status chip while the agent is working.",
+    "thinkingWordInvalid": "Use one word of up to 16 letters, numbers, underscores, or hyphens.",
     "statuslineModeLabel": "Statusline mode",
     "statuslineModeHint": "Density of the TUI statusline rail.",
     "statuslineModeMinimum": "Minimum",
@@ -795,11 +815,11 @@
     "sageDefault": "0.85 (default)",
     "sageStrict": "0.95 (strict)"
   },
-  "resetLabel": "Reset",
+  "resetLabel": "Clear local preferences",
   "cancel": "Cancel",
-  "resetConfirmTitle": "Reset all preferences?",
-  "resetConfirmBody": "This restores default settings and reloads the page.",
-  "resetConfirmAction": "Reset",
+  "resetConfirmTitle": "Clear this browser’s preferences?",
+  "resetConfirmBody": "Clears preferences stored in this browser and reloads the page. Connected settings are loaded again from the server.",
+  "resetConfirmAction": "Clear and reload",
   "brain": {
     "heading": "Brain",
     "headingHint": "Decision models, council, escalation and risk ceiling — applied live, saved to the global config.",

@@ -4,6 +4,7 @@ import type { MCPClientOptions, ToolsChangedListener } from './client-types.js';
 
 import type { ConnectionState, MCPTool } from './contracts.js';
 
+import type { ServerRequestResponder } from './elicitation.js';
 import type { MCPServerMetadata } from './protocol.js';
 
 import { type HttpTransportOptions, SSETransport, StreamableHTTPTransport } from './transport.js';
@@ -20,6 +21,7 @@ export interface ClientHttpConnectionHost {
   emitResourceUpdated: (uri: string) => void;
   _serverMetadata: MCPServerMetadata | undefined;
   httpTransport: StreamableHTTPTransport | undefined;
+  serverRequests: ServerRequestResponder;
 }
 export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> {
   if (!host.opts.url) {
@@ -34,6 +36,7 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
     requestTimeoutMs: host.opts.requestTimeoutMs,
     authorizationProvider: host.opts.authorizationProvider,
     allowPrivateNetworks: host.opts.allowPrivateNetworks,
+    serverRequests: host.serverRequests,
   };
   host.sseTransport = new SSETransport(httpOpts);
   host.sseTransport.onDisconnect(() => {
@@ -100,6 +103,7 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
     requestTimeoutMs: host.opts.requestTimeoutMs,
     authorizationProvider: host.opts.authorizationProvider,
     allowPrivateNetworks: host.opts.allowPrivateNetworks,
+    serverRequests: host.serverRequests,
   };
   host.httpTransport = new StreamableHTTPTransport(httpOpts);
   host.httpTransport.onDisconnect(() => {

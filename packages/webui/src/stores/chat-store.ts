@@ -95,6 +95,7 @@ function projectActiveLane(state: LanesState): ChatState {
     executions: lane.executions,
     toolMessageIdsByUseId: lane.toolMessageIdsByUseId,
     queue: lane.queue,
+    serverQueue: lane.serverQueue,
     runStart: lane.runStart,
     refining: lane.refining,
     pendingRefinement: lane.pendingRefinement,

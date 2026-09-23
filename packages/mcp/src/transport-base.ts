@@ -9,7 +9,9 @@ import {
   parseMcpBearerChallenge,
 } from './authorization.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
+import { type ServerRequest, ServerRequestResponder } from './elicitation.js';
 import type { MCPServerMetadata } from './protocol.js';
+import { readBodyCapped } from './read-body.js';
 import {
   ALLOW_MCP_PRIVATE_NETWORKS,
   isTlsUnsafeAllowed,
@@ -104,6 +106,8 @@ export interface HttpTransportOptions {
    * record is policy-checked before the dial.
    */
   lookup?: TransportDnsLookup | undefined;
+  /** The owning client's answerer for server→client requests (shared across reconnects). */
+  serverRequests?: ServerRequestResponder | undefined;
 }
 
 /**
@@ -121,9 +125,11 @@ export function nextJsonRpcId(id: number): number {
   return id >= Number.MAX_SAFE_INTEGER ? 1 : id + 1;
 }
 
-export function createTimeoutSignal(
+function createTimeoutSignal(
   parent: AbortSignal | undefined,
   timeoutMs: number,
+  /** While true when the timer fires, it re-arms instead of aborting. */
+  hold?: () => boolean,
 ): { signal: AbortSignal; dispose: () => void } {
   const ctrl = new AbortController();
   const onAbort = () => ctrl.abort(parent?.reason);
@@ -132,10 +138,15 @@ export function createTimeoutSignal(
   } else {
     parent?.addEventListener('abort', onAbort, { once: true });
   }
-  const timer = setTimeout(
-    () => ctrl.abort(new Error(`MCP HTTP request timed out after ${timeoutMs}ms`)),
-    timeoutMs,
-  );
+  const onTimeout = () => {
+    if (hold?.()) {
+      timer = setTimeout(onTimeout, timeoutMs);
+      timer.unref?.();
+      return;
+    }
+    ctrl.abort(new Error(`MCP HTTP request timed out after ${timeoutMs}ms`));
+  };
+  let timer = setTimeout(onTimeout, timeoutMs);
   timer.unref?.();
   return {
     signal: ctrl.signal,
@@ -180,8 +191,10 @@ export abstract class BaseHTTPTransport {
   protected readonly resourceUpdatedListeners = new Set<(uri: string) => void>();
   protected readonly promptsChangedListeners = new Set<() => void>();
   protected protocolVersion?: string | undefined;
+  protected readonly serverRequests: ServerRequestResponder;
 
   constructor(opts: HttpTransportOptions, transportName: string) {
+    this.serverRequests = opts.serverRequests ?? new ServerRequestResponder();
     validateTransportUrl(opts.url);
     this.name = opts.name;
     this.url = opts.url;
@@ -466,6 +479,46 @@ export abstract class BaseHTTPTransport {
       // (see dispatcher-types.d.ts). The cast through `unknown` is the standard
       // pattern for "I know this is compatible at runtime."
       fetchOpts.dispatcher = this.tlsAgent as never as HttpDispatcher;
+    }
+  }
+
+  /**
+   * Request timeout for a call. It holds while the server waits on the user's
+   * elicitation answer — that wait is the user typing, not the server stalling.
+   */
+  protected requestTimeoutSignal(
+    parent: AbortSignal | undefined,
+    timeoutMs: number,
+  ): { signal: AbortSignal; dispose: () => void } {
+    return createTimeoutSignal(parent, timeoutMs, () => this.serverRequests.awaitingUser);
+  }
+
+  /**
+   * Answer a server→client request. Over HTTP the reply is POSTed back like
+   * any client message; the server acknowledges it with 202. A failed reply is
+   * not retried — the server times its request out on its side.
+   */
+  protected async replyToServer(
+    request: ServerRequest,
+    url: string,
+    headers: Record<string, string>,
+  ): Promise<void> {
+    const response = await this.serverRequests.answer(request);
+    const timeoutSignal = createTimeoutSignal(this.abortController?.signal, this.requestTimeout);
+    const init: RequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(response),
+      signal: timeoutSignal.signal,
+    };
+    this.applyTlsAgent(init);
+    try {
+      const res = await this.fetchWithAuthorization(url, init, timeoutSignal.signal);
+      await readBodyCapped(res).catch(() => undefined);
+    } catch {
+      /* best-effort — see above */
+    } finally {
+      timeoutSignal.dispose();
     }
   }
 

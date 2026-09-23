@@ -33,7 +33,7 @@ We speak none of this. The spec keeps a backward-compatibility path for handshak
 | Area | Status |
 | --- | --- |
 | `initialize` / `notifications/initialized` + version negotiation | Yes (handshake model) |
-| `ping` | Yes (server side) |
+| `ping` | Yes (both directions) |
 | Transports: stdio, Streamable HTTP, HTTP+SSE | Yes (all three) |
 | `tools/list` (paginated), `tools/call` | Yes |
 | `resources/list`, `resources/templates/list`, `resources/read` (paginated) | Yes |
@@ -44,6 +44,8 @@ We speak none of this. The spec keeps a backward-compatibility path for handshak
 | `notifications/cancelled` | Yes |
 | Authorization: RFC 9728 + RFC 8414 discovery, PKCE S256, RFC 8707 resource indicators | Yes |
 | Authorization: dynamic client registration (RFC 7591) | Yes — but see Deprecated below |
+| Elicitation, form mode (`elicitation/create`) | Yes (added 2026-09-23) — see below |
+| Structured tool output (`outputSchema` / `structuredContent`) | Yes (added 2026-09-23) — see below |
 
 ## Not implemented — genuine gaps
 
@@ -51,8 +53,7 @@ We speak none of this. The spec keeps a backward-compatibility path for handshak
 | --- | --- | --- |
 | Per-request versioning + `server/discover` | `2026-07-28` | Architectural; not a list entry |
 | `UnsupportedProtocolVersionError` | `2026-07-28` | Follows the above |
-| **Elicitation** | `2025-06-18` | The only client feature in the current spec |
-| Structured tool output (`outputSchema` / `structuredContent`) | `2025-06-18` | |
+| Elicitation, URL mode | `2025-11-25` | Refused as invalid params; form mode is implemented |
 | Resource links in tool results | `2025-06-18` | |
 | `completion/complete` | `2025-03-26` | Argument autocompletion |
 | Progress (`notifications/progress`, `progressToken`) | `2024-11-05` | Cancellation is done; progress is not |
@@ -69,8 +70,46 @@ them. Earliest removal is the first revision on or after 2027-07-28.
 | **Roots** | Deprecated; migration path is tool parameters, resource URIs or server config. |
 | **Logging** (`logging/setLevel`, `notifications/message`) | Deprecated; migration path is stderr for stdio, OpenTelemetry for observability. |
 
-We advertise `capabilities: {}` as a client, which is honest: we offer the server nothing, so a
-server cannot call something we do not implement.
+As a client we advertise `capabilities: { elicitation: {} }` when the host passes an elicitation
+handler (the CLI host always does), and `{}` otherwise. Sampling and roots are never advertised, so
+a server cannot call something we do not implement.
+
+## Elicitation
+
+A server's `elicitation/create` is answered by `ServerRequestResponder`
+(`packages/mcp/src/elicitation.ts`), one per connection and shared by all three transports:
+
+- **Schema.** Only the spec's flat form is accepted: string (with `format`, length bounds),
+  number/integer (with bounds), boolean, single-select enums in every revision's shape (`enum` +
+  `enumNames`, titled `oneOf`/`anyOf`) and multi-select arrays of enum values. Anything nested is
+  answered `-32602`, never half-rendered.
+- **Who is asked.** The form goes to the run whose tool call to that server is in flight (the newest
+  one), through the same structured user-input channel as the `clarify` tool — so the TUI and WebUI
+  show it without new UI. A request outside any call lands on the host's root session. With no
+  surface attached (headless `-p`) the answer is `cancel`; dismissing the form is `decline`.
+- **Validation.** Accepted content is checked against the schema (required fields, choices, bounds,
+  integer-ness; numeric text is coerced). A rejected answer is asked again with the reason, a few
+  times, before the request is cancelled.
+- **Limits.** One open form per server (a second request is refused `-32603`); a form nobody answers
+  is cancelled after 10 minutes; the server's `notifications/cancelled` closes it.
+- **Timeouts.** While a form is open, the request timeout of the call that triggered it holds — the
+  wait is the user typing, not the server stalling. The 10-minute cap still bounds the call.
+- **Streamable HTTP.** A `text/event-stream` reply is now read event by event, because the server
+  puts its request ahead of our response in the same stream and waits for the answer; the answer is
+  POSTed back on the session. We do not open the optional GET stream, so a request sent outside any
+  in-flight POST is not received.
+
+## Structured tool output
+
+`outputSchema` is kept from `tools/list` (it also survives the lazy-server
+manifest cache), and `structuredContent` is read from every `tools/call`
+response through one parser shared by the three transports. The spec asks
+servers to repeat the object as JSON in a text block, but many send only a
+summary there. So the model gets the structured result appended whenever no
+text block already carries the same JSON (compared ignoring key order). The
+result is checked against the declared `outputSchema`. A mismatch is reported
+in the tool output, naming up to three problems, and does not fail the call;
+the content is still usable.
 
 ## Deprecated things we *do* implement
 
@@ -82,7 +121,9 @@ server cannot call something we do not implement.
 ## Known declaration drift
 
 The HTTP layer implements Streamable HTTP (`2025-03-26`), the `MCP-Protocol-Version` header and
-OAuth resource indicators (`2025-06-18`) while negotiating `2024-11-05`. These ride on the transport
+OAuth resource indicators (`2025-06-18`), the client answers elicitation and reads structured tool
+output (both `2025-06-18`), while negotiating `2024-11-05`. Elicitation rides on the declared client capability, which is what server
+SDKs check before sending the request. These ride on the transport
 and the 401 challenge rather than on the negotiated revision, so servers accept them. The
 declaration is narrower than the behavior — accepted, and recorded here so it is not rediscovered as
 a bug.

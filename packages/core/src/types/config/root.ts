@@ -21,6 +21,7 @@ import type {
   SageConfig,
 } from './mcp-features.js';
 import type { ModelTiersConfig } from './model-tiers.js';
+import type { ObservabilityConfig } from './observability.js';
 import type { CustomModelDefinition, ModelMatrixEntry, ProviderConfig } from './providers.js';
 import type {
   CloudSyncConfig,
@@ -334,6 +335,8 @@ export interface Config {
    * history. Only honoured from the user's active-profile config.
    */
   git?: GitBehaviorConfig | undefined;
+  /** Telemetry export (OTLP). User config only; denied to in-project configs. */
+  observability?: ObservabilityConfig | undefined;
   /**
    * Per-plugin namespaced config sections. Each plugin reads its own
    * subtree via `ConfigStore.getExtension(pluginName)`. Plugins should

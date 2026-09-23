@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionEffortSelect } from '../../src/components/ChatInput/session-effort-select';
+import { i18n } from '../../src/i18n';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 import { useSessionStore } from '../../src/stores/session-store';
 
@@ -34,6 +35,11 @@ afterEach(() => {
 });
 
 describe('SessionEffortSelect (composer effort chip)', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('leads with auto and narrows to the documented levels', () => {
     act(() => {
       useSessionStore.setState({ reasoningEffortLevels: ['low', 'high'] });

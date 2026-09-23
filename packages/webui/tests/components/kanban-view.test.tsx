@@ -99,7 +99,14 @@ afterEach(() => {
   });
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('KanbanView board deletion guard', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('deletes the board only after the second click confirms', () => {
     const boardA = board('board-a', 'Board A');
     seedActive(boardA);

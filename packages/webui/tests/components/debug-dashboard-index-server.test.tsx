@@ -1,12 +1,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DebugDashboard } from '../../src/components/DebugDashboard';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('DebugDashboard codebase index health', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders detached server health and memory from the system endpoint', async () => {
     vi.stubGlobal(
       'fetch',

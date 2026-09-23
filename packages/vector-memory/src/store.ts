@@ -15,8 +15,8 @@
  *  - Provider-level `embedding_cache` table — same text never re-runs the
  *    ONNX forward pass; keyed by (content_hash, provider_id, dimensions)
  *    so a model swap invalidates only the old provider rows.
- *  - UNIQUE index on `entries.content_hash` — defense-in-depth against any
- *    race that bypasses the pre-check; `remember()` is now idempotent.
+ *  - UNIQUE index on `(entries.content_hash, entries.scope)` — defense-in-depth
+ *    against races that bypass the per-scope idempotency check.
  */
 import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
@@ -213,15 +213,18 @@ export class VectorMemoryStore {
   }
 
   /**
-   * Look up an existing entry by `content_hash`. Returns `undefined` when
-   * the entry is not present. Used by `remember()` to make writes idempotent
-   * and by `syncFromSage()` to skip already-indexed SAGE memories.
+   * Look up an existing entry by `content_hash`, optionally within a scope.
+   * Without a scope, retains the original first-match lookup behavior.
    */
-  findByContentHash(contentHash: string): VectorEntryWithVector | undefined {
+  findByContentHash(contentHash: string, scope?: VectorScope): VectorEntryWithVector | undefined {
     this.assertOpen();
-    const row = this.db
-      .prepare('SELECT * FROM entries WHERE content_hash = ? LIMIT 1')
-      .get(contentHash) as Record<string, unknown> | undefined;
+    const row = (
+      scope === undefined
+        ? this.db.prepare('SELECT * FROM entries WHERE content_hash = ? LIMIT 1').get(contentHash)
+        : this.db
+            .prepare('SELECT * FROM entries WHERE content_hash = ? AND scope = ? LIMIT 1')
+            .get(contentHash, scope)
+    ) as Record<string, unknown> | undefined;
     if (!row) return undefined;
     const vectorRow = this.db
       .prepare(
@@ -293,15 +296,15 @@ export class VectorMemoryStore {
   private async rememberUnlocked(input: VectorEntryInput): Promise<VectorEntryWithVector> {
     const now = new Date().toISOString();
     const contentHash = VectorMemoryStore.contentHash(input.text);
+    const scope: VectorScope = input.scope ?? 'project';
 
-    // Idempotent path: dedup on content_hash. The UNIQUE index on
-    // entries.content_hash is the second line of defense.
-    const existing = this.findByContentHash(contentHash);
+    // Idempotent within each scope; the composite UNIQUE index is the
+    // second line of defense across processes.
+    const existing = this.findByContentHash(contentHash, scope);
     if (existing) return existing;
 
     const metadata = input.metadata ?? {};
     const tags = input.tags ?? [];
-    const scope: VectorScope = input.scope ?? 'project';
     const kind: VectorKind = input.kind ?? 'note';
     const id = randomUUID();
 
@@ -740,7 +743,7 @@ export class VectorMemoryStore {
     for (const memory of memories) {
       try {
         const hash = VectorMemoryStore.contentHash(memory.text);
-        const existing = this.findByContentHash(hash);
+        const existing = this.findByContentHash(hash, 'project');
         if (existing) {
           skipped++;
           continue;
@@ -749,7 +752,7 @@ export class VectorMemoryStore {
         // under the same host-OS file lock as `remember()` (see the class
         // header). Unlocked, two concurrent syncs (e.g. two surfaces
         // force-syncing) both pass the pre-check across the `await embed()`
-        // gap and the loser dies on the UNIQUE content_hash index — a
+        // gap and the loser dies on the UNIQUE (content_hash, scope) index — a
         // spurious partial-failure that keeps the first-boot sync marker
         // from ever completing. Per-entry (not whole-walk) locking keeps
         // live mirror writes responsive during a long corpus walk.

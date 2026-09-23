@@ -89,6 +89,11 @@ export interface SessionSummary {
    * fallback and stays in sync as the conversation evolves.
    */
   name?: string | undefined;
+  /**
+   * Parent session id when this session was created by fork(), taken from
+   * its `session_forked` event. Pickers nest forks under their parent.
+   */
+  forkedFrom?: string | undefined;
   startedAt: string;
   /** When the session finished (null if still running / crashed). */
   endedAt?: string | undefined;

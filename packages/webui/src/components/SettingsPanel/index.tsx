@@ -11,6 +11,7 @@ import {
   Palette,
   Puzzle,
   Radio,
+  RotateCcw,
   Settings2,
   Shield,
   Type,
@@ -40,7 +41,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Tabs, TabsContent } from '../ui/tabs';
 import { AgentSettingsTab } from './AgentSettingsTab';
 import { AppearanceSettingsTab, ConnectionSettingsTab } from './BasicSettingsTabs';
 import { ChimeraSettingsPanel } from './ChimeraSettingsPanel';
@@ -64,17 +65,11 @@ import {
 } from './ProviderSection';
 import { RoutingSection } from './RoutingSection';
 import { SecuritySection } from './SecuritySection';
+import { SettingsNavigation, type SettingsTab } from './SettingsNavigation';
 import { SubagentModelsSection } from './SubagentModelsSection';
 import { syncSettingsPreference } from './sync-settings-preference';
 
-interface TabDef {
-  id: string;
-  icon: React.ReactNode;
-  labelKey: string;
-  descKey?: string;
-}
-
-const TABS: TabDef[] = [
+const TABS: SettingsTab[] = [
   {
     id: 'general',
     icon: <Palette className="h-3.5 w-3.5" />,
@@ -255,6 +250,14 @@ export function SettingsPanel() {
     [catalogModels, localPrefs.disabledModels, provider],
   );
   const activeTabDef = TABS.find((tab) => tab.id === settingsActiveTab);
+  const selectTab = useCallback(
+    (tab: string) => {
+      if (tab === settingsActiveTab) return;
+      setSettingsActiveTab(tab);
+      scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]')?.scrollTo(0, 0);
+    },
+    [scrollAreaRef, setSettingsActiveTab, settingsActiveTab],
+  );
 
   useEffect(() => {
     const handleProviderCatalog = (msg: WSServerMessage) => {
@@ -462,8 +465,15 @@ export function SettingsPanel() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setResetOpen(true)}>
-          {t('settings:resetLabel')}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 sm:w-auto sm:px-3"
+          aria-label={t('settings:resetLabel')}
+          onClick={() => setResetOpen(true)}
+        >
+          <RotateCcw className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">{t('settings:resetLabel')}</span>
         </Button>
         <Button
           variant="ghost"
@@ -480,35 +490,23 @@ export function SettingsPanel() {
         <div className="mx-auto max-w-7xl p-4 sm:p-6">
           <Tabs
             value={settingsActiveTab}
-            onValueChange={setSettingsActiveTab}
-            className="grid items-start gap-3 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-5"
+            onValueChange={selectTab}
+            orientation="vertical"
+            className="grid items-start gap-4 lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:gap-6"
           >
-            <div className="relative min-w-0 lg:sticky lg:top-4">
-              <TabsList className="flex h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-card/60 p-1.5 shadow-sm [scrollbar-gutter:stable] lg:max-h-[calc(100dvh-12rem)] lg:flex-col lg:overflow-y-auto lg:rounded-xl lg:bg-card/60 lg:p-2">
-                {TABS.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="h-9 shrink-0 gap-2.5 rounded-md px-3 text-xs scroll-mt-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm lg:w-full lg:justify-start lg:px-3"
-                  >
-                    <span className="shrink-0">{tab.icon}</span>
-                    <span className="truncate">{t(tab.labelKey)}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <div className="pointer-events-none absolute inset-y-1 left-0 z-10 w-8 rounded-l-lg bg-gradient-to-r from-background via-background/90 to-transparent lg:hidden" />
-              <div className="pointer-events-none absolute inset-y-1 right-0 z-10 w-8 rounded-r-lg bg-gradient-to-l from-background via-background/90 to-transparent lg:hidden" />
-            </div>
+            <SettingsNavigation tabs={TABS} activeTab={settingsActiveTab} onSelect={selectTab} />
 
             <div className="min-w-0 space-y-0">
               {activeTabDef?.descKey && (
-                <div className="mb-4 flex items-start gap-3 rounded-xl border border-border/60 bg-card/50 px-4 py-3">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                <div className="mb-5 flex items-start gap-3 border-b border-border/70 pb-4">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                     {activeTabDef.icon}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{t(activeTabDef.labelKey)}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <h2 className="text-lg font-semibold tracking-tight">
+                      {t(activeTabDef.labelKey)}
+                    </h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                       {t(activeTabDef.descKey)}
                     </p>
                   </div>
@@ -526,14 +524,13 @@ export function SettingsPanel() {
               <TabsContent value="provider" className="mt-0 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
                   <div>
-                    <p className="text-sm font-semibold">Provider Test</p>
+                    <p className="text-sm font-semibold">{t('settings:providerTest.title')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Test every model on a saved provider or subscription and inspect quota,
-                      authentication, latency, and token-limit failures.
+                      {t('settings:providerTest.description')}
                     </p>
                   </div>
                   <Button size="sm" onClick={() => openMainView('provider-test')}>
-                    Open Provider Test
+                    {t('settings:providerTest.open')}
                   </Button>
                 </div>
                 <ProviderSection

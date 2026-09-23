@@ -477,6 +477,48 @@ describe.skipIf(!isSqliteAvailable())('hygiene reactivation', () => {
     await fs.rm(path.resolve(tmpDir, outsideRel), { force: true });
   });
 
+  it('demotes an active anchor moved outside through a directory link while preserving in-root links', async () => {
+    const project = path.join(tmpDir, 'project');
+    const outside = path.join(tmpDir, 'outside');
+    const inside = path.join(project, 'inside');
+    await fs.mkdir(path.join(project, 'escape'), { recursive: true });
+    await fs.mkdir(path.join(project, 'safe'), { recursive: true });
+    await fs.mkdir(outside);
+    await fs.mkdir(inside);
+    await fs.writeFile(path.join(project, 'escape', 'note.ts'), 'export {};\n');
+    await fs.writeFile(path.join(project, 'safe', 'note.ts'), 'export {};\n');
+    await fs.writeFile(path.join(outside, 'note.ts'), 'export {};\n');
+    await fs.writeFile(path.join(inside, 'note.ts'), 'export {};\n');
+    const store = new SqliteSageStore({ projectRoot: project });
+    openStores.push(store);
+    const escaped = await rememberFileNote(
+      store,
+      'escape/note.ts',
+      'The orchid parser tracks the external data connector.',
+    );
+    const safe = await rememberFileNote(
+      store,
+      'safe/note.ts',
+      'The copper parser tracks the internal data connector.',
+    );
+
+    await fs.rm(path.join(project, 'escape'), { recursive: true });
+    await fs.rm(path.join(project, 'safe'), { recursive: true });
+    const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+    await fs.symlink(outside, path.join(project, 'escape'), linkType);
+    await fs.symlink(inside, path.join(project, 'safe'), linkType);
+    expect(await fs.realpath(path.join(project, 'escape', 'note.ts'))).toBe(
+      await fs.realpath(path.join(outside, 'note.ts')),
+    );
+
+    await store.hygiene({ nearDedup: false });
+    expect(await store.getSage(escaped.id)).toMatchObject({
+      status: 'stale',
+      staleReason: 'verification',
+    });
+    expect(await store.getSage(safe.id)).toMatchObject({ status: 'active' });
+  });
+
   it('never revives a memory someone retired by hand', async () => {
     const store = makeStore();
     await writeFile('src/iota.ts');

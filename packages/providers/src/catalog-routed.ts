@@ -74,6 +74,18 @@ export class CatalogRoutedProvider implements Provider {
     return this.delegate(req.model).complete(req, opts);
   }
 
+  async warm(model: string): Promise<void> {
+    // An unroutable model is the real request's error to report, not the warm-up's.
+    const delegate = (() => {
+      try {
+        return this.delegate(model);
+      } catch {
+        return undefined;
+      }
+    })();
+    await delegate?.warm?.(model);
+  }
+
   private delegate(modelId: string): Provider {
     const model = this.models.get(modelId);
     const declaredNpm = model?.provider?.npm?.toLowerCase();

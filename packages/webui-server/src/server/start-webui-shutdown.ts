@@ -28,6 +28,8 @@ export function setupWebuiShutdown(options: {
   getKanbanSupervisorDispose: () => (() => void | Promise<void>) | null;
   todosCheckpoint: { detach: () => Promise<void> };
   stopHeapWatchdog: () => Promise<void>;
+  /** Push buffered OTLP spans/metrics and stop the exporter timers. */
+  stopTelemetryExport?: (() => Promise<void>) | undefined;
   stopLiveStatusLogger?: (() => void) | undefined;
   /** Erase the fixed status panel and restore the raw console. */
   stopTerminalDashboard?: (() => void) | undefined;
@@ -108,6 +110,7 @@ export function setupWebuiShutdown(options: {
       releaseSalvage();
       await options.todosCheckpoint.detach();
       await options.stopHeapWatchdog();
+      await options.stopTelemetryExport?.().catch(() => undefined);
       options.getCredentialWatcherClose()?.();
       if (options.disposeRealtimeHandlers) {
         options.disposeRealtimeHandlers();

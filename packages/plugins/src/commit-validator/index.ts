@@ -25,7 +25,7 @@
  *
  * @public
  */
-import type { Plugin } from '@wrongstack/core/types';
+import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 import { releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -385,10 +385,13 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['commit-validator']);
 
-    const hook = async (input: {
-      toolName?: string | undefined;
-      toolInput?: unknown;
-    }): Promise<{
+    const hook = async (
+      input: {
+        toolName?: string | undefined;
+        toolInput?: unknown;
+      },
+      hookContext?: HookInvocationContext,
+    ): Promise<{
       decision?: 'block' | 'allow' | undefined;
       reason?: string;
       additionalContext?: string;
@@ -511,8 +514,12 @@ const plugin: Plugin = {
                 'You rewrite commit subjects to follow the conventional-commits format. Reply tersely, no preamble, no quotes.',
               role: 'reviewer',
               maxTokens: 120,
+              timeoutMs: 3000,
+              signal: hookContext?.signal,
             },
           );
+          if (hookContext?.signal.aborted)
+            return { decision: 'allow', additionalContext: baseContext };
           const text = suggest.text.trim();
           if (text) {
             state.suggestFixCount += 1;

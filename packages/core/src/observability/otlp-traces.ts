@@ -10,11 +10,14 @@ import type { Span, Tracer } from '../types/observability.js';
  *
  * Two production paths:
  *
- *   1. **This adapter** — zero deps, single-process, no parent/child
- *      relationships (every span is a root span). Suitable when you
- *      mostly want to see the agent's iteration / provider-call /
- *      tool-call timings in a vendor UI (Jaeger, Tempo, Honeycomb,
- *      Datadog APM, Grafana Cloud, Lightstep, …).
+ *   1. **This adapter** — zero deps, single-process. A turn is one trace:
+ *      `agent.run` is its root, the turn's provider and tool calls are its
+ *      children, and a subagent's run nests under the leader turn that was
+ *      open when it started. Spans are matched to their turn through the
+ *      `session.id` / `agent.session.id` attributes (`spanSessionAttributes`);
+ *      a span without them is a trace of its own. Suitable when you mostly
+ *      want to see the agent's turn / provider-call / tool-call timings in a
+ *      vendor UI (Jaeger, Tempo, Honeycomb, Datadog APM, Grafana Cloud, …).
  *
  *   2. **Wrap a real OTel SDK** via the existing `OTelTracer` adapter.
  *      Use this when you need context propagation, distributed traces
@@ -33,6 +36,7 @@ type SpanAttrValue = string | number | boolean;
 interface RecordedSpan {
   traceId: string;
   spanId: string;
+  parentSpanId?: string | undefined;
   name: string;
   startTimeUnixNano: bigint;
   endTimeUnixNano?: bigint | undefined;
@@ -99,6 +103,8 @@ export interface OtlpTraceExporterOptions {
   fetchImpl?: typeof globalThis.fetch | undefined;
   /** Called on push failure. Defaults to silent. */
   onError?: ((err: unknown) => void) | undefined;
+  /** Called when a top-level turn (`agent.run` without a parent) ends. */
+  onTurnEnd?: (() => void) | undefined;
 }
 
 export interface OtlpTraceExporterHandle {
@@ -112,6 +118,8 @@ export interface OtlpTraceExporterHandle {
   readonly buffered: () => readonly RecordedSpan[];
 }
 
+/** The span that stands for one turn (`Agent.run`). */
+const RUN_SPAN = 'agent.run';
 const DEFAULT_INTERVAL_MS = 5_000;
 const DEFAULT_BUFFER_CAP = 2048;
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -143,6 +151,7 @@ function encodeAttr(key: string, value: SpanAttrValue): OtlpAttribute {
 interface OtlpSpan {
   traceId: string;
   spanId: string;
+  parentSpanId?: string | undefined;
   name: string;
   kind: 1;
   startTimeUnixNano: string;
@@ -171,6 +180,7 @@ export function buildOtlpTracesRequest(
   const otlpSpans: OtlpSpan[] = spans.map((s) => ({
     traceId: s.traceId,
     spanId: s.spanId,
+    ...(s.parentSpanId ? { parentSpanId: s.parentSpanId } : {}),
     name: s.name,
     kind: 1, // SPAN_KIND_INTERNAL
     startTimeUnixNano: s.startTimeUnixNano.toString(),
@@ -214,26 +224,61 @@ export function startOtlpTraceExporter(opts: OtlpTraceExporterOptions): OtlpTrac
   };
   if (opts.authorization) headers.authorization = opts.authorization;
 
+  /** Open `agent.run` spans by conversation key — the parents of what runs inside them. */
+  const openRuns = new Map<string, RecordedSpan>();
+
   const tracer: Tracer = {
     startSpan(name, attrs) {
+      const session = typeof attrs?.['session.id'] === 'string' ? attrs['session.id'] : undefined;
+      const agentSession =
+        typeof attrs?.['agent.session.id'] === 'string' ? attrs['agent.session.id'] : '';
+      const key = session === undefined ? undefined : `${session}|${agentSession}`;
+      const leaderRun = session === undefined ? undefined : openRuns.get(`${session}|`);
+      // A run nests under the leader's open turn (a subagent's run); anything
+      // else nests under its own run, or the leader's when it has none open.
+      const parent =
+        name === RUN_SPAN
+          ? agentSession
+            ? leaderRun
+            : undefined
+          : ((key ? openRuns.get(key) : undefined) ?? leaderRun);
       const state: RecordedSpan = {
-        traceId: hex(16),
+        traceId: parent?.traceId ?? hex(16),
         spanId: hex(8),
+        ...(parent ? { parentSpanId: parent.spanId } : {}),
         name,
         startTimeUnixNano: nowNs(),
         attributes: { ...(attrs ?? {}) },
         status: { code: SPAN_STATUS_CODE_UNSET },
       };
+      const isRun = name === RUN_SPAN && key !== undefined;
+      if (isRun) openRuns.set(key, state);
       return new CapturingSpan(state, (ended) => {
+        if (isRun && openRuns.get(key) === ended) openRuns.delete(key);
         if (buffer.length >= maxBuffered) buffer.shift();
         buffer.push(ended);
+        // A finished top-level turn is a complete trace: send it now rather
+        // than on the timer, so a one-shot run's trace leaves before exit.
+        if (name === RUN_SPAN && !ended.parentSpanId && !stopped) {
+          void pushOnce();
+          opts.onTurnEnd?.();
+        }
       });
     },
   };
 
-  async function pushOnce(): Promise<void> {
-    if (buffer.length === 0) return;
-    const batch = buffer.splice(0, buffer.length);
+  /** Pushes on the wire; `stop()` waits for them so a turn's trace is not cut off at exit. */
+  const inFlight = new Set<Promise<void>>();
+
+  function pushOnce(): Promise<void> {
+    if (buffer.length === 0) return Promise.resolve();
+    const push = sendBatch(buffer.splice(0, buffer.length));
+    inFlight.add(push);
+    void push.finally(() => inFlight.delete(push));
+    return push;
+  }
+
+  async function sendBatch(batch: RecordedSpan[]): Promise<void> {
     const body = buildOtlpTracesRequest(batch, { resourceAttributes, scopeName });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -266,7 +311,7 @@ export function startOtlpTraceExporter(opts: OtlpTraceExporterOptions): OtlpTrac
     async stop() {
       stopped = true;
       clearInterval(handle);
-      await pushOnce().catch(onError);
+      await Promise.all([...inFlight, pushOnce()]).catch(onError);
     },
     buffered: () => [...buffer],
   };

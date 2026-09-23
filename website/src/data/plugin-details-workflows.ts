@@ -25,6 +25,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
           },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+          },
         ],
       },
     ],
@@ -69,6 +75,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             name: 'content',
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
+          },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
           },
         ],
       },
@@ -115,6 +127,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
           },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+          },
         ],
       },
     ],
@@ -159,6 +177,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             name: 'content',
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
+          },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
           },
         ],
       },
@@ -205,6 +229,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
           },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+          },
         ],
       },
     ],
@@ -249,6 +279,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             name: 'content',
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
+          },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
           },
         ],
       },
@@ -295,6 +331,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
           },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+          },
         ],
       },
     ],
@@ -339,6 +381,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             name: 'content',
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
+          },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
           },
         ],
       },
@@ -385,6 +433,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
           },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+          },
         ],
       },
     ],
@@ -429,6 +483,12 @@ export const workflowPluginDetails: Record<string, PluginDetail> = {
             name: 'content',
             type: 'string',
             description: 'Pasted evidence, such as a CI log or manifest text.',
+          },
+          {
+            name: 'review',
+            type: 'string',
+            description:
+              'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
           },
         ],
       },

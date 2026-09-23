@@ -171,6 +171,7 @@ function QuickToggle({
         type="button"
         role="switch"
         aria-checked={value}
+        aria-label={label}
         onClick={onChange}
         className={cn(
           'shrink-0 relative inline-flex h-4 w-7 rounded-full border transition-colors',

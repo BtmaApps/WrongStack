@@ -163,6 +163,71 @@ describe('SessionList workspace', () => {
     expect(document.querySelectorAll('[data-session-id]')).toHaveLength(1);
   });
 
+  it('balances the workspace columns around one continuous timeline per page', () => {
+    // Anchor buckets to local midnight so the assertions hold at any hour:
+    // positive offsets are always "today", small negatives "yesterday".
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const at = (offsetMs: number) => new Date(midnight.getTime() + offsetMs).toISOString();
+    const MIN = 60_000;
+    const HOUR = 3_600_000;
+    const DAY = 86_400_000;
+    renderWorkspace({
+      historyEntries: [
+        entry({ id: 'today-b', startedAt: at(5 * MIN), endedAt: at(6 * MIN) }),
+        entry({ id: 'today-a', startedAt: at(2 * MIN), endedAt: at(3 * MIN) }),
+        entry({ id: 'yest-a', startedAt: at(-2 * HOUR), endedAt: at(-2 * HOUR + 30 * MIN) }),
+        entry({ id: 'yest-b', startedAt: at(-3 * HOUR), endedAt: at(-3 * HOUR + 30 * MIN) }),
+        entry({ id: 'old-a', startedAt: at(-40 * DAY), endedAt: at(-40 * DAY + 30 * MIN) }),
+        entry({ id: 'old-b', startedAt: at(-41 * DAY), endedAt: at(-41 * DAY + 30 * MIN) }),
+      ],
+    });
+
+    const columns = Array.from(document.querySelectorAll('[data-history-column]'));
+    expect(columns).toHaveLength(2);
+    const idsOf = (column: Element | undefined) =>
+      column
+        ? Array.from(column.querySelectorAll('[data-session-id]')).map((row) =>
+            row.getAttribute('data-session-id'),
+          )
+        : [];
+    // The left column carries the newest half of the page and the right
+    // column the older half — one continuous timeline, both balanced 3/3,
+    // instead of groups zigzagging left/right down the page.
+    expect(idsOf(columns[0])).toEqual(['today-b', 'today-a', 'yest-a']);
+    expect(idsOf(columns[1])).toEqual(['yest-b', 'old-a', 'old-b']);
+  });
+
+  it('keeps the visible rows on screen when the history shrinks under a selected page', () => {
+    const props = {
+      historyQuery: '',
+      setHistoryQuery: vi.fn(),
+      historyLoading: false,
+      historyError: null,
+      wsConnected: true,
+      listSessions: vi.fn(),
+      resumeSession: vi.fn(),
+      deleteSession: vi.fn(),
+      renameSession: vi.fn(),
+      variant: 'workspace' as const,
+      historyEntries: Array.from({ length: 21 }, (_, index) =>
+        entry({
+          id: `session-${index + 1}`,
+          title: `Session ${index + 1}`,
+          startedAt: new Date(Date.now() - (index + 1) * 60_000).toISOString(),
+        }),
+      ),
+    };
+    const view = render(<SessionList {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(document.querySelectorAll('[data-session-id]')).toHaveLength(1);
+
+    // The list shrinks to five while page 2 is selected: without clamping
+    // the stale page slices past the end and blanks the grid.
+    view.rerender(<SessionList {...props} historyEntries={props.historyEntries.slice(0, 5)} />);
+    expect(document.querySelectorAll('[data-session-id]')).toHaveLength(5);
+  });
+
   it('badges the clear-empty control with the removable count when empty sessions exist', () => {
     // Never-started records are no longer auto-deleted on tab close, so this
     // control is the only signal that clearable empty sessions exist. The

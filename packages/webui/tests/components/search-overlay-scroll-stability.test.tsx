@@ -82,7 +82,14 @@ afterEach(() => {
   // its own afterEach), re-rendering SearchOverlay outside act().
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('SearchOverlay scroll stability', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('does NOT re-scroll when the messages array identity changes but the active hit id stays the same', async () => {
     // Two messages, both matching "needle". Active hit defaults to index 0
     // → resolved id "hit-a".

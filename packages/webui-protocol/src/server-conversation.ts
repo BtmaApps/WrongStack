@@ -40,6 +40,8 @@ export const SERVER_CONVERSATION_MESSAGE_TYPES = [
   'provider.stream_error',
   'provider.text_delta',
   'provider.thinking_delta',
+  'queue.drained',
+  'queue.state',
   'run.result',
   'session.checkpoints',
   'session.damaged',

@@ -4,7 +4,7 @@ import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/cor
 import { updateReviewReportEvidence } from '@wrongstack/core/plugin';
 import { noOpVault } from '@wrongstack/core/security';
 import { attachTodosCheckpoint } from '@wrongstack/core/storage';
-import { normalizeTokenSavingTier } from '@wrongstack/core/types';
+import { normalizeTokenSavingTier, type SessionSummary } from '@wrongstack/core/types';
 import { mergeCustomModelDefs } from '@wrongstack/core/utils';
 import { capabilitiesFor } from '@wrongstack/providers';
 import { createToolVisionAdapters } from '@wrongstack/runtime/vision';
@@ -48,6 +48,11 @@ import { createReplFleetCallbacks } from './execution-repl-fleet-callbacks.js';
 import { FleetStatusLine } from './fleet-statusline.js';
 import { createSubagentModelsPanelHost } from './subagent-models/panel-service.js';
 import { createTuiResumeCallback } from './tui-resume-callback.js';
+import {
+  listSiblingWorktreeSessions,
+  type WorktreeRef,
+  withWorktreeSwitch,
+} from './boot/worktree-sessions.js';
 
 export type { LiveSettingsInput } from './live-settings-input.js';
 
@@ -426,6 +431,8 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       const switchProjectInPlace = async (targetRoot: string, displayName: string) => {
         return switchProjectInPlaceExtracted(switchCtx, targetRoot, displayName);
       };
+      // Sessions of other git worktrees in the last /resume listing.
+      const worktreeOfSession = new Map<string, WorktreeRef>();
 
       const pickerCtx: ProjectPickerContext = {
         state,
@@ -705,7 +712,13 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
               /* liveness is an ADDITIONAL guard, never a listing prerequisite */
             }
             const currentId = agent.ctx.session?.id ?? session.id;
-            return summaries.map((s) => ({
+            const siblings = await listSiblingWorktreeSessions({
+              projectRoot: state.projectRoot,
+              globalRoot: state.wpaths.globalRoot,
+            }).catch(() => []);
+            worktreeOfSession.clear();
+            for (const w of siblings) worktreeOfSession.set(w.summary.id, w.worktree);
+            const toEntry = (s: SessionSummary, worktree?: WorktreeRef) => ({
               id: s.id,
               title: s.title ?? '',
               name: s.name,
@@ -719,6 +732,8 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
               toolCallCount: s.toolCallCount ?? 0,
               toolErrorCount: s.toolErrorCount ?? 0,
               outcome: s.outcome,
+              forkedFrom: s.forkedFrom,
+              ...(worktree ? { worktree } : {}),
               isCurrent: s.id === currentId,
               // The session this process owns is `isCurrent`, not "live
               // elsewhere" — it holds its own lease and would otherwise be
@@ -726,15 +741,17 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
               ...(s.id !== currentId && liveBySession.has(s.id)
                 ? { live: liveBySession.get(s.id) }
                 : {}),
-            }));
+            });
+            return [
+              ...summaries.map((s) => toEntry(s)),
+              ...siblings.map((w) => toEntry(w.summary, w.worktree)),
+            ];
           },
-          onResumeSession: createTuiResumeCallback({
-            state,
-            agent,
-            tokenCounter,
-            switchProviderAndModel,
-            events,
-          }),
+          onResumeSession: withWorktreeSwitch(
+            createTuiResumeCallback({ state, agent, tokenCounter, switchProviderAndModel, events }),
+            (id) => worktreeOfSession.get(id),
+            switchProjectInPlace,
+          ),
           getProjectPickerItems: () => getProjectPickerItems(pickerCtx),
           onProjectSelect: (slug: string, kind: 'project' | 'action') =>
             onProjectSelect(pickerCtx, slug, kind),

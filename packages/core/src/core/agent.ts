@@ -32,6 +32,7 @@ import {
   resolveLoopDetection,
 } from './agent-types.js';
 import type { Context, RunOptions } from './context.js';
+import { spanSessionAttributes } from './span-session.js';
 
 // Re-export types and utilities from agent-types.ts for backward compatibility
 export {
@@ -348,6 +349,7 @@ export class Agent {
       }
 
       span = this.tracer?.startSpan('agent.run', {
+        ...spanSessionAttributes(this.ctx),
         'agent.model': opts.model ?? this.ctx.model,
         'agent.executionStrategy': opts.executionStrategy ?? this.executionStrategy,
       });

@@ -68,7 +68,7 @@ function cvss31(vector: string): number | undefined {
   const impact = scope === 'C' ? 7.52 * (iss - 0.029) - 3.25 * (iss - 0.02) ** 15 : 6.42 * iss;
   const exploitability = 8.22 * av * ac * pr * ui;
   if (impact <= 0) return 0;
-  return roundup3(Math.min(impact + exploitability, 10));
+  return roundup3(Math.min((scope === 'C' ? 1.08 : 1) * (impact + exploitability), 10));
 }
 
 function cvss20(vector: string): number | undefined {

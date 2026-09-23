@@ -47,11 +47,6 @@ export function CommandPalette({ open, context, onClose, onRun }: CommandPalette
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
-      return;
-    }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setSelectedIndex((current) =>
@@ -82,6 +77,15 @@ export function CommandPalette({ open, context, onClose, onRun }: CommandPalette
         aria-label="Command palette"
         ref={dialogRef}
         tabIndex={-1}
+        onKeyDown={(event) => {
+          // Escape lives on the dialog container, not just the search
+          // input, so the palette closes no matter which focusable child
+          // (close button, option row) holds focus.
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            onClose();
+          }
+        }}
       >
         <header className="command-palette-head">
           <span>

@@ -34,7 +34,9 @@ import {
   type HistorySort,
   HistoryStats,
   outcomeMeta,
+  type SessionHistoryGroup,
   sessionActivityAt,
+  splitSessionHistoryColumns,
 } from './session-history.js';
 
 export {
@@ -45,6 +47,7 @@ export {
   getEmptySessionIds,
   getSessionHistoryStats,
   groupSessionHistory,
+  splitSessionHistoryColumns,
 } from './session-history.js';
 
 type HistoryListVariant = 'sidebar' | 'workspace';
@@ -178,14 +181,28 @@ export function SessionList({
     [favoriteSessionIds, filter, historyEntries, historyQuery, sort],
   );
   const pageSize = workspace ? WORKSPACE_PAGE_SIZE : SIDEBAR_PAGE_SIZE;
+  // The list can shrink while a later page is selected (deletion, list
+  // refresh); clamp so the page slice never falls past the end of the
+  // list and renders an empty grid.
+  const totalPages = Math.max(1, Math.ceil(visibleEntries.length / pageSize));
+  const activePage = Math.min(page, totalPages);
   const pagedEntries = useMemo(
-    () => visibleEntries.slice((page - 1) * pageSize, page * pageSize),
-    [page, pageSize, visibleEntries],
+    () => visibleEntries.slice((activePage - 1) * pageSize, activePage * pageSize),
+    [activePage, pageSize, visibleEntries],
   );
   const groupedHistory = useMemo(
     () => groupSessionHistory(pagedEntries, favoriteSessionIds),
     [favoriteSessionIds, pagedEntries],
   );
+  // Workspace pages lay the time groups out as two columns; balance them
+  // around one continuous timeline so neither column sits empty or ragged.
+  // The sidebar keeps a single stacked flow (its column wrapper is
+  // display:contents, so the DOM shape below is shared by both variants).
+  const historyColumnGroups = useMemo<SessionHistoryGroup[][]>(() => {
+    if (!workspace) return [groupedHistory, []];
+    const columns = splitSessionHistoryColumns(groupedHistory);
+    return [columns.left, columns.right];
+  }, [groupedHistory, workspace]);
   const stats = useMemo(() => getSessionHistoryStats(historyEntries), [historyEntries]);
 
   useEffect(() => {
@@ -382,296 +399,310 @@ export function SessionList({
           </div>
         ) : (
           <div className={cn(workspace ? 'mx-auto w-full max-w-7xl p-4 lg:p-6' : 'p-2')}>
-            <div className={cn('space-y-5', workspace && 'grid gap-x-5 space-y-0 xl:grid-cols-2')}>
-              {groupedHistory.map((group) => (
-                <section key={group.label} className="min-w-0">
-                  <div
-                    className={cn(
-                      'sticky top-0 z-[1] flex items-center gap-1 border-b border-border/75 bg-background/95 px-1 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm',
-                      group.favorite ? 'text-warning' : 'text-muted-foreground',
-                    )}
-                  >
-                    {group.favorite ? <Star className="h-3 w-3 fill-current" /> : null}
-                    {t(`activity:sessions.group.${group.label}`)}
-                    <span className="ml-1 font-mono font-normal text-muted-foreground">
-                      {group.rows.length}
-                    </span>
-                  </div>
+            <div
+              className={cn(workspace && 'grid gap-5 xl:grid-cols-2', !workspace && 'space-y-5')}
+            >
+              {historyColumnGroups.map((columnGroups, columnIndex) => (
+                <div
+                  key={columnIndex}
+                  data-history-column={workspace ? columnIndex : undefined}
+                  className={cn('min-w-0 space-y-5', !workspace && 'contents')}
+                >
+                  {columnGroups.map((group) => (
+                    <section key={group.label} className="min-w-0">
+                      <div
+                        className={cn(
+                          'sticky top-0 z-[1] flex items-center gap-1 border-b border-border/75 bg-background/95 px-1 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm',
+                          group.favorite ? 'text-warning' : 'text-muted-foreground',
+                        )}
+                      >
+                        {group.favorite ? <Star className="h-3 w-3 fill-current" /> : null}
+                        {t(`activity:sessions.group.${group.label}`)}
+                        <span className="ml-1 font-mono font-normal text-muted-foreground">
+                          {group.rows.length}
+                        </span>
+                      </div>
 
-                  <div className="divide-y divide-border/75 border-x border-b border-border/75">
-                    {group.rows.map((entry) => {
-                      const favorite = favoriteSessionIds.includes(entry.id);
-                      const meta = outcomeMeta(entry);
-                      const StatusIcon = meta.icon;
-                      const isRenaming = renamingId === entry.id;
-                      const isResuming = resumingId === entry.id;
+                      <div className="divide-y divide-border/75 border-x border-b border-border/75">
+                        {group.rows.map((entry) => {
+                          const favorite = favoriteSessionIds.includes(entry.id);
+                          const meta = outcomeMeta(entry);
+                          const StatusIcon = meta.icon;
+                          const isRenaming = renamingId === entry.id;
+                          const isResuming = resumingId === entry.id;
 
-                      return (
-                        <article
-                          key={entry.id}
-                          className={cn(
-                            'group grid min-w-0 grid-cols-[minmax(0,1fr)_auto] bg-card transition-colors',
-                            entry.isCurrent
-                              ? 'border-l-2 border-l-primary bg-primary/5'
-                              : 'border-l-2 border-l-transparent hover:bg-muted/45',
-                          )}
-                          data-session-id={entry.id}
-                        >
-                          {isRenaming ? (
-                            <div className="min-w-0 px-3 py-3">
-                              <label
-                                className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
-                                htmlFor={`session-name-${entry.id}`}
-                              >
-                                {t('activity:sessions.rename', { defaultValue: 'Session name' })}
-                              </label>
-                              <input
-                                ref={renameInput}
-                                id={`session-name-${entry.id}`}
-                                value={renameDraft}
-                                onChange={(event) => setRenameDraft(event.target.value)}
-                                onBlur={() => commitRename(entry.id)}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter') {
-                                    event.preventDefault();
-                                    commitRename(entry.id);
-                                  } else if (event.key === 'Escape') {
-                                    event.preventDefault();
-                                    setRenamingId(null);
-                                  }
-                                }}
-                                placeholder={
-                                  entry.title || t('activity:sessions.nicknamePlaceholder')
-                                }
-                                className="mt-1 h-8 w-full border border-primary bg-background px-2 text-sm outline-none ring-1 ring-primary"
-                              />
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              // Only THIS row waits. Disabling every row on
-                              // any pending resume meant one resume that never
-                              // completed — a refusal the client discards as
-                              // guard noise — froze the whole list until the
-                              // 10s timer expired, which read as "Resume does
-                              // nothing" for every session in the list.
-                              disabled={entry.isCurrent || isResuming}
-                              onClick={() => handleResume(entry.id)}
-                              onDoubleClick={() => beginRename(entry)}
-                              aria-current={entry.isCurrent ? 'page' : undefined}
-                              className="min-w-0 px-3 py-3 text-left outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default"
-                            >
-                              <div className="flex min-w-0 items-start gap-2">
-                                <span
-                                  className={cn('mt-0.5 shrink-0', meta.className)}
-                                  title={t(`activity:sessions.status.${meta.label}`, {
-                                    defaultValue: meta.defaultLabel,
-                                  })}
-                                >
-                                  <StatusIcon
-                                    className={cn(
-                                      'h-3.5 w-3.5',
-                                      entry.isCurrent && 'animate-pulse',
-                                    )}
-                                  />
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div
-                                      className="truncate text-sm font-semibold text-foreground"
-                                      title={displayName(entry)}
-                                    >
-                                      {displayName(entry)}
-                                    </div>
-                                    {entry.isCurrent ? (
-                                      <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                        {t('activity:sessions.activeTab', {
-                                          defaultValue: 'Active Tab',
-                                        })}
-                                      </span>
-                                    ) : openTabIds.includes(entry.id) ? (
-                                      <span className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                                        {t('activity:sessions.tabNumber', {
-                                          count: openTabIds.indexOf(entry.id) + 1,
-                                          defaultValue: `Tab ${openTabIds.indexOf(entry.id) + 1}`,
-                                        })}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-                                    {entry.provider}/{entry.model}
-                                  </div>
-                                  {entry.lastUserMessage ? (
-                                    <div
-                                      className="mt-1 truncate text-xs text-muted-foreground"
-                                      title={entry.lastUserMessage}
-                                    >
-                                      {entry.lastUserMessage}
-                                    </div>
-                                  ) : null}
-                                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-muted-foreground">
-                                    {isResuming ? (
-                                      <span className="inline-flex items-center gap-1 font-sans font-semibold text-primary">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        {t('activity:sessions.resuming')}
-                                      </span>
-                                    ) : (
-                                      <span
-                                        title={new Date(sessionActivityAt(entry)).toLocaleString()}
-                                      >
-                                        {formatRelative(sessionActivityAt(entry))}
-                                      </span>
-                                    )}
-                                    <span aria-hidden="true">·</span>
-                                    <span>{formatSessionDuration(entry)}</span>
-                                    {entry.tokenTotal > 0 ? (
-                                      <span>{formatCompactNumber(entry.tokenTotal)} tok</span>
-                                    ) : null}
-                                    {(entry.messageCount ?? 0) > 0 ? (
-                                      <span>
-                                        {formatCompactNumber(entry.messageCount ?? 0)} msg
-                                      </span>
-                                    ) : null}
-                                    {(entry.toolCallCount ?? 0) > 0 ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <Wrench className="h-3 w-3" />
-                                        {entry.toolCallCount}
-                                      </span>
-                                    ) : null}
-                                    {(entry.fileChangeCount ?? 0) > 0 ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <FileCode2 className="h-3 w-3" />
-                                        {entry.fileChangeCount}
-                                      </span>
-                                    ) : null}
-                                    {(entry.toolErrorCount ?? 0) > 0 ? (
-                                      <span className="inline-flex items-center gap-1 text-destructive">
-                                        <AlertTriangle className="h-3 w-3" />
-                                        {entry.toolErrorCount}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          )}
-
-                          <div className="flex items-start gap-0.5 p-2">
-                            {/*
-                              Resume is only offered for a session that is NOT
-                              already on screen. One session, one slot: a
-                              conversation that owns a tab is reached by
-                              clicking its row (which switches to it), and
-                              labelling that "Resume" promised a reload of
-                              something the page is already showing.
-                            */}
-                            {!entry.isCurrent &&
-                            !openTabIds.includes(entry.id) &&
-                            workspace &&
-                            !isRenaming ? (
-                              <button
-                                type="button"
-                                onClick={() => handleResume(entry.id)}
-                                disabled={resumingId !== null}
-                                className="inline-flex h-7 items-center gap-1 border border-border/75 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40"
-                                title={t('activity:sessions.resume', {
-                                  defaultValue: 'Resume session',
-                                })}
-                              >
-                                <Play className="h-3 w-3" />
-                                {t('activity:sessions.resumeShort', { defaultValue: 'Resume' })}
-                              </button>
-                            ) : null}
-                            {!isRenaming ? (
-                              <button
-                                type="button"
-                                onClick={() => setInspectSession(entry.id)}
-                                className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                                title={t('activity:sessions.inspect', {
-                                  defaultValue: 'Inspect session',
-                                })}
-                              >
-                                <SearchCheck className="h-3.5 w-3.5" />
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => toggleFavoriteSession(entry.id)}
-                              aria-pressed={favorite}
+                          return (
+                            <article
+                              key={entry.id}
                               className={cn(
-                                'inline-flex h-7 w-7 items-center justify-center transition-colors hover:bg-warning/10 hover:text-warning',
-                                favorite ? 'text-warning' : 'text-muted-foreground',
+                                'group grid min-w-0 grid-cols-[minmax(0,1fr)_auto] bg-card transition-colors',
+                                entry.isCurrent
+                                  ? 'border-l-2 border-l-primary bg-primary/5'
+                                  : 'border-l-2 border-l-transparent hover:bg-muted/45',
                               )}
-                              title={
-                                favorite
-                                  ? t('activity:sessions.unfavorite')
-                                  : t('activity:sessions.markFavorite')
-                              }
+                              data-session-id={entry.id}
                             >
-                              <Star className={cn('h-3.5 w-3.5', favorite && 'fill-current')} />
-                            </button>
-                            {!isRenaming ? (
-                              <button
-                                type="button"
-                                onClick={() => beginRename(entry)}
-                                className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                                title={t('activity:sessions.renameAction', {
-                                  defaultValue: 'Rename',
-                                })}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            ) : null}
-                            {!entry.isCurrent ? (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const ok = await confirmModal({
-                                    title: t('activity:sessions.deleteSessionConfirmTitle'),
-                                    message: t('activity:sessions.deleteSessionConfirmBody', {
-                                      name: displayName(entry),
-                                    }),
-                                    confirmLabel: t('common:action.delete'),
-                                    danger: true,
-                                  });
-                                  if (!ok) return;
-                                  // Close the deleted session's tab first so
-                                  // the server allows the deletion; when the
-                                  // strip would drop to zero the store keeps
-                                  // one tab and reports the session as not
-                                  // removable — never delete what must stay.
-                                  const removable = useSessionTabStore
-                                    .getState()
-                                    .closeTabsForSessions([entry.id]);
-                                  if (!removable.includes(entry.id)) {
-                                    toast.info(
-                                      t('activity:sessions.deleteKeptLastTab', {
-                                        defaultValue:
-                                          'Session not deleted — at least one tab must stay open.',
-                                      }),
-                                    );
-                                    return;
+                              {isRenaming ? (
+                                <div className="min-w-0 px-3 py-3">
+                                  <label
+                                    className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                                    htmlFor={`session-name-${entry.id}`}
+                                  >
+                                    {t('activity:sessions.rename', {
+                                      defaultValue: 'Session name',
+                                    })}
+                                  </label>
+                                  <input
+                                    ref={renameInput}
+                                    id={`session-name-${entry.id}`}
+                                    value={renameDraft}
+                                    onChange={(event) => setRenameDraft(event.target.value)}
+                                    onBlur={() => commitRename(entry.id)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter') {
+                                        event.preventDefault();
+                                        commitRename(entry.id);
+                                      } else if (event.key === 'Escape') {
+                                        event.preventDefault();
+                                        setRenamingId(null);
+                                      }
+                                    }}
+                                    placeholder={
+                                      entry.title || t('activity:sessions.nicknamePlaceholder')
+                                    }
+                                    className="mt-1 h-8 w-full border border-primary bg-background px-2 text-sm outline-none ring-1 ring-primary"
+                                  />
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  // Only THIS row waits. Disabling every row on
+                                  // any pending resume meant one resume that never
+                                  // completed — a refusal the client discards as
+                                  // guard noise — froze the whole list until the
+                                  // 10s timer expired, which read as "Resume does
+                                  // nothing" for every session in the list.
+                                  disabled={entry.isCurrent || isResuming}
+                                  onClick={() => handleResume(entry.id)}
+                                  onDoubleClick={() => beginRename(entry)}
+                                  aria-current={entry.isCurrent ? 'page' : undefined}
+                                  className="min-w-0 px-3 py-3 text-left outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default"
+                                >
+                                  <div className="flex min-w-0 items-start gap-2">
+                                    <span
+                                      className={cn('mt-0.5 shrink-0', meta.className)}
+                                      title={t(`activity:sessions.status.${meta.label}`, {
+                                        defaultValue: meta.defaultLabel,
+                                      })}
+                                    >
+                                      <StatusIcon
+                                        className={cn(
+                                          'h-3.5 w-3.5',
+                                          entry.isCurrent && 'animate-pulse',
+                                        )}
+                                      />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div
+                                          className="truncate text-sm font-semibold text-foreground"
+                                          title={displayName(entry)}
+                                        >
+                                          {displayName(entry)}
+                                        </div>
+                                        {entry.isCurrent ? (
+                                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                            {t('activity:sessions.activeTab', {
+                                              defaultValue: 'Active Tab',
+                                            })}
+                                          </span>
+                                        ) : openTabIds.includes(entry.id) ? (
+                                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                                            {t('activity:sessions.tabNumber', {
+                                              count: openTabIds.indexOf(entry.id) + 1,
+                                              defaultValue: `Tab ${openTabIds.indexOf(entry.id) + 1}`,
+                                            })}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                                        {entry.provider}/{entry.model}
+                                      </div>
+                                      {entry.lastUserMessage ? (
+                                        <div
+                                          className="mt-1 truncate text-xs text-muted-foreground"
+                                          title={entry.lastUserMessage}
+                                        >
+                                          {entry.lastUserMessage}
+                                        </div>
+                                      ) : null}
+                                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-muted-foreground">
+                                        {isResuming ? (
+                                          <span className="inline-flex items-center gap-1 font-sans font-semibold text-primary">
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            {t('activity:sessions.resuming')}
+                                          </span>
+                                        ) : (
+                                          <span
+                                            title={new Date(
+                                              sessionActivityAt(entry),
+                                            ).toLocaleString()}
+                                          >
+                                            {formatRelative(sessionActivityAt(entry))}
+                                          </span>
+                                        )}
+                                        <span aria-hidden="true">·</span>
+                                        <span>{formatSessionDuration(entry)}</span>
+                                        {entry.tokenTotal > 0 ? (
+                                          <span>{formatCompactNumber(entry.tokenTotal)} tok</span>
+                                        ) : null}
+                                        {(entry.messageCount ?? 0) > 0 ? (
+                                          <span>
+                                            {formatCompactNumber(entry.messageCount ?? 0)} msg
+                                          </span>
+                                        ) : null}
+                                        {(entry.toolCallCount ?? 0) > 0 ? (
+                                          <span className="inline-flex items-center gap-1">
+                                            <Wrench className="h-3 w-3" />
+                                            {entry.toolCallCount}
+                                          </span>
+                                        ) : null}
+                                        {(entry.fileChangeCount ?? 0) > 0 ? (
+                                          <span className="inline-flex items-center gap-1">
+                                            <FileCode2 className="h-3 w-3" />
+                                            {entry.fileChangeCount}
+                                          </span>
+                                        ) : null}
+                                        {(entry.toolErrorCount ?? 0) > 0 ? (
+                                          <span className="inline-flex items-center gap-1 text-destructive">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            {entry.toolErrorCount}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+                              )}
+
+                              <div className="flex items-start gap-0.5 p-2">
+                                {/*
+                                  Resume is only offered for a session that is NOT
+                                  already on screen. One session, one slot: a
+                                  conversation that owns a tab is reached by
+                                  clicking its row (which switches to it), and
+                                  labelling that "Resume" promised a reload of
+                                  something the page is already showing.
+                                */}
+                                {!entry.isCurrent &&
+                                !openTabIds.includes(entry.id) &&
+                                workspace &&
+                                !isRenaming ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResume(entry.id)}
+                                    disabled={resumingId !== null}
+                                    className="inline-flex h-7 items-center gap-1 border border-border/75 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40"
+                                    title={t('activity:sessions.resume', {
+                                      defaultValue: 'Resume session',
+                                    })}
+                                  >
+                                    <Play className="h-3 w-3" />
+                                    {t('activity:sessions.resumeShort', { defaultValue: 'Resume' })}
+                                  </button>
+                                ) : null}
+                                {!isRenaming ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectSession(entry.id)}
+                                    className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                    title={t('activity:sessions.inspect', {
+                                      defaultValue: 'Inspect session',
+                                    })}
+                                  >
+                                    <SearchCheck className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleFavoriteSession(entry.id)}
+                                  aria-pressed={favorite}
+                                  className={cn(
+                                    'inline-flex h-7 w-7 items-center justify-center transition-colors hover:bg-warning/10 hover:text-warning',
+                                    favorite ? 'text-warning' : 'text-muted-foreground',
+                                  )}
+                                  title={
+                                    favorite
+                                      ? t('activity:sessions.unfavorite')
+                                      : t('activity:sessions.markFavorite')
                                   }
-                                  deleteSession(entry.id);
-                                }}
-                                className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                title={t('activity:sessions.deleteSessionTitle')}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            ) : null}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
+                                >
+                                  <Star className={cn('h-3.5 w-3.5', favorite && 'fill-current')} />
+                                </button>
+                                {!isRenaming ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => beginRename(entry)}
+                                    className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                    title={t('activity:sessions.renameAction', {
+                                      defaultValue: 'Rename',
+                                    })}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+                                {!entry.isCurrent ? (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const ok = await confirmModal({
+                                        title: t('activity:sessions.deleteSessionConfirmTitle'),
+                                        message: t('activity:sessions.deleteSessionConfirmBody', {
+                                          name: displayName(entry),
+                                        }),
+                                        confirmLabel: t('common:action.delete'),
+                                        danger: true,
+                                      });
+                                      if (!ok) return;
+                                      // Close the deleted session's tab first so
+                                      // the server allows the deletion; when the
+                                      // strip would drop to zero the store keeps
+                                      // one tab and reports the session as not
+                                      // removable — never delete what must stay.
+                                      const removable = useSessionTabStore
+                                        .getState()
+                                        .closeTabsForSessions([entry.id]);
+                                      if (!removable.includes(entry.id)) {
+                                        toast.info(
+                                          t('activity:sessions.deleteKeptLastTab', {
+                                            defaultValue:
+                                              'Session not deleted — at least one tab must stay open.',
+                                          }),
+                                        );
+                                        return;
+                                      }
+                                      deleteSession(entry.id);
+                                    }}
+                                    className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    title={t('activity:sessions.deleteSessionTitle')}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
               ))}
             </div>
             <Pagination
-              page={page}
+              page={activePage}
               pageSize={pageSize}
               totalItems={visibleEntries.length}
               onPageChange={setPage}

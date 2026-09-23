@@ -21,6 +21,7 @@ import type {
 } from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
+import { ServerRequestResponder } from './elicitation.js';
 import {
   type MCPGetPromptResult,
   type MCPListPromptsResult,
@@ -31,7 +32,7 @@ import {
   parseServerMetadata,
   resourceUpdatedUri,
 } from './protocol.js';
-import { listAllTools } from './tool-schema.js';
+import { listAllTools, toToolCallResult } from './tool-schema.js';
 import type { SSETransport, StreamableHTTPTransport } from './transport.js';
 import { nextJsonRpcId } from './transport-base.js';
 import { isJsonRpcResult } from './transport-jsonrpc.js';
@@ -100,8 +101,12 @@ export class MCPClient {
   private readonly resourceUpdatedListeners = new Set<MCPResourceUpdatedListener>();
   /** Notified when an HTTP transport (SSE or streamable-http) disconnects. */
   private readonly disconnectListeners = new Set<() => void>();
+  /** Answers server→client requests (ping, elicitation) on every transport. */
+  private readonly serverRequests: ServerRequestResponder;
 
-  constructor(public readonly opts: MCPClientOptions) {}
+  constructor(public readonly opts: MCPClientOptions) {
+    this.serverRequests = new ServerRequestResponder(opts.elicitation);
+  }
 
   getState(): ConnectionState {
     return this.state;
@@ -310,9 +315,9 @@ export class MCPClient {
       'initialize',
       {
         protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-        // Client capabilities (roots/sampling/elicitation) — none offered.
+        // Client capabilities: elicitation when the host can ask its user.
         // `tools` is a SERVER capability and never belonged here.
-        capabilities: {},
+        capabilities: this.serverRequests.capabilities(),
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       },
       this.opts.startupTimeoutMs ?? 10_000,
@@ -368,16 +373,7 @@ export class MCPClient {
     }
     // stdio
     const res = await this.request('tools/call', { name, arguments: input }, undefined, opts);
-    if (res.error) {
-      return { content: res.error.message, isError: true };
-    }
-    const result = res.result as
-      | { content?: unknown | undefined; isError?: boolean | undefined }
-      | undefined;
-    return {
-      content: result?.content ?? '',
-      isError: Boolean(result?.isError),
-    };
+    return toToolCallResult(res);
   }
 
   async listResources(opts: MCPPageOptions = {}): Promise<MCPListResourcesResult> {
@@ -496,6 +492,7 @@ export class MCPClient {
     // may have already run failPending, but calling it again with the same
     // pending set is a no-op (failPending guards on `this.pending.size`).
     this.failPending(`MCP "${this.opts.name}" closed`);
+    this.serverRequests.dispose();
     // Awaited so close() resolves only once the transport has released its
     // connection pool and aborted its in-flight requests.
     await Promise.allSettled([this.sseTransport?.close(), this.httpTransport?.close()]);
@@ -549,26 +546,32 @@ export class MCPClient {
       const detach = () => {
         if (signal && onAbort) signal.removeEventListener('abort', onAbort);
       };
-      const timer = setTimeout(() => {
+      const onTimeout = () => {
+        // A server waiting on the user's elicitation answer is not stalled.
+        if (this.serverRequests.awaitingUser) {
+          entry.timer = setTimeout(onTimeout, timeoutMs);
+          return;
+        }
         this.pending.delete(id);
         detach();
         reject(
           new Error(`MCP "${this.opts.name}" request "${method}" timed out after ${timeoutMs}ms`),
         );
-      }, timeoutMs);
-      this.pending.set(id, {
-        resolve: (res) => {
-          clearTimeout(timer);
+      };
+      const entry = {
+        resolve: (res: JsonRpcResponse) => {
+          clearTimeout(entry.timer);
           detach();
           resolve(res);
         },
-        reject: (err) => {
-          clearTimeout(timer);
+        reject: (err: Error) => {
+          clearTimeout(entry.timer);
           detach();
           reject(err);
         },
-        timer,
-      });
+        timer: setTimeout(onTimeout, timeoutMs),
+      };
+      this.pending.set(id, entry);
       const stdin = this.child?.stdin;
       if (!stdin || stdin.destroyed) {
         // No writable stdin (child never spawned, already exited, or stream
@@ -755,7 +758,7 @@ export class MCPClient {
     if (typeof envelope['method'] === 'string') {
       const id = envelope['id'];
       if (typeof id === 'number' || typeof id === 'string') {
-        this.handleServerRequest({
+        void this.handleServerRequest({
           jsonrpc: '2.0',
           id,
           method: envelope['method'],
@@ -767,7 +770,9 @@ export class MCPClient {
       // Notifications have a `method` but no `id`. The MCP spec defines
       // list_changed notifications for cache invalidation.
       if (Object.hasOwn(envelope, 'id')) return;
-      if (envelope['method'] === 'notifications/tools/list_changed') {
+      if (envelope['method'] === 'notifications/cancelled') {
+        this.serverRequests.cancel(envelope['params']);
+      } else if (envelope['method'] === 'notifications/tools/list_changed') {
         void this.handleToolsListChanged();
       } else if (envelope['method'] === 'notifications/resources/list_changed') {
         this.emitCapabilityChanged('resources');
@@ -789,25 +794,8 @@ export class MCPClient {
     }
   }
 
-  private handleServerRequest(request: JsonRpcServerRequest): void {
-    // `ping` is valid in both directions and MUST be answered with an empty
-    // result — servers that probe liveness treated the old "Method not found"
-    // as a dead client.
-    const response =
-      request.method === 'ping'
-        ? { jsonrpc: '2.0', id: request.id, result: {} }
-        : {
-            jsonrpc: '2.0',
-            id: request.id,
-            error: {
-              code: -32601,
-              message:
-                request.method === 'sampling/createMessage'
-                  ? 'Client sampling is disabled by policy'
-                  : `Method not found: ${request.method}`,
-            },
-          };
-
+  private async handleServerRequest(request: JsonRpcServerRequest): Promise<void> {
+    const response = await this.serverRequests.answer(request);
     try {
       this.child?.stdin?.write(`${JSON.stringify(response)}\n`);
     } catch {
@@ -942,6 +930,7 @@ export class MCPClient {
       set httpTransport(value) {
         self.httpTransport = value;
       },
+      serverRequests: this.serverRequests,
     };
   }
 }

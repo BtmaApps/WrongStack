@@ -1,5 +1,6 @@
 import { PLUGIN_AUDIT_ENTRIES } from '@wrongstack/plugins/plugin-audit-catalog';
 import { Puzzle } from 'lucide-react';
+import { useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { PreferenceToggle } from './PreferenceToggle';
@@ -40,7 +41,7 @@ function displayName(name: string): string {
 
 // The catalog is a frozen, build-time constant, so sort it once at module
 // scope rather than on every render. Alphabetical by display label keeps the
-// ~70-entry list navigable.
+// catalog list navigable as plugins are added.
 const SORTED_PLUGINS = [...PLUGIN_AUDIT_ENTRIES].sort((a, b) =>
   displayName(a.name).localeCompare(displayName(b.name)),
 );
@@ -71,6 +72,19 @@ export function PluginToggleList({
 } = {}) {
   const { t } = useAppTranslation();
   const localPrefs = useLocalPrefs();
+  const [query, setQuery] = useState('');
+  const [enabledOnly, setEnabledOnly] = useState(false);
+  const needle = query.trim().toLocaleLowerCase();
+  const visible = SORTED_PLUGINS.filter((entry) => {
+    const enabled = localPrefs.pluginsEnabled?.[entry.name] ?? entry.defaultState === 'active';
+    if (enabledOnly && !enabled) return false;
+    if (!needle) return true;
+    const labelKey = PLUGIN_LABEL_KEYS[entry.name];
+    const label = labelKey ? t(labelKey) : displayName(entry.name);
+    return [entry.name, label, entry.summary].some((text) =>
+      text.toLocaleLowerCase().includes(needle),
+    );
+  });
 
   return (
     <div className="pt-2 border-t">
@@ -81,7 +95,36 @@ export function PluginToggleList({
       <p className="text-xs text-muted-foreground mb-2">
         {t('settings:context.pluginsPerPluginHint')}
       </p>
-      {SORTED_PLUGINS.map((entry) => {
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          aria-label={t('settings:context.pluginSearch')}
+          placeholder={t('settings:context.pluginSearch')}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          className="min-w-[120px] flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <button
+          type="button"
+          aria-pressed={enabledOnly}
+          onClick={() => setEnabledOnly((current) => !current)}
+          className="shrink-0 rounded-md border border-input px-3 py-2 text-sm"
+        >
+          {t('settings:context.pluginEnabledOnly')}
+        </button>
+        <span
+          aria-live="polite"
+          className="basis-full text-xs text-muted-foreground sm:ml-auto sm:basis-auto"
+        >
+          {visible.length} / {SORTED_PLUGINS.length}
+        </span>
+      </div>
+      {visible.length === 0 && (
+        <p className="py-3 text-sm text-muted-foreground">
+          {t('settings:context.pluginNoMatches')}
+        </p>
+      )}
+      {visible.map((entry) => {
         const labelKey = PLUGIN_LABEL_KEYS[entry.name];
         const label = labelKey ? t(labelKey) : displayName(entry.name);
         const enabled = localPrefs.pluginsEnabled?.[entry.name] ?? entry.defaultState === 'active';

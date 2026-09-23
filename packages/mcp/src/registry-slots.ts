@@ -1,6 +1,7 @@
 import type { MCPServerConfig, Tool } from '@wrongstack/core/types';
 import type { MCPClient } from './client.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
+import type { ElicitationRequester } from './elicitation.js';
 import type { MCPServerOperationState } from './operations.js';
 import type { MCPPrompt, MCPResource, MCPResourceTemplate, MCPServerMetadata } from './protocol.js';
 
@@ -41,6 +42,11 @@ export interface ServerSlot {
   connecting?: Promise<MCPClient | undefined> | undefined;
   /** Whether this lazy server's resolver wrappers are registered (register once). */
   registeredLazy: boolean;
+  /**
+   * Runs with a tool call to this server in flight, oldest first. A server
+   * elicitation asks the newest — the spec does not tie a request to a call.
+   */
+  activeCallers?: ElicitationRequester[] | undefined;
   /** Bounded, payload-free operational telemetry for this server. */
   operations: MCPServerOperationState;
 }

@@ -20,13 +20,19 @@ import {
 } from '@wrongstack/core/execution';
 import { TOKENS } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
-import { createMcpControlTool, createMcpUseTool } from '@wrongstack/core/tools';
+import {
+  createMcpControlTool,
+  createMcpUseTool,
+  createSessionRenameTool,
+  SESSION_RENAME_TOOL_NAME,
+} from '@wrongstack/core/tools';
 import {
   type Config,
   normalizeTokenSavingTier,
   type Provider,
   type SecretVault,
   type SessionWriter,
+  type Tracer,
 } from '@wrongstack/core/types';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { subscribeBrainDecisionLog } from '../boot/brain-decision-log.js';
@@ -62,6 +68,8 @@ interface BrainRuntimeSettings {
 }
 
 interface BrainOrchestrationDeps {
+  /** OTLP tracer; subagent runs nest under the leader turn that spawned them. */
+  tracer?: Tracer | undefined;
   events: AnyObj;
   config: Config;
   /** Secret vault for the global-config persist path of Brain settings. */
@@ -431,6 +439,7 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
       projectRoot,
       cwd,
       skillLoader,
+      tracer: deps.tracer,
       secretScrubber: container.resolve(TOKENS.SecretScrubber),
       // WrongTrace lock gate for every spawned worker — same fail-open
       // coordination the leader's executor enforces (lifecycle-plugins).
@@ -563,6 +572,18 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
   );
   if (normalizeTokenSavingTier(config.features.tokenSavingMode) !== 'off') {
     toolRegistry.exposeToProvider('mcp_use');
+  }
+
+  // The model titles the session it works in. The store is resolved per call:
+  // this phase runs before the session is established.
+  toolRegistry.register(
+    createSessionRenameTool({
+      rename: (sessionId, name) => container.resolve(TOKENS.SessionStore).rename(sessionId, name),
+      events,
+    }),
+  );
+  if (normalizeTokenSavingTier(config.features.tokenSavingMode) !== 'off') {
+    toolRegistry.exposeToProvider(SESSION_RENAME_TOOL_NAME);
   }
 
   return {

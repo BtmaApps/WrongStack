@@ -150,11 +150,13 @@ describe('StreamableHTTPTransport coverage', () => {
     });
     const changed = vi.fn();
     transport.onResourcesChanged(changed);
-    const consume = (
-      transport as never as {
-        consumeResponseText: (text: string, id: number) => { id?: number } | undefined;
-      }
-    ).consumeResponseText.bind(transport);
+    const internals = transport as never as {
+      takeEnvelopes: (text: string, id: number) => { id?: number } | undefined;
+      replyToServer: (request: unknown) => Promise<void>;
+    };
+    const reply = vi.fn(async () => undefined);
+    internals.replyToServer = reply;
+    const consume = internals.takeEnvelopes.bind(transport);
 
     expect(
       consume(
@@ -168,6 +170,12 @@ describe('StreamableHTTPTransport coverage', () => {
     ).toMatchObject({ id: 2 });
     expect(consume('noise', 1)).toBeUndefined();
     expect(changed).toHaveBeenCalledOnce();
+    // The embedded server request is answered, not mistaken for a response.
+    expect(reply).toHaveBeenCalledWith(
+      { id: 9, method: 'server/request', params: undefined },
+      'https://example.test',
+      expect.any(Object),
+    );
   });
 
   it('covers postRaw HTTP, parse, session, and cancellation failures', async () => {

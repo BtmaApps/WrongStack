@@ -8,7 +8,16 @@ import type {
 } from '@wrongstack/core/types';
 import { capabilitiesForFamily } from './family-capabilities.js';
 
-const REGISTRY_CAP_CACHE = new WeakMap<ModelsRegistry, Map<string, Capabilities>>();
+/**
+ * Per-registry capability cache, tagged with the registry's catalog generation
+ * when it exposes one. A generation mismatch means the catalog changed since
+ * the entry was built, so the whole map is discarded — pull-based, so it never
+ * depends on when (or in which order) refresh listeners run.
+ */
+const REGISTRY_CAP_CACHE = new WeakMap<
+  ModelsRegistry,
+  { generation: number | undefined; map: Map<string, Capabilities> }
+>();
 const CUSTOM_MODEL_IDS = new WeakMap<Record<string, CustomModelDefinition>, number>();
 const WRAPPED_REFRESH = new WeakSet<ModelsRegistry>();
 const WRAPPED_OVERLAY = new WeakSet<ModelsRegistry>();
@@ -157,7 +166,20 @@ function ensureOverlayInvalidatesCache(registry: ModelsRegistry): void {
   };
 }
 
+function capabilityCacheFor(registry: ModelsRegistry): Map<string, Capabilities> {
+  const generation = registry.catalogGeneration?.();
+  const entry = REGISTRY_CAP_CACHE.get(registry);
+  if (entry && entry.generation === generation) return entry.map;
+  const fresh = { generation, map: new Map<string, Capabilities>() };
+  REGISTRY_CAP_CACHE.set(registry, fresh);
+  return fresh.map;
+}
+
 function ensureRefreshInvalidatesCache(registry: ModelsRegistry): void {
+  // A registry with a catalog generation invalidates through
+  // `capabilityCacheFor` — covering refresh AND runtime overlay merges — so
+  // it needs no method wrapping.
+  if (typeof registry.catalogGeneration === 'function') return;
   if (WRAPPED_REFRESH.has(registry)) return;
   ensureOverlayInvalidatesCache(registry);
   // Registries in tests (or minimal mocks) may not expose refresh; skip wrapping
@@ -189,8 +211,7 @@ export async function capabilitiesFor(
   options?: CapabilitiesForOptions,
 ): Promise<Capabilities> {
   ensureRefreshInvalidatesCache(registry);
-  const registryCache = REGISTRY_CAP_CACHE.get(registry) ?? new Map();
-  REGISTRY_CAP_CACHE.set(registry, registryCache);
+  const registryCache = capabilityCacheFor(registry);
 
   const key = cacheKey(providerId, modelId, customModels);
   const cached = registryCache.get(key);

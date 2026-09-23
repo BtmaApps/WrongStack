@@ -10,6 +10,8 @@ import {
   ProviderRegistry,
   ToolRegistry,
 } from '../../src/index.js';
+import { jevActivitySnapshot } from '../../src/typesafe/activity.js';
+import { resetTypeSafeJudgesForTests } from '../../src/typesafe/judgments.js';
 
 const baseConfig: Config = {
   providers: {},
@@ -735,6 +737,123 @@ describe('DefaultPluginAPI tool trust tiers (F-02)', () => {
     toolRegistry.register({ ...tool('bash'), permission: 'confirm' }, 'core');
     expect(() => api.tools.wrap('bash', (t) => ({ ...t, permission: 'auto' }))).not.toThrow();
     expect(toolRegistry.get('bash')?.permission).toBe('auto');
+  });
+});
+
+describe('DefaultPluginAPI.jev', () => {
+  it('keeps third-party access off and uses the shared account only on request', async () => {
+    const toolRegistry = new ToolRegistry();
+    const base = {
+      ownerName: 'plugin-x',
+      container: new Container(),
+      events: new EventBus(),
+      pipelines: {} as ConstructorParameters<typeof DefaultPluginAPI>[0]['pipelines'],
+      toolRegistry,
+      providerRegistry: new ProviderRegistry(),
+      config: { version: 1, typesafe: { apiKey: 'test-key' } } as Config,
+      log: new DefaultLogger({ level: 'error' }),
+    };
+    const external = new DefaultPluginAPI({ ...base, official: false });
+    expect(external.jev).toBeUndefined();
+    const official = new DefaultPluginAPI({ ...base, official: true });
+    expect(official.jev).toBeDefined();
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            answers: {
+              priority: {
+                type: 'choice',
+                choice: 'first',
+                probabilities: { first: 0.8, defer: 0.2 },
+                confidence: 0.6,
+              },
+            },
+            model: 'jev-test',
+            usage: { input_tokens: 8, output_tokens: 2 },
+          }),
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      expect(fetchMock).not.toHaveBeenCalled();
+      const result = await official.jev!.judge({
+        state: { finding: 'broken build' },
+        questions: {
+          priority: {
+            type: 'choice',
+            instructions: 'Choose the next check.',
+            criteria: { first: 'Run build', defer: 'Insufficient evidence' },
+          },
+        },
+      });
+      expect(result.answers.priority).toMatchObject({ choice: 'first' });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        jevActivitySnapshot().entries.some((entry) => entry.feature === 'plugin:plugin-x'),
+      ).toBe(true);
+      toolRegistry.setSessionRestriction({ deny: ['jev'] });
+      await expect(
+        official.jev!.judge({
+          state: {},
+          questions: {
+            priority: {
+              type: 'choice',
+              instructions: 'Choose the next check.',
+              criteria: { first: 'Run build', defer: 'Insufficient evidence' },
+            },
+          },
+        }),
+      ).rejects.toThrow('unavailable');
+      toolRegistry.setSessionRestriction({ deny: [] });
+      base.config.typesafe = { apiKey: 'test-key', judgments: { tool: false } };
+      await expect(
+        official.jev!.judge({
+          state: {},
+          questions: {
+            priority: {
+              type: 'choice',
+              instructions: 'Choose the next check.',
+              criteria: { first: 'Run build', defer: 'Insufficient evidence' },
+            },
+          },
+        }),
+      ).rejects.toThrow('unavailable');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      base.config.typesafe = { apiKey: 'test-key' };
+      fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+      const pending = official.jev!.judge({
+        state: { finding: 'still broken' },
+        questions: {
+          priority: {
+            type: 'choice',
+            instructions: 'Choose the next check.',
+            criteria: { first: 'Run build', defer: 'Insufficient evidence' },
+          },
+        },
+      });
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      official.drainCleanup();
+      await expect(pending).rejects.toThrow(/unloaded/);
+      await expect(
+        official.jev!.judge({
+          state: {},
+          questions: {
+            priority: {
+              type: 'choice',
+              instructions: 'Choose the next check.',
+              criteria: { first: 'Run build', defer: 'Insufficient evidence' },
+            },
+          },
+        }),
+      ).rejects.toThrow(/unloaded/);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      official.drainCleanup();
+      resetTypeSafeJudgesForTests();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

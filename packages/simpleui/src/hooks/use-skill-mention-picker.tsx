@@ -129,7 +129,7 @@ export function useSkillMentionPicker(
             onClick={() => pick(skill.name)}
             className={`file-picker-row ${index === selected ? 'selected' : ''}`}
           >
-            <div className="skill-mention-name">${skill.name}</div>
+            <div className="skill-mention-name">{`$${skill.name}`}</div>
             <div className="skill-mention-description">{skill.description}</div>
           </button>
         ))

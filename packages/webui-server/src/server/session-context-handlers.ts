@@ -142,7 +142,7 @@ export function createSessionContextHandlers(
         }
         const counter = target.tokenCounter ?? ctx.tokenCounter;
         const beforeUsage = counter.total();
-        const report = await compactor.compact(target, { aggressive });
+        const report = await compactor.compact(target, { aggressive, trigger: 'manual' });
         const afterUsage = counter.total();
         const before =
           typeof report.before === 'number'

@@ -22,7 +22,7 @@ vi.mock('../src/server/model-catalog.js', () => ({
   resolveProviderModelMetadata: vi.fn(async () => ({ capabilities: { maxContext: 128000 } })),
 }));
 vi.mock('../src/server/usage-cost.js', () => ({
-  getCostRates: vi.fn(() => ({ input: 0, output: 0, cacheRead: 0 })),
+  getCostRates: vi.fn(() => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 })),
 }));
 vi.mock('../src/server/setup-events.js', () => ({
   setupEvents: vi.fn(() => () => undefined),

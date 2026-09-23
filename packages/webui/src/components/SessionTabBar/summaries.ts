@@ -30,14 +30,23 @@ const SLOT_ACCENTS = [
     text: 'text-primary',
     border: 'border-primary',
     soft: 'bg-primary/10',
+    activeBg: 'bg-primary/15',
   },
-  { name: 'info', dot: 'bg-info', text: 'text-info', border: 'border-info', soft: 'bg-info/10' },
+  {
+    name: 'info',
+    dot: 'bg-info',
+    text: 'text-info',
+    border: 'border-info',
+    soft: 'bg-info/10',
+    activeBg: 'bg-info/15',
+  },
   {
     name: 'warning',
     dot: 'bg-warning',
     text: 'text-warning',
     border: 'border-warning',
     soft: 'bg-warning/10',
+    activeBg: 'bg-warning/15',
   },
   {
     name: 'success',
@@ -45,6 +54,7 @@ const SLOT_ACCENTS = [
     text: 'text-success',
     border: 'border-success',
     soft: 'bg-success/10',
+    activeBg: 'bg-success/15',
   },
 ] as const;
 

@@ -423,3 +423,68 @@ describe('scoped approval transport', () => {
     expect(h.pendingConfirms.has('approval')).toBe(true);
   });
 });
+
+describe('composer.warm', () => {
+  function warmHarness() {
+    const warm = vi.fn(async () => undefined);
+    let finishRun: (() => void) | undefined;
+    const run = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finishRun = () => resolve({ status: 'completed', iterations: 1, finalText: 'ok' });
+        }),
+    );
+    const agentFor = vi.fn(() => ({
+      run,
+      ctx: {
+        provider: { id: 'provider', capabilities: { vision: true }, warm },
+        model: 'glm-5',
+        messages: [],
+        meta: {},
+      },
+      tools: { list: () => [] },
+    }));
+    const sent: Array<{ type: string; payload: unknown }> = [];
+    const routes = createConversationOperations({
+      getAgent: agentFor as never,
+      getSessionId: () => 'session-live',
+      hasSession: (id) => id === 'session-tab2',
+      runControl: { begin: () => new AbortController(), end: vi.fn(), abort: vi.fn() },
+      pendingConfirms: new Map(),
+      submitUserInput: vi.fn(),
+      send: (_ws, message) => sent.push(message),
+      notifyAbort: vi.fn(),
+    });
+    return { routes, warm, agentFor, sent, finish: () => finishRun?.() };
+  }
+
+  it("warms the tab's own session provider for its model, silently", async () => {
+    const h = warmHarness();
+    await h.routes.warmProvider?.(ws, {
+      type: 'composer.warm',
+      payload: { sessionId: 'session-tab2' },
+    });
+    expect(h.agentFor).toHaveBeenCalledWith('session-tab2');
+    expect(h.warm).toHaveBeenCalledWith('glm-5');
+    expect(h.sent).toEqual([]);
+  });
+
+  it('skips a session this host does not hold, and one whose turn is running', async () => {
+    const h = warmHarness();
+    await h.routes.warmProvider?.(ws, {
+      type: 'composer.warm',
+      payload: { sessionId: 'session-elsewhere' },
+    });
+    expect(h.warm).not.toHaveBeenCalled();
+    expect(h.sent).toEqual([]);
+
+    const turn = h.routes.userMessage(ws, { type: 'user_message', payload: { content: 'hi' } });
+    await vi.waitFor(() => expect(h.agentFor).toHaveBeenCalled());
+    await h.routes.warmProvider?.(ws, { type: 'composer.warm', payload: {} });
+    expect(h.warm).not.toHaveBeenCalled();
+    h.finish();
+    await turn;
+    await h.routes.warmProvider?.(ws, { type: 'composer.warm', payload: {} });
+    expect(h.warm).toHaveBeenCalledOnce();
+  });
+});

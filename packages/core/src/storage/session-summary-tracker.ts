@@ -145,6 +145,8 @@ export class SessionSummaryTracker {
       this.fileChangeCount += event.files.length;
     } else if (event.type === 'compaction') {
       this.compactionCount++;
+    } else if (event.type === 'session_forked') {
+      this.summary = { ...this.summary, forkedFrom: event.parentSessionId };
     }
 
     if (isSessionErrorEvent(event)) {

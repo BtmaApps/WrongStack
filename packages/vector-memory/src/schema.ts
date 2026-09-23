@@ -51,7 +51,12 @@ export function initVectorSchema(db: DatabaseSync): void {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_scope ON entries(scope)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind)');
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_hash ON entries(content_hash)');
+  // Existing stores have a global content-hash index. Install the scoped
+  // replacement first so uniqueness is never absent during migration.
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_hash_scope ON entries(content_hash, scope)',
+  );
+  db.exec('DROP INDEX IF EXISTS idx_entries_hash');
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_updated ON entries(updated_at DESC)');
   // `VectorMemoryStore.findBySageId()` looks rows up by
   // `json_extract(metadata, '$.sageId')` and documents that lookup as avoiding a

@@ -1,6 +1,7 @@
 import type { MCPAuthorizationProvider } from './authorization.js';
 
 import type { MCPTool } from './contracts.js';
+import type { MCPClientElicitationHandler } from './elicitation.js';
 
 export type Transport = 'stdio' | 'sse' | 'streamable-http';
 
@@ -40,6 +41,11 @@ export interface MCPClientOptions {
    * flag opts this server in. See MCPServerConfig.allowPrivateNetworks.
    */
   allowPrivateNetworks?: boolean | undefined;
+  /**
+   * Answers `elicitation/create`. The capability is declared only when this is
+   * set, so a host that can never ask a user should leave it unset.
+   */
+  elicitation?: MCPClientElicitationHandler | undefined;
 }
 
 export interface MCPRequestOptions {

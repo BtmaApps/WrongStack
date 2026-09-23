@@ -188,6 +188,24 @@ describe('CodeMap component', () => {
     expect(screen.getByText(/codebase-index/)).toBeDefined();
   });
 
+  it('shows the friendly unavailable message when a 200 returns the SPA fallback HTML', async () => {
+    // The codemap route falls back to index.html when the WebUI server is
+    // not running; a 200 + HTML body must NOT surface a raw parse exception.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      statusText: 'OK',
+      json: async () => {
+        throw new Error("Unexpected token '<', \"<!doctype html\" is not valid JSON");
+      },
+    } as unknown as Response);
+    render(<CodeMap />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/(CodeMap graph unavailable|codeMap\.snapshotUnavailable)/)).toBeDefined(),
+    );
+    expect(screen.queryByText(/Unexpected token/)).toBeNull();
+  });
+
   it('shows an auth error instead of index guidance when credentials are rejected', async () => {
     // A 401 is NOT a missing index — the view must say so instead of
     // telling the operator to run codebase-index.

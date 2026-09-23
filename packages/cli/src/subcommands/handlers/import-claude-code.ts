@@ -18,6 +18,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { MCPServerConfig } from '@wrongstack/core/types';
 import { readJsonObjectFile, setJsonPath, updateJsonObjectFile } from '@wrongstack/core/utils';
+import { mcpEnvPlaceholders } from '@wrongstack/mcp';
 import { normalizeMcpServerEntry } from '../../boot/mcp-config-flag.js';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
 import type { SubcommandHandler } from '../contracts.js';
@@ -112,15 +113,22 @@ export function planClaudeCodeImport(opts: {
       const exists = Object.hasOwn(opts.existingServers, name);
       const repository = source === 'repository';
       const enabled = !repository || opts.enableProjectServers;
+      // `${VAR}` placeholders are resolved from YOUR environment when the
+      // server starts — say which, before anything is written.
+      const reads = mcpEnvPlaceholders(config);
+      const notes = [
+        repository && !enabled
+          ? 'from the repository — imported disabled; review, then `/mcp enable`'
+          : undefined,
+        reads.length > 0 ? `reads environment: ${reads.join(', ')}` : undefined,
+      ].filter((note): note is string => note !== undefined);
       mcp.push({
         name,
         source,
         config,
         action: exists ? (opts.overwrite ? 'overwrite' : 'skip-exists') : 'add',
         enabled,
-        ...(repository && !enabled
-          ? { note: 'from the repository — imported disabled; review, then `/mcp enable`' }
-          : {}),
+        ...(notes.length > 0 ? { note: notes.join('; ') } : {}),
       });
     }
   };

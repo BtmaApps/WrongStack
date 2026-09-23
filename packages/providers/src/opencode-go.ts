@@ -181,6 +181,10 @@ export class OpenCodeGoProvider implements Provider {
     return delegate.complete(req, opts);
   }
 
+  async warm(model: string): Promise<void> {
+    await this.delegate(model).warm?.(model);
+  }
+
   private delegate(model: string): Provider {
     const catalogModel = this.models.get(model);
     const wire = openCodeGoWireForModel(model, catalogModel?.provider?.npm);

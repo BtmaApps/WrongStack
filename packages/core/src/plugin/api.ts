@@ -21,6 +21,7 @@ import type {
   PluginAPI,
   PluginCapabilities,
   PluginDependency,
+  PluginJev,
   PluginLLM,
   PluginPipelines,
   ProviderAuthRegistryView,
@@ -34,6 +35,7 @@ import type { Provider } from '../types/provider.js';
 import type { SystemPromptContributor } from '../types/system-prompt-contributor.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { KERNEL_API_VERSION } from './loader.js';
+import { makePluginJev } from './plugin-jev.js';
 import { makePluginLLM } from './plugin-llm.js';
 
 export interface PluginAPIInit {
@@ -162,6 +164,8 @@ export class DefaultPluginAPI implements PluginAPI {
   readonly mailbox: Mailbox | undefined;
   readonly notifier: Notifier | undefined;
   readonly llm: PluginLLM | undefined;
+  readonly jev: PluginJev | undefined;
+  private readonly lifetime = new AbortController();
   private readonly configStore:
     | { watch(cb: (next: unknown, prev: unknown) => void): () => void }
     | undefined;
@@ -205,6 +209,18 @@ export class DefaultPluginAPI implements PluginAPI {
           () => liveConfig,
           this.metrics,
           this.log,
+        )
+      : undefined;
+    this.jev = init.official
+      ? makePluginJev(
+          owner,
+          () => liveConfig ?? init.config,
+          this.metrics,
+          () =>
+            init.toolRegistry.isDisabled('jev') ||
+            init.toolRegistry.isRestricted('jev') ||
+            (liveConfig ?? init.config).tools?.disabledTools?.includes('jev') === true,
+          this.lifetime.signal,
         )
       : undefined;
 
@@ -471,6 +487,7 @@ export class DefaultPluginAPI implements PluginAPI {
 
   /** Called by the plugin loader when uninstalling the plugin. */
   drainCleanup(): void {
+    this.lifetime.abort(new Error(`Plugin "${this.ownerName}" unloaded`));
     for (const fn of this.pluginCleanupFns.splice(0)) {
       try {
         fn();

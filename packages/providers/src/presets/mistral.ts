@@ -15,6 +15,8 @@ import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
+import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from '../openai-chat-usage.js';
+import { applyPromptCacheKey } from '../prompt-cache-key.js';
 import { messagesToOpenAI, toolsToOpenAI } from '../tool-format/to-openai.js';
 import { defineWireFormat } from '../wire-format.js';
 
@@ -41,13 +43,20 @@ interface MistralStreamState {
   providerId?: string | undefined;
 }
 
+const MISTRAL_CAPABILITIES = capabilitiesForFamily('openai-compatible', {
+  jsonMode: true,
+  maxContext: 128_000,
+  // Mistral caches prompt prefixes per `prompt_cache_key` (cached tokens at
+  // 10% of the input price) and reports hits in
+  // `usage.prompt_tokens_details.cached_tokens`.
+  promptCache: true,
+  cacheControl: 'auto',
+});
+
 export const mistralWireFormat = defineWireFormat<MistralStreamState>({
   id: 'mistral',
   family: 'openai-compatible',
-  capabilities: capabilitiesForFamily('openai-compatible', {
-    jsonMode: true,
-    maxContext: 128_000,
-  }),
+  capabilities: MISTRAL_CAPABILITIES,
   defaultBaseUrl: 'https://api.mistral.ai/v1',
   buildUrl: (base) => `${base.replace(/\/+$/, '')}/chat/completions`,
   buildHeaders: (apiKey) => ({ authorization: `Bearer ${apiKey}` }),
@@ -60,6 +69,7 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     };
     // Optional field — omit rather than guess; see model-output-limits.ts.
     if (maxOutput !== undefined) body['max_tokens'] = maxOutput;
+    applyPromptCacheKey(body, req, ctx?.capabilities ?? MISTRAL_CAPABILITIES);
     if (req.tools && req.tools.length > 0) {
       body['tools'] = toolsToOpenAI(req.tools);
       if (req.toolChoice) {
@@ -124,7 +134,7 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
         };
         finish_reason?: string | undefined;
       }[];
-      usage?: { prompt_tokens?: number | undefined; completion_tokens?: number | undefined };
+      usage?: OpenAIChatUsageWire | undefined;
       error?: unknown;
     }>(msg.data);
     if (!parsed.ok || !parsed.value) return [];
@@ -198,10 +208,13 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     if (choice?.finish_reason && !state.stopped) {
       state.sawTerminal = true;
       out.push(
-        ...closeMessage(state, mapStopReason(choice.finish_reason), {
-          input: ev.usage?.prompt_tokens ?? 0,
-          output: ev.usage?.completion_tokens ?? 0,
-        }),
+        ...closeMessage(
+          state,
+          mapStopReason(choice.finish_reason),
+          ev.usage
+            ? normalizeOpenAIChatUsage(ev.usage, { input: 0, output: 0 })
+            : { input: 0, output: 0 },
+        ),
       );
     }
     return out;

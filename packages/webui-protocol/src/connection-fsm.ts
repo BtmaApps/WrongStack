@@ -78,10 +78,13 @@ export function planConnectionReconnect(
   now = Date.now(),
   random = Math.random,
 ): { state: SurfaceConnectionState; plan: ReconnectPlan | null } {
-  const maxReconnectAttempts = finiteInteger(
-    config.maxReconnectAttempts,
-    DEFAULT_SURFACE_CONNECTION_CONFIG.maxReconnectAttempts,
-  );
+  const maxReconnectAttempts =
+    config.maxReconnectAttempts === Infinity
+      ? Infinity
+      : finiteInteger(
+          config.maxReconnectAttempts,
+          DEFAULT_SURFACE_CONNECTION_CONFIG.maxReconnectAttempts,
+        );
   if (state.stopped || state.reconnectAttempt >= maxReconnectAttempts) {
     return { state: { ...state, phase: 'closed' }, plan: null };
   }

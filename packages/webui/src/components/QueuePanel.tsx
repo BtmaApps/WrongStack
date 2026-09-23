@@ -1,8 +1,9 @@
 import { ArrowDownAZ, ArrowUpAZ, Check, ListOrdered, Trash2, X } from 'lucide-react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { usePromptQueueView } from '@/components/ChatInput/use-prompt-queue-view';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { useActiveSessionId, useChatStore } from '@/stores';
+import { useActiveSessionId } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
 import type { QueuedItem, QueueMode } from '@/stores/chat-store';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
@@ -50,9 +51,7 @@ export function QueuePanel({
   className,
 }: QueuePanelProps): React.ReactElement | null {
   const { t } = useAppTranslation();
-  const queue = useChatStore((s) => s.queue);
-  const removeQueued = useChatStore((s) => s.removeQueued);
-  const clearQueue = useChatStore((s) => s.clearQueue);
+  const { queue, remove: removeQueued, clear: clearQueue } = usePromptQueueView();
   const [sortDir, setSortDir] = useState<SortDir>('oldest');
   const sessionId = useActiveSessionId();
   const sortSessionRef = useRef<string>(sessionId ?? QUEUE_PANEL_NO_SESSION);

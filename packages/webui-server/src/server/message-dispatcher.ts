@@ -48,6 +48,7 @@ import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
 import { createRouteFamilyDispatcher } from './route-family-dispatcher.js';
 import type { AllRoutes, WebuiDeps, WebuiMutableState } from './routes.js';
 import { collectDisplayedSessionIds } from './session-handlers.js';
+import { promptQueueDirFor } from './session-prompt-queue.js';
 import type { ConnectedClient, WSClientMessage } from './types.js';
 import { createWorklistRouteHandlers } from './worklist-routes.js';
 import { createSessionAwareWorklistContext } from './worklist-session-context.js';
@@ -235,6 +236,9 @@ export function createMessageDispatcher(
     },
   };
   const conversationRoutes = createConversationOperations({
+    // Session-filtered: queue updates reach exactly the pages showing a session.
+    broadcast: (message) => broadcast(state.getClients(), message),
+    promptQueueDir: promptQueueDirFor(deps.wpaths?.projectSessions),
     getAgent: (sessionId?: string) => deps.getAgent?.(sessionId) ?? deps.agent,
     getSessionId: () => state.getSession().id,
     withSessionTransition: state.withSessionTransition,

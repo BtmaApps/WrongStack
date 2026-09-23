@@ -43,7 +43,7 @@
  *
  * @public
  */
-import type { Plugin } from '@wrongstack/core/types';
+import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -264,11 +264,14 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['error-lens']);
 
-    const hook = async (input: {
-      toolName?: string | undefined;
-      toolInput?: unknown;
-      toolResult?: { content: string; isError: boolean } | undefined;
-    }) => {
+    const hook = async (
+      input: {
+        toolName?: string | undefined;
+        toolInput?: unknown;
+        toolResult?: { content: string; isError: boolean } | undefined;
+      },
+      hookContext?: HookInvocationContext,
+    ) => {
       if (!cfg.enabled) return;
       state.invocations += 1;
       const result = input.toolResult;
@@ -338,8 +341,11 @@ const plugin: Plugin = {
               system: 'You are a terse debugging assistant.',
               role: 'reviewer',
               maxTokens: 100,
+              timeoutMs: 3000,
+              signal: hookContext?.signal,
             },
           );
+          if (hookContext?.signal.aborted) return { additionalContext: parts.join('\n') };
           const text = hint.text.trim();
           if (text) {
             state.aiHintsProvided += 1;

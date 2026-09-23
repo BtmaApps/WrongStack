@@ -3042,6 +3042,7 @@
     "unsupportedNote": "best-effort"
   },
   "codeMap": {
+    "snapshotUnavailable": "CodeMap graph unavailable — start the WebUI server to load it.",
     "codeAtlas": "Code Atlas",
     "architectureIntelligence": "Architecture intelligence",
     "codeMapBreadcrumb": "Code map breadcrumb",
@@ -3881,5 +3882,19 @@
     "customAnswerPlaceholder": "Other / custom answer (optional)",
     "youDecide": "You decide",
     "youDecideHint": "I do not want to answer this question. Let the model choose."
+  },
+  "review": {
+    "addComment": "Comment on this line",
+    "placeholder": "Leave a review comment… (Ctrl+Enter saves, Esc cancels)",
+    "trayButton": "Review ({{count}})",
+    "trayTitle": "Review comments",
+    "empty": "No comments yet. Hover a diff line and click + to comment.",
+    "sendToChat": "Send to chat",
+    "sendToChatTitle": "Put the whole review into the chat composer as one message",
+    "confirmClearTitle": "Discard all review comments?",
+    "confirmClearMsg": "The comments are not sent anywhere.",
+    "outdated": "Outdated: the line changed after this comment was written",
+    "outdatedHeader": "Comments on lines that changed",
+    "removedLine": "removed line"
   }
 }

@@ -128,6 +128,25 @@ describe('SessionTabBar component', () => {
     expect(screen.getByText('Initial Session')).toBeDefined();
   });
 
+  it('moves the visible slot accent with the selected session', () => {
+    useSessionTabStore.setState({ openTabIds: ['sess-12345678', 'sess-87654321'] });
+    useChatLanes.setState({ activeSessionId: 'sess-12345678' });
+    render(<SessionTabBar />);
+
+    const [first, second] = screen.getAllByRole('tab');
+    expect(first?.getAttribute('aria-selected')).toBe('true');
+    expect(first?.className).toContain('border-primary');
+    expect(first?.className).toContain('bg-primary/15');
+    expect(second?.getAttribute('aria-selected')).toBe('false');
+
+    fireEvent.click(second!);
+
+    expect(first?.getAttribute('aria-selected')).toBe('false');
+    expect(second?.getAttribute('aria-selected')).toBe('true');
+    expect(second?.className).toContain('border-info');
+    expect(second?.className).toContain('bg-info/15');
+  });
+
   it('triggers new session creation when + button is clicked', () => {
     render(<SessionTabBar />);
 

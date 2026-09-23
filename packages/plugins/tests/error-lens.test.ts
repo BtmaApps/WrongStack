@@ -35,11 +35,16 @@ function makeApi(
 
 type HookResult = { additionalContext?: string } | undefined;
 
-function getHook(api: MockApi): (input: unknown) => Promise<HookResult> {
+function getHook(
+  api: MockApi,
+): (input: unknown, runtime?: { signal: AbortSignal; deadlineAt: number }) => Promise<HookResult> {
   const call = api.registerHook.mock.calls[0];
   if (!call) throw new Error('hook not registered');
-  const fn = (call as unknown[])[2] as (input: unknown) => HookResult | Promise<HookResult>;
-  return async (input: unknown) => fn(input);
+  const fn = (call as unknown[])[2] as (
+    input: unknown,
+    runtime?: { signal: AbortSignal; deadlineAt: number },
+  ) => HookResult | Promise<HookResult>;
+  return async (input, runtime) => fn(input, runtime);
 }
 
 const NODE_TRACE = `
@@ -220,10 +225,37 @@ describe('error-lens AI hints (api.llm)', () => {
     expect(llm.complete).toHaveBeenCalledTimes(1);
     expect(result?.additionalContext).toContain('hint (claude-haiku-4-5)');
     expect(result?.additionalContext).toContain('null check');
+    expect(llm.complete.mock.calls[0]?.[1]).toMatchObject({ maxTokens: 100, timeoutMs: 3000 });
 
     // Repeat failure → no second LLM call.
     await hook(failing);
     expect(llm.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates hook cancellation and discards a late hint', async () => {
+    let resolveHint: ((value: unknown) => void) | undefined;
+    const llm = {
+      complete: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveHint = resolve;
+          }),
+      ),
+      defaults: vi.fn(() => ({ provider: 'anthropic', model: 'x' })),
+    };
+    const api = makeApi({ extensions: { 'error-lens': { aiHints: true } }, llm });
+    errorLensPlugin.setup(api as never);
+    const abort = new AbortController();
+    const pending = getHook(api)(failing, { signal: abort.signal, deadlineAt: Date.now() + 5000 });
+    await vi.waitFor(() => expect(llm.complete).toHaveBeenCalledTimes(1));
+    expect(llm.complete.mock.calls[0]?.[1]).toMatchObject({ signal: abort.signal });
+    abort.abort();
+    resolveHint?.({ text: 'late hint', model: 'x' });
+    expect((await pending)?.additionalContext).not.toContain('late hint');
+    const history = await (
+      api.tools.register.mock.calls[0]![0] as { execute: (input: unknown) => Promise<unknown> }
+    ).execute({});
+    expect(history).toMatchObject({ counters: { aiHintsProvided: 0 } });
   });
 
   it('digest still lands when the LLM call fails', async () => {

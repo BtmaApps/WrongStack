@@ -15,17 +15,18 @@
  *
  * WrongStack speaks the 2024-11-05 shape: tools, resources, prompts,
  * pagination, list_changed, resource subscriptions and cancellation. It does
- * NOT implement sampling (deliberately denied — see below), nor the additions
- * of later revisions: elicitation, structured tool output (`outputSchema` /
- * `structuredContent`), resource links, `completion/complete`, or progress
+ * NOT implement sampling (deliberately denied — see below), nor most additions
+ * of later revisions: resource links, `completion/complete`, or progress
  * notifications. Listing a newer revision here would advertise capabilities
  * that are not there.
  *
  * Known drift, accepted: the HTTP layer already implements Streamable HTTP
  * (added 2025-03-26), the `MCP-Protocol-Version` header and OAuth resource
- * indicators (2025-06-18) even though we negotiate 2024-11-05. Those ride on
- * the transport and the 401 challenge rather than on the negotiated revision,
- * so servers accept them; the declaration is narrower than the behavior.
+ * indicators (2025-06-18), and the client answers form-mode elicitation and
+ * reads structured tool output (2025-06-18), even though we negotiate 2024-11-05. Those ride on the
+ * transport, the 401 challenge and the declared client capability rather than
+ * on the negotiated revision, so servers accept them; the declaration is
+ * narrower than the behavior.
  *
  * Not gaps, by the spec's own reckoning: Roots, Sampling and Logging were all
  * Deprecated in revision 2026-07-28 (SEP-2577), with new implementations told

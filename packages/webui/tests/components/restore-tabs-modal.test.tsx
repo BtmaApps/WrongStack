@@ -30,7 +30,14 @@ beforeEach(() => {
   useSessionTabStore.setState({ openTab } as never);
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('RestoreTabsModal', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders nothing when the runtime kept every tab', () => {
     const { container } = render(<RestoreTabsModal />);
     expect(container.innerHTML).toBe('');

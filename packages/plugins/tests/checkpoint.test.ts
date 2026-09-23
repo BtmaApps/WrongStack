@@ -250,7 +250,10 @@ describe('checkpoint plugin', () => {
     const outside = join(tmpdir(), `checkpoint-outside-${Date.now()}.txt`);
     writeFileSync(outside, 'outside');
     try {
-      hook({ toolName: 'write', toolInput: { path: outside } });
+      // Awaited: a floating hook call can still be suspended inside
+      // scopeFor's realpath when afterEach tears the host down — the abort
+      // then rejects an unhandled promise (spurious AbortError in the run).
+      await hook({ toolName: 'write', toolInput: { path: outside } });
       const list = await getTool(api, 'checkpoint_list').execute({});
       expect(list['total']).toBe(0);
     } finally {

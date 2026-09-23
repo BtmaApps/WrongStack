@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { handlers, send, retryProviderModel, clearProviderStatus, wsClient } = vi.hoisted(() => {
   const handlers = new Map<string, (message: unknown) => void>();
@@ -31,6 +31,7 @@ vi.mock('@/hooks/useWebSocket', () => ({
 }));
 
 import { ProviderHealthSection } from '@/components/SettingsPanel/ProviderHealthSection';
+import { i18n } from '@/i18n';
 import { useProviderStatusStore } from '@/stores/provider-status-store';
 
 afterEach(() => {
@@ -45,6 +46,12 @@ afterEach(() => {
 });
 
 describe('ProviderHealthSection', () => {
+  // The section's buttons render t()-derived labels; without pinning the
+  // language the translator can race initialization and emit raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
   it('mounts without crashing and subscribes on the inner WS client', () => {
     render(<ProviderHealthSection />);
     // Regression: the old cast of the useWebSocket() action bag threw
@@ -102,10 +109,11 @@ describe('ProviderHealthSection', () => {
     });
     // Expand the model row (click bubbles to the row header button).
     fireEvent.click(screen.getByText('claude-test'));
-    // Without an i18next instance, t() returns the key itself.
-    fireEvent.click(screen.getByText('connection.providerHealth.retryNow'));
+    // Assert via the translator itself (the same 'settings'-namespace call
+    // the component makes) so this survives catalog edits in any locale.
+    fireEvent.click(screen.getByText(i18n.t('settings:connection.providerHealth.retryNow')));
     expect(retryProviderModel).toHaveBeenCalledWith('anthropic', 'claude-test');
-    fireEvent.click(screen.getByText('connection.providerHealth.clear'));
+    fireEvent.click(screen.getByText(i18n.t('settings:connection.providerHealth.clear')));
     expect(clearProviderStatus).toHaveBeenCalledWith('anthropic', 'claude-test');
   });
 });

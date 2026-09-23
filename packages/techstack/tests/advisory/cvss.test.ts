@@ -8,7 +8,8 @@ describe('cvssBaseScore', () => {
     expect(cvssBaseScore('CVSS_V3', 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N')).toBe(0);
   });
 
-  it('computes the captured log4shell vector (scope changed, temporal ignored) to 10', () => {
+  it('applies the changed-scope multiplier before rounding or capping', () => {
+    expect(cvssBaseScore('CVSS_V3', 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N')).toBe(6.1);
     expect(cvssBaseScore('CVSS_V3', 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H/E:H')).toBe(10);
   });
 

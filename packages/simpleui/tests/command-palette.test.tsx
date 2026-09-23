@@ -81,6 +81,20 @@ describe('CommandPalette', () => {
     expect(onRun).not.toHaveBeenCalled();
   });
 
+  it('closes on Escape when focus is on the dialog, not the input', () => {
+    const { host, onClose, onRun } = renderPalette();
+    // Escape is bound on the dialog container so it fires no matter which
+    // focusable child (close button, option row) holds focus.
+    const closeButton = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Close command palette"]',
+    );
+    expect(closeButton).not.toBeNull();
+
+    act(() => key(closeButton as HTMLButtonElement, { key: 'Escape' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onRun).not.toHaveBeenCalled();
+  });
+
   it('does not run disabled commands', () => {
     const { host, onClose, onRun } = renderPalette({
       context: { hasSession: false, running: true },

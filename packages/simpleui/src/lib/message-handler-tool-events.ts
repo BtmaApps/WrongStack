@@ -2,6 +2,21 @@ import { projectNextStepsToolInput } from '@wrongstack/tools/next-steps';
 import { projectToolMessage } from '@wrongstack/webui-protocol';
 import type { ToolCallInfo, ServerMessage } from '../types.js';
 
+/**
+ * Close tool calls still 'running' when a run ends without their executed
+ * frame (abort, crash, dropped connection). The tool sidebar must not keep
+ * showing tools as running after the run itself is over.
+ */
+export function closeStaleToolCalls(
+  setToolCalls: React.Dispatch<React.SetStateAction<ToolCallInfo[]>>,
+): void {
+  setToolCalls((current) =>
+    current.some((tc) => tc.status === 'running')
+      ? current.map((tc) => (tc.status === 'running' ? { ...tc, status: 'error' } : tc))
+      : current,
+  );
+}
+
 /** Structured <nextsteps> tool input produced by `projectNextStepsToolInput`. */
 type ToolInput = ReturnType<typeof projectNextStepsToolInput>;
 
@@ -64,7 +79,29 @@ export function handleToolExecuted(
           break;
         }
       }
-      if (matchIndex < 0) return current;
+      // Executed without a matching `tool.started` (connect gap, resumed
+      // mid-run): the result used to be silently dropped. Keep it — append
+      // a terminal entry, unless this call already closed earlier.
+      if (matchIndex < 0) {
+        const alreadyClosed = current.some((tc) =>
+          execId ? tc.id === execId : tc.name === execName,
+        );
+        if (alreadyClosed) return current;
+        return [
+          ...current,
+          {
+            id: execId ?? '',
+            name: execName ?? '',
+            input: undefined,
+            status: projection.ok ? 'done' : 'error',
+            output: projection.output,
+            durationMs: projection.durationMs,
+            ok: projection.ok,
+            ...(projection.sage ? { sage: projection.sage } : {}),
+            ts: new Date().toISOString(),
+          },
+        ];
+      }
       const target = current[matchIndex];
       if (!target) return current;
       const next = current.slice();

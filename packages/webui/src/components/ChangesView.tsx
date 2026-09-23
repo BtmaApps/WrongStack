@@ -2,19 +2,32 @@
  * ChangesView — the main-pane diff surface for the Changes (source-control)
  * activity. The file list lives in the SidePanel (ChangesPanel); selecting a
  * row populates the git-changes store, and this view renders the resolved
- * before/after content through the shared DiffView.
+ * before/after content — as a unified diff that takes line review comments
+ * (ReviewDiff), or Monaco side-by-side in edit mode. The review tray sends
+ * the collected comments to the chat composer as one message.
  */
 
-import { Columns2, FileDiff, Loader2, Minus, Plus, RefreshCw, Rows3, Undo2 } from 'lucide-react';
+import {
+  Columns2,
+  FileDiff,
+  Loader2,
+  MessageSquareText,
+  Minus,
+  Plus,
+  RefreshCw,
+  Rows3,
+  Undo2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
-import { useConfigStore, useGitChangesStore } from '@/stores';
-import { DiffView } from './DiffView';
-import { MonacoDiffView } from './MonacoDiffView';
+import { useConfigStore, useGitChangesStore, useSessionStore } from '@/stores';
 import { confirmModal } from './ConfirmModal';
+import { MonacoDiffView } from './MonacoDiffView';
+import { ReviewDiff } from './review/ReviewDiff';
+import { ReviewTray, useScopedReviewComments } from './review/ReviewTray';
 import { EmptyState } from './ui/empty-state';
 
 /** How long the diff spinner may run before flipping to an error + retry. */
@@ -32,6 +45,17 @@ export function ChangesView({ className }: { className?: string }) {
   // Unified = lightweight read-only LCS diff; Edit = Monaco side-by-side with
   // an editable working-tree pane that can be applied back to disk.
   const [mode, setMode] = useState<'unified' | 'edit'>('unified');
+
+  // Review comments are project-scoped: the diff belongs to the repository.
+  const reviewScope = useSessionStore((s) => s.projectRoot) ?? '';
+  const reviewComments = useScopedReviewComments(reviewScope);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const openFile = (path: string) => {
+    useGitChangesStore.getState().select(path);
+    getWSClient(useConfigStore.getState().wsUrl).getGitDiff?.(path);
+    setMode('unified');
+  };
+  const tray = <ReviewTray scope={reviewScope} onOpenFile={openFile} />;
 
   // A dropped/never-answered git.diff reply used to spin forever — flip to a
   // retry card instead once the request has clearly gone missing.
@@ -52,13 +76,21 @@ export function ChangesView({ className }: { className?: string }) {
   };
 
   if (!selectedPath) {
-    return (
+    const empty = (
       <EmptyState
         icon={<FileDiff className="h-6 w-6" />}
         title={t('activity:changesView.sourceChanges')}
         description={t('activity:changes.selectPrompt')}
-        className={className}
+        className={reviewComments.length > 0 ? 'min-h-0 flex-1' : className}
       />
+    );
+    // Pending comments stay reachable (and sendable) with no file open.
+    if (reviewComments.length === 0) return empty;
+    return (
+      <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', className)}>
+        {empty}
+        {tray}
+      </div>
     );
   }
 
@@ -90,6 +122,21 @@ export function ChangesView({ className }: { className?: string }) {
           </div>
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReviewOpen((open) => !open)}
+              aria-pressed={reviewOpen}
+              title={t('activity:review.trayTitle')}
+              className={cn(
+                'inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs transition-colors',
+                reviewOpen
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:bg-muted',
+              )}
+            >
+              <MessageSquareText className="h-3.5 w-3.5" />
+              {t('activity:review.trayButton', { count: reviewComments.length })}
+            </button>
             {/* Git staging actions */}
             <div className="flex items-center gap-1 border-r border-border/70 pr-2">
               {currentFile?.staged ? (
@@ -209,9 +256,16 @@ export function ChangesView({ className }: { className?: string }) {
               newText={diff.newText ?? ''}
             />
           ) : (
-            <DiffView oldText={diff.oldText} newText={diff.newText} caption={diff.path} fill />
+            <ReviewDiff
+              key={diff.path}
+              path={diff.path}
+              scope={reviewScope}
+              oldText={diff.oldText}
+              newText={diff.newText}
+            />
           )}
         </div>
+        {reviewOpen && tray}
       </div>
     </div>
   );

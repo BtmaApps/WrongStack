@@ -189,6 +189,48 @@ export function groupSessionHistory(
   return groups;
 }
 
+export interface SessionHistoryColumns {
+  left: SessionHistoryGroup[];
+  right: SessionHistoryGroup[];
+}
+
+/**
+ * Balance a page of time-ordered groups across the workspace page's two
+ * columns: rows fill the left column down to the midpoint, then continue
+ * down the right, so each column reads chronologically and neither towers
+ * over an empty sibling. A group straddling the midpoint is sliced at it —
+ * that keeps the page one continuous timeline even when a single bucket
+ * (e.g. "Today") dominates, which is the common case on early pages.
+ */
+export function splitSessionHistoryColumns(
+  groups: readonly SessionHistoryGroup[],
+): SessionHistoryColumns {
+  const totalRows = groups.reduce((sum, group) => sum + group.rows.length, 0);
+  const left: SessionHistoryGroup[] = [];
+  const right: SessionHistoryGroup[] = [];
+  if (totalRows === 0) return { left, right };
+
+  const midpoint = Math.ceil(totalRows / 2);
+  let placed = 0;
+  for (const group of groups) {
+    if (placed >= midpoint) {
+      right.push(group);
+      continue;
+    }
+    const capacity = midpoint - placed;
+    if (group.rows.length <= capacity) {
+      left.push(group);
+      placed += group.rows.length;
+      continue;
+    }
+    left.push({ ...group, rows: group.rows.slice(0, capacity) });
+    const remainder = group.rows.slice(capacity);
+    if (remainder.length > 0) right.push({ ...group, rows: remainder });
+    placed += capacity;
+  }
+  return { left, right };
+}
+
 export function getSessionHistoryStats(
   entries: readonly SessionHistoryEntry[],
 ): SessionHistoryStats {

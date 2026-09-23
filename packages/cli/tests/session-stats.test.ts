@@ -2,7 +2,7 @@ import { Writable } from 'node:stream';
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
 import { EventBus } from '@wrongstack/core/kernel';
 import { stripAnsi } from '@wrongstack/core/utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TerminalRenderer } from '../src/renderer.js';
 import { SessionStats } from '../src/session-stats.js';
 
@@ -172,5 +172,62 @@ describe('SessionStats', () => {
     r.stats.render(r.renderer);
     const text = stripAnsi(r.out.buf);
     expect(text).toContain('Cost:          $6.0000');
+  });
+
+  describe('first token after submit', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function turn(
+      r: ReturnType<typeof rig>,
+      ctx: object,
+      waitMs: number,
+      first: 'provider.text_delta' | 'provider.thinking_delta' | 'provider.tool_use_start',
+    ): void {
+      r.events.emit('agent.run.started', { ctx, model: 'm', at: '' } as never);
+      vi.advanceTimersByTime(waitMs);
+      r.events.emit(first, { ctx, text: 'x', id: 't', name: 'read' } as never);
+      vi.advanceTimersByTime(500);
+      // Later output of the same turn is not a first token.
+      r.events.emit('provider.text_delta', { ctx, text: 'more' } as never);
+      r.events.emit('agent.run.completed', { ctx } as never);
+    }
+
+    it('reports the one turn, or the median and range of several', () => {
+      vi.useFakeTimers();
+      const leader = {};
+      const one = rig();
+      turn(one, leader, 1_200, 'provider.text_delta');
+      expect(stripAnsi(one.stats.format() ?? '')).toContain('First token:   1.2s\n');
+
+      const many = rig();
+      turn(many, leader, 900, 'provider.thinking_delta');
+      turn(many, leader, 3_400, 'provider.tool_use_start');
+      turn(many, leader, 1_500, 'provider.text_delta');
+      expect(stripAnsi(many.stats.format() ?? '')).toContain(
+        'First token:   1.5s median · 0.9s–3.4s over 3 turns',
+      );
+    });
+
+    it('ignores subagent runs and turns that ended without output', () => {
+      vi.useFakeTimers();
+      const r = rig();
+      const leader = {};
+      const subagent = {};
+      turn(r, leader, 800, 'provider.text_delta');
+      turn(r, subagent, 9_000, 'provider.text_delta');
+      r.events.emit('agent.run.started', { ctx: leader } as never);
+      vi.advanceTimersByTime(5_000);
+      r.events.emit('agent.run.error', { ctx: leader } as never);
+      r.events.emit('provider.text_delta', { ctx: leader, text: 'late' } as never);
+      expect(stripAnsi(r.stats.format() ?? '')).toContain('First token:   0.8s\n');
+    });
+
+    it('stays out of the report when no turn produced output', () => {
+      const r = rig();
+      r.events.emit('iteration.completed', {} as never);
+      expect(stripAnsi(r.stats.format() ?? '')).not.toContain('First token');
+    });
   });
 });

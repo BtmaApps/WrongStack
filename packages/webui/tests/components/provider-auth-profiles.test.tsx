@@ -155,7 +155,7 @@ describe('API key account profiles', () => {
     fireEvent.click(screen.getByRole('button', { name: /work-account/ }));
     expect(pick).toHaveBeenCalledWith('same-model', 'work-account');
   });
-  it('offers another account for an already configured provider and retains its canonical type', () => {
+  it('offers another account for an already configured provider and retains its canonical type', async () => {
     const { onAddProvider, onAddKey } = mount();
     expect(
       (screen.getByLabelText('settings:provider.profileAlias') as HTMLInputElement).value,
@@ -166,7 +166,11 @@ describe('API key account profiles', () => {
     fireEvent.change(screen.getByPlaceholderText('settings:provider.keyPlaceholder'), {
       target: { value: 'work-key' },
     });
-    fireEvent.click(screen.getByText('common:action.save'));
+    // The save handler awaits onAddProvider and then updates form state in a
+    // microtask — flush it inside act so the update is not unwrapped.
+    await act(async () => {
+      fireEvent.click(screen.getByText('common:action.save'));
+    });
     expect(onAddProvider).toHaveBeenCalledWith(
       'work-account',
       'openai',

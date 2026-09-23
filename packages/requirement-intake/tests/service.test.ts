@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DenyAllIntakeAuthorizer } from '../src/authorization.js';
+import { DenyAllIntakeAuthorizer, type IntakeAuthorizer } from '../src/authorization.js';
 import {
   IntakeAuthorizationError,
   IntakeConflictError,
@@ -221,6 +221,38 @@ describe('RequirementIntakeService — updates', () => {
     ).rejects.toBeInstanceOf(IntakeStatusLockedError);
   });
 
+  it('rejects an edit when the intake is submitted during authorization', async () => {
+    let entered!: () => void;
+    const authorizing = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let allow!: () => void;
+    const authorizer: IntakeAuthorizer = {
+      isAllowed(operation) {
+        if (operation !== 'update') return true;
+        entered();
+        return new Promise<boolean>((resolve) => {
+          allow = () => resolve(true);
+        });
+      },
+    };
+    const harness = makeHarness({ authorizer });
+    const { record } = await createDraft(harness);
+    const result = harness.service.updateIntake(record.id, { title: 'late edit' }, ALICE).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    await authorizing;
+    const { record: submitted } = await harness.service.submitIntake(record.id, BOB);
+    allow();
+    expect(await result).toBeInstanceOf(IntakeStatusLockedError);
+    expect(await harness.store.load(record.id)).toMatchObject({
+      status: 'submitted',
+      title: record.title,
+      version: submitted.version,
+    });
+  });
+
   it('throws IntakeNotFoundError for missing records', async () => {
     const harness = makeHarness();
     await expect(
@@ -405,6 +437,40 @@ describe('RequirementIntakeService — LLM suggestions', () => {
     );
     expect(infoEvent?.previousStatus).toBe('draft');
     expect(infoEvent?.status).toBe('collecting_information');
+  });
+
+  it('does not add suggestions after submission while the generator was pending', async () => {
+    let started!: () => void;
+    const generating = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const harness = makeHarness({
+      generator: {
+        async generate() {
+          started();
+          await pending;
+          return { suggested_title: 'Late suggestion' };
+        },
+      },
+    });
+    const { record } = await createDraft(harness);
+    const result = harness.service.generateSuggestions(record.id, ALICE).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    await generating;
+    const { record: submitted } = await harness.service.submitIntake(record.id, BOB);
+    release();
+    expect(await result).toBeInstanceOf(IntakeStatusLockedError);
+    expect(await harness.store.load(record.id)).toMatchObject({
+      status: 'submitted',
+      version: submitted.version,
+      llmSuggestions: [],
+    });
   });
 
   it('accepting a title suggestion applies it with source llm without touching the original', async () => {

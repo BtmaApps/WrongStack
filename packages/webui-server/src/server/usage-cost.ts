@@ -17,21 +17,27 @@ export interface CostRates {
   input: number;
   /** $ per 1M output tokens. */
   output: number;
-  /** $ per 1M cache-read tokens. */
+  /** $ per 1M cache-read tokens (the input rate when the catalog has none). */
   cacheRead: number;
+  /**
+   * $ per 1M cache-written tokens (the input rate when the catalog has none).
+   * Optional for callers built before it existed; absent counts as 0.
+   */
+  cacheWrite?: number | undefined;
 }
 
-/** Token counts for a turn/session. `cacheRead` is optional (older counters). */
+/** Token counts for a turn/session. The cache counts are optional (older counters). */
 export interface TokenUsage {
   input: number;
   output: number;
   cacheRead?: number | undefined;
+  cacheWrite?: number | undefined;
 }
 
 /**
  * Normalize a models.dev model object's pricing into {@link CostRates}.
- * Missing model, missing `cost`, or missing individual fields all yield 0 —
- * free/unmetered plans report `$0` rather than crashing.
+ * Missing model or missing `cost` yields 0 — free/unmetered plans report `$0`
+ * rather than crashing. A missing cache price falls back to the input price.
  */
 export function getCostRates(model: unknown): CostRates {
   const cost = (
@@ -41,15 +47,19 @@ export function getCostRates(model: unknown): CostRates {
             input?: number | undefined;
             output?: number | undefined;
             cache_read?: number | undefined;
+            cache_write?: number | undefined;
           };
         }
       | null
       | undefined
   )?.cost;
+  // Usage counts cache tokens OUTSIDE `input`; without a cache price they are
+  // still billed, at the input rate — never for free.
   return {
     input: cost?.input ?? 0,
     output: cost?.output ?? 0,
-    cacheRead: cost?.cache_read ?? 0,
+    cacheRead: cost?.cache_read ?? cost?.input ?? 0,
+    cacheWrite: cost?.cache_write ?? cost?.input ?? 0,
   };
 }
 
@@ -61,7 +71,8 @@ export function computeUsageCost(usage: TokenUsage, rates: CostRates): number {
   return (
     (usage.input * rates.input +
       usage.output * rates.output +
-      (usage.cacheRead ?? 0) * rates.cacheRead) /
+      (usage.cacheRead ?? 0) * rates.cacheRead +
+      (usage.cacheWrite ?? 0) * (rates.cacheWrite ?? 0)) /
     1_000_000
   );
 }

@@ -584,6 +584,8 @@ set `features.tokenSavingMode: "off"` to describe every tool on every turn.
 | Environment | env vars | Overrides and secrets injection |
 | User config | `~/.wrongstack/config.json` | Providers, defaults, feature toggles |
 | Project conventions | `<project>/.wrongstack/AGENTS.md` | Shared, committed repo conventions |
+| Project instructions | `<project>/AGENTS.md` (or `CLAUDE.md`) | Loaded into the system prompt |
+| Directory instructions | `<dir>/AGENTS.md` (or `CLAUDE.md`) | Sent once, when the agent first touches a path under `<dir>` |
 | Project identity | `<project>/.wrongstack/project.json` | Repository-stable `proj_<ULID>` |
 
 `apiKey`-like fields are auto-encrypted on first contact; plaintext keys in older

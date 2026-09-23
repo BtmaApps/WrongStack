@@ -3,7 +3,7 @@ import type { Context } from '@wrongstack/core/agent';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { deepMerge as deepMergeCore, toErrorMessage } from '@wrongstack/core/utils';
-import { capSubject, compileUserRegex } from './_regex.js';
+import { compileUserRegex, MAX_SUBJECT_LEN } from './_regex.js';
 import { safeResolveReal } from './_util.js';
 
 /**
@@ -617,13 +617,15 @@ function validateJsonSchema(
       // pattern against attacker-chosen input, synchronously, on a regex engine
       // the executor's timeout cannot interrupt. Every other user-regex site in
       // this package already routes through `compileUserRegex` (length cap +
-      // catastrophic-backtracking heuristics) and `capSubject`; this one was
-      // missed. A malformed pattern also threw here, taking down `validate`
-      // instead of reporting an invalid schema.
+      // catastrophic-backtracking heuristics). Refuse over-cap subjects rather
+      // than validating only a prefix and silently accepting a bad suffix.
+      // A malformed pattern also reports an invalid schema instead of throwing.
       const compiled = compileUserRegex(s['pattern'] as string, '');
       if (!compiled.ok) {
         errors.push(`${path}: invalid schema pattern — ${compiled.reason}`);
-      } else if (!compiled.regex.test(capSubject(value))) {
+      } else if (value.length > MAX_SUBJECT_LEN) {
+        errors.push(`${path}: pattern cannot be checked beyond ${MAX_SUBJECT_LEN} characters`);
+      } else if (!compiled.regex.test(value)) {
         errors.push(`${path}: does not match pattern ${s['pattern']}`);
       }
     }
@@ -680,7 +682,7 @@ function validateJsonSchema(
     ) {
       const obj = value as Record<string, unknown>;
       for (const req of s['required']) {
-        if (typeof req === 'string' && !(req in obj)) {
+        if (typeof req === 'string' && !Object.hasOwn(obj, req)) {
           errors.push(`${path}: missing required property "${req}"`);
         }
       }

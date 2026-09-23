@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { loadActiveKit } from '@wrongstack/core/design';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { designTool } from '../src/design.js';
 
@@ -47,6 +48,28 @@ describe('designTool', () => {
     expect(res.output).toMatch(/oklch/);
     // active kit recorded for the request middleware / UI pickers
     expect((ctx.meta.designStudio as any)?.activeKit).toBe('neo-brutalist');
+  });
+
+  it('rejects an unsupported kit stack without replacing the active choice', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-stack-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      const selected = await designTool.execute(
+        { action: 'use', kit: 'ios-native', stack: 'swiftui' },
+        ctx,
+        opts,
+      );
+      expect(selected.output).toContain('## Stack: swiftui');
+      expect((await loadActiveKit(projectRoot))?.stack).toBe('swiftui');
+
+      await expect(
+        designTool.execute({ action: 'use', kit: 'ios-native', stack: 'compose' }, ctx, opts),
+      ).rejects.toThrow(/does not support stack "compose"/i);
+      expect((ctx.meta.designStudio as { stack?: string }).stack).toBe('swiftui');
+      expect((await loadActiveKit(projectRoot))?.stack).toBe('swiftui');
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
   });
 
   it('throws (with the menu in the message) when an unknown kit is requested', async () => {

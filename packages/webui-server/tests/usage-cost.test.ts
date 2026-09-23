@@ -7,34 +7,34 @@ describe('getCostRates', () => {
       cost: { input: 2.5, output: 10.0, cache_read: 1.0 },
     };
     const rates = getCostRates(model);
-    expect(rates).toEqual({ input: 2.5, output: 10.0, cacheRead: 1.0 });
+    expect(rates).toEqual({ input: 2.5, output: 10.0, cacheRead: 1.0, cacheWrite: 2.5 });
   });
 
   it('returns 0 for all fields when model is null', () => {
-    expect(getCostRates(null)).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates(null)).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('returns 0 for all fields when model is undefined', () => {
-    expect(getCostRates(undefined)).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates(undefined)).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('returns 0 for all fields when model has no cost property', () => {
-    expect(getCostRates({})).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates({})).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('returns 0 for missing fields inside cost', () => {
     const model = { cost: {} };
-    expect(getCostRates(model)).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates(model)).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
-  it('returns 0 for partial cost with only input', () => {
+  it('prices cache tokens at the input rate when the catalog lists no cache price', () => {
     const model = { cost: { input: 1.5 } };
-    expect(getCostRates(model)).toEqual({ input: 1.5, output: 0, cacheRead: 0 });
+    expect(getCostRates(model)).toEqual({ input: 1.5, output: 0, cacheRead: 1.5, cacheWrite: 1.5 });
   });
 
   it('handles cost with only output and cache_read', () => {
     const model = { cost: { output: 5.0, cache_read: 0.5 } };
-    expect(getCostRates(model)).toEqual({ input: 0, output: 5.0, cacheRead: 0.5 });
+    expect(getCostRates(model)).toEqual({ input: 0, output: 5.0, cacheRead: 0.5, cacheWrite: 0 });
   });
 
   it('ignores extra fields on model that are not cost', () => {
@@ -43,40 +43,40 @@ describe('getCostRates', () => {
       cost: { input: 3.0, output: 15.0, cache_read: 1.5 },
       extra: true,
     };
-    expect(getCostRates(model)).toEqual({ input: 3.0, output: 15.0, cacheRead: 1.5 });
+    expect(getCostRates(model)).toEqual({ input: 3.0, output: 15.0, cacheRead: 1.5, cacheWrite: 3.0 });
   });
 });
 
 describe('computeUsageCost', () => {
   it('computes dollar cost from token usage and rates', () => {
     const usage = { input: 1_000_000, output: 500_000, cacheRead: 200_000 };
-    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0 };
+    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0, cacheWrite: 2.0 };
     // (1M * 2 + 500K * 10 + 200K * 1) / 1M = (2,000,000 + 5,000,000 + 200,000) / 1,000,000 = 7.2
     expect(computeUsageCost(usage, rates)).toBeCloseTo(7.2);
   });
 
   it('returns 0 when all rates are 0', () => {
     const usage = { input: 1_000_000, output: 500_000, cacheRead: 200_000 };
-    const rates = { input: 0, output: 0, cacheRead: 0 };
+    const rates = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
     expect(computeUsageCost(usage, rates)).toBe(0);
   });
 
   it('returns 0 when usage is 0', () => {
     const usage = { input: 0, output: 0, cacheRead: 0 };
-    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0 };
+    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0, cacheWrite: 2.0 };
     expect(computeUsageCost(usage, rates)).toBe(0);
   });
 
   it('handles missing cacheRead in usage (undefined)', () => {
     const usage = { input: 100_000, output: 50_000, cacheRead: undefined };
-    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0 };
+    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0, cacheWrite: 2.0 };
     // (100K * 2 + 50K * 10 + 0 * 1) / 1M = (200,000 + 500,000) / 1,000,000 = 0.7
     expect(computeUsageCost(usage, rates)).toBeCloseTo(0.7);
   });
 
   it('handles missing cacheRead field entirely', () => {
     const usage = { input: 100_000, output: 50_000 };
-    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0 };
+    const rates = { input: 2.0, output: 10.0, cacheRead: 1.0, cacheWrite: 2.0 };
     expect(computeUsageCost(usage as any, rates)).toBeCloseTo(0.7);
   });
 
@@ -107,5 +107,13 @@ describe('computeUsageCost', () => {
       0.6,
       9,
     );
+  });
+
+  it('bills cache writes too, and cache reads at the input rate when unpriced', () => {
+    const rates = getCostRates({ cost: { input: 2, output: 8 } });
+    // (100k fresh + 800k read + 100k written) × $2 per 1M = $2
+    expect(
+      computeUsageCost({ input: 100_000, output: 0, cacheRead: 800_000, cacheWrite: 100_000 }, rates),
+    ).toBeCloseTo(2);
   });
 });

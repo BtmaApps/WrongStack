@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readClipboardImage } from '../src/clipboard.js';
+import { readClipboardImage, writeClipboardText } from '../src/clipboard.js';
 
 describe('readClipboardImage', () => {
   it('returns null or a valid PNG image, never throws on an empty clipboard', async () => {
@@ -39,5 +39,50 @@ describe('readClipboardImage', () => {
         configurable: true,
       });
     }
+  });
+});
+
+describe('writeClipboardText', () => {
+  function harness(nativeWorks: boolean, isTTY = true) {
+    const nativeGot: string[] = [];
+    const written: string[] = [];
+    const deps = {
+      native: async (text: string) => {
+        nativeGot.push(text);
+        return nativeWorks;
+      },
+      stdout: {
+        isTTY,
+        write: (chunk: string) => {
+          written.push(chunk);
+          return true;
+        },
+      } as never,
+    };
+    return { deps, nativeGot, written };
+  }
+
+  it('hands the OS clipboard clean text: no ANSI, no NUL or other control bytes', async () => {
+    const h = harness(true);
+    const raw = '\u001b[31mred\u001b[0m\tcell\u0000cut here?\r\nnext\u0007line';
+    await expect(writeClipboardText(raw, h.deps)).resolves.toBe(true);
+    expect(h.nativeGot).toEqual(['red\tcellcut here?\r\nnextline']);
+    expect(h.written).toEqual([]);
+  });
+
+  it('falls back to OSC 52 on a terminal when no clipboard tool works', async () => {
+    const h = harness(false);
+    await expect(writeClipboardText('héllo\u0000', h.deps)).resolves.toBe(true);
+    expect(h.written).toEqual([`\u001b]52;c;${Buffer.from('héllo').toString('base64')}\u0007`]);
+  });
+
+  it('reports failure when there is no terminal to ask, or the text is too long for OSC 52', async () => {
+    const piped = harness(false, false);
+    await expect(writeClipboardText('x', piped.deps)).resolves.toBe(false);
+    expect(piped.written).toEqual([]);
+
+    const huge = harness(false);
+    await expect(writeClipboardText('x'.repeat(80_000), huge.deps)).resolves.toBe(false);
+    expect(huge.written).toEqual([]);
   });
 });

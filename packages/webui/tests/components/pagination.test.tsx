@@ -1,8 +1,17 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Pagination } from '../../src/components/ui/pagination';
+import { i18n } from '../../src/i18n';
 
 describe('Pagination', () => {
+  // The buttons' accessible names come from i18n; rendering before the
+  // translator is ready yields raw keys ('pagination.previousPage') and the
+  // role queries race. Pin the language before every test, like the other
+  // component suites do.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
   afterEach(() => cleanup());
 
   it('hides when every item fits on one page', () => {

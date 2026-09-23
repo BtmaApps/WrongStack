@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
+import { warmProviderWhileTyping } from '@/lib/provider-warm';
 import { cn } from '@/lib/utils';
 import {
   useActiveSessionId,
@@ -37,6 +38,7 @@ import { useChatInputMcp } from './ChatInput/use-chat-input-mcp.js';
 import { useChatKeyDown } from './ChatInput/use-chat-keydown.js';
 import { useChatSubmit } from './ChatInput/use-chat-submit.js';
 import { usePasteDrop } from './ChatInput/use-paste-drop.js';
+import { usePromptQueueView } from './ChatInput/use-prompt-queue-view.js';
 import { useRefineTimeout } from './ChatInput/use-refine-timeout.js';
 import { useSpeechRecognition } from './ChatInput/use-speech-recognition.js';
 import { toast } from './Toaster';
@@ -58,10 +60,8 @@ export function ChatInput({
   );
   const messages = useChatStore((s) => s.messages);
   const chatStarted = messages.length > 0;
-  const queue = useChatStore((s) => s.queue);
+  const { queue, remove: removeQueued, clear: clearQueue } = usePromptQueueView();
   const enqueue = useChatStore((s) => s.enqueue);
-  const removeQueued = useChatStore((s) => s.removeQueued);
-  const clearQueue = useChatStore((s) => s.clearQueue);
   const setCurrentView = useUIStore((s) => s.setCurrentView);
   const setPromptLibraryOpen = useUIStore((s) => s.setPromptLibraryOpen);
   const pushPrompt = useUIStore((s) => s.pushPrompt);
@@ -419,6 +419,7 @@ export function ChatInput({
             onChange={(e) => {
               const v = e.target.value;
               setInput(v);
+              if (!isLoading && sessionId) warmProviderWhileTyping(sessionId, v);
               adjustTextareaHeight();
               if (historyIdx >= 0) {
                 setHistoryIdx(-1);

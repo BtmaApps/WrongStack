@@ -40,10 +40,12 @@ function makeApi(
 
 type HookResult = { decision?: string; reason?: string; additionalContext?: string } | undefined;
 
-function getHook(api: MockApi): (input: unknown) => HookResult {
+function getHook(
+  api: MockApi,
+): (input: unknown, runtime?: { signal: AbortSignal; deadlineAt: number }) => Promise<HookResult> {
   const call = api.registerHook.mock.calls[0];
   if (!call) throw new Error('hook not registered');
-  return (call as unknown[])[2] as (input: unknown) => HookResult;
+  return (call as unknown[])[2] as ReturnType<typeof getHook>;
 }
 
 beforeEach(() => {
@@ -287,6 +289,33 @@ describe('dep-guard plugin', () => {
       expect.objectContaining({ profile: 'risk-review' }),
     );
     expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('discards Council advice received after hook cancellation', async () => {
+    let resolveCouncil: ((value: unknown) => void) | undefined;
+    const council = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCouncil = resolve;
+        }),
+    );
+    const api = makeApi({
+      extensions: { 'dep-guard': { confirmTyposquatsWithLlm: true } },
+      llm: { complete: vi.fn(), council },
+    });
+    depGuardPlugin.setup(api as never);
+    const abort = new AbortController();
+    const pending = getHook(api)(
+      { toolName: 'bash', toolInput: { command: 'npm i lodahs' } },
+      { signal: abort.signal, deadlineAt: Date.now() + 5000 },
+    );
+    await vi.waitFor(() => expect(council).toHaveBeenCalledTimes(1));
+    expect(council.mock.calls[0]?.[1]).toMatchObject({ signal: expect.any(AbortSignal) });
+    abort.abort();
+    resolveCouncil?.({ status: 'decided', optionId: 'real', reason: 'late decision' });
+    const result = await pending;
+    expect(result?.additionalContext).toContain('possible typosquat');
+    expect(result?.additionalContext).not.toContain('late decision');
   });
 
   it('warnOnUnpinned flags versionless installs', async () => {

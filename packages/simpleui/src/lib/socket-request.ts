@@ -14,7 +14,10 @@ import type { SimpleSocket } from './ws.js';
  *  - resolves with `null` on timeout or cancellation — never rejects, so
  *    callers only need the happy path plus a null check;
  *  - `cancel()` unsubscribes and resolves with null (call it when a newer
- *    request supersedes this one, or on unmount).
+ *    request supersedes this one, or on unmount). A send still parked in
+ *    the socket's disconnected queue is retracted with it, so a cancelled
+ *    request does not still execute after reconnect; frames already on
+ *    the wire cannot be unsent.
  *
  * Operations supporting request ids should send one in `payload` and match it
  * through `accept`. Other replies require a field predicate and callers must
@@ -51,11 +54,13 @@ export function socketRequest(config: SocketRequestConfig): SocketRequestHandle 
   let resolvePromise: ((value: Record<string, unknown> | null) => void) | null = null;
   let unsub: (() => void) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let retract: (() => void) | undefined;
 
   const finish = (): void => {
     if (settled) return;
     settled = true;
     if (timer) clearTimeout(timer);
+    retract?.();
     unsub?.();
   };
 
@@ -77,7 +82,10 @@ export function socketRequest(config: SocketRequestConfig): SocketRequestHandle 
 
     unsub = socket.onMessage(handler as never);
     try {
-      socket.send(sendType, payload);
+      const handle = socket.send(sendType, payload);
+      // Real queued frames carry a retraction handle; plain/mock sockets
+      // return void, which reads as "already sent — nothing to retract".
+      if (handle && typeof handle.retract === 'function') retract = handle.retract;
     } catch {
       // The never-reject contract: a send failure settles the request with
       // null exactly like a timeout, and tears down the subscription so the

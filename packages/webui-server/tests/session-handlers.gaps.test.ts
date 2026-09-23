@@ -237,7 +237,10 @@ describe('createSessionHandlers — context handlers', () => {
         payload: { aggressive: true },
       } as never,
     );
-    expect(compact).toHaveBeenCalledWith(expect.anything(), { aggressive: true });
+    expect(compact).toHaveBeenCalledWith(expect.anything(), {
+      aggressive: true,
+      trigger: 'manual',
+    });
     const compacted = h.sent.find((m) => m.type === 'context.compacted');
     expect(compacted?.payload).toMatchObject({ before: 100, after: 40, saved: 60, repaired: true });
     const res = h.sent.find((m) => m.type === 'key.operation_result');

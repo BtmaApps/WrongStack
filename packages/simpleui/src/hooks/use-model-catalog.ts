@@ -97,15 +97,15 @@ export function useModelCatalog(options: UseModelCatalogOptions): UseModelCatalo
   );
 
   const confirmModelSwitch = useCallback(() => {
-    setPendingModelSwitch((current) => {
-      if (!current) return null;
-      socketRef.current?.send('model.switch', {
-        provider: current.provider,
-        model: current.model,
-      });
-      return null;
+    // Side effects must stay OUT of the setState updater: StrictMode
+    // double-invokes updaters in dev, which sent `model.switch` twice.
+    if (!pendingModelSwitch) return;
+    socketRef.current?.send('model.switch', {
+      provider: pendingModelSwitch.provider,
+      model: pendingModelSwitch.model,
     });
-  }, [socketRef]);
+    setPendingModelSwitch(null);
+  }, [pendingModelSwitch, socketRef]);
 
   const cancelModelSwitch = useCallback(() => setPendingModelSwitch(null), []);
 

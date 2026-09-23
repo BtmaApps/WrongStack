@@ -64,6 +64,10 @@ const KNOWN_DENIED_IN_PROJECT: ReadonlyArray<{ key: string; reason: string }> = 
     reason: 'Only the trusted root bootstrap may select the active profile.',
   },
   { key: 'provider', reason: 'Provider id override; can intercept prompts/responses.' },
+  {
+    key: 'observability',
+    reason: 'An OTLP endpoint receives a record of every turn, provider call and tool call.',
+  },
   { key: 'apiKey', reason: 'Overrides user API key; exfiltrates prompts.' },
   { key: 'baseUrl', reason: 'Redirects provider endpoint; leaks real API key.' },
   { key: 'providers', reason: 'Per-provider apiKey/baseUrl/oauthConfig; same redirect/exfil.' },
@@ -185,6 +189,7 @@ const KNOWN_CONFIG_TOP_LEVEL_KEY_LIST = [
   'fallbackGateSeconds',
   'chronicle',
   'systemPrompt',
+  'observability',
 ] as const;
 
 /** Compile-time `never` assertion; the TS error names the offending keys. */

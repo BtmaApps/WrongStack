@@ -136,8 +136,9 @@ describe('wrapMCPTool', () => {
     await wrapped.execute({ token: 'must-not-be-observed' }, ctx, {
       signal: new AbortController().signal,
     });
-    expect(onStart).toHaveBeenCalledOnce();
-    expect(onFinish).toHaveBeenCalledWith({ durationMs: expect.any(Number), ok: true });
+    // The caller is handed over (it is who a mid-call elicitation asks), the input never is.
+    expect(onStart).toHaveBeenCalledWith(ctx);
+    expect(onFinish).toHaveBeenCalledWith({ durationMs: expect.any(Number), ok: true }, ctx);
     expect(JSON.stringify(onFinish.mock.calls)).not.toContain('must-not-be-observed');
   });
 
@@ -156,7 +157,7 @@ describe('wrapMCPTool', () => {
     await expect(
       wrapped.execute({}, ctx, { signal: new AbortController().signal }),
     ).rejects.toThrow('boom');
-    expect(onFinish).toHaveBeenCalledWith({ durationMs: expect.any(Number), ok: false });
+    expect(onFinish).toHaveBeenCalledWith({ durationMs: expect.any(Number), ok: false }, ctx);
   });
 
   it('safely executes without opts and falls back to ctx.signal', async () => {

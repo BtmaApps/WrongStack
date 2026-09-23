@@ -117,6 +117,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
     ...section('Interfaces', [
       ['--tui | --no-tui', 'Force or disable the TUI'],
       ['--mouse', 'Full mouse mode in the TUI'],
+      ['--ascii', 'Plain-ASCII symbols, borders and spinners (no emoji or box drawing)'],
       ['--desktop', 'Same as wstack desktop'],
       [
         '--webui [--host <h>] [--port <n>] [--open]',

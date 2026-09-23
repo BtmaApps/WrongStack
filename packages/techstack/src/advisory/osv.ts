@@ -134,8 +134,8 @@ export interface OsvBatchOptions {
 
 /**
  * Fetch the full OSV record for one vuln id (GET /v1/vulns/{id}).
- * Best-effort: any failure (404, transport, malformed body) resolves to
- * undefined so the querybatch stub mapping still applies.
+ * Best-effort: non-cancellation failures (404, transport, malformed body)
+ * resolve to undefined so the querybatch stub mapping still applies.
  */
 async function fetchVulnDetail(
   id: string,
@@ -151,9 +151,12 @@ async function fetchVulnDetail(
       timeoutMs: 30_000,
       maxAttempts: 2,
     });
+    signal?.throwIfAborted();
     if (response.statusCode !== 200) return undefined;
     return parseJsonResponse<OsvVulnRecord>(response, `api.osv.dev${OSV_VULN_PATH_PREFIX}${id}`);
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) signal.throwIfAborted();
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
     return undefined;
   }
 }

@@ -203,15 +203,25 @@ export async function runSqliteSageHygiene(
       }
       const pathsToVerify = [...anchorPaths];
       const existingPaths = new Set<string>();
+      const realRoot = await fs.promises.realpath(ctx.projectRoot).catch(() => undefined);
       let nextPath = 0;
       const verifyWorker = async (): Promise<void> => {
+        if (!realRoot) return;
         while (nextPath < pathsToVerify.length) {
           const anchorPath = pathsToVerify[nextPath++]!;
           try {
-            await fs.promises.access(anchorPath);
+            const real = await fs.promises.realpath(anchorPath);
+            const relative = path.relative(realRoot, real);
+            if (
+              relative === '..' ||
+              relative.startsWith(`..${path.sep}`) ||
+              path.isAbsolute(relative)
+            ) {
+              continue;
+            }
             existingPaths.add(anchorPath);
           } catch {
-            // Missing or inaccessible anchors are stale.
+            // Missing, inaccessible, or broken-link anchors are stale.
           }
         }
       };
@@ -235,7 +245,6 @@ export async function runSqliteSageHygiene(
         if (allValid) verified.push(m.id);
         else stale.push(m.id);
       }
-      const realRoot = await fs.promises.realpath(ctx.projectRoot).catch(() => undefined);
       if (realRoot) {
         for (const m of staleMemories) {
           if (!existenceProvesAnchors(m.anchors)) continue;

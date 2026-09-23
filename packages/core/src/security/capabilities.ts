@@ -63,6 +63,9 @@ export const ToolCapabilities = {
   /** Can park after-task `<nextsteps>` suggestions for the current turn. */
   SESSION_NEXTSTEPS: 'session.nextsteps',
 
+  /** Can rename the current session (`session_rename`); leader-only. */
+  SESSION_RENAME: 'session.rename',
+
   /** Can mutate in-memory session mode only. */
   SESSION_MODE: 'session.mode',
 

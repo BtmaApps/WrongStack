@@ -47,6 +47,10 @@ export class OpenCodeZenProvider implements Provider {
     return this.router.stream(req, opts);
   }
 
+  warm(model: string): Promise<void> {
+    return this.router.warm(model);
+  }
+
   complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
     return this.router.complete(req, opts);
   }

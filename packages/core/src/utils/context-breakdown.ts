@@ -72,6 +72,7 @@ const SYSTEM_BLOCK_SOURCES = [
   'identity',
   'tool-usage',
   'environment',
+  'project-instructions',
   'skills',
   'mode',
   'plan',

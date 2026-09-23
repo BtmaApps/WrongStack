@@ -12,12 +12,14 @@
 // Everything else from Ink is re-exported untouched so callers can switch that
 // one import line without losing hooks.
 
+import { isAsciiMode, toAscii } from '@wrongstack/core/utils';
 import { type DOMElement, Box as InkBox, Text as InkText } from 'ink';
 import {
   type ComponentProps,
   type ForwardRefExoticComponent,
   forwardRef,
   type ReactElement,
+  type ReactNode,
   type RefAttributes,
 } from 'react';
 import { softColor } from './theme.js';
@@ -61,9 +63,24 @@ const colorProps = (color?: string, backgroundColor?: string) => {
   return { ...(c ? { color: c } : {}), ...(bg ? { backgroundColor: bg } : {}) };
 };
 
+// ASCII mode (`--ascii` / WRONGSTACK_TUI_ICON_STYLE=ascii): text is converted
+// here, before Ink measures it, so layout and output agree; borders use Ink's
+// `classic` (+-|) style. Read once, like the glyph set in ui-glyphs.ts.
+const ASCII_MODE = isAsciiMode();
+
+function asciiChildren(children: ReactNode): ReactNode {
+  if (typeof children === 'string') return toAscii(children);
+  if (Array.isArray(children)) return children.map(asciiChildren);
+  return children;
+}
+
 /** Ink `Text` with named colors resolved against the active theme. */
-export function Text({ color, backgroundColor, ...rest }: TextOwnProps): ReactElement {
-  return <InkText {...rest} {...colorProps(color, backgroundColor)} />;
+export function Text({ color, backgroundColor, children, ...rest }: TextOwnProps): ReactElement {
+  return (
+    <InkText {...rest} {...colorProps(color, backgroundColor)}>
+      {ASCII_MODE ? asciiChildren(children) : children}
+    </InkText>
+  );
 }
 
 /**
@@ -80,6 +97,7 @@ export const Box: ForwardRefExoticComponent<BoxOwnProps & RefAttributes<DOMEleme
     <InkBox
       ref={ref}
       {...rest}
+      {...(ASCII_MODE && rest.borderStyle ? { borderStyle: 'classic' as const } : {})}
       {...(bc ? { borderColor: bc } : {})}
       {...(bg ? { backgroundColor: bg } : {})}
     />

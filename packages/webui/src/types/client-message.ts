@@ -10,6 +10,7 @@ import type {
   WSCollabResolve,
   WSCollabResume,
 } from './collab.js';
+import type { WSPromptQueueClientMessage } from './prompt-queue.js';
 import type { SessionScopedPayload, WSUserMessage } from './protocol-core.js';
 import type {
   ContextEditorMessage,
@@ -46,6 +47,9 @@ export interface ProviderCustomModelWire {
 
 export type WSClientMessageCore =
   | WSUserMessage
+  | WSPromptQueueClientMessage
+  /** The user is typing; open the provider connection (`session.provider-warm`). */
+  | { type: 'composer.warm'; payload: SessionScopedPayload }
   | {
       type: 'topic.advice';
       payload: SessionScopedPayload & { requestId: string; prompt: string };

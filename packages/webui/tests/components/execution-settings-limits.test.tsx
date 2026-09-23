@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExecutionSettingsTab } from '../../src/components/SettingsPanel/ExecutionSettingsTab';
 import { syncSettingsPreference } from '../../src/components/SettingsPanel/sync-settings-preference';
+import { i18n } from '../../src/i18n';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/components/AvailabilityCalendarEditor', () => ({
@@ -10,6 +11,11 @@ vi.mock('../../src/components/AvailabilityCalendarEditor', () => ({
 
 afterEach(cleanup);
 beforeEach(() => useLocalPrefs.setState({ maxIterations: 100, autoProceedMaxIterations: 25 }));
+// Pin the language before rendering: the tab renders t()-derived labels, and
+// an unpinned translator can race initialization into raw keys.
+beforeEach(async () => {
+  await i18n.changeLanguage('en');
+});
 
 it.each(['maxIterations', 'autoProceedMaxIterations'] as const)(
   '%s supports unlimited, exact positive limits and persisted zero',

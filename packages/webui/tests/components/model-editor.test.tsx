@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock seams ──────────────────────────────────────────────────────────────

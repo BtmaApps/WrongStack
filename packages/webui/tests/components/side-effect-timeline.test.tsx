@@ -179,7 +179,15 @@ describe('SideEffectTimeline', () => {
       render(<SideEffectTimeline />);
 
       const exportBtn = screen.getByRole('button', { name: /CSV/i });
+      // jsdom does not implement anchor-download navigation: the export
+      // flow's anchor.click() raises a "Not implemented" jsdomError that
+      // bypasses console spies entirely. Stub the prototype click so the
+      // export flow runs without the noise; the URL mocks below still pin
+      // the download contract.
+      const clickSpy = vi.spyOn(HTMLElement.prototype, 'click').mockImplementation(() => undefined);
       fireEvent.click(exportBtn);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      clickSpy.mockRestore();
 
       expect(createObjectURLMock).toHaveBeenCalledTimes(1);
       expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-url');

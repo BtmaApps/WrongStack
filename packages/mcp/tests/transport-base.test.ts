@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ServerRequestResponder } from '../src/elicitation.js';
 import {
   BaseHTTPTransport,
-  createTimeoutSignal,
   type HttpTransportOptions,
   makeAbortError,
 } from '../src/transport-base.js';
@@ -51,7 +51,17 @@ class TestTransport extends BaseHTTPTransport {
   applyAgent(init: RequestInit): void {
     this.applyTlsAgent(init);
   }
+
+  timeoutSignal(parent: AbortSignal | undefined, timeoutMs: number) {
+    return this.requestTimeoutSignal(parent, timeoutMs);
+  }
 }
+
+const createTimeoutSignal = (parent: AbortSignal | undefined, timeoutMs: number) =>
+  new TestTransport({ name: 'timeouts', url: 'https://example.test' }).timeoutSignal(
+    parent,
+    timeoutMs,
+  );
 
 describe('BaseHTTPTransport helpers', () => {
   it('creates named abort errors', () => {
@@ -84,6 +94,29 @@ describe('BaseHTTPTransport helpers', () => {
       message: 'MCP HTTP request timed out after 25ms',
     });
     timed.dispose();
+  });
+
+  it('holds the timeout while the server waits on the user, then enforces it', () => {
+    vi.useFakeTimers();
+    const serverRequests = new ServerRequestResponder();
+    let awaitingUser = true;
+    vi.spyOn(serverRequests, 'awaitingUser', 'get').mockImplementation(() => awaitingUser);
+    const transport = new TestTransport({
+      name: 'held',
+      url: 'https://example.test',
+      serverRequests,
+    });
+    const timeout = transport.timeoutSignal(undefined, 25);
+
+    vi.advanceTimersByTime(100);
+    expect(timeout.signal.aborted).toBe(false);
+
+    awaitingUser = false;
+    vi.advanceTimersByTime(25);
+    expect(timeout.signal.reason).toMatchObject({
+      message: 'MCP HTTP request timed out after 25ms',
+    });
+    timeout.dispose();
   });
 
   it('returns defensive tool and metadata snapshots', () => {

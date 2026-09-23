@@ -47,6 +47,7 @@ import {
 import type { MessageHandlerDeps } from './message-handler-deps.js';
 import { handleSessionStartMessage } from './message-handler-session-start.js';
 import {
+  closeStaleToolCalls,
   handleToolExecuted,
   handleToolProgress,
   handleToolStarted,
@@ -604,6 +605,9 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
           });
           completedToolNextSteps = [];
         }
+        // The run is over: any tool still marked running lost its executed
+        // frame (abort, dropped connection) and must not linger forever.
+        closeStaleToolCalls(setToolCalls);
         drainQueue();
         break;
       }
@@ -705,6 +709,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
             },
           ]),
         );
+        closeStaleToolCalls(setToolCalls);
         drainQueue();
         break;
       }

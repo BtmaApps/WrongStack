@@ -86,7 +86,10 @@ function createMockAPI(
 function getHook(api: PluginAPI, eventName: string) {
   const call = vi.mocked(api.registerHook).mock.calls.find((c) => c?.[0] === eventName);
   if (!call?.[2]) throw new Error(`hook not registered for event ${eventName}`);
-  return call[2] as (input: { cwd?: string; sessionId?: string }) => Promise<unknown>;
+  return call[2] as (
+    input: { cwd?: string; sessionId?: string },
+    runtime?: { signal: AbortSignal; deadlineAt: number },
+  ) => Promise<unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -520,6 +523,34 @@ describe('session-recap plugin', () => {
       const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { body: string };
       expect(sendArg.body.startsWith('Refactored the auth module')).toBe(true);
       expect(sendArg.body).toContain('"summary"');
+      expect(complete.mock.calls[0]?.[1]).toMatchObject({ timeoutMs: 3000 });
+    });
+
+    it('does not publish a recap after hook cancellation', async () => {
+      let resolveSummary: ((value: unknown) => void) | undefined;
+      const complete = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSummary = resolve;
+          }),
+      );
+      const api = createMockAPI({
+        withMailbox: true,
+        extensions: { 'session-recap': { aiSummary: true } },
+        llm: { complete },
+      });
+      sessionRecapPlugin.setup(api as never);
+      const abort = new AbortController();
+      const pending = getHook(api, 'Stop')(
+        { sessionId: 's1' },
+        { signal: abort.signal, deadlineAt: Date.now() + 5000 },
+      );
+      await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
+      expect(complete.mock.calls[0]?.[1]).toMatchObject({ signal: abort.signal });
+      abort.abort();
+      resolveSummary?.(llmReply('late summary'));
+      await pending;
+      expect(api.mailbox?.send).not.toHaveBeenCalled();
     });
 
     it('posts the metrics-only recap when the LLM call fails', async () => {

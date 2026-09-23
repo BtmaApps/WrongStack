@@ -47,7 +47,7 @@ function createApi(name: string, enabled = true) {
   const api = {
     tools: { register: vi.fn() },
     config: { extensions: { [name]: { enabled } } },
-    log: { info: vi.fn() },
+    log: { info: vi.fn(), warn: vi.fn() },
   };
   apis.push({ name, api });
   return api;
@@ -68,6 +68,130 @@ afterEach(() => {
 });
 
 describe('evidence analyzer suite', () => {
+  it('keeps Jev opt-in, sends no raw evidence, and cannot change findings', async () => {
+    const api = createApi('ci-failure-triage');
+    const judge = vi.fn().mockResolvedValue({
+      answers: {
+        priority: {
+          type: 'choice',
+          choice: 'finding_1',
+          probabilities: { finding_1: 0.8, defer: 0.2 },
+          confidence: 0.6,
+        },
+      },
+      model: 'jev-test',
+      usage: { inputTokens: 8, outputTokens: 2 },
+    });
+    Object.assign(api, { jev: { judge } });
+    await ciFailureTriage.setup(api as never);
+    const execute = tool(api, 'ci_failure_triage');
+    const content = 'TS2322: private-value-that-should-stay-local';
+    const plain = (await execute({ content })) as { findings: unknown[] };
+    expect(judge).not.toHaveBeenCalled();
+    const reviewed = await execute({ content, review: 'jev' } as never);
+    expect(reviewed).toMatchObject({
+      findings: plain.findings,
+      review: {
+        used: true,
+        value: { choice: 'finding_1', finding: { rule: 'type-check failure' } },
+      },
+    });
+    expect(JSON.stringify(judge.mock.calls[0]?.[0])).not.toContain(
+      'private-value-that-should-stay-local',
+    );
+    expect(judge.mock.calls[0]?.[1]).toMatchObject({ timeoutMs: 5000 });
+  });
+
+  it('skips Jev on clean evidence and preserves a deterministic fallback when unavailable', async () => {
+    const api = createApi('ci-failure-triage');
+    const judge = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('Jev unavailable'), { code: 'JEV_UNAVAILABLE' }));
+    Object.assign(api, { jev: { judge } });
+    await ciFailureTriage.setup(api as never);
+    const execute = tool(api, 'ci_failure_triage');
+    expect(await execute({ content: '50 passed', review: 'jev' } as never)).toMatchObject({
+      findings: [],
+      review: { used: false, fallbackReason: 'no-findings' },
+    });
+    expect(judge).not.toHaveBeenCalled();
+    expect(await execute({ content: 'TS2322: broken', review: 'jev' } as never)).toMatchObject({
+      findings: [{ rule: 'type-check failure' }],
+      review: { used: false, fallbackReason: 'unavailable' },
+    });
+    expect(judge).toHaveBeenCalledTimes(1);
+    judge.mockResolvedValueOnce({ answers: {}, usage: { inputTokens: 1, outputTokens: 1 } });
+    expect(await execute({ content: 'TS2322: broken', review: 'jev' } as never)).toMatchObject({
+      findings: [{ rule: 'type-check failure' }],
+      review: { used: false, fallbackReason: 'invalid-response' },
+    });
+  });
+  it('keeps model review opt-in and sends finding metadata without raw evidence', async () => {
+    const api = createApi('ci-failure-triage');
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ text: '{"suggestions":["Run the named type check"]}' });
+    Object.assign(api, { llm: { complete } });
+    await ciFailureTriage.setup(api as never);
+    const execute = tool(api, 'ci_failure_triage');
+    const content = 'TS2322: private-value-that-should-stay-local';
+    const base = await execute({ content });
+    expect(complete).not.toHaveBeenCalled();
+    expect(base).not.toHaveProperty('review');
+
+    const reviewed = await execute({ content, review: 'one-shot' } as never);
+    expect(reviewed).toMatchObject({
+      findings: [{ rule: 'type-check failure' }],
+      review: { used: true, value: { suggestions: ['Run the named type check'] } },
+    });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete.mock.calls[0]![0]).not.toContain('private-value-that-should-stay-local');
+  });
+
+  it('avoids model cost with no findings and preserves findings after invalid advice', async () => {
+    const api = createApi('ci-failure-triage');
+    const complete = vi.fn().mockResolvedValue({ text: '{"suggestions":[1]}' });
+    Object.assign(api, { llm: { complete } });
+    await ciFailureTriage.setup(api as never);
+    const execute = tool(api, 'ci_failure_triage');
+    expect(await execute({ content: '50 passed', review: 'one-shot' } as never)).toMatchObject({
+      findings: [],
+      review: { used: false, fallbackReason: 'no-findings' },
+    });
+    expect(complete).not.toHaveBeenCalled();
+    expect(await execute({ content: 'TS2322: broken', review: 'one-shot' } as never)).toMatchObject(
+      {
+        findings: [{ rule: 'type-check failure' }],
+        review: { used: false, fallbackReason: 'invalid-response' },
+      },
+    );
+  });
+
+  it('uses Council only on explicit request and keeps deterministic findings authoritative', async () => {
+    const api = createApi('change-risk-classifier');
+    const complete = vi.fn();
+    const council = vi.fn().mockResolvedValue({
+      status: 'decided',
+      answer: '{"suggestions":["Review the rollback plan"]}',
+      resolution: 'judge',
+      usage: {},
+    });
+    Object.assign(api, { llm: { complete, council } });
+    await changeRiskClassifier.setup(api as never);
+    const result = await tool(
+      api,
+      'change_risk_analyze',
+    )({
+      content: 'DROP TABLE users',
+      review: 'council',
+    } as never);
+    expect(result).toMatchObject({
+      summary: { errors: 1 },
+      review: { used: true, value: { suggestions: ['Review the rollback plan'] } },
+    });
+    expect(council).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+  });
   it('rejects symlinked evidence outside the caller project', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'evidence-link-'));
     const root = join(directory, 'project');

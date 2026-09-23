@@ -1,6 +1,22 @@
 {
   "title": "Ajustes",
   "subtitle": "Configura cada aspecto de tu espacio de trabajo de agente.",
+  "navigation": {
+    "browse": "Explorar",
+    "search": "Buscar un ajuste…",
+    "clearSearch": "Borrar búsqueda",
+    "noResults": "No hay ajustes coincidentes",
+    "workspace": "Espacio de trabajo",
+    "models": "Modelos y conexiones",
+    "behavior": "Comportamiento del agente",
+    "system": "Sistema y seguridad",
+    "label": "Secciones de ajustes"
+  },
+  "providerTest": {
+    "title": "Prueba de proveedor",
+    "description": "Prueba proveedores y suscripciones guardados; revisa cuota, autenticación, latencia y límites de tokens.",
+    "open": "Abrir prueba de proveedor"
+  },
   "tabs": {
     "general": "General",
     "provider": "Proveedor",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Indexar al inicio",
     "indexOnStartHint": "Construye el índice de símbolos del código al iniciar la sesión.",
     "pluginsPerPluginHeading": "🔌 Controles por Plugin",
+    "pluginSearch": "Buscar plugins",
+    "pluginEnabledOnly": "Solo activos",
+    "pluginNoMatches": "Ningún plugin coincide con este filtro.",
     "pluginsPerPluginHint": "Activa o desactiva plugins individualmente. Los cambios se aplican en la próxima sesión.",
     "pluginChimera": "Chimera — revisión de código post-sesión",
     "pluginSkills": "Skills — biblioteca y creación de habilidades",
@@ -760,6 +779,7 @@
     "statusChipHint": "Estilo visual para la línea de estado TUI/CLI y el chip de trabajo.",
     "thinkingWordLabel": "Palabra de razonamiento",
     "thinkingWordHint": "Palabra corta única que se muestra en el chip de estado TUI mientras el agente trabaja.",
+    "thinkingWordInvalid": "Usa una sola palabra de hasta 16 letras, números, guiones bajos o guiones.",
     "statuslineModeLabel": "Modo de línea de estado",
     "statuslineModeHint": "Densidad de la barra de estado de TUI.",
     "statuslineModeMinimum": "Mínimo",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (predeterminado)",
     "sageStrict": "0,95 (estricto)"
   },
-  "resetLabel": "Restablecer",
+  "resetLabel": "Borrar preferencias locales",
   "cancel": "Cancelar",
-  "resetConfirmTitle": "¿Restablecer todas las preferencias?",
-  "resetConfirmBody": "Esto restaura los ajustes predeterminados y recarga la página.",
-  "resetConfirmAction": "Restablecer",
+  "resetConfirmTitle": "¿Borrar las preferencias de este navegador?",
+  "resetConfirmBody": "Borra las preferencias guardadas en este navegador y recarga la página. Los ajustes conectados se vuelven a cargar desde el servidor.",
+  "resetConfirmAction": "Borrar y recargar",
   "brain": {
     "heading": "Brain",
     "headingHint": "Modelos de decisión, consejo, escalada y techo de riesgo — aplicados en vivo, guardados en la configuración global.",

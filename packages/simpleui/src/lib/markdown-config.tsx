@@ -14,9 +14,14 @@ import { getMarkdownHighlighter } from './markdown-highlighter.js';
  * markdown on each render.
  */
 
-/** Shiki theme name for syntax-highlighted code blocks. */
-export function codeTheme(theme: 'dark' | 'light'): 'github-light' | 'github-dark-dimmed' {
-  return theme === 'light' ? 'github-light' : 'github-dark-dimmed';
+/**
+ * Shiki theme name for syntax-highlighted code blocks. Light points at the
+ * AA-adjusted github-light registration in markdown-highlighter (the token
+ * colors that fell below 4.5:1 on the light `--code-bg` are deepened in
+ * place); dark ships the stock github-dark-dimmed theme.
+ */
+export function codeTheme(theme: 'dark' | 'light'): 'github-light-aa' | 'github-dark-dimmed' {
+  return theme === 'light' ? 'github-light-aa' : 'github-dark-dimmed';
 }
 
 export const markdownRemarkPlugins = [remarkGfm];

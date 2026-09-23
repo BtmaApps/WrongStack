@@ -39,7 +39,10 @@ function fakeResponse(): FakeResponse {
 }
 
 describe('requestWithRetry body cap', () => {
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
 
   it('rejects once the streamed body exceeds maxBodyBytes', async () => {
     const res = fakeResponse();
@@ -161,5 +164,69 @@ describe('requestWithRetry body cap', () => {
     const p = _delayForTesting(500, controller.signal);
     setTimeout(() => controller.abort(), 10);
     await expect(p).rejects.toThrow(/Request aborted/);
+  });
+
+  function mockRetryResponses(retryAfter: string) {
+    let calls = 0;
+    let delivered!: () => void;
+    const firstDelivered = new Promise<void>((resolve) => {
+      delivered = resolve;
+    });
+    vi.mocked(httpsGet).mockImplementation(((
+      _opts: unknown,
+      cb: (res: IncomingMessage) => void,
+    ) => {
+      const attempt = ++calls;
+      const response = fakeResponse();
+      response.statusCode = attempt === 1 ? 429 : 200;
+      response.headers = attempt === 1 ? { 'retry-after': retryAfter } : {};
+      queueMicrotask(() => {
+        cb(response);
+        response._emit('end');
+        if (attempt === 1) delivered();
+      });
+      const request: Partial<ClientRequest> = {
+        on: vi.fn(() => request as ClientRequest),
+        end: vi.fn(),
+      };
+      return request as ClientRequest;
+    }) as typeof httpsGet);
+    return { firstDelivered, calls: () => calls };
+  }
+
+  it.each([
+    ['short', '0.001', 1],
+    ['longer than Node timer maximum', '2147483.648', 2_147_483_648],
+  ])('waits the full %s Retry-After before retrying', async (_label, header, waitMs) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const http = mockRetryResponses(header);
+    const pending = requestWithRetry({
+      hostname: 'registry.example',
+      path: '/retry',
+      maxAttempts: 2,
+    });
+    await http.firstDelivered;
+    await vi.advanceTimersByTimeAsync(waitMs - 1);
+    expect(http.calls()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(pending).resolves.toMatchObject({ statusCode: 200 });
+    expect(http.calls()).toBe(2);
+  });
+
+  it('aborts a long Retry-After without sending another request', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const http = mockRetryResponses('2147483.648');
+    const controller = new AbortController();
+    const pending = requestWithRetry({
+      hostname: 'registry.example',
+      path: '/abort',
+      maxAttempts: 2,
+      signal: controller.signal,
+    });
+    await http.firstDelivered;
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.advanceTimersByTimeAsync(2_147_483_648);
+    expect(http.calls()).toBe(1);
   });
 });

@@ -7,7 +7,12 @@
  */
 import { open } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
+import {
+  parseLlmJsonObject,
+  runOptionalPluginCouncil,
+  runOptionalPluginLlm,
+} from '../runtime/llm.js';
 import { safePath } from '../runtime/sandbox.js';
 
 const MAX_INPUT_CHARS = 1_000_000;
@@ -90,6 +95,75 @@ function analyze(content: string, profile: EvidenceAnalyzerProfile, maxFindings:
     }
   }
   return findings;
+}
+
+async function jevReview(
+  api: PluginAPI,
+  profile: EvidenceAnalyzerProfile,
+  findings: ReturnType<typeof analyze>,
+  signal: AbortSignal,
+) {
+  if (!api.jev) return { used: false, value: null, fallbackReason: 'unavailable' };
+  const candidates = findings.slice(0, 3);
+  const criteria: Record<string, string> = Object.fromEntries(
+    candidates.map((finding, index) => [
+      `finding_${index + 1}`,
+      `Investigate ${finding.rule} at line ${finding.line}: ${finding.advice}`,
+    ]),
+  );
+  criteria.defer = 'The supplied finding metadata is insufficient to prioritize a next check.';
+  try {
+    const result = await api.jev.judge(
+      {
+        state: {
+          analyzer: profile.name,
+          findings: candidates.map(({ rule, severity, line, advice }) => ({
+            rule,
+            severity,
+            line,
+            advice,
+          })),
+          limitation: 'Only supplied evidence was inspected. No project command was executed.',
+        },
+        questions: {
+          priority: {
+            type: 'choice',
+            instructions:
+              'Choose the next targeted check with the strongest justification from the supplied findings. Do not infer unseen evidence or change measured status.',
+            criteria,
+          },
+        },
+      },
+      { signal, timeoutMs: 5000 },
+    );
+    signal.throwIfAborted();
+    const answer = result.answers.priority;
+    if (answer?.type !== 'choice' || !Object.hasOwn(criteria, answer.choice)) {
+      return { used: false, value: null, fallbackReason: 'invalid-response' };
+    }
+    return {
+      used: true,
+      value: {
+        choice: answer.choice,
+        finding:
+          answer.choice === 'defer'
+            ? null
+            : (candidates[Number(answer.choice.slice(8)) - 1] ?? null),
+        confidence: answer.confidence,
+        probabilities: answer.probabilities,
+        model: result.model ?? null,
+      },
+      fallbackReason: null,
+    };
+  } catch (error) {
+    const unavailable =
+      error instanceof Error && 'code' in error && error.code === 'JEV_UNAVAILABLE';
+    return {
+      used: false,
+      value: null,
+      fallbackReason: signal.aborted ? 'cancelled' : unavailable ? 'unavailable' : 'provider-error',
+    };
+  }
 }
 
 async function sourceFromInput(
@@ -190,12 +264,18 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
               type: 'string',
               description: 'Pasted evidence, such as a CI log or manifest text.',
             },
+            review: {
+              type: 'string',
+              enum: ['none', 'one-shot', 'council', 'jev'],
+              description:
+                'Optional model suggestions or a Jev next-check decision from finding metadata. Default none.',
+            },
           },
         },
         permission: 'auto',
         category: 'Diagnostics',
         mutating: false,
-        async execute(input: { path?: string; content?: string }, ctx, opts) {
+        async execute(input: { path?: string; content?: string; review?: string }, ctx, opts) {
           const signal = AbortSignal.any([abort.signal, ...(opts?.signal ? [opts.signal] : [])]);
           signal.throwIfAborted();
           const config = readConfig(api.config.extensions?.[profile.name]);
@@ -208,6 +288,52 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
             );
             signal.throwIfAborted();
             const findings = analyze(evidence.content, profile, config.maxFindings);
+            if (
+              input.review !== undefined &&
+              !['none', 'one-shot', 'council', 'jev'].includes(input.review)
+            ) {
+              throw new ToolValidationError({ message: 'Unknown review mode', field: 'review' });
+            }
+            const reviewRequested =
+              input.review === 'one-shot' || input.review === 'council' || input.review === 'jev';
+            const review =
+              reviewRequested && findings.length > 0
+                ? input.review === 'jev'
+                  ? await jevReview(api, profile, findings, signal)
+                  : await (input.review === 'council'
+                      ? runOptionalPluginCouncil
+                      : runOptionalPluginLlm)({
+                      requested: true,
+                      api,
+                      label: `${profile.name}-review`,
+                      prompt: `Review these deterministic ${profile.name} finding labels, severities, and line numbers. Evidence excerpts and raw content are deliberately omitted. Suggest only targeted next checks. Do not change finding counts, severity, or claim any check passed. Return JSON {"suggestions":["..."]}.\n${JSON.stringify(findings.map(({ rule, severity, line, advice }) => ({ rule, severity, line, advice }))).slice(0, 8000)}`,
+                      options: {
+                        responseFormat: 'json',
+                        maxTokens: 800,
+                        timeoutMs: 30000,
+                        signal,
+                        role: 'reviewer',
+                      },
+                      parse(text: string) {
+                        const parsed = parseLlmJsonObject(text);
+                        if (
+                          !Array.isArray(parsed?.suggestions) ||
+                          parsed.suggestions.length > 8 ||
+                          !parsed.suggestions.every(
+                            (item) => typeof item === 'string' && item.length <= 500,
+                          )
+                        )
+                          return null;
+                        return { suggestions: parsed.suggestions as string[] };
+                      },
+                      ...(input.review === 'council' ? { profile: 'risk-review' } : {}),
+                    })
+                : {
+                    used: false,
+                    value: null,
+                    fallbackReason: reviewRequested ? 'no-findings' : 'not-requested',
+                  };
+            signal.throwIfAborted();
             state.analyses += 1;
             state.findings += findings.length;
             return {
@@ -216,6 +342,7 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
               source: evidence.source,
               evidenceChars: evidence.content.length,
               findings,
+              ...(reviewRequested ? { review } : {}),
               summary: {
                 errors: findings.filter((finding) => finding.severity === 'error').length,
                 warnings: findings.filter((finding) => finding.severity === 'warning').length,

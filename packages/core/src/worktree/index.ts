@@ -1,3 +1,4 @@
+export { type GitWorktreeEntry, listGitWorktrees } from './git-worktree-list.js';
 export {
   WorktreeManager,
   assertSafePath,

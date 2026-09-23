@@ -1,6 +1,22 @@
 {
   "title": "Ayarlar",
-  "subtitle": "Configure every aspect of your agent workspace",
+  "subtitle": "Ajan çalışma alanınızın tüm ayarları",
+  "navigation": {
+    "browse": "Göz at",
+    "search": "Ayar ara…",
+    "clearSearch": "Aramayı temizle",
+    "noResults": "Eşleşen ayar yok",
+    "workspace": "Çalışma alanı",
+    "models": "Modeller ve bağlantılar",
+    "behavior": "Ajan davranışı",
+    "system": "Sistem ve güvenlik",
+    "label": "Ayar bölümleri"
+  },
+  "providerTest": {
+    "title": "Sağlayıcı Testi",
+    "description": "Kayıtlı sağlayıcıları ve abonelikleri test edin; kota, kimlik doğrulama, gecikme ve token sınırı hatalarını inceleyin.",
+    "open": "Sağlayıcı Testini Aç"
+  },
   "tabs": {
     "general": "Genel",
     "provider": "Sağlayıcı",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Başlangıçta dizine ekle",
     "indexOnStartHint": "Oturum başlangıcında kod tabanı sembol dizinini oluştur.",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
+    "pluginSearch": "Eklenti ara",
+    "pluginEnabledOnly": "Yalnız açık olanlar",
+    "pluginNoMatches": "Bu filtreyle eşleşen eklenti yok.",
     "pluginsPerPluginHint": "Enable or disable individual plugins. Changes take effect on next session.",
     "pluginChimera": "Chimera — post-session code review",
     "pluginSkills": "Skills — skill library & authoring",
@@ -760,6 +779,7 @@
     "statusChipHint": "TUI/CLI durum çubuğu ve çalışma çipi için görsel stil.",
     "thinkingWordLabel": "Düşünme kelimesi",
     "thinkingWordHint": "Ajan çalışırken TUI durum çipinde gösterilen tek kısa kelime.",
+    "thinkingWordInvalid": "En fazla 16 harf, rakam, alt çizgi veya kısa çizgiden oluşan tek bir kelime kullanın.",
     "statuslineModeLabel": "Durum çubuğu modu",
     "statuslineModeHint": "TUI durum çubuğu yoğunluğu.",
     "statuslineModeMinimum": "Minimum",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (varsayılan)",
     "sageStrict": "0,95 (katı)"
   },
-  "resetLabel": "Sıfırla",
+  "resetLabel": "Yerel tercihleri temizle",
   "cancel": "İptal",
-  "resetConfirmTitle": "Tüm tercihler sıfırlansın mı?",
-  "resetConfirmBody": "Bu, varsayılan ayarları geri yükler ve sayfayı yeniler.",
-  "resetConfirmAction": "Sıfırla",
+  "resetConfirmTitle": "Bu tarayıcının tercihleri temizlensin mi?",
+  "resetConfirmBody": "Bu tarayıcıda saklanan tercihler temizlenir ve sayfa yenilenir. Bağlı ayarlar sunucudan yeniden yüklenir.",
+  "resetConfirmAction": "Temizle ve yenile",
   "brain": {
     "heading": "Beyin",
     "headingHint": "Karar modelleri, konsey, yükseltme ve risk tavanı — canlı uygulanır, genel yapılandırmaya kaydedilir.",

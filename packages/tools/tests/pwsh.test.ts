@@ -44,6 +44,21 @@ describe('pwshTool', () => {
     }
   });
 
+  it('timeout_ms: 0 means no limit (was clamped to 1s)', async () => {
+    const sb = await mkSandbox();
+    try {
+      const out = await pwshTool.execute(
+        { command: 'Start-Sleep -Milliseconds 1800; Write-Output "slept-through"', timeout_ms: 0 },
+        sb.ctx,
+        { signal: newSignal() },
+      );
+      expect(out.timed_out).toBe(false);
+      expect(out.output).toContain('slept-through');
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
   it('rejects on empty command', async () => {
     const sb = await mkSandbox();
     try {

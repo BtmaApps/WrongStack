@@ -487,4 +487,44 @@ describe('bashTool Windows shell selection (Codex + PowerShell)', () => {
       expect(Buffer.from(encoded, 'base64').toString('utf16le')).toBe(wrapPowerShellScript(script));
     });
   });
+
+  it('hermetic cmd.exe runs with /d so AutoRun commands are skipped', async () => {
+    cfg.platform = 'win32';
+    await withShell(undefined, async () => {
+      await runFinal({ command: 'echo hi', hermetic: true });
+      expect(cfg.spawnCalls[0]!.args).toEqual(['/d', '/c', 'echo hi']);
+    });
+  });
+
+  it('hermetic PowerShell keeps its -NoProfile argv', async () => {
+    cfg.platform = 'win32';
+    await withShell('powershell', async () => {
+      await runFinal({ command: 'Get-Date', hermetic: true });
+      expect(cfg.spawnCalls[0]!.args).toEqual(expectedPowerShellArgs('Get-Date'));
+    });
+  });
+
+  it.each([
+    ['/bin/bash', ['--noprofile', '--norc', '-c', 'echo hi']],
+    ['/usr/bin/zsh', ['-f', '-c', 'echo hi']],
+    ['/usr/bin/fish', ['--no-config', '-c', 'echo hi']],
+  ])('hermetic %s skips its startup files and gets the minimal env', async (bin, argv) => {
+    cfg.platform = 'linux';
+    process.env['NPM_CONFIG_WS_PROBE'] = 'x';
+    try {
+      await withShell(bin, async () => {
+        await runFinal({ command: 'echo hi', hermetic: true });
+        const call = cfg.spawnCalls[0]! as { cmd: string; args: string[]; opts: { env?: object } };
+        expect(call.cmd).toBe(bin);
+        expect(call.args).toEqual(argv);
+        expect(call.opts.env).toMatchObject({ TERM: 'dumb' });
+        expect(call.opts.env).not.toHaveProperty('NPM_CONFIG_WS_PROBE');
+        cfg.spawnCalls = [];
+        await runFinal({ command: 'echo hi' });
+        expect(cfg.spawnCalls[0]!.args).toEqual(['-c', 'echo hi']);
+      });
+    } finally {
+      delete process.env['NPM_CONFIG_WS_PROBE'];
+    }
+  });
 });

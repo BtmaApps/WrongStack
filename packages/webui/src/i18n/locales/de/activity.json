@@ -2981,6 +2981,7 @@
     "unsupportedNote": "nach bestem Bemühen"
   },
   "codeMap": {
+    "snapshotUnavailable": "CodeMap-Graph nicht verfügbar — starten Sie den WebUI-Server, um ihn zu laden.",
     "codeAtlas": "Code-Atlas",
     "architectureIntelligence": "Architektur-Intelligenz",
     "codeMapBreadcrumb": "Code-Map-Breadcrumb",
@@ -3881,5 +3882,19 @@
     "customAnswerPlaceholder": "Andere / eigene Antwort (optional)",
     "youDecide": "Du entscheidest",
     "youDecideHint": "Ich möchte diese Frage nicht beantworten. Das Modell soll wählen."
+  },
+  "review": {
+    "addComment": "Diese Zeile kommentieren",
+    "placeholder": "Review-Kommentar schreiben… (Strg+Enter speichert, Esc bricht ab)",
+    "trayButton": "Review ({{count}})",
+    "trayTitle": "Review-Kommentare",
+    "empty": "Noch keine Kommentare. Über eine Diff-Zeile fahren und + klicken.",
+    "sendToChat": "An den Chat senden",
+    "sendToChatTitle": "Das gesamte Review als eine Nachricht in den Chat-Editor einfügen",
+    "confirmClearTitle": "Alle Review-Kommentare verwerfen?",
+    "confirmClearMsg": "Die Kommentare werden nirgendwohin gesendet.",
+    "outdated": "Veraltet: Die Zeile hat sich nach diesem Kommentar geändert",
+    "outdatedHeader": "Kommentare zu geänderten Zeilen",
+    "removedLine": "entfernte Zeile"
   }
 }

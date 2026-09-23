@@ -40,6 +40,7 @@ import {
   BTW_DISPATCH_GRACE_MS,
   cancelDispatchedGraceTimer,
   dispatchedGraceTimers,
+  getRemotePromptQueue,
   nextQueueItemId,
   normalizeQueuedItem,
   setEnqueueSequence,
@@ -352,6 +353,9 @@ export function chatLane(sessionId: string): ChatLaneActions {
     get queue() {
       return read().queue;
     },
+    get serverQueue() {
+      return read().serverQueue;
+    },
     get runStart() {
       return read().runStart;
     },
@@ -563,6 +567,11 @@ export function chatLane(sessionId: string): ChatLaneActions {
       })),
 
     enqueue: (text, mode = 'queue', images, alreadyDispatched) => {
+      // A server with a session queue owns `queue` prompts: it runs them when
+      // the turn ends even if this page is closed, and every page sees them.
+      if (mode === 'queue' && !alreadyDispatched && sid !== DEFAULT_LANE_ID) {
+        if (getRemotePromptQueue()?.(sid, text, images)) return;
+      }
       const addedAt = Date.now();
       const itemId = nextQueueItemId();
       mutate(sid, (lane) => ({

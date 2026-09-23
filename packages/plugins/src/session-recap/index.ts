@@ -42,7 +42,7 @@
  *
  * @public
  */
-import type { Plugin } from '@wrongstack/core/types';
+import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 import { releaseHandle } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------
@@ -484,10 +484,13 @@ const plugin: Plugin = {
     }
 
     // ── Register the Stop hook ────────────────────────────────────────
-    const stopHook = async (input: {
-      cwd?: string | undefined;
-      sessionId?: string | undefined;
-    }): Promise<void> => {
+    const stopHook = async (
+      input: {
+        cwd?: string | undefined;
+        sessionId?: string | undefined;
+      },
+      hookContext?: HookInvocationContext,
+    ): Promise<void> => {
       if (!cfg.enabled) return;
       touchActivity();
       state.stopInvocations += 1;
@@ -604,8 +607,11 @@ const plugin: Plugin = {
               system: 'You write concise engineering session recaps.',
               role: 'document',
               maxTokens: 200,
+              timeoutMs: 3000,
+              signal: hookContext?.signal,
             },
           );
+          if (hookContext?.signal.aborted) return;
           const text = result.text.trim();
           if (text) {
             aiSummary = text;
@@ -622,6 +628,8 @@ const plugin: Plugin = {
         bodyPrefix + JSON.stringify(recapWithSummary, null, 2),
         cfg.maxBodyChars,
       );
+
+      if (hookContext?.signal.aborted) return;
 
       try {
         const result = (await mailbox.send({

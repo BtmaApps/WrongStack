@@ -234,6 +234,12 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         });
       }
       const resolvedStack = stack ?? manifest.stacks[0] ?? 'web';
+      if (!manifest.stacks.includes(resolvedStack)) {
+        throw new ToolValidationError({
+          message: `design: kit "${manifest.id}" does not support stack "${resolvedStack}". Supported stacks: ${manifest.stacks.join(', ') || '(none)'}.`,
+          field: 'stack',
+        });
+      }
       const body = await loader.readBody(manifest.id, resolvedStack);
       const rawTokens = await loader.readTokens(manifest.id);
       // Preserve any persisted overrides; merge in any passed with `use`.

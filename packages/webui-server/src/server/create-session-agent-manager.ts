@@ -91,6 +91,7 @@ export function createSessionAgentManager({
         loopDetection: config.tools?.loopDetection ?? DEFAULT_TOOLS_CONFIG.loopDetection,
         confirmAwaiter: undefined,
         toolExecutor,
+        tracer: agent.tracer,
       });
     },
   });

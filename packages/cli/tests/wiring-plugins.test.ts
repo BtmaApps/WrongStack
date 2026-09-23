@@ -1,8 +1,10 @@
 import { join } from 'node:path';
 import type { Config, Logger } from '@wrongstack/core/types';
+import { OFFICIAL_PLUGIN_SPECIFIERS } from '@wrongstack/plugins/factories';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   _resetDeprecatedWarningsForTests,
+  BUILTIN_PLUGIN_FACTORIES,
   builtinPluginNameFromSpec,
   DEPRECATED_PLUGIN_NAMES,
   pluginNameFromSpec,
@@ -354,6 +356,25 @@ describe('setupPlugins', () => {
     expect(names).not.toContain('plugin-stack-observer');
     expect(names).not.toContain('@wrongstack/plug-lsp');
     expect(names).not.toContain('telegram');
+  });
+
+  it('does not invoke a default-inactive factory before deciding enablement', async () => {
+    const index = 7 + OFFICIAL_PLUGIN_SPECIFIERS.indexOf('@wrongstack/plugins/agent-handoff');
+    const original = BUILTIN_PLUGIN_FACTORIES[index]!;
+    const factory = vi.fn(async () => ({ name: 'agent-handoff' }) as never);
+    BUILTIN_PLUGIN_FACTORIES[index] = factory;
+    try {
+      await setupPlugins({ ...baseDeps(), paths: fakePaths() } as never);
+      expect(factory).not.toHaveBeenCalled();
+
+      await setupPlugins({
+        ...baseDeps({ plugins: [{ name: 'agent-handoff', enabled: true }] }),
+        paths: fakePaths(),
+      } as never);
+      expect(factory).toHaveBeenCalledTimes(1);
+    } finally {
+      BUILTIN_PLUGIN_FACTORIES[index] = original;
+    }
   });
 
   it('--safe-mode keeps built-ins but skips third-party plugins', async () => {

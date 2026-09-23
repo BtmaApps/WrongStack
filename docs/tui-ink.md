@@ -454,7 +454,9 @@ Both `env` and `isTTY` are overridable for testability.
 |---------|--------------|-------|
 | `unicode` | automatic fallback or `WRONGSTACK_TUI_ICON_STYLE=unicode` | Portable Unicode set — works on any modern terminal without special fonts |
 | `nerd` | automatic local detection or `WRONGSTACK_TUI_ICON_STYLE=nerd` | Rich Nerd Font icons (requires Nerd Font installed and selected in the terminal) |
-| `ascii` | `WRONGSTACK_TUI_ICON_STYLE=ascii` | Pure ASCII — CI captures, basic terminals |
+| `ascii` | `--ascii` or `WRONGSTACK_TUI_ICON_STYLE=ascii` | Pure ASCII — CI captures, basic terminals |
+
+The glyph set covers only the named chrome glyphs. In ASCII mode every other symbol is converted as well: box drawing, arrows, bullets, spinners, emoji, Nerd Font icons and typographic punctuation. The `Text` wrapper in `src/ink.tsx` converts text before Ink measures it, and bordered `Box`es switch to Ink's `classic` border. stdout/stderr are wrapped too (width-preserving) for the plain REPL and one-shot output (`@wrongstack/core` `utils/ascii-fallback.ts`). Letters and digits in any script are left alone. Measured in a real pseudo-terminal: the TUI's first screen plus the command palette went from 8,143 non-ASCII characters to 0.
 
 ### 6.2 42 Semantic Glyphs
 

@@ -1,0 +1,656 @@
+/**
+ * MCP elicitation (`elicitation/create`): the responder every transport shares,
+ * the mapping onto the structured user-input form, and the round trip over
+ * real stdio, Streamable HTTP and SSE servers — including the request timeout
+ * holding while the user is still answering.
+ */
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { EventBus } from '@wrongstack/core/kernel';
+import { ToolRegistry } from '@wrongstack/core/registry';
+import type { Logger, UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MCPClient } from '../src/client.js';
+import {
+  type ElicitationField,
+  type MCPElicitationRequest,
+  ServerRequestResponder,
+} from '../src/elicitation.js';
+import { elicitViaUserInput } from '../src/elicitation-form.js';
+import { MCPRegistry } from '../src/registry.js';
+
+const silentLog = {
+  error: () => {},
+  warn: () => {},
+  info: () => {},
+  debug: () => {},
+  trace: () => {},
+  child: () => silentLog,
+} as never as Logger;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * Request timeout vs. how long the "user" takes to answer. The answer outlasts
+ * the timeout by more than two windows, so only a held timeout lets the call
+ * finish — and the window is wide enough that a loaded machine still gets the
+ * server's request out before it.
+ */
+const TIMEOUT_MS = 1_500;
+const USER_MS = 3_500;
+
+const DEPLOY_SCHEMA = {
+  type: 'object',
+  properties: {
+    env: { type: 'string', title: 'Environment', enum: ['staging', 'prod'] },
+    replicas: { type: 'integer', minimum: 1, maximum: 10 },
+    notify: { type: 'boolean', default: true },
+  },
+  required: ['env'],
+};
+
+function elicitRequest(id: number | string, params: unknown = {}) {
+  return {
+    id,
+    method: 'elicitation/create',
+    params: { message: 'Deploy?', requestedSchema: DEPLOY_SCHEMA, ...(params as object) },
+  };
+}
+
+describe('ServerRequestResponder', () => {
+  it('declares elicitation only when it can answer it', () => {
+    expect(new ServerRequestResponder().capabilities()).toEqual({});
+    expect(new ServerRequestResponder(async () => ({ action: 'cancel' })).capabilities()).toEqual({
+      elicitation: {},
+    });
+  });
+
+  it('answers ping, refuses sampling by policy and anything unknown', async () => {
+    const r = new ServerRequestResponder(async () => ({ action: 'cancel' }));
+    expect(await r.answer({ id: 1, method: 'ping' })).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      result: {},
+    });
+    expect(await r.answer({ id: 2, method: 'sampling/createMessage' })).toMatchObject({
+      error: { code: -32601, message: 'Client sampling is disabled by policy' },
+    });
+    expect(await r.answer({ id: 3, method: 'roots/list' })).toMatchObject({
+      error: { code: -32601 },
+    });
+    // Not declared → not a method this client has.
+    expect(await new ServerRequestResponder().answer(elicitRequest(4))).toMatchObject({
+      error: { code: -32601, message: 'Method not found: elicitation/create' },
+    });
+  });
+
+  it('refuses a schema that is not a flat form of primitives', async () => {
+    const handler = vi.fn();
+    const r = new ServerRequestResponder(handler);
+    const nested = {
+      message: 'x',
+      requestedSchema: {
+        type: 'object',
+        properties: { address: { type: 'object', properties: {} } },
+      },
+    };
+    expect(await r.answer({ id: 1, method: 'elicitation/create', params: nested })).toMatchObject({
+      error: { code: -32602, message: expect.stringContaining('"address"') },
+    });
+    expect(
+      await r.answer({ id: 2, method: 'elicitation/create', params: { requestedSchema: {} } }),
+    ).toMatchObject({ error: { code: -32602 } });
+    expect(
+      await r.answer({
+        id: 3,
+        method: 'elicitation/create',
+        params: { mode: 'url', message: 'Sign in', url: 'https://x.example' },
+      }),
+    ).toMatchObject({ error: { code: -32602, message: expect.stringContaining('URL-mode') } });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('parses every field shape the spec revisions use', async () => {
+    let fields: ElicitationField[] = [];
+    const r = new ServerRequestResponder(async (form) => {
+      fields = form.fields;
+      return { action: 'cancel' };
+    });
+    await r.answer({
+      id: 1,
+      method: 'elicitation/create',
+      params: {
+        message: 'm',
+        requestedSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', minLength: 2, format: 'email', default: 'a@b.c' },
+            size: { type: 'string', oneOf: [{ const: 's', title: 'Small' }, { const: 'l' }] },
+            legacy: { type: 'string', enum: ['x', 'y'], enumNames: ['Ex', 'Why'] },
+            tags: {
+              type: 'array',
+              items: { anyOf: [{ const: 'a', title: 'A' }] },
+              maxItems: 1,
+              default: ['a'],
+            },
+            ratio: { type: 'number', maximum: 1 },
+          },
+          required: ['name'],
+        },
+      },
+    });
+    expect(fields).toEqual([
+      expect.objectContaining({
+        name: 'name',
+        kind: 'string',
+        required: true,
+        minLength: 2,
+        format: 'email',
+        default: 'a@b.c',
+      }),
+      expect.objectContaining({
+        name: 'size',
+        kind: 'enum',
+        options: [
+          { value: 's', label: 'Small' },
+          { value: 'l', label: 'l' },
+        ],
+      }),
+      expect.objectContaining({
+        name: 'legacy',
+        kind: 'enum',
+        options: [
+          { value: 'x', label: 'Ex' },
+          { value: 'y', label: 'Why' },
+        ],
+      }),
+      expect.objectContaining({ name: 'tags', kind: 'multi-enum', maxItems: 1, default: ['a'] }),
+      expect.objectContaining({ name: 'ratio', kind: 'number', maximum: 1, required: false }),
+    ]);
+  });
+
+  it('checks accepted content against the schema, coercing numeric text', async () => {
+    const answer = vi.fn();
+    const r = new ServerRequestResponder(async () => answer());
+
+    answer.mockReturnValueOnce({
+      action: 'accept',
+      content: { env: 'prod', replicas: '3', notify: false, extra: 'dropped' },
+    });
+    expect(await r.answer(elicitRequest(1))).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      result: { action: 'accept', content: { env: 'prod', replicas: 3, notify: false } },
+    });
+
+    for (const content of [
+      { replicas: 2 }, // required env missing
+      { env: 'dev' }, // not an offered choice
+      { env: 'prod', replicas: 11 }, // above maximum
+      { env: 'prod', replicas: 1.5 }, // not an integer
+      { env: 'prod', notify: 'yes' }, // not a boolean
+    ]) {
+      answer.mockReturnValueOnce({ action: 'accept', content });
+      expect(await r.answer(elicitRequest(2))).toMatchObject({ error: { code: -32603 } });
+    }
+
+    answer.mockReturnValueOnce({ action: 'decline' });
+    expect(await r.answer(elicitRequest(3))).toMatchObject({ result: { action: 'decline' } });
+    answer.mockImplementationOnce(() => {
+      throw new Error('surface crashed');
+    });
+    expect(await r.answer(elicitRequest(4))).toMatchObject({ result: { action: 'cancel' } });
+  });
+
+  it('holds one form at a time, and stops waiting on server cancel or dispose', async () => {
+    let seen: AbortSignal | undefined;
+    const r = new ServerRequestResponder(
+      (form) =>
+        new Promise((resolve) => {
+          seen = form.signal;
+          form.signal.addEventListener('abort', () => resolve({ action: 'decline' }));
+        }),
+    );
+
+    const first = r.answer(elicitRequest('a'));
+    expect(r.awaitingUser).toBe(true);
+    expect(await r.answer(elicitRequest('b'))).toMatchObject({
+      error: { code: -32603, message: expect.stringContaining('still waiting') },
+    });
+    r.cancel({ requestId: 'a' });
+    // A form the server gave up on is reported as cancelled, whatever the surface said.
+    expect(await first).toMatchObject({ id: 'a', result: { action: 'cancel' } });
+    expect(seen?.aborted).toBe(true);
+    expect(r.awaitingUser).toBe(false);
+
+    const second = r.answer(elicitRequest('c'));
+    r.dispose();
+    expect(await second).toMatchObject({ result: { action: 'cancel' } });
+  });
+});
+
+function formRequest(
+  fields: ElicitationField[],
+  requester?: MCPElicitationRequest['requester'],
+): MCPElicitationRequest {
+  return {
+    server: 'deployer',
+    message: 'Pick a target',
+    fields,
+    requester,
+    signal: new AbortController().signal,
+  };
+}
+
+const DEPLOY_FIELDS: ElicitationField[] = [
+  {
+    name: 'env',
+    title: 'Environment',
+    required: true,
+    kind: 'enum',
+    options: [
+      { value: 'staging', label: 'staging' },
+      { value: 'prod', label: 'Production' },
+    ],
+    default: 'staging',
+  },
+  { name: 'replicas', required: false, kind: 'integer', minimum: 1 },
+  { name: 'notify', required: false, kind: 'boolean', default: true },
+  {
+    name: 'regions',
+    required: false,
+    kind: 'multi-enum',
+    options: [
+      { value: 'eu', label: 'EU' },
+      { value: 'us', label: 'US' },
+    ],
+  },
+];
+
+function answering(...responses: Array<(req: UserInputRequest) => UserInputResponse | undefined>) {
+  const requests: UserInputRequest[] = [];
+  const requestUserInput = vi.fn(async (req: UserInputRequest) => {
+    requests.push(req);
+    return responses[requests.length - 1]?.(req);
+  });
+  return { requestUserInput, requests };
+}
+
+describe('elicitViaUserInput', () => {
+  it('renders the fields as questions and turns the answers into typed content', async () => {
+    const user = answering((req) => ({
+      requestId: req.id,
+      status: 'submitted',
+      answers: [
+        { questionId: 'f0', selectedOptionIds: ['o1'], usedRecommendation: false },
+        { questionId: 'f1', selectedOptionIds: [], text: ' 4 ', usedRecommendation: false },
+        { questionId: 'f2', selectedOptionIds: ['no'], usedRecommendation: false },
+        { questionId: 'f3', selectedOptionIds: ['o0', 'o1'], usedRecommendation: false },
+      ],
+    }));
+
+    const result = await elicitViaUserInput(formRequest(DEPLOY_FIELDS, user));
+
+    expect(result).toEqual({
+      action: 'accept',
+      content: { env: 'prod', replicas: 4, notify: false, regions: ['eu', 'us'] },
+    });
+    const form = user.requests[0]!;
+    expect(form.title).toContain('"deployer"');
+    expect(form.description).toContain('Pick a target');
+    expect(form.description).toContain('comfortable sending to "deployer"');
+    expect(form.tabs[0]?.questions).toEqual([
+      expect.objectContaining({
+        id: 'f0',
+        prompt: 'Environment',
+        kind: 'single_select',
+        required: true,
+        recommendedOptionIds: ['o0'],
+        options: [
+          { id: 'o0', label: 'staging' },
+          { id: 'o1', label: 'Production' },
+        ],
+      }),
+      expect.objectContaining({
+        id: 'f1',
+        kind: 'text',
+        description: 'A whole number. At least 1.',
+      }),
+      expect.objectContaining({ id: 'f2', kind: 'single_select', recommendedOptionIds: ['yes'] }),
+      expect.objectContaining({ id: 'f3', kind: 'multi_select' }),
+    ]);
+  });
+
+  it('asks again with the reason when an answer does not fit, then accepts', async () => {
+    const reply =
+      (text: string) =>
+      (req: UserInputRequest): UserInputResponse => ({
+        requestId: req.id,
+        status: 'submitted',
+        answers: [
+          { questionId: 'f0', selectedOptionIds: ['o0'], usedRecommendation: true },
+          { questionId: 'f1', selectedOptionIds: [], text, usedRecommendation: false },
+        ],
+      });
+    const user = answering(reply('zero'), reply('2'));
+
+    const result = await elicitViaUserInput(formRequest(DEPLOY_FIELDS, user));
+
+    expect(result).toEqual({ action: 'accept', content: { env: 'staging', replicas: 2 } });
+    expect(user.requests).toHaveLength(2);
+    expect(user.requests[1]?.description).toContain('not accepted: replicas must be a number');
+  });
+
+  it('declines when the user dismisses it, and cancels when no one can be asked', async () => {
+    const dismissed = answering((req) => ({ requestId: req.id, status: 'cancelled', answers: [] }));
+    expect(await elicitViaUserInput(formRequest(DEPLOY_FIELDS, dismissed))).toEqual({
+      action: 'decline',
+    });
+
+    const headless = answering(() => undefined);
+    expect(await elicitViaUserInput(formRequest(DEPLOY_FIELDS, headless))).toEqual({
+      action: 'cancel',
+    });
+    expect(await elicitViaUserInput(formRequest(DEPLOY_FIELDS))).toEqual({ action: 'cancel' });
+  });
+
+  it('falls back to the host session when the server asks outside a tool call', async () => {
+    const root = answering((req) => ({
+      requestId: req.id,
+      status: 'submitted',
+      answers: [{ questionId: 'confirm', selectedOptionIds: ['yes'], usedRecommendation: false }],
+    }));
+    // No fields: a plain go-ahead question.
+    expect(await elicitViaUserInput(formRequest([]), root)).toEqual({
+      action: 'accept',
+      content: {},
+    });
+    expect(root.requests[0]?.tabs[0]?.questions[0]).toMatchObject({
+      id: 'confirm',
+      required: true,
+    });
+  });
+});
+
+// ── Real servers ───────────────────────────────────────────────────────────
+
+/**
+ * A stdio MCP server whose `ask` tool elicits the deploy form mid-call and
+ * returns what it got back, plus the capabilities the client declared.
+ */
+function writeStdioServer(): string {
+  const script = `'use strict';
+const rl = require('readline');
+let caps = null;
+let pendingCall = null;
+const send = (m) => process.stdout.write(JSON.stringify(m) + '\\n');
+rl.createInterface({ input: process.stdin, terminal: false }).on('line', (line) => {
+  let m;
+  try { m = JSON.parse(line); } catch { return; }
+  if (m.method === 'initialize') {
+    caps = m.params.capabilities;
+    send({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'elicit', version: '1' } } });
+  } else if (m.method === 'tools/list') {
+    send({ jsonrpc: '2.0', id: m.id, result: { tools: [{ name: 'ask', inputSchema: { type: 'object' } }] } });
+  } else if (m.method === 'tools/call') {
+    pendingCall = m.id;
+    send({ jsonrpc: '2.0', id: 'srv-1', method: 'elicitation/create', params: { message: 'Deploy?', requestedSchema: ${JSON.stringify(DEPLOY_SCHEMA)} } });
+  } else if (m.id === 'srv-1') {
+    send({ jsonrpc: '2.0', id: pendingCall, result: { content: [{ type: 'text', text: JSON.stringify({ caps, reply: m.result ?? m.error }) }] } });
+  }
+});
+`;
+  const path = join(
+    tmpdir(),
+    `elicit-mcp-${process.pid}-${Math.random().toString(36).slice(2)}.cjs`,
+  );
+  writeFileSync(path, script, 'utf8');
+  return path;
+}
+
+const cleanups: Array<() => Promise<void> | void> = [];
+afterEach(async () => {
+  for (const c of cleanups.splice(0).reverse()) await c();
+});
+
+function deployAnswer(req: UserInputRequest): UserInputResponse {
+  return {
+    requestId: req.id,
+    status: 'submitted',
+    answers: [
+      { questionId: 'f0', selectedOptionIds: ['o1'], usedRecommendation: false },
+      { questionId: 'f1', selectedOptionIds: [], text: '3', usedRecommendation: false },
+      { questionId: 'f2', selectedOptionIds: ['yes'], usedRecommendation: true },
+    ],
+  };
+}
+
+describe('elicitation over stdio', () => {
+  async function startRegistry(withHandler: boolean) {
+    const scriptPath = writeStdioServer();
+    cleanups.push(() => unlinkSync(scriptPath));
+    const toolRegistry = new ToolRegistry();
+    const registry = new MCPRegistry({
+      toolRegistry,
+      events: new EventBus(),
+      log: silentLog,
+      ...(withHandler ? { elicitationHandler: (request) => elicitViaUserInput(request) } : {}),
+    });
+    cleanups.push(() => registry.stopAll());
+    await registry.start({
+      name: 'deployer',
+      transport: 'stdio',
+      command: process.execPath,
+      args: [scriptPath],
+      startupTimeoutMs: 30_000,
+      // Far shorter than the user takes to answer: the timeout must hold.
+      requestTimeoutMs: TIMEOUT_MS,
+    });
+    const tool = toolRegistry.list().find((t) => t.name === 'mcp__deployer__ask');
+    if (!tool) throw new Error('tool not registered');
+    return tool;
+  }
+
+  it('asks the run that made the call, holding the request timeout while the user types', {
+    timeout: 30_000,
+  }, async () => {
+    const tool = await startRegistry(true);
+    const slowUser = vi.fn(async (req: UserInputRequest) => {
+      await sleep(USER_MS);
+      return deployAnswer(req);
+    });
+    const ctx = { requestUserInput: slowUser, signal: new AbortController().signal };
+
+    const out = JSON.parse(
+      String(await tool.execute({}, ctx as never, { signal: ctx.signal })),
+    ) as { caps: unknown; reply: unknown };
+
+    expect(out.caps).toEqual({ elicitation: {} });
+    expect(out.reply).toEqual({
+      action: 'accept',
+      content: { env: 'prod', replicas: 3, notify: true },
+    });
+    expect(slowUser).toHaveBeenCalledOnce();
+    expect(slowUser.mock.calls[0]?.[0].title).toContain('"deployer"');
+  });
+
+  it('declares nothing and refuses the request when the host cannot ask', {
+    timeout: 30_000,
+  }, async () => {
+    const tool = await startRegistry(false);
+    const ctx = { requestUserInput: vi.fn(), signal: new AbortController().signal };
+
+    const out = JSON.parse(
+      String(await tool.execute({}, ctx as never, { signal: ctx.signal })),
+    ) as { caps: unknown; reply: unknown };
+
+    expect(out.caps).toEqual({});
+    expect(out.reply).toMatchObject({ code: -32601 });
+    expect(ctx.requestUserInput).not.toHaveBeenCalled();
+  });
+});
+
+async function listen(handler: (req: IncomingMessage, res: ServerResponse) => void) {
+  const server: Server = createServer(handler);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  cleanups.push(
+    () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
+  );
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+}
+
+async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+  return JSON.parse(body) as Record<string, unknown>;
+}
+
+const INIT_RESULT = {
+  protocolVersion: '2024-11-05',
+  capabilities: { tools: {} },
+  serverInfo: { name: 'elicit-http', version: '1' },
+};
+const TOOLS = { tools: [{ name: 'ask', inputSchema: { type: 'object' } }] };
+const ELICIT = {
+  jsonrpc: '2.0',
+  id: 'srv-1',
+  method: 'elicitation/create',
+  params: {
+    message: 'Name?',
+    requestedSchema: {
+      type: 'object',
+      properties: { name: { type: 'string' } },
+      required: ['name'],
+    },
+  },
+};
+const sse = (message: unknown) => `event: message\ndata: ${JSON.stringify(message)}\n\n`;
+
+describe('elicitation over Streamable HTTP', () => {
+  it('answers a request that arrives inside the tool call stream', {
+    timeout: 20_000,
+  }, async () => {
+    let declared: unknown;
+    let replyHeaders: IncomingMessage['headers'] | undefined;
+    let openCall: { id: unknown; res: ServerResponse } | undefined;
+    const url = await listen(async (req, res) => {
+      const msg = await readJson(req);
+      const json = (body: unknown, headers: Record<string, string> = {}) => {
+        res.writeHead(200, { 'content-type': 'application/json', ...headers });
+        res.end(JSON.stringify(body));
+      };
+      if (msg['method'] === 'initialize') {
+        declared = (msg['params'] as { capabilities: unknown }).capabilities;
+        json(
+          { jsonrpc: '2.0', id: msg['id'], result: INIT_RESULT },
+          { 'mcp-session-id': 'sess-7' },
+        );
+      } else if (msg['method'] === 'notifications/initialized') {
+        res.writeHead(202).end();
+      } else if (msg['method'] === 'tools/list') {
+        json({ jsonrpc: '2.0', id: msg['id'], result: TOOLS });
+      } else if (msg['method'] === 'tools/call') {
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.write(
+          sse({ jsonrpc: '2.0', method: 'notifications/progress', params: { progress: 1 } }),
+        );
+        res.write(sse(ELICIT));
+        openCall = { id: msg['id'], res };
+      } else if (msg['id'] === 'srv-1') {
+        replyHeaders = req.headers;
+        res.writeHead(202).end();
+        const text = JSON.stringify(msg['result']);
+        openCall?.res.end(
+          sse({ jsonrpc: '2.0', id: openCall.id, result: { content: [{ type: 'text', text }] } }),
+        );
+      }
+    });
+
+    const handler = vi.fn(async () => {
+      await sleep(USER_MS);
+      return { action: 'accept' as const, content: { name: 'Ada' } };
+    });
+    const client = new MCPClient({
+      name: 'http-elicit',
+      transport: 'streamable-http',
+      url: `${url}/mcp`,
+      requestTimeoutMs: TIMEOUT_MS,
+      elicitation: handler,
+    });
+    cleanups.push(() => client.close());
+    await client.connect();
+
+    const result = await client.callTool('ask', {});
+
+    expect(declared).toEqual({ elicitation: {} });
+    expect(result.isError).toBe(false);
+    expect(JSON.stringify(result.content)).toContain(
+      JSON.stringify(JSON.stringify({ action: 'accept', content: { name: 'Ada' } })).slice(1, -1),
+    );
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Name?',
+        fields: [expect.objectContaining({ name: 'name' })],
+      }),
+    );
+    // The reply rides the session like any other client message.
+    expect(replyHeaders?.['mcp-session-id']).toBe('sess-7');
+  });
+});
+
+describe('elicitation over SSE', () => {
+  it('answers a request pushed on the event stream by POSTing to the endpoint', {
+    timeout: 20_000,
+  }, async () => {
+    let stream: ServerResponse | undefined;
+    let declared: unknown;
+    let callId: unknown;
+    const url = await listen(async (req, res) => {
+      if (req.method === 'GET') {
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.write('event: endpoint\ndata: /messages\n\n');
+        stream = res;
+        return;
+      }
+      const msg = await readJson(req);
+      res.writeHead(202).end();
+      const push = (m: unknown) => stream?.write(sse(m));
+      if (msg['method'] === 'initialize') {
+        declared = (msg['params'] as { capabilities: unknown }).capabilities;
+        push({ jsonrpc: '2.0', id: msg['id'], result: INIT_RESULT });
+      } else if (msg['method'] === 'tools/list') {
+        push({ jsonrpc: '2.0', id: msg['id'], result: TOOLS });
+      } else if (msg['method'] === 'tools/call') {
+        callId = msg['id'];
+        push(ELICIT);
+      } else if (msg['id'] === 'srv-1') {
+        const text = JSON.stringify(msg['result']);
+        push({ jsonrpc: '2.0', id: callId, result: { content: [{ type: 'text', text }] } });
+      }
+    });
+
+    const client = new MCPClient({
+      name: 'sse-elicit',
+      transport: 'sse',
+      url: `${url}/sse`,
+      requestTimeoutMs: TIMEOUT_MS,
+      elicitation: async () => {
+        await sleep(USER_MS);
+        return { action: 'decline' };
+      },
+    });
+    cleanups.push(() => client.close());
+    await client.connect();
+
+    const result = await client.callTool('ask', {});
+
+    expect(declared).toEqual({ elicitation: {} });
+    expect(JSON.stringify(result.content)).toContain('decline');
+  });
+});

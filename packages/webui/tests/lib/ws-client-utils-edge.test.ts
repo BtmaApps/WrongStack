@@ -18,7 +18,11 @@ describe('getTokenFromPageUrl — catch branch (line 132)', () => {
     const orig = globalThis.URLSearchParams;
     vi.stubGlobal(
       'URLSearchParams',
-      vi.fn().mockImplementation(() => {
+      // A constructible function (not an arrow): `new URLSearchParams(...)`
+      // runs this implementation and throws, exercising the catch branch —
+      // an arrow-shaped vi.fn() makes vitest log a mock-shape notice per
+      // constructor call.
+      vi.fn(function mockURLSearchParams() {
         throw new Error('parse error');
       }),
     );

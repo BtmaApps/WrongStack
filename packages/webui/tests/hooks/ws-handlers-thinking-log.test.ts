@@ -6,7 +6,11 @@ vi.mock('@/lib/ws-client', () => ({
   // THIS surface asked for the swap, so the session may take the foreground.
   // Without it a `session.start` only fills its own lane, which is what keeps
   // a background re-announce from yanking the user out of the tab they are in.
-  getWSClient: () => ({ send: vi.fn(), consumeRequestedSwitch: () => true }),
+  getWSClient: () => ({
+    send: vi.fn(),
+    supportsCapability: () => false,
+    consumeRequestedSwitch: () => true,
+  }),
 }));
 
 import { handleError, WS_HANDLERS } from '../../src/hooks/ws-handlers';
@@ -106,7 +110,13 @@ describe('thinking log ws-handlers', () => {
     useSessionStore.setState({ iteration: { index: 2, max: 10 } });
     fire('provider.thinking_delta', { text: 'legacy export reasoning' });
 
+    // handleError is invoked directly, bypassing fire()'s session stamping —
+    // its untagged frame logs the guard event. Capture it to pin that both
+    // handlers share the same guard.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     handleError({ type: 'error', payload: { phase: 'legacy', message: 'boom' } } as never);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ws_client.untagged_chat_event'));
+    warn.mockRestore();
 
     const messages = useChatStore.getState().messages;
     expect(messages[0]?.thinkingLog).toMatchObject({

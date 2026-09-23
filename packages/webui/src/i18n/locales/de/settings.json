@@ -1,6 +1,22 @@
 {
   "title": "Einstellungen",
   "subtitle": "Konfiguriere jeden Aspekt deines Agenten-Arbeitsbereichs",
+  "navigation": {
+    "browse": "Durchsuchen",
+    "search": "Einstellung suchen…",
+    "clearSearch": "Suche löschen",
+    "noResults": "Keine passenden Einstellungen",
+    "workspace": "Arbeitsbereich",
+    "models": "Modelle und Verbindungen",
+    "behavior": "Agentenverhalten",
+    "system": "System und Sicherheit",
+    "label": "Einstellungsbereiche"
+  },
+  "providerTest": {
+    "title": "Anbietertest",
+    "description": "Gespeicherte Anbieter und Abonnements testen; Kontingent-, Authentifizierungs-, Latenz- und Tokenlimitfehler prüfen.",
+    "open": "Anbietertest öffnen"
+  },
   "tabs": {
     "general": "Allgemein",
     "provider": "Anbieter",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Beim Start indizieren",
     "indexOnStartHint": "Symbol-Index der Codebasis beim Sitzungsstart aufbauen.",
     "pluginsPerPluginHeading": "🔌 Pro-Plugin-Steuerung",
+    "pluginSearch": "Plugins suchen",
+    "pluginEnabledOnly": "Nur aktivierte",
+    "pluginNoMatches": "Keine Plugins entsprechen diesem Filter.",
     "pluginsPerPluginHint": "Einzelne Plugins aktivieren oder deaktivieren. Änderungen werden mit der nächsten Sitzung wirksam.",
     "pluginChimera": "Chimera — Code-Review nach Sitzungsende",
     "pluginSkills": "Skills — Skill-Bibliothek & -Erstellung",
@@ -760,6 +779,7 @@
     "statusChipHint": "Visueller Stil für die TUI/CLI-Statuszeile und den Arbeits-Chip.",
     "thinkingWordLabel": "Denkwort",
     "thinkingWordHint": "Einzelnes kurzes Wort, das im TUI-Status-Chip angezeigt wird, während der Agent arbeitet.",
+    "thinkingWordInvalid": "Ein Wort mit höchstens 16 Buchstaben, Ziffern, Unterstrichen oder Bindestrichen eingeben.",
     "statuslineModeLabel": "Statuszeilen-Modus",
     "statuslineModeHint": "Detailgrad der TUI-Statusleiste.",
     "statuslineModeMinimum": "Minimal",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (Standard)",
     "sageStrict": "0,95 (streng)"
   },
-  "resetLabel": "Zurücksetzen",
+  "resetLabel": "Lokale Einstellungen löschen",
   "cancel": "Abbrechen",
-  "resetConfirmTitle": "Alle Einstellungen zurücksetzen?",
-  "resetConfirmBody": "Dadurch werden die Standardeinstellungen wiederhergestellt und die Seite neu geladen.",
-  "resetConfirmAction": "Zurücksetzen",
+  "resetConfirmTitle": "Einstellungen dieses Browsers löschen?",
+  "resetConfirmBody": "Löscht die in diesem Browser gespeicherten Einstellungen und lädt die Seite neu. Verbundene Einstellungen werden erneut vom Server geladen.",
+  "resetConfirmAction": "Löschen und neu laden",
   "brain": {
     "heading": "Brain",
     "headingHint": "Entscheidungsmodelle, Rat, Eskalation und Risiko-Decke — live angewendet, in der globalen Konfiguration gespeichert.",

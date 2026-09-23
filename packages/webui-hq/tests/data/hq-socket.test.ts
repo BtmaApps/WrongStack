@@ -437,6 +437,19 @@ describe('HqSocket', () => {
     expect(client.maxRetries).toBe(Infinity);
   });
 
+  it('keeps reconnecting after ten consecutive failures with the default unlimited cap', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    client.connect();
+    for (let attempt = 1; attempt <= 11; attempt++) {
+      const failedSocket = currentWs!;
+      failedSocket._close(1006, 'network loss');
+      expect(client.state).toBe('reconnecting');
+      expect(client.reconnectAttempt).toBe(attempt);
+      vi.advanceTimersByTime(30_000);
+      expect(currentWs).not.toBe(failedSocket);
+    }
+  });
+
   // ── State handlers ────────────────────────────────────────────────────
 
   it('calls onStateChange handlers on state transitions', () => {

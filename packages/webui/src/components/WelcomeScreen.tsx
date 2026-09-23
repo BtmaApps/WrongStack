@@ -255,13 +255,14 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
               type="button"
               role="switch"
               aria-checked={!subagentsAllowed}
+              aria-label={t('setup:welcome.soloSessionTitle')}
               onClick={toggleSoloSession}
               disabled={!wsConnected}
               className={cn(
                 'mb-3 flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors',
                 !subagentsAllowed
-                  ? 'border-warning/45 bg-warning/10'
-                  : 'border-border/70 bg-background/35 hover:bg-muted/45',
+                  ? 'border-warning/45 bg-card'
+                  : 'border-border/70 bg-card hover:bg-muted/45',
                 'disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >

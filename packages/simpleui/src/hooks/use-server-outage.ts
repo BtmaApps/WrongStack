@@ -49,7 +49,15 @@ export function useServerOutage(connection: ConnectionState): UseServerOutageRes
       timer = setTimeout(() => void probe(), OUTAGE_PROBE_INTERVAL_MS);
     };
     timer = setTimeout(() => void probe(), OUTAGE_GRACE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Unmount must also invalidate the generation: an in-flight probe
+      // resolving after teardown would otherwise pass the equality check,
+      // re-arm the timer post-cleanup, and leak an endless probe/timer
+      // chain. (On a plain `connection` change the re-run effect bumps the
+      // generation again — one skipped number is harmless.)
+      generationRef.current += 1;
+    };
   }, [connection]);
 
   return { outage, dismissed, dismiss: () => setDismissed(true) };

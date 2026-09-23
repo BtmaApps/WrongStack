@@ -59,6 +59,50 @@ describe('socketRequest', () => {
     await expect(handle.promise).resolves.toBeNull();
   });
 
+  it('retracts a still-queued send when the request is cancelled', async () => {
+    const socket = mockSocket();
+    const retract = vi.fn();
+    socket.send.mockReturnValue({ retract });
+    const handle = socketRequest({
+      socket: socket as never,
+      sendType: 'files.tree',
+      payload: {},
+      expectType: 'files.tree',
+      timeoutMs: 60_000,
+    });
+    handle.cancel();
+    expect(retract).toHaveBeenCalledTimes(1);
+    await expect(handle.promise).resolves.toBeNull();
+  });
+
+  it('retracts a still-queued send on timeout', async () => {
+    const socket = mockSocket();
+    const retract = vi.fn();
+    socket.send.mockReturnValue({ retract });
+    const handle = socketRequest({
+      socket: socket as never,
+      sendType: 'brain.status',
+      payload: {},
+      expectType: 'brain.status',
+      timeoutMs: 5,
+    });
+    await expect(handle.promise).resolves.toBeNull();
+    expect(retract).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays compatible with sockets whose send returns void', async () => {
+    const socket = mockSocket();
+    socket.send.mockReturnValue(undefined);
+    const handle = socketRequest({
+      socket: socket as never,
+      sendType: 'files.tree',
+      payload: {},
+      expectType: 'files.tree',
+      timeoutMs: 5,
+    });
+    await expect(handle.promise).resolves.toBeNull();
+  });
+
   it('cancel() resolves null immediately and stops the timer', async () => {
     const socket = mockSocket();
     const handle = socketRequest({

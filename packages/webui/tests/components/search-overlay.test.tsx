@@ -1,8 +1,8 @@
 import { render, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { messageSearchText, SearchOverlay } from '../../src/components/SearchOverlay';
-import { useChatStore, useUIStore } from '../../src/stores';
 import type { ChatMessage } from '../../src/stores';
+import { useChatStore, useUIStore } from '../../src/stores';
 
 function msg(overrides: Partial<ChatMessage>): ChatMessage {
   return {
@@ -14,7 +14,14 @@ function msg(overrides: Partial<ChatMessage>): ChatMessage {
   };
 }
 
+import { i18n } from '../../src/i18n';
+
 describe('messageSearchText', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('includes archived thinking log text', () => {
     const text = messageSearchText(
       msg({

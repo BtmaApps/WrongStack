@@ -267,3 +267,54 @@ describe('SimpleUI token persistence (F5 survival)', () => {
     expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe('page-token');
   });
 });
+
+describe('SimpleSocket reconnect timer', () => {
+  it('a fresh connect() retires a pending reconnect timer', async () => {
+    vi.useFakeTimers();
+    try {
+      class MockWebSocket {
+        static instances: MockWebSocket[] = [];
+        static OPEN = 1;
+        readyState = 0;
+        send = vi.fn();
+        close = vi.fn();
+        listeners = new Map<string, Array<() => void>>();
+        addEventListener = vi.fn((type: string, handler: () => void) => {
+          const list = this.listeners.get(type) ?? [];
+          list.push(handler);
+          this.listeners.set(type, list);
+        });
+        emit(type: string): void {
+          for (const handler of this.listeners.get(type) ?? []) handler();
+        }
+        constructor() {
+          MockWebSocket.instances.push(this);
+        }
+      }
+      vi.stubGlobal('WebSocket', MockWebSocket);
+      const socket = new SimpleSocket({ onMessage: vi.fn(), onState: vi.fn() });
+
+      await socket.connect();
+      const first = MockWebSocket.instances[0]!;
+      first.readyState = MockWebSocket.OPEN;
+      first.emit('open');
+      first.readyState = 0;
+      first.emit('close'); // schedules a reconnect timer (backoff ≤ ~1s)
+
+      // A fresh connect() before the timer fires must retire it; the stale
+      // timer firing later would close the healthy socket and dial again.
+      await socket.connect();
+      const second = MockWebSocket.instances[1]!;
+      expect(MockWebSocket.instances).toHaveLength(2);
+
+      // Far beyond the whole reconnect backoff window.
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(MockWebSocket.instances).toHaveLength(2);
+      expect(second.close).not.toHaveBeenCalled();
+      socket.close();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

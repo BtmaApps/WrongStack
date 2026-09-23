@@ -12,14 +12,21 @@
  * check: it must NOT flash inactive badges on cold start.
  */
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FallbackEditor } from '../../src/components/FallbackEditor';
 
 afterEach(() => {
   cleanup();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('FallbackEditor — inactive badge parity with /fallback', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders no inactive badges when knownModels is undefined (still loading)', () => {
     render(
       <FallbackEditor

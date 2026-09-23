@@ -35,6 +35,7 @@ import { usePanelControllers } from './hooks/use-panel-controllers.js';
 import { usePasteHandling } from './hooks/use-paste-handling.js';
 import { usePromptPicker } from './hooks/use-prompt-picker.js';
 import { useProviderEventBridge } from './hooks/use-provider-event-bridge.js';
+import { useProviderWarmup } from './hooks/use-provider-warmup.js';
 import { useQueueManager } from './hooks/use-queue-manager.js';
 import { useSessionInterruptController } from './hooks/use-session-interrupt-controller.js';
 import { useSessionRewind } from './hooks/use-session-rewind.js';
@@ -658,6 +659,8 @@ export function useAppController(props: AppProps) {
     saveSettings,
     midRunSendPickerRef,
   });
+
+  useProviderWarmup(agent, state.buffer, state.status);
 
   const getActiveSessionId = useCallback(() => agent.ctx.session.id, [agent]);
 

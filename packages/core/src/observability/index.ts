@@ -23,6 +23,11 @@ export {
   startOtlpMetricsExporter,
 } from './otlp-metrics.js';
 export {
+  type OtlpExportHandle,
+  type StartOtlpExportOptions,
+  startOtlpExport,
+} from './otlp-setup.js';
+export {
   buildOtlpTracesRequest,
   type OtlpTraceExporterHandle,
   type OtlpTraceExporterOptions,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useModelCatalog } from '../src/hooks/use-model-catalog.js';
@@ -179,6 +179,50 @@ describe('useModelCatalog — confirmModelSwitch', () => {
     });
     expect(captured.current.pendingModelSwitch).toBeNull();
     roots.push(root);
+  });
+
+  it('sends model.switch exactly once under StrictMode (no side effect in the updater)', () => {
+    const captured: Captured = { current: undefined as never };
+    const socket: MockSocket = { send: vi.fn() };
+    const requestedModelsRef = { current: new Set<string>() };
+
+    function Probe(): null {
+      captured.current = useModelCatalog({
+        session: makeSession(),
+        contextMaxContext: 128_000,
+        running: false,
+        socketRef: { current: socket as never },
+        requestedModelsRef,
+      });
+      return null;
+    }
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    act(() =>
+      root.render(
+        <StrictMode>
+          <Probe />
+        </StrictMode>,
+      ),
+    );
+
+    act(() => captured.current.setModels(makeModels()));
+    act(() => captured.current.selectModel('openai', 'gpt-4o-mini'));
+    expect(captured.current.pendingModelSwitch).not.toBeNull();
+
+    // StrictMode double-invokes state updaters in dev builds. The old
+    // implementation sent `model.switch` from inside the updater and fired
+    // twice here; the send must now live outside it.
+    act(() => captured.current.confirmModelSwitch());
+    expect(socket.send).toHaveBeenCalledTimes(1);
+    expect(socket.send).toHaveBeenCalledWith('model.switch', {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    });
+    expect(captured.current.pendingModelSwitch).toBeNull();
   });
 });
 

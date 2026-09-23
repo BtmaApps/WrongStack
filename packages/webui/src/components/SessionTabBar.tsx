@@ -183,10 +183,10 @@ export function SessionTabBar() {
                 handleSelect(tab.sessionId);
               }}
               className={cn(
-                'group relative flex h-7 max-w-[220px] min-w-[126px] cursor-pointer items-center gap-1.5 rounded-t-md border-t border-x px-2 transition-colors select-none',
+                'group relative flex h-7 max-w-[220px] min-w-[126px] cursor-pointer items-center gap-1.5 rounded-t-md border px-2 transition-colors select-none',
                 tab.isActive
-                  ? 'border-border/80 bg-background text-foreground font-medium shadow-xs'
-                  : 'border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                  ? cn(accent.border, accent.activeBg, 'font-semibold text-foreground shadow-xs')
+                  : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
               )}
               title={`Slot ${tab.slot + 1} · ${tab.title}\n${tab.provider}/${tab.model}\n${tab.sessionId}`}
             >
@@ -260,7 +260,7 @@ export function SessionTabBar() {
               )}
 
               {tab.isActive && (
-                <div className={cn('absolute inset-x-0 -bottom-[1px] h-[2px]', accent.dot)} />
+                <div className={cn('absolute inset-x-0 top-0 h-[3px] rounded-t-md', accent.dot)} />
               )}
             </div>
           );

@@ -20,6 +20,7 @@ import {
 } from './_shell-pick.js';
 import { normalizeCommandOutput } from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
+import { hermeticEnv, hermeticPosixArgv } from './bash-hermetic.js';
 import { checkAndBlockKillCommand } from './bash-kill-guard.js';
 import { getProcessRegistry, redactCommand } from './process-registry.js';
 
@@ -27,6 +28,7 @@ export interface BashInput {
   command: string;
   timeout_ms?: number | undefined;
   background?: boolean | undefined;
+  hermetic?: boolean | undefined;
 }
 
 export interface BashOutput {
@@ -49,6 +51,7 @@ const MAX_OUTPUT = 32_768;
 // commands that run >3min still count as "slow" and can trip the breaker
 // after 3 occurrences.
 const DEFAULT_TIMEOUT_MS = 300_000;
+const MAX_TIMEOUT_MS = 600_000;
 
 // Flush partial_output every 200ms or when 4 KiB accumulates — whichever
 // comes first. Smaller batches make the TUI feel responsive; larger ones
@@ -77,6 +80,8 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     '- Use bash only when you genuinely need shell features (pipes, redirection, complex one-liners).\n' +
     '- Prefer single focused commands over huge `&&` chains.\n' +
     '- Use `background: true` only for long-running processes (dev servers, watchers).\n' +
+    '- `timeout_ms: 0` removes the time limit for a long foreground job you must wait on (the user can still interrupt it).\n' +
+    '- `hermetic: true` skips shell startup files and runs with a minimal environment, for reproducible results.\n' +
     '- The working directory is the session working dir (the user changes it with `/working_dir`), defaulting to the project root; use `cd` inside the command for a one-off directory.\n' +
     '- Output may be truncated in the middle for very large results.',
   selection: {
@@ -93,14 +98,13 @@ export const bashTool: Tool<BashInput, BashOutput> = {
   // explicitly removes the implicit cross-tool aliasing.
   subjectKey: 'command',
   capabilities: ['shell.arbitrary'],
-  // Executor-level abort ceiling. Must sit ABOVE the per-call `timeout_ms`
-  // ceiling (600_000): the tool's own timer tree-kills and returns a
-  // structured `timed_out: true` result, while the executor's
-  // AbortSignal.timeout is a blunt abort. The old value (300_000) meant any
-  // timeout_ms > 5min was silently cut short by the executor. The 10s margin
-  // covers the kill/teardown window. (The executor additionally clamps to
-  // config `tools.maxToolTimeoutMs`.)
-  timeoutMs: 610_000,
+  // The tool's own timer enforces `timeout_ms` (tree-kill + a structured
+  // `timed_out: true` result); the executor only passes the abort signal
+  // through. Its generic ceiling (`tools.maxToolTimeoutMs`, 300s by default)
+  // used to cut every `timeout_ms` above 5 minutes short and made
+  // `timeout_ms: 0` (no limit) impossible.
+  managesOwnTimeout: true,
+  timeoutMs: MAX_TIMEOUT_MS,
   maxOutputBytes: MAX_OUTPUT,
   estimatedDurationMs: 30_000,
   inputSchema: {
@@ -113,12 +117,17 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       timeout_ms: {
         type: 'integer',
         description:
-          'Optional timeout for this specific command in milliseconds (default 300000, max 600000).',
+          'Timeout for this command in ms (default 300000, max 600000). 0 = no limit; the user can still interrupt.',
       },
       background: {
         type: 'boolean',
         description:
           'If true, launch the process in the background and return the PID immediately.',
+      },
+      hermetic: {
+        type: 'boolean',
+        description:
+          'If true, skip shell startup files (.bashrc, profile, aliases) and pass only a minimal environment (PATH, HOME, temp, locale).',
       },
     },
     required: ['command'],
@@ -183,7 +192,10 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       typeof input.timeout_ms === 'number' && !Number.isNaN(input.timeout_ms)
         ? input.timeout_ms
         : DEFAULT_TIMEOUT_MS;
-    const timeoutMs = Math.max(1, Math.min(rawTimeout, 600_000));
+    // 0 = no wall-clock limit (still aborted by the caller's signal).
+    const timeoutMs =
+      rawTimeout === 0 ? undefined : Math.max(1, Math.min(rawTimeout, MAX_TIMEOUT_MS));
+    const hermetic = input.hermetic === true;
 
     const isWin = os.platform() === 'win32';
     // Shell selection:
@@ -242,7 +254,9 @@ export const bashTool: Tool<BashInput, BashOutput> = {
             : (process.env['COMSPEC'] ?? 'cmd.exe');
       plan = {
         bin,
-        argv: shellArgs(shell),
+        // `cmd /d` skips the AutoRun registry commands; PowerShell already
+        // runs with -NoProfile.
+        argv: hermetic && shell === 'cmd' ? ['/d', ...shellArgs(shell)] : shellArgs(shell),
         commandArg:
           shell === 'powershell' || shell === 'pwsh'
             ? Buffer.from(wrapPowerShellScript(input.command), 'utf16le').toString('base64')
@@ -262,12 +276,13 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           else bin = '/bin/bash';
         } else bin = '/bin/bash';
       }
-      plan = { bin, argv: ['-c'], commandArg: input.command };
+      plan = { bin, argv: hermetic ? hermeticPosixArgv(bin) : ['-c'], commandArg: input.command };
     }
     const shell = plan.bin;
     const args = [...plan.argv, plan.commandArg];
 
-    const env = buildChildEnv(ctx.session?.id);
+    const childEnv = buildChildEnv(ctx.session?.id);
+    const env = hermetic ? hermeticEnv(childEnv) : childEnv;
 
     // Spawn in the SESSION working dir (set via `set_working_dir`; containment
     // against projectRoot is enforced by Context.setWorkingDir), falling back
@@ -569,12 +584,14 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       }
     }
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      killWithTimeout(child, 2000);
-    }, timeoutMs);
-    timers.push(timer);
-    timer.unref?.();
+    if (timeoutMs !== undefined) {
+      const timer = setTimeout(() => {
+        timedOut = true;
+        killWithTimeout(child, 2000);
+      }, timeoutMs);
+      timers.push(timer);
+      timer.unref?.();
+    }
 
     // Windows abort handling (see the spawn() comment above): tree-kill on
     // abort while the shell is still alive so its grandchildren die with it.

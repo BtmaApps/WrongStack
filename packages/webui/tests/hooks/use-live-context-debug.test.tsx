@@ -225,6 +225,10 @@ describe('useLiveContextDebug', () => {
     useSessionLanes.setState({ activeSessionId: 'sess-a' });
     const { result } = renderHook(() => useLiveContextDebug('ws://test'));
 
+    // A frame from another session trips the bound-session guard, which logs
+    // the guard event before the snapshot is ignored — capture it to pin the
+    // observability contract.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     act(() => {
       emitContextDebug({
         sessionId: 'sess-b',
@@ -240,6 +244,8 @@ describe('useLiveContextDebug', () => {
         messages: { total: 2700, count: 3, breakdown: [] },
       });
     });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ws_client.untagged_guard_event'));
+    warn.mockRestore();
 
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(true);

@@ -19,6 +19,7 @@ import { TOKENS } from '@wrongstack/core/kernel';
 import type { ConfigStore } from '@wrongstack/core/types';
 import { writeErr } from '@wrongstack/core/utils';
 import { parseArgs } from './arg-parser.js';
+import { applyAsciiMode } from './boot/ascii-mode.js';
 import { wireContainer } from './boot/container-wiring.js';
 import {
   applyLaunchMenuToArgv,
@@ -69,6 +70,7 @@ export async function initializeCli(argv: string[]): Promise<CliContext | number
 
   // --help / --version short-circuit.
   const earlyFlags = parseArgs(argv).flags;
+  applyAsciiMode(earlyFlags);
   const earlyExit = await handleHelpVersionShortCircuit(argv);
   if (earlyExit !== null) return earlyExit;
 

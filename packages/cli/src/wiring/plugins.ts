@@ -24,7 +24,10 @@ import type {
   SkillLoader,
 } from '@wrongstack/core/types';
 import type { MCPRegistry } from '@wrongstack/mcp';
-import { OFFICIAL_PLUGIN_FACTORIES } from '@wrongstack/plugins/factories';
+import {
+  OFFICIAL_PLUGIN_FACTORIES,
+  OFFICIAL_PLUGIN_SPECIFIERS,
+} from '@wrongstack/plugins/factories';
 import createApi from '../plugin-api-factory.js';
 import { PLUGIN_AUDIT_ENTRIES } from '../plugin-management.js';
 import { patchConfig } from '../utils.js';
@@ -260,6 +263,33 @@ export const BUILTIN_PLUGIN_FACTORIES: (() => Promise<Plugin>)[] = [
   async () => (await import('@wrongstack/telegram')).default,
 ];
 
+// Keep the cheap catalog identity beside the factory ordering. A disabled
+// factory must not import and instantiate its implementation just so setup can
+// inspect plugin.name. Unknown future factories still take the old path.
+export const BUILTIN_PLUGIN_NAME_HINTS: readonly string[] = [
+  'wstack-prompts',
+  'wstack-sync',
+  'wstack-cloud-config-sync',
+  'wstack-chimera',
+  'wstack-auto-review',
+  'wstack-specialist-triggers',
+  'wstack-skills',
+  ...OFFICIAL_PLUGIN_SPECIFIERS.map((specifier) => specifier.slice('@wrongstack/plugins/'.length)),
+  '@wrongstack/plug-lsp',
+  'telegram',
+];
+
+function builtinEnablement(name: string, config: Config, aliases?: readonly string[]) {
+  const auditEntry = PLUGIN_AUDIT_ENTRIES.find((entry) => entry.name === name);
+  return resolvePluginEnablement({
+    name,
+    aliases,
+    defaultState: auditEntry?.defaultState ?? 'active',
+    config,
+    matches: (spec) => (builtinPluginNameFromSpec(spec) ?? spec) === name,
+  });
+}
+
 export async function setupPlugins(
   params: PluginsWiringDeps,
 ): Promise<PluginHostHandle | undefined> {
@@ -298,25 +328,30 @@ export async function setupPlugins(
   // (or disable all plugins with `config.features.plugins === false`).
   const builtinPlugins: Plugin[] = [];
   if (paths && config.features?.plugins !== false) {
-    for (const factory of BUILTIN_PLUGIN_FACTORIES) {
+    for (const [index, factory] of BUILTIN_PLUGIN_FACTORIES.entries()) {
+      const nameHint = BUILTIN_PLUGIN_NAME_HINTS[index];
+      if (nameHint && BUILTIN_PLUGIN_NAME_HINTS.length === BUILTIN_PLUGIN_FACTORIES.length) {
+        const { enabled, source } = builtinEnablement(
+          nameHint,
+          config,
+          nameHint === 'telegram' ? ['@wrongstack/telegram'] : undefined,
+        );
+        if (!enabled) {
+          if (source !== 'default') {
+            log.info(`[setupPlugins] built-in plugin "${nameHint}" disabled by ${source}`);
+          }
+          continue;
+        }
+      }
       try {
         const plugin = await factory();
         if (!plugin) continue;
-        const auditEntry = PLUGIN_AUDIT_ENTRIES.find((entry) => entry.name === plugin.name);
         // Enablement precedence lives in ONE place (core/plugin/config.ts) so
         // the loader, `wstack plugin list`, and the plugin_manager tool cannot
         // disagree about what is running. Only the matcher is local: config
         // entries may spell a built-in as `@wrongstack/plugins/<name>` or via
         // an alias (`lsp`, `@wrongstack/telegram`).
-        const { enabled, source } = resolvePluginEnablement({
-          name: plugin.name,
-          aliases: plugin.configAliases,
-          // Built-ins outside the audit catalog (prompts, sync, skills, …)
-          // are infrastructure — they run unless explicitly turned off.
-          defaultState: auditEntry?.defaultState ?? 'active',
-          config,
-          matches: (spec) => (builtinPluginNameFromSpec(spec) ?? spec) === plugin.name,
-        });
+        const { enabled, source } = builtinEnablement(plugin.name, config, plugin.configAliases);
         if (!enabled) {
           if (source !== 'default') {
             log.info(`[setupPlugins] built-in plugin "${plugin.name}" disabled by ${source}`);

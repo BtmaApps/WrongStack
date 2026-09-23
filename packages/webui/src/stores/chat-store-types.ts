@@ -1,3 +1,4 @@
+import type { WSQueuedPromptView } from '@/types/prompt-queue';
 import type { ChatMessage } from './types.js';
 
 export type QueueMode = 'btw' | 'steer' | 'queue';
@@ -46,6 +47,8 @@ export interface ChatState {
   executions: Map<string, ToolExecution>;
   toolMessageIdsByUseId: Map<string, string>;
   queue: QueuedItem[];
+  /** Prompts queued on the server for this session (it owns and drains them). */
+  serverQueue: readonly WSQueuedPromptView[];
   runStart: { at: number; cost: number } | null;
   refining: boolean;
   pendingRefinement: {

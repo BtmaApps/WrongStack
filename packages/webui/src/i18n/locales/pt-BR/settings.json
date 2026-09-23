@@ -1,6 +1,22 @@
 {
   "title": "Configurações",
   "subtitle": "Configure every aspect of your agent workspace",
+  "navigation": {
+    "browse": "Explorar",
+    "search": "Buscar configuração…",
+    "clearSearch": "Limpar busca",
+    "noResults": "Nenhuma configuração encontrada",
+    "workspace": "Área de trabalho",
+    "models": "Modelos e conexões",
+    "behavior": "Comportamento do agente",
+    "system": "Sistema e segurança",
+    "label": "Seções de configurações"
+  },
+  "providerTest": {
+    "title": "Teste de provedor",
+    "description": "Teste provedores e assinaturas salvos; verifique cotas, autenticação, latência e limites de tokens.",
+    "open": "Abrir teste de provedor"
+  },
   "tabs": {
     "general": "Geral",
     "provider": "Provedor",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Indexar ao iniciar",
     "indexOnStartHint": "Constrói o índice de símbolos do código ao iniciar a sessão.",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
+    "pluginSearch": "Buscar plugins",
+    "pluginEnabledOnly": "Somente ativos",
+    "pluginNoMatches": "Nenhum plugin corresponde a este filtro.",
     "pluginsPerPluginHint": "Enable or disable individual plugins. Changes take effect on next session.",
     "pluginChimera": "Chimera — post-session code review",
     "pluginSkills": "Skills — skill library & authoring",
@@ -760,6 +779,7 @@
     "statusChipHint": "Estilo visual para a barra de status TUI/CLI e o chip de trabalho.",
     "thinkingWordLabel": "Palavra de raciocínio",
     "thinkingWordHint": "Palavra curta única exibida no chip de status TUI enquanto o agente trabalha.",
+    "thinkingWordInvalid": "Use uma palavra de até 16 letras, números, sublinhados ou hífens.",
     "statuslineModeLabel": "Modo da barra de status",
     "statuslineModeHint": "Densidade da barra de status TUI.",
     "statuslineModeMinimum": "Mínimo",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (padrão)",
     "sageStrict": "0,95 (rigoroso)"
   },
-  "resetLabel": "Redefinir",
+  "resetLabel": "Limpar preferências locais",
   "cancel": "Cancelar",
-  "resetConfirmTitle": "Redefinir todas as preferências?",
-  "resetConfirmBody": "Isso restaura as configurações padrão e recarrega a página.",
-  "resetConfirmAction": "Redefinir",
+  "resetConfirmTitle": "Limpar as preferências deste navegador?",
+  "resetConfirmBody": "Limpa as preferências salvas neste navegador e recarrega a página. As configurações conectadas são carregadas novamente do servidor.",
+  "resetConfirmAction": "Limpar e recarregar",
   "brain": {
     "heading": "Brain",
     "headingHint": "Modelos de decisão, conselho, escalada e teto de risco — aplicados em tempo real, salvos na configuração global.",

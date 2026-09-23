@@ -25,7 +25,7 @@ export function buildCompactCommand(opts: SlashCommandContext): SlashCommand {
         return { message: msg };
       }
       const aggressive = args.trim() === 'aggressive';
-      const report = await opts.compactor.compact(ctx, { aggressive });
+      const report = await opts.compactor.compact(ctx, { aggressive, trigger: 'manual' });
 
       // Update token stash and token counter so the TUI/REPL context bar
       // reflects the post-compaction size immediately (no API request was made).

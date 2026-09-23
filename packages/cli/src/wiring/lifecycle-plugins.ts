@@ -1,7 +1,13 @@
 import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
-import { countShellHooks, HookRegistry, HookRunner, shellHooksEqual } from '@wrongstack/core/hooks';
+import {
+  bridgeLifecycleHooks,
+  countShellHooks,
+  HookRegistry,
+  HookRunner,
+  shellHooksEqual,
+} from '@wrongstack/core/hooks';
 import { resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { NotifierImpl } from '@wrongstack/core/notifications';
@@ -25,15 +31,17 @@ import type {
   SecretVault,
   SessionWriter,
   SkillLoader,
+  Tracer,
 } from '@wrongstack/core/types';
 import {
   CONTEXT_WINDOW_MODE_PINNED_META_KEY,
   normalizeTokenSavingTier,
   resolveContextWindowPolicy,
 } from '@wrongstack/core/types';
-import type { WstackPaths } from '@wrongstack/core/utils';
+import { toErrorMessage, type WstackPaths } from '@wrongstack/core/utils';
 import {
   createVaultBackedMcpAuthorizationProviderFactory,
+  elicitViaUserInput,
   MCPAuthorizationManager,
   type MCPAuthorizationStateEvent,
   MCPRegistry,
@@ -108,6 +116,8 @@ interface LifecyclePluginsDeps {
   // biome-ignore lint/suspicious/noExplicitAny: metrics sink
   metricsSink: any;
   metricsStatus?: MetricsRuntimeStatus | undefined;
+  /** OTLP tracer for the leader's turns, provider and tool calls. */
+  tracer?: Tracer | undefined;
   // biome-ignore lint/suspicious/noExplicitAny: renderer
   renderer: any;
   // biome-ignore lint/suspicious/noExplicitAny: import
@@ -273,6 +283,10 @@ export async function setupLifecycleAndPlugins(
 
   // ── Compaction + max context ─────────────────────────────────────────────
   const compactor = container.resolve(TOKENS.Compactor);
+  // Observational hook events (PreCompact/PostCompact, SubagentStart/Stop,
+  // Notification, SessionEnd) fire from the compactor seam and the bus. Lives
+  // as long as the process, like the runner itself.
+  bridgeLifecycleHooks({ hookRunner, events, cwd: context.cwd, compactor, logger });
   const compactionSetup = await setupCompaction({
     compactor,
     events,
@@ -363,11 +377,18 @@ export async function setupLifecycleAndPlugins(
     }
   };
 
+  // The (provider, model, runtime config) the window was last resolved for, so
+  // a catalog change can re-resolve the SAME target without a network trip.
+  let lastMaxContextTarget:
+    | { providerId: string; modelId: string; cfg: ProviderConfig | undefined }
+    | undefined;
+
   const refreshMaxContext = async (
     providerId: string,
     modelId: string,
     runtimeProviderConfig?: ProviderConfig | undefined,
   ): Promise<void> => {
+    lastMaxContextTarget = { providerId, modelId, cfg: runtimeProviderConfig };
     const seq = ++maxContextRefreshSeq;
     const resolveAndApply = async (): Promise<void> => {
       const { maxContext, branch } = await resolveRuntimeMaxContextDetailed({
@@ -389,6 +410,31 @@ export async function setupLifecycleAndPlugins(
     if (refreshed) await resolveAndApply();
   };
 
+  // Boot now serves the cached catalog and refreshes it in the background (and
+  // periodically). When a new catalog lands, re-resolve the active window from
+  // it — otherwise the context bar and auto-compaction keep the cached number
+  // until the next model switch. Local only: the refresh already happened.
+  modelsRegistry.onCatalogChanged?.(() => {
+    const providerId = lastMaxContextTarget?.providerId ?? context.provider?.id;
+    const modelId = lastMaxContextTarget?.modelId ?? context.model;
+    if (!providerId || !modelId) return;
+    const seq = ++maxContextRefreshSeq;
+    void resolveRuntimeMaxContextDetailed({
+      modelsRegistry,
+      config,
+      provider: context.provider,
+      runtimeProviderConfig: lastMaxContextTarget?.cfg,
+      providerId,
+      modelId,
+    })
+      .then(({ maxContext, branch }) =>
+        applyMaxContext(providerId, modelId, maxContext, seq, branch),
+      )
+      .catch((err: unknown) => {
+        logger.debug(`max-context re-resolve after catalog change failed: ${toErrorMessage(err)}`);
+      });
+  });
+
   // ── Agent ────────────────────────────────────────────────────────────────
   const agent = createAgent({
     container,
@@ -400,6 +446,7 @@ export async function setupLifecycleAndPlugins(
     config,
     confirmAwaiter: makeConfirmAwaiter(reader),
     hookRunner,
+    tracer: deps.tracer,
     fullConfig: config,
     source: 'cli',
   });
@@ -440,6 +487,9 @@ export async function setupLifecycleAndPlugins(
       onStateChange: onMcpAuthorizationState,
     }),
     authorizationManager: mcpAuthorizationManager,
+    // A server's mid-call form goes to the run that made the call; one asked
+    // outside any call lands on the root session.
+    elicitationHandler: (request) => elicitViaUserInput(request, context),
   });
   // `--mcp-config` servers (normalized at boot) always start — naming them on
   // the command line is the opt-in. `features.mcp` and `--strict-mcp-config`

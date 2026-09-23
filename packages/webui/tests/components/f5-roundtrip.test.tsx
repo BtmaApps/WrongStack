@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RefreshDebugView } from '../../src/components/RefreshDebugView';
 import { DEFAULT_LANE_ID, useChatLanes } from '../../src/stores/chat-lanes';
 import { useChatStore } from '../../src/stores/chat-store';
@@ -186,7 +186,14 @@ async function simulateF5(): Promise<void> {
 
 // ── tests ──────────────────────────────────────────────────────────
 
+import { i18n } from '../../src/i18n';
+
 describe('F5 resilience — full round-trip via RefreshDebugView', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     clearStorage();
   });
@@ -333,6 +340,11 @@ describe('F5 resilience — full round-trip via RefreshDebugView', () => {
   });
 
   it('survives a corrupt blob: verifier still mounts, no crash', async () => {
+    // The stores ship without a migrate fn, so persist reports the refused
+    // future-version blobs on console.error during this test — capture the
+    // notice to keep CI logs scannable and to pin the graceful-rejection
+    // contract itself.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     // Forge a corrupt blob — the migrate contract's whole point is to
     // gracefully reject poison rather than throw on startup. We don't
     // assert on the *value* after rehydrate (zustand-persist's merge
@@ -358,6 +370,10 @@ describe('F5 resilience — full round-trip via RefreshDebugView', () => {
     // simulateF5 must NOT throw even though the blobs are deliberately
     // unparseable.
     await expect(simulateF5()).resolves.not.toThrow();
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("couldn't be migrated"),
+    );
+    error.mockRestore();
 
     render(<RefreshDebugView />);
     expect(screen.getByText(/F5 Resilience Verifier/i)).toBeTruthy();

@@ -227,7 +227,7 @@
       },
       "source": "packages/core/src/types/index.ts",
       "declarations": [
-        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemePresetId, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
+        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, ObservabilityConfig, OtlpExportConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemePresetId, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
         "export type { AddAttachmentInput, Attachment, AttachmentKind, AttachmentMeta, AttachmentRef, AttachmentStore, } from './attachment.js';",
         "export type { AggregateHealth, HealthCheck, HealthCheckResult, HealthRegistry, HealthStatus, MetricLabels, MetricSeries, MetricsRuntimeStatus, MetricsSink, MetricsSnapshot, Span, Tracer, } from './observability.js';",
         "export type { AnyHookOutcome, ConfiguredHook, HookEntry, HookEvent, HookFailurePolicy, HookInput, HookInvocationContext, HookMatcher, HookOutcome, HookRegistrationOptions, HttpHook, InProcessHook, ObservationalHookEvent, PreToolUseOutcome, PreToolUseStage, ShellHook, } from './hooks.js';",
@@ -256,7 +256,7 @@
         "export type { InstalledPromptEntry, PromptManifestData, PromptRegistryManifest, PromptRegistryRef, RegistryDiff, } from './prompt-registry.js';",
         "export type { JSONSchema, Permission, RiskTier, Tool, ToolCallContext, ToolErrorInfo, ToolFinalEvent, ToolIconId, ToolProgressEvent, ToolSettlement, ToolStreamEvent, } from './tool.js';",
         "export type { Logger, LogLevel } from './logger.js';",
-        "export type { MCPRegistryView, MetricsSinkView, Notifier, Plugin, PluginAPI, PluginCapabilities, PluginConfigFieldLifecycle, PluginConfigFieldMetadata, PluginConfigFields, PluginCouncilOptions, PluginDependency, PluginLLM, PluginLLMOptions, PluginLLMResult, PluginPipelines, PluginRuntime, ProviderAuthRegistryView, ProviderFactory, ProviderRegistryView, SessionWriterView, SlashCommandRegistryView, ToolRegistryView, } from './plugin.js';",
+        "export type { MCPRegistryView, MetricsSinkView, Notifier, Plugin, PluginAPI, PluginCapabilities, PluginConfigFieldLifecycle, PluginConfigFieldMetadata, PluginConfigFields, PluginCouncilOptions, PluginDependency, PluginJev, PluginLLM, PluginLLMOptions, PluginLLMResult, PluginPipelines, PluginRuntime, ProviderAuthRegistryView, ProviderFactory, ProviderRegistryView, SessionWriterView, SlashCommandRegistryView, ToolRegistryView, } from './plugin.js';",
         "export type { MemoryCapability, MemoryClearedPayload, MemoryConsolidatedPayload, MemoryEntry, MemoryForgottenPayload, MemoryHealth, MemoryPort, MemoryPriority, MemoryRelevanceContext, MemoryRememberedPayload, MemoryScope, MemoryStore, MemoryType, ScoredEntry, } from './memory.js';",
         "export type { Message, MessageRole } from './messages.js';",
         "export type { Mode, ModeConfig, ModeManifest, ModeStore } from './mode.js';",
@@ -408,6 +408,7 @@
         "export { getPerfProfile, indexParallelBatchSize, isFrugalPerf, type PerfProfile, SageCachePragmas, sqliteCachePragmas, tuiStreamFlushMs, useDaemonPerfDefaults, } from './perf-profile.js';",
         "export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';",
         "export { hasMeaningfulContent, type MessageRepairReport, type MessageRepairResult, repairToolUseAdjacency, } from './message-invariants.js';",
+        "export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';",
         "export { isPidAlive } from './pid.js';",
         "export { isUlid, ulid } from './ulid.js';",
         "export { mcpQualifiedToolName, mcpServerToolPrefix, sanitizeWireToolName, WIRE_TOOL_NAME_MAX_LENGTH, WIRE_TOOL_NAME_PATTERN, } from './tool-name.js';",
@@ -735,7 +736,7 @@
       "source": "packages/core/src/plugin/index.ts",
       "declarations": [
         "export type { ChimeraFinding, ChimeraFindingLocation, ChimeraFindingOrigin, ChimeraFindingResolution, FindingCategory, FindingConfidence, FindingEventType, FindingLifecycleEvent, FindingSeverity, FindingSource, FindingStatus, FindingVerification, FindingVerificationStatus, ResolutionOutcome, } from '../plugins/review-finding-types.js';",
-        "export type { PluginAPI } from '../types/plugin.js';",
+        "export type { PluginAPI, PluginJev } from '../types/plugin.js';",
         "export type { ReportActorKind, ReportEventType, ReportLifecycleStatus, ReviewReport, ReviewReportCounts, ReviewReportEvent, ReviewReportFile, } from '../plugins/review-report-types.js';",
         "export { DEFAULT_PLUGIN_DISCOVERY_IO, type DiscoveryIo, discoverExternalPlugins, type ExternalPluginCandidate, type PluginDiscoveryResult, resolvePluginEntryPath, resolvePluginTarget, type SkippedPluginCandidate, } from './discovery.js';",
         "export { DEFAULT_SPECIALIST_TRIGGERS, matchSpecialistTriggers, type ResolvedSpecialistTriggerConfig, resolveSpecialistTriggerConfig, type SpecialistTriggerConfig, type SpecialistTriggerMatch, type SpecialistTriggerRule, specialistFireKey, specialistTaskText, } from '../plugins/specialist-trigger-rules.js';",
@@ -904,6 +905,7 @@
         "export { formatPlanTemplates, getPlanTemplate, listPlanTemplates, type PlanTemplate, } from './plan-templates.js';",
         "export { generateSessionId, sanitizeModel } from './session-id.js';",
         "export { getProjectSessionRegistry as getSessionRegistry, hasProjectSessionRegistry as hasSessionRegistry, ProjectSessionRegistry as SessionRegistry, } from '../session-catalog/registry.js';",
+        "export { orderSessionTree, type SessionTreeRow, sessionTreePrefix } from './session-tree.js';",
         "export { resolveSessionId, type SessionIdResolution, sessionIdResolutionError, } from './session-id-resolver.js';",
         "export { scrubPersistedSessionData, scrubPersistedSessionEvent, scrubPersistedSessionSummary, } from './session-read-scrubber.js';",
         "export { stampAgentId, withAgentAttribution } from './session-agent-attribution.js';",
@@ -1092,6 +1094,7 @@
         "export { type CreateToolUsageSourceDeps, createToolUsageSource, filterUnderused, type ToolUsageSource, type UnderusedQueryOptions, type UnderusedToolCandidate, } from './tool-usage-source.js';",
         "export { type MetricsServerHandle, type MetricsServerOptions, type MetricsTlsOptions, PROMETHEUS_CONTENT_TYPE, renderPrometheus, startMetricsServer, } from './prometheus.js';",
         "export { type NetworkTelemetryContext, runWithNetworkTelemetry, startNetworkTelemetryMonitor, } from './network-telemetry.js';",
+        "export { type OtlpExportHandle, type StartOtlpExportOptions, startOtlpExport, } from './otlp-setup.js';",
         "export { type ToolUsageRecord, type ToolUsageSnapshot, type WiredMetricsHandle, wireMetricsToEvents, } from './event-bridge.js';"
       ]
     },
@@ -1178,6 +1181,7 @@
         "export { createJevStatusTool, createJevTool, evaluateJevQuestions, type JevToolInput, jevToolStatus, } from './jev-tool.js';",
         "export { createMcpControlTool, type MCPRegistryHandle } from './mcp-control.js';",
         "export { createMcpUseTool } from './mcp-use.js';",
+        "export { createSessionRenameTool, SESSION_RENAME_TOOL_NAME, type SessionRenameToolOptions, } from './session-rename.js';",
         "export { registerJevTools } from './jev-registration.js';",
         "export { type CreateOneShotLLMToolOptions, createOneShotLLMTool, ONE_SHOT_LLM_TOOL_NAME, } from './one-shot-llm-tool.js';",
         "export { type CreatePluginManagerToolOptions, createPluginManagerTool, PLUGIN_MANAGER_TOOL_NAME, type PluginManagerCatalogEntry, type PluginManagerHookRunner, type PluginManagerMutationResult, } from './plugin-manager.js';"
@@ -1342,7 +1346,8 @@
       },
       "source": "packages/core/src/worktree/index.ts",
       "declarations": [
-        "export { WorktreeManager, assertSafePath, type WorktreeHandle, type WorktreeStatus, type WorktreeManagerOptions, type AllocateOpts, type MergeOpts, type MergeResult, type RunResult as WorktreeRunResult, } from './worktree-manager.js';"
+        "export { WorktreeManager, assertSafePath, type WorktreeHandle, type WorktreeStatus, type WorktreeManagerOptions, type AllocateOpts, type MergeOpts, type MergeResult, type RunResult as WorktreeRunResult, } from './worktree-manager.js';",
+        "export { type GitWorktreeEntry, listGitWorktrees } from './git-worktree-list.js';"
       ]
     },
     {
@@ -1468,8 +1473,8 @@
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 59,
-      "sourceLines": 13545
+      "sourceFiles": 61,
+      "sourceLines": 13785
     },
     {
       "directory": "design",
@@ -1483,7 +1488,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20320
+      "sourceLines": 20325
     },
     {
       "directory": "extension",
@@ -1518,14 +1523,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1994
+      "sourceLines": 2006
     },
     {
       "directory": "kernel",
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4285
+      "sourceLines": 4287
     },
     {
       "directory": "models",
@@ -1545,8 +1550,8 @@
       "directory": "observability",
       "classification": "concrete runtime default",
       "intendedOwner": "preferred Runtime pilot",
-      "sourceFiles": 13,
-      "sourceLines": 1944
+      "sourceFiles": 14,
+      "sourceLines": 2146
     },
     {
       "directory": "performance",
@@ -1559,8 +1564,8 @@
       "directory": "plugin",
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
-      "sourceFiles": 7,
-      "sourceLines": 2519
+      "sourceFiles": 8,
+      "sourceLines": 2598
     },
     {
       "directory": "plugins",
@@ -1602,7 +1607,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 24,
-      "sourceLines": 8439
+      "sourceLines": 8442
     },
     {
       "directory": "session-catalog",
@@ -1629,8 +1634,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 106,
-      "sourceLines": 23688
+      "sourceFiles": 107,
+      "sourceLines": 23796
     },
     {
       "directory": "tasking",
@@ -1643,15 +1648,15 @@
       "directory": "tools",
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
-      "sourceFiles": 22,
-      "sourceLines": 4397
+      "sourceFiles": 23,
+      "sourceLines": 4481
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 76,
-      "sourceLines": 14331
+      "sourceFiles": 77,
+      "sourceLines": 14406
     },
     {
       "directory": "typesafe",
@@ -1664,8 +1669,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 73,
-      "sourceLines": 12917
+      "sourceFiles": 74,
+      "sourceLines": 13106
     },
     {
       "directory": "wiring",
@@ -1678,8 +1683,8 @@
       "directory": "worktree",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
-      "sourceFiles": 5,
-      "sourceLines": 1306
+      "sourceFiles": 6,
+      "sourceLines": 1386
     }
   ]
 }

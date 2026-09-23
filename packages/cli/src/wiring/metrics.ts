@@ -7,9 +7,16 @@ import {
   InMemoryMetricsSink,
   type MetricsServerHandle,
   startMetricsServer,
+  startOtlpExport,
   wireMetricsToEvents,
 } from '@wrongstack/core/observability';
-import type { HealthRegistry, MetricsRuntimeStatus, MetricsSink } from '@wrongstack/core/types';
+import type {
+  HealthRegistry,
+  MetricsRuntimeStatus,
+  MetricsSink,
+  ObservabilityConfig,
+  Tracer,
+} from '@wrongstack/core/types';
 import { toErrorMessage, type WstackPaths } from '@wrongstack/core/utils';
 import type {
   MCPHealthState,
@@ -24,6 +31,14 @@ interface MetricsWiringDeps {
   events: EventBus;
   logger: { info(msg: string): void; warn(msg: string): void };
   config: { provider: string; model: string };
+  /** `observability.otlp` export; its tracer comes back in the result. */
+  observability?:
+    | {
+        config: ObservabilityConfig | undefined;
+        serviceVersion: string;
+        teardownHandlers: Array<() => void>;
+      }
+    | undefined;
 }
 
 interface MetricsWiringResult {
@@ -31,6 +46,8 @@ interface MetricsWiringResult {
   healthRegistry: HealthRegistry | undefined;
   metricsServerHandle: MetricsServerHandle | undefined;
   metricsStatus: MetricsRuntimeStatus;
+  /** OTLP tracer when `observability.otlp` export is on. */
+  tracer?: Tracer | undefined;
   dispose?: (() => void) | undefined;
 }
 
@@ -200,6 +217,23 @@ const MAX_METRIC_SERIES_PER_NAME = 500;
 
 export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
   const { flags, wpaths, events, logger, config } = params;
+  const otlp = params.observability
+    ? startOtlpExport(params.observability.config, {
+        serviceVersion: params.observability.serviceVersion,
+        logger,
+      })
+    : undefined;
+  // OTLP must stop exactly once whether the caller drains
+  // `teardownHandlers`, calls `dispose()`, or does both.
+  let otlpStopped = false;
+  const stopOtlp = () => {
+    if (!otlp || otlpStopped) return;
+    otlpStopped = true;
+    void otlp.stop().catch(() => undefined);
+  };
+  if (otlp) {
+    params.observability?.teardownHandlers.push(stopOtlp);
+  }
   let metricsSink: MetricsSink | undefined;
   let healthRegistry: HealthRegistry | undefined;
   let metricsServerHandle: MetricsServerHandle | undefined;
@@ -216,12 +250,25 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
       : undefined;
   if (metricsPort !== undefined && !flags.metrics) flags.metrics = true;
 
-  if (!flags.metrics) return { metricsSink, healthRegistry, metricsServerHandle, metricsStatus };
+  // OTLP metrics export needs a sink even without `--metrics`.
+  if (!flags.metrics && !otlp?.wantsMetrics) {
+    return {
+      metricsSink,
+      healthRegistry,
+      metricsServerHandle,
+      metricsStatus,
+      tracer: otlp?.tracer,
+      dispose: otlp ? stopOtlp : undefined,
+    };
+  }
 
   metricsSink = new InMemoryMetricsSink({
     maxSeriesPerMetric: MAX_METRIC_SERIES_PER_NAME,
   });
   metricsStatus.collectionEnabled = true;
+  // Attach the OTLP exporter before wiring events so nothing can enter the
+  // sink ahead of the exporter (attach order becomes an invariant, not luck).
+  otlp?.exportMetrics(metricsSink);
   metricsWiredHandle = wireMetricsToEvents(events, metricsSink);
   healthRegistry = new DefaultHealthRegistry();
   healthRegistry.register({
@@ -280,6 +327,7 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
     process.removeListener('exit', onExit);
     void metricsServerHandle?.close().catch(() => {});
     metricsWiredHandle?.dispose();
+    stopOtlp();
   };
 
   if (metricsPort !== undefined && Number.isFinite(metricsPort)) {
@@ -322,6 +370,7 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
       return metricsServerHandle;
     },
     metricsStatus,
+    tracer: otlp?.tracer,
     dispose,
   };
 }

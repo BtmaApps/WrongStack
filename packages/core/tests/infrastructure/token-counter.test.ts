@@ -248,6 +248,21 @@ describe('DefaultTokenCounter', () => {
     expect(tc.cacheStats().savedUsd).toBeCloseTo(2.7, 4);
   });
 
+  it('bills cache tokens at the input rate when the catalog has no cache prices', () => {
+    // Adapters keep cache tokens OUT of `input`; pricing them at 0 made a
+    // model look cheaper the better its cache worked.
+    const tc = new DefaultTokenCounter();
+    const noCachePrices = { ...m1, cost: { input: 2, output: 8 } };
+    tc.accountWithModel(
+      { input: 100_000, output: 0, cacheRead: 800_000, cacheWrite: 100_000 },
+      noCachePrices as typeof m1,
+    );
+    // (100k fresh + 800k read + 100k written) × $2 per 1M = $2
+    expect(tc.estimateCost().input).toBeCloseTo(2, 4);
+    // Billed at the full rate, the read saved nothing.
+    expect(tc.cacheStats().savedUsd).toBe(0);
+  });
+
   it('savedUsd stays 0 when pricing is unknown', () => {
     const tc = new DefaultTokenCounter();
     tc.account({ input: 0, output: 0, cacheRead: 1_000_000 });

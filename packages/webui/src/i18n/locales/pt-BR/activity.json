@@ -2981,6 +2981,7 @@
     "unsupportedNote": "melhor esforço"
   },
   "codeMap": {
+    "snapshotUnavailable": "Grafo do CodeMap indisponível — inicie o servidor WebUI para carregá-lo.",
     "codeAtlas": "Atlas de código",
     "architectureIntelligence": "Inteligência de arquitetura",
     "codeMapBreadcrumb": "Trilha do mapa de código",
@@ -3881,5 +3882,19 @@
     "customAnswerPlaceholder": "Outra / resposta personalizada (opcional)",
     "youDecide": "Você decide",
     "youDecideHint": "Não quero responder a esta pergunta. Deixo o modelo escolher."
+  },
+  "review": {
+    "addComment": "Comentar esta linha",
+    "placeholder": "Escreva um comentário de revisão… (Ctrl+Enter salva, Esc cancela)",
+    "trayButton": "Revisão ({{count}})",
+    "trayTitle": "Comentários de revisão",
+    "empty": "Ainda não há comentários. Passe o mouse sobre uma linha do diff e clique em +.",
+    "sendToChat": "Enviar ao chat",
+    "sendToChatTitle": "Colocar a revisão inteira no editor do chat como uma única mensagem",
+    "confirmClearTitle": "Descartar todos os comentários de revisão?",
+    "confirmClearMsg": "Os comentários não são enviados para lugar nenhum.",
+    "outdated": "Desatualizado: a linha mudou depois deste comentário",
+    "outdatedHeader": "Comentários em linhas que mudaram",
+    "removedLine": "linha removida"
   }
 }

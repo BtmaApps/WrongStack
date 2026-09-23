@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { handlers, send, wsClient } = vi.hoisted(() => {
   const handlers = new Map<string, (message: unknown) => void>();
@@ -75,7 +75,14 @@ function autoHealEvent(
   return { serviceId, phase, message, at: Date.now(), attempt: 1 };
 }
 
+import { i18n } from '@/i18n';
+
 describe('ConnectionsHealthSection', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('requests and renders service ownership and health details', () => {
     render(<ConnectionsHealthSection />);
     expect(send).toHaveBeenCalledWith({ type: 'connections.health' });

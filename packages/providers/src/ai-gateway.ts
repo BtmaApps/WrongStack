@@ -31,6 +31,7 @@ import {
 } from 'ai';
 import { aggregateStream } from './aggregate.js';
 import { splitGatewayModelId } from './capabilities.js';
+import { warmConnection } from './connection-warmup.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { resolveMaxOutputTokens } from './model-output-limits.js';
 
@@ -127,6 +128,8 @@ export class AiGatewayProvider implements Provider {
   readonly capabilities: Capabilities;
   private readonly resolveModel: (modelId: string) => LanguageModel;
   private readonly streamTextImpl: AiSdkStreamText;
+  /** Endpoint `warm()` opens; unknown when the host supplies its own model resolver. */
+  private readonly warmUrl: string | undefined;
 
   constructor(options: AiGatewayProviderOptions) {
     this.id = options.id ?? DEFAULT_GATEWAY_ID;
@@ -158,8 +161,10 @@ export class AiGatewayProvider implements Provider {
 
     if (options.resolveModel) {
       this.resolveModel = options.resolveModel;
+      this.warmUrl = undefined;
     } else {
       const wireBaseUrl = resolveGatewayWireBaseUrl(options.baseUrl);
+      this.warmUrl = wireBaseUrl ?? `https://${VERCEL_GATEWAY_HOST}`;
       const gateway = createGateway({
         apiKey: options.apiKey,
         ...(wireBaseUrl ? { baseURL: wireBaseUrl } : {}),
@@ -169,6 +174,10 @@ export class AiGatewayProvider implements Provider {
     }
 
     this.streamTextImpl = options.streamTextImpl ?? (streamText as unknown as AiSdkStreamText);
+  }
+
+  async warm(_model: string): Promise<void> {
+    if (this.warmUrl) await warmConnection(this.warmUrl);
   }
 
   async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {

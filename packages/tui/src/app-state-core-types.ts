@@ -41,6 +41,15 @@ export interface ResumeSessionEntry {
   toolCallCount: number;
   toolErrorCount: number;
   outcome?: 'completed' | 'error' | 'timeout' | 'aborted' | undefined;
+  /** Parent session id when this session is a fork; the picker nests it. */
+  forkedFrom?: string | undefined;
+  /**
+   * Set when the session belongs to another git worktree of this repository
+   * (its own project directory). Choosing it switches to that worktree first.
+   */
+  worktree?: { root: string; name: string; branch?: string | undefined } | undefined;
+  /** Tree connector (`├─ `, `└─ `) the picker draws; set when the picker opens. */
+  treePrefix?: string | undefined;
   /** The current session — marked so the picker can disallow resuming into itself. */
   isCurrent?: boolean | undefined;
   /**

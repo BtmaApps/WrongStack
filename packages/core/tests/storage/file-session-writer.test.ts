@@ -326,6 +326,56 @@ describe('FileSessionWriter', () => {
     }
   });
 
+  it('a rename of the live session survives later checkpoints and close', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-writer-rename-'));
+    const manifestFile = path.join(dir, `${TEST_ID.split('/')[1]}.summary.json`);
+    const readManifest = async () =>
+      JSON.parse(await fsp.readFile(manifestFile, 'utf8')) as Record<string, unknown>;
+    const onCheckpoint = vi.fn();
+    const w = new FileSessionWriter(
+      TEST_ID,
+      handle as any,
+      STARTED_AT,
+      makeMeta(),
+      events as unknown as EventBus,
+      {
+        dir,
+        filePath: path.join(dir, 'session.jsonl'),
+        metadataCheckpointMs: 25,
+        onMetadataCheckpoint: onCheckpoint,
+        // As the store wires it: the name is whatever the manifest says.
+        resolveName: async () => {
+          const m = await readManifest().catch(() => null);
+          if (!m) return null;
+          return typeof m['name'] === 'string' ? { name: m['name'] } : {};
+        },
+      },
+    );
+    try {
+      await w.append({ type: 'user_input', ts: now(), content: 'first' } as SessionEvent);
+      await vi.waitFor(() => expect(onCheckpoint).toHaveBeenCalled(), { timeout: 2000 });
+      // A rename writes straight into the manifest, never through the writer.
+      await fsp.writeFile(
+        manifestFile,
+        JSON.stringify({ ...(await readManifest()), name: 'Named' }),
+      );
+      const before = onCheckpoint.mock.calls.length;
+
+      await w.append({ type: 'user_input', ts: now(), content: 'second' } as SessionEvent);
+      await vi.waitFor(() => expect(onCheckpoint.mock.calls.length).toBeGreaterThan(before), {
+        timeout: 2000,
+      });
+      expect(onCheckpoint.mock.calls.at(-1)?.[0].name).toBe('Named');
+      expect((await readManifest())['name']).toBe('Named');
+
+      await w.close();
+      expect((await readManifest())['name']).toBe('Named');
+    } finally {
+      await w.close();
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('append flushes llm_response immediately', async () => {
     await writer.append({
       type: 'llm_response',

@@ -87,6 +87,20 @@ function hashIdempotencyKey(key: string): string {
   return createHash('sha256').update(key, 'utf8').digest('hex');
 }
 
+function indexEntryFor(record: RequirementIntakeRecord): IntakeIndexEntry {
+  return {
+    id: record.id,
+    projectId: record.projectId,
+    title: record.title,
+    status: record.status,
+    requestType: record.requestType,
+    priority: record.priority,
+    requestedBy: record.requestedBy,
+    updatedAt: record.updatedAt,
+    createdAt: record.createdAt,
+  };
+}
+
 export class RequirementIntakeStore {
   private readonly baseDir: string;
   private readonly indexPath: string;
@@ -280,10 +294,32 @@ export class RequirementIntakeStore {
       const raw = await fsp.readFile(this.indexPath, 'utf8');
       const parsed = JSON.parse(raw) as IntakeIndexFile;
       if (parsed?.version === 1 && Array.isArray(parsed.entries)) return parsed;
-    } catch {
-      // No index yet.
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+        throw error;
+      }
     }
-    return { version: 1, entries: [] };
+    // A missing or damaged index must not hide durable records. A later write
+    // persists this recovered view under the index lock.
+    let files: string[];
+    try {
+      files = await fsp.readdir(this.baseDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] };
+      throw error;
+    }
+    const entries: IntakeIndexEntry[] = [];
+    for (const file of files) {
+      if (file === INDEX_PATH || file === IDEMPOTENCY_PATH || !file.endsWith('.json')) continue;
+      const id = file.slice(0, -'.json'.length);
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) continue;
+      const record = JSON.parse(
+        await fsp.readFile(path.join(this.baseDir, file), 'utf8'),
+      ) as RequirementIntakeRecord | null;
+      if (record?.id !== id) throw new Error(`Invalid requirement intake record: ${file}`);
+      entries.push(indexEntryFor(record));
+    }
+    return { version: 1, entries };
   }
 
   private async updateIndexFor(record: RequirementIntakeRecord): Promise<void> {
@@ -291,17 +327,7 @@ export class RequirementIntakeStore {
       this.indexPath,
       async () => {
         const index = await this.readIndex();
-        const entry: IntakeIndexEntry = {
-          id: record.id,
-          projectId: record.projectId,
-          title: record.title,
-          status: record.status,
-          requestType: record.requestType,
-          priority: record.priority,
-          requestedBy: record.requestedBy,
-          updatedAt: record.updatedAt,
-          createdAt: record.createdAt,
-        };
+        const entry = indexEntryFor(record);
         const position = index.entries.findIndex((candidate) => candidate.id === record.id);
         if (position >= 0) {
           index.entries[position] = entry;

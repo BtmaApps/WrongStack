@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, act } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlanPanel } from '../../src/components/PlanPanel';
 import { DEFAULT_LANE_ID, disposeLane, useChatLanes } from '../../src/stores/chat-lanes';

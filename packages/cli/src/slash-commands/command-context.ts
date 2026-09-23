@@ -2,6 +2,7 @@ import type { Context } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { SlashCommandRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import type {
+  CompactOptions,
   CompactReport,
   HealthRegistry,
   MemoryPort,
@@ -31,7 +32,7 @@ export interface SlashCommandContext {
   /** Explicit legacy SDD session codec for compatibility tests/old hosts. */
   sddSessionTransport?: 'kanban' | 'legacy-file' | undefined;
   compactor?: {
-    compact(ctx: Context, opts?: { aggressive?: boolean | undefined }): Promise<CompactReport>;
+    compact(ctx: Context, opts?: CompactOptions): Promise<CompactReport>;
   };
   sessionStore?: SessionStore | undefined;
   skillLoader?: SkillLoader | undefined;

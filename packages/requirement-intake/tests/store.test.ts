@@ -80,6 +80,44 @@ describe('RequirementIntakeStore', () => {
     expect(records[0]?.id).toBe(second.id);
   });
 
+  it('recovers durable records from a corrupt index and retains them after the next create', async () => {
+    const harness = makeHarness();
+    const first = buildRecord();
+    const second = buildRecord();
+    await harness.store.create(first);
+    await harness.store.create(second);
+    expect(new Set((await harness.store.listIndex()).map((entry) => entry.id))).toEqual(
+      new Set([first.id, second.id]),
+    );
+
+    await fsp.writeFile(path.join(harness.dir, '_index.json'), '{ truncated', 'utf8');
+    expect(new Set((await harness.store.listIndex()).map((entry) => entry.id))).toEqual(
+      new Set([first.id, second.id]),
+    );
+
+    const third = buildRecord();
+    await harness.store.create(third);
+    expect(new Set((await harness.store.listIndex()).map((entry) => entry.id))).toEqual(
+      new Set([first.id, second.id, third.id]),
+    );
+  });
+
+  it('recovers durable records when the index is missing', async () => {
+    const harness = makeHarness();
+    const record = buildRecord();
+    await harness.store.create(record);
+    await fsp.rm(path.join(harness.dir, '_index.json'));
+    expect((await harness.store.listIndex()).map((entry) => entry.id)).toEqual([record.id]);
+  });
+
+  it('fails instead of silently hiding a malformed record during index recovery', async () => {
+    const harness = makeHarness();
+    await harness.store.create(buildRecord());
+    await fsp.writeFile(path.join(harness.dir, '_index.json'), '{ truncated', 'utf8');
+    await fsp.writeFile(path.join(harness.dir, 'reqi_bad.json'), '{ truncated', 'utf8');
+    await expect(harness.store.listIndex()).rejects.toThrow(SyntaxError);
+  });
+
   it('filters listing by status', async () => {
     const harness = makeHarness();
     const draft = buildRecord();

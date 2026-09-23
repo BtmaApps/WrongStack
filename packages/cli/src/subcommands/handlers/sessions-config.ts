@@ -89,7 +89,7 @@ export const sessionsCmd: SubcommandHandler = async (args, deps) => {
   }
   for (const s of list)
     deps.renderer.write(
-      `  ${s.id}  ${color.dim(s.startedAt)}  ${color.dim(`${s.tokenTotal} tok`)}  ${s.title}\n`,
+      `  ${s.id}  ${color.dim(s.startedAt)}  ${color.dim(`${s.tokenTotal} tok`)}  ${s.name ? `${color.cyan(s.name)}  ${color.dim(s.title)}` : s.title}\n`,
     );
   return 0;
 };

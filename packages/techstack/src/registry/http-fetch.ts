@@ -47,21 +47,34 @@ export function retryAfterMs(headers: IncomingHttpHeaders, now = Date.now()): nu
   return Number.isFinite(date) ? Math.max(0, date - now) : undefined;
 }
 
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(new DOMException('Request aborted', 'AbortError'));
   return new Promise((resolve, reject) => {
+    let remaining = ms;
+    let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
       reject(new DOMException('Request aborted', 'AbortError'));
     };
-    // Remove the abort listener on normal completion, not only via { once }
-    // on the abort path. requestWithRetry calls delay() repeatedly with the
-    // SAME signal, so without this a retrying request leaks one abort listener
-    // per retry on a reused/long-lived signal (MaxListenersExceededWarning).
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, ms);
+    // Node clamps a larger setTimeout to 1ms, which would retry before Retry-After.
+    const schedule = (): void => {
+      const chunk = Number.isFinite(remaining)
+        ? Math.min(remaining, MAX_TIMER_DELAY_MS)
+        : remaining;
+      timer = setTimeout(() => {
+        remaining -= chunk;
+        if (remaining > 0) {
+          schedule();
+          return;
+        }
+        // Remove the abort listener on normal completion, not only via { once }.
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, chunk);
+    };
+    schedule();
     signal?.addEventListener('abort', onAbort, { once: true });
   });
 }

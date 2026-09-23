@@ -362,7 +362,7 @@ describe('buildCompactCommand', () => {
     };
     const cmd = buildCompactCommand({ renderer, compactor } as never);
     const res = await cmd.run('', {} as never);
-    expect(compactor.compact).toHaveBeenCalledWith({}, { aggressive: false });
+    expect(compactor.compact).toHaveBeenCalledWith({}, { aggressive: false, trigger: 'manual' });
     expect(res?.message ?? '').toContain('1000 → 600');
     expect(res?.message ?? '').toContain('summary: 300');
     expect(res?.message ?? '').toContain('truncate: 100');
@@ -384,7 +384,7 @@ describe('buildCompactCommand', () => {
     };
     const cmd = buildCompactCommand({ renderer, compactor } as never);
     const res = await cmd.run('aggressive', {} as never);
-    expect(compactor.compact).toHaveBeenCalledWith({}, { aggressive: true });
+    expect(compactor.compact).toHaveBeenCalledWith({}, { aggressive: true, trigger: 'manual' });
     expect(res?.message ?? '').toContain('repaired 2 tool_use');
     expect(res?.message ?? '').toContain('1 tool_result');
   });

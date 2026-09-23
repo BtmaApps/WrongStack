@@ -135,7 +135,7 @@
     --muted-foreground: 42.9 8.8% 68.6%;
     --accent: 37.5 42% 19%;
     --accent-foreground: 37.5 98.4% 50%;
-    --destructive: 0 70% 55%;
+    --destructive: 0 70% 66%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 70 5.3% 22.4%;
@@ -1629,9 +1629,12 @@ kbd {
 }
 
 .vector-memory-panel__forget:hover:not(:disabled) {
+  /* --destructive got brighter for dark-theme text AA (>=4.5:1), so the
+     hover flips to a tint-free treatment: destructive text + border on the
+     panel (~5:1) instead of white on the now-lighter fill (~3:1 at 10px). */
   border-color: hsl(var(--destructive));
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
+  background: transparent;
+  color: hsl(var(--destructive));
 }
 
 .vector-memory-panel__forget:focus-visible {

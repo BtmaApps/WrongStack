@@ -36,11 +36,10 @@ vi.mock('@wrongstack/core/security', () => ({
   }),
 }));
 
-vi.mock('@wrongstack/core/utils', () => {
-  return {
-    resolveWstackPaths: vi.fn(() => ({ projectInputHistory: '/fake/path/history.json' })),
-  };
-});
+vi.mock('@wrongstack/core/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@wrongstack/core/utils')>()),
+  resolveWstackPaths: vi.fn(() => ({ projectInputHistory: '/fake/path/history.json' })),
+}));
 
 interface HarnessRefs {
   projectRoot: string;

@@ -65,6 +65,7 @@ async function summarizeSessionEventSequence(opts: {
     let lastEventType: SessionEvent['type'] | undefined;
     let hasError = false;
     let sawStart = false;
+    let forkedFrom: string | undefined;
 
     for await (const e of events) {
       lastEventType = e.type;
@@ -136,6 +137,7 @@ async function summarizeSessionEventSequence(opts: {
         toolBreakdown[e.name] = (toolBreakdown[e.name] ?? 0) + 1;
       } else if (e.type === 'tool_result' && e.isError) toolErrorCount++;
       else if (e.type === 'file_snapshot') fileChangeCount += e.files.length;
+      else if (e.type === 'session_forked') forkedFrom = e.parentSessionId;
       else if (isSessionErrorEvent(e)) hasError = true;
     }
 
@@ -149,6 +151,7 @@ async function summarizeSessionEventSequence(opts: {
       model,
       provider,
       tokenTotal: tokenIn + tokenOut,
+      ...(forkedFrom !== undefined ? { forkedFrom } : {}),
       lastActivityAt,
       messageCount,
       ...(lastUserMessage !== undefined ? { lastUserMessage } : {}),

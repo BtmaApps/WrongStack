@@ -1,3 +1,4 @@
+import { refreshCatalogIfStale } from '@wrongstack/core/models';
 import type {
   Capabilities,
   Config,
@@ -315,7 +316,10 @@ export async function refreshRuntimeModelCatalog(input: {
 }): Promise<boolean> {
   if (!input.modelsRegistry) return false;
   try {
-    await input.modelsRegistry.refresh();
+    // A catalog fetched in the last few minutes (boot's background refresh,
+    // the previous switch) is current: skip the round-trip so a model switch
+    // or picker open never waits on models.dev for data it already has.
+    if ((await refreshCatalogIfStale(input.modelsRegistry)) === 'recent') return false;
     input.logger?.debug?.(
       `models.dev catalog refreshed${input.reason ? ` (${input.reason})` : ''}`,
     );

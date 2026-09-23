@@ -55,6 +55,34 @@ describe('planClaudeCodeImport', () => {
     expect(plan.mcp[0]?.note).toBeUndefined();
   });
 
+  it('keeps ${VAR} placeholders as written and says which variables a server reads', () => {
+    const plan = planClaudeCodeImport({
+      sources: {
+        ...empty,
+        projectMcp: {
+          mcpServers: {
+            gh: {
+              type: 'http',
+              url: 'https://${GH_HOST:-api.github.com}/mcp',
+              headers: { Authorization: 'Bearer ${GITHUB_TOKEN}' },
+            },
+          },
+        },
+      },
+      projectRoot,
+      existingServers: {},
+      overwrite: false,
+      enableProjectServers: false,
+    });
+    // Resolved only when the server starts, so no secret is written to config.
+    expect(plan.mcp[0]?.config).toMatchObject({
+      headers: { Authorization: 'Bearer ${GITHUB_TOKEN}' },
+    });
+    expect(plan.mcp[0]?.note).toBe(
+      'from the repository — imported disabled; review, then `/mcp enable`; reads environment: GH_HOST, GITHUB_TOKEN',
+    );
+  });
+
   it('skips existing names unless overwriting, and reports invalid entries', () => {
     const sources = {
       ...empty,

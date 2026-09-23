@@ -291,6 +291,7 @@ export {
   DefaultSessionStore,
   type SessionStoreOptions,
 } from './session-store.js';
+export { orderSessionTree, type SessionTreeRow, sessionTreePrefix } from './session-tree.js';
 export {
   emptyTaskFile,
   loadTasks,

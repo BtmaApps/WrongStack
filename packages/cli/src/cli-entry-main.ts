@@ -42,6 +42,12 @@ export async function main(argv: string[]): Promise<number> {
   // initializeCli keeps its own short-circuit for direct callers and for
   // every other flag.
   const earlyFlags = parseArgs(argv).flags;
+  // `--ascii` wraps stdout before anything prints (help included). Loaded
+  // only when asked for, so the default path keeps its module budget.
+  if (earlyFlags['ascii'] === true || process.env['WRONGSTACK_TUI_ICON_STYLE']) {
+    const { applyAsciiMode } = await import('./boot/ascii-mode.js');
+    applyAsciiMode(earlyFlags);
+  }
   if (earlyFlags['help'] === true || earlyFlags['version'] === true) {
     const { handleHelpVersionShortCircuit } = await import('./boot/short-circuit-flags.js');
     const earlyExit = await handleHelpVersionShortCircuit(argv);

@@ -191,7 +191,11 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
   icon: 'terminal',
   subjectKey: 'command',
   capabilities: ['shell.arbitrary'],
-  timeoutMs: 610_000,
+  // The tool's own timer enforces `timeout_ms`; the executor's generic
+  // ceiling (`tools.maxToolTimeoutMs`, 300s by default) would cut longer
+  // timeouts short and make `timeout_ms: 0` (no limit) impossible.
+  managesOwnTimeout: true,
+  timeoutMs: 600_000,
   maxOutputBytes: MAX_OUTPUT,
   estimatedDurationMs: 30_000,
   inputSchema: {
@@ -209,7 +213,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       timeout_ms: {
         type: 'integer',
         description:
-          'Optional timeout for this specific command in milliseconds (default 300000, max 600000).',
+          'Timeout for this command in ms (default 300000, max 600000). 0 = no limit; the user can still interrupt.',
       },
       run_in_background: {
         type: 'boolean',
@@ -516,7 +520,8 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       typeof input.timeout_ms === 'number' && !Number.isNaN(input.timeout_ms)
         ? input.timeout_ms
         : DEFAULT_TIMEOUT_MS;
-    const timeoutMs = Math.min(Math.max(1_000, rawTimeout), 600_000);
+    // 0 = no wall-clock limit (still aborted by the caller's signal).
+    const timeoutMs = rawTimeout === 0 ? undefined : Math.min(Math.max(1_000, rawTimeout), 600_000);
 
     let timedOut = false;
     const timers: NodeJS.Timeout[] = [];
@@ -567,11 +572,13 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       }
     };
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      killWithTimeout(2000);
-    }, timeoutMs);
-    timers.push(timer);
+    if (timeoutMs !== undefined) {
+      const timer = setTimeout(() => {
+        timedOut = true;
+        killWithTimeout(2000);
+      }, timeoutMs);
+      timers.push(timer);
+    }
 
     const onAbort = () => killWithTimeout(2000);
     if (callerSignal.aborted) onAbort();

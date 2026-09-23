@@ -335,6 +335,7 @@ export class Context implements RunEnv, AgentContext {
    * Cleared after being consumed by agent-tools.
    */
   pendingPostToolContext: string | undefined = undefined;
+  deliveredDirectoryInstructions?: Map<string, string> | undefined = new Map();
 
   /**
    * Bounded, provider-bound memory evidence kept outside conversation and
@@ -639,6 +640,7 @@ export class Context implements RunEnv, AgentContext {
     this.fileHashes.clear();
     this.sideEffects = [];
     this.fileEvents = [];
+    this.deliveredDirectoryInstructions?.clear();
   }
 
   /**

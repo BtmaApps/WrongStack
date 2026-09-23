@@ -133,6 +133,7 @@ export async function evaluateJevQuestions(
   input: JevToolInput,
   judge: TypeSafeJudge,
   signal: AbortSignal,
+  activityFeature = 'tool',
 ): Promise<SystemOneResult> {
   const errors = validateJevToolInput(input);
   if (errors.length)
@@ -144,7 +145,7 @@ export async function evaluateJevQuestions(
       state: input.state,
       questions: input.questions,
       model: judge.model,
-      activityFeature: 'tool',
+      activityFeature,
     },
     signal,
   );

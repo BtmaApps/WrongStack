@@ -1,4 +1,5 @@
 import type { PluginDetail } from './plugin-details';
+import { pluginDetails } from './plugin-details';
 import type { PluginCatalogEntry } from './runtime-catalog';
 
 export type PluginLlmMode = 'deterministic' | 'optional' | 'provider-wire' | 'core-orchestrated';
@@ -145,9 +146,24 @@ const llmProfiles: Record<string, DeclaredLlmProfile> = {
   },
 };
 
+// Generated tool schemas are the authority for workflow/evidence analyzers.
+// A review option is an explicit model request; keeping this projection here
+// avoids manually listing every analyzer whenever the suite grows.
+const optionalReviewPlugins = new Set(
+  Object.entries(pluginDetails)
+    .filter(([, detail]) =>
+      detail.tools.some((tool) =>
+        tool.params?.some(
+          (param) => param.name === 'review' && /(?:model|advice)/i.test(param.description ?? ''),
+        ),
+      ),
+    )
+    .map(([name]) => name),
+);
+
 const llmLabels: Record<PluginLlmMode, string> = {
   deterministic: 'Deterministic',
-  optional: 'Optional api.llm',
+  optional: 'Optional model review',
   'provider-wire': 'Provider wire',
   'core-orchestrated': 'Host orchestrated',
 };
@@ -155,6 +171,18 @@ const llmLabels: Record<PluginLlmMode, string> = {
 export function pluginLlmProfile(name: string): PluginLlmProfile {
   const declared = llmProfiles[name];
   if (declared) return { ...declared, label: llmLabels[declared.mode] };
+  if (optionalReviewPlugins.has(name)) {
+    return {
+      mode: 'optional',
+      label: llmLabels.optional,
+      summary:
+        'Explicit One Shot or Council review can suggest checks; Jev can prioritize a finding.',
+      routing:
+        'Review uses host model or Jev access only when requested; no model call at startup.',
+      fallback:
+        'Measured findings and statuses remain authoritative when review is absent or fails.',
+    };
+  }
   return {
     mode: 'deterministic',
     label: llmLabels.deterministic,

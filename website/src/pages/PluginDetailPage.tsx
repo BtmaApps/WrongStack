@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 import {
   ExternalDoc,
+  heroTitleFontSize,
   PageHero,
   PageNext,
   SectionIntro,
-  heroTitleFontSize,
 } from '@/components/site/primitives';
 import { pluginDetails } from '@/data/plugin-details';
 import { buildPluginOperationalProfile } from '@/data/plugin-operational';
@@ -92,7 +92,7 @@ export function PluginDetailPage() {
             ['Tools', String(operational.toolCount)],
             ['Hooks', String(operational.hookCount)],
             ['Config', String(operational.configCount)],
-            ['LLM', operational.llm.label],
+            ['Model', operational.llm.label],
           ].map(([label, value]) => (
             <div key={label} className="bg-surface px-4 py-6 text-center">
               <strong className="block break-words font-mono text-sm font-black text-fg">
@@ -232,7 +232,7 @@ export function PluginDetailPage() {
           <article className="rounded-2xl border border-line bg-ink p-6 text-white sm:p-8">
             <Bot className="size-5 text-brand" />
             <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-black">LLM behavior</h2>
+              <h2 className="text-xl font-black">Model behavior</h2>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs font-black uppercase tracking-[0.12em] text-brand-2">
                 {operational.llm.label}
               </span>

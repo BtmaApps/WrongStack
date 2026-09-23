@@ -1,8 +1,15 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { markdownComponents } from '../../src/components/MessageBubble/utils';
 
+import { i18n } from '../../src/i18n';
+
 describe('markdownComponents table renderer', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('wraps table inside an overflow-x-auto container', () => {
     const TableComp = markdownComponents.table;
     const TheadComp = markdownComponents.thead;

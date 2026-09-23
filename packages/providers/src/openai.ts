@@ -18,6 +18,7 @@ import {
 } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
+import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from './openai-chat-usage.js';
 import { shouldEmitReasoningEffort } from './openai-shared.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
 import { parseSSE } from './sse.js';
@@ -543,70 +544,8 @@ async function* parseOpenAIStream(
       sawTerminal = true;
     }
 
-    const u = obj['usage'] as
-      | {
-          prompt_tokens?: number | undefined;
-          input_tokens?: number | undefined;
-          completion_tokens?: number | undefined;
-          total_tokens?: number | undefined;
-          prompt_tokens_details?: {
-            cached_tokens?: number | undefined;
-            cache_write_tokens?: number | undefined;
-          };
-          prompt_cache_hit_tokens?: number | undefined;
-          prompt_cache_miss_tokens?: number | undefined;
-        }
-      | undefined;
-    if (u) {
-      // Normalize to disjoint semantics: `input` is fresh-only (priced at
-      // the full rate), `cacheRead` is the cached subset (priced at the
-      // cache rate). OpenAI returns `prompt_tokens_details.cached_tokens`;
-      // DeepSeek returns `prompt_cache_hit_tokens`/`prompt_cache_miss_tokens`.
-      const hasDeepSeekCacheFields =
-        u.prompt_cache_hit_tokens !== undefined || u.prompt_cache_miss_tokens !== undefined;
-      const cached = nonNegative(
-        u.prompt_tokens_details?.cached_tokens ?? u.prompt_cache_hit_tokens,
-      );
-      const cacheWrite = nonNegative(u.prompt_tokens_details?.cache_write_tokens);
-      const completion = nonNegative(u.completion_tokens, usage.output);
-      // MiniMax's OpenAI-compatible API formally guarantees only `total_tokens`
-      // in its streamed usage (prompt_tokens/completion_tokens are documented as
-      // examples, not required), so its final chunk can carry total+completion
-      // without a `prompt_tokens` field. Deriving prompt = total − completion
-      // recovers the input count instead of leaving it stuck at 0 (which zeroed
-      // the context meter and the ↑ sent-token counter). Ordered AFTER the
-      // explicit prompt fields so no compliant provider regresses.
-      const hasPromptTotal = u.prompt_tokens !== undefined;
-      const hasFreshInputDelta = !hasPromptTotal && u.input_tokens !== undefined;
-      const cacheMiss = optionalNonNegative(u.prompt_cache_miss_tokens);
-      const reportedPromptTotal = hasPromptTotal
-        ? nonNegative(u.prompt_tokens)
-        : hasDeepSeekCacheFields
-          ? nonNegative(u.prompt_cache_hit_tokens) + nonNegative(u.prompt_cache_miss_tokens)
-          : u.total_tokens !== undefined
-            ? Math.max(0, u.total_tokens - completion)
-            : usage.input + cached + cacheWrite;
-      // Hybrid gateways sometimes use Anthropic/MiniMax delta semantics in
-      // an OpenAI-shaped usage object: input_tokens is fresh-only, while
-      // prompt_tokens (when present) is the OpenAI total including cache.
-      const promptTotal =
-        hasPromptTotal && cached > reportedPromptTotal
-          ? reportedPromptTotal + cached
-          : reportedPromptTotal;
-      const nextUsage: Usage = {
-        input:
-          cacheMiss ??
-          (hasFreshInputDelta
-            ? Math.max(0, u.input_tokens ?? 0)
-            : Math.max(0, promptTotal - cached - cacheWrite)),
-        output: completion,
-        cacheRead: cached || usage.cacheRead,
-      };
-      if (cacheWrite || usage.cacheWrite !== undefined) {
-        nextUsage.cacheWrite = cacheWrite || usage.cacheWrite;
-      }
-      usage = nextUsage;
-    }
+    const u = obj['usage'] as OpenAIChatUsageWire | undefined;
+    if (u) usage = normalizeOpenAIChatUsage(u, usage);
   }
 
   // Truncation is decided BEFORE any tool call is closed: a `tool_use_stop`
@@ -649,12 +588,4 @@ async function* parseOpenAIStream(
   if (started) {
     yield { type: 'message_stop', stopReason, usage };
   }
-}
-
-function nonNegative(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
-}
-
-function optionalNonNegative(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 }

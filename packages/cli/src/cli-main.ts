@@ -176,12 +176,13 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     getSwitchProviderAndModel: () => switchProviderAndModelRef.current,
   });
 
-  const { metricsSink, healthRegistry, metricsStatus } = setupMetrics({
+  const { metricsSink, healthRegistry, metricsStatus, tracer } = setupMetrics({
     flags,
     wpaths,
     events,
     logger,
     config: { provider: config.provider, model: config.model },
+    observability: { config: config.observability, serviceVersion: CLI_VERSION, teardownHandlers },
   });
 
   const { tuiOwnsScreen, evOn } = setupTeardownRegistrar({
@@ -319,6 +320,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     pluginHost,
     hookRunner,
   } = await setupLifecycleAndPlugins({
+    tracer,
     flags,
     config,
     container,
@@ -487,6 +489,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     multiAgentHost,
     shadowController,
   } = setupBrainAndOrchestration({
+    tracer,
     events,
     config,
     vault,

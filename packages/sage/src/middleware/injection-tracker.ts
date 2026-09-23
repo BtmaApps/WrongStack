@@ -37,6 +37,8 @@ export interface ConsumeMatchesOptions {
 }
 
 interface TrackedInjection {
+  memoryId: string;
+  sessionId?: string | undefined;
   textKey: string;
   tokens: number;
   /** Cached token set — built once at record() time so consumeMatches()
@@ -110,8 +112,8 @@ export class InjectionTracker {
     const tokens = tokenSet.size;
     if (tokens < this.minTokens) return;
     this.prune(now);
-    this.entries.set(memoryId, { textKey, tokens, tokenSet, at: now });
     const contextKey = `${sessionId ?? '<no-session>'}\0${memoryId}`;
+    this.entries.set(contextKey, { memoryId, sessionId, textKey, tokens, tokenSet, at: now });
     this.contextEntries.set(contextKey, {
       memoryId,
       contextTextKey: contextNeedle(textKey, renderedContextText, this.minTokens),
@@ -199,38 +201,19 @@ export class InjectionTracker {
     const assistantTokens = new Set(tokenize(textKey));
     // Empty assistant text after tokenization still allows id citation matches
     // (e.g. the model only wrote a memory id reference).
-    const matched: string[] = [];
+    const matched = new Set<string>();
 
-    // When sessionId is provided, exclude memories that were injected ONLY
-    // into other sessions. The tracker is process-wide with a 2h TTL, so the
-    // same memory routinely sits in several sessions at once (a subagent, a
-    // second WebUI tab, an earlier session). Excluding any memory another
-    // session ALSO received made the most-injected memories uncreditable
-    // everywhere — the project store showed 277k injections and zero uses.
-    // Entries recorded without a session remain eligible.
-    let otherSessionOnlyMemoryIds: Set<string> | undefined;
-    if (sessionId) {
-      const other = new Set<string>();
-      const own = new Set<string>();
-      for (const [contextKey] of this.contextEntries) {
-        const nullIdx = contextKey.indexOf('\0');
-        const entrySession = nullIdx >= 0 ? contextKey.slice(0, nullIdx) : '<no-session>';
-        const memoryId = nullIdx >= 0 ? contextKey.slice(nullIdx + 1) : contextKey;
-        if (entrySession === '<no-session>' || entrySession === sessionId) own.add(memoryId);
-        else other.add(memoryId);
-      }
-      otherSessionOnlyMemoryIds = new Set([...other].filter((id) => !own.has(id)));
-    }
-
-    for (const [memoryId, entry] of this.entries) {
-      // Session filter: skip memories only another session received.
-      if (otherSessionOnlyMemoryIds?.has(memoryId)) continue;
+    for (const [key, entry] of this.entries) {
+      // Each session has its own consume-once credit for a shared memory.
+      // Entries recorded without a session remain eligible everywhere.
+      if (sessionId && entry.sessionId && entry.sessionId !== sessionId) continue;
+      const memoryId = entry.memoryId;
       if (options.onlyIds && !options.onlyIds.has(memoryId)) continue;
       // Explicit id citation is the strongest usefulness signal — models often
       // reference `<memory id="…">` without restating the full body.
       if (textKey.includes(normalizeTextKey(memoryId)) || assistantText.includes(memoryId)) {
-        matched.push(memoryId);
-        this.entries.delete(memoryId);
+        matched.add(memoryId);
+        this.entries.delete(key);
         continue;
       }
       if (assistantTokens.size === 0) continue;
@@ -238,8 +221,8 @@ export class InjectionTracker {
       // the assistant paraphrases lightly but keeps a long distinctive phrase.
       const phraseHit = entry.textKey.length >= 24 && textKey.includes(entry.textKey.slice(0, 80));
       if (phraseHit) {
-        matched.push(memoryId);
-        this.entries.delete(memoryId);
+        matched.add(memoryId);
+        this.entries.delete(key);
         continue;
       }
       // Overlap coefficient (Szymkiewicz–Simpson) using the cached token set.
@@ -255,11 +238,11 @@ export class InjectionTracker {
         smaller > 0 &&
         intersection / smaller >= this.matchThreshold
       ) {
-        matched.push(memoryId);
-        this.entries.delete(memoryId);
+        matched.add(memoryId);
+        this.entries.delete(key);
       }
     }
-    return matched;
+    return [...matched];
   }
 
   /**

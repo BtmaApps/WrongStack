@@ -1,6 +1,22 @@
 {
   "title": "Impostazioni",
   "subtitle": "Configure every aspect of your agent workspace",
+  "navigation": {
+    "browse": "Esplora",
+    "search": "Cerca un’impostazione…",
+    "clearSearch": "Cancella ricerca",
+    "noResults": "Nessuna impostazione trovata",
+    "workspace": "Area di lavoro",
+    "models": "Modelli e connessioni",
+    "behavior": "Comportamento agente",
+    "system": "Sistema e sicurezza",
+    "label": "Sezioni impostazioni"
+  },
+  "providerTest": {
+    "title": "Test provider",
+    "description": "Verifica provider e abbonamenti salvati; controlla quote, autenticazione, latenza e limiti dei token.",
+    "open": "Apri test provider"
+  },
   "tabs": {
     "general": "Generale",
     "provider": "Provider",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Indicizza all'avvio",
     "indexOnStartHint": "Costruisci l'indice dei simboli del codebase all'avvio della sessione.",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
+    "pluginSearch": "Cerca plugin",
+    "pluginEnabledOnly": "Solo attivi",
+    "pluginNoMatches": "Nessun plugin corrisponde a questo filtro.",
     "pluginsPerPluginHint": "Enable or disable individual plugins. Changes take effect on next session.",
     "pluginChimera": "Chimera — post-session code review",
     "pluginSkills": "Skills — skill library & authoring",
@@ -760,6 +779,7 @@
     "statusChipHint": "Stile visivo per la barra di stato TUI/CLI e il chip di lavoro.",
     "thinkingWordLabel": "Parola di ragionamento",
     "thinkingWordHint": "Singola parola breve mostrata nel chip di stato TUI mentre l’agente lavora.",
+    "thinkingWordInvalid": "Usa una sola parola di massimo 16 lettere, numeri, trattini bassi o trattini.",
     "statuslineModeLabel": "Modalità barra di stato",
     "statuslineModeHint": "Densità della barra di stato TUI.",
     "statuslineModeMinimum": "Minima",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (predefinito)",
     "sageStrict": "0,95 (rigoroso)"
   },
-  "resetLabel": "Ripristina",
+  "resetLabel": "Cancella preferenze locali",
   "cancel": "Annulla",
-  "resetConfirmTitle": "Ripristinare tutte le preferenze?",
-  "resetConfirmBody": "Ripristina le impostazioni predefinite e ricarica la pagina.",
-  "resetConfirmAction": "Ripristina",
+  "resetConfirmTitle": "Cancellare le preferenze di questo browser?",
+  "resetConfirmBody": "Cancella le preferenze memorizzate in questo browser e ricarica la pagina. Le impostazioni connesse vengono ricaricate dal server.",
+  "resetConfirmAction": "Cancella e ricarica",
   "brain": {
     "heading": "Brain",
     "headingHint": "Modelli di decisione, consiglio, escalation e tetto di rischio — applicati in tempo reale, salvati nella configurazione globale.",

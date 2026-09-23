@@ -7,7 +7,11 @@ vi.mock('@/lib/ws-client', () => ({
   // THIS surface asked for the swap, so the session may take the foreground.
   // Without it a `session.start` only fills its own lane, which is what keeps
   // a background re-announce from yanking the user out of the tab they are in.
-  getWSClient: () => ({ send: vi.fn(), consumeRequestedSwitch: () => true }),
+  getWSClient: () => ({
+    send: vi.fn(),
+    supportsCapability: () => false,
+    consumeRequestedSwitch: () => true,
+  }),
 }));
 
 import { WS_HANDLERS } from '../../src/hooks/ws-handlers';

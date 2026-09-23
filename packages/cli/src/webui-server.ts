@@ -667,7 +667,15 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    * with a live run, whose journal is empty only because its first turn has
    * not landed yet. The store's own fail-closed `isEmpty` is the final word.
    */
-  const stopEmptySessionCleanup = opts.sessionStore
+  const refreshSessionHistory = async (): Promise<void> => {
+    const list = await opts.sessionStore?.list(200);
+    if (!list) return;
+    broadcastEveryone({
+      type: 'sessions.list',
+      payload: { sessions: toSessionHistoryEntries(list, foregroundSession.id) },
+    });
+  };
+  const emptySessionCleanup = opts.sessionStore
     ? scheduleOwnerlessEmptySessionCleanup({
         getSessionStore: () => opts.sessionStore as NonNullable<typeof opts.sessionStore>,
         getActiveSessionId: () => foregroundSession.id,
@@ -677,17 +685,25 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
         // written its first record yet looks exactly like a session nobody
         // ever used.
         hasParticipants: (sessionId) => abortControllers.has(sessionId),
-        refreshSessions: async () => {
-          const list = await opts.sessionStore?.list(200);
-          if (!list) return;
-          broadcastEveryone({
-            type: 'sessions.list',
-            payload: { sessions: toSessionHistoryEntries(list, foregroundSession.id) },
-          });
-        },
+        refreshSessions: refreshSessionHistory,
         logger: consoleLogger,
       })
     : null;
+  // A session the model renamed (`session_rename`) shows its new name in
+  // every open history list, as a rename from the list itself does. Not in
+  // `eventUnsubscribers`: setupEvents() flushes that list when it subscribes.
+  const offSessionRenamed = opts.sessionStore
+    ? opts.events.on('session.renamed', () => {
+        void refreshSessionHistory().catch(() => undefined);
+      })
+    : undefined;
+  const stopEmptySessionCleanup = emptySessionCleanup && {
+    runNow: emptySessionCleanup.runNow,
+    dispose: async () => {
+      offSessionRenamed?.();
+      await emptySessionCleanup.dispose();
+    },
+  };
 
   const routeContexts = createWebuiRouteContexts({
     opts,

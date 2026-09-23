@@ -398,6 +398,13 @@ export interface Provider {
     model: string,
     opts: { signal: AbortSignal },
   ): Promise<ProviderContextLimit | undefined>;
+  /**
+   * Optional connection warm-up for `model`'s endpoint, called while the user
+   * is still composing a prompt so DNS, TCP and TLS are done before the real
+   * request. Best-effort and throttled by the implementation: it never throws
+   * and never costs tokens.
+   */
+  warm?(model: string): Promise<void>;
   /** Canonical streaming entry point. `complete()` defaults to a wrapper that
    * aggregates this stream — providers may override for non-streaming wires. */
   stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent>;

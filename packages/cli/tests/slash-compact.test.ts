@@ -56,7 +56,10 @@ describe('/compact slash command', () => {
     const ctx = makeCtx({ compact: compact as never });
     const cmd = buildCompactCommand(ctx);
     await cmd.run!('', makeFakeContext());
-    expect(compact).toHaveBeenCalledWith(expect.anything(), { aggressive: false });
+    expect(compact).toHaveBeenCalledWith(expect.anything(), {
+      aggressive: false,
+      trigger: 'manual',
+    });
   });
 
   it('passes aggressive:true when args trim to "aggressive"', async () => {
@@ -64,7 +67,10 @@ describe('/compact slash command', () => {
     const ctx = makeCtx({ compact: compact as never });
     const cmd = buildCompactCommand(ctx);
     await cmd.run!('  aggressive  ', makeFakeContext());
-    expect(compact).toHaveBeenCalledWith(expect.anything(), { aggressive: true });
+    expect(compact).toHaveBeenCalledWith(expect.anything(), {
+      aggressive: true,
+      trigger: 'manual',
+    });
   });
 
   it('renders before/after token totals and per-phase reductions', async () => {

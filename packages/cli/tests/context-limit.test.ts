@@ -617,4 +617,29 @@ describe('refreshRuntimeModelCatalog', () => {
     expect(registry.refresh).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('using cached catalog'));
   });
+
+  it('skips the fetch (and the re-resolution) when the catalog is minutes old', async () => {
+    // Boot's background refresh just landed; a model switch or picker open
+    // must not wait on models.dev again for the same data.
+    const registry = {
+      refresh: vi.fn(async () => ({})),
+      ageSeconds: vi.fn(async () => 45),
+    } as never as ModelsRegistry;
+
+    await expect(
+      refreshRuntimeModelCatalog({ modelsRegistry: registry, reason: 'model-picker' }),
+    ).resolves.toBe(false);
+
+    expect(registry.refresh).not.toHaveBeenCalled();
+  });
+
+  it('still fetches when the last catalog fetch is old', async () => {
+    const registry = {
+      refresh: vi.fn(async () => ({})),
+      ageSeconds: vi.fn(async () => 2 * 3600),
+    } as never as ModelsRegistry;
+
+    await expect(refreshRuntimeModelCatalog({ modelsRegistry: registry })).resolves.toBe(true);
+    expect(registry.refresh).toHaveBeenCalledTimes(1);
+  });
 });

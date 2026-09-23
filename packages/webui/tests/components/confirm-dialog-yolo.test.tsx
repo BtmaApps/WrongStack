@@ -9,10 +9,16 @@ vi.mock('@/hooks/useWebSocket', () => ({
 }));
 
 import { ConfirmDialog } from '../../src/components/ConfirmDialog';
+import { i18n } from '../../src/i18n';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 import { useUIStore } from '../../src/stores/ui-store';
 
 describe('ConfirmDialog YOLO behavior', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     sendConfirm.mockClear();
     updatePrefs.mockClear();

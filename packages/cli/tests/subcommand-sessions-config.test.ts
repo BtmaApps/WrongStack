@@ -181,6 +181,24 @@ describe('sessionsCmd', () => {
     expect(out).toContain('123');
   });
 
+  it('shows a session name ahead of its first-prompt title', async () => {
+    const deps = mkDeps({
+      sessionStore: {
+        list: vi.fn().mockResolvedValue([
+          {
+            id: 'sess-1',
+            startedAt: '2026-05-22',
+            tokenTotal: 1,
+            title: 'fix it',
+            name: 'OAuth refresh bug',
+          },
+        ]),
+      },
+    });
+    expect(await sessionsCmd([], deps)).toBe(0);
+    expect(writes.join('')).toMatch(/OAuth refresh bug.*fix it/);
+  });
+
   it('forks an explicit session at a checkpoint and prints branch metadata', async () => {
     const fork = vi.fn().mockResolvedValue({
       id: 'child-1',

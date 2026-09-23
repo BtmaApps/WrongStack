@@ -60,12 +60,21 @@ function mockWindow() {
     return el as Node;
   });
 
+  // The download flow clicks a real blob: anchor; jsdom answers every
+  // anchor navigation with "Not implemented: navigation to another
+  // Document" on stderr. Stub the prototype click so the flow runs
+  // without the noise (vi.restoreAllMocks in afterEach restores it).
+  const clickSpy = vi
+    .spyOn(HTMLElement.prototype, 'click')
+    .mockImplementation(() => undefined);
+
   return {
     createElement: originalCreateElement,
     createObjectURL: originalCreateObjectURL,
     revokeObjectURL: originalRevokeObjectURL,
     appendChildSpy,
     removeChildSpy,
+    clickSpy,
   };
 }
 

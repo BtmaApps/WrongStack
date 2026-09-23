@@ -52,6 +52,7 @@ import type {
   Provider,
   SessionStore,
   SkillLoader,
+  Tracer,
 } from '@wrongstack/core/types';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { createSessionAgentManager } from './create-session-agent-manager.js';
@@ -84,7 +85,6 @@ import { TOKENS } from '@wrongstack/core/kernel';
 import { createSkillMentionMiddleware, createSkillSuggestionSetup } from '@wrongstack/core/skills';
 import { type AnnotationsStore, SessionMemoryConsolidator } from '@wrongstack/core/storage';
 import {
-  CONTEXT_WINDOW_MODE_PINNED_META_KEY,
   type Config,
   DEFAULT_TOOLS_CONFIG,
   type ProviderConfig,
@@ -92,7 +92,6 @@ import {
 } from '@wrongstack/core/types';
 import {
   estimateRequestTokensCalibrated,
-  toErrorMessage,
   type WstackPaths,
 } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
@@ -109,6 +108,7 @@ import { setupWebUICodebaseIndexing } from './codebase-indexing.js';
 import { CollaborationWebSocketHandler } from './collaboration-ws-handler.js';
 import { discoverMailboxBridgeForWebui } from './discover-mailbox-bridge.js';
 import { GoalWebSocketHandler } from './goal-ws-handler.js';
+import { createMaxContextUpdater, positiveWindow } from './max-context-updater.js';
 import { resolveProviderModelMetadata } from './model-catalog.js';
 import { SddBoardWebSocketHandler } from './sdd-board-ws-handler.js';
 import { buildSddWizardDeps } from './sdd-wizard-wiring.js';
@@ -143,6 +143,8 @@ interface AgentServicesInput {
   pipelines: AgentPipelines;
   /** Trusted host-only hook shared by the leader and light-subagent pipelines. */
   installToolBoundary?: ((pipelines: AgentPipelines) => void) | undefined;
+  /** OTLP tracer (`observability.otlp`); every tab's agent shares it. */
+  tracer?: Tracer | undefined;
   /** Mutable capabilities ref — the factory populates `.current`. */
   modelCapabilitiesRef: { current: unknown };
   /** Returns the LIVE session (swapped on /new + resume) — read at send time. */
@@ -238,19 +240,6 @@ interface AgentServices {
     providerId?: string,
     providerCfg?: ProviderConfig | undefined,
   ) => Promise<void>;
-}
-
-/**
- * A context window only counts when it is a positive, finite token count —
- * the same rule as the CLI's `positiveNumber` in context-limit.ts. `0` or a
- * negative from a hand-edited `context.effectiveMaxContext` (the `/context
- * limit` writer rejects both) means "not set", so the chain falls through to
- * the provider window. The model-switch path used `??`, which kept the `0`:
- * boot fell through to the provider window, but the next switch wrote 0 into
- * the new provider's capabilities and turned auto-compaction off.
- */
-function positiveWindow(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 /**
@@ -432,68 +421,16 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   }
 
   /** Refresh AutoCompactionMiddleware denominator when the active model changes. */
-  const updateAutoCompactionMaxContext = async (
-    newProvider: Provider,
-    providerId = newProvider.id,
-    providerCfg?: ProviderConfig | undefined,
-  ): Promise<void> => {
-    await modelsRegistry.refresh().catch((err) => {
-      logger.warn(
-        `models.dev refresh failed for ${providerId}/${context.model}: ${toErrorMessage(err)}; using cached catalog`,
-      );
-    });
-    const currentConfig = input.config;
-    let newMaxContext =
-      positiveWindow(currentConfig.context?.effectiveMaxContext) ??
-      newProvider.capabilities.maxContext;
-    try {
-      const m = await resolveProviderModelMetadata(
-        modelsRegistry,
-        providerId,
-        context.model,
-        providerCfg ?? currentConfig.providers?.[providerId],
-      );
-      newMaxContext = positiveWindow(m?.capabilities?.maxContext) ?? newMaxContext;
-    } catch {
-      // best-effort: use provider capability
-    }
-    newProvider.capabilities.maxContext = newMaxContext;
-    modelCapabilitiesRef.current =
-      newMaxContext > 0
-        ? {
-            maxContextTokens: newMaxContext,
-            supportsTools: !!newProvider.capabilities.tools,
-            supportsVision: !!newProvider.capabilities.vision,
-            supportsReasoning: !!newProvider.capabilities.reasoning,
-          }
-        : undefined;
-    if (newMaxContext > 0) {
-      context.meta['effectiveMaxContext'] = newMaxContext;
-      autoCompactor?.setMaxContext(newMaxContext);
-      autoCompactor?.setEnabled(config.context?.autoCompact !== false);
-      // Window changed (model switch): re-resolve the default policy so it
-      // stays scaled to the window (≥1M defaults to Deep, smaller back to
-      // Balanced). A policy the user pinned for this session is left alone.
-      if (context.meta[CONTEXT_WINDOW_MODE_PINNED_META_KEY] !== true) {
-        const policy = resolveContextWindowPolicy(
-          currentConfig.context ?? {},
-          undefined,
-          newMaxContext,
-        );
-        context.meta['contextWindowMode'] = policy.id;
-        context.meta['contextWindowPolicy'] = policy;
-      }
-    } else {
-      delete context.meta['effectiveMaxContext'];
-      autoCompactor?.setEnabled(false);
-    }
-    events.emit('ctx.max_context', {
-      sessionId: context.session.id,
-      providerId: newProvider.id,
-      modelId: context.model,
-      maxContext: newMaxContext,
-    });
-  };
+  const updateAutoCompactionMaxContext = createMaxContextUpdater({
+    config,
+    getConfig: () => input.config,
+    context,
+    modelsRegistry,
+    events,
+    logger,
+    modelCapabilitiesRef,
+    autoCompactor,
+  });
 
   // Agent
   context.userInputAwaiter ??= createEventUserInputAwaiter(events);
@@ -553,7 +490,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     iterationTimeoutMs: config.tools?.iterationTimeoutMs ?? DEFAULT_TOOLS_CONFIG.iterationTimeoutMs,
     perIterationOutputCapBytes:
       config.tools?.perIterationOutputCapBytes ?? DEFAULT_TOOLS_CONFIG.perIterationOutputCapBytes,
-    tracer: undefined,
+    tracer: input.tracer,
     hookRunner: wrongTraceHookRunner,
     // Off unless the operator opts in. The WebUI drives the same agent as the
     // CLI, so it must resolve this identically — a surface-dependent gate
@@ -595,6 +532,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     loopDetection: config.tools?.loopDetection ?? DEFAULT_TOOLS_CONFIG.loopDetection,
     confirmAwaiter: undefined,
     toolExecutor,
+    tracer: input.tracer,
   });
   if (config.features.memory && config.features.memoryConsolidation !== false) {
     const consSage = getSageService(memoryStore) as ConsolidatorSage | undefined;

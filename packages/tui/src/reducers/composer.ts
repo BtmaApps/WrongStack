@@ -3,6 +3,7 @@ import type { Action } from '../app-action-type.js';
 import type { QueueItem, State } from '../app-state.js';
 import { retainTuiHistory, TUI_RESUME_HISTORY_BUDGET } from '../history-retention.js';
 import { appendResumeLog, type ResumeLoadState, renderResumeLoadBlock } from '../resume-load.js';
+import { orderResumeEntries } from '../resume-session-tree.js';
 import { type ComposerAction, composerActionTypes } from './composer-action-types.js';
 import { reduceComposerPickers } from './composer-pickers.js';
 import * as h from './helpers.js';
@@ -294,7 +295,7 @@ export function reduceComposer(state: State, action: ComposerAction): State {
         ...h.closePanels(state),
         resumePicker: {
           open: true,
-          sessions: action.sessions,
+          sessions: orderResumeEntries(action.sessions),
           selected: 0,
           busy: false,
           hint: undefined,

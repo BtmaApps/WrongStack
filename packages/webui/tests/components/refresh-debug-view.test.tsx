@@ -92,7 +92,14 @@ afterEach(() => {
   localStorage.clear();
 });
 
+import { i18n } from '../../src/i18n';
+
 describe('RefreshDebugView — F5 resilience verifier', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   it('renders the page heading', () => {
     render(<RefreshDebugView />);
     expect(screen.getByText(/F5 Resilience Verifier/i)).toBeTruthy();

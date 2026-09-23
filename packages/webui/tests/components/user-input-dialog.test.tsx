@@ -91,7 +91,13 @@ function request(id: string, title: string) {
   };
 }
 
+import { i18n } from '../../src/i18n';
 describe('WebUI structured user input dialog', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     socket.reset();
     useUserInputStore.getState().reset();

@@ -1,6 +1,22 @@
 {
   "title": "Paramètres",
   "subtitle": "Configure every aspect of your agent workspace",
+  "navigation": {
+    "browse": "Parcourir",
+    "search": "Rechercher un réglage…",
+    "clearSearch": "Effacer la recherche",
+    "noResults": "Aucun réglage correspondant",
+    "workspace": "Espace de travail",
+    "models": "Modèles et connexions",
+    "behavior": "Comportement de l’agent",
+    "system": "Système et sécurité",
+    "label": "Sections des réglages"
+  },
+  "providerTest": {
+    "title": "Test du fournisseur",
+    "description": "Testez les fournisseurs et abonnements enregistrés ; vérifiez les quotas, l’authentification, la latence et les limites de jetons.",
+    "open": "Ouvrir le test du fournisseur"
+  },
   "tabs": {
     "general": "Général",
     "provider": "Fournisseur",
@@ -659,6 +675,9 @@
     "indexOnStartLabel": "Indexer au démarrage",
     "indexOnStartHint": "Construire l'index des symboles du codebase au démarrage de la session.",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
+    "pluginSearch": "Rechercher des plugins",
+    "pluginEnabledOnly": "Actifs seulement",
+    "pluginNoMatches": "Aucun plugin ne correspond à ce filtre.",
     "pluginsPerPluginHint": "Enable or disable individual plugins. Changes take effect on next session.",
     "pluginChimera": "Chimera — post-session code review",
     "pluginSkills": "Skills — skill library & authoring",
@@ -760,6 +779,7 @@
     "statusChipHint": "Style visuel pour la ligne d’état TUI/CLI et la puce de travail.",
     "thinkingWordLabel": "Mot de réflexion",
     "thinkingWordHint": "Mot court unique affiché dans la puce d’état TUI pendant que l’agent travaille.",
+    "thinkingWordInvalid": "Utilisez un seul mot de 16 lettres, chiffres, tirets bas ou traits d’union maximum.",
     "statuslineModeLabel": "Mode ligne d’état",
     "statuslineModeHint": "Densité de la barre d’état TUI.",
     "statuslineModeMinimum": "Minimum",
@@ -795,11 +815,11 @@
     "sageDefault": "0,85 (par défaut)",
     "sageStrict": "0,95 (strict)"
   },
-  "resetLabel": "Réinitialiser",
+  "resetLabel": "Effacer les préférences locales",
   "cancel": "Annuler",
-  "resetConfirmTitle": "Réinitialiser toutes les préférences ?",
-  "resetConfirmBody": "Cela restaure les paramètres par défaut et recharge la page.",
-  "resetConfirmAction": "Réinitialiser",
+  "resetConfirmTitle": "Effacer les préférences de ce navigateur ?",
+  "resetConfirmBody": "Efface les préférences enregistrées dans ce navigateur et recharge la page. Les réglages connectés sont rechargés depuis le serveur.",
+  "resetConfirmAction": "Effacer et recharger",
   "brain": {
     "heading": "Brain",
     "headingHint": "Modèles de décision, conseil, escalade et plafond de risque — appliqués en direct, enregistrés dans la configuration globale.",

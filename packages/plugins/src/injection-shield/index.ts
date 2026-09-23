@@ -261,33 +261,46 @@ export function scanForInjection(text: string): string[] {
   return [...hits];
 }
 
-export function extractToolContent(toolResult: unknown): string {
+export function extractToolContent(
+  toolResult: unknown,
+  maxChars = Number.POSITIVE_INFINITY,
+): string {
+  const limit = Number.isFinite(maxChars) ? Math.max(0, maxChars) : Number.POSITIVE_INFINITY;
+  const clip = (value: string) => value.slice(0, limit);
   if (!toolResult) return '';
-  if (typeof toolResult === 'string') return toolResult;
+  if (typeof toolResult === 'string') return clip(toolResult);
   if (typeof toolResult === 'object') {
     const tr = toolResult as Record<string, unknown>;
-    if (typeof tr['content'] === 'string') return tr['content'];
+    if (typeof tr['content'] === 'string') return clip(tr['content']);
     if (Array.isArray(tr['content'])) {
-      return tr['content']
-        .map((item) =>
+      const parts: string[] = [];
+      let length = 0;
+      for (const item of tr['content']) {
+        const value =
           typeof item === 'string'
             ? item
             : typeof item === 'object' &&
                 item &&
                 typeof (item as Record<string, unknown>)['text'] === 'string'
               ? ((item as Record<string, unknown>)['text'] as string)
-              : '',
-        )
-        .filter(Boolean)
-        .join('\n');
+              : '';
+        if (!value) continue;
+        const separator = parts.length > 0 ? 1 : 0;
+        if (length + separator >= limit) break;
+        const next = clip(value.slice(0, limit - length - separator));
+        parts.push(next);
+        length += separator + next.length;
+        if (length >= limit) break;
+      }
+      return parts.join('\n');
     }
-    if (typeof tr['output'] === 'string') return tr['output'];
-    if (typeof tr['stdout'] === 'string') return tr['stdout'];
-    if (typeof tr['text'] === 'string') return tr['text'];
-    if (typeof tr['result'] === 'string') return tr['result'];
-    if (typeof tr['body'] === 'string') return tr['body'];
-    if (typeof tr['contents'] === 'string') return tr['contents'];
-    if (typeof tr['data'] === 'string') return tr['data'];
+    if (typeof tr['output'] === 'string') return clip(tr['output']);
+    if (typeof tr['stdout'] === 'string') return clip(tr['stdout']);
+    if (typeof tr['text'] === 'string') return clip(tr['text']);
+    if (typeof tr['result'] === 'string') return clip(tr['result']);
+    if (typeof tr['body'] === 'string') return clip(tr['body']);
+    if (typeof tr['contents'] === 'string') return clip(tr['contents']);
+    if (typeof tr['data'] === 'string') return clip(tr['data']);
   }
   return '';
 }
@@ -352,11 +365,11 @@ const plugin: Plugin = {
     }) => {
       if (!cfg.enabled) return;
       state.invocations += 1;
-      const content = extractToolContent(input.toolResult);
+      const content = extractToolContent(input.toolResult, cfg.maxScanChars);
       if (content.length === 0) return;
       state.scans += 1;
 
-      const hits = scanForInjection(content.slice(0, cfg.maxScanChars));
+      const hits = scanForInjection(content);
       if (hits.length < cfg.minMatches) return;
 
       state.detections += 1;

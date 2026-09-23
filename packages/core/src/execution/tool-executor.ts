@@ -3,6 +3,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { areSubagentsAllowed } from '../coordination/session-subagent-policy.js';
 import { type Context, resolveEventSessionId } from '../core/context.js';
+import { queueDirectoryInstructions } from '../core/project-instructions.js';
+import { spanSessionAttributes } from '../core/span-session.js';
 import {
   getDangerousCapabilities,
   hasCapability,
@@ -330,6 +332,7 @@ export class ToolExecutor {
         : [];
 
       const span = this.opts.tracer?.startSpan(`tool.${tool.name}`, {
+        ...spanSessionAttributes(ctx),
         'tool.name': tool.name,
         'tool.mutating': tool.mutating,
         'tool.permission': tool.permission,
@@ -365,6 +368,7 @@ export class ToolExecutor {
         }
         let { block: result, bytes } = this.settleToolOutput(tool, use, producedText, budget);
         budget -= bytes;
+        await queueDirectoryInstructions(tool, use.input, ctx);
         if (preToolContext?.contextAs === 'separate') {
           ctx.pendingPostToolContext = ctx.pendingPostToolContext
             ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`
@@ -602,6 +606,7 @@ export class ToolExecutor {
         text = `${text}\n\n${preToolContext.text}`;
       }
       const settled = this.settleToolOutput(tool, use, text, budget);
+      await queueDirectoryInstructions(tool, use.input, ctx);
       if (preToolContext?.contextAs === 'separate') {
         ctx.pendingPostToolContext = ctx.pendingPostToolContext
           ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`

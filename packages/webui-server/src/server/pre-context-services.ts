@@ -35,7 +35,7 @@ import {
 import { DefaultPromptLoader, DefaultSkillLoader } from '@wrongstack/core/execution';
 import { DefaultTokenCounter, resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { type Container, EventBus, TOKENS } from '@wrongstack/core/kernel';
-import { DefaultModelsRegistry, DefaultModeStore } from '@wrongstack/core/models';
+import { DefaultModelsRegistry, DefaultModeStore, startCatalog } from '@wrongstack/core/models';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { SkillInstaller } from '@wrongstack/core/skills';
 import {
@@ -45,7 +45,12 @@ import {
   getSessionRegistry,
   PromptUsageStore,
 } from '@wrongstack/core/storage';
-import { createMcpControlTool, createMcpUseTool } from '@wrongstack/core/tools';
+import {
+  createMcpControlTool,
+  createMcpUseTool,
+  createSessionRenameTool,
+  SESSION_RENAME_TOOL_NAME,
+} from '@wrongstack/core/tools';
 import {
   type Config,
   type ConfigStore,
@@ -174,13 +179,12 @@ export async function createPreContextServices(
       overlayCacheFile: wpaths.modelsOverlayCache,
     });
 
+  // Same cache-first policy as the CLI boot: a usable cache serves the UI at
+  // once and the catalog refreshes in the background (and periodically — the
+  // WebUI server is long-lived). An injected registry belongs to the host,
+  // which owns its refresh schedule.
   if (!opts.services?.modelsRegistry) {
-    try {
-      await modelsRegistry.refresh();
-      logger.info('models.dev catalog refreshed');
-    } catch (err) {
-      logger.warn(`models.dev refresh failed (${toErrorMessage(err)}); using cached catalog`);
-    }
+    await startCatalog({ registry: modelsRegistry, logger });
   }
 
   // Discovery FIRST, matching the CLI boot order: it injects runtime-discovered
@@ -411,6 +415,16 @@ export async function createPreContextServices(
       .catch(() => undefined);
   }
   const sessionReader = new DefaultSessionReader({ store: sessionStore });
+  // The model titles the session it works in (each tab's own session).
+  if (!disabledTools.has(SESSION_RENAME_TOOL_NAME)) {
+    toolRegistry.registerDefault(
+      createSessionRenameTool({
+        rename: (sessionId, name) => sessionStore.rename(sessionId, name),
+        events,
+      }),
+    );
+    if (tokenSavingTier !== 'off') toolRegistry.exposeToProvider(SESSION_RENAME_TOOL_NAME);
+  }
   const annotationsStore = new AnnotationsStore({ dir: wpaths.projectSessions, events });
   const session = await sessionStore.create({
     id: '',

@@ -43,3 +43,8 @@ export {
   type PluginManagerHookRunner,
   type PluginManagerMutationResult,
 } from './plugin-manager.js';
+export {
+  createSessionRenameTool,
+  SESSION_RENAME_TOOL_NAME,
+  type SessionRenameToolOptions,
+} from './session-rename.js';

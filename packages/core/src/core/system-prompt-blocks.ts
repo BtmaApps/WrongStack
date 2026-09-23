@@ -27,6 +27,7 @@ export type SystemBlockSource =
   | 'identity' // layer1 — instructions/system.md
   | 'tool-usage' // layer2 — tool prose summary
   | 'environment' // layer3 — OS/git/date/skills-in-scope
+  | 'project-instructions' // root AGENTS.md / CLAUDE.md (fenced, repo-supplied)
   | 'skills' // layer4 — Active Skills bodies (+ memory when injectMemory)
   | 'mode' // layer5 mode prompt + mode-skill hint
   | 'plan' // layer6 — active plan

@@ -1,13 +1,20 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileReferenceChip } from '../../src/components/FileReferenceChip';
-import { useFileReferenceStore } from '../../src/stores/file-reference-store';
 import type { FileReference } from '../../src/stores/file-reference-store';
+import { useFileReferenceStore } from '../../src/stores/file-reference-store';
 
 // The chip uses the shared file-icon helper which imports lucide-react icons.
 // Those render fine under jsdom as SVG components, so no mock is needed.
 
+import { i18n } from '../../src/i18n';
+
 describe('FileReferenceChip', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   beforeEach(() => {
     useFileReferenceStore.setState({ refs: [] });
   });

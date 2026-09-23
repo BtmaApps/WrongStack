@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   BrainDecisionCard,
   parseBrainMarkdown,
@@ -33,7 +33,14 @@ function createBrainMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
   };
 }
 
+import { i18n } from '../../src/i18n';
+
 describe('BrainDecisionCard', () => {
+  // Pin the language before rendering: the component renders t()-derived
+  // labels, and an unpinned translator can race initialization into raw keys.
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   afterEach(() => {
     cleanup();
   });

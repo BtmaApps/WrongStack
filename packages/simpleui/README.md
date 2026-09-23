@@ -64,3 +64,12 @@ For an explicit, runtime-only autonomous profile, launch with
 `wstack simpleui --full-auto --open`. This enables YOLO, Director, autonomy,
 and configured tools for that process without changing saved defaults. Absolute
 deny rules and project-root containment remain enforced.
+
+## Interface language
+
+SimpleUI chrome is English-only by design. The full WebUI carries the
+localized experience (7 locales); SimpleUI stays single-locale on purpose —
+no i18n runtime, no locale catalog maintenance, no locale-parity gates for
+a deliberately minimal surface. If that scope ever changes, adopt the WebUI
+pattern (`src/i18n/locales/<locale>/*.json` plus the catalog-integrity and
+t()-reference tests) instead of introducing a second mechanism here.

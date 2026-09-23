@@ -61,7 +61,11 @@ export function PreferenceToggle({
         <label htmlFor={switchId} className="text-sm font-medium">
           {label}
         </label>
-        {hint && <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>}
+        {hint && (
+          <div id={`${switchId}-hint`} className="text-xs text-muted-foreground mt-0.5">
+            {hint}
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -69,18 +73,19 @@ export function PreferenceToggle({
         role="switch"
         aria-checked={on}
         aria-label={label}
+        aria-describedby={hint ? `${switchId}-hint` : undefined}
         disabled={disabled}
         onClick={handleToggle}
         className={cn(
-          'shrink-0 relative inline-flex h-5 w-9 rounded-full border transition-colors',
+          'shrink-0 relative inline-flex h-6 w-11 rounded-full border transition-colors',
           on ? 'bg-primary border-primary' : 'bg-muted border-input hover:bg-muted/80',
           disabled && 'opacity-50 cursor-not-allowed',
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 left-0.5 h-3.5 w-3.5 rounded-full bg-background shadow transition-transform',
-            on && 'translate-x-4',
+            'absolute top-0.5 left-0.5 h-[18px] w-[18px] rounded-full bg-background shadow transition-transform',
+            on && 'translate-x-5',
           )}
         />
       </button>

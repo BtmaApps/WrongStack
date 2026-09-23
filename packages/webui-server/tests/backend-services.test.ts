@@ -456,6 +456,49 @@ describe('createAgentServices', () => {
       } as never);
       expect(input.context.meta.contextWindowMode).toBe('frugal');
     });
+
+    it('skips the models.dev round-trip when the catalog was fetched moments ago', async () => {
+      const input = makeInput();
+      input.modelsRegistry.ageSeconds = vi.fn(async () => 30);
+      const services = await createAgentServices(input);
+
+      await services.updateAutoCompactionMaxContext(switchedProvider(200_000), 'openai', {
+        type: 'openai',
+      } as never);
+
+      expect(input.modelsRegistry.refresh).not.toHaveBeenCalled();
+    });
+
+    it('re-resolves the active window from a catalog change without fetching again', async () => {
+      const input = makeInput();
+      let onChange: (() => void) | undefined;
+      input.modelsRegistry.onCatalogChanged = vi.fn((listener: () => void) => {
+        onChange = listener;
+        return () => undefined;
+      });
+      const services = await createAgentServices(input);
+      const next = switchedProvider(200_000);
+      await services.updateAutoCompactionMaxContext(next, 'openai', { type: 'openai' } as never);
+      expect(input.modelsRegistry.refresh).toHaveBeenCalledTimes(1);
+
+      // Boot's background refresh lands with a bigger window for the model.
+      vi.mocked(resolveProviderModelMetadata).mockResolvedValue({
+        capabilities: { maxContext: 1_000_000 },
+      } as never);
+      onChange?.();
+      await vi.waitFor(() => expect(next.capabilities.maxContext).toBe(1_000_000));
+
+      expect(input.context.meta.effectiveMaxContext).toBe(1_000_000);
+      expect(autoCompactors[0]?.setMaxContext).toHaveBeenLastCalledWith(1_000_000);
+      // Resolved against the switched-to target, with no second network trip.
+      expect(vi.mocked(resolveProviderModelMetadata)).toHaveBeenLastCalledWith(
+        input.modelsRegistry,
+        'openai',
+        'gpt-4o',
+        { type: 'openai' },
+      );
+      expect(input.modelsRegistry.refresh).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('brainLedger getter returns undefined when disabled', async () => {

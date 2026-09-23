@@ -8,6 +8,10 @@ export interface ConversationRouteHandlers {
   ping: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
   confirmTool: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
   submitUserInput: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
+  /** `queue.add` / `queue.remove` / `queue.clear` / `queue.get`: the host-owned prompt queue. */
+  queue?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void> | void) | undefined;
+  /** `composer.warm`: open the session's provider connection while the user types. */
+  warmProvider?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void> | void) | undefined;
 }
 
 export async function handleConversationRoute(
@@ -33,6 +37,17 @@ export async function handleConversationRoute(
       return true;
     case 'user.input_submit':
       await handlers.submitUserInput(ws, msg);
+      return true;
+    case 'queue.add':
+    case 'queue.remove':
+    case 'queue.clear':
+    case 'queue.get':
+      if (!handlers.queue) return false;
+      await handlers.queue(ws, msg);
+      return true;
+    case 'composer.warm':
+      if (!handlers.warmProvider) return false;
+      await handlers.warmProvider(ws, msg);
       return true;
     default:
       return false;

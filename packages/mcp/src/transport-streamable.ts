@@ -1,11 +1,10 @@
 import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
-import { readBodyCapped } from './read-body.js';
-import { listAllTools } from './tool-schema.js';
+import { MAX_MCP_HTTP_BODY_BYTES, readBodyCapped } from './read-body.js';
+import { listAllTools, toToolCallResult } from './tool-schema.js';
 import {
   BaseHTTPTransport,
-  createTimeoutSignal,
   type HttpTransportOptions,
   makeAbortError,
   nextJsonRpcId,
@@ -43,19 +42,88 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     return id;
   }
 
-  private consumeResponseText(text: string, requestId: number): JsonRpcResult | undefined {
-    const envelopes = extractJsonRpcEnvelopes(text);
-    for (const envelope of envelopes) {
-      if ('method' in envelope && envelope.id === undefined) {
+  /**
+   * Read a POST's reply. A `text/event-stream` reply is consumed event by
+   * event: the server may put notifications and its OWN requests (elicitation)
+   * ahead of our response and then wait for our answer to them, so buffering
+   * the whole body first would deadlock the call.
+   */
+  private async readResponse(res: Response, requestId: number): Promise<JsonRpcResult | undefined> {
+    const streamed = (res.headers?.get('content-type') ?? '').includes('text/event-stream');
+    const body = res.body;
+    if (!streamed || !body || typeof body.getReader !== 'function') {
+      return this.takeEnvelopes(await readBodyCapped(res), requestId);
+    }
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    const others: JsonRpcResult[] = [];
+    let pending = '';
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_MCP_HTTP_BODY_BYTES) {
+          throw new Error(`MCP response stream exceeded ${MAX_MCP_HTTP_BODY_BYTES} bytes`);
+        }
+        pending += decoder.decode(value, { stream: true });
+        const cut = completeEventsEnd(pending);
+        if (cut === 0) continue;
+        const match = this.takeEnvelopes(pending.slice(0, cut), requestId, others);
+        pending = pending.slice(cut);
+        if (match) {
+          await reader.cancel().catch(() => undefined);
+          return match;
+        }
+      }
+      pending += decoder.decode();
+      return this.takeEnvelopes(pending, requestId, others) ?? others[0];
+    } finally {
+      reader.releaseLock?.();
+    }
+  }
+
+  /**
+   * Dispatch the notifications and server requests in `text`, and return the
+   * response to `requestId` — falling back to the first other response, which
+   * the caller's id check then rejects.
+   */
+  private takeEnvelopes(
+    text: string,
+    requestId: number,
+    others: JsonRpcResult[] = [],
+  ): JsonRpcResult | undefined {
+    let match: JsonRpcResult | undefined;
+    for (const envelope of extractJsonRpcEnvelopes(text)) {
+      if (isJsonRpcResult(envelope)) {
+        if (envelope.id === requestId) match ??= envelope;
+        else others.push(envelope);
+      } else if (envelope.id !== undefined) {
+        void this.replyToServer(
+          { id: envelope.id, method: envelope.method, params: envelope.params },
+          this.url,
+          this.sessionHeaders(),
+        );
+      } else {
         this.handleNotification(envelope.method, envelope.params);
       }
     }
-    const responses = envelopes.filter(isJsonRpcResult);
-    return responses.find((envelope) => envelope.id === requestId) ?? responses[0];
+    return match ?? others[0];
+  }
+
+  private sessionHeaders(): Record<string, string> {
+    return {
+      Accept: 'application/json, text/event-stream',
+      ...(this.sessionId ? { 'Mcp-Session-Id': this.sessionId } : {}),
+      ...this.headers,
+    };
   }
 
   private handleNotification(method: string, params?: unknown): void {
-    if (method === 'notifications/resources/list_changed') {
+    if (method === 'notifications/cancelled') {
+      this.serverRequests.cancel(params);
+    } else if (method === 'notifications/resources/list_changed') {
       this.notifyResourcesChanged();
     } else if (method === 'notifications/prompts/list_changed') {
       this.notifyPromptsChanged();
@@ -107,8 +175,9 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
           method: 'initialize',
           params: {
             protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-            // Client capabilities — none offered (`tools` is a server capability).
-            capabilities: {},
+            // Client capabilities: elicitation when the host can ask its user
+            // (`tools` is a server capability and never belongs here).
+            capabilities: this.serverRequests.capabilities(),
             clientInfo: MCP_CONSTANTS.CLIENT_INFO,
           },
         }),
@@ -177,7 +246,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = createTimeoutSignal(parent, this.requestTimeout);
+    const timeoutSignal = this.requestTimeoutSignal(parent, this.requestTimeout);
     const fetchOpts: RequestInit = {
       method: 'POST',
       headers: {
@@ -209,7 +278,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         return { jsonrpc: '2.0', id };
       }
 
-      const match = this.consumeResponseText(await readBodyCapped(res), id);
+      const match = await this.readResponse(res, id);
       if (match) {
         return assertMatchingJsonRpcResult(match, id, method);
       }
@@ -245,7 +314,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = createTimeoutSignal(parent, timeoutMs ?? this.requestTimeout);
+    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs ?? this.requestTimeout);
     const fetchOpts: RequestInit = {
       method: 'POST',
       headers: {
@@ -274,9 +343,9 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         return { jsonrpc: '2.0', id };
       }
 
-      const parsed = this.consumeResponseText(await readBodyCapped(res), id);
+      const parsed = await this.readResponse(res, id);
       if (parsed) {
-        // consumeResponseText falls back to the FIRST response when none
+        // readResponse falls back to the FIRST response when none
         // carries our id; without this check another request's result was
         // returned as this one's.
         const matched = assertMatchingJsonRpcResult(parsed, id, method);
@@ -311,16 +380,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       throw new Error(`streamable-http transport not connected (state=${this.state})`);
     }
     const res = await this.postRaw('tools/call', { name, arguments: input }, opts);
-    if (res.error) {
-      return { content: res.error.message, isError: true };
-    }
-    const result = res.result as
-      | { content?: unknown | undefined; isError?: boolean | undefined }
-      | undefined;
-    return {
-      content: result?.content ?? '',
-      isError: Boolean(result?.isError),
-    };
+    return toToolCallResult(res);
   }
 
   async close(): Promise<void> {
@@ -353,4 +413,14 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       this.notifyDisconnect();
     }
   }
+}
+
+/**
+ * End of the last complete SSE event in `text` (just past its blank line), or
+ * 0 when no event has completed yet.
+ */
+function completeEventsEnd(text: string): number {
+  const lf = text.lastIndexOf('\n\n');
+  const crlf = text.lastIndexOf('\r\n\r\n');
+  return Math.max(lf === -1 ? 0 : lf + 2, crlf === -1 ? 0 : crlf + 4);
 }

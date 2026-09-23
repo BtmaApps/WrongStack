@@ -17,13 +17,21 @@ import {
 import type { WebSocket } from 'ws';
 import type { ConversationRouteHandlers } from './conversation-routes.js';
 import type { ConfirmDecision, PendingConfirm } from './pending-confirms.js';
+import {
+  createSessionPromptQueue,
+  handlePromptQueueMessage,
+  type SessionPromptQueue,
+} from './session-prompt-queue.js';
 import type { WSClientMessage } from './types.js';
 import { errMessage } from './ws-utils.js';
 
 type OutboundMessage = { type: string; payload: unknown };
 
-/** Who started a turn: a user message, or the runtime (background-delegation auto-wake). */
-export type ConversationTurnOrigin = 'user' | 'runtime';
+/**
+ * Who started a turn: a user message, the runtime (background-delegation
+ * auto-wake), or a prompt the user queued earlier that the host drained.
+ */
+export type ConversationTurnOrigin = 'user' | 'runtime' | 'queue';
 
 interface TurnPayload {
   id?: unknown;
@@ -92,6 +100,11 @@ export interface ConversationOperationsContext {
   onRunEnded?:
     | ((sessionId: string, info: { aborted: boolean; origin: ConversationTurnOrigin }) => void)
     | undefined;
+  /**
+   * Where queued prompts are persisted, one file per session. Omitted: the
+   * queue still works but lives only as long as this host.
+   */
+  promptQueueDir?: string | undefined;
 }
 
 export interface ConversationOperations extends ConversationRouteHandlers {
@@ -102,6 +115,8 @@ export interface ConversationOperations extends ConversationRouteHandlers {
    * itself continues after the promise resolves.
    */
   startRuntimeTurn(sessionId: string, prompt: string): Promise<boolean>;
+  /** The host-owned queue of prompts waiting for each session's run to end. */
+  readonly promptQueue: SessionPromptQueue;
 }
 
 /**
@@ -148,6 +163,9 @@ export function createConversationOperations(
     });
     return false;
   };
+
+  /** Sessions whose turn holds the run lock right now (turns started here). */
+  const activeTurns = new Set<string>();
 
   /**
    * The ONE turn path. A user message and a runtime turn (background
@@ -209,6 +227,7 @@ export function createConversationOperations(
         const claimed = ctx.runControl.begin(ws, originSessionId);
         if (!claimed) return null;
         controller = claimed;
+        activeTurns.add(originSessionId);
         const agent = ctx.getAgent(originSessionId);
         // A per-tab agent is born with a PLACEHOLDER writer; the real one is
         // installed by the session transition that owns the id. Running
@@ -226,6 +245,7 @@ export function createConversationOperations(
         const writer = agent.ctx.session as { append?: unknown } | null | undefined;
         if (writer && typeof writer.append !== 'function') {
           ctx.runControl.end(ws, originSessionId, claimed);
+          activeTurns.delete(originSessionId);
           controller = undefined;
           refusedWithReason = true;
           // A runtime turn has no composer to resend from: echoing its
@@ -354,17 +374,52 @@ export function createConversationOperations(
       if (controller) {
         const aborted = controller.signal.aborted;
         ctx.runControl.end(ws, originSessionId, controller);
+        activeTurns.delete(originSessionId);
         if (ran) {
           try {
             ctx.onRunEnded?.(originSessionId, { aborted, origin });
           } catch {
             // Post-run bookkeeping must never surface instead of the result.
           }
+          // Next queued prompt, after every ended turn — Stop included, as
+          // the browser-held queue always did.
+          void promptQueue.drain(originSessionId);
         }
       }
       settle(false);
     }
   };
+
+  const promptQueue = createSessionPromptQueue({
+    dir: ctx.promptQueueDir,
+    isBusy: (sessionId) => activeTurns.has(sessionId),
+    // A drained prompt is user input the user already sent: it counts as
+    // pending input for the auto-wake guard, and its refusals stay silent
+    // because the queue keeps the prompt and retries after the next turn.
+    startTurn: (sessionId, prompt, onStart) =>
+      new Promise<boolean>((resolve) => {
+        let release: (() => void) | undefined;
+        try {
+          release = ctx.onUserMessage?.(sessionId);
+        } catch {
+          release = undefined;
+        }
+        void runTurn({
+          ws: undefined,
+          originSessionId: sessionId,
+          payload: { content: prompt.text, ...(prompt.images ? { images: prompt.images } : {}) },
+          origin: 'queue',
+          onSettled: (started) => {
+            release?.();
+            if (started) onStart();
+            resolve(started);
+          },
+        });
+      }),
+    broadcast: (message) => ctx.broadcast?.(message),
+    warn: (message) =>
+      console.warn(JSON.stringify({ level: 'warn', event: 'webui.prompt_queue', message })),
+  });
 
   const startRuntimeTurn = (sessionId: string, prompt: string): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
@@ -379,6 +434,25 @@ export function createConversationOperations(
 
   return {
     startRuntimeTurn,
+    promptQueue,
+    queue: async (ws, msg) => {
+      if (!ensureCurrentSession(ws, msg, msg.type)) return;
+      await handlePromptQueueMessage(promptQueue, {
+        sessionId: requestedSessionId(msg) ?? ctx.getSessionId(),
+        type: msg.type,
+        payload: msg.payload,
+        reply: (message) => ctx.send(ws, message),
+      });
+    },
+    warmProvider: (_ws, msg) => {
+      // Fire-and-forget and silent: a warm-up for a session this host does not
+      // hold, or one that is mid-turn (its connection is open), is just skipped.
+      const sessionId = requestedSessionId(msg) ?? ctx.getSessionId();
+      if (!sessionId || (sessionId !== ctx.getSessionId() && !ctx.hasSession?.(sessionId))) return;
+      if (activeTurns.has(sessionId)) return;
+      const agent = ctx.getAgent(sessionId);
+      void agent.ctx.provider.warm?.(agent.ctx.model).catch(() => undefined);
+    },
     topicAdvice: async (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'topic.advice')) return;
       const payload = (msg.payload ?? {}) as { requestId?: unknown; prompt?: unknown };

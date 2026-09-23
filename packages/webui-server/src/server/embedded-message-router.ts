@@ -94,6 +94,7 @@ import type { SddBoardWebSocketHandler } from './sdd-board-ws-handler.js';
 import type { SddWizardRouteHandlers } from './sdd-wizard-routes.js';
 import type { SddWizardWebSocketHandler } from './sdd-wizard-ws-handler.js';
 import { collectDisplayedSessionIds, createSessionTransitionGate } from './session-handlers.js';
+import { promptQueueDirFor } from './session-prompt-queue.js';
 import type { ShellGitRouteHandlers } from './shell-git-routes.js';
 import { handleShellOpen, normalizeShellOpenTarget, type ShellOpenTarget } from './shell-open.js';
 import type { SkillsContext } from './skills-handlers.js';
@@ -221,6 +222,10 @@ export function createEmbeddedMessageRouter(
 
   const guardedTypes = new Set([
     'user_message',
+    'queue.add',
+    'queue.remove',
+    'queue.clear',
+    'queue.get',
     'topic.advice',
     'abort',
     'tool.confirm_result',
@@ -849,6 +854,9 @@ export function createEmbeddedMessageRouter(
       conversation: createEmbeddedConversationRoutes({
         ...deps.conversationCtx,
         withSessionTransition: sessionTransitionGate,
+        promptQueueDir: promptQueueDirFor(
+          deps.sessionCtx.opts.sessionsDir ?? path.join(projectRoot(), '.wrongstack', 'sessions'),
+        ),
       }),
       completion,
       autonomy: createAutonomyRouteHandlers(deps.prefsCtx),

@@ -2555,8 +2555,21 @@ input:focus-visible,
   background: var(--surface);
   color: inherit;
 }
+/* Primary save actions use the theme-correct accent pairing — same contract
+   as .permission-actions .primary / .refine-actions .primary. */
+.auth-panel-body button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
 .auth-panel-body button:disabled {
-  opacity: 0.5;
+  /* No opacity dimming: compositing dimmed text below AA in light theme
+     (measured 3.4:1 at 0.5). Tone + cursor carry the disabled affordance —
+     same treatment as .command-palette-item:disabled. Sits after .primary
+     so a disabled save action also shows the muted border. */
+  cursor: default;
+  border-color: var(--line);
 }
 .auth-key-row {
   display: flex;
@@ -4707,9 +4720,11 @@ input:focus-visible,
 }
 
 .command-palette-item:disabled {
-  color: var(--subtle);
+  /* --muted at full opacity: >=5.4:1 light, >=4.8:1 dark on palette surfaces.
+     No opacity dimming — compositing dimmed muted below AA in light theme
+     (measured 3.2:1 at 0.75). Tone + cursor carry the disabled affordance. */
+  color: var(--muted);
   cursor: default;
-  opacity: 0.55;
 }
 
 .command-palette-item-main {

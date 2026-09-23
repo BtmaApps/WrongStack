@@ -108,7 +108,7 @@ export {
   specialistTaskText,
 } from '../plugins/specialist-trigger-rules.js';
 export { createSyncPlugin } from '../plugins/sync-plugin.js';
-export type { PluginAPI } from '../types/plugin.js';
+export type { PluginAPI, PluginJev } from '../types/plugin.js';
 export { DefaultPluginAPI, definePlugin, type PluginAPIInit } from './api.js';
 export {
   diffPluginConfig,

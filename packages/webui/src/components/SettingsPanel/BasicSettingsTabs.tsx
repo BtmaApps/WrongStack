@@ -81,6 +81,7 @@ export function AppearanceSettingsTab() {
           <Button
             variant={theme === 'light' ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={theme === 'light'}
             onClick={() => setTheme('light')}
           >
             <Sun className="h-4 w-4 mr-1" />
@@ -89,6 +90,7 @@ export function AppearanceSettingsTab() {
           <Button
             variant={theme === 'dark' ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={theme === 'dark'}
             onClick={() => setTheme('dark')}
           >
             <Moon className="h-4 w-4 mr-1" />
@@ -97,6 +99,7 @@ export function AppearanceSettingsTab() {
           <Button
             variant={theme === 'system' ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={theme === 'system'}
             onClick={() => setTheme('system')}
           >
             <Monitor className="h-4 w-4 mr-1" />

@@ -17,6 +17,10 @@ export const SURFACE_PROTOCOL_CAPABILITIES = [
   'sdd.interview.continuity',
   /** Launch multi-agent runs from a graph id or resolved spec id. */
   'sdd.run.from_graph',
+  /** Host-owned prompt queue per session: queue.add/remove/clear/get, queue.state/drained. */
+  'session.prompt-queue',
+  /** `composer.warm`: the user is typing; open the provider connection ahead of the send. */
+  'session.provider-warm',
 ] as const;
 
 export type SurfaceProtocolCapability = (typeof SURFACE_PROTOCOL_CAPABILITIES)[number];
