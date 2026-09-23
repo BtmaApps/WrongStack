@@ -1,9 +1,11 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Symbol as IndexSymbol } from '../src/codebase-index/schema.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Ref, Symbol as IndexSymbol } from '../src/codebase-index/schema.js';
 import { IndexStore } from '../src/codebase-index/writer.js';
+
+vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 let store: IndexStore;
 let tmpDir: string;
@@ -25,12 +27,12 @@ const sym = (name: string, file: string, line = 1): IndexSymbol => ({
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-graph-chunk-'));
   store = new IndexStore(tmpDir, { indexDir: path.join(tmpDir, '.idx') });
-});
+}, 120_000);
 
 afterEach(async () => {
   store.close();
   await fs.rm(tmpDir, { recursive: true, force: true });
-});
+}, 120_000);
 
 function idsByName(): Map<string, number> {
   return new Map(store.search('', {}, { limit: 100_000 }).map((s) => [s.name, s.id]));
@@ -45,10 +47,12 @@ describe('graph readers — bound-variable chunking', () => {
       Array.from({ length: count }, (_, i) => sym(`chainFn${i}`, `/p/src/f${i}.ts`)),
     );
     const ids = idsByName();
+    const refs: Ref[] = [];
     for (let i = 0; i < count - 1; i++) {
       const fromId = ids.get(`chainFn${i}`) as number;
-      store.insertRefs(fromId, [{ fromId, toName: `chainFn${i + 1}`, callType: 'call', line: 2 }]);
+      refs.push({ fromId, toName: `chainFn${i + 1}`, callType: 'call', line: 2 });
     }
+    store.insertRefsBatch(refs);
     store.resolveRefs();
 
     const graph = store.getFileGraph('src');

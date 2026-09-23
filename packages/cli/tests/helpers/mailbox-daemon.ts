@@ -14,11 +14,47 @@
  * EBUSY on the directory itself — the assertions pass and the teardown throws.
  */
 import * as fs from 'node:fs/promises';
+import * as net from 'node:net';
 import * as path from 'node:path';
-import { MailboxProjectServerConnection } from '@wrongstack/core/coordination';
+import {
+  MailboxProjectServerConnection,
+  mailboxProjectServerEndpoint,
+  mailboxProjectServerMetadataPath,
+} from '@wrongstack/core/coordination';
 
 interface ClosableMailbox {
   close(): Promise<void>;
+}
+
+async function waitForMetadataRemoval(metadataPath: string, timeoutMs = 5_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await fs.stat(metadataPath);
+      await new Promise((r) => setTimeout(r, 25));
+    } catch {
+      return;
+    }
+  }
+}
+
+async function waitForEndpointClosed(endpoint: string, timeoutMs = 5_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const socket = net.createConnection(endpoint);
+        socket.once('connect', () => {
+          socket.destroy();
+          resolve();
+        });
+        socket.once('error', reject);
+      });
+      await new Promise((r) => setTimeout(r, 50));
+    } catch {
+      return;
+    }
+  }
 }
 
 /**
@@ -39,7 +75,11 @@ export async function disposeProjectMailbox(
   }
   const control = new MailboxProjectServerConnection(projectDir);
   try {
-    await control.shutdown('test-teardown');
+    const result = await control.shutdown('test-teardown');
+    if (result.stopped) {
+      await waitForMetadataRemoval(mailboxProjectServerMetadataPath(projectDir));
+      await waitForEndpointClosed(mailboxProjectServerEndpoint(projectDir));
+    }
   } catch {
     // No owner running, or it exited on its own — nothing to shut down.
   } finally {

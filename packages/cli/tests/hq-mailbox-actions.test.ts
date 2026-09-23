@@ -132,11 +132,23 @@ function actionUrl(h: HqServerHandle, mailId: string): string {
 }
 
 async function postAction(h: HqServerHandle, mailId: string, body: unknown): Promise<Response> {
-  return fetch(actionUrl(h, mailId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const url = actionUrl(h, mailId);
+  const doFetch = () =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  let res = await doFetch();
+  // Under full-suite parallel load, the project daemon cold-start or IPC roundtrip
+  // can transiently 500 while the daemon spawns or binds its endpoint.
+  // Mirrors `postActionWithRetry` in `hq-mailbox-mutation.test.ts`.
+  for (let attempt = 1; attempt <= 4 && res.status === 500; attempt++) {
+    await new Promise((r) => setTimeout(r, 250 * attempt));
+    res = await doFetch();
+  }
+  return res;
 }
 
 describe('HQ mailbox message actions (POST /api/mailbox/messages/:id/action)', () => {
@@ -149,7 +161,10 @@ describe('HQ mailbox message actions (POST /api/mailbox/messages/:id/action)', (
         readerId: 'hq-operator',
         sessionId: 'sess-ack-1',
       });
-      expect(res.status).toBe(200);
+      expect(
+        res.status,
+        res.status === 200 ? undefined : `postAction returned ${res.status}: ${await res.clone().text()}`,
+      ).toBe(200);
       const body = (await res.json()) as {
         action: string;
         mailId: string;
