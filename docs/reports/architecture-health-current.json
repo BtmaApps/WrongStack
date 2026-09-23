@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T05:40:46.679Z",
+  "generatedAt": "2026-09-23T07:03:29.619Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 4109,
-    "testFiles": 3623,
+    "testFiles": 3625,
     "sourceLines": 969248,
     "workspaceEdges": 129,
     "moduleEdges": 13398,
@@ -148,7 +148,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 529,
-      "testFiles": 531,
+      "testFiles": 532,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 531
+          "testFiles": 532
         }
       ]
     },
@@ -738,7 +738,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 230,
-      "testFiles": 270,
+      "testFiles": 271,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -754,7 +754,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 270
+          "testFiles": 271
         }
       ]
     },
@@ -4622,6 +4622,12 @@
       },
       {
         "file": "packages/cli/tests/tui-resource-menus.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tui-resume-callback.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15950,6 +15956,12 @@
       },
       {
         "file": "packages/tools/tests/project-server-idle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/project-server-launch.test.ts",
         "projects": [
           "root-node"
         ]
