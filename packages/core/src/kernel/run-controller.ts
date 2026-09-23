@@ -89,7 +89,7 @@ export class RunController {
   }
 
   abort(reason?: unknown): void {
-    if (this.ctrl.signal.aborted) return;
+    if (this.hooksDrained || this.ctrl.signal.aborted) return;
     this.ctrl.abort(reason);
   }
 

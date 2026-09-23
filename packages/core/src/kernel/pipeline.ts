@@ -186,7 +186,7 @@ export class Pipeline<T> {
 
   async run(input: T): Promise<T> {
     let index = -1;
-    const chain = this.chain;
+    const chain = this.chain.slice();
     const errorHandler = this.errorHandler;
 
     const dispatch = async (i: number, value: T): Promise<T> => {
