@@ -199,10 +199,10 @@ describe('coverage lock script', () => {
     expect(harness.options.openFile).toHaveBeenCalledTimes(2);
   });
 
-  it('identifies stale locks by age, invalid owner, and dead owner', () => {
+  it('keeps old locks when their owner is alive and reclaims invalid or dead owners', () => {
     const oldHarness = createLockHarness();
     oldHarness.options.statFile.mockReturnValue({ mtimeMs: 0 });
-    expect(createCoverageLock(oldHarness.options).isStale()).toBe(true);
+    expect(createCoverageLock(oldHarness.options).isStale()).toBe(false);
 
     const invalidHarness = createLockHarness();
     invalidHarness.options.readFile.mockReturnValue('not-a-pid');
@@ -216,6 +216,12 @@ describe('coverage lock script', () => {
 
     const liveHarness = createLockHarness();
     expect(createCoverageLock(liveHarness.options).isStale()).toBe(false);
+
+    const failedProbe = createLockHarness();
+    failedProbe.options.checkProcessAlive.mockImplementation(() => {
+      throw new Error('process probe unavailable');
+    });
+    expect(createCoverageLock(failedProbe.options).isStale()).toBe(false);
   });
 
   it('treats a freshly-created lock with empty owner as not-yet-stale (grace period)', () => {
@@ -248,7 +254,7 @@ describe('coverage lock script', () => {
     expect(harness.options.sleepFor).toHaveBeenCalledTimes(2);
   });
 
-  it('force-breaks a live lock after the timeout', async () => {
+  it('reports a timeout without breaking a live lock', async () => {
     const harness = createLockHarness();
     harness.options.maxWaitMs = 0;
     harness.options.statFile.mockReturnValue({ mtimeMs: 100 });
@@ -258,14 +264,18 @@ describe('coverage lock script', () => {
       })
       .mockReturnValue(7);
 
-    await expect(createCoverageLock(harness.options).acquire()).resolves.toBeUndefined();
-    expect(harness.stderr).toHaveBeenCalledTimes(2);
+    await expect(createCoverageLock(harness.options).acquire()).rejects.toThrow(
+      'timed out after 0s waiting for live owner pid',
+    );
+    expect(harness.options.unlinkFile).not.toHaveBeenCalled();
+    expect(harness.stderr).toHaveBeenCalledTimes(1);
     expect(harness.options.sleepFor).not.toHaveBeenCalled();
   });
 
-  it('tolerates a timeout unlink race', async () => {
+  it('retries an atomic create when a dead owner disappears during unlink', async () => {
     const harness = createLockHarness();
     harness.options.maxWaitMs = 0;
+    harness.options.checkProcessAlive.mockReturnValue(false);
     harness.options.openFile
       .mockImplementationOnce(() => {
         throw existingLockError();

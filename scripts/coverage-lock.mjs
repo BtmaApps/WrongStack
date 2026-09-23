@@ -26,7 +26,8 @@ const DEFAULT_MAX_WAIT_MS = 60 * 60 * 1000;
  * for the full 1h timeout on this host. Instead, we shell out to `tasklist`
  * and parse the CSV output for the PID row. When the probe tool itself fails
  * (ENOENT, timeout), we conservatively assume the process is alive to avoid
- * breaking a valid lock — the age-based timeout in `isStale()` is the backstop.
+ * breaking a valid lock. A probe failure keeps the lock held; the waiter
+ * reports a timeout instead of corrupting another run's coverage output.
  *
  * On POSIX, `process.kill(pid, 0)` works correctly (throws ESRCH for dead PIDs).
  *
@@ -52,8 +53,7 @@ function defaultCheckProcessAlive(pid) {
       }
       // Probe tool failure (binary missing, timeout, permission denied, FD
       // exhaustion): conservatively assume alive. Breaking a valid lock
-      // re-opens the coverage/.tmp race this file exists to prevent. The
-      // age-based timeout in isStale() is the backstop for stale locks.
+      // re-opens the coverage/.tmp race this file exists to prevent.
       return true;
     }
   }
@@ -117,8 +117,6 @@ export function createCoverageLock(options = {}) {
     } catch {
       return true;
     }
-    if (now() - stat.mtimeMs > maxWaitMs) return true;
-
     const owner = Number(readOwner());
     if (!Number.isFinite(owner) || owner <= 0) {
       // The owner PID hasn't been written yet — another process just created
@@ -131,7 +129,7 @@ export function createCoverageLock(options = {}) {
     try {
       return !checkProcessAlive(owner);
     } catch {
-      return true;
+      return false;
     }
   }
 
@@ -172,15 +170,9 @@ export function createCoverageLock(options = {}) {
       }
 
       if (waited >= maxWaitMs) {
-        stderr(
-          `coverage-lock: gave up waiting after ${Math.round(maxWaitMs / 1000)}s; proceeding (stale owner pid ${readOwner()}).`,
+        throw new Error(
+          `coverage-lock: timed out after ${Math.round(maxWaitMs / 1000)}s waiting for live owner pid ${readOwner()}`,
         );
-        try {
-          unlinkFile(lockPath);
-        } catch {
-          // A concurrent release is harmless; retry the atomic create.
-        }
-        continue;
       }
 
       await sleepFor(pollMs);
