@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-23T07:30:46.668Z
+**Generated:** 2026-09-23T16:25:30.584Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,16 +8,16 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 4109 |
-| Production source lines | 969248 |
-| Test files | 3625 |
+| Production source files | 4119 |
+| Production source lines | 972097 |
+| Test files | 3639 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 13398 |
+| Relative module edges | 13438 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
 | Tests without TypeScript test-project coverage | 0 |
-| Tests in multiple TypeScript projects | 0 |
+| Tests in multiple TypeScript projects | 2 |
 
 ## Verification result
 
@@ -31,19 +31,19 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/bench | 26 | 52 | @wrongstack/core |
 | @wrongstack/cli | 529 | 532 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 937 | 814 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop | 44 | 27 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/core | 940 | 821 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/desktop | 44 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 40 | 29 | @wrongstack/persistence |
 | @wrongstack/kanban | 95 | 72 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 43 | 45 | @wrongstack/core |
+| @wrongstack/mcp | 45 | 46 | @wrongstack/core |
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 125 | 120 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
-| @wrongstack/providers | 86 | 76 | @wrongstack/core |
+| @wrongstack/providers | 86 | 77 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 14 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
@@ -57,10 +57,10 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 230 | 271 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 436 | 384 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 20 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 576 | 398 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 580 | 400 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 46 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 17 | 8 | @wrongstack/core |
-| @wrongstack/webui-server | 246 | 232 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
+| @wrongstack/webui-server | 247 | 232 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 6 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |
 
@@ -93,9 +93,8 @@ None.
 | 968 | `packages/core/src/coordination/director.ts` |
 | 958 | `packages/sage/src/project-server.ts` |
 | 957 | `packages/webui-server/src/server/embedded-message-router.ts` |
-| 956 | `packages/mcp/src/client.ts` |
 | 955 | `packages/tools/src/codebase-index/writer.ts` |
-| 947 | `packages/webui-server/src/server/backend-services.ts` |
+| 954 | `packages/mcp/src/client.ts` |
 | 946 | `packages/cli/src/execution.ts` |
 | 943 | `packages/tui/src/use-app-controller.tsx` |
 | 939 | `packages/acp/src/client/acp-session.ts` |
@@ -108,19 +107,21 @@ None.
 | 911 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 911 | `packages/webui/src/types/client-message.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
+| 908 | `packages/mcp/src/registry.ts` |
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 906 | `packages/core/src/types/provider.ts` |
-| 905 | `packages/mcp/src/registry.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |
 | 895 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
 | 891 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 889 | `packages/cli/src/cli-main.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
+| 888 | `packages/tools/src/json.ts` |
 | 887 | `packages/mcp/src/server.ts` |
+| 887 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 886 | `packages/cli/src/slash-commands/sdd.ts` |
 | 886 | `packages/core/src/coordination/collab-debug.ts` |
-| 886 | `packages/tools/src/json.ts` |
 | 883 | `packages/kanban/src/server/project-server.ts` |
+| 881 | `packages/webui-server/src/server/backend-services.ts` |
 | 881 | `packages/webui/src/components/TechStackView/index.tsx` |
 | 880 | `packages/plugins/src/duplicate-code-detector/index.ts` |
 | 880 | `packages/providers/src/index.ts` |
@@ -130,7 +131,6 @@ None.
 | 878 | `packages/cli/src/webui-server.ts` |
 | 878 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 878 | `packages/primitives/src/regex-guard.ts` |
-| 878 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 877 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 875 | `packages/cli/src/fleet/host.ts` |
 | 874 | `packages/simpleui/src/use-simple-ui-session.tsx` |
@@ -138,13 +138,13 @@ None.
 
 ## Exports only tests reference
 
-- 940 runtime exports are referenced by tests and by no other production file.
+- 939 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 
 ## TypeScript test coverage debt
 
 - 0 test files are not included in a package TypeScript test project.
-- 0 test files are included in more than one package TypeScript project.
+- 2 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.
