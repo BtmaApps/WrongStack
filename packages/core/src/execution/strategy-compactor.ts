@@ -1,7 +1,12 @@
 import type { Context } from '../core/context.js';
 import { LLMSelector } from '../models/llm-selector.js';
 import { SystemOneSelector } from '../models/system-one-selector.js';
-import type { Compactor, CompactReport } from '../types/compactor.js';
+import type {
+  CompactionObserver,
+  CompactOptions,
+  Compactor,
+  CompactReport,
+} from '../types/compactor.js';
 import type { ContextWindowPolicy } from '../types/context-window.js';
 import type { Message } from '../types/messages.js';
 import type { TypeSafeJudge } from '../typesafe/judgments.js';
@@ -116,11 +121,52 @@ function strategyForContext(
  * eternal-engine compactions all share this one durability boundary.
  */
 class JournaledCompactor implements Compactor {
+  private readonly observers = new Set<CompactionObserver>();
+
   constructor(private readonly inner: Compactor) {}
 
-  async compact(
+  /**
+   * Every compaction path funnels through here, so this is where lifecycle
+   * observers (PreCompact/PostCompact hooks) attach — one seam instead of
+   * one per caller.
+   */
+  observe(observer: CompactionObserver): () => void {
+    this.observers.add(observer);
+    return () => {
+      this.observers.delete(observer);
+    };
+  }
+
+  async compact(ctx: Context, compactOpts: CompactOptions = {}): Promise<CompactReport> {
+    await this.notify((observer) => observer.before?.(ctx, compactOpts));
+    const report = await this.compactJournaled(ctx, compactOpts);
+    await this.notify((observer) => observer.after?.(ctx, compactOpts, report));
+    return report;
+  }
+
+  /** Observers are advisory: one that throws never fails or skips the pass. */
+  private async notify(
+    call: (observer: CompactionObserver) => void | Promise<void>,
+  ): Promise<void> {
+    for (const observer of [...this.observers]) {
+      try {
+        await call(observer);
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            level: 'warn',
+            event: 'compaction.observer_failed',
+            message: toErrorMessage(err),
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }
+    }
+  }
+
+  private async compactJournaled(
     ctx: Context,
-    compactOpts: { aggressive?: boolean | undefined } = {},
+    compactOpts: CompactOptions,
   ): Promise<CompactReport> {
     const state = ctx.state;
     const revisionBefore = state.revision;

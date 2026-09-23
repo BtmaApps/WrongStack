@@ -29,6 +29,15 @@ export interface ContextConfig {
   // half-wired ceiling would only compete with those.
   preserveK: number;
   eliseThreshold: number;
+  /**
+   * Keep at least this many of the most recent message tokens verbatim when
+   * compacting — no collapse, summary or tool-output elision in that tail —
+   * whatever the `preserveK` pair count. `preserveK` stays the floor, so this
+   * only ever keeps more. Capped at half the policy's target load so a pass
+   * can still make room, and ignored by the hard-budget emergency trim: the
+   * no-overflow guarantee always wins. Unset by default.
+   */
+  keepTokens?: number | undefined;
   /** Compactor strategy: 'hybrid' (default, fast rules), 'intelligent' (LLM summarization), 'selective' (LLM-driven selection). */
   strategy?: 'hybrid' | 'intelligent' | 'selective' | undefined;
   /** Enable LLM-driven selective compaction (default: false for backward compat). */

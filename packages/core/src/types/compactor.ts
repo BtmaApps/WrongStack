@@ -59,6 +59,30 @@ export interface CompactReport {
     | undefined;
 }
 
+/**
+ * Why a compaction pass ran: `auto` (context-window pressure), `manual`
+ * (`/compact`, a UI button), `overflow` (recovering from a provider
+ * context-length error) or `tool` (the model's context_manager tool).
+ */
+export type CompactionTrigger = 'auto' | 'manual' | 'overflow' | 'tool';
+
+export interface CompactOptions {
+  aggressive?: boolean | undefined;
+  /** Defaults to `auto` for observers when omitted. */
+  trigger?: CompactionTrigger | undefined;
+}
+
+/** Awaited around every compaction pass; a throwing observer never blocks it. */
+export interface CompactionObserver {
+  before?(ctx: AgentContext, opts: CompactOptions): void | Promise<void>;
+  after?(ctx: AgentContext, opts: CompactOptions, report: CompactReport): void | Promise<void>;
+}
+
 export interface Compactor {
-  compact(ctx: AgentContext, opts?: { aggressive?: boolean | undefined }): Promise<CompactReport>;
+  compact(ctx: AgentContext, opts?: CompactOptions): Promise<CompactReport>;
+  /**
+   * Observe every pass through this compactor. Optional: only the journaled
+   * production compactor implements it. Returns an unsubscribe function.
+   */
+  observe?(observer: CompactionObserver): () => void;
 }

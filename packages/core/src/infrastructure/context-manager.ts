@@ -287,7 +287,7 @@ export function createContextManagerTool(
             };
           }
 
-          const report = await opts.compactor.compact(ctx);
+          const report = await opts.compactor.compact(ctx, { trigger: 'tool' });
           ctx.clearFileTracking();
 
           // When ctx.state is not wired, the compactor's replaceMessages calls are

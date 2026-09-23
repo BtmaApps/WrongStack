@@ -256,7 +256,9 @@ api.registerHook('PreToolUse', 'bash|write|edit', (input) => {
 ```
 
 Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`,
-`SessionStart`, `Stop`.
+`SessionStart`, `Stop`, plus the observational `Notification`,
+`SubagentStart`, `SubagentStop`, `PreCompact`, `PostCompact` and `SessionEnd`
+(their outcome is ignored — they cannot block or add context).
 
 `HookOutcome` fields:
 - `decision: 'block' | 'allow'` — block stops the action

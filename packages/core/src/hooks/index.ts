@@ -11,14 +11,23 @@ export type {
   HookRegistrationOptions,
   HttpHook,
   InProcessHook,
+  ObservationalHookEvent,
   PreToolUseOutcome,
   PreToolUseStage,
   ShellHook,
 } from '../types/hooks.js';
+export { HOOK_EVENTS, isHookEvent } from '../types/hooks.js';
 export type { HttpHookSpec } from './http-executor.js';
 export { runHttpHookDetailed } from './http-executor.js';
+export { bridgeLifecycleHooks, type LifecycleHookBridgeOptions } from './lifecycle-bridge.js';
 export { HookRegistry, hookMatcherMatches } from './registry.js';
-export type { HookRunEnv, HookRunnerOptions, PreToolUseResult, PromptResult } from './runner.js';
+export type {
+  HookRunEnv,
+  HookRunnerOptions,
+  ObservationalHookFields,
+  PreToolUseResult,
+  PromptResult,
+} from './runner.js';
 export { HookRunner } from './runner.js';
 export type {
   HookExecutionFailure,

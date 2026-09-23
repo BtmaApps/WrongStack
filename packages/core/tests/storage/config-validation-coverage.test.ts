@@ -39,6 +39,28 @@ describe('validateConfigBehavior', () => {
     expect(() => validateConfigBehavior(cfg as any, () => {})).toThrow(ConfigError);
   });
 
+  it('names and drops hooks registered under an unknown event, keeping the rest', () => {
+    const warnings: Array<{ msg: string; ctx?: Record<string, unknown> | undefined }> = [];
+    const cfg = {
+      ...validConfig(),
+      hooks: {
+        PreCompact: [{ command: 'backup.sh' }],
+        SessionEnd: [{ command: 'bye.sh' }],
+        PreCompacts: [{ command: 'typo.sh' }],
+      },
+    };
+
+    validateConfigBehavior(cfg as any, (msg, ctx) => warnings.push({ msg, ctx }));
+
+    expect(Object.keys(cfg.hooks)).toEqual(['PreCompact', 'SessionEnd']);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.msg).toContain('"PreCompacts"');
+    expect(warnings[0]?.ctx).toMatchObject({
+      event: 'config.unknown_hook_event',
+      hookEvent: 'PreCompacts',
+    });
+  });
+
   it('throws when warnThreshold is not a number', () => {
     const cfg = validConfig();
     cfg.context.warnThreshold = 'invalid' as any;

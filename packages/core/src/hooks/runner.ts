@@ -4,6 +4,7 @@ import type {
   HookEvent,
   HookInput,
   HookInvocationContext,
+  ObservationalHookEvent,
 } from '../types/hooks.js';
 import type { Logger } from '../types/logger.js';
 import { toErrorMessage } from '../utils/error.js';
@@ -124,6 +125,9 @@ function malformedOutcome(outcome: AnyHookOutcome): string | undefined {
   }
   return `unknown hook action: ${String((outcome as { action?: unknown }).action)}`;
 }
+
+/** The event-specific part of an observational hook's payload. */
+export type ObservationalHookFields = Pick<HookInput, 'compaction' | 'subagent' | 'notification'>;
 
 export interface PromptResult {
   block?: boolean | undefined;
@@ -381,6 +385,27 @@ export class HookRunner {
   async stop(env: HookRunEnv): Promise<void> {
     const payload: HookInput = { event: 'Stop', ...this.base(env) };
     await this.collectContext('Stop', undefined, payload, env);
+  }
+
+  /**
+   * Fire an observational lifecycle event (PreCompact, SubagentStop,
+   * Notification, …). Matching hooks run in parallel and are awaited, but
+   * their outcomes are ignored: these events cannot block or add context, and
+   * a failing hook is logged and skipped whatever its failure policy.
+   *
+   * `matchKey` is what the registration's matcher is compared against — the
+   * subagent target, the notification kind, the compaction trigger.
+   */
+  async observe(
+    event: ObservationalHookEvent,
+    fields: ObservationalHookFields,
+    env: HookRunEnv,
+    matchKey?: string | undefined,
+  ): Promise<void> {
+    const entries = this.matching(event, matchKey);
+    if (entries.length === 0) return;
+    const payload: HookInput = { event, ...fields, ...this.base(env) };
+    await Promise.allSettled(entries.map((entry) => this.invoke(entry, payload, env)));
   }
 
   // ── internals ──────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runShellHook } from '../../src/hooks/shell-executor.js';
+import { runShellHook, runShellHookDetailed } from '../../src/hooks/shell-executor.js';
 import type { HookInput } from '../../src/types/hooks.js';
 
 // Temp scripts run via `node` (on PATH) so we avoid inline cross-shell quoting.
@@ -86,5 +86,63 @@ describe('runShellHook', () => {
       input({ toolInput: { blob: 'B'.repeat(200_000) } }),
     );
     expect(r).toBeNull(); // exit 0 + no stdout -> no outcome, and no crash
+  });
+});
+
+describe('runShellHook argument quoting', () => {
+  // Prints its argv as the hook's additionalContext so the tests can read
+  // exactly what the executable received.
+  function argvScript(dirPath: string): string {
+    fs.mkdirSync(dirPath, { recursive: true });
+    const p = path.join(dirPath, 'argv.mjs');
+    fs.writeFileSync(
+      p,
+      'console.log(JSON.stringify({ additionalContext: JSON.stringify(process.argv.slice(2)) }));\n',
+    );
+    return p;
+  }
+
+  async function argvOf(command: string): Promise<string[]> {
+    const r = await runShellHookDetailed({ command, timeoutMs: 10_000 }, input());
+    expect(r.failure).toBeUndefined();
+    return JSON.parse((r.outcome as { additionalContext: string }).additionalContext);
+  }
+
+  it('runs a double-quoted script path that contains spaces', async () => {
+    // Regression: the whitespace split handed node the literal `"C:\...` with
+    // the quote characters, so every quoted path failed with MODULE_NOT_FOUND.
+    const p = argvScript(path.join(dir, 'with space'));
+    expect(await argvOf(`node "${p}" one`)).toEqual(['one']);
+  });
+
+  it('groups quoted arguments and leaves shell operators literal', async () => {
+    const p = argvScript(path.join(dir, 'plain'));
+    const argv = await argvOf(`node "${p}" "a b" 'c d' e "x\\"y" 'it"s' C:\\dir\\f && echo | x`);
+    expect(argv).toEqual(['a b', 'c d', 'e', 'x"y', 'it"s', 'C:\\dir\\f', '&&', 'echo', '|', 'x']);
+  });
+
+  it('keeps backslashes in a double-quoted Windows path', async () => {
+    const p = argvScript(path.join(dir, 'winpath'));
+    expect(await argvOf(`node "${p}" "C:\\Program Files\\tool"`)).toEqual([
+      'C:\\Program Files\\tool',
+    ]);
+  });
+
+  it('passes an empty quoted argument through', async () => {
+    const p = argvScript(path.join(dir, 'empty'));
+    expect(await argvOf(`node "${p}" "" x`)).toEqual(['', 'x']);
+  });
+
+  it('rejects a command with an unterminated quote instead of guessing', async () => {
+    const r = await runShellHookDetailed({ command: 'node "never closed' }, input());
+    expect(r.failure).toEqual({
+      kind: 'rejected',
+      message: 'hook command has an unterminated quote',
+    });
+  });
+
+  it('still judges the allowlist on the unquoted executable', async () => {
+    const r = await runShellHookDetailed({ command: '"definitely-not-allowed" x' }, input());
+    expect(r.failure?.kind).toBe('rejected');
   });
 });

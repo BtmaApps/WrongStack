@@ -21,6 +21,7 @@ import {
   dedupStaleReads,
   eliseOldToolResults,
   estimateMessages,
+  findPreserveStart,
   findSafeBoundary,
   setCompactionDebugLogger,
 } from './compaction-core.js';
@@ -31,6 +32,7 @@ import {
   defaultCompactionSummaryCache,
   isPlaceholderSummary,
 } from './compaction-summary-cache.js';
+import { widenTailCut } from './compaction-tail.js';
 import type { OneShotOrchestrator } from './one-shot-llm.js';
 
 /**
@@ -223,10 +225,11 @@ export class IntelligentCompactor implements Compactor {
 
   /** Run shared tool-result elision and commit through ConversationState. */
   private elide(ctx: Context): number {
-    const result = eliseOldToolResults(ctx.messages, {
-      preserveK: this.preserveK,
-      eliseThreshold: this.eliseThreshold,
-    });
+    const result = eliseOldToolResults(
+      ctx.messages,
+      { preserveK: this.preserveK, eliseThreshold: this.eliseThreshold },
+      (msgs, k) => widenTailCut(ctx, msgs, findPreserveStart(msgs, k)),
+    );
     if (result.changed) ctx.state.replaceMessages(result.messages);
     return result.saved;
   }
@@ -237,7 +240,7 @@ export class IntelligentCompactor implements Compactor {
     const historyVersion = contextHistoryVersion(ctx);
     const owner = ctx.session;
     const messages = ctx.messages;
-    const cutoff = Math.max(0, messages.length - this.preserveK * 2);
+    const cutoff = widenTailCut(ctx, messages, Math.max(0, messages.length - this.preserveK * 2));
     if (cutoff <= 2) return { saved: 0 };
 
     // Find the best boundary in the ancient region

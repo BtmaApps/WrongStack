@@ -38,6 +38,12 @@ export interface ContextWindowMode {
   /** Per-block elision baseline used to derive the bounded recent raw tool-I/O window. */
   eliseThreshold: number;
   targetLoad: number;
+  /**
+   * Keep at least this many of the most recent message tokens verbatim — no
+   * collapse, summary or elision — on top of the `preserveK` floor. Unset in
+   * every built-in mode; see `ContextConfig.keepTokens`.
+   */
+  keepTokens?: number | undefined;
 }
 
 export interface ContextWindowPolicy extends ContextWindowMode {}
@@ -50,6 +56,7 @@ export interface ContextWindowConfigLike {
   preserveK?: number | undefined;
   eliseThreshold?: number | undefined;
   targetLoad?: number | undefined;
+  keepTokens?: number | undefined;
 }
 
 export const DEFAULT_CONTEXT_WINDOW_MODE_ID: ContextWindowModeId = 'balanced';
@@ -173,6 +180,9 @@ export function resolveContextWindowPolicy(
     preserveK: config.preserveK ?? mode.preserveK,
     eliseThreshold: config.eliseThreshold ?? mode.eliseThreshold,
     targetLoad: config.targetLoad ?? mode.targetLoad,
+    ...((config.keepTokens ?? mode.keepTokens) !== undefined
+      ? { keepTokens: config.keepTokens ?? mode.keepTokens }
+      : {}),
   };
 }
 

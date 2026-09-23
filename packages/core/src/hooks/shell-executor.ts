@@ -90,13 +90,70 @@ function isAbsoluteCommandPath(p: string): boolean {
   return p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p);
 }
 
+/**
+ * Split a hook command line into argv, honouring quotes the way a user
+ * writing `sh -c "jq . >> log"` or `node "C:/Program Files/hook.js"` expects.
+ *
+ * Grouping only — there is NO shell: operators (`&&`, `|`, `;`, `>`) stay
+ * literal arguments and nothing is expanded. Single quotes are fully literal;
+ * inside double quotes a backslash escapes only `"` and `\`, so Windows paths
+ * keep their backslashes. Outside quotes a backslash is literal too (a bare
+ * `C:\hooks\run.cmd` must survive). An unterminated quote rejects the command
+ * rather than guessing where the argument ends.
+ *
+ * The old whitespace split broke every quoted argument — including the
+ * `sh -c "..."` escape hatch documented below — into fragments with stray
+ * quote characters.
+ */
+function splitHookCommand(command: string): string[] | null {
+  const argv: string[] = [];
+  let current = '';
+  let inToken = false;
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!;
+    if (quote === "'") {
+      if (ch === "'") quote = null;
+      else current += ch;
+      continue;
+    }
+    if (quote === '"') {
+      if (ch === '"') {
+        quote = null;
+      } else if (ch === '\\' && (command[i + 1] === '"' || command[i + 1] === '\\')) {
+        current += command[i + 1];
+        i++;
+      } else {
+        current += ch;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      inToken = true;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      if (inToken) argv.push(current);
+      current = '';
+      inToken = false;
+      continue;
+    }
+    current += ch;
+    inToken = true;
+  }
+  if (quote) return null;
+  if (inToken) argv.push(current);
+  return argv;
+}
+
 function isCommandAllowed(command: string): string[] | null {
-  // Split the command into argv by whitespace. This also prevents shell
-  // chaining operators (&&, ||, |, ;) from being interpreted as such —
-  // they become literal arguments to the executable. Hooks that need
-  // pipes, redirects, or variable expansion should use `sh -c "..."`.
-  const argv = command.trim().split(/\s+/);
-  if (argv.length === 0 || argv[0]!.length === 0) return null;
+  // Split the command into argv (quote-aware, see splitHookCommand). Shell
+  // chaining operators (&&, ||, |, ;) are NOT interpreted — they become
+  // literal arguments to the executable. Hooks that need pipes, redirects,
+  // or variable expansion should use `sh -c "..."`.
+  const argv = splitHookCommand(command.trim());
+  if (!argv || argv.length === 0 || argv[0]!.length === 0) return null;
   const executable = argv[0]!;
   // Documented escape hatch #1: absolute paths reference operator-authored
   // trusted executables (incl. wrapper scripts under .wrongstack/hooks/) and
@@ -205,6 +262,14 @@ export async function runShellHookDetailed(
   options: HookExecutionOptions = {},
 ): Promise<HookExecutionResult> {
   const timeoutMs = Math.max(1, Math.min(spec.timeoutMs ?? DEFAULT_TIMEOUT_MS, 10 * 60_000));
+
+  if (splitHookCommand(spec.command.trim()) === null) {
+    logger?.warn?.(`hook rejected: unterminated quote in command: ${spec.command}`);
+    return {
+      outcome: null,
+      failure: { kind: 'rejected', message: 'hook command has an unterminated quote' },
+    };
+  }
 
   // Security: reject commands not in the allowlist
   const argv = isCommandAllowed(spec.command);

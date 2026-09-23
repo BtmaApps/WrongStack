@@ -17,10 +17,12 @@ import {
   dedupStaleReads,
   eliseOldToolResults,
   estimateMessages,
+  findPreserveStart,
   hasTextContent,
   setCompactionDebugLogger,
 } from './compaction-core.js';
 import { stampCompactionReport } from './compaction-result-state.js';
+import { widenTailCut } from './compaction-tail.js';
 
 export interface CompactorOptions {
   preserveK?: number | undefined;
@@ -83,7 +85,10 @@ export class HybridCompactor implements Compactor {
     const eliseThreshold = policy?.eliseThreshold ?? this.eliseThreshold;
 
     // Phase 1: elision (shared core handles tool_use/tool_result pair preservation).
-    const elide = eliseOldToolResults(ctx.messages, { preserveK, eliseThreshold });
+    // A configured `keepTokens` tail stays verbatim: no elision inside it.
+    const elide = eliseOldToolResults(ctx.messages, { preserveK, eliseThreshold }, (msgs, k) =>
+      widenTailCut(ctx, msgs, findPreserveStart(msgs, k)),
+    );
     if (elide.changed) ctx.state.replaceMessages(elide.messages);
     if (elide.saved > 0) reductions.push({ phase: 'elision', saved: elide.saved });
 
@@ -170,7 +175,7 @@ export class HybridCompactor implements Compactor {
     preserveK = this.preserveK,
   ): { saved: number; digest?: string | undefined; evidenceDigest?: string | undefined } {
     const messages = ctx.messages;
-    const cutTarget = Math.max(0, messages.length - preserveK * 2);
+    const cutTarget = widenTailCut(ctx, messages, Math.max(0, messages.length - preserveK * 2));
     if (cutTarget <= 0) return { saved: 0 };
 
     // Find a safe boundary: nearest user-message-with-text at or after cutTarget.

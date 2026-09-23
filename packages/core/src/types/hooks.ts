@@ -9,13 +9,60 @@
  * serializable `HookInput` below.
  */
 
-/** Lifecycle phases a hook can subscribe to. */
-export type HookEvent = 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'SessionStart' | 'Stop';
+import type { CompactionTrigger } from './compactor.js';
 
 /**
- * Tool-name matcher for `PreToolUse`/`PostToolUse` hooks. A pipe-delimited
- * list of exact tool names, or `*` for all tools. Examples: `"Bash"`,
- * `"edit|write"`, `"*"`. Ignored (treated as `*`) for non-tool events.
+ * Lifecycle phases a hook can subscribe to. Names follow the Claude Code hook
+ * vocabulary so a config written for one reads the same here.
+ *
+ * The first five can steer the run (block, rewrite input, add context). The
+ * rest are OBSERVATIONAL: they fire at their lifecycle point with a typed
+ * payload, but their outcome is ignored — they cannot block or inject.
+ */
+export type HookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'SessionStart'
+  | 'Stop'
+  | ObservationalHookEvent;
+
+/** Hook events whose outcome is ignored; see {@link HookEvent}. */
+export type ObservationalHookEvent =
+  | 'PreCompact'
+  | 'PostCompact'
+  | 'SubagentStart'
+  | 'SubagentStop'
+  | 'SessionEnd'
+  | 'Notification';
+
+/** Every hook event, in lifecycle order. The one list validation and docs read. */
+export const HOOK_EVENTS: readonly HookEvent[] = [
+  'SessionStart',
+  'UserPromptSubmit',
+  'PreToolUse',
+  'PostToolUse',
+  'Notification',
+  'SubagentStart',
+  'SubagentStop',
+  'PreCompact',
+  'PostCompact',
+  'Stop',
+  'SessionEnd',
+];
+
+export function isHookEvent(value: unknown): value is HookEvent {
+  return typeof value === 'string' && (HOOK_EVENTS as readonly string[]).includes(value);
+}
+
+/**
+ * Matcher for a hook registration: a pipe-delimited list of exact names, or
+ * `*` for all. What it matches depends on the event — the tool name for
+ * `PreToolUse`/`PostToolUse`, the subagent target (roster role or name) for
+ * `SubagentStart`/`SubagentStop`, the notification kind (`permission` |
+ * `input`) for `Notification`, and the trigger (`auto` | `manual` |
+ * `overflow` | `tool`) for `PreCompact`/`PostCompact`. Examples: `"Bash"`,
+ * `"edit|write"`, `"*"`. Ignored (treated as `*`) for the other events.
  */
 export type HookMatcher = string;
 
@@ -105,6 +152,42 @@ export interface HookInput {
   toolResult?: { content: string; isError: boolean };
   /** The submitted user text (UserPromptSubmit only). */
   prompt?: string | undefined;
+  /** PreCompact / PostCompact: what triggered the pass and its size. */
+  compaction?:
+    | {
+        trigger: CompactionTrigger;
+        aggressive: boolean;
+        /** Message tokens before the pass (PostCompact only). */
+        tokensBefore?: number | undefined;
+        /** Message tokens after the pass (PostCompact only). */
+        tokensAfter?: number | undefined;
+      }
+    | undefined;
+  /** SubagentStart / SubagentStop: the delegation this event belongs to. */
+  subagent?:
+    | {
+        /** Roster role or free-form subagent name. */
+        target: string;
+        task: string;
+        subagentId?: string | undefined;
+        delegationId?: string | undefined;
+        mode?: 'background' | 'wait' | undefined;
+        /** SubagentStop only. */
+        ok?: boolean | undefined;
+        status?: string | undefined;
+        summary?: string | undefined;
+        durationMs?: number | undefined;
+      }
+    | undefined;
+  /** Notification: the run is waiting on the user. */
+  notification?:
+    | {
+        kind: 'permission' | 'input';
+        message: string;
+        /** The tool awaiting approval (`permission` only). */
+        toolName?: string | undefined;
+      }
+    | undefined;
   /** Absolute working directory of the session. */
   cwd: string;
   /** Active session id, when known. */

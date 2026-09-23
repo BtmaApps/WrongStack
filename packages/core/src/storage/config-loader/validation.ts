@@ -5,6 +5,7 @@ import {
   normalizeContextWindowModeId,
 } from '../../types/context-window.js';
 import { ConfigError, ERROR_CODES } from '../../types/errors.js';
+import { HOOK_EVENTS, isHookEvent } from '../../types/hooks.js';
 import type { PartialConfig } from './env-overrides.js';
 
 type LogWarn = (msg: string, ctx?: Record<string, unknown>) => void;
@@ -61,6 +62,36 @@ export function validateConfigBehavior(cfg: PartialConfig, logWarn: LogWarn): vo
     c.mode = DEFAULT_CONTEXT_WINDOW_MODE_ID;
   } else if (c.mode !== undefined) {
     c.mode = normalizeContextWindowModeId(c.mode) ?? DEFAULT_CONTEXT_WINDOW_MODE_ID;
+  }
+
+  // `keepTokens` is optional; a non-positive or non-numeric value would make
+  // every tail empty or everything verbatim. Name it and drop it.
+  if (c.keepTokens !== undefined) {
+    const k = c.keepTokens as unknown;
+    if (typeof k !== 'number' || !Number.isFinite(k) || k <= 0) {
+      logWarn(
+        `Ignoring context.keepTokens ${JSON.stringify(k)} — expected a positive token count`,
+        {
+          event: 'config.invalid_keep_tokens',
+        },
+      );
+      delete c.keepTokens;
+    } else {
+      c.keepTokens = Math.floor(k);
+    }
+  }
+
+  // A misspelled hook event ("PreCompacts", "sessionStart") used to register
+  // silently and then never fire. Name it and drop it.
+  if (cfg.hooks && typeof cfg.hooks === 'object') {
+    for (const event of Object.keys(cfg.hooks)) {
+      if (isHookEvent(event)) continue;
+      logWarn(`Ignoring hooks for unknown event "${event}" — known: ${HOOK_EVENTS.join(', ')}`, {
+        event: 'config.unknown_hook_event',
+        hookEvent: event,
+      });
+      delete (cfg.hooks as Record<string, unknown>)[event];
+    }
   }
 
   // Sage.embeddings.enabled is reserved for a future durable vector index /

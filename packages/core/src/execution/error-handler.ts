@@ -56,7 +56,10 @@ export function buildRecoveryStrategies(opts?: {
 
         if (this.compactor) {
           try {
-            const report = await this.compactor.compact(ctx, { aggressive: true });
+            const report = await this.compactor.compact(ctx, {
+              aggressive: true,
+              trigger: 'overflow',
+            });
             // Compaction rewrote the message array, so the real-usage anchor
             // (captured for the pre-compaction array) is stale — drop it so the
             // retry's pre-flight estimates the compacted array afresh until the

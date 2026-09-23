@@ -30,6 +30,7 @@ import {
   compactionSummaryKey,
   defaultCompactionSummaryCache,
 } from './compaction-summary-cache.js';
+import { widenTailCut } from './compaction-tail.js';
 
 /**
  * Options for SelectiveCompactor — the most configurable compactor.
@@ -296,7 +297,11 @@ export class SelectiveCompactor implements Compactor {
     // boundary helper counts individual messages, so convert pairs to a
     // message count and enforce the live-tail invariant independently of the
     // ranges returned by the selector.
-    const preserveStart = findPreserveStart(messages, this.preserveK * 2);
+    const preserveStart = widenTailCut(
+      ctx,
+      messages,
+      findPreserveStart(messages, this.preserveK * 2),
+    );
     const sortedCollapsed = plan.collapsed
       .map((range) => ({ ...range, to: Math.min(range.to, preserveStart - 1) }))
       .filter((range) => range.from >= 0 && range.from <= range.to)
@@ -397,7 +402,11 @@ export class SelectiveCompactor implements Compactor {
    */
   private aggressiveRecencyTrim(ctx: Context): number {
     const messages = ctx.messages;
-    const preserveIdx = Math.max(0, messages.length - this.preserveK * 2);
+    const preserveIdx = widenTailCut(
+      ctx,
+      messages,
+      Math.max(0, messages.length - this.preserveK * 2),
+    );
 
     if (preserveIdx <= 0) return 0;
 
@@ -440,10 +449,11 @@ export class SelectiveCompactor implements Compactor {
     // tool_use/tool_result pair preservation as the other compactors — its
     // previous local copy lacked the forward walk and could elide the result
     // of a tool call it was supposed to keep.
-    const result = coreEliseOldToolResults(ctx.messages, {
-      preserveK: this.preserveK,
-      eliseThreshold: this.eliseThreshold,
-    });
+    const result = coreEliseOldToolResults(
+      ctx.messages,
+      { preserveK: this.preserveK, eliseThreshold: this.eliseThreshold },
+      (msgs, k) => widenTailCut(ctx, msgs, findPreserveStart(msgs, k)),
+    );
     if (result.changed) ctx.state.replaceMessages(result.messages);
     return result.saved;
   }
