@@ -463,4 +463,44 @@ describe('wireToolsToChronicle', () => {
       modelId: 'gemini-2.0-flash',
     });
   });
+
+  it('records a refused call as denied and an aborted one as cancelled, not failure', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-settlement-'));
+    tempDirs.push(dir);
+    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
+    const events = new EventBus();
+    const context = createChronicleContext(
+      { installationId: 'i', machineId: 'm', sessionId: 'sess' },
+      'trace',
+    );
+    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
+
+    const cases = [
+      ['denied_by_policy', 'denied'],
+      ['blocked_by_hook', 'denied'],
+      ['declined', 'denied'],
+      ['aborted', 'cancelled'],
+      ['invalid_input', 'failure'],
+      ['unknown_tool', 'failure'],
+      ['failed', 'failure'],
+      [undefined, 'failure'],
+    ] as const;
+    for (const [i, [settlement]] of cases.entries()) {
+      events.emit('tool.executed', {
+        sessionId: 'sess',
+        id: `t-${i}`,
+        name: 'bash',
+        durationMs: 1,
+        ok: false,
+        ...(settlement ? { settlement } : {}),
+      });
+    }
+
+    const recorded = await journal.readAll();
+    unsubscribe();
+
+    expect(recorded.map((e) => e.outcome)).toEqual(cases.map(([, outcome]) => outcome));
+    expect(recorded[0]?.attributes).toMatchObject({ settlement: 'denied_by_policy' });
+    expect(recorded.at(-1)?.attributes).not.toHaveProperty('settlement');
+  });
 });

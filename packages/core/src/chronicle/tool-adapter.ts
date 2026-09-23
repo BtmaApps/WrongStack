@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { EventBus, EventMap } from '../kernel/events.js';
 import type { SecretScrubber } from '../types/secret-scrubber.js';
+import type { ToolSettlement } from '../types/tool.js';
 import type { ChronicleContext } from './context.js';
 import type { ChronicleEventSink } from './sink.js';
-import type { ChronicleEventInput, ChronicleResourceRef } from './types.js';
+import type { ChronicleEventInput, ChronicleOutcome, ChronicleResourceRef } from './types.js';
 
 export interface ChronicleToolAdapterOptions {
   events: EventBus;
@@ -17,6 +18,30 @@ export interface ChronicleToolAdapterOptions {
  *  and byte/token counts already capture identity; the full payload is
  *  redundant for analytics and dominated journal bytes for read-heavy tools. */
 const PREVIEW_MAX_BYTES = 2048;
+
+/**
+ * A refused call is a `denied` fact and an aborted one `cancelled` — not the
+ * same `failure` as a tool that ran and broke. Legacy events without a
+ * settlement keep the old ok/failure split.
+ */
+function toolOutcome(ok: boolean, settlement: ToolSettlement | undefined): ChronicleOutcome {
+  switch (settlement) {
+    case 'denied_by_policy':
+    case 'blocked_by_hook':
+    case 'declined':
+      return 'denied';
+    case 'aborted':
+      return 'cancelled';
+    case 'completed':
+      return 'success';
+    case 'failed':
+    case 'invalid_input':
+    case 'unknown_tool':
+      return 'failure';
+    default:
+      return ok ? 'success' : 'failure';
+  }
+}
 
 /** Persist the complete tool lifecycle. Resource edges discovered in results
  *  (files/symbols/commands touched) are windowed by rollup-adapter.ts instead
@@ -61,11 +86,12 @@ export function wireToolsToChronicle(options: ChronicleToolAdapterOptions): () =
       const output = options.scrubber.scrub(event.output ?? '');
       persist(options, event, {
         eventType: 'tool.executed',
-        outcome: event.ok ? 'success' : 'failure',
+        outcome: toolOutcome(event.ok, event.settlement),
         durationNs: millisecondsToNanoseconds(event.durationMs),
         attributes: {
           toolName: event.name,
           ok: event.ok,
+          ...(event.settlement ? { settlement: event.settlement } : {}),
           outputPreview: capPreview(output),
           outputHash: hashText(output),
           outputBytes: event.outputBytes,

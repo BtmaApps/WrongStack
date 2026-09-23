@@ -1,5 +1,5 @@
 import type { ToolResultBlock, ToolUseBlock } from './blocks.js';
-import type { Tool } from './tool.js';
+import type { Tool, ToolSettlement } from './tool.js';
 
 /** Context.meta key installed by ToolExecutor for governed calls made by meta-tools. */
 export const GOVERNED_TOOL_EXECUTOR_META_KEY = 'toolExecutor.executeGoverned';
@@ -36,6 +36,12 @@ export interface ToolExecutionOutput {
   result: ToolResultBlock | ToolConfirmPendingResult;
   tool?: Tool | undefined;
   durationMs: number;
+  /**
+   * How the call settled, when the executor knows better than `is_error`
+   * (denied, declined, blocked, invalid, aborted). Absent on a pending
+   * confirmation; consumers fall back to `completed` / `failed`.
+   */
+  settlement?: ToolSettlement | undefined;
 }
 
 /**

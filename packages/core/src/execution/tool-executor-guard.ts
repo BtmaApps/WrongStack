@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { Context } from '../core/context.js';
 import { evaluateToolKanbanBoundary } from '../security/kanban-boundary.js';
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
-import type { Tool } from '../types/tool.js';
+import type { Tool, ToolSettlement } from '../types/tool.js';
 import type { ToolExecutorOptions } from '../types/tool-executor.js';
 import { coerceAgainstSchema, validateAgainstSchema } from '../utils/json-schema-validate.js';
 import { blockedByHookResult, malformedInputResult } from './tool-executor-results.js';
@@ -14,6 +14,8 @@ export interface PreExecutionValidationResult {
   ok: boolean;
   use: ToolUseBlock;
   errorResult?: ToolResultBlock | undefined;
+  /** Why the call was refused; set whenever `ok` is false. */
+  settlement?: ToolSettlement | undefined;
   preToolContext?: { text: string; contextAs: 'inline' | 'separate' } | undefined;
   boundary?: KanbanBoundaryResult | undefined;
 }
@@ -32,6 +34,7 @@ export async function validateToolInputAndHooks(
       ok: false,
       use,
       errorResult: malformedInputResult(use, extractMalformedRaw(use.input)),
+      settlement: 'invalid_input',
     };
   }
 
@@ -62,7 +65,7 @@ export async function validateToolInputAndHooks(
           `You can use the "tool-help" tool with name="${tool.name}" to see the exact expected schema.`,
         is_error: true,
       };
-      return { ok: false, use, errorResult };
+      return { ok: false, use, errorResult, settlement: 'invalid_input' };
     }
   }
 
@@ -76,6 +79,7 @@ export async function validateToolInputAndHooks(
         ok: false,
         use,
         errorResult: blockedByHookResult(use, pre.reason),
+        settlement: 'blocked_by_hook',
       };
     }
     if (pre.additionalContext) {
@@ -99,7 +103,7 @@ export async function validateToolInputAndHooks(
               `Validation errors:\n${errorDetails}`,
             is_error: true,
           };
-          return { ok: false, use, errorResult };
+          return { ok: false, use, errorResult, settlement: 'blocked_by_hook' };
         }
         use = { ...use, input: pre.input };
       }
@@ -117,7 +121,7 @@ export async function validateToolInputAndHooks(
           `Invalid arguments for tool "${tool.name}".\n\n` + `Validation errors:\n${errorDetails}`,
         is_error: true,
       };
-      return { ok: false, use, errorResult };
+      return { ok: false, use, errorResult, settlement: 'invalid_input' };
     }
   }
 
@@ -132,7 +136,7 @@ export async function validateToolInputAndHooks(
       is_error: true,
       _kanbanBoundary: boundary,
     };
-    return { ok: false, use, errorResult, boundary };
+    return { ok: false, use, errorResult, boundary, settlement: 'denied_by_policy' };
   }
 
   return { ok: true, use, preToolContext, boundary };

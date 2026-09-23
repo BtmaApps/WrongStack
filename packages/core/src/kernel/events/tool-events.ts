@@ -1,7 +1,13 @@
 import type { AgentContext } from '../../types/context.js';
 import type { ToolOutputMetadata } from '../../types/context-evidence.js';
 import type { PermissionDecision } from '../../types/permission.js';
-import type { RiskTier, Tool, ToolErrorCategory, ToolProgressEvent } from '../../types/tool.js';
+import type {
+  RiskTier,
+  Tool,
+  ToolErrorCategory,
+  ToolProgressEvent,
+  ToolSettlement,
+} from '../../types/tool.js';
 import type { UserInputRequest, UserInputResponse } from '../../types/user-input.js';
 
 export interface ToolEventMap {
@@ -266,6 +272,12 @@ export interface ToolEventMap {
     name: string;
     durationMs: number;
     ok: boolean;
+    /**
+     * Typed outcome — why a call that is not `ok` did not succeed (denied,
+     * declined, blocked, invalid input, aborted, or failed while running).
+     * Absent only on legacy emit sites.
+     */
+    settlement?: ToolSettlement | undefined;
     /** Canonical tool-registry mutation classification; absent only on legacy emit sites. */
     mutating?: boolean | undefined;
     input?: unknown | undefined;

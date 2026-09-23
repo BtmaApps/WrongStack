@@ -13,7 +13,7 @@ import {
 } from '../security/scoped-approval.js';
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { SessionEvent } from '../types/session.js';
-import type { Tool } from '../types/tool.js';
+import type { Tool, ToolSettlement } from '../types/tool.js';
 import { recordToolOutputEvidence } from '../utils/context-evidence.js';
 import { toErrorMessage } from '../utils/error.js';
 import { capSageLines, splitSageOutputBlock } from '../utils/sage-output-block.js';
@@ -291,6 +291,16 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     });
   }
 
+  /**
+   * The typed outcome for a result the executor did not classify: a tool that
+   * ran reports `completed` / `failed`, and an error result produced while
+   * the run was aborting is `aborted`.
+   */
+  function derivedSettlement(result: ToolResultBlock): ToolSettlement {
+    if (!result.is_error) return 'completed';
+    return a.ctx.signal?.aborted ? 'aborted' : 'failed';
+  }
+
   function emitToolExecuted(
     toolUseId: string,
     toolName: string,
@@ -299,6 +309,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     mutating: boolean,
     input: unknown,
     content: string,
+    settlement: ToolSettlement,
   ): void {
     const sig = sizeSignals(toolName, content);
     // New SAGE retrievals live in Context.memoryEvidence. Keep splitting old
@@ -326,6 +337,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       name: toolName,
       durationMs,
       ok,
+      settlement,
       mutating,
       input,
       output: truncateForEvent(
@@ -359,7 +371,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     const resultsForMessage: ToolResultBlock[] = [];
     const sessionEvents: SessionEvent[] = [];
 
-    for (const { result, tool, durationMs } of outputs) {
+    for (const { result, tool, durationMs, settlement: executorSettlement } of outputs) {
       if (result.type === 'tool_confirm_pending' && tool) {
         const decision = await waitForConfirm({
           tool: tool,
@@ -468,6 +480,12 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
           );
         }
 
+        const approved = decision === 'yes' || isPersistentApproval(decision);
+        const settlement: ToolSettlement = approved
+          ? derivedSettlement(reRunResult.result)
+          : decision === 'abort'
+            ? 'aborted'
+            : 'declined';
         const use = useById.get(reRunResult.result.tool_use_id);
         if (use) {
           await a.pipelines.toolCall.run({
@@ -482,6 +500,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
             id: reRunResult.result.tool_use_id,
             content: reRunResult.result.content,
             isError: !!reRunResult.result.is_error,
+            settlement,
           });
           emitToolExecuted(
             reRunResult.result.tool_use_id,
@@ -491,6 +510,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
             tool.mutating,
             result.input,
             reRunResult.result.content,
+            settlement,
           );
         }
         resultsForMessage.push(reRunResult.result);
@@ -503,12 +523,14 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       const use = useById.get(result.tool_use_id);
       if (!use) continue;
       await a.pipelines.toolCall.run({ toolUse: use, result, ctx: a.ctx, tool: tool ?? undefined });
+      const settlement = executorSettlement ?? derivedSettlement(result);
       sessionEvents.push({
         type: 'tool_result',
         ts: new Date().toISOString(),
         id: result.tool_use_id,
         content: result.content,
         isError: !!result.is_error,
+        settlement,
       });
       emitToolExecuted(
         result.tool_use_id,
@@ -518,6 +540,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
         tool?.mutating ?? false,
         use.input,
         result.content,
+        settlement,
       );
     }
 

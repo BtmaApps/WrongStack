@@ -2,6 +2,7 @@ import type { ContentBlock } from './blocks.js';
 import type { Message } from './messages.js';
 import type { ProviderErrorBody, Usage } from './provider.js';
 import type { FileSnapshot, WorkspaceCheckpointRef } from './session.js';
+import type { ToolSettlement } from './tool.js';
 
 /**
  * SessionEvent — per-session persistent JSONL audit + reconstruct log.
@@ -121,7 +122,15 @@ type SessionEventVariant =
       provider?: string | undefined;
     }
   | { type: 'tool_use'; ts: string; name: string; id: string; input: unknown }
-  | { type: 'tool_result'; ts: string; id: string; content: unknown; isError: boolean }
+  | {
+      type: 'tool_result';
+      ts: string;
+      id: string;
+      content: unknown;
+      isError: boolean;
+      /** Typed outcome; absent on journals written before it existed. */
+      settlement?: ToolSettlement | undefined;
+    }
   | {
       /**
        * Exact message appended to the live conversation. `version` lets the

@@ -151,7 +151,7 @@ export class ToolExecutor {
       if (!tool) {
         const result = unknownToolResult(use, () => this.registry.list().map((t) => t.name));
         budget = this.budgetForString(result.content, budget);
-        return { result, tool, durationMs: Date.now() - start };
+        return { result, tool, durationMs: Date.now() - start, settlement: 'unknown_tool' };
       }
 
       if (!areSubagentsAllowed(ctx) && hasCapability(tool, ToolCapabilities.SUBAGENT_SPAWN)) {
@@ -160,14 +160,14 @@ export class ToolExecutor {
           'Subagents are disabled for this session. This policy is locked after the session starts.',
         );
         budget = this.budgetForString(result.content, budget);
-        return { result, tool, durationMs: Date.now() - start };
+        return { result, tool, durationMs: Date.now() - start, settlement: 'denied_by_policy' };
       }
 
       const guard = await validateToolInputAndHooks(tool, use, ctx, this.opts);
       if (!guard.ok) {
         const result = guard.errorResult!;
         budget = this.budgetForString(result.content, budget);
-        return { result, tool, durationMs: Date.now() - start };
+        return { result, tool, durationMs: Date.now() - start, settlement: guard.settlement };
       }
 
       use = guard.use;
@@ -231,7 +231,7 @@ export class ToolExecutor {
         const result = deniedResult(use, decision.reason);
         await this.toolSkipped(tool, use, ctx, String(result.content));
         budget = this.budgetForString(result.content, budget);
-        return { result, tool, durationMs: Date.now() - start };
+        return { result, tool, durationMs: Date.now() - start, settlement: 'denied_by_policy' };
       }
 
       if (effectivePermission === 'confirm') {
@@ -299,7 +299,12 @@ export class ToolExecutor {
             };
             await this.toolSkipped(tool, use, ctx, result.content);
             budget = this.budgetForString(result.content, budget);
-            return { result, tool, durationMs: Date.now() - start };
+            return {
+              result,
+              tool,
+              durationMs: Date.now() - start,
+              settlement: choice === 'abort' ? 'aborted' : 'declined',
+            };
           }
         } else {
           const pending: ToolConfirmPendingResult = {
@@ -466,7 +471,12 @@ export class ToolExecutor {
         span?.setAttribute('tool.error_retryable', retryable);
         if (detail) span?.setAttribute('tool.error_detail', detail);
         this.logToolFailure(ctx, use, tool.name, Date.now() - start, err);
-        return { result, tool, durationMs: Date.now() - start };
+        return {
+          result,
+          tool,
+          durationMs: Date.now() - start,
+          settlement: ctx.signal.aborted ? 'aborted' : 'failed',
+        };
       } finally {
         span?.end();
       }
@@ -495,7 +505,12 @@ export class ToolExecutor {
         const cappedError = this.serializer.enforceCap(result.content, budget);
         result.content = cappedError.text;
         budget = cappedError.newBudget;
-        return { result, tool, durationMs: 0 };
+        return {
+          result,
+          tool,
+          durationMs: 0,
+          settlement: ctx.signal.aborted ? 'aborted' : 'failed',
+        };
       }
     };
 

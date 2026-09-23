@@ -342,6 +342,33 @@ export enum ToolErrorCategory {
 }
 
 /**
+ * How one tool call settled. Recorded for EVERY call — including the ones that
+ * never ran — so a denied, declined or aborted call is a typed fact in the
+ * journal and on `tool.executed`, not only a sentence inside an error result.
+ *
+ * - `completed` / `failed` — the tool ran; `failed` means it threw or
+ *   returned an error result.
+ * - `unknown_tool` — no tool by that name is registered.
+ * - `invalid_input` — malformed arguments, schema or cross-field validation.
+ * - `blocked_by_hook` — a PreToolUse hook denied it (or rewrote it into an
+ *   invalid shape).
+ * - `denied_by_policy` — the permission policy, a session lock (subagents
+ *   disabled) or the Kanban boundary refused it.
+ * - `declined` — the confirmation prompt said no: the user, or Brain after
+ *   the approval timeout.
+ * - `aborted` — the run was aborted before or while the call ran.
+ */
+export type ToolSettlement =
+  | 'completed'
+  | 'failed'
+  | 'unknown_tool'
+  | 'invalid_input'
+  | 'blocked_by_hook'
+  | 'denied_by_policy'
+  | 'declined'
+  | 'aborted';
+
+/**
  * Structured tool error information for the LLM and retry logic.
  */
 export interface ToolErrorInfo {
