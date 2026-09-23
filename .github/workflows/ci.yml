@@ -392,6 +392,12 @@ jobs:
       - name: Architecture and runtime-test inventory
         run: pnpm check:architecture && pnpm check:test-inventory && pnpm check:test-skips
 
+      - name: Install Playwright browser for live plugin journeys
+        # The plugin subprocess uses buildChildEnv(), which intentionally drops
+        # PLAYWRIGHT_BROWSERS_PATH. Install to Playwright's default HOME cache so
+        # the subprocess resolves the same Chromium binary.
+        run: npx playwright install --with-deps chromium
+
       # Runs aggregate Node/WebUI ratchets plus focused per-file gates.
       - name: Test with coverage ratchets
         run: pnpm test:coverage
