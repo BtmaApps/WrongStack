@@ -15,7 +15,7 @@ describe('contract relation-edge enforcement', () => {
   it('refreshes the auto-created relation edge when a node upsert changes enforcement', async () => {
     const board = await createBoard(projectRoot, { title: 'Contract graph' });
     const added = await addTask(projectRoot, board.id, { title: 'Ship the feature' });
-    const taskId = added.task.id;
+    const taskId = added!.task.id;
 
     const relationOf = async (boardId: string, nodeId: string) => {
       const current = await getBoard(projectRoot, boardId);

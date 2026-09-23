@@ -71,7 +71,7 @@ describe('createBoardFromTaskGraph parent remap', () => {
     const childTaskId = taskIdMap.get('child-node');
     expect(childTaskId).toBeDefined();
 
-    const childOf = (tasks: ReadonlyArray<{ id: string; parentTaskId?: string }>) =>
+    const childOf = (tasks: ReadonlyArray<{ id: string; parentTaskId?: string | undefined }>) =>
       tasks.find((task) => task.id === childTaskId);
 
     // The returned board must not carry the raw graph id as a parent link.
