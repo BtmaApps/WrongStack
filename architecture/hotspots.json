@@ -159,11 +159,11 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 954,
-      "relativeImports": 15
+      "lines": 956,
+      "relativeImports": 14
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 908,
+      "lines": 905,
       "relativeImports": 21
     },
     "packages/mcp/src/server.ts": {
@@ -207,7 +207,7 @@
       "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
-      "lines": 815,
+      "lines": 807,
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -219,7 +219,7 @@
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 887,
+      "lines": 878,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -239,7 +239,7 @@
       "relativeImports": 3
     },
     "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 833,
+      "lines": 828,
       "relativeImports": 19
     },
     "packages/simpleui/src/use-simple-ui-session.tsx": {
@@ -267,7 +267,7 @@
       "relativeImports": 26
     },
     "packages/tools/src/json.ts": {
-      "lines": 888,
+      "lines": 886,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
@@ -303,7 +303,7 @@
       "relativeImports": 50
     },
     "packages/vector-memory/src/store.ts": {
-      "lines": 810,
+      "lines": 807,
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -343,8 +343,8 @@
       "relativeImports": 5
     },
     "packages/webui/src/hooks/ws-handlers.ts": {
-      "lines": 916,
-      "relativeImports": 8
+      "lines": 913,
+      "relativeImports": 7
     },
     "packages/webui/src/lib/fonts.ts": {
       "lines": 873,
@@ -359,16 +359,16 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 913,
-      "relativeImports": 8
+      "lines": 911,
+      "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 881,
-      "relativeImports": 15
+      "lines": 947,
+      "relativeImports": 14
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 965,
-      "relativeImports": 57
+      "lines": 957,
+      "relativeImports": 56
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1161,
