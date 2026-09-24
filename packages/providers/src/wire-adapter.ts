@@ -241,6 +241,47 @@ export abstract class WireAdapter implements Provider {
     return warmConnection(this.baseUrl, this.fetchImpl);
   }
 
+  /**
+   * One non-streaming JSON POST with this provider's credentials, for the
+   * side APIs a chat wire does not cover (image generation). Redirects stay
+   * same-origin like the chat path; a non-2xx status becomes this provider's
+   * own `ProviderError`.
+   */
+  protected async postJson(
+    url: string,
+    body: unknown,
+    headers: Record<string, string>,
+    signal: AbortSignal,
+  ): Promise<unknown> {
+    let res: Response2;
+    try {
+      const raw = await redirectSafeFetch(this.fetchImpl, url, {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      });
+      validateResponse(raw);
+      res = raw as Response2;
+    } catch (err) {
+      if (signal.aborted) throw err;
+      throw new ProviderError(toErrorMessage(err), 0, true, this.id, {
+        cause: err,
+        body: { message: toErrorMessage(err) },
+      });
+    }
+    const text = await safeText(res);
+    if (!res.ok) throw this.translateError(res.status, text, res.headers);
+    try {
+      return JSON.parse(text) as unknown;
+    } catch (err) {
+      throw new ProviderError(`${this.id}: response is not JSON`, res.status, false, this.id, {
+        cause: err,
+        body: { message: text.slice(0, 500) },
+      });
+    }
+  }
+
   async complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
     const { aggregateStream } = await import('./aggregate.js');
     return aggregateStream(this.stream(req, opts));

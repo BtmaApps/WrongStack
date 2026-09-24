@@ -88,21 +88,26 @@ export async function runSearchRace(
   vectorStore: VectorMemoryStore,
   options: SearchRaceOptions = {},
 ): Promise<SearchRaceResult> {
-  const limit = options.limit ?? 20;
+  const limit =
+    typeof options.limit === 'number' && Number.isFinite(options.limit)
+      ? Math.max(0, Math.floor(options.limit))
+      : 20;
   const threshold = options.threshold ?? 0;
 
   // Vector channel — independent semantic recall.
   let vectorHits: VectorSearchHit[] = [];
-  try {
-    vectorHits = await vectorStore.search(query, {
-      limit,
-      ...(threshold > 0 ? { threshold } : {}),
-    });
-  } catch {
-    // Fail-open: treat provider errors as an empty channel rather than
-    // throwing the race. The diagnostics block already surfaces model
-    // load failures; the race stays usable on the lexical side.
-    vectorHits = [];
+  if (limit > 0) {
+    try {
+      vectorHits = await vectorStore.search(query, {
+        limit,
+        ...(threshold > 0 ? { threshold } : {}),
+      });
+    } catch {
+      // Fail-open: treat provider errors as an empty channel rather than
+      // throwing the race. The diagnostics block already surfaces model
+      // load failures; the race stays usable on the lexical side.
+      vectorHits = [];
+    }
   }
 
   // Lexical: by-rank (1.0 for top, 1 - i/(n-1) thereafter). Mirrors

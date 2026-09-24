@@ -1,5 +1,3 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import {
   DefaultSystemPromptBuilder,
   type DefaultSystemPromptBuilderOptions,
@@ -19,24 +17,22 @@ import {
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
 import { Container, type EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { DefaultModeStore } from '@wrongstack/core/models';
-import {
-  DefaultPermissionPolicy,
-  DefaultSecretScrubber,
-  DirectoryPermissionPolicy,
-  resolveYoloConfirmKinds,
-  validateDirectoryPolicy,
-} from '@wrongstack/core/security';
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import {
   DefaultConfigStore,
   DefaultSessionStore,
   getSessionRegistry,
   resolveSessionLoggingConfig,
 } from '@wrongstack/core/storage';
-import type { Config, Logger, ModelsRegistry, Tool } from '@wrongstack/core/types';
+import type { Config, Logger, ModelsRegistry } from '@wrongstack/core/types';
 import { createTypeSafeCriterionJudge, resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { setKanbanCriterionJudge } from '@wrongstack/kanban';
 import { createProjectSageMemoryPort, isSqliteAvailable } from '@wrongstack/sage';
+import {
+  createProjectPermissionPolicy,
+  type ProjectPermissionOptions,
+} from './project-permission-policy.js';
 
 export interface CreateContainerOptions {
   config: Config;
@@ -48,18 +44,7 @@ export interface CreateContainerOptions {
    * subsystems can react to memory mutations in real time.
    */
   events?: EventBus | undefined;
-  permission?: {
-    yolo?: boolean | undefined;
-    /** `--allowed-tools`: in-memory tool-scope pre-approvals (see DefaultPermissionPolicy). */
-    launchAllowedTools?: readonly string[] | undefined;
-    promptDelegate?: (
-      tool: Tool,
-      input: unknown,
-      suggestedPattern: string,
-    ) => Promise<
-      'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'
-    >;
-  };
+  permission?: ProjectPermissionOptions;
   compactor?: { preserveK?: number | undefined; eliseThreshold?: number | undefined };
   systemPrompt?: Partial<DefaultSystemPromptBuilderOptions> | undefined;
   /** Bundled skills directory path (resolved at boot time). */
@@ -224,52 +209,15 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
     );
   }
 
-  const directoryPolicyPath = path.join(wpaths.projectRoot, '.wrongstack', 'directory-rules.json');
-  let directoryPolicy: ConstructorParameters<typeof DirectoryPermissionPolicy>[1]['policy'] = {
-    schemaVersion: 1,
-    rules: [],
-  };
-  try {
-    const parsed = JSON.parse(fs.readFileSync(directoryPolicyPath, 'utf8')) as unknown;
-    const validation = validateDirectoryPolicy(parsed);
-    if (!validation.ok) {
-      throw new Error(
-        validation.diagnostics
-          .map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`)
-          .join('; '),
-      );
-    }
-    directoryPolicy = validation.policy;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new Error(
-        `Invalid directory permission policy at ${directoryPolicyPath}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        { cause: error },
-      );
-    }
-  }
-
-  container.bind(TOKENS.PermissionPolicy, () => {
-    const policyOptions: ConstructorParameters<typeof DefaultPermissionPolicy>[0] = {
-      trustFile: wpaths.projectTrust,
-      yolo: opts.permission?.yolo ?? false,
-      // Which kinds of damage still prompt under YOLO. Read from the user's
-      // profile config; an absent map gates every kind (fail-closed), and the
-      // in-project loader strips `autonomy.yoloConfirm` so a repo cannot widen it.
-      yoloConfirmKinds: resolveYoloConfirmKinds(config.autonomy?.yoloConfirm),
-    };
-    if (opts.permission?.promptDelegate !== undefined) {
-      policyOptions.promptDelegate = opts.permission.promptDelegate;
-    }
-    if (opts.permission?.launchAllowedTools !== undefined) {
-      policyOptions.launchAllowedTools = opts.permission.launchAllowedTools;
-    }
-    return new DirectoryPermissionPolicy(new DefaultPermissionPolicy(policyOptions), {
-      policy: directoryPolicy,
-    });
+  // Built eagerly so an invalid `.wrongstack/directory-rules.json` fails the
+  // boot instead of the first tool call.
+  const buildPermissionPolicy = createProjectPermissionPolicy({
+    projectRoot: wpaths.projectRoot,
+    trustFile: wpaths.projectTrust,
+    config,
+    permission: opts.permission,
   });
+  container.bind(TOKENS.PermissionPolicy, buildPermissionPolicy);
 
   container.bind(TOKENS.Compactor, () =>
     // Strategy comes from config.context.strategy: 'hybrid' (default, lossless

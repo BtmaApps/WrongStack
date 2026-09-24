@@ -49,6 +49,24 @@ export interface SessionArchiveIdleResult {
   results: SessionArchiveResult[];
 }
 
+/** Where `SessionStore.move` puts a session. */
+export interface SessionMoveTarget {
+  /** Store of the destination; the same store for a worktree of this repository. */
+  store: Required<Pick<SessionStore, 'sessionsDir' | 'adoptMovedSession'>>;
+  /** Checkout directory the session belongs to from now on. */
+  checkout: string;
+}
+
+export interface SessionMoveResult {
+  id: string;
+  /** `worktree`: re-stamped in place. `project`: moved to another project's store. */
+  kind: 'worktree' | 'project';
+  checkout: string;
+  /** Project the session came from, for a `project` move. */
+  fromProject?: string | undefined;
+  summary: SessionSummary;
+}
+
 export interface SessionStore {
   create(meta: Omit<SessionMetadata, 'startedAt'>): Promise<SessionWriter>;
   /**
@@ -108,6 +126,17 @@ export interface SessionStore {
    * Returns the refreshed summary. Throws if the session does not exist.
    */
   rename(id: string, name: string): Promise<SessionSummary>;
+  /**
+   * Move a session that is not open anywhere to another checkout: a git
+   * worktree of this repository (same store; the session is re-stamped) or
+   * another project (the journal moves to that project's store). Refuses a
+   * live session.
+   */
+  move?(id: string, target: SessionMoveTarget): Promise<SessionMoveResult>;
+  /** This store's journal directory; `move` compares stores by it. */
+  readonly sessionsDir?: string;
+  /** Index a session a move just placed in this store (see `move`). */
+  adoptMovedSession?(id: string, name: string | undefined): Promise<SessionSummary>;
   /**
    * Return true only when the persisted journal is strictly readable and
    * contains lifecycle envelope events but no messages or other session content.
@@ -320,6 +349,14 @@ export interface SessionWriter {
    * pass it or the record is lost for good.
    */
   truncateToCheckpoint(promptIndex: number, revertedFiles?: readonly string[]): Promise<number>;
+  /**
+   * The events the newest rewind cut, if it can still be redone (no prompt
+   * since, journal prefix unchanged). Reads only. Optional: writers without
+   * a journal file have no redo.
+   */
+  peekRedo?(): Promise<{ toPromptIndex: number; events: SessionEvent[] } | null>;
+  /** Put the newest rewind's events back. Returns their count, or null. */
+  restoreRedo?(): Promise<number | null>;
   /**
    * Clear the session transcript file, resetting the on-disk history.
    * Called by /clear to wipe chat history from persistent storage.

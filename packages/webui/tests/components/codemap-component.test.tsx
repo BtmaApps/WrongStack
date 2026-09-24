@@ -21,6 +21,7 @@ if (typeof globalThis.DOMMatrix === 'undefined') {
 
 const { CodeMap } = await import('../../src/components/CodeMap');
 const { useCodemapActivityStore } = await import('../../src/stores/codemap-activity-store');
+const { useCodemapIndexStore } = await import('../../src/stores/codemap-index-store');
 
 const agentFile = '/workspace/packages/core/src/agent.ts';
 const toolFile = '/workspace/packages/core/src/tool.ts';
@@ -238,6 +239,26 @@ describe('CodeMap component', () => {
     });
     // A focus click must not replace the architecture with a file list.
     expect(graphNode('@wrongstack/cli')).toBeDefined();
+  });
+
+  it('refreshes in the background on an index update, keeping the view and selection', async () => {
+    mockAllGraphs();
+    render(<CodeMap />);
+    await waitFor(() => expect(graphNode('@wrongstack/core')).toBeDefined());
+    fireEvent.click(graphAction('@wrongstack/core', 'Relations: @wrongstack/core'));
+    await waitFor(() => expect(screen.getByText('Who depends on this')).toBeDefined());
+    const packageFetches = () =>
+      mockFetch.mock.calls.filter(([url]) => String(url).includes('/api/codemap/packages')).length;
+    const before = packageFetches();
+
+    act(() => useCodemapIndexStore.getState().notifyIndexUpdated());
+
+    // The map stays on screen while it refetches — no loading takeover.
+    expect(screen.queryByText('Mapping relationships')).toBeNull();
+    await waitFor(() => expect(packageFetches()).toBe(before + 1));
+    // The selection survives because its node is still in the new graph.
+    expect(screen.getByText('Who depends on this')).toBeDefined();
+    expect(graphNode('@wrongstack/core')).toBeDefined();
   });
 
   it('opens a package explicitly while keeping the code tree visible', async () => {

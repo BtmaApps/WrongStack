@@ -37,6 +37,7 @@ export {
 } from './deep-merge.js';
 export * from './diff.js';
 export type { HttpDispatcher, HttpsAgentAsDispatcher } from './dispatcher-types.js';
+export { adaptDocumentsForModel, documentBlocksAsText } from './document-blocks.js';
 export * from './env-typed.js';
 export { rawErrorMessage, toErrorMessage } from './error.js';
 export * from './expect-defined.js';
@@ -58,10 +59,15 @@ export {
   buildUserContentBlocks,
   IncomingImageError,
   type IncomingImagePayload,
+  type IncomingPdf,
   isAllowedImageMediaType,
   isValidImageBase64,
+  MAX_INCOMING_DOCUMENT_BYTES,
+  MAX_INCOMING_DOCUMENTS,
   MAX_INCOMING_IMAGE_BYTES,
   MAX_INCOMING_IMAGES,
+  PDF_MEDIA_TYPE,
+  parseIncomingAttachments,
   parseIncomingImages,
 } from './incoming-images.js';
 export { readBundledInstructionText, renderInstructionTemplate } from './instruction-file.js';

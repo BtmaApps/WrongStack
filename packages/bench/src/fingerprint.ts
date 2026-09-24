@@ -126,7 +126,7 @@ function normalizeForHash(value: unknown): unknown {
   }
   if (typeof value !== 'object') return value;
 
-  const out: Record<string, unknown> = {};
+  const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   const record = value as Record<string, unknown>;
   // Sort byte-wise (not localeCompare) so the canonical serialization — and thus
   // the fingerprint hash — is identical on any machine, per the guarantee above.

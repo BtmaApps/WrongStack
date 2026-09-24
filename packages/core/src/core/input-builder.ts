@@ -158,6 +158,33 @@ export class InputBuilder {
   }
 
   /**
+   * Register a PDF (see `registerPaste`). `data` is the file as base64 and
+   * `text` its extracted text, which models without PDF input receive. The
+   * token is path-keyed like `registerFile`'s, so a PDF picked with `@` looks
+   * like any other file in the buffer.
+   */
+  async registerDocument(input: {
+    data: string;
+    text: string;
+    filename: string;
+    pages?: number | undefined;
+  }): Promise<string> {
+    const ref = await this.store.add({
+      kind: 'document',
+      data: input.data,
+      text: input.text,
+      meta: {
+        filename: input.filename,
+        label: input.filename,
+        mediaType: 'application/pdf',
+        ...(input.pages !== undefined ? { pages: input.pages } : {}),
+      },
+    });
+    this.refs.push(ref);
+    return `[file:${input.filename}]`;
+  }
+
+  /**
    * Whether `appendPaste(text)` would collapse the text to a placeholder
    * (rather than inlining it). Lets a frontend decide where to route a paste
    * — e.g. collapsed pastes become a pill, while inlined ones can be shown

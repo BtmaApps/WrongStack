@@ -6,6 +6,7 @@ import { noOpVault } from '@wrongstack/core/security';
 import { attachTodosCheckpoint } from '@wrongstack/core/storage';
 import { normalizeTokenSavingTier, type SessionSummary } from '@wrongstack/core/types';
 import { mergeCustomModelDefs } from '@wrongstack/core/utils';
+import { listGitWorktrees } from '@wrongstack/core/worktree';
 import { capabilitiesFor } from '@wrongstack/providers';
 import { createToolVisionAdapters } from '@wrongstack/runtime/vision';
 import { runSingleShotDispatch } from './boot/dispatch-singleshot.js';
@@ -39,6 +40,11 @@ import {
 import { selectPickerSessions } from './boot/tui-session-stub-enrich.js';
 import { createSettingsAdapter } from './boot/tui-settings-adapter.js';
 import { createThemeAdapter } from './boot/tui-theme-adapter.js';
+import {
+  type WorktreeRef,
+  withWorktreeSwitch,
+  worktreeOfSession,
+} from './boot/worktree-sessions.js';
 import { createBrainPanelHost } from './brain-menu/panel-service.js';
 import { buildMutatingAgentLadder } from './chimera-reviewer-policy.js';
 import type { ExecuteDeps } from './execute-deps.js';
@@ -48,11 +54,6 @@ import { createReplFleetCallbacks } from './execution-repl-fleet-callbacks.js';
 import { FleetStatusLine } from './fleet-statusline.js';
 import { createSubagentModelsPanelHost } from './subagent-models/panel-service.js';
 import { createTuiResumeCallback } from './tui-resume-callback.js';
-import {
-  listSiblingWorktreeSessions,
-  type WorktreeRef,
-  withWorktreeSwitch,
-} from './boot/worktree-sessions.js';
 
 export type { LiveSettingsInput } from './live-settings-input.js';
 
@@ -432,7 +433,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
         return switchProjectInPlaceExtracted(switchCtx, targetRoot, displayName);
       };
       // Sessions of other git worktrees in the last /resume listing.
-      const worktreeOfSession = new Map<string, WorktreeRef>();
+      const worktreeSessions = new Map<string, WorktreeRef>();
 
       const pickerCtx: ProjectPickerContext = {
         state,
@@ -462,6 +463,10 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
         code = await runTuiDispatch({
           leaderAutoWake,
           agent,
+          // The session store's root. Without it /rewind, the checkpoint
+          // timeline and /rewind redo resolve every session file against ''
+          // and fail, and the layout store and history archive stay ephemeral.
+          sessionsDir: wpaths.projectSessions,
           events,
           slashRegistry,
           skillLoader,
@@ -712,44 +717,42 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
               /* liveness is an ADDITIONAL guard, never a listing prerequisite */
             }
             const currentId = agent.ctx.session?.id ?? session.id;
-            const siblings = await listSiblingWorktreeSessions({
-              projectRoot: state.projectRoot,
-              globalRoot: state.wpaths.globalRoot,
-            }).catch(() => []);
-            worktreeOfSession.clear();
-            for (const w of siblings) worktreeOfSession.set(w.summary.id, w.worktree);
-            const toEntry = (s: SessionSummary, worktree?: WorktreeRef) => ({
-              id: s.id,
-              title: s.title ?? '',
-              name: s.name,
-              lastUserMessage: s.lastUserMessage,
-              messageCount: s.messageCount,
-              lastActivityAt: s.lastActivityAt,
-              startedAt: s.startedAt ?? '',
-              endedAt: s.endedAt,
-              tokenTotal: s.tokenTotal ?? 0,
-              iterationCount: s.iterationCount ?? 0,
-              toolCallCount: s.toolCallCount ?? 0,
-              toolErrorCount: s.toolErrorCount ?? 0,
-              outcome: s.outcome,
-              forkedFrom: s.forkedFrom,
-              ...(worktree ? { worktree } : {}),
-              isCurrent: s.id === currentId,
-              // The session this process owns is `isCurrent`, not "live
-              // elsewhere" — it holds its own lease and would otherwise be
-              // labelled as owned by another surface.
-              ...(s.id !== currentId && liveBySession.has(s.id)
-                ? { live: liveBySession.get(s.id) }
-                : {}),
-            });
-            return [
-              ...summaries.map((s) => toEntry(s)),
-              ...siblings.map((w) => toEntry(w.summary, w.worktree)),
-            ];
+            // All worktrees of the repo share this store; tag the sessions
+            // that ran in another checkout (see boot/worktree-sessions.ts).
+            const worktrees = await listGitWorktrees(state.projectRoot);
+            worktreeSessions.clear();
+            const toEntry = (s: SessionSummary, worktree = worktreeOfSession(s, worktrees)) => {
+              if (worktree) worktreeSessions.set(s.id, worktree);
+              return {
+                id: s.id,
+                title: s.title ?? '',
+                name: s.name,
+                lastUserMessage: s.lastUserMessage,
+                messageCount: s.messageCount,
+                lastActivityAt: s.lastActivityAt,
+                startedAt: s.startedAt ?? '',
+                endedAt: s.endedAt,
+                tokenTotal: s.tokenTotal ?? 0,
+                iterationCount: s.iterationCount ?? 0,
+                toolCallCount: s.toolCallCount ?? 0,
+                toolErrorCount: s.toolErrorCount ?? 0,
+                outcome: s.outcome,
+                forkedFrom: s.forkedFrom,
+                ...(worktree ? { worktree } : {}),
+                isCurrent: s.id === currentId,
+                // The session this process owns is `isCurrent`, not "live
+                // elsewhere" — it holds its own lease and would otherwise be
+                // labelled as owned by another surface.
+                ...(s.id !== currentId && liveBySession.has(s.id)
+                  ? { live: liveBySession.get(s.id) }
+                  : {}),
+              };
+            };
+            return summaries.map((s) => toEntry(s));
           },
           onResumeSession: withWorktreeSwitch(
             createTuiResumeCallback({ state, agent, tokenCounter, switchProviderAndModel, events }),
-            (id) => worktreeOfSession.get(id),
+            (id) => worktreeSessions.get(id),
             switchProjectInPlace,
           ),
           getProjectPickerItems: () => getProjectPickerItems(pickerCtx),

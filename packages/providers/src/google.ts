@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
-import type { Capabilities, Request, StreamEvent } from '@wrongstack/core/types';
+import type {
+  Capabilities,
+  GeneratedImage,
+  ImageGenerationRequest,
+  ImageGenerationResult,
+  Request,
+  StreamEvent,
+} from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
+import { geminiImageCall } from './image-generation.js';
 import type { GoogleStreamState } from './presets/google.js';
 import { googleWireFormat, toolsToGemini } from './presets/google.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
@@ -55,6 +63,26 @@ export class GoogleProvider extends WireFormatProvider<GoogleStreamState> {
     headers?: HeadersLike,
   ): ProviderError {
     return parseProviderHttpError(this.id, status, text, headers);
+  }
+
+  /**
+   * Text-to-image: Gemini image models through `generateContent` (one image
+   * per call, so `count` calls), Imagen models through `predict`.
+   */
+  async generateImage(
+    req: ImageGenerationRequest,
+    opts: { signal: AbortSignal },
+  ): Promise<ImageGenerationResult> {
+    const call = geminiImageCall(this.baseUrl, req);
+    const headers = this.buildHeaders({ model: req.model, messages: [] });
+    const images: GeneratedImage[] = [];
+    const text: string[] = [];
+    for (let i = 0; i < call.calls; i++) {
+      const result = call.parse(await this.postJson(call.url, call.body, headers, opts.signal));
+      images.push(...result.images);
+      if (result.text) text.push(result.text);
+    }
+    return { images, ...(text.length > 0 ? { text: text.join('\n') } : {}) };
   }
 
   /**

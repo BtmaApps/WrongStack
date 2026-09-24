@@ -631,6 +631,21 @@ describe('CppAdapter', () => {
     }, dir);
   });
 
+  it('retains vcpkg minimum-version constraints without claiming an exact resolved version', async () => {
+    const { dir, ws } = mkWorkspace('cpp', {
+      'vcpkg.json': JSON.stringify({
+        dependencies: [{ name: 'fmt', 'version>=': '10.2.1' }, 'zlib'],
+      }),
+    });
+    await withCleanup(async () => {
+      const deps = await new CppAdapter().inventory(ws, {});
+      const fmt = deps.find((dep) => dep.name === 'fmt');
+      expect(fmt?.requested).toBe('10.2.1');
+      expect(fmt?.purl).not.toContain('@10.2.1');
+      expect(deps.find((dep) => dep.name === 'zlib')?.requested).toBeUndefined();
+    }, dir);
+  });
+
   it('deduplicates across manifests', async () => {
     const { dir, ws } = mkWorkspace('cpp', {
       'conanfile.txt': CONANFILE,

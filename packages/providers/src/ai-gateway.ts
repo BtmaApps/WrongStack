@@ -3,6 +3,7 @@ import {
   type Capabilities,
   ConfigError,
   type ContentBlock,
+  documentAsText,
   type Message,
   type Provider,
   type ProviderConfig,
@@ -645,6 +646,8 @@ function convertAssistantBlock(block: Exclude<ContentBlock, { type: 'tool_result
         mediaType: block.source.media_type ?? 'image/png',
         data: imageData(block),
       };
+    case 'document':
+      return { type: 'text' as const, text: documentAsText(block).text };
   }
 }
 
@@ -672,6 +675,13 @@ function convertUserBlock(block: Exclude<ContentBlock, { type: 'tool_result' }>)
       return { type: 'text' as const, text: block.thinking };
     case 'tool_use':
       return { type: 'text' as const, text: `[tool:${block.name}] ${JSON.stringify(block.input)}` };
+    case 'document':
+      return {
+        type: 'file' as const,
+        mediaType: block.source.media_type,
+        data: block.source.data,
+        ...(block.name ? { filename: block.name } : {}),
+      };
   }
 }
 
@@ -691,6 +701,8 @@ function blockText(block: Exclude<ContentBlock, { type: 'tool_result' }>): strin
       return `[tool:${block.name}]`;
     case 'image':
       return '[image]';
+    case 'document':
+      return documentAsText(block).text;
   }
 }
 

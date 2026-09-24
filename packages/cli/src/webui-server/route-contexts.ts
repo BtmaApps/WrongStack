@@ -15,7 +15,7 @@ import {
 import { TOKENS } from '@wrongstack/core/kernel';
 import { SkillInstaller } from '@wrongstack/core/skills';
 import { PromptUsageStore } from '@wrongstack/core/storage';
-import type { SessionWriter } from '@wrongstack/core/types';
+import { resolveTokenSavingTier, type SessionWriter } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import {
   type BrainHandlerContext,
@@ -267,6 +267,16 @@ export function createWebuiRouteContexts({
     pendingConfirms,
     configStore: opts.agent.container?.safeResolve?.(TOKENS.ConfigStore),
     systemPrompt: {
+      previewContext: (sessionId) => {
+        const target = sessionId ? getSessionAgent(sessionId).ctx : opts.agent.ctx;
+        return {
+          toolNames: target.tools.map((tool) => tool.name),
+          tier: resolveTokenSavingTier(
+            opts.appConfig?.features?.tokenSavingMode,
+            target.provider?.capabilities?.maxContext,
+          ),
+        };
+      },
       paths: () => {
         const wpaths = resolveWstackPaths({ projectRoot: promptProjectRoot(), globalRoot });
         return {

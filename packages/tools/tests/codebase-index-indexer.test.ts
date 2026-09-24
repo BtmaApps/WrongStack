@@ -34,6 +34,21 @@ describe('runIndexer', () => {
     }
   });
 
+  it('lets a frugal process use the pool only for a rebuild into an empty index', () => {
+    const previous = process.env['WRONGSTACK_PERF_PROFILE'];
+    process.env['WRONGSTACK_PERF_PROFILE'] = 'frugal';
+    try {
+      // The project server's incremental and full runs stay on its thread…
+      expect(shouldUseParserWorkerPool(9000, 40)).toBe(false);
+      // …but the first index, the run a user waits on, gets its bounded pool.
+      expect(shouldUseParserWorkerPool(9000, 40, { rebuild: true })).toBe(true);
+      expect(shouldUseParserWorkerPool(100, 40, { rebuild: true })).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env['WRONGSTACK_PERF_PROFILE'];
+      else process.env['WRONGSTACK_PERF_PROFILE'] = previous;
+    }
+  });
+
   // Audit T-04: the threshold is env-configurable via
   // WRONGSTACK_INDEX_WORKER_THRESHOLD, default-preserving, with 0 as an
   // explicit opt-out (the WRONGSTACK_*=0 convention) and garbage falling

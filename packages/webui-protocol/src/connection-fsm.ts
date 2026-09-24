@@ -48,6 +48,7 @@ export function markConnectionOpen(
   state: SurfaceConnectionState,
   now = Date.now(),
 ): SurfaceConnectionState {
+  if (state.stopped) return state;
   return {
     ...state,
     phase: 'open',

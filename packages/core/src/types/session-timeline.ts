@@ -42,13 +42,22 @@ import {
 } from './session-markers.js';
 import type { SessionEvent } from './session.js';
 
-/** An image the user attached to a prompt, as it survives in the journal. */
+/**
+ * An image or PDF the user attached to a prompt, as it survives in the
+ * journal. A PDF (`mediaType: 'application/pdf'`) comes without its bytes:
+ * the surfaces draw a name chip for it, and shipping the file on every replay
+ * would cost megabytes for nothing.
+ */
 export interface SessionTimelineImage {
   mediaType?: string | undefined;
-  /** Base64 payload, when the block carried one. */
+  /** Base64 payload, when the block carried one. Never set for a PDF. */
   data?: string | undefined;
   /** Remote URL, when the block referenced one instead. */
   url?: string | undefined;
+  /** File name, for a PDF. */
+  name?: string | undefined;
+  /** Page count, for a PDF. */
+  pages?: number | undefined;
 }
 
 /**
@@ -285,6 +294,14 @@ function toolMetaIndex(meta: readonly SessionToolMeta[] | undefined): Map<string
 function imagesOf(blocks: readonly ContentBlock[]): SessionTimelineImage[] | undefined {
   const images: SessionTimelineImage[] = [];
   for (const block of blocks) {
+    if (block.type === 'document') {
+      images.push({
+        mediaType: block.source.media_type,
+        ...(block.name ? { name: block.name } : {}),
+        ...(block.pages !== undefined ? { pages: block.pages } : {}),
+      });
+      continue;
+    }
     if (block.type !== 'image') continue;
     images.push({
       mediaType: block.source.media_type,

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { allRowsAsArrays } from './sqlite-runtime.js';
 import type { WriterSymbolGraphRow } from './writer-graph-helpers.js';
 import {
   indexedFileMatchArgs,
@@ -39,7 +40,34 @@ export function chunkedIdQuery(
     const chunk = padToInBucket(ids.slice(cursor, cursor + take));
     cursor += take;
     const sql = buildSql(placeholders(chunk.length));
-    results.push(...(stmt(sql).all(...chunk, ...extraArgs) as unknown[]));
+    // A loop, not `push(...rows)`: a spread of a large chunk's rows is one
+    // argument per row and overflows the call stack past ~100k.
+    for (const row of stmt(sql).all(...chunk, ...extraArgs) as unknown[]) results.push(row);
+  }
+  return results;
+}
+
+/**
+ * {@link chunkedIdQuery} returning positional arrays in SELECT order — for
+ * the large aggregate reads where node:sqlite's per-row objects are most of
+ * the cost (see `allRowsAsArrays`). Same no-LIMIT contract.
+ */
+export function chunkedIdRows(
+  stmt: PrepareStatement,
+  ids: readonly number[],
+  buildSql: (placeholders: string) => string,
+): unknown[][] {
+  const results: unknown[][] = [];
+  let cursor = 0;
+  for (const take of inListChunks(ids.length, MAX_SQL_VARS)) {
+    const chunk = padToInBucket(ids.slice(cursor, cursor + take));
+    cursor += take;
+    for (const row of allRowsAsArrays(
+      stmt(buildSql(placeholders(chunk.length))),
+      ...(chunk as never[]),
+    )) {
+      results.push(row);
+    }
   }
   return results;
 }
@@ -55,7 +83,9 @@ export function chunkedValueQuery(
   for (const take of inListChunks(values.length, MAX_SQL_VARS)) {
     const chunk = padToInBucket(values.slice(cursor, cursor + take));
     cursor += take;
-    results.push(...(stmt(buildSql(placeholders(chunk.length))).all(...chunk) as unknown[]));
+    for (const row of stmt(buildSql(placeholders(chunk.length))).all(...chunk) as unknown[]) {
+      results.push(row);
+    }
   }
   return results;
 }
@@ -79,25 +109,31 @@ export function refCountsTouching(
   localIds: readonly number[],
 ): RefCountRow[] {
   const local = new Set(localIds);
-  const outgoing = chunkedIdQuery(
+  const out: RefCountRow[] = [];
+  // Read as arrays and shaped here: a large package touches tens of
+  // thousands of ref groups, and node:sqlite's row objects cost more than
+  // the query itself.
+  for (const [from_id, to_id, call_type, n] of chunkedIdRows(
     stmt,
     localIds,
     (ph) =>
       `SELECT from_id, to_id, call_type, COUNT(*) AS n FROM refs
         WHERE from_id IN (${ph}) AND to_id IS NOT NULL
         GROUP BY from_id, to_id, call_type`,
-  ) as RefCountRow[];
-  const incoming = (
-    chunkedIdQuery(
-      stmt,
-      localIds,
-      (ph) =>
-        `SELECT from_id, to_id, call_type, COUNT(*) AS n FROM refs
-          WHERE to_id IN (${ph})
-          GROUP BY from_id, to_id, call_type`,
-    ) as RefCountRow[]
-  ).filter((row) => !local.has(row.from_id));
-  return [...outgoing, ...incoming];
+  ) as Array<[number, number, string, number]>) {
+    out.push({ from_id, to_id, call_type, n });
+  }
+  for (const [from_id, to_id, call_type, n] of chunkedIdRows(
+    stmt,
+    localIds,
+    (ph) =>
+      `SELECT from_id, to_id, call_type, COUNT(*) AS n FROM refs
+        WHERE to_id IN (${ph})
+        GROUP BY from_id, to_id, call_type`,
+  ) as Array<[number, number, string, number]>) {
+    if (!local.has(from_id)) out.push({ from_id, to_id, call_type, n });
+  }
+  return out;
 }
 
 /**

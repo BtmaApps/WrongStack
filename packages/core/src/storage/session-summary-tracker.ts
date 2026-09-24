@@ -64,6 +64,11 @@ export class SessionSummaryTracker {
           tokenTotal: 0,
         };
 
+    // The checkout this writer runs in (a resume in another worktree moves
+    // it). Taken from the metadata: the lifecycle preamble that also records
+    // it is written lazily and never passes through observe().
+    if (opts.meta.checkout) this.summary = { ...this.summary, checkout: opts.meta.checkout };
+
     this.baseTokenTotal = this.summary.tokenTotal;
     this.iterationCount = this.summary.iterationCount ?? 0;
     this.toolCallCount = this.summary.toolCallCount ?? 0;
@@ -147,6 +152,13 @@ export class SessionSummaryTracker {
       this.compactionCount++;
     } else if (event.type === 'session_forked') {
       this.summary = { ...this.summary, forkedFrom: event.parentSessionId };
+    } else if (
+      (event.type === 'session_start' ||
+        event.type === 'session_resumed' ||
+        event.type === 'session_moved') &&
+      event.checkout
+    ) {
+      this.summary = { ...this.summary, checkout: event.checkout };
     }
 
     if (isSessionErrorEvent(event)) {

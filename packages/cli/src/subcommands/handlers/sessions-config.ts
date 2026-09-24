@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { color, expectDefined } from '@wrongstack/core/utils';
 import {
   backupCurrent,
@@ -78,6 +79,33 @@ export const sessionsCmd: SubcommandHandler = async (args, deps) => {
     } catch (err) {
       deps.renderer.writeError(
         `Fork failed: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+      return 1;
+    }
+  }
+  if (sub === 'move') {
+    const moveArgs = args.slice(1);
+    const sessionId = moveArgs[0] && !moveArgs[0].startsWith('-') ? moveArgs[0] : undefined;
+    const targetPath = extractArg(moveArgs, '--to');
+    if (!sessionId || !targetPath) {
+      deps.renderer.writeError(
+        'Usage: wstack sessions move <id> --to <project or worktree path>\n',
+      );
+      return 1;
+    }
+    try {
+      const { moveSessionTo, describeSessionMove } = await import('../../session-move.js');
+      const result = await moveSessionTo({
+        store: deps.sessionStore,
+        sessionId,
+        targetPath: path.resolve(deps.cwd, targetPath),
+        globalRoot: deps.paths.globalRoot,
+      });
+      deps.renderer.write(`${describeSessionMove(result)}\n`);
+      return 0;
+    } catch (err) {
+      deps.renderer.writeError(
+        `Move failed: ${err instanceof Error ? err.message : String(err)}\n`,
       );
       return 1;
     }

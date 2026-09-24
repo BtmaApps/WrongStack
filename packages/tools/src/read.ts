@@ -5,6 +5,14 @@ import { isBinaryBuffer, safeResolveReal, sha256hex } from './_util.js';
 import { getIndexState, searchCodebaseIndex } from './codebase-index/background-indexer.js';
 import type { SymbolKind } from './codebase-index/schema.js';
 import { codebaseIndexDirOverride } from './codebase-index/writer-helpers.js';
+import {
+  extractPdfText,
+  formatPdfPages,
+  isPdf,
+  PDF_MAX_BYTES,
+  PDF_MAX_PAGES_PER_READ,
+  parsePdfPageRange,
+} from './pdf-text.js';
 
 /**
  * Meta key for advanced mode. When `true` in `ctx.meta`, the read tool
@@ -29,6 +37,8 @@ export interface ReadInput {
    * per-call when explicitly set. When omitted, the meta flag governs.
    */
   includeSymbols?: boolean | undefined;
+  /** PDF only: pages to read, e.g. "3" or "1-5" (at most 20 per call). */
+  pages?: string | undefined;
 }
 
 /**
@@ -66,6 +76,57 @@ export interface ReadOutput {
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
+/**
+ * A PDF's extracted text, a page range at a time. Before this `read` refused
+ * PDFs as binary, so the agent had no way to look inside one.
+ */
+async function readPdf(
+  input: ReadInput,
+  absPath: string,
+  buf: Buffer,
+  mtimeMs: number,
+  ctx: Parameters<Tool['execute']>[1],
+): Promise<ReadOutput> {
+  let result: Awaited<ReturnType<typeof extractPdfText>>;
+  try {
+    result = await extractPdfText(buf, (total) => parsePdfPageRange(input.pages, total));
+  } catch (err) {
+    throw new FsError({
+      message: `read: cannot read PDF "${input.path}": ${toErrorMessage(err)}`,
+      code: 'FS_READ_FAILED',
+      path: absPath,
+      context: { reason: 'pdf' },
+      cause: err,
+    });
+  }
+  ctx.recordRead?.(absPath, mtimeMs, 'user', sha256hex(buf.toString('base64')));
+  const { totalPages, pages } = result;
+  const first = pages[0]?.page ?? 1;
+  const last = pages.at(-1)?.page ?? 0;
+  const text = formatPdfPages(pages);
+  const notes = [
+    `PDF, ${totalPages} page${totalPages === 1 ? '' : 's'}; pages ${first}-${last} shown.`,
+  ];
+  if (last < totalPages)
+    notes.push(
+      `Read more with pages: "${last + 1}-${Math.min(totalPages, last + PDF_MAX_PAGES_PER_READ)}".`,
+    );
+  if (pages.every((p) => p.text.length === 0)) {
+    notes.push(
+      'These pages have no text layer (a scan or images only); nothing could be extracted.',
+    );
+  }
+  if (input.offset !== undefined || input.limit !== undefined)
+    notes.push('offset/limit do not apply to PDFs; use pages.');
+  return {
+    text,
+    total_lines: text.length === 0 ? 0 : text.split('\n').length,
+    encoding: 'pdf-text',
+    truncated: last < totalPages,
+    note: notes.join(' '),
+  };
+}
+
 export const readTool: Tool<ReadInput, ReadOutput> = {
   name: 'read',
   category: 'Filesystem',
@@ -74,7 +135,8 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
     'Lines are returned 1-indexed in the form `N→content` (line number, then a `→` separator, then the raw line). ' +
     'The `N→` prefix is display-only — always strip it before reusing the text, e.g. never include it in `edit.old_string`. ' +
     'When advanced mode is on or `includeSymbols` is set, the result also includes a `symbols` field ' +
-    'listing codebase-index symbol names, kinds, and line numbers for the file (not file content).',
+    'listing codebase-index symbol names, kinds, and line numbers for the file (not file content). ' +
+    'PDFs return their extracted text page by page; pick pages with `pages`.',
   usageHint:
     'FOUNDATIONAL TOOL — call this before almost any edit operation.\n\n' +
     'Best practices:\n' +
@@ -124,6 +186,10 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
           'When true, include the codebase-index symbol list for this file as a structured `symbols` field ' +
           'in the result. Overrides the advanced-mode meta flag per-call.',
       },
+      pages: {
+        type: 'string',
+        description: `PDF only: pages to read, e.g. "3" or "1-5" (at most ${PDF_MAX_PAGES_PER_READ} per call; default the first ${PDF_MAX_PAGES_PER_READ}).`,
+      },
     },
     required: ['path'],
   },
@@ -172,6 +238,18 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
         context: { reason: 'not-a-regular-file' },
       });
     }
+    if (/\.pdf$/i.test(absPath)) {
+      if (stat.size > PDF_MAX_BYTES) {
+        throw new FsError({
+          message: `read: PDF too large (${stat.size} bytes, limit ${PDF_MAX_BYTES})`,
+          code: 'FS_READ_FAILED',
+          path: absPath,
+          context: { size: stat.size, limit: PDF_MAX_BYTES, reason: 'too-large' },
+        });
+      }
+      signal?.throwIfAborted();
+      return readPdf(input, absPath, await fs.readFile(absPath), stat.mtimeMs, ctx);
+    }
     if (stat.size > MAX_BYTES) {
       throw new FsError({
         message: `read: file too large (${stat.size} bytes, limit ${MAX_BYTES})`,
@@ -217,6 +295,8 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
 
     signal?.throwIfAborted();
     const buf = await fs.readFile(absPath);
+    // A PDF saved without its extension is found by its `%PDF-` header.
+    if (isPdf(absPath, buf)) return readPdf(input, absPath, buf, stat.mtimeMs, ctx);
     if (isBinaryBuffer(buf)) {
       throw new FsError({
         message: `read: "${input.path}" appears to be binary`,

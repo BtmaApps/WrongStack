@@ -145,12 +145,16 @@ export class PhaseGraphBuilder {
     const tasksPerPhase = options.tasksPerPhase ?? 5;
     const nodes = Array.from(taskGraph.nodes.values());
 
-    // Build adjacency: for each node, which nodes depend on it.
+    // Build adjacency and prerequisites so a dependent is never pulled ahead of another parent.
     const dependents = new Map<string, string[]>();
+    const prerequisites = new Map<string, string[]>();
     for (const edge of taskGraph.edges) {
       const list = dependents.get(edge.from) ?? [];
       list.push(edge.to);
       dependents.set(edge.from, list);
+      const parents = prerequisites.get(edge.to) ?? [];
+      parents.push(edge.from);
+      prerequisites.set(edge.to, parents);
     }
 
     // Topological sort (Kahn's algorithm) — tasks that are depended-on come first.
@@ -206,7 +210,11 @@ export class PhaseGraphBuilder {
       // as long as we haven't exceeded the size limit.
       const deps = dependents.get(id) ?? [];
       for (const depId of deps) {
-        if (!assigned.has(depId) && currentGroup.length < tasksPerPhase) {
+        if (
+          !assigned.has(depId) &&
+          currentGroup.length < tasksPerPhase &&
+          (prerequisites.get(depId) ?? []).every((parentId) => assigned.has(parentId))
+        ) {
           assigned.add(depId);
           currentGroup.push(depId);
         }

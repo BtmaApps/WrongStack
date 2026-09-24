@@ -33,7 +33,8 @@ export interface MaintenanceLease {
     | 'rewind'
     | 'repair'
     | 'archive'
-    | 'rehydrate';
+    | 'rehydrate'
+    | 'move';
   holderId: string;
   leaseId: string;
   expiresAt: number;

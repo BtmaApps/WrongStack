@@ -41,6 +41,7 @@ export {
   normalizeForRepetition,
   type RepetitionSignal,
 } from './auto-proceed-loop-guard.js';
+export { tailBackgroundLog } from './background-log.js';
 export {
   type BashInput,
   type BashOutput,
@@ -282,6 +283,14 @@ export {
   grepTool,
 } from './grep.js';
 export {
+  createImageGenerateTool,
+  type ImageGenerateInput,
+  type ImageGenerateOutput,
+  type ImageGenerateToolDeps,
+  type ImageTarget,
+  imageTargetsFromCatalog,
+} from './image-generate.js';
+export {
   type InstallContext,
   type InstallInput,
   type InstallOutput,
@@ -364,6 +373,12 @@ export {
   type PatchOutput,
   patchTool,
 } from './patch.js';
+export {
+  PDF_ATTACH_MAX_BYTES,
+  PDF_ATTACH_MAX_PAGES,
+  type PreparedPdf,
+  preparePdfAttachment,
+} from './pdf-text.js';
 export {
   type PlanAction,
   type PlanInput,

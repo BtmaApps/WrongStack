@@ -9,6 +9,8 @@ import {
 import type { AppViewProps } from './app-view-contract.js';
 import { AppViewPickers } from './app-view-pickers.js';
 import { AppViewSidebar } from './app-view-sidebar.js';
+import { useBackgroundStrip } from './background-strip-model.js';
+import { BackgroundStrip, backgroundStripRows } from './components/background-strip.js';
 import { ChatSearchBar } from './components/chat-search-bar.js';
 import { DEFAULT_INPUT_PROMPT, Input } from './components/input.js';
 import { InspectOverlay, resolveInspectOverlayContent } from './components/inspect-overlay.js';
@@ -75,6 +77,10 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   useEffect(() => {
     if (chatSearchEntryId !== null) historyScrollRef.current?.scrollToEntry(chatSearchEntryId);
   }, [chatSearchJumpSeq]);
+  const messageJumpEntryId = state.messageJump.entryId;
+  useEffect(() => {
+    if (messageJumpEntryId !== null) historyScrollRef.current?.scrollToEntry(messageJumpEntryId);
+  }, [state.messageJump.seq]);
   const blockingPrompt =
     state.confirmQueue.length > 0 ||
     state.shellCommandWarning != null ||
@@ -116,9 +122,14 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   const routedToSidebar = (id: PanelId): boolean => panelPositions[id] === 'sidebar';
 
   const effectiveInputHeight = state.helpPanel.open || viewState.panelOwnsInput ? 0 : inputHeight;
+  const backgroundStrip = useBackgroundStrip();
   const pickerMaxRows = Math.max(
     8,
-    runtime.termRows - runtime.statusBarRows - effectiveInputHeight - 1,
+    runtime.termRows -
+      runtime.statusBarRows -
+      effectiveInputHeight -
+      backgroundStripRows(backgroundStrip) -
+      1,
   );
 
   const sidebarPanelOpenFlags = buildSidebarOpenFlags(state, liveSettings);
@@ -229,7 +240,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
                   todos={liveTodos}
                   showModelReasoning={showModelReasoning}
-                  markedEntryId={chatSearchEntryId}
+                  markedEntryId={chatSearchEntryId ?? messageJumpEntryId}
                   showSageMemoryInject={
                     state.settingsPicker.open
                       ? state.settingsPicker.showSageMemoryInject
@@ -256,6 +267,9 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                     includeReasoning={showModelReasoning}
                     width={mainColumnWidth}
                   />
+                ) : null}
+                {!hideInput ? (
+                  <BackgroundStrip fleet={state.fleet} width={mainColumnWidth} />
                 ) : null}
                 <Input
                   prompt={bashMode ? BASH_PROMPT : INPUT_PROMPT}

@@ -53,19 +53,25 @@ export function applyScrollAnchoring(
 }
 
 interface ChatMessageListProps {
-  messages: ChatMessage[];
-  /** Tool calls to show at their canonical position in the chat timeline. */
-  toolCalls?: ToolCallInfo[] | undefined;
-  /** File edits to show as inline widgets in the chat timeline. */
-  fileEdits?: Array<{ edit: FileEditMeta; ts?: string | undefined }> | undefined;
-  copiedMessageId: string | null;
-  running: boolean;
-  activity: string;
-  resumeProgress?: ResumeProgressInfo | null | undefined;
+  /** Timeline contents plus per-render transcript state. */
+  transcript: {
+    messages: ChatMessage[];
+    /** Tool calls to show at their canonical position in the chat timeline. */
+    toolCalls?: ToolCallInfo[] | undefined;
+    /** File edits to show as inline widgets in the chat timeline. */
+    fileEdits?: Array<{ edit: FileEditMeta; ts?: string | undefined }> | undefined;
+    copiedMessageId: string | null;
+    running: boolean;
+    activity: string;
+    resumeProgress?: ResumeProgressInfo | null | undefined;
+  };
+  /** Presentation prefs for the transcript render. */
+  display: {
+    theme: 'dark' | 'light';
+    /** Show a local-time stamp next to each message label. */
+    showTimestamps?: boolean | undefined;
+  };
   emptyState: React.ReactNode;
-  theme: 'dark' | 'light';
-  /** Show a local-time stamp next to each message label. */
-  showTimestamps?: boolean | undefined;
   onCopyMessage: (id: string, text: string) => void;
   onSelectNextStep: (messageId: string, text: string) => void;
   /** Message IDs whose next-steps have been consumed (selected or auto-run). */
@@ -225,16 +231,17 @@ const MessageItem = memo(function MessageItem({
  * they live in the tool sidebar. Only file operations get inline widgets.
  */
 export function ChatMessageList({
-  messages,
-  toolCalls,
-  fileEdits,
-  copiedMessageId,
-  running,
-  activity,
-  resumeProgress,
+  transcript: {
+    messages,
+    toolCalls,
+    fileEdits,
+    copiedMessageId,
+    running,
+    activity,
+    resumeProgress,
+  },
+  display: { theme, showTimestamps = false },
   emptyState,
-  theme,
-  showTimestamps = false,
   onCopyMessage,
   onSelectNextStep,
   consumedNextSteps,

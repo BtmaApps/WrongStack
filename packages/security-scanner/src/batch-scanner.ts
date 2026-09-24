@@ -46,7 +46,7 @@ export class BatchScanner {
     const startTime = Date.now();
     const findings: Finding[] = [];
     const errors: string[] = [];
-    let scannedFiles = 0;
+    const scanStats = { readCount: 0, errors };
 
     const targetFiles = options.skill.metadata.targetFiles;
     const fallbackExtensions: string[] = [
@@ -89,6 +89,7 @@ export class BatchScanner {
 
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize);
+      const batchStats = { readCount: 0, errors };
       const batchFindings = await this.scanFileBatchLLM({
         provider: options.provider,
         model: options.model,
@@ -100,10 +101,11 @@ export class BatchScanner {
         abortController: options.abortController,
         retryPolicy: options.retryPolicy,
         errorHandler: options.errorHandler,
+        scanStats: batchStats,
       });
       if (options.abortController.signal.aborted) break;
+      scanStats.readCount += batchStats.readCount;
       findings.push(...batchFindings);
-      scannedFiles += batch.length;
     }
 
     // Sort by severity
@@ -124,7 +126,7 @@ export class BatchScanner {
       techStack: options.techStack,
       findings,
       summary,
-      scannedFiles,
+      scannedFiles: scanStats.readCount,
       scanDurationMs: Date.now() - startTime,
       errors,
     };
@@ -142,18 +144,26 @@ export class BatchScanner {
     abortController: AbortController;
     retryPolicy?: RetryPolicy | undefined;
     errorHandler?: ErrorHandler | undefined;
+    scanStats?: { readCount: number; errors: string[] } | undefined;
   }): Promise<Finding[]> {
     const fileContents: string[] = [];
     for (let index = 0; index < opts.files.length; index += opts.fileConcurrency) {
+      const readBatch = opts.files.slice(index, index + opts.fileConcurrency);
       const readResults = await Promise.allSettled(
-        opts.files.slice(index, index + opts.fileConcurrency).map(async (file) => {
+        readBatch.map(async (file) => {
           const content = await readFileHead(file, SCAN_FILE_HEAD_CHARS);
           const relativePath = path.relative(opts.projectRoot, file).replace(/\\/g, '/');
           return `\n=== ${relativePath} ===\n${content}`;
         }),
       );
-      for (const result of readResults) {
-        if (result.status === 'fulfilled') fileContents.push(result.value);
+      for (const [offset, result] of readResults.entries()) {
+        if (result.status === 'fulfilled') {
+          fileContents.push(result.value);
+          if (opts.scanStats) opts.scanStats.readCount++;
+        } else if (opts.scanStats) {
+          const file = path.relative(opts.projectRoot, readBatch[offset]!).replace(/\\/g, '/');
+          opts.scanStats.errors.push(`Failed to read ${file}: ${toErrorMessage(result.reason)}`);
+        }
       }
     }
 

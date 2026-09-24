@@ -1,4 +1,4 @@
-import { ImageOff } from 'lucide-react';
+import { FileText, ImageOff } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ChatMessageAttachment } from '@/stores/types.js';
@@ -7,7 +7,7 @@ import type { ChatMessageAttachment } from '@/stores/types.js';
  * Thumbnail strip for images attached to a user message. Click toggles a
  * thumbnail between compact and full-size. Attachments rehydrated from
  * localStorage arrive without `dataUrl` (stripped to protect the quota) and
- * degrade to a name/size placeholder chip.
+ * degrade to a name/size placeholder chip. A PDF is always a name chip.
  */
 export function AttachmentGallery({
   attachments,
@@ -21,7 +21,21 @@ export function AttachmentGallery({
   return (
     <div className="mb-2 flex flex-wrap gap-2">
       {attachments.map((att) =>
-        att.dataUrl ? (
+        att.mediaType === 'application/pdf' ? (
+          <span
+            key={att.id}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/40 bg-background/20 px-2 py-1.5 text-xs"
+            title={att.name ?? att.mediaType}
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            <span className="max-w-[180px] truncate">{att.name ?? 'PDF'}</span>
+            {att.bytes > 0 && (
+              <span className="tabular-nums opacity-70">
+                {Math.max(1, Math.round(att.bytes / 1024))} KB
+              </span>
+            )}
+          </span>
+        ) : att.dataUrl ? (
           <button
             key={att.id}
             type="button"

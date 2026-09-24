@@ -156,7 +156,19 @@
     "loadingDiff": "Diff yükleniyor…",
     "diffTimeout": "Diff gelmedi. Dosya değişmiş veya bağlantı kopmuş olabilir.",
     "binary": "İkili dosya — diff gösterilmiyor.",
-    "tooLarge": "Dosya diff için çok büyük."
+    "tooLarge": "Dosya diff için çok büyük.",
+    "showAsTree": "Klasör ağacı olarak göster",
+    "showAsList": "Liste olarak göster",
+    "image": {
+      "before": "HEAD",
+      "after": "Çalışma ağacı",
+      "added": "Yeni görsel",
+      "deleted": "Silinmiş görsel",
+      "changed": "Değişen görsel",
+      "side": "Yan yana",
+      "onion": "Üst üste (onion skin)",
+      "opacity": "Çalışma ağacı saydamlığı"
+    }
   },
   "inspector": {
     "openAgentsPanel": "Ajanlar panelini aç (canlı filo)",
@@ -1403,7 +1415,13 @@
     "toolRunning": "Running",
     "toolFailed": "Failed",
     "toolSucceeded": "Succeeded",
-    "details": "Details"
+    "details": "Details",
+    "imagePreview": {
+      "tooLarge": "Önizleme için çok büyük",
+      "notImage": "Tarayıcının gösterebileceği bir görsel değil",
+      "error": "Önizleme yok",
+      "toggleSize": "Büyütmek ya da küçültmek için tıklayın"
+    }
   },
   "watch": {
     "toolFallback": "araç",
@@ -3819,7 +3837,43 @@
     "applyAndStart": "Uygula ve oturum başlat",
     "cancel": "Vazgeç",
     "unavailable": "Bu sunucuda sistem promptu seçimi kullanılamıyor.",
-    "openTitle": "Sistem promptu boyutunu seç"
+    "openTitle": "Sistem promptu boyutunu seç",
+    "presets": {
+      "manage": "Özel hazır istemleri yönet",
+      "title": "Özel hazır istemler",
+      "description": "Lite, Standard ve Pro'nun bu profilde saklanan düzenlenebilir kopyaları. Birini bu proje veya tüm profil için seçin. Araç ve ortam talimatları çalışma anında oluşturulur.",
+      "copy": "{{variant}} kopyala",
+      "suggestedName": "{{variant}} özel",
+      "select": "Hazır istem",
+      "selectPlaceholder": "Hazır istem seç",
+      "active": "etkin",
+      "activeProfile": "profil varsayılanı",
+      "activeProject": "bu proje",
+      "name": "Ad",
+      "template": "İstem şablonu",
+      "sourceChanged": "Bu hazır istem kopyalandıktan sonra paketle gelen {{variant}} kaynağı değişti. İncelendi olarak işaretlemeden önce iki sürümü karşılaştırıp metnini uyarlayın.",
+      "reviewed": "Güncel paket kaynağını inceledim",
+      "syntax": "Koşullar her istekte çağrılabilir araçlara göre değerlendirilir.",
+      "validationScope": "Doğrulama şablon yapısını ve araç adlarını denetler; düzenlenen talimatların güvenli veya etkili olduğunu kanıtlayamaz. Araç izinlerini çalışma zamanı uygular.",
+      "validation": "Doğrulama sonuçları",
+      "line": "Satır {{line}}: {{message}}",
+      "save": "Hazır istemi kaydet",
+      "activate": "{{variant}} için etkinleştir",
+      "deactivate": "Devre dışı bırak",
+      "activateProfile": "Profil genelinde kullan",
+      "deactivateProfile": "Profil varsayılanını kaldır",
+      "activateProject": "Bu projede kullan",
+      "deactivateProject": "Proje seçimini kaldır",
+      "delete": "Sil",
+      "confirmDelete": "“{{name}}” silinsin mi?",
+      "discardChanges": "Kaydedilmemiş hazır istem değişiklikleri atılsın mı?",
+      "compare": "Kaynak sürümlerini karşılaştır",
+      "copiedSource": "Kopyalandığı zamanki kaynak",
+      "currentSource": "Güncel paket kaynağı",
+      "preview": "Canlı kimlik önizlemesi · {{count}} çağrılabilir araç · {{tier}} düzeyi",
+      "previewEmpty": "Önizlemek için doğrulama hatalarını giderin.",
+      "previewNote": "Çalışma zamanı araç, ortam, bellek ve mod bölümlerini ayrıca ekler."
+    }
   },
   "failedRun": {
     "continue": "Devam et",

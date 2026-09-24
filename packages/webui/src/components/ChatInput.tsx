@@ -146,6 +146,9 @@ export function ChatInput({
       tooManyImages: (max) => t('chat:input.tooManyImages', { max }),
       imageProcessFailed: (name) => t('chat:input.imageProcessFailed', { name }),
       imageTooLarge: (name) => t('chat:input.imageTooLarge', { name }),
+      tooManyPdfs: (max) => t('chat:input.tooManyPdfs', { max }),
+      pdfTooLarge: (name, max) => t('chat:input.pdfTooLarge', { name, max }),
+      pdfReadFailed: (name) => t('chat:input.pdfReadFailed', { name }),
     },
   });
   const imagePickerRef = useRef<HTMLInputElement>(null);

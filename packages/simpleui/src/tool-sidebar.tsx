@@ -37,14 +37,24 @@ const LazyWorklistSidebar = lazy(() =>
 type SidebarView = 'tools' | WorklistView;
 
 interface ToolSidebarProps {
-  agentId: string;
-  agentName: string;
+  /** Which agent's tool calls this sidebar renders (header + panel identity). */
+  agent: {
+    id: string;
+    name: string;
+  };
   calls: ToolCallInfo[];
-  worklists?: WorklistStore | undefined;
-  requestWorklist?: ((view: WorklistView) => void) | undefined;
-  onTodoStatusChange?: ((id: string, status: TodoStatus) => void) | undefined;
-  onTaskStatusChange?: ((id: string, status: TaskStatus) => void) | undefined;
-  onPlanStatusChange?: ((id: string, status: PlanStatus) => void) | undefined;
+  /** Session-work surface wiring. Optional so minimal mounts (no store, no
+   *  status handlers) can omit the group entirely; every field inside is
+   *  individually optional too. */
+  workspace?:
+    | {
+        worklists?: WorklistStore | undefined;
+        requestWorklist?: ((view: WorklistView) => void) | undefined;
+        onTodoStatusChange?: ((id: string, status: TodoStatus) => void) | undefined;
+        onTaskStatusChange?: ((id: string, status: TaskStatus) => void) | undefined;
+        onPlanStatusChange?: ((id: string, status: PlanStatus) => void) | undefined;
+      }
+    | undefined;
 }
 
 const EMPTY_WORKLISTS: ReturnType<WorklistStore['getSnapshot']> = {
@@ -78,14 +88,15 @@ const META_TOOLS = new Set([
 ]);
 
 export function ToolSidebar({
-  agentId,
-  agentName,
+  agent: { id: agentId, name: agentName },
   calls,
-  worklists,
-  requestWorklist,
-  onTodoStatusChange = () => undefined,
-  onTaskStatusChange = () => undefined,
-  onPlanStatusChange = () => undefined,
+  workspace: {
+    worklists,
+    requestWorklist,
+    onTodoStatusChange = () => undefined,
+    onTaskStatusChange = () => undefined,
+    onPlanStatusChange = () => undefined,
+  } = {},
 }: ToolSidebarProps) {
   const [view, setView] = useState<SidebarView | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);

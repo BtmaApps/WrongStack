@@ -132,7 +132,7 @@ export const SIDEBAR_MIN_WIDTH = 240;
 export const SIDEBAR_MAX_WIDTH = 560;
 export const SIDEBAR_DEFAULT_WIDTH = 304;
 
-/** Sections of the WorkspaceDock strip above the chat transcript. */
+/** Sections of the WorkspaceDock in the Session side panel. */
 export type DockSection = 'goal' | 'goal-state' | 'fleet' | 'work' | 'worktrees' | 'collab';
 export type WorkDashboardTab = 'todos' | 'tasks' | 'plan';
 

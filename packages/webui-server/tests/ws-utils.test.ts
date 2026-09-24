@@ -122,6 +122,22 @@ describe('ws-utils', () => {
       const clients = new Map();
       expect(() => broadcast(clients, { type: 'test' })).not.toThrow();
     });
+
+    it('numbers session frames for reconnect catch-up, and only those', () => {
+      const ws = { readyState: WebSocket.OPEN, send: vi.fn() } as any;
+      const clients = new Map([[ws, connectedClient(ws, 'seq-tab', 'c1')]]);
+
+      broadcast(clients, { type: 'a', payload: { sessionId: 'seq-tab' } });
+      broadcast(clients, { type: 'b', payload: { sessionId: 'seq-sub' } }, 'seq-tab');
+      broadcast(clients, { type: 'c', payload: {} });
+
+      const frames = ws.send.mock.calls.map(([data]: [string]) => JSON.parse(data));
+      expect(frames.map((f: { seq?: number; stream?: string }) => [f.seq, f.stream])).toEqual([
+        [1, undefined],
+        [2, 'seq-tab'],
+        [undefined, undefined],
+      ]);
+    });
   });
 
   describe('sendResult', () => {

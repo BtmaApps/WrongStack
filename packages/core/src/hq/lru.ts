@@ -104,6 +104,8 @@ export class LruMap<K, V> {
     if (existing !== undefined) {
       existing.value = value;
       existing.lastTouchedAt = now;
+      this.entries.delete(key);
+      this.entries.set(key, existing);
       return true;
     }
     if (this.entries.size >= this.maxEntries) {
@@ -129,7 +131,7 @@ export class LruMap<K, V> {
     const entry = this.entries.get(key);
     if (entry === undefined) return undefined;
     if (this.touchOnGet) {
-      entry.lastTouchedAt = this.now();
+      this.touch(key);
     }
     return entry.value;
   }

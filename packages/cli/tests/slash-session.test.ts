@@ -1,4 +1,8 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
+import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildExitCommand,
@@ -433,5 +437,57 @@ describe('/sessions delete', () => {
     const res = await cmd.run('delete 2026-07-04/old', fakeCtx());
     expect(del).not.toHaveBeenCalled();
     expect(res?.message).toMatch(/cancelled/);
+  });
+});
+
+// ── /sessions move ─────────────────────────────────────────────────────────
+
+describe('/sessions move', () => {
+  it('errors without a session id and a path', async () => {
+    const cmd = buildLoadCommand({ projectRoot: '/tmp' } as never);
+    const res = await cmd.run('move 2026-09-24/sess_x', fakeCtx());
+    expect(res?.message).toMatch(/Usage:.*move/);
+  });
+
+  it('refuses to move the active session', async () => {
+    const ctx = fakeCtx(); // session.id === 'sess-1'
+    const move = vi.fn();
+    const cmd = buildLoadCommand({
+      sessionStore: { move, sessionsDir: '/x' },
+      context: ctx,
+      projectRoot: '/tmp',
+    } as never);
+    const res = await cmd.run('move sess-1 ../elsewhere', ctx);
+    expect(res?.message).toMatch(/Cannot move the active session/);
+    expect(move).not.toHaveBeenCalled();
+  });
+
+  it('resolves the path against the project root and reports where it went', async () => {
+    const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'slash-move-')));
+    try {
+      await fs.mkdir(path.join(root, 'feature'));
+      const checkout = path.join(root, 'feature');
+      // A store already on the target's sessions dir: the worktree case, no disk writes.
+      const sessionsDir = resolveWstackPaths({ projectRoot: checkout }).projectSessions;
+      const move = vi.fn().mockResolvedValue({ id: 'old', kind: 'worktree', checkout });
+      const cmd = buildLoadCommand({
+        sessionStore: { move, sessionsDir, adoptMovedSession: vi.fn() },
+        projectRoot: root,
+      } as never);
+      const res = await cmd.run('move old feature', fakeCtx());
+      expect(move).toHaveBeenCalledWith('old', expect.objectContaining({ checkout }));
+      expect(res?.message).toContain(`Moved old to the worktree at ${checkout}`);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('surfaces a refusal as an error message', async () => {
+    const cmd = buildLoadCommand({
+      sessionStore: { move: vi.fn(), sessionsDir: '/x' },
+      projectRoot: '/tmp',
+    } as never);
+    const res = await cmd.run('move old /definitely/not/here', fakeCtx());
+    expect(res?.message).toMatch(/Move failed: Not a directory/);
   });
 });

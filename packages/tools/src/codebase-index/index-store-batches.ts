@@ -29,7 +29,10 @@ export function commitBatch(
     symbolCount: number;
     contentHash?: string | undefined;
   }>,
-  options: { deleteForFiles?: string[] | undefined } = {},
+  options: {
+    deleteForFiles?: string[] | undefined;
+    deferResolution?: Set<string> | undefined;
+  } = {},
 ): IndexSymbol[] {
   host.invalidateBm25();
   return host.runWriteTransaction(() => {
@@ -93,14 +96,15 @@ export function replaceEmptyFile(host: IndexStoreBatchesHost, meta: FileMeta): v
     host.recordFtsChurn(deletedChanges);
     host
       .stmt(
-        `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
-           VALUES (?, ?, ?, ?, ?, ?)
+        `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed, git_blob)
+           VALUES (?, ?, ?, ?, ?, ?, '')
            ON CONFLICT(file) DO UPDATE SET
              lang = excluded.lang,
              mtime_ms = excluded.mtime_ms,
              content_hash = excluded.content_hash,
              symbol_count = excluded.symbol_count,
-             last_indexed = excluded.last_indexed`,
+             last_indexed = excluded.last_indexed,
+             git_blob = excluded.git_blob`,
       )
       .run(
         meta.file,

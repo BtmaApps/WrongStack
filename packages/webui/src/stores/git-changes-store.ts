@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { GitImageDiff } from '@/types/server-message';
 
 /** One changed file row in the Changes (source-control) panel. */
 export interface GitChangedFile {
@@ -18,6 +19,8 @@ export interface GitDiffContent {
   binary?: boolean;
   tooLarge?: boolean;
   error?: string;
+  /** A changed image: both versions to show instead of a text diff. */
+  image?: GitImageDiff | undefined;
 }
 
 interface GitChangesSessionState {

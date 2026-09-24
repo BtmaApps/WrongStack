@@ -1,7 +1,7 @@
 /**
- * WorkspaceDock — the strip between the chat header and the transcript.
+ * WorkspaceDock — session workspace controls in the left Session panel.
  *
- * The dock itself stays compact above chat. Selecting Goal, Fleet, Work,
+ * The dock itself stays compact. Selecting Goal, Fleet, Work,
  * Worktrees, or Collab opens its content in WorkspaceDockInspector on the
  * right, so the transcript never loses vertical space.
  *

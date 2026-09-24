@@ -117,14 +117,43 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
   };
 }
 
+/** Paths remembered per compiled matcher before the memo starts over. */
+const MATCH_MEMO_LIMIT = 100_000;
+
+/**
+ * Remember answers per path. Every full run asks about every listed path, and
+ * a `!negation` anywhere in the file (this repository has one) disables the
+ * early exit, so each question walked all ~300 rules — about 100 ms a run
+ * spent re-deriving answers that only change when `.gitignore` does.
+ */
+function memoizeMatcher(matcher: IgnoreMatcher): IgnoreMatcher {
+  const files = new Map<string, boolean>();
+  const dirs = new Map<string, boolean>();
+  return (relPath, isDir) => {
+    const memo = isDir ? dirs : files;
+    const known = memo.get(relPath);
+    if (known !== undefined) return known;
+    const answer = matcher(relPath, isDir);
+    if (memo.size >= MATCH_MEMO_LIMIT) memo.clear();
+    memo.set(relPath, answer);
+    return answer;
+  };
+}
+
+/** Compiled matcher per project root, reused while `.gitignore` is unchanged. */
+const matcherCache = new Map<string, { raw: string; matcher: IgnoreMatcher }>();
+
 /** Read `<projectRoot>/.gitignore` and compile it. Missing file → matches nothing. */
 export async function loadGitignoreMatcher(projectRoot: string): Promise<IgnoreMatcher> {
-  let lines: string[] = [];
+  let raw = '';
   try {
-    const raw = await fs.readFile(path.join(projectRoot, '.gitignore'), 'utf8');
-    lines = raw.split('\n');
+    raw = await fs.readFile(path.join(projectRoot, '.gitignore'), 'utf8');
   } catch {
     // No .gitignore — nothing extra to ignore beyond the indexer defaults.
   }
-  return compileGitignore(lines);
+  const cached = matcherCache.get(projectRoot);
+  if (cached?.raw === raw) return cached.matcher;
+  const matcher = memoizeMatcher(compileGitignore(raw ? raw.split('\n') : []));
+  matcherCache.set(projectRoot, { raw, matcher });
+  return matcher;
 }

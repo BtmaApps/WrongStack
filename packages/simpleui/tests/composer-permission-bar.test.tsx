@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 function composerProps(pendingConfirm: PendingConfirm | null) {
-  return {
+  const composer = {
     draft: '',
     setDraft: vi.fn(),
     fileRefs: [] as string[],
@@ -37,11 +37,7 @@ function composerProps(pendingConfirm: PendingConfirm | null) {
     filePickerIndex: 0,
     setFilePickerIndex: vi.fn(),
     fileSearching: false,
-    running: false,
-    connection: 'open',
-    session: null,
     pendingConfirm,
-    notice: null,
     textareaRef: { current: null as HTMLTextAreaElement | null },
     queue: [],
     refineState: null,
@@ -49,18 +45,29 @@ function composerProps(pendingConfirm: PendingConfirm | null) {
     abort: vi.fn(),
     decideConfirm: vi.fn(),
     selectFile: vi.fn(),
-    clearQueue: vi.fn(),
-    removeQueued: vi.fn(),
-    onRefineDecision: vi.fn(),
-    onRefineRetry: vi.fn(),
-    onRefineRetryFallback: vi.fn(),
-    onRefineStartNow: vi.fn(),
-    onRefineSendEdited: vi.fn(),
-    onRefineEditInComposer: vi.fn(),
+    refineDecision: vi.fn(),
+    refineRetry: vi.fn(),
+    refineRetryFallback: vi.fn(),
+    refineStartNow: vi.fn(),
+    refineSendEdited: vi.fn(),
+    refineEditInComposer: vi.fn(),
     attachedImages: [] as { id: string; data: string; mime: string; name: string }[],
-    onAttachImages: vi.fn(),
-    onRemoveImage: vi.fn(),
+    attachImages: vi.fn(),
+    removeImage: vi.fn(),
     visionSupported: false,
+  };
+  return {
+    composer: composer as never,
+    // Same instances the mounted composer reads, mirrored top-level so the
+    // assertions can keep addressing them without reaching into the stub.
+    decideConfirm: composer.decideConfirm,
+    textareaRef: composer.textareaRef,
+    skillSocket: undefined,
+    running: false,
+    connection: 'open' as const,
+    session: null,
+    notice: null,
+    preRefineSeconds: 3,
   };
 }
 
@@ -78,7 +85,7 @@ function mountComposer(props: ComposerPropsStub): {
   return {
     container,
     rerender(pendingConfirm: PendingConfirm | null) {
-      props.pendingConfirm = pendingConfirm;
+      (props.composer as { pendingConfirm: PendingConfirm | null }).pendingConfirm = pendingConfirm;
       act(() => root.render(<Composer {...props} />));
     },
   };

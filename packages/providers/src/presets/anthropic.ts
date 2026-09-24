@@ -516,6 +516,8 @@ function sanitizeAnthropicBlock(b: ContentBlock): Record<string, unknown> {
     }
     case 'image':
       return { type: 'image', source: b.source };
+    case 'document':
+      return { type: 'document', source: b.source, ...(b.name ? { title: b.name } : {}) };
     default:
       return b as never as Record<string, unknown>;
   }

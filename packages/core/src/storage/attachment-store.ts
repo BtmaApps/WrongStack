@@ -22,12 +22,12 @@ export interface AttachmentStoreOptions {
 
 const DEFAULT_SPOOL_THRESHOLD = 256 * 1024; // 256 KB
 // Two placeholder shapes:
-//   - seq-keyed `[<kind> #<seq>…]` — kind is `pasted` / `image` / `file`. A
+//   - seq-keyed `[<kind> #<seq>…]` — kind is `pasted` / `image` / `file` / `pdf`. A
 //     cosmetic suffix after the seq (e.g. `, 123 lines`) is tolerated so the
 //     TUI can render `[pasted #1, 123 lines]` while still resolving by seq.
 //   - path-keyed `[file:<path>]` — resolves to the most recent file ref whose
 //     stored path matches, so the TUI can show a human-readable file chip.
-const PLACEHOLDER_RE = /\[(pasted|image|file) #(\d+)[^\]]*\]|\[file:([^\]]+)\]/g;
+const PLACEHOLDER_RE = /\[(pasted|image|file|pdf) #(\d+)[^\]]*\]|\[file:([^\]]+)\]/g;
 
 /**
  * In-memory attachment store with optional disk spool. Placeholder syntax
@@ -38,7 +38,7 @@ const PLACEHOLDER_RE = /\[(pasted|image|file) #(\d+)[^\]]*\]|\[file:([^\]]+)\]/g
 export class DefaultAttachmentStore implements AttachmentStore {
   private readonly items = new Map<string, Attachment>();
   private readonly refs: AttachmentRef[] = [];
-  private nextSeq: Record<AttachmentKind, number> = { text: 0, image: 0, file: 0 };
+  private nextSeq: Record<AttachmentKind, number> = { text: 0, image: 0, file: 0, document: 0 };
   private readonly spoolDir: string | undefined;
   private readonly spoolThreshold: number;
 
@@ -50,7 +50,8 @@ export class DefaultAttachmentStore implements AttachmentStore {
   async add(input: AddAttachmentInput): Promise<AttachmentRef> {
     const seq = ++this.nextSeq[input.kind];
     const id = `${kindPrefix(input.kind)}-${seq}-${randomBytes(3).toString('hex')}`;
-    const bytes = Buffer.byteLength(input.data, input.kind === 'image' ? 'base64' : 'utf8');
+    const encoding = input.kind === 'image' || input.kind === 'document' ? 'base64' : 'utf8';
+    const bytes = Buffer.byteLength(input.data, encoding);
     let spooledPath: string | undefined;
     let data: string | undefined = input.data;
     if (this.spoolDir && bytes >= this.spoolThreshold) {
@@ -58,9 +59,7 @@ export class DefaultAttachmentStore implements AttachmentStore {
       spooledPath = path.join(this.spoolDir, `${id}.bin`);
       // atomicWrite: torn spool would silently corrupt the attachment;
       // the user would see garbled output the next time it's expanded.
-      await atomicWrite(spooledPath, input.data, {
-        encoding: input.kind === 'image' ? 'base64' : 'utf8',
-      });
+      await atomicWrite(spooledPath, input.data, { encoding });
       data = undefined;
     }
     const att: Attachment = {
@@ -68,6 +67,7 @@ export class DefaultAttachmentStore implements AttachmentStore {
       kind: input.kind,
       meta: input.meta ?? {},
       data,
+      ...(input.kind === 'document' ? { text: input.text ?? '' } : {}),
       path: spooledPath,
       bytes,
       createdAt: new Date().toISOString(),
@@ -100,7 +100,11 @@ export class DefaultAttachmentStore implements AttachmentStore {
         // Path-keyed `[file:<path>]` — most recent matching file ref wins.
         const wantPath = m[3];
         const norm = (s?: string) => s?.replace(/\\/g, '/');
-        ref = findLast(this.refs, (r) => r.kind === 'file' && norm(refPath(r)) === norm(wantPath));
+        ref = findLast(
+          this.refs,
+          (r) =>
+            (r.kind === 'file' || r.kind === 'document') && norm(refPath(r)) === norm(wantPath),
+        );
       } else {
         const kind = prefixToKind(m[1] as string);
         const seq = Number(m[2]);
@@ -131,10 +135,21 @@ export class DefaultAttachmentStore implements AttachmentStore {
     }
     this.items.clear();
     this.refs.length = 0;
-    this.nextSeq = { text: 0, image: 0, file: 0 };
+    this.nextSeq = { text: 0, image: 0, file: 0, document: 0 };
   }
 
   private async toBlock(att: Attachment): Promise<ContentBlock> {
+    if (att.kind === 'document') {
+      const data =
+        att.data ?? (att.path ? await fsp.readFile(att.path, { encoding: 'base64' }) : '');
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data },
+        name: att.meta.filename ?? att.meta.label,
+        text: att.text ?? '',
+        pages: att.meta.pages,
+      };
+    }
     if (att.kind === 'image') {
       const data =
         att.data ?? (att.path ? await fsp.readFile(att.path, { encoding: 'base64' }) : '');
@@ -155,12 +170,15 @@ export class DefaultAttachmentStore implements AttachmentStore {
 }
 
 function kindPrefix(kind: AttachmentKind): string {
-  return kind === 'text' ? 'pasted' : kind;
+  if (kind === 'text') return 'pasted';
+  if (kind === 'document') return 'pdf';
+  return kind;
 }
 
 function prefixToKind(prefix: string): AttachmentKind {
   if (prefix === 'pasted') return 'text';
   if (prefix === 'image') return 'image';
+  if (prefix === 'pdf') return 'document';
   return 'file';
 }
 

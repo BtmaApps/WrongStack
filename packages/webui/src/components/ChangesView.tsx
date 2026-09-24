@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore, useGitChangesStore, useSessionStore } from '@/stores';
 import { confirmModal } from './ConfirmModal';
+import { ImageDiffView } from './ImageDiffView';
 import { MonacoDiffView } from './MonacoDiffView';
 import { ReviewDiff } from './review/ReviewDiff';
 import { ReviewTray, useScopedReviewComments } from './review/ReviewTray';
@@ -240,6 +241,8 @@ export function ChangesView({ className }: { className?: string }) {
             <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-destructive">
               {diff.error}
             </div>
+          ) : diff.image ? (
+            <ImageDiffView key={diff.path} image={diff.image} path={diff.path} />
           ) : diff.binary ? (
             <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
               {t('activity:changes.binary')}

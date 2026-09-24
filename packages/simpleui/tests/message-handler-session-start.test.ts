@@ -47,7 +47,7 @@ describe('handleSessionStartMessage — next-steps bookkeeping reset', () => {
     handleSessionStartMessage({
       // A corrupt (non-record) payload fails projection: record() yields
       // null, the guard returns, and no state may be touched.
-      message: { type: 'session.start', payload: 'corrupt' } as ServerMessage,
+      message: { type: 'session.start', payload: 'corrupt' } as unknown as ServerMessage,
       deps: makeDeps(),
       nextStepsByToolId: map,
       resetCompletedToolNextSteps: () => {

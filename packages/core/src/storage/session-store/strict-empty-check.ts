@@ -1,6 +1,11 @@
 import { createTranscriptLineReader } from './transcript-io.js';
 
-const EMPTY_SESSION_EVENT_TYPES = new Set(['session_start', 'session_resumed', 'session_end']);
+const EMPTY_SESSION_EVENT_TYPES = new Set([
+  'session_start',
+  'session_resumed',
+  'session_moved',
+  'session_end',
+]);
 
 /**
  * Return true only for a well-formed journal containing lifecycle envelope

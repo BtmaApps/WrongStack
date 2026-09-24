@@ -1,15 +1,26 @@
 import type { Context } from '@wrongstack/core/agent';
-import { DefaultPermissionPolicy } from '@wrongstack/core/security';
-import type { PermissionTrace } from '@wrongstack/core/types';
+import { compilePermissionRules } from '@wrongstack/core/security';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
-import type { SubcommandHandler } from '../contracts.js';
+import { createProjectPermissionPolicy } from '@wrongstack/runtime';
+import {
+  explainCall,
+  formatExplainedCall,
+  formatPermissionRules,
+} from '../../permission-rules-view.js';
+import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 
 /**
+ * `wstack permissions rules [--json]`
  * `wstack permissions explain <tool> --input '<json>' [--json]`
  *
- * Side-effect-free permission decision explainer. Evaluates the same
- * rules as `DefaultPermissionPolicy.evaluate()` without prompting the
- * user, writing to trust files, or mutating session state.
+ * Side-effect-free views of the permission policy. Both build the policy the
+ * agent itself runs under (`createProjectPermissionPolicy`: directory rules,
+ * trust file, YOLO and `autonomy.yoloConfirm` from the config) for a fresh
+ * session, without prompting the user, writing to trust files, or mutating
+ * session state. `rules` lists every rule in the order they are checked;
+ * `explain` traces one call and names the rule that decided it. Inside a
+ * session, `/permissions` shows the same with that session's YOLO, answers
+ * and session rules.
  */
 export const permissionsCmd: SubcommandHandler = async (args, deps) => {
   const subCmd = args[0];
@@ -21,17 +32,33 @@ export const permissionsCmd: SubcommandHandler = async (args, deps) => {
     !subCmd ||
     (subCmd === 'explain' && !args[1])
   ) {
-    if (subCmd !== 'explain' && subCmd !== 'help' && subCmd !== undefined) {
-      deps.renderer.writeError(`Unknown permissions subcommand: ${subCmd}\n`);
-    }
     deps.renderer.write(usage());
-    return subCmd && subCmd !== 'explain' && subCmd !== 'help' && subCmd !== undefined ? 1 : 0;
+    return 0;
   }
 
-  if (subCmd !== 'explain') {
+  if (subCmd !== 'explain' && subCmd !== 'rules') {
     deps.renderer.writeError(`Unknown permissions subcommand: ${subCmd}\n`);
     deps.renderer.write(usage());
     return 1;
+  }
+  const jsonOutput = deps.flags?.['json'] === true || args.includes('--json');
+
+  const built = buildPolicy(deps);
+  if (typeof built === 'string') {
+    deps.renderer.writeError(`${built}\n`);
+    return 1;
+  }
+  const { policy, ctx, yolo, yoloSource } = built;
+
+  if (subCmd === 'rules') {
+    const rules = await compilePermissionRules(policy, ctx, { yolo });
+    if (jsonOutput) deps.renderer.write(`${JSON.stringify(rules, null, 2)}\n`);
+    // writeLine: the list is full of `*`, which `write` would read as markdown emphasis.
+    else
+      deps.renderer.writeLine(
+        `YOLO: ${yolo ? 'on' : 'off'} (${yoloSource})\n\n${formatPermissionRules(rules)}`,
+      );
+    return 0;
   }
 
   // `wstack permissions explain <tool> [--input '<json>'] [--json]`
@@ -52,7 +79,6 @@ export const permissionsCmd: SubcommandHandler = async (args, deps) => {
       : inputIdx >= 0 && inputIdx + 1 < args.length
         ? args[inputIdx + 1]
         : undefined;
-  const jsonOutput = deps.flags?.['json'] === true || args.includes('--json');
 
   // Parse input JSON
   let input: unknown = {};
@@ -81,75 +107,77 @@ export const permissionsCmd: SubcommandHandler = async (args, deps) => {
     return 1;
   }
 
-  // Build trust file path
-  const paths = resolveWstackPaths({ projectRoot: deps.projectRoot, userHome: deps.userHome });
-  const trustFile = paths.projectTrust;
-
-  // Build a minimal Context with hasRead stub
-  const readSubjects = new Set<string>();
-  const ctx: Context = {
-    projectRoot: deps.projectRoot,
-    cwd: deps.cwd,
-    hasRead(subject: string) {
-      return readSubjects.has(subject);
-    },
-  } as unknown as Context;
-
-  // Create the policy and run explain
-  const policy = new DefaultPermissionPolicy({
-    trustFile,
-    yolo: (deps.flags?.['yolo'] as boolean) ?? false,
-  });
-  await policy.reload();
-
-  const trace: PermissionTrace = await policy.explain(tool, input, ctx);
+  // The executor's own last gate belongs in the answer too.
+  const explained = await explainCall(policy, tool, input, ctx, yolo);
 
   if (jsonOutput) {
-    deps.renderer.write(JSON.stringify(trace, null, 2) + '\n');
+    deps.renderer.write(
+      `${JSON.stringify({ ...explained.trace, rule: explained.rule }, null, 2)}\n`,
+    );
   } else {
-    deps.renderer.write(formatTrace(trace) + '\n');
+    deps.renderer.writeLine(
+      `YOLO: ${yolo ? 'on' : 'off'} (${yoloSource})\n\n${formatExplainedCall(explained)}`,
+    );
   }
 
   return 0;
 };
 
-function formatTrace(trace: PermissionTrace): string {
-  const lines: string[] = [];
-  lines.push(`Permission trace for "${trace.toolName}"`);
-  lines.push(`Subject: ${trace.subject ?? '(none)'}`);
-  lines.push('');
+/** The agent's own policy, for a fresh session in this project. */
+function buildPolicy(deps: SubcommandDeps):
+  | {
+      policy: ReturnType<ReturnType<typeof createProjectPermissionPolicy>>;
+      ctx: Context;
+      yolo: boolean;
+      yoloSource: string;
+    }
+  | string {
+  const paths = resolveWstackPaths({ projectRoot: deps.projectRoot, userHome: deps.userHome });
 
-  for (let i = 0; i < trace.steps.length; i++) {
-    const step = trace.steps[i]!;
-    const winner = i === trace.winnerIndex ? ' ← WINNER' : '';
-    const matched = step.matched ? '✓' : ' ';
-    lines.push(`  ${matched} [${i}] ${step.rule}${winner}`);
-    lines.push(`        decision: ${step.decision}  source: ${step.source}`);
-    lines.push(`        ${step.detail}`);
-    if (i < trace.steps.length - 1) lines.push('');
-  }
+  // A fresh session's view: nothing read yet, working dir = cwd, the
+  // configured provider (directory rules can ban providers).
+  const readSubjects = new Set<string>();
+  const ctx: Context = {
+    projectRoot: deps.projectRoot,
+    cwd: deps.cwd,
+    workingDir: deps.cwd,
+    meta: {},
+    provider: { id: deps.config.provider },
+    hasRead(subject: string) {
+      return readSubjects.has(subject);
+    },
+  } as unknown as Context;
 
-  lines.push('');
-  lines.push(`Effective: ${trace.decision.permission} (source: ${trace.decision.source})`);
-  if (trace.decision.reason) {
-    lines.push(`Reason: ${trace.decision.reason}`);
+  // The same policy the agent runs under. `--yolo` overrides the config's YOLO.
+  const yoloFlag = deps.flags?.['yolo'];
+  const yolo = typeof yoloFlag === 'boolean' ? yoloFlag : deps.config.yolo === true;
+  try {
+    const policy = createProjectPermissionPolicy({
+      projectRoot: deps.projectRoot,
+      trustFile: paths.projectTrust,
+      config: deps.config,
+      permission: { yolo },
+    })();
+    return { policy, ctx, yolo, yoloSource: typeof yoloFlag === 'boolean' ? '--yolo' : 'config' };
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
-  if (trace.decision.riskTier) {
-    lines.push(`Risk tier: ${trace.decision.riskTier}`);
-  }
-
-  return lines.join('\n');
 }
 
 function usage(): string {
   return (
     'Usage:\n' +
+    '  wstack permissions rules [--json]\n' +
     "  wstack permissions explain <tool> --input '<json>' [--json]\n\n" +
     'Examples:\n' +
+    '  wstack permissions rules\n' +
     '  wstack permissions explain bash --input \'{"command":"rm -rf /"}\'\n' +
     '  wstack permissions explain read --input \'{"path":".env"}\' --json\n\n' +
     'Flags:\n' +
     '  --input <json>   Tool input arguments as a JSON object\n' +
-    '  --json           Output as structured JSON instead of human-readable text\n'
+    '  --json           Output as structured JSON instead of human-readable text\n' +
+    '  --yolo           Show the rules as they apply with YOLO on\n\n' +
+    'Inside a session, /permissions shows the same with that session’s YOLO,\n' +
+    'answers and /permissions allow|deny rules.\n'
   );
 }

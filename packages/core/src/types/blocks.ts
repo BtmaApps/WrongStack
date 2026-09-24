@@ -108,6 +108,36 @@ export interface ImageBlock {
 }
 
 /**
+ * A document the user attached, today a PDF. It travels natively to a model
+ * whose catalog entry lists PDF input (Anthropic, Gemini, OpenAI) and as its
+ * extracted `text` to every other model: the fallback rides on the block, so
+ * the request path needs no PDF parser and a later switch to a model without
+ * PDF input still has something to send.
+ */
+export interface DocumentBlock {
+  type: 'document';
+  source: {
+    type: 'base64';
+    media_type: 'application/pdf';
+    data: string;
+  };
+  /** File name shown to the model and in the transcript. */
+  name?: string | undefined;
+  /** Extracted text, page-marked; sent in place of the file where PDFs are not accepted. */
+  text: string;
+  /** Page count, for labels. */
+  pages?: number | undefined;
+}
+
+/** What a model without PDF input receives in place of a document block. */
+export function documentAsText(b: DocumentBlock): TextBlock {
+  const label = `${b.name ?? 'document.pdf'}${b.pages ? `, ${b.pages} page${b.pages === 1 ? '' : 's'}` : ''}`;
+  const body =
+    b.text.trim().length > 0 ? b.text : '(no extractable text: the PDF has no text layer)';
+  return { type: 'text', text: `<attached-pdf name="${label}">\n${body}\n</attached-pdf>` };
+}
+
+/**
  * Chain-of-thought / extended-thinking content emitted by the model.
  *
  * Both Anthropic extended thinking (`{type:'thinking', thinking, signature}`)
@@ -130,7 +160,13 @@ export interface ThinkingBlock {
   providerMeta?: Record<string, unknown>;
 }
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock | ImageBlock | ThinkingBlock;
+export type ContentBlock =
+  | TextBlock
+  | ToolUseBlock
+  | ToolResultBlock
+  | ImageBlock
+  | DocumentBlock
+  | ThinkingBlock;
 
 export function isTextBlock(b: ContentBlock): b is TextBlock {
   return b.type === 'text';

@@ -166,4 +166,77 @@ describe('toolSearchTool', () => {
     const result = await executeToolSearch({ query: 'foo', mutating: false }, ctx);
     expect(result.tools).toHaveLength(1);
   });
+
+  it('finds a tool from a phrase a model writes, ranking the name match first', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'write',
+        description: 'Write a file at a path',
+        permission: 'confirm',
+        mutating: true,
+      },
+      {
+        name: 'image_generate',
+        description: 'Generate an image from a text prompt and save it into the project.',
+        usageHint: 'Give a prompt and a project-relative path.',
+        permission: 'confirm',
+        mutating: true,
+      },
+      { name: 'grep', description: 'Search file contents', permission: 'auto', mutating: false },
+    ]);
+    const result = await executeToolSearch(
+      { query: 'image_generate generate image with prompt and path' },
+      ctx,
+    );
+    expect(result.tools.map((t) => t.name)).toEqual(['image_generate']);
+
+    const loose = await executeToolSearch({ query: 'save image file' }, ctx);
+    expect(loose.tools[0]?.name).toBe('image_generate');
+  });
+
+  it('says when the filters, not the query, emptied the result', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'image_generate',
+        description: 'Generate an image',
+        permission: 'confirm',
+        mutating: true,
+      },
+    ]);
+    const result = await executeToolSearch({ query: 'image_generate', permission: 'auto' }, ctx);
+    expect(result.tools).toEqual([]);
+    expect(result.hint).toContain(
+      '1 tool(s) match "image_generate" but the tags/permission/mutating filters excluded them',
+    );
+
+    const none = await executeToolSearch({ query: 'nothing-like-this', permission: 'auto' }, ctx);
+    expect(none.hint).toContain('No tools matched');
+  });
+
+  it('keeps a literal match ahead of word matches', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'notes',
+        description: 'Keep project notes and a list of todos',
+        permission: 'auto',
+        mutating: false,
+      },
+      { name: 'todo', description: 'Track the todo list', permission: 'auto', mutating: false },
+    ]);
+    const result = await executeToolSearch({ query: 'todo list' }, ctx);
+    expect(result.tools.map((t) => t.name)).toEqual(['todo', 'notes']);
+  });
+
+  it('does not match on stop words alone', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'foo',
+        description: 'Use this tool with the data',
+        permission: 'auto',
+        mutating: false,
+      },
+    ]);
+    const result = await executeToolSearch({ query: 'use the tool with a bar' }, ctx);
+    expect(result.tools).toEqual([]);
+  });
 });

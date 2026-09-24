@@ -45,7 +45,16 @@ export function isAtlasProjection(relativePosixPath: string): boolean {
 const INDEXABLE_EXTENSION_SET = new Set(INDEXABLE_EXTENSIONS);
 export const MAX_INDEX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_GIT_FILE_LIST_BYTES = 64 * 1024 * 1024;
-export const GIT_SNAPSHOT_METADATA_KEY = 'git_discovery_snapshot';
+
+/**
+ * The value stored in `files.git_blob`: the staged blob a row was built from,
+ * bound to the content hash of that row. Binding the two means a writer that
+ * rewrites the row without knowing about the column — an older build sharing
+ * the database — changes the hash and so voids the trust by itself.
+ */
+export function gitBlobStamp(blob: string, contentHash: string | undefined): string {
+  return contentHash ? `${blob}:${contentHash}` : '';
+}
 
 export class IndexSourceChangedError extends Error {
   override name = 'IndexSourceChangedError';
@@ -85,6 +94,132 @@ function gitOutput(projectRoot: string, args: string[]): Promise<Buffer> {
 }
 
 /**
+ * `git rev-parse --show-toplevel` per project root. A repository's top level
+ * does not move under a running process, and on Windows every git spawn costs
+ * a few hundred milliseconds — this one ran twice per full index run. Only a
+ * success is remembered: a directory that is not a repository yet may become
+ * one (`git init`), and must then stop taking the filesystem-walk fallback.
+ */
+const gitTopLevelCache = new Map<string, string>();
+
+async function gitTopLevel(projectRoot: string): Promise<string> {
+  const cached = gitTopLevelCache.get(projectRoot);
+  if (cached !== undefined) return cached;
+  const topLevel = (await gitOutput(projectRoot, ['rev-parse', '--show-toplevel']))
+    .toString('utf8')
+    .trim();
+  gitTopLevelCache.set(projectRoot, topLevel);
+  return topLevel;
+}
+
+/**
+ * One `git ls-files` listing that carries everything discovery needs:
+ * `-s` prints every tracked path with its staged mode and blob id, `-t` tags
+ * each line, and `-m -d -o` add a tagged line for every path whose working
+ * copy differs from the index (`C`), is gone (`R`), or is untracked (`?`).
+ *
+ * It replaces three processes (`ls-files --cached --others`, `status`,
+ * `ls-files --stage`). On Windows each git spawn blocks the event loop for a
+ * few hundred milliseconds inside `CreateProcess`, and the daemon serves every
+ * client from that loop — the spawns were most of a full run over an unchanged
+ * checkout. It also skips the index-vs-HEAD comparison `status` performs: a
+ * staged change is already visible here through its blob id.
+ */
+const GIT_WORKTREE_ARGS = ['ls-files', '-z', '-t', '-s', '-m', '-d', '-o', '--exclude-standard'];
+
+interface GitWorktree {
+  /** Every path the listing names, tracked or untracked, project-relative. */
+  paths: string[];
+  /** Absolute paths whose working copy may differ from the index. */
+  dirty: Set<string>;
+  /** Absolute paths tracked in the index but missing from the working tree. */
+  deleted: Set<string>;
+  /** Staged blob id of every tracked path, absolute path keyed. */
+  blobs: Map<string, string>;
+}
+
+function parseGitWorktree(projectRoot: string, output: Buffer): GitWorktree {
+  const seen = new Set<string>();
+  const paths: string[] = [];
+  const dirty = new Set<string>();
+  const deleted = new Set<string>();
+  const blobs = new Map<string, string>();
+  for (const record of output.toString('utf8').split('\0')) {
+    if (record.length < 3) continue;
+    const tag = record[0];
+    // `? path` for untracked; `<tag> <mode> <blob> <stage>\t<path>` otherwise.
+    const tab = tag === '?' ? -1 : record.indexOf('\t');
+    const relative = tag === '?' ? record.slice(2) : tab === -1 ? '' : record.slice(tab + 1);
+    if (!relative) continue;
+    if (!seen.has(relative)) {
+      seen.add(relative);
+      paths.push(relative);
+    }
+    const full = path.resolve(projectRoot, relative);
+    // H = unchanged in the working tree. Everything else — changed, removed,
+    // untracked, unmerged, skip-worktree — is content git has not vouched for.
+    if (tag === 'H') {
+      const blob = record.slice(2, tab).split(' ')[1];
+      if (blob) blobs.set(full, blob);
+      continue;
+    }
+    dirty.add(full);
+    if (tag === 'R') deleted.add(full);
+  }
+  // A removed path is listed as H, R and C; it is not a file to index.
+  return {
+    paths: paths.filter((p) => !deleted.has(path.resolve(projectRoot, p))),
+    dirty,
+    deleted,
+    blobs,
+  };
+}
+
+/**
+ * Hash the checkout state an index generation is built from: the listing
+ * (staged blob ids plus the dirty tags) and the bytes of every dirty indexed
+ * file. Returns the content hash computed for each dirty file so the indexer
+ * can compare it with the stored one instead of reading the file again.
+ */
+async function computeSnapshot(
+  listing: Buffer,
+  worktree: GitWorktree,
+  indexedFiles: ReadonlySet<string>,
+): Promise<{ snapshotKey: string; dirtyHashes: Map<string, string> }> {
+  const snapshot = createHash('sha256').update('ls-files-v2\0').update(listing);
+  const dirtyHashes = new Map<string, string>();
+  for (const dirtyFile of [...worktree.dirty].sort()) {
+    if (!indexedFiles.has(dirtyFile) || worktree.deleted.has(dirtyFile)) continue;
+    const hash = contentHashHex(await fs.readFile(dirtyFile, 'utf8'));
+    dirtyHashes.set(dirtyFile, hash);
+    snapshot.update('\0').update(dirtyFile).update('\0');
+    snapshot.update(hash);
+  }
+  return { snapshotKey: snapshot.digest('hex'), dirtyHashes };
+}
+
+/**
+ * Recompute the snapshot key of a file set discovered earlier in the run, for
+ * the end-of-run check that nothing moved while the generation was built.
+ * Equal to {@link findGitSourceFiles}' key for an unchanged checkout.
+ */
+export async function computeGitSnapshotKey(
+  projectRoot: string,
+  indexedFiles: ReadonlySet<string>,
+  signal?: AbortSignal | undefined,
+): Promise<string | null> {
+  try {
+    throwIfAborted(signal);
+    const listing = await gitOutput(projectRoot, GIT_WORKTREE_ARGS);
+    throwIfAborted(signal);
+    const worktree = parseGitWorktree(projectRoot, listing);
+    return (await computeSnapshot(listing, worktree, indexedFiles)).snapshotKey;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Git already maintains the canonical tracked/untracked directory index. On a
  * repository root this avoids hundreds of serial `readdir` calls; non-Git
  * projects and nested roots fall back to the filesystem walker below.
@@ -94,46 +229,24 @@ export async function findGitSourceFiles(
   ignore: string[],
   signal?: AbortSignal | undefined,
   isGitIgnored?: IgnoreMatcher,
-): Promise<{ files: string[]; trustedUnchanged: Set<string>; snapshotKey: string } | null> {
+): Promise<{
+  files: string[];
+  cleanBlobs: Map<string, string>;
+  snapshotKey: string;
+  dirtyHashes: Map<string, string>;
+} | null> {
   try {
     throwIfAborted(signal);
-    const topLevel = (await gitOutput(projectRoot, ['rev-parse', '--show-toplevel']))
-      .toString('utf8')
-      .trim();
+    const topLevel = await gitTopLevel(projectRoot);
     if (normalizeComparablePath(topLevel) !== normalizeComparablePath(projectRoot)) return null;
 
     throwIfAborted(signal);
     const ignoreSet = new Set([...DEFAULT_IGNORE, ...ignore]);
-    const [output, statusOutput, stagedOutput] = await Promise.all([
-      gitOutput(projectRoot, ['ls-files', '--cached', '--others', '--exclude-standard', '-z']),
-      gitOutput(projectRoot, [
-        'status',
-        '--porcelain=v1',
-        '-z',
-        '--untracked-files=all',
-        '--ignored=no',
-      ]),
-      gitOutput(projectRoot, ['ls-files', '--stage', '-z']),
-    ]);
+    const listing = await gitOutput(projectRoot, GIT_WORKTREE_ARGS);
     throwIfAborted(signal);
-    const dirty = new Set<string>();
-    const deleted = new Set<string>();
-    const statusRecords = statusOutput.toString('utf8').split('\0');
-    for (let i = 0; i < statusRecords.length; i++) {
-      const record = statusRecords[i];
-      if (!record) continue;
-      const status = record.slice(0, 2);
-      const changedPath = path.resolve(projectRoot, record.slice(3));
-      dirty.add(changedPath);
-      if (status.includes('D')) deleted.add(changedPath);
-      if (status.includes('R') || status.includes('C')) {
-        const source = statusRecords[++i];
-        if (source) dirty.add(path.resolve(projectRoot, source));
-      }
-    }
+    const worktree = parseGitWorktree(projectRoot, listing);
     const files: string[] = [];
-    for (const relative of output.toString('utf8').split('\0')) {
-      if (!relative) continue;
+    for (const relative of worktree.paths) {
       const portable = relative.replace(/\\/g, '/');
       if (
         portable.split('/').some((segment) => ignoreSet.has(segment)) ||
@@ -144,22 +257,18 @@ export async function findGitSourceFiles(
         continue;
       }
       const full = path.resolve(projectRoot, relative);
-      if (deleted.has(full)) continue;
       const ext = path.extname(relative).toLowerCase();
       if (INDEXABLE_EXTENSION_SET.has(ext) || detectLang(full) !== null) files.push(full);
     }
-    const snapshot = createHash('sha256').update(stagedOutput).update('\0').update(statusOutput);
-    const indexedFiles = new Set(files);
-    for (const dirtyFile of [...dirty].sort()) {
-      if (!indexedFiles.has(dirtyFile) || deleted.has(dirtyFile)) continue;
-      snapshot.update('\0').update(dirtyFile).update('\0');
-      snapshot.update(contentHashHex(await fs.readFile(dirtyFile, 'utf8')));
+    const { snapshotKey, dirtyHashes } = await computeSnapshot(listing, worktree, new Set(files));
+    // Clean = the working copy equals its staged blob. A path can carry both
+    // an H line and a C line; only the H-only ones are vouched for.
+    const cleanBlobs = new Map<string, string>();
+    for (const file of files) {
+      const blob = worktree.blobs.get(file);
+      if (blob !== undefined && !worktree.dirty.has(file)) cleanBlobs.set(file, blob);
     }
-    return {
-      files,
-      trustedUnchanged: new Set(files.filter((file) => !dirty.has(file))),
-      snapshotKey: snapshot.digest('hex'),
-    };
+    return { files, cleanBlobs, snapshotKey, dirtyHashes };
   } catch {
     return null;
   }
@@ -246,8 +355,15 @@ export async function findSourceFiles(
   files: string[];
   complete: boolean;
   errors: string[];
-  trustedUnchanged?: Set<string>;
+  /**
+   * Staged blob id of every file whose working copy Git reports unchanged —
+   * the per-file trust evidence checked against `files.git_blob`.
+   */
+  cleanBlobs?: Map<string, string>;
+  /** Fingerprint of the checkout, compared again at the end of the run. */
   snapshotKey?: string;
+  /** Content hash of each dirty indexed file, computed for the snapshot. */
+  dirtyHashes?: Map<string, string>;
 }> {
   const gitFiles = await findGitSourceFiles(projectRoot, ignore, signal, isGitIgnored);
   if (gitFiles) {
@@ -255,8 +371,9 @@ export async function findSourceFiles(
       files: gitFiles.files,
       complete: true,
       errors: [],
-      trustedUnchanged: gitFiles.trustedUnchanged,
+      cleanBlobs: gitFiles.cleanBlobs,
       snapshotKey: gitFiles.snapshotKey,
+      dirtyHashes: gitFiles.dirtyHashes,
     };
   }
 

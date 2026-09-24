@@ -1,4 +1,5 @@
 import type { Director } from '@wrongstack/core/coordination';
+import type { RedoRewindResult } from '@wrongstack/core/storage';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { getProcessRegistry } from '@wrongstack/tools';
@@ -46,6 +47,8 @@ interface CoreTuiCommandsOptions {
   streamingTextRef: MutableRefObject<string>;
   director: AppProps['director'];
   handleRewindTo: (index: number) => Promise<void>;
+  /** `/rewind redo`: undo the newest rewind. */
+  handleRewindRedo: () => Promise<RedoRewindResult | null>;
   getSettings?: AppProps['getSettings'] | undefined;
 }
 
@@ -69,6 +72,7 @@ export function useCoreTuiCommands({
   streamingTextRef,
   director,
   handleRewindTo,
+  handleRewindRedo,
   getSettings,
 }: CoreTuiCommandsOptions): {
   getCronJobs: ReturnType<typeof createCronJobsGetter>;
@@ -283,9 +287,11 @@ export function useCoreTuiCommands({
   useEffect(() => {
     const cmd = {
       name: 'rewind',
-      description: 'Open checkpoint timeline to rewind session: /rewind [checkpoint-index]',
+      description:
+        'Open checkpoint timeline to rewind session: /rewind [checkpoint-index] | /rewind redo',
       help: [
         'Usage: /rewind [checkpoint-index]',
+        '       /rewind redo   undo the last rewind (until the next prompt)',
         '',
         'Opens a checkpoint timeline. Use ↑/↓ to navigate, Enter to rewind,',
         'Esc to cancel. The session is reverted to the selected checkpoint',
@@ -295,6 +301,34 @@ export function useCoreTuiCommands({
         'rewind happens immediately.',
       ].join('\n'),
       async run(args: string) {
+        // Rewind and redo stop the session's producers, which advances the
+        // session generation; this flag keeps their own result from being
+        // dropped as stale output.
+        const metadata = { advancedSessionGeneration: true };
+        if (args.trim().toLowerCase() === 'redo') {
+          let result: RedoRewindResult | null;
+          try {
+            result = await handleRewindRedo();
+          } catch (err) {
+            return { message: `Redo failed: ${toErrorMessage(err)}`, metadata };
+          }
+          if (!result) return { message: 'Nothing to redo: no rewind since the last prompt.' };
+          if (result.conflicts.length > 0) {
+            return {
+              message: [
+                'Redo refused, nothing changed:',
+                ...result.conflicts.map((c) => `  ${c}`),
+              ].join('\n'),
+              metadata,
+            };
+          }
+          for (const cp of result.checkpoints) dispatch({ type: 'checkpointReceived', cp });
+          const files = result.reappliedFiles.length;
+          return {
+            message: `Redid the rewind to checkpoint #${result.toPromptIndex}: ${result.restoredEvents} journal events and ${files} file${files === 1 ? '' : 's'} restored; the model sees the full conversation again.`,
+            metadata,
+          };
+        }
         const idx = Number.parseInt(args.trim(), 10);
         if (!Number.isNaN(idx) && idx >= 0) {
           // Awaited: rewindToCheckpoint throws SessionError for an unknown
@@ -302,9 +336,9 @@ export function useCoreTuiCommands({
           try {
             await handleRewindTo(idx);
           } catch (err) {
-            return { message: `Rewind failed: ${toErrorMessage(err)}` };
+            return { message: `Rewind failed: ${toErrorMessage(err)}`, metadata };
           }
-          return {};
+          return { metadata };
         }
         // No arg — open the timeline overlay
         const s = stateRef.current;
@@ -316,7 +350,7 @@ export function useCoreTuiCommands({
       },
     };
     return registerSlashCommandLifecycle(slashRegistry, cmd);
-  }, [slashRegistry, handleRewindTo]);
+  }, [slashRegistry, handleRewindTo, handleRewindRedo, dispatch]);
 
   // `/agents` — bare `/agents` and `/agents monitor` toggle the overlay.
   // Typed forms delegate to the canonical host command captured before the

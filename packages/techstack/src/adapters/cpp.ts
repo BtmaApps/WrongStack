@@ -38,17 +38,23 @@ function parseConanTxt(content: string): Array<{ name: string; version?: string 
 /**
  * Parse vcpkg.json `dependencies` array.
  */
-function parseVcpkgJson(content: string): Array<{ name: string; version?: string | undefined }> {
-  const deps: Array<{ name: string; version?: string | undefined }> = [];
+function parseVcpkgJson(
+  content: string,
+): Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> {
+  const deps: Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> = [];
   try {
     const json = JSON.parse(content) as {
-      dependencies?: Array<string | { name: string; version?: string }>;
+      dependencies?: Array<string | { name: string; version?: string; 'version>='?: string }>;
     };
     for (const dep of json.dependencies ?? []) {
       if (typeof dep === 'string') {
         deps.push({ name: dep });
       } else {
-        deps.push({ name: dep.name, version: dep.version });
+        deps.push({
+          name: dep.name,
+          version: dep.version ?? dep['version>='],
+          minimumVersion: dep['version>='] !== undefined && dep.version === undefined,
+        });
       }
     }
   } catch {
@@ -76,7 +82,8 @@ export class CppAdapter implements EcosystemAdapter {
       }
 
       const manifestEv = manifestEvidence(manifestPath);
-      let deps: Array<{ name: string; version?: string | undefined }> = [];
+      let deps: Array<{ name: string; version?: string | undefined; minimumVersion?: boolean }> =
+        [];
 
       if (manifestPath.includes('conanfile')) {
         deps = parseConanTxt(content);
@@ -90,9 +97,10 @@ export class CppAdapter implements EcosystemAdapter {
         if (seen.has(dep.name)) continue;
         seen.add(dep.name);
 
-        const purl = dep.version
-          ? buildPurl({ type: 'conan', name: dep.name, version: dep.version })
-          : buildPurl({ type: 'conan', name: dep.name });
+        const purl =
+          dep.version && !dep.minimumVersion
+            ? buildPurl({ type: 'conan', name: dep.name, version: dep.version })
+            : buildPurl({ type: 'conan', name: dep.name });
 
         observations.push({
           id: `dep-${workspace.id}-${dep.name}`,

@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import type { SessionRegistry } from '@wrongstack/core/storage';
 import {
   extractInterruptedTools,
@@ -108,7 +109,7 @@ export function buildLoadCommand(opts: SlashCommandContext): SlashCommand {
     category: 'Session',
     aliases: ['resume', 'load'],
     description:
-      'List, resume, archive, or recover sessions. /sessions archive compresses old JSONL logs.',
+      'List, resume, move, archive, or recover sessions. /sessions move takes a session to another worktree or project; /sessions archive compresses old JSONL logs.',
     async run(args) {
       const parts = args.split(/\s+/).filter(Boolean);
       const first = parts[0]?.toLowerCase();
@@ -169,6 +170,39 @@ export function buildLoadCommand(opts: SlashCommandContext): SlashCommand {
           };
         } catch (err) {
           return { message: color.red(`Rename failed: ${toErrorMessage(err)}`) };
+        }
+      }
+
+      // /sessions move <id> <path> — to another worktree or project. The
+      // session must not be open anywhere, this one included.
+      if (first === 'move') {
+        const targetId = parts[1];
+        const targetPath = parts.slice(2).join(' ').trim();
+        if (!targetId || !targetPath) {
+          return {
+            message: color.yellow('Usage: /sessions move <sessionId> <project or worktree path>'),
+          };
+        }
+        if (!opts.sessionStore) {
+          return { message: color.yellow('No session store configured.') };
+        }
+        if (targetId === opts.context?.session?.id) {
+          return {
+            message: color.yellow(
+              'Cannot move the active session. Exit, then run: wstack sessions move <id> --to <path>',
+            ),
+          };
+        }
+        try {
+          const { moveSessionTo, describeSessionMove } = await import('../session-move.js');
+          const result = await moveSessionTo({
+            store: opts.sessionStore,
+            sessionId: targetId,
+            targetPath: path.resolve(opts.projectRoot, targetPath),
+          });
+          return { message: color.green(describeSessionMove(result)) };
+        } catch (err) {
+          return { message: color.red(`Move failed: ${toErrorMessage(err)}`) };
         }
       }
 

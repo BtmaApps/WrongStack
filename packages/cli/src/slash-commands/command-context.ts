@@ -9,6 +9,7 @@ import type {
   MetricsRuntimeStatus,
   MetricsSink,
   ModeStore,
+  PermissionPolicy,
   Renderer,
   SessionStore,
   SkillLoader,
@@ -22,6 +23,12 @@ import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 export interface SlashCommandContext {
   registry: SlashCommandRegistry;
   toolRegistry: ToolRegistry;
+  /**
+   * The agent's permission policy: `/permissions rules|explain` read it, and
+   * it reads each session's `/permissions allow|deny` rules from that
+   * session's context.
+   */
+  permissionPolicy?: PermissionPolicy | undefined;
   /** Run one tool through the active ToolExecutor and its permission policy. */
   executeTool?:
     | ((name: string, input: Record<string, unknown>, ctx: Context) => Promise<{ detail: string }>)

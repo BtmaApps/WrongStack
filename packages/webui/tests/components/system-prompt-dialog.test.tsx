@@ -3,9 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const setSystemPromptVariant = vi.fn();
 const newSession = vi.fn();
+const send = vi.fn();
 
 vi.mock('@/lib/ws-client', () => ({
-  getWSClient: () => ({ setSystemPromptVariant, newSession }),
+  getWSClient: () => ({ setSystemPromptVariant, newSession, send, on: () => () => undefined }),
 }));
 
 import { SystemPromptDialog } from '../../src/components/SystemPromptDialog.js';
@@ -83,6 +84,17 @@ describe('SystemPromptDialog', () => {
       newSession.mock.invocationCallOrder[0] as number,
     );
     expect(setSystemPromptVariant).toHaveBeenCalledWith('lite');
+  });
+
+  it('holds session start while a preset change is awaiting the server', () => {
+    render(<SystemPromptDialog />);
+    open({ startsSession: true });
+    fireEvent.click(screen.getByText('Manage custom presets'));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Standard' }));
+    expect(
+      screen.getByRole('button', { name: 'Apply & start session' }).hasAttribute('disabled'),
+    ).toBe(true);
+    expect(newSession).not.toHaveBeenCalled();
   });
 
   it('starts the session without a redundant write when the variant is unchanged', () => {

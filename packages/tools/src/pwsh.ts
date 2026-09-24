@@ -15,6 +15,7 @@ import { createOutputSpool, spoolNote } from './_output-spool.js';
 import { diagnoseBashism, shellArgs } from './_shell-pick.js';
 import { normalizeCommandOutput, safeResolveReal } from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
+import { closeBackgroundLogFd, openBackgroundLog } from './background-log.js';
 import { checkAndBlockKillCommand } from './bash-kill-guard.js';
 import { getProcessRegistry, redactCommand } from './process-registry.js';
 
@@ -32,6 +33,8 @@ export interface PwshOutput {
   timed_out: boolean;
   pid?: number | null | undefined;
   job_id?: string | undefined;
+  /** Background run: the file its stdout and stderr go to. */
+  log_file?: string | undefined;
   error?: string | undefined;
 }
 
@@ -50,7 +53,7 @@ export const PWSH_TOOL_USAGE_HINT =
   '- **Stateless**: No cwd, variables, or functions persist between calls. Use `workdir` to set the directory.\n' +
   '- **Paths & Environs**: Use native Windows paths (`C:\\...`) and read env vars via `$env:NAME`.\n' +
   '- **Exit Codes**: Non-zero exits are reported as `[exit code: N]`. On Windows, a force-killed command settles as exit code 1 (interruption).\n' +
-  '- **Background**: Set `run_in_background: true` for long-running processes; the result carries the PID (stop it with `Stop-Process -Id <pid>`).\n' +
+  '- **Background**: Set `run_in_background: true` for long-running processes; the result carries the PID (stop it with `Stop-Process -Id <pid>`) and the `log_file` its output goes to.\n' +
   '- **Not a sandbox**: Commands run in `FullLanguage` mode with your user privileges. A call refused by permission policy is final — do not retry it with extra fields.';
 
 /**
@@ -308,16 +311,19 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
     const detached = !isWin;
 
     if (isBackground) {
+      // Output goes to a file the child writes itself (see background-log.ts).
+      const bgLog = openBackgroundLog(ctx.projectRoot, 'pwsh', registry.logFiles());
       let child: ReturnType<typeof spawn>;
       try {
         child = spawn(bin, args, {
           cwd: targetCwd,
           env,
           detached,
-          stdio: ['ignore', 'ignore', 'ignore'],
+          stdio: ['ignore', bgLog?.fd ?? 'ignore', bgLog?.fd ?? 'ignore'],
           windowsHide: true,
         });
       } catch (err) {
+        closeBackgroundLogFd(bgLog);
         // Spawn threw — release the breaker reservation the successful
         // beforeCall(isBackground) took, mirroring the child 'error'/'close'
         // handlers below.
@@ -343,6 +349,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
         });
       }
 
+      closeBackgroundLogFd(bgLog);
       const pid = child.pid;
       let bgTelemetryCompleted = false;
       let bgErrorOccurred = false;
@@ -385,6 +392,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
           child,
           processGroupLeader: detached && child.pid === pid,
           background: true,
+          ...(bgLog ? { logFile: bgLog.path } : {}),
         });
 
         child.on('close', (code, signal) => {
@@ -428,6 +436,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
             timed_out: false,
             pid,
             job_id: jobId,
+            ...(bgLog ? { log_file: bgLog.path } : {}),
           },
         };
         return;

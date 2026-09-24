@@ -1,5 +1,7 @@
 import type {
   Capabilities,
+  ImageGenerationRequest,
+  ImageGenerationResult,
   ProviderError,
   ReasoningEffort,
   Request,
@@ -7,6 +9,7 @@ import type {
 } from '@wrongstack/core/types';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
+import { openAIImagesBody, openAIImagesUrl, parseOpenAIImages } from './image-generation.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
@@ -39,6 +42,21 @@ export class OpenAIResponsesProvider extends WireAdapter {
     this.id = opts.id;
     this.extraHeaders = opts.headers;
     this.capabilities = capabilitiesForFamily('openai', opts.capabilities);
+  }
+
+  /** Text-to-image through the images API beside the Responses endpoint. */
+  async generateImage(
+    req: ImageGenerationRequest,
+    opts: { signal: AbortSignal },
+  ): Promise<ImageGenerationResult> {
+    const headers = this.buildHeaders({ model: req.model, messages: [] });
+    const json = await this.postJson(
+      openAIImagesUrl(this.baseUrl),
+      openAIImagesBody(req),
+      headers,
+      opts.signal,
+    );
+    return parseOpenAIImages(json);
   }
 
   protected override buildUrl(_req: Request): string {

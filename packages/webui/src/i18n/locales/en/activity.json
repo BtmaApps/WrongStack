@@ -164,7 +164,19 @@
     "loadingDiff": "Loading diff…",
     "diffTimeout": "The diff didn't arrive. The file may have changed or the connection dropped.",
     "binary": "Binary file — diff not shown.",
-    "tooLarge": "File too large to diff."
+    "tooLarge": "File too large to diff.",
+    "showAsTree": "Show as a folder tree",
+    "showAsList": "Show as a list",
+    "image": {
+      "before": "HEAD",
+      "after": "Working tree",
+      "added": "New image",
+      "deleted": "Deleted image",
+      "changed": "Changed image",
+      "side": "Side by side",
+      "onion": "Onion skin",
+      "opacity": "Working tree opacity"
+    }
   },
   "inspector": {
     "openAgentsPanel": "Open Agents panel (live fleet)",
@@ -1408,7 +1420,13 @@
     "toolRunning": "Running",
     "toolFailed": "Failed",
     "toolSucceeded": "Succeeded",
-    "details": "Details"
+    "details": "Details",
+    "imagePreview": {
+      "tooLarge": "Too large to preview",
+      "notImage": "Not an image the browser can show",
+      "error": "Preview unavailable",
+      "toggleSize": "Click to enlarge or shrink"
+    }
   },
   "watch": {
     "toolFallback": "tool",
@@ -1702,6 +1720,8 @@
     "level": {
       "quiet": "quiet",
       "active": "active",
+      "activeProfile": "profile default",
+      "activeProject": "this project",
       "churn": "high churn"
     },
     "analysisTitle": {
@@ -3819,7 +3839,41 @@
     "applyAndStart": "Apply & start session",
     "cancel": "Cancel",
     "unavailable": "System prompt selection is not available on this server.",
-    "openTitle": "Choose system prompt size"
+    "openTitle": "Choose system prompt size",
+    "presets": {
+      "manage": "Manage custom presets",
+      "title": "Custom presets",
+      "description": "Editable copies of Lite, Standard and Pro, stored in this profile. Choose one for this project or across the profile. Tool and environment guidance is assembled live.",
+      "copy": "Copy {{variant}}",
+      "suggestedName": "{{variant}} custom",
+      "select": "Preset",
+      "selectPlaceholder": "Select a preset",
+      "active": "active",
+      "name": "Name",
+      "template": "Prompt template",
+      "sourceChanged": "The bundled {{variant}} source changed since this preset was copied. Compare both source versions below and adapt your text before marking it reviewed.",
+      "reviewed": "I reviewed the current bundled source",
+      "syntax": "Conditions are evaluated against callable tools for each request.",
+      "validationScope": "Validation checks template structure and tool names; it cannot prove that edited instructions are safe or effective. Tool permissions are enforced by the runtime.",
+      "validation": "Validation results",
+      "line": "Line {{line}}: {{message}}",
+      "save": "Save preset",
+      "activate": "Activate for {{variant}}",
+      "deactivate": "Deactivate",
+      "activateProfile": "Use across profile",
+      "deactivateProfile": "Remove profile default",
+      "activateProject": "Use in this project",
+      "deactivateProject": "Remove project choice",
+      "delete": "Delete",
+      "confirmDelete": "Delete “{{name}}”?",
+      "discardChanges": "Discard unsaved preset changes?",
+      "compare": "Compare source versions",
+      "copiedSource": "Source when copied",
+      "currentSource": "Current bundled source",
+      "preview": "Live identity preview · {{count}} callable tools · {{tier}} tier",
+      "previewEmpty": "Fix validation errors to preview.",
+      "previewNote": "The runtime adds tool, environment, memory and mode sections separately."
+    }
   },
   "failedRun": {
     "continue": "Continue",

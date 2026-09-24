@@ -420,13 +420,18 @@ export async function handleFilesWrite(
       type: 'files.written',
       payload: withSessionEcho({ filePath, success: true }, sessionId),
     });
-    try {
-      enqueueReindex({ projectRoot, files: [realResolved] });
-    } catch {
-      // Non-fatal background reindex
-    }
     if (opts.onWritten) {
+      // The host's indexing hook owns the reindex: it honours `indexing.onEdit`
+      // and targets the configured index directory. Enqueueing here as well
+      // queued a second run against the DEFAULT index directory — a stray
+      // index for a custom `codebaseIndexDir`, and a duplicate run otherwise.
       void Promise.resolve(opts.onWritten(realResolved)).catch(() => undefined);
+    } else {
+      try {
+        enqueueReindex({ projectRoot, files: [realResolved] });
+      } catch {
+        // Non-fatal background reindex
+      }
     }
   } catch (err) {
     send(ws, {

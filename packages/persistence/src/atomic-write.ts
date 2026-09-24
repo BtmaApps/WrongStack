@@ -195,7 +195,11 @@ export function createPersistencePrimitives(
       }
       await commitTemp(tmp, targetPath, opts);
     } catch (error) {
-      await fs.unlink(tmp).catch(() => undefined);
+      // `wx` reports EEXIST when a different writer already owns this random
+      // temp path. Never remove that file: this invocation did not create it.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        await fs.unlink(tmp).catch(() => undefined);
+      }
       throw error;
     }
   }
@@ -242,7 +246,11 @@ export function createPersistencePrimitives(
       await commitTemp(tmp, targetPath, opts);
       return result;
     } catch (error) {
-      await fs.unlink(tmp).catch(() => undefined);
+      // As above, EEXIST means exclusive creation never transferred ownership
+      // of this path to this invocation.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        await fs.unlink(tmp).catch(() => undefined);
+      }
       throw error;
     }
   }

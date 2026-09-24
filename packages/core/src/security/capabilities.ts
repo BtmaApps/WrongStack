@@ -238,6 +238,35 @@ export function hasCapability(
  * Returns the intersection of a tool's capabilities with the dangerous set.
  * Useful for logging and audit trails.
  */
+/**
+ * The executor's last word on an `auto`: a tool with a dangerous capability
+ * (shell, file write, MCP proxy, ...) still confirms when only a trust entry
+ * allowed it, unless YOLO is on or the grant is one the user made themselves
+ * (`--allowed-tools`, or an approval given at a confirm prompt). Shared with
+ * `wstack permissions explain`, which would otherwise report `auto` for a call
+ * the agent is about to ask about.
+ */
+export function capabilityDowngradesToConfirm(
+  decision: {
+    permission: string;
+    source: string;
+    launchGrant?: true | undefined;
+    approvalGrant?: true | undefined;
+  },
+  tool: { capabilities?: readonly string[] | undefined },
+  yolo: boolean,
+): boolean {
+  if (decision.permission !== 'auto' || yolo) return false;
+  // `user`: the policy's own prompt just asked about this very call (the REPL
+  // asks there and then again here, without this).
+  const authoritative =
+    decision.source === 'yolo' ||
+    decision.source === 'user' ||
+    decision.launchGrant === true ||
+    decision.approvalGrant === true;
+  return !authoritative && getDangerousCapabilities(tool).length > 0;
+}
+
 export function getDangerousCapabilities(
   toolOrCaps: { capabilities?: readonly string[] | undefined } | readonly string[] | undefined,
 ): ToolCapability[] {

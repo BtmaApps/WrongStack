@@ -461,6 +461,7 @@ export function validateAction(action: {
     case 'chatSearchOpen':
     case 'chatSearchSetQuery':
     case 'chatSearchStep':
+    case 'messageJump':
     case 'clearConfirmSetValue':
     case 'checkpointReceived':
     case 'rewindOverlayOpen':

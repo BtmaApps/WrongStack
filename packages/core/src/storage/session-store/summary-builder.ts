@@ -66,6 +66,7 @@ async function summarizeSessionEventSequence(opts: {
     let hasError = false;
     let sawStart = false;
     let forkedFrom: string | undefined;
+    let checkout: string | undefined;
 
     for await (const e of events) {
       lastEventType = e.type;
@@ -76,6 +77,14 @@ async function summarizeSessionEventSequence(opts: {
       ) {
         lastActivityAt = e.ts;
         lastActivityMs = eventActivityMs;
+      }
+      if (
+        (e.type === 'session_start' ||
+          e.type === 'session_resumed' ||
+          e.type === 'session_moved') &&
+        e.checkout
+      ) {
+        checkout = e.checkout;
       }
       if (e.type === 'session_start') {
         if (!sawStart) {
@@ -152,6 +161,7 @@ async function summarizeSessionEventSequence(opts: {
       provider,
       tokenTotal: tokenIn + tokenOut,
       ...(forkedFrom !== undefined ? { forkedFrom } : {}),
+      ...(checkout !== undefined ? { checkout } : {}),
       lastActivityAt,
       messageCount,
       ...(lastUserMessage !== undefined ? { lastUserMessage } : {}),

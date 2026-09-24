@@ -19,6 +19,8 @@ import type {
   SessionForkOptions,
   SessionLoadProgress,
   SessionMetadata,
+  SessionMoveResult,
+  SessionMoveTarget,
   SessionStoragePolicy,
   SessionStore,
   SessionSummary,
@@ -50,6 +52,7 @@ import {
 } from './session-store/list-sessions.js';
 import { SessionLoadCache } from './session-store/load-cache.js';
 import { executeLoadSession } from './session-store/load-session.js';
+import { executeAdoptMovedSession, executeMoveSession } from './session-store/move-session.js';
 import {
   ensureShardDir as ensureSessionShardDir,
   sessionPath as sessionStorePath,
@@ -308,7 +311,8 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async create(meta: Omit<SessionMetadata, 'startedAt'>): Promise<SessionWriter> {
-    return executeCreateSession(this.asCreateHost(), meta);
+    const checkout = meta.checkout ?? this.projectRoot;
+    return executeCreateSession(this.asCreateHost(), checkout ? { ...meta, checkout } : meta);
   }
 
   async fork(id: string, opts: SessionForkOptions = {}): Promise<ForkedSession> {
@@ -696,6 +700,26 @@ export class DefaultSessionStore implements SessionStore {
     }
     await assertSessionCanBeDeleted(id, this.isSessionInUse);
     await this.deleteSession(id);
+  }
+
+  get sessionsDir(): string {
+    return this.dir;
+  }
+
+  async move(id: string, target: SessionMoveTarget): Promise<SessionMoveResult> {
+    const host = { ...this.asArchiveHost(), projectRoot: this.projectRoot };
+    const deleteLocal = (sid: string) => this.deleteSession(sid);
+    const result = await executeMoveSession(
+      { ...host, deleteLocal },
+      await this.resolveId(id),
+      target,
+    );
+    this._indexCache = null;
+    return result;
+  }
+
+  adoptMovedSession(id: string, name: string | undefined): Promise<SessionSummary> {
+    return executeAdoptMovedSession(this.asArchiveHost(), id, name);
   }
 
   async rename(id: string, name: string): Promise<SessionSummary> {

@@ -1,3 +1,4 @@
+import { allRowsAsArrays } from './sqlite-runtime.js';
 import { inListChunks, ladderChunkSizes, padToInBucket, placeholders } from './writer-helpers.js';
 import { LANG_FAMILY_WILDCARD } from './writer-schema.js';
 
@@ -76,9 +77,18 @@ export function getAllResolvedRefsWithStatement(
   toId: number;
   callType: string;
 }> {
-  return stmtFn(
-    'SELECT from_id AS fromId, to_id AS toId, call_type AS callType FROM refs WHERE to_id IS NOT NULL',
-  ).all() as Array<{ fromId: number; toId: number; callType: string }>;
+  // ~180k rows feed every wiring-graph build (rank pass, first context query
+  // after an edit): read as arrays, which node:sqlite produces in well under
+  // half the time of its per-row objects, and shaped here.
+  const rows = allRowsAsArrays(
+    stmtFn('SELECT from_id, to_id, call_type FROM refs WHERE to_id IS NOT NULL'),
+  ) as Array<[number, number, string]>;
+  const out = new Array<{ fromId: number; toId: number; callType: string }>(rows.length);
+  for (let i = 0; i < rows.length; i++) {
+    const [fromId, toId, callType] = rows[i] as [number, number, string];
+    out[i] = { fromId, toId, callType };
+  }
+  return out;
 }
 
 export function getAllImportRefsWithStatement(
@@ -106,6 +116,21 @@ export function getAllImportRefsWithStatement(
   }>;
 }
 
+/**
+ * Refs the name-based resolvers leave alone, as a WHERE term over `refs`
+ * (`rf` = the ref's lang_family row). Both are owned by the import-aware
+ * binding pass (ref-binding-pass.ts): `to_file = ''` marks a name bound to a
+ * module outside the index, whose answer is "nothing in this project", and a
+ * JS-family import's `to_id` is the export it names in its resolved module.
+ * A name guess for either would reintroduce the homonym the binding removed.
+ */
+const BOUND_ELSEWHERE_SQL = `(refs.to_file IS NULL OR refs.to_file <> '')
+         AND NOT (refs.call_type = 'import' AND refs.module IS NOT NULL AND rf.family = 'js')`;
+/** {@link BOUND_ELSEWHERE_SQL} for the fallback forms, which have no `rf`. */
+const BOUND_ELSEWHERE_FALLBACK_SQL = `(refs.to_file IS NULL OR refs.to_file <> '')
+         AND NOT (refs.call_type = 'import' AND refs.module IS NOT NULL
+                  AND refs.lang IN (SELECT lang FROM lang_family WHERE family = 'js'))`;
+
 export function resolveRefsWithStatement(
   stmtFn: (sql: string) => { run: (...args: (string | number)[]) => unknown },
 ): number {
@@ -128,7 +153,8 @@ export function resolveRefsWithStatement(
          AND refs.to_name IS NOT NULL
          AND rf.lang = refs.lang
          AND s.name = refs.to_name
-         AND s.family = rf.family`,
+         AND s.family = rf.family
+         AND ${BOUND_ELSEWHERE_SQL}`,
     ).run() as { changes?: number };
     return result.changes ?? 0;
   } catch {
@@ -138,6 +164,7 @@ export function resolveRefsWithStatement(
           WHERE sym.name = refs.to_name AND ${FAMILY_MATCH_SQL}
           ORDER BY sym.id LIMIT 1
        ) WHERE to_id IS NULL AND to_name IS NOT NULL
+         AND ${BOUND_ELSEWHERE_FALLBACK_SQL}
          AND EXISTS (
            SELECT 1 FROM symbols sym
             WHERE sym.name = refs.to_name AND ${FAMILY_MATCH_SQL}
@@ -169,6 +196,84 @@ export function getFilesWithDanglingImportsWithStatement(
 }
 
 /**
+ * Imports whose `to_file` is still unset, across the whole index.
+ *
+ * A file that appears can be the target of imports written long before it —
+ * `import './foo'` stays unresolved until `foo.ts` exists. When a run adds
+ * files, these are the only imports whose answer can have changed; every
+ * resolved import still points at a file that exists.
+ */
+export function getImportsWithoutTargetWithStatement(
+  stmtFn: (sql: string) => { all: () => unknown[] },
+): Array<{ fromFile: string; lang: string; module: string }> {
+  return stmtFn(
+    `SELECT DISTINCT s.file AS fromFile, r.lang AS lang, r.module AS module
+       FROM refs r
+       JOIN symbols s ON s.id = r.from_id
+      WHERE r.call_type = 'import' AND r.module IS NOT NULL AND +r.to_file IS NULL`,
+  ).all() as Array<{ fromFile: string; lang: string; module: string }>;
+}
+
+/**
+ * Files holding an import that resolved to one of `targets`. Scoped
+ * counterpart of {@link getFilesWithDanglingImportsWithStatement} for a run
+ * that knows exactly which files it deleted — it reaches the importers
+ * through `idx_r_to_file` instead of scanning every import ref.
+ */
+export function getImportersOfFilesWithStatement(
+  stmtFn: (sql: string) => { all: (...args: string[]) => unknown[] },
+  maxSqlVars: number,
+  targets: readonly string[],
+): string[] {
+  const out = new Set<string>();
+  let cursor = 0;
+  for (const take of inListChunks(targets.length, maxSqlVars)) {
+    const bucket = padToInBucket(targets.slice(cursor, cursor + take));
+    cursor += take;
+    const rows = stmtFn(
+      `SELECT DISTINCT s.file AS file
+         FROM refs r
+         JOIN symbols s ON s.id = r.from_id
+        WHERE r.to_file IN (${placeholders(bucket.length)}) AND r.call_type = 'import'`,
+    ).all(...bucket) as Array<{ file: string }>;
+    for (const row of rows) out.add(row.file);
+  }
+  return [...out];
+}
+
+/**
+ * Distinct [owner file, to_name] of every ref — import or bound call — whose
+ * `to_file` is one of `targets`: what the import-aware binding pass must
+ * revisit when those files change (ref-binding-pass.ts).
+ */
+export function getRefNamesTargetingWithStatement(
+  stmtFn: (sql: string) => { all: (...args: string[]) => unknown[] },
+  maxSqlVars: number,
+  targets: readonly string[],
+): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  let cursor = 0;
+  for (const take of inListChunks(targets.length, maxSqlVars)) {
+    const bucket = padToInBucket(targets.slice(cursor, cursor + take));
+    cursor += take;
+    const rows = allRowsAsArrays(
+      stmtFn(
+        `SELECT DISTINCT s.file, r.to_name
+           FROM refs r
+           JOIN symbols s ON s.id = r.from_id
+          WHERE r.to_file IN (${placeholders(bucket.length)})`,
+      ),
+      ...(bucket as never[]),
+    ) as Array<[string, string]>;
+    for (const row of rows) out.push(row);
+  }
+  return out;
+}
+
+/** Resolution batches up to this size update entry by entry; see below. */
+const PER_ENTRY_RESOLUTION_LIMIT = 2_000;
+
+/**
  * Write module-resolution results. `toFile: null` records "re-resolved, no
  * target": it CLEARS a previous `to_file`. Only resolved entries used to be
  * written, so an import whose target had since been deleted kept pointing at
@@ -179,14 +284,44 @@ export function applyImportResolutionsWithStatement(
   stmtFn: (sql: string) => { run: (...args: (string | null)[]) => unknown },
   runWithRetry: <T>(fn: () => T) => T,
   maxSqlVars: number,
-  resolutions: ReadonlyArray<{
+  resolutionInput: ReadonlyArray<{
     fromFile: string;
     lang: string;
     module: string;
     toFile: string | null;
   }>,
 ): number {
+  let resolutions = resolutionInput;
   if (resolutions.length === 0) return 0;
+  // One row per (importer, lang, specifier): a duplicate would be written
+  // twice, and the bulk statement's LIMIT 1 would pick between them.
+  const unique = new Map<string, (typeof resolutions)[number]>();
+  for (const entry of resolutions) {
+    unique.set(`${entry.fromFile}\u0000${entry.lang}\u0000${entry.module}`, entry);
+  }
+  resolutions = [...unique.values()];
+  // A watcher/edit run resolves a handful of imports. Each is two index
+  // probes (the importer's symbols by file, their refs by id), whereas the
+  // bulk statement below visits every import ref in the repository once —
+  // ~600 ms on 70k imports, paid per one-file edit before this split.
+  // `+column` keeps SQLite off the low-selectivity call_type/module indexes.
+  if (resolutions.length <= PER_ENTRY_RESOLUTION_LIMIT) {
+    return runWithRetry(() => {
+      const update = stmtFn(
+        `UPDATE refs SET to_file = ?
+          WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)
+            AND +module = ? AND +lang = ? AND +call_type = 'import'`,
+      );
+      let changes = 0;
+      for (const entry of resolutions) {
+        const result = update.run(entry.toFile, entry.fromFile, entry.module, entry.lang) as {
+          changes?: number;
+        };
+        changes += Number(result.changes ?? 0);
+      }
+      return changes;
+    });
+  }
   return runWithRetry(() => {
     db.exec('DROP TABLE IF EXISTS temp.import_resolution');
     db.exec(
@@ -246,6 +381,18 @@ export function applyImportResolutionsWithStatement(
   });
 }
 
+/**
+ * Resolve the still-unresolved refs named `names`.
+ *
+ * Only `to_id IS NULL` rows are touched, and that is complete, not a
+ * shortcut: a ref resolves to the MIN symbol id declaring its name, and ids
+ * are allocated monotonically (`allocateSymbolIds`), so a newly inserted
+ * declaration can never undercut an existing answer. The only way a resolved
+ * ref's answer changes is its target being deleted, and every deletion path
+ * NULLs those refs first (`invalidateIncomingRefsForFiles`). Re-updating the
+ * resolved rows too rewrote every `push`/`get`/`map` ref in the repository on
+ * each one-file edit.
+ */
 export function resolveRefsForNamesUnsafe(
   stmtFn: (sql: string) => { run: (...args: (string | number)[]) => unknown },
   maxSqlVars: number,
@@ -281,9 +428,11 @@ export function resolveRefsForNamesUnsafe(
              ) AS s,
              lang_family AS rf
          WHERE refs.to_name IN (${ph})
+           AND refs.to_id IS NULL
            AND rf.lang = refs.lang
            AND s.name = refs.to_name
-           AND s.family = rf.family`,
+           AND s.family = rf.family
+           AND ${BOUND_ELSEWHERE_SQL}`,
       ).run(...chunk, ...chunk, ...chunk) as { changes?: number };
       total += result.changes ?? 0;
     } catch {
@@ -293,6 +442,8 @@ export function resolveRefsForNamesUnsafe(
             WHERE sym.name = refs.to_name AND ${FAMILY_MATCH_SQL}
             ORDER BY sym.id LIMIT 1
          ) WHERE refs.to_name IN (${ph})
+           AND refs.to_id IS NULL
+           AND ${BOUND_ELSEWHERE_FALLBACK_SQL}
            AND EXISTS (
              SELECT 1 FROM symbols sym
               WHERE sym.name = refs.to_name AND ${FAMILY_MATCH_SQL}

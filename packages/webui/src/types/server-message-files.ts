@@ -1,5 +1,13 @@
 import type { SessionScopedPayload } from './protocol-core.js';
 
+/** Both sides of a changed image; a side is absent when the file was added or deleted. */
+export interface GitImageDiff {
+  old?: string | undefined;
+  new?: string | undefined;
+  oldBytes?: number | undefined;
+  newBytes?: number | undefined;
+}
+
 export type WSFilesGitServerMessage =
   | {
       type: 'codebase.index.server.shutdown_result';
@@ -27,6 +35,20 @@ export type WSFilesGitServerMessage =
         /** Server refused content: NUL byte detected (see handleFilesRead). */
         binary?: boolean | undefined;
         /** Server refused content: file exceeds the 2 MB display cap. */
+        tooLarge?: boolean | undefined;
+        error?: string | undefined;
+        sessionId?: string | undefined;
+      };
+    }
+  | {
+      /** A project image as a data URL (see `lib/project-image.ts`). */
+      type: 'files.image';
+      payload: {
+        filePath: string;
+        dataUrl?: string | undefined;
+        bytes?: number | undefined;
+        /** The bytes are not a raster image the browser should show. */
+        notImage?: boolean | undefined;
         tooLarge?: boolean | undefined;
         error?: string | undefined;
         sessionId?: string | undefined;
@@ -209,6 +231,8 @@ export type WSFilesGitServerMessage =
         binary?: boolean | undefined;
         tooLarge?: boolean | undefined;
         error?: string | undefined;
+        /** A changed image: HEAD and working-tree versions as data URLs. */
+        image?: GitImageDiff | undefined;
       };
     }
   | {

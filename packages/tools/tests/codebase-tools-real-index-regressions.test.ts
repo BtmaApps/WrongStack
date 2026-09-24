@@ -71,8 +71,13 @@ describe('codebase tools on a real index', () => {
 
   it('reports the real line and call type of a direct caller in impact analysis', async () => {
     const out = await codebaseImpactAnalysisTool.execute({ symbol: 'helper' }, ctx(), {} as never);
-    expect(out.callSites).toEqual([
+    expect(out.callSites.filter((site) => !site.indirect)).toEqual([
       expect.objectContaining({ file: 'src/a.ts', callerName: 'main', line: 4, callType: 'call' }),
+    ]);
+    // The entry barrel re-exports `main`: a real dependent, invisible while
+    // files that declare nothing owned no refs.
+    expect(out.callSites.filter((site) => site.indirect).map((site) => site.file)).toEqual([
+      'src/index.ts',
     ]);
   });
 

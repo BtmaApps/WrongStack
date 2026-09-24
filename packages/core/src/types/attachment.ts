@@ -1,6 +1,6 @@
 import type { ContentBlock } from './blocks.js';
 
-export type AttachmentKind = 'text' | 'image' | 'file';
+export type AttachmentKind = 'text' | 'image' | 'file' | 'document';
 
 export interface AttachmentMeta {
   /** Display label for the placeholder e.g. "123 lines" or "PNG 412 KB". */
@@ -9,14 +9,18 @@ export interface AttachmentMeta {
   filename?: string | undefined;
   /** MIME type if known. Required for images. */
   mediaType?: string | undefined;
+  /** Page count of a document. */
+  pages?: number | undefined;
 }
 
 export interface Attachment {
   readonly id: string;
   readonly kind: AttachmentKind;
   readonly meta: AttachmentMeta;
-  /** In-memory payload. For images this is base64; for text/file it's the raw text. */
+  /** In-memory payload. For images and documents this is base64; for text/file it's the raw text. */
   readonly data?: string | undefined;
+  /** A document's extracted text, sent to models that take no PDF input. */
+  readonly text?: string | undefined;
   /** Disk location if spooled. Mutually exclusive with `data` for large payloads. */
   readonly path?: string | undefined;
   readonly bytes: number;
@@ -34,6 +38,8 @@ export interface AttachmentRef {
 export interface AddAttachmentInput {
   kind: AttachmentKind;
   data: string;
+  /** A document's extracted text (required for `document`, ignored otherwise). */
+  text?: string | undefined;
   meta?: AttachmentMeta | undefined;
 }
 

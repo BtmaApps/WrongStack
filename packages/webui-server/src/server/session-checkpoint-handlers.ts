@@ -122,6 +122,7 @@ export function createSessionCheckpointHandlers(
           sessionsDir: sessionsDirectory(),
           promptIndex: checkpointIndex,
           revertedFiles: reverted.revertedFiles,
+          meta: target.meta,
         });
         result(ws, true, `Rewound to checkpoint ${checkpointIndex}`);
         broadcastToAll({

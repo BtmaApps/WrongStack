@@ -2,6 +2,7 @@ import type { ContentBlock } from './blocks.js';
 import type { Message } from './messages.js';
 import type { ProviderErrorBody, Usage } from './provider.js';
 import type { FileSnapshot, WorkspaceCheckpointRef } from './session.js';
+import type { SessionPermissionOverride } from './session-permission-override.js';
 import type { ToolSettlement } from './tool.js';
 
 /**
@@ -66,9 +67,30 @@ export interface SessionEventAttribution {
 }
 
 type SessionEventVariant =
-  | { type: 'session_start'; ts: string; id: string; model: string; provider: string }
-  | { type: 'session_resumed'; ts: string; id: string; model: string; provider: string }
+  | {
+      type: 'session_start';
+      ts: string;
+      id: string;
+      model: string;
+      provider: string;
+      /** Checkout directory (a linked git worktree differs from the project root). */
+      checkout?: string | undefined;
+    }
+  | {
+      type: 'session_resumed';
+      ts: string;
+      id: string;
+      model: string;
+      provider: string;
+      checkout?: string | undefined;
+    }
   | { type: 'subagent_policy'; ts: string; allowed: boolean }
+  /**
+   * The session's whole `/permissions allow|deny` list; the last event wins on
+   * resume. Untrusted journal payload, normalized when read
+   * (`security/session-permission-overrides.ts`).
+   */
+  | { type: 'permission_overrides'; ts: string; overrides: SessionPermissionOverride[] }
   /**
    * Session-scoped subagent model plan (lanes + role overlay). Last event wins
    * on resume; see `coordination/session-subagent-models.ts`.
@@ -78,6 +100,13 @@ type SessionEventVariant =
       ts: string;
       plan: unknown; // Untrusted journal payload; normalized by the coordination layer.
     }
+  /**
+   * The session was moved to another checkout: a git worktree of the same
+   * repository (same store), or another project's store, in which case
+   * `fromProject` names the project it came from. Readers take `checkout`
+   * from the last of these the way they take it from `session_resumed`.
+   */
+  | { type: 'session_moved'; ts: string; checkout: string; fromProject?: string | undefined }
   | {
       type: 'session_forked';
       ts: string;

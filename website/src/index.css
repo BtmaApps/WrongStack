@@ -237,6 +237,14 @@
 /* Periodic light sweep across the hero title lines. Each line keeps its own
    color; a whitened band of it travels left → right, cascading top → bottom
    via the delay modifiers. Parked positions show the plain base color. */
+.hero-copy {
+  container-type: inline-size;
+}
+
+.hero-heading {
+  font-size: clamp(2.75rem, 17.5cqw, 7.05rem);
+}
+
 .hero-line {
   --line-base: var(--fg);
   background-image: linear-gradient(

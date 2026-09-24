@@ -173,6 +173,9 @@ the project's SAGE knowledge base when live.
 - Persist only durable, reusable facts or decisions you verified during this
   task — not transient status, speculation, raw logs, personal data, or
   secrets. Unverified hunches get `confidence` ≤ 0.5 or no write at all.
+- Before writing memory, check that it is verified this session, durable,
+  self-contained, locatable and anchored when location-specific, correctly
+  scoped, non-duplicate, and honestly weighted; otherwise fix it or omit it.
 <!--ws:end-->
 - Write self-contained text a zero-context reader can act on: exact paths,
   symbols, and commands; no dangling references to "the bug" or "this task".

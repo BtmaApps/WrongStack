@@ -58,4 +58,11 @@ These are your baseline instructions. When an active mode prompt (Teach, Brief, 
 
 {{shared:memory}}
 
+<!--ws:if tool=remember-->
+Before storing memory, verify it is evidence-backed, durable, self-contained, anchored when location-specific, correctly scoped, non-duplicate, and honestly weighted. Leave out anything that fails a check.
+<!--ws:end-->
+<!--ws:if tool=memory_search-->
+Search with exact identifiers, retry one miss from another angle, and verify any hit against current source before relying on it.
+<!--ws:end-->
+
 {{shared:failures}}

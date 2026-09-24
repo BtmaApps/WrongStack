@@ -40,7 +40,14 @@ export function commitBatchWithStatement(
     symbolCount: number;
     contentHash?: string | undefined;
   }>,
-  options: { deleteForFiles?: string[] | undefined } = {},
+  options: {
+    deleteForFiles?: string[] | undefined;
+    /**
+     * Collect the names whose refs need resolving here instead of resolving
+     * them per batch; the caller resolves once after the last batch.
+     */
+    deferResolution?: Set<string> | undefined;
+  } = {},
 ): IndexSymbol[] {
   if (entries.length === 0 && (options.deleteForFiles?.length ?? 0) === 0) {
     return [];
@@ -179,14 +186,15 @@ export function commitBatchWithStatement(
   }
 
   const upsertStmt = stmtFn(
-    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed, git_blob)
+     VALUES (?, ?, ?, ?, ?, ?, '')
      ON CONFLICT(file) DO UPDATE SET
        lang = excluded.lang,
        mtime_ms = excluded.mtime_ms,
        content_hash = excluded.content_hash,
        symbol_count = excluded.symbol_count,
-       last_indexed = excluded.last_indexed`,
+       last_indexed = excluded.last_indexed,
+       git_blob = excluded.git_blob`,
   );
   const now = Date.now();
   for (const entry of entries) {
@@ -200,7 +208,16 @@ export function commitBatchWithStatement(
     );
   }
 
-  resolveRefsForNamesUnsafe(affectedNames);
+  // A bulk run defers this: each batch re-resolving every ref named like
+  // anything it touched (`push`, `get`, `map`…) rescanned a refs table that
+  // grows with every batch — 26 s of an 84 s cold index of this repository.
+  // Resolution is by name over NULL refs only, so resolving the union once
+  // after the last batch reaches the same answer.
+  if (options.deferResolution) {
+    for (const name of affectedNames) options.deferResolution.add(name);
+  } else {
+    resolveRefsForNamesUnsafe(affectedNames);
+  }
   return allInserted;
 }
 
@@ -228,14 +245,15 @@ export function replaceEmptyFileWithStatement(
   );
   stmtFn('DELETE FROM symbols WHERE file = ?').run(meta.file);
   stmtFn(
-    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
-     VALUES (?, ?, ?, ?, 0, ?)
+    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed, git_blob)
+     VALUES (?, ?, ?, ?, 0, ?, '')
      ON CONFLICT(file) DO UPDATE SET
        lang = excluded.lang,
        mtime_ms = excluded.mtime_ms,
        content_hash = excluded.content_hash,
        symbol_count = 0,
-       last_indexed = excluded.last_indexed`,
+       last_indexed = excluded.last_indexed,
+       git_blob = excluded.git_blob`,
   ).run(meta.file, meta.lang, meta.mtimeMs, meta.contentHash ?? '', meta.lastIndexed);
   resolveRefsForNamesUnsafe(affectedNames);
 }
@@ -340,14 +358,15 @@ export function upsertFileWithStatement(
   meta: FileMeta,
 ): void {
   stmtFn(
-    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed, git_blob)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(file) DO UPDATE SET
        lang = excluded.lang,
        mtime_ms = excluded.mtime_ms,
        content_hash = excluded.content_hash,
        symbol_count = excluded.symbol_count,
-       last_indexed = excluded.last_indexed`,
+       last_indexed = excluded.last_indexed,
+       git_blob = excluded.git_blob`,
   ).run(
     meta.file,
     meta.lang,
@@ -355,7 +374,21 @@ export function upsertFileWithStatement(
     meta.contentHash ?? '',
     meta.symbolCount,
     meta.lastIndexed,
+    meta.gitBlob ?? '',
   );
+}
+
+/**
+ * Record the Git blob each file's rows were built from ('' clears it). Only
+ * the full-run blob pass calls this; see the `files.git_blob` column.
+ */
+export function setGitBlobsWithStatement(
+  stmtFn: (sql: string) => ReturnType<DatabaseSync['prepare']>,
+  entries: ReadonlyMap<string, string>,
+): void {
+  if (entries.size === 0) return;
+  const update = stmtFn('UPDATE files SET git_blob = ? WHERE file = ?');
+  for (const [file, blob] of entries) update.run(blob, file);
 }
 
 export function setFilePackagesWithStatement(

@@ -1,4 +1,5 @@
 import { stat as fspStat } from 'node:fs/promises';
+import { normalizeSessionPermissionOverrides } from '../../security/session-permission-overrides.js';
 import type { ContentBlock } from '../../types/blocks.js';
 import type { Message } from '../../types/messages.js';
 import type { SecretScrubber } from '../../types/secret-scrubber.js';
@@ -8,6 +9,7 @@ import type {
   SessionLoadProgress,
   SessionMetadata,
 } from '../../types/session.js';
+import type { SessionPermissionOverride } from '../../types/session-permission-override.js';
 import { repairToolUseAdjacency } from '../../utils/message-invariants.js';
 import type { EventBus } from '../event-bus-port.js';
 import { scrubPersistedSessionEvent } from '../session-read-scrubber.js';
@@ -76,6 +78,7 @@ export async function loadSessionDataFromFile(params: {
   let sessionProvider: string | undefined;
   let sessionPendingToolUses: string[] | undefined;
   let subagentsAllowed: boolean | undefined;
+  let permissionOverrides: SessionPermissionOverride[] | undefined;
   let sessionForkedEvent: Extract<SessionEvent, { type: 'session_forked' }> | undefined;
   const messages: Message[] | undefined = params.full ? [] : undefined;
   const openToolUses: Set<string> | undefined = params.full ? new Set<string>() : undefined;
@@ -186,6 +189,9 @@ export async function loadSessionDataFromFile(params: {
         if (ev.type === 'subagent_policy') {
           subagentsAllowed = ev.allowed;
         }
+        if (ev.type === 'permission_overrides') {
+          permissionOverrides = normalizeSessionPermissionOverrides(ev.overrides);
+        }
 
         if (params.full && messages !== undefined && openToolUses !== undefined) {
           const replayState = replaySessionEvent({
@@ -265,6 +271,7 @@ export async function loadSessionDataFromFile(params: {
     messages: finalMessages,
     usage,
     ...(subagentsAllowed !== undefined ? { subagentsAllowed } : {}),
+    ...(permissionOverrides !== undefined ? { permissionOverrides } : {}),
     toolCallEnds,
     ...(pendingToolUseCount !== undefined ? { pendingToolUseCount } : {}),
     ...(eventsDropped > 0 ? { eventsDropped } : {}),

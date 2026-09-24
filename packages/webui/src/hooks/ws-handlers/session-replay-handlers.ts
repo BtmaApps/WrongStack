@@ -268,6 +268,9 @@ function replayAttachments(
       // Base64 expands 3 bytes into 4 characters; close enough for a size chip.
       bytes: image.data ? Math.floor((image.data.length * 3) / 4) : 0,
       ...(dataUrl ? { dataUrl } : {}),
+      // A PDF comes back as a name chip: the journal keeps the file, the
+      // timeline does not ship it.
+      ...(image.name ? { name: image.name } : {}),
     };
   });
 }

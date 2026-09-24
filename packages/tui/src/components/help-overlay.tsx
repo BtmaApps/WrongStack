@@ -41,6 +41,11 @@ export function helpSections(): HelpSection[] {
     { keys: 'Shift+Tab', desc: 'focus sidebar for scroll (↑/↓), Esc to unfocus' },
     { keys: '?', desc: 'open this help (empty prompt)' },
     { keys: 'Alt+F or /chat-search', desc: 'search the chat transcript' },
+    { keys: 'Alt+↑ / Alt+↓', desc: 'jump to the previous / next message you sent' },
+    {
+      keys: 'Alt+B',
+      desc: 'background strip: subagents and shells, ←→ pick · Enter output · x stop',
+    },
   );
 
   return [

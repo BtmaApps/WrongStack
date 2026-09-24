@@ -16,7 +16,7 @@ import { QUEUE_MAX_BYTES, QUEUE_MAX_ITEM_BYTES, QUEUE_MAX_ITEMS } from '@wrongst
 import {
   atomicWrite,
   type IncomingImagePayload,
-  parseIncomingImages,
+  parseIncomingAttachments,
   toErrorMessage,
 } from '@wrongstack/core/utils';
 
@@ -329,7 +329,10 @@ export async function handlePromptQueueMessage(
       try {
         // Validated now, so a bad image is refused while the user is here —
         // not when the prompt drains and nobody is watching.
-        if (raw && parseIncomingImages(raw).length > 0) images = raw;
+        if (raw) {
+          const attached = parseIncomingAttachments(raw);
+          if (attached.images.length > 0 || attached.pdfs.length > 0) images = raw;
+        }
       } catch (err) {
         refuse(toErrorMessage(err));
         return;

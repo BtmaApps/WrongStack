@@ -119,6 +119,75 @@ describeUnix('bindProjectEndpoint', () => {
     expect(await isProjectEndpointLive(endpoint)).toBe(true);
   });
 
+  it('serializes stale reclaim so a contender cannot unlink a newly bound endpoint', async () => {
+    const endpoint = await tempEndpoint();
+    const savedOps = { ..._projectEndpointOps };
+    let owner: number | null = 0;
+    let probeCount = 0;
+
+    class Probe extends EventEmitter {
+      destroy(): void {}
+    }
+
+    class Contender extends EventEmitter {
+      private attempts = 0;
+      constructor(private readonly id: number) {
+        super();
+      }
+      listen(): void {
+        this.attempts += 1;
+        if (this.attempts === 1) {
+          const error = new Error('address in use') as NodeJS.ErrnoException;
+          error.code = 'EADDRINUSE';
+          queueMicrotask(() => this.emit('error', error));
+          return;
+        }
+        owner = this.id;
+        queueMicrotask(() => this.emit('listening'));
+      }
+    }
+
+    _projectEndpointOps.platform = 'linux';
+    _projectEndpointOps.mkdir = (async () => undefined) as never;
+    _projectEndpointOps.chmod = (async () => undefined) as never;
+    _projectEndpointOps.stat = (async () => ({ uid: process.getuid?.() ?? 0 })) as never;
+    _projectEndpointOps.rm = (async () => {
+      owner = null;
+    }) as never;
+    _projectEndpointOps.createConnection = (() => {
+      probeCount += 1;
+      const probe = new Probe();
+      if (owner !== null && owner !== 0) {
+        queueMicrotask(() => probe.emit('connect'));
+      } else {
+        queueMicrotask(() => probe.emit('error', new Error('stale')));
+      }
+      return probe as never;
+    }) as never;
+
+    try {
+      const [first, second] = await Promise.all([
+        bindProjectEndpoint({
+          server: new Contender(1) as never,
+          endpoint,
+          service: 'test',
+          maxAttempts: 2,
+        }),
+        bindProjectEndpoint({
+          server: new Contender(2) as never,
+          endpoint,
+          service: 'test',
+          maxAttempts: 2,
+        }),
+      ]);
+      expect(first.outcome).toBe('bound');
+      expect(second.outcome).toBe('already-owned');
+      expect(probeCount).toBeGreaterThanOrEqual(2);
+    } finally {
+      Object.assign(_projectEndpointOps, savedOps);
+    }
+  });
+
   it('fails with an actionable error instead of spinning when reclaim cannot win', async () => {
     const endpoint = await tempEndpoint();
     await fs.writeFile(endpoint, '');

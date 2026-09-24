@@ -1,5 +1,10 @@
 import { lspKindToInternalKinds } from './lsp-kind.js';
-import type { SearchResult, SymbolKind, SymbolLang } from './schema.js';
+import {
+  MODULE_OWNER_NAME,
+  type SearchResult,
+  type SymbolKind,
+  type SymbolLang,
+} from './schema.js';
 import { escapeLike } from './writer-helpers.js';
 
 export interface WriterSearchFilter {
@@ -78,6 +83,8 @@ export function buildWriterSearchWhere(
 
   const kinds = resolveKindFilter(filter);
   if (kinds === null) return null;
+  // A file's synthetic ref owner is not a declaration anyone searches for.
+  conditions.push(`NOT (kind = 'mod' AND name = '${MODULE_OWNER_NAME}')`);
   if (kinds !== undefined) {
     conditions.push(`kind IN (${kinds.map(() => '?').join(', ')})`);
     values.push(...kinds);

@@ -344,6 +344,18 @@ describe('getRecentActivity', () => {
     expect(out[0]?.action).toBe('DELETED');
     expect(out[1]?.actor).toBe('x');
   });
+
+  it('returns no history for zero or negative limits', async () => {
+    const matrix: unknown = {
+      events: [
+        { file_path: 'src/foo.ts', author_model: 'x', author_time: '2026-08-24T10:00:00Z' },
+        { file_path: 'src/foo.ts', author_model: 'y', author_time: '2026-08-24T11:00:00Z' },
+      ],
+    };
+    const wt = stubWith({ friction: matrix as never });
+    await expect(getRecentActivity(wt, 'src/foo.ts', 0)).resolves.toEqual([]);
+    await expect(getRecentActivity(wt, 'src/foo.ts', -1)).resolves.toEqual([]);
+  });
 });
 
 describe('digestAtlas', () => {

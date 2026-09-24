@@ -4,6 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { buildIndexableText } from './bm25.js';
 import type { FileMeta, IndexStats, SymbolKind, SymbolLang } from './schema.js';
 import { SCHEMA_VERSION } from './schema.js';
+import { inListChunks, padToInBucket, placeholders } from './writer-helpers.js';
 
 const DB_FILE = 'index.db';
 
@@ -98,7 +99,7 @@ export function getIndexSummaryWithStatement(stmt: PrepareStatement): IndexSumma
 
 export function getFileMetaWithStatement(stmt: PrepareStatement, file: string): FileMeta | null {
   const rows = stmt(
-    'SELECT file, lang, mtime_ms, symbol_count, last_indexed, content_hash FROM files WHERE file = ?',
+    'SELECT file, lang, mtime_ms, symbol_count, last_indexed, content_hash, git_blob FROM files WHERE file = ?',
   ).all(file) as Array<{
     file: string;
     lang: string;
@@ -106,6 +107,7 @@ export function getFileMetaWithStatement(stmt: PrepareStatement, file: string): 
     symbol_count: number;
     last_indexed: number;
     content_hash: string;
+    git_blob?: string;
   }>;
   const r = rows[0];
   if (!r) return null;
@@ -116,13 +118,14 @@ export function getFileMetaWithStatement(stmt: PrepareStatement, file: string): 
     symbolCount: r.symbol_count,
     lastIndexed: r.last_indexed,
     contentHash: r.content_hash,
+    gitBlob: r.git_blob ?? '',
   };
 }
 
 export function getAllFileMetasWithStatement(stmt: PrepareStatement): FileMeta[] {
   return (
     stmt(
-      'SELECT file, lang, mtime_ms, symbol_count, last_indexed, content_hash FROM files',
+      'SELECT file, lang, mtime_ms, symbol_count, last_indexed, content_hash, git_blob FROM files',
     ).all() as Array<{
       file: string;
       lang: string;
@@ -130,6 +133,7 @@ export function getAllFileMetasWithStatement(stmt: PrepareStatement): FileMeta[]
       symbol_count: number;
       last_indexed: number;
       content_hash: string;
+      git_blob?: string;
     }>
   ).map((r) => ({
     file: r.file,
@@ -138,7 +142,51 @@ export function getAllFileMetasWithStatement(stmt: PrepareStatement): FileMeta[]
     symbolCount: r.symbol_count,
     lastIndexed: r.last_indexed,
     contentHash: r.content_hash,
+    gitBlob: r.git_blob ?? '',
   }));
+}
+
+/**
+ * Metadata for just `files`, in no particular order; absent files are simply
+ * missing from the result. A targeted (watcher/edit) run needs only its own
+ * files' previous state, and loading the whole table for a one-file edit was
+ * a fixed ~30 ms on a 10k-file index.
+ */
+export function getFileMetasWithStatement(
+  stmt: PrepareStatement,
+  maxSqlVars: number,
+  files: readonly string[],
+): FileMeta[] {
+  const out: FileMeta[] = [];
+  let cursor = 0;
+  for (const take of inListChunks(files.length, maxSqlVars)) {
+    const bucket = padToInBucket(files.slice(cursor, cursor + take));
+    cursor += take;
+    const rows = stmt(
+      `SELECT file, lang, mtime_ms, symbol_count, last_indexed, content_hash, git_blob
+         FROM files WHERE file IN (${placeholders(bucket.length)})`,
+    ).all(...bucket) as Array<{
+      file: string;
+      lang: string;
+      mtime_ms: number;
+      symbol_count: number;
+      last_indexed: number;
+      content_hash: string;
+      git_blob?: string;
+    }>;
+    for (const r of rows) {
+      out.push({
+        file: r.file,
+        lang: r.lang as SymbolLang,
+        mtimeMs: r.mtime_ms,
+        symbolCount: r.symbol_count,
+        lastIndexed: r.last_indexed,
+        contentHash: r.content_hash,
+        gitBlob: r.git_blob ?? '',
+      });
+    }
+  }
+  return out;
 }
 
 function getIndexDbSizeBytes(indexDir: string): number {

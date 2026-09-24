@@ -17,6 +17,7 @@ import { subjectForToolInput } from '../utils/tool-subject.js';
 import { hasCapability, ToolCapabilities } from './capabilities.js';
 import { explainPermissionTrace } from './permission-explain.js';
 import { type TrustPolicyDiagnostic, validateTrustPolicy } from './permission-policy-schema.js';
+import { listTrustPolicyRules, type UnnumberedPermissionRule } from './permission-rules.js';
 import {
   DEFAULT_ALWAYS_TRUST_TTL_MS,
   exactApprovalKey,
@@ -57,6 +58,13 @@ import {
 } from './permission-helpers.js';
 
 import { isYoloLockedOff } from './process-lockdown.js';
+import {
+  describeSessionPermissionOverride,
+  matchSessionPermissionOverride,
+  readSessionPermissionOverrides,
+  sessionDenyUnevaluated,
+  sessionOverridesFingerprint,
+} from './session-permission-overrides.js';
 import { mergeTrustEntries } from './trust-entry.js';
 
 export { mergeTrustEntries } from './trust-entry.js';
@@ -90,6 +98,15 @@ export interface PermissionPolicyOptions {
 }
 
 export { DEFAULT_ALWAYS_TRUST_TTL_MS };
+
+/** Tools whose calls the destructive-command classifier can judge. */
+function isShellSurface(tool: Tool): boolean {
+  return (
+    tool.name === 'bash' ||
+    tool.name === 'exec' ||
+    (tool.capabilities ?? []).includes('shell.arbitrary')
+  );
+}
 
 export class DefaultPermissionPolicy implements PermissionPolicy {
   private policy: TrustPolicy = {};
@@ -170,6 +187,22 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
   }
 
   /**
+   * Does a broad approval ("this command", "this tool", `--allowed-tools`)
+   * stop short of this call?
+   *
+   * A shell is judged per command: its `destructive` tier only says a shell
+   * CAN do damage, and the command classifier below says whether THIS call
+   * does. Judging by the tier made "[t] tool, any input" unusable for bash and
+   * pwsh: the approval was stored and then refused for `echo hi`, while the
+   * prompt promised that only destructive calls still ask. Tools with no
+   * per-call classifier keep their tier.
+   */
+  private broadApprovalStopsShort(tool: Tool, input: unknown, ctx: Context): boolean {
+    if (this.destructiveKindOf(tool, input, ctx) !== undefined) return true;
+    return tool.riskTier === 'destructive' && !isShellSurface(tool);
+  }
+
+  /**
    * The destructive kind this call would perform, or `undefined` when it is
    * not destructive. Independent of whether the user has that kind gated —
    * `yoloBlockedAsDestructive` applies the preference, this only classifies.
@@ -183,11 +216,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // allowlist, and prompt injection can reach the tool.
     if (attachesWellKnownCredential(input)) return 'credential-bind';
 
-    const isShellSurface =
-      tool.name === 'bash' ||
-      tool.name === 'exec' ||
-      (tool.capabilities ?? []).includes('shell.arbitrary');
-    if (!isShellSurface) return undefined;
+    if (!isShellSurface(tool)) return undefined;
     // H-1 (security report VF-03): `getInputString(input, 'command') ?? …`
     // short-circuited on the bare program name, so the classifier never saw the
     // args — `{command:'rm', args:['-rf','/']}` classified as "rm".
@@ -357,9 +386,10 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // is the user refusing a command, which is a fail-CLOSED answer worth
     // honouring everywhere, and the one-shot allow is consumed by the very
     // call that requested it.
+    const overrides = readSessionPermissionOverrides(ctx);
     const evalKey = `${ctx.session?.id ?? '__default__'}::${cacheKey}::${permissionFingerprint(tool)}::${exactApprovalKey(input, ctx)}::y${
       this.effectiveYolo(ctx) ? 1 : 0
-    }`;
+    }::o${sessionOverridesFingerprint(overrides)}`;
 
     if (tool.name !== 'write' && !this.hasAgentStateWriteTarget(tool, input, ctx)) {
       const cached = this._evalCache.get(evalKey);
@@ -383,6 +413,19 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         permission: 'deny',
         source: 'deny',
         reason: 'matched deny pattern',
+      };
+      this._evalCache.set(evalKey, decision);
+      return decision;
+    }
+
+    const sessionDeny = matchSessionPermissionOverride(overrides, 'deny', tool, subject);
+    if (sessionDeny) {
+      const reason = `session rule: ${describeSessionPermissionOverride(sessionDeny.override)}`;
+      this._logDeny(tool.name, subject, reason);
+      const decision: PermissionDecision = {
+        permission: 'deny',
+        source: 'session_override',
+        reason,
       };
       this._evalCache.set(evalKey, decision);
       return decision;
@@ -415,7 +458,33 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // subject the deny branch above is skipped, so taking the permissive
     // shortcuts here would auto-approve exactly the call the user tried to
     // block. Fall through to a confirm instead.
-    const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
+    const denyUnevaluated =
+      (Boolean(entry?.deny?.length) && subject === undefined) ||
+      sessionDenyUnevaluated(overrides, tool, subject);
+
+    // The user's own rule for this session: honoured like an approval given at
+    // a prompt, and stopped short by the same things (a sensitive read, a
+    // destructive call).
+    const sessionAllow = denyUnevaluated
+      ? undefined
+      : matchSessionPermissionOverride(overrides, 'allow', tool, subject);
+    if (sessionAllow && (this.effectiveYolo(ctx) || !this.isSensitiveReadCall(tool, input))) {
+      const rule = describeSessionPermissionOverride(sessionAllow.override);
+      if (this.broadApprovalStopsShort(tool, input, ctx)) {
+        return {
+          permission: 'confirm',
+          source: 'session_override',
+          riskTier: 'destructive',
+          reason: `session rule (${rule}) does not cover destructive calls`,
+        };
+      }
+      return {
+        permission: 'auto',
+        source: 'session_override',
+        reason: `session rule: ${rule}`,
+        approvalGrant: true,
+      };
+    }
 
     // W6 #9: an `always` answer persists a trust rule, and it used to persist
     // forever. An EXPIRED rule is treated as absent, not as a deny — the call
@@ -442,8 +511,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         ? undefined
         : matchedScope;
     if (scope) {
-      const destructive =
-        tool.riskTier === 'destructive' || this.destructiveKindOf(tool, input, ctx) !== undefined;
+      const destructive = this.broadApprovalStopsShort(tool, input, ctx);
       if (scope !== 'exact' && destructive) {
         return {
           permission: 'confirm',
@@ -456,7 +524,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         permission: 'auto',
         source: 'trust',
         reason: launchAllowed ? 'allowed by --allowed-tools' : `matched ${scope} approval`,
-        ...(launchAllowed ? { launchGrant: true as const } : {}),
+        ...(launchAllowed ? { launchGrant: true as const } : { approvalGrant: true as const }),
       };
     }
     const allowMatches = hasShellSubject(tool) ? matchesCommandTrust : matchesTrust;
@@ -666,16 +734,31 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         sessionAllowed: this.sessionAllowed,
         yolo: this.effectiveYolo(ctx),
         promptDelegatePresent: this.promptDelegate !== undefined,
-        isDestructiveCall: (t, inp, c) =>
-          t.riskTier === 'destructive' || this.destructiveKindOf(t, inp, c) !== undefined,
+        isDestructiveCall: (t, inp, c) => this.broadApprovalStopsShort(t, inp, c),
         isSensitiveReadCall: (t, inp) => this.isSensitiveReadCall(t, inp),
         yoloBlockedAsDestructive: (t, inp, c) => this.yoloBlockedAsDestructive(t, inp, c),
         isLaunchAllowed: (name) => this.isLaunchAllowed(name),
+        launchAllowedTools: this.launchAllowedTools,
       },
       tool,
       input,
       ctx,
     );
+  }
+
+  async listRules(ctx?: Context | undefined): Promise<UnnumberedPermissionRule[]> {
+    if (!this.loaded) await this.reload();
+    return listTrustPolicyRules({
+      policy: this.policy,
+      policyInvalid: this.policyInvalid,
+      wildcardEntries: this.wildcardEntries,
+      sessionDenied: this.sessionDenied,
+      sessionAllowed: this.sessionAllowed,
+      launchAllowedTools: this.launchAllowedTools,
+      yolo: this.effectiveYolo(ctx),
+      yoloConfirmKinds: this.yoloConfirmKinds,
+      overrides: readSessionPermissionOverrides(ctx),
+    });
   }
 
   private findNamespaceEntry(toolName: string): TrustPolicy[string] | undefined {

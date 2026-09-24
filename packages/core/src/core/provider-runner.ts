@@ -10,6 +10,7 @@ import type { Tracer } from '../types/observability.js';
 import type { Provider, Request, Response } from '../types/provider.js';
 import { ProviderError } from '../types/provider.js';
 import type { RetryPolicy } from '../types/retry-policy.js';
+import { adaptDocumentsForModel } from '../utils/document-blocks.js';
 import {
   deactivateProxyOnConnectionFailure,
   waitForProxyRoutingSettle,
@@ -214,10 +215,18 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
           initiator: 'provider',
           operationName: `${currentProvider.id}.complete`,
         },
-        () =>
-          currentProvider.capabilities.streaming
-            ? streamProviderToResponse(currentProvider, request, signal, ctx, events, logger)
-            : currentProvider.complete(request, { signal }),
+        () => {
+          // Per attempt, because a fallback hop can land on a model without
+          // PDF input: that one gets each attached document as its text.
+          const messages = adaptDocumentsForModel(
+            request.messages,
+            currentProvider.capabilities.pdf === true,
+          );
+          const wire = messages === request.messages ? request : { ...request, messages };
+          return currentProvider.capabilities.streaming
+            ? streamProviderToResponse(currentProvider, wire, signal, ctx, events, logger)
+            : currentProvider.complete(wire, { signal });
+        },
       );
       statusTracker?.recordSuccess(currentProvider.id, request.model, {
         sessionId: resolveEventSessionId(ctx),

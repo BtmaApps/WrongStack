@@ -47,7 +47,7 @@ export default workflowPlugin({
           return {
             name,
             owner: flag.owner ?? null,
-            expired: expiry !== null && expiry < Date.now(),
+            expired: expiry !== null && expiry <= Date.now(),
             references,
             unusedInScope: !references.length,
           };

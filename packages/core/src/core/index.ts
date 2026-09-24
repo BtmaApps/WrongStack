@@ -116,6 +116,22 @@ export {
   renderDomainGlossary,
 } from './system-prompt-glossary.js';
 export {
+  activateSystemPromptPreset,
+  activeSystemPromptPresetText,
+  bundledPromptText,
+  createSystemPromptPreset,
+  deleteSystemPromptPreset,
+  listSystemPromptPresets,
+  type PromptValidationIssue,
+  promptTextHash,
+  readActiveSystemPromptPresets,
+  readProjectSystemPromptPresets,
+  readSystemPromptPreset,
+  type SystemPromptPreset,
+  saveSystemPromptPreset,
+  validateSystemPromptPreset,
+} from './system-prompt-presets.js';
+export {
   countSystemPromptTokens,
   isSystemInstructionVariant,
   persistSystemPromptVariant,

@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   clearWiringSnapshot,
   getWiringSnapshot,
+  prewarmWiringSnapshot,
+  wiringSnapshotLastUsedAt,
 } from '../src/codebase-index/graph-adjacency-cache.js';
 import type { Symbol as IndexSymbol } from '../src/codebase-index/schema.js';
 import { IndexStore } from '../src/codebase-index/writer.js';
@@ -60,6 +62,30 @@ describe('wiring snapshot for personalised retrieval', () => {
       const { graph } = getWiringSnapshot(store, root, indexDir);
       expect(graph.size).toBe(2);
       expect(Math.min(...graph.weights)).toBe(1);
+    } finally {
+      store.close();
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.rm(indexDir, { recursive: true, force: true });
+    }
+  });
+
+  it('prebuilds the graph for the next query without counting as a use', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-adjacency-'));
+    const indexDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-adjacency-idx-'));
+    const store = new IndexStore(root, { indexDir });
+    try {
+      store.insertSymbols([goSymbol('Run', '/r/pkg/a.go'), goSymbol('Helper', '/r/pkg/b.go')]);
+
+      // Nobody has queried: the server's recency gate reads 0 and skips.
+      expect(prewarmWiringSnapshot(store, root, indexDir)).toBe(true);
+      expect(wiringSnapshotLastUsedAt()).toBe(0);
+      // Already current: nothing to rebuild.
+      expect(prewarmWiringSnapshot(store, root, indexDir)).toBe(false);
+
+      const before = getWiringSnapshot(store, root, indexDir);
+      expect(wiringSnapshotLastUsedAt()).toBeGreaterThan(0);
+      // The query is served from the prebuilt graph, not a rebuild.
+      expect(getWiringSnapshot(store, root, indexDir).graph).toBe(before.graph);
     } finally {
       store.close();
       await fs.rm(root, { recursive: true, force: true });

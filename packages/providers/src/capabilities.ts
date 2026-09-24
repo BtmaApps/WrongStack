@@ -303,6 +303,11 @@ export async function capabilitiesFor(
   const modelReasoning = rawModel
     ? (rawModel.reasoning ?? (rawModel.reasoningConfig !== undefined ? true : undefined))
     : model?.capabilities.reasoning;
+  // PDF input only when the catalog says so: there is no family default, and
+  // a model without it gets a document's extracted text instead.
+  const modelPdf = rawModel
+    ? rawModel.modalities?.input?.includes('pdf') === true
+    : model?.capabilities.pdf === true;
 
   const value = {
     ...base,
@@ -310,6 +315,7 @@ export async function capabilitiesFor(
     tools: customCaps?.tools ?? gate(modelTools, base.tools),
     parallelTools: customCaps?.parallelTools ?? gate(modelTools, base.parallelTools),
     vision: customCaps?.vision ?? gate(modelVision, base.vision),
+    pdf: modelPdf,
     reasoning: customCaps?.reasoning ?? modelReasoning ?? base.reasoning,
     // Scalar fields: custom override wins, then catalog, then base
     maxContext: customCaps?.maxContext ?? catalogMaxContext,

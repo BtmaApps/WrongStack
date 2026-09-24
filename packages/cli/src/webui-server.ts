@@ -48,6 +48,7 @@ import {
   stampDispatchSession,
   startTerminalDashboard,
   toSessionHistoryEntries,
+  webuiSessionFrameLog,
 } from '@wrongstack/webui-server';
 import { verifyClient as verifyWsClient } from '@wrongstack/webui-server/server/ws-auth';
 import { type WebSocket, WebSocketServer } from 'ws';
@@ -865,7 +866,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    * names the SUBAGENT's session, which no tab subscribes to.
    */
   function broadcast(msg: WSServerMessage, targetSessionId?: string): void {
-    const data = JSON.stringify(msg);
     const payload = (msg as { payload?: unknown }).payload;
     const sessionId =
       targetSessionId ??
@@ -874,6 +874,8 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
       typeof (payload as { sessionId?: unknown }).sessionId === 'string'
         ? (payload as { sessionId: string }).sessionId
         : undefined);
+    // Session frames are numbered for reconnect catch-up (session-frame-log).
+    const data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
     for (const [ws, client] of clients) {
       if (clientWantsSession(client, sessionId)) sendSerialized(ws, data);
     }

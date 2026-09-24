@@ -1191,6 +1191,9 @@
       "maskGoNonCode",
       "parseGoWithoutToolchain"
     ],
+    "packages/tools/src/codebase-index/graph-rank-pass.ts": [
+      "createImplicitVisibility"
+    ],
     "packages/tools/src/codebase-index/indexer.ts": [
       "shouldUseParserWorkerPool"
     ],
@@ -1200,9 +1203,6 @@
     "packages/tools/src/codebase-index/lsp-kind.ts": [
       "isLspKind",
       "LSPSymbolKind"
-    ],
-    "packages/tools/src/codebase-index/parser-worker-pool.ts": [
-      "ParserWorkerPool"
     ],
     "packages/tools/src/codebase-index/project-server-endpoint.ts": [
       "PROJECT_INDEX_SERVER_CLOSED_MESSAGE",
@@ -1434,7 +1434,8 @@
       "formatDiagnosis"
     ],
     "packages/tui/src/hooks/use-file-search.ts": [
-      "detectAtToken"
+      "detectAtToken",
+      "isFileSelectionCurrent"
     ],
     "packages/tui/src/hooks/use-history-auto-scroll.ts": [
       "HISTORY_AUTO_SCROLL_DELAY_MS"
@@ -1464,6 +1465,9 @@
     ],
     "packages/tui/src/hooks/use-token-counter-refresh.ts": [
       "snapshotTokenCounter"
+    ],
+    "packages/tui/src/hooks/use-tui-environment-state.ts": [
+      "indexChipKey"
     ],
     "packages/tui/src/hooks/use-working-dir-chip.ts": [
       "formatWorkingDirChip"

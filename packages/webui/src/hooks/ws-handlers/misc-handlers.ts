@@ -25,7 +25,7 @@ import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 import { useMemoryLifecycleStore } from '@/stores/memory-lifecycle-store';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
 import type { WSServerMessage } from '@/types';
-import type { WSSystemPromptInfo } from '@/types/server-message';
+import type { GitImageDiff, WSSystemPromptInfo } from '@/types/server-message';
 import { handleBrainAnswer, handleBrainEvent } from './brain-handlers.js';
 import {
   handleGoalLifecycle,
@@ -366,6 +366,7 @@ export function handleGitDiff(msg: WSServerMessage) {
     binary?: boolean | undefined;
     tooLarge?: boolean | undefined;
     error?: string | undefined;
+    image?: GitImageDiff | undefined;
   };
   if (useGitChangesStore.getState().selectedPath !== p.path) return;
   useGitChangesStore.getState().setDiff({
@@ -375,6 +376,7 @@ export function handleGitDiff(msg: WSServerMessage) {
     binary: p.binary,
     tooLarge: p.tooLarge,
     error: p.error,
+    ...(p.image && (p.image.old || p.image.new) ? { image: p.image } : {}),
   });
 }
 

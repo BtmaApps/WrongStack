@@ -84,14 +84,13 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     const limit = Math.max(1, Math.min(Math.floor(rawLimit), 100));
     const tools = ctx.catalogTools ?? ctx.tools;
     const query = input.query?.toLowerCase() ?? '';
+    const scores = new Map<Tool, number>();
 
     const filtered = tools.filter((t: Tool) => {
-      if (
-        query &&
-        !t.name.toLowerCase().includes(query) &&
-        !t.description.toLowerCase().includes(query)
-      ) {
-        return false;
+      if (query) {
+        const score = queryScore(t, query);
+        if (score === 0) return false;
+        scores.set(t, score);
       }
       if (input.tags && input.tags.length > 0) {
         // Tool historically exposed only a broad `category`, even though the
@@ -122,6 +121,8 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
       return true;
     });
 
+    // Best match first; ties keep registry order.
+    if (query) filtered.sort((x, y) => (scores.get(y) ?? 0) - (scores.get(x) ?? 0));
     const results = filtered.slice(0, limit).map((t: Tool) => ({
       name: t.name,
       description: t.description,
@@ -137,10 +138,17 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     // doesn't spiral through random queries. Tell it how many tools exist and
     // how to list them, so the next call narrows instead of guessing again.
     const totalAvailable = tools.length;
+    // Tools the query found that `tags` / `permission` / `mutating` then
+    // dropped. Saying "no tools matched" there sent models hunting for a tool
+    // that was in the catalog all along (an `image_generate` search with
+    // `permission: 'auto'` hid a confirm-gated tool).
+    const excludedByFilters = results.length === 0 && query ? scores.size : 0;
     const hint =
-      results.length === 0 && query
-        ? `No tools matched "${input.query}". ${totalAvailable} tools are available; try a broader query, or call tool_search with no query and limit up to 100.`
-        : undefined;
+      excludedByFilters > 0
+        ? `${excludedByFilters} tool(s) match "${input.query}" but the tags/permission/mutating filters excluded them; search again without those filters.`
+        : results.length === 0 && query
+          ? `No tools matched "${input.query}". ${totalAvailable} tools are available; try a broader query, or call tool_search with no query and limit up to 100.`
+          : undefined;
 
     return {
       tools: results,
@@ -151,3 +159,61 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     };
   },
 };
+
+/** Words that carry no signal about which tool is meant. */
+const QUERY_STOP_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'the',
+  'to',
+  'of',
+  'for',
+  'with',
+  'from',
+  'into',
+  'in',
+  'on',
+  'or',
+  'by',
+  'that',
+  'this',
+  'tool',
+  'tools',
+  'use',
+  'using',
+]);
+
+/**
+ * How well a tool answers a query. The whole query found in the name or
+ * description wins outright. Otherwise the query is split into words and a
+ * tool must contain at least half of them (a word in the name counts double):
+ * models describe what they need in phrases such as "generate image with
+ * prompt and path", which as one literal substring matched nothing.
+ */
+function queryScore(t: Tool, query: string): number {
+  const name = t.name.toLowerCase();
+  const text = `${name} ${t.description.toLowerCase()} ${(t.usageHint ?? '').toLowerCase()}`;
+  if (name.includes(query) || t.description.toLowerCase().includes(query)) return 1_000;
+  const terms = [
+    ...new Set(
+      query
+        .split(/[^a-z0-9_-]+/)
+        .map((w) => w.trim())
+        .filter((w) => w.length > 1 && !QUERY_STOP_WORDS.has(w)),
+    ),
+  ];
+  if (terms.length < 2) return 0;
+  let hits = 0;
+  let score = 0;
+  for (const term of terms) {
+    if (name.includes(term)) {
+      hits++;
+      score += 2;
+    } else if (text.includes(term)) {
+      hits++;
+      score += 1;
+    }
+  }
+  return hits * 2 >= terms.length ? score : 0;
+}

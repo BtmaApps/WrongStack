@@ -5,26 +5,29 @@ import { toErrorMessage } from '../utils/index.js';
 import type { EventBus } from './event-bus-port.js';
 import type { SessionSummaryTracker } from './session-summary-tracker.js';
 import type { SessionWriteBuffer } from './session-write-buffer.js';
+import { keptBytesForCheckpoint, stashRewoundTail } from './session-writer-redo.js';
 import {
   findSessionCheckpointTruncatePlan,
   rewriteSessionToCheckpoint,
 } from './session-writer-truncate.js';
 
-export async function deleteRewoundSubagentTranscripts(
+/**
+ * The transcript paths that resolve inside this session store's `subagents/`
+ * directory. Journal content is not trusted to name files elsewhere.
+ */
+async function containedTranscriptPaths(
   sessionId: string,
   sessionFilePath: string,
   transcriptPaths: readonly string[],
-  emitEvent?: (event: string, payload: Record<string, unknown>) => void,
-): Promise<void> {
-  if (transcriptPaths.length === 0) return;
+): Promise<Array<{ resolved: string; real: string }>> {
+  if (transcriptPaths.length === 0) return [];
   const sessionsRoot = sessionId.includes('/')
     ? path.dirname(path.dirname(sessionFilePath))
     : path.dirname(sessionFilePath);
   const allowedRoot = path.join(sessionsRoot, 'subagents');
   const realAllowedRoot = await fsp.realpath(allowedRoot).catch(() => null);
-  if (!realAllowedRoot) return;
-
-  const deleted: string[] = [];
+  if (!realAllowedRoot) return [];
+  const out: Array<{ resolved: string; real: string }> = [];
   for (const transcriptPath of transcriptPaths) {
     const resolved = path.resolve(transcriptPath);
     // Containment must compare two canonical paths. On macOS os.tmpdir() is
@@ -36,6 +39,22 @@ export async function deleteRewoundSubagentTranscripts(
     if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
       continue;
     }
+    out.push({ resolved, real: realResolved });
+  }
+  return out;
+}
+
+export async function deleteRewoundSubagentTranscripts(
+  sessionId: string,
+  sessionFilePath: string,
+  transcriptPaths: readonly string[],
+  emitEvent?: (event: string, payload: Record<string, unknown>) => void,
+): Promise<void> {
+  const contained = await containedTranscriptPaths(sessionId, sessionFilePath, transcriptPaths);
+  if (contained.length === 0) return;
+
+  const deleted: string[] = [];
+  for (const { resolved, real: realResolved } of contained) {
     await fsp.rm(resolved, { force: true }).then(
       () => {
         deleted.push(realResolved);
@@ -78,6 +97,8 @@ export interface SessionTruncateContext {
   metadataCheckpointInFlight?: Promise<void> | null | undefined;
   scheduleMetadataCheckpoint: () => void;
   setActivePromptIndex: (index: number) => void;
+  /** Prompt index before the rewind, stashed for a redo. */
+  getActivePromptIndex: () => number | null;
 }
 
 export async function executeSessionTruncate(ctx: SessionTruncateContext): Promise<number> {
@@ -120,11 +141,32 @@ export async function executeSessionTruncate(ctx: SessionTruncateContext): Promi
     // Ignore — handle may already be closed (e.g. by clearSession).
   }
   try {
+    // Keep what is about to be cut so `/redo` can put it back. Best effort: a
+    // failed stash only means this rewind cannot be redone.
+    let stashedTranscripts: string[] = [];
+    try {
+      const contained = await containedTranscriptPaths(
+        ctx.sessionId,
+        ctx.filePath,
+        plan.removedSubagentTranscriptPaths,
+      );
+      stashedTranscripts = await stashRewoundTail({
+        journalPath: ctx.filePath,
+        keptBytes: await keptBytesForCheckpoint(ctx.filePath, plan.checkpointByteOffset),
+        activePromptIndex: ctx.getActivePromptIndex(),
+        toPromptIndex: ctx.targetPromptIndex,
+        transcriptPaths: contained.map((c) => c.resolved),
+      });
+    } catch {
+      /* redo unavailable for this rewind */
+    }
     await rewriteSessionToCheckpoint(ctx.filePath, plan.checkpointByteOffset);
     await deleteRewoundSubagentTranscripts(
       ctx.sessionId,
       ctx.filePath,
-      plan.removedSubagentTranscriptPaths,
+      plan.removedSubagentTranscriptPaths.filter(
+        (p) => !stashedTranscripts.includes(path.resolve(p)),
+      ),
       (ev, payload) => ctx.events?.emit(ev, payload),
     );
     // Re-open in append mode for continued use of this file.

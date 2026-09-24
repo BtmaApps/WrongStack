@@ -80,6 +80,11 @@ export type PanelState = {
     selectedEntryId: number | null;
     jumpSeq: number;
   } | null;
+  /**
+   * Alt+↑ / Alt+↓ user-message navigation: the user entry last jumped to, and
+   * a counter that bumps on every jump so the view scrolls it into view.
+   */
+  messageJump: { entryId: number | null; seq: number };
   picker: { open: boolean; query: string; matches: string[]; selected: number };
   /** Slash command picker — open while typing a / command. */
   slashPicker: { open: boolean; query: string; matches: SlashCommandMatch[]; selected: number };

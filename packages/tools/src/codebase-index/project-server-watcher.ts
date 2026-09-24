@@ -5,6 +5,7 @@ import {
   type ProjectWatchSubscription,
   watchProjectTree,
 } from '@wrongstack/core/utils';
+import { isAtlasProjection } from './index-source-files.js';
 import { isIndexablePath } from './languages.js';
 import type { ClientState } from './project-server-types.js';
 
@@ -87,7 +88,10 @@ export class ProjectServerWatcherManager {
         if (
           relative === '..' ||
           relative.startsWith(`..${path.sep}`) ||
-          path.isAbsolute(relative)
+          path.isAbsolute(relative) ||
+          // The atlas is derived FROM the index and never indexed; writing it
+          // (`/codebase-map --write`) must not queue an index run.
+          isAtlasProjection(relative.replace(/\\/g, '/'))
         ) {
           return;
         }

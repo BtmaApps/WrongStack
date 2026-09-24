@@ -238,6 +238,7 @@ export function setupCliSlashCommands(params: {
     ...createCommandHostAdapters({ agent, toolRegistry, interruptController, reader }),
     paths: wpaths,
     compactor: container.resolve(TOKENS.Compactor),
+    permissionPolicy: container.resolve(TOKENS.PermissionPolicy),
     sessionStore,
     skillLoader,
     tokenCounter,

@@ -3,7 +3,15 @@ import type { ServerMessage } from '../types.js';
 import type { MessageHandlerDeps } from './message-handler-deps.js';
 
 import { enqueuePendingUserInput, resolvePendingUserInput } from './user-input-queue.js';
-export function handleContextMessage(message: ServerMessage, deps: MessageHandlerDeps): void {
+
+/** Narrowed to exactly the surface this module touches (see the slices in
+ *  message-handler-deps.ts) — the factory passes the full deps object. */
+export type ContextMessageDeps = Pick<
+  MessageHandlerDeps,
+  'setContext' | 'setSession' | 'setPendingConfirm' | 'setUserInputRequests'
+>;
+
+export function handleContextMessage(message: ServerMessage, deps: ContextMessageDeps): void {
   const { setContext, setSession, setPendingConfirm, setUserInputRequests } = deps;
   const payload = message.payload ?? {};
   switch (message.type) {

@@ -45,6 +45,11 @@ describe('state transitions', () => {
     expect(state.phase).toBe('connecting');
   });
 
+  it('markConnectionOpen ignores a late open after stop', () => {
+    const stopped = stopConnection(createSurfaceConnectionState());
+    expect(markConnectionOpen(stopped, 1234)).toBe(stopped);
+  });
+
   it('markConnectionOpen resets reconnectAttempt and stamps lastActivityAt', () => {
     const state = markConnectionConnecting(createSurfaceConnectionState());
     const opened = markConnectionOpen(state, 1000);

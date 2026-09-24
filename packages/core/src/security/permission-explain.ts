@@ -3,14 +3,33 @@ import type { PermissionTrace, PermissionTraceStep, TrustPolicy } from '../types
 import type { Tool } from '../types/tool.js';
 import { matchGlob } from '../utils/glob-match.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
-import { hasCapability, ToolCapabilities } from './capabilities.js';
+import {
+  capabilityDowngradesToConfirm,
+  getDangerousCapabilities,
+  hasCapability,
+  ToolCapabilities,
+} from './capabilities.js';
 import {
   hasShellSubject,
   isInsideAgentStateRoot,
   matchesCommandTrust,
   matchesTrust,
 } from './permission-helpers.js';
+import {
+  allowedToolsRef,
+  permissionRuleRef,
+  trustAllowRef,
+  trustAutoRef,
+  trustDenyRef,
+  trustScopedRef,
+} from './permission-rules.js';
 import { isScopedApprovalPattern, matchingApprovalScope } from './scoped-approval.js';
+import {
+  describeSessionPermissionOverride,
+  matchSessionPermissionOverride,
+  readSessionPermissionOverrides,
+  sessionDenyUnevaluated,
+} from './session-permission-overrides.js';
 import { mergeTrustEntries } from './trust-entry.js';
 
 export interface PermissionExplainContext {
@@ -26,6 +45,8 @@ export interface PermissionExplainContext {
   yoloBlockedAsDestructive(tool: Tool, input: unknown, ctx: Context): boolean;
   /** `--allowed-tools` membership; mirrors evaluate()'s launch tool scope. */
   isLaunchAllowed?(toolName: string): boolean;
+  /** The `--allowed-tools` patterns, to name the one that matched. */
+  launchAllowedTools?: readonly string[] | undefined;
 }
 
 export function explainPermissionTrace(
@@ -44,8 +65,9 @@ export function explainPermissionTrace(
     decision: 'auto' | 'deny' | 'confirm',
     source: string,
     detail: string,
+    ref?: string | undefined,
   ): void => {
-    steps.push({ rule, matched, decision, source, detail });
+    steps.push({ rule, matched, decision, source, detail, ...(ref !== undefined ? { ref } : {}) });
   };
 
   // 1. Policy invalid
@@ -84,6 +106,7 @@ export function explainPermissionTrace(
       'deny',
       'deny',
       'user pressed "no" earlier in this session — blocked until reload',
+      permissionRuleRef.answer(cacheKey),
     );
     winnerIndex = steps.length - 1;
     return {
@@ -114,6 +137,7 @@ export function explainPermissionTrace(
       'deny',
       'deny',
       `subject "${subject}" matched a deny pattern in trust file`,
+      trustDenyRef(state, tool.name, subject),
     );
     winnerIndex = steps.length - 1;
     return {
@@ -132,6 +156,29 @@ export function explainPermissionTrace(
     `no deny pattern matched (namespace: ${namespaceSource})`,
   );
 
+  // Session rule deny (`/permissions deny`)
+  const overrides = readSessionPermissionOverrides(ctx);
+  const sessionDeny = matchSessionPermissionOverride(overrides, 'deny', tool, subject ?? undefined);
+  if (sessionDeny) {
+    const reason = `session rule: ${describeSessionPermissionOverride(sessionDeny.override)}`;
+    add(
+      'session rule deny',
+      true,
+      'deny',
+      'session_override',
+      reason,
+      permissionRuleRef.session(sessionDeny.index),
+    );
+    return {
+      toolName: tool.name,
+      subject,
+      steps,
+      winnerIndex: steps.length - 1,
+      decision: { permission: 'deny', source: 'session_override', reason },
+    };
+  }
+  add('session rule deny', false, 'deny', 'session_override', 'no session deny rule matched');
+
   // 3. Session soft allow (one-shot)
   if (state.sessionAllowed.has(cacheKey)) {
     add(
@@ -140,6 +187,7 @@ export function explainPermissionTrace(
       'auto',
       'trust',
       'user pressed "yes" in current session — one-shot auto-approve (consumed)',
+      permissionRuleRef.answer(cacheKey),
     );
     winnerIndex = steps.length - 1;
     return {
@@ -189,7 +237,59 @@ export function explainPermissionTrace(
   );
 
   const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
-  const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
+  const denyUnevaluated =
+    (Boolean(entry?.deny?.length) && subject === undefined) ||
+    sessionDenyUnevaluated(overrides, tool, subject ?? undefined);
+
+  // Session rule allow (`/permissions allow`)
+  const sessionAllow = denyUnevaluated
+    ? undefined
+    : matchSessionPermissionOverride(overrides, 'allow', tool, subject ?? undefined);
+  if (sessionAllow && (state.yolo || !state.isSensitiveReadCall(tool, input))) {
+    const rule = describeSessionPermissionOverride(sessionAllow.override);
+    const destructive =
+      state.isDestructiveCall?.(tool, input, ctx) ??
+      state.yoloBlockedAsDestructive(tool, input, ctx);
+    add(
+      'session rule allow',
+      true,
+      destructive ? 'confirm' : 'auto',
+      'session_override',
+      destructive
+        ? `session rule (${rule}) does not cover destructive calls`
+        : `session rule: ${rule}`,
+      permissionRuleRef.session(sessionAllow.index),
+    );
+    return {
+      toolName: tool.name,
+      subject,
+      steps,
+      winnerIndex: steps.length - 1,
+      decision: destructive
+        ? {
+            permission: 'confirm',
+            source: 'session_override',
+            riskTier: 'destructive',
+            reason: `session rule (${rule}) does not cover destructive calls`,
+          }
+        : {
+            permission: 'auto',
+            source: 'session_override',
+            reason: `session rule: ${rule}`,
+            approvalGrant: true,
+          },
+    };
+  }
+  add(
+    'session rule allow',
+    false,
+    'auto',
+    'session_override',
+    sessionAllow
+      ? 'a session allow rule matched, but a sensitive read still asks'
+      : 'no session allow rule matched',
+  );
+
   const trustScope =
     entry?.allow && !denyUnevaluated && allowUnexpired
       ? matchingApprovalScope(entry.allow, tool, input, ctx)
@@ -217,6 +317,9 @@ export function explainPermissionTrace(
       permission,
       'trust',
       `${launchAllowed ? 'allowed by --allowed-tools' : `matched ${scope} approval`}${destructive ? '; destructive call still requires approval' : ''}`,
+      launchAllowed
+        ? allowedToolsRef(state.launchAllowedTools ?? [], tool.name)
+        : trustScopedRef(state, tool, input, ctx),
     );
     return {
       toolName: tool.name,
@@ -227,6 +330,11 @@ export function explainPermissionTrace(
         permission,
         source: 'trust',
         ...(destructive ? { riskTier: 'destructive' as const } : {}),
+        ...(destructive
+          ? {}
+          : launchAllowed
+            ? { launchGrant: true as const }
+            : { approvalGrant: true as const }),
       },
     };
   }
@@ -247,6 +355,7 @@ export function explainPermissionTrace(
       'auto',
       'trust',
       `subject "${subject}" matched an allow pattern in trust file`,
+      trustAllowRef(state, tool.name, (p) => allowMatches([p], subject)),
     );
     winnerIndex = steps.length - 1;
     return {
@@ -267,7 +376,14 @@ export function explainPermissionTrace(
 
   // 7. Trust auto
   if (entry?.auto && !denyUnevaluated) {
-    add('trust auto', true, 'auto', 'trust', `trust file has auto: true for "${tool.name}"`);
+    add(
+      'trust auto',
+      true,
+      'auto',
+      'trust',
+      `trust file has auto: true for "${tool.name}"`,
+      trustAutoRef(state, tool.name),
+    );
     winnerIndex = steps.length - 1;
     return {
       toolName: tool.name,
@@ -439,6 +555,40 @@ export function explainPermissionTrace(
       permission: 'confirm',
       source: 'default',
       ...(hasDelegate ? { reason: 'would prompt user via delegate' } : {}),
+    },
+  };
+}
+
+/**
+ * Add the executor's last gate to a policy trace: a trust `auto` for a
+ * dangerous-capability tool still confirms (see
+ * `capabilityDowngradesToConfirm`). A policy trace alone stops one step short
+ * of what the agent does, and reports `auto` for a call it will ask about.
+ */
+export function withExecutorGate(
+  trace: PermissionTrace,
+  tool: Tool,
+  yolo: boolean,
+): PermissionTrace {
+  if (!capabilityDowngradesToConfirm(trace.decision, tool, yolo)) return trace;
+  const steps: PermissionTraceStep[] = [
+    ...trace.steps,
+    {
+      rule: 'dangerous capability',
+      matched: true,
+      decision: 'confirm',
+      source: 'executor',
+      detail: `"${tool.name}" has ${getDangerousCapabilities(tool).join(', ')}: a trust entry alone does not skip the confirmation (YOLO, --allowed-tools or an approval given at a prompt does)`,
+    },
+  ];
+  return {
+    ...trace,
+    steps,
+    winnerIndex: steps.length - 1,
+    decision: {
+      permission: 'confirm',
+      source: trace.decision.source,
+      reason: 'a trust entry alone does not auto-approve a dangerous-capability tool',
     },
   };
 }

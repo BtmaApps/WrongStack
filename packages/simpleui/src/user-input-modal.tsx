@@ -23,12 +23,13 @@ const EMPTY_ANSWER: DraftAnswer = {
  */
 const SUBMIT_TIMEOUT_MS = 10_000;
 export function UserInputModal({
-  pending,
-  queuedCount,
+  input: { pending, queuedCount },
   send,
 }: {
-  pending: { request: UserInputRequest; sessionId?: string } | null;
-  queuedCount: number;
+  input: {
+    pending: { request: UserInputRequest; sessionId?: string } | null;
+    queuedCount: number;
+  };
   send: (type: string, payload: Record<string, unknown>) => void;
 }) {
   const [round, setRound] = useState<string | null>(null);

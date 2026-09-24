@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import { isPidAlive } from '../utils/pid.js';
+import { canonicalProjectRoot } from '../utils/wstack-paths.js';
 import {
   sessionCatalogProjectServerEndpoint,
   sessionCatalogProjectServerMetadataPath,
@@ -334,7 +335,9 @@ export class SessionCatalogProjectClient {
     const socket = this.socket;
     if (!socket || socket.destroyed)
       return Promise.reject(new Error('Session Catalog connection is unavailable'));
-    const id = this.nextId++;
+    if (!Number.isSafeInteger(this.nextId) || this.nextId < 1) this.nextId = 1;
+    const id = this.nextId;
+    this.nextId = id >= Number.MAX_SAFE_INTEGER ? 1 : id + 1;
     if (this.pending.size >= MAX_PENDING_REQUESTS) {
       return Promise.reject(
         new Error(`Session Catalog pending request limit reached (${MAX_PENDING_REQUESTS})`),
@@ -397,9 +400,14 @@ export class SessionCatalogProjectClient {
         this.socket?.destroy();
         return;
       }
+      // One daemon serves every checkout of a repository: linked git
+      // worktrees share the main checkout's project directory, so the daemon
+      // may have been started from a different checkout than this client's.
+      // Identity is the canonical root, as it is for the directory itself.
       if (
         normalize(message.projectDir) !== normalize(this.options.projectDir) ||
-        normalize(message.projectRoot) !== normalize(this.options.projectRoot)
+        normalize(canonicalProjectRoot(message.projectRoot)) !==
+          normalize(canonicalProjectRoot(this.options.projectRoot))
       ) {
         this.connectReject?.(new Error('Session Catalog project identity mismatch'));
         this.socket?.destroy();

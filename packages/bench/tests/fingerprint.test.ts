@@ -113,6 +113,11 @@ describe('computeHarnessFingerprint', () => {
     ).not.toBe(ref);
   });
 
+  it('does not collapse JSON __proto__ keys into an empty object hash', () => {
+    const parsed = JSON.parse('{"__proto__":{"authority":"attacker"}}') as unknown;
+    expect(computeStableJsonHash(parsed)).not.toBe(computeStableJsonHash({}));
+  });
+
   it('exposes stable hashes for prompt text and JSON-like config', () => {
     expect(computeTextHash('system prompt')).toHaveLength(12);
     expect(computeStableJsonHash({ b: 2, a: { y: true, x: [1, 2] } })).toBe(

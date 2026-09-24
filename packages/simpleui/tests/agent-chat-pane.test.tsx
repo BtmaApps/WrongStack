@@ -40,18 +40,18 @@ function Harness() {
         Leader history
       </section>
       <AgentChatPane
-        agentId="worker-a"
-        agentName="WORKER A"
+        agent={{ id: 'worker-a', name: 'WORKER A' }}
         entries={transcript('worker-a', 'Worker A history')}
         running
         hidden={selected !== 'worker-a'}
+        theme="dark"
       />
       <AgentChatPane
-        agentId="worker-b"
-        agentName="WORKER B"
+        agent={{ id: 'worker-b', name: 'WORKER B' }}
         entries={transcript('worker-b', 'Worker B history')}
         running={false}
         hidden={selected !== 'worker-b'}
+        theme="dark"
       />
       {canComposeForAgent(selected) && <textarea aria-label="Leader message input" />}
     </div>

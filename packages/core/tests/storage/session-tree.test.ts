@@ -17,13 +17,7 @@ const s = (id: string, forkedFrom?: string) => ({ id, ...(forkedFrom ? { forkedF
 
 describe('orderSessionTree', () => {
   it('nests forks under their parent and keeps the listing order', () => {
-    const rows = orderSessionTree([
-      s('c1', 'a'),
-      s('b'),
-      s('a'),
-      s('c2', 'a'),
-      s('d1', 'c1'),
-    ]);
+    const rows = orderSessionTree([s('c1', 'a'), s('b'), s('a'), s('c2', 'a'), s('d1', 'c1')]);
     expect(rows.map((r) => [r.session.id, r.depth])).toEqual([
       ['b', 0],
       ['a', 0],
@@ -62,6 +56,34 @@ describe('forkedFrom in session summaries', () => {
     const child = listed.find((x) => x.id === fork.id);
     expect(child?.forkedFrom).toBe('parent');
     expect(listed.find((x) => x.id === 'parent')?.forkedFrom).toBeUndefined();
+  });
+
+  it('records the checkout a session was created in and the one it was last resumed in', async () => {
+    const mainCheckout = path.join(dir, 'main');
+    const featureCheckout = path.join(dir, 'feature');
+    const writer = await new DefaultSessionStore({ dir, projectRoot: mainCheckout }).create({
+      id: 'wt-session',
+      model: 'm',
+      provider: 'p',
+    });
+    await writer.append({ type: 'user_input', ts: new Date().toISOString(), content: 'hi' });
+    await writer.close();
+    const listed = await new DefaultSessionStore({ dir }).list(10);
+    expect(listed.find((x) => x.id === 'wt-session')?.checkout).toBe(path.resolve(mainCheckout));
+
+    const resumed = await new DefaultSessionStore({ dir, projectRoot: featureCheckout }).resume(
+      'wt-session',
+    );
+    await resumed.writer.append({
+      type: 'user_input',
+      ts: new Date().toISOString(),
+      content: 'again',
+    });
+    await resumed.writer.close();
+    const relisted = await new DefaultSessionStore({ dir }).list(10);
+    expect(relisted.find((x) => x.id === 'wt-session')?.checkout).toBe(
+      path.resolve(featureCheckout),
+    );
   });
 
   it('a summary rebuilt from the journal carries it too', async () => {

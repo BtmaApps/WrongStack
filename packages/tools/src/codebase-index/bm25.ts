@@ -4,6 +4,8 @@
  * Algorithm: Okapi BM25 with standard parameters (k1=1.5, b=0.75).
  */
 
+import { MODULE_OWNER_NAME } from './schema.js';
+
 const K1 = 1.5;
 const B = 0.75;
 
@@ -157,6 +159,9 @@ function declarationBodyStart(s: string): number {
  * only its declaration header (see {@link ftsSignature}).
  */
 export function buildIndexableText(name: string, signature: string, docComment: string): string {
+  // A file's synthetic ref owner is not a declaration: nothing to find it by
+  // (FTS, BM25 and vectors all index this text).
+  if (name === MODULE_OWNER_NAME && !signature && !docComment) return '';
   return [splitName(name), name, ftsSignature(signature), docComment].filter(Boolean).join(' ');
 }
 

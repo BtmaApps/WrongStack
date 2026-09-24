@@ -28,6 +28,13 @@ export interface SystemPromptSurface {
   profileConfigPath: string;
   /** The variant the running session is currently built from. */
   current: () => SystemInstructionVariant;
+  /** Snapshot used to render a draft against this session's callable tools. */
+  previewContext?:
+    | ((sessionId?: string) => {
+        toolNames: string[];
+        tier: 'off' | 'minimal' | 'light' | 'medium' | 'aggressive';
+      })
+    | undefined;
   /**
    * Recompose the live system prompt for the new variant. Persistence is the
    * prefs layer's job; this only refreshes the in-memory prompt so the change

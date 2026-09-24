@@ -500,6 +500,7 @@ export {
   scheduleOwnerlessEmptySessionCleanup,
 } from './session-cleanup-scheduler.js';
 export { deleteWebUISession } from './session-deletion.js';
+export { webuiSessionFrameLog } from './session-frame-log.js';
 export {
   collectDisplayedSessionIds,
   createSessionHandlers,

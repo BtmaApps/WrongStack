@@ -8,6 +8,7 @@ import type { ChatMessage } from '@/stores';
 import { diffFromToolInput, ToolDiffView } from '../DiffView';
 import { ToolResult } from '../ToolResult';
 import { CopyButton } from './CopyButton.js';
+import { GeneratedImagePreview } from './GeneratedImagePreview.js';
 import { ToolCallOverview } from './ToolCallOverview.js';
 import { ToolInputView } from './ToolInputView.js';
 import './ledger.css';
@@ -160,6 +161,11 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
           ) : null}
         </span>
       </button>
+
+      {/* ── What image_generate drew, visible without opening the card. ─── */}
+      {status === 'ok' && toolName === 'image_generate' && (
+        <GeneratedImagePreview result={message.toolResult} messageId={message.id} />
+      )}
 
       {/* ── Live progress lines (while running) ────────────────────────── */}
       {message.toolResult === undefined &&

@@ -161,6 +161,13 @@ export function messagesToResponsesInput(
               }
               return { type: 'input_image', detail: 'auto', image_url: imageUrl(b) };
             }
+            if (b.type === 'document') {
+              return {
+                type: 'input_file',
+                filename: b.name ?? 'document.pdf',
+                file_data: `data:${b.source.media_type};base64,${b.source.data}`,
+              };
+            }
             return null;
           })
           .filter((c): c is Record<string, unknown> => c !== null);

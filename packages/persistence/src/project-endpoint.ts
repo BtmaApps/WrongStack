@@ -37,6 +37,7 @@ import * as fsPromises from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
 
+import { withFileLock } from './atomic-write.js';
 import { assertUnixSocketPathWithinLimit } from './socket-path.js';
 
 /**
@@ -278,52 +279,73 @@ export async function bindProjectEndpoint(
     };
   }
 
-  let reclaimed = false;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const error = await attemptListen(server, endpoint);
-    if (!error) {
-      if (!isWindows) {
-        await fsOp('chmod')(endpoint, ENDPOINT_FILE_MODE).catch(() => {
-          // The 0700 parent directory still restricts access to this user.
-        });
+  const runElection = async (): Promise<BindProjectEndpointOutcome> => {
+    let reclaimed = false;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const error = await attemptListen(server, endpoint);
+      if (!error) {
+        if (!isWindows) {
+          await fsOp('chmod')(endpoint, ENDPOINT_FILE_MODE).catch(() => {
+            // The 0700 parent directory still restricts access to this user.
+          });
+        }
+        return { outcome: 'bound', reclaimedStaleEndpoint: reclaimed };
       }
-      return { outcome: 'bound', reclaimedStaleEndpoint: reclaimed };
-    }
-    if (error.code !== 'EADDRINUSE') return { outcome: 'failed', error };
+      if (error.code !== 'EADDRINUSE') return { outcome: 'failed', error };
 
-    // A Windows named pipe has no filesystem entry to go stale: EADDRINUSE
-    // means a live process holds the pipe, full stop. There is nothing to
-    // reclaim and probing would only add a race.
-    if (isWindows) return { outcome: 'already-owned' };
+      // A Windows named pipe has no filesystem entry to go stale: EADDRINUSE
+      // means a live process holds the pipe, full stop. There is nothing to
+      // reclaim and probing would only add a race.
+      if (isWindows) return { outcome: 'already-owned' };
 
-    if (await isProjectEndpointLive(endpoint)) return { outcome: 'already-owned' };
+      if (await isProjectEndpointLive(endpoint)) return { outcome: 'already-owned' };
 
-    try {
-      await fsOp('rm')(endpoint, { force: true });
-      reclaimed = true;
-    } catch (removeError) {
-      // A competing contender may have removed it first, which is fine — the
-      // next listen decides. Anything else (EPERM on a socket owned by another
-      // user) is terminal and must not be retried into a spin.
-      const code = isErrno(removeError) ? removeError.code : undefined;
-      if (code !== 'ENOENT') {
-        return {
-          outcome: 'failed',
-          error: new Error(
-            `${service} could not reclaim its stale IPC endpoint at ${endpoint}: ` +
-              `${isErrno(removeError) ? removeError.message : String(removeError)}`,
-          ),
-        };
+      try {
+        await fsOp('rm')(endpoint, { force: true });
+        reclaimed = true;
+      } catch (removeError) {
+        // A competing contender may have removed it first, which is fine — the
+        // next listen decides. Anything else (EPERM on a socket owned by another
+        // user) is terminal and must not be retried into a spin.
+        const code = isErrno(removeError) ? removeError.code : undefined;
+        if (code !== 'ENOENT') {
+          return {
+            outcome: 'failed',
+            error: new Error(
+              `${service} could not reclaim its stale IPC endpoint at ${endpoint}: ` +
+                `${isErrno(removeError) ? removeError.message : String(removeError)}`,
+            ),
+          };
+        }
       }
     }
-  }
 
-  return {
-    outcome: 'failed',
-    error: new Error(
-      `${service} could not bind its IPC endpoint at ${endpoint} after ${maxAttempts} ` +
-        `attempts: the endpoint is in use but no daemon answers on it. ` +
-        `Remove the stale socket and retry.`,
-    ),
+    return {
+      outcome: 'failed',
+      error: new Error(
+        `${service} could not bind its IPC endpoint at ${endpoint} after ${maxAttempts} ` +
+          `attempts: the endpoint is in use but no daemon answers on it. ` +
+          `Remove the stale socket and retry.`,
+      ),
+    };
   };
+
+  if (isWindows) return runElection();
+
+  // The liveness probe and stale unlink are one election step. Without a
+  // cross-process critical section, contender A can bind after contender B's
+  // probe but before B's unlink; B would then remove A's live socket and both
+  // callers could report `bound`. The lock is released immediately after the
+  // server starts listening, so later contenders observe the live endpoint.
+  try {
+    return await withFileLock(endpoint, runElection);
+  } catch (error) {
+    return {
+      outcome: 'failed',
+      error: new Error(
+        `${service} could not serialize its IPC endpoint election at ${endpoint}: ` +
+          `${isErrno(error) ? error.message : String(error)}`,
+      ),
+    };
+  }
 }

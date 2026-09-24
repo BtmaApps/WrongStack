@@ -61,6 +61,7 @@ import { buildModelCapsCommand } from './modelcaps.js';
 import { buildModelsCommand } from './models.js';
 import { buildNextCommand } from './next.js';
 import { buildOpenAIQuotaCommand, buildProviderQuotaCommand } from './openai-quota.js';
+import { buildPermissionsCommand } from './permissions.js';
 import { buildPlanCommand } from './plan.js';
 import { buildPluginCommand } from './plugin.js';
 import { buildProfileCommand } from './profile.js';
@@ -153,6 +154,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildSaveCommand(opts),
     buildLoadCommand(opts),
     buildYoloCommand(opts),
+    buildPermissionsCommand(opts),
     buildMouseCommand(opts),
     buildAutonomyCommand(opts),
     buildGoalCommand(opts),

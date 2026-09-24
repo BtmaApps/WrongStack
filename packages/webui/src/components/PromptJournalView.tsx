@@ -136,7 +136,7 @@ export function PromptJournalView() {
   );
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
       {/* ── Header ── */}
       <div className="border-b border-border/70 px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

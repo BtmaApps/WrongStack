@@ -156,7 +156,19 @@
     "loadingDiff": "Diff wird geladen…",
     "diffTimeout": "Das Diff ist nicht angekommen. Die Datei wurde evtl. geändert oder die Verbindung getrennt.",
     "binary": "Binärdatei — Diff nicht angezeigt.",
-    "tooLarge": "Datei zu groß für Diff."
+    "tooLarge": "Datei zu groß für Diff.",
+    "showAsTree": "Als Ordnerbaum anzeigen",
+    "showAsList": "Als Liste anzeigen",
+    "image": {
+      "before": "HEAD",
+      "after": "Arbeitsverzeichnis",
+      "added": "Neues Bild",
+      "deleted": "Gelöschtes Bild",
+      "changed": "Geändertes Bild",
+      "side": "Nebeneinander",
+      "onion": "Überblenden",
+      "opacity": "Deckkraft des Arbeitsverzeichnisses"
+    }
   },
   "inspector": {
     "openAgentsPanel": "Agenten-Panel öffnen (Live-Fleet)",
@@ -1342,7 +1354,13 @@
     "toolRunning": "Running",
     "toolFailed": "Failed",
     "toolSucceeded": "Succeeded",
-    "details": "Details"
+    "details": "Details",
+    "imagePreview": {
+      "tooLarge": "Zu groß für eine Vorschau",
+      "notImage": "Kein Bild, das der Browser anzeigen kann",
+      "error": "Keine Vorschau",
+      "toggleSize": "Klicken zum Vergrößern oder Verkleinern"
+    }
   },
   "watch": {
     "toolFallback": "Tool",

@@ -87,6 +87,7 @@ export async function countSystemPromptTokens(
       bundle.system?.identity,
       bundle.system?.identitySource,
       undefined,
+      bundle.system?.trustedIdentity,
     );
     counts[variant] = estimateTextTokens(identity);
   }

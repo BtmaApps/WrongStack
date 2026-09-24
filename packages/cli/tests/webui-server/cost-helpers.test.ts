@@ -15,13 +15,16 @@ import { describe, expect, it } from 'vitest';
  *      is not yet published for that model.
  *
  *   3. `getCostRates({ cost: { input, output,
- *      cache_read } })`: snake_case preserved as-is from
- *      the upstream schema. The `cache_read` alias is
- *      mapped to `cacheRead` at the boundary.
+ *      cache_read, cache_write } })`: reads the
+ *      upstream snake_case cache keys — a camelCase
+ *      `cost.cacheRead` is silently ignored (the
+ *      mapping to camelCase happens inside
+ *      `getCostRates` itself).
  *
  *   4. `getCostRates({ cost: { input: 3, output: 15 }})`:
- *      `cacheRead` defaults to 0 when the upstream
- *      field is absent.
+ *      missing cache prices fall back to the INPUT
+ *      rate (`cache_read ?? input`); only input and
+ *      output themselves fall back to 0.
  *
  *   5. `computeUsageCost({ input: 1_000_000, output: 0 },
  *      { input: 3, output: 0, cacheRead: 0 })`: returns
@@ -49,25 +52,30 @@ const { getCostRates, computeUsageCost } = await import('../../src/webui-server/
 
 describe('getCostRates (PR 2 of #30)', () => {
   it('returns all zeros for null', () => {
-    expect(getCostRates(null)).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates(null)).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('returns all zeros for undefined', () => {
-    expect(getCostRates(undefined)).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates(undefined)).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   });
 
   it('returns all zeros when model has no `cost` field', () => {
-    expect(getCostRates({ name: 'gpt-4o' })).toEqual({ input: 0, output: 0, cacheRead: 0 });
+    expect(getCostRates({ name: 'gpt-4o' })).toEqual({
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    });
   });
 
   it('preserves upstream snake_case `cache_read` as `cacheRead`', () => {
     const out = getCostRates({ cost: { input: 3, output: 15, cache_read: 1 } });
-    expect(out).toEqual({ input: 3, output: 15, cacheRead: 1 });
+    expect(out).toEqual({ input: 3, output: 15, cacheRead: 1, cacheWrite: 3 });
   });
 
-  it('defaults `cacheRead` to 0 when upstream `cache_read` is absent', () => {
+  it('prices cache tokens at the input rate when upstream `cache_read` is absent', () => {
     const out = getCostRates({ cost: { input: 3, output: 15 } });
-    expect(out.cacheRead).toBe(0);
+    expect(out.cacheRead).toBe(3);
   });
 });
 

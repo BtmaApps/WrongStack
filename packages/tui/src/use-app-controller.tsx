@@ -461,7 +461,7 @@ export function useAppController(props: AppProps) {
     [dispatch, statuslineHiddenForPicker, linesRef, densitiesRef, orderRef],
   );
 
-  const { handleRewindTo } = useSessionRewind({
+  const { handleRewindTo, handleRewindRedo } = useSessionRewind({
     agent,
     sessionsDir,
     interruptController,
@@ -524,6 +524,7 @@ export function useAppController(props: AppProps) {
     streamingTextRef,
     director,
     handleRewindTo,
+    handleRewindRedo,
     getSettings,
   });
 

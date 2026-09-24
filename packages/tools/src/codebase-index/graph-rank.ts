@@ -68,8 +68,14 @@
  * about three fifths of this repo's import specifiers, and dropping the rest
  * outright would gut the graph.
  *
- * Both of these are ranking-quality fixes, not resolver fixes; making ref
- * resolution import-aware would remove the need for either.
+ * Both of these are ranking-quality fixes, not resolver fixes. For the JS
+ * family the resolver fix now exists (ref-binding-pass.ts), and the obvious
+ * follow-up — exempt refs it bound from both penalties — was measured on
+ * `codebase-context` (2026-09-24) and made retrieval worse: at full weight a
+ * test file's many calls to its own `shutdown` put it above every daemon
+ * module, and exempting only the visibility penalty sank the archive helpers
+ * below the kanban type hub. The penalties also dampen popular names and hub
+ * files, so they stay on every edge.
  */
 
 /** Ref shape as returned by `IndexStore.getAllResolvedRefs()`. */

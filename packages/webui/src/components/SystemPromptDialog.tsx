@@ -5,6 +5,7 @@ import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore } from '@/stores/config-store';
 import { useActiveSessionId } from '@/stores/session-lanes';
 import { systemPromptCurrent, useSystemPromptStore } from '@/stores/system-prompt-store';
+import { SystemPromptPresetEditor } from './SystemPromptPresetEditor';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -40,6 +41,8 @@ export function SystemPromptDialog() {
   // choice is not.
   const current = useSystemPromptStore((s) => systemPromptCurrent(s, sessionId));
   const [selected, setSelected] = useState<string | null>(null);
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [presetDirty, setPresetDirty] = useState(false);
 
   // Re-seed the selection from the live variant each time the dialog opens, so
   // an abandoned pick does not linger into the next open.
@@ -61,6 +64,7 @@ export function SystemPromptDialog() {
   const unavailable = variants.length === 0;
 
   const confirm = () => {
+    if (presetDirty && !window.confirm(t('activity:systemPrompt.presets.discardChanges'))) return;
     const client = getWSClient(wsUrl);
     if (selected && selected !== current) {
       client.setSystemPromptVariant(selected as 'lite' | 'default' | 'pro');
@@ -68,12 +72,19 @@ export function SystemPromptDialog() {
     if (pickerStartsSession) {
       client.newSession({ systemPromptVariant: selected ?? undefined });
     }
+    setPresetDirty(false);
+    closePicker();
+  };
+
+  const close = () => {
+    if (presetDirty && !window.confirm(t('activity:systemPrompt.presets.discardChanges'))) return;
+    setPresetDirty(false);
     closePicker();
   };
 
   return (
-    <Dialog open={pickerOpen} onOpenChange={(open) => !open && closePicker()}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={pickerOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -131,11 +142,24 @@ export function SystemPromptDialog() {
           </div>
         )}
 
+        <details className="rounded-lg border border-border px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">
+            {t('activity:systemPrompt.presets.manage')}
+          </summary>
+          <div className="mt-3">
+            <SystemPromptPresetEditor
+              currentVariant={current}
+              onBusyChange={setPresetBusy}
+              onDirtyChange={setPresetDirty}
+            />
+          </div>
+        </details>
+
         <DialogFooter>
-          <Button variant="ghost" onClick={closePicker}>
+          <Button variant="ghost" onClick={close}>
             {t('activity:systemPrompt.cancel')}
           </Button>
-          <Button onClick={confirm} disabled={unavailable}>
+          <Button onClick={confirm} disabled={unavailable || presetBusy}>
             {pickerStartsSession
               ? t('activity:systemPrompt.applyAndStart')
               : t('activity:systemPrompt.apply')}

@@ -30,7 +30,7 @@ import {
   setSessionSubagentsAllowed,
 } from '@wrongstack/core/coordination';
 import { type DestructiveKind, resolveYoloConfirmKinds } from '@wrongstack/core/security';
-import type { ProviderConfig } from '@wrongstack/core/types';
+import { type ProviderConfig, resolveTokenSavingTier } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { makeProviderFromConfig, withCatalogCapabilities } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
@@ -301,6 +301,17 @@ export function buildRoutes(
   };
 
   const systemPromptAdapter = {
+    previewContext: (sessionId?: string) => {
+      const target = sessionContext(sessionId);
+      return {
+        toolNames: target.tools.map((tool) => tool.name),
+        tier: resolveTokenSavingTier(
+          state.getConfig().features?.tokenSavingMode,
+          (state.getModelCapabilities() as { maxContextTokens?: number } | undefined)
+            ?.maxContextTokens,
+        ),
+      };
+    },
     paths: () => {
       const wpaths = resolveWstackPaths({
         projectRoot: state.getProjectRoot(),

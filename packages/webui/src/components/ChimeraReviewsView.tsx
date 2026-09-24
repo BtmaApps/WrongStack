@@ -156,9 +156,9 @@ export function ChimeraReviewsView() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden bg-background text-foreground [overflow-wrap:anywhere]">
       {/* Top Header / Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3 sm:px-6">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden>
             🦂
@@ -228,9 +228,9 @@ export function ChimeraReviewsView() {
       </div>
 
       {/* Main 3-column / Split View */}
-      <div className="flex flex-1 min-h-0 min-w-0">
+      <div className="flex flex-1 min-h-0 min-w-0 flex-col sm:flex-row">
         {/* Left Pane: Reports List */}
-        <div className="flex w-72 sm:w-80 flex-col border-r border-border bg-card/20 shrink-0 overflow-y-auto">
+        <div className="flex w-full max-h-40 sm:max-h-none sm:w-80 flex-col border-b sm:border-b-0 sm:border-r border-border bg-card/20 shrink-0 overflow-y-auto">
           <div className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             <span>Reports ({filteredReports.length})</span>
             {loading && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -322,9 +322,9 @@ export function ChimeraReviewsView() {
 
         {/* Middle & Right Pane: Report Detail, Findings & Journal */}
         {selectedReportId && detail?.report ? (
-          <div className="flex flex-1 min-h-0 min-w-0 flex-col lg:flex-row overflow-hidden">
+          <div className="flex-1 min-h-0 min-w-0 overflow-y-auto lg:flex lg:overflow-hidden">
             {/* Center Area: Findings and Overview */}
-            <div className="flex flex-1 min-h-0 min-w-0 flex-col overflow-y-auto p-4 sm:p-6 space-y-6">
+            <div className="min-h-0 min-w-0 lg:flex-1 lg:overflow-y-auto p-4 sm:p-6 space-y-6">
               {/* Report Header Card */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -649,14 +649,14 @@ export function ChimeraReviewsView() {
             </div>
 
             {/* Right Area: Event Journal & Timeline */}
-            <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 flex flex-col shrink-0 overflow-y-auto p-4 space-y-4">
+            <div className="w-full min-w-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 shrink-0 lg:overflow-y-auto p-4 space-y-4">
               <div className="flex items-center gap-2 border-b border-border pb-3">
                 <History className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-bold">Activity Journal</h3>
               </div>
 
               {/* Chronological Timeline */}
-              <div className="space-y-3 flex-1 overflow-y-auto">
+              <div className="space-y-3">
                 {detail.events.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">
                     No journal events recorded yet.

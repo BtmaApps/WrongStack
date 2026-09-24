@@ -8,6 +8,7 @@ import { timingSafeTokenEqual } from '@wrongstack/primitives';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
 import { useDaemonPerfDefaults } from '../utils/perf-profile.js';
+import { canonicalProjectRoot } from '../utils/wstack-paths.js';
 import {
   sessionCatalogProjectServerEndpoint,
   sessionCatalogProjectServerMetadataPath,
@@ -105,6 +106,8 @@ const serverInfo: SessionCatalogServerInfo = {
 };
 
 process.title = `wrongstack-session-catalog:${path.basename(parsed.projectRoot)}`;
+/** Repository identity: the same for every linked worktree of it. */
+const canonicalRoot = canonicalProjectRoot(parsed.projectRoot);
 let store: SessionCatalogStore | undefined;
 let activeRequests = 0;
 /**
@@ -248,17 +251,23 @@ function validateOperationArgs(op: string, args: unknown): asserts args is Recor
   if (record['entry'] !== undefined) exact(record['entry'], `${op}.entry`, entryKeys);
   if (record['entry'] && typeof record['entry'] === 'object') {
     const entry = record['entry'] as Record<string, unknown>;
+    // An entry may come from any checkout of this repository (linked git
+    // worktrees share this daemon), so identity is the canonical root and the
+    // working directory is contained by the entry's own checkout.
     if (
       typeof entry['projectRoot'] !== 'string' ||
       (process.platform === 'win32'
-        ? path.resolve(entry['projectRoot']).toLowerCase() !== parsed.projectRoot.toLowerCase()
-        : path.resolve(entry['projectRoot']) !== parsed.projectRoot)
+        ? canonicalProjectRoot(entry['projectRoot']).toLowerCase() !== canonicalRoot.toLowerCase()
+        : canonicalProjectRoot(entry['projectRoot']) !== canonicalRoot)
     ) {
       throw new TypeError(`${op}.entry project identity does not match this daemon`);
     }
     if (typeof entry['workingDir'] !== 'string')
       throw new TypeError(`${op}.entry workingDir is required`);
-    const relative = path.relative(parsed.projectRoot, path.resolve(entry['workingDir']));
+    const relative = path.relative(
+      path.resolve(entry['projectRoot']),
+      path.resolve(entry['workingDir']),
+    );
     if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
       throw new TypeError(`${op}.entry workingDir is outside the project root`);
     }

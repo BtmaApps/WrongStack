@@ -9,6 +9,7 @@ export const SERVER_WORKSPACE_MESSAGE_TYPES = [
   'files.deleted',
   'files.list',
   'files.moved',
+  'files.image',
   'files.read',
   'files.renamed',
   'files.skeleton_result',
@@ -60,4 +61,7 @@ export const SERVER_CONFIGURATION_MESSAGE_TYPES = [
   'provider.test.started',
   'providers.saved',
   'system_prompt.info',
+  'system_prompt.presets',
+  'system_prompt.preset_validation',
+  'system_prompt.preset_preview',
 ] as const;

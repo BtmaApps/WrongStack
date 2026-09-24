@@ -129,6 +129,8 @@ export type Action =
   /** Move the selection: -1 = older match, +1 = newer match (wraps). */
   | { type: 'chatSearchStep'; delta: -1 | 1; includeReasoning: boolean }
   | { type: 'chatSearchClose' }
+  /** Alt+↑ / Alt+↓: jump to the previous / next user message. */
+  | { type: 'messageJump'; direction: -1 | 1 }
   | {
       type: 'brainStatus';
       state: State['brain']['state'];

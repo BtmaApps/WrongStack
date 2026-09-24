@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import { startSharedHeapWatchdog, useDaemonPerfDefaults } from '@wrongstack/core/utils';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
 import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { prewarmWiringSnapshot, wiringSnapshotLastUsedAt } from './graph-adjacency-cache.js';
 import { indexService } from './index-service.js';
 import { recordWriteQueueWait } from './perf-metrics.js';
 import {
@@ -194,6 +195,52 @@ const walMaintenance = new WalMaintenance({
   },
 });
 
+/** Quiet time after the last content change before the graph is prebuilt. */
+const WIRING_PREWARM_DELAY_MS = 3_000;
+/** Prebuild only while `codebase-context` has been used this recently. */
+const WIRING_PREWARM_RECENT_USE_MS = 15 * 60_000;
+let wiringPrewarmTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Rebuild the retrieval wiring graph once edits stop, so the next
+ * `codebase-context` query does not pay the build itself. Skipped entirely
+ * for a project nobody queries that way (the graph costs memory and ~0.5 s
+ * of this event loop), and never run beside a write: reads share the pooled
+ * connection with the write transaction, and building from half-written rows
+ * would cache a graph that never existed. A write in flight re-arms it when
+ * it completes.
+ */
+function scheduleWiringPrewarm(): void {
+  const lastUsed = wiringSnapshotLastUsedAt();
+  if (lastUsed === 0 || Date.now() - lastUsed > WIRING_PREWARM_RECENT_USE_MS) return;
+  if (wiringPrewarmTimer) clearTimeout(wiringPrewarmTimer);
+  wiringPrewarmTimer = setTimeout(() => {
+    wiringPrewarmTimer = undefined;
+    if (activeWrites > 0 || queuedWrites > 0 || indexActivity.indexing) return;
+    const store = indexStorePool.acquire(projectRoot, { indexDir });
+    try {
+      prewarmWiringSnapshot(store, projectRoot, indexDir);
+    } catch {
+      // Best effort: the next query builds the graph itself.
+    } finally {
+      indexStorePool.release(store);
+    }
+  }, WIRING_PREWARM_DELAY_MS);
+  wiringPrewarmTimer.unref?.();
+}
+
+/**
+ * True only when an index run explicitly reported that it changed nothing.
+ * Anything else — an older result shape, a non-index job — counts as a change.
+ */
+function runLeftIndexUnchanged(result: unknown): boolean {
+  return (
+    typeof result === 'object' &&
+    result !== null &&
+    (result as { contentChanged?: unknown }).contentChanged === false
+  );
+}
+
 function send(state: ClientState, message: ProjectServerMessage): void {
   sendServerMessage(state, message);
 }
@@ -320,16 +367,23 @@ function withIndexWrite<T>(
     broadcastIndexActivity();
     try {
       const result = await job(reportIndexProgress);
+      // A run that changed nothing — typically the watcher's echo of an edit
+      // the tool already indexed — publishes no new generation: every cached
+      // answer is still exact, and every client (WebUI Code Map, TUI chip)
+      // keys its refresh on the generation. Bumping it here made each agent
+      // edit refetch and re-render the map twice.
+      const unchanged = runLeftIndexUnchanged(result);
       indexActivity = {
         ...indexActivity,
         indexing: false,
-        generation: indexActivity.generation + 1,
-        updatedAt: Date.now(),
+        generation: unchanged ? indexActivity.generation : indexActivity.generation + 1,
+        updatedAt: unchanged ? indexActivity.updatedAt : Date.now(),
         lastError: null,
       };
-      if (!options.preserveCaches) clearQueryCaches();
+      if (!options.preserveCaches && !unchanged) clearQueryCaches();
       broadcastIndexActivity();
       walMaintenance.notifyWriteCompleted();
+      if (!unchanged) scheduleWiringPrewarm();
       return result;
     } catch (error) {
       indexActivity = {
@@ -543,6 +597,7 @@ async function stop(_reason: string): Promise<void> {
   activeFullIndex?.controller.abort(new Error('codebase-index server stopping'));
   watcherManager.stop();
   walMaintenance.dispose();
+  if (wiringPrewarmTimer) clearTimeout(wiringPrewarmTimer);
   indexStorePool.closeAll();
   removeMetadataIfOwned(metadataPath, process.pid);
   await new Promise<void>((resolve) => {

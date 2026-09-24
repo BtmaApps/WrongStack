@@ -161,9 +161,20 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
   // Drop CodeMap graph cache + notify clients when an index run finishes so
   // package/file/symbol maps pick up new symbols without a process restart.
   // mtime-versioned cache is the safety net; this is the proactive path.
+  //
+  // Only a run that published a new generation invalidates. The project
+  // server keeps its generation for a run that changed nothing — the
+  // watcher's echo of an edit the tool already indexed — and every cached map
+  // is still exact then; invalidating on each falling edge made the Code Map
+  // refetch and re-render twice per agent edit. Without a server (inline
+  // mode) there is no generation, and every completed run invalidates.
   let wasIndexing = false;
+  let publishedGeneration: number | undefined;
   const unsubscribeIndexState = onIndexStateChange((state) => {
-    if (wasIndexing && !state.indexing) {
+    const generation = state.server?.activity?.generation;
+    const published = generation === undefined || generation !== publishedGeneration;
+    if (!state.indexing && generation !== undefined) publishedGeneration = generation;
+    if (wasIndexing && !state.indexing && published) {
       clearCodemapGraphCache();
       deps.events?.emit('codemap.index_updated', {
         at: Date.now(),

@@ -359,9 +359,21 @@ export async function runSqliteSageHygiene(
     else groups.set(key, [m]);
   }
   await ctx.runMutation(() => {
-    for (const group of groups.values()) {
+    for (const [key, group] of groups) {
       if (group.length < 2) continue;
-      const sorted = [...group].sort((a, b) => {
+      // Re-read inside the mutation. A concurrent update can change the text,
+      // scope, kind, or audience after the grouping snapshot above; a stale
+      // row must not be written back or superseded as if it still matched.
+      const currentGroup = group
+        .map((observed) => readSqliteSageRow(ctx.stmt, observed.id))
+        .filter((current): current is Sage => {
+          if (current?.status !== 'active') return false;
+          const audienceKey = JSON.stringify(normalizeAudience(current.audience) ?? null);
+          const currentKey = `${hygieneScopeKey(current)}\0${normalizeTextKey(current.text)}\0${audienceKey}`;
+          return currentKey === key;
+        });
+      if (currentGroup.length < 2) continue;
+      const sorted = [...currentGroup].sort((a, b) => {
         const aPerm = (a.persistence ?? DEFAULT_PERSISTENCE) === 'permanent' ? 1 : 0;
         const bPerm = (b.persistence ?? DEFAULT_PERSISTENCE) === 'permanent' ? 1 : 0;
         return (

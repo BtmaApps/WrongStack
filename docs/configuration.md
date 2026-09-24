@@ -303,6 +303,22 @@ The host system prompt normally loads the baseline identity/instructions from
 |---|---|---|---|
 | `variant` | `"default" \| "lite" \| "pro"` | `"default"` | `default` loads `system.md`; `lite` loads the compact `system-lite.md`; `pro` loads `system-pro.md`. |
 
+In WebUI, open **System Prompt → Manage custom presets** to copy a bundled
+variant into an editable profile preset. Presets live under the active
+profile's `instructions/system-prompt-presets/` directory. One preset can be
+active for each base variant; selecting that variant uses the active copy in
+every project using the profile. A project selection can override the profile
+default without writing into the repository. Deactivating restores the normal instruction
+override chain. Project `system.md` guidance remains fenced and appended after
+the trusted profile preset.
+
+The editor validates `ws:if`/`ws:else`/`ws:end` structure before saving and
+previews the draft against the current session's callable tools and token-saving
+tier. The runtime still builds tool, environment, memory and mode sections
+separately. Each preset records the bundled source it was copied from, so the
+editor can show both versions after a package update; reviewing the new source
+does not silently overwrite the customized text.
+
 `lite` is a genuine reduction, not a rewording — it drops whole sections of
 `system.md`, including **Tool output trust boundary**, **Tool coordination**,
 and **The cost ladder**. Choose it to save context, not as a default.

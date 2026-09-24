@@ -142,7 +142,7 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       'List recent sessions, show one session in detail, resume a ' +
       "session, or inspect a session's audit log. The audit log is " +
       "stored as JSONL next to each session's recording.",
-    usage: 'wstack sessions [list|show|resume|fork|doctor|config|fleet] [...]',
+    usage: 'wstack sessions [list|show|resume|fork|move|doctor|config|fleet] [...]',
     subcommands: [
       { name: 'list', description: 'List the most recent sessions.' },
       {
@@ -159,6 +159,12 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       {
         name: 'fork [<id>] [--to N]',
         description: 'Create an isolated child journal at a persisted boundary.',
+      },
+      {
+        name: 'move <id> --to <path>',
+        description:
+          'Move a closed session to another git worktree of this repository, or to ' +
+          'another project (its journal moves to that project).',
       },
       { name: 'config', description: 'Show or edit session-specific config.' },
       { name: 'fleet', description: 'List the active fleet of sessions.' },
@@ -505,16 +511,22 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
   // -- Permissions ────────────────────────────────────────────────────
   permissions: {
     name: 'permissions',
-    title: 'wstack permissions — explain tool permission decisions',
+    title: 'wstack permissions — list and explain the permission rules',
     description:
-      'Side-effect-free permission decision explainer. Evaluates the effective ' +
-      'permission rules for a tool and input arguments without prompting, ' +
-      'modifying trust files, or mutating state.',
-    usage: "wstack permissions explain <tool> [--input '<json>'] [--json]",
+      'Side-effect-free views of the permission policy the agent runs under: ' +
+      'every rule in the order it is checked, and how one tool call is decided, ' +
+      'without prompting, modifying trust files, or mutating state. Inside a ' +
+      'session, /permissions also sets allow/deny rules for that session only.',
+    usage: "wstack permissions [rules|explain <tool> [--input '<json>']] [--json]",
     subcommands: [
       {
+        name: 'rules',
+        description:
+          'List every permission rule, in the order they are checked (first match decides).',
+      },
+      {
         name: 'explain <tool>',
-        description: 'Explain how the permission policy evaluates a tool call.',
+        description: 'Explain how the permission policy decides a tool call, and name the rule.',
       },
     ],
     seeAlso: 'wstack tools (list available tools)',

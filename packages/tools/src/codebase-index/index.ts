@@ -323,6 +323,7 @@ export {
 } from './graph-rank.js';
 export {
   RANK_REFRESH_FILE_THRESHOLD,
+  RANK_STALE_FILES_KEY,
   RANK_VERSION,
   RANK_VERSION_KEY,
   type RankPassResult,

@@ -1,5 +1,6 @@
 import { detectLang } from './languages.js';
 import type { CodeMapGraph, SymbolLang } from './schema.js';
+import { allRowsAsArrays } from './sqlite-runtime.js';
 import { decorateGraphNodes } from './writer-graph-decorate.js';
 import {
   addWeightedEdge,
@@ -22,59 +23,99 @@ import {
 } from './writer-graph-queries.js';
 import { matchesIndexedPackageFilter } from './writer-helpers.js';
 
+/**
+ * The package-level dependency graph — the Code Map's opening view.
+ *
+ * Aggregated in one pass over `refs` straight to package pairs. It used to
+ * GROUP BY `(call_type, from_file, to_file)` in SQL with two symbol joins —
+ * SQLite drove that through `idx_r_call_type` for the `!=` predicate and a
+ * temp B-tree over ~95k file pairs, ~1.1 s on this repository — only for the
+ * rows to be folded into ~900 package pairs here anyway. Semantics are those
+ * of the SQL form: a non-import ref needs both endpoint symbols, an import
+ * lands on its resolved `to_file` else its target symbol's file, and a
+ * package pair's dominant type breaks ties the way the sorted SQL stream did
+ * (other types alphabetically, `import` last).
+ */
 export function getPackageGraphWithStatement(stmt: PrepareStatement): CodeMapGraph {
-  const fileCounts = stmt('SELECT file, COUNT(*) AS n FROM symbols GROUP BY file').all() as Array<{
-    file: string;
-    n: number;
-  }>;
+  const fileOfSymbol = new Map<number, string>();
+  const symbolsPerFile = new Map<string, number>();
+  for (const [id, file] of allRowsAsArrays(stmt('SELECT id, file FROM symbols')) as Array<
+    [number, string]
+  >) {
+    fileOfSymbol.set(id, file);
+    symbolsPerFile.set(file, (symbolsPerFile.get(file) ?? 0) + 1);
+  }
+  // Node order follows the file order the GROUP BY used to produce.
+  const fileCounts = [...symbolsPerFile]
+    .map(([file, n]) => ({ file, n }))
+    .sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
 
   const files = stmt('SELECT DISTINCT file FROM files').all() as { file: string }[];
   const packageOf = readPackageLabeller(stmt);
   const { pkgNodes, fileToPkg } = buildPackageGraphNodes(fileCounts, files, packageOf);
+  const pkgOfFile = (file: string): string => {
+    let pkg = fileToPkg.get(file);
+    if (pkg === undefined) {
+      pkg = packageOf(file);
+      fileToPkg.set(file, pkg);
+    }
+    return pkg;
+  };
 
-  const refRows = stmt(
-    `SELECT r.call_type, sf.file AS from_file, st.file AS to_file, COUNT(*) AS n
-       FROM refs r
-       JOIN symbols sf ON sf.id = r.from_id
-       JOIN symbols st ON st.id = r.to_id
-       WHERE r.to_id IS NOT NULL AND r.call_type != 'import'
-       GROUP BY r.call_type, sf.file, st.file`,
-  ).all() as Array<{ call_type: string; from_file: string; to_file: string; n: number }>;
+  // pair key → per-type counts; imports kept apart for the tie-break order.
+  const pairs = new Map<string, { from: string; to: string; types: Map<string, number> }>();
+  const count = (fromPkg: string, toPkg: string, callType: string): void => {
+    const key = `${fromPkg}\u0000${toPkg}`;
+    let pair = pairs.get(key);
+    if (pair === undefined) {
+      pair = { from: fromPkg, to: toPkg, types: new Map() };
+      pairs.set(key, pair);
+    }
+    pair.types.set(callType, (pair.types.get(callType) ?? 0) + 1);
+  };
 
-  const edgeMap = new Map<string, WeightedEdgeAccumulator>();
-  for (const r of refRows) {
-    const fromPkg = fileToPkg.get(r.from_file) ?? packageOf(r.from_file);
-    const toPkg = fileToPkg.get(r.to_file) ?? packageOf(r.to_file);
-    if (fromPkg === toPkg) continue;
-    const n = Number(r.n) || 0;
-    addWeightedEdge(edgeMap, fromPkg, toPkg, r.call_type, n);
+  const refRows = allRowsAsArrays(
+    stmt('SELECT from_id, to_id, to_file, call_type FROM refs'),
+  ) as Array<[number, number | null, string | null, string]>;
+  for (const [fromId, toId, toFileColumn, callType] of refRows) {
+    const fromFile = fileOfSymbol.get(fromId);
+    if (fromFile === undefined) continue;
+    const targetFile = toId === null ? undefined : fileOfSymbol.get(toId);
+    if (callType === 'import') {
+      // Import edges resolve to a target file two ways, in priority order:
+      // `to_file` (the module specifier resolved against the project's real
+      // layout at index time — the only path that works for Go, Python, Rust,
+      // JVM, …) and otherwise the file declaring the imported symbol, which
+      // covers namespace ecosystems like C# where a specifier names no file.
+      const toFile = toFileColumn ?? targetFile;
+      if (toFile === undefined) continue;
+      const fromPkg = pkgOfFile(fromFile);
+      const toPkg = pkgOfFile(toFile);
+      // `to_file` may be an index-time module resolution result outside the
+      // `files`/`symbols` tables; its package label can have no node in
+      // `pkgNodes`, and edges never create target nodes.
+      if (fromPkg === toPkg || !pkgNodes.has(toPkg)) continue;
+      count(fromPkg, toPkg, 'import');
+    } else {
+      if (targetFile === undefined) continue;
+      const fromPkg = pkgOfFile(fromFile);
+      const toPkg = pkgOfFile(targetFile);
+      if (fromPkg === toPkg) continue;
+      count(fromPkg, toPkg, callType);
+    }
   }
 
-  // Import edges resolve to a target file two ways, in priority order:
-  // `to_file` (the module specifier resolved against the project's real layout
-  // at index time — the only path that works for Go, Python, Rust, JVM, …) and
-  // otherwise the file declaring the imported symbol, which covers namespace
-  // ecosystems like C# where a specifier names no file at all.
-  const importRows = stmt(
-    `SELECT s.file AS from_file,
-            COALESCE(r.to_file, st.file) AS to_file,
-            COUNT(*) AS n
-       FROM refs r
-       JOIN symbols s ON s.id = r.from_id
-       LEFT JOIN symbols st ON st.id = r.to_id
-       WHERE r.call_type = 'import'
-         AND COALESCE(r.to_file, st.file) IS NOT NULL
-       GROUP BY s.file, COALESCE(r.to_file, st.file)`,
-  ).all() as Array<{ from_file: string; to_file: string; n: number }>;
-  for (const r of importRows) {
-    const fromPkg = fileToPkg.get(r.from_file) ?? packageOf(r.from_file);
-    const toPkg = fileToPkg.get(r.to_file) ?? packageOf(r.to_file);
-    // `to_file` may be an index-time module resolution result outside the
-    // `files`/`symbols` tables; its package label can have no node in
-    // `pkgNodes`, and materializeWeightedEdges does not create target nodes.
-    if (fromPkg === toPkg || !pkgNodes.has(toPkg)) continue;
-    const n = Number(r.n) || 0;
-    addWeightedEdge(edgeMap, fromPkg, toPkg, 'import', n);
+  const edgeMap = new Map<string, WeightedEdgeAccumulator>();
+  const ordered = [...pairs.values()].sort((a, b) =>
+    a.from < b.from ? -1 : a.from > b.from ? 1 : a.to < b.to ? -1 : a.to > b.to ? 1 : 0,
+  );
+  for (const pair of ordered) {
+    const types = [...pair.types.keys()].sort((a, b) =>
+      a === 'import' ? 1 : b === 'import' ? -1 : a < b ? -1 : a > b ? 1 : 0,
+    );
+    for (const type of types) {
+      addWeightedEdge(edgeMap, pair.from, pair.to, type, pair.types.get(type) ?? 0);
+    }
   }
 
   const edges = materializeWeightedEdges(edgeMap, 'pkg');
@@ -169,7 +210,7 @@ export function getFileGraphWithStatement(
       `SELECT r.from_id, COALESCE(r.to_file, st.file) AS to_file, COUNT(*) AS n
          FROM refs r
          LEFT JOIN symbols st ON st.id = r.to_id
-         WHERE r.call_type = 'import'
+         WHERE +r.call_type = 'import'
            AND COALESCE(r.to_file, st.file) IS NOT NULL
            AND r.from_id IN (${ph})
          GROUP BY r.from_id, COALESCE(r.to_file, st.file)`,

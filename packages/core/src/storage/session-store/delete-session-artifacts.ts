@@ -1,6 +1,7 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { toErrorMessage } from '../../utils/index.js';
+import { clearRedoStash } from '../session-writer-redo.js';
 import { sessionPath as sessionStorePath, shardManifestPath } from './paths.js';
 
 export type DeleteSessionArtifactsOptions = {
@@ -46,6 +47,8 @@ export async function deleteSessionArtifacts({
     // accumulates. `.completed-work.json` did exactly that.
     ...SESSION_SIDECAR_SUFFIXES.map((suffix) => fsp.unlink(sessionStorePath(rootDir, id, suffix))),
     fsp.unlink(shardManifestPath(rootDir, path.dirname(id) === '.' ? '' : path.dirname(id))),
+    // The `/redo` stash of rewound turns (session-writer-redo.ts).
+    clearRedoStash(jsonlPath),
   ];
 
   const results = await Promise.allSettled(deletions);

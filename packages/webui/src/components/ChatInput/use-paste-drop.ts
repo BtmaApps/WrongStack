@@ -6,8 +6,13 @@ import { autoFenceCode } from './code-detect.js';
 import {
   type ImageAttachment,
   ImageAttachmentError,
+  isPdfAttachment,
+  isPdfFile,
   MAX_ATTACHED_IMAGES,
+  MAX_ATTACHED_PDF_BYTES,
+  MAX_ATTACHED_PDFS,
   processImageFile,
+  processPdfFile,
 } from './image-attachments.js';
 
 export interface PasteHintState {
@@ -29,6 +34,9 @@ interface UsePasteDropOptions {
     tooManyImages: (max: number) => string;
     imageProcessFailed: (name: string) => string;
     imageTooLarge: (name: string) => string;
+    tooManyPdfs: (max: number) => string;
+    pdfTooLarge: (name: string, maxMb: number) => string;
+    pdfReadFailed: (name: string) => string;
   };
 }
 
@@ -63,15 +71,27 @@ export function usePasteDrop({ input, textareaRef, setInput, errorText }: UsePas
   const addImageFiles = async (files: File[]): Promise<void> => {
     const err = errorTextRef.current;
     for (const file of files) {
-      if (pendingImagesRef.current.length >= MAX_ATTACHED_IMAGES) {
+      const pdf = isPdfFile(file);
+      const pending = pendingImagesRef.current;
+      const sameKind = pending.filter((a) => isPdfAttachment(a) === pdf).length;
+      if (pdf && sameKind >= MAX_ATTACHED_PDFS) {
+        toast.error(err.tooManyPdfs(MAX_ATTACHED_PDFS));
+        return;
+      }
+      if (!pdf && sameKind >= MAX_ATTACHED_IMAGES) {
         toast.error(err.tooManyImages(MAX_ATTACHED_IMAGES));
         return;
       }
       try {
-        const attachment = await processImageFile(file);
+        const attachment = pdf ? await processPdfFile(file) : await processImageFile(file);
         setPendingImages([...pendingImagesRef.current, attachment]);
       } catch (e) {
-        if (e instanceof ImageAttachmentError && e.reason === 'too_large') {
+        const reason = e instanceof ImageAttachmentError ? e.reason : undefined;
+        if (reason === 'pdf_too_large') {
+          toast.error(err.pdfTooLarge(file.name, MAX_ATTACHED_PDF_BYTES / (1024 * 1024)));
+        } else if (reason === 'pdf_read_failed') {
+          toast.error(err.pdfReadFailed(file.name));
+        } else if (reason === 'too_large') {
           toast.error(err.imageTooLarge(file.name || 'image'));
         } else {
           toast.error(err.imageProcessFailed(file.name || 'image'));
@@ -97,7 +117,7 @@ export function usePasteDrop({ input, textareaRef, setInput, errorText }: UsePas
 
       const files: File[] = [];
       for (const item of items) {
-        if (item.type.startsWith('image/')) {
+        if (item.type.startsWith('image/') || item.type === 'application/pdf') {
           const blob = item.getAsFile();
           if (blob) files.push(blob);
         }
@@ -146,12 +166,13 @@ export function usePasteDrop({ input, textareaRef, setInput, errorText }: UsePas
     event.preventDefault();
     setDraggingOver(false);
 
-    // Dropped images → attach (same channel as pasted images). All of them.
-    const imageFiles = allFiles.filter((f) => f.type?.startsWith('image/'));
+    // Dropped images and PDFs → attach (same channel as pasted images).
+    const attachable = (f: File) => f.type?.startsWith('image/') || isPdfFile(f);
+    const imageFiles = allFiles.filter(attachable);
     if (imageFiles.length > 0) {
       void addImageFiles(imageFiles);
     }
-    const files = allFiles.filter((f) => !f.type?.startsWith('image/'));
+    const files = allFiles.filter((f) => !attachable(f));
     if (files.length === 0) {
       // Only image(s) were dropped — nothing to insert as @mentions.
       return;

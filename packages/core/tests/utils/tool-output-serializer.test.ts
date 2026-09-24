@@ -91,6 +91,14 @@ describe('createToolOutputSerializer', () => {
       );
     });
 
+    it("names a background run's log file, where its output goes", () => {
+      const out = serializer.serialize(
+        { output: '', exit_code: null, timed_out: false, pid: 42, log_file: '/p/bg-logs/x.log' },
+        { toolName: 'bash', input: { command: 'pnpm dev', background: true } },
+      );
+      expect(out).toBe('bash: pnpm dev (timed_out=false pid=42)\nlog_file: /p/bg-logs/x.log');
+    });
+
     it('renders passing test results as a concise report without full output', () => {
       const out = serializer.serialize(
         {

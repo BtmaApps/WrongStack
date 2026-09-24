@@ -120,6 +120,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'chatSearchOpen',
   'chatSearchSetQuery',
   'chatSearchStep',
+  'messageJump',
   'inspectOverlayClose',
   'inspectOverlayOpen',
   'inspectOverlayScroll',

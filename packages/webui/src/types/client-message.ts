@@ -302,6 +302,13 @@ export type WSClientMessageCore =
          * what a live lane already has.
          */
         replayFor?: string[];
+        /**
+         * Reconnect catch-up: the last numbered frame (`seq`) this page applied
+         * per tab, valid for the server process that issued `eventEpoch`. The
+         * server sends back the frames after it, then `session.frames_resumed`.
+         */
+        cursors?: Record<string, number>;
+        eventEpoch?: string;
       } & SessionScopedPayload;
     }
   | { type: 'context.clear'; payload?: SessionScopedPayload }
@@ -623,6 +630,7 @@ export type WSClientMessageCore =
       payload: ({ path?: string | undefined } | Record<string, never>) & SessionScopedPayload;
     }
   | { type: 'files.read'; payload: { filePath: string } & SessionScopedPayload }
+  | { type: 'files.image'; payload: { filePath: string } & SessionScopedPayload }
   | {
       type: 'files.skeleton';
       payload: {
@@ -701,6 +709,36 @@ export type WSClientMessageCore =
   | { type: 'prefs.update'; payload: Record<string, unknown> }
   | { type: 'prefs.get'; payload?: SessionScopedPayload | undefined }
   | { type: 'system_prompt.get'; payload?: SessionScopedPayload }
+  | { type: 'system_prompt.presets.get'; payload?: SessionScopedPayload }
+  | {
+      type: 'system_prompt.presets.create';
+      payload: { name: string; baseVariant: 'lite' | 'default' | 'pro' };
+    }
+  | {
+      type: 'system_prompt.presets.save';
+      payload: {
+        id: string;
+        revision: number;
+        name: string;
+        text: string;
+        reviewedCurrentSource?: boolean;
+      };
+    }
+  | {
+      type: 'system_prompt.presets.activate';
+      payload: {
+        baseVariant: 'lite' | 'default' | 'pro';
+        id?: string;
+        sessionId?: string;
+        scope: 'profile' | 'project';
+      };
+    }
+  | { type: 'system_prompt.presets.delete'; payload: { id: string } }
+  | { type: 'system_prompt.presets.validate'; payload: { text: string } }
+  | {
+      type: 'system_prompt.presets.preview';
+      payload: { text: string; sessionId?: string; requestId: number };
+    }
   | { type: 'projects.list' }
   | { type: 'projects.add'; payload: { root: string; name?: string | undefined } }
   | { type: 'projects.select'; payload: { root: string; name?: string | undefined } }

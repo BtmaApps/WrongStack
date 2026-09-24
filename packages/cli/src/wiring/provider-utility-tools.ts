@@ -17,9 +17,12 @@ import type {
   Config,
   CouncilProfileConfig,
   CouncilToolConfig,
+  ModelsRegistry,
   OneShotModelRouter,
   Provider,
+  ResolvedProvider,
 } from '@wrongstack/core/types';
+import { createImageGenerateTool, imageTargetsFromCatalog } from '@wrongstack/tools';
 
 interface ProviderUtilityToolsInput {
   toolRegistry: ToolRegistry;
@@ -31,6 +34,8 @@ interface ProviderUtilityToolsInput {
     import('@wrongstack/core/types').OneShotOrchestratorOptions['wrapProviderCall']
   >;
   compactor: NonNullable<Parameters<typeof createContextManagerTool>[0]>['compactor'];
+  /** Catalog the image tool reads image models from. */
+  modelsRegistry: Pick<ModelsRegistry, 'getProvider'>;
 }
 
 export async function adoptResumedProvider(input: {
@@ -154,6 +159,25 @@ export function registerProviderUtilityTools(input: ProviderUtilityToolsInput): 
       caller: councilOrchestrator,
       fallbackProfileManager: input.fallbackProfileManager,
       ...buildCouncilRegistries(config.tools?.council),
+    }),
+  );
+
+  registerOrOverride(
+    input.toolRegistry,
+    'image_generate',
+    createImageGenerateTool({
+      buildProvider: input.buildProvider,
+      // Read at call time: providers added or switched mid-session count.
+      listTargets: async () => {
+        const live = input.getConfig();
+        const ids = [...new Set([live.provider, ...Object.keys(live.providers ?? {})])];
+        const catalog = new Map<string, ResolvedProvider>();
+        for (const id of ids) {
+          const entry = await input.modelsRegistry.getProvider(id).catch(() => undefined);
+          if (entry) catalog.set(id, entry);
+        }
+        return imageTargetsFromCatalog(ids, catalog);
+      },
     }),
   );
 

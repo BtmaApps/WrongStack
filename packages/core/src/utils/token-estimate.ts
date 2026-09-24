@@ -169,6 +169,9 @@ export function estimateTextTokens(text: string): number {
  * append/replace so the O(n·m) content-block walk happens at mutation time,
  * not on every context-pressure check.
  */
+/** Rough per-page cost of a PDF page rendered for a model, on top of its text. */
+const DOCUMENT_PAGE_TOKENS = 1_000;
+
 export function computeMessageTokens(msg: Message): number {
   if (typeof msg.content === 'string') return estimateTextTokens(msg.content);
   let total = 0;
@@ -176,7 +179,12 @@ export function computeMessageTokens(msg: Message): number {
     if (b.type === 'text') total += estimateTextTokens(b.text ?? '');
     else if (b.type === 'tool_use') total += estimateToolInputTokens(b.input);
     else if (b.type === 'tool_result') total += estimateToolResultTokens(b.content);
-    else {
+    else if (b.type === 'document') {
+      // The base64 file is not what a model is billed for: it reads the text
+      // plus a rendering of each page. Counting the JSON would make one 5 MB
+      // PDF look like a million tokens and trigger compaction for nothing.
+      total += estimateTextTokens(b.text ?? '') + (b.pages ?? 1) * DOCUMENT_PAGE_TOKENS;
+    } else {
       let str: string;
       try {
         str = JSON.stringify(b) ?? '';

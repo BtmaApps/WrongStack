@@ -177,9 +177,12 @@ export async function submitSlashCommand({
     const res = await slashRegistry.dispatch(resolvedForDispatch, agent.ctx);
     const cleared = cmd === 'clear' && res?.metadata?.cleared === true;
     // /clear itself advances the generation via resetSession before it
-    // returns. Its own successful result must still wipe the UI. Other
-    // commands and clears superseded by a later boundary remain stale.
-    const resetByCommand = cleared && sessionGenerationRef.current === slashGeneration + 1;
+    // returns, and /rewind stops the session's producers the same way. Their
+    // own result must still render (a failed rewind used to vanish). Other
+    // commands and results superseded by a later boundary remain stale.
+    const advancedByCommand = cleared || res?.metadata?.advancedSessionGeneration === true;
+    const resetByCommand =
+      advancedByCommand && sessionGenerationRef.current === slashGeneration + 1;
     if (slashGeneration !== sessionGenerationRef.current && !resetByCommand) return;
     // Refresh goal summary after any slash command — `/goal clear` or
     // `/goal set` changed the goal file on disk; the status bar chip

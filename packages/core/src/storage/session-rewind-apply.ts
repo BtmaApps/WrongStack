@@ -1,5 +1,7 @@
+import { restoreSessionPermissionOverrides } from '../security/session-permission-overrides.js';
 import type { Message } from '../types/messages.js';
-import type { SessionWriter } from '../types/session.js';
+import type { SessionEvent, SessionWriter } from '../types/session.js';
+import { reapplySnapshots } from './session-rewinder.js';
 import { DefaultSessionStore } from './session-store.js';
 
 /**
@@ -25,6 +27,12 @@ export interface ApplyRewindOptions {
    * changed are truncated away by this very call.
    */
   revertedFiles?: readonly string[] | undefined;
+  /**
+   * The conversation's `ctx.meta`. Session settings the journal carries
+   * (`/permissions allow|deny`) are re-read from what the rewind kept, so the
+   * live rules match what a resume would restore.
+   */
+  meta?: Record<string, unknown> | undefined;
 }
 
 export interface ApplyRewindResult {
@@ -66,6 +74,81 @@ export async function applyRewindToConversation(
   const store = new DefaultSessionStore({ dir: sessionsDir });
   const data = await store.load(session.id);
   state.replaceMessages(data.messages);
+  restoreSessionPermissionOverrides(opts.meta, data);
 
   return { removedEvents, messageCount: data.messages.length };
+}
+
+export interface RedoRewindResult {
+  /** Checkpoint the undone rewind had gone back to. */
+  toPromptIndex: number;
+  restoredEvents: number;
+  reappliedFiles: string[];
+  /** Non-empty: nothing was changed (files edited since the rewind, …). */
+  conflicts: string[];
+  messageCount: number;
+  /** Checkpoints the redo brought back, for timeline UIs. */
+  checkpoints: Array<{ promptIndex: number; promptPreview: string; ts: string; fileCount: number }>;
+}
+
+/**
+ * Undo the newest `/rewind`: re-apply its file changes, put the cut journal
+ * back, and reload the live conversation from it. Returns null when there is
+ * nothing to redo (no rewind, or a prompt was sent since). With conflicts,
+ * nothing is changed.
+ */
+export async function redoLastRewind(opts: {
+  session: SessionWriter;
+  state: RewindableConversation;
+  sessionsDir: string;
+  projectRoot: string;
+  /** See `ApplyRewindOptions.meta`. */
+  meta?: Record<string, unknown> | undefined;
+}): Promise<RedoRewindResult | null> {
+  const { session, state, sessionsDir, projectRoot } = opts;
+  if (!session.peekRedo || !session.restoreRedo) return null;
+  const peek = await session.peekRedo();
+  if (!peek) return null;
+  const snapshots = peek.events.filter(
+    (e): e is Extract<SessionEvent, { type: 'file_snapshot' }> => e.type === 'file_snapshot',
+  );
+  const files = await reapplySnapshots(snapshots, projectRoot);
+  if (files.conflicts.length > 0) {
+    return {
+      toPromptIndex: peek.toPromptIndex,
+      restoredEvents: 0,
+      reappliedFiles: [],
+      conflicts: files.conflicts,
+      messageCount: 0,
+      checkpoints: [],
+    };
+  }
+  const fileCounts = new Map<number, number>();
+  for (const s of snapshots) {
+    fileCounts.set(s.promptIndex, (fileCounts.get(s.promptIndex) ?? 0) + s.files.length);
+  }
+  const checkpoints = peek.events.flatMap((e) =>
+    e.type === 'checkpoint'
+      ? [
+          {
+            promptIndex: e.promptIndex,
+            promptPreview: e.promptPreview,
+            ts: e.ts,
+            fileCount: fileCounts.get(e.promptIndex) ?? 0,
+          },
+        ]
+      : [],
+  );
+  const restoredEvents = (await session.restoreRedo()) ?? 0;
+  const data = await new DefaultSessionStore({ dir: sessionsDir }).load(session.id);
+  state.replaceMessages(data.messages);
+  restoreSessionPermissionOverrides(opts.meta, data);
+  return {
+    toPromptIndex: peek.toPromptIndex,
+    restoredEvents,
+    reappliedFiles: files.reappliedFiles,
+    conflicts: [],
+    messageCount: data.messages.length,
+    checkpoints,
+  };
 }

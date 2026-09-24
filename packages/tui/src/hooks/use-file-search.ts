@@ -11,6 +11,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { InputBuilder } from '@wrongstack/core/agent';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { PDF_ATTACH_MAX_BYTES, preparePdfAttachment } from '@wrongstack/tools';
 import { useEffect } from 'react';
 import type { Action, State } from '../app-reducer.js';
 import { searchFiles } from '../file-search.js';
@@ -50,6 +51,20 @@ export function detectAtToken(
     i--;
   }
   return null;
+}
+
+export function isFileSelectionCurrent(
+  current: { buffer: string; cursor: number },
+  original: { buffer: string; cursor: number },
+  token: { start: number; end: number },
+): boolean {
+  const currentToken = detectAtToken(current.buffer, current.cursor);
+  return (
+    current.buffer === original.buffer &&
+    current.cursor === original.cursor &&
+    currentToken?.start === token.start &&
+    currentToken.end === token.end
+  );
 }
 
 // ── Hook ────────────────────────────────────────────────────────────
@@ -134,6 +149,8 @@ export function useFileSearch(options: UseFileSearchOptions): FileSearchResult {
       dispatch({ type: 'pickerClose' });
       return;
     }
+    const selectionStillCurrent = (): boolean =>
+      isFileSelectionCurrent(draftRef.current, draft, tok);
 
     // Register the file (no builder display mutation) and put a path-keyed
     // `[file:<path>]` token inline in the visible buffer (replacing @query).
@@ -142,6 +159,17 @@ export function useFileSearch(options: UseFileSearchOptions): FileSearchResult {
     const absPath = path.isAbsolute(picked) ? picked : path.join(projectRoot, picked);
     try {
       const stat = await fs.stat(absPath);
+      if (!selectionStillCurrent()) return;
+      if (/\.pdf$/i.test(picked)) {
+        const token = await attachPdf(builder, picked, absPath, stat.size, selectionStillCurrent);
+        if (token === undefined || !selectionStillCurrent()) return;
+        tokenPreviewsRef.current.set(token, `PDF, ${Math.max(1, Math.round(stat.size / 1024))} KB`);
+        const before = draft.buffer.slice(0, tok.start);
+        const after = draft.buffer.slice(tok.end);
+        setDraft(`${before}${token}${after}`, tok.start + token.length);
+        dispatch({ type: 'pickerClose' });
+        return;
+      }
       let data: string;
       if (stat.size > TEXT_FILE_ATTACHMENT_INLINE_MAX_BYTES) {
         // Do not read a potentially huge file into the TUI merely to attach
@@ -154,6 +182,7 @@ export function useFileSearch(options: UseFileSearchOptions): FileSearchResult {
         data =
           bytes > TEXT_FILE_ATTACHMENT_INLINE_MAX_BYTES ? fileReadContract(picked, bytes) : inline;
       }
+      if (!selectionStillCurrent()) return;
       const token = await builder.registerFile({
         kind: 'file',
         data,
@@ -180,6 +209,43 @@ export function useFileSearch(options: UseFileSearchOptions): FileSearchResult {
   };
 
   return { onPickerEnter: acceptPickerSelection };
+}
+
+/**
+ * A picked PDF goes in as a document: the file itself for models that take
+ * PDFs, its text for the rest. Over the attach caps it degrades to the first
+ * pages' text, and a file too big to even open here to the read contract.
+ */
+async function attachPdf(
+  builder: InputBuilder,
+  picked: string,
+  absPath: string,
+  size: number,
+  isCurrent: () => boolean,
+): Promise<string | undefined> {
+  if (!isCurrent()) return undefined;
+  if (size > PDF_ATTACH_MAX_BYTES * 4) {
+    return builder.registerFile({
+      kind: 'file',
+      data: fileReadContract(picked, size),
+      meta: { filename: picked, label: picked },
+    });
+  }
+  const prepared = await preparePdfAttachment(await fs.readFile(absPath), picked);
+  if (!isCurrent()) return undefined;
+  if (prepared.kind === 'document') {
+    return builder.registerDocument({
+      data: prepared.block.source.data,
+      text: prepared.block.text,
+      filename: picked,
+      pages: prepared.block.pages,
+    });
+  }
+  return builder.registerFile({
+    kind: 'file',
+    data: prepared.text,
+    meta: { filename: picked, label: picked },
+  });
 }
 
 function fileReadContract(filePath: string, bytes: number): string {

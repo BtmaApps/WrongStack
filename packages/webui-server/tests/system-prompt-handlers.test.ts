@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   handlePrefsUpdate,
   handleSystemPromptGet,
+  handleSystemPromptPresets,
   type PrefsHandlerContext,
 } from '../src/server/prefs-handlers.js';
 import {
@@ -141,6 +142,98 @@ describe('handleSystemPromptGet', () => {
     const msg = send.mock.calls[0]![1] as { payload: { variants: unknown[]; error?: string } };
     expect(msg.payload.variants).toHaveLength(0);
     expect(msg.payload.error).toBe(unavailableSystemPromptInfo().error);
+  });
+});
+
+describe('custom system prompt presets', () => {
+  it('stores the active project choice outside the repository and rebuilds its session', async () => {
+    const send = vi.fn();
+    const applyVariant = vi.fn();
+    const globalDir = path.join(tmp, 'profile', 'instructions');
+    const projectDir = path.join(tmp, 'project', '.wrongstack', 'instructions');
+    await fs.mkdir(projectDir, { recursive: true });
+    const context = ctx({
+      send,
+      systemPrompt: {
+        paths: () => ({ globalDir, projectDir }),
+        profileConfigPath: path.join(tmp, 'config.json'),
+        current: () => 'default',
+        applyVariant,
+      },
+    });
+    const ws = {} as never;
+    await handleSystemPromptPresets(context, ws, 'create', {
+      name: 'Project standard',
+      baseVariant: 'default',
+    });
+    const id = (send.mock.calls.at(-1)![1] as { payload: { selectedId: string } }).payload
+      .selectedId;
+    await handleSystemPromptPresets(
+      context,
+      ws,
+      'activate',
+      {
+        id,
+        baseVariant: 'default',
+        scope: 'project',
+      },
+      'tab-project',
+    );
+    expect(applyVariant).toHaveBeenCalledWith('default', 'tab-project');
+    const library = send.mock.calls.findLast(
+      (call) => (call[1] as { type: string }).type === 'system_prompt.presets',
+    )?.[1] as { payload: { projectActive: { default: string }; active: object } };
+    expect(library.payload.projectActive.default).toBe(id);
+    expect(library.payload.active).toEqual({});
+    expect(await fs.readdir(projectDir)).toEqual([]);
+  });
+
+  it('creates, validates, previews and activates a profile copy without changing another variant', async () => {
+    const send = vi.fn();
+    const applyVariant = vi.fn();
+    const globalDir = path.join(tmp, 'instructions');
+    const context = ctx({
+      send,
+      systemPrompt: {
+        paths: () => ({ globalDir }),
+        profileConfigPath: path.join(tmp, 'config.json'),
+        current: () => 'default',
+        applyVariant,
+        previewContext: () => ({ toolNames: ['read'], tier: 'off' }),
+      },
+    });
+    const ws = {} as never;
+    await handleSystemPromptPresets(context, ws, 'create', { name: 'My pro', baseVariant: 'pro' });
+    const created = send.mock.calls.at(-1)?.[1] as { payload: { selectedId: string } };
+    expect(created.payload.selectedId).toBeTruthy();
+    const id = created.payload.selectedId;
+    await handleSystemPromptPresets(context, ws, 'preview', {
+      text: '<!--ws:if tool=read-->\nREAD\n<!--ws:else-->\nFALLBACK\n<!--ws:end-->',
+      requestId: 4,
+    });
+    const preview = send.mock.calls.at(-1)?.[1] as {
+      payload: { rendered: string; requestId: number };
+    };
+    expect(preview.payload.rendered).toContain('READ');
+    expect(preview.payload.rendered).not.toContain('FALLBACK');
+    expect(preview.payload.requestId).toBe(4);
+    await handleSystemPromptPresets(
+      context,
+      ws,
+      'activate',
+      { id, baseVariant: 'pro', scope: 'profile' },
+      'tab-standard',
+    );
+    expect(applyVariant).not.toHaveBeenCalled();
+    await handleSystemPromptPresets(context, ws, 'save', {
+      id,
+      revision: 1,
+      name: 'My pro',
+      text: '<!--ws:if tool=read-->broken',
+    });
+    expect((send.mock.calls.at(-1)![1] as { payload: { error: string } }).payload.error).toContain(
+      'Unclosed',
+    );
   });
 });
 

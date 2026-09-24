@@ -7,6 +7,7 @@ import {
   seedSessionSubagentPolicy,
 } from '@wrongstack/core/coordination';
 import { ProviderCacheLedger } from '@wrongstack/core/infrastructure';
+import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import {
   attachTodosCheckpoint,
   cleanOrphanLocks,
@@ -18,6 +19,7 @@ import {
 } from '@wrongstack/core/storage';
 import {
   DEFAULT_SESSION_PRUNE_DAYS,
+  type SessionPermissionOverride,
   type SessionStore,
   type SessionWriter,
 } from '@wrongstack/core/types';
@@ -217,6 +219,7 @@ export async function setupSession(params: {
   let restoredToolCalls: SessionResult['restoredToolCalls'] = [];
   let restoredEvents: SessionResult['restoredEvents'] = [];
   let restoredSubagentsAllowed: boolean | undefined;
+  let restoredPermissionOverrides: SessionPermissionOverride[] | undefined;
   let resumedModel: string | undefined;
   let resumedProvider: string | undefined;
   if (resumeId) {
@@ -248,6 +251,7 @@ export async function setupSession(params: {
       restoredToolCalls = resumed.data.toolCallEnds ?? [];
       restoredEvents = resumed.data.events ?? [];
       restoredSubagentsAllowed = resumed.data.subagentsAllowed;
+      restoredPermissionOverrides = resumed.data.permissionOverrides;
       // Prefer the resumed session's own model/provider on boot (applied later,
       // once the provider runtime + switch callback exist).
       resumedModel = resumed.data.metadata.model;
@@ -338,6 +342,10 @@ export async function setupSession(params: {
     restoreSessionSubagentPolicy(context, restoredEvents, restoredSubagentsAllowed);
     restoreSessionSubagentModelPlan(context, restoredEvents);
   } else seedSessionSubagentPolicy(context);
+  restoreSessionPermissionOverrides(context.meta, {
+    events: restoredEvents,
+    permissionOverrides: restoredPermissionOverrides,
+  });
 
   const queueStore = new QueueStore({
     dir: sessionDir,

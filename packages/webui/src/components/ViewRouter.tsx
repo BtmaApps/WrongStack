@@ -3,12 +3,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
-import { ErrorBoundary } from './ErrorBoundary';
-import { MainViewSlot, defaultOnCloseToChat } from './MainViewSlot';
 import { ChatView } from './ChatView';
 import { AgentTabs } from './ChatView/AgentTabs';
+import { ErrorBoundary } from './ErrorBoundary';
+import { defaultOnCloseToChat, MainViewSlot } from './MainViewSlot';
 import { PanelSuspense } from './PanelSuspense';
-import { WorkspaceDock } from './WorkspaceDock';
 
 /**
  * Main view router — mounts every registered view at most once per session
@@ -46,19 +45,14 @@ export function ViewRouter({
 
   return (
     <>
-      {/* Dock strip and the AGENTS switcher belong to the chat surface. They
-          stay MOUNTED for the session lifetime — their store subscriptions and
-          internal state keep running — but render only over chat: parked
-          (out of flow, inert) while another view is in front, exactly like
-          the transcript below. */}
+      {/* The AGENTS switcher belongs to the chat surface. It stays mounted
+          across view changes, preserving its session state. Workspace
+          controls live in the Session side panel. */}
       {hasSession && (
         <div
           className={cn('flex flex-col', currentView !== 'chat' && 'ws-view-parked')}
           {...(currentView !== 'chat' ? { inert: true, 'aria-hidden': true } : {})}
         >
-          <div className="ws-workspace-dock-wrap shrink-0 px-3 pt-2 sm:px-4">
-            <WorkspaceDock />
-          </div>
           <AgentTabs />
         </div>
       )}

@@ -10,7 +10,10 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
+import { LANG_FAMILY_ENTRIES } from './languages.js';
+import { allRowsAsArrays } from './sqlite-runtime.js';
 import { ladderChunkSizes } from './writer-helpers.js';
+import { LANG_FAMILY_WILDCARD } from './writer-schema.js';
 
 type Statement = ReturnType<DatabaseSync['prepare']>;
 type PrepareStatement = (sql: string) => Statement;
@@ -173,6 +176,48 @@ export function getSymbolNameCandidatesWithStatement(stmt: PrepareStatement): Ma
   return map;
 }
 
+/** `lang → family` exactly as the seeded `lang_family` table maps it. */
+const FAMILY_BY_LANG: ReadonlyMap<string, string> = new Map<string, string>([
+  ...LANG_FAMILY_ENTRIES,
+  ['', LANG_FAMILY_WILDCARD],
+]);
+
+/**
+ * Both per-symbol inputs of the wiring graph from ONE scan of `symbols`:
+ * the declaring file of every symbol, and the homonym counts of
+ * {@link getSymbolNameCandidatesWithStatement} (same `(name, family)` scope,
+ * same "only ambiguous names" rule). The rank pass used to load every column
+ * of every symbol just for its file (~650 ms here) and then run a grouped
+ * self-join for the counts (~480 ms); four narrow columns and one Map pass do
+ * both in a fraction of that.
+ */
+export function getSymbolGraphFactsWithStatement(stmt: PrepareStatement): {
+  fileOf: Map<number, string>;
+  candidates: Map<number, number>;
+} {
+  const rows = allRowsAsArrays(stmt('SELECT id, file, name, lang FROM symbols')) as Array<
+    [number, string, string, string]
+  >;
+  const fileOf = new Map<number, string>();
+  const groups = new Map<string, number[]>();
+  for (const [id, file, name, lang] of rows) {
+    fileOf.set(id, file);
+    // The SQL form inner-joins lang_family: an unmapped language takes no part.
+    const family = FAMILY_BY_LANG.get(lang);
+    if (family === undefined) continue;
+    const key = `${family}\u0000${name}`;
+    const group = groups.get(key);
+    if (group === undefined) groups.set(key, [id]);
+    else group.push(id);
+  }
+  const candidates = new Map<number, number>();
+  for (const ids of groups.values()) {
+    if (ids.length < 2) continue;
+    for (const id of ids) candidates.set(id, ids.length);
+  }
+  return { fileOf, candidates };
+}
+
 /**
  * File-to-file import edges, as `source file → set of imported files`.
  *
@@ -181,20 +226,22 @@ export function getSymbolNameCandidatesWithStatement(stmt: PrepareStatement): Ma
  * that is genuinely visible from one the resolver merely guessed at.
  */
 export function getImportVisibilityWithStatement(stmt: PrepareStatement): Map<string, Set<string>> {
-  const rows = stmt(`
+  const rows = allRowsAsArrays(
+    stmt(`
     SELECT DISTINCT s.file AS src, r.to_file AS dst
     FROM refs r
     JOIN symbols s ON s.id = r.from_id
     WHERE r.call_type = 'import' AND r.to_file IS NOT NULL AND r.to_file <> ''
-  `).all() as Array<{ src: string; dst: string }>;
+  `),
+  ) as Array<[string, string]>;
   const map = new Map<string, Set<string>>();
-  for (const row of rows) {
-    let targets = map.get(row.src);
+  for (const [src, dst] of rows) {
+    let targets = map.get(src);
     if (targets === undefined) {
       targets = new Set<string>();
-      map.set(row.src, targets);
+      map.set(src, targets);
     }
-    targets.add(row.dst);
+    targets.add(dst);
   }
   return map;
 }

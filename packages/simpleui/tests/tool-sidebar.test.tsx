@@ -36,7 +36,7 @@ describe('SimpleUI workspace drawer', () => {
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
-    act(() => root.render(<ToolSidebar agentId="leader" agentName="LEADER" calls={[]} />));
+    act(() => root.render(<ToolSidebar agent={{ id: 'leader', name: 'LEADER' }} calls={[]} />));
 
     expect(container.querySelector('.tool-sidebar-launcher')).toBeNull();
   });
@@ -46,7 +46,9 @@ describe('SimpleUI workspace drawer', () => {
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
-    act(() => root.render(<ToolSidebar agentId="worker-1" agentName="WORKER" calls={calls} />));
+    act(() =>
+      root.render(<ToolSidebar agent={{ id: 'worker-1', name: 'WORKER' }} calls={calls} />),
+    );
 
     expect(container.querySelector('#tool-sidebar')).toBeNull();
 
@@ -70,11 +72,9 @@ describe('SimpleUI workspace drawer', () => {
     act(() =>
       root.render(
         <ToolSidebar
-          agentId="leader"
-          agentName="LEADER"
+          agent={{ id: 'leader', name: 'LEADER' }}
           calls={calls}
-          worklists={store}
-          requestWorklist={(view) => requested.push(view)}
+          workspace={{ worklists: store, requestWorklist: (view) => requested.push(view) }}
         />,
       ),
     );
@@ -107,7 +107,7 @@ describe('SimpleUI workspace drawer', () => {
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
-    act(() => root.render(<ToolSidebar agentId="leader" agentName="LEADER" calls={calls} />));
+    act(() => root.render(<ToolSidebar agent={{ id: 'leader', name: 'LEADER' }} calls={calls} />));
 
     act(() => dispatchOpenWorkspacePanel('tools'));
     expect(container.textContent).not.toContain('src/app.tsx');

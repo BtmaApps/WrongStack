@@ -6,7 +6,7 @@ import {
   buildUserContentBlocks,
   IncomingImageError,
   type IncomingImagePayload,
-  parseIncomingImages,
+  parseIncomingAttachments,
 } from '@wrongstack/core/utils';
 import {
   createToolVisionAdapters,
@@ -16,6 +16,7 @@ import {
 } from '@wrongstack/runtime/vision';
 import type { WebSocket } from 'ws';
 import type { ConversationRouteHandlers } from './conversation-routes.js';
+import { pdfPromptBlocks } from './incoming-documents.js';
 import type { ConfirmDecision, PendingConfirm } from './pending-confirms.js';
 import {
   createSessionPromptQueue,
@@ -271,9 +272,16 @@ export function createConversationOperations(
         if (payload.freshContext === true) await startFreshTopicContext(agent.ctx);
         const content = typeof payload.content === 'string' ? payload.content : '';
         let input: string | ContentBlock[] = content;
-        const imageBlocks = parseIncomingImages(payload.images, payload.imageBase64);
-        if (imageBlocks.length > 0) {
-          const routed = await routeImagesForModel(buildUserContentBlocks(content, imageBlocks), {
+        const attached = parseIncomingAttachments(payload.images, payload.imageBase64);
+        // PDFs lead, then images, then the text; the provider runner decides
+        // per model whether a PDF travels as the file or as its text.
+        const blocks = [
+          ...(await pdfPromptBlocks(attached.pdfs)),
+          ...buildUserContentBlocks(content, attached.images),
+        ];
+        if (attached.pdfs.length > 0) input = blocks;
+        if (attached.images.length > 0) {
+          const routed = await routeImagesForModel(blocks, {
             supportsVision: agent.ctx.provider.capabilities.vision,
             adapters: () => createToolVisionAdapters(agent.tools),
             ctx: agent.ctx,

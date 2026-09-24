@@ -38,6 +38,7 @@ export function repairMissingColumns(db: DatabaseSync): void {
       columns: [
         ['package', "TEXT NOT NULL DEFAULT ''"],
         ['content_hash', "TEXT NOT NULL DEFAULT ''"],
+        ['git_blob', "TEXT NOT NULL DEFAULT ''"],
       ],
     },
     {

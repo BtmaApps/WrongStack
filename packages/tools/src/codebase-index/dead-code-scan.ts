@@ -24,7 +24,7 @@ import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { detectLang } from './languages.js';
-import type { SymbolKind, SymbolLang } from './schema.js';
+import { MODULE_OWNER_NAME, type SymbolKind, type SymbolLang } from './schema.js';
 import { codebaseIndexDirOverride, type IndexStore, indexStorePool } from './writer.js';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -762,6 +762,9 @@ export function runDeadCodeScan(
       // Only report symbols that are exported or could be externally relevant.
       // Skip pure-internal things like parameters, local vars that can't be "dead".
       if (s.kind === 'parameter') continue;
+      // A symbol-less file's ref owner is the file itself; whether the file
+      // is used is the dead-files question, not a dead declaration.
+      if (s.kind === 'mod' && s.name === MODULE_OWNER_NAME) continue;
       // Keys of manifests, config and docs are read by tools and humans, never
       // referenced from code: listing `package.json` fields as dead code was
       // pure noise that buried the real findings.
@@ -810,7 +813,11 @@ export function runDeadCodeScan(
     const deadPackages: DeadPackage[] = [];
     const pkgEntries = findPackageEntries(projectRoot);
     for (const [pkgName, pkgDir] of pkgEntries) {
-      const pkgFiles = allSymbols.filter((s) => s.file.startsWith(pkgDir + path.sep));
+      const pkgFiles = allSymbols.filter(
+        (s) =>
+          s.file.startsWith(pkgDir + path.sep) &&
+          !(s.kind === 'mod' && s.name === MODULE_OWNER_NAME),
+      );
       if (pkgFiles.length === 0) continue;
       const pkgUsed = pkgFiles.filter((s) => alive.has(s.id));
       if (pkgUsed.length === 0) {

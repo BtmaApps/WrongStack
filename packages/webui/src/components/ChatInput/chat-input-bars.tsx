@@ -1,9 +1,9 @@
-import { BookOpen, Cpu, History } from 'lucide-react';
+import { BookOpen, Cpu, FileText, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { openMainView } from '@/lib/view-navigation';
 import type { useFileReferenceStore } from '@/stores';
 import { FileReferenceChip } from '../FileReferenceChip.js';
-import type { ImageAttachment } from './image-attachments.js';
+import { type ImageAttachment, isPdfAttachment } from './image-attachments.js';
 import { SessionEffortSelect } from './session-effort-select.js';
 import { SubagentModelsButton } from './subagent-models-button.js';
 import type { PasteHintState } from './use-paste-drop.js';
@@ -98,11 +98,17 @@ export function PendingImagesBar({
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-1.5 py-1"
           title={img.name ?? t('chat:input.pendingAttachmentAlt')}
         >
-          <img
-            src={img.dataUrl}
-            alt={img.name ?? t('chat:input.pendingAttachmentAlt')}
-            className="h-10 w-10 rounded object-cover border border-border/50"
-          />
+          {isPdfAttachment(img) ? (
+            <span className="flex h-10 w-10 items-center justify-center rounded border border-border/50 bg-background/40">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+            </span>
+          ) : (
+            <img
+              src={img.dataUrl}
+              alt={img.name ?? t('chat:input.pendingAttachmentAlt')}
+              className="h-10 w-10 rounded object-cover border border-border/50"
+            />
+          )}
           <span className="flex flex-col leading-tight">
             <span className="text-[11px] text-foreground/90 max-w-[120px] truncate">
               {img.name ?? t('chat:input.imageAttached')}

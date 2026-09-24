@@ -429,3 +429,19 @@ export function getParserPool(): ParserWorkerPool | null {
   _pool ??= new ParserWorkerPool();
   return _pool;
 }
+
+/**
+ * Workers a frugal process (the project server) may use while rebuilding into
+ * an empty index. Frugal otherwise parses on its own thread only; a first
+ * index is the one run a user waits on, so it gets a small, bounded pool.
+ */
+export const FRUGAL_REBUILD_WORKERS = 2;
+
+/**
+ * A pool owned by one rebuild run, not the process-wide singleton: the
+ * caller shuts it down when the run ends, so the frugal process does not keep
+ * parser threads (each holding a TypeScript compiler) resident afterwards.
+ */
+export function createRebuildParserPool(): ParserWorkerPool {
+  return new ParserWorkerPool(FRUGAL_REBUILD_WORKERS);
+}

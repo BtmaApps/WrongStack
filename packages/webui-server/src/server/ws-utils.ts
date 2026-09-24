@@ -11,6 +11,7 @@ import { scrubErrorDetail } from '@wrongstack/core/security';
 // Value import (not `import type`): we reference `WebSocket.OPEN` below, which
 // is a runtime value, not just a type.
 import { WebSocket } from 'ws';
+import { webuiSessionFrameLog } from './session-frame-log.js';
 import type { ConnectedClient } from './types.js';
 
 /** Maximum unsent data retained by one client before it is disconnected. */
@@ -75,7 +76,9 @@ export function broadcast(
       ? (payload as { sessionId: string }).sessionId
       : undefined);
 
-  const data = JSON.stringify(msg);
+  // A session's frames are numbered so a reconnecting page can ask for the
+  // ones it missed (see session-frame-log.ts); project-wide frames are not.
+  const data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
   const frameBytes = Buffer.byteLength(data, 'utf8');
   for (const [ws, client] of clients) {
     if (clientWantsSession(client, sessionId)) sendSerialized(ws, data, frameBytes);

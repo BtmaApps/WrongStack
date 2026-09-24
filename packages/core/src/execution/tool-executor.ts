@@ -6,7 +6,7 @@ import { type Context, resolveEventSessionId } from '../core/context.js';
 import { queueDirectoryInstructions } from '../core/project-instructions.js';
 import { spanSessionAttributes } from '../core/span-session.js';
 import {
-  getDangerousCapabilities,
+  capabilityDowngradesToConfirm,
   hasCapability,
   hasDangerousCapabilityForSubagents,
   ToolCapabilities,
@@ -175,24 +175,18 @@ export class ToolExecutor {
       use = guard.use;
       const preToolContext = guard.preToolContext;
       const boundary = guard.boundary ?? { decision: 'allow' as const };
-      const toolDangerousCaps = getDangerousCapabilities(tool);
 
       const decision = await this.opts.permissionPolicy.evaluate(tool, use.input, ctx);
       let effectivePermission = decision.permission;
       const policy = this.opts.permissionPolicy;
       const yolo = policy.getYolo?.() === true;
       // A trust-file `auto` must not widen into arbitrary dangerous-capability
-      // execution, so it still confirms below. YOLO and an explicit
-      // `--allowed-tools` grant are the operator's own launch decision; without
-      // this waiver `--allowed-tools write` re-prompted — and in a script
-      // (nobody to answer) the write was simply denied.
-      const authoritativeAuto = decision.source === 'yolo' || decision.launchGrant === true;
-
-      const capabilityDowngraded =
-        toolDangerousCaps.length > 0 &&
-        effectivePermission === 'auto' &&
-        !yolo &&
-        !authoritativeAuto;
+      // execution, so it still confirms below. YOLO, an explicit
+      // `--allowed-tools` grant and an approval the user gave at a confirm
+      // prompt are the user's own decisions; without the waiver
+      // `--allowed-tools write` re-prompted (in a script, with nobody to
+      // answer, the write was simply denied) and "always allow" never stuck.
+      const capabilityDowngraded = capabilityDowngradesToConfirm(decision, tool, yolo);
       if (capabilityDowngraded) {
         effectivePermission = 'confirm';
       }

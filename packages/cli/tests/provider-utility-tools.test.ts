@@ -133,6 +133,19 @@ describe('registerProviderUtilityTools', () => {
       fallbackProfileManager: { get: vi.fn() },
       statusTracker: { status: vi.fn() },
       compactor: { compact: vi.fn() },
+      modelsRegistry: {
+        getProvider: vi.fn(async (id: string) =>
+          id === 'provider'
+            ? {
+                id,
+                models: [
+                  { id: 'chat', modalities: { output: ['text'] } },
+                  { id: 'painter', modalities: { output: ['image'] } },
+                ],
+              }
+            : undefined,
+        ),
+      },
     };
   }
 
@@ -318,6 +331,29 @@ describe('registerProviderUtilityTools', () => {
     expect(registry.register).toHaveBeenCalledWith({ name: 'council' });
     expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).toContain('no-such-lens');
     warn.mockRestore();
+  });
+
+  it('registers image_generate with image models read from the catalog at call time', async () => {
+    const registry = { register: vi.fn(), override: vi.fn() };
+    const deps = input(registry);
+
+    registerProviderUtilityTools(deps as never);
+
+    const tool = registry.register.mock.calls
+      .map((call) => call[0] as { name: string; execute?: unknown })
+      .find((candidate) => candidate.name === 'image_generate');
+    expect(tool).toBeDefined();
+    // No image target: the tool reports the catalog lookup it made.
+    const noProvider = { ...deps, getConfig: () => ({ provider: 'other', model: 'm' }) };
+    registry.register.mockClear();
+    registerProviderUtilityTools(noProvider as never);
+    const lonely = registry.register.mock.calls
+      .map((call) => call[0] as { name: string; execute: (...args: unknown[]) => Promise<unknown> })
+      .find((candidate) => candidate.name === 'image_generate');
+    await expect(
+      lonely?.execute({ prompt: 'p', path: 'x.png' }, { cwd: '.', projectRoot: '.' }, {}),
+    ).rejects.toThrow(/lists an image model/);
+    expect(deps.modelsRegistry.getProvider).toHaveBeenCalledWith('other');
   });
 
   it('leaves the council registries untouched when tools.council is absent', () => {

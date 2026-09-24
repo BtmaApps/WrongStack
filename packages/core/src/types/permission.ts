@@ -38,7 +38,9 @@ export interface PermissionDecision {
     | 'context'
     | 'subagent_guard'
     | 'readonly_mode'
-    | 'directory_rules';
+    | 'directory_rules'
+    /** A `/permissions allow|deny` rule of this session. */
+    | 'session_override';
   /** Risk tier of the tool, if classified. */
   riskTier?: 'safe' | 'standard' | 'destructive' | undefined;
   /**
@@ -48,6 +50,15 @@ export interface PermissionDecision {
    * confirm does not re-prompt for it (destructive calls still confirm).
    */
   launchGrant?: true | undefined;
+  /**
+   * The `auto` came from an approval the user gave at a confirm prompt ("same
+   * args", "this command", "this tool"), remembered in the user's own trust
+   * file. Like `launchGrant`, it is the user's decision rather than a pattern
+   * a repo or a hand-edited broad glob put there, so the executor honours it
+   * for dangerous-capability tools too; without this every "always allow" for
+   * bash, write or edit asked again on the very next identical call.
+   */
+  approvalGrant?: true | undefined;
 }
 
 /**
@@ -66,6 +77,45 @@ export interface PermissionTraceStep {
   source: string;
   /** Human-readable explanation of the outcome. */
   detail: string;
+  /**
+   * Which entry of the compiled rule list this step matched, when the step
+   * checks several (one trust pattern, one directory rule, one session rule).
+   * Equal to that {@link PermissionRule.ref}.
+   */
+  ref?: string | undefined;
+}
+
+/**
+ * One entry of the permission rule list: every setting that decides a tool
+ * call, compiled in the order the policy checks them. The first rule that
+ * matches a call decides it (`compilePermissionRules`). The list is a view:
+ * the policy still evaluates its own settings, and the explain parity test
+ * checks that every decision lands on a listed rule.
+ */
+export interface PermissionRule {
+  /** 1-based position in the list. */
+  n: number;
+  /** The check this rule belongs to; equal to `PermissionTraceStep.rule`. */
+  step: string;
+  /** Tells apart the rules of one check (see `PermissionTraceStep.ref`). */
+  ref?: string | undefined;
+  /** Where the rule comes from. */
+  source:
+    | 'directory-rules'
+    | 'trust-file'
+    | 'session'
+    | 'prompt-answer'
+    | 'allowed-tools'
+    | 'tool'
+    | 'yolo'
+    | 'built-in'
+    | 'executor';
+  /** The tool name or glob it applies to; `*` is every tool. */
+  action: string;
+  /** The input it applies to: a subject glob, a directory, or a condition; `*` is any. */
+  resource: string;
+  effect: 'allow' | 'ask' | 'deny';
+  note?: string | undefined;
 }
 
 /**
@@ -155,6 +205,11 @@ export interface PermissionPolicy {
    * writing to trust files, or mutating session state.
    */
   explain?(tool: Tool, input: unknown, ctx: AgentContext): Promise<PermissionTrace>;
+  /**
+   * The rules this policy checks, in order, for one conversation (its YOLO,
+   * session rules and prompt answers). Unnumbered; see `compilePermissionRules`.
+   */
+  listRules?(ctx?: AgentContext | undefined): Promise<Omit<PermissionRule, 'n'>[]>;
   /**
    * Persist an allow rule. `ttlMs` bounds how long a prompt-driven "always"
    * stays valid; omitted (a hand-authored rule) means permanent.

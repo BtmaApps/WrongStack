@@ -58,6 +58,22 @@ describe('TransformersEmbeddingProvider', () => {
     expect(vectors.map((vector) => vector.length)).toEqual([2, 2]);
   });
 
+  it('splits flat number-array output into one vector per input', async () => {
+    const provider = new TransformersEmbeddingProvider({ batchSize: 2 });
+    Object.defineProperty(provider, 'getExtractor', {
+      configurable: true,
+      value: async () => async () => ({ data: [1, 2, 3, 4], dims: [2, 2] }),
+    });
+
+    const vectors = await provider.embed(['one', 'two']);
+
+    expect(vectors).toHaveLength(2);
+    expect(vectors.map((vector) => Array.from(vector))).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
   it('reports availability based on whether the optional dep is installed', async () => {
     const provider = new TransformersEmbeddingProvider({
       cacheDir: path.join(os.tmpdir(), `vt-${Date.now()}`),

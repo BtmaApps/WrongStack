@@ -125,8 +125,15 @@ export function useTuiEnvironmentState({
 
   const [indexState, setIndexState] = useState(() => getIndexState());
   useEffect(() => {
-    setIndexState(getIndexState());
-    return onIndexStateChange(setIndexState);
+    // Every heartbeat (10 s) and progress tick emits a fresh snapshot object,
+    // which re-rendered the whole TUI even when the status chip — this
+    // state's only reader — would draw the same text. Keep the previous
+    // object then so React bails out. The detail panel reads
+    // `getIndexState()` itself and stays exact.
+    const update = (next: ReturnType<typeof getIndexState>) =>
+      setIndexState((prev) => (indexChipKey(prev) === indexChipKey(next) ? prev : next));
+    update(getIndexState());
+    return onIndexStateChange(update);
   }, []);
 
   const [breakerCountdown, setBreakerCountdown] = useState(() =>
@@ -225,4 +232,23 @@ export function useTuiEnvironmentState({
     indexState,
     breakerCountdown,
   };
+}
+
+/** Everything the index status chip renders; equal keys draw an equal chip. */
+export function indexChipKey(state: ReturnType<typeof getIndexState>): string {
+  const server = state.server;
+  const health = server?.health;
+  return [
+    state.ready,
+    state.indexing,
+    state.currentFile,
+    state.totalFiles,
+    state.lastError ?? '',
+    state.circuit?.state ?? '',
+    server?.status ?? '',
+    server?.pid ?? '',
+    health?.status ?? '',
+    health?.latencyMs ?? '',
+    health?.missedHeartbeats ?? '',
+  ].join('|');
 }

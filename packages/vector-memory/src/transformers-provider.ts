@@ -165,6 +165,13 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
       return (flat as unknown as number[][]).map((row) => Float32Array.from(row));
     }
     if (Array.isArray(flat)) {
+      if (batchSize === 1) return [Float32Array.from(flat as unknown as number[])];
+      if (flat.length % batchSize === 0) {
+        const dimensions = flat.length / batchSize;
+        return Array.from({ length: batchSize }, (_, index) =>
+          Float32Array.from((flat as unknown as number[]).slice(index * dimensions, (index + 1) * dimensions)),
+        );
+      }
       return [Float32Array.from(flat as unknown as number[])];
     }
     throw new Error('TransformersEmbeddingProvider: unexpected pipeline output shape');

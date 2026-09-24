@@ -18,6 +18,7 @@ import {
   persistSessionCloseSummary,
   runMetadataCheckpointOperation,
 } from './session-writer-checkpoint.js';
+import { clearRedoStash, executeSessionRedo, peekRedoStash } from './session-writer-redo.js';
 import { executeSessionTruncate } from './session-writer-rewind.js';
 import { scrubSessionWriterEvent } from './session-writer-scrubber.js';
 import {
@@ -114,6 +115,8 @@ export class FileSessionWriter implements SessionWriter {
   private readonly snapshotTracker = new SessionSnapshotTracker();
   /** Prompt whose tool work is currently executing. Set by writeCheckpoint. */
   private activePromptIndex: number | null = null;
+  /** See writeCheckpoint: whether a redo stash may need dropping. */
+  private redoStashMayExist = true;
 
   /**
    * Buffer an event from a synchronous Context callback. ensureInit() starts
@@ -295,6 +298,7 @@ export class FileSessionWriter implements SessionWriter {
       id: this.id,
       model: this.meta.model ?? 'unknown',
       provider: this.meta.provider ?? 'unknown',
+      ...(this.meta.checkout ? { checkout: this.meta.checkout } : {}),
     });
   }
 
@@ -551,10 +555,7 @@ export class FileSessionWriter implements SessionWriter {
       // the closing state must not survive as a phantom. Any in-flight
       // checkpoint is legitimate (the writer is still open after this
       // rollback) and finishes on its own.
-      if (this.metadataTimer) {
-        clearTimeout(this.metadataTimer);
-        this.metadataTimer = null;
-      }
+      this.cancelMetadataTimer();
       await this.metadataCheckpointInFlight?.catch(() => undefined);
       // A failed durable drain must not permanently brick the writer. Keep the
       // handle open and allow the timer or a later close() call to retry.
@@ -570,6 +571,13 @@ export class FileSessionWriter implements SessionWriter {
     return this.closePromise;
   }
 
+  private cancelMetadataTimer(): void {
+    if (this.metadataTimer) {
+      clearTimeout(this.metadataTimer);
+      this.metadataTimer = null;
+    }
+  }
+
   private async doClose(): Promise<void> {
     // Stop mid-session metadata checkpointing FIRST so nothing re-arms while
     // we materialize. Pending file snapshots still require an OPEN writer —
@@ -577,10 +585,7 @@ export class FileSessionWriter implements SessionWriter {
     // silently drop them — so `closed` flips only after they are written,
     // followed by a second metadata stop for anything the snapshot appends
     // re-armed.
-    if (this.metadataTimer) {
-      clearTimeout(this.metadataTimer);
-      this.metadataTimer = null;
-    }
+    this.cancelMetadataTimer();
     await this.metadataCheckpointInFlight?.catch(() => undefined);
     // Session creation opens the transcript eagerly, but its lifecycle
     // preamble is lazy. Materialize it even for an otherwise idle session so
@@ -591,10 +596,7 @@ export class FileSessionWriter implements SessionWriter {
     }
     // Flip closed only after every write that requires an open writer.
     this.closed = true;
-    if (this.metadataTimer) {
-      clearTimeout(this.metadataTimer);
-      this.metadataTimer = null;
-    }
+    this.cancelMetadataTimer();
     await this.metadataCheckpointInFlight?.catch(() => undefined);
     // Flush any buffered events before finalizing. The summary counters
     // (toolCallCount, tokenIn/Out, outcome) are already up to date because
@@ -634,6 +636,12 @@ export class FileSessionWriter implements SessionWriter {
   }
 
   async writeCheckpoint(promptIndex: number, promptPreview: string): Promise<void> {
+    // A new prompt ends the redo history. Checked once per writer (a stash
+    // left by an earlier process counts), then only after a rewind.
+    if (this.redoStashMayExist && this.filePath) {
+      this.redoStashMayExist = false;
+      await clearRedoStash(this.filePath).catch(() => undefined);
+    }
     await writeSessionCheckpoint(
       {
         sessionId: this.id,
@@ -670,35 +678,48 @@ export class FileSessionWriter implements SessionWriter {
     targetPromptIndex: number,
     revertedFiles: readonly string[] = [],
   ): Promise<number> {
+    this.redoStashMayExist = true;
     return executeSessionTruncate({
-      sessionId: this.id,
-      filePath: this.filePath,
+      ...this.journalRewriteContext(),
       targetPromptIndex,
       revertedFiles,
+      append: (ev) => this.append(ev),
+      getActivePromptIndex: () => this.activePromptIndex,
+    });
+  }
+
+  async peekRedo(): Promise<{ toPromptIndex: number; events: SessionEvent[] } | null> {
+    return this.filePath ? peekRedoStash(this.filePath) : null;
+  }
+
+  async restoreRedo(): Promise<number | null> {
+    return executeSessionRedo(this.journalRewriteContext());
+  }
+
+  /** Writer state a rewind or redo needs to rewrite the journal in place. */
+  private journalRewriteContext() {
+    return {
+      sessionId: this.id,
+      filePath: this.filePath,
       closed: this.closed,
       buffer: this.buffer,
       handle: this.handle,
-      setHandle: (h) => {
+      setHandle: (h: fsp.FileHandle) => {
         this.handle = h;
       },
       events: this.events,
       summaryTracker: this.summaryTracker,
-      append: (ev) => this.append(ev),
-      cancelMetadataTimer: () => {
-        if (this.metadataTimer) {
-          clearTimeout(this.metadataTimer);
-          this.metadataTimer = null;
-        }
-      },
+      cancelMetadataTimer: () => this.cancelMetadataTimer(),
       metadataCheckpointInFlight: this.metadataCheckpointInFlight,
       scheduleMetadataCheckpoint: () => this.scheduleMetadataCheckpoint(),
-      setActivePromptIndex: (idx) => {
+      setActivePromptIndex: (idx: number | null) => {
         this.activePromptIndex = idx;
       },
-    });
+    };
   }
 
   async clearSession(): Promise<void> {
+    if (this.filePath) await clearRedoStash(this.filePath).catch(() => undefined);
     await executeClearSession({
       id: this.id,
       filePath: this.filePath,
@@ -706,12 +727,7 @@ export class FileSessionWriter implements SessionWriter {
       handle: this.handle,
       buffer: this.buffer,
       summaryTracker: this.summaryTracker,
-      cancelMetadataTimer: () => {
-        if (this.metadataTimer) {
-          clearTimeout(this.metadataTimer);
-          this.metadataTimer = null;
-        }
-      },
+      cancelMetadataTimer: () => this.cancelMetadataTimer(),
       metadataCheckpointInFlight: this.metadataCheckpointInFlight,
       scheduleMetadataCheckpoint: () => this.scheduleMetadataCheckpoint(),
       onCleared: () => {

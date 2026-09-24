@@ -137,6 +137,48 @@ describe('PythonAdapter', () => {
     }
   });
 
+  it('excludes Pipfile source, interpreter and script metadata from dependencies', async () => {
+    const { dir, ws } = mkWorkspace({
+      Pipfile: `${PIPFILE_CONTENT}
+[requires]
+python_version = "3.12"
+[scripts]
+serve = "python app.py"
+`,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      expect(deps.map((d) => ({ name: d.name, scope: d.scope }))).toEqual([
+        { name: 'django', scope: 'runtime' },
+        { name: 'requests', scope: 'runtime' },
+        { name: 'pytest', scope: 'development' },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not treat a source table after packages as package entries', async () => {
+    const { dir, ws } = mkWorkspace({
+      Pipfile: '[packages]\ndjango = "*"\n[[source]]\nurl = "https://pypi.org/simple"\n',
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name)).toEqual(['django']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns no dependencies for a metadata-only Pipfile', async () => {
+    const { dir, ws } = mkWorkspace({ Pipfile: '[requires]\npython_version = "3.12"\n' });
+    try {
+      expect(await new PythonAdapter().inventory(ws, {})).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('marks Pipfile dev-packages as development scope', async () => {
     const { dir, ws } = mkWorkspace({ Pipfile: PIPFILE_CONTENT });
     try {

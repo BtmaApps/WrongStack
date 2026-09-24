@@ -135,3 +135,75 @@ export function buildUserContentBlocks(
   if (text) blocks.push({ type: 'text', text });
   return blocks;
 }
+
+/** The one document type a composer attaches. */
+export const PDF_MEDIA_TYPE = 'application/pdf';
+
+export const MAX_INCOMING_DOCUMENTS = 4;
+
+/**
+ * Decoded-byte cap per PDF. A PDF cannot be downscaled the way an image can,
+ * so this is the file as the user picked it; it keeps one PDF plus the
+ * message envelope inside the servers' 20 MB WS frame.
+ */
+export const MAX_INCOMING_DOCUMENT_BYTES = 8 * 1024 * 1024;
+
+/** A validated PDF from a `user_message`, still to be turned into a block. */
+export interface IncomingPdf {
+  /** Bare base64. */
+  data: string;
+  name: string;
+  bytes: number;
+}
+
+/** `%PDF-` in base64: every PDF starts with it. */
+const PDF_BASE64_MAGIC = 'JVBERi0';
+
+/**
+ * Validate the attachments of a `user_message`. PDFs ride the same `images`
+ * field as images (one composer pipeline carries both through queue, steer
+ * and resend), told apart by media type; images go through
+ * {@link parseIncomingImages} unchanged and PDFs are checked here.
+ *
+ * Throws {@link IncomingImageError} on any violation.
+ */
+export function parseIncomingAttachments(
+  images?: readonly IncomingImagePayload[] | undefined,
+  legacyImageBase64?: string | undefined,
+): { images: ImageBlock[]; pdfs: IncomingPdf[] } {
+  const imagePayloads: IncomingImagePayload[] = [];
+  const pdfs: IncomingPdf[] = [];
+  for (const item of images ?? []) {
+    const { base64, mediaType: fromUrl } = splitDataUrl(item.data ?? '');
+    if ((item.mediaType ?? fromUrl ?? '').toLowerCase() !== PDF_MEDIA_TYPE) {
+      imagePayloads.push(item);
+      continue;
+    }
+    // The name lands inside the `<attached-pdf name="…">` wrapper a model
+    // without PDF input reads, so it must not be able to close that tag.
+    const name =
+      item.name
+        ?.replace(/["<>\r\n]/g, '')
+        .trim()
+        .slice(0, 200) || `document-${pdfs.length + 1}.pdf`;
+    if (!base64 || !isValidImageBase64(base64)) {
+      throw new IncomingImageError(`PDF "${name}": data is not valid base64.`);
+    }
+    if (!base64.startsWith(PDF_BASE64_MAGIC)) {
+      throw new IncomingImageError(`PDF "${name}": the file is not a PDF.`);
+    }
+    const bytes = base64DecodedBytes(base64);
+    if (bytes > MAX_INCOMING_DOCUMENT_BYTES) {
+      throw new IncomingImageError(
+        `PDF "${name}": ${(bytes / (1024 * 1024)).toFixed(1)} MB exceeds the ${MAX_INCOMING_DOCUMENT_BYTES / (1024 * 1024)} MB limit.`,
+      );
+    }
+    pdfs.push({ data: base64, name, bytes });
+  }
+  if (pdfs.length > MAX_INCOMING_DOCUMENTS) {
+    throw new IncomingImageError(
+      `Too many PDFs: ${pdfs.length} (max ${MAX_INCOMING_DOCUMENTS} per message).`,
+    );
+  }
+  return { images: parseIncomingImages(imagePayloads, legacyImageBase64), pdfs };
+}

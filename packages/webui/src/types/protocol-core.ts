@@ -371,6 +371,19 @@ export interface WSSessionRunState {
   };
 }
 
+/**
+ * The end of one tab's reconnect catch-up. `resumed: true` came after the
+ * frames the tab missed; `false` means the server could not supply them and a
+ * transcript replay follows instead.
+ */
+export interface WSSessionFramesResumed {
+  type: 'session.frames_resumed';
+  payload: SessionScopedPayload & {
+    resumed: boolean;
+    frames?: number;
+  };
+}
+
 export interface WSSessionResumeProgress {
   type: 'session.resume_progress';
   payload: SessionScopedPayload & {

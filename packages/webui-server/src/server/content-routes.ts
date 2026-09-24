@@ -21,6 +21,7 @@ import {
   handleFilesTree,
   handleFilesWrite,
 } from './file-handlers.js';
+import { handleFilesImage } from './project-image.js';
 import {
   handlePromptsContent,
   handlePromptsCreate,
@@ -84,6 +85,9 @@ export async function handleContentRoute(
       return true;
     case 'files.read':
       await handleFilesRead(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'files.image':
+      await handleFilesImage(ws, message, ctx.getProjectRoot());
       return true;
     case 'files.skeleton':
       await handleFilesSkeleton(ws, message, ctx.getProjectRoot());

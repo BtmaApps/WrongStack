@@ -18,6 +18,7 @@ import {
 } from '@wrongstack/core/agent';
 import { resetSessionSubagentPolicy } from '@wrongstack/core/coordination';
 import { type EventBus, TOKENS } from '@wrongstack/core/kernel';
+import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import type { Config, MemoryPort, ModeStore, SkillLoader } from '@wrongstack/core/types';
 import {
@@ -169,6 +170,7 @@ export async function switchProjectInPlace(
   context.session = nextWriter;
   context.state.replaceMessages([]);
   resetSessionSubagentPolicy(context);
+  restoreSessionPermissionOverrides(context.meta, {});
   context.state.replaceTodos([]);
   context.clearFileTracking();
   context.clearMemoryEvidence?.();

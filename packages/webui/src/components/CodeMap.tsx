@@ -77,6 +77,9 @@ function CodeMapInner(): React.ReactElement {
   const [scope, setScope] = useState<CodeMapScope>({ level: 'packages' });
   const currentScopeKey = scopeKey(scope);
   const [graph, setGraph] = useState<CodeMapGraphResponse>(EMPTY_GRAPH);
+  /** Latest rendered graph, read by the load effect without re-running it. */
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -233,18 +236,27 @@ function CodeMapInner(): React.ReactElement {
       lastSeenIndexGeneration.current = indexGeneration;
       cache.current.clear();
       setCacheRevision((revision) => revision + 1);
-      setExpandedPackages(new Set());
-      setExpandedDirectories(new Set());
-      setExpandedFiles(new Set());
-      setRevealAllKeys(new Set());
     }
-    setLoading(true);
-    setError(null);
+    // An index update refreshes in the background: the map the user is
+    // reading stays on screen, expanded packages/directories/files stay
+    // expanded, and the selection survives if its node still exists. Every
+    // agent edit publishes a generation, so collapsing the tree and flashing
+    // the loading state here made the map unusable while an agent worked.
+    const background = forceRefresh && graphRef.current !== EMPTY_GRAPH;
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
     void fetchGraph(scope, forceRefresh)
       .then((nextGraph) => {
         if (cancelled) return;
         setGraph(nextGraph);
-        if (!forceRefresh) {
+        if (background) {
+          setSelectedId((current) =>
+            current && nextGraph.nodes.some((node) => node.id === current) ? current : null,
+          );
+          setError(null);
+        } else if (!forceRefresh) {
           const requested = pendingSelection.current;
           pendingSelection.current = null;
           setSelectedId(
@@ -256,7 +268,8 @@ function CodeMapInner(): React.ReactElement {
       .catch((cause: unknown) => {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
-        setGraph(EMPTY_GRAPH);
+        // A failed background refresh keeps the last good map on screen.
+        if (!background) setGraph(EMPTY_GRAPH);
         setLoading(false);
       });
     return () => {

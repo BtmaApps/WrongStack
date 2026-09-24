@@ -10,6 +10,7 @@ import {
 } from '@wrongstack/webui-protocol';
 import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { WSClientMessage, WSServerMessage, WSUserMessageImage } from '../types';
+import { FrameResume } from './session-frame-gate';
 import { streamCoalescer } from './stream-coalescer';
 import { installWsClientActionMethods, type WsClientActionMethods } from './ws-client-actions';
 import { ensureAuthCookie } from './ws-client-auth';
@@ -128,6 +129,10 @@ class WrongStackWebSocketClientBase {
   replayOnNextSubscribe = true;
   /** Last declared open-tab set — see `subscribeSessions`. */
   subscribedSessionIds: string[] = [];
+  /** Reconnect catch-up: session frames in order, missed ones asked back. */
+  readonly frameResume = new FrameResume<WSServerMessage>((frames) => {
+    for (const frame of frames) this.handleMessage(frame);
+  });
   /**
    * Auto-retry parking for a `session_not_ready` refusal: the message the
    * server refused while its session had no live writer, held until that
@@ -292,7 +297,7 @@ class WrongStackWebSocketClientBase {
           },
           onMessage: (msg) => {
             this.connectionState = markConnectionActivity(this.connectionState);
-            this.handleMessage(msg);
+            for (const frame of this.frameResume.gate.accept(msg)) this.handleMessage(frame);
           },
           onError: (errText) => {
             this.lastErrorText = errText;
@@ -413,6 +418,11 @@ class WrongStackWebSocketClientBase {
   }
 
   private handleMessage(msg: WSServerMessage) {
+    if (msg.type === 'session.frames_resumed') {
+      this.frameResume.onFramesResumed(msg);
+      return;
+    }
+    if (msg.type === 'session.start') msg = this.frameResume.onSessionStart(msg);
     if (msg.type === 'tool.confirm_needed') {
       const payload = msg.payload as never as {
         id: string;

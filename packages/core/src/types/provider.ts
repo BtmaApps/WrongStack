@@ -2,6 +2,7 @@ import { truncate } from '../utils/string.js';
 import type { ContentBlock, TextBlock } from './blocks.js';
 import type { ErrorCode } from './errors.js';
 import { ERROR_CODES, WrongStackError } from './errors.js';
+import type { ImageGenerationRequest, ImageGenerationResult } from './image-generation.js';
 import type { Message } from './messages.js';
 import { QUOTA_EXHAUSTED_RE } from './quota-regex.js';
 import type { Tool } from './tool.js';
@@ -231,6 +232,8 @@ export interface Capabilities {
   tools: boolean;
   parallelTools: boolean;
   vision: boolean;
+  /** Accepts PDF documents natively (catalog `modalities.input` lists `pdf`). */
+  pdf?: boolean | undefined;
   streaming: boolean;
   promptCache: boolean;
   systemPrompt: boolean;
@@ -405,6 +408,14 @@ export interface Provider {
    * and never costs tokens.
    */
   warm?(model: string): Promise<void>;
+  /**
+   * Optional text-to-image generation, on the wires that have an image API
+   * (OpenAI images, Gemini). Absent means this provider cannot draw.
+   */
+  generateImage?(
+    req: ImageGenerationRequest,
+    opts: { signal: AbortSignal },
+  ): Promise<ImageGenerationResult>;
   /** Canonical streaming entry point. `complete()` defaults to a wrapper that
    * aggregates this stream — providers may override for non-streaming wires. */
   stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent>;

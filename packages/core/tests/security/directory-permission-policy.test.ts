@@ -183,6 +183,23 @@ describe('matchRule', () => {
   it('returns undefined when no rule matches', () => {
     expect(matchRule(pol, 'notes/todo.md')).toBeUndefined();
   });
+
+  it('covers everything below a plain directory, as DirectoryRule documents', () => {
+    // A plain `secrets` used to match only the path `secrets` itself, so the
+    // rule validated, read as a ban, and protected no file.
+    const plain = policy([{ directory: 'secrets', denyTools: ['write'] }]);
+    expect(matchRule(plain, 'secrets/key.pem')?.directory).toBe('secrets');
+    expect(matchRule(plain, 'secrets/deep/nested/key.pem')?.directory).toBe('secrets');
+    expect(matchRule(plain, 'secrets')?.directory).toBe('secrets');
+    expect(matchRule(plain, 'secrets-public/readme.md')).toBeUndefined();
+    expect(matchRule(plain, 'docs/secrets.md')).toBeUndefined();
+  });
+
+  it('covers files below a directory that a wildcard pattern matches', () => {
+    const wild = policy([{ directory: 'clients/*', denyProviders: ['openai'] }]);
+    expect(matchRule(wild, 'clients/acme/src/a.ts')?.directory).toBe('clients/*');
+    expect(matchRule(wild, 'vendors/acme/a.ts')).toBeUndefined();
+  });
 });
 
 // ── validateDirectoryPolicy (schema surface) ────────────────────────────────

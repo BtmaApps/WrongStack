@@ -227,6 +227,7 @@ export function reduceConversation(state: State, action: ConversationAction): St
         copiedEntryId: null,
         inspectOverlay: null,
         chatSearch: null,
+        messageJump: { entryId: null, seq: 0 },
         toolResultViewOverrides: new Map(),
         // Bump the generation so <Static> remounts — without this, Ink's
         // already-written index exceeds the new (shorter) array and the

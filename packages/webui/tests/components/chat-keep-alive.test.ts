@@ -37,22 +37,21 @@ describe('chat keep-alive', () => {
     expect(src).toMatch(/currentView !== 'chat' \? \{ inert: true/);
   });
 
-  it('keeps the session dock and AGENTS strip mounted, parked outside chat', () => {
+  it('keeps AGENTS mounted above chat and places workspace controls in Session', () => {
     const src = read('components/ViewRouter.tsx');
-    const dockIndex = src.indexOf('<WorkspaceDock />');
+    const sessionPanel = read('components/SidePanel/SessionPanel.tsx');
+    const sidePanel = read('components/SidePanel/index.tsx');
     const agentTabsIndex = src.indexOf('<AgentTabs />');
     const chatParkIndex = src.indexOf("currentView !== 'chat' && 'ws-view-parked'");
     const chatViewIndex = src.indexOf('<ChatView />');
 
-    expect(dockIndex).toBeGreaterThan(-1);
+    expect(src).not.toContain('<WorkspaceDock />');
+    expect(sessionPanel).toContain('<WorkspaceDock />');
+    expect(sidePanel).toContain("activeActivity === 'chat' && <SessionPanel />");
     expect(agentTabsIndex).toBeGreaterThan(-1);
     expect(chatParkIndex).toBeGreaterThan(-1);
     expect(chatViewIndex).toBeGreaterThan(-1);
-    // The dock strip and AGENTS switcher belong to the chat surface: they sit
-    // INSIDE the parked wrapper so they are simply not displayed on other
-    // views, yet stay mounted (subscriptions and state never tear down).
-    // They still render above the transcript.
-    expect(chatParkIndex).toBeLessThan(dockIndex);
+    // AGENTS stays parked with the chat surface and above the transcript.
     expect(chatParkIndex).toBeLessThan(agentTabsIndex);
     expect(agentTabsIndex).toBeLessThan(chatViewIndex);
   });

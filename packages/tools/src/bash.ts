@@ -20,6 +20,7 @@ import {
 } from './_shell-pick.js';
 import { normalizeCommandOutput } from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
+import { closeBackgroundLogFd, openBackgroundLog } from './background-log.js';
 import { hermeticEnv, hermeticPosixArgv } from './bash-hermetic.js';
 import { checkAndBlockKillCommand } from './bash-kill-guard.js';
 import { getProcessRegistry, redactCommand } from './process-registry.js';
@@ -36,6 +37,8 @@ export interface BashOutput {
   exit_code: number | null;
   timed_out: boolean;
   pid?: number | null | undefined;
+  /** Background run: the file its stdout and stderr go to. */
+  log_file?: string | undefined;
   error?: string | undefined;
 }
 
@@ -79,7 +82,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     '- Strongly prefer `exec` for known safe commands (node, npm, pnpm, tsc, git, etc.).\n' +
     '- Use bash only when you genuinely need shell features (pipes, redirection, complex one-liners).\n' +
     '- Prefer single focused commands over huge `&&` chains.\n' +
-    '- Use `background: true` only for long-running processes (dev servers, watchers).\n' +
+    '- Use `background: true` only for long-running processes (dev servers, watchers). Its output goes to the `log_file` in the result; `read` it to see how the process is doing.\n' +
     '- `timeout_ms: 0` removes the time limit for a long foreground job you must wait on (the user can still interrupt it).\n' +
     '- `hermetic: true` skips shell startup files and runs with a minimal environment, for reproducible results.\n' +
     '- The working directory is the session working dir (the user changes it with `/working_dir`), defaulting to the project root; use `cd` inside the command for a one-off directory.\n' +
@@ -122,7 +125,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       background: {
         type: 'boolean',
         description:
-          'If true, launch the process in the background and return the PID immediately.',
+          'If true, launch the process in the background and return its PID and log_file (its output) immediately.',
       },
       hermetic: {
         type: 'boolean',
@@ -220,6 +223,8 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       argv: readonly string[];
       /** Command payload appended to argv. PowerShell requires UTF-16LE Base64. */
       commandArg: string;
+      /** Pass argv to CreateProcess untouched (cmd.exe does not read `\"`). */
+      verbatim?: boolean;
     };
     let plan: ShellPlan;
     // The resolved Windows shell kind, kept in scope so the post-failure
@@ -252,16 +257,27 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           : shell === 'pwsh'
             ? resolvePowerShell('pwsh.exe')
             : (process.env['COMSPEC'] ?? 'cmd.exe');
-      plan = {
-        bin,
-        // `cmd /d` skips the AutoRun registry commands; PowerShell already
-        // runs with -NoProfile.
-        argv: hermetic && shell === 'cmd' ? ['/d', ...shellArgs(shell)] : shellArgs(shell),
-        commandArg:
-          shell === 'powershell' || shell === 'pwsh'
-            ? Buffer.from(wrapPowerShellScript(input.command), 'utf16le').toString('base64')
-            : input.command,
-      };
+      // cmd.exe runs as `cmd /s /c "<command>"`, verbatim — the way Node's
+      // own `shell: true` does it. Node's default argv quoting escapes an
+      // inner `"` as `\"`, which cmd.exe does not understand, so any command
+      // with a quoted argument (`node -e "..."`, `cd "a b"`) broke apart.
+      const isCmd = shell === 'cmd';
+      plan = isCmd
+        ? {
+            bin,
+            // `cmd /d` skips the AutoRun registry commands.
+            argv: [...(hermetic ? ['/d'] : []), '/s', ...shellArgs(shell)],
+            commandArg: `"${input.command}"`,
+            verbatim: true,
+          }
+        : {
+            bin,
+            // PowerShell already runs with -NoProfile.
+            argv: shellArgs(shell),
+            commandArg: Buffer.from(wrapPowerShellScript(input.command), 'utf16le').toString(
+              'base64',
+            ),
+          };
     } else {
       // POSIX: use WRONGSTACK_SHELL if set; else honor $SHELL only when it
       // names an allowlisted shell (bash/zsh/sh/dash/fish); else /bin/bash.
@@ -281,8 +297,12 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     const shell = plan.bin;
     const args = [...plan.argv, plan.commandArg];
 
-    const childEnv = buildChildEnv(ctx.session?.id);
-    const env = hermetic ? hermeticEnv(childEnv) : childEnv;
+    const env = buildChildEnv(ctx.session?.id);
+    if (hermetic) {
+      const filtered = hermeticEnv(env);
+      for (const k of Object.keys(env)) delete env[k];
+      Object.assign(env, filtered);
+    }
 
     // Spawn in the SESSION working dir (set via `set_working_dir`; containment
     // against projectRoot is enforced by Context.setWorkingDir), falling back
@@ -317,16 +337,20 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       // Background mode is fully detached from the host's output pipes. If
       // stdout/stderr stayed piped, closing the CLI would close the read ends
       // and a later write could terminate the preserved job with EPIPE/SIGPIPE.
+      // Output goes to a file the child writes itself (see background-log.ts).
+      const bgLog = openBackgroundLog(ctx.projectRoot, 'bash', registry.logFiles());
       let child: ReturnType<typeof spawn>;
       try {
         child = spawn(shell, args, {
           cwd: spawnCwd,
           env,
-          stdio: ['ignore', 'ignore', 'ignore'],
+          stdio: ['ignore', bgLog?.fd ?? 'ignore', bgLog?.fd ?? 'ignore'],
           detached: !isWin,
           windowsHide: true,
+          ...(plan.verbatim ? { windowsVerbatimArguments: true } : {}),
         });
       } catch (err) {
+        closeBackgroundLogFd(bgLog);
         // Spawn threw (e.g. shell binary missing) — release the breaker
         // reservation the successful beforeCall() took, mirroring the
         // child 'error' handler below.
@@ -351,6 +375,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           cause: err,
         });
       }
+      closeBackgroundLogFd(bgLog);
       const pid = child.pid;
       const stdoutBytes = 0;
       const stderrBytes = 0;
@@ -392,6 +417,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           child,
           processGroupLeader: detached && child.pid === pid,
           background: true,
+          ...(bgLog ? { logFile: bgLog.path } : {}),
         });
         // Register the close handler on the same tick as spawn() so the
         // handler is guaranteed to be in place before Node's event loop
@@ -428,12 +454,13 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       yield {
         type: 'final',
         output: {
-          // Background runs have no captured output; the pipe-to-shell caution
-          // (when present) is the only thing worth surfacing.
+          // A background run's output is in its log file; the pipe-to-shell
+          // caution (when present) is the only thing worth surfacing here.
           output: pipeToShellNote.trim(),
           exit_code: null,
           timed_out: false,
           pid,
+          ...(bgLog ? { log_file: bgLog.path } : {}),
         },
       };
       // P2 #5: record the background launch as a structured side effect.
@@ -463,6 +490,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached,
         windowsHide: true,
+        ...(plan.verbatim ? { windowsVerbatimArguments: true } : {}),
         ...(isWin ? {} : { signal: callerSignal }),
       });
     } catch (err) {

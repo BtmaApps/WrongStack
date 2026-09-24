@@ -27,7 +27,7 @@ vi.mock('../../src/i18n', () => ({
 
 describe('NotificationStore', () => {
   beforeEach(() => {
-    useNotificationStore.setState({ notifications: [], toasts: [] });
+    useNotificationStore.setState({ notifications: [], toasts: [], filter: 'important' });
   });
 
   it('pushes toasts to both ephemeral toasts and historical notifications', () => {
@@ -132,7 +132,7 @@ describe('NotificationStore', () => {
 
 describe('NotificationMenu Component', () => {
   beforeEach(() => {
-    useNotificationStore.setState({ notifications: [], toasts: [] });
+    useNotificationStore.setState({ notifications: [], toasts: [], filter: 'important' });
   });
 
   it('renders trigger button with no badge when unread count is 0', () => {
@@ -144,7 +144,7 @@ describe('NotificationMenu Component', () => {
   });
 
   it('renders badge with correct unread count when notifications exist', () => {
-    toast.info('Alert 1');
+    toast.warn('Alert 1');
     toast.error('Alert 2');
 
     render(<NotificationMenu />);
@@ -156,7 +156,7 @@ describe('NotificationMenu Component', () => {
 
   it('shows 99+ when unread count exceeds 99', () => {
     for (let i = 0; i < 105; i++) {
-      toast.info(`Notice ${i}`);
+      toast.warn(`Notice ${i}`);
     }
 
     render(<NotificationMenu />);
@@ -172,8 +172,10 @@ describe('NotificationMenu Component', () => {
 
     render(<NotificationMenu defaultOpen />);
 
-    expect(screen.getByText('Session restored')).not.toBeNull();
+    expect(screen.queryByText('Session restored')).toBeNull();
     expect(screen.getByText('Network unreachable')).not.toBeNull();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Show' }), { target: { value: 'all' } });
+    expect(screen.getByText('Session restored')).not.toBeNull();
   });
 
   it('allows marking all as read from the menu header', () => {
@@ -206,8 +208,8 @@ describe('NotificationMenu Component', () => {
   });
 
   it('filters notifications when switching between All and Unread tabs', () => {
-    toast.info('Unread message');
-    const id2 = toast.success('Read message');
+    toast.warn('Unread message');
+    const id2 = toast.error('Read message');
     useNotificationStore.getState().markAsRead(id2);
 
     render(<NotificationMenu defaultOpen />);
@@ -220,6 +222,23 @@ describe('NotificationMenu Component', () => {
 
     expect(screen.getByText('Unread message')).not.toBeNull();
     expect(screen.queryByText('Read message')).toBeNull();
+  });
+
+  it('defaults to important notifications and scopes the badge to the selected type', () => {
+    toast.info('Routine detail');
+    toast.success('Routine success');
+    toast.warn('Needs attention');
+
+    render(<NotificationMenu defaultOpen />);
+
+    expect(screen.getByTestId('notification-badge').textContent).toBe('1');
+    expect(screen.getByText('Needs attention')).not.toBeNull();
+    expect(screen.queryByText('Routine detail')).toBeNull();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Show' }), { target: { value: 'info' } });
+    expect(screen.getByText('Routine detail')).not.toBeNull();
+    expect(screen.queryByText('Needs attention')).toBeNull();
+    expect(screen.getByTestId('notification-badge').textContent).toBe('1');
+    expect(useNotificationStore.getState().filter).toBe('info');
   });
 
   it('marks a notification as read when clicking it', () => {
@@ -250,6 +269,8 @@ describe('NotificationMenu Component', () => {
     toast.undoable('Workspace reset', onUndo, 'Undo Change');
 
     render(<NotificationMenu defaultOpen />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Show' }), { target: { value: 'all' } });
 
     const actionBtn = screen.getByText('Undo Change');
     fireEvent.click(actionBtn);

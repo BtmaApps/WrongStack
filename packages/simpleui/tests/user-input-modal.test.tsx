@@ -26,46 +26,48 @@ describe('SimpleUI structured user input', () => {
       root.render(
         <UserInputModal
           send={send}
-          queuedCount={1}
-          pending={{
-            sessionId: 's1',
-            request: {
-              id: 'r1',
-              title: 'Decisions',
-              tabs: [
-                {
-                  id: 'data',
-                  label: 'Data',
-                  questions: [
-                    {
-                      id: 'db',
-                      prompt: 'Database?',
-                      kind: 'single_select',
-                      required: true,
-                      options: [
-                        { id: 'pg', label: 'PostgreSQL' },
-                        { id: 'sqlite', label: 'SQLite' },
-                      ],
-                      recommendedOptionIds: ['pg'],
-                      recommendationReason: 'Best concurrency.',
-                      allowCustomResponse: true,
-                    },
-                  ],
-                },
-                {
-                  id: 'brand',
-                  label: 'Brand',
-                  questions: [
-                    {
-                      id: 'name',
-                      prompt: 'Tenant name?',
-                      kind: 'text',
-                      required: true,
-                      recommendedText: 'Example Inc.',
-                    },
-                  ],
-                },
-              ],
+          input={{
+            queuedCount: 1,
+            pending: {
+              sessionId: 's1',
+              request: {
+                id: 'r1',
+                title: 'Decisions',
+                tabs: [
+                  {
+                    id: 'data',
+                    label: 'Data',
+                    questions: [
+                      {
+                        id: 'db',
+                        prompt: 'Database?',
+                        kind: 'single_select',
+                        required: true,
+                        options: [
+                          { id: 'pg', label: 'PostgreSQL' },
+                          { id: 'sqlite', label: 'SQLite' },
+                        ],
+                        recommendedOptionIds: ['pg'],
+                        recommendationReason: 'Best concurrency.',
+                        allowCustomResponse: true,
+                      },
+                    ],
+                  },
+                  {
+                    id: 'brand',
+                    label: 'Brand',
+                    questions: [
+                      {
+                        id: 'name',
+                        prompt: 'Tenant name?',
+                        kind: 'text',
+                        required: true,
+                        recommendedText: 'Example Inc.',
+                      },
+                    ],
+                  },
+                ],
+              },
             },
           }}
         />,
@@ -127,18 +129,22 @@ describe('SimpleUI structured user input', () => {
       root.render(
         <UserInputModal
           send={send}
-          queuedCount={1}
-          pending={{
-            request: {
-              id: 'delegated',
-              title: 'Decision',
-              tabs: [
-                {
-                  id: 'main',
-                  label: 'Main',
-                  questions: [{ id: 'name', prompt: 'Tenant name?', kind: 'text', required: true }],
-                },
-              ],
+          input={{
+            queuedCount: 1,
+            pending: {
+              request: {
+                id: 'delegated',
+                title: 'Decision',
+                tabs: [
+                  {
+                    id: 'main',
+                    label: 'Main',
+                    questions: [
+                      { id: 'name', prompt: 'Tenant name?', kind: 'text', required: true },
+                    ],
+                  },
+                ],
+              },
             },
           }}
         />,
@@ -217,31 +223,33 @@ describe('UserInputModal offline submit (soft-lock reproduction)', () => {
         root.render(
           <UserInputModal
             send={(type, payload) => socket.send(type, payload)}
-            queuedCount={1}
-            pending={{
-              sessionId: 's1',
-              request: {
-                id: 'lock-r1',
-                title: 'Decisions',
-                tabs: [
-                  {
-                    id: 'main',
-                    label: 'Main',
-                    questions: [
-                      {
-                        id: 'db',
-                        prompt: 'Database?',
-                        kind: 'single_select',
-                        required: true,
-                        options: [
-                          { id: 'pg', label: 'PostgreSQL' },
-                          { id: 'sqlite', label: 'SQLite' },
-                        ],
-                        recommendedOptionIds: ['pg'],
-                      },
-                    ],
-                  },
-                ],
+            input={{
+              queuedCount: 1,
+              pending: {
+                sessionId: 's1',
+                request: {
+                  id: 'lock-r1',
+                  title: 'Decisions',
+                  tabs: [
+                    {
+                      id: 'main',
+                      label: 'Main',
+                      questions: [
+                        {
+                          id: 'db',
+                          prompt: 'Database?',
+                          kind: 'single_select',
+                          required: true,
+                          options: [
+                            { id: 'pg', label: 'PostgreSQL' },
+                            { id: 'sqlite', label: 'SQLite' },
+                          ],
+                          recommendedOptionIds: ['pg'],
+                        },
+                      ],
+                    },
+                  ],
+                },
               },
             }}
           />,
@@ -292,31 +300,33 @@ describe('UserInputModal offline submit (soft-lock reproduction)', () => {
       root.render(
         <UserInputModal
           send={send}
-          queuedCount={1}
-          pending={{
-            sessionId: 's1',
-            request: {
-              id: 'cancel-r1',
-              title: 'Decisions',
-              tabs: [
-                {
-                  id: 'main',
-                  label: 'Main',
-                  questions: [
-                    {
-                      id: 'db',
-                      prompt: 'Database?',
-                      kind: 'single_select',
-                      required: true,
-                      options: [
-                        { id: 'pg', label: 'PostgreSQL' },
-                        { id: 'sqlite', label: 'SQLite' },
-                      ],
-                      recommendedOptionIds: ['pg'],
-                    },
-                  ],
-                },
-              ],
+          input={{
+            queuedCount: 1,
+            pending: {
+              sessionId: 's1',
+              request: {
+                id: 'cancel-r1',
+                title: 'Decisions',
+                tabs: [
+                  {
+                    id: 'main',
+                    label: 'Main',
+                    questions: [
+                      {
+                        id: 'db',
+                        prompt: 'Database?',
+                        kind: 'single_select',
+                        required: true,
+                        options: [
+                          { id: 'pg', label: 'PostgreSQL' },
+                          { id: 'sqlite', label: 'SQLite' },
+                        ],
+                        recommendedOptionIds: ['pg'],
+                      },
+                    ],
+                  },
+                ],
+              },
             },
           }}
         />,

@@ -1,6 +1,7 @@
 import type { Message } from './messages.js';
 import type { Usage } from './provider.js';
 import type { SessionEvent } from './session-events.js';
+import type { SessionPermissionOverride } from './session-permission-override.js';
 import type { SessionWriter } from './session-storage.js';
 
 export interface SessionMetadata {
@@ -20,6 +21,12 @@ export interface SessionMetadata {
    * case where no `session_end` was ever written. Nothing re-executes these.
    */
   pendingToolUses?: string[] | undefined;
+  /**
+   * Absolute checkout directory the session runs in. Differs from the
+   * project's identity root in a linked git worktree, whose sessions share
+   * the main checkout's store (see `canonicalProjectRoot`).
+   */
+  checkout?: string | undefined;
   /** Parent journal metadata when this session was created by fork(). */
   forkedFrom?:
     | {
@@ -94,6 +101,12 @@ export interface SessionSummary {
    * its `session_forked` event. Pickers nest forks under their parent.
    */
   forkedFrom?: string | undefined;
+  /**
+   * Checkout directory the session last ran in (from `session_start` /
+   * `session_resumed`). Sessions of every git worktree of a repository share
+   * one store; pickers use this to tell them apart.
+   */
+  checkout?: string | undefined;
   startedAt: string;
   /** When the session finished (null if still running / crashed). */
   endedAt?: string | undefined;
@@ -135,6 +148,8 @@ export interface SessionData {
   usage: Usage;
   /** Latest persisted session subagent policy, retained even when old events are evicted. */
   subagentsAllowed?: boolean | undefined;
+  /** Latest `/permissions allow|deny` list, retained even when old events are evicted. */
+  permissionOverrides?: SessionPermissionOverride[] | undefined;
   /** Tool execution records extracted from `tool_call_end` events — used for TUI tool entry rendering on resume. */
   toolCallEnds: Array<{
     name: string;
@@ -196,6 +211,8 @@ export type {
   SessionArchiveIdleResult,
   SessionArchiveResult,
   SessionLoadProgress,
+  SessionMoveResult,
+  SessionMoveTarget,
   SessionStoragePolicy,
   SessionStore,
   SessionWriter,

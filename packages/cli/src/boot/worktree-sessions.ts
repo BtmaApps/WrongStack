@@ -1,16 +1,14 @@
 /**
- * `/resume` across git worktrees. WrongStack keeps sessions per project
- * directory, so each of the user's `git worktree`s has its own history. The
- * picker lists the latest sessions of the other worktrees under this one;
- * choosing one switches the TUI to that worktree in place (the F1 project
- * switch) and then resumes it.
+ * `/resume` across git worktrees. Every linked worktree of a repository
+ * shares the main checkout's session store (`canonicalProjectRoot`), so one
+ * listing already holds all of them; each session records the checkout it ran
+ * in (`SessionSummary.checkout`). The picker tags sessions from another
+ * worktree, and choosing one switches the TUI to that checkout in place (the
+ * F1 project switch) before resuming, so its file work lands in the right tree.
  */
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { DefaultSessionStore } from '@wrongstack/core/storage';
 import type { SessionSummary } from '@wrongstack/core/types';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
-import { listGitWorktrees } from '@wrongstack/core/worktree';
+import type { GitWorktreeEntry } from '@wrongstack/core/worktree';
 
 export interface WorktreeRef {
   root: string;
@@ -18,47 +16,30 @@ export interface WorktreeRef {
   branch?: string | undefined;
 }
 
-export interface WorktreeSession {
-  summary: SessionSummary;
-  worktree: WorktreeRef;
+function samePath(a: string, b: string): boolean {
+  const ra = path.resolve(a);
+  const rb = path.resolve(b);
+  return process.platform === 'win32' ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
 }
 
-/** Sessions shown per other worktree; the picker is about this worktree. */
-const PER_WORKTREE = 5;
-
 /**
- * The latest sessions of every other worktree of the repository at
- * `projectRoot`. Best effort: a worktree whose history cannot be read is
- * skipped, and outside a git repository the list is empty.
+ * The other worktree a session belongs to, or undefined when it ran in the
+ * current checkout, in a checkout git no longer lists (resuming it here is
+ * the only option left), or before checkouts were recorded.
  */
-export async function listSiblingWorktreeSessions(opts: {
-  projectRoot: string;
-  globalRoot: string;
-  perWorktree?: number | undefined;
-  listWorktrees?: typeof listGitWorktrees | undefined;
-}): Promise<WorktreeSession[]> {
-  const worktrees = await (opts.listWorktrees ?? listGitWorktrees)(opts.projectRoot);
-  if (worktrees.length < 2) return [];
-  const out: WorktreeSession[] = [];
-  for (const wt of worktrees) {
-    if (wt.current) continue;
-    const dir = resolveWstackPaths({ projectRoot: wt.root, globalRoot: opts.globalRoot })
-      .projectSessions;
-    if (!fs.existsSync(dir)) continue;
-    try {
-      const store = new DefaultSessionStore({ dir, projectRoot: wt.root });
-      const summaries = await store.list(opts.perWorktree ?? PER_WORKTREE);
-      const worktree: WorktreeRef = {
-        root: wt.root,
-        name: path.basename(wt.root) || wt.root,
-        ...(wt.branch ? { branch: wt.branch } : {}),
-      };
-      for (const summary of summaries) out.push({ summary, worktree });
-    } catch {
-      // unreadable history — leave this worktree out of the picker
-    }
-  }
-  return out;
+export function worktreeOfSession(
+  summary: Pick<SessionSummary, 'checkout'>,
+  worktrees: readonly GitWorktreeEntry[],
+): WorktreeRef | undefined {
+  const checkout = summary.checkout;
+  if (!checkout) return undefined;
+  const wt = worktrees.find((w) => samePath(w.root, checkout));
+  if (!wt || wt.current) return undefined;
+  return {
+    root: wt.root,
+    name: path.basename(wt.root) || wt.root,
+    ...(wt.branch ? { branch: wt.branch } : {}),
+  };
 }
 
 /**

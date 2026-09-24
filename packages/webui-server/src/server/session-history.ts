@@ -54,6 +54,8 @@ function blockText(block: ContentBlock | string): string {
       return block.content;
     case 'image':
       return '[image]';
+    case 'document':
+      return `[pdf: ${block.name ?? 'document.pdf'}]`;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -104,12 +106,16 @@ function labelForEvent(e: SessionEvent): string {
       return 'Session started';
     case 'subagent_policy':
       return `Subagents ${e.allowed ? 'allowed' : 'blocked'}`;
+    case 'permission_overrides':
+      return 'Session permission rules changed';
     case 'subagent_model_plan':
       return 'Subagent model plan updated';
     case 'session_resumed':
       return 'Session resumed';
     case 'session_forked':
       return `Forked from ${e.parentSessionId}`;
+    case 'session_moved':
+      return e.fromProject ? `Moved here from ${e.fromProject}` : `Moved to ${e.checkout}`;
     case 'user_input': {
       const content =
         typeof e.content === 'string'
@@ -223,6 +229,12 @@ function detailForEvent(e: SessionEvent): string {
       return `${e.model} @ ${e.provider}`;
     case 'subagent_policy':
       return e.allowed ? 'allowed' : 'blocked';
+    case 'permission_overrides':
+      return e.overrides.length === 0
+        ? 'none'
+        : e.overrides
+            .map((o) => `${o.effect} ${o.tool}${o.pattern !== undefined ? ` ${o.pattern}` : ''}`)
+            .join('; ');
     case 'subagent_model_plan': {
       const plan = normalizeSubagentModelPlan(e.plan);
       const pinned = plan.slots.filter(
@@ -234,6 +246,8 @@ function detailForEvent(e: SessionEvent): string {
       return `${e.model} @ ${e.provider}`;
     case 'session_forked':
       return `parent checkpoint: ${e.parentCheckpointHash.slice(0, 12)}…`;
+    case 'session_moved':
+      return `checkout: ${e.checkout}`;
     case 'llm_request':
       return `${e.model} · ${e.messageCount} msgs · ${e.toolCount ?? '?'} tools`;
     case 'llm_response':

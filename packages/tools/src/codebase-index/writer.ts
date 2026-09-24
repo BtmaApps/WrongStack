@@ -15,6 +15,11 @@ import {
   recordFtsChurn as delegateRecordFtsChurn,
   type IndexStoreMaintenanceHost,
 } from './index-store-maintenance.js';
+import {
+  bindRefsByImports,
+  type RefBindingResult,
+  type RefBindingScope,
+} from './ref-binding-pass.js';
 import type {
   CallSite,
   CodeMapGraph,
@@ -30,6 +35,7 @@ import { loadDatabaseSync, runSqliteWithRetry } from './sqlite-runtime.js';
 import {
   getAllFileMetasWithStatement,
   getAllIndexableWithStatement,
+  getFileMetasWithStatement,
   getFileMetaWithStatement,
   getIndexSummaryWithStatement,
   getMaxSymbolIdWithStatement,
@@ -71,6 +77,7 @@ import { optimizeStore } from './writer-maintenance.js';
 import {
   insertSymbolsWithStatement,
   setFilePackagesWithStatement,
+  setGitBlobsWithStatement,
   upsertFileWithStatement,
 } from './writer-mutations.js';
 import { applyIndexStorePragmas } from './writer-pragmas.js';
@@ -81,6 +88,7 @@ import {
   getPackageFileCountsWithStatement,
   getRankCountsWithStatement,
   getRankedFilesWithStatement,
+  getSymbolGraphFactsWithStatement,
   getSymbolNameCandidatesWithStatement,
   getTopFileRanksWithStatement,
   getTopSymbolRanksWithStatement,
@@ -93,11 +101,15 @@ import {
   getAllResolvedRefsWithStatement,
   getFilePackagesWithStatement,
   getFilesWithDanglingImportsWithStatement,
+  getImportersOfFilesWithStatement,
+  getImportsWithoutTargetWithStatement,
   getNamespaceDeclarationsWithStatement,
+  getRefNamesTargetingWithStatement,
   getUnresolvedImportsWithStatement,
   resolveRefsForNamesUnsafe,
   resolveRefsWithStatement,
 } from './writer-refs.js';
+import { REFS_INDEX_SQL, SYMBOL_INDEX_SQL } from './writer-schema.js';
 import {
   countSearchWithStatement,
   searchRankedWithStatement,
@@ -116,6 +128,17 @@ import {
 } from './writer-vectors.js';
 
 export { codebaseIndexDirOverride, resolveIndexDir } from './writer-helpers.js';
+
+/** Index names declared by the symbols/refs index DDL. */
+function secondaryIndexNames(): string[] {
+  const names: string[] = [];
+  for (const sql of [...SYMBOL_INDEX_SQL, ...REFS_INDEX_SQL]) {
+    const match = /CREATE INDEX IF NOT EXISTS (\w+)/.exec(sql);
+    if (match?.[1]) names.push(match[1]);
+  }
+  return names;
+}
+
 export { StorePool } from './writer-store-pool.js';
 
 const DB_FILE = 'index.db';
@@ -370,8 +393,19 @@ export class IndexStore {
     return getAllFileMetasWithStatement((sql) => this.stmt(sql));
   }
 
+  /** Metadata for just `files`; absent ones are missing from the result. */
+  getFileMetas(files: readonly string[]): FileMeta[] {
+    if (files.length === 0) return [];
+    return getFileMetasWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, files);
+  }
+
   setFilePackages(entries: ReadonlyMap<string, string>): void {
     this.runWithRetry(() => setFilePackagesWithStatement((sql) => this.stmt(sql), entries));
+  }
+
+  /** Record the Git blob each file's rows were built from ('' clears it). */
+  setGitBlobs(entries: ReadonlyMap<string, string>): void {
+    this.runWithRetry(() => setGitBlobsWithStatement((sql) => this.stmt(sql), entries));
   }
 
   getNamespaceDeclarations(): Array<{ name: string; file: string }> {
@@ -396,6 +430,46 @@ export class IndexStore {
 
   getFilesWithDanglingImports(): string[] {
     return getFilesWithDanglingImportsWithStatement((sql) => this.stmt(sql));
+  }
+
+  /** Imports whose `to_file` is unset — the ones a newly added file can satisfy. */
+  getImportsWithoutTarget(): Array<{ fromFile: string; lang: string; module: string }> {
+    return getImportsWithoutTargetWithStatement((sql) => this.stmt(sql));
+  }
+
+  /** Files holding an import resolved to one of `targets`. */
+  getImportersOfFiles(targets: readonly string[]): string[] {
+    if (targets.length === 0) return [];
+    return getImportersOfFilesWithStatement(
+      (sql) => this.stmt(sql),
+      IndexStore.MAX_SQL_VARS,
+      targets,
+    );
+  }
+
+  /**
+   * [owner file, to_name] of every ref whose `to_file` is one of `targets` —
+   * imports resolved to them and names the binding pass bound into them.
+   */
+  getRefNamesTargeting(targets: readonly string[]): Array<[string, string]> {
+    if (targets.length === 0) return [];
+    return getRefNamesTargetingWithStatement(
+      (sql) => this.stmt(sql),
+      IndexStore.MAX_SQL_VARS,
+      targets,
+    );
+  }
+
+  /** Import-aware rebinding of JS-family refs; see ref-binding-pass.ts. */
+  bindRefsByImports(scope: RefBindingScope | 'all'): RefBindingResult {
+    return bindRefsByImports(
+      {
+        stmt: (sql) => this.stmt(sql) as never,
+        maxSqlVars: IndexStore.MAX_SQL_VARS,
+        write: (operation) => this.runWriteTransaction(operation),
+      },
+      scope,
+    );
   }
 
   applyImportResolutions(
@@ -508,6 +582,11 @@ export class IndexStore {
   }
 
   setMetadata(key: string, value: string): void {
+    // Every index run re-asserts its data-version markers. Rewriting an equal
+    // value still appends WAL frames and moves the database's mtime, which
+    // made a run that changed nothing look like a new database to every
+    // file-fingerprint cache (the WebUI Code Map's among them).
+    if (this.getMetadata(key) === value) return;
     this.runWithRetry(() => {
       this.stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES(?, ?)').run(key, value);
     });
@@ -534,6 +613,27 @@ export class IndexStore {
         IndexStore.NEXT_SYMBOL_ID_KEY,
         '1',
       );
+    });
+  }
+
+  /**
+   * Drop the secondary indexes of `symbols` and `refs` for a rebuild into an
+   * empty index, so the bulk inserts maintain one b-tree per table instead of
+   * eight; {@link restoreSecondaryIndexes} builds them once, sorted, at the
+   * end. Only for a run that has just cleared everything and issues no
+   * lookups by those columns until it restores them. Inside the atomic
+   * update a failure rolls the drop back with everything else.
+   */
+  deferSecondaryIndexes(): void {
+    this.runWithRetry(() => {
+      for (const name of secondaryIndexNames()) this.db.exec(`DROP INDEX IF EXISTS ${name}`);
+    });
+  }
+
+  /** Recreate what {@link deferSecondaryIndexes} dropped (idempotent). */
+  restoreSecondaryIndexes(): void {
+    this.runWithRetry(() => {
+      for (const sql of [...SYMBOL_INDEX_SQL, ...REFS_INDEX_SQL]) this.db.exec(sql);
     });
   }
 
@@ -566,7 +666,11 @@ export class IndexStore {
       symbolCount: number;
       contentHash?: string | undefined;
     }>,
-    options: { deleteForFiles?: string[] | undefined } = {},
+    options: {
+      deleteForFiles?: string[] | undefined;
+      /** See {@link commitBatchWithStatement}. */
+      deferResolution?: Set<string> | undefined;
+    } = {},
   ): IndexSymbol[] {
     return commitBatch(this.indexStoreBatchesHost(), entries, options);
   }
@@ -878,6 +982,11 @@ export class IndexStore {
 
   getSymbolNameCandidates(): Map<number, number> {
     return getSymbolNameCandidatesWithStatement((sql) => this.stmt(sql));
+  }
+
+  /** Declaring file and homonym count per symbol, from one scan. */
+  getSymbolGraphFacts(): { fileOf: Map<number, string>; candidates: Map<number, number> } {
+    return getSymbolGraphFactsWithStatement((sql) => this.stmt(sql));
   }
 
   getImportVisibility(): Map<string, Set<string>> {

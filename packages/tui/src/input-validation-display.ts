@@ -148,6 +148,13 @@ export function validateDisplayAction(
       return { valid: true, value: payload };
     }
 
+    case 'messageJump': {
+      if (action.direction !== -1 && action.direction !== 1) {
+        return { valid: false, error: `${type}.direction: must be -1 or 1.` };
+      }
+      return { valid: true, value: payload };
+    }
+
     case 'inspectOverlayScroll': {
       const delta = Number(action.delta);
       if (!Number.isInteger(delta) || delta < -10_000 || delta > 10_000) {

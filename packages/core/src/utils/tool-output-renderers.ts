@@ -640,6 +640,8 @@ export function renderCommandOutput(toolName: string, obj: RecordValue, input: u
       fix_applied: obj['fix_applied'],
     }),
     stringField(obj, 'error') ? `error:\n${stringField(obj, 'error')}` : undefined,
+    // A background run's output goes to this file, not into the result.
+    stringField(obj, 'log_file') ? `log_file: ${stringField(obj, 'log_file')}` : undefined,
     output ? `output:\n${output}` : undefined,
     stdout ? `stdout:\n${stdout}` : undefined,
     stderr ? `stderr:\n${stderr}` : undefined,

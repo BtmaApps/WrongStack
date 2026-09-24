@@ -13,6 +13,7 @@ export type {
 export type { AutonomyStage } from './autonomy.js';
 export type {
   ContentBlock,
+  DocumentBlock,
   ImageBlock,
   TextBlock,
   ThinkingBlock,
@@ -20,6 +21,7 @@ export type {
   ToolUseBlock,
 } from './blocks.js';
 export {
+  documentAsText,
   isImageBlock,
   isTextBlock,
   isToolResultBlock,
@@ -249,6 +251,11 @@ export type {
   ShellHook,
 } from './hooks.js';
 export { HOOK_EVENTS, isHookEvent } from './hooks.js';
+export type {
+  GeneratedImage,
+  ImageGenerationRequest,
+  ImageGenerationResult,
+} from './image-generation.js';
 // ── input-reader (2 symbols) ──
 export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';
 // ── logger (2 symbols) ──
@@ -335,12 +342,13 @@ export type {
   OneShotModelRouter,
   OneShotOrchestratorOptions,
 } from './one-shot-llm.js';
-// ── permission (7 symbols) ──
+// ── permission (8 symbols) ──
 export type {
   DirectoryPolicy,
   DirectoryRule,
   PermissionDecision,
   PermissionPolicy,
+  PermissionRule,
   PermissionTrace,
   PermissionTraceStep,
   TrustPolicy,
@@ -461,6 +469,8 @@ export type {
   SessionForkOptions,
   SessionLoadProgress,
   SessionMetadata,
+  SessionMoveResult,
+  SessionMoveTarget,
   SessionStoragePolicy,
   SessionStore,
   SessionSummary,
@@ -482,6 +492,7 @@ export {
   SYSTEM_INJECTION_PREFIXES,
   sessionEventToMarker,
 } from './session-markers.js';
+export type { SessionPermissionOverride } from './session-permission-override.js';
 // ── session-reader (8 symbols) ──
 export type {
   DefaultSessionReaderOptions,

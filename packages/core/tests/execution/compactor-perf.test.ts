@@ -132,13 +132,13 @@ function makeAssistantWithTool(
   return {
     role: 'assistant',
     content: [
-      ...(text ? [{ type: 'text', text }] : []),
+      ...(text ? [{ type: 'text' as const, text }] : []),
       { type: 'tool_use', id, name: toolName, input },
     ],
     ts: new Date().toISOString(),
     usage: { input: 200, output: 40 },
     stopReason: 'tool_use',
-  };
+  } as Message;
 }
 
 function makeToolResult(id: string, content: string, isError = false): Message {

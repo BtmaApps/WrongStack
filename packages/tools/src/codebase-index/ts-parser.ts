@@ -82,13 +82,71 @@ function kindOf(node: TS.Node): SymbolKind | null {
 // Extension → language lives in languages.ts (single source of truth for
 // discovery + first-class + generic coverage).
 
-function getSignature(
-  printer: TS.Printer,
-  node: TS.Declaration,
-  sourceFile: TS.SourceFile,
-): string {
-  const raw = printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
-  return raw.replace(/\s+/g, ' ').slice(0, 500);
+/** Longest signature stored, after whitespace is collapsed. */
+const SIGNATURE_MAX_CHARS = 500;
+/**
+ * Raw source read for one signature. Collapsing whitespace only shortens
+ * text, so this bounds the work without starving the 500-character limit
+ * except in pathologically indented code.
+ */
+const SIGNATURE_SCAN_CHARS = 4_000;
+
+/** The `{ … }` block of a function-like node, when it has one. */
+function blockBodyOf(node: TS.Node): TS.Node | undefined {
+  const body = (node as { body?: TS.Node | undefined }).body;
+  return body !== undefined && ts.isBlock(body) ? body : undefined;
+}
+
+/**
+ * Where a declaration's signature ends: the header, not the implementation.
+ *
+ * A function, method, constructor or accessor ends where its body block
+ * starts; so does a variable or property initialised with a function. A
+ * class or namespace ends where its members start — each member is its own
+ * symbol with its own signature. Declarations whose body IS the signature
+ * (interfaces, type aliases, enums, plain variables) run to their end.
+ */
+function signatureEnd(node: TS.Node, sourceFile: TS.SourceFile): number {
+  const body = blockBodyOf(node);
+  if (body) return body.getStart(sourceFile);
+  if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) return node.members.pos;
+  if (ts.isModuleDeclaration(node) && node.body && ts.isModuleBlock(node.body)) {
+    return node.body.statements.pos;
+  }
+  if (
+    (ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) &&
+    node.initializer !== undefined
+  ) {
+    const init = node.initializer;
+    if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+      const initBody = blockBodyOf(init);
+      if (initBody) return initBody.getStart(sourceFile);
+    } else if (ts.isClassExpression(init)) {
+      return init.members.pos;
+    }
+  }
+  return node.getEnd();
+}
+
+/**
+ * The declaration's header as written, whitespace collapsed, capped at 500
+ * characters.
+ *
+ * This used to print the whole node through the TypeScript printer and keep
+ * the first 500 characters — the printer re-emitted every function body and
+ * every class member (a class's members again for each of their own
+ * symbols), which was ~13% of a cold index, and the kept prefix carried body
+ * statements into the search text. Slicing the header from source is linear
+ * in the header and indexes only what declares the symbol.
+ */
+function getSignature(node: TS.Declaration, sourceFile: TS.SourceFile): string {
+  const start = node.getStart(sourceFile);
+  const end = Math.min(signatureEnd(node, sourceFile), start + SIGNATURE_SCAN_CHARS);
+  return sourceFile.text
+    .slice(start, end)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SIGNATURE_MAX_CHARS);
 }
 
 /**
@@ -233,11 +291,6 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
 
   const symbols: IndexSymbol[] = [];
   const refs: Ref[] = [];
-  // Create the printer once per file instead of per-symbol. ts.createPrinter is
-  // not free — it allocates internal emitter state — and we call getSignature
-  // for every navigable declaration (often 100-300 per file).
-  const printer = ts.createPrinter({});
-
   function visit(node: TS.Node, funcDepth: number, scopeParts: string[]): void {
     // ── Symbol extraction ──────────────────────────────────────────────
     const kind = kindOf(node);
@@ -271,7 +324,7 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
         // and `const { a, b } = …`, dropping every ref inside them — callers
         // in a private method were invisible to incoming-calls.
         const signature =
-          nameNodes.length > 0 ? getSignature(printer, node as TS.Declaration, sourceFile) : '';
+          nameNodes.length > 0 ? getSignature(node as TS.Declaration, sourceFile) : '';
         const docComment = nameNodes.length > 0 ? getJsDoc(docHostOf(node), sourceFile) : '';
         for (const nameNode of nameNodes) {
           const name = nameNode.text;

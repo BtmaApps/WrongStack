@@ -72,3 +72,10 @@ export function routeChatSearch(ctx: KeyRouteContext, input: string, key: KeyEve
   }
   return true;
 }
+
+/** Alt+↑ / Alt+↓: jump to the previous / next message the user sent. */
+export function routeMessageJump(ctx: KeyRouteContext, _input: string, key: KeyEvent): boolean {
+  if (!key.meta || key.ctrl || !(key.upArrow || key.downArrow)) return false;
+  ctx.dispatch({ type: 'messageJump', direction: key.upArrow ? -1 : 1 });
+  return true;
+}

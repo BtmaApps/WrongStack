@@ -40,13 +40,19 @@ export interface SessionTopbarModelCatalog {
   cancelModelSwitch: () => void;
 }
 
-export interface SessionTopbarProps {
+/** Session identity, the switcher list, and whether a run is in flight —
+ *  everything the project/session block renders. */
+export interface SessionTopbarSessionView {
   session: SessionInfo | null;
   sessions: SimpleSessionSummary[];
   running: boolean;
-  models: SessionTopbarModelCatalog;
-  contextTokens: number;
-  contextMaxContext: number;
+}
+
+/** Context-meter inputs: current usage, the session's context window, the
+ *  derived fill ratio, and the prompt-cache badge snapshot. */
+export interface SessionTopbarContextBar {
+  tokens: number;
+  maxContext: number;
   load: number;
   /**
    * Live prompt-cache snapshot for the topbar badge. Mirrors the
@@ -55,6 +61,12 @@ export interface SessionTopbarProps {
    * exists instead of wondering where it went.
    */
   cache: ContextInfo['cache'];
+}
+
+/** Ambient chrome state: connection, theme mode, open-panel flags, and the
+ *  version-chip inputs. Read-only display state — behaviour lives in the
+ *  flat `on*` callbacks on `SessionTopbarProps`. */
+export interface SessionTopbarStatus {
   connection: ConnectionState;
   theme: Theme;
   commandPaletteOpen: boolean;
@@ -64,6 +76,13 @@ export interface SessionTopbarProps {
   appVersion: string;
   latestVersion: string;
   hasUpdate: boolean;
+}
+
+export interface SessionTopbarProps {
+  sessionView: SessionTopbarSessionView;
+  models: SessionTopbarModelCatalog;
+  contextBar: SessionTopbarContextBar;
+  status: SessionTopbarStatus;
   onCreateSession: () => void;
   onResumeSession: (id: string) => void;
   onRefreshSessions: () => void;
@@ -82,23 +101,20 @@ export interface SessionTopbarProps {
  */
 export function SessionTopbar(props: SessionTopbarProps) {
   const {
-    session,
-    sessions,
-    running,
+    sessionView: { session, sessions, running },
     models,
-    contextTokens,
-    contextMaxContext,
-    load,
-    cache,
-    connection,
-    theme,
-    commandPaletteOpen,
-    mailboxOpen,
-    mailboxUnreadCount,
-    settingsOpen,
-    appVersion,
-    latestVersion,
-    hasUpdate,
+    contextBar: { tokens: contextTokens, maxContext: contextMaxContext, load, cache },
+    status: {
+      connection,
+      theme,
+      commandPaletteOpen,
+      mailboxOpen,
+      mailboxUnreadCount,
+      settingsOpen,
+      appVersion,
+      latestVersion,
+      hasUpdate,
+    },
     onCreateSession,
     onResumeSession,
     onRefreshSessions,

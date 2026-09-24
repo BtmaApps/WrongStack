@@ -335,6 +335,9 @@ describe('IndexStore CodeMap graphs', () => {
       },
     ]);
     store.resolveRefs();
+    // A JS import's to_id is the indexer's import-aware binding, not a name
+    // guess; run it as the indexer does.
+    store.bindRefsByImports('all');
   });
 
   it('keeps direct external files when a package graph is opened', () => {

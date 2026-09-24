@@ -55,6 +55,8 @@ export interface TrackedProcess {
   protected: boolean;
   /** True for an explicitly detached/background tool launch. */
   background: boolean;
+  /** Background launch: the file its output goes to (background-log.ts). */
+  logFile?: string | undefined;
 }
 
 // redactCommand (and its sensitive-flag patterns) lives in _redact-command.ts
@@ -260,6 +262,11 @@ export class ProcessRegistryImpl {
   }
 
   /** Get all tracked processes. */
+  /** Log files of the processes still tracked, which log pruning must keep. */
+  logFiles(): string[] {
+    return this.list().flatMap((p) => (p.logFile ? [p.logFile] : []));
+  }
+
   list(): TrackedProcess[] {
     this._pruneAllStale();
     return Array.from(this.processes.values());

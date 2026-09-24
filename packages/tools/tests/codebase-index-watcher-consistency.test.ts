@@ -32,8 +32,9 @@ function orphanProblems(indexDir: string): string[] {
     'dangling to_id':
       'SELECT id FROM refs WHERE to_id IS NOT NULL AND to_id NOT IN (SELECT id FROM symbols)',
     'fts drift': 'SELECT rowid FROM symbols_fts WHERE rowid NOT IN (SELECT id FROM symbols)',
+    // '' is the binding pass's "bound outside the index" marker, not a path.
     'to_file not indexed':
-      'SELECT to_file FROM refs WHERE to_file IS NOT NULL AND to_file NOT IN (SELECT file FROM files)',
+      "SELECT to_file FROM refs WHERE to_file IS NOT NULL AND to_file <> '' AND to_file NOT IN (SELECT file FROM files)",
   };
   return Object.entries(checks).flatMap(([label, sql]) =>
     query(indexDir, sql).length > 0 ? [label] : [],

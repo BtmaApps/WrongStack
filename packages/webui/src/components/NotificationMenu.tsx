@@ -16,6 +16,8 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import {
   type AppNotification,
+  matchesNotificationFilter,
+  type NotificationFilter,
   type NotificationVariant,
   useNotificationStore,
 } from '@/stores/notification-store';
@@ -185,17 +187,26 @@ export function NotificationMenu({
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const clearAll = useNotificationStore((s) => s.clearAll);
   const removeNotification = useNotificationStore((s) => s.removeNotification);
+  const filter = useNotificationStore((s) => s.filter);
+  const setFilter = useNotificationStore((s) => s.setFilter);
 
   const [tab, setTab] = useState<'all' | 'unread'>('all');
 
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const scopedNotifications = useMemo(
+    () => notifications.filter((n) => matchesNotificationFilter(n, filter)),
+    [notifications, filter],
+  );
+  const unreadCount = useMemo(
+    () => scopedNotifications.filter((n) => !n.read).length,
+    [scopedNotifications],
+  );
 
   const filteredNotifications = useMemo(() => {
     if (tab === 'unread') {
-      return notifications.filter((n) => !n.read);
+      return scopedNotifications.filter((n) => !n.read);
     }
-    return notifications;
-  }, [notifications, tab]);
+    return scopedNotifications;
+  }, [scopedNotifications, tab]);
 
   const handleMarkAllRead = useCallback(() => {
     markAllAsRead();
@@ -260,7 +271,7 @@ export function NotificationMenu({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled={unreadCount === 0}
+              disabled={!notifications.some((n) => !n.read)}
               onClick={handleMarkAllRead}
               className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
               title={t('toasts:menu.markAllRead', { defaultValue: 'Mark all as read' })}
@@ -282,7 +293,38 @@ export function NotificationMenu({
           </div>
         </div>
 
-        {/* Tab filters */}
+        <div className="flex items-center gap-2 border-b border-border/50 bg-background/50 px-3 py-1.5 text-xs">
+          <span className="shrink-0 text-muted-foreground">
+            {t('toasts:menu.filterType', { defaultValue: 'Show' })}
+          </span>
+          <select
+            aria-label={t('toasts:menu.filterType', { defaultValue: 'Show' })}
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as NotificationFilter)}
+            className="min-w-0 flex-1 rounded-md border border-border/70 bg-card px-2 py-1 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            <option value="important">
+              {t('toasts:menu.filterImportant', { defaultValue: 'Warnings and errors' })}
+            </option>
+            <option value="all">
+              {t('toasts:menu.filterAll', { defaultValue: 'Every type' })}
+            </option>
+            <option value="error">
+              {t('toasts:menu.filterErrors', { defaultValue: 'Errors' })}
+            </option>
+            <option value="warn">
+              {t('toasts:menu.filterWarnings', { defaultValue: 'Warnings' })}
+            </option>
+            <option value="success">
+              {t('toasts:menu.filterSuccess', { defaultValue: 'Success' })}
+            </option>
+            <option value="info">
+              {t('toasts:menu.filterInfo', { defaultValue: 'Information' })}
+            </option>
+          </select>
+        </div>
+
+        {/* Read-status tabs apply within the selected type. */}
         <div className="flex border-b border-border/50 bg-background/50 px-3 py-1.5 gap-1.5 text-xs">
           <button
             type="button"
@@ -294,7 +336,7 @@ export function NotificationMenu({
                 : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
             )}
           >
-            {t('toasts:menu.tabAll', { defaultValue: 'All' })} ({notifications.length})
+            {t('toasts:menu.tabAll', { defaultValue: 'All' })} ({scopedNotifications.length})
           </button>
           <button
             type="button"
@@ -320,16 +362,22 @@ export function NotificationMenu({
             <div className="flex flex-col items-center justify-center px-4 py-8 text-center text-muted-foreground">
               <BellOff className="h-7 w-7 text-muted-foreground/40 mb-2" />
               <p className="text-xs font-medium text-foreground">
-                {tab === 'unread' && notifications.length > 0
+                {tab === 'unread' && scopedNotifications.length > 0
                   ? t('toasts:menu.allRead', { defaultValue: 'All caught up' })
-                  : t('toasts:menu.empty', { defaultValue: 'No notifications' })}
+                  : notifications.length === 0
+                    ? t('toasts:menu.empty', { defaultValue: 'No notifications' })
+                    : t('toasts:menu.emptyFiltered', { defaultValue: 'No matching notifications' })}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[220px]">
-                {tab === 'unread' && notifications.length > 0
+                {tab === 'unread' && scopedNotifications.length > 0
                   ? t('toasts:menu.allRead', { defaultValue: 'All caught up' })
-                  : t('toasts:menu.emptyHint', {
-                      defaultValue: 'Toasts and system notifications will appear here.',
-                    })}
+                  : notifications.length === 0
+                    ? t('toasts:menu.emptyHint', {
+                        defaultValue: 'Toasts and system notifications will appear here.',
+                      })
+                    : t('toasts:menu.emptyFilteredHint', {
+                        defaultValue: 'Choose another type to see more notifications.',
+                      })}
               </p>
             </div>
           ) : (

@@ -15,15 +15,15 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 846,
+      "lines": 848,
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 892,
+      "lines": 893,
       "relativeImports": 37
     },
     "packages/cli/src/execution.ts": {
-      "lines": 963,
+      "lines": 966,
       "relativeImports": 44
     },
     "packages/cli/src/fleet/host.ts": {
@@ -51,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 894,
+      "lines": 896,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
@@ -127,12 +127,12 @@
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
-      "lines": 801,
-      "relativeImports": 40
+      "lines": 825,
+      "relativeImports": 41
     },
     "packages/core/src/types/provider.ts": {
-      "lines": 913,
-      "relativeImports": 7
+      "lines": 924,
+      "relativeImports": 8
     },
     "packages/core/src/worktree/worktree-manager.ts": {
       "lines": 843,
@@ -219,7 +219,7 @@
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 887,
+      "lines": 899,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -243,15 +243,15 @@
       "relativeImports": 19
     },
     "packages/tools/src/bash.ts": {
-      "lines": 866,
-      "relativeImports": 8
+      "lines": 894,
+      "relativeImports": 9
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
-      "lines": 879,
+      "lines": 886,
       "relativeImports": 4
     },
     "packages/tools/src/codebase-index/indexer.ts": {
-      "lines": 804,
+      "lines": 959,
       "relativeImports": 13
     },
     "packages/tools/src/codebase-index/project-server-client.ts": {
@@ -259,16 +259,16 @@
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/writer.ts": {
-      "lines": 955,
-      "relativeImports": 26
+      "lines": 1064,
+      "relativeImports": 28
     },
     "packages/tools/src/json.ts": {
       "lines": 888,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 842,
-      "relativeImports": 8
+      "lines": 851,
+      "relativeImports": 9
     },
     "packages/tools/src/session-kanban.ts": {
       "lines": 921,
@@ -279,7 +279,7 @@
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 921,
+      "lines": 923,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -295,7 +295,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 946,
+      "lines": 947,
       "relativeImports": 51
     },
     "packages/vector-memory/src/store.ts": {
@@ -355,7 +355,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 915,
+      "lines": 953,
       "relativeImports": 8
     },
     "packages/webui-server/src/server/backend-services.ts": {

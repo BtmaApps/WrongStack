@@ -3,9 +3,12 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { moduleDirFor } from '@wrongstack/persistence';
 import { expandSharedSystemInstructions } from '../utils/instruction-file.js';
+import { activeSystemPromptPresetText } from './system-prompt-presets.js';
 
 export interface SystemInstructionBundle {
   identity?: string | undefined;
+  /** Trusted profile identity retained when a project override appends guidance. */
+  trustedIdentity?: string | undefined;
   leaderAfterTask?: string | undefined;
   /**
    * Which discovery layer supplied `identity`.
@@ -93,11 +96,30 @@ export async function loadInstructionBundle(
     layerNames.push('project');
   }
 
+  let presetInserted = false;
   for (const [index, dir] of dirs.entries()) {
+    // Insert the selected profile preset after profile overrides and before
+    // repository-supplied guidance, preserving the project's fenced status.
+    if (layerNames[index] === 'project' && paths?.globalDir) {
+      const presetText = await activeSystemPromptPresetText(
+        paths.globalDir,
+        paths.systemVariant ?? 'default',
+        paths.projectDir,
+      );
+      if (presetText !== undefined) {
+        presetInserted = true;
+        bundle = mergeInstructionBundle(bundle, {
+          system: { identity: presetText, identitySource: 'global' },
+        });
+      }
+    }
     const layer = await readInstructionDir(dir, { systemFile });
     const source = layerNames[index] ?? 'bundled';
     if (layer.system?.identity !== undefined) {
       layer.system = { ...layer.system, identitySource: source };
+      if (source === 'project' && presetInserted) {
+        layer.system.trustedIdentity = bundle.system?.identity;
+      }
     }
     if (layer.system?.leaderAfterTask !== undefined) {
       layer.system = { ...layer.system, leaderAfterTaskSource: source };
@@ -106,6 +128,17 @@ export async function loadInstructionBundle(
       layer.sectionsSource = source;
     }
     bundle = mergeInstructionBundle(bundle, layer);
+  }
+  if (paths?.globalDir && !paths.projectDir) {
+    const presetText = await activeSystemPromptPresetText(
+      paths.globalDir,
+      paths.systemVariant ?? 'default',
+    );
+    if (presetText !== undefined) {
+      bundle = mergeInstructionBundle(bundle, {
+        system: { identity: presetText, identitySource: 'global' },
+      });
+    }
   }
   for (const file of paths?.files ?? []) {
     const layer = await readInstructionJson(file);

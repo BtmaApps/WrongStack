@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Capabilities,
+  ImageGenerationRequest,
+  ImageGenerationResult,
   Request,
   ResponseFormat,
   StopReason,
@@ -17,6 +19,7 @@ import {
   providerErrorFromStreamPayload,
 } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
+import { openAIImagesBody, openAIImagesUrl, parseOpenAIImages } from './image-generation.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from './openai-chat-usage.js';
 import { shouldEmitReasoningEffort } from './openai-shared.js';
@@ -83,6 +86,21 @@ export class OpenAIProvider extends WireAdapter {
     if (opts.quirks?.maxTools && opts.quirks.maxTools > 0) {
       this.maxToolsCount = opts.quirks.maxTools;
     }
+  }
+
+  /** Text-to-image through the images API next to this provider's chat endpoint. */
+  async generateImage(
+    req: ImageGenerationRequest,
+    opts: { signal: AbortSignal },
+  ): Promise<ImageGenerationResult> {
+    const headers = this.buildHeaders({ model: req.model, messages: [] });
+    const json = await this.postJson(
+      openAIImagesUrl(this.baseUrl),
+      openAIImagesBody(req),
+      headers,
+      opts.signal,
+    );
+    return parseOpenAIImages(json);
   }
 
   /**

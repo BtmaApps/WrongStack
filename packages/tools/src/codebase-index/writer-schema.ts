@@ -21,7 +21,14 @@ export const CORE_TABLES_SQL = `
     -- Code Atlas grouping label, computed at index time from the ecosystem's
     -- own manifests (package.json, go.mod, Cargo.toml, …). Stored rather than
     -- re-derived per query because the evidence lives on disk, not in the DB.
-    package TEXT NOT NULL DEFAULT ''
+    package TEXT NOT NULL DEFAULT '',
+    -- Git blob id the row was built from, when the file was clean against the
+    -- Git index at a completed full-project run; '' when unknown (dirty at the
+    -- time, rewritten by a targeted run since, or not a Git checkout). A full
+    -- run skips a file whose current clean blob equals this without reading
+    -- it — per-file trust, so an edit elsewhere never forces a re-read of the
+    -- whole tree. Added by repairMissingColumns on older databases.
+    git_blob TEXT NOT NULL DEFAULT ''
   );
   CREATE TABLE IF NOT EXISTS symbols (
     id INTEGER PRIMARY KEY,

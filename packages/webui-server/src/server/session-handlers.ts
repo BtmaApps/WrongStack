@@ -8,6 +8,7 @@ import {
   resetSessionSubagentPolicy,
   restoreSessionSubagentPolicy,
 } from '@wrongstack/core/coordination';
+import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { loadTodosCheckpoint } from '@wrongstack/core/storage';
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
 import { sessionScopedPath } from '@wrongstack/core/utils';
@@ -15,6 +16,7 @@ import { buildReplayPayload, type ReplaySource } from '@wrongstack/webui-protoco
 import { createSessionCheckpointHandlers } from './session-checkpoint-handlers.js';
 import { createSessionContextHandlers } from './session-context-handlers.js';
 import { deleteWebUISession } from './session-deletion.js';
+import { readFrameCursors, resumeSessionFrames } from './session-event-resume.js';
 import {
   buildSessionHandlerShared,
   collectDisplayedSessionIds,
@@ -137,6 +139,11 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
             activated = true;
             await activateSession(next, []);
             resetSessionSubagentPolicy(ctx.getAgent?.(next.id)?.ctx ?? ctx.context);
+            // Cloned from the leader's Context: its session rules must not come along.
+            restoreSessionPermissionOverrides(
+              (ctx.getAgent?.(next.id)?.ctx ?? ctx.context).meta,
+              {},
+            );
             // The new tab's Context was cloned from the leader's, so it runs
             // whatever tab 1 last chose. The record above was stamped from the
             // live config — the most recent choice made in ANY tab — and the
@@ -487,6 +494,7 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
             resumed.data.events,
             resumed.data.subagentsAllowed,
           );
+          restoreSessionPermissionOverrides(resumedContext.meta, resumed.data);
           // Re-queue background delegation results this session never
           // received. Never wakes by itself; the tab displaying the session
           // (below) or the next turn picks them up.
@@ -573,7 +581,16 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
      */
     subscribeSessions: async (ws, msg) => {
       const payload =
-        (msg as { payload?: { sessionIds?: unknown; replayFor?: unknown } }).payload ?? {};
+        (
+          msg as {
+            payload?: {
+              sessionIds?: unknown;
+              replayFor?: unknown;
+              cursors?: unknown;
+              eventEpoch?: unknown;
+            };
+          }
+        ).payload ?? {};
       const raw = Array.isArray(payload.sessionIds) ? payload.sessionIds : [];
       const replayFor = new Set(
         (Array.isArray(payload.replayFor) ? payload.replayFor : []).filter(
@@ -609,6 +626,18 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
         next.add(client.sessionId);
       }
       client.sessionIds = next.size > 0 ? next : undefined;
+
+      // Reconnect catch-up. A tab that sent a frame cursor gets the frames it
+      // missed and keeps its pane; one the log can no longer cover is handled
+      // as if it had asked for a replay.
+      const frameCursors = readFrameCursors(payload);
+      if (frameCursors) {
+        const caughtUp = resumeSessionFrames(ws, next, frameCursors);
+        for (const id of frameCursors.cursors.keys()) {
+          if (caughtUp.has(id)) replayFor.delete(id);
+          else replayFor.add(id);
+        }
+      }
 
       // Hand every NEWLY declared tab its transcript.
       //

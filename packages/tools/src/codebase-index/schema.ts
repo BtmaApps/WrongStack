@@ -69,6 +69,14 @@ export type SymbolKind =
   | 'static'
   | 'mod';
 
+/**
+ * Name of the synthetic `mod` symbol that owns the refs of a file declaring
+ * nothing (a test file, a barrel of re-exports, an entry script) — see the
+ * indexer's `moduleOwnerSymbol`. Not an identifier, so no ref resolves to it
+ * by name; it is the file itself, never a declaration anyone could delete.
+ */
+export const MODULE_OWNER_NAME = '<module>';
+
 /** A single indexed code symbol. */
 export interface Symbol {
   id: number;
@@ -107,6 +115,13 @@ export interface FileMeta {
    * re-parsing when content is byte-identical despite an mtime change.
    */
   contentHash?: string | undefined;
+  /**
+   * Git blob id the row was built from — see the `files.git_blob` column.
+   * Omitted by every writer except the full-run blob pass, and an omitted
+   * value is stored as '' ("unknown"): rewriting a file's rows invalidates
+   * any trust the old content had earned.
+   */
+  gitBlob?: string | undefined;
 }
 
 /** Statistics about the index. */
@@ -173,6 +188,19 @@ export interface IndexResult {
    * from one triggered by corruption recovery.
    */
   autoRecovered?: { failure: string; rebuiltWithForce: true } | undefined;
+  /**
+   * Files whose index rows this run rewrote, added or removed. `0` means the
+   * run published nothing new — the watcher's echo of an edit the tool already
+   * indexed — so consumers can keep their caches and generation. Absent from
+   * older daemons: treat absent as "changed".
+   */
+  changedFiles?: number | undefined;
+  /**
+   * False when the run left every row, edge and rank as it found them. The
+   * project server keeps its generation (and with it every query cache and
+   * every client's view) for such a run. Absent from older daemons.
+   */
+  contentChanged?: boolean | undefined;
 }
 
 // ─── Cross-reference types ───────────────────────────────────────────────────

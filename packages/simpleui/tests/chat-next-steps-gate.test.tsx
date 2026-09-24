@@ -48,12 +48,14 @@ function renderList(final: boolean | undefined): HTMLElement {
   act(() => {
     root.render(
       <ChatMessageList
-        messages={[assistantMessage(WITH_NEXT_STEPS, final)]}
-        copiedMessageId={null}
-        running={false}
-        activity=""
+        transcript={{
+          messages: [assistantMessage(WITH_NEXT_STEPS, final)],
+          copiedMessageId: null,
+          running: false,
+          activity: '',
+        }}
+        display={{ theme: 'dark' }}
         emptyState={null}
-        theme="dark"
         onCopyMessage={() => undefined}
         onSelectNextStep={() => undefined}
         consumedNextSteps={new Set<string>()}
@@ -105,17 +107,19 @@ describe('SimpleUI next-steps final-message gate', () => {
     act(() => {
       root.render(
         <ChatMessageList
-          messages={[
-            {
-              ...assistantMessage('', true),
-              nextSteps: [{ index: 1, text: 'Run the focused tests', auto: true }],
-            },
-          ]}
-          copiedMessageId={null}
-          running={false}
-          activity=""
+          transcript={{
+            messages: [
+              {
+                ...assistantMessage('', true),
+                nextSteps: [{ index: 1, text: 'Run the focused tests', auto: true }],
+              },
+            ],
+            copiedMessageId: null,
+            running: false,
+            activity: '',
+          }}
+          display={{ theme: 'dark' }}
           emptyState={null}
-          theme="dark"
           onCopyMessage={() => undefined}
           onSelectNextStep={() => undefined}
           consumedNextSteps={new Set<string>()}
@@ -135,22 +139,24 @@ describe('SimpleUI next-steps final-message gate', () => {
     act(() => {
       root.render(
         <ChatMessageList
-          messages={[
-            assistantMessage(WITH_NEXT_STEPS, true),
-            assistantMessage(
-              WITH_NEXT_STEPS.replace('Run the focused tests', 'Inspect the final diff'),
-              true,
-              {
-                id: 'msg_2',
-                ts: '2026-07-31T12:01:00.000Z',
-              },
-            ),
-          ]}
-          copiedMessageId={null}
-          running={false}
-          activity=""
+          transcript={{
+            messages: [
+              assistantMessage(WITH_NEXT_STEPS, true),
+              assistantMessage(
+                WITH_NEXT_STEPS.replace('Run the focused tests', 'Inspect the final diff'),
+                true,
+                {
+                  id: 'msg_2',
+                  ts: '2026-07-31T12:01:00.000Z',
+                },
+              ),
+            ],
+            copiedMessageId: null,
+            running: false,
+            activity: '',
+          }}
+          display={{ theme: 'dark' }}
           emptyState={null}
-          theme="dark"
           onCopyMessage={() => undefined}
           onSelectNextStep={() => undefined}
           consumedNextSteps={new Set<string>()}

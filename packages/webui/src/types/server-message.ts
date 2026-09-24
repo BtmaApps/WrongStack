@@ -61,6 +61,7 @@ import type {
   WSProviderStreamError,
   WSRunResult,
   WSSessionEnd,
+  WSSessionFramesResumed,
   WSSessionResumeProgress,
   WSSessionRunState,
   WSSessionStart,
@@ -190,6 +191,7 @@ export type WSServerMessage =
   | WSProviderActiveBlocked
   | WSProviderStreamError
   | WSRunResult
+  | WSSessionFramesResumed
   | WSSessionRunState
   | WSSessionResumeProgress
   | WSSessionStats
@@ -328,7 +330,7 @@ export type WSServerMessage =
   | WSSystemMiscServerMessage;
 
 export type { WSChimeraServerMessage } from './server-message-chimera.js';
-export type { WSFilesGitServerMessage } from './server-message-files.js';
+export type { GitImageDiff, WSFilesGitServerMessage } from './server-message-files.js';
 export type { WSFleetServerMessage } from './server-message-fleet.js';
 export type { WSMcpServerMessage } from './server-message-mcp.js';
 export type {

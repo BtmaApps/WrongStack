@@ -281,7 +281,9 @@ export {
   type ApplyRewindOptions,
   type ApplyRewindResult,
   applyRewindToConversation,
+  type RedoRewindResult,
   type RewindableConversation,
+  redoLastRewind,
 } from './session-rewind-apply.js';
 export {
   DefaultSessionRewinder,

@@ -20,6 +20,7 @@ import {
   handlePrefsGet,
   handlePrefsUpdate,
   handleSystemPromptGet,
+  handleSystemPromptPresets,
   type PrefsHandlerContext,
 } from './prefs-handlers.js';
 import type { WSClientMessage } from './types.js';
@@ -43,6 +44,12 @@ export interface PrefsRouteHandlers {
    */
   /** `sessionId` names the tab asking: the live variant is per session. */
   getSystemPrompt: (ws: WebSocket, sessionId?: string | undefined) => Promise<void>;
+  manageSystemPromptPresets: (
+    ws: WebSocket,
+    action: string,
+    payload: Record<string, unknown>,
+    sessionId?: string,
+  ) => Promise<void>;
   /** Preview/apply canonical defaults in the active profile config. */
   doctorConfig?: ((ws: WebSocket, apply: boolean) => Promise<void>) | undefined;
 }
@@ -68,6 +75,8 @@ export function createPrefsRouteHandlers(
       );
     },
     getSystemPrompt: async (ws, sessionId) => handleSystemPromptGet(ctx, ws, sessionId),
+    manageSystemPromptPresets: async (ws, action, payload, sessionId) =>
+      handleSystemPromptPresets(ctx, ws, action, payload, sessionId),
     ...(doctorConfig !== undefined ? { doctorConfig } : {}),
   };
 }
@@ -106,6 +115,21 @@ export async function handlePrefsRoute(
       // Same reason as `prefs.get`: the catalogue is shared but `current` is
       // this tab's own variant.
       await handlers.getSystemPrompt(ws, messageSessionId(msg));
+      return true;
+    }
+    case 'system_prompt.presets.get':
+    case 'system_prompt.presets.create':
+    case 'system_prompt.presets.save':
+    case 'system_prompt.presets.activate':
+    case 'system_prompt.presets.delete':
+    case 'system_prompt.presets.validate':
+    case 'system_prompt.presets.preview': {
+      await handlers.manageSystemPromptPresets(
+        ws,
+        msg.type.slice('system_prompt.presets.'.length),
+        (msg.payload ?? {}) as Record<string, unknown>,
+        messageSessionId(msg),
+      );
       return true;
     }
     case 'config.doctor': {

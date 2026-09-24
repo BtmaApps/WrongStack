@@ -177,6 +177,7 @@ export async function executeClearSession(ctx: ClearSessionContext): Promise<voi
     id: ctx.id,
     model: ctx.meta.model ?? 'unknown',
     provider: ctx.meta.provider ?? 'unknown',
+    ...(ctx.meta.checkout ? { checkout: ctx.meta.checkout } : {}),
   })}\n`;
   await ctx.handle.close();
   await atomicWrite(ctx.filePath, record, { mode: 0o600 });

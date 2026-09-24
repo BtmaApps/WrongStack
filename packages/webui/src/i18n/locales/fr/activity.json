@@ -156,7 +156,19 @@
     "loadingDiff": "Chargement du diff…",
     "diffTimeout": "Le diff n'est pas arrivé. Le fichier a peut-être changé ou la connexion a été perdue.",
     "binary": "Fichier binaire — diff non affiché.",
-    "tooLarge": "Fichier trop volumineux pour le diff."
+    "tooLarge": "Fichier trop volumineux pour le diff.",
+    "showAsTree": "Afficher en arborescence",
+    "showAsList": "Afficher en liste",
+    "image": {
+      "before": "HEAD",
+      "after": "Arbre de travail",
+      "added": "Nouvelle image",
+      "deleted": "Image supprimée",
+      "changed": "Image modifiée",
+      "side": "Côte à côte",
+      "onion": "Superposition",
+      "opacity": "Opacité de l'arbre de travail"
+    }
   },
   "inspector": {
     "openAgentsPanel": "Ouvrir le panneau des agents (flotte en direct)",
@@ -1342,7 +1354,13 @@
     "toolRunning": "Running",
     "toolFailed": "Failed",
     "toolSucceeded": "Succeeded",
-    "details": "Details"
+    "details": "Details",
+    "imagePreview": {
+      "tooLarge": "Trop grande pour l'aperçu",
+      "notImage": "Pas une image que le navigateur peut afficher",
+      "error": "Aperçu indisponible",
+      "toggleSize": "Cliquez pour agrandir ou réduire"
+    }
   },
   "watch": {
     "toolFallback": "outil",

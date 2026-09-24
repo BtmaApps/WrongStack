@@ -245,3 +245,53 @@ async function revertSnapshots(
 
   return { revertedFiles: Array.from(new Set(revertedFiles)), errors };
 }
+
+/**
+ * Re-apply rewound file changes (for `/redo`), in execution order. All or
+ * nothing: every touched path must still hold what the rewind left there
+ * (its first recorded `before`, absent for a created file), and every change
+ * must be reproducible (content recorded). Otherwise nothing is written and
+ * the offending paths come back as conflicts, so a redo never clobbers edits
+ * made after the rewind.
+ */
+export async function reapplySnapshots(
+  snapshots: ReadonlyArray<{ files: readonly FileSnapshot[] }>,
+  projectRoot: string,
+): Promise<{ reappliedFiles: string[]; conflicts: string[] }> {
+  const expected = new Map<string, string | null>();
+  const final = new Map<string, string | null>();
+  const conflicts: string[] = [];
+  const root = path.resolve(projectRoot);
+  for (const snapshot of snapshots) {
+    for (const file of snapshot.files) {
+      const abs = path.resolve(file.path);
+      const rel = path.relative(root, abs);
+      if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+        conflicts.push(`${file.path}: outside the project root`);
+        continue;
+      }
+      if (!expected.has(abs)) expected.set(abs, file.action === 'created' ? null : file.before);
+      if (file.action !== 'deleted' && file.after === null) {
+        conflicts.push(`${file.path}: content was not recorded`);
+        continue;
+      }
+      final.set(abs, file.action === 'deleted' ? null : file.after);
+    }
+  }
+  for (const [abs, before] of expected) {
+    const current = await fsp.readFile(abs, 'utf8').catch(() => null);
+    if (current !== before) conflicts.push(`${abs}: changed since the rewind`);
+  }
+  if (conflicts.length > 0) return { reappliedFiles: [], conflicts };
+
+  const reappliedFiles: string[] = [];
+  for (const [abs, content] of final) {
+    if (content === null) await fsp.rm(abs, { force: true });
+    else {
+      await fsp.mkdir(path.dirname(abs), { recursive: true });
+      await atomicWrite(abs, content, { mode: 0o644 });
+    }
+    reappliedFiles.push(abs);
+  }
+  return { reappliedFiles, conflicts: [] };
+}

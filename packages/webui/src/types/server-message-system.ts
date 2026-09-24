@@ -44,6 +44,30 @@ export type WSSystemMiscServerMessage =
   | { type: 'goal-state.error'; payload: { message: string } }
   | { type: 'prefs.updated'; payload: Record<string, unknown> }
   | { type: 'system_prompt.info'; payload: WSSystemPromptInfo }
+  | {
+      type: 'system_prompt.presets';
+      payload: {
+        presets?: WSSystemPromptPreset[];
+        active?: Partial<Record<'lite' | 'default' | 'pro', string>>;
+        projectActive?: Partial<Record<'lite' | 'default' | 'pro', string>>;
+        selectedId?: string;
+        error?: string;
+      };
+    }
+  | {
+      type: 'system_prompt.preset_validation';
+      payload: { issues: Array<{ severity: 'error' | 'warning'; line: number; message: string }> };
+    }
+  | {
+      type: 'system_prompt.preset_preview';
+      payload: {
+        rendered: string;
+        toolNames: string[];
+        tier: string;
+        requestId: number;
+        issues: Array<{ severity: 'error' | 'warning'; line: number; message: string }>;
+      };
+    }
   | { type: 'techstack.job.started'; payload: { jobId: string; kind: 'inventory' | 'analyze' } }
   | {
       type: 'techstack.job.progress';
@@ -281,4 +305,16 @@ export interface WSSystemPromptInfo {
   chosen: boolean;
   variants: WSSystemPromptVariantInfo[];
   error?: string | undefined;
+}
+
+export interface WSSystemPromptPreset {
+  id: string;
+  name: string;
+  baseVariant: 'lite' | 'default' | 'pro';
+  baseHash: string;
+  baseText: string;
+  currentBaseText: string;
+  text: string;
+  revision: number;
+  sourceChanged: boolean;
 }

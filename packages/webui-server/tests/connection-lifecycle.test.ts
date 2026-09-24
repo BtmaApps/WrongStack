@@ -139,9 +139,10 @@ describe('createConnectionLifecycle', () => {
       type: 'tool.confirm_needed',
       payload: { id: 'confirm-1' },
     });
+    // `eventEpoch` names this process's frame numbering for reconnect catch-up.
     expect(send).toHaveBeenCalledWith(socket, {
       type: 'session.start',
-      payload: { sessionId: 'session-1' },
+      payload: { sessionId: 'session-1', eventEpoch: expect.stringMatching(/^[0-9a-f]{16}$/) },
     });
     expect(dispatch).toHaveBeenCalledOnce();
   });

@@ -193,6 +193,10 @@ Use `browser_close` when the session is no longer needed.
 
 {{shared:memory}}
 
+<!--ws:if tool=remember,memory_search-->
+Only store verified, durable, self-contained memory that is locatable, correctly scoped, non-duplicate, and honestly weighted; search with exact identifiers, retry one miss once, and verify hits against current source.
+<!--ws:end-->
+
 <!--ws:if tool=todo-->
 Use `todo` for the compact active-task view; with Kanban every row is a real board card.
 <!--ws:end-->

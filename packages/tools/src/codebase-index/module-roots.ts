@@ -446,6 +446,11 @@ function pythonPackageLabel(
 export function assignPackageLabels(
   structure: ProjectStructure,
   files: readonly string[],
+  /**
+   * Label only these files. `files` must still be the whole indexed set: a
+   * Python label depends on which directories hold an `__init__.py`.
+   */
+  only?: ReadonlySet<string>,
 ): Map<string, string> {
   // Directories that are Python packages (contain __init__.py).
   const initDirs = new Set<string>();
@@ -457,7 +462,7 @@ export function assignPackageLabels(
   }
 
   const labels = new Map<string, string>();
-  for (const file of files) {
+  for (const file of only ?? files) {
     const portable = toPortablePath(file);
     const lang = detectLang(portable);
 

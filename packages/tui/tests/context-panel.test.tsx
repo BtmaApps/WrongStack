@@ -21,6 +21,7 @@ function breakdown(): ContextBreakdown {
         identity: 18_000,
         'tool-usage': 6_000,
         environment: 4_000,
+        'project-instructions': 0,
         skills: 2_000,
         glossary: 0,
         mode: 0,

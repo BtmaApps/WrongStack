@@ -62,13 +62,14 @@ function renderList(
   act(() => {
     root.render(
       <ChatMessageList
-        messages={messages}
-        copiedMessageId={null}
-        running={false}
-        activity=""
+        transcript={{
+          messages,
+          copiedMessageId: null,
+          running: false,
+          activity: '',
+        }}
+        display={{ theme: 'dark', showTimestamps: options.showTimestamps }}
         emptyState={null}
-        theme="dark"
-        showTimestamps={options.showTimestamps}
         onCopyMessage={onCopyMessage}
         onSelectNextStep={() => undefined}
         consumedNextSteps={new Set<string>()}
@@ -79,13 +80,14 @@ function renderList(
     act(() => {
       root.render(
         <ChatMessageList
-          messages={next}
-          copiedMessageId={null}
-          running={false}
-          activity=""
+          transcript={{
+            messages: next,
+            copiedMessageId: null,
+            running: false,
+            activity: '',
+          }}
+          display={{ theme: 'dark', showTimestamps: options.showTimestamps }}
           emptyState={null}
-          theme="dark"
-          showTimestamps={options.showTimestamps}
           onCopyMessage={onCopyMessage}
           onSelectNextStep={() => undefined}
           consumedNextSteps={new Set<string>()}
@@ -199,12 +201,14 @@ describe('ChatMessageList — windowing', () => {
     act(() => {
       root.render(
         <ChatMessageList
-          messages={manyMessages('m', 150)}
-          copiedMessageId={null}
-          running={false}
-          activity=""
+          transcript={{
+            messages: manyMessages('m', 150),
+            copiedMessageId: null,
+            running: false,
+            activity: '',
+          }}
+          display={{ theme: 'dark' }}
           emptyState={null}
-          theme="dark"
           onCopyMessage={() => undefined}
           onSelectNextStep={() => undefined}
           consumedNextSteps={new Set<string>()}

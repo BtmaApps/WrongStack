@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/webui",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "license": "MIT",
   "description": "Browser-based WebUI for WrongStack — React + Vite frontend. The WebSocket backend lives in the separate @wrongstack/webui-server package (extracted in PR #018b to remove the CLI -> @wrongstack/webui/server cross-package edge).",
   "keywords": [
@@ -50,6 +50,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:user-input-browser": "node tests/user-input-browser-smoke.mjs",
+    "test:page-scroll-browser": "node tests/page-scroll-browser-smoke.mjs",
     "test:watch": "vitest",
     "test:coverage": "node ../../scripts/coverage-lock.mjs node ../../scripts/run-vitest-coverage.mjs run --coverage"
   },

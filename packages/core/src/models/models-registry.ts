@@ -591,6 +591,7 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       capabilities: {
         tools: model.tool_call ?? false,
         vision: Boolean(model.modalities?.input?.includes('image')),
+        pdf: Boolean(model.modalities?.input?.includes('pdf')),
         reasoning: model.reasoning ?? model.reasoningConfig !== undefined,
         maxContext: model.limit?.context ?? 0,
         maxOutput: model.limit?.output,

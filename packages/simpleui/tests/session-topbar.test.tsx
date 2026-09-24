@@ -3,22 +3,30 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SessionTopbar, type SessionTopbarProps } from '../src/session-topbar.js';
+import {
+  SessionTopbar,
+  type SessionTopbarProps,
+  type SessionTopbarSessionView,
+} from '../src/session-topbar.js';
 
 const roots: Root[] = [];
 
+const BASE_SESSION_VIEW: SessionTopbarSessionView = {
+  session: {
+    id: 'sess-1',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4',
+    projectName: 'WrongStack',
+    cwd: 'D:/Codebox/PROJECTS/WrongStack',
+    maxContext: 200000,
+  },
+  sessions: [],
+  running: false,
+};
+
 function baseProps(overrides: Partial<SessionTopbarProps> = {}): SessionTopbarProps {
   return {
-    session: {
-      id: 'sess-1',
-      provider: 'anthropic',
-      model: 'claude-sonnet-4',
-      projectName: 'WrongStack',
-      cwd: 'D:/Codebox/PROJECTS/WrongStack',
-      maxContext: 200000,
-    },
-    sessions: [],
-    running: false,
+    sessionView: { ...BASE_SESSION_VIEW },
     models: {
       selectedModel: 'claude-sonnet-4',
       groupedModels: [],
@@ -28,19 +36,23 @@ function baseProps(overrides: Partial<SessionTopbarProps> = {}): SessionTopbarPr
       confirmModelSwitch: vi.fn(),
       cancelModelSwitch: vi.fn(),
     },
-    contextTokens: 42000,
-    contextMaxContext: 200000,
-    load: 0.21,
-    cache: null,
-    connection: 'open',
-    theme: 'dark',
-    commandPaletteOpen: false,
-    mailboxOpen: false,
-    mailboxUnreadCount: 0,
-    settingsOpen: false,
-    appVersion: '',
-    latestVersion: '',
-    hasUpdate: false,
+    contextBar: {
+      tokens: 42000,
+      maxContext: 200000,
+      load: 0.21,
+      cache: null,
+    },
+    status: {
+      connection: 'open',
+      theme: 'dark',
+      commandPaletteOpen: false,
+      mailboxOpen: false,
+      mailboxUnreadCount: 0,
+      settingsOpen: false,
+      appVersion: '',
+      latestVersion: '',
+      hasUpdate: false,
+    },
     onCreateSession: vi.fn(),
     onResumeSession: vi.fn(),
     onRefreshSessions: vi.fn(),
@@ -84,14 +96,14 @@ describe('SessionTopbar context meter', () => {
   });
 
   it('stays enabled while a run is in progress (inspection is read-only)', () => {
-    const props = baseProps({ running: true });
+    const props = baseProps({ sessionView: { ...BASE_SESSION_VIEW, running: true } });
     const host = renderTopbar(props);
     const meter = host.querySelector('.context-meter') as HTMLButtonElement;
     expect(meter.disabled).toBe(false);
   });
 
   it('is disabled without a session', () => {
-    const props = baseProps({ session: null });
+    const props = baseProps({ sessionView: { ...BASE_SESSION_VIEW, session: null } });
     const host = renderTopbar(props);
     const meter = host.querySelector('.context-meter') as HTMLButtonElement;
     expect(meter.disabled).toBe(true);

@@ -51,6 +51,7 @@ import { fmtTok } from '../ChatView/utils';
 import { downloadChatAsMarkdown } from '../CommandPalette';
 import { confirmModal } from '../ConfirmModal';
 import { toast } from '../Toaster';
+import { WorkspaceDock } from '../WorkspaceDock';
 
 // ── Formatting helpers ────────────────────────────────────────────────
 
@@ -396,6 +397,11 @@ export function SessionPanel() {
           disabled={!wsConnected}
           title={t('activity:sessionPanel.actions.clearTitle')}
         />
+      </div>
+
+      {/* Workspace controls stay with the session they describe. */}
+      <div className="border-b border-border/70 px-3 py-2.5">
+        <WorkspaceDock />
       </div>
 
       {/* ── Live stats ── */}

@@ -10,59 +10,24 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import type { useComposerState } from './hooks/use-composer-state.js';
 import { useSkillMentionPicker } from './hooks/use-skill-mention-picker.js';
-import type { FileMention } from './lib/file-mention.js';
+import type { StatusNotice } from './hooks/use-status-notice.js';
 import { detectFileMention, fileBasename } from './lib/file-mention.js';
-import type { QueuedItem, QueueMode } from './lib/queue-model.js';
-import type { RefineDecision, RefineState } from './lib/refine-model.js';
-import type { StatusNoticeProjection } from './lib/status-notice.js';
+import { removeQueuedAt } from './lib/queue-model.js';
 import type { SimpleSocket } from './lib/ws.js';
 import { QueuedMessages } from './queued-messages.js';
 import { RefinePanel } from './refine-panel.js';
-import type { PendingConfirm, SessionInfo } from './types.js';
+import type { ConnectionState, SessionInfo } from './types.js';
 
 interface ComposerProps {
-  skillSocket?: SimpleSocket | null | undefined;
-  draft: string;
-  setDraft: (value: string) => void;
-  fileRefs: string[];
-  setFileRefs: (fn: (prev: string[]) => string[]) => void;
-  fileMention: FileMention | null;
-  setFileMention: (value: FileMention | null) => void;
-  fileMatches: string[];
-  filePickerIndex: number;
-  setFilePickerIndex: (fn: (prev: number) => number) => void;
-  fileSearching: boolean;
-  running: boolean;
-  connection: string;
+  composer: ReturnType<typeof useComposerState>;
+  skillSocket: SimpleSocket | null | undefined;
   session: SessionInfo | null;
-  pendingConfirm: PendingConfirm | null;
-  notice: (StatusNoticeProjection & { id: string }) | null;
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  queue: readonly QueuedItem[];
-  refineState: RefineState | null;
-  submitWith: (mode: QueueMode) => void;
-  abort: () => void;
-  decideConfirm: (
-    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
-  ) => void;
-  selectFile: (path: string) => void;
-  clearQueue: () => void;
-  removeQueued: (id: string) => void;
-  onRefineDecision: (decision: RefineDecision) => void;
-  onRefineRetry: () => void;
-  onRefineRetryFallback: (ref: string) => void;
-  onRefineStartNow: () => void;
-  onRefineSendEdited: (text: string) => void;
-  /** Countdown "Edit": hand the message back to the composer instead of
-   *  sending it — the button twin of the global Escape restore. */
-  onRefineEditInComposer: () => void;
-  preRefineSeconds?: number;
-  // Image attachment
-  attachedImages: { id: string; data: string; mime: string; name: string }[];
-  onAttachImages: () => void;
-  onRemoveImage: (id: string) => void;
-  visionSupported: boolean;
+  running: boolean;
+  connection: ConnectionState;
+  notice: StatusNotice | null;
+  preRefineSeconds: number;
 }
 
 function safeLine(value: unknown): string {
@@ -75,43 +40,54 @@ function safeLine(value: unknown): string {
 }
 
 export function Composer({
+  composer,
   skillSocket,
-  draft,
-  setDraft,
-  fileRefs,
-  setFileRefs,
-  fileMention,
-  setFileMention,
-  fileMatches,
-  filePickerIndex,
-  setFilePickerIndex,
-  fileSearching,
+  session,
   running,
   connection,
-  session,
-  pendingConfirm,
   notice,
-  textareaRef,
-  queue,
-  refineState,
-  submitWith,
-  abort,
-  decideConfirm,
-  selectFile,
-  clearQueue,
-  removeQueued,
-  onRefineDecision,
-  onRefineRetry,
-  onRefineRetryFallback,
-  onRefineStartNow,
-  onRefineSendEdited,
-  onRefineEditInComposer,
   preRefineSeconds,
-  attachedImages,
-  onAttachImages,
-  onRemoveImage,
-  visionSupported,
 }: ComposerProps) {
+  const {
+    draft,
+    setDraft,
+    fileRefs,
+    setFileRefs,
+    fileMention,
+    setFileMention,
+    fileMatches,
+    filePickerIndex,
+    setFilePickerIndex,
+    fileSearching,
+    pendingConfirm,
+    textareaRef,
+    queue,
+    refineState,
+    submitWith,
+    abort,
+    decideConfirm,
+    selectFile,
+    refineDecision,
+    refineRetry,
+    refineRetryFallback,
+    refineStartNow,
+    refineSendEdited,
+    refineEditInComposer,
+    attachedImages,
+    attachImages,
+    removeImage,
+    visionSupported,
+  } = composer;
+  // Queue controls the composition root used to derive at the call site:
+  // the queue lives in the hook, so clear/remove are local setQueue uses.
+  const clearQueue = () => composer.setQueue([]);
+  const removeQueued = (id: string) =>
+    composer.setQueue((current) =>
+      removeQueuedAt(
+        current,
+        current.findIndex((item) => item.id === id),
+      ),
+    );
   const skillMentions = useSkillMentionPicker(
     draft,
     setDraft,
@@ -211,12 +187,12 @@ export function Composer({
       {refineState && (
         <RefinePanel
           state={refineState}
-          onDecision={onRefineDecision}
-          onRetry={onRefineRetry}
-          onRetryFallback={onRefineRetryFallback}
-          onStartRefine={onRefineStartNow}
-          onSendEdited={onRefineSendEdited}
-          onEditInComposer={onRefineEditInComposer}
+          onDecision={refineDecision}
+          onRetry={refineRetry}
+          onRetryFallback={refineRetryFallback}
+          onStartRefine={refineStartNow}
+          onSendEdited={refineSendEdited}
+          onEditInComposer={refineEditInComposer}
           preRefineSeconds={preRefineSeconds}
         />
       )}
@@ -287,7 +263,7 @@ export function Composer({
                 <span>{img.name}</span>
                 <button
                   type="button"
-                  onClick={() => onRemoveImage(img.id)}
+                  onClick={() => removeImage(img.id)}
                   aria-label={`Remove ${img.name}`}
                 >
                   <X size={11} />
@@ -376,7 +352,7 @@ export function Composer({
             title={visionSupported ? 'Attach images' : 'Current model does not support vision'}
             aria-label="Attach images"
             disabled={offline || !visionSupported}
-            onClick={onAttachImages}
+            onClick={attachImages}
           >
             <Image size={17} />
           </button>

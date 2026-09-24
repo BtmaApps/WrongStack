@@ -129,6 +129,16 @@ function resolveSymbolIds(
 const MAX_DISAMBIGUATION_FILES = 64;
 
 /**
+ * An unresolved ref the name fallback may still attribute to a symbol: not
+ * one the import-aware binding pass settled (ref-binding-pass.ts). A name
+ * bound to an outside module (`to_file = ''`), or a JS import it could not
+ * find in the project, is known NOT to reference any indexed symbol.
+ */
+const NOT_BOUND_ELSEWHERE_SQL = `(r.to_file IS NULL OR r.to_file <> '')
+         AND NOT (r.call_type = 'import' AND r.module IS NOT NULL
+                  AND r.lang IN (SELECT lang FROM lang_family WHERE family = 'js'))`;
+
+/**
  * Direct incoming ref rows for `matchIds`.
  *
  * `scopedTargetIds` is set when a `file` filter was widened to every
@@ -203,8 +213,10 @@ export function findIncomingCallsByName(
     return { calls: [], symbolFound: false, ambiguous: false, totalMatches: 0 };
 
   // Ref resolution (writer.ts `resolveRefs`) assigns `to_id` via `MIN(id)`
-  // across the ref's language family — it is not file-aware. When `file` scopes
-  // the query but other
+  // across the ref's language family — it is not file-aware. (JS-family refs
+  // with import or same-file evidence are rebound precisely and carry their
+  // target's `to_file`, which the evidence filter below keys on; the rest
+  // keep the name guess.) When `file` scopes the query but other
   // files also define this name, id-only matching attributes every caller to
   // whichever duplicate holds the lowest id and returns nothing for the rest.
   // Stored refs cannot disambiguate same-named targets, so we must widen to
@@ -249,6 +261,7 @@ export function findIncomingCallsByName(
        FROM refs r
        JOIN symbols s ON s.id = r.from_id
        WHERE r.to_id IS NULL AND r.to_name = ?
+         AND ${NOT_BOUND_ELSEWHERE_SQL}
        ORDER BY r.line, r.id`,
     ).all(symbolName) as CallSiteRow[];
     rows.push(...fallbackRows);
@@ -515,6 +528,7 @@ export function findTransitiveIncomingCallsByName(
        FROM refs r
        JOIN symbols s ON s.id = r.from_id
        WHERE r.to_id IS NULL AND r.to_name = ?
+         AND ${NOT_BOUND_ELSEWHERE_SQL}
        ORDER BY r.line, r.id`,
     ).all(symbolName) as CallSiteRow[];
     rows.push(...fallbackRows);

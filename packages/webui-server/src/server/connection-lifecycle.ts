@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import type { PendingConfirm } from './pending-confirms.js';
 import { resolveAllPendingConfirms } from './pending-confirms.js';
+import { webuiSessionFrameLog } from './session-frame-log.js';
 import { errMessage, messageSessionId, runWithDispatchSession } from './ws-utils.js';
 
 type OutboundMessage = { type: string; payload: unknown };
@@ -424,7 +425,13 @@ export function createConnectionLifecycle<Client, Request, Message>(
     });
 
     try {
-      options.send(ws, { type: 'session.start', payload: await options.buildInitialPayload() });
+      // `eventEpoch` tells a reconnecting page whether its frame cursors
+      // (session-frame-log) still mean anything on this server process.
+      const payload = await options.buildInitialPayload();
+      options.send(ws, {
+        type: 'session.start',
+        payload: { ...payload, eventEpoch: webuiSessionFrameLog().epoch },
+      });
     } catch (error) {
       log('warn', 'webui.session_start_payload_failed', error);
     }

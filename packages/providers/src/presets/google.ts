@@ -513,6 +513,8 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
             data: b.source.data ?? '',
           },
         });
+      } else if (b.type === 'document') {
+        textParts.push({ inlineData: { mimeType: b.source.media_type, data: b.source.data } });
       }
     }
     const userParts: GeminiPart[] = [...textParts];

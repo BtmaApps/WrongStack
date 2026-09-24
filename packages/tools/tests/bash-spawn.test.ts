@@ -234,12 +234,14 @@ describe('bashTool background (faked shell)', () => {
     await expect(runFinal({ command: 'server', background: true })).rejects.toThrow(/invalid PID/);
   });
 
-  it('disconnects background stdout/stderr so the job survives host exit', async () => {
+  it('disconnects background stdout/stderr from the host so the job survives host exit', async () => {
     await runFinal({ command: 'noisy', background: true });
-    expect((cfg.spawnCalls.at(-1)?.opts.stdio as string[] | undefined)?.slice(1)).toEqual([
-      'ignore',
-      'ignore',
-    ]);
+    // Never a pipe (its read end dies with the host): both go to one log file
+    // descriptor the child writes itself.
+    const [, out, err] = (cfg.spawnCalls.at(-1)?.opts.stdio ?? []) as unknown[];
+    expect(out).not.toBe('pipe');
+    expect(typeof out).toBe('number');
+    expect(err).toBe(out);
   });
 
   it('returns an empty output envelope for detached background jobs', async () => {
@@ -382,7 +384,9 @@ describe('bashTool Windows shell selection (Codex + PowerShell)', () => {
       await runFinal({ command: 'echo hi' });
       const call = cfg.spawnCalls[0]!;
       // Plain echo on cmd.exe uses /c (not the PowerShell -Command prefix).
-      expect(call.args).toEqual(['/c', 'echo hi']);
+      expect(call.args).toEqual(['/s', '/c', '"echo hi"']);
+      // Verbatim, so an inner `"` reaches cmd.exe unescaped.
+      expect(call.opts).toMatchObject({ windowsVerbatimArguments: true });
       expect(call.cmd.toLowerCase()).toContain('cmd');
     });
   });
@@ -415,7 +419,7 @@ describe('bashTool Windows shell selection (Codex + PowerShell)', () => {
     await withShell('cmd', async () => {
       await runFinal({ command: 'Get-Content foo' });
       const call = cfg.spawnCalls[0]!;
-      expect(call.args).toEqual(['/c', 'Get-Content foo']);
+      expect(call.args).toEqual(['/s', '/c', '"Get-Content foo"']);
       expect(call.cmd.toLowerCase()).toContain('cmd');
     });
   });
@@ -492,7 +496,7 @@ describe('bashTool Windows shell selection (Codex + PowerShell)', () => {
     cfg.platform = 'win32';
     await withShell(undefined, async () => {
       await runFinal({ command: 'echo hi', hermetic: true });
-      expect(cfg.spawnCalls[0]!.args).toEqual(['/d', '/c', 'echo hi']);
+      expect(cfg.spawnCalls[0]!.args).toEqual(['/d', '/s', '/c', '"echo hi"']);
     });
   });
 

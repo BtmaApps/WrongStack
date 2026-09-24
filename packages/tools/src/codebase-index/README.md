@@ -71,6 +71,74 @@ absent.
   the last owner disconnecting closes the watcher and clears its debounce
   timers and pending-file sets.
 
+## Cost is proportional to change
+
+Every index run records what it changed — files re-parsed, added, deleted —
+and everything after the parse scales with that, not with the repository:
+
+- **Relation pass** (`relation-pass.ts`): a rewritten file re-resolves only its
+  own imports; an added file also retries every still-unresolved import (so
+  `import './b'` written before `b.ts` existed resolves the moment it appears,
+  even from a watcher run that only names `b.ts`); a deleted file re-resolves
+  its importers. Package labels are written as a diff, and only for new files
+  unless the detected module structure changed. The structure is cached per
+  store behind a `relation_epoch` metadata key any writer bumps, and a full
+  project run always re-detects it (non-indexed markers such as `go.mod` reach
+  no watcher). `module_resolution_version` forces one full pass when the
+  resolver changes.
+- **Ranks** recompute once 25 files have changed since the last pass
+  (`rank_stale_files`, accumulated across runs), never for a run that changed
+  nothing.
+- **Git trust is per file.** `files.git_blob` holds the staged blob (bound to
+  the row's content hash) a completed full run saw the file clean at. A later
+  full run skips — no stat, no read — every file Git still reports clean at
+  that blob, so an edit elsewhere or a branch switch re-reads only what moved.
+  Any rewrite clears the stamp, so an edit-then-revert made while no watcher
+  ran is re-read. Discovery is one `git ls-files -t -s -m -d -o` process
+  (spawns block the event loop for hundreds of milliseconds on Windows); the
+  end-of-run re-listing that guards against edits racing the run only happens
+  when the run writes a new stamp.
+- **Generations.** A run reports `contentChanged: false` when it left every
+  row, edge and rank as it found them — typically the watcher's echo of an edit
+  a tool already indexed. The server then keeps its generation, so query caches
+  stay valid and clients (WebUI Code Map, TUI) do not refetch. Content caches
+  key on the `graph_stamp` metadata, which moves only with rows or edges.
+
+Measured on this repository (9.6k files, 74k symbols, 270k refs; three
+processes each, see `PERF_LOG.md`): a full run over an unchanged checkout
+5.4 s → 0.7 s, a one-file edit ~470 → ~90 ms, the watcher echo ~400 → 2 ms, and a cold full index 82 s → 46 s.
+
+## What a ref points at
+
+Name resolution (`writer-refs.ts`) gives a ref the lowest symbol id declaring
+its name in the language family — a guess. For the JS family
+`ref-binding-pass.ts` then binds each ref from what its own file says, after
+the relation pass has resolved import targets:
+
+1. a top-level declaration of the name in the same file;
+2. the file's import of the name, followed into the resolved module and
+   through `export { X } from` / `export * from` up to four files — `to_id` is
+   that declaration, `to_file` its file;
+3. an import from outside the index (`vitest`, `node:path`, an unresolved
+   relative path) — bound to nothing: `to_id` NULL, `to_file` `''`;
+4. otherwise the name guess stands (globals, ambient declarations, aliased
+   and namespace imports).
+
+The name resolvers skip `to_file = ''` refs and JS import refs (whose `to_id`
+is the export this pass found), and the incoming-calls name fallback skips
+both. A run rebinds only what it can have changed: every ref of a re-parsed
+file, and elsewhere the refs named like one that pointed (`to_file`) into a
+changed file, captured before the relation pass clears it.
+`ref_binding_version` forces one whole-index rebind (≈1.3 s here).
+
+Refs hang off symbols, so a file that declares nothing — a test file of
+`describe`/`it` blocks, a barrel of re-exports, an entry script — owns its
+refs through one synthetic `mod` symbol named `<module>` (`MODULE_OWNER_NAME`).
+It has no search text and is never reported as dead code; before it existed,
+a tenth of this repository's files contributed no imports or calls, and
+re-export chains broke at every pure barrel. `module_owner_version` re-parses
+an older index's symbol-less files once.
+
 ## Reads during a refresh
 
 While an index refresh is publishing, reads are served from the previous

@@ -447,6 +447,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
         { exclude: ['fallback-model'] },
       )(agent.ctx, request),
     compactor: container.resolve(TOKENS.Compactor),
+    modelsRegistry,
   });
 
   let {

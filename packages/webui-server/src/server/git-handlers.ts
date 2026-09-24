@@ -21,6 +21,7 @@ import {
   repoRelativePrefix,
 } from './git-paths.js';
 import { isPathInside } from './path-containment.js';
+import { imageDiffPayload, looksLikeImagePath } from './project-image.js';
 import { send } from './ws-utils.js';
 
 /**
@@ -321,6 +322,11 @@ export async function handleGitDiff(
           reply({ oldText: '', newText: '', error: 'path outside project root' });
           return;
         }
+      }
+      // A changed image: send both versions to look at instead of "binary".
+      if (looksLikeImagePath(path)) {
+        reply(await imageDiffPayload(cwd, path, readPath));
+        return;
       }
       if (readPath) {
         const buf = await readFile(readPath);

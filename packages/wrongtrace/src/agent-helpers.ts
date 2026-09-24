@@ -301,6 +301,9 @@ export async function getRecentActivity(
 ): Promise<RecentActivityEntry[]> {
   if (!wt.isAvailable) return [];
 
+  const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? limit : 0;
+  if (safeLimit === 0) return [];
+
   // Friction's recent_collisions is the most reliable signal today.
   // The daemon does not yet expose a per-file events endpoint (see
   // Missing-Endpoints report), so this is our primary source.
@@ -324,7 +327,7 @@ export async function getRecentActivity(
     matched.push(entry);
   }
   matched.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  return matched.slice(0, limit);
+  return matched.slice(0, safeLimit);
 }
 
 async function getFrictionRaw(wt: WrongTraceClient, limit: number): Promise<unknown> {

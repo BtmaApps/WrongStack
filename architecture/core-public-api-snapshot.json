@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.25",
+  "packageVersion": "1.0.26",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -142,6 +142,7 @@
         "export { ConversationState, type ReadonlyConversationState, type StateChange, type StateChangeHandler, wrapAsState, } from './conversation-state.js';",
         "export { FallbackProfileManager } from './fallback-profile-manager.js';",
         "export { InputBuilder, type InputBuilderEvent, type InputBuilderOptions, } from './input-builder.js';",
+        "export { activateSystemPromptPreset, activeSystemPromptPresetText, bundledPromptText, createSystemPromptPreset, deleteSystemPromptPreset, listSystemPromptPresets, type PromptValidationIssue, promptTextHash, readActiveSystemPromptPresets, readProjectSystemPromptPresets, readSystemPromptPreset, type SystemPromptPreset, saveSystemPromptPreset, validateSystemPromptPreset, } from './system-prompt-presets.js';",
         "export { buildBtwBlock, consumeBtwNotes, pendingBtwCount, setBtwNote, } from './btw.js';",
         "export { buildSessionNoteBlock, consumeSessionNotes, enqueueSessionNote, pendingSessionNoteCount, type SessionNote, type SessionNoteKind, } from './session-notes.js';",
         "export { clearPendingNextSteps, hasNextStepsTag, MAX_PENDING_NEXT_STEPS, maybeAppendPendingNextSteps, type PendingNextStep, readPendingNextSteps, renderNextStepsBlock, writePendingNextSteps, } from './next-steps-slot.js';",
@@ -241,17 +242,18 @@
         "export type { CompactionObserver, CompactionTrigger, CompactOptions, Compactor, CompactReport, } from './compactor.js';",
         "export type { CompletedWorkEvidence, CompletedWorkSource, ContextEvidenceState, ToolOutputMetadata, } from './context-evidence.js';",
         "export type { ConfirmAwaiter, GovernedToolExecutionResult, GovernedToolExecutor, ToolBatchResult, ToolConfirmPendingResult, ToolExecution, ToolExecutionOutput, ToolExecutorInit, ToolExecutorLike, ToolExecutorOptions, ToolExecutorStrategy, } from './tool-executor.js';",
-        "export type { ContentBlock, ImageBlock, TextBlock, ThinkingBlock, ToolResultBlock, ToolUseBlock, } from './blocks.js';",
+        "export type { ContentBlock, DocumentBlock, ImageBlock, TextBlock, ThinkingBlock, ToolResultBlock, ToolUseBlock, } from './blocks.js';",
         "export type { ContextSnapshot, ContextWindowAggressiveOn, ContextWindowConfigLike, ContextWindowMode, ContextWindowModeId, ContextWindowModeSelectionId, ContextWindowPolicy, ContextWindowThresholds, DeprecatedContextWindowModeId, } from './context-window.js';",
         "export type { CouncilDistinctness, CouncilLLMCaller, CouncilModelTarget, CouncilOption, CouncilPersona, CouncilProfileConfig, CouncilQuestion, CouncilResolutionMethod, CouncilResult, CouncilSeatConfig, CouncilUsage, CouncilVoteResult, CouncilVoteStatus, ResolvedCouncilProfile, ResolvedCouncilSeat, } from './council.js';",
         "export type { CriticalPathResult, SerializableTaskGraph, SerializedTaskGraph, TaskAssignment, TaskDependency, TaskEdge, TaskFilter, TaskGraph, TaskNode, TaskPriority, TaskProgress, TaskSort, TaskStatus, TaskType, } from './task-graph.js';",
         "export type { DefaultSessionReaderOptions, SessionEventType, SessionExportOptions, SessionQuery, SessionReader, SessionSearchHit, SessionSearchQuery, SessionSummaryLite, } from './session-reader.js';",
         "export type { DesignKitEntry, DesignKitLoader, DesignKitManifest, DesignKitTokens, DesignStack, DesignStudioState, DesignTokenSet, TokenValueKind, } from './design-kit.js';",
-        "export type { DirectoryPolicy, DirectoryRule, PermissionDecision, PermissionPolicy, PermissionTrace, PermissionTraceStep, TrustPolicy, } from './permission.js';",
+        "export type { DirectoryPolicy, DirectoryRule, PermissionDecision, PermissionPolicy, PermissionRule, PermissionTrace, PermissionTraceStep, TrustPolicy, } from './permission.js';",
         "export type { DistributiveOmit } from './utility-types.js';",
         "export type { ErrorCode, ErrorSeverity, ErrorSubsystem } from './errors.js';",
         "export type { FileEventRecord } from './file-event-record.js';",
-        "export type { FileSnapshot, ForkedSession, ResumedSession, ResumeFileStatus, ResumeFileValidationEntry, ResumeValidation, SessionArchiveIdleResult, SessionArchiveResult, SessionData, SessionEvent, SessionForkOptions, SessionLoadProgress, SessionMetadata, SessionStoragePolicy, SessionStore, SessionSummary, SessionWriter, WorkspaceCheckpointRef, WorkspaceMaterializationResult, } from './session.js';",
+        "export type { FileSnapshot, ForkedSession, ResumedSession, ResumeFileStatus, ResumeFileValidationEntry, ResumeValidation, SessionArchiveIdleResult, SessionArchiveResult, SessionData, SessionEvent, SessionForkOptions, SessionLoadProgress, SessionMetadata, SessionMoveResult, SessionMoveTarget, SessionStoragePolicy, SessionStore, SessionSummary, SessionWriter, WorkspaceCheckpointRef, WorkspaceMaterializationResult, } from './session.js';",
+        "export type { GeneratedImage, ImageGenerationRequest, ImageGenerationResult, } from './image-generation.js';",
         "export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';",
         "export type { InstalledPromptEntry, PromptManifestData, PromptRegistryManifest, PromptRegistryRef, RegistryDiff, } from './prompt-registry.js';",
         "export type { JSONSchema, Permission, RiskTier, Tool, ToolCallContext, ToolErrorInfo, ToolFinalEvent, ToolIconId, ToolProgressEvent, ToolSettlement, ToolStreamEvent, } from './tool.js';",
@@ -269,6 +271,7 @@
         "export type { RotatableSecretVault, SecretVault } from './secret-vault.js';",
         "export type { SecretScrubber } from './secret-scrubber.js';",
         "export type { SessionMarker, SessionMarkerDetail, SessionMarkerLevel, } from './session-markers.js';",
+        "export type { SessionPermissionOverride } from './session-permission-override.js';",
         "export type { SideEffect } from './side-effect.js';",
         "export type { SkillEntry, SkillLoader, SkillManifest } from './skill.js';",
         "export type { SlashCommand } from './slash-command.js';",
@@ -291,8 +294,8 @@
         "export { classifyProviderError, effectiveInputTokens, freshInputTokens, isContextOverflowShaped, isFallbackWorthy, isReasoningEffort, isRetryableKind, ProviderError, promptCacheHitRatio, REASONING_EFFORT_LEVELS, StreamHangError, totalUsageTokens, } from './provider.js';",
         "export { defineMemoryCapability, MEMORY_TYPE_LABELS } from './memory.js';",
         "export { diffRegistry, validateRegistryManifest } from './prompt-registry.js';",
+        "export { documentAsText, isImageBlock, isTextBlock, isToolResultBlock, isToolUseBlock, isVolatileSystemBlock, markVolatileSystemBlock, VOLATILE_SYSTEM_BLOCKS, } from './blocks.js';",
         "export { flattenSystemPromptRegions } from './system-prompt.js';",
-        "export { isImageBlock, isTextBlock, isToolResultBlock, isToolUseBlock, isVolatileSystemBlock, markVolatileSystemBlock, VOLATILE_SYSTEM_BLOCKS, } from './blocks.js';",
         "export { projectSessionTimeline, projectSessionToolMeta } from './session-timeline.js';"
       ]
     },
@@ -383,9 +386,10 @@
         "export * from './tool-subject.js';",
         "export * from './wstack-paths.js';",
         "export type { HttpDispatcher, HttpsAgentAsDispatcher } from './dispatcher-types.js';",
-        "export { ALLOWED_IMAGE_MEDIA_TYPES, base64DecodedBytes, buildUserContentBlocks, IncomingImageError, type IncomingImagePayload, isAllowedImageMediaType, isValidImageBase64, MAX_INCOMING_IMAGE_BYTES, MAX_INCOMING_IMAGES, parseIncomingImages, } from './incoming-images.js';",
+        "export { ALLOWED_IMAGE_MEDIA_TYPES, base64DecodedBytes, buildUserContentBlocks, IncomingImageError, type IncomingImagePayload, type IncomingPdf, isAllowedImageMediaType, isValidImageBase64, MAX_INCOMING_DOCUMENT_BYTES, MAX_INCOMING_DOCUMENTS, MAX_INCOMING_IMAGE_BYTES, MAX_INCOMING_IMAGES, PDF_MEDIA_TYPE, parseIncomingAttachments, parseIncomingImages, } from './incoming-images.js';",
         "export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore.js';",
         "export { activateProjectStateGuard, type ProjectStateGuard, type ProjectStateGuardOptions, startProjectStateGuard, } from './project-state-guard.js';",
+        "export { adaptDocumentsForModel, documentBlocksAsText } from './document-blocks.js';",
         "export { addFatalSalvageHook, type CrashShieldOptions, installCrashShield, runFatalSalvageSync, } from './crash-shield.js';",
         "export { applyToolDescriptionModes, applyToolDescriptionModeToTool, DEFAULT_TOOL_DESCRIPTION_MODE, getToolDescriptionMode, normalizeToolDescriptionMode, resolveToolDescriptionMode, setToolDescriptionMode, simplifyToolDescription, type ToolDescriptionRegistryLike, } from './tool-description-mode.js';",
         "export { applyToolResultRenderModes, DEFAULT_TOOL_RESULT_RENDER_MODE, getToolResultRenderMode, normalizeToolResultRenderMode, resolveToolResultRenderMode, setToolResultRenderMode, type ToolResultRenderModeRegistryLike, } from './tool-result-render-mode.js';",
@@ -911,7 +915,7 @@
         "export { stampAgentId, withAgentAttribution } from './session-agent-attribution.js';",
         "export { type AbandonedSession, RecoveryLock, type RecoveryLockOptions, } from './recovery-lock.js';",
         "export { type Annotation, AnnotationsStore, type AnnotationsStoreOptions, } from './annotations-store.js';",
-        "export { type ApplyRewindOptions, type ApplyRewindResult, applyRewindToConversation, type RewindableConversation, } from './session-rewind-apply.js';",
+        "export { type ApplyRewindOptions, type ApplyRewindResult, applyRewindToConversation, type RedoRewindResult, type RewindableConversation, redoLastRewind, } from './session-rewind-apply.js';",
         "export { type AttachmentStoreOptions, DefaultAttachmentStore, } from './attachment-store.js';",
         "export { type AuditEntry, ToolAuditLog, type ToolAuditLogOptions, type VerifyResult, } from './tool-audit-log.js';",
         "export { type AuditLevel, CORE_RECONSTRUCT_EVENTS, createSessionEventBridge, resolveAuditLevel, resolveSessionLoggingConfig, type SessionEventBridge, type SessionEventBridgeOptions, type SessionSamplingOptions, STANDARD_AUDIT_EVENTS, type ToolProgressSamplingOptions, } from './session-event-bridge.js';",
@@ -966,15 +970,18 @@
         "export { ReadOnlyPermissionPolicy, toolMutates } from './readonly-permission-policy.js';",
         "export { TRUST_POLICY_JSON_SCHEMA, TRUST_POLICY_LIMITS, TRUST_POLICY_SCHEMA_VERSION, type TrustPolicyDiagnostic, type TrustPolicyDiagnosticCode, type TrustPolicyValidationResult, validateTrustPolicy, } from './permission-policy-schema.js';",
         "export { base32Decode, base32Encode, buildOtpAuthUri, generateRecoveryCodes, generateTotp, generateTotpSecret, hashRecoveryCode, verifyRecoveryCode, verifyTotp, verifyTotpCounter, } from './totp.js';",
-        "export { clampSubagentCapabilities, DANGEROUS_FOR_SUBAGENTS, getDangerousCapabilities, hasCapability, hasDangerousCapabilityForSubagents, ToolCapabilities, type ToolCapability, WIDE_SUBAGENT_CAPABILITIES, } from './capabilities.js';",
+        "export { capabilityDowngradesToConfirm, clampSubagentCapabilities, DANGEROUS_FOR_SUBAGENTS, getDangerousCapabilities, hasCapability, hasDangerousCapabilityForSubagents, ToolCapabilities, type ToolCapability, WIDE_SUBAGENT_CAPABILITIES, } from './capabilities.js';",
+        "export { compilePermissionRules, matchedPermissionRule } from './permission-rules.js';",
         "export { createCompatibilityTrustBoundary, decodeTrustBoundaryDecision, decodeTrustBoundaryRequest, isTrustDecisionAllowed, TRUST_BOUNDARY_VERSION, } from './trust-boundary.js';",
         "export { decryptConfigSecrets, decryptConfigSecretsForRewrite, encryptConfigSecrets, isSecretField, } from './config-secrets.js';",
+        "export { describeSessionPermissionOverride, readSessionPermissionOverrides, restoreSessionPermissionOverrides, setSessionPermissionOverrides, } from './session-permission-overrides.js';",
         "export { describeWriteTargets } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
         "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
-        "export { type KanbanGovernancePort, kanbanGovernance, setKanbanGovernance, } from './kanban-governance-port.js';"
+        "export { type KanbanGovernancePort, kanbanGovernance, setKanbanGovernance, } from './kanban-governance-port.js';",
+        "export { withExecutorGate } from './permission-explain.js';"
       ]
     },
     {
@@ -1473,8 +1480,8 @@
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 61,
-      "sourceLines": 13785
+      "sourceFiles": 62,
+      "sourceLines": 14267
     },
     {
       "directory": "design",
@@ -1488,7 +1495,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20325
+      "sourceLines": 20321
     },
     {
       "directory": "extension",
@@ -1501,8 +1508,8 @@
       "directory": "goal",
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
-      "sourceFiles": 17,
-      "sourceLines": 4112
+      "sourceFiles": 18,
+      "sourceLines": 4181
     },
     {
       "directory": "hooks",
@@ -1515,8 +1522,8 @@
       "directory": "hq",
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
-      "sourceFiles": 56,
-      "sourceLines": 11786
+      "sourceFiles": 57,
+      "sourceLines": 11829
     },
     {
       "directory": "infrastructure",
@@ -1530,14 +1537,14 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4287
+      "sourceLines": 4296
     },
     {
       "directory": "models",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 13,
-      "sourceLines": 3019
+      "sourceLines": 3020
     },
     {
       "directory": "notifications",
@@ -1606,15 +1613,15 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 24,
-      "sourceLines": 8442
+      "sourceFiles": 26,
+      "sourceLines": 9326
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5113
+      "sourceLines": 5132
     },
     {
       "directory": "skills",
@@ -1634,8 +1641,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 107,
-      "sourceLines": 23796
+      "sourceFiles": 109,
+      "sourceLines": 24623
     },
     {
       "directory": "tasking",
@@ -1655,8 +1662,8 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 77,
-      "sourceLines": 14406
+      "sourceFiles": 79,
+      "sourceLines": 14666
     },
     {
       "directory": "typesafe",
@@ -1669,8 +1676,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 74,
-      "sourceLines": 13106
+      "sourceFiles": 75,
+      "sourceLines": 13219
     },
     {
       "directory": "wiring",

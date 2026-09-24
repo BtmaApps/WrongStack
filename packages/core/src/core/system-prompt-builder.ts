@@ -37,6 +37,10 @@ import { buildEnvironment } from './system-prompt-environment.js';
 import { renderDomainGlossary } from './system-prompt-glossary.js';
 import { buildMemoryAndSkills, renderOnlineAgents } from './system-prompt-memory-skills.js';
 import { type ActivePlanCache, readActivePlanBlock } from './system-prompt-plan.js';
+import {
+  systemPromptPresetCacheKey,
+  systemPromptPresetGeneration,
+} from './system-prompt-presets.js';
 import { isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';
 import { compactTrigger } from './system-prompt-skill-text.js';
 import {
@@ -73,6 +77,7 @@ export function buildIdentityLayer(
   identity: string | undefined,
   source: 'bundled' | 'global' | 'project' | 'file' | undefined,
   tplCtx?: InstructionTemplateContext | undefined,
+  trustedIdentity?: string | undefined,
 ): string {
   const render = (text: string): string => renderInstructionLayer(text, tplCtx);
   if (identity === undefined) return render(LAYER_1_IDENTITY);
@@ -89,8 +94,8 @@ export function buildIdentityLayer(
   });
   // An empty project identity has nothing to fence; emitting a bare delimiter
   // pair would just be noise in the prompt.
-  if (!fenced) return render(LAYER_1_IDENTITY);
-  return [render(LAYER_1_IDENTITY), '', fenced].join('\n');
+  if (!fenced) return render(trustedIdentity ?? LAYER_1_IDENTITY);
+  return [render(trustedIdentity ?? LAYER_1_IDENTITY), '', fenced].join('\n');
 }
 
 export type { SystemBlockSource } from './system-prompt-blocks.js';
@@ -243,6 +248,8 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     | undefined;
   /** Instruction bundle per identity variant — see `instructions()`. */
   private readonly _instructionBundles = new Map<string, Promise<InstructionBundle>>();
+  private _presetGeneration = systemPromptPresetGeneration();
+  private readonly _presetFingerprints = new Map<string, string>();
   /**
    * Cached rendered identity layer. Keyed the same way as `_toolsUsageCache`:
    * the ToolRegistry snapshot keeps the array reference stable until a registry
@@ -613,6 +620,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
       instructions.system?.identity,
       instructions.system?.identitySource,
       tplCtx,
+      instructions.system?.trustedIdentity,
     );
     this._identityCache = {
       toolsRef: ctx.tools,
@@ -637,7 +645,20 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
   ): Promise<InstructionBundle> {
     const paths = this.opts.instructionPaths;
     const effective = variant ?? paths?.systemVariant;
+    const generation = systemPromptPresetGeneration();
+    if (generation !== this._presetGeneration) {
+      this._instructionBundles.clear();
+      this._presetFingerprints.clear();
+      this._presetGeneration = generation;
+    }
     const key = effective ?? 'default';
+    if (paths?.globalDir) {
+      const fingerprint = await systemPromptPresetCacheKey(paths.globalDir, key, paths.projectDir);
+      if (this._presetFingerprints.get(key) !== fingerprint) {
+        this._instructionBundles.delete(key);
+        this._presetFingerprints.set(key, fingerprint);
+      }
+    }
     const cached = this._instructionBundles.get(key);
     if (cached) return cached;
     const loading = loadInstructionBundle({

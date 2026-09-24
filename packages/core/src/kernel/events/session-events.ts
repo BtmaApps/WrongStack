@@ -265,6 +265,15 @@ export interface SessionEventMap {
     removedEvents: number;
   };
   /**
+   * Fired after `/redo` put back the journal a rewind cut (and the caller
+   * re-applied its file changes). `toPromptIndex` is the rewind being undone.
+   */
+  'session.redone': {
+    sessionId?: string | undefined;
+    toPromptIndex: number;
+    restoredEvents: number;
+  };
+  /**
    * Auto-proceed countdown tick, emitted once per second by the REPL while
    * autonomy mode `auto` is counting down to self-driving the next suggestion.
    * `remaining` is the number of whole seconds left. Display-only: the TUI

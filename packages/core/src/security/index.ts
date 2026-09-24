@@ -3,10 +3,12 @@ export {
   isPersistentApproval,
   scopedApprovalPattern,
 } from './scoped-approval.js';
+
 // Security domain: secret scrubbing, vault encryption, permission policies
 
 export { noOpVault } from '../types/secret-vault.js';
 export {
+  capabilityDowngradesToConfirm,
   clampSubagentCapabilities,
   DANGEROUS_FOR_SUBAGENTS,
   getDangerousCapabilities,
@@ -57,6 +59,7 @@ export {
   kanbanGovernance,
   setKanbanGovernance,
 } from './kanban-governance-port.js';
+export { withExecutorGate } from './permission-explain.js';
 export { describeWriteTargets } from './permission-helpers.js';
 export {
   AutoApprovePermissionPolicy,
@@ -73,6 +76,7 @@ export {
   type TrustPolicyValidationResult,
   validateTrustPolicy,
 } from './permission-policy-schema.js';
+export { compilePermissionRules, matchedPermissionRule } from './permission-rules.js';
 export {
   isProjectRootLocked,
   isYoloLockedOff,
@@ -88,6 +92,12 @@ export {
   rotateConfigKeys,
   type SecretVaultOptions,
 } from './secret-vault.js';
+export {
+  describeSessionPermissionOverride,
+  readSessionPermissionOverrides,
+  restoreSessionPermissionOverrides,
+  setSessionPermissionOverrides,
+} from './session-permission-overrides.js';
 export {
   base32Decode,
   base32Encode,

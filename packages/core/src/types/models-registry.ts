@@ -134,6 +134,8 @@ export interface ResolvedModel {
   capabilities: {
     tools: boolean;
     vision: boolean;
+    /** Catalog `modalities.input` lists `pdf`. */
+    pdf?: boolean | undefined;
     reasoning: boolean;
     maxContext: number;
     maxOutput?: number | undefined;

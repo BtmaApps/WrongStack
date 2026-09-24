@@ -183,6 +183,7 @@ export function executeAcquireMaintenance(
     (operation === 'delete' ||
       operation === 'archive' ||
       operation === 'rehydrate' ||
+      operation === 'move' ||
       foreignLiveLease(db, sessionId, holderPid))
   ) {
     throw conflict(`Session ${sessionId} is live`);

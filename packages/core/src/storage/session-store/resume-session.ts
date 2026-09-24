@@ -206,6 +206,7 @@ export async function executeResumeSession(params: ResumeSessionParams): Promise
         id: canonicalId,
         model: data.metadata.model,
         provider: data.metadata.provider,
+        ...(projectRoot ? { checkout: projectRoot } : {}),
       },
       events,
       {

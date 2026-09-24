@@ -225,7 +225,7 @@ export function HomePage() {
           aria-hidden="true"
         />
         <div className="relative mx-auto grid max-w-[1380px] gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,.9fr)_minmax(440px,1.1fr)] lg:items-center lg:gap-10 lg:px-10 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(0,.86fr)_minmax(520px,1.14fr)] xl:gap-14">
-          <div>
+          <div className="hero-copy min-w-0">
             <div className="mb-8 flex flex-wrap items-center gap-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted">
               <span className="flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
                 <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" /> v
@@ -237,7 +237,7 @@ export function HomePage() {
               <span>{runtimeBadge}</span>
               <span>MIT licensed</span>
             </div>
-            <h1 className="max-w-[820px] font-display text-[clamp(4rem,7.5vw,7.05rem)] font-bold leading-[0.86] tracking-[-0.022em] text-fg">
+            <h1 className="hero-heading max-w-[820px] font-display font-bold leading-[0.86] tracking-[-0.022em] text-fg">
               <span className="hero-line block whitespace-nowrap">CODE.</span>
               <span className="hero-line hero-line--brand-2 hero-line--delay-1 block whitespace-nowrap">
                 COMMAND.

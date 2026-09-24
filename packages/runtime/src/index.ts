@@ -16,4 +16,5 @@ export * from './host.js';
 export { wireKanbanPorts } from './kanban-ports.js';
 export { type ProbeOptions, type ProbeResult, probeLocalLlm } from './local-llm-probe.js';
 export * from './pack.js';
+export * from './project-permission-policy.js';
 export * from './vision.js';

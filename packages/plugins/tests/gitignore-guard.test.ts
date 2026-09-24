@@ -148,6 +148,21 @@ describe('matchGitignorePattern', () => {
     expect(matchGitignorePattern('other/docs/generated/x.md', 'docs/generated/')).toBe(false);
   });
 
+  it.each([
+    ['dist/app.js', '/dist/', true],
+    ['dist', '/dist/', true],
+    ['apps/web/dist/app.js', '/dist/', false],
+    ['apps\\web\\dist\\app.js', '/dist/', false],
+    ['dist-other/app.js', '/dist/', false],
+    ['.env', '/*.env', true],
+    ['config/.env', '/*.env', false],
+    ['docs/generated/a.md', '/docs/generated/', true],
+    ['other/docs/generated/a.md', '/docs/generated/', false],
+    ['dist/app.js', '/', false],
+  ])('matches root-anchored pattern %s against %s as %s', (path, pattern, expected) => {
+    expect(matchGitignorePattern(path, pattern)).toBe(expected);
+  });
+
   it('handles Windows-style separators and ignores comments/blank patterns', () => {
     expect(matchGitignorePattern('dist\\foo.js', 'dist/')).toBe(true);
     expect(matchGitignorePattern('dist/foo.js', '# comment')).toBe(false);
@@ -284,6 +299,25 @@ describe('gitignore-guard PostToolUse hook', () => {
     expect(await hook(writeInput('dist/bundle.js'))).toBeUndefined();
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
+
+  it.each(['suggest', 'append'])(
+    'does not treat root-only ignores as nested coverage in %s mode',
+    async (mode) => {
+      seedGitignore(rootGitignore, '/dist/\n');
+      const api = makeApi({ extensions: { 'gitignore-guard': { mode } } });
+      await plugin.setup(api as never);
+      const hook = getHook(api);
+
+      expect(await hook(writeInput('dist/bundle.js'))).toBeUndefined();
+      const out = await hook(writeInput('apps/web/dist/bundle.js'));
+      expect(out?.additionalContext).toContain("'dist/'");
+      if (mode === 'append') {
+        expect(virtualFs.get(rootGitignore)).toBe('/dist/\ndist/\n');
+      } else {
+        expect(mockWriteFile).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it('respects ignorePatterns opt-outs', async () => {
     const api = makeApi({

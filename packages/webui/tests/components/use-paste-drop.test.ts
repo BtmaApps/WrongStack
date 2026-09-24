@@ -25,6 +25,10 @@ vi.mock('../../src/components/ChatInput/image-attachments.js', () => {
   return {
     ImageAttachmentError,
     MAX_ATTACHED_IMAGES: 8,
+    MAX_ATTACHED_PDFS: 4,
+    MAX_ATTACHED_PDF_BYTES: 8 * 1024 * 1024,
+    isPdfFile: (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name),
+    isPdfAttachment: (a: { mediaType: string }) => a.mediaType === 'application/pdf',
     processImageFile: vi.fn(async (file: File) => {
       seq += 1;
       return {
@@ -32,6 +36,16 @@ vi.mock('../../src/components/ChatInput/image-attachments.js', () => {
         dataUrl: 'data:image/png;base64,AAAA',
         mediaType: file.type || 'image/png',
         bytes: 4,
+        name: file.name,
+      };
+    }),
+    processPdfFile: vi.fn(async (file: File) => {
+      seq += 1;
+      return {
+        id: `pdf_${seq}`,
+        dataUrl: 'data:application/pdf;base64,JVBERi0=',
+        mediaType: 'application/pdf',
+        bytes: 5,
         name: file.name,
       };
     }),
@@ -76,6 +90,9 @@ function makeHookOptions(overrides: { input?: string; selectionStart?: number } 
         tooManyImages: (max: number) => `too many (${max})`,
         imageProcessFailed: (name: string) => `failed ${name}`,
         imageTooLarge: (name: string) => `too large ${name}`,
+        tooManyPdfs: (max: number) => `too many pdfs (${max})`,
+        pdfTooLarge: (name: string, max: number) => `pdf too large ${name} ${max}`,
+        pdfReadFailed: (name: string) => `pdf failed ${name}`,
       },
     },
   };
@@ -373,7 +390,10 @@ describe('usePasteDrop', () => {
 // ran. These use a real element and drive the real listener.
 
 import { autoFenceCode } from '../../src/components/ChatInput/code-detect.js';
-import { processImageFile } from '../../src/components/ChatInput/image-attachments.js';
+import {
+  processImageFile,
+  processPdfFile,
+} from '../../src/components/ChatInput/image-attachments.js';
 import { toast } from '../../src/components/Toaster.js';
 
 function realTextarea(): HTMLTextAreaElement {
@@ -397,6 +417,9 @@ function liveOptions(input = '') {
         tooManyImages: (max: number) => `too many (${max})`,
         imageProcessFailed: (name: string) => `failed ${name}`,
         imageTooLarge: (name: string) => `too large ${name}`,
+        tooManyPdfs: (max: number) => `too many pdfs (${max})`,
+        pdfTooLarge: (name: string, max: number) => `pdf too large ${name} ${max}`,
+        pdfReadFailed: (name: string) => `pdf failed ${name}`,
       },
     },
   };
@@ -514,6 +537,9 @@ describe('usePasteDrop — native clipboard interception', () => {
         tooManyImages: (max: number) => `too many (${max})`,
         imageProcessFailed: (name: string) => `failed ${name}`,
         imageTooLarge: (name: string) => `too large ${name}`,
+        tooManyPdfs: (max: number) => `too many pdfs (${max})`,
+        pdfTooLarge: (name: string, max: number) => `pdf too large ${name} ${max}`,
+        pdfReadFailed: (name: string) => `pdf failed ${name}`,
       },
     };
     expect(() => renderHook(() => usePasteDrop(options))).not.toThrow();
@@ -633,6 +659,89 @@ describe('usePasteDrop — attachment cap and failures', () => {
     act(() => result.current.clearPendingImages());
     expect(result.current.pendingImages).toHaveLength(0);
     expect(result.current.pendingImagesRef.current).toHaveLength(0);
+  });
+});
+
+describe('usePasteDrop — PDFs', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+    useUIStore.setState({ draftImages: [] });
+  });
+
+  const pdfFile = (name = 'spec.pdf') => new File(['%PDF-'], name, { type: 'application/pdf' });
+
+  it('routes a PDF to the PDF pipeline and keeps it in the same pending list', async () => {
+    const { options } = liveOptions();
+    const { result } = renderHook(() => usePasteDrop(options));
+    await act(async () => {
+      await result.current.addImageFiles([imageFile('a.png'), pdfFile()]);
+    });
+    expect(processPdfFile).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingImages.map((a) => a.mediaType)).toEqual([
+      'image/png',
+      'application/pdf',
+    ]);
+  });
+
+  it('caps PDFs on their own count, without eating the image allowance', async () => {
+    const { options } = liveOptions();
+    const { result } = renderHook(() => usePasteDrop(options));
+    await act(async () => {
+      await result.current.addImageFiles(Array.from({ length: 5 }, (_, i) => pdfFile(`d${i}.pdf`)));
+    });
+    expect(result.current.pendingImages).toHaveLength(4);
+    expect(toast.error).toHaveBeenCalledWith('too many pdfs (4)');
+    await act(async () => {
+      await result.current.addImageFiles([imageFile('still-fits.png')]);
+    });
+    expect(result.current.pendingImages).toHaveLength(5);
+  });
+
+  it('still takes a PDF when the image allowance is used up', async () => {
+    const { options } = liveOptions();
+    const { result } = renderHook(() => usePasteDrop(options));
+    await act(async () => {
+      await result.current.addImageFiles(
+        Array.from({ length: 8 }, (_, i) => imageFile(`i${i}.png`)),
+      );
+    });
+    await act(async () => {
+      await result.current.addImageFiles([pdfFile('after-images.pdf')]);
+    });
+    expect(result.current.pendingImages).toHaveLength(9);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('reports an oversized PDF with the PDF message and the limit', async () => {
+    const { ImageAttachmentError } = await import(
+      '../../src/components/ChatInput/image-attachments.js'
+    );
+    (processPdfFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new (ImageAttachmentError as never as new (m: string, r: string) => Error)(
+        'nope',
+        'pdf_too_large',
+      ),
+    );
+    const { options } = liveOptions();
+    const { result } = renderHook(() => usePasteDrop(options));
+    await act(async () => {
+      await result.current.addImageFiles([pdfFile('big.pdf')]);
+    });
+    expect(toast.error).toHaveBeenCalledWith('pdf too large big.pdf 8');
+  });
+
+  it('attaches a dropped PDF instead of turning it into an @-mention hint', async () => {
+    const { options } = liveOptions();
+    const { result } = renderHook(() => usePasteDrop(options));
+    await act(async () => {
+      result.current.onDrop({
+        dataTransfer: { files: [pdfFile('dropped.pdf')] },
+        preventDefault: vi.fn(),
+      } as never);
+    });
+    await waitFor(() => expect(result.current.pendingImages).toHaveLength(1));
+    expect(toast.info).not.toHaveBeenCalled();
   });
 });
 

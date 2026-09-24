@@ -261,4 +261,53 @@ describe('WebUI codebase indexing', () => {
     controller.dispose();
     expect(indexStateListeners.size).toBe(0);
   });
+
+  it('keeps the CodeMap cache when a run published no new server generation', async () => {
+    const { clearCodemapGraphCache } = await import('../src/server/codemap-cache.js');
+    vi.mocked(clearCodemapGraphCache).mockClear();
+    const { setupWebUICodebaseIndexing } = await loadSetup();
+    const events = new EventBus();
+    const received: unknown[] = [];
+    events.on('codemap.index_updated', (event) => received.push(event));
+
+    const controller = setupWebUICodebaseIndexing({
+      config: {},
+      context: { signal: new AbortController().signal, meta: {} } as never,
+      projectRoot,
+      logger: logger as never,
+      events,
+    });
+
+    const withServer = (indexing: boolean, generation: number) =>
+      ({
+        ready: true,
+        indexing,
+        currentFile: 0,
+        totalFiles: 0,
+        lastError: null,
+        circuit: {
+          state: 'closed' as const,
+          consecutiveFailures: 0,
+          lastFailure: null,
+          cooldownRemainingMs: 0,
+        },
+        server: { activity: { indexing, generation } },
+      }) as unknown as IndexState;
+    const emit = (state: IndexState) => {
+      for (const listener of indexStateListeners) listener(state);
+    };
+
+    emit(withServer(false, 7)); // connected: heartbeat at generation 7
+    emit(withServer(true, 7));
+    emit(withServer(false, 7)); // the watcher's echo: nothing changed
+    expect(clearCodemapGraphCache).not.toHaveBeenCalled();
+    expect(received).toEqual([]);
+
+    emit(withServer(true, 7));
+    emit(withServer(false, 8)); // a real change
+    expect(clearCodemapGraphCache).toHaveBeenCalledOnce();
+    expect(received).toHaveLength(1);
+
+    controller.dispose();
+  });
 });

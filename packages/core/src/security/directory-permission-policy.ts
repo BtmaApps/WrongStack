@@ -51,6 +51,7 @@ import type {
 } from '../types/permission.js';
 import type { Tool } from '../types/tool.js';
 import { matchAny, matchGlob } from '../utils/glob-match.js';
+import { permissionRuleRef, type UnnumberedPermissionRule } from './permission-rules.js';
 import { type DestructiveKind, normalizeYoloConfirmKinds } from './yolo-risk.js';
 
 export interface DirectoryPermissionPolicyOptions {
@@ -232,6 +233,22 @@ function patternSpecificity(pattern: string): number {
 }
 
 /**
+ * A rule names a directory, so it covers a path that matches its pattern AND
+ * everything below a directory that does. Matching the file path alone made a
+ * plain `"directory": "secrets"` (the shape `DirectoryRule` documents: the
+ * pattern is matched against the directory portion) cover the directory's own
+ * path and none of its files, so a `write` to `secrets/key.pem` sailed
+ * through a rule that validated and read as a ban. Only `secrets/**` worked.
+ */
+function ruleCoversPath(pattern: string, targetPath: string): boolean {
+  if (matchGlob(pattern, targetPath)) return true;
+  for (let cut = targetPath.lastIndexOf('/'); cut > 0; cut = targetPath.lastIndexOf('/', cut - 1)) {
+    if (matchGlob(pattern, targetPath.slice(0, cut))) return true;
+  }
+  return false;
+}
+
+/**
  * Find the most-specific rule that matches the target path. Returns
  * undefined when no rule matches. Specificity is computed as the
  * pattern's literal-character length with a small bonus for trailing
@@ -240,7 +257,7 @@ function patternSpecificity(pattern: string): number {
 export function matchRule(policy: DirectoryPolicy, targetPath: string): DirectoryRule | undefined {
   let best: { rule: DirectoryRule; specificity: number; index: number } | undefined;
   for (const [index, rule] of policy.rules.entries()) {
-    if (!matchGlob(rule.directory, targetPath)) continue;
+    if (!ruleCoversPath(rule.directory, targetPath)) continue;
     const specificity = patternSpecificity(rule.directory);
     if (
       best === undefined ||
@@ -439,13 +456,69 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     await this.inner.reload();
   }
 
+  /** Its own rules first (they are checked first), then the inner policy's. */
+  async listRules(ctx?: Context | undefined): Promise<UnnumberedPermissionRule[]> {
+    const inner = (await this.inner.listRules?.(ctx)) ?? [];
+    if (ctx?.meta['directoryRules'] === false) return inner;
+    const own: UnnumberedPermissionRule[] = [];
+    for (const [index, rule] of this.policy.rules.entries()) {
+      const base = {
+        ref: permissionRuleRef.directory(index),
+        source: 'directory-rules' as const,
+        effect: 'deny' as const,
+        ...(rule.description ? { note: rule.description } : {}),
+      };
+      if (rule.denyProviders?.length) {
+        own.push({
+          ...base,
+          step: 'denyProviders',
+          action: '*',
+          resource: `${rule.directory} (provider ${rule.denyProviders.join(', ')})`,
+        });
+      }
+      if (rule.allowOnlyTools != null) {
+        own.push({
+          ...base,
+          step: 'allowOnlyTools',
+          action: rule.allowOnlyTools.length
+            ? `every tool except ${rule.allowOnlyTools.join(', ')}`
+            : '*',
+          resource: rule.directory,
+        });
+      }
+      if (rule.denyTools?.length) {
+        own.push({
+          ...base,
+          step: 'denyTools',
+          action: rule.denyTools.join(', '),
+          resource: rule.directory,
+        });
+      }
+    }
+    return [...own, ...inner];
+  }
+
   async explain(tool: Tool, input: unknown, ctx: Context): Promise<PermissionTrace> {
-    const innerDecision = async (): Promise<PermissionDecision> => {
-      if (this.inner.explain) return (await this.inner.explain(tool, input, ctx)).decision;
-      return this.inner.evaluate(tool, input, ctx);
-    };
     const steps: PermissionTraceStep[] = [];
     let winnerIndex = -1;
+    // A pass-through is only half an answer: the inner policy decided, and its
+    // steps are the "why". Returning its decision alone named "directory rules
+    // pass through" the winner of every call no rule touched, and hid the YOLO,
+    // trust or default step that actually decided it.
+    const delegate = async (subject: string | null | undefined): Promise<PermissionTrace> => {
+      if (!this.inner.explain) {
+        const decision = await this.inner.evaluate(tool, input, ctx);
+        return { toolName: tool.name, subject: subject ?? null, steps, winnerIndex, decision };
+      }
+      const inner = await this.inner.explain(tool, input, ctx);
+      return {
+        toolName: tool.name,
+        subject: inner.subject ?? subject ?? null,
+        steps: [...steps, ...inner.steps],
+        winnerIndex: inner.winnerIndex < 0 ? winnerIndex : steps.length + inner.winnerIndex,
+        decision: inner.decision,
+      };
+    };
 
     const add = (
       rule: string,
@@ -453,9 +526,19 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
       decision: 'auto' | 'deny' | 'confirm',
       source: string,
       detail: string,
+      ref?: string | undefined,
     ): void => {
-      steps.push({ rule, matched, decision, source, detail });
+      steps.push({
+        rule,
+        matched,
+        decision,
+        source,
+        detail,
+        ...(ref !== undefined ? { ref } : {}),
+      });
     };
+    const refOf = (rule: DirectoryRule) =>
+      permissionRuleRef.directory(this.policy.rules.indexOf(rule));
 
     if (ctx.meta['directoryRules'] === false) {
       add(
@@ -466,8 +549,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
         'ctx.meta.directoryRules === false — wrapper is a pass-through',
       );
       winnerIndex = steps.length - 1;
-      const decision = await innerDecision();
-      return { toolName: tool.name, subject: null, steps, winnerIndex, decision };
+      return delegate(null);
     }
     add(
       'directory rules enabled',
@@ -480,8 +562,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     if (this.policy.rules.length === 0) {
       add('empty directory policy', true, 'auto', 'default', 'no directory rules configured');
       winnerIndex = steps.length - 1;
-      const decision = await innerDecision();
-      return { toolName: tool.name, subject: null, steps, winnerIndex, decision };
+      return delegate(null);
     }
     add(
       'empty directory policy',
@@ -501,8 +582,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
         'tool input has no path subject — wrapper cannot match any rule',
       );
       winnerIndex = steps.length - 1;
-      const decision = await innerDecision();
-      return { toolName: tool.name, subject: null, steps, winnerIndex, decision };
+      return delegate(null);
     }
     const globSelectors = resolveGlobSelectors(input, ctx);
 
@@ -531,6 +611,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
           matched
             ? `provider "${ctx.provider.id}" is in denyProviders`
             : `provider "${ctx.provider.id}" is not in denyProviders`,
+          matched ? refOf(rule) : undefined,
         );
         if (matched) {
           winnerIndex = steps.length - 1;
@@ -567,6 +648,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
           matched
             ? `tool "${tool.name}" is in allowOnlyTools — checking remaining targets`
             : `tool "${tool.name}" is NOT in allowOnlyTools — denied`,
+          matched ? undefined : refOf(rule),
         );
         if (!matched) {
           winnerIndex = steps.length - 1;
@@ -603,6 +685,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
           matched
             ? `tool "${tool.name}" is in denyTools — denied`
             : `tool "${tool.name}" is not in denyTools`,
+          matched ? refOf(rule) : undefined,
         );
         if (matched) {
           winnerIndex = steps.length - 1;
@@ -632,7 +715,6 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
       'no target constraint matched — delegating to inner policy',
     );
     winnerIndex = steps.length - 1;
-    const decision = await innerDecision();
-    return { toolName: tool.name, subject: targetPaths[0], steps, winnerIndex, decision };
+    return delegate(targetPaths[0]);
   }
 }

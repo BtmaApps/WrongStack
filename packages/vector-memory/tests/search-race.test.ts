@@ -222,4 +222,27 @@ describe('runSearchRace — zero-score vector hits', () => {
     const overlapHit = race.overlap.find((h) => h.id === 'm1');
     expect(overlapHit?.vectorScore).toBe(0.95);
   });
+
+  it('normalizes a negative per-channel limit to an empty result set', async () => {
+    const lexical = [
+      { id: 'first', text: 'first' },
+      { id: 'second', text: 'second' },
+    ] as unknown as Sage[];
+    const calls: Array<{ limit?: number }> = [];
+    const store = {
+      search: async (_query: string, options: { limit?: number }) => {
+        calls.push(options);
+        return [];
+      },
+    } as unknown as VectorMemoryStore;
+
+    const race = await runSearchRace('query', lexical, store, { limit: -1 });
+
+    expect(calls).toEqual([]);
+    expect(race.lexicalOnly).toEqual([]);
+    expect(race.vectorOnly).toEqual([]);
+    expect(race.overlap).toEqual([]);
+    expect(race.metrics.lexicalCount).toBe(0);
+    expect(race.metrics.vectorCount).toBe(0);
+  });
 });

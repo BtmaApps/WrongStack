@@ -21,6 +21,11 @@ export const SURFACE_PROTOCOL_CAPABILITIES = [
   'session.prompt-queue',
   /** `composer.warm`: the user is typing; open the provider connection ahead of the send. */
   'session.provider-warm',
+  /**
+   * Session frames carry a per-session `seq`; `session.subscribe` may send `cursors` +
+   * `eventEpoch` and is answered with the missed frames and `session.frames_resumed`.
+   */
+  'session.frame-resume',
 ] as const;
 
 export type SurfaceProtocolCapability = (typeof SURFACE_PROTOCOL_CAPABILITIES)[number];

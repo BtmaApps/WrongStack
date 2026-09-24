@@ -46,7 +46,10 @@ export function inheritsIntoFork(event: SessionEvent): boolean {
     case 'session_start':
     case 'session_resumed':
     case 'session_forked':
+    case 'session_moved':
     case 'session_end':
+    // `/permissions allow|deny` holds for the session that set it.
+    case 'permission_overrides':
     case 'in_flight_start':
     case 'in_flight_end':
     case 'rewound':

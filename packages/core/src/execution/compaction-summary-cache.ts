@@ -134,6 +134,8 @@ function semanticBlock(block: ContentBlock): unknown {
       };
     case 'image':
       return { type: block.type, source: block.source };
+    case 'document':
+      return { type: block.type, name: block.name, text: block.text };
     case 'thinking':
       return { type: block.type, thinking: block.thinking };
   }

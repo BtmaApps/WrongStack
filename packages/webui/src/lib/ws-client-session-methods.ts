@@ -5,6 +5,7 @@ import type {
   WSServerMessage,
   WSUserMessageImage,
 } from '../types';
+import type { FrameResume } from './session-frame-gate';
 import type { WSSendOptions } from './ws-client-contracts';
 import type { EventHandler, PendingConfirm } from './ws-client-utils';
 
@@ -34,6 +35,7 @@ export interface WsClientSessionHost {
   pendingConfirms: Map<string, PendingConfirm>;
   subscribedSessionIds: string[];
   replayOnNextSubscribe: boolean;
+  frameResume: FrameResume<WSServerMessage>;
   armedResends: Map<
     string,
     {
@@ -213,13 +215,22 @@ export const sessionMethods: WsClientSessionMethods = {
     // already received its transcript from the `session.resume` that opened
     // it, and the tabs that did not change must NOT be re-sent one: their
     // lanes are live and a replay is the poorer record.
-    const replayFor = this.replayOnNextSubscribe ? unique : [];
+    //
+    // A reconnect first tries to catch each tab up instead: a tab that has
+    // applied numbered frames sends the last one, and the server sends back
+    // the frames it missed while the socket was down (session-frame-gate.ts).
+    // Only the tabs it cannot catch up get a transcript.
+    const resume = this.replayOnNextSubscribe ? this.frameResume.request(unique) : null;
+    const replayFor = this.replayOnNextSubscribe
+      ? unique.filter((id) => !resume || !(id in resume.cursors))
+      : [];
     this.replayOnNextSubscribe = false;
     this.send({
       type: 'session.subscribe',
       payload: this.withSession({
         sessionIds: unique,
         ...(replayFor.length > 0 ? { replayFor } : {}),
+        ...(resume ?? {}),
       }),
     });
   },

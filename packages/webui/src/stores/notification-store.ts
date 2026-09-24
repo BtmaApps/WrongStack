@@ -4,7 +4,18 @@ import { i18n } from '@/i18n';
 import { safeId } from '@/lib/utils';
 
 export type NotificationVariant = 'success' | 'error' | 'warn' | 'info';
+export type NotificationFilter = 'important' | 'all' | NotificationVariant;
 export type ToastVariant = NotificationVariant;
+
+export function matchesNotificationFilter(
+  notification: Pick<AppNotification, 'variant'>,
+  filter: NotificationFilter,
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'important')
+    return notification.variant === 'error' || notification.variant === 'warn';
+  return notification.variant === filter;
+}
 
 export interface NotificationAction {
   label: string;
@@ -42,6 +53,9 @@ export interface NotificationStoreState {
   notifications: AppNotification[];
   /** Ephemeral toasts currently rendered on screen */
   toasts: ToastEntry[];
+  /** Shared by desktop and mobile notification menus. */
+  filter: NotificationFilter;
+  setFilter: (filter: NotificationFilter) => void;
 
   /** Push a new toast + notification */
   push: (entry: {
@@ -72,6 +86,8 @@ export const useNotificationStore = create<NotificationStoreState>()(
     (set) => ({
       notifications: [],
       toasts: [],
+      filter: 'important',
+      setFilter: (filter) => set({ filter }),
 
       push: (entry) => {
         const id = generateToastId();
@@ -133,6 +149,7 @@ export const useNotificationStore = create<NotificationStoreState>()(
       // Persist only notifications history, strip out non-serializable callbacks in action,
       // and do not persist active toasts (ephemeral).
       partialize: (state) => ({
+        filter: state.filter,
         notifications: state.notifications.map(({ action, ...rest }) => ({
           ...rest,
           ...(action ? { action: { label: action.label, onClick: () => {} } } : {}),

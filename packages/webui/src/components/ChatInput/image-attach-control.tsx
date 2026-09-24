@@ -18,7 +18,7 @@ export function ImageAttachControl({
       <input
         ref={imagePickerRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf,.pdf"
         multiple
         className="hidden"
         onChange={(e) => {

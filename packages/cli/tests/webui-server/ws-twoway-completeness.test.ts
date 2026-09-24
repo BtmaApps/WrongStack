@@ -73,6 +73,7 @@ function clientHandledTypes(): Set<string> {
   const all = read(srcFiles(path.join(webui, 'src')));
   const types = new Set<string>([
     // Consumed inside ws-client.handleMessage / heartbeat, not via .on().
+    'session.frames_resumed',
     'session.start',
     'tool.confirm_needed',
     'pong',

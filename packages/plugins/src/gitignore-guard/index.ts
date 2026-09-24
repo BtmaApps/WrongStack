@@ -14,6 +14,7 @@
  * with a curated high-precision default list. Patterns use gitignore-style
  * semantics implemented in `matchGitignorePattern`:
  *
+ *   - leading `/`    → anchors the pattern to the project root.
  *   - trailing `/`   → directory pattern. Bare name (e.g. `dist/`) matches a
  *                      directory with that name at any depth; an internal slash
  *                      (e.g. `docs/generated/`) anchors it to the root.
@@ -126,7 +127,8 @@ export function matchGitignorePattern(relPath: string, pattern: string): boolean
   const rel = toForwardSlashes(relPath).replace(/^\//, '');
   let pat = pattern.trim();
   if (pat.length === 0 || pat.startsWith('#')) return false;
-  if (pat.startsWith('/')) {
+  const anchored = pat.startsWith('/');
+  if (anchored) {
     pat = pat.slice(1);
     if (pat.length === 0) return false;
   }
@@ -134,8 +136,8 @@ export function matchGitignorePattern(relPath: string, pattern: string): boolean
   if (pat.endsWith('/')) {
     const dir = pat.slice(0, -1);
     if (dir.length === 0) return false;
-    if (dir.includes('/')) {
-      // Anchored directory pattern (internal slash): the named directory
+    if (anchored || dir.includes('/')) {
+      // Anchored directory pattern (leading or internal slash): the named directory
       // sits at that exact path from the root — matches it and everything
       // beneath it, but not the same directory name elsewhere.
       return new RegExp(`^${globToSource(dir)}(?:/|$)`).test(rel);
@@ -143,7 +145,7 @@ export function matchGitignorePattern(relPath: string, pattern: string): boolean
     // Bare directory name: matches a directory with that name at any depth.
     return segments.some((s) => s === dir);
   }
-  if (pat.includes('/')) {
+  if (anchored || pat.includes('/')) {
     return globToRegExp(toForwardSlashes(pat)).test(rel);
   }
   const base = segments[segments.length - 1] ?? '';

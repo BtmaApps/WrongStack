@@ -32,6 +32,23 @@ export interface ImageAttachment {
 /** Max images per message — mirrors core's MAX_INCOMING_IMAGES. */
 export const MAX_ATTACHED_IMAGES = 8;
 
+/** Max PDFs per message — mirrors core's MAX_INCOMING_DOCUMENTS. */
+export const MAX_ATTACHED_PDFS = 4;
+
+/** Per-PDF cap — mirrors core's MAX_INCOMING_DOCUMENT_BYTES. A PDF is sent
+ *  as picked: there is nothing to downscale. */
+export const MAX_ATTACHED_PDF_BYTES = 8 * 1024 * 1024;
+
+export const PDF_MEDIA_TYPE = 'application/pdf';
+
+export function isPdfFile(file: File): boolean {
+  return file.type === PDF_MEDIA_TYPE || /\.pdf$/i.test(file.name);
+}
+
+export function isPdfAttachment(attachment: { mediaType: string }): boolean {
+  return attachment.mediaType === PDF_MEDIA_TYPE;
+}
+
 /** Long-edge cap. 2048px keeps text in screenshots legible while staying
  *  well under every provider's hard pixel limits. */
 const MAX_DIMENSION = 2048;
@@ -52,7 +69,7 @@ export class ImageAttachmentError extends Error {
   constructor(
     message: string,
     /** i18n key the caller can surface; message is the English fallback. */
-    readonly reason: 'decode_failed' | 'too_large',
+    readonly reason: 'decode_failed' | 'too_large' | 'pdf_too_large' | 'pdf_read_failed',
   ) {
     super(message);
     this.name = 'ImageAttachmentError';
@@ -205,6 +222,34 @@ export async function processImageFile(file: File): Promise<ImageAttachment> {
     name: file.name || undefined,
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/**
+ * A PDF as a pending attachment. It rides the image list (one pipeline
+ * through queue, steer and resend) and the server tells it apart by media
+ * type; the model gets the file or its extracted text depending on whether it
+ * takes PDF input.
+ */
+export async function processPdfFile(file: File): Promise<ImageAttachment> {
+  if (file.size > MAX_ATTACHED_PDF_BYTES) {
+    throw new ImageAttachmentError(`PDF "${file.name}" is too large`, 'pdf_too_large');
+  }
+  let dataUrl: string;
+  try {
+    dataUrl = await readFileAsDataURL(file);
+  } catch {
+    throw new ImageAttachmentError(`Could not read "${file.name}"`, 'pdf_read_failed');
+  }
+  // A picker can hand over a PDF with an empty or odd `type`: the wire
+  // carries the media type separately, so pin it here.
+  const comma = dataUrl.indexOf(',');
+  return {
+    id: nextAttachmentId(),
+    dataUrl: `data:${PDF_MEDIA_TYPE};base64,${comma >= 0 ? dataUrl.slice(comma + 1) : ''}`,
+    mediaType: PDF_MEDIA_TYPE,
+    bytes: file.size,
+    name: file.name || 'document.pdf',
   };
 }
 

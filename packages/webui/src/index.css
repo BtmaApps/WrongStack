@@ -480,11 +480,6 @@
     padding: 0.75rem 1rem;
   }
 
-  .ws-desktop-shell .ws-workspace-dock-wrap {
-    max-height: 24dvh;
-    padding: 0.375rem 0.75rem 0;
-  }
-
   .ws-desktop-shell [data-terminal-dock] {
     border-top-color: hsl(var(--border) / 0.8);
   }
@@ -494,10 +489,6 @@
   }
 
   @media (max-height: 760px) {
-    .ws-desktop-shell .ws-workspace-dock-wrap {
-      max-height: 18dvh;
-    }
-
     .ws-desktop-shell .ws-chat-input-wrap {
       padding-top: 0.5rem;
       padding-bottom: 0.5rem;
@@ -1762,4 +1753,20 @@ kbd {
  */
 .react-flow__node-codemap {
   pointer-events: all !important;
+}
+
+/* ── Checkerboard behind images, so transparency reads as transparency ── */
+.ws-checkerboard {
+  background-color: hsl(var(--muted) / 0.35);
+  background-image:
+    linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
 }

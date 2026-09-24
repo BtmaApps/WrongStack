@@ -1,18 +1,23 @@
 import {
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
   GitCommitHorizontal,
   GitCompare,
+  List,
   Loader2,
   Minus,
   Plus,
   RefreshCw,
   Undo2,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
+import { buildCompactFileTree, type CompactTreeNode } from '@/lib/compact-file-tree';
 import { cn } from '@/lib/utils';
 import { showPanel } from '@/lib/view-navigation';
 import { type GitChangedFile, useConfigStore, useGitChangesStore, useUIStore } from '@/stores';
-import { useAppTranslation } from '@/i18n';
 import { confirmModal } from '../ConfirmModal';
 import { WorktreesPanel } from './WorktreesPanel';
 
@@ -27,11 +32,17 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   '?': { label: 'U', cls: 'text-muted-foreground' },
 };
 
-/** Split "a/b/c.ts" into ("c.ts", "a/b/") for the two-tone row label. */
+/**
+ * Split "a/b/c.ts" into ("c.ts", "a/b/") for the two-tone row label. An
+ * untracked directory (git lists it as "a/b/") is named by its last segment,
+ * "b/", instead of an empty name.
+ */
 function splitPath(path: string): { name: string; dir: string } {
-  const idx = path.lastIndexOf('/');
-  if (idx < 0) return { name: path, dir: '' };
-  return { name: path.slice(idx + 1), dir: path.slice(0, idx + 1) };
+  const trailing = path.endsWith('/') ? '/' : '';
+  const bare = trailing ? path.slice(0, -1) : path;
+  const idx = bare.lastIndexOf('/');
+  if (idx < 0) return { name: `${bare}${trailing}`, dir: '' };
+  return { name: `${bare.slice(idx + 1)}${trailing}`, dir: bare.slice(0, idx + 1) };
 }
 
 function FileRow({
@@ -41,6 +52,7 @@ function FileRow({
   onStage,
   onUnstage,
   onDiscard,
+  depth = 0,
 }: {
   file: GitChangedFile;
   active: boolean;
@@ -48,16 +60,21 @@ function FileRow({
   onStage?: () => void;
   onUnstage?: () => void;
   onDiscard?: () => void;
+  /** Tree depth; in the tree the directory is the row above, so it is not repeated. */
+  depth?: number | undefined;
 }) {
   const { t } = useAppTranslation();
   const meta = STATUS_META[file.status] ?? STATUS_META.M;
-  const { name, dir } = splitPath(file.path);
+  const split = splitPath(file.path);
+  const name = split.name;
+  const dir = depth > 0 ? '' : split.dir;
   return (
     <div
       className={cn(
         'group flex items-center gap-1.5 w-full px-2 py-1 text-left text-xs rounded hover:bg-accent/60 transition-colors',
         active && 'bg-accent',
       )}
+      style={depth > 0 ? { paddingLeft: `${0.5 + depth * 0.75}rem` } : undefined}
     >
       <button
         type="button"
@@ -146,6 +163,64 @@ function FileRow({
   );
 }
 
+type ChangesListView = 'list' | 'tree';
+const VIEW_KEY = 'wrongstack.changes.view';
+
+function readListView(): ChangesListView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'tree' ? 'tree' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+/**
+ * One group's files as a compact directory tree: single-child directory
+ * chains fold into one row, and a directory row collapses its files.
+ */
+function ChangesTree({
+  files,
+  renderFile,
+}: {
+  files: GitChangedFile[];
+  renderFile: (file: GitChangedFile, depth: number) => ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (path: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  const walk = (nodes: CompactTreeNode<GitChangedFile>[], depth: number): ReactNode[] =>
+    nodes.flatMap((node) => {
+      if (node.kind === 'file') return [renderFile(node.file, depth + 1)];
+      const open = !collapsed.has(node.path);
+      return [
+        <button
+          key={`dir:${node.path}`}
+          type="button"
+          onClick={() => toggle(node.path)}
+          aria-expanded={open}
+          title={node.path}
+          className="flex w-full items-center gap-1 rounded px-2 py-0.5 text-left text-xs text-muted-foreground hover:bg-accent/60"
+          style={{ paddingLeft: `${0.5 + depth * 0.75}rem` }}
+        >
+          {open ? (
+            <ChevronDown className="h-3 w-3 shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0" />
+          )}
+          <span className="min-w-0 flex-1 truncate font-mono">{node.name}</span>
+          <span className="shrink-0 font-mono text-[10px] tabular-nums">{node.fileCount}</span>
+        </button>,
+        ...(open ? walk(node.children, depth + 1) : []),
+      ];
+    });
+  return <>{walk(buildCompactFileTree(files), 0)}</>;
+}
+
 export function ChangesPanel() {
   const { client, stageGit, unstageGit, discardGit, commitGit } = useWebSocket();
   const { t } = useAppTranslation();
@@ -161,6 +236,24 @@ export function ChangesPanel() {
 
   const [commitMessage, setCommitMessage] = useState('');
   const [committing, setCommitting] = useState(false);
+  const [listView, setListView] = useState<ChangesListView>(readListView);
+  const switchListView = (next: ChangesListView) => {
+    setListView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // A private window keeps the choice for this page only.
+    }
+  };
+  const renderGroup = (
+    group: GitChangedFile[],
+    row: (file: GitChangedFile, depth: number) => ReactNode,
+  ) =>
+    listView === 'tree' ? (
+      <ChangesTree files={group} renderFile={row} />
+    ) : (
+      group.map((f) => row(f, 0))
+    );
 
   const refresh = useCallback(() => {
     if (!wsConnected) return;
@@ -269,6 +362,23 @@ export function ChangesPanel() {
               )}
               <button
                 type="button"
+                onClick={() => switchListView(listView === 'tree' ? 'list' : 'tree')}
+                title={
+                  listView === 'tree'
+                    ? t('activity:changes.showAsList')
+                    : t('activity:changes.showAsTree')
+                }
+                aria-pressed={listView === 'tree'}
+                className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground"
+              >
+                {listView === 'tree' ? (
+                  <List className="h-3.5 w-3.5" />
+                ) : (
+                  <FolderTree className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={refresh}
                 title={t('activity:changes.refreshTitle')}
                 className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground"
@@ -299,10 +409,11 @@ export function ChangesPanel() {
                       <span>Staged Changes ({stagedFiles.length})</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      {stagedFiles.map((f) => (
+                      {renderGroup(stagedFiles, (f, depth) => (
                         <FileRow
                           key={`staged-${f.path}`}
                           file={f}
+                          depth={depth}
                           active={f.path === selectedPath}
                           onSelect={() => select(f.path)}
                           onUnstage={() => unstageGit?.(f.path)}
@@ -319,10 +430,11 @@ export function ChangesPanel() {
                       <span>Changes ({unstagedFiles.length})</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      {unstagedFiles.map((f) => (
+                      {renderGroup(unstagedFiles, (f, depth) => (
                         <FileRow
                           key={`unstaged-${f.path}`}
                           file={f}
+                          depth={depth}
                           active={f.path === selectedPath}
                           onSelect={() => select(f.path)}
                           onStage={() => stageGit?.(f.path)}

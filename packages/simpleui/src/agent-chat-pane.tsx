@@ -10,8 +10,7 @@ import {
 import type { AgentTranscriptEntry } from './types.js';
 
 interface AgentChatPaneProps {
-  agentId: string;
-  agentName: string;
+  agent: { id: string; name: string };
   entries: AgentTranscriptEntry[];
   running: boolean;
   hidden: boolean;
@@ -82,8 +81,7 @@ const AgentTranscriptEntryItem = memo(function AgentTranscriptEntryItem({
 
 /** A mounted pane preserves its DOM and scroll position while another tab is selected. */
 export const AgentChatPane = memo(function AgentChatPane({
-  agentId,
-  agentName,
+  agent: { id: agentId, name: agentName },
   entries,
   running,
   hidden,

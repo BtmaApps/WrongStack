@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A strip above the TUI composer for work running in the background.**
+  - **Running subagents and background shells each get a chip** with a spinner and how long they have run. The strip appears only while something runs.
+  - **Alt+B focuses it.** ←→ (or Tab) picks a chip, Enter shows the last lines of its output (a shell's log, or what a subagent last said and the tool it is running), `x` then `y` stops a shell, and Esc or typing goes back to the composer.
+  - **A background shell's output is kept.** `bash` with `background: true` and `pwsh` with `run_in_background: true` write stdout and stderr to a log file under the project's state directory (`bg-logs/`). The result names it as `log_file`, so the model can read it. The newest 40 logs are kept and older ones are removed after 3 days, never while their process runs.
+
+- **Images in the WebUI: generated pictures on the tool card, and image diffs.**
+  - **`image_generate` cards show the pictures** they saved, without being opened. Click one to see it larger.
+  - **A changed image in the Changes view** shows the version at HEAD next to the one in the working tree, or the two stacked with a slider that fades between them (onion skin). Each side shows its pixel size and file size; an added or deleted image shows its one side. Only raster images are shown (PNG, JPEG, GIF, WebP, BMP, ICO, AVIF, checked by their bytes), up to 4 MB each.
+  - **The Changes list can be a folder tree.** A button next to refresh switches between the list and a tree in which chains of single-child folders fold into one row (`packages/webui/src`); folders collapse and show how many files changed inside them. The choice is remembered.
+- **One list of every permission rule, and allow/deny rules for a single session.**
+  - **`wstack permissions rules` and `/permissions rules`** list every rule that decides a tool call, in the order they are checked (the first match decides): directory rules, trust-file denies and allows, prompt approvals, `--allowed-tools`, YOLO and its still-ask kinds, the built-in defaults, and the confirmation the executor adds for dangerous tools. `explain` now names the rule that decided a call by its number.
+  - **`/permissions allow <tool> [pattern]` and `/permissions deny <tool> [pattern]`** set a rule for the current session only: `/permissions allow bash pnpm test*` stops the prompts for the test runner while you work, and is gone in the next session. The rules are saved with the session (a resume brings them back), follow `/rewind`, and are never written to trust.json or a config. `/permissions` lists them, and `remove <n>` and `clear` drop them. An allow still does not cover a destructive command or a read of credentials; a deny wins even over YOLO.
+  - **`/permissions explain <tool> [json]`** traces a call against the live session: its YOLO, your earlier answers and its session rules.
+- **Moving a session to another worktree or project.** `wstack sessions move <id> --to <path>`, or `/sessions move <id> <path>` in the TUI.
+  - **Another worktree of the same repository.** All worktrees share one session store, so the files stay put: the session gets a `session_moved` event with the new checkout, and `/resume` in that worktree lists and opens it.
+  - **Another project.** The journal, its sidecars (todos and the rest) and its per-session directory move into that project's store and are indexed there; the original is deleted only after the copy is indexed. The output says how to open it there.
+  - **What is refused.** A session open anywhere, the current one included, is refused before anything is touched, as is a target project that already has that session id. An archived session is restored first. The session's name comes along; the `/rewind redo` history does not, since redoing would cut the move back out.
+- **PDF input, and an `image_generate` tool.**
+  - **`read` on a PDF.** `read` returns a PDF's text page by page (`--- page N ---`), 20 pages per call; `pages: "21-40"` reads further. A PDF without a text layer says so instead of returning nothing. It used to refuse the file as binary. Verified: a real agent read a 3-page `report.pdf` and quoted the revenue figure from page 2.
+  - **Attaching a PDF.** In the TUI, pick it with `@` like any file. In the WebUI, pick, paste or drop it next to images; it shows as a name chip in the composer, the message and the replayed transcript.
+  - **Which models get the file.** A model whose catalog entry lists PDF input receives the file itself: an Anthropic `document` block, Gemini inline data, an OpenAI `file` / Responses `input_file` part, or an AI SDK file part. Every other model receives the extracted text. The choice is made per request, so a fallback hop to a model without PDF input gets the text.
+  - **Limits.** Up to 8 MB and 100 pages per PDF, and at most 4 PDFs per WebUI message. Past a limit, the first 20 pages' text is attached with a note saying so.
+  - **Verified in the real TUI** with a one-page PDF whose only content, besides a caption, is a red rectangle. `zai-coding-plan/glm-5.3-flash`, which takes PDFs, answered "Red". `glm-5.3`, which does not, answered "UNKNOWN": it had only the text.
+  - **`image_generate`.** Draws an image from a prompt and saves it into the project. It uses an image model of a configured provider, taken from the catalog: the OpenAI images API (also behind compatible gateways and catalog-routed providers), or Gemini image models and Imagen. `count` up to 4 writes `name-2.png`…; the file extension follows the format the model returned. It asks for confirmation like `write`. When it picked the provider itself and that provider has no images endpoint (HTTP 404/405, as on many compatible gateways), it moves on to the next configured provider. A provider you name, and any other failure, is reported as is. Verified live: a real agent turn skipped `alibaba-token-plan` (404) and reached OpenRouter's Gemini image model, which refused with 402 because the account has no image credit. (`packages/tools/src/pdf-text.ts`, `packages/core/src/utils/document-blocks.ts`, `packages/providers/src/image-generation.ts`, `packages/tools/src/image-generate.ts`)
+- **`/rewind redo`, and Alt+↑ / Alt+↓ to step through your messages.**
+  - **Redo.** `/rewind redo` undoes the newest rewind; repeat it to undo older ones. The part of the journal a rewind cut off is kept beside the journal and put back byte for byte, and the rewound files are written again.
+  - **When redo refuses.** Redo is all-or-nothing: it changes nothing if a file was edited since the rewind, if a file's content was never recorded, or if the kept part of the journal changed. A new prompt ends the redo history.
+  - **Subagent transcripts.** A subagent transcript that the rewind cut is kept for the redo instead of being deleted.
+  - **Message navigation.** Alt+↑ jumps to your newest message in the TUI transcript; Alt+↑ / Alt+↓ then move to the previous and next ones.
+  - **Verified in the real TUI** on a resumed two-prompt session: `/rewind 2` put `note.txt` back to `ALPHA`, `/rewind redo` restored `BETA` and reported the restored journal events, a second redo answered "Nothing to redo", and Alt+↑ marked the user message. (`packages/core/src/storage/session-writer-redo.ts`, `packages/tui/src/reducers/message-jump.ts`)
+- **`/resume` shows forks and git worktrees.**
+  - **Forks.** A forked session is listed under the session it was forked from, with `├─` / `└─` connectors; forks of forks nest one level deeper.
+  - **Worktrees.** All git worktrees of a repository already share one session store. Each session now records the checkout it ran in (`session_start` / `session_resumed`, `SessionSummary.checkout`), so sessions from another worktree are grouped after this worktree's and tagged `[feature · feature/x]`.
+  - **Resuming across worktrees.** Choosing a session from another worktree switches the TUI to that checkout first (the F1 in-place project switch), so its file work lands in the right tree.
+  - Verified in the real TUI: from `main`, picking a `feature`-worktree session switched the workspace to `feature` and resumed it. (`packages/core/src/storage/session-tree.ts`, `packages/core/src/worktree/git-worktree-list.ts`, `packages/cli/src/boot/worktree-sessions.ts`)
 - **`--ascii`: plain-ASCII output everywhere.**
   - **What changed.** The ASCII icon style (`WRONGSTACK_TUI_ICON_STYLE=ascii`) used to swap only the ~150 named glyphs; the ~3,000 symbols hard-coded elsewhere still printed. In ASCII mode all of them are now converted: box drawing, arrows, bullets, braille spinners (they still animate), emoji, Nerd Font icons and typographic punctuation. Letters and digits in any script are left alone.
   - **TUI.** Text is converted before Ink measures it, and bordered boxes use a `+-|` border.
@@ -130,6 +165,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The bash tool on Windows broke any command with a `"` in it.** Under cmd.exe, `node -e "console.log(1)"` or `cd "a b"` arrived split apart, because Node escaped the inner quotes as `\"`, which cmd.exe does not read. The command now runs as `cmd /s /c "<command>"`, passed verbatim, as Node's own `shell: true` does.
+- **An untracked folder had no name in the WebUI Changes list.** Git lists it as `dir/`, and the row showed the text after the last `/`, which is nothing. It is now named `dir/`.
+- **`wstack permissions explain` lost asterisks.** Its text went through the markdown renderer, so a line with two `*` lost both. It prints as-is now.
+- **`tool_search` found nothing for a phrase.** The query was matched as one literal substring, so a search such as "generate image from prompt and save path" returned no tools even though `image_generate` was in the catalog. A literal match still ranks first. Otherwise the query's words are matched: a tool must contain at least half of them, and a word in the name counts double. Results are ranked best first. When the query did match tools but the `tags` / `permission` / `mutating` filters removed them all, the hint now says so instead of "No tools matched"; a model had searched with `permission: 'auto'` and so could not find a tool that asks for confirmation. (`packages/tools/src/tool-search.ts`)
+- **"Always allow" never stuck when YOLO was off.**
+  - **What happened.** For bash, write, edit and every other tool with a dangerous capability, each "always allow" answer was saved to the trust file, and the next identical call asked again. The executor turned every trust approval back into a confirmation.
+  - **Now.** Approvals given at the prompt (same input, this command, this tool) are honoured, like `--allowed-tools`. A hand-written allow pattern in `trust.json` still asks.
+  - **Destructive calls still ask.** For shells this is judged per command (for example `git push --force`, or a delete outside the project) rather than by the tool's tier. That tier had made "[t] tool, any input" useless for bash and pwsh, even for `echo`.
+  - **REPL double prompt.** The plain REPL no longer asks twice for a call the user already answered.
+  - **Verified in the real TUI** with `--no-yolo`: after "[t] tool", the second bash command ran without a prompt. (`packages/core/src/security/capabilities.ts`, `packages/core/src/security/permission-policy.ts`)
+- **A directory rule written as a plain directory protected nothing.**
+  - **What happened.** `DirectoryRule` documents its pattern as matching the directory portion of the path, but the check matched the whole file path. `{"directory": "secret", "denyTools": ["write"]}` validated and read as a ban, yet the real agent wrote `secret/a.txt`; only `secret/**` worked.
+  - **Now.** A rule covers every file below a matching directory. Verified with the real agent: the same write is now refused. (`packages/core/src/security/directory-permission-policy.ts`)
+- **`wstack permissions explain` explained a different policy than the agent used.**
+  - **What differed.** It ignored the project's directory rules, `autonomy.yoloConfirm` and the config's YOLO setting (only `--yolo` counted), and it stopped before the executor's last confirmation.
+  - **Consequence.** It called a write "confirm" that the agent performed unasked, and never mentioned a directory rule that denied a call.
+  - **Now.** It builds the agent's own policy (`createProjectPermissionPolicy`, shared with the runtime), prints where YOLO came from, and ends with the executor's gate.
+  - **Readable traces.** A call no rule touches now names the step that decided it, instead of "directory rules pass through".
+  - **Drift guard.** A test compares `explain()` with `evaluate()` over 4,536 combinations of policy, tool, input, YOLO and grants. (`packages/runtime/src/project-permission-policy.ts`)
+- **A dropped WebUI connection lost the answer that was streaming.**
+  - **What happened.** When the page's socket dropped mid-turn and reconnected, the tab was rebuilt from the session journal, which holds only committed messages. In a real run, the text streamed before the drop was gone (the answer shown started at 59 of 1..300), the user's message appeared twice, and the header kept showing running agents after the turn ended. Nothing repaired it later.
+  - **Fix: server side.** Every frame the server broadcasts for a session now carries a per-session sequence number, and the server keeps the recent ones: 4,000 frames or 4 MiB per session, for 16 sessions.
+  - **Fix: reconnect.** A page that reconnects sends the last number it applied for each open tab and gets exactly the frames it missed. Frames are applied in order and duplicates are dropped, so the tab keeps the half-streamed answer, its tool cards and its run state.
+  - **Fallback.** When the gap is too old, or the server restarted in between, the tab gets the transcript replay every reconnect used before.
+  - **Verified in the browser** against `--webui`: after closing the socket mid-answer, the 1..300 answer came back complete in one message, in both a fresh tab and a second turn of the same session. After a server restart, the page fell back to the replay and showed the full conversation.
+  - **Protocol.** Capability `session.frame-resume`; `session.subscribe` takes `cursors` + `eventEpoch`, answered with the missed frames and `session.frames_resumed`. (`packages/webui-server/src/server/session-frame-log.ts`, `packages/webui/src/lib/session-frame-gate.ts`)
+- **`/rewind <n>` in the TUI never rewound, and said nothing.**
+  - **Cause.** The CLI never passed the session store's directory to the TUI, so every session file resolved against an empty path and the rewind threw "Invalid sessionId".
+  - **Why nothing showed.** Rewind stops the session's running work first, which marks older output as stale, and the command's own error was then discarded as stale too.
+  - **Fix.** The TUI now gets the sessions directory, and a rewind's own result is always shown. The directory also turns on the TUI's history archive and saved layout, which were silently off for the same reason.
+  - **Redo and running turns.** `/rewind redo` with nothing to redo no longer interrupts a running turn. (`packages/cli/src/execution.ts`, `packages/tui/src/submit-slash-command.ts`)
+- **Resume failed in a git worktree while the main checkout was open.**
+  Linked worktrees share the main checkout's project directory, and with it
+  one Session Catalog daemon. That daemon compared the raw checkout path, so
+  a client in `../feature` was refused with "Session Catalog project identity
+  mismatch" whenever the daemon had been started from the main checkout.
+  `wstack --resume` in the worktree failed, and so did session pruning. The
+  handshake and the daemon's entry check now compare the canonical project
+  root; an entry's working directory is checked against its own checkout.
+  Reproduced with a TUI open in `main`: the resume in `feature` failed before
+  the fix and completes after it.
+  (`packages/core/src/session-catalog/client.ts`, `project-server.ts`)
 - **Shell timeouts above 5 minutes were cut short.** `bash` and `pwsh`
   advertise `timeout_ms` up to 600000 and `exec` advertises `timeout` up to
   600000. The executor still aborted all three at `tools.maxToolTimeoutMs`,

@@ -7,6 +7,8 @@ import {
   aggregateFileRank,
   buildWiringGraph,
   pageRank,
+  RANK_REFRESH_FILE_THRESHOLD,
+  RANK_STALE_FILES_KEY,
   RANK_VERSION,
   RANK_VERSION_KEY,
   runGraphRankPass,
@@ -175,6 +177,9 @@ describe('runGraphRankPass', () => {
   it('records the failure in errors instead of failing the index run', () => {
     seedHubAndLeaves();
     const broken = {
+      getSymbolGraphFacts() {
+        return { fileOf: new Map(), candidates: new Map() };
+      },
       getAllResolvedRefs() {
         throw new Error('refs unavailable');
       },
@@ -190,35 +195,59 @@ describe('runGraphRankPass', () => {
 });
 
 describe('shouldRefreshRanks', () => {
-  it('always refreshes a full-project run', () => {
-    expect(shouldRefreshRanks(store, {})).toBe(true);
-  });
-
   it('always refreshes a forced run', () => {
-    expect(shouldRefreshRanks(store, { files: ['a.ts'], force: true })).toBe(true);
+    expect(shouldRefreshRanks(store, { changedFiles: 0, force: true })).toBe(true);
   });
 
-  it('refreshes a targeted run when the data version is missing', () => {
-    expect(shouldRefreshRanks(store, { files: ['a.ts'] })).toBe(true);
+  it('refreshes when the data version is missing', () => {
+    expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(true);
   });
 
-  it('refreshes a targeted run when the tables are empty', () => {
+  it('refreshes when the tables are empty', () => {
     store.setMetadata(RANK_VERSION_KEY, RANK_VERSION);
-    expect(shouldRefreshRanks(store, { files: ['a.ts'] })).toBe(true);
+    expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(true);
   });
 
-  it('skips a small targeted run once ranks exist', () => {
+  it('keeps legitimately empty ranks for a run that changed nothing', () => {
+    // A completed pass over a graph with no resolved refs leaves the tables
+    // empty; recomputing them on every no-op run reported a content change.
+    store.setMetadata(RANK_VERSION_KEY, RANK_VERSION);
+    expect(shouldRefreshRanks(store, { changedFiles: 0 })).toBe(false);
+  });
+
+  it('skips a small change once ranks exist', () => {
     seedHubAndLeaves();
     runGraphRankPass(store, []);
     // One edited file barely moves any score; recomputing the whole graph for
     // it is the waste this gate exists to prevent.
-    expect(shouldRefreshRanks(store, { files: ['a.ts'] })).toBe(false);
+    expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(false);
   });
 
-  it('refreshes a bulk targeted run, which is a full run in disguise', () => {
+  it('skips a run that changed nothing, full scan or not', () => {
     seedHubAndLeaves();
     runGraphRankPass(store, []);
-    const many = Array.from({ length: 40 }, (_, i) => `f${i}.ts`);
-    expect(shouldRefreshRanks(store, { files: many })).toBe(true);
+    // A full scan over an unchanged checkout recomputed the whole graph to
+    // arrive at the scores it already had.
+    expect(shouldRefreshRanks(store, { changedFiles: 0 })).toBe(false);
+    expect(store.getMetadata(RANK_STALE_FILES_KEY)).toBe('0');
+  });
+
+  it('refreshes a bulk change, which is a full run in disguise', () => {
+    seedHubAndLeaves();
+    runGraphRankPass(store, []);
+    expect(shouldRefreshRanks(store, { changedFiles: RANK_REFRESH_FILE_THRESHOLD })).toBe(true);
+  });
+
+  it('accumulates drift across small runs and resets after a pass', () => {
+    seedHubAndLeaves();
+    runGraphRankPass(store, []);
+    for (let i = 1; i < RANK_REFRESH_FILE_THRESHOLD; i++) {
+      expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(false);
+    }
+    // The 25th one-file edit: ranks now lag 25 files, so the session converges.
+    expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(true);
+    runGraphRankPass(store, []);
+    expect(store.getMetadata(RANK_STALE_FILES_KEY)).toBe('0');
+    expect(shouldRefreshRanks(store, { changedFiles: 1 })).toBe(false);
   });
 });

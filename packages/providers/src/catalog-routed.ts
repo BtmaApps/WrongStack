@@ -1,5 +1,7 @@
 import type {
   Capabilities,
+  ImageGenerationRequest,
+  ImageGenerationResult,
   ModelsDevModel,
   Provider,
   Request,
@@ -84,6 +86,21 @@ export class CatalogRoutedProvider implements Provider {
       }
     })();
     await delegate?.warm?.(model);
+  }
+
+  /** Image generation belongs to whichever wire serves `req.model`. */
+  generateImage(
+    req: ImageGenerationRequest,
+    opts: { signal: AbortSignal },
+  ): Promise<ImageGenerationResult> {
+    const delegate = this.delegate(req.model);
+    if (!delegate.generateImage) {
+      throw new ConfigError({
+        message: `Provider "${this.id}" has no image API for model "${req.model}".`,
+        code: 'CONFIG_INVALID',
+      });
+    }
+    return delegate.generateImage(req, opts);
   }
 
   private delegate(modelId: string): Provider {

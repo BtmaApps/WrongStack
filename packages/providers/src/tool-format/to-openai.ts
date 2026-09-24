@@ -8,6 +8,7 @@ import type {
   ToolResultBlock,
   ToolUseBlock,
 } from '@wrongstack/core/types';
+import { documentAsText } from '@wrongstack/core/types';
 import { compactToolDefinitionForWire } from '@wrongstack/core/utils';
 
 export interface OpenAIToolSchema {
@@ -92,9 +93,11 @@ export interface OpenAIMessage {
 }
 
 export interface OpenAIContent {
-  type: 'text' | 'image_url';
+  type: 'text' | 'image_url' | 'file';
   text?: string | undefined;
   image_url?: { url: string | undefined };
+  /** A PDF: `file_data` is a `data:application/pdf;base64,` URL. */
+  file?: { filename: string; file_data: string };
 }
 
 export interface OpenAIToolCall {
@@ -243,13 +246,14 @@ function blocksToString(blocks: ContentBlock[]): string {
     .map((b) => {
       if (b.type === 'text') return b.text;
       if (b.type === 'image') return '[image]';
+      if (b.type === 'document') return documentAsText(b).text;
       return '';
     })
     .join('');
 }
 
 function blocksToContentArray(blocks: ContentBlock[]): OpenAIContent[] | string {
-  const hasImage = blocks.some((b) => b.type === 'image');
+  const hasImage = blocks.some((b) => b.type === 'image' || b.type === 'document');
   if (!hasImage) {
     return blocks
       .filter((b): b is TextBlock => b.type === 'text')
@@ -265,6 +269,15 @@ function blocksToContentArray(blocks: ContentBlock[]): OpenAIContent[] | string 
             ? (b.source.url ?? '')
             : `data:${b.source.media_type ?? 'image/png'};base64,${b.source.data ?? ''}`;
         return { type: 'image_url', image_url: { url } };
+      }
+      if (b.type === 'document') {
+        return {
+          type: 'file',
+          file: {
+            filename: b.name ?? 'document.pdf',
+            file_data: `data:${b.source.media_type};base64,${b.source.data}`,
+          },
+        };
       }
       return null;
     })

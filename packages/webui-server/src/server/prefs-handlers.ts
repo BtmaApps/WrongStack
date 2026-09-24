@@ -1,4 +1,17 @@
-import type { SystemInstructionVariant } from '@wrongstack/core/agent';
+import {
+  activateSystemPromptPreset,
+  bundledPromptText,
+  createSystemPromptPreset,
+  deleteSystemPromptPreset,
+  listSystemPromptPresets,
+  promptTextHash,
+  readActiveSystemPromptPresets,
+  readProjectSystemPromptPresets,
+  renderInstructionLayer,
+  type SystemInstructionVariant,
+  saveSystemPromptPreset,
+  validateSystemPromptPreset,
+} from '@wrongstack/core/agent';
 import type { ConfigStore } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { getProcessRegistry } from '@wrongstack/tools';
@@ -179,6 +192,136 @@ export async function handleSystemPromptGet(
     type: 'system_prompt.info',
     payload: sessionId ? { ...payload, sessionId } : payload,
   });
+}
+
+/** Profile-owned preset library. All mutations are validated on the server. */
+export async function handleSystemPromptPresets(
+  ctx: PrefsHandlerContext,
+  ws: WebSocket,
+  action: string,
+  payload: Record<string, unknown>,
+  sessionId?: string,
+): Promise<void> {
+  const dir = ctx.systemPrompt?.paths().globalDir;
+  const projectDir = ctx.systemPrompt?.paths().projectDir;
+  if (!dir) {
+    ctx.send(ws, {
+      type: 'system_prompt.presets',
+      payload: { error: 'Profile instructions are unavailable.' },
+    });
+    return;
+  }
+  try {
+    const variant = payload['baseVariant'];
+    const validVariant = variant === 'lite' || variant === 'default' || variant === 'pro';
+    let selectedId: string | undefined;
+    if (action === 'create') {
+      if (!validVariant || typeof payload['name'] !== 'string')
+        throw new Error('Invalid preset name or base variant.');
+      selectedId = (await createSystemPromptPreset(dir, payload['name'], variant)).id;
+    } else if (action === 'save') {
+      if (
+        typeof payload['id'] !== 'string' ||
+        typeof payload['revision'] !== 'number' ||
+        typeof payload['name'] !== 'string' ||
+        typeof payload['text'] !== 'string'
+      )
+        throw new Error('Invalid preset update.');
+      await saveSystemPromptPreset(
+        dir,
+        payload['id'],
+        payload['revision'],
+        payload['name'],
+        payload['text'],
+        payload['reviewedCurrentSource'] === true,
+      );
+      selectedId = payload['id'];
+      const active = await readActiveSystemPromptPresets(dir);
+      const projectActive = projectDir ? await readProjectSystemPromptPresets(dir, projectDir) : {};
+      const edited = (await listSystemPromptPresets(dir)).find(
+        (preset) => preset.id === selectedId,
+      );
+      if (
+        edited &&
+        (projectActive[edited.baseVariant] ?? active[edited.baseVariant]) === selectedId &&
+        edited.baseVariant === (sessionVariant(ctx, sessionId) ?? ctx.systemPrompt?.current())
+      ) {
+        await ctx.systemPrompt?.applyVariant?.(edited.baseVariant, sessionId);
+      }
+    } else if (action === 'activate') {
+      if (!validVariant || (payload['id'] !== undefined && typeof payload['id'] !== 'string'))
+        throw new Error('Invalid preset selection.');
+      if (payload['scope'] !== 'profile' && payload['scope'] !== 'project')
+        throw new Error('Invalid preset scope.');
+      if (payload['scope'] === 'project' && !projectDir)
+        throw new Error('Project prompt selection is unavailable.');
+      await activateSystemPromptPreset(
+        dir,
+        variant,
+        payload['id'] as string | undefined,
+        payload['scope'] === 'project' ? projectDir : undefined,
+      );
+      const projectActive = projectDir ? await readProjectSystemPromptPresets(dir, projectDir) : {};
+      if (
+        variant === (sessionVariant(ctx, sessionId) ?? ctx.systemPrompt?.current()) &&
+        (payload['scope'] === 'project' || !projectActive[variant])
+      ) {
+        await ctx.systemPrompt?.applyVariant?.(variant, sessionId);
+      }
+    } else if (action === 'delete') {
+      if (typeof payload['id'] !== 'string') throw new Error('Invalid preset id.');
+      await deleteSystemPromptPreset(dir, payload['id']);
+    } else if (action === 'validate') {
+      if (typeof payload['text'] !== 'string') throw new Error('Invalid preset text.');
+      ctx.send(ws, {
+        type: 'system_prompt.preset_validation',
+        payload: { issues: validateSystemPromptPreset(payload['text']) },
+      });
+      return;
+    } else if (action === 'preview') {
+      if (typeof payload['text'] !== 'string') throw new Error('Invalid preset text.');
+      const issues = validateSystemPromptPreset(payload['text']);
+      const preview = ctx.systemPrompt?.previewContext?.(sessionId);
+      if (!preview) throw new Error('Live prompt preview is unavailable.');
+      ctx.send(ws, {
+        type: 'system_prompt.preset_preview',
+        payload: {
+          rendered: issues.some((issue) => issue.severity === 'error')
+            ? ''
+            : renderInstructionLayer(payload['text'], {
+                toolNames: new Set(preview.toolNames),
+                tier: preview.tier,
+                subagent: false,
+                strictToolReferences: true,
+              }),
+          toolNames: preview.toolNames,
+          tier: preview.tier,
+          issues,
+          requestId: payload['requestId'],
+        },
+      });
+      return;
+    } else if (action !== 'get') throw new Error('Unknown preset operation.');
+    const presets = await listSystemPromptPresets(dir);
+    ctx.send(ws, {
+      type: 'system_prompt.presets',
+      payload: {
+        presets: presets.map((preset) => ({
+          ...preset,
+          sourceChanged: promptTextHash(bundledPromptText(preset.baseVariant)) !== preset.baseHash,
+          currentBaseText: bundledPromptText(preset.baseVariant),
+        })),
+        active: await readActiveSystemPromptPresets(dir),
+        projectActive: projectDir ? await readProjectSystemPromptPresets(dir, projectDir) : {},
+        selectedId,
+      },
+    });
+    if (action === 'save' || action === 'activate' || action === 'delete') {
+      await handleSystemPromptGet(ctx, ws, sessionId);
+    }
+  } catch (error) {
+    ctx.send(ws, { type: 'system_prompt.presets', payload: { error: toErrorMessage(error) } });
+  }
 }
 
 /** The identity variant this tab is actually running, if it has its own. */

@@ -1,64 +1,27 @@
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { DefaultSessionStore } from '@wrongstack/core/storage';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  listSiblingWorktreeSessions,
-  withWorktreeSwitch,
-} from '../src/boot/worktree-sessions.js';
+import { describe, expect, it, vi } from 'vitest';
+import { withWorktreeSwitch, worktreeOfSession } from '../src/boot/worktree-sessions.js';
 
-let tmp: string;
-beforeEach(async () => {
-  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-wt-'));
-});
-afterEach(async () => {
-  await fs.rm(tmp, { recursive: true, force: true });
-});
+const main = path.resolve('/repo');
+const feature = path.resolve('/repo-feature');
+const worktrees = [
+  { root: main, branch: 'main', current: true },
+  { root: feature, branch: 'feature/x', current: false },
+];
 
-describe('listSiblingWorktreeSessions', () => {
-  it('reads the other worktrees’ session history, not this one’s', async () => {
-    const globalRoot = path.join(tmp, 'home');
-    const main = path.join(tmp, 'repo');
-    const feature = path.join(tmp, 'repo-feature');
-    const empty = path.join(tmp, 'repo-empty');
-    for (const [root, id] of [
-      [main, 'main-session'],
-      [feature, 'feature-session'],
-    ] as const) {
-      const dir = resolveWstackPaths({ projectRoot: root, globalRoot }).projectSessions;
-      await fs.mkdir(dir, { recursive: true });
-      const writer = await new DefaultSessionStore({ dir, projectRoot: root }).create({
-        id,
-        model: 'm',
-        provider: 'p',
-      });
-      await writer.append({ type: 'user_input', ts: new Date().toISOString(), content: id });
-      await writer.close();
-    }
-
-    const sessions = await listSiblingWorktreeSessions({
-      projectRoot: main,
-      globalRoot,
-      listWorktrees: async () => [
-        { root: main, branch: 'main', current: true },
-        { root: feature, branch: 'feature/x', current: false },
-        { root: empty, current: false },
-      ],
+describe('worktreeOfSession', () => {
+  it('tags a session that ran in another worktree of the repository', () => {
+    expect(worktreeOfSession({ checkout: feature }, worktrees)).toEqual({
+      root: feature,
+      name: 'repo-feature',
+      branch: 'feature/x',
     });
-    expect(sessions.map((s) => [s.summary.id, s.worktree])).toEqual([
-      ['feature-session', { root: feature, name: 'repo-feature', branch: 'feature/x' }],
-    ]);
   });
 
-  it('is empty for a repository with a single worktree', async () => {
-    const sessions = await listSiblingWorktreeSessions({
-      projectRoot: tmp,
-      globalRoot: tmp,
-      listWorktrees: async () => [{ root: tmp, current: true }],
-    });
-    expect(sessions).toEqual([]);
+  it('leaves this checkout, unknown checkouts and old sessions untagged', () => {
+    expect(worktreeOfSession({ checkout: main }, worktrees)).toBeUndefined();
+    expect(worktreeOfSession({ checkout: path.resolve('/gone') }, worktrees)).toBeUndefined();
+    expect(worktreeOfSession({}, worktrees)).toBeUndefined();
   });
 });
 

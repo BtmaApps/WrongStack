@@ -29,6 +29,7 @@ import { ToolRegistry } from '../../src/registry/tool-registry.js';
 import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js';
 import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
+import type { ContentBlock } from '../../src/types/blocks.js';
 import type { Tool } from '../../src/types/tool.js';
 import { MockProvider } from '../helpers/mock-provider.js';
 
@@ -163,7 +164,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
       .filter((m) => m.role === 'user')
       .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
       .filter(
-        (b): b is { type: 'tool_result'; content: unknown; is_error?: boolean } =>
+        (b): b is Extract<ContentBlock, { type: 'tool_result' }> =>
           b.type === 'tool_result',
       );
     const errorTexts = toolResults

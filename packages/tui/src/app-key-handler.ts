@@ -1,9 +1,11 @@
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { getProcessRegistry } from '@wrongstack/tools';
 import { bottomPanelOwnsInput, effectivePanelPositions } from './app-ui-state.js';
 import { EMPTY_KEY, type KeyEvent } from './components/input.js';
 import type { AppKeyHandlerOptions, KeyRouteContext } from './key-handler-context.js';
+import { routeBackgroundStrip } from './key-routes/key-route-background-strip.js';
 import { routeBusyInterrupt, routeCtrlCEscalation } from './key-routes/key-route-busy.js';
-import { routeChatSearch } from './key-routes/key-route-chat-search.js';
+import { routeChatSearch, routeMessageJump } from './key-routes/key-route-chat-search.js';
 import { routeComposer, routeComposerTail } from './key-routes/key-route-composer.js';
 import {
   routeChordPanels,
@@ -112,6 +114,15 @@ export function createAppKeyHandler(
     // Transcript search bar (Alt+F): owns text entry while open, before the
     // paste pipeline can commit anything into the composer draft.
     if (!panelOwnsInput && routeChatSearch(ctx, input, key)) return;
+    // Background strip (Alt+B): running subagents and background shells.
+    if (
+      !panelOwnsInput &&
+      routeBackgroundStrip(input, key, (pid) => getProcessRegistry().kill(pid))
+    ) {
+      return;
+    }
+    // Alt+↑ / Alt+↓: jump between the user's messages in the transcript.
+    if (!panelOwnsInput && routeMessageJump(ctx, input, key)) return;
 
     // ── Bracketed-paste accumulation ──────────────────────────────────
     // Moved verbatim to routePastePipeline (key-routes/key-route-paste.ts,

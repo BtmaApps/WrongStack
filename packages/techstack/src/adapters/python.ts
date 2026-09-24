@@ -37,7 +37,8 @@ function parseTomlSections(content: string): TomlSection[] {
   for (const raw of content.split('\n')) {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
-    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    // Array tables also end the preceding section; keep their names distinct.
+    const sectionMatch = line.match(/^\[(\[[^\]]+\]|[^\]]+)\]$/);
     if (sectionMatch) {
       if (currentLines.length > 0) sections.push({ name: currentSection, lines: currentLines });
       currentSection = sectionMatch[1]!;
@@ -173,6 +174,7 @@ function parsePipfileDeps(
   const deps: Array<{ name: string; constraint: string | undefined; scope: DependencyScope }> = [];
   const sections = parseTomlSections(content);
   for (const section of sections) {
+    if (section.name !== 'packages' && section.name !== 'dev-packages') continue;
     const scope: DependencyScope = section.name === 'dev-packages' ? 'development' : 'runtime';
     for (const line of section.lines) {
       const trimmed = line.trim();
