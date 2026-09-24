@@ -449,6 +449,12 @@ export interface AppProps {
    *  users notice without having to read the stderr notice. */
   updateAvailable?: boolean | undefined;
   /**
+   * The standalone executable's background update: called with the version
+   * once it is downloaded, verified and waiting to be swapped in when this
+   * session exits. The status bar's version chip then says so.
+   */
+  subscribeUpdateReady?: ((listener: (version: string) => void) => () => void) | undefined;
+  /**
    * Snapshot the keyed providers (and their model lists) for the
    * `/model` picker. Called every time the picker opens, so the result
    * stays in sync with config edits / new aliases. Async because the

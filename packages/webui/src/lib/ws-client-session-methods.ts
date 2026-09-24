@@ -5,7 +5,7 @@ import type {
   WSServerMessage,
   WSUserMessageImage,
 } from '../types';
-import type { FrameResume } from './session-frame-gate';
+import type { FrameResume } from '@wrongstack/webui-protocol';
 import type { WSSendOptions } from './ws-client-contracts';
 import type { EventHandler, PendingConfirm } from './ws-client-utils';
 
@@ -218,7 +218,7 @@ export const sessionMethods: WsClientSessionMethods = {
     //
     // A reconnect first tries to catch each tab up instead: a tab that has
     // applied numbered frames sends the last one, and the server sends back
-    // the frames it missed while the socket was down (session-frame-gate.ts).
+    // the frames it missed while the socket was down (webui-protocol frame-resume.ts).
     // Only the tabs it cannot catch up get a transcript.
     const resume = this.replayOnNextSubscribe ? this.frameResume.request(unique) : null;
     const replayFor = this.replayOnNextSubscribe

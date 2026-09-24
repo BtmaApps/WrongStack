@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { ulid } from '@wrongstack/core/utils';
 
-import { sqliteRowToGraphEdge, type SqliteGraphEdgeRow } from './sqlite-store-graph-helpers.js';
+import { boundedLimit } from './shared/pagination.js';
+import { type SqliteGraphEdgeRow, sqliteRowToGraphEdge } from './sqlite-store-graph-helpers.js';
 import type { MemoryGraphEdge } from './types.js';
 
 interface SqliteGraphTraverseContext {
@@ -13,8 +14,8 @@ export function traverseSqliteGraph(
   starts: string[],
   opts?: { maxDepth?: number; limit?: number },
 ): MemoryGraphEdge[] {
-  const maxDepth = Math.min(opts?.maxDepth ?? 2, 6);
-  const limit = Math.min(opts?.limit ?? 100, 1000);
+  const maxDepth = boundedLimit(opts?.maxDepth, 2, 6);
+  const limit = boundedLimit(opts?.limit, 100, 1000);
 
   const visitedNodes = new Set(starts);
   const visitedEdges = new Set<string>();

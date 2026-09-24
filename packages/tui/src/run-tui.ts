@@ -230,6 +230,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         autonomyAgents: opts.autonomyAgents,
         latestVersion: opts.latestVersion,
         updateAvailable: opts.updateAvailable,
+        subscribeUpdateReady: opts.subscribeUpdateReady,
         getPickableProviders: opts.getPickableProviders,
         switchProviderAndModel: opts.switchProviderAndModel,
         switchAutonomy: opts.switchAutonomy,

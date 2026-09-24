@@ -101,8 +101,9 @@ export function applySessionShellDefault(): void {
  */
 export async function applyPrintUpdateNotice(
   initialUpdateInfo: UpdateInfo | undefined,
+  config?: Config | undefined,
 ): Promise<UpdateInfo | undefined> {
-  return await printUpdateNotice(initialUpdateInfo);
+  return await printUpdateNotice(initialUpdateInfo, config);
 }
 
 /**
@@ -131,7 +132,7 @@ export async function runPreflight(
 ): Promise<PreflightResult> {
   applyNodeEnvDefault();
   applySessionShellDefault();
-  const updateInfo = await applyPrintUpdateNotice(initialUpdateInfo);
+  const updateInfo = await applyPrintUpdateNotice(initialUpdateInfo, config);
   await applyDebugStreamSeed(config);
   return {
     updateInfo,

@@ -52,6 +52,25 @@ describe('project agent memory audiences', () => {
     expect(refactorPlanner).toEqual([]);
   });
 
+  it('normalizes non-finite and negative retrieval limits', async () => {
+    const store = openStore();
+    await store.rememberSage({
+      text: 'Review migration rollback guarantees before deployment.',
+      kind: 'workflow',
+      scope: 'project',
+      anchors: [{ type: 'directory', path: 'packages/core' }],
+      audience: { roles: ['reviewer'] },
+    });
+
+    await expect(store.retrieveForAudience({ role: 'reviewer' }, Number.NaN)).resolves.toHaveLength(
+      1,
+    );
+    await expect(
+      store.retrieveForAudience({ role: 'reviewer' }, Number.POSITIVE_INFINITY),
+    ).resolves.toHaveLength(1);
+    await expect(store.retrieveForAudience({ role: 'reviewer' }, -1)).resolves.toEqual([]);
+  });
+
   it('uses OR within a selector dimension and AND across dimensions', async () => {
     const store = openStore();
     await store.rememberSage({

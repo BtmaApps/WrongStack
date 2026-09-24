@@ -72,6 +72,27 @@ describe('SAGE client outbound write cap (H4)', () => {
     expect(destroyErrors[0]?.message).toContain('fell too far behind on reads');
   });
 
+  it('drops a single request frame larger than the cap before writing it', () => {
+    const { socket, written } = makeFakeSocket(0);
+    const conn = connectionWithSocket(socket);
+    const requester = conn as unknown as {
+      request(message: unknown, options: unknown): Promise<unknown>;
+    };
+    const pending = requester.request(
+      {
+        type: 'request',
+        op: 'readAll',
+        args: { scope: 'project', padding: 'x'.repeat(CAP + 1024) },
+        meta: { clientId: 'frame-cap-client' },
+      },
+      { timeoutMs: 30_000, meta: { clientId: 'frame-cap-client' } },
+    );
+    void pending.catch(() => undefined);
+
+    expect(written).toHaveLength(0);
+    expect(socket.destroyed).toBe(true);
+  });
+
   it('stays silent on an already-destroyed socket', () => {
     const { socket, written } = makeFakeSocket(0);
     socket.destroyed = true;

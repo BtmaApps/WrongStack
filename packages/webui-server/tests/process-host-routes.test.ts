@@ -12,11 +12,13 @@ const ws = {} as WebSocket;
 describe('canonical process and host routes', () => {
   it.each([
     ['process.list', 'list'],
+    ['process.output', 'output'],
     ['process.kill', 'kill'],
     ['process.killAll', 'killAll'],
   ] as const)('dispatches %s', async (type, handlerName) => {
     const handlers: ProcessRouteHandlers = {
       list: vi.fn(),
+      output: vi.fn(),
       kill: vi.fn(),
       killAll: vi.fn(),
     };

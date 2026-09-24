@@ -243,7 +243,7 @@ export function ContextDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={staggerDelay(2)}>
           <CompositionSection data={debugData} loading={loading} />
           <ThresholdSection pct={pct} />
-          <CompactionSection pct={pct} maxTokens={maxContext || 200_000} />
+          <CompactionSection pct={pct} maxTokens={maxContext} />
         </div>
 
         {/* Fleet footprint */}
@@ -262,7 +262,7 @@ export function ContextDashboard() {
         <div style={staggerDelay(6)}>
           <MetricsSection
             tokens={lastInputTokens}
-            maxTokens={maxContext || 200_000}
+            maxTokens={maxContext}
             pct={pct}
             model={model}
             provider={provider}

@@ -66,6 +66,8 @@ export function createAgentLoopContextManager(
   const calibrationKey = (model: string = a.ctx.model): string =>
     `${a.ctx.provider?.id ?? 'unknown'}/${model}`;
 
+  // 0 = unknown. Never substitute an invented window: a made-up ceiling below
+  // the model's real one truncates and compacts sessions for no reason.
   function currentMaxContext(): number {
     const metaLimit = a.ctx.meta?.['effectiveMaxContext'];
     const providerMax = a.ctx.provider.capabilities.maxContext;
@@ -73,7 +75,7 @@ export function createAgentLoopContextManager(
       ? metaLimit
       : typeof providerMax === 'number' && providerMax > 0
         ? providerMax
-        : 200_000;
+        : 0;
   }
 
   async function refreshProviderContextLimit(
@@ -107,7 +109,7 @@ export function createAgentLoopContextManager(
         ? routeMeta
         : typeof routeProviderCap === 'number' && routeProviderCap > 0
           ? routeProviderCap
-          : 200_000;
+          : 0;
     const emitEffectiveLimit = (
       effective: number,
       source: 'configured' | 'provider' | 'provider_overflow',
@@ -401,15 +403,20 @@ export function createAgentLoopContextManager(
           ? routeLimit
           : typeof nativeLimit === 'number' && Number.isFinite(nativeLimit) && nativeLimit > 0
             ? nativeLimit
-            : 200_000;
-      const budget = computeContextWindowBudget({
-        maxContext,
-        inputTokens,
-        maxOutput: prepared.provider.capabilities.maxOutput,
-        outputReserveTokens: reserve('contextOutputReserveTokens'),
-        safetyBufferTokens: reserve('contextSafetyBufferTokens'),
-      });
-      if (budget.overflowTokens > 0) {
+            : 0;
+      // Unknown window: there is no ceiling to overflow, so there is nothing
+      // to refuse. The provider's own overflow error still teaches the limit.
+      const budget =
+        maxContext > 0
+          ? computeContextWindowBudget({
+              maxContext,
+              inputTokens,
+              maxOutput: prepared.provider.capabilities.maxOutput,
+              outputReserveTokens: reserve('contextOutputReserveTokens'),
+              safetyBufferTokens: reserve('contextSafetyBufferTokens'),
+            })
+          : undefined;
+      if (budget && budget.overflowTokens > 0) {
         throw new AgentError({
           message: 'Prepared request exceeds the context input budget after compaction',
           code: ERROR_CODES.AGENT_CONTEXT_OVERFLOW,

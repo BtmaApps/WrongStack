@@ -9,10 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **A strip above the TUI composer for work running in the background.**
-  - **Running subagents and background shells each get a chip** with a spinner and how long they have run. The strip appears only while something runs.
+- **`@wrongstack/client` reconnects and catches up.**
+  - **A dropped socket no longer ends the run.** The client reopens the connection (500 ms, doubling, 10 attempts; `reconnect: false` turns it off). It sends the last frame number it applied for each session and gets back what it missed, in order and once. A run in flight streams on and settles with its result.
+  - **The losses it cannot make up for are reported.** A server that restarted fails the run with `connection/server_restarted`. A run that ended while the connection was down, whose result has left the server's log, fails with `connection/result_lost`. `client.state` and `onStateChange` show `open` / `reconnecting` / `closed`.
+  - **Verified against a real server.** The socket was cut at the run's first event. In one run the client reconnected mid-answer. In another it stayed down 25 s, past the end of the run. Both times all 250–300 numbers of the answer arrived once and in order, and the run settled `done`.
+  - **Shared with the WebUI.** The frame ordering the WebUI already used moved into `@wrongstack/webui-protocol` (`FrameResume`, also as the import-free `@wrongstack/webui-protocol/frame-resume`). `session.run_state` and `session.frames_resumed` are part of the typed contract and its JSON Schema.
+
+- **`@wrongstack/client`: a typed client for the WebUI server, and a published contract.**
+  - **The new package drives a running `wstack --webui` from your own code.** It connects with the access token, opens, lists and resumes sessions, and sends a prompt. The run then streams the protocol's own frames (text, thinking, tool calls, confirmations, iterations, provider retries) and settles with its status and answer. Runs can be aborted, and tool confirmations answered by a callback or by hand. It has no runtime dependencies and works in Node 22+ and browsers.
+  - **One error shape.** Every failure is a `WrongStackError {kind, code, detail, retryable}`. A refused token is `auth/401`; a server that is not running is `connection/unreachable`; neither hangs. A turn the server refuses (a busy or not-yet-open session) fails that run with the server's code. A run that did not finish carries `run` or `aborted` on its result.
+  - **The HTTP session API is in it too:** every live session on the machine, a session's agents and recent activity, and steering or interrupting its agent.
+  - **The types are the server's.** The conversation's WebSocket frames and the HTTP bodies now live in `@wrongstack/webui-protocol`. The server's HTTP handlers and the WebUI build against them too, so the SDK cannot drift from what the server sends.
+  - **JSON Schema and OpenAPI for other languages.** `@wrongstack/webui-protocol/schema/ws-core.schema.json` (the conversation's frames and the error model) and `schema/openapi.json` (the session API) are generated from those types. A test fails when a type changes and the files were not regenerated (`pnpm --filter @wrongstack/webui-protocol schema`). Tests also check that the schema accepts frames the types allow and names only registered message types.
+  - **Contract corrections found on the way.** `session.start` declares the `eventEpoch` the server always sent, and `error` frames declare their `code` (`session_not_ready`, `vision_unsupported`). The HTTP API documentation named `Authorization: Bearer`, which the server never accepted. The token goes in the `X-WS-Token` header, `?token=`, or the `ws_token` cookie.
+
+- **Watch the agent's browser in the WebUI.**
+  - **A Browser chip** appears in the workspace dock while the agent has a browser open (the `browser_*` tools). It opens a panel with the page as it is now, the URL, and the page's recent console messages and network requests.
+  - **The picture is live.** It is the page's screencast from Chromium, sent when the page changes, at most ten frames a second, and held back while the connection is slow.
+  - **View only.** Nothing in the panel reaches the page. A tab sees only the browsers its own conversation opened. The agent closes its browser when its turn ends, and the panel then says so.
+
+- **The standalone executable updates itself in the background.**
+  - **Download.** An interactive session that finds a newer release downloads its build for your platform into `~/.wrongstack/updates/`. One session downloads at a time; one-shot runs never do.
+  - **Checks.** The build must be in the release's `SHA256SUMS`, match the digest GitHub recorded at upload, and carry a build attestation from the release workflow for that version's tag. A build from a branch or a manual run is refused. `wstack update` now makes the same checks, where it used to check only `SHA256SUMS`.
+  - **Swap.** Nothing is replaced under a running session. When a session exits, the new build replaces the executable, so the next start runs it. The status bar's version chip says `(vX ready, applies on restart)` meanwhile, and the next start prints `✓ Updated wrongstack vA → vB`. A build left by a crashed session is swapped in by the next one, or installed by `wstack update` without downloading it again.
+  - **Off switch.** `update.autoDownload: false` in your config, or `WRONGSTACK_NO_AUTO_UPDATE=1`. A repository's config cannot change it. The npm install is unchanged: it shows the notice and its package manager updates it.
+
+- **A strip above the composer for work running in the background, in the TUI and the WebUI.**
+  - **In the TUI, running subagents and background shells each get a chip** with a spinner and how long they have run. The strip appears only while something runs.
   - **Alt+B focuses it.** ←→ (or Tab) picks a chip, Enter shows the last lines of its output (a shell's log, or what a subagent last said and the tool it is running), `x` then `y` stops a shell, and Esc or typing goes back to the composer.
   - **A background shell's output is kept.** `bash` with `background: true` and `pwsh` with `run_in_background: true` write stdout and stderr to a log file under the project's state directory (`bg-logs/`). The result names it as `log_file`, so the model can read it. The newest 40 logs are kept and older ones are removed after 3 days, never while their process runs.
+  - **In the WebUI,** the tab's background shells appear above the composer with how long they have run. A chip opens the last lines of its output, refreshed while open, and a Stop button (with a confirmation). Subagents are not repeated there: the agent tabs above the transcript already list them. The list is asked for after each shell command and refreshed only while a shell runs; another tab's shells never show. New WebSocket request `process.output`, which reads only the log the server recorded for that process.
 
 - **Images in the WebUI: generated pictures on the tool card, and image diffs.**
   - **`image_generate` cards show the pictures** they saved, without being opened. Click one to see it larger.
@@ -165,6 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A run's result was lost when the page's socket dropped during the run.** `run.result` went only to the socket that sent the prompt. A page that reconnected on a new socket never got it, even if the run ended after the reconnect. It is now broadcast to the session, like the rest of the run, so the reconnect catch-up includes it. A second window showing the same session also stops its spinner now.
+- **A busy WebUI server could make a tab drop a session's new frames.** The reconnect frame log keeps 16 sessions. When it dropped one, that session's numbering restarted at 1, and every tab that had applied more of it discarded the new frames as already seen until the count caught up. The numbering now carries on.
 - **The bash tool on Windows broke any command with a `"` in it.** Under cmd.exe, `node -e "console.log(1)"` or `cd "a b"` arrived split apart, because Node escaped the inner quotes as `\"`, which cmd.exe does not read. The command now runs as `cmd /s /c "<command>"`, passed verbatim, as Node's own `shell: true` does.
 - **An untracked folder had no name in the WebUI Changes list.** Git lists it as `dir/`, and the row showed the text after the last `/`, which is nothing. It is now named `dir/`.
 - **`wstack permissions explain` lost asterisks.** Its text went through the markdown renderer, so a line with two `*` lost both. It prints as-is now.

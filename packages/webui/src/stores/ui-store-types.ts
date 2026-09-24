@@ -94,6 +94,7 @@ export const DOCK_SECTIONS = [
   'work',
   'worktrees',
   'collab',
+  'browser',
 ] as const;
 
 export function coerceDockSection(value: unknown): DockSection | null {
@@ -133,7 +134,14 @@ export const SIDEBAR_MAX_WIDTH = 560;
 export const SIDEBAR_DEFAULT_WIDTH = 304;
 
 /** Sections of the WorkspaceDock in the Session side panel. */
-export type DockSection = 'goal' | 'goal-state' | 'fleet' | 'work' | 'worktrees' | 'collab';
+export type DockSection =
+  | 'goal'
+  | 'goal-state'
+  | 'fleet'
+  | 'work'
+  | 'worktrees'
+  | 'collab'
+  | 'browser';
 export type WorkDashboardTab = 'todos' | 'tasks' | 'plan';
 
 /**

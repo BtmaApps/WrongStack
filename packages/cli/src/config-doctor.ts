@@ -122,6 +122,7 @@ const KNOWN_TOP_LEVEL_KEYS = [
   'cloudSync',
   'git',
   'observability',
+  'update',
   'extensions',
 ] as const;
 

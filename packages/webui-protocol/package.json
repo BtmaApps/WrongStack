@@ -28,15 +28,23 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./frame-resume": {
+      "types": "./dist/frame-resume.d.ts",
+      "import": "./dist/frame-resume.js"
+    },
+    "./schema/ws-core.schema.json": "./schema/ws-core.schema.json",
+    "./schema/openapi.json": "./schema/openapi.json",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
-    "!dist/**/*.map"
+    "!dist/**/*.map",
+    "schema"
   ],
   "scripts": {
     "build": "node ../../scripts/build-package.mjs",
     "typecheck": "tsc --noEmit",
+    "schema": "node ../../scripts/generate-protocol-schema.mjs",
     "test": "vitest run",
     "test:coverage": "node ../../scripts/coverage-lock.mjs node ../../scripts/run-vitest-coverage.mjs run --coverage --config vitest.config.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
@@ -46,6 +54,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
+    "ajv": "^8.20.0",
+    "ts-json-schema-generator": "^2.9.0",
     "typescript": "^7.0.2"
   },
   "publishConfig": {

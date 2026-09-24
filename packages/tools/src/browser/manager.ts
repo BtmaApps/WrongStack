@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, CDPSession, Page } from '@playwright/test';
 import { ulid } from '@wrongstack/core/utils';
 import { BrowserArtifactStore } from './artifacts.js';
 import { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
@@ -8,6 +8,9 @@ import { assertBrowserUrlAllowed, redactBrowserText, safeBrowserUrl } from './se
 import type {
   BrowserArtifact,
   BrowserConsoleEntry,
+  BrowserFrame,
+  BrowserLiveDetails,
+  BrowserLiveSummary,
   BrowserManagerOptions,
   BrowserNetworkEntry,
   BrowserOpenOptions,
@@ -29,6 +32,10 @@ interface LiveSession {
   tracing: boolean;
   console: BrowserConsoleEntry[];
   network: BrowserNetworkEntry[];
+  conversationId?: string | undefined;
+  /** Live viewers of the page, fed by one shared CDP screencast. */
+  viewers: Set<(frame: BrowserFrame) => void>;
+  screencast?: Promise<CDPSession> | undefined;
 }
 
 export type BrowserLauncher = (headless: boolean) => Promise<Browser>;
@@ -120,6 +127,8 @@ export class BrowserSessionManager {
       tracing: input.trace ?? true,
       console: [],
       network: [],
+      conversationId: input.conversationId,
+      viewers: new Set(),
     };
     this.sessions.set(session.id, session);
     this.attachEvidenceCollectors(session);
@@ -417,6 +426,58 @@ export class BrowserSessionManager {
     for (const id of ids) await this.close(id, ownerId).catch(() => undefined);
   }
 
+  /** Every open session, whoever owns it: the WebUI's live view lists them. */
+  async liveSessions(): Promise<BrowserLiveSummary[]> {
+    return Promise.all(
+      [...this.sessions.values()].map(async (session) => ({
+        ...(await this.summary(session)),
+        ...(session.conversationId ? { conversationId: session.conversationId } : {}),
+      })),
+    );
+  }
+
+  /** URL, title and the recent console and network entries, or undefined once closed. */
+  async liveDetails(id: string, limit: number): Promise<BrowserLiveDetails | undefined> {
+    const session = this.sessions.get(id);
+    if (!session) return undefined;
+    const { url, title } = await this.summary(session);
+    return {
+      url,
+      title,
+      console: session.console.slice(-limit).map((entry) => ({ ...entry })),
+      network: session.network.slice(-limit).map((entry) => ({ ...entry })),
+    };
+  }
+
+  /**
+   * Watch a session's page. Frames come from a CDP screencast, which sends
+   * one when the page changes (and one to start); every viewer of a session
+   * shares it, and it stops with the last viewer. Read-only: nothing a viewer
+   * does reaches the page.
+   */
+  async watch(id: string, viewer: (frame: BrowserFrame) => void): Promise<() => Promise<void>> {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`browser session ${id} is not open`);
+    session.viewers.add(viewer);
+    session.screencast ??= startScreencast(session);
+    try {
+      await session.screencast;
+    } catch (err) {
+      session.viewers.delete(viewer);
+      if (session.viewers.size === 0) session.screencast = undefined;
+      throw err;
+    }
+    return async () => {
+      session.viewers.delete(viewer);
+      if (session.viewers.size > 0 || !session.screencast) return;
+      const cast = session.screencast;
+      session.screencast = undefined;
+      const cdp = await cast.catch(() => undefined);
+      await cdp?.send('Page.stopScreencast').catch(() => undefined);
+      await cdp?.detach().catch(() => undefined);
+    };
+  }
+
   /** True when the manager owns no live browser contexts. */
   isIdle(): boolean {
     return this.sessions.size === 0;
@@ -593,6 +654,33 @@ function withoutAnsi(err: unknown): unknown {
   const clean = new Error(err.message.replace(ANSI_SGR, ''), { cause: err });
   clean.name = err.name;
   return clean;
+}
+
+async function startScreencast(session: LiveSession): Promise<CDPSession> {
+  const cdp = await session.context.newCDPSession(session.page);
+  cdp.on('Page.screencastFrame', (frame) => {
+    // Unacknowledged, Chromium stops sending frames.
+    void cdp.send('Page.screencastFrameAck', { sessionId: frame.sessionId }).catch(() => undefined);
+    const out: BrowserFrame = {
+      data: frame.data,
+      width: frame.metadata.deviceWidth,
+      height: frame.metadata.deviceHeight,
+    };
+    for (const viewer of session.viewers) {
+      try {
+        viewer(out);
+      } catch {
+        // one viewer's failure must not starve the others
+      }
+    }
+  });
+  await cdp.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: 60,
+    maxWidth: 1280,
+    maxHeight: 800,
+  });
+  return cdp;
 }
 
 function pushBounded<T>(target: T[], value: T, limit: number): void {

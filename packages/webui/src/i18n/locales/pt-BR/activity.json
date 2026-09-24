@@ -678,7 +678,9 @@
     "inspector": "Inspetor do workspace",
     "inspectorNamed": "Inspetor do workspace {{name}}",
     "workspace": "Workspace",
-    "workspaceDetails": "Detalhes do workspace"
+    "workspaceDetails": "Detalhes do workspace",
+    "browser": "Navegador",
+    "browserDetail": "O navegador do agente, ao vivo (somente leitura)"
   },
   "agentsMonitor": {
     "leaderBadge": "LÍDER",
@@ -1242,7 +1244,13 @@
     "confirmKillBackground": "Encerrar o processo desvinculado em segundo plano {{pid}}?",
     "confirmKillAll": "Encerrar todos os {{count}} processos em execução?",
     "killAllTitle": "Encerrar todos os processos",
-    "killTitle": "Matar PID {{pid}}"
+    "killTitle": "Matar PID {{pid}}",
+    "stripLabel": "Segundo plano",
+    "stripOutputTitle": "Saída do PID {{pid}}",
+    "stripNoOutput": "Ainda sem saída",
+    "stripNotCaptured": "A saída deste processo não é registrada",
+    "stripGone": "O processo terminou",
+    "stripStop": "Parar"
   },
   "diff": {
     "tooLarge": "Diff omitido (arquivo grande demais para renderizar em linha)."
@@ -1654,6 +1662,8 @@
     "level": {
       "quiet": "estável",
       "active": "ativo",
+      "activeProfile": "padrão do perfil",
+      "activeProject": "este projeto",
       "churn": "alta rotatividade"
     },
     "analysisTitle": {
@@ -3776,7 +3786,43 @@
     "applyAndStart": "Aplicar e iniciar sessão",
     "cancel": "Cancelar",
     "unavailable": "A seleção do prompt do sistema não está disponível neste servidor.",
-    "openTitle": "Escolher o tamanho do prompt do sistema"
+    "openTitle": "Escolher o tamanho do prompt do sistema",
+    "presets": {
+      "manage": "Gerenciar predefinições personalizadas",
+      "title": "Predefinições personalizadas",
+      "description": "Cópias editáveis de Lite, Standard e Pro salvas neste perfil. Escolha uma para este projeto ou para todo o perfil. As instruções de ferramentas e ambiente são montadas durante a execução.",
+      "copy": "Copiar {{variant}}",
+      "suggestedName": "{{variant}} personalizado",
+      "select": "Predefinição",
+      "selectPlaceholder": "Selecione uma predefinição",
+      "active": "ativa",
+      "activeProfile": "padrão do perfil",
+      "activeProject": "este projeto",
+      "name": "Nome",
+      "template": "Modelo de prompt",
+      "sourceChanged": "A fonte incluída de {{variant}} mudou desde que esta predefinição foi copiada. Compare as duas versões e adapte o texto antes de marcá-lo como revisado.",
+      "reviewed": "Revisei a fonte incluída atual",
+      "syntax": "As condições são avaliadas conforme as ferramentas disponíveis em cada solicitação.",
+      "validationScope": "A validação verifica a estrutura e os nomes das ferramentas, mas não garante que as instruções editadas sejam seguras ou eficazes. As permissões são aplicadas na execução.",
+      "validation": "Resultados da validação",
+      "line": "Linha {{line}}: {{message}}",
+      "save": "Salvar predefinição",
+      "activate": "Ativar para {{variant}}",
+      "deactivate": "Desativar",
+      "activateProfile": "Usar em todo o perfil",
+      "deactivateProfile": "Remover o padrão do perfil",
+      "activateProject": "Usar neste projeto",
+      "deactivateProject": "Remover a escolha do projeto",
+      "delete": "Excluir",
+      "confirmDelete": "Excluir “{{name}}”?",
+      "discardChanges": "Descartar alterações não salvas?",
+      "compare": "Comparar versões da fonte",
+      "copiedSource": "Fonte quando copiada",
+      "currentSource": "Fonte incluída atual",
+      "preview": "Prévia · {{count}} ferramentas disponíveis · nível {{tier}}",
+      "previewEmpty": "Corrija os erros de validação para ver a prévia.",
+      "previewNote": "A execução adiciona separadamente as seções de ferramentas, ambiente, memória e modo."
+    }
   },
   "failedRun": {
     "continue": "Continuar",
@@ -3914,5 +3960,15 @@
     "outdated": "Desatualizado: a linha mudou depois deste comentário",
     "outdatedHeader": "Comentários em linhas que mudaram",
     "removedLine": "linha removida"
+  },
+  "browserLive": {
+    "none": "O agente não tem nenhum navegador aberto.",
+    "waiting": "Aguardando o primeiro quadro…",
+    "closed": "O navegador foi fechado.",
+    "readOnly": "somente leitura",
+    "console": "Console",
+    "network": "Rede",
+    "noConsole": "Ainda não há mensagens no console.",
+    "noNetwork": "Ainda não há requisições."
   }
 }

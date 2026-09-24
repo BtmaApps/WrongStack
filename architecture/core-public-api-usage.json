@@ -164,8 +164,8 @@
       "runtimeOrMixed": 28
     },
     "@wrongstack/core/storage": {
-      "files": 132,
-      "typeOnly": 34,
+      "files": 133,
+      "typeOnly": 35,
       "runtimeOrMixed": 130
     },
     "@wrongstack/core/tasking": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1194,
-      "typeOnly": 1065,
+      "files": 1197,
+      "typeOnly": 1068,
       "runtimeOrMixed": 348
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 649,
-      "typeOnly": 60,
-      "runtimeOrMixed": 618
+      "files": 652,
+      "typeOnly": 61,
+      "runtimeOrMixed": 621
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -11229,6 +11229,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-protocol/src/http-api.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -12012,6 +12018,12 @@
       "file": "packages/cli/src/cli-main.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/cli-update-notice.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -12964,6 +12976,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/yolo.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/standalone-auto-update.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17847,6 +17865,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-protocol/src/conversation-core.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-protocol/src/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -20397,6 +20421,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/standalone-auto-update.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/contracts.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -21113,6 +21143,12 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/slash-tuneup.test.ts",
       "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/standalone-update-notice.test.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {
@@ -22798,6 +22834,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/project-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/project-image.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

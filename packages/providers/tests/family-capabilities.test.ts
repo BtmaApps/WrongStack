@@ -17,9 +17,11 @@ describe('family-capabilities', () => {
       }
     });
 
-    it('anthropic has prompt cache and 200k context', () => {
+    it('anthropic has prompt cache and no invented context window', () => {
       expect(CAPABILITIES_BY_FAMILY.anthropic.promptCache).toBe(true);
-      expect(CAPABILITIES_BY_FAMILY.anthropic.maxContext).toBe(200_000);
+      // The window is per-model (200k … 1M); only the catalog knows it.
+      expect(CAPABILITIES_BY_FAMILY.anthropic.maxContext).toBe(0);
+      expect(CAPABILITIES_BY_FAMILY['anthropic-oauth'].maxContext).toBe(0);
       expect(CAPABILITIES_BY_FAMILY.anthropic.cacheControl).toBe('native');
     });
 
@@ -89,7 +91,7 @@ describe('family-capabilities', () => {
     it('overrides can disable a capability', () => {
       const c = capabilitiesForFamily('anthropic', { vision: false });
       expect(c.vision).toBe(false);
-      expect(c.maxContext).toBe(200_000);
+      expect(c.promptCache).toBe(true);
     });
 
     it('falls back to "unsupported" for an unknown family', () => {

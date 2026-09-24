@@ -678,7 +678,9 @@
     "inspector": "Ispettore del workspace",
     "inspectorNamed": "Ispettore del workspace {{name}}",
     "workspace": "Workspace",
-    "workspaceDetails": "Dettagli del workspace"
+    "workspaceDetails": "Dettagli del workspace",
+    "browser": "Browser",
+    "browserDetail": "Il browser dell'agente, dal vivo (sola lettura)"
   },
   "agentsMonitor": {
     "leaderBadge": "LEADER",
@@ -1242,7 +1244,13 @@
     "confirmKillBackground": "Terminare il processo scollegato in background {{pid}}?",
     "confirmKillAll": "Terminare tutti i {{count}} processi in esecuzione?",
     "killAllTitle": "Termina tutti i processi",
-    "killTitle": "Termina PID {{pid}}"
+    "killTitle": "Termina PID {{pid}}",
+    "stripLabel": "In background",
+    "stripOutputTitle": "Output del PID {{pid}}",
+    "stripNoOutput": "Nessun output per ora",
+    "stripNotCaptured": "L'output di questo processo non viene registrato",
+    "stripGone": "Il processo è terminato",
+    "stripStop": "Interrompi"
   },
   "diff": {
     "tooLarge": "Diff omesso (file troppo grande per il rendering in linea)."
@@ -1654,6 +1662,8 @@
     "level": {
       "quiet": "stabile",
       "active": "attivo",
+      "activeProfile": "predefinito del profilo",
+      "activeProject": "questo progetto",
       "churn": "elevata rotazione"
     },
     "analysisTitle": {
@@ -3776,7 +3786,43 @@
     "applyAndStart": "Applica e avvia sessione",
     "cancel": "Annulla",
     "unavailable": "La selezione del prompt di sistema non è disponibile su questo server.",
-    "openTitle": "Scegli la dimensione del prompt di sistema"
+    "openTitle": "Scegli la dimensione del prompt di sistema",
+    "presets": {
+      "manage": "Gestisci le preimpostazioni personalizzate",
+      "title": "Preimpostazioni personalizzate",
+      "description": "Copie modificabili di Lite, Standard e Pro salvate in questo profilo. Scegline una per questo progetto o per l’intero profilo. Le istruzioni per strumenti e ambiente vengono assemblate durante l’esecuzione.",
+      "copy": "Copia {{variant}}",
+      "suggestedName": "{{variant}} personalizzato",
+      "select": "Preimpostazione",
+      "selectPlaceholder": "Seleziona una preimpostazione",
+      "active": "attiva",
+      "activeProfile": "predefinito del profilo",
+      "activeProject": "questo progetto",
+      "name": "Nome",
+      "template": "Modello di prompt",
+      "sourceChanged": "La sorgente inclusa per {{variant}} è cambiata dopo la copia. Confronta le due versioni e adatta il testo prima di segnarlo come verificato.",
+      "reviewed": "Ho verificato la sorgente inclusa attuale",
+      "syntax": "Le condizioni vengono valutate in base agli strumenti disponibili a ogni richiesta.",
+      "validationScope": "La verifica controlla struttura e nomi degli strumenti, ma non garantisce che le istruzioni modificate siano sicure o efficaci. I permessi sono applicati durante l’esecuzione.",
+      "validation": "Risultati della verifica",
+      "line": "Riga {{line}}: {{message}}",
+      "save": "Salva preimpostazione",
+      "activate": "Attiva per {{variant}}",
+      "deactivate": "Disattiva",
+      "activateProfile": "Usa in tutto il profilo",
+      "deactivateProfile": "Rimuovi il valore predefinito del profilo",
+      "activateProject": "Usa in questo progetto",
+      "deactivateProject": "Rimuovi la scelta del progetto",
+      "delete": "Elimina",
+      "confirmDelete": "Eliminare «{{name}}»?",
+      "discardChanges": "Scartare le modifiche non salvate?",
+      "compare": "Confronta le versioni della sorgente",
+      "copiedSource": "Sorgente alla copia",
+      "currentSource": "Sorgente inclusa attuale",
+      "preview": "Anteprima · {{count}} strumenti disponibili · livello {{tier}}",
+      "previewEmpty": "Correggi gli errori di verifica per vedere l’anteprima.",
+      "previewNote": "L’esecuzione aggiunge separatamente le sezioni strumenti, ambiente, memoria e modalità."
+    }
   },
   "failedRun": {
     "continue": "Continua",
@@ -3914,5 +3960,15 @@
     "outdated": "Obsoleto: la riga è cambiata dopo questo commento",
     "outdatedHeader": "Commenti su righe modificate",
     "removedLine": "riga rimossa"
+  },
+  "browserLive": {
+    "none": "L'agente non ha alcun browser aperto.",
+    "waiting": "In attesa del primo fotogramma…",
+    "closed": "Il browser è stato chiuso.",
+    "readOnly": "sola lettura",
+    "console": "Console",
+    "network": "Rete",
+    "noConsole": "Ancora nessun messaggio in console.",
+    "noNetwork": "Ancora nessuna richiesta."
   }
 }

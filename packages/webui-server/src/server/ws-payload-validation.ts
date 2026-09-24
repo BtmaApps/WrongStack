@@ -301,6 +301,29 @@ export function validateProcessKillPayload(
   return { ok: true, value: { pid } };
 }
 
+interface ProcessOutputPayload {
+  pid: number;
+  lines: number;
+}
+
+/** `process.output`: a pid, and how many of its last output lines (1–200, default 40). */
+export function validateProcessOutputPayload(
+  payload: unknown,
+): PayloadValidationResult<ProcessOutputPayload> {
+  if (!isRecord(payload)) {
+    return { ok: false, message: 'process.output payload must be an object with numeric pid' };
+  }
+  const pid = payload['pid'];
+  if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) {
+    return { ok: false, message: 'process.output payload.pid must be a positive integer' };
+  }
+  const lines = payload['lines'] ?? 40;
+  if (typeof lines !== 'number' || !Number.isInteger(lines) || lines < 1 || lines > 200) {
+    return { ok: false, message: 'process.output payload.lines must be an integer from 1 to 200' };
+  }
+  return { ok: true, value: { pid, lines } };
+}
+
 interface WorkingDirSetPayload {
   path: string;
 }

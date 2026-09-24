@@ -136,8 +136,55 @@ export type WSSystemMiscServerMessage =
           status: 'running' | 'exited' | 'killed';
           protected?: boolean | undefined;
           background?: boolean | undefined;
+          /** A background shell whose output `process.output` can read. */
+          hasOutput?: boolean | undefined;
           sessionId?: string | undefined;
         }>;
+      };
+    }
+  | {
+      type: 'process.output';
+      payload: {
+        pid: number;
+        /** Last lines of the process's output log. */
+        lines: string[];
+        /** The process has exited (or was never tracked). */
+        gone?: boolean | undefined;
+        sessionId?: string | undefined;
+      };
+    }
+  | {
+      type: 'browser.live.list';
+      payload: {
+        sessions: Array<{
+          id: string;
+          ownerId: string;
+          url: string;
+          title: string;
+          createdAt: string;
+          lastUsedAt: string;
+        }>;
+        sessionId?: string | undefined;
+      };
+    }
+  | {
+      type: 'browser.live.frame';
+      /** One screencast frame, a base64 JPEG. */
+      payload: { id: string; data: string; width: number; height: number; sessionId?: string };
+    }
+  | {
+      type: 'browser.live.details';
+      payload: {
+        id: string;
+        url?: string | undefined;
+        title?: string | undefined;
+        console?: Array<{ level: string; text: string; at: string }> | undefined;
+        network?:
+          | Array<{ method: string; url: string; status?: number; failed?: boolean; at: string }>
+          | undefined;
+        /** The browser session has closed. */
+        gone?: boolean | undefined;
+        sessionId?: string | undefined;
       };
     }
   | {

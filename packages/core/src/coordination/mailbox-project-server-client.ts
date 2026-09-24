@@ -4,6 +4,7 @@ import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
+import { isPidAlive } from '../utils/pid.js';
 import type { MailboxEvent } from './mailbox-events.js';
 import {
   mailboxProjectServerEndpoint,
@@ -48,9 +49,9 @@ const AUTH_RETRY_MAX_ATTEMPTS = 13;
 /**
  * Minimum spacing between detached-server spawn attempts inside one
  * `connectWithElection` window. The first spawn still fires immediately;
- * re-arming is cadence-bounded so a dead first daemon is recovered without
- * flooding the machine with losing candidates (the endpoint bind IS the
- * election, so an extra spawn that cannot win exits without side effects).
+ * re-arming is cadence-bounded and only happens after the previous child exits.
+ * A still-starting child can bind AFTER its predecessor is shut down; on Windows
+ * its cwd then holds the project directory open and test cleanup fails EBUSY.
  */
 const SPAWN_RETRY_CADENCE_MS = 750;
 
@@ -153,6 +154,8 @@ export class MailboxProjectServerConnection {
   private info: MailboxProjectServerInfo | null = null;
   private buffer = '';
   private connecting: Promise<void> | null = null;
+  /** Do not start a late contender while our previous daemon candidate still lives. */
+  private spawnedPid: number | undefined;
   private connectResolve: (() => void) | null = null;
   private connectReject: ((error: unknown) => void) | null = null;
   private nextId = 1;
@@ -341,7 +344,7 @@ export class MailboxProjectServerConnection {
       // SERVER_START_TIMEOUT_MS (observed under full-suite load). The first
       // spawn still fires immediately because lastSpawnAt starts at 0.
       const now = Date.now();
-      if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS) {
+      if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS && !isPidAlive(this.spawnedPid ?? 0)) {
         // A synchronous throw from the spawn path — the resolver transiently
         // failing to stat the dist entrypoint under load — must not unwind
         // the whole retry window (observed 2026-09-15: one miss surfaced
@@ -349,7 +352,7 @@ export class MailboxProjectServerConnection {
         // "this tick spawned nothing"; lastSpawnAt stays unset so the next
         // tick retries immediately rather than waiting out the cadence.
         try {
-          this.spawnDetachedServer();
+          this.spawnedPid = this.spawnDetachedServer();
           lastSpawnAt = now;
         } catch {
           // Resolution failures are retryable by the loop below.
@@ -598,7 +601,7 @@ export class MailboxProjectServerConnection {
     this.heartbeatTimer = null;
   }
 
-  private spawnDetachedServer(): void {
+  private spawnDetachedServer(): number | undefined {
     const url = resolveProjectServerUrl();
     if (!url) throw new Error('Mailbox project server entrypoint is unavailable');
     // The mailbox may be the first project-scoped service touched during a
@@ -623,5 +626,6 @@ export class MailboxProjectServerConnection {
     // event only needs to be safely observable here.
     child.on('error', () => undefined);
     child.unref();
+    return child.pid;
   }
 }

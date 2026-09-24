@@ -45,7 +45,6 @@ interface MistralStreamState {
 
 const MISTRAL_CAPABILITIES = capabilitiesForFamily('openai-compatible', {
   jsonMode: true,
-  maxContext: 128_000,
   // Mistral caches prompt prefixes per `prompt_cache_key` (cached tokens at
   // 10% of the input price) and reports hits in
   // `usage.prompt_tokens_details.cached_tokens`.

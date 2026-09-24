@@ -678,7 +678,9 @@
     "inspector": "Inspector del espacio de trabajo",
     "inspectorNamed": "Inspector del espacio de trabajo {{name}}",
     "workspace": "Espacio de trabajo",
-    "workspaceDetails": "Detalles del espacio de trabajo"
+    "workspaceDetails": "Detalles del espacio de trabajo",
+    "browser": "Navegador",
+    "browserDetail": "El navegador del agente, en vivo (solo lectura)"
   },
   "agentsMonitor": {
     "leaderBadge": "LÍDER",
@@ -1242,7 +1244,13 @@
     "confirmKillBackground": "¿Terminar el proceso desvinculado en segundo plano {{pid}}?",
     "confirmKillAll": "¿Terminar los {{count}} procesos en ejecución?",
     "killAllTitle": "Terminar todos los procesos",
-    "killTitle": "Matar PID {{pid}}"
+    "killTitle": "Matar PID {{pid}}",
+    "stripLabel": "Segundo plano",
+    "stripOutputTitle": "Salida del PID {{pid}}",
+    "stripNoOutput": "Todavía no hay salida",
+    "stripNotCaptured": "La salida de este proceso no se registra",
+    "stripGone": "El proceso ha terminado",
+    "stripStop": "Detener"
   },
   "diff": {
     "tooLarge": "Diff omitido (archivo demasiado grande para mostrar en línea)."
@@ -1654,6 +1662,8 @@
     "level": {
       "quiet": "estable",
       "active": "activo",
+      "activeProfile": "predeterminado del perfil",
+      "activeProject": "este proyecto",
       "churn": "alta rotación"
     },
     "analysisTitle": {
@@ -3776,7 +3786,43 @@
     "applyAndStart": "Aplicar e iniciar sesión",
     "cancel": "Cancelar",
     "unavailable": "La selección del prompt del sistema no está disponible en este servidor.",
-    "openTitle": "Elegir tamaño del prompt del sistema"
+    "openTitle": "Elegir tamaño del prompt del sistema",
+    "presets": {
+      "manage": "Gestionar ajustes predefinidos",
+      "title": "Ajustes predefinidos",
+      "description": "Copias editables de Lite, Standard y Pro guardadas en este perfil. Elige una para este proyecto o para todo el perfil. Las instrucciones de herramientas y entorno se generan en tiempo de ejecución.",
+      "copy": "Copiar {{variant}}",
+      "suggestedName": "{{variant}} personalizado",
+      "select": "Ajuste predefinido",
+      "selectPlaceholder": "Selecciona un ajuste",
+      "active": "activo",
+      "activeProfile": "predeterminado del perfil",
+      "activeProject": "este proyecto",
+      "name": "Nombre",
+      "template": "Plantilla del prompt",
+      "sourceChanged": "La fuente incluida de {{variant}} cambió desde que se copió este ajuste. Compara ambas versiones y adapta el texto antes de marcarlo como revisado.",
+      "reviewed": "He revisado la fuente incluida actual",
+      "syntax": "Las condiciones se evalúan según las herramientas disponibles en cada solicitud.",
+      "validationScope": "La validación comprueba la estructura y los nombres de herramientas; no garantiza que las instrucciones editadas sean seguras o eficaces. El entorno de ejecución aplica los permisos.",
+      "validation": "Resultados de validación",
+      "line": "Línea {{line}}: {{message}}",
+      "save": "Guardar ajuste",
+      "activate": "Activar para {{variant}}",
+      "deactivate": "Desactivar",
+      "activateProfile": "Usar en todo el perfil",
+      "deactivateProfile": "Quitar valor predeterminado del perfil",
+      "activateProject": "Usar en este proyecto",
+      "deactivateProject": "Quitar selección del proyecto",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar «{{name}}»?",
+      "discardChanges": "¿Descartar los cambios no guardados?",
+      "compare": "Comparar versiones de la fuente",
+      "copiedSource": "Fuente al copiar",
+      "currentSource": "Fuente incluida actual",
+      "preview": "Vista previa · {{count}} herramientas disponibles · nivel {{tier}}",
+      "previewEmpty": "Corrige los errores de validación para ver la vista previa.",
+      "previewNote": "El entorno de ejecución añade por separado las secciones de herramientas, entorno, memoria y modo."
+    }
   },
   "failedRun": {
     "continue": "Continuar",
@@ -3914,5 +3960,15 @@
     "outdated": "Desactualizado: la línea cambió después de escribir este comentario",
     "outdatedHeader": "Comentarios en líneas que cambiaron",
     "removedLine": "línea eliminada"
+  },
+  "browserLive": {
+    "none": "El agente no tiene ningún navegador abierto.",
+    "waiting": "Esperando el primer fotograma…",
+    "closed": "El navegador se cerró.",
+    "readOnly": "solo lectura",
+    "console": "Consola",
+    "network": "Red",
+    "noConsole": "Aún no hay mensajes de consola.",
+    "noNetwork": "Aún no hay solicitudes."
   }
 }

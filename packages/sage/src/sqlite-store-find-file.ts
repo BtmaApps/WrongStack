@@ -1,4 +1,5 @@
 import { normalizeProjectPath, normalizeSlashes } from './paths.js';
+import { boundedLimit } from './shared/pagination.js';
 import { isVisibleToSession } from './sqlite-store-search-helpers.js';
 import type {
   FindMemoriesForFileOptions,
@@ -118,7 +119,7 @@ export async function findSqliteMemoriesForFile(
   const basename = target === '.' ? '' : (target.split('/').at(-1) ?? '');
   const includeSuperseded = options.includeSuperseded !== false;
   const includeDeleted = options.includeDeleted === true;
-  const limit = Math.max(1, Math.min(250, Math.floor(options.limit ?? 50)));
+  const limit = Math.max(1, boundedLimit(options.limit, 50, 250));
   const memories = ctx.listMemories();
   const memoryById = new Map(memories.map((memory) => [memory.id, memory]));
   const pendingByMemoryId = new Map<string, NonNullable<MemoryForFileMatch['pendingReview']>>();

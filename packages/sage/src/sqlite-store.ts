@@ -768,9 +768,9 @@ export class SqliteSageStore implements MemoryStore {
   // ─── Hygiene ────────────────────────────────────────────────────────
 
   async hygiene(opts?: SageHygieneOptions): Promise<SageHygieneReport> {
-    await this.initialize();
-    return this.runCompositeOperation(() =>
-      runSqliteSageHygiene(
+    return this.runCompositeOperation(async () => {
+      await this.initialize();
+      return runSqliteSageHygiene(
         {
           projectRoot: this.projectRoot,
           stmt: (sql) => this.stmt(sql),
@@ -787,8 +787,8 @@ export class SqliteSageStore implements MemoryStore {
           pruneAuditLog: () => this.pruneAuditLog(),
         },
         opts,
-      ),
-    );
+      );
+    });
   }
 
   // ─── Candidates ─────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import { hybridRerankMemories } from './retrieval/hybrid-rerank.js';
+import { boundedLimit, DEFAULT_LIST_LIMIT } from './shared/pagination.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { escapeLikePattern } from './sqlite-store-pagination.js';
 import {
@@ -58,7 +59,7 @@ export function searchSqliteSage(
   query: string,
   opts?: SageSearchOptions,
 ): Sage[] {
-  const limit = opts?.limit ?? 20;
+  const limit = boundedLimit(opts?.limit, DEFAULT_LIST_LIMIT, Number.MAX_SAFE_INTEGER);
   const automaticContext = opts?.includeStatuses === undefined;
   const statusFilter = opts?.includeStatuses ?? ['active'];
   if (statusFilter.length === 0) return [];

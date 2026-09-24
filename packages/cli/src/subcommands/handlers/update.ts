@@ -113,11 +113,25 @@ export async function runUpdateCommand(args: string[], deps: UpdateCommandDeps):
   }
 
   if (isStandaloneBinary()) {
-    const { updateStandaloneBinary } = await import('../../standalone-update.js');
-    return updateStandaloneBinary({
+    const [{ updateStandaloneBinary }, { standaloneUpdater }, { STANDALONE_TARGET }] =
+      await Promise.all([
+        import('../../standalone-update.js'),
+        import('../../standalone-auto-update.js'),
+        import('../../version.js'),
+      ]);
+    const updater = standaloneUpdater({
+      executable: realpathSync(process.execPath),
+      target: STANDALONE_TARGET ?? '',
+      current: info.current,
+    });
+    const code = await updateStandaloneBinary({
       current: info.current,
       renderer: deps.renderer,
+      // A build the background updater already downloaded and verified.
+      staged: updater.pending(),
     });
+    if (code === 0) updater.clear();
+    return code;
   }
 
   const packageManager = parsed.packageManager ?? detectUpdatePackageManager();

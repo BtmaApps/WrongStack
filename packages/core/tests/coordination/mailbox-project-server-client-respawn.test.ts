@@ -21,12 +21,21 @@ import { MailboxProjectServerConnection } from '../../src/coordination/mailbox-p
  * loop re-arming the spawn — the real dist daemon has to come up and answer
  * an authenticated ping within the window.
  */
-const spawnState = vi.hoisted(() => ({ calls: 0 }));
+const spawnState = vi.hoisted(() => ({ calls: 0, delayedFirst: false }));
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   const spawn = (...args: Parameters<typeof actual.spawn>): ReturnType<typeof actual.spawn> => {
     spawnState.calls += 1;
+    if (spawnState.delayedFirst && spawnState.calls === 1) {
+      // Keep the candidate alive while the real daemon starts after the retry
+      // cadence: the client must not launch a second contender in this window.
+      const delayed = new EventEmitter() as unknown as ReturnType<typeof actual.spawn>;
+      (delayed as unknown as { pid: number; unref: () => void }).pid = process.pid;
+      (delayed as unknown as { unref: () => void }).unref = () => undefined;
+      setTimeout(() => actual.spawn(...args).unref(), 1_300);
+      return delayed;
+    }
     if (spawnState.calls === 1) {
       // A dead-on-arrival daemon: no bind, no events, just the unref() the
       // client calls. Nothing will ever listen on the pipe after this.
@@ -43,6 +52,7 @@ let projectDir: string;
 
 beforeEach(async () => {
   spawnState.calls = 0;
+  spawnState.delayedFirst = false;
   projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mailbox-respawn-regression-'));
 });
 
@@ -51,6 +61,21 @@ afterEach(async () => {
 });
 
 describe('mailbox project server client respawn', () => {
+  it('does not re-arm while a slow first daemon candidate is still alive', async () => {
+    spawnState.delayedFirst = true;
+    const connection = new MailboxProjectServerConnection(projectDir);
+    const control = new MailboxProjectServerConnection(projectDir);
+    try {
+      const status = await connection.call('ping', {}, { timeoutMs: 20_000 });
+      expect(status.pid).toBeGreaterThan(0);
+      expect(spawnState.calls).toBe(1);
+    } finally {
+      await control.shutdown('slow-start-regression-complete').catch(() => undefined);
+      control.close();
+      connection.close();
+    }
+  }, 45_000);
+
   it('re-arms the detached daemon after a dead first spawn and completes an authenticated ping', async () => {
     const connection = new MailboxProjectServerConnection(projectDir);
     const control = new MailboxProjectServerConnection(projectDir);

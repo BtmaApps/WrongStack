@@ -270,8 +270,10 @@ describe('conversation operations with the prompt queue', () => {
     expect(h.inputs).toEqual(['first', 'second', 'third']);
     await h.finishRun(2);
     expect(h.inputs).toHaveLength(3);
-    // Queue-origin turns report to the session's pages, never as a refusal.
-    expect(h.broadcasts.filter((m) => m.type === 'run.result')).toHaveLength(2);
+    // Every turn reports to the session's pages, the page's own turn included
+    // (its socket may have dropped meanwhile); a queued turn never as a refusal.
+    expect(h.broadcasts.filter((m) => m.type === 'run.result')).toHaveLength(3);
+    expect(h.sent.filter((m) => m.type === 'run.result')).toEqual([]);
     expect(h.sent.filter((m) => m.type === 'error')).toEqual([]);
   });
 

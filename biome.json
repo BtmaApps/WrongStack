@@ -12,7 +12,8 @@
       "!**/*.html",
       "!**/.vitest-reports",
       "!**/.reports",
-      "!docs/reports/architecture-health-current.json"
+      "!docs/reports/architecture-health-current.json",
+      "!packages/webui-protocol/schema"
     ]
   },
   "formatter": {

@@ -28,6 +28,8 @@ export interface ClientState {
   connectedAt: number;
   /** Set on the first inbound byte. A socket that never speaks is reaped. */
   spoken: boolean;
+  /** Set only after a request or shutdown frame proves access to server.json. */
+  authenticated: boolean;
   /**
    * Request ids whose dispatch has not produced a response yet. `stop()`
    * answers each of these with a clean stopping rejection BEFORE the socket

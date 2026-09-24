@@ -322,8 +322,7 @@
     ],
     "packages/cli/src/update-check.ts": [
       "fetchLatestFromNpm",
-      "getUpdateNotification",
-      "isNewer"
+      "getUpdateNotification"
     ],
     "packages/cli/src/wiring/atlas-prompt-contributor.ts": [
       "DEFAULT_BRIEF_MAX_TOKENS",

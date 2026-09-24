@@ -82,7 +82,12 @@ import { createModelOperations } from './model-operations.js';
 import type { PrefsHandlerContext } from './prefs-handlers.js';
 import { createPrefsRouteHandlers } from './prefs-routes.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
-import { handleProcessKill, handleProcessKillAll, handleProcessList } from './process-handlers.js';
+import {
+  handleProcessKill,
+  handleProcessKillAll,
+  handleProcessList,
+  handleProcessOutput,
+} from './process-handlers.js';
 import type { ProcessRouteHandlers } from './process-routes.js';
 import type { PromptsContext } from './prompts-handlers.js';
 import { createProviderOperations } from './provider-handlers.js';
@@ -717,6 +722,7 @@ export function createEmbeddedMessageRouter(
   });
   const processRoutes: ProcessRouteHandlers = {
     list: handleProcessList,
+    output: (ws, msg) => handleProcessOutput(ws, msg.payload),
     kill: (ws, msg) =>
       handleProcessKill(ws, msg.payload, deps.trustBoundary, undefined, {
         backend: 'cli-embedded',

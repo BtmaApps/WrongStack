@@ -680,6 +680,10 @@ export type WSClientMessageCore =
     }
   | { type: 'ping' }
   | { type: 'process.list'; payload?: SessionScopedPayload }
+  | { type: 'process.output'; payload: { pid: number; lines?: number } & SessionScopedPayload }
+  | { type: 'browser.live.list'; payload?: SessionScopedPayload }
+  | { type: 'browser.live.watch'; payload: { id: string } & SessionScopedPayload }
+  | { type: 'browser.live.unwatch'; payload?: SessionScopedPayload }
   | { type: 'process.kill'; payload: { pid: number } & SessionScopedPayload }
   | { type: 'process.killAll'; payload?: SessionScopedPayload }
   | { type: 'git.info' }

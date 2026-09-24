@@ -134,6 +134,12 @@ export interface StatusBarProps {
    * orange update notice on the status bar.
    */
   updateAvailable?: boolean | undefined;
+  /**
+   * A newer standalone build downloaded and waiting to be swapped in when
+   * the session exits. Replaces the "(update v…)" suffix, since there is
+   * nothing left to run: a restart picks it up.
+   */
+  updateReadyVersion?: string | undefined;
   state: 'idle' | 'running' | 'streaming' | 'aborting';
   /** Single word rendered in the rainbow working-state chip. */
   thinkingWord?: string | undefined;

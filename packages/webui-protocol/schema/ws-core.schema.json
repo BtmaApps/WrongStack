@@ -1,0 +1,1578 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://wrongstack.dev/schema/ws-core.schema.json",
+  "title": "WrongStack WebUI WebSocket protocol — conversation core",
+  "description": "Generated from @wrongstack/webui-protocol 1.0.26 (src/conversation-core.ts, src/error-model.ts). Every frame is a JSON object {type, payload}. A client sends CoreClientMessage and receives CoreServerMessage; other message types exist (see registry.ts) and are not described here.",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/CoreClientMessage"
+    },
+    {
+      "$ref": "#/definitions/CoreServerMessage"
+    }
+  ],
+  "definitions": {
+    "CoreClientMessage": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/WSUserMessage"
+        },
+        {
+          "$ref": "#/definitions/WSAbort"
+        },
+        {
+          "$ref": "#/definitions/WSPing"
+        },
+        {
+          "$ref": "#/definitions/WSSessionsListRequest"
+        },
+        {
+          "$ref": "#/definitions/WSSessionNew"
+        },
+        {
+          "$ref": "#/definitions/WSSessionResume"
+        },
+        {
+          "$ref": "#/definitions/WSSessionSubscribe"
+        },
+        {
+          "$ref": "#/definitions/WSToolConfirmResult"
+        }
+      ],
+      "description": "Messages a client of the conversation core sends."
+    },
+    "CoreServerMessage": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/WSSessionStart"
+        },
+        {
+          "$ref": "#/definitions/WSSessionEnd"
+        },
+        {
+          "$ref": "#/definitions/WSTextDelta"
+        },
+        {
+          "$ref": "#/definitions/WSThinkingDelta"
+        },
+        {
+          "$ref": "#/definitions/WSToolUseStart"
+        },
+        {
+          "$ref": "#/definitions/WSToolProgress"
+        },
+        {
+          "$ref": "#/definitions/WSToolExecuted"
+        },
+        {
+          "$ref": "#/definitions/WSIterationStarted"
+        },
+        {
+          "$ref": "#/definitions/WSIterationCompleted"
+        },
+        {
+          "$ref": "#/definitions/WSProviderRetry"
+        },
+        {
+          "$ref": "#/definitions/WSProviderError"
+        },
+        {
+          "$ref": "#/definitions/WSRunResult"
+        },
+        {
+          "$ref": "#/definitions/WSError"
+        },
+        {
+          "$ref": "#/definitions/WSToolConfirmNeeded"
+        },
+        {
+          "$ref": "#/definitions/WSToolConfirmResolved"
+        },
+        {
+          "$ref": "#/definitions/WSSessionsList"
+        },
+        {
+          "$ref": "#/definitions/WSSessionRunState"
+        },
+        {
+          "$ref": "#/definitions/WSSessionFramesResumed"
+        },
+        {
+          "$ref": "#/definitions/WSPong"
+        }
+      ],
+      "description": "Messages the server sends in the conversation core. A frame broadcast to a session also carries `seq` (that session's frame number) and, when its payload names another session, `stream` (the session whose counter `seq` advances), beside `type` and `payload`."
+    },
+    "SessionMarker": {
+      "description": "One rendered audit-timeline entry.",
+      "properties": {
+        "agentId": {
+          "description": "Set only for the `agent_*` and `delegate_*` sources.",
+          "type": "string"
+        },
+        "detail": {
+          "$ref": "#/definitions/SessionMarkerDetail",
+          "description": "The source event's own fields, for the sources a surface renders as something richer than a line of text.\n\n`text` stays the fallback every surface can always use. But the TUI draws a delegation as a labelled subagent row with its own icon, colour and compact stat line, and the WebUI as a two-line assistant message — both built from the structured payload, live. Handing replay only the rendered sentence would have forced those surfaces to show something they never showed while running, which is the exact divergence this module exists to prevent. Kept to the few sources that need it, and JSON-serializable so it survives the wire alongside the rest of the marker."
+        },
+        "level": {
+          "$ref": "#/definitions/SessionMarkerLevel"
+        },
+        "source": {
+          "description": "The journal event type this marker was projected from.",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "source",
+        "level",
+        "text"
+      ],
+      "type": "object"
+    },
+    "SessionMarkerDetail": {
+      "anyOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "delegate_started",
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "target",
+            "task"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "costUsd": {
+              "type": "number"
+            },
+            "durationMs": {
+              "type": "number"
+            },
+            "iterations": {
+              "type": "number"
+            },
+            "kind": {
+              "const": "delegate_completed",
+              "type": "string"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "toolCalls": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "target",
+            "task",
+            "ok",
+            "summary",
+            "durationMs",
+            "iterations",
+            "toolCalls"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "Structured payload for the marker sources whose surfaces render richly."
+    },
+    "SessionMarkerLevel": {
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ],
+      "type": "string"
+    },
+    "SessionScopedPayload": {
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SessionToolMeta": {
+      "description": "Tool-call metadata that lives in `tool_call_end` events rather than in the conversation.\n\nThe message journal records WHICH tool ran with WHICH arguments and WHAT it returned; how long it took and how much it produced is audit detail, in a separate event keyed by the same `tool_use` id. The TUI reads both because it holds the raw event array; the browser surfaces are handed a projection over the wire, so this is the shape that projection carries.",
+      "properties": {
+        "agentId": {
+          "description": "Subagent that ran the tool; absent = the session's leader.",
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "id": {
+          "description": "The `tool_use` id this describes.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "outputBytes": {
+          "type": "number"
+        },
+        "outputLines": {
+          "type": "number"
+        },
+        "outputTokens": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "Usage": {
+      "properties": {
+        "cacheRead": {
+          "type": "number"
+        },
+        "cacheWrite": {
+          "description": "Back-compat aggregate of all cache-write tokens. Prefer TTL-specific fields when present.",
+          "type": "number"
+        },
+        "cacheWrite1h": {
+          "type": "number"
+        },
+        "cacheWrite5m": {
+          "type": "number"
+        },
+        "input": {
+          "type": "number"
+        },
+        "output": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "input",
+        "output"
+      ],
+      "type": "object"
+    },
+    "WSAbort": {
+      "description": "Stop the session's run.",
+      "properties": {
+        "payload": {
+          "$ref": "#/definitions/SessionScopedPayload"
+        },
+        "type": {
+          "const": "abort",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSCodeMapFileTarget": {
+      "properties": {
+        "endLine": {
+          "type": "number"
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "line": {
+          "type": "number"
+        },
+        "operation": {
+          "enum": [
+            "read",
+            "write",
+            "edit",
+            "delete",
+            "search"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "filePath",
+        "operation"
+      ],
+      "type": "object"
+    },
+    "WSError": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "code": {
+              "description": "Machine-readable reason, when the server has one (`session_not_ready`, `vision_unsupported`, …).",
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message",
+            "phase"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSIterationCompleted": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "index": {
+              "type": "number"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "totalIterations": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "index",
+            "totalIterations"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "iteration.completed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSIterationStarted": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "index": {
+              "type": "number"
+            },
+            "maxIterations": {
+              "type": "number"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "index"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "iteration.started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSPing": {
+      "description": "Keep-alive; answered with `pong`.",
+      "properties": {
+        "type": {
+          "const": "ping",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "WSPong": {
+      "properties": {
+        "payload": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "type": {
+          "const": "pong",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "WSProviderError": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "providerId": {
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "description",
+            "providerId",
+            "retryable",
+            "status"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "provider.error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSProviderRetry": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "attempt": {
+              "type": "number"
+            },
+            "delayMs": {
+              "type": "number"
+            },
+            "description": {
+              "type": "string"
+            },
+            "providerId": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "attempt",
+            "delayMs",
+            "description",
+            "providerId",
+            "status"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "provider.retry",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSRunResult": {
+      "description": "How a run ended. Broadcast to the session (numbered, so a reconnect catches it up), not only to the connection that sent the prompt.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "error": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "recoverable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "recoverable"
+              ],
+              "type": "object"
+            },
+            "finalText": {
+              "type": "string"
+            },
+            "iterations": {
+              "type": "number"
+            },
+            "requestId": {
+              "description": "Id of the user_message that initiated this run.",
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "done",
+                "failed",
+                "max_iterations",
+                "aborted"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "iterations",
+            "status"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "run.result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionEnd": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "totalCost": {
+              "type": "number"
+            },
+            "usage": {
+              "$ref": "#/definitions/Usage"
+            }
+          },
+          "required": [
+            "sessionId",
+            "usage",
+            "totalCost"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.end",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionFramesResumed": {
+      "description": "The end of one session's reconnect catch-up. `resumed: true` came after the frames the connection missed; `false` means the server could not supply them and a transcript replay follows instead.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "frames": {
+              "type": "number"
+            },
+            "resumed": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "resumed"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.frames_resumed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionNew": {
+      "description": "Open a new session; answered with `session.start`. `replaceSessionId` retires that session in the same operation; without it the new session is opened beside the others.",
+      "properties": {
+        "payload": {
+          "anyOf": [
+            {
+              "properties": {
+                "replaceSessionId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "systemPromptVariant": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "$ref": "#/definitions/SessionScopedPayload"
+            }
+          ]
+        },
+        "type": {
+          "const": "session.new",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "WSSessionResume": {
+      "description": "Open an earlier session; answered with `session.start` carrying its transcript.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.resume",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionRunState": {
+      "description": "Whether one session's run is live, answered per declared session after every `session.subscribe`. A run that ended while the connection was down, with its `run.result` no longer in the frame log, is known over only by this.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "isRunning": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "isRunning"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.run_state",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionStart": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "cacheReadCost": {
+              "type": "number"
+            },
+            "contextMode": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "eventEpoch": {
+              "description": "Identifies this server process; frame cursors sent with `session.subscribe` are valid only for it.",
+              "type": "string"
+            },
+            "inputCost": {
+              "type": "number"
+            },
+            "maxContext": {
+              "type": "number"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "needsSetup": {
+              "description": "True when no provider+model is configured yet — show the setup screen.",
+              "type": "boolean"
+            },
+            "outputCost": {
+              "type": "number"
+            },
+            "projectName": {
+              "type": "string"
+            },
+            "protocolCapabilities": {
+              "description": "Feature negotiation prevents a newer WebUI from sending messages to an older backend.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "reasoningEffortLevels": {
+              "description": "Effort levels the ACTIVE model advertises (models.dev reasoningConfig). Absent when the model has no explicit effort list — the UI then shows the full canonical set, matching the resolver's conservative gate.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "replayMarkers": {
+              "description": "Audit markers (compaction, mode/skill switches, subagent lifecycle, provider retries, truncation) projected server-side. Replayed alongside the conversation so a reconnect shows what the live stream showed.",
+              "items": {
+                "$ref": "#/definitions/SessionMarker"
+              },
+              "type": "array"
+            },
+            "replayMessages": {
+              "items": {
+                "properties": {
+                  "content": {},
+                  "role": {
+                    "type": "string"
+                  },
+                  "ts": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "replayToolMeta": {
+              "description": "Per-tool timing/output metadata projected from `tool_call_end`, so a replayed tool card shows the same duration and size chips it showed live.",
+              "items": {
+                "$ref": "#/definitions/SessionToolMeta"
+              },
+              "type": "array"
+            },
+            "replayUsage": {
+              "$ref": "#/definitions/Usage"
+            },
+            "reset": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "startedAt": {
+              "description": "Original session start timestamp; resume must not reset uptime.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "model",
+            "provider"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionSubscribe": {
+      "description": "Declare every session this connection shows. The server sends a session's events only to connections that declared it; the list replaces the last one.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "cursors": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Reconnect catch-up: the last frame (`seq`) applied per session, for `eventEpoch`.",
+              "type": "object"
+            },
+            "eventEpoch": {
+              "type": "string"
+            },
+            "replayFor": {
+              "description": "Sessions whose transcript this connection needs sent back.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "sessionIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "sessionIds"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "session.subscribe",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionsList": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "error": {
+              "type": "string"
+            },
+            "sessions": {
+              "items": {
+                "properties": {
+                  "compactionCount": {
+                    "type": "number"
+                  },
+                  "endedAt": {
+                    "type": "string"
+                  },
+                  "fileChangeCount": {
+                    "type": "number"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "isCurrent": {
+                    "type": "boolean"
+                  },
+                  "iterationCount": {
+                    "type": "number"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "outcome": {
+                    "enum": [
+                      "completed",
+                      "error",
+                      "timeout",
+                      "aborted"
+                    ],
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "startedAt": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "tokenTotal": {
+                    "type": "number"
+                  },
+                  "toolBreakdown": {
+                    "additionalProperties": {
+                      "type": "number"
+                    },
+                    "type": "object"
+                  },
+                  "toolCallCount": {
+                    "type": "number"
+                  },
+                  "toolErrorCount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "startedAt",
+                  "model",
+                  "provider",
+                  "tokenTotal",
+                  "isCurrent"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "sessions"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "sessions.list",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSSessionsListRequest": {
+      "description": "Ask for recent sessions; answered with `sessions.list`.",
+      "properties": {
+        "payload": {
+          "properties": {
+            "limit": {
+              "type": "number"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "limit"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "sessions.list",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSTextDelta": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "messageId": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "messageId",
+            "text"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "provider.text_delta",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSThinkingDelta": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "provider.thinking_delta",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolConfirmNeeded": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "boundaryReason": {
+              "type": "string"
+            },
+            "deadlineAt": {
+              "type": "number"
+            },
+            "decisionSource": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "input": {},
+            "riskTier": {
+              "enum": [
+                "safe",
+                "standard",
+                "destructive"
+              ],
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "suggestedPattern": {
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "input",
+            "suggestedPattern",
+            "toolName"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.confirm_needed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolConfirmResolved": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "decision": {
+              "enum": [
+                "yes",
+                "no",
+                "always",
+                "always-exact",
+                "always-command",
+                "always-tool",
+                "deny",
+                "abort"
+              ],
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "brain_timeout",
+                "abort"
+              ],
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "decision",
+            "id",
+            "source",
+            "toolName"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.confirm_resolved",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolConfirmResult": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "decision": {
+              "enum": [
+                "yes",
+                "no",
+                "always",
+                "always-exact",
+                "always-command",
+                "always-tool",
+                "deny"
+              ],
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "decision",
+            "id"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.confirm_result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolExecuted": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "agentId": {
+              "type": "string"
+            },
+            "agentName": {
+              "type": "string"
+            },
+            "durationMs": {
+              "type": "number"
+            },
+            "fileTargets": {
+              "items": {
+                "$ref": "#/definitions/WSCodeMapFileTarget"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "input": {},
+            "name": {
+              "type": "string"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "output": {
+              "type": "string"
+            },
+            "outputBytes": {
+              "type": "number"
+            },
+            "outputLines": {
+              "type": "number"
+            },
+            "outputTokens": {
+              "type": "number"
+            },
+            "sage": {
+              "description": "SAGE Memory Injector block (`--- SAGE: … ---` header first, then one line per memory) split off `output` by the backend before its preview cap. Rendered as a memory card — never appended back onto the tool body.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "traceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "durationMs",
+            "id",
+            "name",
+            "ok"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.executed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolProgress": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "agentId": {
+              "type": "string"
+            },
+            "agentName": {
+              "type": "string"
+            },
+            "event": {
+              "properties": {
+                "data": {
+                  "additionalProperties": {},
+                  "type": "object"
+                },
+                "endLine": {
+                  "type": "number"
+                },
+                "line": {
+                  "type": "number"
+                },
+                "operation": {
+                  "enum": [
+                    "write",
+                    "edit",
+                    "delete",
+                    "rename"
+                  ],
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "log",
+                    "warning",
+                    "metric",
+                    "file_changed",
+                    "partial_output"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "traceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "event",
+            "id",
+            "name"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.progress",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSToolUseStart": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "agentId": {
+              "type": "string"
+            },
+            "agentName": {
+              "type": "string"
+            },
+            "fileTargets": {
+              "items": {
+                "$ref": "#/definitions/WSCodeMapFileTarget"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "input": {},
+            "messageId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "traceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "messageId",
+            "name"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "tool.started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSUserMessage": {
+      "properties": {
+        "payload": {
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "freshContext": {
+              "description": "Atomically replace only the provider-bound conversation before this run.",
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "imageBase64": {
+              "deprecated": "Legacy single-image field (a full data-URL). Servers\nstill accept it; new clients send `images` instead.",
+              "type": "string"
+            },
+            "images": {
+              "description": "Images attached in the composer (paste / drop / file picker). The server converts these to canonical ImageBlocks ahead of the text.",
+              "items": {
+                "$ref": "#/definitions/WSUserMessageImage"
+              },
+              "type": "array"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "content",
+            "id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "user_message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSUserMessageImage": {
+      "description": "One image attached to a user message. `data` is bare base64 (no data-URL prefix); `mediaType` travels separately.",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "name": {
+          "description": "Original filename when the image came from a picker or drop.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "mediaType"
+      ],
+      "type": "object"
+    },
+    "WrongStackErrorKind": {
+      "description": "The error a client of the public API sees, whatever failed: the socket, the server, the model provider, or the run. `kind` is the stable part to branch on; `code` narrows it (an HTTP status, a server error phase, a run status); `detail` is for people.",
+      "enum": [
+        "auth",
+        "connection",
+        "protocol",
+        "invalid",
+        "not_found",
+        "server",
+        "provider",
+        "run",
+        "aborted",
+        "timeout"
+      ],
+      "type": "string"
+    },
+    "WrongStackErrorModel": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/definitions/WrongStackErrorKind"
+        },
+        "retryable": {
+          "description": "Whether trying again may succeed.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "code"
+      ],
+      "type": "object"
+    }
+  }
+}

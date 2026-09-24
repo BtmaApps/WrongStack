@@ -47,7 +47,11 @@ export interface IntelligentCompactorOptions {
   softThreshold?: number | undefined;
   /** Fraction of maxContext that triggers hard compaction (default 0.8). */
   hardThreshold?: number | undefined;
-  /** Max context window in tokens (used only for threshold fraction math). */
+  /**
+   * Max context window in tokens (used only for threshold fraction math).
+   * Unset = unknown: load reads as 0, so only an explicit aggressive request
+   * compacts. No window is invented.
+   */
   maxContext?: number | undefined;
   /** How many recent (user+assistant) pairs to always preserve (default 4). */
   preserveK?: number | undefined;
@@ -109,7 +113,7 @@ export class IntelligentCompactor implements Compactor {
     this.warnThreshold = opts.warnThreshold ?? 0.5;
     this.softThreshold = opts.softThreshold ?? 0.65;
     this.hardThreshold = opts.hardThreshold ?? 0.8;
-    this.maxContext = opts.maxContext ?? 128_000;
+    this.maxContext = opts.maxContext && opts.maxContext > 0 ? opts.maxContext : 0;
     this.preserveK = opts.preserveK ?? 4;
     this.eliseThreshold = opts.eliseThreshold ?? 300;
     this.summarizerPrompt =
@@ -131,7 +135,7 @@ export class IntelligentCompactor implements Compactor {
     const reductions: CompactReport['reductions'] = [];
 
     // Use full request tokens for threshold decisions — messages alone are inaccurate.
-    const load = beforeFull / this.maxContext;
+    const load = this.maxContext > 0 ? beforeFull / this.maxContext : 0;
     // Past hardThreshold, force aggressive regardless of caller preference —
     // the alternative (lightweight elision) is unlikely to recover enough.
     const aggressive =

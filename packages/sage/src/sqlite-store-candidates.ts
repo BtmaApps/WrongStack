@@ -480,16 +480,23 @@ export function reconcileAcceptedCandidates(
       result.skipped++;
       continue;
     }
-    // Match on the same normalizeTextKey canonical key every writer uses:
-    // the remember dedupe binds it (sqlite-store-remember), the upsert
-    // column stores it (sqlite-store-upsert), and the initialize backfill
-    // (sqlite-store-initialize) repopulates it — any other expression
-    // would miss the memory the crashed accept actually wrote.
+    // Match the full identity the accept flow would have created. Canonical
+    // text alone is not sufficient: identical text can legitimately exist in
+    // another scope/kind/audience, and relinking to that row would attribute
+    // the candidate to a memory it could not have produced.
     const memory = ctx
       .stmt(
-        `SELECT id FROM memories WHERE canonical_text = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
+        `SELECT id FROM memories
+         WHERE canonical_text = ? AND status = 'active'
+           AND scope = ? AND kind = ? AND audience IS ?
+         ORDER BY updated_at DESC LIMIT 1`,
       )
-      .get(normalizeTextKey(candidate.text)) as { id: string } | undefined;
+      .get(
+        normalizeTextKey(candidate.text),
+        candidate.scope,
+        candidate.kind,
+        candidate.audience ? JSON.stringify(candidate.audience) : null,
+      ) as { id: string } | undefined;
     const stamp = ctx.nowIso();
     if (memory) {
       const annotated: MemoryCandidate = { ...candidate, memoryId: memory.id, updatedAt: stamp };

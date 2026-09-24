@@ -1,22 +1,24 @@
-import { expectDefined } from '../utils/expect-defined.js';
-import { estimateMessageTokens, estimateTextTokens } from '../utils/token-estimate.js';
+import type { OneShotOrchestrator } from '../execution/one-shot-llm.js';
+import { noOpLogger } from '../infrastructure/logger.js';
 import { isTextBlock } from '../types/blocks.js';
 import type { Logger } from '../types/logger.js';
-import { noOpLogger } from '../infrastructure/logger.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request } from '../types/provider.js';
 import type { MessageSelector, SelectorResult } from '../types/selector.js';
-import type { OneShotOrchestrator } from '../execution/one-shot-llm.js';
 import { buildCompactionPreview } from '../utils/compaction-preview.js';
+import { expectDefined } from '../utils/expect-defined.js';
 import { readBundledInstructionText } from '../utils/instruction-file.js';
+import { estimateMessageTokens, estimateTextTokens } from '../utils/token-estimate.js';
 export interface LLMSelectorOptions {
   /** Provider used for the selector LLM call. Required. */
   provider: Provider;
   /** Model for the selector. Defaults to the provider's default model. */
   model?: string | undefined;
   /**
-   * Maximum tokens to keep in context (target budget).
-   * Selector will aim to keep total content below this.
+   * Optional hard cap on tokens to keep, on top of the caller's per-call
+   * budget. Unset = no extra cap: the caller's budget is already sized from
+   * the model's window (a fixed 40k default here used to shrink every
+   * selective compaction to 40k, even on 1M-window models).
    */
   maxContextTokens?: number | undefined;
   /**
@@ -115,7 +117,7 @@ export class LLMSelector implements MessageSelector {
         '[LLMSelector] model not set — selector will use the provider default. Set `model` explicitly in LLMSelectorOptions to silence this warning.',
       );
     }
-    this.maxContextTokens = opts.maxContextTokens ?? 40_000;
+    this.maxContextTokens = opts.maxContextTokens ?? Number.POSITIVE_INFINITY;
     this.systemPrompt = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
     this.maxOutputTokens = opts.maxOutputTokens ?? 1024;
     this.oneShotOrchestrator = opts.oneShotOrchestrator;
@@ -182,7 +184,7 @@ export class LLMSelector implements MessageSelector {
       ac.abort();
     }
 
-    return this.parseSelectorOutput(raw, messages);
+    return this.parseSelectorOutput(raw, messages, effectiveBudget);
   }
 
   private fallbackSelect(messages: Message[], budget: number): SelectorResult {
@@ -223,7 +225,7 @@ export class LLMSelector implements MessageSelector {
    * Falls back to recency-based selection if the LLM output is malformed,
    * out-of-bounds, or internally inconsistent.
    */
-  private parseSelectorOutput(raw: string, messages: Message[]): SelectorResult {
+  private parseSelectorOutput(raw: string, messages: Message[], budget: number): SelectorResult {
     const messageCount = messages.length;
     if (messageCount === 0) {
       return { kept: [], collapsed: [], reasoning: 'empty session' };
@@ -233,14 +235,14 @@ export class LLMSelector implements MessageSelector {
     const jsonStart = raw.indexOf('{');
     const jsonEnd = raw.lastIndexOf('}');
     if (jsonStart === -1 || jsonEnd === -1) {
-      return this.fallbackSelect(messages, this.maxContextTokens);
+      return this.fallbackSelect(messages, budget);
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
     } catch {
-      return this.fallbackSelect(messages, this.maxContextTokens);
+      return this.fallbackSelect(messages, budget);
     }
 
     const obj = parsed as Record<string, unknown>;
@@ -261,7 +263,7 @@ export class LLMSelector implements MessageSelector {
         k.to >= messageCount ||
         k.from > k.to
       ) {
-        return this.fallbackSelect(messages, this.maxContextTokens);
+        return this.fallbackSelect(messages, budget);
       }
       kept.push({
         from: k.from,
@@ -280,7 +282,7 @@ export class LLMSelector implements MessageSelector {
         c.to >= messageCount ||
         c.from > c.to
       ) {
-        return this.fallbackSelect(messages, this.maxContextTokens);
+        return this.fallbackSelect(messages, budget);
       }
       collapsed.push({ from: c.from, to: c.to, summary: c.summary });
     }
@@ -295,7 +297,7 @@ export class LLMSelector implements MessageSelector {
         if (!b) continue;
         // Overlap: a starts before b ends AND a ends after b starts
         if (a.from <= b.to && a.to >= b.from) {
-          return this.fallbackSelect(messages, this.maxContextTokens);
+          return this.fallbackSelect(messages, budget);
         }
       }
     }

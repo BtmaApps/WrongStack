@@ -10,6 +10,7 @@
  */
 
 import * as fs from 'node:fs/promises';
+import { buildChildEnv } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import {
   resolveFileInsideProject,
@@ -77,6 +78,7 @@ function gitShowBytes(
           ['show', rev],
           {
             cwd,
+            env: buildChildEnv(),
             encoding: 'buffer',
             maxBuffer: MAX_PREVIEW_IMAGE_BYTES + 1,
             timeout: 5000,

@@ -10,9 +10,9 @@ import type { FleetUsage } from './fleet-bus.js';
 import { FleetBus, FleetUsageAggregator } from './fleet-bus.js';
 import type { IFleetManager } from './ifleet-manager.js';
 import type { DefaultMultiAgentCoordinator } from './multi-agent-coordinator.js';
+import { resolveMaxSpawnDepth } from './spawn-budget.js';
 import { assignNickname, nicknameKeyFromDisplay } from './subagent-nicknames.js';
 import type { WorktreeTaskStateUpdate } from './worktree-task-runner.js';
-import { resolveMaxSpawnDepth } from './spawn-budget.js';
 
 /** Options for constructing a FleetManager. */
 export interface FleetManagerOptions {
@@ -42,7 +42,8 @@ export interface FleetManagerOptions {
   maxLeaderContextLoad?: number | undefined;
   /**
    * Provider's max context window in tokens. Used with `maxLeaderContextLoad`
-   * to compute the absolute token threshold. Default: 128_000.
+   * to compute the absolute token threshold. Unset/0 = unknown window, which
+   * skips the leader-load check rather than guessing a window.
    *
    * A function may be supplied when the leader can switch models at runtime;
    * canSpawn() reads it lazily so the spawn threshold follows the active model.
@@ -165,7 +166,7 @@ export class FleetManager implements IFleetManager {
     this.maxFleetCostUsd = opts.directorBudget?.maxCostUsd ?? Number.POSITIVE_INFINITY;
     this.maxFleetTokens = opts.directorBudget?.maxTokens ?? Number.POSITIVE_INFINITY;
     this.maxLeaderContextLoad = opts.maxLeaderContextLoad ?? 0.85;
-    this.maxContext = opts.maxContext ?? 128_000;
+    this.maxContext = opts.maxContext ?? 0;
     this.stateCheckpoint = opts.stateCheckpointPath
       ? new DirectorStateCheckpoint(
           opts.stateCheckpointPath,
@@ -260,9 +261,9 @@ export class FleetManager implements IFleetManager {
       }
     }
     // Context pressure check: reject spawn if leader context is too full.
-    // maxLeaderContextLoad === 1.0 disables this check.
-    if (this.maxLeaderContextLoad < 1.0) {
-      const maxContext = this.resolveMaxContext();
+    // maxLeaderContextLoad === 1.0 disables this check; so does an unknown window.
+    const maxContext = this.maxLeaderContextLoad < 1.0 ? this.resolveMaxContext() : 0;
+    if (maxContext > 0) {
       const threshold = maxContext * this.maxLeaderContextLoad;
       if (this.leaderContextPressure >= threshold) {
         return {
@@ -403,9 +404,10 @@ export class FleetManager implements IFleetManager {
     return this.subagentMeta.has(key);
   }
 
+  /** The leader's window in tokens, or 0 when unknown (no invented default). */
   private resolveMaxContext(): number {
     const resolved = typeof this.maxContext === 'function' ? this.maxContext() : this.maxContext;
-    return resolved && resolved > 0 ? resolved : 128_000;
+    return resolved && resolved > 0 ? resolved : 0;
   }
 
   /**

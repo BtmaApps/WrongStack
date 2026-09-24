@@ -413,6 +413,7 @@ export {
   handleProcessKill,
   handleProcessKillAll,
   handleProcessList,
+  handleProcessOutput,
 } from './process-handlers.js';
 export { handleProcessRoute, type ProcessRouteHandlers } from './process-routes.js';
 export { createProjectHandlers, type ProjectHandlersContext } from './project-handlers.js';

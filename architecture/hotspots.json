@@ -23,8 +23,8 @@
       "relativeImports": 37
     },
     "packages/cli/src/execution.ts": {
-      "lines": 966,
-      "relativeImports": 44
+      "lines": 978,
+      "relativeImports": 46
     },
     "packages/cli/src/fleet/host.ts": {
       "lines": 875,
@@ -75,7 +75,7 @@
       "relativeImports": 11
     },
     "packages/core/src/coordination/director.ts": {
-      "lines": 968,
+      "lines": 969,
       "relativeImports": 45
     },
     "packages/core/src/coordination/index.ts": {
@@ -215,7 +215,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 958,
+      "lines": 966,
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -283,7 +283,7 @@
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
-      "lines": 821,
+      "lines": 827,
       "relativeImports": 10
     },
     "packages/tui/src/components/settings-picker.tsx": {
@@ -355,7 +355,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 953,
+      "lines": 957,
       "relativeImports": 8
     },
     "packages/webui-server/src/server/backend-services.ts": {
@@ -363,7 +363,7 @@
       "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 965,
+      "lines": 971,
       "relativeImports": 57
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {

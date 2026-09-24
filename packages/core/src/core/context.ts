@@ -120,14 +120,14 @@ export class Context implements RunEnv, AgentContext {
   userInputAwaiter: UserInputAwaiter | undefined;
   messages: Message[] = [];
   /**
-   * Maximum number of messages retained in the conversation history.
-   * Past this limit, the oldest messages are dropped. Compaction passes
-   * should reduce messages below this threshold — this cap is a safety
-   * net to prevent unbounded growth when compaction is not running
-   * (e.g., during a /rewind, provider error storm, or custom embedder).
-   * Set to 0 for unlimited (legacy/test behaviour).
+   * Optional cap on the number of messages retained in the conversation
+   * history; past it the oldest messages are dropped. 0 (the default) = no
+   * count cap. A message count says nothing about what the model can hold: a
+   * fixed 1,000 evicted history on every append in long tool-heavy sessions
+   * while a 1M-window model was far from full. Memory is bounded by
+   * {@link MAX_MESSAGE_TOKENS} instead. Embedders/tests may still set one.
    */
-  static readonly MAX_MESSAGES = 1_000;
+  static readonly MAX_MESSAGES = 0;
   /**
    * Companion size cap on the same history, in estimated tokens.
    *
@@ -137,9 +137,11 @@ export class Context implements RunEnv, AgentContext {
    * conversation, reached without ever tripping the count cap. Both caps guard
    * the same failure — compaction not running — so both belong here.
    *
-   * 1M tokens is roughly 4M characters, i.e. ~8 MB of UTF-16 text before JS
-   * object overhead. That is still 5x a full 200k-token context window, so normal
-   * compaction runs first; a broken compactor cannot retain tens of millions of characters.
+   * This is a RAM guard, not a model limit: 1M tokens is roughly 4M characters,
+   * ~8 MB of UTF-16 text before JS object overhead. It never truncates below
+   * the model's own window — {@link messageLimits} raises it to the session's
+   * resolved window when that is larger — so history is only ever evicted
+   * past what the model could accept anyway.
    * Set to 0 for unlimited (legacy/test behaviour).
    */
   static readonly MAX_MESSAGE_TOKENS = 1_000_000;
@@ -546,9 +548,18 @@ export class Context implements RunEnv, AgentContext {
   /** Retention limits honoring runtime subclass overrides of the statics. */
   get messageLimits(): ContextMessageLimits {
     const cls = this.constructor as typeof Context;
+    const guard = cls.MAX_MESSAGE_TOKENS;
+    const sessionWindow = this.meta?.['effectiveMaxContext'];
+    const providerWindow = this.provider?.capabilities?.maxContext;
+    const window =
+      typeof sessionWindow === 'number' && sessionWindow > 0
+        ? sessionWindow
+        : typeof providerWindow === 'number' && providerWindow > 0
+          ? providerWindow
+          : 0;
     return Object.freeze({
       maxMessages: cls.MAX_MESSAGES,
-      maxMessageTokens: cls.MAX_MESSAGE_TOKENS,
+      maxMessageTokens: guard > 0 ? Math.max(guard, window) : guard,
     });
   }
 

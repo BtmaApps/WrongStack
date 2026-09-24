@@ -122,4 +122,12 @@ describe('findRelatedSage graph traversal', () => {
     expect(related).toHaveLength(1);
     expect(related[0]?.id).toBe(graphOnly.id);
   }, 60_000);
+
+  it('uses the default result budget for a non-finite limit', async () => {
+    const { seed, graphOnly } = await seedCorpus(0);
+
+    const related = await store.findRelatedSage([seed.id], { limit: Number.NaN });
+
+    expect(related.map((memory) => memory.id)).toContain(graphOnly.id);
+  });
 });

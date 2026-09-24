@@ -195,6 +195,32 @@ describe('resolveRuntimeMaxContext — OAuth sibling-catalog resolution', () => 
     });
     expect(max).toBe(200_000);
   });
+
+  it('never reports an invented family window as a catalog fact for an unpublished model', async () => {
+    // The anthropic family default used to be 200k, so capabilitiesFor handed
+    // it back for any unpublished Claude model and the resolver labelled it
+    // `sibling-capabilities` — outranking the user's config fallback and
+    // pinning 1M-window models to 200k.
+    const result = await resolveRuntimeMaxContextDetailed({
+      modelsRegistry: fakeRegistry(),
+      config: {
+        provider: 'anthropic-oauth',
+        model: 'claude-unknown-9',
+        context: { effectiveMaxContext: 1_000_000 },
+        providers: {
+          'anthropic-oauth': {
+            type: 'anthropic-oauth',
+            family: 'anthropic-oauth',
+            models: ['claude-unknown-9'],
+          },
+        },
+      },
+      provider: { capabilities: { maxContext: 0 } } as never as Provider,
+      providerId: 'anthropic-oauth',
+      modelId: 'claude-unknown-9',
+    });
+    expect(result).toEqual({ maxContext: 1_000_000, branch: 'explicit-config-fallback' });
+  });
 });
 
 /**

@@ -1,7 +1,7 @@
 import { buildLiveNextStepsGateBlock } from '../core/agent-response.js';
-import type { AgentContext } from '../types/context.js';
 import { SYSTEM_BLOCK_SOURCE, type SystemBlockSource } from '../core/system-prompt-builder.js';
 import type { TextBlock } from '../types/blocks.js';
+import type { AgentContext } from '../types/context.js';
 import type { Tool } from '../types/tool.js';
 import { buildCompletedWorkLedgerBlock } from './context-evidence.js';
 import {
@@ -133,9 +133,10 @@ function safeBuild(
 /**
  * Mirror the denominator the agent loop (`currentMaxContext`) and the
  * auto-compaction middleware use: an explicit `effectiveMaxContext` override
- * wins, then the provider window, then a safe default. Inline-replicated here
- * to keep this module free of an `execution/`/`core/` runtime dependency for
- * the denominator (the builders it already imports are the only exception).
+ * wins, then the provider window, else 0 (unknown — no invented window).
+ * Inline-replicated here to keep this module free of an `execution/`/`core/`
+ * runtime dependency for the denominator (the builders it already imports are
+ * the only exception).
  */
 function resolveEffectiveMaxContext(ctx: AgentContext): number {
   const metaLimit = ctx.meta?.['effectiveMaxContext'];
@@ -144,7 +145,7 @@ function resolveEffectiveMaxContext(ctx: AgentContext): number {
     ? metaLimit
     : typeof providerMax === 'number' && providerMax > 0
       ? providerMax
-      : 200_000;
+      : 0;
 }
 
 /**

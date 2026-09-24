@@ -678,7 +678,9 @@
     "inspector": "Workspace-Inspektor",
     "inspectorNamed": "Workspace-Inspektor: {{name}}",
     "workspace": "Workspace",
-    "workspaceDetails": "Workspace-Details"
+    "workspaceDetails": "Workspace-Details",
+    "browser": "Browser",
+    "browserDetail": "Der Browser des Agenten, live (nur Ansicht)"
   },
   "agentsMonitor": {
     "leaderBadge": "LEADER",
@@ -1242,7 +1244,13 @@
     "confirmKillBackground": "Abgekoppelten Hintergrundprozess {{pid}} beenden?",
     "confirmKillAll": "Alle {{count}} laufenden Prozesse beenden?",
     "killAllTitle": "Alle Prozesse beenden",
-    "killTitle": "PID {{pid}} beenden"
+    "killTitle": "PID {{pid}} beenden",
+    "stripLabel": "Hintergrund",
+    "stripOutputTitle": "Ausgabe von PID {{pid}}",
+    "stripNoOutput": "Noch keine Ausgabe",
+    "stripNotCaptured": "Die Ausgabe dieses Prozesses wird nicht erfasst",
+    "stripGone": "Der Prozess wurde beendet",
+    "stripStop": "Stoppen"
   },
   "diff": {
     "tooLarge": "Diff ausgelassen (Datei zu groß für die Inline-Darstellung)."
@@ -1654,6 +1662,8 @@
     "level": {
       "quiet": "ruhig",
       "active": "aktiv",
+      "activeProfile": "Profilstandard",
+      "activeProject": "dieses Projekt",
       "churn": "hohe Änderungsrate"
     },
     "analysisTitle": {
@@ -3776,7 +3786,43 @@
     "applyAndStart": "Übernehmen & Sitzung starten",
     "cancel": "Abbrechen",
     "unavailable": "Die System-Prompt-Auswahl ist auf diesem Server nicht verfügbar.",
-    "openTitle": "System-Prompt-Größe wählen"
+    "openTitle": "System-Prompt-Größe wählen",
+    "presets": {
+      "manage": "Eigene Vorlagen verwalten",
+      "title": "Eigene Vorlagen",
+      "description": "Bearbeitbare Kopien von Lite, Standard und Pro, gespeichert in diesem Profil. Wählen Sie eine für dieses Projekt oder das gesamte Profil. Werkzeug- und Umgebungshinweise werden zur Laufzeit zusammengestellt.",
+      "copy": "{{variant}} kopieren",
+      "suggestedName": "{{variant}} benutzerdefiniert",
+      "select": "Vorlage",
+      "selectPlaceholder": "Vorlage auswählen",
+      "active": "aktiv",
+      "activeProfile": "Profilstandard",
+      "activeProject": "dieses Projekt",
+      "name": "Name",
+      "template": "Prompt-Vorlage",
+      "sourceChanged": "Die mitgelieferte Quelle für {{variant}} hat sich seit dem Kopieren geändert. Vergleichen Sie beide Versionen und passen Sie den Text an, bevor Sie ihn als geprüft markieren.",
+      "reviewed": "Ich habe die aktuelle mitgelieferte Quelle geprüft",
+      "syntax": "Bedingungen werden bei jeder Anfrage anhand der aufrufbaren Werkzeuge ausgewertet.",
+      "validationScope": "Die Prüfung kontrolliert Struktur und Werkzeugnamen; sie kann nicht belegen, dass bearbeitete Anweisungen sicher oder wirksam sind. Werkzeugberechtigungen erzwingt die Laufzeit.",
+      "validation": "Prüfergebnisse",
+      "line": "Zeile {{line}}: {{message}}",
+      "save": "Vorlage speichern",
+      "activate": "Für {{variant}} aktivieren",
+      "deactivate": "Deaktivieren",
+      "activateProfile": "Im ganzen Profil verwenden",
+      "deactivateProfile": "Profilstandard entfernen",
+      "activateProject": "In diesem Projekt verwenden",
+      "deactivateProject": "Projektauswahl entfernen",
+      "delete": "Löschen",
+      "confirmDelete": "„{{name}}“ löschen?",
+      "discardChanges": "Ungespeicherte Änderungen an der Vorlage verwerfen?",
+      "compare": "Quellversionen vergleichen",
+      "copiedSource": "Quelle beim Kopieren",
+      "currentSource": "Aktuelle mitgelieferte Quelle",
+      "preview": "Live-Vorschau · {{count}} aufrufbare Werkzeuge · Stufe {{tier}}",
+      "previewEmpty": "Beheben Sie die Validierungsfehler für eine Vorschau.",
+      "previewNote": "Die Laufzeit fügt Werkzeug-, Umgebungs-, Speicher- und Modusabschnitte separat hinzu."
+    }
   },
   "failedRun": {
     "continue": "Fortsetzen",
@@ -3914,5 +3960,15 @@
     "outdated": "Veraltet: Die Zeile hat sich nach diesem Kommentar geändert",
     "outdatedHeader": "Kommentare zu geänderten Zeilen",
     "removedLine": "entfernte Zeile"
+  },
+  "browserLive": {
+    "none": "Der Agent hat keinen Browser geöffnet.",
+    "waiting": "Warte auf das erste Bild…",
+    "closed": "Der Browser wurde geschlossen.",
+    "readOnly": "nur Ansicht",
+    "console": "Konsole",
+    "network": "Netzwerk",
+    "noConsole": "Noch keine Konsolenmeldungen.",
+    "noNetwork": "Noch keine Anfragen."
   }
 }

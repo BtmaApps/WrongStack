@@ -413,6 +413,20 @@ describe('SqliteSageStore', () => {
       expect(results).toHaveLength(0);
     });
 
+    it('normalizes non-finite and negative search limits', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await store.rememberSage({ text: 'Search limit boundary memory', kind: 'fact' });
+
+      await expect(store.searchSage('Search limit', { limit: Number.NaN })).resolves.toHaveLength(
+        1,
+      );
+      await expect(
+        store.searchSage('Search limit', { limit: Number.POSITIVE_INFINITY }),
+      ).resolves.toHaveLength(1);
+      await expect(store.searchSage('Search limit', { limit: -1 })).resolves.toEqual([]);
+    });
+
     it('respects limit option', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
@@ -524,6 +538,29 @@ describe('SqliteSageStore', () => {
       expect(results[0]!.text).toContain('auth module');
     });
 
+    it('normalizes non-finite and negative path retrieval limits', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await store.rememberSage({
+        text: 'Path retrieval limit boundary',
+        kind: 'file_note',
+        anchors: [{ type: 'file', path: 'src/limits.ts' }],
+      });
+
+      await expect(
+        store.retrieveForPath(['src/limits.ts'], { path: 'src/limits.ts', limit: Number.NaN }),
+      ).resolves.toHaveLength(1);
+      await expect(
+        store.retrieveForPath(['src/limits.ts'], {
+          path: 'src/limits.ts',
+          limit: Number.POSITIVE_INFINITY,
+        }),
+      ).resolves.toHaveLength(1);
+      await expect(
+        store.retrieveForPath(['src/limits.ts'], { path: 'src/limits.ts', limit: -1 }),
+      ).resolves.toEqual([]);
+    });
+
     it('finds ancestor-anchored memories when includeAncestors is true', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
@@ -537,6 +574,25 @@ describe('SqliteSageStore', () => {
         includeAncestors: true,
       });
       expect(results.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('findMemoriesForFile', () => {
+    it('uses the default result limit for a non-finite limit', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await store.rememberSage({
+        text: 'File lookup limit boundary',
+        kind: 'file_note',
+        anchors: [{ type: 'file', path: 'src/find-file-limit.ts' }],
+      });
+
+      const result = await store.findMemoriesForFile('src/find-file-limit.ts', {
+        limit: Number.NaN,
+      });
+
+      expect(result.primaryMatches).toHaveLength(1);
+      expect(result.totalCount).toBe(1);
     });
   });
 
@@ -700,6 +756,16 @@ describe('SqliteSageStore', () => {
       await store.addGraphEdge('mem:b', 'mem:c', 'supersedes');
       const edges = await store.traverseGraph(['mem:a'], { maxDepth: 3 });
       expect(edges.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('uses the default traversal limit for a non-finite limit', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await store.addGraphEdge('mem:a', 'mem:b', 'supersedes');
+
+      const edges = await store.traverseGraph(['mem:a'], { limit: Number.NaN });
+
+      expect(edges.some((edge) => edge.from === 'mem:a' && edge.to === 'mem:b')).toBe(true);
     });
 
     it('keeps edge weights monotone on duplicate inserts (MAX policy)', async () => {
@@ -1655,6 +1721,17 @@ describe('SqliteSageStore', () => {
       expect(page.memories[0]?.status).toBe('deleted');
     });
 
+    it('returns no memories for an explicit empty status filter', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await seed(store, 2);
+
+      const page = await store.listSagePage({ statuses: [] });
+      expect(page.memories).toEqual([]);
+      expect(page.total).toBe(0);
+      expect(page.nextCursor).toBeNull();
+    });
+
     it('paginates with a stable cursor', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
@@ -1719,6 +1796,27 @@ describe('SqliteSageStore', () => {
       ]);
       // Sanity: each anchor type produced a distinct target node id.
       expect(new Set(edges.map((e) => e.to)).size).toBe(6);
+    });
+
+    it('renders command and agent anchor evidence without duplicated node prefixes', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      const mem = await store.rememberSage({
+        text: 'Human-readable graph evidence',
+        kind: 'fact',
+        anchors: [
+          { type: 'command', command: 'pnpm test' },
+          { type: 'agent', role: 'Reviewer' },
+        ],
+      });
+
+      const edges = await store.traverseGraph([`mem:${mem.id}`], { maxDepth: 1 });
+      expect(edges.find((edge) => edge.relation === 'about_command')?.evidence).toEqual([
+        'command:pnpm test',
+      ]);
+      expect(edges.find((edge) => edge.relation === 'about_agent')?.evidence).toEqual([
+        'agent:reviewer',
+      ]);
     });
 
     it('is idempotent — re-remembering the same anchors produces the same edges', async () => {

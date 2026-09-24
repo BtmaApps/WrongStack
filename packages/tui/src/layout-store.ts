@@ -202,11 +202,12 @@ export class LayoutStore {
     }
   }
 
-  /** Reset all in-memory state (on /clear). */
-  clear(): void {
+  /** Reset all in-memory state (on /clear) and persist the empty snapshot. */
+  async clear(): Promise<void> {
     this.layouts.clear();
     this.dirty = true;
     this.cancelFlush();
+    await this.flushNow();
   }
 
   // ── Persistence ──

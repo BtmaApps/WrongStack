@@ -33,6 +33,7 @@ import type { BrainConfig, FleetConfig, SkillsConfig } from './skills-fleet-brai
 import type { ToolsConfig } from './tools.js';
 import type { TypeSafeConfig } from './typesafe.js';
 import type { ThemePresetId } from './ui.js';
+import type { UpdateConfig } from './update.js';
 
 export interface GitBehaviorConfig {
   /**
@@ -337,6 +338,8 @@ export interface Config {
   git?: GitBehaviorConfig | undefined;
   /** Telemetry export (OTLP). User config only; denied to in-project configs. */
   observability?: ObservabilityConfig | undefined;
+  /** Standalone-binary self-update. User config only; denied to in-project configs. */
+  update?: UpdateConfig | undefined;
   /**
    * Per-plugin namespaced config sections. Each plugin reads its own
    * subtree via `ConfigStore.getExtension(pluginName)`. Plugins should

@@ -42,7 +42,12 @@ import { handleKanbanRoute } from './kanban-routes.js';
 import { createKanbanSupervisor } from './kanban-supervisor.js';
 import type { PendingConfirm } from './pending-confirms.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
-import { handleProcessKill, handleProcessKillAll, handleProcessList } from './process-handlers.js';
+import {
+  handleProcessKill,
+  handleProcessKillAll,
+  handleProcessList,
+  handleProcessOutput,
+} from './process-handlers.js';
 import type { ProcessRouteHandlers } from './process-routes.js';
 import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
 import { createRouteFamilyDispatcher } from './route-family-dispatcher.js';
@@ -188,6 +193,7 @@ export function createMessageDispatcher(
   });
   const processRoutes: ProcessRouteHandlers = {
     list: (ws, msg) => handleProcessList(ws, msg),
+    output: (ws, msg) => handleProcessOutput(ws, msg.payload),
     kill: (ws, msg) => handleProcessKill(ws, msg.payload, deps.trustBoundary, deps.logger),
     killAll: (ws, msg) =>
       handleProcessKillAll(ws, deps.trustBoundary, deps.logger, undefined, msg.payload),

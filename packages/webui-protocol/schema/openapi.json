@@ -1,0 +1,747 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WrongStack WebUI HTTP session API",
+    "version": "1.0.26",
+    "description": "Every live WrongStack session on the machine, read from the cross-process session registry. Generated from @wrongstack/webui-protocol 1.0.26 (src/http-api.ts)."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3456"
+    }
+  ],
+  "security": [
+    {},
+    {
+      "header": []
+    },
+    {
+      "query": []
+    },
+    {
+      "cookie": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "header": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-WS-Token"
+      },
+      "query": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token"
+      },
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ws_token"
+      }
+    },
+    "schemas": {
+      "AgentLiveStatus": {
+        "description": "Live status of a single agent within a session.",
+        "enum": [
+          "idle",
+          "running",
+          "streaming",
+          "waiting_user",
+          "error"
+        ],
+        "type": "string"
+      },
+      "ApiErrorBody": {
+        "description": "Body of every non-2xx answer.",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ApiSession": {
+        "description": "`GET /api/sessions` answers an array of these.",
+        "properties": {
+          "agentCount": {
+            "type": "number"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/ApiSessionAgent"
+            },
+            "type": "array"
+          },
+          "lastHeartbeatAt": {
+            "type": "string"
+          },
+          "pid": {
+            "type": "number"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "projectRoot": {
+            "type": "string"
+          },
+          "projectSlug": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionLiveStatus"
+          },
+          "workingDir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "projectSlug",
+          "projectName",
+          "projectRoot",
+          "workingDir",
+          "status",
+          "pid",
+          "startedAt",
+          "lastHeartbeatAt",
+          "agentCount",
+          "agents"
+        ],
+        "type": "object"
+      },
+      "ApiSessionAgent": {
+        "properties": {
+          "currentTool": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "iterations": {
+            "type": "number"
+          },
+          "lastActivityAt": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentLiveStatus"
+          },
+          "toolCalls": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "iterations",
+          "toolCalls",
+          "lastActivityAt"
+        ],
+        "type": "object"
+      },
+      "ApiSessionAgents": {
+        "description": "`GET /api/sessions/{id}/agents`",
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/ApiSessionAgent"
+            },
+            "type": "array"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionLiveStatus"
+          }
+        },
+        "required": [
+          "sessionId",
+          "projectName",
+          "status",
+          "agents"
+        ],
+        "type": "object"
+      },
+      "ApiSessionEvent": {
+        "description": "One line of a session's recent activity.",
+        "properties": {
+          "durationMs": {
+            "type": "number"
+          },
+          "input": {},
+          "isError": {
+            "type": "boolean"
+          },
+          "output": {},
+          "role": {
+            "enum": [
+              "user",
+              "assistant",
+              "tool",
+              "system",
+              "error"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "description": "Text summary; tool input and output may be clipped.",
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "toolUseId": {
+            "description": "Pairs a tool call's start with its end.",
+            "type": "string"
+          },
+          "ts": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "role",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ApiSessionEvents": {
+        "description": "`GET /api/sessions/{id}/events?limit=1..500` (default 200)",
+        "properties": {
+          "clientType": {
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ApiSessionEvent"
+            },
+            "type": "array"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionLiveStatus"
+          },
+          "total": {
+            "description": "Events in the session; an upper bound when `truncated`.",
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "projectName",
+          "total",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "ApiSessionInterruptRequest": {
+        "description": "`POST /api/sessions/{id}/interrupt`",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ApiSessionInterruptResponse": {
+        "properties": {
+          "delivered": {
+            "$ref": "#/components/schemas/SessionLiveStatus"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "id",
+          "to",
+          "delivered"
+        ],
+        "type": "object"
+      },
+      "ApiSessionMessageRequest": {
+        "description": "`POST /api/sessions/{id}/message` — delivered to the session's agent before its next model call.",
+        "properties": {
+          "from": {
+            "description": "Sender label; default `human@webui`.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Default `high`.",
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "description": "Default `steer`.",
+            "enum": [
+              "steer",
+              "ask",
+              "assign",
+              "note",
+              "btw"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "ApiSessionMessageResponse": {
+        "properties": {
+          "delivered": {
+            "$ref": "#/components/schemas/SessionLiveStatus",
+            "description": "The session's status when the message was delivered."
+          },
+          "id": {
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          },
+          "to": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "steer",
+              "ask",
+              "assign",
+              "note",
+              "btw"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "id",
+          "to",
+          "type",
+          "delivered"
+        ],
+        "type": "object"
+      },
+      "SessionLiveStatus": {
+        "enum": [
+          "active",
+          "idle",
+          "closing",
+          "stale",
+          "lost"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "paths": {
+    "/api/sessions": {
+      "get": {
+        "summary": "List live sessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiSession"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or wrong."
+          },
+          "403": {
+            "description": "The request came from an untrusted browser origin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The session registry could not be read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{id}/agents": {
+      "get": {
+        "summary": "A session's agents",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Session id (`sess_…`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSessionAgents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session id or request body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or wrong."
+          },
+          "403": {
+            "description": "The request came from an untrusted browser origin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The session registry could not be read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{id}/events": {
+      "get": {
+        "summary": "A session's recent activity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Session id (`sess_…`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSessionEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session id or request body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or wrong."
+          },
+          "403": {
+            "description": "The request came from an untrusted browser origin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The session registry could not be read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{id}/message": {
+      "post": {
+        "summary": "Send a message to the session agent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Session id (`sess_…`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiSessionMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSessionMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session id or request body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or wrong."
+          },
+          "403": {
+            "description": "The request came from an untrusted browser origin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The session registry could not be read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{id}/interrupt": {
+      "post": {
+        "summary": "Interrupt the session agent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Session id (`sess_…`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiSessionInterruptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSessionInterruptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session id or request body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or wrong."
+          },
+          "403": {
+            "description": "The request came from an untrusted browser origin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The session registry could not be read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

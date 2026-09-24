@@ -159,12 +159,41 @@ describe('H2 accepted-candidate reconciliation sweep', () => {
     expect(after.updatedAt).toBe(STALE);
   });
 
+  it('does not relink an accepted candidate across memory scopes', async () => {
+    const store = createStore();
+    const projectMemory = await store.rememberSage({
+      text: 'H2 scope isolation sentence.',
+      scope: 'project',
+      kind: 'fact',
+    });
+    const candidate = await store.createCandidate({
+      text: 'H2 scope isolation sentence.',
+      scope: 'project',
+      kind: 'fact',
+    });
+    craftAccepted(store, candidate, undefined, STALE);
+
+    // Identical text is a different memory when it belongs to another scope.
+    const otherScopeMemory = await store.rememberSage({
+      text: 'H2 scope isolation sentence.',
+      scope: 'session',
+      ownerSessionId: 'other-session',
+      kind: 'fact',
+    });
+    store.close();
+
+    const reopened = createStore();
+    const after = await candidateRow(reopened, candidate.id);
+    expect(after.memoryId).toBe(projectMemory.id);
+    expect(after.memoryId).not.toBe(otherScopeMemory.id);
+  });
+
   it('skips candidates inside the grace window', async () => {
     const store = createStore();
     const candidate = await store.createCandidate({
       text: 'H2 grace window case.',
-      kind: 'fact',
       scope: 'project',
+      kind: 'fact',
     });
     // A live accept in a concurrent opener: accepted seconds ago, no
     // memoryId yet. The sweep must not preempt it mid-write.

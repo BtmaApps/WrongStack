@@ -5,6 +5,7 @@ import type { Tool } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { BrowserSessionManager, browserInstallationDiagnostics } from './manager.js';
 import { parsePrivateOriginAllowlist } from './security.js';
+import type { BrowserFrame, BrowserLiveDetails, BrowserLiveSummary } from './types.js';
 
 const managers = new Map<string, BrowserSessionManager>();
 const cleanupSignalByContext = new WeakMap<object, AbortSignal>();
@@ -48,6 +49,32 @@ function managerFor(ctx: Context): BrowserSessionManager {
   }
   return manager;
 }
+
+/**
+ * The WebUI's read-only live view of the agent's browser, by project root.
+ * No manager (nothing opened a browser in that project yet) means no sessions.
+ */
+export const liveBrowser = {
+  async sessions(projectRoot: string): Promise<BrowserLiveSummary[]> {
+    return (await managers.get(path.resolve(projectRoot))?.liveSessions()) ?? [];
+  },
+  async details(
+    projectRoot: string,
+    id: string,
+    limit: number,
+  ): Promise<BrowserLiveDetails | undefined> {
+    return managers.get(path.resolve(projectRoot))?.liveDetails(id, limit);
+  },
+  async watch(
+    projectRoot: string,
+    id: string,
+    viewer: (frame: BrowserFrame) => void,
+  ): Promise<() => Promise<void>> {
+    const manager = managers.get(path.resolve(projectRoot));
+    if (!manager) throw new Error(`browser session ${id} is not open`);
+    return manager.watch(id, viewer);
+  },
+};
 
 function owner(ctx: Context): string {
   return ctx.agentId || 'leader';
@@ -157,7 +184,7 @@ export const browserOpenTool: Tool<BrowserOpenInput> = {
     return json(
       await managerFor(ctx).open(
         owner(ctx),
-        { url: input.url, viewport, trace: input.trace },
+        { url: input.url, viewport, trace: input.trace, conversationId: ctx.session?.id },
         signalFor(ctx, opts),
       ),
     );

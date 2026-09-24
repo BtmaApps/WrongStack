@@ -223,7 +223,7 @@ export function SystemPromptPresetEditor({
             className="h-10 w-full rounded-md border border-border bg-background px-2 text-sm"
           />
           {selected.sourceChanged && (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
               {t('activity:systemPrompt.presets.sourceChanged', { variant: selected.baseVariant })}
               <label className="mt-2 flex items-center gap-2">
                 <input
@@ -260,7 +260,7 @@ export function SystemPromptPresetEditor({
               {issues.map((issue, index) => (
                 <li
                   key={`${issue.line}-${index}`}
-                  className={issue.severity === 'error' ? 'text-destructive' : 'text-amber-600'}
+                  className={issue.severity === 'error' ? 'text-destructive' : 'text-warning'}
                 >
                   {t('activity:systemPrompt.presets.line', {
                     line: issue.line,

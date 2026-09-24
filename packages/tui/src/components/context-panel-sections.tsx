@@ -353,7 +353,7 @@ export function ThresholdSection({
 }
 
 export function CompactionSection({ data }: { data: ContextPanelData }): React.ReactElement {
-  const max = data.ctxMaxTokens ?? 200_000;
+  const max = data.ctxMaxTokens ?? 0;
   const pct = data.ctxPct ?? 0;
   const needsCompact = pct > 0.65;
 
@@ -368,7 +368,10 @@ export function CompactionSection({ data }: { data: ContextPanelData }): React.R
       </Box>
       <Box>
         <Text color={theme.textMuted}>Next trigger</Text>
-        <Text color={theme.textSecondary}> {(max * 0.85).toLocaleString('en-US')} (85%)</Text>
+        <Text color={theme.textSecondary}>
+          {' '}
+          {max > 0 ? `${(max * 0.85).toLocaleString('en-US')} (85%)` : 'unknown window'}
+        </Text>
       </Box>
       <Box>
         <Text color={theme.textMuted}>Recommend </Text>
@@ -449,9 +452,9 @@ export function MetricsSection({ data }: { data: ContextPanelData }): React.Reac
     );
   }
   const used = data.ctxTokens;
-  const max = data.ctxMaxTokens ?? 200_000;
+  const max = data.ctxMaxTokens ?? 0;
   const pct = data.ctxPct ?? (max > 0 ? used / max : 0);
-  const free = max - used;
+  const free = max > 0 ? max - used : 0;
   const freePct = max > 0 ? fmtRatioPct(free / max) : '0%';
   const utilBar20 = renderMeter(pct, 20);
   const utilBar8 = renderMeter(pct, 8);
@@ -473,14 +476,16 @@ export function MetricsSection({ data }: { data: ContextPanelData }): React.Reac
           <Text>
             <Text color={theme.textMuted}>Free </Text>
             <Text color={theme.textSecondary}>
-              {free.toLocaleString('en-US')} ({freePct})
+              {max > 0 ? `${free.toLocaleString('en-US')} (${freePct})` : '—'}
             </Text>
           </Text>
         </Box>
         <Box>
           <Text>
             <Text color={theme.textMuted}>Cap </Text>
-            <Text color={theme.textPrimary}>{max.toLocaleString('en-US')}</Text>
+            <Text color={theme.textPrimary}>
+              {max > 0 ? max.toLocaleString('en-US') : 'unknown'}
+            </Text>
           </Text>
         </Box>
       </Box>
@@ -640,7 +645,7 @@ export function StatusSection({ data }: { data: ContextPanelData }): React.React
   const emoji = zoneEmoji(pct);
   const zClr = zoneColor(z);
   const used = data.ctxTokens ?? 0;
-  const max = data.ctxMaxTokens ?? 200_000;
+  const max = data.ctxMaxTokens ?? 0;
   const barWidth = 20;
   const bar = tuiMiniBar(pct, barWidth);
 
@@ -664,7 +669,7 @@ export function StatusSection({ data }: { data: ContextPanelData }): React.React
         </Text>
         <Text> </Text>
         <Text color={theme.textMuted}>
-          {used.toLocaleString('en-US')} / {max.toLocaleString('en-US')}
+          {used.toLocaleString('en-US')} / {max > 0 ? max.toLocaleString('en-US') : '?'}
         </Text>
       </Box>
       <Text color={zClr}>

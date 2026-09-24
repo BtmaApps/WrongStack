@@ -166,9 +166,9 @@ export async function spawn(
       }
     }
     // Context pressure check: reject spawn if leader context is too full.
-    // maxLeaderContextLoad === 1.0 disables this check.
-    if (host.maxLeaderContextLoad < 1.0) {
-      const maxContext = host.resolveMaxContext();
+    // maxLeaderContextLoad === 1.0 disables this check; so does an unknown window.
+    const maxContext = host.maxLeaderContextLoad < 1.0 ? host.resolveMaxContext() : 0;
+    if (maxContext > 0) {
       const threshold = maxContext * host.maxLeaderContextLoad;
       if (host.leaderContextPressure >= threshold) {
         throw new FleetContextOverflowError(threshold, host.leaderContextPressure);

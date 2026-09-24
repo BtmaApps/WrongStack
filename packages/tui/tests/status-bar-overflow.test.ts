@@ -248,6 +248,17 @@ describe('StatusBar version chip + update notice', () => {
     // status-bar-sgr.test.ts (needs FORCE_COLOR=3, dedicated config).
   });
 
+  it('says a downloaded update applies on restart, instead of asking to update', () => {
+    const frame = frameOf({
+      version: '0.7.0',
+      latestVersion: '0.8.1',
+      updateAvailable: true,
+      updateReadyVersion: '0.8.1',
+    });
+    expect(frame).toContain('(v0.8.1 ready, applies on restart)');
+    expect(frame).not.toContain('(update v');
+  });
+
   it('omits the update suffix when updateAvailable is false even if latestVersion is set', () => {
     const frame = frameOf({
       version: '0.7.0',

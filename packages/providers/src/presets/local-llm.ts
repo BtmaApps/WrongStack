@@ -127,7 +127,9 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
     capabilities: capabilitiesForFamily('openai-compatible', {
       vision,
       streaming: true,
-      maxContext: opts.maxContext ?? 8_192,
+      // 0 = unknown: a local server's window is whatever the loaded model
+      // and its launch flags say; guessing one truncates or overflows.
+      maxContext: opts.maxContext ?? 0,
     }),
     defaultBaseUrl: opts.defaultBaseUrl,
     buildUrl: (base) => {
@@ -381,7 +383,6 @@ export const ollamaWireFormat = createLocalLlmPreset({
     // via `cfg.bodyExtras` on their provider config.
     keep_alive: '5m',
   },
-  maxContext: 8_192,
 });
 
 function nonNegative(value: unknown, fallback: number): number {
@@ -399,7 +400,6 @@ function nonNegative(value: unknown, fallback: number): number {
 export const vllmWireFormat = createLocalLlmPreset({
   id: 'vllm',
   defaultBaseUrl: 'http://localhost:8000/v1',
-  maxContext: 32_768,
 });
 
 /**
@@ -412,5 +412,4 @@ export const vllmWireFormat = createLocalLlmPreset({
 export const lmstudioWireFormat = createLocalLlmPreset({
   id: 'lmstudio',
   defaultBaseUrl: 'http://localhost:1234/v1',
-  maxContext: 8_192,
 });

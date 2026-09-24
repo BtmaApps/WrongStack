@@ -3,6 +3,7 @@
  * `handleMessage` switch in `index.ts` as part of splitting that file (#31).
  *
  *   case 'process.list':    return handleProcessList(ws, msg);
+ *   case 'process.output':  return handleProcessOutput(ws, msg.payload);
  *   case 'process.kill':    return handleProcessKill(ws, msg.payload);
  *   case 'process.killAll': return handleProcessKillAll(ws, …, msg.payload);
  *
@@ -17,10 +18,13 @@
 
 import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
 import type { Logger } from '@wrongstack/core/types';
-import { getProcessRegistry } from '@wrongstack/tools';
+import { getProcessRegistry, tailBackgroundLog } from '@wrongstack/tools';
 import type { WebSocket } from 'ws';
 import { authorizeWebUIAction, type WebUIPrivilegedAction } from './privileged-actions.js';
-import { validateProcessKillPayload } from './ws-payload-validation.js';
+import {
+  validateProcessKillPayload,
+  validateProcessOutputPayload,
+} from './ws-payload-validation.js';
 import { errMessage, send, sendResult } from './ws-utils.js';
 
 function payloadSessionId(payload: unknown): string | undefined {
@@ -46,6 +50,8 @@ export function handleProcessList(ws: WebSocket, msg?: { payload?: unknown }): v
           status: p.killed ? ('killed' as const) : ('running' as const),
           protected: p.protected,
           background: p.background,
+          // A background shell writes its output to a log file (tools background-log.ts).
+          hasOutput: p.logFile !== undefined,
           ...(p.sessionId ? { sessionId: p.sessionId } : {}),
         })),
         ...(sessionId ? { sessionId } : {}),
@@ -56,6 +62,40 @@ export function handleProcessList(ws: WebSocket, msg?: { payload?: unknown }): v
       type: 'process.list',
       payload: { processes: [], ...(sessionId ? { sessionId } : {}) },
     });
+  }
+}
+
+/**
+ * The last lines a background shell wrote. Read from the log file the registry
+ * recorded for that pid, never from a path the client names. Another
+ * session's process is refused, as for `process.kill`; a process that has
+ * exited (or was never tracked) answers `gone: true`.
+ */
+export function handleProcessOutput(ws: WebSocket, payload: unknown): void {
+  const parsed = validateProcessOutputPayload(payload);
+  if (!parsed.ok) {
+    sendResult(ws, false, parsed.message);
+    return;
+  }
+  const { pid, lines } = parsed.value;
+  const sessionId = payloadSessionId(payload);
+  try {
+    const proc = getProcessRegistry().get(pid);
+    if (sessionId && proc?.sessionId && proc.sessionId !== sessionId) {
+      sendResult(ws, false, `Process ${pid} belongs to another session`);
+      return;
+    }
+    send(ws, {
+      type: 'process.output',
+      payload: {
+        pid,
+        lines: proc?.logFile ? tailBackgroundLog(proc.logFile, lines) : [],
+        ...(proc ? {} : { gone: true }),
+        ...(sessionId ? { sessionId } : {}),
+      },
+    });
+  } catch (err) {
+    sendResult(ws, false, errMessage(err));
   }
 }
 

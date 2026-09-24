@@ -8,6 +8,13 @@
  */
 import type * as http from 'node:http';
 import { sanitizeApiError } from '@wrongstack/core/security';
+import type {
+  ApiSession,
+  ApiSessionAgents,
+  ApiSessionEvents,
+  ApiSessionInterruptResponse,
+  ApiSessionMessageResponse,
+} from '@wrongstack/webui-protocol';
 
 export async function handleApiSessions(
   res: http.ServerResponse,
@@ -24,7 +31,7 @@ export async function handleApiSessions(
     const registry = getSessionRegistry(globalRoot);
     const sessions = await registry.list();
 
-    const result = sessions.map((s) => ({
+    const result = sessions.map((s): ApiSession => ({
       sessionId: s.sessionId,
       projectSlug: s.projectSlug,
       projectName: s.projectName,
@@ -91,7 +98,7 @@ export async function handleApiSessionAgents(
           toolCalls: a.toolCalls,
           lastActivityAt: a.lastActivityAt,
         })),
-      }),
+      } satisfies ApiSessionAgents),
     );
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -321,7 +328,7 @@ export async function handleApiSessionEvents(
         total: dropped ? totalRaw : all.length,
         ...(dropped ? { truncated: true } : {}),
         entries: tail,
-      }),
+      } satisfies ApiSessionEvents),
     );
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -441,7 +448,14 @@ export async function handleApiSessionMessage(
     // Return the message id so the caller can poll the thread for read-receipt
     // (readBy) and the agent's reply — the visible two-way feedback loop.
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, id: sent.id, to, type, delivered: entry.status }));
+    const body: ApiSessionMessageResponse = {
+      ok: true,
+      id: sent.id,
+      to,
+      type,
+      delivered: entry.status,
+    };
+    res.end(JSON.stringify(body));
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: sanitizeApiError(err) }));
@@ -580,7 +594,8 @@ export async function handleApiSessionInterrupt(
       priority: 'high',
     });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, id: sent.id, to, delivered: entry.status }));
+    const body: ApiSessionInterruptResponse = { ok: true, id: sent.id, to, delivered: entry.status };
+    res.end(JSON.stringify(body));
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: sanitizeApiError(err) }));

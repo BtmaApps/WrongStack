@@ -1,5 +1,10 @@
 import type { WebSocket } from 'ws';
 import {
+  handleBrowserLiveList,
+  handleBrowserLiveUnwatch,
+  handleBrowserLiveWatch,
+} from './browser-live.js';
+import {
   type DesignContext,
   handleDesignList,
   handleDesignMaterialize,
@@ -88,6 +93,15 @@ export async function handleContentRoute(
       return true;
     case 'files.image':
       await handleFilesImage(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'browser.live.list':
+      await handleBrowserLiveList(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'browser.live.watch':
+      await handleBrowserLiveWatch(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'browser.live.unwatch':
+      await handleBrowserLiveUnwatch(ws);
       return true;
     case 'files.skeleton':
       await handleFilesSkeleton(ws, message, ctx.getProjectRoot());

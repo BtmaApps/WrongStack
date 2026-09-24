@@ -1,162 +1,30 @@
-import type { SessionMarker, SessionToolMeta, Usage } from '@wrongstack/core/types';
+import type { Usage } from '@wrongstack/core/types';
+import type {
+  SessionScopedPayload,
+  WSCodeMapFileTarget,
+} from '@wrongstack/webui-protocol';
 
-export interface WSSessionStart {
-  type: 'session.start';
-  payload: {
-    sessionId: string;
-    /** Original session start timestamp; resume must not reset uptime. */
-    startedAt?: string | undefined;
-    model: string;
-    provider: string;
-    maxContext?: number | undefined;
-    projectName?: string | undefined;
-    cwd?: string | undefined;
-    mode?: string | undefined;
-    contextMode?: string | undefined;
-    inputCost?: number | undefined;
-    outputCost?: number | undefined;
-    cacheReadCost?: number | undefined;
-    reset?: boolean | undefined;
-    replayMessages?: Array<{ role: string | undefined; content: unknown; ts?: string | undefined }>;
-    /** Audit markers (compaction, mode/skill switches, subagent lifecycle,
-     *  provider retries, truncation) projected server-side. Replayed alongside
-     *  the conversation so a reconnect shows what the live stream showed. */
-    replayMarkers?: SessionMarker[] | undefined;
-    /** Per-tool timing/output metadata projected from `tool_call_end`, so a
-     *  replayed tool card shows the same duration and size chips it showed
-     *  live. */
-    replayToolMeta?: SessionToolMeta[] | undefined;
-    replayUsage?: Usage | undefined;
-    /** True when no provider+model is configured yet — show the setup screen. */
-    needsSetup?: boolean | undefined;
-    /** Feature negotiation prevents a newer WebUI from sending messages to an older backend. */
-    protocolCapabilities?: string[] | undefined;
-    /** Effort levels the ACTIVE model advertises (models.dev reasoningConfig).
-     *  Absent when the model has no explicit effort list — the UI then shows
-     *  the full canonical set, matching the resolver's conservative gate. */
-    reasoningEffortLevels?: string[] | undefined;
-  };
-}
-
-export interface WSSessionEnd {
-  type: 'session.end';
-  payload: {
-    sessionId: string;
-    usage: Usage;
-    totalCost: number;
-  };
-}
-
-export interface SessionScopedPayload {
-  sessionId?: string | undefined;
-}
-
-/** One image attached to a user message. `data` is bare base64 (no data-URL
- *  prefix); `mediaType` travels separately. */
-export interface WSUserMessageImage {
-  data: string;
-  mediaType: string;
-  /** Original filename when the image came from a picker or drop. */
-  name?: string;
-}
-
-export interface WSUserMessage {
-  type: 'user_message';
-  payload: SessionScopedPayload & {
-    id: string;
-    content: string;
-    timestamp: number;
-    /** Atomically replace only the provider-bound conversation before this run. */
-    freshContext?: boolean | undefined;
-    /** Images attached in the composer (paste / drop / file picker). The
-     *  server converts these to canonical ImageBlocks ahead of the text. */
-    images?: WSUserMessageImage[];
-    /** @deprecated Legacy single-image field (a full data-URL). Servers
-     *  still accept it; new clients send `images` instead. */
-    imageBase64?: string;
-  };
-}
-
-export interface WSTextDelta {
-  type: 'provider.text_delta';
-  payload: SessionScopedPayload & {
-    text: string;
-    messageId: string;
-  };
-}
-
-export interface WSThinkingDelta {
-  type: 'provider.thinking_delta';
-  payload: SessionScopedPayload & {
-    text: string;
-  };
-}
-
-export interface WSCodeMapFileTarget {
-  filePath: string;
-  operation: 'read' | 'write' | 'edit' | 'delete' | 'search';
-  line?: number | undefined;
-  endLine?: number | undefined;
-}
-
-export interface WSToolUseStart {
-  type: 'tool.started';
-  payload: SessionScopedPayload & {
-    id: string;
-    name: string;
-    traceId?: string | undefined;
-    agentId?: string | undefined;
-    agentName?: string | undefined;
-    input?: unknown | undefined;
-    fileTargets?: WSCodeMapFileTarget[] | undefined;
-    messageId: string;
-  };
-}
-
-export interface WSToolProgress {
-  type: 'tool.progress';
-  payload: SessionScopedPayload & {
-    name: string;
-    id: string;
-    traceId?: string | undefined;
-    agentId?: string | undefined;
-    agentName?: string | undefined;
-    event: {
-      type: 'log' | 'warning' | 'metric' | 'file_changed' | 'partial_output';
-      text?: string | undefined;
-      data?: Record<string, unknown>;
-      path?: string | undefined;
-      operation?: 'write' | 'edit' | 'delete' | 'rename' | undefined;
-      line?: number | undefined;
-      endLine?: number | undefined;
-    };
-  };
-}
-
-export interface WSToolExecuted {
-  type: 'tool.executed';
-  payload: SessionScopedPayload & {
-    id: string;
-    name: string;
-    traceId?: string | undefined;
-    agentId?: string | undefined;
-    agentName?: string | undefined;
-    durationMs: number;
-    ok: boolean;
-    input?: unknown | undefined;
-    fileTargets?: WSCodeMapFileTarget[] | undefined;
-    output?: string | undefined;
-    /**
-     * SAGE Memory Injector block (`--- SAGE: … ---` header first, then one line
-     * per memory) split off `output` by the backend before its preview cap.
-     * Rendered as a memory card — never appended back onto the tool body.
-     */
-    sage?: string[] | undefined;
-    outputBytes?: number | undefined;
-    outputTokens?: number | undefined;
-    outputLines?: number | undefined;
-  };
-}
+/** Moved to webui-protocol (conversation-core.ts), the single source the SDK shares. */
+export type {
+  SessionScopedPayload,
+  WSCodeMapFileTarget,
+  WSIterationCompleted,
+  WSIterationStarted,
+  WSProviderError,
+  WSProviderRetry,
+  WSRunResult,
+  WSSessionEnd,
+  WSSessionFramesResumed,
+  WSSessionRunState,
+  WSSessionStart,
+  WSTextDelta,
+  WSThinkingDelta,
+  WSToolExecuted,
+  WSToolProgress,
+  WSToolUseStart,
+  WSUserMessage,
+  WSUserMessageImage,
+} from '@wrongstack/webui-protocol';
 
 /** Subagent tool lifecycle dedicated to CodeMap; intentionally does not create chat bubbles. */
 export interface WSCodeMapToolStarted {
@@ -193,22 +61,6 @@ export interface WSCodeMapToolExecuted {
   };
 }
 
-export interface WSIterationStarted {
-  type: 'iteration.started';
-  payload: SessionScopedPayload & {
-    index: number;
-    maxIterations?: number | undefined;
-  };
-}
-
-export interface WSIterationCompleted {
-  type: 'iteration.completed';
-  payload: SessionScopedPayload & {
-    index: number;
-    totalIterations: number;
-  };
-}
-
 export interface WSIterationLimitReached {
   type: 'iteration.limit_reached';
   payload: SessionScopedPayload & {
@@ -224,27 +76,6 @@ export interface WSProviderResponse {
     usage: Usage;
     stopReason: string;
     messageId: string;
-  };
-}
-
-export interface WSProviderRetry {
-  type: 'provider.retry';
-  payload: SessionScopedPayload & {
-    providerId: string;
-    attempt: number;
-    delayMs: number;
-    status: number;
-    description: string;
-  };
-}
-
-export interface WSProviderError {
-  type: 'provider.error';
-  payload: SessionScopedPayload & {
-    providerId: string;
-    status: number;
-    description: string;
-    retryable: boolean;
   };
 }
 
@@ -355,35 +186,6 @@ export interface WSProviderStreamError {
   };
 }
 
-/**
- * Whether one session's run is live, answered per declared tab.
- *
- * A reconnect is the hole this closes. `run.result` is what clears a lane's
- * spinner, and it is broadcast once — a tab whose run finished while the
- * socket was down never hears it, so it spins forever, counts as busy, refuses
- * to be recycled and asks to abort a run that ended long ago. Only the tab in
- * front gets a `session.start` on reconnect; this answers for all four.
- */
-export interface WSSessionRunState {
-  type: 'session.run_state';
-  payload: SessionScopedPayload & {
-    isRunning: boolean;
-  };
-}
-
-/**
- * The end of one tab's reconnect catch-up. `resumed: true` came after the
- * frames the tab missed; `false` means the server could not supply them and a
- * transcript replay follows instead.
- */
-export interface WSSessionFramesResumed {
-  type: 'session.frames_resumed';
-  payload: SessionScopedPayload & {
-    resumed: boolean;
-    frames?: number;
-  };
-}
-
 export interface WSSessionResumeProgress {
   type: 'session.resume_progress';
   payload: SessionScopedPayload & {
@@ -393,18 +195,3 @@ export interface WSSessionResumeProgress {
   };
 }
 
-export interface WSRunResult {
-  type: 'run.result';
-  payload: SessionScopedPayload & {
-    /** Id of the user_message that initiated this run. */
-    requestId?: string | undefined;
-    status: 'done' | 'failed' | 'max_iterations' | 'aborted';
-    iterations: number;
-    finalText?: string | undefined;
-    error?: {
-      code: string;
-      message: string;
-      recoverable: boolean;
-    };
-  };
-}

@@ -24,7 +24,7 @@ function edgeEvidence(relation: string, toNode: string): { evidence: string[] } 
   const match = /^about_(\w+)$/.exec(relation);
   if (!match) return undefined;
   const anchorType = match[1];
-  const anchorPath = toNode.replace(/^(file|dir|symbol):/, '');
+  const anchorPath = toNode.replace(/^(file|dir|symbol|command|agent):/, '');
   return { evidence: [`${anchorType}:${anchorPath}`] };
 }
 

@@ -678,7 +678,9 @@
     "inspector": "Çalışma alanı denetçisi",
     "inspectorNamed": "{{name}} çalışma alanı denetçisi",
     "workspace": "Çalışma alanı",
-    "workspaceDetails": "Çalışma alanı ayrıntıları"
+    "workspaceDetails": "Çalışma alanı ayrıntıları",
+    "browser": "Tarayıcı",
+    "browserDetail": "Ajanın tarayıcısı, canlı (yalnızca izleme)"
   },
   "agentsMonitor": {
     "leaderBadge": "LİDER",
@@ -1303,7 +1305,13 @@
     "confirmKillBackground": "Bağımsız arka plan süreci {{pid}} sonlandırılsın mı?",
     "confirmKillAll": "Çalışan {{count}} sürecin tamamı sonlandırılsın mı?",
     "killAllTitle": "Tüm Süreçleri Sonlandır",
-    "killTitle": "PID {{pid}} sonlandır"
+    "killTitle": "PID {{pid}} sonlandır",
+    "stripLabel": "Arka plan",
+    "stripOutputTitle": "PID {{pid}} çıktısı",
+    "stripNoOutput": "Henüz çıktı yok",
+    "stripNotCaptured": "Bu sürecin çıktısı kaydedilmiyor",
+    "stripGone": "Süreç sona erdi",
+    "stripStop": "Durdur"
   },
   "diff": {
     "tooLarge": "Diff atlandı (dosya satır içi göstermek için çok büyük)."
@@ -1715,6 +1723,8 @@
     "level": {
       "quiet": "sakin",
       "active": "aktif",
+      "activeProfile": "profil varsayılanı",
+      "activeProject": "bu proje",
       "churn": "yüksek churn"
     },
     "analysisTitle": {
@@ -3950,5 +3960,15 @@
     "outdated": "Güncel değil: bu yorum yazıldıktan sonra satır değişti",
     "outdatedHeader": "Değişen satırlardaki yorumlar",
     "removedLine": "silinen satır"
+  },
+  "browserLive": {
+    "none": "Ajanın açık bir tarayıcısı yok.",
+    "waiting": "İlk kare bekleniyor…",
+    "closed": "Tarayıcı kapatıldı.",
+    "readOnly": "yalnızca izleme",
+    "console": "Konsol",
+    "network": "Ağ",
+    "noConsole": "Henüz konsol mesajı yok.",
+    "noNetwork": "Henüz istek yok."
   }
 }

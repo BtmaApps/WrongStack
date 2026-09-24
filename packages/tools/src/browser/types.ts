@@ -48,6 +48,28 @@ export interface BrowserOpenOptions {
   url?: string | undefined;
   viewport?: { width: number; height: number } | undefined;
   trace?: boolean | undefined;
+  /** Conversation (session id) that opened it; a live viewer sees only its own. */
+  conversationId?: string | undefined;
+}
+
+/** A session as a live viewer lists it. */
+export interface BrowserLiveSummary extends BrowserSessionSummary {
+  conversationId?: string | undefined;
+}
+
+/** One screencast frame: a JPEG, base64-encoded. */
+export interface BrowserFrame {
+  data: string;
+  width: number;
+  height: number;
+}
+
+/** What a live viewer shows beside the picture. */
+export interface BrowserLiveDetails {
+  url: string;
+  title: string;
+  console: BrowserConsoleEntry[];
+  network: BrowserNetworkEntry[];
 }
 
 export interface BrowserManagerOptions {

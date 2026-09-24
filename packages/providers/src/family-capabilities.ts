@@ -1,5 +1,11 @@
 import type { Capabilities, WireFamily } from '@wrongstack/core/types';
 
+/**
+ * `maxContext` is 0 (unknown) for every family on purpose. A context window is
+ * a per-model fact that only the catalog, a provider override or the provider
+ * itself can state. A family-wide guess (it used to be 128k/200k/1M) outranked
+ * the config fallback and silently pinned models to the wrong window.
+ */
 export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
   anthropic: {
     tools: true,
@@ -10,7 +16,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: false,
     reasoning: false,
-    maxContext: 200_000,
+    maxContext: 0,
     cacheControl: 'native',
     topK: true,
     frequencyPenalty: false,
@@ -30,7 +36,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: true,
     reasoning: false,
-    maxContext: 128_000,
+    maxContext: 0,
     cacheControl: 'auto',
     topK: false,
     frequencyPenalty: true,
@@ -72,7 +78,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: false,
     reasoning: false,
-    maxContext: 200_000,
+    maxContext: 0,
     cacheControl: 'native',
     topK: true,
     frequencyPenalty: false,
@@ -93,7 +99,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: true,
     reasoning: false,
-    maxContext: 128_000,
+    maxContext: 0,
     cacheControl: 'auto',
     topK: false,
     frequencyPenalty: false,
@@ -114,10 +120,10 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: false,
     reasoning: true,
-    // Every published Codex model is 1M-windowed (keep in step with the
-    // openai-codex block in packages/cli/data/providers.json); the live
-    // /codex/models probe caps sessions to the window the backend enforces.
-    maxContext: 1_050_000,
+    // Per-model: the curated overlay (packages/cli/data/providers.json)
+    // publishes each Codex window, and the live /codex/models probe caps
+    // sessions to the window the backend enforces.
+    maxContext: 0,
     cacheControl: 'auto',
     topK: false,
     frequencyPenalty: false,
@@ -137,7 +143,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: true,
     reasoning: false,
-    maxContext: 1_000_000,
+    maxContext: 0,
     cacheControl: 'none',
     topK: true,
     frequencyPenalty: true,
@@ -163,7 +169,7 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     systemPrompt: true,
     jsonMode: true,
     reasoning: false,
-    maxContext: 1_000_000,
+    maxContext: 0,
     cacheControl: 'none',
     topK: true,
     frequencyPenalty: true,

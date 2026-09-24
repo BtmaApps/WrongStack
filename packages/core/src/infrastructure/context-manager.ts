@@ -250,12 +250,18 @@ export function createContextManagerTool(
               : { total: beforeTokens, messages: beforeTokens, systemPrompt: 0, tools: 0 };
           const currentTokens = fullEstimate.total;
 
-          // Resolve maxContext at execution time from the live provider capabilities.
-          // This is the actual model limit — from models.dev catalog, provider config,
-          // or explicit effectiveMaxContext override. Falls back to the creation-time
-          // value only when no runtime value is available (e.g. in test environments).
+          // Resolve maxContext at execution time: the hard override, else the
+          // session's resolved window, else the live provider capability. 0 =
+          // unknown, which skips the threshold gate instead of inventing a window.
+          const sessionMaxContext = ctx.meta?.['effectiveMaxContext'];
+          const providerMaxContext = ctx.provider?.capabilities?.maxContext;
           const runtimeMaxContext =
-            configuredMaxContext ?? ctx.provider?.capabilities?.maxContext ?? 128_000;
+            configuredMaxContext ??
+            (typeof sessionMaxContext === 'number' && sessionMaxContext > 0
+              ? sessionMaxContext
+              : typeof providerMaxContext === 'number' && providerMaxContext > 0
+                ? providerMaxContext
+                : 0);
           const runtimeThreshold =
             minCompactThreshold > 0
               ? minCompactThreshold

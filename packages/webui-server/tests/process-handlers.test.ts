@@ -15,11 +15,11 @@ const registry = vi.hoisted(() => ({
   killAll: vi.fn(),
   killSession: vi.fn(),
 }));
-vi.mock('@wrongstack/tools', () => ({ getProcessRegistry: () => registry }));
+const tailBackgroundLog = vi.hoisted(() => vi.fn());
+vi.mock('@wrongstack/tools', () => ({ getProcessRegistry: () => registry, tailBackgroundLog }));
 
-const { handleProcessKill, handleProcessKillAll, handleProcessList } = await import(
-  '@wrongstack/webui-server'
-);
+const { handleProcessKill, handleProcessKillAll, handleProcessList, handleProcessOutput } =
+  await import('@wrongstack/webui-server');
 
 /** Minimal ws mock that records parsed JSON sends. */
 function createMockWs() {
@@ -43,6 +43,50 @@ describe('process WebSocket handlers', () => {
     registry.killSession.mockReset();
   });
 
+  describe('handleProcessOutput', () => {
+    afterEach(() => {
+      tailBackgroundLog.mockReset();
+    });
+
+    it('sends the tail of the log file the registry recorded for the pid', () => {
+      registry.get.mockReturnValue({ pid: 7, sessionId: 's1', logFile: '/p/bg-logs/x.log' });
+      tailBackgroundLog.mockReturnValue(['ready on :5173']);
+      const ws = createMockWs();
+      handleProcessOutput(ws, { pid: 7, lines: 12, sessionId: 's1' });
+      expect(tailBackgroundLog).toHaveBeenCalledWith('/p/bg-logs/x.log', 12);
+      expect(ws.sent[0]).toEqual({
+        type: 'process.output',
+        payload: { pid: 7, lines: ['ready on :5173'], sessionId: 's1' },
+      });
+    });
+
+    it("refuses another session's process", () => {
+      registry.get.mockReturnValue({ pid: 7, sessionId: 's2', logFile: '/p/bg-logs/x.log' });
+      const ws = createMockWs();
+      handleProcessOutput(ws, { pid: 7, sessionId: 's1' });
+      expect(tailBackgroundLog).not.toHaveBeenCalled();
+      expect(ws.sent[0]?.payload['success']).toBe(false);
+    });
+
+    it('answers gone for a process that has exited', () => {
+      registry.get.mockReturnValue(undefined);
+      const ws = createMockWs();
+      handleProcessOutput(ws, { pid: 7 });
+      expect(ws.sent[0]).toEqual({
+        type: 'process.output',
+        payload: { pid: 7, lines: [], gone: true },
+      });
+    });
+
+    it('rejects a bad pid or line count', () => {
+      const ws = createMockWs();
+      handleProcessOutput(ws, { pid: -1 });
+      handleProcessOutput(ws, { pid: 7, lines: 5000 });
+      expect(ws.sent.map((m) => m.payload['success'])).toEqual([false, false]);
+      expect(registry.get).not.toHaveBeenCalled();
+    });
+  });
+
   describe('handleProcessList', () => {
     it('projects the registry list into the wire shape', async () => {
       registry.list.mockReturnValue([
@@ -54,6 +98,7 @@ describe('process WebSocket handlers', () => {
           killed: false,
           protected: true,
           background: true,
+          logFile: '/p/bg-logs/x.log',
         },
         { pid: 11, command: 'rg foo', name: 'grep', startedAt: 6, killed: true, protected: false },
       ]);
@@ -72,6 +117,7 @@ describe('process WebSocket handlers', () => {
               status: 'running',
               protected: true,
               background: true,
+              hasOutput: true,
             },
             {
               pid: 11,
@@ -80,6 +126,7 @@ describe('process WebSocket handlers', () => {
               startedAt: 6,
               status: 'killed',
               protected: false,
+              hasOutput: false,
             },
           ],
         },
@@ -118,6 +165,7 @@ describe('process WebSocket handlers', () => {
           tool: 'bash',
           startedAt: 5,
           status: 'running',
+          hasOutput: false,
           sessionId: 'sess_a',
         },
       ]);

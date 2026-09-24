@@ -332,7 +332,14 @@ export function createConversationOperations(
         signal: prepared.signal,
         ...(maxIterations !== undefined ? { maxIterations } : {}),
       });
-      reply({
+      // The result goes to the session, not to the socket that asked. That
+      // socket may have dropped while the run went on: its page reconnects
+      // on a new socket, and a result sent to the old one was lost, together
+      // with the answer's final state. Broadcast, it is numbered into the
+      // session's frame log (a reconnect catches it up) and reaches every
+      // page showing the session.
+      const announce = ctx.broadcast ?? reply;
+      announce({
         type: 'run.result',
         payload: sessionPayload({
           sessionId: originSessionId,

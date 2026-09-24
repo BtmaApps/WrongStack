@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
+import { boundedLimit, DEFAULT_LIST_LIMIT } from './shared/pagination.js';
 import { MEMORY_NODE_GLOB, MEMORY_NODE_PREFIX_LEN } from './sqlite-store-graph-helpers.js';
 import {
   buildRetrieveFallbackQuery,
@@ -36,7 +37,7 @@ export function retrieveSqliteSageForPath(
   paths: string[],
   opts?: SageForPathOptions,
 ): Sage[] {
-  const limit = opts?.limit ?? 20;
+  const limit = boundedLimit(opts?.limit, DEFAULT_LIST_LIMIT, Number.MAX_SAFE_INTEGER);
   const includeAncestors = opts?.includeAncestors ?? true;
   if (paths.length === 0) return [];
   // Honor the caller's status filter. This used to be hard-coded to

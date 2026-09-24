@@ -6,6 +6,7 @@
     { "path": "./packages/plugin-sdk" },
     { "path": "./packages/vector-memory" },
     { "path": "./packages/webui-protocol" },
+    { "path": "./packages/client" },
     { "path": "./packages/kanban" },
     { "path": "./packages/kanban-mcp" },
     { "path": "./packages/mailbox-mcp" },

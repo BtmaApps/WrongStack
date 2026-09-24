@@ -1,6 +1,14 @@
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
 import type { SessionScopedPayload } from './protocol-core.js';
 
+/** Moved to webui-protocol (conversation-core.ts), the single source the SDK shares. */
+export type {
+  WSError,
+  WSToolConfirmNeeded,
+  WSToolConfirmResolved,
+  WSToolConfirmResult,
+} from '@wrongstack/webui-protocol';
+
 export interface WSUserInputRequested {
   type: 'user.input_requested';
   payload: SessionScopedPayload & { request: UserInputRequest };
@@ -27,55 +35,6 @@ export interface WSSessionStats {
     cacheReadTokens: number;
     cost: number;
     duration: number;
-  };
-}
-
-export interface WSError {
-  type: 'error';
-  payload: SessionScopedPayload & {
-    phase: string;
-    message: string;
-  };
-}
-
-export interface WSToolConfirmNeeded {
-  type: 'tool.confirm_needed';
-  payload: SessionScopedPayload & {
-    id: string;
-    toolName: string;
-    input: unknown;
-    suggestedPattern: string;
-    decisionSource?: string | undefined;
-    riskTier?: 'safe' | 'standard' | 'destructive' | undefined;
-    boundaryReason?: string | undefined;
-    deadlineAt?: number | undefined;
-  };
-}
-
-export interface WSToolConfirmResolved {
-  type: 'tool.confirm_resolved';
-  payload: SessionScopedPayload & {
-    id: string;
-    toolName: string;
-    decision:
-      | 'yes'
-      | 'no'
-      | 'always'
-      | 'always-exact'
-      | 'always-command'
-      | 'always-tool'
-      | 'deny'
-      | 'abort';
-    source: 'brain_timeout' | 'abort';
-    rationale?: string | undefined;
-  };
-}
-
-export interface WSToolConfirmResult {
-  type: 'tool.confirm_result';
-  payload: SessionScopedPayload & {
-    id: string;
-    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny';
   };
 }
 

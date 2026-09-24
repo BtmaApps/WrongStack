@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FrameResume } from '../../src/lib/session-frame-gate';
+import { FrameResume } from '../src/frame-resume.js';
 
 type Frame = { type: string; seq?: number; stream?: string; payload: Record<string, unknown> };
 const f = (seq: number, sessionId = 's1', text = `t${seq}`): Frame => ({
@@ -149,5 +149,55 @@ describe('FrameResume', () => {
     vi.advanceTimersByTime(1);
     expect(texts(applied)).toEqual(['t3']);
     expect(resume.gate.isResuming('s1')).toBe(false);
+  });
+  it('restarts the give-up timer when a second reconnect asks again', () => {
+    vi.useFakeTimers();
+    const applied: Frame[] = [];
+    const resume = new FrameResume<Frame>((frames) => applied.push(...frames), 1_000);
+    resume.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+    resume.gate.accept(f(1));
+    resume.request(['s1']);
+    resume.gate.accept(f(3));
+    vi.advanceTimersByTime(800);
+    resume.request(['s1']);
+    vi.advanceTimersByTime(800);
+    expect(applied).toEqual([]);
+    vi.advanceTimersByTime(200);
+    expect(texts(applied)).toEqual(['t3']);
+  });
+
+  it('asks for nothing before any frame was applied', () => {
+    const resume = new FrameResume<Frame>(() => undefined);
+    expect(resume.request(['s1'])).toBeNull();
+    resume.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+    expect(resume.request(['s1'])).toBeNull();
+  });
+
+  it('releases what a tab held when the server process changed under its catch-up', () => {
+    const applied: Frame[] = [];
+    const resume = new FrameResume<Frame>((frames) => applied.push(...frames));
+    resume.onSessionStart(start('s1', { eventEpoch: 'e1' }));
+    resume.gate.accept(f(1));
+    resume.request(['s1']);
+    resume.gate.accept(f(3));
+    resume.onSessionStart(start('s1', { eventEpoch: 'e2' }));
+    expect(texts(applied)).toEqual(['t3']);
+    expect(resume.gate.isResuming('s1')).toBe(false);
+  });
+
+  it('ignores a catch-up answer for a tab that was not waiting, or that names none', () => {
+    const applied: Frame[] = [];
+    const resume = new FrameResume<Frame>((frames) => applied.push(...frames));
+    resume.onFramesResumed({ type: 'session.frames_resumed', payload: { sessionId: 's9' } });
+    resume.onFramesResumed({ type: 'session.frames_resumed', payload: {} });
+    expect(applied).toEqual([]);
+  });
+
+  it('passes a numbered frame through when it names no session', () => {
+    const gate = new FrameResume<Frame>(() => undefined).gate;
+    const bare = { type: 'x', seq: 1 } as unknown as Frame;
+    expect(gate.accept(bare)).toEqual([bare]);
+    const unnamed: Frame = { type: 'x', seq: 1, payload: { sessionId: '' } };
+    expect(gate.accept(unnamed)).toEqual([unnamed]);
   });
 });

@@ -33,9 +33,13 @@ export function listSqliteSagePage(
 
   const requested =
     options.statuses && options.statuses.length > 0
-      ? options.statuses.filter((s) => VALID_MEMORY_STATUSES.has(s))
+      ? options.statuses.filter((status) => VALID_MEMORY_STATUSES.has(status))
       : DEFAULT_PAGE_STATUSES;
-  const statuses = requested.length > 0 ? requested : DEFAULT_PAGE_STATUSES;
+  const statuses =
+    options.statuses?.length === 0 ? [] : requested.length > 0 ? requested : DEFAULT_PAGE_STATUSES;
+  if (statuses.length === 0) {
+    return { memories: [], nextCursor: null, total: 0, statusCounts };
+  }
   const kind = options.kind && options.kind !== 'all' ? options.kind : undefined;
   const query = options.query?.trim().normalize('NFKC').toLowerCase();
   const limit = clampPageLimit(options.limit);

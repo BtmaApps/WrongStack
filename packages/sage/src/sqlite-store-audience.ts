@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-import { buildSessionClause } from './sqlite-store-search-helpers.js';
-import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
+import { boundedLimit } from './shared/pagination.js';
+import { buildSessionClause, sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
 import type { MemoryAudienceContext, Sage } from './types.js';
 
 interface SqliteAudienceContext {
@@ -41,7 +41,7 @@ export function retrieveSqliteSageForAudience(
     includeAllSessions?: boolean | undefined;
   },
 ): Sage[] {
-  const limit = opts?.limit ?? 20;
+  const limit = boundedLimit(opts?.limit, 20, AUDIENCE_MAX_SCAN);
   const session = buildSessionClause(opts);
   const role = context.role?.toLowerCase() ?? '';
   const taskType = context.taskType?.toLowerCase() ?? '';

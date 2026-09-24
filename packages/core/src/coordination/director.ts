@@ -115,9 +115,10 @@ export class Director implements DirectorFleetHost, ICoordinator {
     return Math.max(0, this.maxFleetCostUsd - totalCost);
   }
 
+  /** The leader's window in tokens, or 0 when unknown (no invented default). */
   resolveMaxContext(): number {
     const resolved = typeof this.maxContext === 'function' ? this.maxContext() : this.maxContext;
-    return resolved && resolved > 0 ? resolved : 128_000;
+    return resolved && resolved > 0 ? resolved : 0;
   }
 
   private currentSessionId(): string | undefined {
@@ -257,7 +258,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
     this.maxFleetCostUsd = opts.directorBudget?.maxCostUsd ?? Number.POSITIVE_INFINITY;
     this.maxFleetTokens = opts.directorBudget?.maxTokens ?? Number.POSITIVE_INFINITY;
     this.maxLeaderContextLoad = opts.maxLeaderContextLoad ?? 0.85;
-    this.maxContext = opts.maxContext ?? 128_000;
+    this.maxContext = opts.maxContext ?? 0;
     this.appConfig = opts.appConfig;
     this.modelMatrix = opts.modelMatrix;
     this.sessionsRoot = opts.sessionsRoot;

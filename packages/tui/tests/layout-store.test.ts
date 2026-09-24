@@ -94,10 +94,10 @@ describe('LayoutStore (ephemeral mode)', () => {
     expect(store.get(2)).toBeUndefined();
   });
 
-  it('clear empties everything', () => {
+  it('clear empties everything', async () => {
     store.set(1, computeLayout(1, 'user', 'a', 80));
     store.set(2, computeLayout(2, 'user', 'b', 80));
-    store.clear();
+    await store.clear();
     expect(store.size).toBe(0);
   });
 
@@ -120,7 +120,7 @@ describe('LayoutStore (persistence mode)', () => {
   });
 
   afterEach(async () => {
-    store.clear();
+    await store.clear();
     await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
   });
 
@@ -144,6 +144,24 @@ describe('LayoutStore (persistence mode)', () => {
     expect(store2.get(2)?.kind).toBe('measured');
   });
 
+  it('clear persists the empty snapshot', async () => {
+    store.set(7, {
+      ...computeLayout(7, 'assistant', 'persisted before clear', 80),
+      rows: 11,
+      kind: 'measured',
+    });
+    await store.flushNow();
+
+    const resumed = new LayoutStore({ sessionDataDir: dir, ephemeral: false });
+    expect(await resumed.load()).toBe(1);
+
+    await store.clear();
+
+    const afterClear = new LayoutStore({ sessionDataDir: dir, ephemeral: false });
+    expect(await afterClear.load()).toBe(0);
+    expect(afterClear.size).toBe(0);
+  });
+
   it('does not overwrite a live measurement when async loading finishes later', async () => {
     store.setTermWidth(80);
     store.set(1, computeLayout(1, 'assistant', 'persisted estimate', 80));
@@ -160,7 +178,7 @@ describe('LayoutStore (persistence mode)', () => {
     expect(await store2.load()).toBe(0);
     expect(store2.get(1)?.rows).toBe(37);
     expect(store2.get(1)?.kind).toBe('measured');
-    store2.clear();
+    await store2.clear();
   });
 
   it('discards data on version mismatch', async () => {

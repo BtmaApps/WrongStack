@@ -46,7 +46,11 @@ export interface SelectiveCompactorOptions {
   softThreshold?: number | undefined;
   /** Fraction of maxContext that triggers hard compaction (default 0.8). */
   hardThreshold?: number | undefined;
-  /** Max context window in tokens (used for threshold fraction math). */
+  /**
+   * Max context window in tokens (used for threshold fraction math).
+   * Unset = unknown: load reads as 0, so only an explicit aggressive request
+   * compacts, sized from the current request. No window is invented.
+   */
   maxContext?: number | undefined;
   /** How many recent (user+assistant) pairs to always preserve (default 4). */
   preserveK?: number | undefined;
@@ -101,7 +105,7 @@ export class SelectiveCompactor implements Compactor {
     this.warnThreshold = opts.warnThreshold ?? 0.5;
     this.softThreshold = opts.softThreshold ?? 0.65;
     this.hardThreshold = opts.hardThreshold ?? 0.8;
-    this.maxContext = opts.maxContext ?? 128_000;
+    this.maxContext = opts.maxContext && opts.maxContext > 0 ? opts.maxContext : 0;
     this.preserveK = opts.preserveK ?? 4;
     this.eliseThreshold = opts.eliseThreshold ?? 300;
     // Leave undefined when unset so summarizeRange() can fall back to the
@@ -133,7 +137,7 @@ export class SelectiveCompactor implements Compactor {
     const reductions: CompactReport['reductions'] = [];
 
     // Use full request tokens for threshold decisions — messages alone are inaccurate.
-    const load = beforeFull / this.maxContext;
+    const load = this.maxContext > 0 ? beforeFull / this.maxContext : 0;
     const shouldCompact = load >= this.warnThreshold || opts.aggressive;
 
     if (!shouldCompact) {
@@ -154,7 +158,7 @@ export class SelectiveCompactor implements Compactor {
 
     // Phase 2: LLM-driven selective compaction
     const afterPhase1 = this.estimateTokens(ctx.messages);
-    const targetBudget = this.computeTargetBudget(load);
+    const targetBudget = this.computeTargetBudget(load, beforeFull);
 
     if (afterPhase1 > targetBudget) {
       const selective = await this.runSelector(ctx, targetBudget);
@@ -434,14 +438,16 @@ export class SelectiveCompactor implements Compactor {
     return Math.max(0, removedTokens - this.estimateTokens([summaryMsg]));
   }
 
-  private computeTargetBudget(load: number): number {
+  private computeTargetBudget(load: number, currentTokens: number): number {
+    // Unknown window: size the budget from what is actually there.
+    const base = this.maxContext > 0 ? this.maxContext : currentTokens;
     if (load >= this.hardThreshold) {
-      return Math.floor(this.maxContext * 0.5); // keep only 50%
+      return Math.floor(base * 0.5); // keep only 50%
     }
     if (load >= this.softThreshold) {
-      return Math.floor(this.maxContext * 0.65); // keep 65%
+      return Math.floor(base * 0.65); // keep 65%
     }
-    return Math.floor(this.maxContext * 0.75); // keep 75% at warn
+    return Math.floor(base * 0.75); // keep 75% at warn
   }
 
   private eliseOldToolResults(ctx: Context): number {

@@ -93,4 +93,36 @@ describe('dispose vs in-flight composite operations', () => {
     const result = await consolidation;
     expect(result).toEqual(LOSSLESS);
   });
+
+  it('dispose() waits for hygiene before its initialization lease begins', async () => {
+    const port = new SqliteMemoryPort({ projectRoot: tempDir });
+    activePorts.push(port);
+    const originalInitialize = port.initialize.bind(port);
+    let releaseInitialize!: () => void;
+    let enteredInitialize!: () => void;
+    const initializeGate = new Promise<void>((resolve) => {
+      releaseInitialize = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      enteredInitialize = resolve;
+    });
+    (port as unknown as { initialize: typeof port.initialize }).initialize = async () => {
+      enteredInitialize();
+      await initializeGate;
+      return originalInitialize();
+    };
+
+    const hygiene = port.hygiene({ verify: false });
+    await entered;
+    let disposeSettled = false;
+    const disposal = port.dispose().then(() => {
+      disposeSettled = true;
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const settledBeforeInitialization = disposeSettled;
+    releaseInitialize();
+    await Promise.allSettled([hygiene, disposal]);
+
+    expect(settledBeforeInitialization).toBe(false);
+  });
 });

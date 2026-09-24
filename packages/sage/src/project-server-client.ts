@@ -707,7 +707,11 @@ export class SageProjectServerConnection {
     // the backstop, and per-write drain awaiting would serialize callers
     // behind slow I/O. Mirror of the server's writeEncoded — keep the two
     // thresholds in sync.
-    if (socket.writableLength > MAX_SERVER_WRITE_BUFFER_BYTES) {
+    if (
+      Buffer.byteLength(encodeSageProjectServerMessage(message), 'utf8') >
+        MAX_SERVER_WRITE_BUFFER_BYTES ||
+      socket.writableLength > MAX_SERVER_WRITE_BUFFER_BYTES
+    ) {
       socket.destroy(new Error('SAGE server fell too far behind on reads'));
       return;
     }

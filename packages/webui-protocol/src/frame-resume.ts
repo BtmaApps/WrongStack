@@ -14,7 +14,7 @@
  * session were never delivered) and is accepted as is.
  */
 
-interface SequencedFrame {
+export interface SequencedFrame {
   seq?: unknown;
   stream?: unknown;
   payload?: unknown;
@@ -33,7 +33,7 @@ function frameSeq(msg: SequencedFrame): { sessionId: string; seq: number } | nul
   return typeof sessionId === 'string' && sessionId ? { sessionId, seq } : null;
 }
 
-class SessionFrameGate<T extends SequencedFrame> {
+export class SessionFrameGate<T extends SequencedFrame> {
   private epoch: string | undefined;
   private readonly applied = new Map<string, number>();
   private readonly held = new Map<string, Map<number, T>>();
@@ -89,7 +89,7 @@ class SessionFrameGate<T extends SequencedFrame> {
       return [];
     }
     this.applied.set(at.sessionId, at.seq);
-    return [msg, ...this.drainContiguous(at.sessionId)];
+    return [msg, ...this.drainContiguous(at.sessionId, at.seq)];
   }
 
   /** The catch-up for one tab is complete (or refused): release what waited. */
@@ -106,11 +106,15 @@ class SessionFrameGate<T extends SequencedFrame> {
     return out;
   }
 
-  private drainContiguous(sessionId: string): T[] {
+  /**
+   * Frames held for `sessionId` that now follow on from `last`. A held frame
+   * is always newer than `last + 1` when it is stored, and `last` only moves
+   * through here or through `release`, which empties the hold.
+   */
+  private drainContiguous(sessionId: string, last: number): T[] {
     const held = this.held.get(sessionId);
     if (!held) return [];
     const out: T[] = [];
-    let last = this.applied.get(sessionId) ?? 0;
     for (;;) {
       const next = held.get(last + 1);
       if (!next) break;
@@ -119,28 +123,38 @@ class SessionFrameGate<T extends SequencedFrame> {
       last += 1;
     }
     this.applied.set(sessionId, last);
-    for (const seq of held.keys()) if (seq <= last) held.delete(seq);
     if (held.size === 0) this.held.delete(sessionId);
     return out;
   }
 
-  /** Everything held for a session, in order, gaps accepted. */
+  /**
+   * Everything held for a session, in order, gaps accepted. Every held frame
+   * is newer than the last applied one (see `drainContiguous`).
+   */
   private release(sessionId: string): T[] {
     const held = this.held.get(sessionId);
     this.held.delete(sessionId);
     if (!held) return [];
-    const last = this.applied.get(sessionId) ?? 0;
-    const ordered = [...held.entries()].filter(([seq]) => seq > last).sort(([a], [b]) => a - b);
-    const top = ordered.at(-1);
-    if (top) this.applied.set(sessionId, top[0]);
-    return ordered.map(([, msg]) => msg);
+    // A hold is dropped once it is empty, so there is a newest frame.
+    this.applied.set(sessionId, Math.max(...held.keys()));
+    return [...held.entries()].sort(([a], [b]) => a - b).map(([, msg]) => msg);
   }
 }
+
+/**
+ * The host's timers. This module runs in browsers and in Node, and the lib it
+ * is compiled against declares neither's. Read at call time, so fake timers
+ * in tests still apply.
+ */
+const timers = globalThis as unknown as {
+  setTimeout(callback: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
+};
 
 /** How long a reconnect waits for its catch-up before accepting the gap. */
 const FRAME_RESUME_TIMEOUT_MS = 5_000;
 
-/** Replay fields of `session.start`; see `@wrongstack/webui-protocol` replay-payload. */
+/** Replay fields of `session.start`; see replay-payload.ts. */
 const REPLAY_FIELDS = ['replayMessages', 'replayMarkers', 'replayToolMeta', 'replayUsage'] as const;
 
 /**
@@ -149,7 +163,7 @@ const REPLAY_FIELDS = ['replayMessages', 'replayMarkers', 'replayToolMeta', 'rep
  */
 export class FrameResume<T extends SequencedFrame & { type: string }> {
   readonly gate = new SessionFrameGate<T>();
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private timer: unknown = null;
 
   constructor(
     private readonly apply: (frames: T[]) => void,
@@ -164,8 +178,8 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
     const request = this.gate.cursors(sessionIds);
     if (!request) return null;
     this.gate.beginResume(Object.keys(request.cursors));
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
+    if (this.timer) timers.clearTimeout(this.timer);
+    this.timer = timers.setTimeout(() => {
       this.timer = null;
       this.apply(this.gate.releaseAll());
     }, this.timeoutMs);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FrameResume } from '../../src/lib/session-frame-gate';
+import { FrameResume } from '@wrongstack/webui-protocol';
 import {
   installWsClientSessionMethods,
   type WsClientSessionMethods,

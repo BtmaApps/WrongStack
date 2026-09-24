@@ -403,7 +403,16 @@ const profiles = {
     external: ['@wrongstack/core', '@wrongstack/webui-protocol'],
   },
   '@wrongstack/telegram': standard(['@wrongstack/core']),
-  '@wrongstack/webui-protocol': standard(['@wrongstack/core']),
+  '@wrongstack/webui-protocol': {
+    // `frame-resume` has no imports: `@wrongstack/client` bundles it without
+    // pulling the core subpaths the main entry imports.
+    entries: { index: 'src/index.ts', 'frame-resume': 'src/frame-resume.ts' },
+    external: ['@wrongstack/core'],
+  },
+  // Its one runtime import is webui-protocol's `frame-resume` subpath, which
+  // imports nothing: the core subpaths the protocol's main entry loads stay
+  // out of a client process.
+  '@wrongstack/client': standard(['@wrongstack/webui-protocol']),
   '@wrongstack/tools': {
     entries: toolEntries,
     // Same reason as `@wrongstack/core`: 58 subpath entries with splitting OFF

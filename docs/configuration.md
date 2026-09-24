@@ -133,6 +133,7 @@ boundary while preserving encrypted credential material.
 | `modelTiers` | `ModelTiersConfig` | — | Deterministic model-tier layer: named levels (`budget` / `standard` / `premium`) each binding a fallback profile, a spend/iteration budget, and runtime overrides, plus a role/phase routing table. Consumed by the subagent spawn path, `spawn_subagent`, Kanban dispatch, and the leader's self-switch policy. Opt-in via `modelTiers.enabled`. |
 | `chronicle` | `object` | `{ retentionDays: 30 }` | Chronicle durable-journal retention. Rotated partitions older than `retentionDays` are auto-purged after append batches. `0` disables auto-purge; positive values below `7` are clamped up to `7` so a repo-committed config cannot flush recent evidence. |
 | `observability` | `ObservabilityConfig` | — | OTLP export of traces and metrics. See [`observability`](#observability--otlp-export) below. User config only; stripped from in-project config. |
+| `update` | `UpdateConfig` | `{ "autoDownload": true }` | Background self-update of the standalone executable. See [`update`](#update--standalone-self-update) below. User config only; stripped from in-project config. |
 | `cloudSync` | `CloudSyncConfig` | — | my.wrongstack.com config synchronization. Carries the machine bearer token and portal endpoint, so it is on the in-project deny list and honoured only from the active profile config. Distinct from `sync` (GitHub-repo based, stored in `sync.json`). |
 
 ---
@@ -150,10 +151,10 @@ only things you already configured:
 
 `version`, `model`, `cwd`, `context`, `tools`, `features`, `Sage`, `skills`, `autonomy`, `indexing`, `session`, `chronicle`, `log`, `launch`, `nextPrediction`, `hints`, `debugStream`, `configScope`, `maxConcurrent`, `uiLocale`, `themePreset`, `fallbackModels`, `fallbackBridge`, `fallbackProfiles`, `fallbackProfile`, `favoriteModels`, `favoriteModelsOnly`, `modelAvailabilitySchedule`, `fallbackAuto`, `fallbackStickiness`, `fallbackGateSeconds`, `models`, `modelMatrix`, `modelTiers`, `circuitBreaker`, `adaptiveConcurrency`, `modelRuntime`
 
-**Denied** (21) — each carries a credential, an exec surface, or a control the
+**Denied** (22) — each carries a credential, an exec surface, or a control the
 operator owns:
 
-`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`, `observability`
+`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`, `observability`, `update`
 
 `systemPrompt` is denied for a reason worth stating: the `lite` variant omits
 whole sections of `system.md`, among them **Tool output trust boundary** — the
@@ -563,7 +564,7 @@ Metadata resolution order (highest wins):
 1. **Top-level `config.models`** — per-model overrides from the config root (`mergeCustomModelDefs`; wins over provider-local entries for the same id)
 2. **`providers.<id>.customModels`** — per-field overrides from config (inline models.dev-style objects in `models[]` are normalized into this layer at load)
 3. **models.dev catalog** — live registry data (refreshed at boot)
-4. **Wire-family defaults** — hardcoded per provider family
+4. **Wire-family defaults** — hardcoded per provider family. These never carry a context window: a family's `maxContext` is 0 (unknown), so a model nothing above publishes a window for falls through to `context.effectiveMaxContext` or stays unknown (auto-compaction off) instead of inheriting a guessed 128k/200k.
 
 #### Reset to catalog values
 
@@ -612,8 +613,7 @@ Controls compaction behavior, token thresholds, and context window modes.
     "preserveK": 10,
     "eliseThreshold": 2000,
     "strategy": "hybrid",
-    "llmSelector": false,
-    "effectiveMaxContext": 200000
+    "llmSelector": false
   }
 }
 ```
@@ -630,7 +630,7 @@ Controls compaction behavior, token thresholds, and context window modes.
 | `keepTokens` | `number` | unset | Keep at least this many of the most recent message tokens verbatim when compacting: no collapse, summary or tool-output elision in that tail. `preserveK` stays the floor, so this only ever keeps more. It's capped at half the policy's target load so a pass can still free room. The hard-budget emergency trim ignores it, so a context overflow still can't happen. |
 | `strategy` | `string` | `"hybrid"` | Compaction strategy. `hybrid` (default) is **lossless rule-based, no LLM** — it elides oversized old tool results and collapses ancient turns into a digest that keeps all text and drops only raw tool I/O (still in the session log). `intelligent` adds LLM summarization (needs a provider; falls back to the lossless digest on failure). `selective` adds LLM-driven keep/collapse selection. |
 | `llmSelector` | `boolean` | `false` | Shortcut for `strategy: "selective"` when `strategy` is unset. An explicit `strategy` wins. |
-| `effectiveMaxContext` | `number` | provider-reported or unknown for custom `baseUrl` | Override the effective context window size in tokens. Use this for proxies/account-gated endpoints whose real limit differs from models.dev. Runtime override: `/context limit`. |
+| `effectiveMaxContext` | `number` | unset | Fallback context window in tokens, used only for models whose window the catalog does not publish (custom gateways, a proxy `baseUrl`). It never overrides a catalog window. Leave it unset unless you need it; to cap one provider on purpose, set `providers.<id>.capabilities.maxContext`. Runtime override: `/context limit`. |
 | `summarizerModel` | `string` | active model | Model used for LLM-assisted summarization. |
 
 ### Context modes
@@ -1223,6 +1223,48 @@ OTLP over HTTP (Grafana, Honeycomb, Datadog, Jaeger, …).
   Read at startup; restart after changing it. Logs are not exported.
 - **Trust.** Denied in `<project>/.wrongstack/config.json`: a repository must
   not be able to choose where a record of your session goes.
+
+---
+
+## `update` — standalone self-update
+
+The standalone executable (the `wstack-*` binaries from the GitHub releases)
+keeps itself current. The npm install is updated by its package manager and
+only shows the "Update available" notice.
+
+```jsonc
+{
+  "update": {
+    "autoDownload": true,
+    "channel": "stable"
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `autoDownload` | `boolean` | `true` | Download a newer release in the background and swap it in when the session exits. `false` switches it off; so does `WRONGSTACK_NO_AUTO_UPDATE=1`. |
+| `channel` | `"stable"` | `"stable"` | Release stream to follow. Only stable releases are published. |
+
+- **When it downloads.** An interactive session (the TUI, the REPL or `--webui`) whose
+  startup check found a newer release downloads that release's build for its
+  own platform into `~/.wrongstack/updates/`. One-shot runs (`-p`) never
+  download. One session downloads at a time.
+- **What it checks.** The build must be listed in the release's
+  `SHA256SUMS`, match the digest GitHub recorded when it was uploaded, and have
+  a build attestation from this repository's release workflow for the push of
+  that version's tag (`release.yml` calling `binaries.yml`, on a GitHub-hosted
+  runner). A build from a branch or a manual workflow run is refused. The
+  attestation is read from GitHub's API; its Sigstore signature is not verified
+  locally. `wstack update` makes the same checks.
+- **When it applies.** Nothing is replaced under a running session. When a
+  session exits, the downloaded build replaces the executable, so the next
+  start runs it. The status bar's version chip says `(vX ready, applies on
+  restart)` meanwhile. A session that crashed leaves the build for the next
+  one, and `wstack update` installs it without downloading it again. The next
+  start prints `✓ Updated wrongstack vA → vB`.
+- **Trust.** Denied in `<project>/.wrongstack/config.json`: a repository must
+  not decide what runs as your executable.
 
 ---
 

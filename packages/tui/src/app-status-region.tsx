@@ -1,6 +1,6 @@
 import { getProcessRegistry } from '@wrongstack/tools';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { effectiveAgentSwarmPanelMode, effectivePanelPositions } from './app-ui-state.js';
 import type { AppViewProps } from './app-view-contract.js';
 import { AgentsMonitor } from './components/agents-monitor.js';
@@ -67,6 +67,7 @@ export function AppStatusRegion({
     appVersion,
     latestVersion,
     updateAvailable,
+    subscribeUpdateReady,
     director,
     events,
     fleetRoster,
@@ -153,6 +154,8 @@ export function AppStatusRegion({
   const panelPositions: PanelPositionMap = effectivePanelPositions(state, liveSettings);
   const routedToBottom = (id: PanelId): boolean => panelPositions[id] === 'bottom';
   const effectiveHiddenItems = useMemo(() => mergeComposerOwnedChips(hiddenItems), [hiddenItems]);
+  const [updateReadyVersion, setUpdateReadyVersion] = useState<string | undefined>();
+  useEffect(() => subscribeUpdateReady?.(setUpdateReadyVersion), [subscribeUpdateReady]);
 
   return (
     <>
@@ -163,6 +166,7 @@ export function AppStatusRegion({
           version={appVersion}
           latestVersion={latestVersion}
           updateAvailable={updateAvailable}
+          updateReadyVersion={updateReadyVersion}
           state={state.status}
           thinkingWord={displayThinkingWord}
           thinkingAnimationStyle={

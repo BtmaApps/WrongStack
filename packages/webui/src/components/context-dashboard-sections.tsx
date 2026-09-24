@@ -586,6 +586,8 @@ export function CompactionSection({ pct, maxTokens }: { pct: number; maxTokens: 
   const triggerAt = Math.round(maxTokens * 0.85);
   const needsCompact = pct > 65;
   const compactPct = maxTokens > 0 ? pct / 100 : 0;
+  // 0 = the window is unknown; show that instead of numbers derived from it.
+  const fmtCap = (n: number): string => (maxTokens > 0 ? fmtTok(n) : '—');
 
   return (
     <SectionCard
@@ -606,7 +608,7 @@ export function CompactionSection({ pct, maxTokens }: { pct: number; maxTokens: 
         <div className="space-y-0.5">
           <div className="flex justify-between text-[9px] text-muted-foreground">
             <span>{t('activity:ctxDash.current')}</span>
-            <span>Trigger ({fmtTok(triggerAt)})</span>
+            <span>Trigger ({fmtCap(triggerAt)})</span>
           </div>
           <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/50 ring-1 ring-inset ring-border/20">
             <span
@@ -623,16 +625,19 @@ export function CompactionSection({ pct, maxTokens }: { pct: number; maxTokens: 
             />
           </div>
           <div className="flex justify-between text-[9px] text-foreground/70">
-            <span>{fmtTok(Math.round(maxTokens * compactPct))}</span>
-            <span className="text-destructive/70">{fmtTok(triggerAt)}</span>
+            <span>{fmtCap(Math.round(maxTokens * compactPct))}</span>
+            <span className="text-destructive/70">{fmtCap(triggerAt)}</span>
           </div>
         </div>
 
-        <MetricRow label={t('activity:ctxDash.nextTrigger')} value={`${fmtTok(triggerAt)} (85%)`} />
+        <MetricRow
+          label={t('activity:ctxDash.nextTrigger')}
+          value={maxTokens > 0 ? `${fmtTok(triggerAt)} (85%)` : '—'}
+        />
         <div className="flex items-center justify-between text-xs py-0.5">
           <span className="text-muted-foreground">{t('activity:ctxDash.estRecovery')}</span>
           <span className="tabular-nums font-mono font-semibold px-1.5 py-0.5 rounded text-success bg-success/10">
-            ~{fmtTok(recoveryEst)}
+            {maxTokens > 0 ? `~${fmtTok(recoveryEst)}` : '—'}
           </span>
         </div>
         <MetricRow
@@ -642,7 +647,7 @@ export function CompactionSection({ pct, maxTokens }: { pct: number; maxTokens: 
         />
         {needsCompact && (
           <div className="bg-warning/5 border border-warning/20 rounded p-2 text-[10px] text-warning/90 mt-1">
-            Context at {pct.toFixed(1)}% — compacting recovers ~{fmtTok(recoveryEst)} tokens.
+            Context at {pct.toFixed(1)}% — compacting recovers ~{fmtCap(recoveryEst)} tokens.
           </div>
         )}
       </div>
@@ -710,15 +715,21 @@ export function MetricsSection({
   contextMode: string;
 }) {
   const { t } = useAppTranslation();
-  const free = maxTokens - tokens;
+  const free = maxTokens > 0 ? maxTokens - tokens : 0;
   const freePct = maxTokens > 0 ? ((free / maxTokens) * 100).toFixed(1) : '0.0';
 
   return (
     <SectionCard title={t('activity:ctxDash.tokenMetrics')} icon={BarChart3}>
       <div className="space-y-1 text-xs">
         <MetricRow label={t('activity:ctxDash.used')} value={fmtTok(tokens)} />
-        <MetricRow label={t('activity:ctxDash.free')} value={`${fmtTok(free)} (${freePct}%)`} />
-        <MetricRow label={t('activity:ctxDash.capacity')} value={fmtTok(maxTokens)} />
+        <MetricRow
+          label={t('activity:ctxDash.free')}
+          value={maxTokens > 0 ? `${fmtTok(free)} (${freePct}%)` : '—'}
+        />
+        <MetricRow
+          label={t('activity:ctxDash.capacity')}
+          value={maxTokens > 0 ? fmtTok(maxTokens) : '—'}
+        />
         <div className="flex items-center gap-2 pt-1">
           <span className="text-muted-foreground text-xs">{t('activity:ctxDash.utilization')}</span>
           <div className="flex-1 max-w-[200px]">

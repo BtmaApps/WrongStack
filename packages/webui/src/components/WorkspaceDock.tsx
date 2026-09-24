@@ -12,6 +12,7 @@
 import {
   Bot,
   GitBranch,
+  Globe,
   ListTodo,
   PanelRightOpen,
   Rocket,
@@ -21,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useLiveBrowserSessions } from '@/hooks/use-live-browser';
 import { useGitInfo } from '@/hooks/useGitInfo';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
@@ -36,6 +38,7 @@ import {
   useWorktreeStore,
 } from '@/stores';
 import type { DockSection } from '@/stores/ui-store';
+import { BrowserLivePane } from './BrowserLivePane';
 import { CollabPanel } from './CollabPanel';
 import { FleetPanel } from './FleetPanel';
 import { GoalPanel } from './GoalPanel';
@@ -79,6 +82,10 @@ const CHIP_TONES: Record<DockSection, { active: string; idle: string }> = {
     active: 'bg-accent border-primary/25 text-accent-foreground shadow-sm',
     idle: 'text-muted-foreground hover:bg-muted/60',
   },
+  browser: {
+    active: 'bg-info/12 border-info/35 text-info shadow-sm',
+    idle: 'text-info/80 hover:bg-info/10',
+  },
 };
 
 /** Human labels for the chip customization menu. */
@@ -89,8 +96,17 @@ const CHIP_LABELS: Record<DockSection, string> = {
   work: 'Work',
   worktrees: 'Worktrees',
   collab: 'Collab',
+  browser: 'Browser',
 };
-const CHIP_ORDER: DockSection[] = ['goal', 'goal-state', 'fleet', 'work', 'worktrees', 'collab'];
+const CHIP_ORDER: DockSection[] = [
+  'goal',
+  'goal-state',
+  'fleet',
+  'work',
+  'worktrees',
+  'collab',
+  'browser',
+];
 
 function DockChip({
   section,
@@ -157,6 +173,7 @@ export function WorkspaceDock() {
   const fleetAgents = useFleetStore((s) => s.agents);
 
   const gitInfo = useGitInfo();
+  const browserSessions = useLiveBrowserSessions();
 
   const sessionFleetAgents = useMemo(
     () =>
@@ -185,6 +202,7 @@ export function WorkspaceDock() {
     work: true,
     worktrees: worktrees.length > 0,
     collab: true,
+    browser: browserSessions.length > 0,
   };
   const visible: Record<DockSection, boolean> = {
     goal: (hasData.goal || dockSection === 'goal') && !hidden.has('goal'),
@@ -194,6 +212,7 @@ export function WorkspaceDock() {
     work: (hasData.work || dockSection === 'work') && !hidden.has('work'),
     worktrees: (hasData.worktrees || dockSection === 'worktrees') && !hidden.has('worktrees'),
     collab: (hasData.collab || dockSection === 'collab') && !hidden.has('collab'),
+    browser: (hasData.browser || dockSection === 'browser') && !hidden.has('browser'),
   };
   const open = dockSection && visible[dockSection] ? dockSection : null;
 
@@ -245,6 +264,17 @@ export function WorkspaceDock() {
           pulse={todosActive}
           onClick={() => toggleDockSection('work')}
         />
+        {visible.browser && (
+          <DockChip
+            section="browser"
+            icon={<Globe className="h-3 w-3" />}
+            label={t('activity:dock.browser')}
+            value={browserSessions.length > 1 ? String(browserSessions.length) : undefined}
+            active={open === 'browser'}
+            pulse={browserSessions.length > 0}
+            onClick={() => toggleDockSection('browser')}
+          />
+        )}
         {visible.worktrees && (
           <DockChip
             section="worktrees"
@@ -365,6 +395,7 @@ const DOCK_INSPECTOR_META: Record<
     detailKey: 'activity:dock.worktreesDetail',
   },
   collab: { titleKey: 'activity:dock.collab', detailKey: 'activity:dock.collabDetail' },
+  browser: { titleKey: 'activity:dock.browser', detailKey: 'activity:dock.browserDetail' },
 };
 
 export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): React.ReactElement {
@@ -447,6 +478,7 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
             />
           ))}
         {section === 'fleet' && <FleetPanel />}
+        {section === 'browser' && <BrowserLivePane />}
         {section === 'worktrees' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">

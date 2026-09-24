@@ -686,7 +686,9 @@
     "inspector": "Workspace inspector",
     "inspectorNamed": "{{name}} workspace inspector",
     "workspace": "Workspace",
-    "workspaceDetails": "Workspace details"
+    "workspaceDetails": "Workspace details",
+    "browser": "Browser",
+    "browserDetail": "The agent's browser, live (read-only)"
   },
   "agentsMonitor": {
     "leaderBadge": "LEADER",
@@ -1308,7 +1310,13 @@
     "confirmKillBackground": "Terminate detached background process {{pid}}?",
     "confirmKillAll": "Terminate all {{count}} running processes?",
     "killAllTitle": "Terminate All Processes",
-    "killTitle": "Kill PID {{pid}}"
+    "killTitle": "Kill PID {{pid}}",
+    "stripLabel": "Background",
+    "stripOutputTitle": "Output of PID {{pid}}",
+    "stripNoOutput": "No output yet",
+    "stripNotCaptured": "This process's output is not captured",
+    "stripGone": "The process has exited",
+    "stripStop": "Stop"
   },
   "diff": {
     "tooLarge": "Diff omitted (file too large to render inline)."
@@ -3849,6 +3857,8 @@
       "select": "Preset",
       "selectPlaceholder": "Select a preset",
       "active": "active",
+      "activeProfile": "profile default",
+      "activeProject": "this project",
       "name": "Name",
       "template": "Prompt template",
       "sourceChanged": "The bundled {{variant}} source changed since this preset was copied. Compare both source versions below and adapt your text before marking it reviewed.",
@@ -3950,5 +3960,15 @@
     "outdated": "Outdated: the line changed after this comment was written",
     "outdatedHeader": "Comments on lines that changed",
     "removedLine": "removed line"
+  },
+  "browserLive": {
+    "none": "The agent has no browser open.",
+    "waiting": "Waiting for the first frame…",
+    "closed": "The browser was closed.",
+    "readOnly": "view only",
+    "console": "Console",
+    "network": "Network",
+    "noConsole": "No console messages yet.",
+    "noNetwork": "No requests yet."
   }
 }

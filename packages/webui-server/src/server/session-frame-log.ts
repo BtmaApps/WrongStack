@@ -35,7 +35,6 @@ export interface SessionFrameLog {
 }
 
 interface SessionLog {
-  next: number;
   frames: { seq: number; data: string; bytes: number }[];
   bytes: number;
 }
@@ -51,6 +50,11 @@ function createSessionFrameLog(): SessionFrameLog {
   // Map iteration order is insertion order: re-inserting on every write keeps
   // the least recently written session first.
   const logs = new Map<string, SessionLog>();
+  // The last number issued per session, kept when the session's frames are
+  // dropped. Restarting a dropped session at 1 made every page that had
+  // applied more of it discard its new frames as already seen, until the
+  // count caught up. One number per session this process has broadcast for.
+  const issued = new Map<string, number>();
 
   return {
     epoch: randomBytes(8).toString('hex'),
@@ -58,14 +62,15 @@ function createSessionFrameLog(): SessionFrameLog {
     sequence(sessionId, msg) {
       let log = logs.get(sessionId);
       if (log) logs.delete(sessionId);
-      else log = { next: 1, frames: [], bytes: 0 };
+      else log = { frames: [], bytes: 0 };
       logs.set(sessionId, log);
       if (logs.size > MAX_SESSIONS) {
         const oldest = logs.keys().next().value;
         if (oldest !== undefined) logs.delete(oldest);
       }
 
-      const seq = log.next++;
+      const seq = (issued.get(sessionId) ?? 0) + 1;
+      issued.set(sessionId, seq);
       const payload = (msg as { payload?: { sessionId?: unknown } }).payload;
       const named = payload && typeof payload === 'object' ? payload.sessionId : undefined;
       const data = JSON.stringify(
@@ -83,11 +88,11 @@ function createSessionFrameLog(): SessionFrameLog {
 
     since(sessionId, afterSeq) {
       if (!Number.isInteger(afterSeq) || afterSeq < 0) return null;
-      const log = logs.get(sessionId);
-      if (!log) return afterSeq === 0 ? [] : null;
-      const last = log.next - 1;
+      const last = issued.get(sessionId) ?? 0;
       if (afterSeq > last) return null;
       if (afterSeq === last) return [];
+      const log = logs.get(sessionId);
+      if (!log) return null;
       const oldest = log.frames[0]?.seq;
       if (oldest === undefined || oldest > afterSeq + 1) return null;
       return log.frames.filter((f) => f.seq > afterSeq).map((f) => f.data);

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import {
   defineMemoryCapability,
   type MemoryCapability,
@@ -11,6 +12,8 @@ import { ProjectSageMemoryPort, type ProjectSageMemoryPortOptions } from './remo
 import type { SageServiceLike, SageSurface } from './service-contract.js';
 import { SqliteSageStore } from './sqlite-store.js';
 import type { SageStoreOptions } from './types.js';
+
+const MAX_LEGACY_IMPORT_BYTES = 5 * 1024 * 1024;
 
 export const SAGE_SERVICE_CAPABILITY = defineMemoryCapability<SageServiceLike>(
   'wrongstack.memory.sage-service.v1',
@@ -64,6 +67,13 @@ export function getSageSurface(port: MemoryPort): SageSurface | undefined {
 
 /** Production SQLite backend exposed through the host-facing MemoryPort. */
 export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
+  private readonly importProjectRoot: string;
+
+  constructor(options: SageStoreOptions) {
+    super(options);
+    this.importProjectRoot = path.resolve(options.projectRoot);
+  }
+
   private readonly retrievalCapability: SageRetrievalCapability = {
     retrieveForPath: (options) =>
       super.retrieveForPath([options.path], {
@@ -176,8 +186,23 @@ export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
   private importLegacyFiles(files: string[]) {
     return this.runCompositeOperation(async () => {
       const result = { imported: 0, skipped: 0, files: 0 };
+      let totalBytes = 0;
       for (const file of files) {
-        const imported = await super.importLegacy(await fs.readFile(file, 'utf8'));
+        const resolved = await fs.realpath(file);
+        const relative = path.relative(this.importProjectRoot, resolved);
+        if (
+          relative === '..' ||
+          relative.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relative)
+        ) {
+          throw new Error(`Legacy memory import file must stay inside the project root: ${file}`);
+        }
+        const stat = await fs.stat(resolved);
+        totalBytes += stat.size;
+        if (totalBytes > MAX_LEGACY_IMPORT_BYTES) {
+          throw new Error(`Legacy memory import exceeds ${MAX_LEGACY_IMPORT_BYTES} bytes`);
+        }
+        const imported = await super.importLegacy(await fs.readFile(resolved, 'utf8'));
         result.imported += imported.imported;
         result.skipped += imported.skipped;
         result.files++;

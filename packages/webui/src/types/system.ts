@@ -1,6 +1,11 @@
 import type { ModelProvenance } from '@wrongstack/core/types';
 import type { SessionScopedPayload } from './protocol-core.js';
 
+/** Moved to webui-protocol (conversation-core.ts), the single source the SDK shares. */
+export type {
+  WSSessionsList,
+} from '@wrongstack/webui-protocol';
+
 export interface WSDiagGet {
   type: 'diag.get';
   payload: SessionScopedPayload & {
@@ -66,31 +71,6 @@ export interface WSSideEffects {
       outcome?: string | undefined;
       risk: string;
     }>;
-  };
-}
-
-export interface WSSessionsList {
-  type: 'sessions.list';
-  payload: {
-    sessions: Array<{
-      id: string;
-      title: string;
-      name?: string | undefined;
-      startedAt: string;
-      endedAt?: string | undefined;
-      model: string;
-      provider: string;
-      tokenTotal: number;
-      iterationCount?: number | undefined;
-      toolCallCount?: number | undefined;
-      toolErrorCount?: number | undefined;
-      fileChangeCount?: number | undefined;
-      toolBreakdown?: Record<string, number> | undefined;
-      compactionCount?: number | undefined;
-      outcome?: 'completed' | 'error' | 'timeout' | 'aborted' | undefined;
-      isCurrent: boolean;
-    }>;
-    error?: string | undefined;
   };
 }
 

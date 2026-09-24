@@ -1,6 +1,7 @@
 import {
   createSurfaceConnectionState,
   decodeProtocolMessage,
+  FrameResume,
   markConnectionActivity,
   markConnectionConnecting,
   markConnectionOpen,
@@ -10,7 +11,6 @@ import {
 } from '@wrongstack/webui-protocol';
 import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { WSClientMessage, WSServerMessage, WSUserMessageImage } from '../types';
-import { FrameResume } from './session-frame-gate';
 import { streamCoalescer } from './stream-coalescer';
 import { installWsClientActionMethods, type WsClientActionMethods } from './ws-client-actions';
 import { ensureAuthCookie } from './ws-client-auth';

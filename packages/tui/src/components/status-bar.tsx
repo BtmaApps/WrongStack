@@ -95,6 +95,7 @@ export const StatusBar = memo(function StatusBar({
   version,
   latestVersion,
   updateAvailable,
+  updateReadyVersion,
   state,
   thinkingWord,
   thinkingAnimationStyle,
@@ -376,7 +377,12 @@ export const StatusBar = memo(function StatusBar({
         <Text color={isNoColor ? undefined : theme.textSecondary} dimColor={!isNoColor}>
           v{version}
         </Text>
-        {showUpdateNotice ? (
+        {updateReadyVersion ? (
+          <Text color={isNoColor ? undefined : theme.brandPrimary}>
+            {' '}
+            · (v{updateReadyVersion} ready, applies on restart)
+          </Text>
+        ) : showUpdateNotice ? (
           <Text color={isNoColor ? undefined : theme.brandPrimary}>
             {' '}
             · (update v{latestVersion})

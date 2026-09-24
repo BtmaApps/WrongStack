@@ -67,8 +67,21 @@ describe('session frame log', () => {
       // Writing keeps a session fresh.
       if (i === 7) log.sequence('lru-kept', frame('lru-kept', 2));
     }
-    expect(log.since('lru-old', 1)).toBeNull();
+    // Its frames are gone; a page that had applied them all missed nothing.
+    expect(log.since('lru-old', 0)).toBeNull();
+    expect(log.since('lru-old', 1)).toEqual([]);
     expect(seqs(log.since('lru-kept', 0))).toEqual([1, 2]);
+  });
+
+  it('keeps numbering a session whose frames were dropped', () => {
+    log.sequence('renum', frame('renum', 1));
+    log.sequence('renum', frame('renum', 2));
+    for (let i = 0; i < 16; i++) log.sequence(`renum-fill-${i}`, frame(`renum-fill-${i}`, 1));
+    expect(log.since('renum', 0)).toBeNull();
+    // Restarting at 1 would read as "already applied" on every page at 2.
+    const next = JSON.parse(log.sequence('renum', frame('renum', 3)));
+    expect(next.seq).toBe(3);
+    expect(seqs(log.since('renum', 2))).toEqual([3]);
   });
 
   it('has one epoch for the process', () => {

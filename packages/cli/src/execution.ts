@@ -65,6 +65,7 @@ import { installStorageObservability } from './execution-storage-observability.j
 import { createTuiNextStepCallbacks } from './execution-tui-next-step-callbacks.js';
 import { resolveActiveApiKey } from './provider-config-utils.js';
 import { runRepl } from './repl.js';
+import type { StandaloneAutoUpdate } from './standalone-auto-update.js';
 import { createTuiResourceMenuGetter } from './tui-resource-menus.js';
 import type { UpdateInfo } from './update-check.js';
 import { CLI_VERSION } from './version.js';
@@ -293,6 +294,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
 
   let code = 0;
   let backgroundKanbanSupervisor: { dispose(): void } | undefined;
+  let autoUpdate: StandaloneAutoUpdate | undefined;
   let fleetStatusLine: FleetStatusLine | null = null;
   try {
     const visionAdapters = () => createToolVisionAdapters(agent.tools);
@@ -334,6 +336,14 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           sddSubagentFactory,
         }).onKanbanDispatch,
         log: (message) => console.log(message),
+      });
+    }
+    // Interactive sessions only: a one-shot run must not start a 100+ MB
+    // download, and a WebUI session child leaves it to its parent.
+    if (executionMode !== 'single-shot' && !webuiSessionChild) {
+      autoUpdate = (await import('./standalone-auto-update.js')).startStandaloneAutoUpdate({
+        getConfig: () => configStore.get(),
+        updateInfo: bootUpdateInfo,
       });
     }
     const enteringTui = executionMode === 'tui';
@@ -508,6 +518,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           appVersion: CLI_VERSION,
           latestVersion: bootUpdateInfo?.latest,
           updateAvailable: bootUpdateInfo?.outdated,
+          subscribeUpdateReady: autoUpdate?.subscribe,
           provider: config.provider,
           family: banneredFamily,
           keyTail: banneredKeyTail,
@@ -934,6 +945,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
     }
   } finally {
     backgroundKanbanSupervisor?.dispose();
+    autoUpdate?.dispose();
     // Release session-scoped wildcard listeners (chimera review/cascade)
     // BEFORE the cleanup drains below, so no stale listener survives into
     // teardown — the EventBus wildcard-disposer fix.

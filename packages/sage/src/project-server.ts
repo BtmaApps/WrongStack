@@ -225,7 +225,10 @@ function writeEncoded(state: ClientState, encoded: string): void {
   // write-after-end (its bytes are dropped silently at best). The caller
   // already holds the stopping rejection for that id.
   if (state.socket.destroyed || state.socket.writableEnded) return;
-  if (state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES) {
+  if (
+    Buffer.byteLength(encoded, 'utf8') > MAX_CLIENT_WRITE_BUFFER_BYTES ||
+    state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES
+  ) {
     state.socket.destroy(new Error('SAGE client fell too far behind on reads'));
     return;
   }
@@ -241,6 +244,7 @@ function broadcast(message: SageProjectServerMessage): void {
   if (clients.size === 0) return;
   const encoded = encodeSageProjectServerMessage(message);
   for (const state of clients) {
+    if (!state.authenticated) continue;
     try {
       writeEncoded(state, encoded);
     } catch {
@@ -592,6 +596,9 @@ function checkAuthToken(state: ClientState, message: SageProjectServerClientMess
     });
     return false;
   }
+  if (message.type === 'request' || message.type === 'shutdown') {
+    state.authenticated = true;
+  }
   return true;
 }
 
@@ -832,6 +839,7 @@ const server = net.createServer((socket) => {
     active: new Map(),
     connectedAt: Date.now(),
     spoken: false,
+    authenticated: false,
     unsettled: new Set<number>(),
     clientId,
   };

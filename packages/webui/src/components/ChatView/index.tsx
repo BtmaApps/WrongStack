@@ -30,6 +30,7 @@ import { SearchOverlay } from '../SearchOverlay';
 import { ToolStatsModal } from '../ToolStatsModal';
 import { WelcomeScreen } from '../WelcomeScreen';
 import { shouldAutoClearSubagentFocus } from './AgentTabs';
+import { BackgroundShellStrip } from './BackgroundShellStrip';
 import { ChatDisplayToggles } from './ChatDisplayToggles';
 import { ChatHeader } from './ChatHeader';
 import { ChatRowView } from './ChatRowView';
@@ -425,6 +426,7 @@ export function ChatView() {
             />
             <div className="ws-chat-input-wrap p-0">
               <div className="max-w-6xl mx-auto">
+                <BackgroundShellStrip />
                 <ChatInput onOpenBreakdown={() => state.setBreakdownOpen(true)} />
               </div>
             </div>

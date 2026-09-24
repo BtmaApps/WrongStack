@@ -150,6 +150,12 @@ export interface RunTuiOptions {
    *  the version chip when this is true, so users notice without having
    *  to read the stderr notice. */
   updateAvailable?: boolean | undefined;
+  /**
+   * The standalone executable's background update: called with the version
+   * once it is downloaded, verified and waiting to be swapped in when this
+   * session exits. The status bar's version chip then says so.
+   */
+  subscribeUpdateReady?: ((listener: (version: string) => void) => () => void) | undefined;
   /** Snapshot of keyed providers + their model lists for the `/model` picker. Async — the catalog fetch may need to hit disk/network. */
   getPickableProviders?:
     | (() => Promise<import('./components/model-picker.js').ProviderOption[]>)
@@ -164,10 +170,9 @@ export interface RunTuiOptions {
     | undefined;
   /**
    * Model-specific maxContext (tokens), resolved by the CLI via the
-   * ModelsRegistry. When omitted, the TUI falls back to the provider
-   * family's baseline (e.g. anthropic = 200_000), which can be wrong
-   * for variants like the 1M-context Opus build. The status bar's
-   * context chip uses this for its progress denominator.
+   * ModelsRegistry. When omitted, the TUI falls back to the provider's
+   * reported window, which is 0 (unknown) until the catalog resolves one.
+   * The status bar's context chip uses this for its progress denominator.
    */
   effectiveMaxContext?: number | undefined;
   /** Absolute project root for goal.json loading. */

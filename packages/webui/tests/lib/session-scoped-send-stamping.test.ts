@@ -41,11 +41,21 @@ const EXEMPT = 'session-stamping: deliberately-unstamped';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, '..', '..', 'src');
 
+/**
+ * Where the client message types are declared. The conversation core lives in
+ * webui-protocol, which the SDK shares; the WebUI re-exports it.
+ */
+const DECLARATIONS = [
+  path.join(SRC, 'types/client-message.ts'),
+  path.join(SRC, 'types/protocol-core.ts'),
+  path.resolve(SRC, '../../webui-protocol/src/conversation-core.ts'),
+];
+
 /** Message types declared with the shared `SessionScopedPayload` marker. */
 function sessionScopedTypes(): Set<string> {
   const scoped = new Set<string>();
-  for (const rel of ['types/client-message.ts', 'types/protocol-core.ts']) {
-    const lines = fs.readFileSync(path.join(SRC, rel), 'utf8').split('\n');
+  for (const file of DECLARATIONS) {
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
     let current: string | null = null;
     let block: string[] = [];
     const flush = (): void => {

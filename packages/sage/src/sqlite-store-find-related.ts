@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
+import { boundedLimit, DEFAULT_LIST_LIMIT } from './shared/pagination.js';
 import { MEMORY_NODE_PREFIX, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import { collectRelatedSqliteCandidateIds } from './sqlite-store-related-candidates.js';
 import { buildSessionClause, sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
@@ -65,13 +66,14 @@ export async function findRelatedSqliteSage(
   const seeds = sqliteRowsToMemories(seedRows).filter((memory) => seedIds.has(memory.id));
   if (seeds.length === 0) return [];
 
-  const bfsBudget = Math.max(100, (opts.limit ?? 20) * 20);
+  const limit = boundedLimit(opts.limit, DEFAULT_LIST_LIMIT, Number.MAX_SAFE_INTEGER);
+  const bfsBudget = Math.max(100, limit * 20);
   // The result-size cap now tracks the BFS fetch budget (limit * 20,
   // floored at 100) so the user-requested `limit` is honored up to
   // what the search actually explored, instead of being silently
   // truncated to 100. The previous `Math.min(opts.limit ?? 20, 100)`
   // swallowed any caller request above 100 with no observable signal.
-  const resultCap = Math.max(1, Math.min(opts.limit ?? 20, bfsBudget));
+  const resultCap = Math.max(1, Math.min(limit, bfsBudget));
   // The graph walk runs unconditionally, before candidates are collected.
   //
   // It used to be gated on `candidateIds.length < bfsBudget`, which let the
