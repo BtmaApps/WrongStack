@@ -219,8 +219,8 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 659,
-      "typeOnly": 61,
+      "files": 660,
+      "typeOnly": 62,
       "runtimeOrMixed": 628
     },
     "@wrongstack/core/utils/child-env": {
@@ -21329,6 +21329,12 @@
       "file": "packages/cli/tests/subcommands/permissions.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/subcommands/remote.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

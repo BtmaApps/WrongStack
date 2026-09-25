@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T15:06:03.639Z",
+  "generatedAt": "2026-09-25T16:25:30.376Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4210,
-    "testFiles": 3739,
+    "testFiles": 3740,
     "sourceLines": 992455,
     "workspaceEdges": 130,
     "moduleEdges": 13740,
@@ -150,7 +150,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 540,
-      "testFiles": 543,
+      "testFiles": 544,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -189,7 +189,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 543
+          "testFiles": 544
         }
       ]
     },
@@ -4609,6 +4609,12 @@
       },
       {
         "file": "packages/cli/tests/subcommands/projects.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/subcommands/remote.test.ts",
         "projects": [
           "root-node"
         ]
