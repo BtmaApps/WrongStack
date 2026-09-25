@@ -156,7 +156,10 @@ describe('Alt+B and the strip keys', () => {
 
 describe('BackgroundStrip', () => {
   let dir: string;
-  const pid = 987_654;
+  // A live pid: on POSIX the registry prunes a handle-less entry older than a
+  // minute whose pid answers ESRCH, so a made-up pid vanished there. The
+  // registry never signals its own process.
+  const pid = process.pid;
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bg-strip-'));
   });

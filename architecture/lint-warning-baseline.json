@@ -1,19 +1,4 @@
 {
   "schemaVersion": 1,
-  "entries": {
-    "lint/a11y/noLabelWithoutControl|production|warning": 1,
-    "lint/a11y/noStaticElementInteractions|production|warning": 1,
-    "lint/a11y/useFocusableInteractive|production|warning": 1,
-    "lint/a11y/useKeyWithClickEvents|production|warning": 4,
-    "lint/a11y/useSemanticElements|production|warning": 5,
-    "lint/complexity/useOptionalChain|test|warning": 1,
-    "lint/complexity/useRegexLiterals|test|warning": 1,
-    "lint/correctness/noUnusedImports|production|warning": 2,
-    "lint/correctness/noUnusedImports|test|warning": 4,
-    "lint/correctness/noUnusedVariables|production|warning": 7,
-    "lint/suspicious/noAssignInExpressions|test|warning": 2,
-    "lint/suspicious/noExplicitAny|production|warning": 3,
-    "lint/suspicious/noTemplateCurlyInString|production|warning": 2,
-    "lint/suspicious/noTemplateCurlyInString|test|warning": 8
-  }
+  "entries": {}
 }

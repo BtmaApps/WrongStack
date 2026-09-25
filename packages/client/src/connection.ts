@@ -94,7 +94,12 @@ export function openSocket(
         );
         return;
       }
-      void handshakeFailure(options.url, options.token).then(fail);
+      // The socket is gone, so the connect timer measures nothing now. Left
+      // running it races the probe and reports a refused token or a dead
+      // server as a connect timeout on a slow machine; the probe carries its
+      // own deadline instead.
+      clearTimeout(timer);
+      void handshakeFailure(options.url, options.token, options.timeoutMs).then(fail);
     });
     socket.addEventListener('message', (event) => {
       const frame = parseFrame(event.data);
@@ -119,10 +124,17 @@ export function openSocket(
  * server that is not there. `/ws-auth` answers 401 to exactly the token the
  * handshake would have refused, so ask it.
  */
-async function handshakeFailure(url: string, token: string | undefined): Promise<WrongStackError> {
+async function handshakeFailure(
+  url: string,
+  token: string | undefined,
+  timeoutMs: number,
+): Promise<WrongStackError> {
   const probe = new URL('/ws-auth', url.replace(/^ws(s?):/, 'http$1:'));
   try {
-    const response = await fetch(probe, token ? { headers: { 'X-WS-Token': token } } : {});
+    const response = await fetch(probe, {
+      ...(token ? { headers: { 'X-WS-Token': token } } : {}),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (response.status === 401) {
       return new WrongStackError({
         kind: 'auth',
