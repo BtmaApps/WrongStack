@@ -208,6 +208,7 @@ export function ToolStatsModal({ open, onClose }: ToolStatsModalProps) {
   const rate = successPct(totals.ok, totals.failed);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: backdrop click is a pointer shortcut; Escape closes via the keydown listener above.
     <div
       className={cn(
         'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm transition-opacity duration-200',
@@ -216,7 +217,7 @@ export function ToolStatsModal({ open, onClose }: ToolStatsModalProps) {
       onClick={onClose}
       data-testid="tool-stats-modal"
     >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- backdrop click closes; content clicks stop propagation */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: only stops propagation so content clicks don't hit the backdrop. */}
       <section
         aria-label={t('chat:toolStats.title', 'Tool call statistics')}
         className={cn(

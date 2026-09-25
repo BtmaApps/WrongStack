@@ -1,9 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  BrainDecisionCard,
-  parseBrainMarkdown,
-} from '../../src/components/ChatView/BrainDecisionCard';
+import { BrainDecisionCard } from '../../src/components/ChatView/BrainDecisionCard';
 import type { BrainDecisionData, ChatMessage } from '../../src/stores/types';
 
 function createBrainMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {

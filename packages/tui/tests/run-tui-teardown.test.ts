@@ -1,4 +1,4 @@
-import { type Mock, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, type Mock, vi } from 'vitest';
 import {
   createDurableTeardown,
   type DurableTeardownOptions,
@@ -22,17 +22,15 @@ function makeOpts(session: TeardownSession | undefined, closeBudgetMs = 25) {
   const exit = vi.fn();
   const cleanup = vi.fn();
   const killChildren = vi.fn();
-  let opts: DurableTeardownOptions | undefined;
-  const teardown = createDurableTeardown(
-    (opts = {
-      getSession: () => session,
-      killChildren,
-      cleanup,
-      closeBudgetMs,
-      exit,
-    }),
-  );
-  return { teardown, exit, cleanup, killChildren, opts: () => opts! };
+  const opts: DurableTeardownOptions = {
+    getSession: () => session,
+    killChildren,
+    cleanup,
+    closeBudgetMs,
+    exit,
+  };
+  const teardown = createDurableTeardown(opts);
+  return { teardown, exit, cleanup, killChildren, opts: () => opts };
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));

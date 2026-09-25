@@ -72,23 +72,20 @@ export function withReDoSGuard(
   options: ReDoSOptions = {},
 ): Promise<ReDoSResult> {
   const opts = { budgetMs, ...options };
-  const start = Date.now();
   const id = ++callSeq;
 
   // Take the idle warm worker, or spawn one. Clearing `warm` marks this
   // worker in-flight: sequential callers reuse the pool, an overlapping
   // caller falls back to spawning its own worker (spawn-per-call shape).
-  let worker: Worker;
-  if (warm !== null) {
-    worker = warm;
-  } else {
-    worker = spawnPoolWorker();
-  }
+  const cold = warm === null;
+  const worker: Worker = warm ?? spawnPoolWorker();
   warm = null;
   worker.ref(); // in-flight worker keeps the event loop alive until the reply
 
   return new Promise<ReDoSResult>((resolve) => {
     let settled = false;
+    let start = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (result: ReDoSResult) => {
       if (settled) return;
@@ -100,6 +97,8 @@ export function withReDoSGuard(
       // (MaxListenersExceededWarning at call #11).
       worker.off('message', onMessage);
       worker.off('error', onError);
+      worker.off('exit', onExit);
+      worker.off('online', armBudget);
       resolve(result);
     };
 
@@ -135,36 +134,59 @@ export function withReDoSGuard(
       settle({ timedOut: true, match: null });
     };
 
-    const timer = setTimeout(() => {
-      if (settled) return;
-      const elapsedMs = Date.now() - start;
-      // ACTUAL termination: worker.terminate() kills the regex
-      // process. This is the structural fix for the bug class at
-      // `runtime/index.ts:313`. The pooled worker is NOT parked after a
-      // timeout — a runaway pattern dies with its thread; the next call
-      // spawns a fresh worker.
-      worker.terminate().catch(() => {
-        // best-effort: terminate failure is fine, we're already
-        // committed to timing out.
-      });
-      try {
-        opts.onTimeout?.({
-          regex: re,
-          input,
-          budgetMs: opts.budgetMs,
-          elapsedMs,
-        });
-      } catch {
-        // best-effort: a throwing onTimeout hook must not propagate
-      }
+    // A worker that exits without replying (killed, or a startup failure
+    // that surfaces as an exit rather than an 'error') would otherwise
+    // leave this promise pending forever. Timeout-equivalent.
+    const onExit = () => {
       settle({ timedOut: true, match: null });
-    }, opts.budgetMs);
-    // Don't keep the process alive solely for this watchdog.
-    (timer as { unref?: () => void }).unref?.();
+    };
+
+    // The budget bounds the REGEX, not thread start-up. Arming it before a
+    // cold worker is online charged spawn latency to the pattern: under a
+    // saturated host (a parallel monorepo test run) spawn alone exceeded
+    // 250 ms, every benign match "timed out", and fail-closed callers
+    // (path-guard) blocked plain paths like `cp notes.txt .`. Spawn
+    // latency is independent of the input, so excluding it gives a hostile
+    // input no extra headroom.
+    function armBudget(): void {
+      if (settled) return;
+      start = Date.now();
+      timer = setTimeout(() => {
+        if (settled) return;
+        const elapsedMs = Date.now() - start;
+        // ACTUAL termination: worker.terminate() kills the regex
+        // process. This is the structural fix for the bug class at
+        // `runtime/index.ts:313`. The pooled worker is NOT parked after a
+        // timeout — a runaway pattern dies with its thread; the next call
+        // spawns a fresh worker.
+        worker.terminate().catch(() => {
+          // best-effort: terminate failure is fine, we're already
+          // committed to timing out.
+        });
+        try {
+          opts.onTimeout?.({
+            regex: re,
+            input,
+            budgetMs: opts.budgetMs,
+            elapsedMs,
+          });
+        } catch {
+          // best-effort: a throwing onTimeout hook must not propagate
+        }
+        settle({ timedOut: true, match: null });
+      }, opts.budgetMs);
+      // Don't keep the process alive solely for this watchdog.
+      (timer as { unref?: () => void }).unref?.();
+    }
 
     worker.once('message', onMessage);
     worker.once('error', onError);
+    worker.once('exit', onExit);
+    // Queued until the worker's message loop starts; a warm worker is
+    // already online, a cold one arms the budget when it comes up.
     worker.postMessage({ id, source: re.source, flags: re.flags, input });
+    if (cold) worker.once('online', armBudget);
+    else armBudget();
   });
 }
 
@@ -204,6 +226,11 @@ function spawnPoolWorker(): Worker {
   const worker = new Worker(POOLED_WORKER_SOURCE, {
     eval: true,
     name: 'redos-guard:pool',
+  });
+  // A parked worker that dies while idle must not be handed to the next
+  // call: it would never reply and every match would read as a timeout.
+  worker.once('exit', () => {
+    if (warm === worker) warm = null;
   });
   worker.unref();
   return worker;

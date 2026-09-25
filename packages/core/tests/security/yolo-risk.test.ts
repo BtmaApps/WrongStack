@@ -456,7 +456,6 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
   describe('home directory in every spelling the shell expands', () => {
     it.each([
       ['rm -rf $HOME'],
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell brace expansion under test, not a JS template placeholder.
       ['rm -rf ${HOME}'],
       ['rm -rf "$HOME"'],
       ['rm -rf ~'],
@@ -472,7 +471,6 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
     it.each([
       ['rm -rf ~/cache'],
       ['rm -rf $HOME/cache'],
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell brace expansion under test, not a JS template placeholder.
       ['rm -rf ${HOME}/data'],
       ['rm -rf %USERPROFILE%\\Downloads'],
       ['rm -rf $HOME/.ssh'],
@@ -532,7 +530,6 @@ describe('pathLooksInsideProject — boundary helper', () => {
     // rationale as the `~` rows above.
     ['$HOME', false],
     ['$HOME/cache', false],
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell brace expansion under test, not a JS template placeholder.
     ['${HOME}/data', false],
     ['%USERPROFILE%', false],
     ['%USERPROFILE%\\Downloads', false],

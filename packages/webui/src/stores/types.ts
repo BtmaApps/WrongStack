@@ -1,4 +1,4 @@
-import type { ContentBlock, Usage } from '@wrongstack/core/types';
+import type { Usage } from '@wrongstack/core/types';
 import type { PerfRunMetric, PerfRunMode } from '@/lib/perf-run-message';
 
 // ============================================

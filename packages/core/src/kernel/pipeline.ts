@@ -3,7 +3,7 @@
  * and position-aware insertion. Generic over input type T.
  */
 
-import { WrongStackError, ERROR_CODES } from '../types/errors.js';
+import { ERROR_CODES, WrongStackError } from '../types/errors.js';
 
 export type NextFn<T> = (value: T) => Promise<T>;
 export type MiddlewareHandler<T> = (value: T, next: NextFn<T>) => Promise<T>;
@@ -202,7 +202,7 @@ export class Pipeline<T> {
       index = i;
       const mw = chain[i];
       if (!mw) return value;
-      let downstreamErr: unknown = undefined;
+      let downstreamErr: unknown;
       let hasDownstreamErr = false;
       try {
         return await mw.handler(value, async (v) => {

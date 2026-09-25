@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
-  cloneCredentialPatterns,
   CREDENTIAL_PATTERNS,
+  cloneCredentialPatterns,
 } from '../src/runtime/credential-patterns.js';
 import { guardedMatcher, withReDoSGuard } from '../src/runtime/redos-guard.js';
 import { safeJsonStringify, UNSERIALIZABLE } from '../src/runtime/safe-json.js';
@@ -115,6 +115,23 @@ describe('withReDoSGuard', () => {
   it('reports no match without timing out', async () => {
     const result = await withReDoSGuard(/zzz/, 'abc', 5_000);
     expect(result).toEqual({ timedOut: false, match: null });
+  });
+
+  it('does not charge cold worker spin-up to the regex budget', async () => {
+    // A saturated host (parallel monorepo test run) delays thread start-up
+    // past the budget. Charging that to the regex made benign matches
+    // "time out", and fail-closed path-guard then blocked `cp notes.txt .`.
+    // Fresh module = empty warm slot = guaranteed cold spawn.
+    vi.resetModules();
+    const { withReDoSGuard: coldGuard } = await import('../src/runtime/redos-guard.js');
+    const pending = coldGuard(/b/, 'abc', 50);
+    const stallUntil = Date.now() + 300;
+    while (Date.now() < stallUntil) {
+      // host stalls well past the 50 ms budget while the worker spins up
+    }
+    const result = await pending;
+    expect(result.timedOut).toBe(false);
+    expect(result.match?.[0]).toBe('b');
   });
 
   it('terminates a catastrophically backtracking regex within the budget', async () => {

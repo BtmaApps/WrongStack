@@ -40,9 +40,13 @@ export function orderSessionTree<T extends { id: string; forkedFrom?: string | u
     placed.add(s.id);
     rows.push({ session: s, depth, lastSibling });
     const kids = children.get(s.id) ?? [];
-    kids.forEach((kid, i) => visit(kid, depth + 1, i === kids.length - 1));
+    kids.forEach((kid, i) => {
+      visit(kid, depth + 1, i === kids.length - 1);
+    });
   };
-  roots.forEach((r, i) => visit(r, 0, i === roots.length - 1));
+  roots.forEach((r, i) => {
+    visit(r, 0, i === roots.length - 1);
+  });
   // A parent cycle (a → b → a) has no root; list those flat rather than lose them.
   for (const s of sessions) visit(s, 0, true);
   return rows;

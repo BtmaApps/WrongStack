@@ -229,7 +229,7 @@ describe('build-allowlist freshness across workflows (VF-31)', () => {
       const trimmed = line.trimStart();
       if (trimmed.startsWith('#') || trimmed.startsWith('//')) return;
       const m = line.match(/pnpm rebuild\s+([^\n#]+)/);
-      if (!m || !m[1]) return;
+      if (!m?.[1]) return;
       lists.push({ where: `${relPath}:${i + 1}`, pkgs: new Set(m[1].trim().split(/\s+/)) });
     });
     return lists;

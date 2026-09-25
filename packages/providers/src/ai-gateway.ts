@@ -715,10 +715,8 @@ function convertFinishReason(reason: FinishReason | string | undefined): StopRea
     case 'content-filter':
     case 'error':
       return 'refusal';
-    case 'stop':
-    case 'other':
-    case 'unknown':
     default:
+      // 'stop', 'other', 'unknown' and anything new
       return 'end_turn';
   }
 }

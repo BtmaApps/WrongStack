@@ -16,7 +16,7 @@ export interface WriteTarget {
 // path can never bypass the guard by making the check hang.
 import { withReDoSGuard } from '../runtime/redos-guard.js';
 
-/** Default wall-clock budget per glob match (ms). Must clear worker spin-up (~20ms). */
+/** Default wall-clock budget per glob match (ms). Counts regex execution only, not worker spin-up. */
 export const GLOB_REDOS_BUDGET_MS = 250;
 
 export interface GuardedMatchOptions {

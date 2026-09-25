@@ -1,4 +1,3 @@
-import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
@@ -74,7 +73,6 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string }>
 };
 
 export function ChimeraReviewsView() {
-  const { t } = useAppTranslation();
   const {
     reports,
     selectedReportId,
@@ -697,10 +695,14 @@ export function ChimeraReviewsView() {
 
               {/* Add Note / Inote Form */}
               <form onSubmit={handleAddNote} className="pt-3 border-t border-border space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground block">
+                <label
+                  htmlFor="chimera-note-text"
+                  className="text-xs font-semibold text-muted-foreground block"
+                >
                   Add Journal Note / Inote:
                 </label>
                 <textarea
+                  id="chimera-note-text"
                   rows={3}
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}

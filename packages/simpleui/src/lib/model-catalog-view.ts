@@ -33,7 +33,7 @@ const NON_CHAT_PATTERNS: RegExp[] = [
   /voicechat|voice-chat|studiovoice/i,
   /riva-translate/i,
   // Image / video generation (chat models with vision input stay listed)
-  /gpt-image|dall-e|\bimagen\b|flux\.|^-?flux|happyhorse|wan2|\bwan-|qwen-?image|chatgpt-image|image-edit|[-\/](i2v|t2v|r2v)\b|\bi2v\b|\bt2v\b|\br2v\b/i,
+  /gpt-image|dall-e|\bimagen\b|flux\.|^-?flux|happyhorse|wan2|\bwan-|qwen-?image|chatgpt-image|image-edit|[-/](i2v|t2v|r2v)\b|\bi2v\b|\bt2v\b|\br2v\b/i,
   // Safety / classification / domain-specific non-chat stacks
   /guard\b|-guard|content-safety|safety-guard|gliner|pii\b/i,
   /speaker-detection|active-speaker|synthetic-video|deepfake|detector/i,

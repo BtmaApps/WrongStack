@@ -182,7 +182,6 @@ function sourceStyling(source: 'lexical' | 'vector' | 'both'): {
         accent: 'border-info/40 bg-info/10 text-info',
         label: 'both',
       };
-    case 'lexical':
     default:
       return {
         accent: 'border-border/60 bg-background text-muted-foreground',

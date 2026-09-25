@@ -353,6 +353,7 @@ export function NotificationMenu({
         </div>
 
         {/* Notification list */}
+        {/* biome-ignore lint/a11y/useSemanticElements: rows are role="menuitem" divs; a <ul> would require <li> children. */}
         <div
           role="list"
           className="max-h-[340px] overflow-y-auto divide-y divide-border/30"

@@ -91,9 +91,7 @@ function main() {
       continue;
     }
 
-    let m;
-    BAD_IMPORT.lastIndex = 0;
-    while ((m = BAD_IMPORT.exec(content)) !== null) {
+    for (const m of content.matchAll(BAD_IMPORT)) {
       const segment = m[1];
       const importPath = `../${segment}/`;
       if (ALLOWLIST_IMPORTS.has(importPath)) continue;

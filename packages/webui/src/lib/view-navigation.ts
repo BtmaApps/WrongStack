@@ -57,9 +57,9 @@ export type AppView = View;
  * panel — which is precisely what happened to `deadcode`.
  */
 type AssertNever<T extends never> = T;
-type UnroutableView = AssertNever<Exclude<View, PanelMainView | MainView | UnlistedView>>;
+type _UnroutableView = AssertNever<Exclude<View, PanelMainView | MainView | UnlistedView>>;
 /** Guards the other direction: a bucket may not name a view the store lost. */
-type UnknownNavigationView = AssertNever<Exclude<PanelMainView | MainView | UnlistedView, View>>;
+type _UnknownNavigationView = AssertNever<Exclude<PanelMainView | MainView | UnlistedView, View>>;
 
 export const PANEL_VIEW_BY_ACTIVITY: Record<Activity, PanelMainView> = {
   chat: 'chat',

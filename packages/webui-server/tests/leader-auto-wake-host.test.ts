@@ -162,7 +162,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('wakes an idle, displayed session through the user-message path with runtime origin', async () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     h.enqueue(delivery('a'));
     await h.flush();
 
@@ -188,7 +189,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('forwards delivery_pending with delegation ids, session-scoped', async () => {
-    const h = (active = setup({ config: { autoWake: false } }));
+    const h = setup({ config: { autoWake: false } });
+    active = h;
     h.enqueue(delivery('a'));
     await h.flush();
     expect(h.broadcasts.find((m) => m.type === 'delegation.delivery_pending')?.payload).toEqual({
@@ -201,7 +203,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('does not wake a running session, then wakes after the run ends', async () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     const turn = h.routes.userMessage({} as never, userMessage('hello'));
     await h.flush();
     expect(h.agent.run).toHaveBeenCalledTimes(1);
@@ -220,7 +223,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('never follows a user-aborted run with a wake', async () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     const turn = h.routes.userMessage({} as never, userMessage('hello'));
     await h.flush();
     h.enqueue(delivery('c'));
@@ -236,7 +240,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('holds results for an undisplayed session and wakes when a tab displays it', async () => {
-    const h = (active = setup({ displayed: false }));
+    const h = setup({ displayed: false });
+    active = h;
     h.enqueue(delivery('d'));
     await h.flush();
     expect(h.agent.run).not.toHaveBeenCalled();
@@ -252,7 +257,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('holds while a tool confirm or an input form is pending', async () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     h.pendingConfirms.set('c1', { resolve: () => undefined, sessionId: SESSION });
     h.enqueue(delivery('e'));
     await h.flush();
@@ -282,7 +288,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('counts a user submit waiting on the transition gate as pending user input', () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     const release = h.host.onUserMessage(SESSION);
     expect(h.host.port.hasPendingUserInput(SESSION)).toBe(true);
     release();
@@ -290,7 +297,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('a user submit resets the chain cap', async () => {
-    const h = (active = setup({ config: { maxChainedWakes: 1 } }));
+    const h = setup({ config: { maxChainedWakes: 1 } });
+    active = h;
     h.enqueue(delivery('f'));
     await h.flush();
     expect(h.agent.run).toHaveBeenCalledTimes(1);
@@ -314,7 +322,8 @@ describe('WebUI leader auto-wake host', () => {
   });
 
   it('dispose unbinds the port and stops forwarding', async () => {
-    const h = (active = setup());
+    const h = setup();
+    active = h;
     h.host.dispose();
     h.enqueue(delivery('h'));
     await h.flush();

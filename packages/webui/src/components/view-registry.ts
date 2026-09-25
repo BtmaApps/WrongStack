@@ -106,6 +106,7 @@ export interface ViewMeta {
    * components take stricter prop shapes (e.g. `KanbanView` requires
    * `onClose`); the registry entry is what guarantees runtime props match.
    */
+  // biome-ignore lint/suspicious/noExplicitAny: heterogeneous registry; see the note above.
   Component: ComponentType<any>;
   /** Tailwind class for the wrapping `<div>`. Pass `''` for no wrapper. */
   wrapperClassName: string;
@@ -342,12 +343,12 @@ export const VIEW_REGISTRY: Partial<Record<View, ViewMeta>> = VIEW_REGISTRY_STRI
  * 404ing in production — the same trick `view-navigation.ts` uses to
  * partition the navigation buckets (B-02). `chat` is excluded because it is
  * deliberately registry-less — ViewRouter mounts it for the session
- * lifetime; `StaleRegistryEntry` still rejects any registry key the store
+ * lifetime; `_StaleRegistryEntry` still rejects any registry key the store
  * has lost.
  */
 type AssertNever<T extends never> = T;
-type UnroutedView = AssertNever<Exclude<Exclude<View, 'chat'>, keyof typeof VIEW_REGISTRY_STRICT>>;
-type StaleRegistryEntry = AssertNever<Exclude<keyof typeof VIEW_REGISTRY_STRICT, View>>;
+type _UnroutedView = AssertNever<Exclude<Exclude<View, 'chat'>, keyof typeof VIEW_REGISTRY_STRICT>>;
+type _StaleRegistryEntry = AssertNever<Exclude<keyof typeof VIEW_REGISTRY_STRICT, View>>;
 
 /**
  * The runtime fallback for `onClose: 'PANEL_CLOSE_TO_CHAT'`. The registry

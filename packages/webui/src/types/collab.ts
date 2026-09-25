@@ -1,5 +1,3 @@
-import type { WSError } from './runtime.js';
-
 // ── Collaboration (Phase 1 of idea #13) ────────────────────────────────────
 // Passive read-only session observer: a second client can join an active
 // agent run and watch a live mirror of the kernel's iteration / tool /

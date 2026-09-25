@@ -244,7 +244,7 @@ describe('createWrongTraceHookPair gate events', () => {
 
   it('cleans up recorded owner and race state so a subsequent session can release its own lock', async () => {
     let currentSession = 'sess-1';
-    let currentLockOwner: string | undefined = undefined;
+    let currentLockOwner: string | undefined;
     let unlockCalls = 0;
 
     globalThis.fetch = makeFetch(async (url) => {

@@ -21,9 +21,9 @@ import { detectQuantifiedAmbiguity } from '../src/regex-ambiguity.js';
 
 describe('detectQuantifiedAmbiguity — residual classes (ADR-004 targets)', () => {
   it('detects self-decomposition ambiguity behind wraps', () => {
-    expect(detectQuantifiedAmbiguity(String.raw`(?:a+)|b`).verdict).toBe('ambiguous');
+    expect(detectQuantifiedAmbiguity('(?:a+)|b').verdict).toBe('ambiguous');
     expect(detectQuantifiedAmbiguity('(?<g>a+)').verdict).toBe('ambiguous');
-    expect(detectQuantifiedAmbiguity(String.raw`((?:a+)|b)`).verdict).toBe('ambiguous');
+    expect(detectQuantifiedAmbiguity('((?:a+)|b)').verdict).toBe('ambiguous');
     expect(detectQuantifiedAmbiguity('a+').verdict).toBe('ambiguous');
   });
 
@@ -117,7 +117,7 @@ describe('detectQuantifiedAmbiguity — precision pins (must stay allowed)', () 
   it('is permissive for out-of-subset content (under-reject only)', () => {
     const permissive = (v: string): boolean =>
       v === 'unambiguous' || v === 'unparsable' || v === 'budget';
-    expect(permissive(detectQuantifiedAmbiguity(String.raw`(?=a)a|b`).verdict)).toBe(true);
+    expect(permissive(detectQuantifiedAmbiguity('(?=a)a|b').verdict)).toBe(true);
     expect(permissive(detectQuantifiedAmbiguity(String.raw`\1a|b`).verdict)).toBe(true);
     expect(permissive(detectQuantifiedAmbiguity(String.raw`a\kb|c`).verdict)).toBe(true);
   });
@@ -125,7 +125,7 @@ describe('detectQuantifiedAmbiguity — precision pins (must stay allowed)', () 
 
 describe('detectQuantifiedAmbiguity — witness contract', () => {
   it('every ambiguous verdict carries a non-empty witness', () => {
-    for (const content of [String.raw`(?:a+)|b`, 'a{1,2}|b', 'a|a', String.raw`\w|ab`, 'a*']) {
+    for (const content of ['(?:a+)|b', 'a{1,2}|b', 'a|a', String.raw`\w|ab`, 'a*']) {
       const r = detectQuantifiedAmbiguity(content);
       expect(r.verdict, content).toBe('ambiguous');
       expect(typeof r.witness === 'string' && r.witness.length > 0, content).toBe(true);

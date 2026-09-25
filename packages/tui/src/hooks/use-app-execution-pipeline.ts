@@ -13,7 +13,7 @@ export interface AppExecutionPipelineArgs {
   runBlocksParams: RunBlocksParams;
   submitParams: SubmitParams;
   runBlocksRef: { current: ReturnType<typeof createRunBlocksController> };
-  submitRef: { current: any };
+  submitRef: { current: (text?: string) => void };
 }
 
 export function useAppExecutionPipeline(args: AppExecutionPipelineArgs) {

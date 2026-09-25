@@ -363,6 +363,7 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
             diagonal with mostly dark off-diagonals means results form a tight cluster; a noisy grid
             means the search returned mixed topics.
           </p>
+          {/* biome-ignore lint/a11y/useSemanticElements: CSS-grid heatmap; a <table> cannot take this grid layout. */}
           <div
             className="vector-memory-panel__heatmap-grid"
             style={{
@@ -413,6 +414,7 @@ function SimilarityRow({ row, index }: { row: readonly number[]; index: number }
         const saturation = isDiagonal ? 0 : 35;
         const background = `hsl(220, ${saturation}%, ${lightness}%)`;
         return (
+          // biome-ignore lint/a11y/useSemanticElements: cell of the CSS-grid heatmap above.
           <div
             key={`cell-${index}-${j}`}
             className={

@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
 import type { Agent } from '@wrongstack/core/agent';
+import { useEffect, useRef } from 'react';
+import type { AutonomyStage } from './use-statusline-state.js';
 
 interface UseStatusSyncIntervalOptions {
-  getAutonomy?: (() => string) | undefined;
+  getAutonomy?: (() => AutonomyStage) | undefined;
   getYolo?: (() => boolean) | undefined;
   getModeLabel?: (() => string) | undefined;
   getEternalEngine?: unknown;
@@ -13,7 +14,7 @@ interface UseStatusSyncIntervalOptions {
   liveModeLabel: string;
   liveModel: string;
   liveProvider: string;
-  setAutonomyLive: (v: any) => void;
+  setAutonomyLive: (v: AutonomyStage) => void;
   setYoloLive: (v: boolean) => void;
   setLiveModeLabel: (v: string) => void;
   setLiveModel: (v: string) => void;

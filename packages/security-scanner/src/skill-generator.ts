@@ -149,7 +149,8 @@ function getSecretPatterns(stack: TechStack): SecurityPattern[] {
         fileExtensions: ['.npmrc'],
         falsePositiveMarkers: ['${', '$AUTH_TOKEN'],
         remediation:
-          'Use environment variable interpolation in .npmrc: //registry.npmjs.org/:_authToken=\\${NPM_TOKEN}',
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: literal .npmrc interpolation syntax shown to the user.
+          'Use environment variable interpolation in .npmrc: //registry.npmjs.org/:_authToken=${NPM_TOKEN}',
         category: 'secrets',
         confidence: 'high',
       },
@@ -207,7 +208,8 @@ function getSecretPatterns(stack: TechStack): SecurityPattern[] {
         ],
         fileExtensions: ['.java'],
         falsePositiveMarkers: ['System.getenv', 'System.getProperty'],
-        remediation: 'Use System.getenv() or Spring @Value("\\${...}") for secrets.',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: literal Spring placeholder syntax shown to the user.
+        remediation: 'Use System.getenv() or Spring @Value("${...}") for secrets.',
         category: 'secrets',
         confidence: 'medium',
       },

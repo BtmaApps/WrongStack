@@ -78,6 +78,7 @@ export const TreeRow = memo(function TreeRow({
     return (
       <div
         role="treeitem"
+        tabIndex={-1}
         aria-disabled="true"
         aria-level={depth + 1}
         className="text-[10px] text-muted-foreground italic py-0.5"

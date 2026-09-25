@@ -2,7 +2,7 @@
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { useAgentView } from '../src/hooks/use-agent-view.js';
 import type { ChatMessage, ToolCallInfo } from '../src/types.js';
 

@@ -104,7 +104,7 @@ export function firstNonEmpty(text: string): string | undefined {
 
 export function formatMatchHit(hit: unknown): string | undefined {
   if (typeof hit === 'string') {
-    const m = hit.match(/^((?:[A-Za-z]:)?[^:]+):(\d+)[:\-](.*)$/);
+    const m = hit.match(/^((?:[A-Za-z]:)?[^:]+):(\d+)[:-](.*)$/);
     if (m?.[1] && m[2]) {
       const head = `${shortenPath(m[1], 40)}:${m[2]}`;
       const snippet = m[3]?.trim();

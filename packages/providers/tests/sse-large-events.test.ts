@@ -14,7 +14,8 @@ function body(text: string, chunk = 16_384): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     pull(controller) {
       if (i >= bytes.length) return controller.close();
-      controller.enqueue(bytes.subarray(i, (i += chunk)));
+      controller.enqueue(bytes.subarray(i, i + chunk));
+      i += chunk;
     },
   });
 }

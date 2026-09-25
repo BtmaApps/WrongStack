@@ -84,6 +84,7 @@ function SubagentTabButton({
       />
       <span className="max-w-[10rem] truncate">{agent.name}</span>
       {onRemove && (
+        // biome-ignore lint/a11y/useSemanticElements: nested in a <button>/menu item; a real <button> here is invalid HTML.
         <span
           role="button"
           tabIndex={-1}
@@ -91,6 +92,12 @@ function SubagentTabButton({
           aria-label={removeLabel}
           title={removeLabel}
           onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
             e.stopPropagation();
             onRemove();
           }}
@@ -232,6 +239,7 @@ export function AgentTabs() {
                       <Check className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
                     )}
                     {a.status !== 'running' && (
+                      // biome-ignore lint/a11y/useSemanticElements: nested in a <button>/menu item; a real <button> here is invalid HTML.
                       <span
                         role="button"
                         tabIndex={-1}
@@ -242,6 +250,12 @@ export function AgentTabs() {
                           // Keep the menu open so several finished agents can
                           // be dismissed in one pass; stopPropagation also
                           // keeps the click from selecting the item.
+                          e.stopPropagation();
+                          removeAgent(a.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter' && e.key !== ' ') return;
+                          e.preventDefault();
                           e.stopPropagation();
                           removeAgent(a.id);
                         }}
