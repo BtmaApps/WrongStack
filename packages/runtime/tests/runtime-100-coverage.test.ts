@@ -3,6 +3,7 @@ import { Container, TOKENS } from '@wrongstack/core/kernel';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { DefaultConfigStore } from '@wrongstack/core/storage';
+import { BROWSER_TOOL_NAMES } from '@wrongstack/tools';
 import { describe, expect, it, vi } from 'vitest';
 import { createDefaultContainer } from '../src/container.js';
 import { makeLightSubagentFactory } from '../src/fleet/light-subagent-factory.js';
@@ -800,6 +801,33 @@ describe('runtime 100 coverage completion', () => {
 
       expect(registry.get('vector_memory_search')).toBeDefined();
       expect(result.builtinTools).toBeDefined();
+    });
+
+    it('tier off offers a tool registered after boot, and still not the browser suite', () => {
+      // Tier off used to fix the provider surface to the names registered at
+      // boot, so an MCP server's tools (it connects later) were never offered.
+      const registry = new ToolRegistry();
+      registerCanonicalHostTools({
+        registry,
+        tier: 'off',
+        memory: { enabled: false, store: null },
+      });
+      registry.register(
+        {
+          name: 'mcp__probe__echo',
+          description: 'Echo.',
+          inputSchema: { type: 'object', properties: {} },
+          permission: 'auto',
+          mutating: false,
+          execute: async () => 'ok',
+        } as never,
+        'mcp:probe',
+      );
+      const offered = registry.listForProvider().map((tool) => tool.name);
+      expect(offered).toContain('mcp__probe__echo');
+      const browser = BROWSER_TOOL_NAMES.filter((name) => registry.get(name) !== undefined);
+      expect(browser.length).toBeGreaterThan(0);
+      expect(offered.filter((name) => browser.includes(name))).toEqual([]);
     });
   });
 

@@ -386,7 +386,8 @@ function buildProvider(
       `No provider factory registered for "${factoryType}" (provider "${providerId}") — cannot build a subagent provider for the SDD run.`,
     );
   }
-  return registry.create({ ...providerConfig, type: factoryType, model }, factoryType);
+  // `type` stays the provider id: it names the provider, `factoryType` builds it.
+  return registry.create({ ...providerConfig, model }, factoryType);
 }
 
 async function resolveReasoningConfig(

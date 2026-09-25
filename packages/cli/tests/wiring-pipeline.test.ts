@@ -4,6 +4,7 @@ import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { Container, EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultPermissionPolicy, DefaultSecretScrubber } from '@wrongstack/core/security';
+import type { Request } from '@wrongstack/core/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgent, setupCompaction, setupPipelines } from '../src/wiring/pipeline.js';
 
@@ -115,7 +116,7 @@ describe('setupPipelines', () => {
     const seen: unknown[] = [];
     p.request.use({
       name: 'later',
-      handler: (req, next) => {
+      handler: (req: Request, next: (r: Request) => Promise<Request>) => {
         seen.push(req.cache);
         return next(req);
       },

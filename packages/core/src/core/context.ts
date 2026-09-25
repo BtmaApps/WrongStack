@@ -417,8 +417,7 @@ export class Context implements RunEnv, AgentContext {
         signal,
         sessionId: this.eventSessionId(),
         meta: this.meta,
-      }) ??
-      Promise.resolve(undefined)
+      }) ?? Promise.resolve(undefined)
     );
   }
 

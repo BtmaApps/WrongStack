@@ -622,6 +622,11 @@ async function removeOwnedMetadata(): Promise<void> {
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  // DIAGNOSTIC: the stop reason is otherwise unobservable — the client spawns
+  // this daemon with stdio:'ignore', so anything not written to stderr is lost
+  // when the daemon exits. Harmless in production precisely because stderr is
+  // discarded there; captured when a test sets WRONGSTACK_CATALOG_DAEMON_LOG.
+  process.stderr.write(`[session-catalog] project server stopping: ${_reason}\n`);
   if (idleTimer) clearTimeout(idleTimer);
   if (silentClientSweep) clearInterval(silentClientSweep);
   silentClientSweep = undefined;

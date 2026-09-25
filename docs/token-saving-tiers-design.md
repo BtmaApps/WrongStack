@@ -3,7 +3,9 @@
 > **Status (2026-09-08): historical design rationale — do NOT read the tables
 > below as current behaviour.** They disagree with the shipped tiers on tool
 > counts, on which tools each tier selects, and on tool-description budgets.
-> As shipped: TIER1 = 24 tools, TIER2 = 20, TIER3 = 10; TIER3 is in no tier
+> As shipped: tier sizes are **derived** from the `TIER1`/`TIER2`/`TIER3`
+> arrays — read `BUILTIN_TIER_COUNTS` rather than a number quoted here; TIER3
+> is in no tier
 > below `off`; `aggressive` selects **TIER1 only** (identical to `minimal`,
 > differing only in description budget); the default is `auto`, which resolves
 > a concrete tier from the model window at startup and hands that one value to

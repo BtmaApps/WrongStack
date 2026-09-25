@@ -9,9 +9,9 @@
  */
 
 import * as path from 'node:path';
-import { createDefaultPipelines } from '@wrongstack/core/agent';
 import { startOtlpExport } from '@wrongstack/core/observability';
 import { createCompatibilityTrustBoundary } from '@wrongstack/core/security';
+import type { Config } from '@wrongstack/core/types';
 import { expectDefined, startSharedHeapWatchdog } from '@wrongstack/core/utils';
 import { ensureSessionShell } from '@wrongstack/tools';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
@@ -21,6 +21,7 @@ import { createConnectionHandler } from './connection-handler.js';
 import { createEternalSubscription } from './eternal-iteration-broadcast.js';
 import { setupWebUiGovernance } from './governance-runtime.js';
 import { createMessageDispatcher } from './message-dispatcher.js';
+
 import type { PendingConfirm } from './pending-confirms.js';
 import { createPreContextServices } from './pre-context-services.js';
 import {
@@ -44,6 +45,10 @@ import { scheduleOwnerlessEmptySessionCleanup } from './session-cleanup-schedule
 import { collectDisplayedSessionIds, createSessionTransitionGate } from './session-handlers.js';
 import { toSessionHistoryEntries } from './session-history.js';
 import { createDefaultFileWatcherMetrics, type FileWatcherMetrics } from './setup-events.js';
+import {
+  createStandaloneAgentPipelines,
+  projectModelRuntimePrefs,
+} from './standalone-pipelines.js';
 import { bindSharedHttpServer } from './start-webui-bind.js';
 import { setupCompanionServer } from './start-webui-companion.js';
 import { setupWebuiCredentialWatcher } from './start-webui-credential-watcher.js';
@@ -294,8 +299,14 @@ export async function startWebUI(
   // Thin closures below keep the original signatures the route layer expects
   // while threading the live configWriteLock holder.
   const prefSnapshot = (): Record<string, unknown> => prefSnapshotImpl(context.meta);
-  const persistPrefsToConfig = async (payload: Record<string, unknown>): Promise<void> =>
-    persistPrefsToConfigImpl(prefHelperDeps, configWriteLock, payload);
+  const persistPrefsToConfig = async (payload: Record<string, unknown>): Promise<void> => {
+    await persistPrefsToConfigImpl(prefHelperDeps, configWriteLock, payload);
+    // The request middleware reads the live config, not the file.
+    const modelRuntime = projectModelRuntimePrefs(config.modelRuntime, payload);
+    if (modelRuntime) {
+      config = patchConfig(config, { modelRuntime: modelRuntime as Config['modelRuntime'] });
+    }
+  };
 
   // ── Post-context agent services (pipelines, compaction, agent, Brain,
   // per-feature WS handlers) — built in ./backend-services.ts (Phase 1c).
@@ -337,6 +348,13 @@ export async function startWebUI(
   let displayedSessionIds: (() => Set<string>) | undefined;
 
   const otlpExport = startOtlpExport(config.observability, { logger });
+  const agentPipelines = createStandaloneAgentPipelines({
+    getConfig: () => config,
+    getProvider: () => context.provider,
+    modelsRegistry,
+    events,
+    logger,
+  });
   const agentServices = await createAgentServices({
     tracer: otlpExport?.tracer,
     trustBoundary,
@@ -359,7 +377,7 @@ export async function startWebUI(
     skillLoader,
     skillInstaller,
     tokenCounter,
-    pipelines: createDefaultPipelines(),
+    pipelines: agentPipelines,
     ...(installToolBoundary ? { installToolBoundary } : {}),
     modelCapabilitiesRef,
     sessionGetter: () => session,

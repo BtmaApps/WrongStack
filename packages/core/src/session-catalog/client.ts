@@ -27,6 +27,24 @@ const CALL_TIMEOUT_MS = 30_000;
 const MAX_PENDING_REQUESTS = 1_024;
 const MAX_EVENT_LISTENERS = 64;
 
+/**
+ * DIAGNOSTIC (opt-in): append one line to `WRONGSTACK_CATALOG_DAEMON_LOG`.
+ *
+ * A missing daemon.log is ambiguous on its own — it could mean "no daemon
+ * exited", "no daemon was ever spawned", or "the log was reaped". These notes
+ * record every connect/spawn decision, so the log answers *why* the spawn
+ * branch was or was not taken. Unset = no writes, unchanged behaviour.
+ */
+function catalogDiag(line: string): void {
+  const diag = process.env['WRONGSTACK_CATALOG_DAEMON_LOG'];
+  if (!diag) return;
+  try {
+    fs.appendFileSync(diag, `[${new Date().toISOString()}] ${line}\n`);
+  } catch {
+    /* best effort — diagnostics must never break a connect */
+  }
+}
+
 interface PendingRequest {
   resolve(value: unknown): void;
   reject(error: unknown): void;
@@ -67,11 +85,16 @@ export function resolveSessionCatalogDaemonAvailability(
   if (
     process.env['WRONGSTACK_SESSION_CATALOG_INLINE'] ||
     process.env['WRONGSTACK_SESSION_CATALOG_SERVER'] === '0'
-  )
+  ) {
+    catalogDiag('SKIP spawn: inline mode (WRONGSTACK_SESSION_CATALOG_INLINE or _SERVER=0)');
     return { kind: 'inline-requested' };
-  if (isStandaloneBinary())
+  }
+  if (isStandaloneBinary()) {
+    catalogDiag('AVAILABLE: standalone binary');
     return { kind: 'available', url: standaloneDaemonUrl('session-catalog') };
+  }
   const url = locateServer(moduleUrl, exists);
+  if (!url) catalogDiag('SKIP spawn: missing-build (project-server.js not found)');
   return url ? { kind: 'available', url } : { kind: 'missing-build' };
 }
 
@@ -218,15 +241,20 @@ export class SessionCatalogProjectClient {
     while (Date.now() < deadline) {
       try {
         await this.connectOnce();
+        catalogDiag(
+          `REUSE: connected to an existing daemon on the first try (spawnIfMissing=${spawnIfMissing}, spawned=${spawned}) endpoint=${this.endpoint}`,
+        );
         return;
       } catch (error) {
         lastError = error;
+        catalogDiag(`CONNECT_FAIL: ${(error as Error).message} (spawnIfMissing=${spawnIfMissing})`);
       }
       if (spawnIfMissing) {
         if (!spawned) {
           try {
             this.spawnDetached();
             spawned = true;
+            catalogDiag('SPAWN: detached daemon requested');
           } catch (error) {
             // A concurrent workspace rebuild can transiently remove the built
             // project-server artifact; this deadline loop exists to absorb
@@ -234,9 +262,13 @@ export class SessionCatalogProjectClient {
             // once the artifact re-emerges instead of letting the throw bypass
             // the loop (hq-mailbox-mutation flake, bug-hunt round 18).
             lastError = error;
+            catalogDiag(`SPAWN_FAIL: ${(error as Error).message}`);
           }
         }
       } else if (!this.ownerPidIsAlive()) {
+        catalogDiag(
+          'SKIP spawn: probe path (callExisting) never spawns, and no live owner holds the endpoint',
+        );
         // Probe path (`callExisting`): must NEVER spawn, so it retries only
         // while a live process still owns this endpoint. `project-server.ts`
         // binds the endpoint before it writes metadata, so an absent metadata
@@ -468,15 +500,51 @@ export class SessionCatalogProjectClient {
   private spawnDetached(): void {
     const url = resolveSessionCatalogProjectServerUrl();
     if (!url) throw new Error('Built Session Catalog project server is unavailable');
-    const child = spawn(
-      process.execPath,
-      daemonSpawnArgs(url, [
-        '--project-dir',
-        this.options.projectDir,
-        '--project-root',
-        this.options.projectRoot,
-      ]),
-      { detached: true, stdio: 'ignore', windowsHide: true, env: process.env },
+    const args = daemonSpawnArgs(url, [
+      '--project-dir',
+      this.options.projectDir,
+      '--project-root',
+      this.options.projectRoot,
+    ]);
+    // DIAGNOSTIC (opt-in): the daemon writes every fatal path to stderr, but
+    // stdio:'ignore' discarded them, so an unexpected exit had no recorded
+    // cause. When WRONGSTACK_CATALOG_DAEMON_LOG is set, route the child's
+    // stderr to that file and record its exit code/signal. Unset = unchanged.
+    const diag = process.env['WRONGSTACK_CATALOG_DAEMON_LOG'];
+    if (!diag) {
+      const child = spawn(process.execPath, args, {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+        env: process.env,
+      });
+      child.unref();
+      return;
+    }
+    // A file descriptor, not a pipe: a piped stream would keep the test
+    // worker's event loop alive waiting on a detached child.
+    const fd = fs.openSync(diag, 'a');
+    const child = spawn(process.execPath, args, {
+      detached: true,
+      stdio: ['ignore', 'ignore', fd],
+      windowsHide: true,
+      env: process.env,
+    });
+    fs.closeSync(fd);
+    const startedAt = Date.now();
+    const note = (line: string): void => {
+      try {
+        fs.appendFileSync(
+          diag,
+          `[${new Date(startedAt).toISOString()}] +${Date.now() - startedAt}ms pid=${child.pid} ${line}\n`,
+        );
+      } catch {
+        /* best effort — diagnostics must never break a spawn */
+      }
+    };
+    child.on('error', (err) => note(`[session-catalog] SPAWN_ERROR ${err.message}`));
+    child.on('exit', (code, signal) =>
+      note(`[session-catalog] EXIT code=${code} signal=${signal}`),
     );
     child.unref();
   }

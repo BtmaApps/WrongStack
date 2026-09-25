@@ -56,6 +56,32 @@ describe('MCPRegistry single-flight & cancellation', () => {
     expect(connectCount).toBe(1);
   });
 
+  it('whenStarted waits for background starts, whether they connect or fail', async () => {
+    // A one-shot run starts its servers in the background and then runs one
+    // turn; it waits here so the turn's tool list includes theirs.
+    const registry = new MCPRegistry({
+      toolRegistry: dummyToolRegistry,
+      events: dummyEvents,
+      log: dummyLogger,
+    });
+    const connected: string[] = [];
+    vi.spyOn(registry as any, 'attemptConnect').mockImplementation(async (slot: any) => {
+      await new Promise((r) => setTimeout(r, slot.cfg.name === 'slow' ? 60 : 10));
+      if (slot.cfg.name === 'broken') throw new Error('spawn failed');
+      slot.client = {} as any;
+      slot.state = 'connected';
+      connected.push(slot.cfg.name);
+    });
+    const stdio = (name: string) => ({ name, transport: 'stdio' as const, command: 'node' });
+
+    await registry.whenStarted(); // nothing in flight: resolves at once
+    for (const name of ['slow', 'fast', 'broken']) {
+      void registry.start(stdio(name)).catch(() => {});
+    }
+    await registry.whenStarted();
+    expect(connected.sort()).toEqual(['fast', 'slow']);
+  });
+
   it('aborts retry delay if server is stopped while backoff timer is active', async () => {
     const registry = new MCPRegistry({
       toolRegistry: dummyToolRegistry,

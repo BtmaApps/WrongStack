@@ -215,6 +215,9 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     get session() {
       return opts.session;
     },
+    get appConfig() {
+      return opts.appConfig;
+    },
     // `peek`, never `get`: building a payload must not materialise an agent
     // for a session id that arrived from a stale browser tab.
     getSessionContext: (sessionId) => sessionAgentsRef?.peek(sessionId)?.ctx,

@@ -8,6 +8,7 @@ export {
   type AgentInput,
   type AgentPipelines,
   createDefaultPipelines,
+  installPipelineErrorBoundaries,
   type ToolCallPipelinePayload,
 } from './agent-types.js';
 export {

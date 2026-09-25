@@ -1,19 +1,20 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import type { Context } from '../../src/core/context.js';
 import {
   DirectoryPermissionPolicy,
   matchRule,
   resolveTargetPath,
 } from '../../src/security/directory-permission-policy.js';
 import { validateDirectoryPolicy } from '../../src/security/directory-policy-schema.js';
-import type { Context } from '../../src/core/context.js';
+import type { Tool } from '../../src/types/index.js';
 import type {
   DirectoryPolicy,
   PermissionDecision,
   PermissionPolicy,
 } from '../../src/types/permission.js';
-import type { Tool } from '../../src/types/index.js';
+import { bindProviderCatalogId } from '../../src/utils/provider-catalog-binding.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -349,6 +350,25 @@ describe('DirectoryPermissionPolicy', () => {
     expect(result.permission).toBe('deny');
     expect(result.source).toBe('directory_rules');
     expect(result.reason).toContain('openai');
+  });
+
+  it("denies a second account built from a denied vendor's catalog entry", async () => {
+    // `work` (type "anthropic") is its own provider, but a rule against the
+    // vendor must still cover it — as it did while its id collapsed to
+    // `anthropic`. Naming the account itself works too.
+    const ctx = makeCtx(projectRoot, { providerId: 'work' });
+    bindProviderCatalogId(ctx.provider, 'anthropic');
+    const target = { path: path.join(projectRoot, 'clients', 'acme', 'config.json') };
+    for (const denied of [['anthropic'], ['work']]) {
+      const wrapper = new DirectoryPermissionPolicy(allowInner(), {
+        policy: policy([{ directory: 'clients/acme/**', denyProviders: denied }]),
+      });
+      expect((await wrapper.evaluate(writeTool, target, ctx)).permission).toBe('deny');
+    }
+    const other = new DirectoryPermissionPolicy(allowInner(), {
+      policy: policy([{ directory: 'clients/acme/**', denyProviders: ['openai'] }]),
+    });
+    expect((await other.evaluate(writeTool, target, ctx)).permission).toBe('auto');
   });
 
   it('does not deny when the active provider is not in denyProviders', async () => {

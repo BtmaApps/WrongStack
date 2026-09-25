@@ -392,10 +392,13 @@ describe('elicitViaUserInput', () => {
 });
 
 describe('elicitViaUserInput in URL mode', () => {
-  const page = (requester?: { requestUserInput: never }): MCPElicitationRequest => ({
+  const page = (
+    requester?: { requestUserInput: never },
+    url = 'https://auth.example.com/connect?elicitationId=e1',
+  ): MCPElicitationRequest => ({
     mode: 'url',
     message: 'Connect your calendar',
-    url: 'https://auth.example.com/connect?elicitationId=e1',
+    url,
     elicitationId: 'e1',
     server: 'calendar',
     requester,
@@ -448,10 +451,7 @@ describe('elicitViaUserInput in URL mode', () => {
 
   it('offers no "open" when the host cannot open a browser, and warns about lookalike or plain-http sites', async () => {
     const user = choose('self');
-    await elicitViaUserInput({
-      ...page(user as never),
-      url: 'http://xn--pple-43d.com/login',
-    });
+    await elicitViaUserInput(page(user as never, 'http://xn--pple-43d.com/login'));
     const form = user.requests[0]!;
     expect(form.tabs[0]?.questions[0]?.options?.map((o) => o.id)).toEqual(['self', 'decline']);
     expect(form.description).toContain('punycode');

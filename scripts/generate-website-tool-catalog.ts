@@ -2,7 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinTools } from '../packages/tools/dist/builtin.js';
-import { toolCatalog } from '../website/src/data/runtime-catalog.ts';
+import { BUILTIN_TIER_COUNTS } from '../packages/tools/dist/tool-tier.js';
+import { TOOL_TIER_COUNTS, toolCatalog } from '../website/src/data/runtime-catalog.ts';
 import type { ToolDetail, ToolParamDetail } from '../website/src/data/tool-detail-types.ts';
 import { toolDetails } from '../website/src/data/tool-details.ts';
 
@@ -130,10 +131,17 @@ if (missingCategories.length || removedRuntimeTools.length) {
   if (!write) {
     const catalogMatches = JSON.stringify(toolCatalog) === JSON.stringify(expectedCatalog);
     const detailsMatch = JSON.stringify(comparableDetails) === JSON.stringify(expectedDetails);
-    if (!catalogMatches || !detailsMatch) {
+    const tierCountsMatch =
+      JSON.stringify(TOOL_TIER_COUNTS) === JSON.stringify(BUILTIN_TIER_COUNTS);
+    if (!catalogMatches || !detailsMatch || !tierCountsMatch) {
       const mismatches = [
         !catalogMatches ? 'Website tool catalog differs from the runtime registry.' : '',
         !detailsMatch ? 'Website tool details differ from runtime schemas.' : '',
+        !tierCountsMatch
+          ? `Website token-saving tier counts differ from the runtime. ` +
+            `website: ${JSON.stringify(TOOL_TIER_COUNTS)}; ` +
+            `runtime: ${JSON.stringify(BUILTIN_TIER_COUNTS)}.`
+          : '',
         'Run `pnpm website:tools:write` to refresh the projections.',
       ].filter(Boolean);
       process.stderr.write(`${mismatches.join('\n')}\n`);
@@ -152,6 +160,25 @@ if (missingCategories.length || removedRuntimeTools.length) {
     await writeFile(
       catalogPath,
       `${catalogSource.slice(0, start)}${catalogBlock}${catalogSource.slice(end + endMarker.length)}`,
+    );
+
+    // Tier counts are derived from BUILTIN_TIER_COUNTS, never retyped here.
+    const afterCatalog = await readFile(catalogPath, 'utf8');
+    const tierMarker = '// generated:tool-tier-counts';
+    const tierStart = afterCatalog.indexOf(tierMarker);
+    const tierEndMarker = '} as const;';
+    const tierEnd = afterCatalog.indexOf(tierEndMarker, tierStart);
+    if (tierStart < 0 || tierEnd < 0) {
+      throw new Error('Could not locate TOOL_TIER_COUNTS in runtime-catalog.ts');
+    }
+    const tierBlock = `${tierMarker}\nexport const TOOL_TIER_COUNTS = ${JSON.stringify(
+      BUILTIN_TIER_COUNTS,
+      null,
+      2,
+    )} as const;`;
+    await writeFile(
+      catalogPath,
+      `${afterCatalog.slice(0, tierStart)}${tierBlock}${afterCatalog.slice(tierEnd + tierEndMarker.length)}`,
     );
 
     const chunkSize = Math.ceil(expectedCatalog.length / 4);

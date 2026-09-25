@@ -12,6 +12,10 @@ import { createNativeCatalogProvider, isNativeCatalogNpm } from './native-catalo
 
 interface CatalogProviderRoutingOptions {
   provider: ResolvedProvider;
+  /** The user-visible provider id (the config key); defaults to the catalog id. */
+  instanceId?: string | undefined;
+  /** The factory whose behavior applies; defaults to the catalog id. */
+  definitionId?: string | undefined;
   config: ProviderConfig;
   explicitApiKey?: string | undefined;
   quirks?: CompatibilityQuirks | undefined;
@@ -22,6 +26,7 @@ export function createCatalogAwareProvider(
   options: CatalogProviderRoutingOptions,
 ): Provider | undefined {
   const { provider, config, explicitApiKey, quirks } = options;
+  const id = options.instanceId ?? provider.id;
   const models = mergeCatalogModels(provider.models, config.customModels);
   const usesCatalogFamily = config.family === undefined || config.family === provider.family;
   if (!usesCatalogFamily) return undefined;
@@ -35,7 +40,8 @@ export function createCatalogAwareProvider(
       });
     }
     return createNativeCatalogProvider({
-      id: provider.id,
+      id,
+      catalogId: provider.id,
       npm: provider.npm,
       models,
       capabilities: capabilitiesForFamily(provider.family, { reasoning: true, tools: true }),
@@ -63,8 +69,8 @@ export function createCatalogAwareProvider(
     });
   }
   return new CatalogRoutedProvider({
-    id: provider.id,
-    definitionId: config.type ?? provider.id,
+    id,
+    definitionId: options.definitionId ?? provider.id,
     apiKey,
     defaultNpm: provider.npm as CatalogWireNpm,
     baseUrl: provider.apiBase,

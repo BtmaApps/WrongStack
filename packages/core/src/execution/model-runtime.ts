@@ -11,20 +11,22 @@
  * `Config.modelRuntime` (and persist) for the change to take effect on the next
  * request.
  */
-import type {
-  Capabilities,
-  ReasoningConfig,
-  ReasoningRequest,
-  Request,
-  RequestCacheControl,
-} from '../types/provider.js';
-import type { ModelRuntimeConfig, ModelRuntimeParametersConfig } from '../types/config.js';
+
 import {
   conversationBoundToRequest,
   inheritRequestConversation,
 } from '../core/request-conversation-binding.js';
 import { providerBoundToRequest } from '../core/request-provider-binding.js';
 import type { Middleware } from '../kernel/pipeline.js';
+import type { ModelRuntimeConfig, ModelRuntimeParametersConfig } from '../types/config.js';
+import type {
+  Capabilities,
+  Provider,
+  ReasoningConfig,
+  ReasoningRequest,
+  Request,
+  RequestCacheControl,
+} from '../types/provider.js';
 
 export interface ResolvedModelRuntime {
   reasoning: Request['reasoning'];
@@ -325,9 +327,26 @@ export function applyModelRuntime(req: Request, opts: ModelRuntimeMiddlewareOpti
  * the request on. It must hand it on — every request middleware installed
  * after it (SAGE's use credit, skill mentions) runs only through `next`.
  */
-export function createModelRuntimeMiddleware(opts: ModelRuntimeMiddlewareOptions): Middleware<Request> {
+export function createModelRuntimeMiddleware(
+  opts: ModelRuntimeMiddlewareOptions & {
+    /**
+     * Look up the reasoning profile of the model THIS request goes to, from
+     * the provider it is bound to. For a host whose conversations can run
+     * different models; `getReasoningConfig` answers for one process-wide
+     * model and is used when this is absent.
+     */
+    resolveReasoningConfig?:
+      | ((req: Request, provider: Provider | undefined) => Promise<ReasoningConfig | undefined>)
+      | undefined;
+  },
+): Middleware<Request> {
+  const resolve = opts.resolveReasoningConfig;
   return {
     name: 'ModelRuntimeSettings',
-    handler: (req, next) => next(applyModelRuntime(req, opts)),
+    handler: async (req, next) => {
+      if (!resolve) return next(applyModelRuntime(req, opts));
+      const reasoning = await resolve(req, providerBoundToRequest(req));
+      return next(applyModelRuntime(req, { ...opts, getReasoningConfig: () => reasoning }));
+    },
   };
 }

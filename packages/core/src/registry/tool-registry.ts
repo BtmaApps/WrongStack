@@ -72,6 +72,12 @@ export class ToolRegistry {
    * only these names. This keeps lazy tools discoverable by tool_search/tool_use.
    */
   private _providerToolNames: Set<string> | undefined;
+  /**
+   * Names kept off the provider surface while the catalog is otherwise exposed
+   * whole. A name predicate, so a tool registered later (an MCP server that
+   * connects after boot) is still offered.
+   */
+  private _providerExcluded: Set<string> | undefined;
   private _providerListSnapshot: readonly Tool[] | undefined;
   private _providerListSnapshotVersion = -1;
   /**
@@ -542,6 +548,15 @@ export class ToolRegistry {
     this._version++;
   }
 
+  /**
+   * Expose the whole catalog except these names — including tools registered
+   * after this call. Pass `undefined` to drop the exclusion.
+   */
+  setProviderToolExclusions(names: readonly string[] | undefined): void {
+    this._providerExcluded = names && names.length > 0 ? new Set(names) : undefined;
+    this._version++;
+  }
+
   /** Add registered or future tool names to the direct provider surface. */
   exposeToProvider(names: string | readonly string[]): void {
     if (!this._providerToolNames) return;
@@ -553,12 +568,17 @@ export class ToolRegistry {
 
   /** Tools serialized into provider requests and described by the system prompt. */
   listForProvider(): Tool[] {
-    if (!this._providerToolNames) return this.list();
+    if (!this._providerToolNames && !this._providerExcluded) return this.list();
     if (this._providerListSnapshot && this._version === this._providerListSnapshotVersion) {
       return this._providerListSnapshot as Tool[];
     }
+    const only = this._providerToolNames;
+    const excluded = this._providerExcluded;
     const arr = Array.from(this.tools.entries())
-      .filter(([name]) => !this.isHidden(name) && this._providerToolNames?.has(name) === true)
+      .filter(
+        ([name]) =>
+          !this.isHidden(name) && (only ? only.has(name) : true) && !(excluded?.has(name) ?? false),
+      )
       .map(([, entry]) => entry.tool);
     this._providerListSnapshot = arr;
     this._providerListSnapshotVersion = this._version;
@@ -574,6 +594,7 @@ export class ToolRegistry {
    */
   isExposedToProvider(name: string): boolean {
     if (this.isHidden(name) || !this.tools.has(name)) return false;
+    if (this._providerExcluded?.has(name)) return false;
     return this._providerToolNames?.has(name) ?? true;
   }
 
@@ -608,6 +629,7 @@ export class ToolRegistry {
     this.descriptionModes.clear();
     this._disabled.clear();
     this._providerToolNames = undefined;
+    this._providerExcluded = undefined;
     this._version++;
   }
 
@@ -634,6 +656,7 @@ export class ToolRegistry {
     copy._providerToolNames = this._providerToolNames
       ? new Set(this._providerToolNames)
       : undefined;
+    copy._providerExcluded = this._providerExcluded ? new Set(this._providerExcluded) : undefined;
     // Subagent registries are clones: a launch restriction must reach them too.
     copy._restriction = this._restriction;
     copy._version = this._version;

@@ -47,6 +47,34 @@ const SAMPLE: ModelsDevPayload = {
       },
     },
   },
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    env: ['OPENROUTER_API_KEY'],
+    npm: '@openrouter/ai-sdk-provider',
+    models: {
+      'vision-model': {
+        id: 'vision-model',
+        name: 'Vision Model',
+        tool_call: true,
+        modalities: { input: ['text', 'image'], output: ['text'] },
+        limit: { context: 128_000, output: 16_000 },
+      },
+      'text-model': {
+        id: 'text-model',
+        name: 'Text Model',
+        tool_call: true,
+        modalities: { input: ['text'], output: ['text'] },
+        limit: { context: 128_000, output: 16_000 },
+      },
+      'silent-model': {
+        id: 'silent-model',
+        name: 'Silent Model',
+        tool_call: true,
+        limit: { context: 128_000, output: 16_000 },
+      },
+    },
+  },
 };
 
 function reg() {
@@ -193,6 +221,19 @@ describe('capabilitiesFor', () => {
     expect(c.vision).toBe(false);
     expect(c.cacheControl).toBe('native');
     expect(c.maxContext).toBe(100_000);
+  });
+
+  // An openai-compatible wire carries `image_url` parts, so its no-vision
+  // default is only the answer for a model the catalog says nothing about.
+  it('openai-compatible models the catalog says take images are vision-capable', async () => {
+    const c = await capabilitiesFor(reg(), 'openrouter', 'vision-model');
+    expect(c.vision).toBe(true);
+  });
+
+  it('openai-compatible text-only and unstated models stay text-only', async () => {
+    const r = reg();
+    expect((await capabilitiesFor(r, 'openrouter', 'text-model')).vision).toBe(false);
+    expect((await capabilitiesFor(r, 'openrouter', 'silent-model')).vision).toBe(false);
   });
 
   // ---- custom model overrides ----

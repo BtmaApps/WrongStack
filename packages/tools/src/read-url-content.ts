@@ -7,6 +7,7 @@ import {
 } from '@wrongstack/core/types';
 import { guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
+import { capBytesWithNotice } from './_util.js';
 
 export interface ReadUrlContentInput {
   /** Target web page URL to read. */
@@ -162,8 +163,7 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     }
 
     if (maxBytes !== undefined && Buffer.byteLength(content, 'utf8') > maxBytes) {
-      const buf = Buffer.from(content, 'utf8');
-      content = `${buf.subarray(0, maxBytes).toString('utf8')}\n\n[Content truncated at ${maxBytes} bytes]`;
+      content = capBytesWithNotice(content, maxBytes, `[Content truncated at ${maxBytes} bytes]`);
     } else if (readTruncated) {
       content = `${content}
 

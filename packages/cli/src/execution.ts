@@ -7,7 +7,7 @@ import { attachTodosCheckpoint, QueueStore } from '@wrongstack/core/storage';
 import { normalizeTokenSavingTier, type SessionSummary } from '@wrongstack/core/types';
 import { mergeCustomModelDefs, sessionScopedPath } from '@wrongstack/core/utils';
 import { listGitWorktrees } from '@wrongstack/core/worktree';
-import { capabilitiesFor } from '@wrongstack/providers';
+import { capabilitiesFor, catalogProviderIdFor } from '@wrongstack/providers';
 import { createToolVisionAdapters } from '@wrongstack/runtime/vision';
 import { runSingleShotDispatch } from './boot/dispatch-singleshot.js';
 import { runTuiDispatch } from './boot/dispatch-tui.js';
@@ -307,6 +307,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           context.provider.id,
           context.model,
           mergedModels,
+          { catalogProviderId: catalogProviderIdFor(context.provider.id, providerConfig?.type) },
         );
         return caps.vision;
       } catch {
@@ -360,6 +361,10 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       } else if (piped.truncated) {
         renderer.writeWarning('Piped stdin exceeded 2 MB and was truncated.');
       }
+      // MCP servers start in the background. A one-shot run is a single turn,
+      // and a turn takes the tool list as it is when it starts, so without
+      // this wait their tools were never offered to it.
+      await mcpRegistry.whenStarted();
       code = await runSingleShotDispatch({
         agent,
         query: appendPipedStdin(positional.join(' '), piped.text),

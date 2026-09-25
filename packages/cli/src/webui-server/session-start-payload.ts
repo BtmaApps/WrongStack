@@ -10,8 +10,9 @@
  */
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
-import type { ModelsRegistry } from '@wrongstack/core/types';
+import type { Config, ModelsRegistry } from '@wrongstack/core/types';
 import { DEFAULT_CONTEXT_WINDOW_MODE_ID } from '@wrongstack/core/types';
+import { catalogProviderIdFor } from '@wrongstack/providers';
 import { protocolAdvertisement } from '@wrongstack/webui-protocol';
 import type { UpdateInfo } from '../update-check.js';
 import { getCostRates } from './cost-helpers.js';
@@ -37,6 +38,8 @@ export interface SessionStartPayloadDeps {
    */
   getSessionContext?: ((sessionId: string) => Context | undefined) | undefined;
   modelsRegistry?: ModelsRegistry | undefined;
+  /** Saved providers, to find an alias's catalog entry (`work` → `anthropic`). */
+  appConfig?: { providers?: Config['providers'] } | undefined;
   statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
   modeId?: string | undefined;
   projectRoot?: string | undefined;
@@ -78,7 +81,11 @@ export function createSessionStartPayloadBuilder(
     const updateInfo = deps.updateInfo;
     try {
       if (deps.modelsRegistry) {
-        const m = await deps.modelsRegistry.getModel(ctx.provider.id, ctx.model);
+        const catalogId = catalogProviderIdFor(
+          ctx.provider.id,
+          deps.appConfig?.providers?.[ctx.provider.id]?.type,
+        );
+        const m = await deps.modelsRegistry.getModel(catalogId, ctx.model);
         const registryMax = m?.capabilities.maxContext;
         // Fall back to the live provider's capabilities if the registry has no override.
         // The provider is the authoritative source for the model's default context window.

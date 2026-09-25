@@ -27,6 +27,7 @@ import {
   FORBIDDEN_PROTO_KEYS,
   withFileLock,
 } from '@wrongstack/core/utils';
+import { projectModelRuntimePrefs } from './standalone-pipelines.js';
 import { errMessage } from './ws-utils.js';
 
 /** Pref keys exposed to the settings panel via prefs.get / prefs.updated. */
@@ -545,31 +546,8 @@ export async function persistPrefsToConfig(
       }
 
       // Reasoning / cache runtime controls → Config.modelRuntime
-      const modelRuntimeTouched =
-        typeof payload['reasoningMode'] === 'string' ||
-        typeof payload['reasoningEffort'] === 'string' ||
-        typeof payload['reasoningPreserve'] === 'boolean' ||
-        typeof payload['cacheTtl'] === 'string';
-      if (modelRuntimeTouched) {
-        const mr = (decrypted.modelRuntime as Record<string, unknown>) ?? {};
-        const reasoning = (mr.reasoning as Record<string, unknown>) ?? {};
-        if (typeof payload['reasoningMode'] === 'string') reasoning.mode = payload['reasoningMode'];
-        // 'auto' = "follow the general setting" sentinel: valid as this tab's
-        // session-scoped pref, but it must never become the persisted global
-        // effort or it would reach the wire as a literal level on models with
-        // an undocumented vocabulary.
-        if (typeof payload['reasoningEffort'] === 'string' && payload['reasoningEffort'] !== 'auto')
-          reasoning.effort = payload['reasoningEffort'];
-        if (typeof payload['reasoningPreserve'] === 'boolean')
-          reasoning.preserve = payload['reasoningPreserve'];
-        mr.reasoning = reasoning;
-        if (typeof payload['cacheTtl'] === 'string' && payload['cacheTtl'] !== 'default') {
-          mr.cache = { ttl: payload['cacheTtl'] };
-        } else if (payload['cacheTtl'] === 'default') {
-          delete mr.cache;
-        }
-        decrypted.modelRuntime = mr;
-      }
+      const modelRuntime = projectModelRuntimePrefs(decrypted.modelRuntime, payload);
+      if (modelRuntime) decrypted.modelRuntime = modelRuntime;
 
       // Process circuit breaker → Config.circuitBreaker
       if (

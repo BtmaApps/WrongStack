@@ -79,6 +79,8 @@ export class MCPRegistry {
   private readonly authorizationManager?: MCPAuthorizationManager | undefined;
   private readonly elicitationHandler?: MCPRegistryOptions['elicitationHandler'];
   private readonly operationListeners = new Set<MCPOperationListener>();
+  /** Starts still in flight, for {@link whenStarted}. */
+  private readonly startups = new Set<Promise<void>>();
   /** Single shared idle sweep timer (started lazily; unref'd; cleared on stopAll). */
   private idleTimer?: ReturnType<typeof setInterval> | undefined;
 
@@ -187,11 +189,23 @@ export class MCPRegistry {
       operations: createMCPServerOperationState(),
     };
     this.servers.set(cfg.name, slot);
-    if (lazy) {
-      await this.startLazy(slot);
-    } else {
-      await this.singleFlightConnect(slot);
-    }
+    const startup = lazy ? this.startLazy(slot) : this.singleFlightConnect(slot);
+    const settled = startup.then(
+      () => {},
+      () => {},
+    );
+    this.startups.add(settled);
+    void settled.finally(() => this.startups.delete(settled));
+    await startup;
+  }
+
+  /**
+   * Resolves once every start already in flight has connected or failed. A
+   * host that starts its servers in the background and then runs a single
+   * turn waits here, so the turn's tool list includes theirs.
+   */
+  async whenStarted(): Promise<void> {
+    while (this.startups.size > 0) await Promise.all([...this.startups]);
   }
 
   /** Record an intentionally disabled configuration without opening a transport. */

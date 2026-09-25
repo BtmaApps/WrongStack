@@ -10,7 +10,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { bindRequestConversation } from '../../src/core/request-conversation-binding.js';
-import { applyModelRuntime } from '../../src/execution/model-runtime.js';
+import { bindRequestProvider } from '../../src/core/request-provider-binding.js';
+import {
+  applyModelRuntime,
+  createModelRuntimeMiddleware,
+} from '../../src/execution/model-runtime.js';
+import { Pipeline } from '../../src/kernel/pipeline.js';
 import type { ModelRuntimeConfig } from '../../src/types/config.js';
 import type { Capabilities, ReasoningConfig, Request } from '../../src/types/provider.js';
 
@@ -104,5 +109,48 @@ describe('applyModelRuntime reasoning scope', () => {
     const first = applyModelRuntime(req, opts(PROJECT));
 
     expect(applyModelRuntime(first, opts(PROJECT)).reasoning?.effort).toBe('high');
+  });
+});
+
+describe('createModelRuntimeMiddleware with a per-request reasoning lookup', () => {
+  // A host whose conversations run different models: the reasoning profile
+  // must be the one of the model the request goes to, not the boot model's.
+  const provider = (id: string) => ({ id, capabilities: opts(undefined).getCapabilities() });
+  const pipeline = () => {
+    const p = new Pipeline<Request>();
+    p.use(
+      createModelRuntimeMiddleware({
+        ...opts(PROJECT),
+        getReasoningConfig: () => undefined,
+        resolveReasoningConfig: async (req, bound) =>
+          bound?.id === 'reasoner' && req.model === 'thinker' ? REASONING : undefined,
+      }),
+    );
+    return p;
+  };
+
+  it('looks the profile up from the provider and model the request is bound to', async () => {
+    const onReasoner = { ...request(), model: 'thinker' };
+    bindRequestProvider(onReasoner, provider('reasoner') as never);
+    const onPlain = { ...request(), model: 'thinker' };
+    bindRequestProvider(onPlain, provider('plain') as never);
+
+    expect((await pipeline().run(onReasoner)).reasoning?.effort).toBe('low');
+    // No profile for that model: the capability is unknown, the field is omitted.
+    expect((await pipeline().run(onPlain)).reasoning).toBeUndefined();
+  });
+
+  it('hands the request on to the middleware after it', async () => {
+    const p = pipeline();
+    const seen: string[] = [];
+    p.use({
+      name: 'later',
+      handler: (req: Request, next: (r: Request) => Promise<Request>) => {
+        seen.push(req.model);
+        return next(req);
+      },
+    });
+    await p.run(request());
+    expect(seen).toEqual(['test-model']);
   });
 });

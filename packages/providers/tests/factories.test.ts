@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { DefaultModelsRegistry } from '@wrongstack/core/models';
 import type { ModelsDevPayload } from '@wrongstack/core/types';
+import { providerIdentities } from '@wrongstack/core/utils';
 import { describe, expect, it, vi } from 'vitest';
 import { buildProviderFactoriesFromRegistry, CatalogRoutedProvider } from '../src/index.js';
 
@@ -115,6 +116,17 @@ describe('buildProviderFactoriesFromRegistry', () => {
     expect(types).toContain('openai-compatible');
   });
 
+  it('generic openai-compatible factory takes a keyless server on loopback, not a remote one', async () => {
+    const factories = await buildProviderFactoriesFromRegistry({ registry: makeRegistry() });
+    const f = factories.find((x) => x.type === 'openai-compatible');
+    expect(
+      f!.create({ type: 'openai-compatible', baseUrl: 'http://127.0.0.1:9915/v1' }),
+    ).toBeDefined();
+    expect(() =>
+      f!.create({ type: 'openai-compatible', baseUrl: 'https://llm.example.com/v1' }),
+    ).toThrow(/requires apiKey/);
+  });
+
   it('anthropic factory builds an AnthropicProvider', async () => {
     const registry = makeRegistry();
     const factories = await buildProviderFactoriesFromRegistry({ registry });
@@ -181,6 +193,30 @@ describe('buildProviderFactoriesFromRegistry', () => {
     const f = factories.find((x) => x.type === 'mistral');
     const provider = f!.create({ type: 'mistral', apiKey: 'msk-test' });
     expect(provider.id).toBe('mistral');
+  });
+
+  it('names a provider by the config key the host asks for, not the catalog entry', async () => {
+    // Every host builds `{ ...cfg, type: providerId }` with the factory type
+    // apart. The factories named the provider by the catalog entry instead, so
+    // a second account `work` (type "anthropic") ran as `anthropic` and every
+    // lookup of its own config entry read another one.
+    const factories = await buildProviderFactoriesFromRegistry({ registry: makeRegistry() });
+    const build = (factory: string, cfg: Record<string, unknown>) =>
+      factories.find((x) => x.type === factory)!.create(cfg as never);
+
+    const work = build('anthropic', { type: 'work', apiKey: 'sk-work' });
+    expect(work.id).toBe('work');
+    expect(providerIdentities(work)).toEqual(['work', 'anthropic']);
+    expect(build('mistral', { type: 'my-mistral', apiKey: 'msk' }).id).toBe('my-mistral');
+    const local = build('openai-compatible', {
+      type: 'my-local',
+      baseUrl: 'http://127.0.0.1:9/v1',
+    });
+    expect(local.id).toBe('my-local');
+    expect(providerIdentities(local)).toEqual(['my-local', 'openai-compatible']);
+    // Asked for by its own name, it is just that.
+    const plain = build('anthropic', { type: 'anthropic', apiKey: 'sk' });
+    expect(providerIdentities(plain)).toEqual(['anthropic']);
   });
 
   it('builds a catalog router when one provider mixes supported wire SDKs', async () => {

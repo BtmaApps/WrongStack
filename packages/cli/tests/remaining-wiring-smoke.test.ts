@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+// Core-internal binding; tests resolve core from source, so this is the module
+// the middleware reads.
+import { bindRequestProvider } from '../../core/src/core/request-provider-binding.js';
 import { ensureDirectorAndAnnounce } from '../src/wiring/director-announcement.js';
-import { setupSessionRuntime } from '../src/wiring/session-runtime.js';
 import { createFleetCommandHandlers } from '../src/wiring/fleet-command-handlers.js';
 import { createSddHandlers } from '../src/wiring/sdd-handlers.js';
 import { createSessionCommandHandlers } from '../src/wiring/session-command-handlers.js';
+import { setupSessionRuntime } from '../src/wiring/session-runtime.js';
 
 describe('remaining CLI wiring boundaries', () => {
   it('creates SDD handlers and reports the no-session parallel-run guard', async () => {
@@ -278,5 +281,59 @@ describe('remaining CLI wiring boundaries', () => {
     // Test failing provider
     await runtime.refreshActiveReasoningConfig('fail', 'fail');
     expect(runtime.getActiveReasoningConfig()).toBeUndefined();
+  });
+
+  it("gives a tab's request its own model's reasoning profile, not the leader's", async () => {
+    // Only the tab's model has a known profile; the leader's has none.
+    const modelsRegistry = {
+      getModel: vi.fn(async (providerId: string, modelId: string) =>
+        providerId === 'tab-prov' && modelId === 'tab-model'
+          ? {
+              capabilities: {
+                reasoningConfig: {
+                  default: 'enabled',
+                  effortSupported: true,
+                  disableSupported: true,
+                  effortLevels: ['low', 'high'],
+                },
+              },
+            }
+          : undefined,
+      ),
+    };
+    const leaderProvider = { id: 'test-prov', capabilities: {} };
+    const runtime = setupSessionRuntime({
+      evOn: vi.fn(),
+      events: { on: vi.fn(), emit: vi.fn() } as never,
+      config: { provider: 'test-prov', model: 'test-mod' } as never,
+      context: { session: { id: 'sess' }, provider: leaderProvider, model: 'test-mod' } as never,
+      session: { id: 'sess' } as never,
+      sessionRef: { current: { id: 'sess' } } as never,
+      wpaths: { globalRoot: 'D:/root', projectSlug: 'proj' } as never,
+      projectRoot: 'D:/repo',
+      renderer: { writeInfo: vi.fn(), writeError: vi.fn() } as never,
+      tuiOwnsScreen: false,
+      tokenCounter: { total: () => ({ input: 0, output: 0 }) } as never,
+      modelsRegistry: modelsRegistry as never,
+      configStore: {
+        get: () => ({ modelRuntime: { reasoning: { mode: 'on', effort: 'high' } } }),
+      } as never,
+      provider: { capabilities: {} as never },
+      logger: { warn: vi.fn(), error: vi.fn() } as never,
+      governanceHandle: { installToolBoundary: vi.fn() } as never,
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    const send = (provider: object, model: string) => {
+      const req = { model, messages: [] } as never;
+      bindRequestProvider(req, provider as never);
+      return runtime.pipelines.request.run(req);
+    };
+    expect((await send({ id: 'tab-prov', capabilities: {} }, 'tab-model')).reasoning).toEqual({
+      enabled: true,
+      effort: 'high',
+    });
+    // The leader's own model has no known profile: no reasoning field.
+    expect((await send(leaderProvider, 'test-mod')).reasoning).toBeUndefined();
   });
 });

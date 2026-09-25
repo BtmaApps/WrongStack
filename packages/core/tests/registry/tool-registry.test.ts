@@ -59,6 +59,29 @@ describe('ToolRegistry', () => {
     expect(clone.listForProvider().map((tool) => tool.name)).toEqual(['read']);
   });
 
+  it('keeps excluded names off the provider surface and still offers tools registered later', () => {
+    // Tier 'off' exposes everything but the browser suite. It used to do that
+    // with a list of the names registered at boot, which also hid every tool
+    // registered afterwards — MCP servers connect after boot.
+    const r = new ToolRegistry();
+    r.register(t('read'));
+    r.register(t('browser_open'));
+    r.setProviderToolExclusions(['browser_open']);
+    r.register(t('mcp__probe__echo'), 'mcp:probe');
+
+    expect(r.listForProvider().map((tool) => tool.name)).toEqual(['read', 'mcp__probe__echo']);
+    expect(r.isExposedToProvider('browser_open')).toBe(false);
+    expect(r.isExposedToProvider('mcp__probe__echo')).toBe(true);
+    expect(
+      r
+        .clone()
+        .listForProvider()
+        .map((tool) => tool.name),
+    ).toEqual(['read', 'mcp__probe__echo']);
+    r.setProviderToolExclusions(undefined);
+    expect(r.listForProvider()).toHaveLength(3);
+  });
+
   it('fails open to the enabled catalog when a lazy gateway is manually disabled', () => {
     const r = new ToolRegistry();
     r.register(t('tool_search'));

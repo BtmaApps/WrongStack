@@ -51,6 +51,7 @@ import type {
 } from '../types/permission.js';
 import type { Tool } from '../types/tool.js';
 import { matchAny, matchGlob } from '../utils/glob-match.js';
+import { providerIdentities } from '../utils/provider-catalog-binding.js';
 import { permissionRuleRef, type UnnumberedPermissionRule } from './permission-rules.js';
 import { type DestructiveKind, normalizeYoloConfirmKinds } from './yolo-risk.js';
 
@@ -350,7 +351,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
         rule.denyProviders &&
         rule.denyProviders.length > 0 &&
         ctx.provider?.id &&
-        rule.denyProviders.includes(ctx.provider.id)
+        deniesProvider(rule.denyProviders, ctx.provider)
       ) {
         return deny(
           `provider "${ctx.provider.id}" is denied in this directory`,
@@ -602,7 +603,7 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
       );
 
       if (rule.denyProviders && rule.denyProviders.length > 0 && ctx.provider?.id) {
-        const matched = rule.denyProviders.includes(ctx.provider.id);
+        const matched = deniesProvider(rule.denyProviders, ctx.provider);
         add(
           'denyProviders',
           matched,
@@ -717,4 +718,12 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
     winnerIndex = steps.length - 1;
     return delegate(targetPaths[0]);
   }
+}
+
+/**
+ * A rule names a provider by its config key or by the vendor: `anthropic`
+ * also covers a second account `work` built from the `anthropic` entry.
+ */
+function deniesProvider(denied: readonly string[], provider: { readonly id: string }): boolean {
+  return providerIdentities(provider).some((id) => denied.includes(id));
 }

@@ -142,6 +142,20 @@ function gate(fact: boolean | undefined, baseline: boolean): boolean {
 }
 
 /**
+ * Vision is gated on whether the WIRE can carry an image, not on the family's
+ * default. `openai-compatible` defaults to no vision because an unknown model
+ * behind it is most likely text-only — but its transport sends `image_url`
+ * parts, so a model the catalog says takes images must get them. AND-ing that
+ * fact with the default reported every vision model on OpenRouter, xAI, Poe,
+ * DeepInfra, … as text-only, and images were refused or detoured through a
+ * vision MCP. Only the `unsupported` family has no transport to carry one.
+ */
+function gateVision(fact: boolean | undefined, baseline: boolean, family: WireFamily): boolean {
+  if (fact === undefined) return baseline;
+  return fact && (baseline || family !== 'unsupported');
+}
+
+/**
  * `mergeOverlay` injects runtime-discovered models into the catalog. It is not
  * on the `ModelsRegistry` interface, so probe for it.
  *
@@ -314,7 +328,7 @@ export async function capabilitiesFor(
     // Capability booleans: AND model facts with base unless custom overrides
     tools: customCaps?.tools ?? gate(modelTools, base.tools),
     parallelTools: customCaps?.parallelTools ?? gate(modelTools, base.parallelTools),
-    vision: customCaps?.vision ?? gate(modelVision, base.vision),
+    vision: customCaps?.vision ?? gateVision(modelVision, base.vision, family),
     pdf: modelPdf,
     reasoning: customCaps?.reasoning ?? modelReasoning ?? base.reasoning,
     // Scalar fields: custom override wins, then catalog, then base

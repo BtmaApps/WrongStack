@@ -19,6 +19,7 @@
  */
 import type { Context } from '@wrongstack/core/agent';
 import type { Provider } from '@wrongstack/core/types';
+import { catalogProviderIdFor } from '@wrongstack/providers';
 import type { CliContext } from '../cli-context.js';
 import { wireSessionEvents } from '../session-event-wiring.js';
 import { SessionStats } from '../session-stats.js';
@@ -85,10 +86,13 @@ export function setupSessionRuntime(args: SessionRuntimeArgs) {
 
   let activeReasoningConfig: import('@wrongstack/core/types').ReasoningConfig | undefined;
   const warnedRuntimeMessages = new Set<string>();
+  // An alias (`work` → `type: "anthropic"`) reads its facts from the catalog entry.
+  const catalogIdOf = (providerId: string): string =>
+    catalogProviderIdFor(providerId, configStore.get().providers?.[providerId]?.type);
   const refreshActiveReasoningConfig = async (providerId: string, modelId: string) => {
     warnedRuntimeMessages.clear();
     try {
-      const resolved = await modelsRegistry.getModel(providerId, modelId);
+      const resolved = await modelsRegistry.getModel(catalogIdOf(providerId), modelId);
       activeReasoningConfig = resolved?.capabilities.reasoningConfig;
     } catch {
       activeReasoningConfig = undefined;
@@ -102,6 +106,19 @@ export function setupSessionRuntime(args: SessionRuntimeArgs) {
     modelRuntime: {
       getSettings: () => configStore.get().modelRuntime,
       getReasoningConfig: () => activeReasoningConfig,
+      // A WebUI tab can run its own model; its requests take that model's
+      // reasoning profile, not the leader's.
+      resolveReasoningConfig: async (req, bound) => {
+        if (!bound || (bound === context.provider && req.model === context.model)) {
+          return activeReasoningConfig;
+        }
+        try {
+          return (await modelsRegistry.getModel(catalogIdOf(bound.id), req.model))?.capabilities
+            .reasoningConfig;
+        } catch {
+          return undefined;
+        }
+      },
       getCapabilities: () => provider.capabilities,
       onWarning: (message) => {
         if (warnedRuntimeMessages.has(message)) return;

@@ -4,8 +4,9 @@ import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { describe, expect, it } from 'vitest';
 import {
-  COMMAND_OUTPUT_MAX_BYTES,
   assertRealInsideRoot,
+  COMMAND_OUTPUT_MAX_BYTES,
+  capBytesWithNotice,
   collapseCarriageReturns,
   collapseConsecutiveDuplicates,
   detectPackageManager,
@@ -178,6 +179,38 @@ describe('truncateMiddle', () => {
     const marker = `\n…[truncated ${claimed} bytes from middle]…\n`;
     const keptContent = Buffer.byteLength(out, 'utf8') - Buffer.byteLength(marker, 'utf8');
     expect(claimed).toBe(Buffer.byteLength(s, 'utf8') - keptContent);
+  });
+});
+
+describe('capBytesWithNotice', () => {
+  // Regression (bug-hunter r1 2026-09-25): the caps the tools hand the model —
+  // `limits.fetchBytes` and `read_url_content`'s documented `maxBytes` — were
+  // overshot by the very notice that announced the cut, because the notice was
+  // appended outside the budget. House contract (truncateMiddle /
+  // truncateDiffPayload): marker room is reserved from the budget.
+  it('never exceeds the cap, notice included', () => {
+    const notice = '[cut at 1024 bytes by limits.fetchBytes]';
+    const suffix = `\n\n${notice}`;
+    const out = capBytesWithNotice('a'.repeat(5000), 1024, notice);
+    expect(out.endsWith(suffix)).toBe(true);
+    expect(Buffer.byteLength(out, 'utf8')).toBe(1024);
+    expect(out.startsWith('a'.repeat(1024 - Buffer.byteLength(suffix, 'utf8')))).toBe(true);
+  });
+
+  it('returns text that already fits unchanged', () => {
+    expect(capBytesWithNotice('hello', 1024, '[cut]')).toBe('hello');
+  });
+
+  it('multibyte content never exceeds the cap and never splits a character', () => {
+    const out = capBytesWithNotice('é'.repeat(4000), 2049, '[cut at 2049 bytes]');
+    expect(Buffer.byteLength(out, 'utf8')).toBeLessThanOrEqual(2049);
+    expect(out).not.toContain('\uFFFD');
+  });
+
+  it('hard-cuts when the budget cannot hold the notice at all', () => {
+    expect(capBytesWithNotice('a'.repeat(100), 4, '[a notice far longer than the budget]')).toBe(
+      'aaaa',
+    );
   });
 });
 

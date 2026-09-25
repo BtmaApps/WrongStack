@@ -49,7 +49,7 @@
 import type { ProviderAuthRegistry, ProviderRegistry } from '@wrongstack/core/registry';
 import type { Config, Logger, ModelsRegistry, ResolvedProvider } from '@wrongstack/core/types';
 import { mergeCustomModelDefs } from '@wrongstack/core/utils';
-import { capabilitiesFor } from '@wrongstack/providers';
+import { capabilitiesFor, catalogProviderIdFor } from '@wrongstack/providers';
 import { setupProvider } from '../wiring/provider.js';
 import { awaitFirstWrongProxyProbe, bootstrapWrongProxy } from '../wiring/proxy-wiring.js';
 import { getWrongTrace } from '../wiring/wrongtrace-gate.js';
@@ -185,14 +185,25 @@ export async function resolveModeAndCapabilities(
   const modeId = deps.activeMode?.id ?? 'default';
   const modePrompt = deps.activeMode?.prompt ?? '';
 
+  // An alias (`work` → `type: "anthropic"`) reads its facts from the catalog entry.
+  const catalogProviderId = catalogProviderIdFor(
+    provider.id,
+    deps.config.providers?.[provider.id]?.type,
+  );
   const [resolvedCaps, resolvedModel] = await Promise.all([
     capabilitiesFor(
       deps.modelsRegistry,
       provider.id,
       deps.config.model,
       mergeCustomModelDefs(deps.config.providers?.[provider.id]?.customModels, deps.config.models),
+      { catalogProviderId },
     ).catch(() => undefined),
-    deps.modelsRegistry.getModel(deps.config.provider, deps.config.model).catch(() => undefined),
+    deps.modelsRegistry
+      .getModel(
+        catalogProviderIdFor(deps.config.provider, deps.config.providers?.[deps.config.provider]?.type),
+        deps.config.model,
+      )
+      .catch(() => undefined),
   ]);
 
   // When the model isn't in the models.dev catalog (config-only providers such

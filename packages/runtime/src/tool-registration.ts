@@ -195,15 +195,16 @@ export function registerCanonicalHostTools(
       for (const name of BROWSER_TOOL_NAMES) directNames.add(name);
     }
     options.registry.setProviderToolNames([...directNames]);
+    options.registry.setProviderToolExclusions(undefined);
   } else {
-    if (options.browser?.enabled !== true) {
-      // Even under tier 'off', omit browser suite from provider surface unless explicitly enabled
-      const allNames = options.registry.list().map((tool) => tool.name);
-      const browserSet = new Set(BROWSER_TOOL_NAMES);
-      options.registry.setProviderToolNames(allNames.filter((name) => !browserSet.has(name)));
-    } else {
-      options.registry.setProviderToolNames(undefined);
-    }
+    options.registry.setProviderToolNames(undefined);
+    // Even under tier 'off', omit the browser suite from the provider surface
+    // unless it is enabled. An exclusion, not a list of today's names: a list
+    // taken here also hid every tool registered later (MCP servers connect
+    // after boot), so tier 'off' never offered them.
+    options.registry.setProviderToolExclusions(
+      options.browser?.enabled === true ? undefined : BROWSER_TOOL_NAMES,
+    );
   }
 
   applyToolDescriptionModes(options.registry, options.descriptionMode);

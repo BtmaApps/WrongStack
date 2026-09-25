@@ -14,9 +14,11 @@ Use this as a map; the deep docs it links to are authoritative.
 
 ---
 
-## Built-in tools (67)
+## Built-in tools
 
-WrongStack ships **67 built-in tools** — no plugins required. They fall into
+WrongStack ships **68 built-in tools** — no plugins required (the exact count is
+derived from `builtinTools`; see `TOOL_COUNT` in
+`website/src/data/runtime-catalog.ts`). They fall into
 these families:
 
 | Family | Examples |

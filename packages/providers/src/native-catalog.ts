@@ -35,7 +35,10 @@ export function isNativeCatalogNpm(value: string | undefined): value is NativeCa
 }
 
 export interface NativeCatalogProviderOptions {
+  /** The user-visible provider id. */
   id: string;
+  /** The catalog entry it was built from, which decides behavior; defaults to `id`. */
+  catalogId?: string | undefined;
   npm: NativeCatalogNpm;
   models: readonly ModelsDevModel[];
   capabilities: Capabilities;
@@ -135,7 +138,7 @@ function createResolver(
     }
     case '@ai-sdk/azure': {
       const resourceName =
-        opts.id === 'azure-cognitive-services'
+        (opts.catalogId ?? opts.id) === 'azure-cognitive-services'
           ? process.env['AZURE_COGNITIVE_SERVICES_RESOURCE_NAME']
           : process.env['AZURE_RESOURCE_NAME'];
       const sdk = createAzure({

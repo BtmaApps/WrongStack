@@ -52,6 +52,7 @@ function makeFakeToolRegistry() {
       }),
       list: vi.fn(() => registeredTools),
       setProviderToolNames: vi.fn(),
+      setProviderToolExclusions: vi.fn(),
       // The canonical registration path also configures the registry it is
       // handed. A fake that answers only the register* calls made
       // `registerCanonicalHostTools` throw on the first configuration step,

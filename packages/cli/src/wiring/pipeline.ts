@@ -4,6 +4,7 @@ import {
   type Context,
   createDefaultPipelines,
   createEventUserInputAwaiter,
+  installPipelineErrorBoundaries,
 } from '@wrongstack/core/agent';
 import {
   AutoCompactionMiddleware,
@@ -30,14 +31,7 @@ export function setupPipelines(params: {
    * model-runtime middleware to map shared reasoning/cache settings into the
    * provider `Request`, gated by the active model's capabilities.
    */
-  modelRuntime?:
-    | {
-        getSettings(): import('@wrongstack/core/types').ModelRuntimeConfig | undefined;
-        getReasoningConfig(): import('@wrongstack/core/types').ReasoningConfig | undefined;
-        getCapabilities?(): import('@wrongstack/core/types').Capabilities | undefined;
-        onWarning?: ((message: string) => void) | undefined;
-      }
-    | undefined;
+  modelRuntime?: Parameters<typeof createModelRuntimeMiddleware>[0] | undefined;
 }): AgentPipelines {
   const { events, logger } = params;
   const pipelines = createDefaultPipelines();
@@ -46,45 +40,10 @@ export function setupPipelines(params: {
   // Installed first so all hosts (REPL/TUI/WebUI) share one behavior — UIs only
   // need to mutate Config.modelRuntime for the change to take effect.
   if (params.modelRuntime) {
-    const mr = params.modelRuntime;
-    pipelines.request.use(
-      createModelRuntimeMiddleware({
-        getSettings: mr.getSettings,
-        getReasoningConfig: mr.getReasoningConfig,
-        ...(mr.getCapabilities ? { getCapabilities: mr.getCapabilities } : {}),
-        onWarning: mr.onWarning,
-      }),
-    );
+    pipelines.request.use(createModelRuntimeMiddleware(params.modelRuntime));
   }
 
-  const installBoundary = <_T>(p: {
-    setErrorHandler: (
-      h: (ev: {
-        middleware: string;
-        owner?: string | undefined;
-        err: unknown;
-      }) => 'rethrow' | 'swallow',
-    ) => unknown;
-  }) => {
-    p.setErrorHandler((ev) => {
-      const fromPlugin = !!ev.owner && ev.owner !== 'core';
-      logger.error(
-        `Pipeline middleware "${ev.middleware}" crashed (owner=${ev.owner ?? 'unknown'}); ${fromPlugin ? 'swallowed' : 'rethrown'}`,
-        ev.err,
-      );
-      events.emit('error', {
-        err: ev.err instanceof Error ? ev.err : new Error(String(ev.err)),
-        phase: `pipeline:${ev.middleware}`,
-      });
-      return fromPlugin ? 'swallow' : 'rethrow';
-    });
-  };
-  installBoundary(pipelines.request);
-  installBoundary(pipelines.response);
-  installBoundary(pipelines.toolCall);
-  installBoundary(pipelines.userInput);
-  installBoundary(pipelines.assistantOutput);
-  installBoundary(pipelines.contextWindow);
+  installPipelineErrorBoundaries(pipelines, { events, logger });
   return pipelines;
 }
 

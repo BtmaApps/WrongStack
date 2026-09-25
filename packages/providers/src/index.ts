@@ -10,7 +10,7 @@ import type {
   WireFamily,
 } from '@wrongstack/core/types';
 import { ConfigError, ERROR_CODES, WrongStackError } from '@wrongstack/core/types';
-import { expectDefined } from '@wrongstack/core/utils';
+import { bindProviderCatalogId, expectDefined } from '@wrongstack/core/utils';
 import { AiGatewayProvider, createAiGatewayProviderFactory } from './ai-gateway.js';
 import { AnthropicProvider } from './anthropic.js';
 import { AnthropicOAuthProvider } from './anthropic-oauth.js';
@@ -496,7 +496,12 @@ export async function buildProviderFactoriesFromRegistry(
     factories.push({
       type: p.id,
       family: p.family,
-      create: (cfg: ProviderConfig) => makeProvider(p, cfg),
+      // `cfg.type` is the user-visible id the host asked for (see makeProvider).
+      create: (cfg: ProviderConfig) => {
+        const provider = makeProvider(p, cfg, p.id, cfg.type || p.id);
+        bindProviderCatalogId(provider, p.id);
+        return provider;
+      },
     });
   }
 
@@ -516,13 +521,17 @@ export async function buildProviderFactoriesFromRegistry(
           code: 'CONFIG_INVALID',
         });
       }
-      return new OpenAICompatibleProvider({
-        id: 'openai-compatible',
+      const provider = new OpenAICompatibleProvider({
+        // The host passes the config key as `cfg.type`; it names the provider.
+        id: cfg.type || 'openai-compatible',
+        definitionId: 'openai-compatible',
         apiKey: requireKey(cfg),
         baseUrl,
         headers: cfg.headers,
         quirks: validateQuirks('openai-compatible', cfg.quirks),
       });
+      bindProviderCatalogId(provider, 'openai-compatible');
+      return provider;
     },
   });
 
@@ -567,7 +576,15 @@ function makeProvider(
   p: ResolvedProvider,
   cfg: ProviderConfig,
   factoryType: string = p.id,
+  /**
+   * The user-visible provider id — the config key. A registry factory gets it
+   * as `cfg.type` (every host builds `{ ...cfg, type: providerId }`), and a
+   * config-only provider's synthetic `id` already is it. It names the
+   * provider; the catalog entry `p` and `factoryType` decide how it behaves.
+   */
+  instanceId: string = p.id,
 ): Provider {
+  const id = instanceId;
   // Config overrides the catalog. This is the path that lets users wire
   // up internal proxies / self-hosted endpoints without needing models.dev.
   const family: WireFamily = cfg.family ?? p.family;
@@ -579,6 +596,8 @@ function makeProvider(
   const explicitApiKey = resolveActiveKey(cfg);
   const catalogAware = createCatalogAwareProvider({
     provider: p,
+    instanceId: id,
+    definitionId: factoryType,
     config: cfg,
     explicitApiKey,
     quirks: validateQuirks(factoryType, cfg.quirks),
@@ -597,9 +616,9 @@ function makeProvider(
   const apiKey = explicitApiKey ?? readFromEnv(envVars) ?? (keyOptional ? 'no-key' : undefined);
   if (!apiKey && family !== 'unsupported') {
     throw new ConfigError({
-      message: `Provider "${p.id}" requires an API key. Set ${
+      message: `Provider "${id}" requires an API key. Set ${
         envVars.join(' or ') || 'apiKey in config'
-      } or run \`wstack auth ${p.id}\`.`,
+      } or run \`wstack auth ${id}\`.`,
       code: 'CONFIG_INVALID',
     });
   }
@@ -609,14 +628,14 @@ function makeProvider(
     if (family === 'unsupported') {
       throw new ConfigError({
         message:
-          `Provider "${p.id}" uses an unsupported wire family (${p.npm ?? 'unknown'}). ` +
+          `Provider "${id}" uses an unsupported wire family (${p.npm ?? 'unknown'}). ` +
           `Register a custom factory via a plugin to enable it.`,
         code: 'CONFIG_INVALID',
       });
     }
     throw new ConfigError({
       message:
-        `Provider "${p.id}" has no wire family configured. ` +
+        `Provider "${id}" has no wire family configured. ` +
         `Set an explicit family ("anthropic" | "openai" | "openai-compatible" | "google") in config or the models.dev catalog.`,
       code: 'CONFIG_INVALID',
     });
@@ -633,22 +652,22 @@ function makeProvider(
       return new AnthropicProvider({
         apiKey: expectDefined(apiKey),
         baseUrl,
-        id: p.id,
-        maxTools: validateQuirks(p.id, cfg.quirks)?.maxTools,
+        id,
+        maxTools: validateQuirks(id, cfg.quirks)?.maxTools,
       });
     case 'openai':
       return new OpenAIProvider({
         apiKey: expectDefined(apiKey),
         baseUrl,
-        id: p.id,
-        quirks: validateQuirks(p.id, cfg.quirks),
+        id,
+        quirks: validateQuirks(id, cfg.quirks),
       });
     case 'openai-compatible': {
       // Provider/model discovery remains owned by models.dev. This adapter
       // only selects the gateway's per-model wire protocol.
       if (factoryType === 'opencode') {
         return new OpenCodeZenProvider({
-          id: p.id,
+          id,
           apiKey: expectDefined(apiKey),
           baseUrl: expectDefined(baseUrl),
           headers: cfg.headers,
@@ -657,7 +676,7 @@ function makeProvider(
       }
       if (factoryType === 'opencode-go') {
         return new OpenCodeGoProvider({
-          id: p.id,
+          id,
           apiKey: expectDefined(apiKey),
           baseUrl,
           headers: cfg.headers,
@@ -671,7 +690,7 @@ function makeProvider(
       // so the routing existed only under unit tests.
       if (factoryType === 'minimax' || factoryType === 'minimax-coding-plan') {
         return new MiniMaxProvider({
-          id: p.id,
+          id,
           apiKey: expectDefined(apiKey),
           baseUrl,
           headers: cfg.headers,
@@ -682,50 +701,50 @@ function makeProvider(
         return createWireFormatFactory(mistralWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? mistralWireFormat.defaultBaseUrl,
-        }).create({ ...cfg, type: p.id });
+        }).create({ ...cfg, type: id });
       }
       if (factoryType === 'ollama') {
         return createWireFormatFactory(ollamaWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? ollamaWireFormat.defaultBaseUrl,
-        }).create({ ...cfg, type: p.id });
+        }).create({ ...cfg, type: id });
       }
       if (factoryType === 'vllm') {
         return createWireFormatFactory(vllmWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? vllmWireFormat.defaultBaseUrl,
-        }).create({ ...cfg, type: p.id });
+        }).create({ ...cfg, type: id });
       }
       if (factoryType === 'lmstudio') {
         return createWireFormatFactory(lmstudioWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? lmstudioWireFormat.defaultBaseUrl,
-        }).create({ ...cfg, type: p.id });
+        }).create({ ...cfg, type: id });
       }
       const preset = COMPATIBLE_PRESETS[factoryType];
       const resolvedBaseUrl = baseUrl ?? preset?.defaultBaseUrl;
       if (!resolvedBaseUrl?.trim()) {
         throw new ConfigError({
           message:
-            `Provider "${p.id}" (openai-compatible) requires a base URL. ` +
+            `Provider "${id}" (openai-compatible) requires a base URL. ` +
             'Set it in config or register a preset with a defaultBaseUrl.',
           code: 'CONFIG_INVALID',
         });
       }
       return new OpenAICompatibleProvider({
-        ...{ id: p.id, definitionId: factoryType },
+        ...{ id, definitionId: factoryType },
         apiKey: expectDefined(apiKey),
         baseUrl: resolvedBaseUrl,
         headers: cfg.headers,
         // Preset quirks are the floor; explicit user quirks win on conflict.
-        quirks: { ...preset?.quirks, ...validateQuirks(p.id, cfg.quirks) },
+        quirks: { ...preset?.quirks, ...validateQuirks(id, cfg.quirks) },
       });
     }
     case 'openai-codex': {
       const entry = resolveActiveKeyEntry(cfg);
       const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
       return new OpenAICodexProvider({
-        id: p.id,
+        id,
         baseUrl,
         credentials: {
           accessToken: expectDefined(apiKey),
@@ -733,7 +752,7 @@ function makeProvider(
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
           accountId: entry?.accountId,
         },
-        ...oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)),
+        ...oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)),
         // The list the ChatGPT backend reports for THIS account, refreshed on
         // the catalog probe the transport already makes.
       });
@@ -742,35 +761,35 @@ function makeProvider(
       const entry = resolveActiveKeyEntry(cfg);
       const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
       return new AnthropicOAuthProvider({
-        id: p.id,
+        id,
         baseUrl,
         credentials: {
           accessToken: expectDefined(apiKey),
           refreshToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
-        onRefresh: oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)).onRefresh,
+        onRefresh: oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)).onRefresh,
       });
     }
     case 'github-copilot': {
       const entry = resolveActiveKeyEntry(cfg);
       const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
       return new GitHubCopilotProvider({
-        id: p.id,
+        id,
         credentials: {
           copilotToken: resolveActiveKey(cfg) ?? '',
           githubToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
-        onRefresh: oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)).onRefresh,
+        onRefresh: oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)).onRefresh,
       });
     }
     case 'google-antigravity': {
       const entry = resolveActiveKeyEntry(cfg);
       const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
-      const persistence = oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey));
+      const persistence = oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey));
       return new AntigravityProvider({
-        id: p.id,
+        id,
         ...(cfg.baseUrl !== undefined ? { baseUrl: cfg.baseUrl } : {}),
         credentials: {
           accessToken: expectDefined(apiKey),
@@ -791,10 +810,10 @@ function makeProvider(
     }
     case 'google':
       return new GoogleProvider({
-        id: p.id,
+        id,
         apiKey: expectDefined(apiKey),
         baseUrl,
-        maxTools: validateQuirks(p.id, cfg.quirks)?.maxTools,
+        maxTools: validateQuirks(id, cfg.quirks)?.maxTools,
       });
     default:
       throw new ConfigError({
@@ -859,6 +878,9 @@ function readFromEnv(vars: string[]): string | undefined {
 function requireKey(cfg: ProviderConfig): string {
   const key = resolveActiveKey(cfg);
   if (key) return key;
+  // A local server on loopback that names no key variable takes none — the
+  // same rule boot and the picker use to call it usable.
+  if (isKeylessLocalProvider({ apiBase: cfg.baseUrl, envVars: cfg.envVars })) return 'no-key';
   throw new ConfigError({
     message: 'Provider config requires apiKey (or set the corresponding env var).',
     code: 'CONFIG_INVALID',

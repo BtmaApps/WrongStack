@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { installLimitsSource } from '@wrongstack/core/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // The guard reads this once at module load, so it must be set before import.
@@ -54,6 +55,9 @@ const server: Server = createServer((req, res) => {
       res.end();
     };
     pump();
+  } else if (req.url === '/plain-large') {
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    res.end('a'.repeat(8000));
   } else {
     res.writeHead(404);
     res.end();
@@ -155,5 +159,37 @@ describe('read_url_content body handling', () => {
     expect(Buffer.byteLength(out.content)).toBeLessThan(2048);
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(largeClosedEarly).toBe(true);
+  });
+
+  // Regression (bug-hunter r1 2026-09-25): the cut notice was appended OUTSIDE
+  // the budget, so a declared cap was always overshot by its own marker (~35
+  // bytes) and a byte cut could split a character into U+FFFD. House contract
+  // (truncateMiddle/truncateDiffPayload): marker room is reserved from the
+  // budget, so the result never exceeds the cap.
+  it('never returns more bytes than maxBytes, cut notice included', async () => {
+    const out = await readUrlContentTool.execute(
+      { url: `${base}/plain-large`, maxBytes: 2048 },
+      {} as never,
+      { signal: newSignal() },
+    );
+    expect(out.content).toContain('[Content truncated at 2048 bytes]');
+    expect(Buffer.byteLength(out.content, 'utf8')).toBeLessThanOrEqual(2048);
+  });
+});
+
+describe('fetch byte cap', () => {
+  it('never returns more bytes than limits.fetchBytes, cut notice included', async () => {
+    const sb = await mkSandbox();
+    const restore = installLimitsSource(() => ({ fetchBytes: 2048 }));
+    try {
+      const out = await fetchTool.execute({ url: `${base}/plain-large` }, sb.ctx, {
+        signal: newSignal(),
+      });
+      expect(out.content).toContain('[cut at 2048 bytes by limits.fetchBytes]');
+      expect(Buffer.byteLength(out.content, 'utf8')).toBeLessThanOrEqual(2048);
+    } finally {
+      restore();
+      await sb.cleanup();
+    }
   });
 });

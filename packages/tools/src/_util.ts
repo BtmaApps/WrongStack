@@ -288,6 +288,24 @@ export function truncateMiddle(s: string, max: number): string {
   return `${head}\n…[truncated ${total - kept} bytes from middle]…\n${tail}`;
 }
 
+/**
+ * Cut `text` to at most `maxBytes` bytes, keeping its head and appending
+ * `notice` after a blank line to say what was cut. Like `truncateMiddle` and
+ * `truncateDiffPayload`, the notice's room is reserved from the budget and the
+ * cut lands on a code-point boundary (`takeHeadBytes`), so the result never
+ * exceeds `maxBytes` and never splits a character into U+FFFD. `text` is
+ * returned unchanged when it already fits; when the budget cannot hold the
+ * notice at all, the text is hard-cut rather than allowed to overrun.
+ */
+export function capBytesWithNotice(text: string, maxBytes: number, notice: string): string {
+  if (Buffer.byteLength(text, 'utf8') <= maxBytes) return text;
+  const separator = '\n\n';
+  const reserved = Buffer.byteLength(`${separator}${notice}`, 'utf8');
+  const head = takeHeadBytes(text, Math.max(0, maxBytes - reserved));
+  if (!head) return takeHeadBytes(text, maxBytes);
+  return `${head}${separator}${notice}`;
+}
+
 export function isBinaryBuffer(buf: Buffer): boolean {
   const len = Math.min(buf.length, 8192);
   for (let i = 0; i < len; i++) {

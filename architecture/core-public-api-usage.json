@@ -44,9 +44,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/execution": {
-      "files": 70,
+      "files": 71,
       "typeOnly": 19,
-      "runtimeOrMixed": 67
+      "runtimeOrMixed": 68
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 48
     },
     "@wrongstack/core/kernel": {
-      "files": 298,
-      "typeOnly": 147,
-      "runtimeOrMixed": 165
+      "files": 300,
+      "typeOnly": 148,
+      "runtimeOrMixed": 166
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1205,
-      "typeOnly": 1070,
-      "runtimeOrMixed": 356
+      "files": 1210,
+      "typeOnly": 1074,
+      "runtimeOrMixed": 354
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 658,
+      "files": 659,
       "typeOnly": 61,
-      "runtimeOrMixed": 627
+      "runtimeOrMixed": 628
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2276,6 +2276,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/standalone-pipelines.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/start-webui-remediation.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -2291,12 +2297,6 @@
       "file": "packages/webui-server/src/server/start-webui-session-runtime.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/agent",
-      "file": "packages/webui-server/src/server/start-webui.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -4427,6 +4427,12 @@
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/src/server/standalone-pipelines.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -7586,6 +7592,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/src/server/standalone-pipelines.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/src/server/standalone-session-identity.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7677,6 +7689,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/setup-events.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/standalone-pipelines.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13300,7 +13318,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/wiring/pipeline.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 7
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14157,6 +14175,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/wiring-pipeline.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17108,6 +17132,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/fetch-body-handling.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/tests/fetch-lookup.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18518,6 +18548,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/standalone-pipelines.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/standalone-session-identity.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -18567,6 +18603,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/start-webui-vector.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/start-webui.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18797,6 +18839,12 @@
       "file": "packages/webui-server/tests/specs-ws-handler.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/standalone-pipelines.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -21597,6 +21645,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/providers/src/wire-adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/providers/tests/factories.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

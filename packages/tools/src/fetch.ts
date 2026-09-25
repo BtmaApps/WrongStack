@@ -9,6 +9,7 @@ import {
 } from '@wrongstack/core/types';
 import { ALLOW_PRIVATE, assertNotPrivate, guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
+import { capBytesWithNotice } from './_util.js';
 
 export type FetchFormat = 'markdown' | 'text' | 'raw';
 
@@ -34,16 +35,21 @@ const TIMEOUT_MS = 20_000;
 
 /**
  * The page as returned to the model: whole, unless the user set
- * `limits.fetchBytes` (then cut at that many bytes, and said so).
+ * `limits.fetchBytes` (then cut at that many bytes, and said so). The cut
+ * notice is paid for out of the cap, so the result never exceeds it.
  */
 function capFetchedContent(content: string, stoppedAtGuard: boolean, received: number): string {
-  let out = content;
   const userCap = positiveLimit(activeLimits().fetchBytes);
-  if (userCap !== undefined && Buffer.byteLength(out, 'utf8') > userCap) {
-    out = `${Buffer.from(out, 'utf8').subarray(0, userCap).toString('utf8')}\n\n[cut at ${userCap} bytes by limits.fetchBytes]`;
-  }
-  if (stoppedAtGuard) out = `${out}\n\n[download stopped at ${received} bytes: memory guard]`;
-  return out;
+  const guardNotice = stoppedAtGuard
+    ? `[download stopped at ${received} bytes: memory guard]`
+    : undefined;
+  if (userCap === undefined) return guardNotice ? `${content}\n\n${guardNotice}` : content;
+  const cutNotice = `[cut at ${userCap} bytes by limits.fetchBytes]`;
+  return capBytesWithNotice(
+    content,
+    userCap,
+    guardNotice ? `${cutNotice}\n\n${guardNotice}` : cutNotice,
+  );
 }
 
 /** Abort when any of the signals abort (Node 22+ — AbortSignal.any shipped in Node 20). */

@@ -608,23 +608,56 @@ export class MailboxProjectServerConnection {
     // lightweight TUI/WebUI launch. Ensure the spawn cwd exists before the
     // detached owner is created; the owner remains the only SQLite opener.
     fs.mkdirSync(this.projectDir, { recursive: true });
+    // DIAGNOSTIC (opt-in): the daemon writes every fatal path to stderr, but
+    // stdio:'ignore' discarded them, so an unexpected exit had no recorded
+    // cause. When WRONGSTACK_CATALOG_DAEMON_LOG is set, route the child's
+    // stderr to that file and record its exit code/signal. Unset = unchanged.
+    // A file descriptor, not a pipe: a piped stream would keep this process's
+    // event loop alive waiting on a detached child.
+    const diag = process.env['WRONGSTACK_CATALOG_DAEMON_LOG'];
+    const fd = diag ? fs.openSync(diag, 'a') : undefined;
     const child = spawn(
       process.execPath,
       daemonSpawnArgs(url, ['--project-dir', this.projectDir]),
       {
         cwd: this.projectDir,
         detached: process.platform !== 'win32',
-        stdio: 'ignore',
+        stdio: fd === undefined ? 'ignore' : ['ignore', 'ignore', fd],
         windowsHide: true,
         env: process.env,
       },
     );
+    if (fd !== undefined) fs.closeSync(fd);
+    if (diag) {
+      const startedAt = Date.now();
+      const note = (line: string): void => {
+        try {
+          fs.appendFileSync(
+            diag,
+            `[${new Date(startedAt).toISOString()}] +${Date.now() - startedAt}ms pid=${child.pid} ${line}\n`,
+          );
+        } catch {
+          /* best effort — diagnostics must never break a spawn */
+        }
+      };
+      child.on('exit', (code, signal) => note(`[mailbox] EXIT code=${code} signal=${signal}`));
+    }
     // stdio is ignored and nothing else consumes lifecycle events; without a
     // listener a spawn-level 'error' (e.g. a transient EMFILE under load)
     // would crash this process instead of failing the connect. The
     // cadence-bounded re-spawn in connectWithElection owns recovery, so the
     // event only needs to be safely observable here.
-    child.on('error', () => undefined);
+    child.on('error', (err) => {
+      if (!diag) return;
+      try {
+        fs.appendFileSync(
+          diag,
+          `[${new Date().toISOString()}] pid=${child.pid} [mailbox] SPAWN_ERROR ${(err as Error).message}\n`,
+        );
+      } catch {
+        /* best effort */
+      }
+    });
     child.unref();
     return child.pid;
   }

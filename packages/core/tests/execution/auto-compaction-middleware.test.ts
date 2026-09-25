@@ -71,6 +71,22 @@ describe('AutoCompactionMiddleware', () => {
     compactor = mockCompactor();
   });
 
+  it('passes the send through when the context window is unknown', async () => {
+    // A model with no known window (0) has no budget to compact against;
+    // measured against 0, every send read as over the hard line and was
+    // refused ("did not reduce context below hard threshold").
+    const mw = new AutoCompactionMiddleware(compactor, 0, simpleEstimator(40_000), {
+      warn: 0.5,
+      soft: 0.75,
+      hard: 0.9,
+    });
+    const ctx = mockContext(40_000);
+    const next = vi.fn(async (c: Context) => c);
+    await expect(mw.handler()(ctx, next)).resolves.toBe(ctx);
+    expect(next).toHaveBeenCalledOnce();
+    expect(compactor.compactCalls).toHaveLength(0);
+  });
+
   it('does not compact when load is below warn threshold', async () => {
     const mw = new AutoCompactionMiddleware(compactor, 10000, simpleEstimator(), {
       warn: 0.5,

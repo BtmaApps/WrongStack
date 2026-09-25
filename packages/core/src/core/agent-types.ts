@@ -6,7 +6,7 @@
 import type { ExtensionRegistry } from '../extension/registry.js';
 import type { Container } from '../kernel/container.js';
 import type { EventBus } from '../kernel/events.js';
-import { Pipeline } from '../kernel/pipeline.js';
+import { Pipeline, type PipelineErrorHandler } from '../kernel/pipeline.js';
 import type { ProviderRegistry } from '../registry/provider-registry.js';
 import type { ToolRegistry } from '../registry/tool-registry.js';
 import type { ContentBlock, TextBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
@@ -136,4 +136,38 @@ export function createDefaultPipelines(): AgentPipelines {
     assistantOutput: new Pipeline<TextBlock>(),
     contextWindow: new Pipeline<Context>(),
   };
+}
+
+/**
+ * The host error boundary for an agent's pipelines. A middleware that throws is
+ * logged and reported as an `error` event; a plugin's is then swallowed (it and
+ * the chain below it are skipped for that value) and a core one rethrown.
+ * Without it a plugin's crash fails the whole turn.
+ */
+export function installPipelineErrorBoundaries(
+  pipelines: AgentPipelines,
+  deps: { events: EventBus; logger: { error(message: string, err?: unknown): void } },
+): void {
+  const all: Array<{ setErrorHandler(handler: PipelineErrorHandler): unknown }> = [
+    pipelines.request,
+    pipelines.response,
+    pipelines.toolCall,
+    pipelines.userInput,
+    pipelines.assistantOutput,
+    pipelines.contextWindow,
+  ];
+  for (const pipeline of all) {
+    pipeline.setErrorHandler((ev) => {
+      const fromPlugin = !!ev.owner && ev.owner !== 'core';
+      deps.logger.error(
+        `Pipeline middleware "${ev.middleware}" crashed (owner=${ev.owner ?? 'unknown'}); ${fromPlugin ? 'swallowed' : 'rethrown'}`,
+        ev.err,
+      );
+      deps.events.emit('error', {
+        err: ev.err instanceof Error ? ev.err : new Error(String(ev.err)),
+        phase: `pipeline:${ev.middleware}`,
+      });
+      return fromPlugin ? 'swallow' : 'rethrow';
+    });
+  }
 }

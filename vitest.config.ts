@@ -164,6 +164,14 @@ export default defineConfig({
       // profile so a developer's font install cannot change TUI snapshots.
       // Mirrors packages/tui/vitest.config.ts.
       WRONGSTACK_TUI_ICON_STYLE: 'unicode',
+      // Opt-in daemon diagnostics: forward WRONGSTACK_CATALOG_DAEMON_LOG into
+      // fork workers. Workers do NOT inherit the parent environment, so a
+      // launcher `set` never reaches the test process, and Vitest 5 removed
+      // the `--env` CLI flag — test.env is the supported channel. The key is
+      // omitted entirely when unset, so the default path is unchanged.
+      ...(process.env['WRONGSTACK_CATALOG_DAEMON_LOG']
+        ? { WRONGSTACK_CATALOG_DAEMON_LOG: process.env['WRONGSTACK_CATALOG_DAEMON_LOG'] }
+        : {}),
     },
     // Hermetic ~/.wrongstack: redirects all global state to a per-worker temp
     // dir (WRONGSTACK_HOME) so tests never read the user's real config (live

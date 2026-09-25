@@ -582,12 +582,17 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     resolveProvider: (providerId) => {
       const savedCfg: Partial<import('@wrongstack/core/types').ProviderConfig> =
         config.providers?.[providerId] ?? {};
-      return providerRegistry.create({
-        ...savedCfg,
-        apiKey: savedCfg.apiKey ?? config.apiKey,
-        baseUrl: savedCfg.baseUrl ?? config.baseUrl,
-        type: providerId,
-      } as never);
+      // `type` names the provider; the factory is the saved type (an alias
+      // `work` is built by the `anthropic` factory, not looked up as `work`).
+      return providerRegistry.create(
+        {
+          ...savedCfg,
+          apiKey: savedCfg.apiKey ?? config.apiKey,
+          baseUrl: savedCfg.baseUrl ?? config.baseUrl,
+          type: providerId,
+        } as never,
+        savedCfg.type ?? providerId,
+      );
     },
     getSystemOneJudge: () =>
       resolveTypeSafeJudge({ config: input.config, feature: 'brain', logger }),

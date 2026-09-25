@@ -241,6 +241,11 @@ export class AutoCompactionMiddleware {
       // limit that is lower than the catalog/native-model value. Resolve it on
       // every pass so the next retry compacts against the learned denominator.
       const runtimeMaxContext = effectiveMaxContext(ctx, this._maxContext);
+      // Unknown window (0): there is no budget to compact against. Measured
+      // against 0 every request read as over the hard line and the send was
+      // refused — the standalone WebUI installs this middleware before it
+      // knows the model's window, and a tab can switch to a model without one.
+      if (runtimeMaxContext <= 0) return next(ctx);
       let budget = contextWindowBudget(ctx, tokens, runtimeMaxContext);
       const calibratedLoad = budget.load;
       const policy = this.policyProvider?.(ctx);

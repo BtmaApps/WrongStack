@@ -20,6 +20,7 @@ import {
 import {
   PLUGIN_COUNT,
   TOOL_COUNT,
+  TOOL_TIER_COUNTS,
   toolCatalog,
   toolCategories,
   toolSlug,
@@ -34,26 +35,15 @@ const READONLY_COUNT = toolCatalog.filter((t) => !t.mutating).length;
 const MUTATING_COUNT = toolCatalog.filter((t) => t.mutating).length;
 
 /**
- * Tool count exposed to the provider for each token-saving tier. These values
- * mirror `packages/tools/src/tool-tier.ts` (`BUILTIN_TIER_COUNTS`) exactly so
- * the marketing page never disagrees with the runtime. Update both together if
- * the tier sets change — regenerate the numbers by importing
- * `BUILTIN_TIER_COUNTS` from packages/tools/src/tool-tier.ts and reading its
- * values derived from the current runtime catalog.
- *
- *   off       → every registered tool
- *   minimal   → TIER1 only (26)
- *   light     → TIER1 only (26) — same membership as minimal, different guidance
- *   medium    → TIER1 ∪ TIER2 (26 + 21 = 47)
- *   aggressive → TIER1 only (26) — narrowest surface
+ * Tool count exposed to the provider for each token-saving tier comes from
+ * `TOOL_TIER_COUNTS` in `@/data/runtime-catalog` — generated from the runtime's
+ * `BUILTIN_TIER_COUNTS` by `pnpm website:tools:write`, never a local literal.
+ *   off        → every registered tool
+ *   minimal    → TIER1 only
+ *   light      → TIER1 only — same membership as minimal, different guidance
+ *   medium     → TIER1 ∪ TIER2
+ *   aggressive → TIER1 only — narrowest surface
  */
-const TOOL_TIER_COUNTS = {
-  off: TOOL_COUNT,
-  minimal: 26,
-  light: 26,
-  medium: 47,
-  aggressive: 26,
-} as const;
 
 type ToolScope = 'all' | 'auto' | 'confirm' | 'read-only' | 'mutating';
 
