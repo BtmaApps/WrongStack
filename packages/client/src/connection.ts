@@ -63,20 +63,33 @@ export function openSocket(
     }
     let announced = false;
     let opened = false;
+    let settled = false;
     const early: Frame[] = [];
     const timer = setTimeout(() => {
       fail(new WrongStackError({ kind: 'timeout', code: 'connect', retryable: true }));
       socket.close();
     }, options.timeoutMs);
     const fail = (error: WrongStackError): void => {
+      settled = true;
       clearTimeout(timer);
       reject(error);
+    };
+    // The socket died before `open`. The connect timer measures nothing now:
+    // left running it would race the probe and report a refused token or a
+    // dead server as a connect timeout. The probe carries its own deadline.
+    const failedHandshake = (): void => {
+      if (settled || opened) return;
+      settled = true;
+      clearTimeout(timer);
+      void handshakeFailure(options.url, options.token, options.timeoutMs).then(reject);
     };
     socket.addEventListener('open', () => {
       opened = true;
     });
     socket.addEventListener('error', () => {
-      // The close event that follows carries the details.
+      // Node 22's WebSocket fires only `error` for a refused handshake or an
+      // unreachable host; `close` never follows. Newer runtimes send both.
+      failedHandshake();
     });
     socket.addEventListener('close', (event) => {
       if (announced) {
@@ -94,12 +107,7 @@ export function openSocket(
         );
         return;
       }
-      // The socket is gone, so the connect timer measures nothing now. Left
-      // running it races the probe and reports a refused token or a dead
-      // server as a connect timeout on a slow machine; the probe carries its
-      // own deadline instead.
-      clearTimeout(timer);
-      void handshakeFailure(options.url, options.token, options.timeoutMs).then(fail);
+      failedHandshake();
     });
     socket.addEventListener('message', (event) => {
       const frame = parseFrame(event.data);
