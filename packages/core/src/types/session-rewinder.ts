@@ -14,6 +14,12 @@ export interface RewindResult {
 export interface RewindResultExtended extends RewindResult {
   toPromptIndex: number;
   removedEvents: number;
+  /**
+   * The text of the prompt the rewind took back (the `user_input` recorded
+   * just before the target checkpoint), so a surface can hand it back to the
+   * user to edit and send again. Absent when the journal has none.
+   */
+  promptText?: string | undefined;
 }
 
 export interface SessionRewinder {

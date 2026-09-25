@@ -138,16 +138,10 @@ function parseSingleCheck(raw: unknown): CascadeEvidenceCheck | undefined {
   ) {
     return undefined;
   }
-  const output = typeof check.output === 'string' ? truncateOutput(check.output) : undefined;
+  // Whole output: a head-only cut dropped the failure summary, which test
+  // runners print last.
+  const output = typeof check.output === 'string' ? check.output : undefined;
   return { command: command.trim(), exitCode, output };
-}
-
-const MAX_EVIDENCE_OUTPUT_CHARS = 2_000;
-
-function truncateOutput(output: string): string {
-  return output.length > MAX_EVIDENCE_OUTPUT_CHARS
-    ? `${output.slice(0, MAX_EVIDENCE_OUTPUT_CHARS)}\n… (truncated)`
-    : output;
 }
 
 // ---------------------------------------------------------------------------

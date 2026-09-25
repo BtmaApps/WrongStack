@@ -1,11 +1,9 @@
-export const LEARNED_SOFT_LIMIT = 8_192;
-export const LEARNED_HARD_LIMIT = 16_384;
-
 /**
- * Maximum length (in characters) of a single captured learning entry after
- * normalization.
+ * Size at which a role's learned buffer is queued for an LLM consolidation
+ * pass (merge / dedupe / promote to skills). A scheduling trigger, never a
+ * cap: capture keeps every directive and nothing is evicted or cut to fit.
  */
-export const LEARNED_ENTRY_MAX_CHARS = 600;
+export const LEARNED_SOFT_LIMIT = 8_192;
 
 export const MIN_INSTRUCTIVE_LENGTH = 30;
 
@@ -74,12 +72,9 @@ export function normalizeLearnedEntry(raw: string): {
 
   if (directiveSentences.length === 0) return null;
 
-  let normalized = directiveSentences.join(' ').replace(/\s+/g, ' ').trim();
-
-  if (normalized.length > LEARNED_ENTRY_MAX_CHARS) {
-    normalized = truncateToInstructive(normalized, LEARNED_ENTRY_MAX_CHARS);
-    if (normalized.length < MIN_INSTRUCTIVE_LENGTH) return null;
-  }
+  // The whole directive: a cut at a fixed length dropped the half of a lesson
+  // that said when it applies.
+  const normalized = directiveSentences.join(' ').replace(/\s+/g, ' ').trim();
 
   if (normalized.length < MIN_INSTRUCTIVE_LENGTH) return null;
 
@@ -133,18 +128,6 @@ function looksDirective(text: string): boolean {
   )
     return true;
   return false;
-}
-
-function truncateToInstructive(text: string, maxChars: number): string {
-  const sentences = splitSentences(text);
-  let acc = '';
-  for (const s of sentences) {
-    const candidate = acc ? `${acc} ${s}` : s;
-    if (candidate.length > maxChars) break;
-    acc = candidate;
-  }
-  if (acc) return acc;
-  return `${text.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
 export function classifyLearnedEntry(text: string): LearnedEntryCategory {

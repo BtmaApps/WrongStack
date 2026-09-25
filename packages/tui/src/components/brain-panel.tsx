@@ -226,7 +226,7 @@ function rowText(
         label: '  voter tokens',
         value:
           s.councilVoterMaxTokens === undefined
-            ? 'default (2000)'
+            ? "default (model's ceiling)"
             : String(s.councilVoterMaxTokens),
         dim: 'output budget per seat — reasoning models think from this budget',
       };
@@ -283,7 +283,7 @@ function rowText(
     case 'llmMaxTokens':
       return {
         label: 'LLM max tokens',
-        value: String(s.llmMaxTokens),
+        value: s.llmMaxTokens === undefined ? "default (model's ceiling)" : String(s.llmMaxTokens),
         dim: 'output budget per decision call',
       };
     case 'llmRejectUncertain':

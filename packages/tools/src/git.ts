@@ -6,7 +6,8 @@ import { assessCommitSafety } from '@wrongstack/core/coordination';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
-import { COMMAND_OUTPUT_MAX_BYTES, normalizeCommandOutput } from './_util.js';
+import { createOutputSpool, spoolNote } from './_output-spool.js';
+import { commandOutputPreviewBytes, normalizeCommandOutput } from './_util.js';
 
 export type GitSubcommand =
   | 'status'
@@ -249,13 +250,9 @@ export const gitTool = {
     if (input.command === 'commit' && !input.dry_run) {
       try {
         const diffResult = await runGit(['diff', '--cached'], gitDir, signal);
-        if (diffResult.exitCode === 0) {
-          const MAX_DIFF = 20_000;
-          stagedDiff =
-            diffResult.stdout.length > MAX_DIFF
-              ? diffResult.stdout.slice(0, MAX_DIFF) + '\n\n... (diff truncated)'
-              : diffResult.stdout;
-        }
+        // runGit already spools a large diff to disk and points at the full
+        // file, so nothing past the preview is lost.
+        if (diffResult.exitCode === 0) stagedDiff = diffResult.stdout;
       } catch {
         // Diff capture is best-effort; don't fail the whole operation
       }
@@ -461,6 +458,16 @@ function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOu
 
     const stdoutDecoder = new StringDecoder('utf8');
     const stderrDecoder = new StringDecoder('utf8');
+    // The model sees a head+tail preview; the spools keep the FULL streams on
+    // disk so a big log/diff is never lost past the in-memory cap.
+    const stdoutSpool = createOutputSpool({
+      tool: 'git',
+      thresholdBytes: commandOutputPreviewBytes(),
+    });
+    const stderrSpool = createOutputSpool({
+      tool: 'git',
+      thresholdBytes: commandOutputPreviewBytes(),
+    });
 
     const child = spawn('git', args, {
       cwd,
@@ -472,23 +479,23 @@ function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOu
 
     child.stdout?.on('data', (chunk: Buffer) => {
       stdoutBytes += chunk.byteLength;
-      if (stdout.length < MAX_OUTPUT) {
-        const text = stdoutDecoder.write(chunk);
-        if (text) stdout += text.slice(0, MAX_OUTPUT - stdout.length);
-      }
+      const text = stdoutDecoder.write(chunk);
+      if (text) stdoutSpool.write(text);
+      if (text && stdout.length < MAX_OUTPUT) stdout += text.slice(0, MAX_OUTPUT - stdout.length);
     });
 
     child.stderr?.on('data', (chunk: Buffer) => {
       stderrBytes += chunk.byteLength;
-      if (stderr.length < MAX_OUTPUT) {
-        const text = stderrDecoder.write(chunk);
-        if (text) stderr += text.slice(0, MAX_OUTPUT - stderr.length);
-      }
+      const text = stderrDecoder.write(chunk);
+      if (text) stderrSpool.write(text);
+      if (text && stderr.length < MAX_OUTPUT) stderr += text.slice(0, MAX_OUTPUT - stderr.length);
     });
 
     // 'error' means git could not be run (missing binary, bad cwd) or was
     // aborted — there is no git exit code to report, so reject.
     child.on('error', (err) => {
+      stdoutSpool.finalize(); // idempotent — close any opened spool file
+      stderrSpool.finalize();
       reject(
         (err as NodeJS.ErrnoException).code === 'ABORT_ERR'
           ? err
@@ -498,25 +505,29 @@ function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOu
 
     child.on('close', (code) => {
       const stdoutTail = stdoutDecoder.end();
+      if (stdoutTail) stdoutSpool.write(stdoutTail);
       if (stdoutTail && stdout.length < MAX_OUTPUT) {
         stdout += stdoutTail.slice(0, MAX_OUTPUT - stdout.length);
       }
       const stderrTail = stderrDecoder.end();
+      if (stderrTail) stderrSpool.write(stderrTail);
       if (stderrTail && stderr.length < MAX_OUTPUT) {
         stderr += stderrTail.slice(0, MAX_OUTPUT - stderr.length);
       }
+      const stdoutSpooled = stdoutSpool.finalize();
+      const stderrSpooled = stderrSpool.finalize();
       // `MAX_OUTPUT` already bounded the raw buffers in memory; normalize strips
       // ANSI / progress / duplicate noise and head+tail-truncates to the shared
       // command cap so only useful output reaches the model.
       const isTruncated =
         stdoutBytes > MAX_OUTPUT ||
         stderrBytes > MAX_OUTPUT ||
-        Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES ||
-        Buffer.byteLength(stderr, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
+        Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes() ||
+        Buffer.byteLength(stderr, 'utf8') > commandOutputPreviewBytes();
       resolve({
         command: args[0] as GitSubcommand,
-        stdout: normalizeCommandOutput(stdout),
-        stderr: normalizeCommandOutput(stderr),
+        stdout: normalizeCommandOutput(stdout) + (stdoutSpooled ? spoolNote(stdoutSpooled) : ''),
+        stderr: normalizeCommandOutput(stderr) + (stderrSpooled ? spoolNote(stderrSpooled) : ''),
         exitCode: code ?? 1,
         truncated: isTruncated,
       });

@@ -11,8 +11,6 @@ const TOPIC_ADVISOR_SYSTEM = [
   'Reply with ONLY JSON: {"decision":"new_context|same_context","confidence":0..1,"reason":"short phrase","nextTopic":"short label"}.',
 ].join(' ');
 
-const TOPIC_ADVISOR_MAX_TOKENS = 1_024;
-
 const STRONG_SHIFT_PATTERN =
   /\b(?:new\s+topic|different\s+topic|unrelated\s+(?:question|task)|switch\s+topics?|fresh\s+context|yeni\s+konu|farkl[ıi]\s+(?:bir\s+)?konu|alakas[ıi]z\s+(?:bir\s+)?(?:soru|i[şs])|konuyu\s+de[ğg]i[şs]tir)\b/iu;
 const FOLLOW_UP_PATTERN =
@@ -294,13 +292,11 @@ export class TopicShiftAdvisor {
               ],
             },
           ],
-          // The reply is one small JSON object, but a reasoning model draws its
-          // thinking from the same allowance. At 180, glm-5.3-flash answered 10
-          // of 30 real prompts: 9 empty replies and 8 truncated/unparseable
-          // (`wstack typesafe replay-topic-shift`, 2026-09-19). Asking for JSON
-          // on the wire as well as in prose is the Brain's fix for the same
-          // failure; providers without the field drop it.
-          maxTokens: TOPIC_ADVISOR_MAX_TOKENS,
+          // No output cap: a reasoning model draws its thinking from the same
+          // allowance, and every fixed cap tried here (180, then 1024) left
+          // empty or truncated replies (`wstack typesafe replay-topic-shift`,
+          // 2026-09-19). Asking for JSON on the wire as well as in prose keeps
+          // the reply small; providers without the field drop it.
           responseFormat: { type: 'json_object' },
           // A one-line classification needs no deliberation, and every second
           // here is a second the user's submitted prompt waits.

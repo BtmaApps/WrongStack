@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
+import { activeLimits, positiveLimit, TOOL_MEMORY_GUARD_BYTES } from '@wrongstack/core/types';
 import * as Core from '@wrongstack/core/utils';
 
 /**
@@ -306,6 +307,24 @@ export function isBinaryBuffer(buf: Buffer): boolean {
 /** Unified byte cap for all command tool output fed to the model. */
 export const COMMAND_OUTPUT_MAX_BYTES = 32_768;
 
+/**
+ * The inline preview size for command output right now: the user's
+ * `limits.toolOutputPreviewBytes` when set, else {@link COMMAND_OUTPUT_MAX_BYTES}.
+ * Never a loss — output past it is spooled whole to disk.
+ */
+export function commandOutputPreviewBytes(): number {
+  return positiveLimit(activeLimits().toolOutputPreviewBytes) ?? COMMAND_OUTPUT_MAX_BYTES;
+}
+
+/**
+ * RAM guard for a command whose output is PARSED (JSON, log lines) rather than
+ * shown raw. Not a context budget: the parser needs the whole text, and the
+ * structured result reaches the model through the executor's lossless spool.
+ * A fixed 100k/200k cut here broke JSON for big monorepos and dropped the
+ * newest log lines.
+ */
+export const PARSED_COMMAND_OUTPUT_GUARD_BYTES = TOOL_MEMORY_GUARD_BYTES;
+
 /** Runs of >= this many identical consecutive lines are collapsed. */
 const REPEAT_RUN_THRESHOLD = 3;
 
@@ -411,7 +430,7 @@ export function normalizeCommandOutput(
   text = text.replace(/[ \t]+$/gm, ''); // trailing whitespace per line
   text = collapseConsecutiveDuplicates(text);
   text = text.replace(/\n{3,}/g, '\n\n'); // >=2 blank lines → 1
-  return truncateHeadTail(text, opts.maxBytes ?? COMMAND_OUTPUT_MAX_BYTES);
+  return truncateHeadTail(text, opts.maxBytes ?? commandOutputPreviewBytes());
 }
 
 /**

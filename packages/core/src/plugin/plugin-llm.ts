@@ -57,10 +57,9 @@ export function makePluginLLM(
   const currentConfig = (): Config => getLiveConfig() ?? config;
   const currentProvider = (): Provider => hostLLM.getProvider?.() ?? hostLLM.provider;
   const currentModel = (): string => hostLLM.getModel?.() ?? hostLLM.model;
-  // Keep plugin calls bounded — a plugin should never be able to ask for
-  // an effectively unbounded generation on the user's bill.
-  const DEFAULT_MAX_TOKENS = 2_048;
-  const HARD_MAX_TOKENS = 32_768;
+  // No invented output cap: a plugin's call is bounded by the model's own
+  // output ceiling unless the plugin or the user's extension config asks for
+  // less. A fixed default starved reasoning models into empty replies.
   const DEFAULT_TIMEOUT_MS = 30_000;
   const HARD_TIMEOUT_MS = 120_000;
 
@@ -150,10 +149,7 @@ export function makePluginLLM(
       const defaults = pluginDefaults();
       const model = opts?.model ?? defaults.model ?? currentModel();
       const providerName = opts?.provider ?? defaults.provider ?? currentProvider().id;
-      const maxTokens = Math.min(
-        HARD_MAX_TOKENS,
-        opts?.maxTokens ?? defaults.maxTokens ?? DEFAULT_MAX_TOKENS,
-      );
+      const maxTokens = opts?.maxTokens ?? defaults.maxTokens;
       const temperature = opts?.temperature ?? defaults.temperature;
       const timeoutMs = Math.min(
         HARD_TIMEOUT_MS,
@@ -168,7 +164,7 @@ export function makePluginLLM(
               userPrompt: prompt,
               providerId: providerName,
               model,
-              maxTokens,
+              ...(maxTokens !== undefined ? { maxTokens } : {}),
               timeoutMs,
               ...(temperature !== undefined ? { temperature } : {}),
               ...(opts?.system ? { system: opts.system } : {}),
@@ -209,7 +205,7 @@ export function makePluginLLM(
       const request: Request = {
         model,
         messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-        maxTokens,
+        ...(maxTokens !== undefined ? { maxTokens } : {}),
         ...(temperature !== undefined ? { temperature } : {}),
         ...(opts?.system ? { system: [{ type: 'text', text: opts.system }] } : {}),
         ...(opts?.responseFormat === 'json'

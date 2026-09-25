@@ -74,4 +74,33 @@ describe('committed project identity', () => {
     expect(content).toContain('.temp_files/\r\n');
     expect(content).toContain('!/.wrongstack/project.json\r\n');
   });
+
+  it('gives a Mercurial repository the same rules in its .hgignore, once', async () => {
+    // A project in a subdirectory of the repository: the rules go to the root.
+    await fs.mkdir(path.join(root, '.hg'));
+    const project = path.join(root, 'app');
+    await fs.mkdir(project);
+    await fs.writeFile(path.join(root, '.hgignore'), 'syntax: glob\n*.log', 'utf8');
+    await ensureProjectGitignore(project);
+    await ensureProjectGitignore(project);
+
+    const content = await fs.readFile(path.join(root, '.hgignore'), 'utf8');
+    // Per-line `re:` keeps the user's glob section intact.
+    expect(content).toBe(
+      'syntax: glob\n*.log\n\n# WrongStack local state\n' +
+        're:(^|/)\\.temp_files/\nre:(^|/)\\.wrongstack/(?!project\\.json$)\n',
+    );
+    const [temp, state] = content
+      .split('\n')
+      .slice(-3, -1)
+      .map((line) => new RegExp(line.slice(3)));
+    expect(temp?.test('app/.temp_files/x')).toBe(true);
+    expect(state?.test('app/.wrongstack/sage.db')).toBe(true);
+    expect(state?.test('app/.wrongstack/project.json')).toBe(false);
+  });
+
+  it('leaves .hgignore alone outside a Mercurial repository', async () => {
+    await ensureProjectGitignore(root);
+    await expect(fs.access(path.join(root, '.hgignore'))).rejects.toThrow();
+  });
 });

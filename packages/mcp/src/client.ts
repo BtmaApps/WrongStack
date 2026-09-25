@@ -21,7 +21,7 @@ import type {
 } from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
-import { ServerRequestResponder } from './elicitation.js';
+import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
 import {
   type MCPGetPromptResult,
   type MCPListPromptsResult,
@@ -374,6 +374,17 @@ export class MCPClient {
     // stdio
     const res = await this.request('tools/call', { name, arguments: input }, undefined, opts);
     return toToolCallResult(res);
+  }
+
+  /**
+   * Put the pages of a `-32042` tool-call error to the user (consent first,
+   * nothing opened without it), on the run whose call got the error.
+   */
+  presentUrlElicitations(
+    elicitations: readonly UrlElicitation[],
+    signal: AbortSignal,
+  ): ReturnType<ServerRequestResponder['presentUrl']> {
+    return this.serverRequests.presentUrl(elicitations, signal);
   }
 
   async listResources(opts: MCPPageOptions = {}): Promise<MCPListResourcesResult> {

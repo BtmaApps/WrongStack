@@ -91,6 +91,7 @@ export async function switchProjectInPlace(
   const nextSessionStore = new DefaultSessionStore({
     dir: nextWpaths.projectSessions,
     projectRoot: resolved,
+    events,
   });
   const nextWriter = await nextSessionStore.create({
     id: '',

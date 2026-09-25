@@ -1,5 +1,5 @@
 import { insertSkillMention } from '@wrongstack/core/skill-mentions';
-import type { PromptUsageStore } from '@wrongstack/core/storage';
+import { DefaultSessionRewinder, type PromptUsageStore } from '@wrongstack/core/storage';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { Dispatch, MutableRefObject } from 'react';
 import { useEffect, useRef } from 'react';
@@ -19,6 +19,7 @@ import {
   resumeStageLabel,
 } from '../resume-load.js';
 import { selectedSlashCommandLine } from '../slash-command-search.js';
+import { forkAtCheckpoint } from './fork-at-checkpoint.js';
 import type { useAuthPanel } from './use-auth-panel.js';
 import type { useBrainPanel } from './use-brain-panel.js';
 import type { ModelPickRequestController } from './use-model-pick.js';
@@ -29,6 +30,8 @@ import type { useTuiEnvironmentState } from './use-tui-environment-state.js';
 
 interface UseAppPickerKeysOptions {
   sessionGenerationRef?: MutableRefObject<number> | undefined;
+  /** Move the input queue to a resumed session (see `useQueueManager`). */
+  switchQueueSession?: ((sessionId: string) => void) | undefined;
   host: AppProps;
   state: State;
   dispatch: Dispatch<Action>;
@@ -59,6 +62,7 @@ interface UseAppPickerKeysOptions {
 
 export function useAppPickerKeys({
   sessionGenerationRef,
+  switchQueueSession,
   host,
   state,
   dispatch,
@@ -227,7 +231,11 @@ export function useAppPickerKeys({
       }
 
       const entries = result.entries;
-      if (result.attached !== false) dispatch({ type: 'queueClear' });
+      // The queue belongs to the session: the one resumed brings its own.
+      if (result.attached !== false) {
+        if (switchQueueSession) switchQueueSession(result.sessionId);
+        else dispatch({ type: 'queueClear' });
+      }
       const total = entries.length;
       const size = resumeChunkSize(total);
       // An empty transcript still needs the terminating chunk: it is what
@@ -344,6 +352,44 @@ export function useAppPickerKeys({
       }
     }
   };
+
+  // `f` in the checkpoint timeline (`checkpointFork`): branch the session at
+  // that checkpoint and switch to the branch through the same resume flow.
+  const forkRequest = state.forkRequest;
+  useEffect(() => {
+    if (!forkRequest) return;
+    dispatch({ type: 'forkRequestDone' });
+    const forkSession = host.forkSession;
+    const sessionId = agent.ctx.session.id;
+    if (!forkSession || !sessionId) return;
+    // Checked before forking: the resume refuses during a run, and a fork
+    // made first would be left behind unused.
+    if (state.status && state.status !== 'idle') {
+      dispatch({
+        type: 'addEntry',
+        entry: { kind: 'warn', text: 'Stop the active run before forking.' },
+      });
+      return;
+    }
+    if (resumeInFlightRef.current) return;
+    resumeInFlightRef.current = true;
+    const rewinder = new DefaultSessionRewinder(
+      host.sessionsDir ?? '',
+      agent.ctx.projectRoot ?? agent.ctx.cwd,
+    );
+    void forkAtCheckpoint(
+      {
+        forkSession,
+        promptAt: (id, index) => rewinder.promptAt(id, index),
+        resume: (id, label) => runResume(id, label),
+        currentSessionId: () => agent.ctx.session.id,
+        dispatch,
+      },
+      { sessionId, promptIndex: forkRequest.promptIndex, draft: state.buffer },
+    ).finally(() => {
+      resumeInFlightRef.current = false;
+    });
+  }, [forkRequest]);
 
   return usePickerKeys({
     onSkillMentionPick: (name) => {

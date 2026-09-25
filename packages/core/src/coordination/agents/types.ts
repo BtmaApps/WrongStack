@@ -11,6 +11,8 @@
  * `AgentDefinition[]`; `index.ts` aggregates them into `AGENT_CATALOG`.
  * `fleet.ts` derives `FLEET_ROSTER` + `FLEET_ROSTER_BUDGETS` from the catalog.
  */
+
+import { activeLimits, positiveLimit } from '../../types/config/limits.js';
 import type { SubagentConfig } from '../../types/multi-agent.js';
 import { toolsForRuntimeCapabilities } from './capability-manifest.js';
 
@@ -113,6 +115,20 @@ export const MEDIUM_BUDGET: AgentBudgetTier = {
   maxIterations: 5000,
   maxToolCalls: 14000,
 };
+/**
+ * Budget for a subagent spawned without one: the user's
+ * `limits.subagentDefaultBudget` fields where set, else {@link LIGHT_BUDGET}.
+ * Read live, so a settings change applies to the next spawn.
+ */
+export function defaultSubagentBudget(): AgentBudgetTier {
+  const user = activeLimits().subagentDefaultBudget;
+  return {
+    timeoutMs: positiveLimit(user?.timeoutMs) ?? LIGHT_BUDGET.timeoutMs,
+    maxIterations: positiveLimit(user?.maxIterations) ?? LIGHT_BUDGET.maxIterations,
+    maxToolCalls: positiveLimit(user?.maxToolCalls) ?? LIGHT_BUDGET.maxToolCalls,
+  };
+}
+
 export const HEAVY_BUDGET: AgentBudgetTier = {
   timeoutMs: 10 * HOUR,
   maxIterations: 8000,

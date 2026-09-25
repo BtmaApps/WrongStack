@@ -80,7 +80,8 @@ describe('read_url_content tool', () => {
   // executor-validated) caller takes — the schema `maximum` cannot cover that.
   it('clamps an oversized maxBytes so the buffered read stays bounded', async () => {
     const CHUNK = 256 * 1024;
-    const TOTAL_CHUNKS = 24; // 6 MiB available — more than the clamped limit
+    // More available than the memory guard, so only the clamp can stop the read.
+    const TOTAL_CHUNKS = Math.ceil(MAX_READ_URL_BYTES / CHUNK) + 8;
     const chunk = new Uint8Array(CHUNK).fill(0x61); // 'a'
     let pulled = 0;
     let served = 0;
@@ -113,9 +114,9 @@ describe('read_url_content tool', () => {
       makeOpts(),
     );
 
-    // The clamped limit is MAX_READ_URL_BYTES * 4; the loop stops on the first
-    // chunk that crosses it, so allow one chunk of overshoot and no more.
-    expect(pulled).toBeLessThanOrEqual(MAX_READ_URL_BYTES * 4 + CHUNK);
+    // The read limit is clamped to the memory guard; the loop stops on the
+    // first chunk that crosses it, so allow one chunk of overshoot and no more.
+    expect(pulled).toBeLessThanOrEqual(MAX_READ_URL_BYTES + CHUNK);
     // Proves the stream was torn down rather than drained to completion.
     expect(cancelled).toBe(true);
     expect(served).toBeLessThan(TOTAL_CHUNKS);

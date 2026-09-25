@@ -18,7 +18,7 @@ import {
   shellArgs,
   wrapPowerShellScript,
 } from './_shell-pick.js';
-import { normalizeCommandOutput } from './_util.js';
+import { commandOutputPreviewBytes, normalizeCommandOutput } from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
 import { closeBackgroundLogFd, openBackgroundLog } from './background-log.js';
 import { hermeticEnv, hermeticPosixArgv } from './bash-hermetic.js';
@@ -566,7 +566,8 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     // model; everything else used to be dropped. The spool streams the FULL
     // output to a file once it exceeds the cap, and the final result carries
     // a marker pointing at it — file-based instead of in-memory/in-context.
-    const spool = createOutputSpool({ tool: 'bash', thresholdBytes: MAX_OUTPUT });
+    const previewBytes = commandOutputPreviewBytes();
+    const spool = createOutputSpool({ tool: 'bash', thresholdBytes: previewBytes });
 
     function killWithTimeout(child: ReturnType<typeof spawn>, timeoutMs: number): void {
       if (isWin) {
@@ -692,8 +693,8 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       else stderrBytes += chunk.byteLength;
       emitProcessOutput({ pid, stream, chunk });
       if (text.length > 0) {
-        if (buf.length < MAX_OUTPUT) {
-          buf += text.slice(0, MAX_OUTPUT - buf.length);
+        if (buf.length < previewBytes) {
+          buf += text.slice(0, previewBytes - buf.length);
         }
         spool.write(text);
         pending += text;
@@ -735,7 +736,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       // silently dropped.
       const tail = stdoutDecoder.end() + stderrDecoder.end();
       if (tail) {
-        if (buf.length < MAX_OUTPUT) buf += tail.slice(0, MAX_OUTPUT - buf.length);
+        if (buf.length < previewBytes) buf += tail.slice(0, previewBytes - buf.length);
         spool.write(tail);
         pending += tail;
       }

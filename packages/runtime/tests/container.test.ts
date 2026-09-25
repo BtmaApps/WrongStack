@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { FallbackProfileManager } from '@wrongstack/core/agent';
-import { Container, TOKENS } from '@wrongstack/core/kernel';
-import { DefaultConfigStore, getSessionRegistry } from '@wrongstack/core/storage';
+import { Container, EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { DirectoryPermissionPolicy } from '@wrongstack/core/security';
+import { DefaultConfigStore, getSessionRegistry } from '@wrongstack/core/storage';
 import type { SessionStore } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { SqliteMemoryPort } from '@wrongstack/sage';
@@ -320,6 +320,25 @@ describe('createDefaultContainer', () => {
     });
     const modeStore = c.resolve(TOKENS.ModeStore);
     expect(modeStore).toBeInstanceOf(Object);
+  });
+
+  it('gives the session store the event bus, so checkpoints reach the surfaces', async () => {
+    const events = new EventBus();
+    const c = createDefaultContainer({
+      config: mockConfig,
+      wpaths: mockWpaths,
+      logger: mockLogger,
+      modelsRegistry: mockModels,
+      events,
+    });
+    const store = c.resolve(TOKENS.SessionStore) as SessionStore;
+    const written: number[] = [];
+    events.on('checkpoint.written', (e) => written.push(e.promptIndex));
+    const writer = await store.create({ id: 'checkpoint-bus', model: 'm', provider: 'p' });
+    await writer.writeCheckpoint(0, 'first prompt');
+    await writer.close();
+    // Without the bus the TUI's /rewind timeline never listed a checkpoint.
+    expect(written).toEqual([0]);
   });
 
   it('reports live registry sessions and safely handles registry failures', async () => {

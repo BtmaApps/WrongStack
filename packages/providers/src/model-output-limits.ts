@@ -33,6 +33,7 @@ import type {
   ProviderConfig,
   Request,
 } from '@wrongstack/core/types';
+import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import {
   CATALOG_ALIAS_BY_PROVIDER_TYPE,
   FAMILY_BY_PROVIDER_ID,
@@ -123,6 +124,8 @@ export function resolveCatalogMaxOutput(
  *  3. `ctx.capabilities.maxOutput` — the boot-time overlay; still right for
  *                                  the common single-model session, and the
  *                                  only source when no resolver is installed.
+ *  4. `limits.responseOutputTokens` — the user's own cap, applied as a
+ *                                  ceiling over (2)/(3); never a default.
  *
  * Returns undefined when none of them knows. Callers on a wire format where
  * the field is optional MUST omit it in that case rather than substitute a
@@ -134,11 +137,15 @@ export function resolveMaxOutputTokens(
   req: Pick<Request, 'model' | 'maxTokens'>,
   ctx: BuildBodyContext,
 ): number | undefined {
-  return (
-    positive(req.maxTokens) ??
-    resolveCatalogMaxOutput(ctx.providerId, req.model) ??
-    positive(ctx.capabilities.maxOutput)
-  );
+  const explicit = positive(req.maxTokens);
+  if (explicit !== undefined) return explicit;
+  const known =
+    resolveCatalogMaxOutput(ctx.providerId, req.model) ?? positive(ctx.capabilities.maxOutput);
+  // The user's own `limits.responseOutputTokens`, when set, caps what the model
+  // could otherwise produce. Unset = the model's ceiling; nothing invented.
+  const userCap = positiveLimit(activeLimits().responseOutputTokens);
+  if (userCap === undefined) return known;
+  return known === undefined ? userCap : Math.min(known, userCap);
 }
 
 /**

@@ -48,6 +48,7 @@ import { securityAstScanTool } from './security-ast-scan-tool.js';
 import { taskTool } from './task.js';
 import { testTool } from './test.js';
 import { todoTool } from './todo.js';
+import { toolScriptTool } from './tool-script.js';
 import { toolSearchTool } from './tool-search.js';
 import { toolUseTool } from './tool-use.js';
 import { treeTool } from './tree.js';
@@ -180,6 +181,8 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
   tool_use:
     'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
+  tool_script:
+    'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
 };
 
 /**
@@ -272,6 +275,7 @@ export const TIER1_TOOLS: Tool[] = [
  */
 export const TIER2_TOOLS: Tool[] = [
   replaceTool,
+  toolScriptTool,
   execTool,
   pwshTool,
   fetchTool,
@@ -306,6 +310,7 @@ export const TIER2_TOOLS: Tool[] = [
 export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool];
 
 const rawBuiltinTools: Tool[] = [
+  toolScriptTool,
   ...browserTools,
   e2ePlanTool,
   readTool,

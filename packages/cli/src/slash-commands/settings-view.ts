@@ -43,6 +43,7 @@ export const SETTINGS_HELP = [
   '  /settings max-concurrent <n>   Max concurrent subagents (0 = default)',
   '  /settings max-iterations <n>    Max agent iterations before pausing (0 = default)',
   '  /settings auto-proceed-max-iterations <n>   Max auto turns before pausing (0 = unlimited)',
+  '  /settings limits [<name> <n>|off]   Your own limits (output tokens, fetch bytes, history…); unset = no limit',
   '  /settings title-animation on|off   Animate the terminal/window title while the agent is active',
   '  /settings thinking-word <word>   TUI status-chip word (single short word)',
   '  /settings statusline minimum|detailed|no-color   TUI statusline density',

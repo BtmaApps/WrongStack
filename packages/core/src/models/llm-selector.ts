@@ -29,7 +29,8 @@ export interface LLMSelectorOptions {
   /**
    * Maximum output tokens for the selector LLM call.
    * Controls both the JSON response budget and the token reservation for the
-   * history text budget calculation (default: 1024).
+   * history text budget calculation. Unset = the model's own output ceiling
+   * (and no reservation).
    */
   maxOutputTokens?: number | undefined;
   /**
@@ -101,7 +102,7 @@ export class LLMSelector implements MessageSelector {
   private readonly model: string;
   private readonly maxContextTokens: number;
   private readonly systemPrompt: string;
-  private readonly maxOutputTokens: number;
+  private readonly maxOutputTokens: number | undefined;
   private readonly oneShotOrchestrator?: OneShotOrchestrator | undefined;
   private readonly logger: Logger;
 
@@ -119,7 +120,7 @@ export class LLMSelector implements MessageSelector {
     }
     this.maxContextTokens = opts.maxContextTokens ?? Number.POSITIVE_INFINITY;
     this.systemPrompt = opts.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
-    this.maxOutputTokens = opts.maxOutputTokens ?? 1024;
+    this.maxOutputTokens = opts.maxOutputTokens;
     this.oneShotOrchestrator = opts.oneShotOrchestrator;
   }
 
@@ -131,7 +132,10 @@ export class LLMSelector implements MessageSelector {
     // Reserve tokens for the system prefix and output (maxOutputTokens), then give the
     // rest to the formatted history so the selector sees the maximum possible context.
     const systemTokens = estimateTextTokens(systemText);
-    const historyBudget = Math.max(512, effectiveBudget - systemTokens - this.maxOutputTokens);
+    const historyBudget = Math.max(
+      512,
+      effectiveBudget - systemTokens - (this.maxOutputTokens ?? 0),
+    );
 
     // Build a concise representation of the conversation within the token budget
     const historyText = formatMessages(messages, historyBudget);
@@ -146,7 +150,7 @@ export class LLMSelector implements MessageSelector {
       model: this.model,
       system: [{ type: 'text', text: systemText + budgetInstruction }],
       messages: [{ role: 'user', content: historyText }],
-      maxTokens: this.maxOutputTokens,
+      ...(this.maxOutputTokens !== undefined ? { maxTokens: this.maxOutputTokens } : {}),
     };
 
     let raw: string;
@@ -156,7 +160,7 @@ export class LLMSelector implements MessageSelector {
         const result = await this.oneShotOrchestrator.call({
           system: systemText + budgetInstruction,
           userPrompt: historyText,
-          maxTokens: this.maxOutputTokens,
+          ...(this.maxOutputTokens !== undefined ? { maxTokens: this.maxOutputTokens } : {}),
           timeoutMs: 30_000,
         });
         if (result.error) throw new Error(result.error);

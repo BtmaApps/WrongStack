@@ -27,8 +27,6 @@ import type {
 import { CONCEPT_RELATIONS, MAX_CRUX_LINES } from '@wrongstack/tools';
 
 /** Output ceiling. A file summary that needs more than this is not a summary. */
-const FILE_MAX_TOKENS = 400;
-const SUBSYSTEM_MAX_TOKENS = 500;
 
 /** Per-call timeout. A slow file is skipped, not waited on. */
 const CALL_TIMEOUT_MS = 45_000;
@@ -145,7 +143,6 @@ export function createConceptSummarizer(deps: ConceptSummarizerDeps): Summarizer
         system: FILE_SYSTEM_PROMPT,
         userPrompt,
         responseFormat: { type: 'json_object' },
-        maxTokens: FILE_MAX_TOKENS,
         timeoutMs: CALL_TIMEOUT_MS,
         ...(model ? { model } : { role: 'summarizer' }),
         ...(input.signal ? { signal: input.signal } : {}),
@@ -181,7 +178,6 @@ export function createConceptSummarizer(deps: ConceptSummarizerDeps): Summarizer
         system: SUBSYSTEM_SYSTEM_PROMPT,
         userPrompt,
         responseFormat: { type: 'json_object' },
-        maxTokens: SUBSYSTEM_MAX_TOKENS,
         timeoutMs: CALL_TIMEOUT_MS,
         ...(model ? { model } : { role: 'summarizer' }),
         ...(input.signal ? { signal: input.signal } : {}),

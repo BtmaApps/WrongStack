@@ -20,5 +20,13 @@ export function reduceMessageJump(state: State, action: MessageJumpAction): Stat
   return {
     ...state,
     messageJump: { entryId: userIds[next] ?? null, seq: state.messageJump.seq + 1 },
+    // The status bar cuts a hint to 44, 18 or 9 columns: the action goes first.
+    hint: 'Enter rewind/fork · Esc done · Alt+↑↓ move',
   };
+}
+
+/** Drop the marked message (Esc, or any key that goes on to the composer). */
+export function clearMessageJump(state: State): State {
+  if (state.messageJump.entryId === null) return state;
+  return { ...state, messageJump: { entryId: null, seq: state.messageJump.seq }, hint: '' };
 }

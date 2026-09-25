@@ -125,7 +125,8 @@ export class AutoExecutor {
             this.opts.onTaskComplete?.(task, execResult);
           } else if (execResult.retry) {
             retried++;
-            // Task will be retried on next iteration
+            this.opts.tracker.updateNodeStatus(task.id, 'failed', execResult.error);
+            failed++;
           } else {
             this.opts.tracker.updateNodeStatus(task.id, 'failed', execResult.error);
             failed++;

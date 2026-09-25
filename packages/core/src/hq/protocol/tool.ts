@@ -94,5 +94,5 @@ export interface HqUserInputRequestedPayload {
 export interface HqUserInputResolvedPayload {
   requestId: string;
   response: UserInputResponse;
-  source: 'user' | 'abort';
+  source: 'user' | 'abort' | 'unattended';
 }

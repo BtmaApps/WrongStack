@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCouncilTool, COUNCIL_TOOL_NAME } from '../../src/tools/council-tool.js';
+import { COUNCIL_TOOL_NAME, createCouncilTool } from '../../src/tools/council-tool.js';
 import type { CouncilLLMCaller } from '../../src/types/council.js';
 import type { OneShotLLMResult } from '../../src/types/one-shot-llm.js';
 
@@ -23,7 +23,7 @@ function caller(): CouncilLLMCaller {
 }
 
 describe('createCouncilTool', () => {
-  it('exposes a safe bounded council tool', () => {
+  it('exposes a safe council tool with no invented input limits', () => {
     const tool = createCouncilTool({ caller: caller(), defaultProfile: 'fast' });
     expect(tool.name).toBe(COUNCIL_TOOL_NAME);
     expect(tool.permission).toBe('auto');
@@ -31,7 +31,9 @@ describe('createCouncilTool', () => {
     expect(tool.riskTier).toBe('safe');
     expect(tool.managesOwnTimeout).toBe(true);
     expect(tool.inputSchema.required).toEqual(['question']);
-    expect(tool.inputSchema.properties?.['options']?.maxItems).toBe(12);
+    expect(tool.inputSchema.properties?.['options']?.maxItems).toBeUndefined();
+    expect(tool.inputSchema.properties?.['question']?.maxLength).toBeUndefined();
+    expect(tool.inputSchema.properties?.['context']?.maxLength).toBeUndefined();
   });
 
   it('executes an open question and composes the executor signal', async () => {
@@ -130,7 +132,7 @@ describe('createCouncilTool', () => {
     ).rejects.toThrow(/Council failed[\s\S]*provider unreachable/);
   });
 
-  it('rejects empty, duplicate, and oversized inputs before execution', () => {
+  it('rejects empty and duplicate inputs, but not large ones', () => {
     const tool = createCouncilTool({ caller: caller() });
     expect(tool.validate?.({ question: '   ' })).toContain('`question` must not be empty.');
     expect(
@@ -142,13 +144,7 @@ describe('createCouncilTool', () => {
         ],
       }),
     ).toContain('Duplicate option id "same".');
-    expect(
-      tool.validate?.({ question: 'x'.repeat(20_001) })?.some((error) => error.includes('20000')),
-    ).toBe(true);
-    expect(
-      tool
-        .validate?.({ question: 'Choose', context: 'x'.repeat(80_001) })
-        ?.some((error) => error.includes('80000')),
-    ).toBe(true);
+    expect(tool.validate?.({ question: 'x'.repeat(20_001) }) ?? []).toEqual([]);
+    expect(tool.validate?.({ question: 'Choose', context: 'x'.repeat(80_001) }) ?? []).toEqual([]);
   });
 });

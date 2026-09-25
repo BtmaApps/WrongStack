@@ -56,7 +56,7 @@ describe('memory hint formatting completion coverage', () => {
     }
   });
 
-  it('escapes every line separator and safely truncates whitespace', () => {
+  it('escapes every line separator and never cuts the memory body', () => {
     const result = formatMemoryHintsDetailed(
       [
         sage({
@@ -68,7 +68,8 @@ describe('memory hint formatting completion coverage', () => {
     expect(result.text).toContain('\\r\\n');
     expect(result.text).toContain('\\u2028');
     expect(result.text).toContain('\\u2029');
-    expect(result.text).toContain('…</memory>');
+    expect(result.text).not.toContain('…</memory>');
+    expect(result.memoryIds).toHaveLength(1);
     expect(formatCoverage.formatPrimaryRelation(sage())).toBe('related_to');
   });
 });

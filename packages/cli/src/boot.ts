@@ -116,6 +116,17 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     });
   }
 
+  // `wstack remote <target>` (or `--remote <target>`) runs WrongStack on another
+  // machine; nothing local is loaded, so it works from any directory.
+  if (positional[0] === 'remote' || typeof flags['remote'] === 'string') {
+    const { runRemoteCommand } = await import('./subcommands/handlers/remote.js');
+    return runRemoteCommand(
+      positional[0] === 'remote' ? positional.slice(1) : positional,
+      flags,
+      new TerminalRenderer(),
+    );
+  }
+
   // `wstack resume <id>` is sugar for `wstack --resume <id>`.
   if (positional[0] === 'resume' && positional[1] && !subcommands['__noop_resume_marker']) {
     flags['resume'] = positional[1];

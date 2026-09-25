@@ -1,4 +1,4 @@
-import { CODEX_MODELS } from '@wrongstack/core/models';
+import { CODEX_MODELS, isKeylessLocalProvider } from '@wrongstack/core/models';
 import type { ProviderFactory } from '@wrongstack/core/registry';
 import type {
   Logger,
@@ -587,8 +587,13 @@ function makeProvider(
   // Local runtimes (Ollama, OmniRoute, vLLM, LM Studio) are saved WITHOUT a key
   // by `wstack auth local` — keyless or optional-auth by definition — yet this
   // guard rejected them, so a freshly configured local provider could never be
-  // built. They get the same placeholder the local presets already send.
-  const keyOptional = resolveProviderDefinition(factoryType)?.local !== undefined;
+  // built. They get the same placeholder the local presets already send. So
+  // does any server on a loopback address that declares no key env var: boot
+  // and the picker already accept those as usable, and refusing here made the
+  // saved default fail at startup.
+  const keyOptional =
+    resolveProviderDefinition(factoryType)?.local !== undefined ||
+    isKeylessLocalProvider({ apiBase: cfg.baseUrl ?? p.apiBase, envVars });
   const apiKey = explicitApiKey ?? readFromEnv(envVars) ?? (keyOptional ? 'no-key' : undefined);
   if (!apiKey && family !== 'unsupported') {
     throw new ConfigError({

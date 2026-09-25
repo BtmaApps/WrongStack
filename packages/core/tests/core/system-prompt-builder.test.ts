@@ -557,6 +557,30 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(env).toMatch(/modified/);
   });
 
+  it('reports the repository of a project in a subdirectory of it', async () => {
+    const { spawnSync } = await import('node:child_process');
+    const init = spawnSync('git', ['init', '--quiet', '--initial-branch=trunk'], {
+      cwd: tmp,
+      stdio: 'ignore',
+    });
+    if (init.status !== 0) return; // git not installed — skip
+    const project = path.join(tmp, 'packages', 'app');
+    await fs.mkdir(project, { recursive: true });
+    const b = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });
+    const blocks = await b.build({ cwd: project, projectRoot: project, tools: [] });
+    expect(blocks[2]?.text).toContain('Git status: branch=trunk');
+  });
+
+  it('names a Jujutsu checkout instead of reporting "not a git repo"', async () => {
+    await fs.mkdir(path.join(tmp, '.jj'));
+    const b = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });
+    const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] });
+    const env = blocks[2]?.text ?? '';
+    // `bookmark=…` with jj installed, `jj unavailable` without it.
+    expect(env).toMatch(/Jujutsu \(jj\) status: (bookmark=|jj unavailable)/);
+    expect(env).not.toContain('not a git repo');
+  });
+
   it('shows modeId in environment block when set and not default', async () => {
     const b = new DefaultSystemPromptBuilder({ modeId: 'debugger', todayIso: '2026-05-13' });
     const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] });

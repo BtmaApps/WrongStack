@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,11 @@ export function ViewRouter({
     })),
   );
 
+  const [terminalMounted, setTerminalMounted] = useState(terminalOpen);
+  useEffect(() => {
+    if (terminalOpen) setTerminalMounted(true);
+  }, [terminalOpen]);
+
   const hasSession = sessionId;
   const onCloseToChat = defaultOnCloseToChat;
 
@@ -78,8 +83,9 @@ export function ViewRouter({
           a view means touching one file, not 30+ branches here. */}
       {currentView !== 'chat' && <MainViewSlot view={currentView} onCloseToChat={onCloseToChat} />}
 
-      {/* Terminal bottom dock */}
-      {terminalOpen && (
+      {/* Terminal bottom dock. Hiding it keeps its terminals running (the
+          composer strip shows them); it unmounts once they are all closed. */}
+      {terminalMounted && (
         <ErrorBoundary level="panel" name={t('activity:panels.terminal')}>
           <Suspense
             fallback={
@@ -88,7 +94,15 @@ export function ViewRouter({
               />
             }
           >
-            <TerminalPanelLazy desktopShell={desktopShell} onClose={() => setTerminalOpen(false)} />
+            <TerminalPanelLazy
+              desktopShell={desktopShell}
+              hidden={!terminalOpen}
+              onClose={() => setTerminalOpen(false)}
+              onDispose={() => {
+                setTerminalOpen(false);
+                setTerminalMounted(false);
+              }}
+            />
           </Suspense>
         </ErrorBoundary>
       )}

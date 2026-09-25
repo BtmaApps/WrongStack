@@ -452,7 +452,6 @@ const plugin: Plugin = {
             system:
               'You edit release notes from supplied commit facts. Never add unsupported claims. Return Markdown only.',
             role: 'document',
-            maxTokens: 3_072,
             temperature: 0.2,
             signal: execOpts?.signal,
           },

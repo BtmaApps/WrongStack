@@ -707,7 +707,12 @@
     "newTerminal": "Neues Terminal",
     "restart": "Aktives Terminal neu starten",
     "closeAll": "Alle Terminals schließen",
-    "closeDock": "Terminal-Dock schließen (Ctrl+`)",
+    "hideDock": "Terminal-Dock ausblenden (Ctrl+`) — Terminals laufen weiter",
+    "stripLabel": "Terminals",
+    "stripExited": "beendet ({{code}})",
+    "stripOutputTitle": "Letzte Zeilen von {{name}}",
+    "stripOpen": "Öffnen",
+    "stripNoOutput": "Noch keine Ausgabe.",
     "closeTab": "{{name}} schließen",
     "processExited": "[Prozess mit Code {{code}} beendet]"
   },

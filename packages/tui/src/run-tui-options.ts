@@ -58,6 +58,12 @@ export interface RunTuiOptions {
   /** Persists the input queue across crashes; if omitted, the queue is in-memory only. */
   queueStore?: QueueStore | undefined;
   /**
+   * The queue store of another session. With it, `/resume` brings that
+   * session's queue along (the WebUI keeps its queue in the same file) and
+   * leaves the previous session's on disk.
+   */
+  queueStoreFor?: ((sessionId: string) => QueueStore | undefined) | undefined;
+  /**
    * Called with the queue's display texts (head first) on EVERY queue change
    * — enqueue, /queue delete, /queue clear, dequeue-for-delivery. The CLI
    * mirrors the snapshot onto the live agent Context (core's
@@ -602,6 +608,14 @@ export interface RunTuiOptions {
    */
   listSessions?:
     | ((limit?: number) => Promise<import('./app-state.js').ResumeSessionEntry[]>)
+    | undefined;
+  /**
+   * Branch a session at a checkpoint (the conversation before that prompt)
+   * into a new session, leaving the original as it is. Returns the new id;
+   * the TUI then resumes it. The working tree is shared, not copied.
+   */
+  forkSession?:
+    | ((sessionId: string, checkpointPromptIndex: number) => Promise<{ id: string }>)
     | undefined;
 
   /**

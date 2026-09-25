@@ -108,9 +108,12 @@ function useSessionEvents(
       // the reducer's `promptIndex <= toPromptIndex` filter discard every
       // checkpoint but #0, so a second /rewind had nothing left to aim at.
       dispatch({ type: 'sessionRewound', toPromptIndex: e.toPromptIndex });
-      dispatch({ type: 'clearHistory' });
+      dispatch({ type: 'clearHistory', keepCheckpoints: true });
       dispatch({ type: 'resetContextChip' });
-      onClearHistory?.(dispatch);
+      // Not the host's `/clear` hook: that drops pending attachments and the
+      // checkpoint list, and a rewind keeps both (it hands the prompt back).
+      dispatch({ type: 'streamReset' });
+      dispatch({ type: 'toolStreamClear' });
     });
     // The CLI commits all context/session paths before publishing this event.
     // The opening banner is a history snapshot, so it must be replaced too.

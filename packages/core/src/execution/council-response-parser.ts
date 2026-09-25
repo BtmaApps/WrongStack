@@ -149,8 +149,10 @@ export function parseJudge(
 export function withTruncationNote(
   error: string,
   result: OneShotLLMResult,
-  maxTokens: number,
+  maxTokens: number | undefined,
 ): string {
   if (result.stopReason !== 'max_tokens') return error;
-  return `${error} (response truncated at maxTokens=${maxTokens} — reasoning models may need a larger budget)`;
+  return maxTokens === undefined
+    ? `${error} (response truncated at the model's output ceiling)`
+    : `${error} (response truncated at maxTokens=${maxTokens} — reasoning models may need a larger budget)`;
 }

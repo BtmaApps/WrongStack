@@ -58,7 +58,7 @@ describe('messageJump', () => {
 
   it('Alt+↑ / Alt+↓ dispatch it; plain arrows stay with the composer', () => {
     const dispatch = vi.fn();
-    const ctx = { dispatch } as unknown as KeyRouteContext;
+    const ctx = { dispatch, state: stateWith(entries) } as unknown as KeyRouteContext;
     expect(routeMessageJump(ctx, '', { ...EMPTY_KEY, meta: true, upArrow: true })).toBe(true);
     expect(routeMessageJump(ctx, '', { ...EMPTY_KEY, meta: true, downArrow: true })).toBe(true);
     expect(routeMessageJump(ctx, '', { ...EMPTY_KEY, upArrow: true })).toBe(false);
@@ -66,5 +66,71 @@ describe('messageJump', () => {
       { type: 'messageJump', direction: -1 },
       { type: 'messageJump', direction: 1 },
     ]);
+  });
+});
+
+describe('acting on the marked message', () => {
+  const checkpoints = [
+    { promptIndex: 0, promptPreview: 'first ask', ts: 't', fileCount: 0 },
+    { promptIndex: 2, promptPreview: 'second ask', ts: 't', fileCount: 0 },
+    { promptIndex: 5, promptPreview: 'third ask', ts: 't', fileCount: 0 },
+  ];
+  const marked = (entryId: number | null, extra: Partial<State> = {}): State => ({
+    ...stateWith(entries),
+    checkpoints,
+    messageJump: { entryId, seq: 1 },
+    ...extra,
+  });
+  const route = (state: State, key: Partial<typeof EMPTY_KEY>, buffer = '') => {
+    const dispatch = vi.fn();
+    const ctx = {
+      dispatch,
+      state,
+      draftRef: { current: { buffer, cursor: buffer.length } },
+      pasteAccumRef: { current: null },
+    } as unknown as KeyRouteContext;
+    const handled = routeMessageJump(ctx, '', { ...EMPTY_KEY, ...key });
+    return { handled, actions: dispatch.mock.calls.map((c) => c[0]) };
+  };
+
+  it('marks the message and says what Enter does', () => {
+    const s = reducer(stateWith(entries), { type: 'messageJump', direction: -1 });
+    expect(s.hint.startsWith('Enter rewind/fork')).toBe(true);
+    expect(reducer(s, { type: 'messageJumpClear' }).messageJump.entryId).toBeNull();
+  });
+
+  it('Enter on an empty composer opens the timeline at that message', () => {
+    const { handled, actions } = route(marked(3), { return: true });
+    expect(handled).toBe(true);
+    expect(actions).toEqual([
+      { type: 'messageJumpClear' },
+      { type: 'rewindOverlayOpen', selected: 1 },
+    ]);
+    const opened = reducer(marked(3), { type: 'rewindOverlayOpen', selected: 1 });
+    expect(opened.rewindOverlay?.selected).toBe(1);
+  });
+
+  it('lets go on any other key, and that key does its usual job', () => {
+    expect(route(marked(3), { return: true }, 'typed text')).toEqual({
+      handled: false,
+      actions: [{ type: 'messageJumpClear' }],
+    });
+    expect(route(marked(3), { backspace: true })).toEqual({
+      handled: false,
+      actions: [{ type: 'messageJumpClear' }],
+    });
+    expect(route(marked(3), { escape: true })).toEqual({
+      handled: true,
+      actions: [{ type: 'messageJumpClear' }],
+    });
+    // Scrolling to read around it keeps the mark.
+    expect(route(marked(3), { pageUp: true })).toEqual({ handled: false, actions: [] });
+    // Without a mark, Enter is the composer's.
+    expect(route(marked(null), { return: true })).toEqual({ handled: false, actions: [] });
+  });
+
+  it('says so when there is nothing to rewind to', () => {
+    const { actions } = route(marked(3, { checkpoints: [] }), { return: true });
+    expect(actions).toContainEqual({ type: 'hint', text: 'No checkpoints in this session yet.' });
   });
 });

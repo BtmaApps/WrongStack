@@ -8,6 +8,7 @@ import type {
   DelegationRuntimeOptions,
   SubagentPartial,
 } from './delegation-types.js';
+import { activeLimits, positiveLimit } from '../../types/config/limits.js';
 
 /**
  * Per-kind orchestrator hint. Returned alongside the structured error so the
@@ -107,7 +108,7 @@ export const DELEGATION_RESULT_EXCERPT_CHARS = 4_000;
  */
 export function buildDelegationResultExcerpt(
   result: DelegateResult,
-  maxChars = DELEGATION_RESULT_EXCERPT_CHARS,
+  maxChars = positiveLimit(activeLimits().subagentResultChars) ?? DELEGATION_RESULT_EXCERPT_CHARS,
 ): string {
   let text = '';
   if (result.report) {

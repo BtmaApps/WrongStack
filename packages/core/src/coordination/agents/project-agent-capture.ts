@@ -15,7 +15,6 @@ import { listProjectAgentRoles } from './project-agent-files.js';
 import type { LearnedCaptureResult } from './project-agent-identity-types.js';
 import { splitLearnedEntries, tokenOverlap } from './project-agent-learning-entries.js';
 import {
-  LEARNED_HARD_LIMIT,
   LEARNED_SOFT_LIMIT,
   normalizeForComparison,
   normalizeLearnedEntry,
@@ -28,7 +27,6 @@ import {
 import {
   directiveLift,
   directiveTrials,
-  enforceLearnedBudget,
   hasDirectiveLiftEvidence,
   mergeStructuredEntries,
   parseStructuredLearnedEntriesFromContent,
@@ -377,13 +375,10 @@ export function captureLearnedFromAgentOutputDetailed(
     };
   }
 
-  const budget = enforceLearnedBudget(
-    structuredEntries,
-    nowIso,
-    Math.max(LEARNED_SOFT_LIMIT, Math.min(LEARNED_HARD_LIMIT, LEARNED_SOFT_LIMIT)),
-    normalizedRole,
-  );
-  const newContent = renderLearnedInstructions(normalizedRole, budget.kept, nowIso);
+  // Every directive is kept. Growth past LEARNED_SOFT_LIMIT queues a
+  // consolidation pass that merges and promotes; evicting to a fixed byte size
+  // here silently threw away lessons between those passes.
+  const newContent = renderLearnedInstructions(normalizedRole, structuredEntries, nowIso);
 
   writeTextAtomically(path.join(roleDir(normalizedRole, projectRoot), 'learned.md'), newContent);
   recordCaptureAttempt(key, now.getTime());
@@ -409,7 +404,6 @@ export function captureLearnedFromAgentOutputDetailed(
     skipped,
     status: 'captured',
     ...(routedSkills.length > 0 ? { skills: [...new Set(routedSkills)] } : {}),
-    ...(budget.dropped.length > 0 ? { evicted: budget.dropped.length } : {}),
   };
 }
 

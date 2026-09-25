@@ -197,8 +197,6 @@ export function registerProviderUtilityTools(input: ProviderUtilityToolsInput): 
           const result = await summarizer.call({
             system: 'Summarize concisely. Keep decisions and key facts.',
             messages,
-            model: 'deepseek-chat',
-            maxTokens: 1024,
             timeoutMs: 30_000,
           });
           return result.text || '(summary unavailable)';

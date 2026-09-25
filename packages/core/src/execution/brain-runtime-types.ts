@@ -57,7 +57,8 @@ export interface BrainConfigSnapshot {
   rules: BrainRule[];
   /** Effective single-LLM quality gate. */
   llm: {
-    maxTokens: number;
+    /** undefined = the model's own output ceiling. */
+    maxTokens: number | undefined;
     rejectUncertain: boolean;
     minConfidence: number;
     denyIsTerminal: 'never' | 'when-decided' | 'always';
@@ -159,7 +160,13 @@ export interface BrainConfigPatch {
   /** Merged field-by-field; `null` clears the whole block back to all-defaults. */
   heuristics?: BrainHeuristicsConfig | null | undefined;
   /** Single-LLM tier quality gate. Merged field-by-field; `null` clears it. */
-  llm?: BrainConfig['llm'] | null | undefined;
+  /** `maxTokens: null` clears the cap back to the model's own ceiling. */
+  llm?:
+    | (Omit<NonNullable<BrainConfig['llm']>, 'maxTokens'> & {
+        maxTokens?: number | null | undefined;
+      })
+    | null
+    | undefined;
   /** Replay trace. Merged field-by-field; `null` clears it. */
   trace?: BrainConfig['trace'] | null | undefined;
   /** Headless escalation variant. */

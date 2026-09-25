@@ -208,7 +208,7 @@ export type ApprovalChange =
       requestId: string;
       sessionId?: string | undefined;
       response: UserInputResponse;
-      source: 'user' | 'abort';
+      source: 'user' | 'abort' | 'unattended';
     };
 
 interface ConfirmNeededEvent {

@@ -773,3 +773,33 @@ describe('WebUI payload validation', () => {
     });
   });
 });
+
+describe('prefs.update limits', () => {
+  it('accepts the whole limits block the WebUI Limits section sends', () => {
+    expect(
+      validatePrefsUpdatePayload({
+        limits: {
+          responseOutputTokens: 16_000,
+          historyMessages: 400,
+          subagentDefaultBudget: { maxIterations: 40, timeoutMs: 900_000 },
+        },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(validatePrefsUpdatePayload({ limits: {} })).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ['not an object', 5],
+    ['an unknown field', { maxEverything: 5 }],
+    ['zero', { fetchBytes: 0 }],
+    ['a fraction', { fetchBytes: 1.5 }],
+    ['a string', { fetchBytes: '100' }],
+    ['a bad budget field', { subagentDefaultBudget: { maxIterations: -1 } }],
+    ['an unknown budget field', { subagentDefaultBudget: { maxCost: 1 } }],
+    ['below the minimum', { historyMessages: 5 }],
+    ['above the maximum', { fetchBytes: 2 ** 30 }],
+    ['a budget timeout above the timer limit', { subagentDefaultBudget: { timeoutMs: 2 ** 31 } }],
+  ])('rejects %s', (_label, limits) => {
+    expect(validatePrefsUpdatePayload({ limits })).toMatchObject({ ok: false });
+  });
+});

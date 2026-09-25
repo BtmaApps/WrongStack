@@ -17,12 +17,15 @@ export interface ToolEventMap {
     request: UserInputRequest;
     resolve: (response: UserInputResponse) => void;
   };
-  /** Closes mirrored forms after the first surface answers or the run aborts. */
+  /**
+   * Closes mirrored forms after the first surface answers, the run aborts, or
+   * (`unattended`) nobody answered during eternal / parallel autonomy.
+   */
   'user.input_resolved': {
     sessionId?: string | undefined;
     requestId: string;
     response: UserInputResponse;
-    source: 'user' | 'abort';
+    source: 'user' | 'abort' | 'unattended';
   };
   /** Browser/HQ transport submits a candidate response to the owning awaiter. */
   'user.input_submitted': {

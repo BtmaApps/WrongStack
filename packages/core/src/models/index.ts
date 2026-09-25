@@ -63,6 +63,7 @@ export {
   hasProviderCredential,
   hasProviderKeyInConfig,
   hasProviderKeyInEnv,
+  isKeylessLocalProvider,
   type ProviderCredentialConfig,
   type ProviderCredentialSubject,
 } from './provider-credentials.js';

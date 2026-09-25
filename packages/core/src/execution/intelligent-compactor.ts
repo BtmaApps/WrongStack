@@ -60,10 +60,8 @@ export interface IntelligentCompactorOptions {
   /** System prompt for the summarizer sub-LLM. */
   summarizerPrompt?: string | undefined;
   /**
-   * Model ID to use for summarization. When not set, falls back to
-   * "deepseek-chat" when a OneShotOrchestrator is wired, or the agent's
-   * own model otherwise. Set to a fast/cheap configured model for
-   * resilience and cost efficiency.
+   * Model ID to use for summarization. When not set, the session's own model
+   * is used. Set to a fast/cheap configured model for cost efficiency.
    */
   summarizerModel?: string | undefined;
   /**
@@ -254,8 +252,7 @@ export class IntelligentCompactor implements Compactor {
     const toSummarize = messages.slice(0, boundary);
     const removedTokens = estimateMessages(toSummarize);
 
-    const summaryModel =
-      this.summarizerModel ?? (this.oneShotOrchestrator ? 'deepseek-chat' : ctx.model);
+    const summaryModel = this.summarizerModel ?? ctx.model;
     // Cache only the LLM request/result. The context-sensitive smart digest
     // below is rebuilt from this invocation's full messages on every hit, so
     // its deterministic evidence is never inherited from another session.
@@ -328,7 +325,6 @@ export class IntelligentCompactor implements Compactor {
           messages,
           model: summaryModel,
           timeoutMs: 30_000,
-          maxTokens: 1024,
           signal: ctx.signal,
         });
         if (result.error || isPlaceholderSummary(result.text)) {
@@ -349,7 +345,6 @@ export class IntelligentCompactor implements Compactor {
       model: summaryModel,
       system: prompt,
       messages,
-      maxTokens: 1024,
     };
 
     return this.summaryCache.getOrCreate(summaryKey, async () => {

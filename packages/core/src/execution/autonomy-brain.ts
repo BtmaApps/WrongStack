@@ -48,7 +48,6 @@ import {
   buildBrainUserMessage,
   completeBrainLlm,
   completeBrainLlmDetailed,
-  DEFAULT_BRAIN_MAX_TOKENS,
   DEFAULT_BRAIN_TIMEOUT_MS,
   extractConfidence,
   isNonAnswer,
@@ -67,7 +66,6 @@ export {
   buildBrainUserMessage,
   completeBrainLlm,
   completeBrainLlmDetailed,
-  DEFAULT_BRAIN_MAX_TOKENS,
   extractConfidence,
   isNonAnswer,
   parseFreeTextDecision,
@@ -108,7 +106,7 @@ export interface AutonomyBrainOptions {
   events?: EventBus | undefined;
   /** Include raw response text in trace events. Off by default (production content). */
   traceContent?: boolean | undefined;
-  /** Output budget per decision call. Default `DEFAULT_BRAIN_MAX_TOKENS` (200). */
+  /** Output cap per decision call. Unset = the model's own output ceiling. */
   maxTokens?: number | undefined;
   /**
    * Reject responses in which the model declined to decide ("I don't know",

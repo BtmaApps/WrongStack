@@ -32,7 +32,8 @@ describe('generateCommitMessageWithLLM', () => {
     await generateCommitMessageWithLLM('the diff', { provider, model: 'gpt-4o-mini' });
     const call = (provider.complete as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(call[0].model).toBe('gpt-4o-mini');
-    expect(call[0].maxTokens).toBe(80);
+    // No invented output cap: the model's own ceiling applies.
+    expect(call[0].maxTokens).toBeUndefined();
     expect(call[0].temperature).toBe(0.3);
     expect(call[0].system?.[0].text).toMatch(/conventional-commit/);
     expect(call[0].messages[0].content[0].text).toContain('the diff');

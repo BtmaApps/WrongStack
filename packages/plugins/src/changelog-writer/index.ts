@@ -366,7 +366,6 @@ const plugin: Plugin = {
           {
             system: 'You are a precise technical release-notes editor.',
             role: 'document',
-            maxTokens: 1_500,
           },
         );
         const text = result.text.trim();

@@ -4,9 +4,10 @@ import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
 import {
-  COMMAND_OUTPUT_MAX_BYTES,
+  commandOutputPreviewBytes,
   detectPackageManager,
   normalizeCommandOutput,
+  PARSED_COMMAND_OUTPUT_GUARD_BYTES,
   safeResolveReal,
 } from './_util.js';
 import {
@@ -181,7 +182,7 @@ function runOutdated(
     let stderr = '';
     let stdoutBytes = 0;
     let stderrBytes = 0;
-    const MAX = 100_000;
+    const MAX = PARSED_COMMAND_OUTPUT_GUARD_BYTES;
     const stdoutDecoder = new StringDecoder('utf8');
     const stderrDecoder = new StringDecoder('utf8');
 
@@ -259,7 +260,7 @@ function runOutdated(
       const isTruncated =
         stdoutBytes > MAX ||
         stderrBytes > MAX ||
-        Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
+        Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes();
       const result = parseOutdatedOutput(stdout, code ?? 0, stderr, isTruncated);
       resolve(result);
     });
@@ -306,7 +307,7 @@ function parseOutdatedOutput(
   const isTruncated =
     truncated ||
     json.length >= 100_000 ||
-    Buffer.byteLength(json, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
+    Buffer.byteLength(json, 'utf8') > commandOutputPreviewBytes();
   let parsedOk = false;
 
   try {

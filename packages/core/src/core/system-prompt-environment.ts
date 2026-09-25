@@ -9,10 +9,10 @@
  * @module core/system-prompt-environment
  */
 import * as os from 'node:os';
-import * as path from 'node:path';
 import type { ConcreteTokenSavingTier } from '../types/config.js';
 import type { BuildContext, ModelCapabilities } from '../types/system-prompt.js';
-import { detectLanguages, dirExists, gitStatus } from './system-prompt-environment-probes.js';
+import { detectVcs } from '../vcs/vcs-adapter.js';
+import { detectLanguages, gitStatus, otherVcsStatus } from './system-prompt-environment-probes.js';
 import { effectiveShell, SHELL_DISPLAY, shellGuidanceBlock } from './system-prompt-shell.js';
 
 /** The builder state this section reads. */
@@ -65,14 +65,23 @@ export async function buildEnvironment(
       ? (process.env.SHELL ?? process.env.ComSpec ?? 'unknown')
       : SHELL_DISPLAY[effShell];
   const node = process.version;
-  const isGit = await dirExists(path.join(ctx.projectRoot, '.git'));
+  // The repository the project is in, found by walking up, so a project in
+  // a subdirectory of a repository is reported too. A Jujutsu or Mercurial
+  // checkout gets its own line instead of "not a git repo".
+  const vcs = await detectVcs(ctx.projectRoot);
   // Fan out the per-root probes so the prompt build doesn't serialize
   // ~12 fs.access calls plus the git status spawn back-to-back. On a
   // cold cache (CI / first turn) this trims hundreds of ms.
   const [git, langs] = await Promise.all([
-    isGit ? gitStatus(ctx.projectRoot) : Promise.resolve('not a git repo'),
+    !vcs
+      ? Promise.resolve('not a git repo')
+      : vcs.kind === 'git'
+        ? gitStatus(ctx.projectRoot)
+        : otherVcsStatus(vcs.kind, vcs.root),
     detectLanguages(ctx.projectRoot),
   ]);
+  const vcsName =
+    vcs?.kind === 'jj' ? 'Jujutsu (jj)' : vcs?.kind === 'hg' ? 'Mercurial (hg)' : 'Git';
 
   // Tier-aware environment block content.
   // - 'off':        Full — all fields
@@ -85,7 +94,7 @@ export async function buildEnvironment(
 
   if (tier === 'minimal' || tier === 'aggressive') {
     // Single compact line
-    lines.push(`- Git: ${git} | Date: ${today}`);
+    lines.push(`- ${vcsName}: ${git} | Date: ${today}`);
   } else {
     lines.push(`- Operating system: ${platform}`);
     if (tier !== 'light') {
@@ -96,7 +105,7 @@ export async function buildEnvironment(
     if (tier === 'off' || tier === 'medium') {
       lines.push(`- Detected languages: ${langs}`);
     }
-    lines.push(`- Git status: ${git}`);
+    lines.push(`- ${vcsName} status: ${git}`);
     lines.push(`- Today's date: ${today}`);
     if (modelCapabilities) {
       lines.push(

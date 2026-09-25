@@ -455,7 +455,6 @@ const plugin: Plugin = {
                           system:
                             'You are a supply-chain security assistant. Use only supplied evidence and preserve uncertainty.',
                           role: 'security-reviewer',
-                          maxTokens: 100,
                           timeoutMs: 3000,
                           signal: reviewSignal,
                         },

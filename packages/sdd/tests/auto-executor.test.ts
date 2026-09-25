@@ -239,8 +239,8 @@ describe('AutoExecutor', () => {
     const summary = await executor.execute(graph, makeSpec());
 
     expect(summary.retried).toBe(1);
-    expect(summary.failed).toBe(0);
-    expect(tracker.getNode('a')?.status).toBe('in_progress');
+    expect(summary.failed).toBe(1);
+    expect(tracker.getNode('a')?.status).toBe('failed');
   });
 
   it('reports failures thrown outside the task executor through allSettled', async () => {

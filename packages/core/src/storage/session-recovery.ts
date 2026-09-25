@@ -535,7 +535,13 @@ export class SessionRecovery {
         /* v8 ignore stop */
         const next = { sessionId, path: fp, size: stat.size, modifiedAt: stat.mtimeMs };
         const existing = out.get(sessionId);
-        if (!existing || !isColdSessionTranscriptFileName(fp)) out.set(sessionId, next);
+        if (
+          !existing ||
+          (!isColdSessionTranscriptFileName(fp) && next.size > 0) ||
+          (isColdSessionTranscriptFileName(fp) && existing.size === 0 && next.size > 0)
+        ) {
+          out.set(sessionId, next);
+        }
       }
     };
     await collect(this.dir, '', 0);

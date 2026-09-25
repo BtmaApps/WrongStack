@@ -30,9 +30,6 @@ export interface DiffInput {
   context?: number | undefined;
 }
 
-/** Character cap for the git-diff stdout returned to the model. */
-const MAX_GIT_DIFF_CHARS = 100_000;
-
 export interface DiffOutput {
   diff: string;
   files: string[];
@@ -269,21 +266,13 @@ async function gitDiff(
       `diff: git diff exited with code ${result.exitCode}: ${result.stderr.trim() || 'command failed'}`,
     );
   }
-  // Honest truncation: actually clip the payload (at a line boundary) when it
-  // exceeds the cap, and only then report truncated=true.
-  let diff = result.stdout;
-  let truncated = false;
-  if (diff.length > MAX_GIT_DIFF_CHARS) {
-    let clipped = diff.slice(0, MAX_GIT_DIFF_CHARS);
-    const nl = clipped.lastIndexOf('\n');
-    if (nl > 0) clipped = clipped.slice(0, nl);
-    diff = `${clipped}\n…[git diff truncated: ${result.stdout.length - clipped.length} of ${result.stdout.length} characters omitted]`;
-    truncated = true;
-  }
+  // The whole diff. A large result reaches the model through the tool
+  // executor's lossless spool (file + preview); a fixed clip here dropped the
+  // tail of the change with no way to get it back.
   return {
-    diff,
+    diff: result.stdout,
     files: effectiveFiles,
-    truncated,
+    truncated: false,
     mode: effectiveMode,
     note: sideBySideNote,
   };

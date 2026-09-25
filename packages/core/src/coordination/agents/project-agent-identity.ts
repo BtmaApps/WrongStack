@@ -93,8 +93,6 @@ export type {
 export { splitLearnedEntries, tokenOverlap } from './project-agent-learning-entries.js';
 export {
   classifyLearnedEntry,
-  LEARNED_ENTRY_MAX_CHARS,
-  LEARNED_HARD_LIMIT,
   LEARNED_SOFT_LIMIT,
   normalizeLearnedEntry,
 } from './project-agent-learning-normalize.js';

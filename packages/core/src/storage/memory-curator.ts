@@ -299,8 +299,7 @@ export class SessionMemoryCurator implements AgentExtension {
           system: prompt,
           userPrompt:
             'Review candidate memories against session changes and return JSON operations.',
-          model: _model ?? 'deepseek-chat',
-          maxTokens: 400,
+          ...(_model ? { model: _model } : {}),
           timeoutMs: 10_000,
         });
         text = oneShotResult.text;
@@ -317,7 +316,6 @@ export class SessionMemoryCurator implements AgentExtension {
                   'Review candidate memories against session changes and return JSON operations.',
               },
             ],
-            maxTokens: 400,
           },
           { signal },
         );

@@ -19,6 +19,8 @@ describe('standaloneAssetName', () => {
       expect(standaloneAssetName(target)).toBe(build.outputName(target));
     }
     expect(standaloneAssetName('bun-windows-x64')).toBe('wstack-windows-x64.exe');
+    expect(build.ALL_TARGETS).toContain('bun-windows-arm64');
+    expect(standaloneAssetName('bun-windows-arm64')).toBe('wstack-windows-arm64.exe');
     expect(standaloneAssetName('bun-linux-arm64-musl')).toBe('wstack-linux-arm64-musl');
   });
 

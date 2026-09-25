@@ -409,9 +409,6 @@ export {
   type CouncilToolInput,
   type CreateCouncilToolOptions,
   createCouncilTool,
-  MAX_COUNCIL_CONTEXT_CHARS,
-  MAX_COUNCIL_QUESTION_CHARS,
-  MAX_COUNCIL_TOOL_OPTIONS,
 } from './tools/council-tool.js';
 export {
   AGENT_MODEL_ASSIGN_TOOL_NAME,

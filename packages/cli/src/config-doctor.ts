@@ -123,6 +123,7 @@ const KNOWN_TOP_LEVEL_KEYS = [
   'git',
   'observability',
   'update',
+  'limits',
   'extensions',
 ] as const;
 

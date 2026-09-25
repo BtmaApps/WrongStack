@@ -10,6 +10,12 @@ import { createQueueSlashCommand } from '../queue-slash.js';
 export interface UseQueueManagerOptions {
   /** Optional persistent store — absent => in-memory only (no crash recovery). */
   queueStore?: QueueStore | undefined;
+  /**
+   * The store of another session. With it, resuming a session brings that
+   * session's queue along (the WebUI keeps its queue in the same file) and
+   * leaves the previous session's on disk; without it, the queue is dropped.
+   */
+  queueStoreFor?: ((sessionId: string) => QueueStore | undefined) | undefined;
   /** Called on every queue change so the host learns what's waiting. */
   onQueueChange?: ((items: string[]) => void) | undefined;
   /** Slash registry to register the /queue command. */
@@ -24,6 +30,11 @@ export interface UseQueueManagerOptions {
   midRunSendPickerRef: React.MutableRefObject<boolean>;
 }
 
+export interface QueueManager {
+  /** Move the queue to the session just resumed: its own queue replaces this one. */
+  switchSession(sessionId: string): void;
+}
+
 /**
  * Manages the TUI message queue: rehydration from persistent store,
  * persistence on every change, host mirroring, and the /queue slash
@@ -31,6 +42,7 @@ export interface UseQueueManagerOptions {
  */
 export function useQueueManager({
   queueStore,
+  queueStoreFor,
   onQueueChange,
   slashRegistry,
   stateRef,
@@ -38,7 +50,7 @@ export function useQueueManager({
   getSettings,
   saveSettings,
   midRunSendPickerRef,
-}: UseQueueManagerOptions): void {
+}: UseQueueManagerOptions): QueueManager {
   const persistState = useRef<{
     running: boolean;
     pending: { store: QueueStore; items: PersistedQueueItem[] } | null;
@@ -53,6 +65,10 @@ export function useQueueManager({
   // Those writes must be preserved (not dropped) and flushed once hydration
   // completes.
   const pendingBeforeHydration = useRef(false);
+  /** The store the queue is written to: the current session's. */
+  const storeRef = useRef(queueStore);
+  /** Bumped per read, so a slow read for a session left since is ignored. */
+  const hydration = useRef(0);
 
   // Coalescing queue writer: records the CURRENT in-memory queue into the
   // shared pending slot and drains it. Safe to call repeatedly.
@@ -92,14 +108,13 @@ export function useQueueManager({
     })();
   };
 
-  // ── Rehydrate persisted queue on mount ──────────────────────────────
-  useEffect(() => {
-    if (!queueStore) return;
-    let cancelled = false;
-    queueStore
+  /** Read `store` into the (empty) queue, then let writes through again. */
+  const hydrateFrom = (store: QueueStore, restoredText: (count: number) => string): void => {
+    const run = ++hydration.current;
+    store
       .read()
       .then((items: PersistedQueueItem[]) => {
-        if (cancelled) return;
+        if (run !== hydration.current || storeRef.current !== store) return;
         // Mark hydrated BEFORE dispatching so the persist path can use the
         // current queue (restored items + any user enqueues) without racing.
         hydrated.current = true;
@@ -115,13 +130,7 @@ export function useQueueManager({
           });
         }
         if (items.length > 0) {
-          dispatch({
-            type: 'addEntry',
-            entry: {
-              kind: 'info',
-              text: `Restored ${items.length} queued message${items.length === 1 ? '' : 's'} from a previous run.`,
-            },
-          });
+          dispatch({ type: 'addEntry', entry: { kind: 'info', text: restoredText(items.length) } });
         }
         // Any queue change observed before the read resolved must be flushed
         // now (with the full current queue), or an enqueue made during the
@@ -133,19 +142,27 @@ export function useQueueManager({
         // QueueStore.clear() -> unlink the freshly-restored file.
         if (pendingBeforeHydration.current && items.length === 0) {
           pendingBeforeHydration.current = false;
-          writeQueue(queueStore);
+          writeQueue(store);
         }
       })
       .catch(() => undefined);
+  };
+
+  // ── Rehydrate persisted queue on mount ──────────────────────────────
+  useEffect(() => {
+    if (!queueStore) return;
+    storeRef.current = queueStore;
+    hydrateFrom(queueStore, (n) => `Restored ${n} queued message${n === 1 ? '' : 's'} from a previous run.`);
     return () => {
-      cancelled = true;
+      hydration.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueStore]);
 
   // ── Persist queue on every change ──────────────────────────────────
   useEffect(() => {
-    if (!queueStore) return;
+    const store = storeRef.current;
+    if (!store) return;
     if (!hydrated.current) {
       // Queue changed before the rehydrate read resolved. Writing the queue
       // now — the mount-time one is empty, so write([]) -> QueueStore.clear()
@@ -154,8 +171,8 @@ export function useQueueManager({
       pendingBeforeHydration.current = true;
       return;
     }
-    writeQueue(queueStore);
-  }, [stateRef.current.queue, queueStore, stateRef]);
+    writeQueue(store);
+  }, [stateRef.current.queue, stateRef]);
 
   // ── Mirror queue to host on every change ───────────────────────────
   useEffect(() => {
@@ -191,4 +208,25 @@ export function useQueueManager({
       slashRegistry.unregister('queue');
     };
   }, [slashRegistry, stateRef, dispatch, getSettings, saveSettings, midRunSendPickerRef]);
+
+  return {
+    switchSession(sessionId) {
+      const next = queueStoreFor?.(sessionId);
+      if (!next) {
+        dispatch({ type: 'queueClear' });
+        return;
+      }
+      // The session being left keeps its queue on disk (every change was
+      // written as it happened). Nothing is written until the new session's
+      // queue is read, so the clear below cannot reach either file.
+      storeRef.current = next;
+      hydrated.current = false;
+      pendingBeforeHydration.current = false;
+      dispatch({ type: 'queueClear' });
+      hydrateFrom(
+        next,
+        (n) => `${n} queued message${n === 1 ? ' is' : 's are'} waiting in this session.`,
+      );
+    },
+  };
 }

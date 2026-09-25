@@ -312,7 +312,7 @@ describe('generate_release_notes tool', () => {
     expect(result.notes).toContain('bbb222');
     expect(complete).toHaveBeenCalledWith(
       expect.stringContaining('<commit-facts>'),
-      expect.objectContaining({ maxTokens: 3_072, temperature: 0.2 }),
+      expect.objectContaining({ temperature: 0.2 }),
     );
   });
 

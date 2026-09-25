@@ -27,6 +27,20 @@ export interface SessionForkHost {
   readRawEvents(id: string): Promise<SessionEvent[]>;
 }
 
+/**
+ * The last event before the prompt the checkpoint at `checkpointAt` was
+ * written for: its `user_input` comes after the previous checkpoint. Without
+ * one (a journal that never recorded the input), the checkpoint itself.
+ */
+function beforePromptOf(events: readonly SessionEvent[], checkpointAt: number): number {
+  for (let i = checkpointAt - 1; i >= 0; i--) {
+    const event = events[i];
+    if (event?.type === 'checkpoint') break;
+    if (event?.type === 'user_input') return i - 1;
+  }
+  return checkpointAt;
+}
+
 export async function forkSession(
   host: SessionForkHost,
   id: string,
@@ -49,6 +63,7 @@ export async function forkSession(
     if (boundary === -1) {
       throw new Error(`Checkpoint ${opts.checkpointPromptIndex} not found in session "${id}"`);
     }
+    if (opts.beforeCheckpointPrompt) boundary = beforePromptOf(parentEvents, boundary);
   }
 
   const parentPrefix = parentEvents.slice(0, boundary + 1);

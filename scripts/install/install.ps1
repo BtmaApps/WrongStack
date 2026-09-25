@@ -17,8 +17,11 @@ $ProgressPreference = 'SilentlyContinue'
 
 $Repo = 'WrongStack/WrongStack'
 $InstallDir = if ($env:WSTACK_INSTALL_DIR) { $env:WSTACK_INSTALL_DIR } else { Join-Path $HOME '.wrongstack\bin' }
-# Windows on ARM runs the x64 build under emulation.
-$Asset = 'wstack-windows-x64.exe'
+# Windows on ARM gets the native arm64 build. A release that predates it has
+# no arm64 entry in SHA256SUMS; the x64 build then runs under emulation.
+# PROCESSOR_ARCHITEW6432 is set when this shell is itself an x64 process on ARM.
+$Arch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+$Assets = if ($Arch -eq 'ARM64') { @('wstack-windows-arm64.exe', 'wstack-windows-x64.exe') } else { @('wstack-windows-x64.exe') }
 $Base = if ($env:WSTACK_DOWNLOAD_BASE) {
   $env:WSTACK_DOWNLOAD_BASE.TrimEnd('/')
 } elseif ($env:WSTACK_VERSION) {
@@ -30,23 +33,31 @@ $Base = if ($env:WSTACK_DOWNLOAD_BASE) {
 $Tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("wstack-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $Tmp | Out-Null
 try {
-  Write-Host "Downloading $Asset..."
-  $Exe = Join-Path $Tmp $Asset
   $Sums = Join-Path $Tmp 'SHA256SUMS'
-  Invoke-WebRequest -Uri "$Base/$Asset" -OutFile $Exe -UseBasicParsing
   Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile $Sums -UseBasicParsing
+  $SumLines = Get-Content $Sums
 
+  $Asset = $null
   $ExpectedMatches = @()
-  foreach ($Line in Get-Content $Sums) {
-    $Parts = $Line.Trim() -split '\s+', 2
-    if ($Parts.Count -eq 2 -and $Parts[1].TrimStart('*') -eq $Asset) {
-      $ExpectedMatches += $Parts[0].ToLower()
+  foreach ($Candidate in $Assets) {
+    $ExpectedMatches = @()
+    foreach ($Line in $SumLines) {
+      $Parts = $Line.Trim() -split '\s+', 2
+      if ($Parts.Count -eq 2 -and $Parts[1].TrimStart('*') -eq $Candidate) {
+        $ExpectedMatches += $Parts[0].ToLower()
+      }
     }
+    if ($ExpectedMatches.Count -gt 0) { $Asset = $Candidate; break }
   }
+  if (-not $Asset) { throw "SHA256SUMS has no entry for $($Assets -join ' or ')" }
   if ($ExpectedMatches.Count -ne 1) {
     throw "SHA256SUMS must contain exactly one entry for $Asset"
   }
   $Expected = $ExpectedMatches[0]
+
+  Write-Host "Downloading $Asset..."
+  $Exe = Join-Path $Tmp $Asset
+  Invoke-WebRequest -Uri "$Base/$Asset" -OutFile $Exe -UseBasicParsing
   $Actual = (Get-FileHash -Algorithm SHA256 $Exe).Hash.ToLower()
   if ($Expected -ne $Actual) { throw "checksum mismatch for $Asset" }
 

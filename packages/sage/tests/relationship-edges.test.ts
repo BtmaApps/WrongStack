@@ -2,8 +2,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqliteSageStore } from '../src/sqlite-store.js';
+import { syncSqliteRelationshipEdges } from '../src/sqlite-store-relationship-sync.js';
 
 /**
  * `supersedes` / `contradicts` are declared relations and accepted write input,
@@ -162,5 +163,30 @@ describe('relationship edge materialization', () => {
     // The anchor rebuild did happen — the stale file edge is gone.
     expect(all.some((edge) => edge.to_node === 'file:src/router.ts')).toBe(false);
     expect(all.some((edge) => edge.to_node === 'file:src/router/index.ts')).toBe(true);
+  });
+
+  it('applies the edge cap after filtering duplicate raw references', () => {
+    const run = vi.fn();
+    const stmt = vi.fn(() => ({ run })) as never;
+
+    syncSqliteRelationshipEdges({ stmt, nowIso: () => '2026-09-25T00:00:00.000Z' }, {
+      id: 'source',
+      supersedes: [...Array(256).fill('target-a'), 'target-b'],
+    } as never);
+
+    expect(run).toHaveBeenCalledWith(
+      'mem:source',
+      'mem:target-a',
+      'supersedes',
+      1,
+      '2026-09-25T00:00:00.000Z',
+    );
+    expect(run).toHaveBeenCalledWith(
+      'mem:source',
+      'mem:target-b',
+      'supersedes',
+      1,
+      '2026-09-25T00:00:00.000Z',
+    );
   });
 });

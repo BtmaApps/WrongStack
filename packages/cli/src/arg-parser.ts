@@ -60,6 +60,8 @@ export const BOOLEAN_FLAGS = new Set([
   'full-auto',
   'desktop',
   'open',
+  // `wstack remote --keep`: leave the remote host running after disconnecting.
+  'keep',
   'webui-require-token',
   'require-token',
   'no-check',

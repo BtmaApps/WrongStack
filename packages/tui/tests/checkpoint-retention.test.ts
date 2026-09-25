@@ -107,8 +107,12 @@ describe('checkpointReceived reducer retention', () => {
 
   it('dedupes by promptIndex without growing the list', () => {
     const state = initialStateWith([cp(0)]);
+    // The same checkpoint again (a resume replaying it) changes nothing.
+    expect(reducer(state, { type: 'checkpointReceived', cp: cp(0) })).toBe(state);
+    // A new prompt at that index (sent after a rewind to it) replaces it.
     const next = reducer(state, { type: 'checkpointReceived', cp: cp(0, 'rewritten') });
-    expect(next).toBe(state);
+    expect(next.checkpoints).toHaveLength(1);
+    expect(next.checkpoints[0]?.promptPreview).toBe('rewritten');
   });
 
   it('drops the oldest checkpoint when the entry budget is exceeded live', () => {

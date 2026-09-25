@@ -39,6 +39,7 @@ export const ALL_SETTINGS_KEYS = [
   'skills',
   'models-registry',
   'max-iterations',
+  'limits',
   'auto-proceed-max-iterations',
   'index-on-start',
   'log-level',

@@ -68,7 +68,8 @@ interface BrainHeuristicsPatchWire {
 
 /** Effective single-LLM tier quality gate. */
 interface BrainLlmWire {
-  maxTokens: number;
+  /** Absent = the model's own output ceiling. */
+  maxTokens?: number | undefined;
   rejectUncertain: boolean;
   minConfidence: number;
   denyIsTerminal: 'never' | 'when-decided' | 'always';
@@ -76,7 +77,8 @@ interface BrainLlmWire {
 
 /** Writable single-LLM tier quality gate. */
 interface BrainLlmPatchWire {
-  maxTokens?: number | undefined;
+  /** `null` clears the cap back to the model's own ceiling. */
+  maxTokens?: number | null | undefined;
   rejectUncertain?: boolean | undefined;
   minConfidence?: number | undefined;
   denyIsTerminal?: 'never' | 'when-decided' | 'always' | undefined;

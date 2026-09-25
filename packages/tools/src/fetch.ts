@@ -1,8 +1,14 @@
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
-import { FetchError, ToolError, ToolValidationError } from '@wrongstack/core/types';
+import {
+  activeLimits,
+  FetchError,
+  positiveLimit,
+  TOOL_MEMORY_GUARD_BYTES,
+  ToolError,
+  ToolValidationError,
+} from '@wrongstack/core/types';
 import { ALLOW_PRIVATE, assertNotPrivate, guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
-import { truncateMiddle } from './_util.js';
 
 export type FetchFormat = 'markdown' | 'text' | 'raw';
 
@@ -18,8 +24,27 @@ export interface FetchOutput {
   url: string;
 }
 
-const MAX_BYTES = 131_072;
+/**
+ * RAM guard against an endless or enormous body — NOT a context budget. The
+ * whole page is returned; a large result reaches the model through the tool
+ * executor's lossless spool (file + preview), so nothing is cut to fit.
+ */
+const MAX_DOWNLOAD_BYTES = TOOL_MEMORY_GUARD_BYTES;
 const TIMEOUT_MS = 20_000;
+
+/**
+ * The page as returned to the model: whole, unless the user set
+ * `limits.fetchBytes` (then cut at that many bytes, and said so).
+ */
+function capFetchedContent(content: string, stoppedAtGuard: boolean, received: number): string {
+  let out = content;
+  const userCap = positiveLimit(activeLimits().fetchBytes);
+  if (userCap !== undefined && Buffer.byteLength(out, 'utf8') > userCap) {
+    out = `${Buffer.from(out, 'utf8').subarray(0, userCap).toString('utf8')}\n\n[cut at ${userCap} bytes by limits.fetchBytes]`;
+  }
+  if (stoppedAtGuard) out = `${out}\n\n[download stopped at ${received} bytes: memory guard]`;
+  return out;
+}
 
 /** Abort when any of the signals abort (Node 22+ — AbortSignal.any shipped in Node 20). */
 const combineSignals = (signals: AbortSignal[]): AbortSignal => AbortSignal.any(signals);
@@ -66,7 +91,6 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
   // input field.
   subjectKey: 'url',
   timeoutMs: TIMEOUT_MS,
-  maxOutputBytes: MAX_BYTES,
   inputSchema: {
     type: 'object',
     properties: {
@@ -213,6 +237,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
 
       const reader = res.body?.getReader();
       let received = 0;
+      let stoppedAtGuard = false;
       const chunks: Uint8Array[] = [];
       let pendingBytes = 0;
       const FLUSH_AT = 4 * 1024;
@@ -239,7 +264,8 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
               };
               pendingBytes = 0;
             }
-            if (received > MAX_BYTES) {
+            if (received > MAX_DOWNLOAD_BYTES) {
+              stoppedAtGuard = true;
               await reader.cancel().catch(() => {});
               break;
             }
@@ -264,7 +290,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       yield {
         type: 'final',
         output: {
-          content: truncateMiddle(content, MAX_BYTES),
+          content: capFetchedContent(content, stoppedAtGuard, received),
           status: res.status,
           content_type: ct,
           url: res.url,

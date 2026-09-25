@@ -21,6 +21,7 @@ import type { ConfirmDecision, PendingConfirm } from './pending-confirms.js';
 import {
   createSessionPromptQueue,
   handlePromptQueueMessage,
+  promptQueueDirFor,
   type SessionPromptQueue,
 } from './session-prompt-queue.js';
 import type { WSClientMessage } from './types.js';
@@ -40,6 +41,8 @@ interface TurnPayload {
   freshContext?: unknown;
   images?: IncomingImagePayload[] | undefined;
   imageBase64?: string | undefined;
+  /** The turn's content, already built (a queued prompt); replaces `content` and `images`. */
+  blocks?: ContentBlock[] | undefined;
 }
 
 export interface ConversationRunControl {
@@ -102,10 +105,11 @@ export interface ConversationOperationsContext {
     | ((sessionId: string, info: { aborted: boolean; origin: ConversationTurnOrigin }) => void)
     | undefined;
   /**
-   * Where queued prompts are persisted, one file per session. Omitted: the
-   * queue still works but lives only as long as this host.
+   * The project's sessions directory: a queued prompt is persisted in its
+   * session's folder, where the TUI keeps its queue too. Omitted: the queue
+   * still works but lives only as long as this host.
    */
-  promptQueueDir?: string | undefined;
+  promptQueueSessionsDir?: string | undefined;
 }
 
 export interface ConversationOperations extends ConversationRouteHandlers {
@@ -272,15 +276,17 @@ export function createConversationOperations(
         if (payload.freshContext === true) await startFreshTopicContext(agent.ctx);
         const content = typeof payload.content === 'string' ? payload.content : '';
         let input: string | ContentBlock[] = content;
-        const attached = parseIncomingAttachments(payload.images, payload.imageBase64);
+        const attached = payload.blocks
+          ? { images: [], pdfs: [] }
+          : parseIncomingAttachments(payload.images, payload.imageBase64);
         // PDFs lead, then images, then the text; the provider runner decides
         // per model whether a PDF travels as the file or as its text.
-        const blocks = [
+        const blocks = payload.blocks ?? [
           ...(await pdfPromptBlocks(attached.pdfs)),
           ...buildUserContentBlocks(content, attached.images),
         ];
-        if (attached.pdfs.length > 0) input = blocks;
-        if (attached.images.length > 0) {
+        if (attached.pdfs.length > 0 || payload.blocks) input = blocks;
+        if (blocks.some((block) => block.type === 'image')) {
           const routed = await routeImagesForModel(blocks, {
             supportsVision: agent.ctx.provider.capabilities.vision,
             adapters: () => createToolVisionAdapters(agent.tools),
@@ -406,7 +412,8 @@ export function createConversationOperations(
   };
 
   const promptQueue = createSessionPromptQueue({
-    dir: ctx.promptQueueDir,
+    sessionsDir: ctx.promptQueueSessionsDir,
+    legacyDir: promptQueueDirFor(ctx.promptQueueSessionsDir),
     isBusy: (sessionId) => activeTurns.has(sessionId),
     // A drained prompt is user input the user already sent: it counts as
     // pending input for the auto-wake guard, and its refusals stay silent
@@ -422,7 +429,15 @@ export function createConversationOperations(
         void runTurn({
           ws: undefined,
           originSessionId: sessionId,
-          payload: { content: prompt.text, ...(prompt.images ? { images: prompt.images } : {}) },
+          // A text-only prompt runs as its text, exactly as if it were typed;
+          // one with images or files (or pasted into the TUI) as its blocks.
+          payload: prompt.blocks.every((block) => block.type === 'text')
+            ? {
+                content:
+                  prompt.blocks.map((b) => (b.type === 'text' ? b.text : '')).join('\n') ||
+                  prompt.text,
+              }
+            : { content: prompt.text, blocks: prompt.blocks },
           origin: 'queue',
           onSettled: (started) => {
             release?.();

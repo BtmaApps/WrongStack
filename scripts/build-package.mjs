@@ -57,6 +57,9 @@ const coreEntries = entryMap([
   'src/core/model-ref.ts',
   'src/core/request-conversation-binding.ts',
   'src/types/index.ts',
+  // Limit bounds, dependency-free, so the browser Settings panel validates
+  // against the same table as the server.
+  'src/types/config/limits.ts',
   'src/types/session-markers.ts',
   'src/types/session-timeline.ts',
   'src/utils/index.ts',

@@ -159,10 +159,10 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
     expect(result.diff).toContain('change');
   });
 
-  it('truncates a very large staged diff', async () => {
-    cfg.stdout = 'x'.repeat(25_000); // > MAX_DIFF (20_000)
+  it('returns a staged diff whole instead of cutting it at a fixed size', async () => {
+    cfg.stdout = 'x'.repeat(25_000); // over the old 20_000 cut
     const result = await run({ command: 'commit', message: 'big' });
-    expect(result.diff).toMatch(/diff truncated/);
+    expect(result.diff).toBe('x'.repeat(25_000));
   });
 
   it('surfaces the child exit code from runGit', async () => {

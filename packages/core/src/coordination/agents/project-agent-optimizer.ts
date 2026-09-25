@@ -59,7 +59,6 @@ export interface OptimizeLearningResult {
   error?: string | undefined;
 }
 
-const DEFAULT_MAX_TOKENS = 8_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 /**
@@ -96,7 +95,7 @@ async function complete(
     model: llm.model,
     system: [{ type: 'text', text: system }],
     messages: [{ role: 'user', content: instruction }],
-    maxTokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+    ...(options.maxTokens !== undefined ? { maxTokens: options.maxTokens } : {}),
   };
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();

@@ -89,11 +89,10 @@ export interface CouncilBrainOptions {
   /** Panel-diversity warning policy. Default 'none'. */
   distinctness?: 'none' | 'model' | 'provider' | undefined;
   /**
-   * Output budget per voter seat call. Default
-   * {@link BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS}. Reasoning models spend
-   * their thinking tokens from this same budget, so the orchestrator's
-   * generic 300-token default starves them into `invalid` votes (empty or
-   * truncated JSON).
+   * Output cap per voter seat call. Unset = the model's own output ceiling:
+   * reasoning models spend their thinking tokens from this same budget, so
+   * every fixed default tried (300, then 2000) starved them into `invalid`
+   * votes (empty or truncated JSON).
    */
   voterMaxTokens?: number | undefined;
   /**
@@ -197,19 +196,6 @@ function resolvePersonaRegistry(voters: readonly CouncilVoter[]): {
 }
 
 // ── Factory ────────────────────────────────────────────────────────────────
-
-/**
- * Default output budget per Brain-council voter seat.
- *
- * Deliberately larger than the orchestrator's generic 300-token default
- * (`DEFAULT_COUNCIL_VOTER_MAX_TOKENS`): a vote is still just one optionId
- * plus a short rationale, but reasoning models (deepseek-v4, glm, kimi, …)
- * burn their chain-of-thought from the same `maxTokens` budget before any
- * visible text appears. 300 reliably produced empty/truncated responses →
- * `invalid` votes; 2000 leaves room to think and answer. Override via
- * `brain.council.voterMaxTokens`.
- */
-export const BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS = 2000;
 
 /**
  * Default per-seat completion timeout for the Brain council.
@@ -390,12 +376,8 @@ export function createCouncilBrainArbiter(opts: CouncilBrainOptions): BrainArbit
     approvalFraction: opts.approvalFraction ?? 0.5,
     perCallTimeoutMs,
     overallTimeoutMs,
-    // Never fall through to the orchestrator's generic 300-token default:
-    // Brain panels are routinely built from reasoning models whose thinking
-    // tokens count against this budget, and 300 starves them into `invalid`
-    // votes (empty or mid-JSON truncated output). See
-    // BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS.
-    voterMaxTokens: opts.voterMaxTokens ?? BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS,
+    // Unset = each seat's model ceiling (see `voterMaxTokens` above).
+    ...(opts.voterMaxTokens !== undefined ? { voterMaxTokens: opts.voterMaxTokens } : {}),
     ...(opts.judgeMaxTokens !== undefined ? { judgeMaxTokens: opts.judgeMaxTokens } : {}),
     distinctness: opts.distinctness ?? 'none',
     deliberationRounds: rounds,

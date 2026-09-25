@@ -13,7 +13,6 @@ import {
   decomposeLearnedEntry,
   getProjectAgentLearnStats,
   isConsolidated,
-  LEARNED_ENTRY_MAX_CHARS,
   listProjectAgentLearnedEntries,
   listProjectAgentRoles,
   loadConsolidationMetadata,
@@ -555,15 +554,14 @@ describe('project agent self-learning lifecycle', () => {
       expect(result!.text).toBe(directive);
     });
 
-    it('truncates over-long entries to the first instructive sentence cluster', () => {
+    it('keeps a long directive whole instead of cutting it to a fixed length', () => {
       const long = Array.from(
         { length: 30 },
         (_, i) => `Always run a regression test on package ${i} before merging a change.`,
       ).join(' ');
       const result = normalizeLearnedEntry(long);
       expect(result).not.toBeNull();
-      expect(result!.text.length).toBeLessThanOrEqual(LEARNED_ENTRY_MAX_CHARS);
-      expect(result!.text.length).toBeGreaterThan(0);
+      expect(result!.text).toBe(long);
     });
 
     it('rejects entries that are too short after normalization', () => {

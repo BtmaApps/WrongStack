@@ -270,7 +270,7 @@ describe('generate_unit_tests tool', () => {
     expect(result.content).not.toContain('```');
     expect(complete).toHaveBeenCalledWith(
       expect.stringContaining('<source>'),
-      expect.objectContaining({ maxTokens: 4_096, temperature: 0.1 }),
+      expect.objectContaining({ temperature: 0.1 }),
     );
   });
 

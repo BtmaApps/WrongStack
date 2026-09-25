@@ -197,7 +197,7 @@ memory, tools, providers, permissions, and the multi-agent runtime actually work
 ## Requirements
 
 - **Standalone binary:** nothing — the executable carries its own runtime
-  (Windows x64, macOS x64/arm64, Linux x64/arm64 incl. musl)
+  (Windows x64/arm64, macOS x64/arm64, Linux x64/arm64 incl. musl)
 - **npm/pnpm install:** Node.js ≥ 22.19.0 and pnpm ≥ 12.3.4 (recommended) or npm
 - **Bun runtime:** Bun ≥ 1.3.10
 

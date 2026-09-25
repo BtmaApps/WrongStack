@@ -64,6 +64,7 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['favoriteModelsOnly'] = config.favoriteModelsOnly === true;
   meta['modelAvailabilitySchedule'] = config.modelAvailabilitySchedule ?? [];
   meta['modelMatrix'] = config.modelMatrix ?? {};
+  meta['limits'] = config.limits ?? {};
   meta['fallbackAuto'] = config.fallbackAuto !== false;
   // Display language — only seeded when the shared config pins one, so an
   // unset config leaves the client's browser-detected/local default intact.

@@ -4,7 +4,9 @@ import { DefaultPluginAPI } from '@wrongstack/core/plugin';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import type { MemoryStore, Tool } from '@wrongstack/core/types';
 import { LegacyMemoryPortAdapter } from '@wrongstack/sage';
+import { builtinToolsPack } from '@wrongstack/tools';
 import { toolSearchTool } from '@wrongstack/tools/tool-search';
+import { BUILTIN_TIER_COUNTS } from '@wrongstack/tools/tool-tier';
 import { describe, expect, it } from 'vitest';
 import { registerCanonicalHostTools } from '../src/tool-registration.js';
 
@@ -66,15 +68,46 @@ describe('canonical host tool registration', () => {
       registry.exposeToProvider(name);
     }
 
-    // 67 built-ins + context + 4 legacy-memory + 4 coordination + 4 host
-    // gateways stay executable, but only a bounded schema surface is sent
-    // directly to the provider. `tool_search` / `tool_use` are inside the
+    // Every built-in stays executable, but only a bounded schema surface is
+    // sent directly to the provider. `tool_search` / `tool_use` are inside the
     // built-in count and on the direct surface at every tier: they are how the
     // model reaches the tools the tier withheld.
-    expect(registry.list()).toHaveLength(80);
-    expect(registry.listForProvider()).toHaveLength(58);
+    //
+    // Counts are DERIVED from the catalog and the tier arrays, never
+    // hand-written. A hardcoded total made this test fail on any concurrent
+    // catalog edit (adding one built-in moved the real count 80 -> 81 while
+    // the literal stayed 80), which reads exactly like cross-suite state
+    // corruption under the full gate but is not: the root vitest pool is
+    // `forks`, one child process per file, so no other suite can mutate
+    // this registry. Deriving the numbers keeps the real invariant (the
+    // surface stays bounded and consistent) without the edit race.
+    const builtins = builtinToolsPack.tools.length;
+    const legacyMemory = 4; // remember, forget, search_memory, find_related_memories
+    const hostGateways = 4; // skill, delegate, mcp_control, mcp_use (below)
+    expect(registry.list()).toHaveLength(
+      builtins + 1 /* context */ + legacyMemory + coordination.length + hostGateways,
+    );
+
+    const directNames = registry.listForProvider().map((tool) => tool.name);
+    // The host adds `memory_search` to the direct set, but the legacy backend
+    // registers `find_related_memories` under that slot instead — so count the
+    // memory names the registry actually holds rather than the names the host
+    // requested. `tool_search` / `tool_use` need no term: they are already
+    // inside BUILTIN_TIER_COUNTS.medium via TIER1, so the Set dedupes them.
+    const memoryDirect = ['remember', 'search_memory', 'memory_search'].filter((name) =>
+      registry.get(name),
+    ).length;
+    expect(directNames).toHaveLength(
+      BUILTIN_TIER_COUNTS.medium +
+        1 /* context */ +
+        memoryDirect +
+        coordination.length +
+        hostGateways,
+    );
     expect(registry.get('browser_open')).toBeDefined();
-    expect(registry.listForProvider().map((tool) => tool.name)).not.toContain('browser_open');
+    expect(registry.get('tool_script')).toBeDefined();
+    expect(directNames).not.toContain('browser_open');
+    expect(directNames).toContain('tool_script');
   });
 
   it('registers the real skill tool on the direct surface when a skill loader is given', async () => {

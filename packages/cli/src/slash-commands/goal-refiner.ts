@@ -91,8 +91,6 @@ export async function refineGoal(
       const result = await oneShotOrchestrator.call({
         system: buildGoalRefinementPrompt(rawGoal),
         userPrompt: 'Produce the refined goal.',
-        model: 'deepseek-chat',
-        maxTokens: 1000,
         timeoutMs: 30_000,
       });
       if (result.error) return null;

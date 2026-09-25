@@ -38,6 +38,7 @@ const stageDir = path.join(outDir, '.stage');
 
 export const ALL_TARGETS = [
   'bun-windows-x64',
+  'bun-windows-arm64',
   'bun-linux-x64',
   'bun-linux-arm64',
   'bun-linux-x64-musl',

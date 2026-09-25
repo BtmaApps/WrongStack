@@ -589,12 +589,12 @@ describe('single-LLM tier — call shape and budgets', () => {
     expect(calls[0]?.responseFormat).toEqual({ type: 'json_object' });
   });
 
-  it('budgets enough output for a reasoning model to think', async () => {
+  it('leaves the output budget to the model instead of inventing one', async () => {
     const { provider, calls } = recordingProvider('{"decision":"Ship it."}');
     await createAutonomyBrain({ provider, model: 'm' }).decide(llmReq());
-    // 200 was sized for the response, not the budget: thinking tokens come
-    // out of the same allowance and starve the answer into `unparseable`.
-    expect(calls[0]?.maxTokens).toBe(2000);
+    // Thinking tokens come out of the same allowance: every fixed cap (200,
+    // then 2000) starved some reasoning model's answer into `unparseable`.
+    expect(calls[0]).not.toHaveProperty('maxTokens');
   });
 
   it('honours an explicit maxTokens override', async () => {
@@ -609,7 +609,7 @@ describe('single-LLM tier — call shape and budgets', () => {
       llmReq({ options: [{ id: 'go', label: 'Go' }] }),
     );
     expect(d.type).toBe('deny');
-    expect(d.type === 'deny' && d.reason).toContain('truncated at maxTokens=2000');
+    expect(d.type === 'deny' && d.reason).toContain("truncated at the model's output ceiling");
   });
 
   it('flags a truncated call as ok-but-truncated on the trace event', async () => {

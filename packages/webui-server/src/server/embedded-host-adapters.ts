@@ -211,8 +211,8 @@ export interface EmbeddedConversationContext extends EmbeddedHostTransport {
   autoWake?:
     | Pick<WebuiLeaderAutoWakeHost, 'onUserMessage' | 'onRunEnded' | 'bindRuntimeTurnStarter'>
     | undefined;
-  /** Where the host-owned prompt queue persists (see `session-prompt-queue.ts`). */
-  promptQueueDir?: string | undefined;
+  /** The sessions directory the host-owned prompt queue persists in (see `session-prompt-queue.ts`). */
+  promptQueueSessionsDir?: string | undefined;
 }
 
 export function createEmbeddedConversationRoutes(
@@ -222,7 +222,7 @@ export function createEmbeddedConversationRoutes(
     ctx.getAgent?.(sessionId) ?? ctx.agent;
   const operations = createConversationOperations({
     broadcast: ctx.broadcast,
-    promptQueueDir: ctx.promptQueueDir,
+    promptQueueSessionsDir: ctx.promptQueueSessionsDir,
     ...(ctx.autoWake
       ? {
           onUserMessage: (sessionId: string) => ctx.autoWake?.onUserMessage(sessionId),

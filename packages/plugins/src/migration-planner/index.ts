@@ -648,7 +648,6 @@ const plugin: Plugin = {
               'You assess software migrations only from supplied evidence. Return one JSON object and clearly preserve uncertainty.',
             role: 'planner',
             responseFormat: 'json',
-            maxTokens: 2_048,
             temperature: 0.1,
             signal: execOpts?.signal,
           },

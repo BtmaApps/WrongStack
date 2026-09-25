@@ -283,13 +283,20 @@ describe('wrongtrace 100% coverage suite', () => {
           {
             name: 'pkg-a',
             files: [
-              { health_score: 20, is_fragile: true, recent_thrashing_count: 10 },
-              { health_score: 20, is_fragile: true, recent_thrashing_count: 10 },
+              ...Array.from({ length: 6 }, () => ({
+                health_score: 20,
+                is_fragile: true,
+                recent_thrashing_count: 10,
+              })),
             ],
           },
           {
             name: 'pkg-b',
-            files: [{ health_score: 30, is_fragile: false, recent_thrashing_count: 12 }],
+            files: Array.from({ length: 6 }, () => ({
+              health_score: 30,
+              is_fragile: false,
+              recent_thrashing_count: 12,
+            })),
           },
         ],
       };

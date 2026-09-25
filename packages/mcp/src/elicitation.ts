@@ -1,4 +1,7 @@
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
+import type { UrlElicitation } from './contracts.js';
+
+export type { UrlElicitation };
 
 /**
  * MCP elicitation (`elicitation/create`, client feature since 2025-06-18): a
@@ -55,6 +58,9 @@ export interface ElicitationForm {
   fields: ElicitationField[];
 }
 
+/** What a server can put in front of the user: a form, or a page to open. */
+export type ElicitationPrompt = (ElicitationForm & { mode?: 'form' | undefined }) | UrlElicitation;
+
 export type MCPElicitationResult =
   | { action: 'accept'; content: Record<string, ElicitationValue> }
   | { action: 'decline' }
@@ -68,8 +74,8 @@ export interface ElicitationRequester {
   ): Promise<UserInputResponse | undefined>;
 }
 
-/** What a host sees: the form, which server asks, and the run that caused it. */
-export interface MCPElicitationRequest extends ElicitationForm {
+/** What a host sees: the form or page, which server asks, and the run that caused it. */
+export type MCPElicitationRequest = ElicitationPrompt & {
   server: string;
   /**
    * Context of the newest in-flight tool call to this server, when there is
@@ -79,7 +85,7 @@ export interface MCPElicitationRequest extends ElicitationForm {
   requester?: ElicitationRequester | undefined;
   /** Aborts when the server cancels the request, the connection closes, or the wait runs out. */
   signal: AbortSignal;
-}
+};
 
 export type MCPElicitationHandler = (
   request: MCPElicitationRequest,
@@ -87,7 +93,7 @@ export type MCPElicitationHandler = (
 
 /** The per-connection slice of {@link MCPElicitationHandler} a client is given. */
 export type MCPClientElicitationHandler = (
-  request: ElicitationForm & { signal: AbortSignal },
+  request: ElicitationPrompt & { signal: AbortSignal },
 ) => Promise<MCPElicitationResult>;
 
 /**
@@ -231,15 +237,52 @@ function parseField(name: string, schema: unknown, required: boolean): Parsed<El
   };
 }
 
-/** Parse `elicitation/create` params into a form, or say why they are invalid. */
-function parseElicitationParams(params: unknown): Parsed<ElicitationForm> {
+/**
+ * A URL-mode request: a web page the user is asked to open. Only `http(s)` is
+ * accepted — the page is handed to the system browser, and a `file:` or
+ * custom-scheme URL would have the operating system run something instead.
+ */
+export function parseUrlElicitation(params: unknown): Parsed<UrlElicitation> {
   if (!isRecord(params)) return { ok: false, error: 'params must be an object' };
   const message = params['message'];
   if (typeof message !== 'string' || !message.trim()) {
     return { ok: false, error: 'message is required' };
   }
-  if ('url' in params || params['mode'] === 'url') {
-    return { ok: false, error: 'URL-mode elicitation is not supported' };
+  const elicitationId = params['elicitationId'];
+  if (typeof elicitationId !== 'string' || !elicitationId) {
+    return { ok: false, error: 'elicitationId is required in URL mode' };
+  }
+  const raw = params['url'];
+  let url: URL;
+  try {
+    url = new URL(typeof raw === 'string' ? raw : '');
+  } catch {
+    return { ok: false, error: 'url must be a valid URL' };
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return { ok: false, error: `url must be http(s), not ${url.protocol}` };
+  }
+  return {
+    ok: true,
+    value: {
+      mode: 'url',
+      message: message.slice(0, MAX_MESSAGE_CHARS),
+      url: url.href,
+      elicitationId,
+    },
+  };
+}
+
+/** Parse `elicitation/create` params into a form or a page, or say why they are invalid. */
+function parseElicitationParams(params: unknown): Parsed<ElicitationPrompt> {
+  if (!isRecord(params)) return { ok: false, error: 'params must be an object' };
+  const message = params['message'];
+  if (typeof message !== 'string' || !message.trim()) {
+    return { ok: false, error: 'message is required' };
+  }
+  if (params['mode'] === 'url') return parseUrlElicitation(params);
+  if (params['mode'] !== undefined && params['mode'] !== 'form') {
+    return { ok: false, error: `unsupported mode ${JSON.stringify(params['mode'])}` };
   }
   const schema = params['requestedSchema'];
   if (!isRecord(schema) || schema['type'] !== 'object' || !isRecord(schema['properties'])) {
@@ -382,7 +425,7 @@ export class ServerRequestResponder {
 
   /** Client capabilities to declare in `initialize` — only what can be answered. */
   capabilities(): Record<string, unknown> {
-    return this.elicitation ? { elicitation: {} } : {};
+    return this.elicitation ? { elicitation: { form: {}, url: {} } } : {};
   }
 
   /** True while an elicitation waits on the user; request timeouts hold meanwhile. */
@@ -421,11 +464,14 @@ export class ServerRequestResponder {
     );
     deadline.unref?.();
     try {
-      const result = await this.elicitation({ ...form.value, signal: controller.signal });
+      const prompt = form.value;
+      const result = await this.elicitation({ ...prompt, signal: controller.signal });
       if (controller.signal.aborted) return { jsonrpc: '2.0', id, result: { action: 'cancel' } };
       if (result.action !== 'accept')
         return { jsonrpc: '2.0', id, result: { action: result.action } };
-      const content = validateElicitationContent(form.value.fields, result.content);
+      // A page carries no content back: `accept` is the user's consent to open it.
+      if (prompt.mode === 'url') return { jsonrpc: '2.0', id, result: { action: 'accept' } };
+      const content = validateElicitationContent(prompt.fields, result.content);
       if (!content.ok) return error(-32603, `Elicitation answer rejected: ${content.error}`);
       return { jsonrpc: '2.0', id, result: { action: 'accept', content: content.value } };
     } catch {
@@ -434,6 +480,34 @@ export class ServerRequestResponder {
       clearTimeout(deadline);
       this.pending.delete(id);
     }
+  }
+
+  /**
+   * Pages a tool call's `-32042` (URL elicitation required) error names, put
+   * to the user one at a time. Returns what the user chose for each; nothing
+   * is opened without their consent, and without a handler every one is
+   * `cancel`.
+   */
+  async presentUrl(
+    elicitations: readonly UrlElicitation[],
+    signal: AbortSignal,
+  ): Promise<Array<{ elicitation: UrlElicitation; action: MCPElicitationResult['action'] }>> {
+    const outcomes: Array<{
+      elicitation: UrlElicitation;
+      action: MCPElicitationResult['action'];
+    }> = [];
+    for (const elicitation of elicitations) {
+      let action: MCPElicitationResult['action'] = 'cancel';
+      if (this.elicitation && !signal.aborted) {
+        try {
+          action = (await this.elicitation({ ...elicitation, signal })).action;
+        } catch {
+          action = 'cancel';
+        }
+      }
+      outcomes.push({ elicitation, action });
+    }
+    return outcomes;
   }
 
   /** `notifications/cancelled` from the server: stop waiting for that answer. */

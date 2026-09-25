@@ -1,5 +1,6 @@
 import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import type { EventBus, Middleware } from '@wrongstack/core/kernel';
+import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import type { Sage } from '../types.js';
 import type { InjectionTracker } from './injection-tracker.js';
@@ -254,7 +255,10 @@ export function createSageToolCallMiddleware(
           trigger: trigger.trigger,
           toolQuery: trigger.queryText,
           baseMaxHints: opts.maxHintsPerTool ?? DEFAULT_MAX_HINTS,
-          baseMaxChars: opts.maxCharsPerTool ?? DEFAULT_MAX_CHARS,
+          baseMaxChars:
+            opts.maxCharsPerTool ??
+            positiveLimit(activeLimits().memoryInjectChars) ??
+            DEFAULT_MAX_CHARS,
           taskAware: opts.taskAware,
         });
         attemptedPlan = plan;
@@ -557,7 +561,10 @@ export function createSageToolCallMiddleware(
               trigger: attemptedTrigger.trigger,
               toolQuery: attemptedTrigger.queryText,
               baseMaxHints: opts.maxHintsPerTool ?? DEFAULT_MAX_HINTS,
-              baseMaxChars: opts.maxCharsPerTool ?? DEFAULT_MAX_CHARS,
+              baseMaxChars:
+                opts.maxCharsPerTool ??
+                positiveLimit(activeLimits().memoryInjectChars) ??
+                DEFAULT_MAX_CHARS,
               taskAware: opts.taskAware,
             });
           emitInjectorTrace(opts.events, {

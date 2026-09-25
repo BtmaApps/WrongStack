@@ -22,8 +22,9 @@
  *
  * Known drift, accepted: the HTTP layer already implements Streamable HTTP
  * (added 2025-03-26), the `MCP-Protocol-Version` header and OAuth resource
- * indicators (2025-06-18), and the client answers form-mode elicitation and
- * reads structured tool output (2025-06-18), even though we negotiate 2024-11-05. Those ride on the
+ * indicators (2025-06-18), and the client answers form- and URL-mode
+ * elicitation (2025-06-18 / 2025-11-25) and reads structured tool output
+ * (2025-06-18), even though we negotiate 2024-11-05. Those ride on the
  * transport, the 401 challenge and the declared client capability rather than
  * on the negotiated revision, so servers accept them; the declaration is
  * narrower than the behavior.

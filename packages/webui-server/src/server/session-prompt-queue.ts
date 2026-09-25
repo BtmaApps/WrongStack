@@ -9,22 +9,40 @@
  * whether or not any page is watching, every page showing the session sees the
  * same list (`queue.state`), and it is persisted per session so a host restart
  * resumes it the next time the session is opened.
+ *
+ * It is the same file the TUI keeps its queue in (`<session dir>/queue.json`,
+ * core `QueueStore`), in the same shape: a prompt left queued in the terminal
+ * is here when the session is opened in the browser, and the other way round.
  */
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
-import { QUEUE_MAX_BYTES, QUEUE_MAX_ITEM_BYTES, QUEUE_MAX_ITEMS } from '@wrongstack/core/storage';
 import {
-  atomicWrite,
+  type PersistedQueueItem,
+  QUEUE_MAX_BYTES,
+  QUEUE_MAX_ITEM_BYTES,
+  QUEUE_MAX_ITEMS,
+  QueueStore,
+} from '@wrongstack/core/storage';
+import type { ContentBlock } from '@wrongstack/core/types';
+import {
+  buildUserContentBlocks,
   type IncomingImagePayload,
   parseIncomingAttachments,
+  sessionScopedPath,
   toErrorMessage,
 } from '@wrongstack/core/utils';
+import { pdfPromptBlocks } from './incoming-documents.js';
 
+/** A queued prompt: what the user sees (`text`) and what the model gets (`blocks`). */
 export interface QueuedPrompt {
   id: string;
   text: string;
   addedAt: number;
-  images?: IncomingImagePayload[] | undefined;
+  blocks: ContentBlock[];
+  /** Set by the TUI: refine the prompt before it runs. Kept for the TUI. */
+  shouldRefine?: boolean | undefined;
+  /** Set by the TUI: the text before refinement, for the prompt journal. */
+  journalRaw?: string | undefined;
 }
 
 /** What a page renders: the prompt without its image bytes. */
@@ -38,8 +56,10 @@ export interface QueuedPromptView {
 type OutboundMessage = { type: string; payload: unknown };
 
 export interface SessionPromptQueueDeps {
-  /** Directory holding one `<sessionId>.json` per session with a queue; undefined keeps it in memory. */
-  dir?: string | undefined;
+  /** The project's sessions directory; each queue is its session's `queue.json`. Undefined keeps queues in memory. */
+  sessionsDir?: string | undefined;
+  /** Where queues were kept before they moved next to the TUI's; read once and removed. */
+  legacyDir?: string | undefined;
   /** True while the session holds its run lock. */
   isBusy: (sessionId: string) => boolean;
   /**
@@ -70,8 +90,8 @@ export interface SessionPromptQueue {
 }
 
 /**
- * The queue directory for a project: a sibling of its sessions directory, so
- * nothing that walks the sessions tree ever meets a non-session entry.
+ * Where queues were kept before they moved into the session directory: a
+ * sibling of the sessions directory.
  */
 export function promptQueueDirFor(sessionsDir: string | undefined): string | undefined {
   return sessionsDir ? path.join(path.dirname(sessionsDir), 'prompt-queue') : undefined;
@@ -80,13 +100,8 @@ export function promptQueueDirFor(sessionsDir: string | undefined): string | und
 /** Longest session id persisted; a longer one stays in memory only. */
 const MAX_SESSION_ID_CHARS = 200;
 
-/**
- * The file a session's queue lives in. Session ids are date-scoped
- * (`2026-09-23/sess_…`), so every character outside a plain file-name set is
- * escaped (`/` → `%2f`): the name stays one path segment, unique per id, and
- * can never climb out of the queue directory.
- */
-function queueFileName(sessionId: string): string | undefined {
+/** The legacy file name: every character outside a plain file-name set escaped. */
+function legacyFileName(sessionId: string): string | undefined {
   if (!sessionId || sessionId.length > MAX_SESSION_ID_CHARS) return undefined;
   const escaped = sessionId.replace(
     /[^A-Za-z0-9_-]/g,
@@ -105,24 +120,77 @@ function bytesOf(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
 }
 
+function attachmentCount(blocks: readonly ContentBlock[]): number {
+  return blocks.filter((block) => block.type === 'image' || block.type === 'document').length;
+}
+
 function promptView(item: QueuedPrompt): QueuedPromptView {
   return {
     id: item.id,
     text: item.text,
     addedAt: item.addedAt,
-    imageCount: item.images?.length ?? 0,
+    imageCount: attachmentCount(item.blocks),
   };
 }
 
-function isQueuedPrompt(value: unknown): value is QueuedPrompt {
+/** The drained prompt as pages show it: its text and its images. */
+function drainedView(item: QueuedPrompt) {
+  const images = item.blocks.flatMap((block) =>
+    block.type === 'image' && block.source.type === 'base64' && block.source.data
+      ? [{ data: block.source.data, mediaType: block.source.media_type }]
+      : [],
+  );
+  return {
+    id: item.id,
+    text: item.text,
+    addedAt: item.addedAt,
+    ...(images.length > 0 ? { images } : {}),
+  };
+}
+
+/** The prompt as a model turn: PDFs first, then images, then the text. */
+export async function queuedPromptBlocks(
+  text: string,
+  images: IncomingImagePayload[] | undefined,
+): Promise<ContentBlock[]> {
+  const attached = parseIncomingAttachments(images);
+  return [
+    ...(await pdfPromptBlocks(attached.pdfs)),
+    ...buildUserContentBlocks(text, attached.images),
+  ];
+}
+
+function fromPersisted(item: PersistedQueueItem & { id?: unknown; addedAt?: unknown }) {
+  return {
+    id: typeof item.id === 'string' && item.id ? item.id : nextId(),
+    text: item.displayText,
+    addedAt: typeof item.addedAt === 'number' ? item.addedAt : Date.now(),
+    blocks: item.blocks,
+    ...(item.shouldRefine !== undefined ? { shouldRefine: item.shouldRefine } : {}),
+    ...(item.journalRaw !== undefined ? { journalRaw: item.journalRaw } : {}),
+  } satisfies QueuedPrompt;
+}
+
+function toPersisted(item: QueuedPrompt): PersistedQueueItem & { id: string; addedAt: number } {
+  return {
+    id: item.id,
+    addedAt: item.addedAt,
+    displayText: item.text,
+    blocks: item.blocks,
+    ...(item.shouldRefine !== undefined ? { shouldRefine: item.shouldRefine } : {}),
+    ...(item.journalRaw !== undefined ? { journalRaw: item.journalRaw } : {}),
+  };
+}
+
+interface LegacyQueuedPrompt {
+  text: string;
+  images?: IncomingImagePayload[] | undefined;
+}
+
+function isLegacyPrompt(value: unknown): value is LegacyQueuedPrompt {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v['id'] === 'string' &&
-    typeof v['text'] === 'string' &&
-    typeof v['addedAt'] === 'number' &&
-    (v['images'] === undefined || Array.isArray(v['images']))
-  );
+  return typeof v['text'] === 'string' && (v['images'] === undefined || Array.isArray(v['images']));
 }
 
 export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionPromptQueue {
@@ -133,9 +201,54 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
   /** Serialises file writes per session so an older snapshot never lands last. */
   const writes = new Map<string, Promise<void>>();
 
-  const fileFor = (sessionId: string): string | undefined => {
-    const name = queueFileName(sessionId);
-    return deps.dir && name ? path.join(deps.dir, name) : undefined;
+  const sessionDirFor = (sessionId: string): string | undefined => {
+    if (!deps.sessionsDir || !sessionId || sessionId.length > MAX_SESSION_ID_CHARS) {
+      return undefined;
+    }
+    try {
+      return sessionScopedPath(deps.sessionsDir, sessionId, '');
+    } catch {
+      // An id that would leave the sessions directory stays in memory.
+      return undefined;
+    }
+  };
+
+  const storeFor = (sessionId: string): QueueStore | undefined => {
+    const dir = sessionDirFor(sessionId);
+    return dir ? new QueueStore({ dir }) : undefined;
+  };
+
+  /** Prompts a previous host kept in the old per-project directory. */
+  const readLegacy = async (sessionId: string): Promise<QueuedPrompt[]> => {
+    const name = legacyFileName(sessionId);
+    if (!deps.legacyDir || !name) return [];
+    const file = path.join(deps.legacyDir, name);
+    try {
+      const stat = await fsp.stat(file);
+      if (stat.size > QUEUE_MAX_BYTES) return [];
+      const parsed: unknown = JSON.parse(await fsp.readFile(file, 'utf8'));
+      const legacy = Array.isArray(parsed) ? parsed.filter(isLegacyPrompt) : [];
+      const items: QueuedPrompt[] = [];
+      for (const prompt of legacy.slice(0, QUEUE_MAX_ITEMS)) {
+        try {
+          items.push({
+            id: nextId(),
+            text: prompt.text,
+            addedAt: Date.now(),
+            blocks: await queuedPromptBlocks(prompt.text, prompt.images),
+          });
+        } catch (err) {
+          deps.warn?.(`queued prompt for ${sessionId} dropped: ${toErrorMessage(err)}`);
+        }
+      }
+      await fsp.rm(file, { force: true });
+      return items;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        deps.warn?.(`old prompt queue for ${sessionId} unreadable: ${toErrorMessage(err)}`);
+      }
+      return [];
+    }
   };
 
   const load = (sessionId: string): Promise<QueuedPrompt[]> => {
@@ -143,29 +256,15 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
     if (known) return Promise.resolve(known);
     const pending = loading.get(sessionId);
     if (pending) return pending;
-    const file = fileFor(sessionId);
     const read = (async (): Promise<QueuedPrompt[]> => {
-      let items: QueuedPrompt[] = [];
-      if (file) {
-        try {
-          const stat = await fsp.stat(file);
-          if (stat.size <= QUEUE_MAX_BYTES) {
-            const parsed: unknown = JSON.parse(await fsp.readFile(file, 'utf8'));
-            if (Array.isArray(parsed))
-              items = parsed.filter(isQueuedPrompt).slice(0, QUEUE_MAX_ITEMS);
-          } else {
-            deps.warn?.(`prompt queue for ${sessionId} exceeds ${QUEUE_MAX_BYTES} bytes; ignored`);
-          }
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-            deps.warn?.(`prompt queue for ${sessionId} unreadable: ${toErrorMessage(err)}`);
-          }
-        }
-      }
+      const stored = (await storeFor(sessionId)?.read()) ?? [];
+      const legacy = await readLegacy(sessionId);
+      const items = [...stored.map(fromPersisted), ...legacy].slice(0, QUEUE_MAX_ITEMS);
       // A mutation that raced the read already created the live list.
       const live = queues.get(sessionId);
       if (live) return live;
       queues.set(sessionId, items);
+      if (legacy.length > 0) void persist(sessionId);
       return items;
     })().finally(() => loading.delete(sessionId));
     loading.set(sessionId, read);
@@ -173,18 +272,15 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
   };
 
   const persist = (sessionId: string): Promise<void> => {
-    const file = fileFor(sessionId);
-    if (!file) return Promise.resolve();
+    const dir = sessionDirFor(sessionId);
+    const store = storeFor(sessionId);
+    if (!dir || !store) return Promise.resolve();
     const previous = writes.get(sessionId) ?? Promise.resolve();
     const next = previous
       .then(async () => {
         const items = queues.get(sessionId) ?? [];
-        if (items.length === 0) {
-          await fsp.rm(file, { force: true });
-          return;
-        }
-        await fsp.mkdir(path.dirname(file), { recursive: true });
-        await atomicWrite(file, JSON.stringify(items), { mode: 0o600 });
+        if (items.length > 0) await fsp.mkdir(dir, { recursive: true });
+        await store.write(items.map(toPersisted));
       })
       .catch((err) =>
         deps.warn?.(`prompt queue for ${sessionId} not saved: ${toErrorMessage(err)}`),
@@ -220,7 +316,10 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       try {
         started = await deps.startTurn(sessionId, front, () => {
           // Pages add the user bubble from this, ahead of the run's own events.
-          deps.broadcast({ type: 'queue.drained', payload: { sessionId, item: front } });
+          deps.broadcast({
+            type: 'queue.drained',
+            payload: { sessionId, item: drainedView(front) },
+          });
           publish(sessionId);
         });
       } catch (err) {
@@ -229,7 +328,11 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       if (!started) {
         // Lost the lock (another turn got there first) or the session is not
         // open yet: the prompt keeps its place and runs after that turn.
+        // The shift above was already visible to a concurrent add's publish
+        // and persist, so republish and rewrite the file with the prompt back
+        // in place — pages stay truthful and a restart still finds it.
         items.unshift(front);
+        await changed(sessionId);
         return;
       }
       await persist(sessionId);
@@ -251,13 +354,13 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
         id: nextId(),
         text,
         addedAt: Date.now(),
-        ...(images ? { images } : {}),
+        blocks: await queuedPromptBlocks(text, images),
       };
-      const itemBytes = bytesOf(item);
+      const itemBytes = bytesOf(toPersisted(item));
       if (itemBytes > QUEUE_MAX_ITEM_BYTES) {
         return { ok: false, reason: 'This prompt is too large to queue.' };
       }
-      if (bytesOf(items) + itemBytes > QUEUE_MAX_BYTES) {
+      if (bytesOf(items.map(toPersisted)) + itemBytes > QUEUE_MAX_BYTES) {
         return { ok: false, reason: 'The queue is full; remove a prompt first.' };
       }
       items.push(item);
@@ -337,7 +440,13 @@ export async function handlePromptQueueMessage(
         refuse(toErrorMessage(err));
         return;
       }
-      const result = await queue.add(sessionId, { text, ...(images ? { images } : {}) });
+      let result: AddPromptResult;
+      try {
+        result = await queue.add(sessionId, { text, ...(images ? { images } : {}) });
+      } catch (err) {
+        refuse(toErrorMessage(err));
+        return;
+      }
       if (!result.ok) refuse(result.reason);
       return;
     }

@@ -113,6 +113,8 @@ jobs:
         include:
           - os: windows-latest
             binary: dist-bin/wstack-windows-x64.exe
+          - os: windows-11-arm
+            binary: dist-bin/wstack-windows-arm64.exe
           - os: macos-latest
             binary: dist-bin/wstack-darwin-arm64
     runs-on: ${{ matrix.os }}

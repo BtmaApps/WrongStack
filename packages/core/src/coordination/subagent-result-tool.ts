@@ -6,18 +6,15 @@ import type { Tool } from '../types/tool.js';
 
 /** Context metadata key used to hand the submitted report to the task runner. */
 export const SUBAGENT_STRUCTURED_REPORT_META_KEY = 'subagentStructuredReport';
-export const MAX_SUBAGENT_STRUCTURED_REPORT_CHARS = 8_000;
-
-const MAX_SUMMARY_CHARS = 1_500;
-const MAX_FINDINGS = 16;
-const MAX_FILES = 64;
-const MAX_NEXT_STEPS = 12;
-const MAX_ITEM_CHARS = 500;
 
 /**
  * Validate and normalize a model-supplied structured result. The tool executor
  * already applies JSON Schema validation, but this guard keeps direct callers,
  * custom executors, and data read back from Context metadata honest too.
+ *
+ * Only the SHAPE is checked. There are deliberately no length or item-count
+ * caps: fixed ones (1.5k summary, 16 findings, 8k total) rejected a thorough
+ * worker's whole report, so the Director received nothing at all.
  */
 export function normalizeSubagentStructuredReport(
   value: unknown,
@@ -32,23 +29,15 @@ export function normalizeSubagentStructuredReport(
   const remainingWork = optionalString(value['remaining_work']);
   if (
     !summary ||
-    summary.length > MAX_SUMMARY_CHARS ||
     !findings ||
-    findings.length > MAX_FINDINGS ||
     !filesExamined ||
-    filesExamined.length > MAX_FILES ||
     !nextSteps ||
-    nextSteps.length > MAX_NEXT_STEPS ||
-    [...findings, ...filesExamined, ...nextSteps].some(
-      (item) => item.trim().length > MAX_ITEM_CHARS,
-    ) ||
     typeof confidence !== 'number' ||
     !Number.isFinite(confidence) ||
     confidence < 0 ||
     confidence > 1 ||
     (completion !== undefined && completion !== 'complete' && completion !== 'partial') ||
-    (completion === 'partial' && !remainingWork) ||
-    (remainingWork !== undefined && remainingWork.length > MAX_SUMMARY_CHARS)
+    (completion === 'partial' && !remainingWork)
   ) {
     return undefined;
   }
@@ -61,7 +50,7 @@ export function normalizeSubagentStructuredReport(
     ...(completion === 'complete' || completion === 'partial' ? { completion } : {}),
     ...(remainingWork ? { remaining_work: remainingWork } : {}),
   };
-  return JSON.stringify(report).length <= MAX_SUBAGENT_STRUCTURED_REPORT_CHARS ? report : undefined;
+  return report;
 }
 
 export function readSubagentStructuredReport(
@@ -97,7 +86,7 @@ export function makeSubagentResultTool(): Tool {
   return {
     name: 'submit_result',
     description:
-      'Submit the task result as a compact structured report for the Director. Call once near the end, before your final text response.',
+      'Submit the task result as a structured report for the Director. Call once near the end, before your final text response.',
     permission: 'auto',
     mutating: false,
     capabilities: [ToolCapabilities.COORDINATION_RESULT_SUBMIT],
@@ -106,18 +95,15 @@ export function makeSubagentResultTool(): Tool {
       properties: {
         summary: {
           type: 'string',
-          maxLength: MAX_SUMMARY_CHARS,
           description: 'Concise outcome summary.',
         },
         findings: {
           type: 'array',
-          maxItems: MAX_FINDINGS,
           items: { type: 'string' },
           description: 'Atomic findings or changes, with evidence when useful.',
         },
         files_examined: {
           type: 'array',
-          maxItems: MAX_FILES,
           items: { type: 'string' },
           description: 'Project-relative files materially read or changed.',
         },
@@ -129,7 +115,6 @@ export function makeSubagentResultTool(): Tool {
         },
         suggested_next_steps: {
           type: 'array',
-          maxItems: MAX_NEXT_STEPS,
           items: { type: 'string' },
           description: 'Concrete follow-ups; use an empty array when none remain.',
         },
@@ -141,7 +126,6 @@ export function makeSubagentResultTool(): Tool {
         },
         remaining_work: {
           type: 'string',
-          maxLength: MAX_SUMMARY_CHARS,
           description:
             'Concrete work left for a successor. Required by runtime validation when completion is `partial`.',
         },
@@ -154,7 +138,7 @@ export function makeSubagentResultTool(): Tool {
       if (!report) {
         throw new ToolValidationError({
           message:
-            'Invalid report: summary/findings/files_examined/confidence/suggested_next_steps are required, confidence must be 0..1, completion="partial" needs remaining_work, and the report must fit the size limits.',
+            'Invalid report: summary/findings/files_examined/confidence/suggested_next_steps are required, confidence must be 0..1, and completion="partial" needs remaining_work.',
         });
       }
       ctx.meta[SUBAGENT_STRUCTURED_REPORT_META_KEY] = report;

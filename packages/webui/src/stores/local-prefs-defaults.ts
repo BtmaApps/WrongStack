@@ -96,6 +96,20 @@ export interface LocalPrefs {
     }
   >;
   /**
+   * User-chosen limits (`Config.limits`). Every field is optional; an unset
+   * field means no limit — the model, catalog or provider decides.
+   */
+  limits: {
+    responseOutputTokens?: number;
+    toolOutputPreviewBytes?: number;
+    fetchBytes?: number;
+    projectInstructionsChars?: number;
+    memoryInjectChars?: number;
+    historyMessages?: number;
+    subagentResultChars?: number;
+    subagentDefaultBudget?: { maxIterations?: number; maxToolCalls?: number; timeoutMs?: number };
+  };
+  /**
    * Deterministic cost tiers. A level binds a fallback profile, a spend budget
    * and runtime overrides under one name; `routing` maps a role/phase/`*` to a
    * level; `leader` governs how much authority the leader has over its own tier.
@@ -385,6 +399,7 @@ export const DEFAULTS: LocalPrefsData = {
   modelMatrix: {},
   subagentModelPlan: { enabled: true, lock: true, followSessionModel: false, slots: [] },
   modelTiers: {},
+  limits: {},
   fallbackAuto: true,
   modelAvailabilitySchedule: [],
   featureMcp: true,

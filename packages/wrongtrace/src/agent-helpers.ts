@@ -400,7 +400,7 @@ export function digestAtlas(atlas: WrongTraceAtlasSummary | AtlasShape | null): 
   }
 
   const selfThrashWorkspaces = [...thrashCounts.entries()]
-    .filter(([, n]) => n > 0)
+    .filter(([, n]) => n > 5)
     .sort((x, y) => y[1] - x[1])
     .slice(0, 5)
     .map(([name]) => name);

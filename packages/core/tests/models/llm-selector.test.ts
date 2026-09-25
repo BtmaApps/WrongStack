@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LLMSelector } from '../../src/models/llm-selector.js';
 import type { Message } from '../../src/types/messages.js';
-import type { Provider, Capabilities } from '../../src/types/provider.js';
+import type { Capabilities, Provider } from '../../src/types/provider.js';
 
 function makeTextBlock(text: string) {
   return { type: 'text' as const, text };
@@ -421,7 +421,8 @@ describe('LLMSelector with OneShotOrchestrator', () => {
     const input = call.mock.calls[0]![0];
     expect(input).toHaveProperty('system');
     expect(input).toHaveProperty('userPrompt');
-    expect(input).toHaveProperty('maxTokens');
+    // No invented output cap: unset means the model's own ceiling.
+    expect(input).not.toHaveProperty('maxTokens');
     expect(input).toHaveProperty('timeoutMs');
     expect(result.kept).toHaveLength(1);
     expect(result.collapsed).toHaveLength(1);

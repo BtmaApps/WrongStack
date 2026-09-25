@@ -380,8 +380,7 @@ export class SessionMemoryConsolidator implements AgentExtension {
         const oneShotResult = await this.oneShotOrchestrator.call({
           system: prompt,
           userPrompt: 'Review the session and return memory operations as JSON.',
-          model: _model ?? 'deepseek-chat',
-          maxTokens: 500,
+          ...(_model ? { model: _model } : {}),
           timeoutMs: 15_000,
         });
         text = oneShotResult.text;
@@ -395,7 +394,6 @@ export class SessionMemoryConsolidator implements AgentExtension {
             messages: [
               { role: 'user', content: 'Review the session and return memory operations as JSON.' },
             ],
-            maxTokens: 500,
           },
           { signal },
         );

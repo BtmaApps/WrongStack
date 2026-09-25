@@ -8,6 +8,7 @@ import {
 import type { ToolProgressEvent } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
 import { createOutputSpool, spoolNote } from './_output-spool.js';
+import { commandOutputPreviewBytes } from './_util.js';
 import {
   buildWin32CmdShimInvocation,
   isWinCmdShim,
@@ -73,7 +74,12 @@ export async function* spawnStream(
   // model. Once the combined output exceeds that, the FULL stream goes to a
   // file and the result carries a marker — so a huge vitest/tsc run lands on
   // disk, not in the host heap or the chat history.
-  const spool = createOutputSpool({ tool: opts.cmd, thresholdBytes: max });
+  // Spool from the model preview size (not just `max`): consumers head/tail
+  // the output to that preview, so anything between the two must be on disk.
+  const spool = createOutputSpool({
+    tool: opts.cmd,
+    thresholdBytes: Math.min(max, commandOutputPreviewBytes()),
+  });
 
   const resolved = resolveWin32Command(opts.cmd);
   const needsShell = isWin && isWinCmdShim(resolved);

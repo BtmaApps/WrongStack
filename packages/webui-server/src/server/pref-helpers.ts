@@ -81,6 +81,8 @@ export const PREF_KEYS = [
   'modelAvailabilitySchedule',
   'modelMatrix',
   'modelTiers',
+  // User-chosen limits (Config.limits), sent whole.
+  'limits',
   'fallbackAuto',
   // Refiner + TUI visual prefs (parity with the CLI's embedded server —
   // these were browser-editable there but rejected as unknown keys here).
@@ -415,6 +417,15 @@ export async function persistPrefsToConfig(
         !Array.isArray(payload['modelTiers'])
       ) {
         decrypted.modelTiers = payload['modelTiers'] as typeof decrypted.modelTiers;
+      }
+      // Replaced whole: the client always sends the full block, and an absent
+      // field means "no limit", so a merge would keep a limit the user cleared.
+      if (
+        payload['limits'] &&
+        typeof payload['limits'] === 'object' &&
+        !Array.isArray(payload['limits'])
+      ) {
+        decrypted.limits = payload['limits'] as typeof decrypted.limits;
       }
       if (typeof payload['fallbackAuto'] === 'boolean')
         decrypted.fallbackAuto = payload['fallbackAuto'];

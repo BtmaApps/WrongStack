@@ -750,6 +750,23 @@ describe('MavenAdapter', () => {
     }, dir);
   });
 
+  it('resolves a relative manifest against the supplied project root', async () => {
+    const { dir, ws } = mkWorkspace('maven', {});
+    const nested = join(dir, 'services', 'api');
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(join(nested, 'pom.xml'), POM_XML);
+    const relativeWorkspace: Workspace = {
+      ...ws,
+      relativeRoot: join('services', 'api'),
+      manifests: ['pom.xml'],
+    };
+
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(relativeWorkspace, { projectRoot: dir });
+      expect(deps.map((d) => d.name)).toContain('org.springframework:spring-core');
+    }, dir);
+  });
+
   it('maps Maven scopes to TechStack scopes', async () => {
     const { dir, ws } = mkWorkspace('maven', { 'pom.xml': POM_XML });
     await withCleanup(async () => {

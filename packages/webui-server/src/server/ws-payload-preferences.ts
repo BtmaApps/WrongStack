@@ -1,3 +1,10 @@
+import {
+  LIMITS_BUDGET_KEYS,
+  LIMITS_SCALAR_KEYS,
+  type LimitsBudgetKey,
+  type LimitsScalarKey,
+  limitValueError,
+} from '@wrongstack/core/types';
 import { FORBIDDEN_PROTO_KEYS } from '@wrongstack/core/utils';
 
 type PayloadValidationResult<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -140,6 +147,36 @@ const SUBAGENT_MODEL_PLAN_PREF_KEYS = new Set(['subagentModelPlan']);
  * See docs/audit/webui-full-review-2026-09-03.md B-01.
  */
 const MODEL_TIERS_PREF_KEYS = new Set(['modelTiers']);
+/** User-chosen limits (`Config.limits`); sent whole, unset fields = no limit. */
+const LIMITS_PREF_KEYS = new Set(['limits']);
+const LIMITS_SCALAR_FIELDS: ReadonlySet<string> = new Set(LIMITS_SCALAR_KEYS);
+const LIMITS_BUDGET_FIELDS: ReadonlySet<string> = new Set(LIMITS_BUDGET_KEYS);
+
+/**
+ * Validate a `limits` payload: known fields only, each a whole number inside
+ * its `LIMIT_BOUNDS` range (the same table the CLI and the browser use).
+ */
+function validateLimitsValue(value: unknown, path: string): string | null {
+  if (!isRecord(value)) return `${path} must be an object`;
+  for (const [field, v] of Object.entries(value)) {
+    if (field === 'subagentDefaultBudget') {
+      if (v === undefined) continue;
+      if (!isRecord(v)) return `${path}.subagentDefaultBudget must be an object`;
+      for (const [bf, bv] of Object.entries(v)) {
+        if (!LIMITS_BUDGET_FIELDS.has(bf)) {
+          return `${path}.subagentDefaultBudget has unknown field: ${bf}`;
+        }
+        const error = limitValueError(bf as LimitsBudgetKey, bv);
+        if (error) return `${path}.subagentDefaultBudget.${bf} ${error}`;
+      }
+      continue;
+    }
+    if (!LIMITS_SCALAR_FIELDS.has(field)) return `${path} has unknown field: ${field}`;
+    const error = limitValueError(field as LimitsScalarKey, v);
+    if (error) return `${path}.${field} ${error}`;
+  }
+  return null;
+}
 // Object of booleans, e.g. { 'plugin-name': true }. Parity with the embedded
 // server, which accepts `pluginsEnabled` and persists it to
 // extensions.<name>.enabled — the standalone server rejected it as unknown.
@@ -611,6 +648,9 @@ function validatePreferenceValue(key: string, value: unknown): string | null {
   if (MODEL_TIERS_PREF_KEYS.has(key)) {
     return validateModelTiersValue(value, `prefs.update payload.${key}`);
   }
+  if (LIMITS_PREF_KEYS.has(key)) {
+    return validateLimitsValue(value, `prefs.update payload.${key}`);
+  }
   const allowed = ENUM_PREF_KEYS[key];
   if (allowed) {
     return typeof value === 'string' && allowed.has(value)
@@ -648,6 +688,7 @@ export const VALIDATED_PREF_KEYS: ReadonlySet<string> = new Set<string>([
   ...BOOLEAN_RECORD_PREF_KEYS,
   ...MODEL_MATRIX_PREF_KEYS,
   ...MODEL_TIERS_PREF_KEYS,
+  ...LIMITS_PREF_KEYS,
   ...SUBAGENT_MODEL_PLAN_PREF_KEYS,
   ...Object.keys(ENUM_PREF_KEYS),
 ]);

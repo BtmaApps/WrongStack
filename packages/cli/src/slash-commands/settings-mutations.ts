@@ -16,6 +16,7 @@ import type { SlashCommandContext } from './command-context.js';
 import { unknownSubcommand } from './helpers.js';
 import { executeContextSettings } from './settings-context-mutations.js';
 import { ALL_SETTINGS_KEYS } from './settings-keys.js';
+import { executeLimitsSettings } from './settings-limits-mutations.js';
 import { executeSettingsReset } from './settings-reset.js';
 
 export async function executeSettingsSubcommand(
@@ -369,6 +370,13 @@ export async function executeSettingsSubcommand(
     }
     const executeContextSettingsResult = await executeContextSettings(sub, rest, persistDeps);
     if (executeContextSettingsResult) return executeContextSettingsResult;
+    const limitsResult = await executeLimitsSettings(
+      sub,
+      rest,
+      persistDeps,
+      persistDeps.configStore.get().limits,
+    );
+    if (limitsResult) return limitsResult;
 
     if (sub === 'title-animation') {
       const raw = (rest[0] ?? '').toLowerCase();

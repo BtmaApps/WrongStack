@@ -716,7 +716,8 @@ export class CouncilOrchestrator {
     system: string;
     userPrompt: string;
     target?: CouncilModelTarget | undefined;
-    maxTokens: number;
+    /** Unset = the model's own output ceiling. */
+    maxTokens: number | undefined;
     timeoutMs: number;
     signal: AbortSignal;
     usage: UsageAccumulator;
@@ -733,7 +734,7 @@ export class CouncilOrchestrator {
             system: input.system,
             userPrompt: input.userPrompt,
             responseFormat: { type: 'json_object' },
-            maxTokens: input.maxTokens,
+            ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
             timeoutMs: input.timeoutMs,
             signal,
             ...(resolvedTarget?.providerId ? { providerId: resolvedTarget.providerId } : {}),

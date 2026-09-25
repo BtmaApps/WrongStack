@@ -476,13 +476,14 @@ export interface BrainConfig {
   llm?:
     | {
         /**
-         * Output budget per decision call. Default 2000.
+         * Output cap per decision call. Unset (default) = the model's own
+         * output ceiling.
          *
          * The RESPONSE is one decision plus a one-sentence rationale, but a
          * reasoning model's thinking tokens come out of the same allowance —
          * a tight budget yields an empty or mid-JSON response that the tier
          * reports as `unparseable`, i.e. the LLM tier silently stops
-         * deciding. Lower it only for a pool of non-reasoning models.
+         * deciding. Set it only for a pool of non-reasoning models.
          */
         maxTokens?: number | undefined;
         /**

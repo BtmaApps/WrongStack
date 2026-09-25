@@ -340,7 +340,6 @@ const plugin: Plugin = {
             {
               system: 'You are a terse debugging assistant.',
               role: 'reviewer',
-              maxTokens: 100,
               timeoutMs: 3000,
               signal: hookContext?.signal,
             },

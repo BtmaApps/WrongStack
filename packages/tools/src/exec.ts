@@ -11,7 +11,7 @@ import { toErrorMessage } from '@wrongstack/core/utils/error';
 import { type DangerAssessment, detectDanger } from './_danger-detect.js';
 import { buildChildEnv } from './_env.js';
 import { createOutputSpool, spoolNote } from './_output-spool.js';
-import { COMMAND_OUTPUT_MAX_BYTES, normalizeCommandOutput, safeResolveReal } from './_util.js';
+import { commandOutputPreviewBytes, normalizeCommandOutput, safeResolveReal } from './_util.js';
 import {
   buildWin32CmdShimInvocation,
   isWinCmdShim,
@@ -520,7 +520,12 @@ function runCommand(
     let stderrBytes = 0;
     let telemetryCompleted = false;
     let timedOut = false;
-    const spool = createOutputSpool({ tool: `exec-${cmd}`, thresholdBytes: MAX_OUTPUT });
+    // Spool from the preview size, not the in-memory cap: output between the
+    // two was head/tail-cut for the model yet never written to the spool.
+    const spool = createOutputSpool({
+      tool: `exec-${cmd}`,
+      thresholdBytes: commandOutputPreviewBytes(),
+    });
 
     if (signal.aborted) {
       spool.finalize();
@@ -657,7 +662,7 @@ function runCommand(
         stdout: normalizeCommandOutput(stdout),
         stderr: `Aborted: ${err.message}`,
         exitCode: 124,
-        truncated: Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES,
+        truncated: Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes(),
         allowed: true,
         danger,
       });
@@ -733,8 +738,8 @@ function runCommand(
       const isTruncated =
         stdoutBytes > MAX_OUTPUT ||
         stderrBytes > MAX_OUTPUT ||
-        Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES ||
-        Buffer.byteLength(stderr, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
+        Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes() ||
+        Buffer.byteLength(stderr, 'utf8') > commandOutputPreviewBytes();
       finish({
         command: cmd,
         args,

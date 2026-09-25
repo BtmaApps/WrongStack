@@ -110,9 +110,30 @@ export interface ConversationJournalQueueApi {
  * the class declaration; `class Context implements RunEnv, AgentContext`
  * makes tsc enforce compatibility on every core build.
  */
+/** What a tool call made from inside another tool returned. */
+export interface NestedToolCallResult {
+  content: string;
+  isError: boolean;
+}
+
+/**
+ * Runs one tool call for a running tool (a script composing tools) through the
+ * agent's own gate: the same validation, hooks, permission check, user
+ * confirmation and journaling as a call the model made itself. There is no
+ * second, weaker path. `index` numbers the calls within `parentToolUseId`.
+ */
+export type NestedToolCaller = (call: {
+  name: string;
+  input: unknown;
+  parentToolUseId: string;
+  index: number;
+}) => Promise<NestedToolCallResult>;
+
 export interface AgentContext extends RunEnv {
   /** Host-owned structured interaction channel used by tools such as clarify. */
   userInputAwaiter: UserInputAwaiter | undefined;
+  /** Set by the agent that runs this context; see {@link NestedToolCaller}. */
+  nestedToolCall?: NestedToolCaller | undefined;
   requestUserInput(
     request: UserInputRequest,
     signal?: AbortSignal,

@@ -359,6 +359,22 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
     seeAlso: 'wstack version (read-only version info)',
   },
 
+  remote: {
+    name: 'remote',
+    title: 'wstack remote — run WrongStack on another machine over SSH',
+    description:
+      'Runs WrongStack on the remote machine, in the given project directory, and ' +
+      'opens its WebUI here through an SSH tunnel; the agent, its tools and its ' +
+      'daemons run remotely. The system ssh is used, so ~/.ssh/config, your agent ' +
+      'and known_hosts apply. The matching build is uploaded once per version to ' +
+      '~/.wrongstack/remote and checked by SHA-256. A dropped connection is ' +
+      'reopened; the remote host keeps running meanwhile. Nothing from your local ' +
+      'configuration is copied: set up a provider in the remote WebUI the first time.',
+    usage:
+      'wstack remote <user@host:/path | ssh://user@host:port/path> [--port <n>] [--open] [--keep] [--ssh-config <file>] [--remote-binary <file>]',
+    seeAlso: 'wstack --remote <target> (same command)',
+  },
+
   // -- ACP (Agent Client Protocol) --------------------------------------
   acp: {
     name: 'acp',

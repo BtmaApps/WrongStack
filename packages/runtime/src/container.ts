@@ -24,7 +24,12 @@ import {
   getSessionRegistry,
   resolveSessionLoggingConfig,
 } from '@wrongstack/core/storage';
-import type { Config, Logger, ModelsRegistry } from '@wrongstack/core/types';
+import {
+  type Config,
+  installLimitsSource,
+  type Logger,
+  type ModelsRegistry,
+} from '@wrongstack/core/types';
 import { createTypeSafeCriterionJudge, resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { setKanbanCriterionJudge } from '@wrongstack/kanban';
@@ -65,6 +70,10 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
   const fallbackProfileManager = new FallbackProfileManager(config);
   configStore.watch((next) => fallbackProfileManager.reload(next as Config));
   container.bind(TOKENS.ConfigStore, () => configStore);
+  // `limits` is read live from the store: a /settings or WebUI change applies
+  // on the next use, with no restart. `limits` is user-scoped (denied to
+  // in-project config), so every container in the process reads the same one.
+  installLimitsSource(() => configStore.get().limits);
   container.bind(TOKENS.FallbackProfileManager, () => fallbackProfileManager);
   // Shared (provider, model) health tracker. The leader's runtime wiring
   // (brain-and-orchestration.ts) constructs its own tracker and threads it
@@ -114,6 +123,10 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
       dir: wpaths.projectSessions,
       projectRoot: wpaths.projectRoot,
       logger,
+      // The writers it creates publish `checkpoint.written` and
+      // `session.rewound` here. Without it no surface ever heard of a
+      // checkpoint: the TUI's /rewind timeline stayed empty all session.
+      events: opts.events,
       // Scrub secrets out of persisted user/model turns (F-06). Tool output
       // is already scrubbed by the executor.
       secretScrubber: container.resolve(TOKENS.SecretScrubber),

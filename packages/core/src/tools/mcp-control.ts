@@ -283,9 +283,6 @@ function runOnlyLine(server: ReturnType<MCPRegistryHandle['describe']>[number]):
   return `  ${bold(server.name)}  ${dim('this run only')}  ${badge(server.state)} (${server.toolCount} tools) — use \`activate\` to expose its tools`;
 }
 
-/** Cap on the rendered schema per tool so one huge schema cannot flood the context. */
-const MAX_TOOL_SCHEMA_CHARS = 2_000;
-
 async function renderTools(name: string, deps: { registry: MCPRegistryHandle }): Promise<string> {
   if (!deps.registry.describeTools) {
     throw new Error('This registry cannot describe MCP tools.');
@@ -303,11 +300,10 @@ async function renderTools(name: string, deps: { registry: MCPRegistryHandle }):
   for (const tool of tools) {
     lines.push('');
     lines.push(`- ${tool.name}${tool.description ? ` — ${tool.description}` : ''}`);
-    let schema = JSON.stringify(tool.inputSchema);
-    if (schema.length > MAX_TOOL_SCHEMA_CHARS) {
-      schema = `${schema.slice(0, MAX_TOOL_SCHEMA_CHARS)}… [schema truncated]`;
-    }
-    lines.push(`  input schema: ${schema}`);
+    // The whole schema: the model builds `mcp_use` input from it, so a cut
+    // one produced invalid calls with no way to see the rest. A huge listing
+    // is spooled losslessly by the tool executor like any large output.
+    lines.push(`  input schema: ${JSON.stringify(tool.inputSchema)}`);
   }
   return lines.join('\n');
 }

@@ -19,8 +19,6 @@ const DISTINCTNESS_VALUES: ReadonlySet<CouncilDistinctness> = new Set([
 
 export const DEFAULT_COUNCIL_QUORUM_FRACTION = 0.5;
 export const DEFAULT_COUNCIL_APPROVAL_FRACTION = 0.5;
-export const DEFAULT_COUNCIL_VOTER_MAX_TOKENS = 300;
-export const DEFAULT_COUNCIL_JUDGE_MAX_TOKENS = 500;
 export const DEFAULT_COUNCIL_PER_CALL_TIMEOUT_MS = 30_000;
 export const DEFAULT_COUNCIL_OVERALL_TIMEOUT_MS = 90_000;
 /**
@@ -63,7 +61,6 @@ export const BUILTIN_COUNCIL_PROFILES: readonly CouncilProfileConfig[] = Object.
     quorumFraction: 0.5,
     approvalFraction: 0.5,
     distinctness: 'none',
-    voterMaxTokens: 200,
     perCallTimeoutMs: 20_000,
     overallTimeoutMs: 30_000,
   }),
@@ -81,7 +78,6 @@ export const BUILTIN_COUNCIL_PROFILES: readonly CouncilProfileConfig[] = Object.
     quorumFraction: 0.75,
     approvalFraction: 0.5,
     distinctness: 'provider',
-    judgeMaxTokens: 700,
     overallTimeoutMs: 120_000,
   }),
 ]);
@@ -219,16 +215,17 @@ export function normalizeCouncilProfile(
   if (!DISTINCTNESS_VALUES.has(distinctness)) {
     throw new Error(`CouncilProfileRegistry: profile "${id}" has invalid distinctness.`);
   }
-  const voterMaxTokens = positiveInteger(
-    profile.voterMaxTokens ?? DEFAULT_COUNCIL_VOTER_MAX_TOKENS,
-    'voterMaxTokens',
-    id,
-  );
-  const judgeMaxTokens = positiveInteger(
-    profile.judgeMaxTokens ?? DEFAULT_COUNCIL_JUDGE_MAX_TOKENS,
-    'judgeMaxTokens',
-    id,
-  );
+  // No invented default: an unset budget means the model's own output
+  // ceiling. Fixed defaults (300/500, then 2000) starved reasoning models,
+  // whose thinking draws from the same allowance, into invalid votes.
+  const voterMaxTokens =
+    profile.voterMaxTokens === undefined
+      ? undefined
+      : positiveInteger(profile.voterMaxTokens, 'voterMaxTokens', id);
+  const judgeMaxTokens =
+    profile.judgeMaxTokens === undefined
+      ? undefined
+      : positiveInteger(profile.judgeMaxTokens, 'judgeMaxTokens', id);
   const perCallTimeoutMs = positiveInteger(
     profile.perCallTimeoutMs ?? DEFAULT_COUNCIL_PER_CALL_TIMEOUT_MS,
     'perCallTimeoutMs',

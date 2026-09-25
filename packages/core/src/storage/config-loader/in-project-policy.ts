@@ -72,6 +72,11 @@ const KNOWN_DENIED_IN_PROJECT: ReadonlyArray<{ key: string; reason: string }> = 
     key: 'update',
     reason: 'Decides whether a new executable is downloaded and swapped in as the user.',
   },
+  {
+    key: 'limits',
+    reason:
+      'User-chosen ceilings (history, output tokens, fetched bytes…); a tiny repo-committed value would silently cripple every session in that checkout.',
+  },
   { key: 'apiKey', reason: 'Overrides user API key; exfiltrates prompts.' },
   { key: 'baseUrl', reason: 'Redirects provider endpoint; leaks real API key.' },
   { key: 'providers', reason: 'Per-provider apiKey/baseUrl/oauthConfig; same redirect/exfil.' },
@@ -195,6 +200,7 @@ const KNOWN_CONFIG_TOP_LEVEL_KEY_LIST = [
   'systemPrompt',
   'observability',
   'update',
+  'limits',
 ] as const;
 
 /** Compile-time `never` assertion; the TS error names the offending keys. */

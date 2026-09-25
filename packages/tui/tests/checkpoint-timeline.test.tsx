@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { CheckpointTimeline } from '../src/components/checkpoint-timeline.js';
 
 describe('CheckpointTimeline', () => {
@@ -280,5 +280,38 @@ describe('CheckpointTimeline', () => {
     await new Promise((resolve) => setImmediate(resolve));
     expect(onConfirm).toHaveBeenCalledWith(1);
     unmount();
+  });
+
+  it('forks from the selected checkpoint with `f`, and offers it only when it can', async () => {
+    const onFork = vi.fn();
+    const onConfirm = vi.fn();
+    const { stdin, lastFrame, unmount } = render(
+      React.createElement(CheckpointTimeline, {
+        checkpoints,
+        selected: 2,
+        onSelect: vi.fn(),
+        onConfirm,
+        onFork,
+        onClose: vi.fn(),
+      } as never),
+    );
+    expect(lastFrame() ?? '').toContain('f fork');
+    stdin.write('f');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(onFork).toHaveBeenCalledWith(2);
+    expect(onConfirm).not.toHaveBeenCalled();
+    unmount();
+
+    const without = render(
+      React.createElement(CheckpointTimeline, {
+        checkpoints,
+        selected: 0,
+        onSelect: vi.fn(),
+        onConfirm: vi.fn(),
+        onClose: vi.fn(),
+      } as never),
+    );
+    expect(without.lastFrame() ?? '').not.toContain('fork');
+    without.unmount();
   });
 });

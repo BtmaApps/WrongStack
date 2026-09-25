@@ -63,6 +63,7 @@ export function useAppController(props: AppProps) {
     model,
     banner = true,
     queueStore,
+    queueStoreFor,
     onQueueChange,
     yolo = false,
     chime = false,
@@ -650,8 +651,9 @@ export function useAppController(props: AppProps) {
     tokenPreviewsRef,
   });
 
-  useQueueManager({
+  const queueManager = useQueueManager({
     queueStore,
+    queueStoreFor,
     onQueueChange,
     slashRegistry,
     stateRef,
@@ -750,6 +752,7 @@ export function useAppController(props: AppProps) {
 
   const { runInterruptLadder, stableOnKey } = useControllerKeyPipeline({
     sessionGenerationRef,
+    switchQueueSession: queueManager.switchSession,
     props,
     state,
     dispatch,

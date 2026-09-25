@@ -59,7 +59,9 @@ export function syncSqliteRelationshipEdges(
   );
   const now = deps.nowIso();
   const seen = new Set<string>();
-  for (const [relation, targetId] of pairs.slice(0, MAX_RELATIONSHIP_EDGES_PER_MEMORY)) {
+  let written = 0;
+  for (const [relation, targetId] of pairs) {
+    if (written >= MAX_RELATIONSHIP_EDGES_PER_MEMORY) break;
     const trimmed = targetId.trim();
     if (!trimmed) continue;
     const to = memoryNodeId(trimmed);
@@ -72,5 +74,6 @@ export function syncSqliteRelationshipEdges(
     // Weight 1 matches the hygiene/admin assertion weight so a re-assertion
     // from either writer converges instead of ratcheting.
     insert.run(from, to, relation, 1, now);
+    written += 1;
   }
 }

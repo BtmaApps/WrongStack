@@ -19,11 +19,11 @@
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 893,
+      "lines": 899,
       "relativeImports": 37
     },
     "packages/cli/src/execution.ts": {
-      "lines": 978,
+      "lines": 999,
       "relativeImports": 46
     },
     "packages/cli/src/fleet/host.ts": {
@@ -79,7 +79,7 @@
       "relativeImports": 45
     },
     "packages/core/src/coordination/index.ts": {
-      "lines": 849,
+      "lines": 847,
       "relativeImports": 101
     },
     "packages/core/src/coordination/subagent-budget.ts": {
@@ -95,7 +95,7 @@
       "relativeImports": 18
     },
     "packages/core/src/execution/brain-runtime.ts": {
-      "lines": 821,
+      "lines": 823,
       "relativeImports": 18
     },
     "packages/core/src/execution/eternal-autonomy.ts": {
@@ -159,7 +159,7 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 945,
+      "lines": 956,
       "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
@@ -199,7 +199,7 @@
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
-      "lines": 880,
+      "lines": 885,
       "relativeImports": 66
     },
     "packages/providers/src/openai-codex.ts": {
@@ -243,7 +243,7 @@
       "relativeImports": 19
     },
     "packages/tools/src/bash.ts": {
-      "lines": 894,
+      "lines": 895,
       "relativeImports": 9
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
@@ -267,7 +267,7 @@
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 851,
+      "lines": 852,
       "relativeImports": 9
     },
     "packages/tools/src/session-kanban.ts": {
@@ -279,11 +279,11 @@
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 923,
+      "lines": 933,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
-      "lines": 827,
+      "lines": 841,
       "relativeImports": 10
     },
     "packages/tui/src/components/settings-picker.tsx": {
@@ -295,7 +295,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 947,
+      "lines": 950,
       "relativeImports": 51
     },
     "packages/vector-memory/src/store.ts": {
@@ -327,7 +327,7 @@
       "relativeImports": 4
     },
     "packages/webui/src/components/SettingsPanel/BrainSection.tsx": {
-      "lines": 895,
+      "lines": 897,
       "relativeImports": 7
     },
     "packages/webui/src/components/SidePanel/SkillsList.tsx": {
@@ -359,12 +359,12 @@
       "relativeImports": 8
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 885,
+      "lines": 890,
       "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 971,
-      "relativeImports": 57
+      "lines": 969,
+      "relativeImports": 56
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1161,

@@ -1,26 +1,21 @@
-import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { WorkspaceCheckpointRef, WorkspaceMaterializationResult } from '../types/session.js';
+import type {
+  WorkspaceCheckpointCoverage,
+  WorkspaceCheckpointRef,
+  WorkspaceMaterializationResult,
+} from '../types/session.js';
 import { atomicWrite } from '../utils/atomic-write.js';
-import { buildChildEnv } from '../utils/child-env.js';
 import { toErrorMessage } from '../utils/error.js';
+import { openVcs, type VcsKind, type VcsOptions } from '../vcs/vcs-adapter.js';
 import { mapWithConcurrency } from './storage-concurrency.js';
-
-export interface CheckpointGitResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-  /** Set when the runner discarded output after its safety limit. */
-  stdoutTruncated?: boolean | undefined;
-  stderrTruncated?: boolean | undefined;
-}
 
 export interface SessionCheckpointCasOptions {
   rootDir: string;
   projectRoot: string;
-  runGit?: ((args: string[], cwd: string) => Promise<CheckpointGitResult>) | undefined;
+  /** How to reach the project's version control; tests inject a runner. */
+  vcs?: VcsOptions | undefined;
 }
 
 type WorkspaceCheckpointEntry =
@@ -31,14 +26,13 @@ type WorkspaceCheckpointEntry =
 interface WorkspaceCheckpointManifest {
   version: 1;
   baseHead: string;
-  coverage: 'git-head-plus-dirty';
+  coverage: WorkspaceCheckpointCoverage;
   entries: WorkspaceCheckpointEntry[];
   unresolved: Array<{ path: string; reason: string }>;
 }
 
 const HASH_RE = /^[a-f\d]{64}$/;
 const CAPTURE_CONCURRENCY = 8;
-const MAX_GIT_OUTPUT = 16 * 1024 * 1024;
 const MAX_BLOB_BYTES = 64 * 1024 * 1024;
 const MAX_CHECKPOINT_BYTES = 512 * 1024 * 1024;
 
@@ -63,11 +57,24 @@ function normalizeRelative(input: string): string | null {
   return resolved;
 }
 
-function parseNulPaths(output: string): string[] {
-  return output
-    .split('\0')
-    .map(normalizeRelative)
-    .filter((value): value is string => value !== null);
+const COVERAGE: Record<VcsKind, WorkspaceCheckpointCoverage> = {
+  git: 'git-head-plus-dirty',
+  jj: 'jj-head-plus-dirty',
+  hg: 'hg-head-plus-dirty',
+};
+
+function vcsOfCoverage(coverage: unknown): VcsKind | undefined {
+  return (Object.keys(COVERAGE) as VcsKind[]).find((kind) => COVERAGE[kind] === coverage);
+}
+
+/**
+ * `relative` (to the repository root) as a path relative to `projectRoot`,
+ * or null when it lies outside the project.
+ */
+function toProjectRelative(repoRoot: string, projectRoot: string, relative: string): string | null {
+  const prefix = path.relative(repoRoot, projectRoot).split(path.sep).join('/');
+  if (!prefix) return relative;
+  return relative.startsWith(`${prefix}/`) ? relative.slice(prefix.length + 1) : null;
 }
 
 function isWrongStackWorktreePath(relative: string): boolean {
@@ -77,46 +84,37 @@ function isWrongStackWorktreePath(relative: string): boolean {
 /**
  * Content-addressed workspace checkpoint store.
  *
- * A manifest references a Git base tree plus CAS blobs for every changed or
- * untracked, non-ignored path. Applying it to a checkout at the same baseHead
- * reproduces the checkpoint without touching the parent working tree.
+ * A manifest references the commit the working copy is based on (git, jj or
+ * hg) plus CAS blobs for every changed or untracked, non-ignored path.
+ * Applying it to a checkout at the same base reproduces the checkpoint
+ * without touching the parent working tree.
  */
 export class SessionCheckpointCas {
   private readonly rootDir: string;
   private readonly projectRoot: string;
-  private readonly runGit: (args: string[], cwd: string) => Promise<CheckpointGitResult>;
+  private readonly vcs: VcsOptions;
 
   constructor(opts: SessionCheckpointCasOptions) {
     this.rootDir = path.resolve(opts.rootDir);
     this.projectRoot = path.resolve(opts.projectRoot);
-    this.runGit = opts.runGit ?? defaultRunGit;
+    this.vcs = opts.vcs ?? {};
   }
 
   async capture(
     _sessionId: string,
     _promptIndex: number,
   ): Promise<WorkspaceCheckpointRef | undefined> {
-    const head = await this.runGit(['rev-parse', '--verify', 'HEAD'], this.projectRoot);
-    const baseHead = head.stdout.trim();
-    if (head.code !== 0 || head.stdoutTruncated || !/^[a-f\d]{40,64}$/i.test(baseHead)) {
-      return undefined;
-    }
-
-    const [tracked, untracked] = await Promise.all([
-      this.runGit(['diff', 'HEAD', '--name-only', '-z', '--'], this.projectRoot),
-      this.runGit(['ls-files', '--others', '--exclude-standard', '-z'], this.projectRoot),
-    ]);
-    if (
-      tracked.code !== 0 ||
-      untracked.code !== 0 ||
-      tracked.stdoutTruncated ||
-      untracked.stdoutTruncated
-    ) {
-      return undefined;
-    }
+    const vcs = await openVcs(this.projectRoot, this.vcs);
+    if (!vcs) return undefined;
+    const [baseHead, changed] = await Promise.all([vcs.baseRevision(), vcs.changedPaths()]);
+    if (!baseHead || !changed) return undefined;
 
     const relativePaths = [
-      ...new Set([...parseNulPaths(tracked.stdout), ...parseNulPaths(untracked.stdout)]),
+      ...new Set(
+        changed
+          .map((relative) => toProjectRelative(vcs.root, this.projectRoot, relative))
+          .filter((relative): relative is string => relative !== null),
+      ),
     ]
       // Never recursively capture WrongStack's own allocated checkouts, even
       // if a repository accidentally tracks that administrative directory.
@@ -184,7 +182,7 @@ export class SessionCheckpointCas {
     const manifest: WorkspaceCheckpointManifest = {
       version: 1,
       baseHead: baseHead.toLowerCase(),
-      coverage: 'git-head-plus-dirty',
+      coverage: COVERAGE[vcs.kind],
       entries: captured.filter((entry): entry is WorkspaceCheckpointEntry => entry !== null),
       unresolved: [...unresolved].sort((a, b) => a.path.localeCompare(b.path)),
     };
@@ -224,26 +222,25 @@ export class SessionCheckpointCas {
         `Workspace checkpoint has ${manifest.unresolved.length} unresolved path(s); exact materialization refused`,
       );
     }
-    const targetHead = await this.runGit(['rev-parse', '--verify', 'HEAD'], target);
-    if (
-      targetHead.code !== 0 ||
-      targetHead.stdoutTruncated ||
-      targetHead.stdout.trim().toLowerCase() !== manifest.baseHead
-    ) {
+    const kind = vcsOfCoverage(manifest.coverage);
+    const targetVcs = await openVcs(target, this.vcs);
+    if (!targetVcs || targetVcs.kind !== kind) {
+      const found = targetVcs ? `a ${targetVcs.kind} checkout` : 'not under version control';
+      throw new Error(`Checkpoint was taken in a ${kind} checkout; the target is ${found}`);
+    }
+    const targetHead = await targetVcs.baseRevision();
+    if (targetHead !== manifest.baseHead) {
       throw new Error(
-        `Checkpoint target HEAD must equal ${manifest.baseHead}; got ${targetHead.stdout.trim() || 'unknown'}`,
+        `Checkpoint target HEAD must equal ${manifest.baseHead}; got ${targetHead ?? 'unknown'}`,
       );
     }
     const materializingParentRoot = target === this.projectRoot;
     if (!materializingParentRoot) {
-      const targetStatus = await this.runGit(
-        ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignored=matching'],
-        target,
-      );
-      if (targetStatus.code !== 0 || targetStatus.stdoutTruncated) {
+      const pristine = await targetVcs.isPristine();
+      if (pristine === undefined) {
         throw new Error('Unable to verify that the checkpoint target is clean');
       }
-      if (targetStatus.stdout.length > 0) {
+      if (!pristine) {
         throw new Error('Checkpoint target must be a clean checkout before materialization');
       }
     }
@@ -386,7 +383,7 @@ export class SessionCheckpointCas {
     if (
       parsed.version !== 1 ||
       typeof parsed.baseHead !== 'string' ||
-      parsed.coverage !== 'git-head-plus-dirty' ||
+      !vcsOfCoverage(parsed.coverage) ||
       !Array.isArray(parsed.entries) ||
       !Array.isArray(parsed.unresolved)
     ) {
@@ -446,53 +443,4 @@ export class SessionCheckpointCas {
       }
     }
   }
-}
-
-function defaultRunGit(args: string[], cwd: string): Promise<CheckpointGitResult> {
-  return new Promise((resolve) => {
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-    let stdoutBytes = 0;
-    let stderrBytes = 0;
-    let stdoutTruncated = false;
-    let stderrTruncated = false;
-    const child = spawn('git', args, {
-      cwd,
-      env: buildChildEnv(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      signal: AbortSignal.timeout(30_000),
-      windowsHide: true,
-    });
-    child.stdout?.on('data', (chunk: Buffer) => {
-      const remaining = MAX_GIT_OUTPUT - stdoutBytes;
-      if (remaining <= 0) {
-        stdoutTruncated = true;
-        return;
-      }
-      const kept = chunk.subarray(0, remaining);
-      stdoutChunks.push(kept);
-      stdoutBytes += kept.length;
-      if (kept.length < chunk.length) stdoutTruncated = true;
-    });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      const remaining = MAX_GIT_OUTPUT - stderrBytes;
-      if (remaining <= 0) {
-        stderrTruncated = true;
-        return;
-      }
-      const kept = chunk.subarray(0, remaining);
-      stderrChunks.push(kept);
-      stderrBytes += kept.length;
-      if (kept.length < chunk.length) stderrTruncated = true;
-    });
-    const result = (code: number, extraStderr?: string): CheckpointGitResult => ({
-      code,
-      stdout: Buffer.concat(stdoutChunks).toString('utf8'),
-      stderr: `${Buffer.concat(stderrChunks).toString('utf8')}${extraStderr ?? ''}`,
-      stdoutTruncated,
-      stderrTruncated,
-    });
-    child.on('error', (err) => resolve(result(1, err.message)));
-    child.on('close', (code) => resolve(result(code ?? 1)));
-  });
 }

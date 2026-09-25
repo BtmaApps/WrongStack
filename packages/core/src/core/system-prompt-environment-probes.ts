@@ -2,15 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { buildChildEnv } from '../utils/child-env.js';
-
-export async function dirExists(p: string): Promise<boolean> {
-  try {
-    const stat = await fs.stat(p);
-    return stat.isDirectory();
-  } catch {
-    return false;
-  }
-}
+import { vcsAdapter } from '../vcs/vcs-adapter.js';
 
 /**
  * Ceiling on the in-flight partial line while folding `git status` output.
@@ -64,7 +56,11 @@ export async function gitStatus(root: string): Promise<string> {
         if (!line) return;
         if (!sawBranchLine) {
           sawBranchLine = true;
-          branch = line.match(/## ([^\s.]+)/)?.[1] ?? 'detached';
+          // A repository with no commit yet reads `## No commits yet on main`
+          // (older git: `## Initial commit on main`).
+          branch =
+            line.match(/^## (?:No commits yet on |Initial commit on )?([^\s.]+)/)?.[1] ??
+            'detached';
           return;
         }
         if (/^[MARCD]/.test(line)) staged++;
@@ -101,6 +97,18 @@ export async function gitStatus(root: string): Promise<string> {
       finish('git unavailable');
     }
   });
+}
+
+/**
+ * The same summary as {@link gitStatus} for a Jujutsu or Mercurial checkout:
+ * the bookmark or branch, and how many paths differ from the base commit.
+ */
+export async function otherVcsStatus(kind: 'jj' | 'hg', root: string): Promise<string> {
+  const vcs = vcsAdapter(kind, root, { timeoutMs: 10_000 });
+  const [branch, changed] = await Promise.all([vcs.currentBranch(), vcs.changedPaths()]);
+  if (!changed) return `${kind} unavailable`;
+  const label = kind === 'jj' ? 'bookmark' : 'branch';
+  return `${label}=${branch ?? 'none'}, ${changed.length} changed`;
 }
 
 export async function detectLanguages(root: string): Promise<string> {

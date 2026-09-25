@@ -4,10 +4,17 @@ import {
   applyRewindToConversation,
   DefaultSessionRewinder,
   type RedoRewindResult,
+  type RewoundConversation,
   redoLastRewind,
 } from '@wrongstack/core/storage';
 import { useCallback } from 'react';
 import type { SessionInterruptController } from './use-session-interrupt-controller.js';
+
+/** What a rewind leaves for the screen: the prompt taken back, and the rest. */
+export interface RewindOutcome {
+  promptText?: string | undefined;
+  conversation?: RewoundConversation | undefined;
+}
 
 interface UseSessionRewindOptions {
   agent: Agent;
@@ -52,10 +59,14 @@ export function useSessionRewind({
     }
   }, [interruptController, liveDirector, sessionGenerationRef]);
 
+  /**
+   * Rewind to a checkpoint. Resolves with the text of the prompt it took back
+   * and the conversation as it now stands.
+   */
   const handleRewindTo = useCallback(
-    async (checkpointIndex: number) => {
+    async (checkpointIndex: number): Promise<RewindOutcome> => {
       const sessionId = agent.ctx.session.id;
-      if (!sessionId) return;
+      if (!sessionId) return {};
       await stopSessionProducers();
 
       const rewinder = new DefaultSessionRewinder(
@@ -63,7 +74,7 @@ export function useSessionRewind({
         agent.ctx.projectRoot ?? agent.ctx.cwd,
       );
       const reverted = await rewinder.rewindToCheckpoint(sessionId, checkpointIndex);
-      await applyRewindToConversation({
+      const applied = await applyRewindToConversation({
         session: agent.ctx.session,
         state: agent.ctx.state,
         sessionsDir: sessionsDir ?? '',
@@ -71,6 +82,7 @@ export function useSessionRewind({
         revertedFiles: reverted.revertedFiles,
         meta: agent.ctx.meta,
       });
+      return { promptText: reverted.promptText, conversation: applied.conversation };
     },
     [
       agent.ctx.session,

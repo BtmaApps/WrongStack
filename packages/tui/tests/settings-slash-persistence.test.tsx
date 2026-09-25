@@ -1,4 +1,5 @@
 import { SlashCommandRegistry } from '@wrongstack/core/registry';
+import type { SlashCommand } from '@wrongstack/core/types';
 import { render } from 'ink-testing-library';
 import { expect, it, vi } from 'vitest';
 import type { Action } from '../src/app-action-type.js';
@@ -10,8 +11,10 @@ import { DEFAULT_PANEL_POSITIONS } from '../src/ui-contracts.js';
 import { createTestState } from './helpers/create-test-state.js';
 import { settle } from './helpers/real-tty.js';
 
-async function harness() {
+async function harness(hostSettings?: SlashCommand) {
   const registry = new SlashCommandRegistry();
+  // The CLI registers its text /settings first; the TUI command displaces it.
+  if (hostSettings) registry.register(hostSettings);
   let state = createTestState();
   let persisted = {
     ...state.settingsPicker,
@@ -99,6 +102,20 @@ it('reports an inline persistence failure in the command result', async () => {
     h.save.mockRejectedValueOnce(new Error('Disk unavailable'));
     const result = await h.run('yolo on');
     expect(result?.message).toContain('Disk unavailable');
+  } finally {
+    h.view.unmount();
+  }
+});
+
+it('delegates /settings limits to the host command it displaced', async () => {
+  const hostRun = vi.fn(async (args: string) => ({ message: `host:${args}` }));
+  const h = await harness({ name: 'settings', description: 'host settings', run: hostRun });
+  try {
+    await expect(h.run('limits')).resolves.toEqual({ message: 'host:limits' });
+    await expect(h.run('limits history-messages 400')).resolves.toEqual({
+      message: 'host:limits history-messages 400',
+    });
+    expect(h.save).not.toHaveBeenCalled();
   } finally {
     h.view.unmount();
   }

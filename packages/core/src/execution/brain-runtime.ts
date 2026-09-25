@@ -44,7 +44,7 @@ import {
 import { BrainTierCounter } from '../coordination/brain-telemetry.js';
 import { parseModelRef } from '../core/fallback-model.js';
 import type { BrainConfig, BrainCouncilVoterConfig, BrainModelEntry } from '../types/config.js';
-import { createTieredBrainArbiter, DEFAULT_BRAIN_MAX_TOKENS } from './autonomy-brain.js';
+import { createTieredBrainArbiter } from './autonomy-brain.js';
 import { assembleBrainTiers } from './brain-chain.js';
 import { BrainCircuitBreaker } from './brain-circuit.js';
 import { createBrainPersistenceQueue } from './brain-persistence.js';
@@ -528,7 +528,9 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
         next.llm = undefined;
       } else {
         const l = { ...(next.llm ?? {}) };
-        if (patch.llm.maxTokens !== undefined) {
+        if (patch.llm.maxTokens === null) {
+          delete l.maxTokens;
+        } else if (patch.llm.maxTokens !== undefined) {
           const n = patch.llm.maxTokens;
           if (!Number.isInteger(n) || n <= 0) {
             throw new Error(`Invalid llm.maxTokens: ${String(n)} (must be a positive integer)`);
@@ -669,7 +671,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       },
       rules: (cfg.rules ?? []).map((rule) => ({ ...rule })),
       llm: {
-        maxTokens: cfg.llm?.maxTokens ?? DEFAULT_BRAIN_MAX_TOKENS,
+        maxTokens: cfg.llm?.maxTokens,
         rejectUncertain: cfg.llm?.rejectUncertain ?? true,
         minConfidence: cfg.llm?.minConfidence ?? 0,
         denyIsTerminal: cfg.llm?.denyIsTerminal ?? 'when-decided',

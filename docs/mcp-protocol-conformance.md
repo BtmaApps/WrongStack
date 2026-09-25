@@ -45,6 +45,7 @@ We speak none of this. The spec keeps a backward-compatibility path for handshak
 | Authorization: RFC 9728 + RFC 8414 discovery, PKCE S256, RFC 8707 resource indicators | Yes |
 | Authorization: dynamic client registration (RFC 7591) | Yes — but see Deprecated below |
 | Elicitation, form mode (`elicitation/create`) | Yes (added 2026-09-23) — see below |
+| Elicitation, URL mode (`mode: "url"`, `-32042` URL elicitation required) | Yes (added 2026-09-25) — see below |
 | Structured tool output (`outputSchema` / `structuredContent`) | Yes (added 2026-09-23) — see below |
 
 ## Not implemented — genuine gaps
@@ -53,7 +54,6 @@ We speak none of this. The spec keeps a backward-compatibility path for handshak
 | --- | --- | --- |
 | Per-request versioning + `server/discover` | `2026-07-28` | Architectural; not a list entry |
 | `UnsupportedProtocolVersionError` | `2026-07-28` | Follows the above |
-| Elicitation, URL mode | `2025-11-25` | Refused as invalid params; form mode is implemented |
 | Resource links in tool results | `2025-06-18` | |
 | `completion/complete` | `2025-03-26` | Argument autocompletion |
 | Progress (`notifications/progress`, `progressToken`) | `2024-11-05` | Cancellation is done; progress is not |
@@ -70,7 +70,7 @@ them. Earliest removal is the first revision on or after 2027-07-28.
 | **Roots** | Deprecated; migration path is tool parameters, resource URIs or server config. |
 | **Logging** (`logging/setLevel`, `notifications/message`) | Deprecated; migration path is stderr for stdio, OpenTelemetry for observability. |
 
-As a client we advertise `capabilities: { elicitation: {} }` when the host passes an elicitation
+As a client we advertise `capabilities: { elicitation: { form: {}, url: {} } }` when the host passes an elicitation
 handler (the CLI host always does), and `{}` otherwise. Sampling and roots are never advertised, so
 a server cannot call something we do not implement.
 
@@ -91,9 +91,20 @@ A server's `elicitation/create` is answered by `ServerRequestResponder`
   integer-ness; numeric text is coerced). A rejected answer is asked again with the reason, a few
   times, before the request is cancelled.
 - **Limits.** One open form per server (a second request is refused `-32603`); a form nobody answers
-  is cancelled after 10 minutes; the server's `notifications/cancelled` closes it.
+  is cancelled after 10 minutes; the server's `notifications/cancelled` closes it. During eternal or
+  parallel autonomy a form nobody answers within the tool-approval wait (120 s) is cancelled then,
+  and a `clarify` form takes its recommended answers — nobody is expected at the keyboard.
 - **Timeouts.** While a form is open, the request timeout of the call that triggered it holds — the
   wait is the user typing, not the server stalling. The 10-minute cap still bounds the call.
+- **URL mode.** A `mode: "url"` request (an `http(s)` URL and an `elicitationId`; any other
+  scheme is refused `-32602`) is shown as a consent form: the server, the message, the full URL,
+  the site, and warnings for a punycode host, plain HTTP off localhost, or credentials in the
+  address. The user picks "open it in the browser on <machine>" (only where the host can open
+  one), "I will open it myself" (the browser may be on another machine, as with `wstack
+  remote`), or decline. Nothing is fetched or opened before that; `accept` carries no content.
+  A `tools/call` answered with `-32042` puts each listed page to the same user, and the model is
+  told which pages, what the user chose, and whether to call again.
+  `notifications/elicitation/complete` is ignored, which the spec allows.
 - **Streamable HTTP.** A `text/event-stream` reply is now read event by event, because the server
   puts its request ahead of our response in the same stream and waits for the answer; the answer is
   POSTed back on the session. We do not open the optional GET stream, so a request sent outside any

@@ -24,9 +24,11 @@ import { createKillSlashCommand } from '../kill-slash.js';
 import type { MemoryContextMonitorState } from '../memory-context-monitor.js';
 import { createMemorySlashCommand } from '../memory-slash.js';
 import { createPsSlashCommand } from '../ps-slash.js';
+import { showConversation, showRewind } from '../rewind-prompt.js';
 import { registerSlashCommandLifecycle } from '../slash-command-lifecycle.js';
 import { buildSteeringPreamble } from '../steering-preamble.js';
 import { createWorkbenchSlashCommand } from '../workbench-slash.js';
+import type { RewindOutcome } from './use-session-rewind.js';
 
 interface CoreTuiCommandsOptions {
   agent: AppProps['agent'];
@@ -46,7 +48,7 @@ interface CoreTuiCommandsOptions {
   liveDirector: () => Director | null | undefined;
   streamingTextRef: MutableRefObject<string>;
   director: AppProps['director'];
-  handleRewindTo: (index: number) => Promise<void>;
+  handleRewindTo: (index: number) => Promise<RewindOutcome>;
   /** `/rewind redo`: undo the newest rewind. */
   handleRewindRedo: () => Promise<RedoRewindResult | null>;
   getSettings?: AppProps['getSettings'] | undefined;
@@ -323,6 +325,7 @@ export function useCoreTuiCommands({
             };
           }
           for (const cp of result.checkpoints) dispatch({ type: 'checkpointReceived', cp });
+          if (result.conversation) showConversation(dispatch, result.conversation);
           const files = result.reappliedFiles.length;
           return {
             message: `Redid the rewind to checkpoint #${result.toPromptIndex}: ${result.restoredEvents} journal events and ${files} file${files === 1 ? '' : 's'} restored; the model sees the full conversation again.`,
@@ -333,8 +336,9 @@ export function useCoreTuiCommands({
         if (!Number.isNaN(idx) && idx >= 0) {
           // Awaited: rewindToCheckpoint throws SessionError for an unknown
           // index, and an un-awaited rejection would surface as nothing at all.
+          const draft = stateRef.current.buffer;
           try {
-            await handleRewindTo(idx);
+            showRewind(dispatch, draft, await handleRewindTo(idx));
           } catch (err) {
             return { message: `Rewind failed: ${toErrorMessage(err)}`, metadata };
           }

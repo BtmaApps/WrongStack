@@ -71,7 +71,6 @@ export async function generateCommitFromDiff(
         system:
           'You are a precise release engineer writing Conventional Commits. Output only JSON.',
         role: 'document',
-        maxTokens: 400,
         responseFormat: 'json',
         signal,
       },

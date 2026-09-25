@@ -225,7 +225,8 @@ describe('error-lens AI hints (api.llm)', () => {
     expect(llm.complete).toHaveBeenCalledTimes(1);
     expect(result?.additionalContext).toContain('hint (claude-haiku-4-5)');
     expect(result?.additionalContext).toContain('null check');
-    expect(llm.complete.mock.calls[0]?.[1]).toMatchObject({ maxTokens: 100, timeoutMs: 3000 });
+    expect(llm.complete.mock.calls[0]?.[1]).toMatchObject({ timeoutMs: 3000 });
+    expect(llm.complete.mock.calls[0]?.[1]).not.toHaveProperty('maxTokens');
 
     // Repeat failure → no second LLM call.
     await hook(failing);

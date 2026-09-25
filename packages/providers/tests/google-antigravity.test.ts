@@ -179,7 +179,8 @@ describe('family registration', () => {
     const caps = capabilitiesForFamily('google-antigravity');
     expect(caps.streaming).toBe(true);
     expect(caps.tools).toBe(true);
-    expect(caps.maxContext).toBeGreaterThan(0);
+    // The window is per-model (catalog), never a family guess.
+    expect(caps.maxContext).toBe(0);
   });
 });
 

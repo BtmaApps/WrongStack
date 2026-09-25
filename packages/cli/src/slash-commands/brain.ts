@@ -499,8 +499,13 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
             return { message: msg };
           }
           return applyPatch(
-            { llm: raw === 'default' ? { maxTokens: undefined } : { maxTokens: Number(raw) } },
-            (s2) => `Brain LLM maxTokens set to ${color.cyan(String(s2.llm.maxTokens))}`,
+            { llm: raw === 'default' ? { maxTokens: null } : { maxTokens: Number(raw) } },
+            (s2) =>
+              `Brain LLM maxTokens set to ${color.cyan(
+                s2.llm.maxTokens === undefined
+                  ? "default (model's ceiling)"
+                  : String(s2.llm.maxTokens),
+              )}`,
           );
         }
         if (op === 'uncertain') {

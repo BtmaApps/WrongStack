@@ -3,9 +3,10 @@
  * another as its turns end, on the server — with no page watching — and
  * survive a host restart.
  */
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { QueueStore } from '@wrongstack/core/storage';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import { createConversationOperations } from '../src/server/conversation-operations.js';
@@ -33,14 +34,19 @@ const flush = () => new Promise((r) => setImmediate(r));
 
 /** Real session ids are date-scoped, with a `/` in them. */
 const SESSION = '2026-09-23/sess_01ABC';
-const SESSION_FILE = '2026-09-23%2fsess_01ABC.json';
+/** A 1x1 PNG, so the image passes the attachment check. */
+const PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-function queueHarness(opts: { dir?: string; busy?: boolean; start?: boolean } = {}) {
+function queueHarness(
+  opts: { dir?: string; legacyDir?: string; busy?: boolean; start?: boolean } = {},
+) {
   const broadcasts: Outbound[] = [];
   const started: QueuedPrompt[] = [];
   let busy = opts.busy ?? false;
   const queue = createSessionPromptQueue({
-    dir: opts.dir,
+    sessionsDir: opts.dir,
+    legacyDir: opts.legacyDir,
     isBusy: () => busy,
     startTurn: async (_sid, prompt, onStart) => {
       if (opts.start === false) return false;
@@ -100,6 +106,52 @@ describe('createSessionPromptQueue', () => {
     expect(h.broadcasts.some((m) => m.type === 'queue.drained')).toBe(false);
   });
 
+  it('a failed drain republishes and repersists the queue with the front prompt back in place', async () => {
+    // Regression: drain() shifts the front prompt out before awaiting
+    // startTurn; an add() landing in that window published and persisted a
+    // snapshot without it, and the failure path put the prompt back in
+    // memory only — the file (and pages) lost it until the next drain.
+    const dir = await tempDir();
+    const broadcasts: Outbound[] = [];
+    let busy = true;
+    let open: ((ok: boolean) => void) | undefined;
+    const gate = new Promise<boolean>((resolve) => {
+      open = resolve;
+    });
+    const queue = createSessionPromptQueue({
+      sessionsDir: dir,
+      isBusy: () => busy,
+      startTurn: async (_sid, _prompt, onStart) => {
+        if (!(await gate)) return false;
+        onStart();
+        return true;
+      },
+      broadcast: (m) => broadcasts.push(m),
+    });
+    await queue.add(SESSION, { text: 'front' });
+    busy = false;
+    const draining = queue.drain(SESSION);
+    await flush(); // 'front' is shifted out; startTurn parks on the gate
+    await queue.add(SESSION, { text: 'second' });
+    open?.(false);
+    await draining;
+
+    // In memory the front prompt is back.
+    expect((await queue.list(SESSION)).map((p) => p.text)).toEqual(['front', 'second']);
+    // The persisted file says the same, or a host restart loses the front prompt.
+    const persisted = JSON.parse(
+      await readFile(path.join(dir, SESSION, 'queue.json'), 'utf8'),
+    ) as Array<{ displayText: string }>;
+    expect(persisted.map((i) => i.displayText)).toEqual(['front', 'second']);
+    // Pages see the same list the server holds.
+    const lastState = broadcasts.filter((m) => m.type === 'queue.state').at(-1);
+    expect(
+      (lastState?.payload as { items: Array<{ text: string }> } | undefined)?.items.map(
+        (i) => i.text,
+      ),
+    ).toEqual(['front', 'second']);
+  });
+
   it('removes and clears, publishing the list each time', async () => {
     const h = queueHarness({ busy: true });
     const a = await h.queue.add('s1', { text: 'a' });
@@ -126,10 +178,20 @@ describe('createSessionPromptQueue', () => {
   it('survives a host restart and runs what was left once the session is opened', async () => {
     const dir = await tempDir();
     const before = queueHarness({ dir, busy: true });
-    await before.queue.add(SESSION, { text: 'left over', images: [{ data: 'aGk=', mediaType: 'image/png' }] });
-    const file = path.join(dir, SESSION_FILE);
+    await before.queue.add(SESSION, {
+      text: 'left over',
+      images: [{ data: PNG, mediaType: 'image/png' }],
+    });
+    // The session's own folder, in the shape the TUI's queue uses.
+    const file = path.join(dir, SESSION, 'queue.json');
     expect(JSON.parse(await readFile(file, 'utf8'))).toEqual([
-      expect.objectContaining({ text: 'left over', images: [{ data: 'aGk=', mediaType: 'image/png' }] }),
+      expect.objectContaining({
+        displayText: 'left over',
+        blocks: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG } },
+          { type: 'text', text: 'left over' },
+        ],
+      }),
     ]);
 
     const after = queueHarness({ dir });
@@ -147,20 +209,90 @@ describe('createSessionPromptQueue', () => {
     await flush();
     expect(after.started.map((p) => p.text)).toEqual(['left over']);
     // Emptied queue: the file goes away rather than lingering as `[]`.
-    await vi.waitFor(() => expect(readFile(file, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' }));
+    await vi.waitFor(() =>
+      expect(readFile(file, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' }),
+    );
   });
 
   it('ignores a corrupt queue file and never lets an id climb out of the directory', async () => {
     const dir = await tempDir();
-    await writeFile(path.join(dir, 'sess_2.json'), '{not json', 'utf8');
+    await mkdir(path.join(dir, 'sess_2'));
+    await writeFile(path.join(dir, 'sess_2', 'queue.json'), '{not json', 'utf8');
     const h = queueHarness({ dir, busy: true });
     expect(await h.queue.list('sess_2')).toEqual([]);
 
+    // An id that would leave the sessions directory is queued in memory only.
     await h.queue.add('../escape', { text: 'x' });
-    await expect(readFile(path.join(dir, '..', 'escape.json'), 'utf8')).rejects.toBeDefined();
-    expect(JSON.parse(await readFile(path.join(dir, '%2e%2e%2fescape.json'), 'utf8'))).toEqual([
-      expect.objectContaining({ text: 'x' }),
+    expect((await h.queue.list('../escape')).map((p) => p.text)).toEqual(['x']);
+    await expect(
+      readFile(path.join(dir, '..', 'escape', 'queue.json'), 'utf8'),
+    ).rejects.toBeDefined();
+  });
+
+  it('shares the queue file with the TUI, in both directions', async () => {
+    const dir = await tempDir();
+    const tui = new QueueStore({ dir: path.join(dir, SESSION) });
+    await mkdir(path.join(dir, SESSION), { recursive: true });
+    // Left queued in the terminal: the TUI writes no id or time.
+    await tui.write([
+      { displayText: '[Pasted text #1] explain', blocks: [{ type: 'text', text: 'long paste' }] },
     ]);
+    const h = queueHarness({ dir, busy: true });
+    const listed = await h.queue.list(SESSION);
+    expect(listed).toEqual([
+      expect.objectContaining({
+        text: '[Pasted text #1] explain',
+        blocks: [{ type: 'text', text: 'long paste' }],
+        id: expect.any(String),
+      }),
+    ]);
+
+    // Queued in the browser: the terminal reads it back as its own item.
+    await h.queue.add(SESSION, { text: 'from the browser' });
+    expect(await tui.read()).toEqual([
+      expect.objectContaining({ displayText: '[Pasted text #1] explain' }),
+      expect.objectContaining({
+        displayText: 'from the browser',
+        blocks: [{ type: 'text', text: 'from the browser' }],
+      }),
+    ]);
+  });
+
+  it('moves a queue from the old per-project folder into the session, once', async () => {
+    const dir = await tempDir();
+    const legacyDir = await tempDir();
+    const legacyFile = path.join(legacyDir, '2026-09-23%2fsess_01ABC.json');
+    await writeFile(
+      legacyFile,
+      JSON.stringify([
+        {
+          id: 'q-old',
+          text: 'old prompt',
+          addedAt: 1,
+          images: [{ data: PNG, mediaType: 'image/png' }],
+        },
+      ]),
+      'utf8',
+    );
+    const h = queueHarness({ dir, legacyDir, busy: true });
+    const [item] = await h.queue.list(SESSION);
+    expect(item).toMatchObject({ text: 'old prompt' });
+    expect(item?.blocks.map((b) => b.type)).toEqual(['image', 'text']);
+    await expect(readFile(legacyFile, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    await vi.waitFor(async () =>
+      expect(JSON.parse(await readFile(path.join(dir, SESSION, 'queue.json'), 'utf8'))).toEqual([
+        expect.objectContaining({ displayText: 'old prompt' }),
+      ]),
+    );
+  });
+
+  it('shows a drained prompt with its images', async () => {
+    const h = queueHarness();
+    await h.queue.add('s1', { text: 'look', images: [{ data: PNG, mediaType: 'image/png' }] });
+    await flush();
+    expect(h.broadcasts.find((m) => m.type === 'queue.drained')).toMatchObject({
+      payload: { item: { text: 'look', images: [{ data: PNG, mediaType: 'image/png' }] } },
+    });
   });
 
   it('puts the queue directory next to the sessions directory', () => {
@@ -283,6 +415,22 @@ describe('conversation operations with the prompt queue', () => {
     await flush();
     await flush();
     expect(h.inputs).toEqual(['go']);
+    await h.finishRun(0);
+  });
+
+  it('runs a prompt with an image as its blocks', async () => {
+    const h = hostHarness();
+    await h.ops.queue?.(h.ws, {
+      type: 'queue.add',
+      payload: { text: 'what is this', images: [{ data: PNG, mediaType: 'image/png' }] },
+    } as never);
+    for (let i = 0; i < 5; i++) await flush();
+    expect(h.inputs).toEqual([
+      [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG } },
+        { type: 'text', text: 'what is this' },
+      ],
+    ]);
     await h.finishRun(0);
   });
 });

@@ -34,7 +34,6 @@ import {
 import type { SlashCommandContext } from './command-context.js';
 
 const DEFAULT_MAX_PHASE3 = 1000;
-const TRIAGE_LLM_MAX_TOKENS = 2_000;
 const DEFAULT_MAX_PHASE4_PAIRS = 50;
 
 export async function runTriageCommand(
@@ -135,13 +134,10 @@ export async function runTriageCommand(
             model,
             system: [{ type: 'text', text: system }],
             messages: [{ role: 'user', content: userPrompt }],
-            // The reply is one line ("4 | reason"), but a reasoning model draws
-            // its thinking from the same allowance: at 60 tokens glm-5.3-flash
-            // returned an empty reply on every memory (2026-09-19,
-            // `wstack typesafe replay-memory-triage --llm-max-tokens`), so Phase 3
-            // rated nothing and Phase 4 read every pair as "NO". Same root cause
-            // the council fixed with its voter budget.
-            maxTokens: TRIAGE_LLM_MAX_TOKENS,
+            // No output cap: the reply is one line ("4 | reason"), but a
+            // reasoning model draws its thinking from the same allowance — at 60
+            // tokens glm-5.3-flash returned an empty reply on every memory
+            // (2026-09-19), so Phase 3 rated nothing.
             temperature: 0.1,
           },
           { signal },

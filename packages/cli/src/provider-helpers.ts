@@ -3,7 +3,7 @@
  * and subcommands. Keeps provider key detection and alias resolution in
  * one place so the logic doesn't drift between call sites.
  */
-import { hasProviderCredential } from '@wrongstack/core/models';
+import { hasProviderCredential, isKeylessLocalProvider } from '@wrongstack/core/models';
 import type {
   Config,
   ModelsRegistry,
@@ -11,6 +11,9 @@ import type {
   ResolvedProvider,
 } from '@wrongstack/core/types';
 import { catalogProviderIdFor } from '@wrongstack/providers';
+
+// Shared with the provider factory, which must agree on what needs no key.
+export { isKeylessLocalProvider };
 
 // (Removed) CATALOG_REFRESHABLE_MODEL_PROVIDERS — a four-entry hand-list that
 // decided whose models were allowed to come from models.dev. See visibleModelIds.
@@ -59,39 +62,6 @@ export function visibleModelIds(
   const entry = cfg ?? config.providers?.[providerId];
   if (entry?.models === undefined) return [...catalogModelIds];
   return uniqueModelIds(entry.models, catalogModelIds);
-}
-
-/**
- * Is `apiBase` a loopback URL (localhost / 127.0.0.0-8 / ::1 / 0.0.0.0)?
- * Such a host is a server running on the same machine, never a remote API.
- */
-function isLoopbackUrl(apiBase: string | undefined): boolean {
-  if (!apiBase) return false;
-  let host: string;
-  try {
-    host = new URL(apiBase).hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-  // URL keeps the brackets around IPv6 hosts (e.g. "[::1]") — strip them.
-  host = host.replace(/^\[|\]$/g, '');
-  if (host === 'localhost' || host === '::1' || host === '0.0.0.0') return true;
-  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
-}
-
-/**
- * Is this a keyless local gateway — a server on a loopback address that
- * declares no API-key env vars (omniroute, LiteLLM/vLLM/LM Studio/Ollama
- * running locally, …)? These need no credential, so they belong in the
- * picker even though `hasApiKey` returns false for them. Accepts the
- * minimal shape both call sites can supply.
- */
-export function isKeylessLocalProvider(provider: {
-  apiBase?: string | undefined;
-  envVars?: string[] | undefined;
-}): boolean {
-  if (provider.envVars && provider.envVars.length > 0) return false;
-  return isLoopbackUrl(provider.apiBase);
 }
 
 /**

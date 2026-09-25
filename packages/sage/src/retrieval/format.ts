@@ -50,27 +50,13 @@ export function formatMemoryHintsDetailed(
     // that strip the wrapper before forwarding the text to the model are
     // unaffected, and a model trained on tool-call fences treats the
     // interior as opaque data.
-    let line = `${prefix}<memory id="${memory.id}">${escapeFenceText(memory.text)}</memory>${suffix}`;
+    const line = `${prefix}<memory id="${memory.id}">${escapeFenceText(memory.text)}</memory>${suffix}`;
     const currentLength = lines.join('\n').length;
-    if (currentLength + 1 + line.length > maxChars) {
-      // If no item fits, keep one safely truncated item instead of slicing the
-      // entire rendered block mid-label or mid-anchor. Otherwise stop at the
-      // previous complete memory line.
-      if (memoryIds.length > 0) break;
-      // Budget the FULL rendered line: joining newline + prefix + open tag +
-      // body + ellipsis + close tag. The fence wrapper is part of the output,
-      // so it must come out of the same maxChars budget — otherwise the
-      // single-item fallback overflows maxChars by the wrapper length.
-      const openTag = `<memory id="${memory.id}">`;
-      const closeTag = '</memory>';
-      const available =
-        maxChars - currentLength - 1 - prefix.length - openTag.length - closeTag.length - 1;
-      if (available <= 0) break;
-      // Truncate inside the fence body, not the wrapper, so the closing tag
-      // is never sliced mid-character.
-      const safeBody = escapeFenceText(memory.text).slice(0, available).trimEnd();
-      line = `${prefix}${openTag}${safeBody}…${closeTag}`;
-    }
+    // The budget decides HOW MANY memories go in, never how much of one: a
+    // memory cut mid-sentence can say the opposite of what was stored. The
+    // first memory is always whole even when it alone exceeds the budget;
+    // after that, stop at the last complete line.
+    if (memoryIds.length > 0 && currentLength + 1 + line.length > maxChars) break;
     lines.push(line);
     memoryIds.push(memory.id);
   }

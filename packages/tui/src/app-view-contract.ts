@@ -73,7 +73,9 @@ interface AppViewRuntime {
   liveStatuslineMode: StatuslineMode;
   projectName: string | undefined;
   workingDirChip: string | undefined;
-  handleRewindTo: (checkpointIndex: number) => Promise<void>;
+  handleRewindTo: (
+    checkpointIndex: number,
+  ) => Promise<import('./hooks/use-session-rewind.js').RewindOutcome>;
   activeCtrlRef: MutableRefObject<AbortController | null>;
   clearPendingConfirms: () => void;
   liveDirector: () => Director | null;

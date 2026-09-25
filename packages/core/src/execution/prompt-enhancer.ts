@@ -681,10 +681,10 @@ export async function enhanceUserPrompt(
   // Reasoning models ("thinking" models like DeepSeek reasoner / o1) take
   // longer to first token, so give a generous default window.
   const timeoutMs = opts.timeoutMs ?? 90000;
-  // Generous default: on some endpoints the model's hidden "thinking" tokens
-  // count against this budget, so a small cap can leave NO room for the actual
-  // refined text (→ empty completion → null). 2048 keeps the output room ample.
-  const maxTokens = opts.maxTokens ?? 2048;
+  // No default cap: on some endpoints the model's hidden "thinking" tokens
+  // count against this budget, so any fixed cap can leave NO room for the
+  // refined text (→ empty completion → null). Unset = the model's ceiling.
+  const maxTokens = opts.maxTokens;
   const refinerInput = buildRefinerInput(
     text,
     opts.history,

@@ -577,6 +577,11 @@ export type PanelState = {
     sessionId: string;
     sessionName: string;
   } | null;
+  /**
+   * A fork from the checkpoint timeline, waiting for the resume machinery
+   * (use-app-picker-keys) to branch the session there and switch to it.
+   */
+  forkRequest?: { promptIndex: number } | null | undefined;
   /** Checkpoint timeline overlay — null when closed. */
   rewindOverlay: {
     checkpoints: Array<{

@@ -1909,6 +1909,6 @@ describe('Google preset', () => {
   it('config metadata', () => {
     expect(googleWireFormat.id).toBe('google');
     expect(googleWireFormat.family).toBe('google');
-    expect(googleWireFormat.capabilities.maxContext).toBe(1_000_000);
+    expect(googleWireFormat.capabilities.maxContext).toBe(0);
   });
 });

@@ -14,18 +14,23 @@ export interface CheckpointTimelineProps {
   selected: number;
   onSelect: (index: number) => void;
   onConfirm: (index: number) => void | Promise<void>;
+  /** Branch a new session at the checkpoint; absent when the host cannot fork. */
+  onFork?: ((index: number) => void) | undefined;
   onClose: () => void;
 }
 
 /**
  * Full-screen checkpoint timeline overlay for the /rewind command.
- * Arrow keys to navigate, Enter to rewind to selected, Esc to close.
+ * Arrow keys to navigate, Enter to rewind to selected, `f` to fork a new
+ * session there, Esc to close. Both take the selected prompt and everything
+ * after it back, and put the prompt back in the composer.
  */
 export function CheckpointTimeline({
   checkpoints,
   selected,
   onSelect,
   onConfirm,
+  onFork,
   onClose,
 }: CheckpointTimelineProps): React.ReactElement {
   const size = useMonitorSize();
@@ -37,10 +42,12 @@ export function CheckpointTimeline({
     chromeRows: 4,
     markerRows: 1,
   });
-  useInput((_, key) => {
+  useInput((input, key) => {
     if (key.ctrl || key.meta) return;
     if (key.escape) {
       onClose();
+    } else if (onFork && input === 'f' && checkpoints[selected] && !pending.current) {
+      onFork(selected);
     } else if (key.upArrow) {
       onSelect(Math.max(0, selected - 1));
     } else if (key.downArrow && checkpoints.length > 0) {
@@ -63,8 +70,8 @@ export function CheckpointTimeline({
       </Text>
       <Text dimColor wrap="truncate-end">
         {size.columns < 60
-          ? 'Esc cancel · ↑↓ · Enter rewind'
-          : 'Esc cancel · ↑/↓ navigate · Enter rewind'}
+          ? `Esc cancel · ↑↓ · Enter rewind${onFork ? ' · f fork' : ''}`
+          : `Esc cancel · ↑/↓ navigate · Enter rewind here${onFork ? ' · f fork a new session from here' : ''}`}
       </Text>
       {checkpoints.length === 0 ? (
         <Text dimColor>No checkpoints in this session.</Text>

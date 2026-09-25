@@ -53,6 +53,8 @@ interface HarnessRefs {
   // `| undefined` (not bare `?`) so exactOptionalPropertyTypes allows tests to
   // explicitly assign `undefined` when exercising the "no store" path.
   queueStore?: QueueStore | undefined;
+  queueStoreFor?: ((sessionId: string) => QueueStore | undefined) | undefined;
+  manager?: ReturnType<typeof useQueueManager> | undefined;
   onQueueChange: Mock;
   slashRegistry: ReturnType<typeof makeRegistry>;
   stateRef: React.MutableRefObject<State>;
@@ -79,6 +81,7 @@ function buildHarness(): HarnessRefs {
 function Harness({ refs }: { refs: HarnessRefs }): React.ReactElement {
   const opts: UseQueueManagerOptions = {
     queueStore: refs.queueStore,
+    queueStoreFor: refs.queueStoreFor,
     onQueueChange: refs.onQueueChange,
     slashRegistry: refs.slashRegistry,
     stateRef: refs.stateRef,
@@ -87,7 +90,7 @@ function Harness({ refs }: { refs: HarnessRefs }): React.ReactElement {
     saveSettings: refs.saveSettings,
     midRunSendPickerRef: refs.midRunSendPickerRef,
   };
-  useQueueManager(opts);
+  refs.manager = useQueueManager(opts);
   return React.createElement(Text, null, 'queue-mgr');
 }
 
@@ -420,5 +423,64 @@ describe('useQueueManager', () => {
         entry: { kind: 'info', text: 'Restored 1 queued message from a previous run.' },
       });
     });
+  });
+});
+
+describe('useQueueManager — resuming another session', () => {
+  it("brings the resumed session's queue and leaves the previous one on disk", async () => {
+    const refs = buildHarness();
+    const previous = makeQueueStore();
+    const resumed = makeQueueStore({
+      read: vi.fn(async () => [
+        { displayText: 'queued in the browser', blocks: [{ type: 'text' as const, text: 'x' }] },
+      ]),
+    });
+    refs.queueStore = previous;
+    refs.queueStoreFor = vi.fn((id: string) => (id === 'sess_b' ? resumed : undefined));
+    refs.stateRef.current = {
+      queue: [{ id: 1, displayText: 'left in a', blocks: [] }],
+    } as unknown as State;
+    const view = render(React.createElement(Harness, { refs }));
+    await vi.waitFor(() => expect(previous.read).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    refs.dispatch.mockClear();
+    const writesBefore = (previous.write as Mock).mock.calls.length;
+    const clearsBefore = (previous.clear as Mock).mock.calls.length;
+
+    act(() => refs.manager?.switchSession('sess_b'));
+    // What the reducer does with that `queueClear`: the queue empties and the
+    // persist effect runs again.
+    refs.stateRef.current = { queue: [] } as unknown as State;
+    view.rerender(React.createElement(Harness, { refs }));
+    await vi.waitFor(() =>
+      expect(refs.dispatch).toHaveBeenCalledWith({
+        type: 'addEntry',
+        entry: { kind: 'info', text: '1 queued message is waiting in this session.' },
+      }),
+    );
+    const types = refs.dispatch.mock.calls.map((call) => (call[0] as Action).type);
+    expect(types).toEqual(['queueClear', 'enqueue', 'addEntry']);
+    expect(refs.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'enqueue',
+        item: expect.objectContaining({ displayText: 'queued in the browser' }),
+      }),
+    );
+    // Emptying the in-memory queue wrote nothing to the session left behind.
+    expect((previous.write as Mock).mock.calls.length).toBe(writesBefore);
+    expect((previous.clear as Mock).mock.calls.length).toBe(clearsBefore);
+  });
+
+  it('drops the queue when the host has no store for the resumed session', () => {
+    const refs = buildHarness();
+    refs.queueStore = makeQueueStore();
+    render(React.createElement(Harness, { refs }));
+    refs.dispatch.mockClear();
+    act(() => refs.manager?.switchSession('sess_unknown'));
+    expect(refs.dispatch.mock.calls.map((call) => (call[0] as Action).type)).toEqual([
+      'queueClear',
+    ]);
   });
 });

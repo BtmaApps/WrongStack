@@ -84,6 +84,9 @@ export function useSettingsSlashCommands(
         return `Could not save settings: ${toErrorMessage(error)}`;
       }
     };
+    // The host's text `/settings` this command displaces. Settings that have
+    // no picker row (the free-form `limits` block) are delegated to it.
+    const hostSettings = slashRegistry.get('settings');
     const cmd = {
       name: 'settings',
       aliases: ['config', 'prefs'],
@@ -95,7 +98,8 @@ export function useSettingsSlashCommands(
         '  /settings              Open on the last-visited row\n' +
         '  /settings <chord>      Open on that row\n' +
         '  /settings <chord> <v>  Set <chord> to <v> without opening the picker\n' +
-        '  /settings reset <chord> Reset <chord> to its factory default\n\n' +
+        '  /settings reset <chord> Reset <chord> to its factory default\n' +
+        '  /settings limits [<name> <n|off>]  View or set your own limits (unset = no limit)\n\n' +
         'Examples:\n' +
         '  /settings yolo on      Enable YOLO mode\n' +
         '  /settings multi-diff 8  Set multi-diff threshold to 8\n' +
@@ -113,6 +117,9 @@ export function useSettingsSlashCommands(
         if (query === '') {
           openSettings();
           return { message: undefined };
+        }
+        if ((query === 'limits' || query.startsWith('limits ')) && hostSettings) {
+          return await hostSettings.run(query);
         }
 
         // `/settings reset <chord>` — reset a field to its factory default.

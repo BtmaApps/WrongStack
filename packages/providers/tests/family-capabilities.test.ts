@@ -25,14 +25,15 @@ describe('family-capabilities', () => {
       expect(CAPABILITIES_BY_FAMILY.anthropic.cacheControl).toBe('native');
     });
 
-    it('openai has 128k context, json mode, with prompt cache', () => {
-      expect(CAPABILITIES_BY_FAMILY.openai.maxContext).toBe(128_000);
+    it('openai has json mode with prompt cache', () => {
       expect(CAPABILITIES_BY_FAMILY.openai.jsonMode).toBe(true);
       expect(CAPABILITIES_BY_FAMILY.openai.promptCache).toBe(true);
     });
 
-    it('google reports 1M context', () => {
-      expect(CAPABILITIES_BY_FAMILY.google.maxContext).toBe(1_000_000);
+    it('no family invents a context window (per-model, from the catalog)', () => {
+      for (const caps of Object.values(CAPABILITIES_BY_FAMILY)) {
+        expect(caps.maxContext).toBe(0);
+      }
     });
 
     it('openai-compatible is the conservative default (no vision)', () => {

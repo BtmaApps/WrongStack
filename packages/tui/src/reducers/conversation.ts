@@ -275,8 +275,9 @@ export function reduceConversation(state: State, action: ConversationAction): St
         // Auto-proceed countdown from the old conversation.
         countdown: null,
         // Session checkpoints and the rewind overlay reference the old
-        // conversation's prompt indices.
-        checkpoints: [],
+        // conversation's prompt indices. A rewind keeps the ones it did not
+        // take back.
+        checkpoints: action.keepCheckpoints ? state.checkpoints : [],
         rewindOverlay: null,
         // Collaborative debugging session timeline.
         collabSession: null,

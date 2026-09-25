@@ -126,33 +126,25 @@ export function buildLiveNextStepsGateBlock(
   };
 }
 
-const MAX_MEMORY_EVIDENCE_CHARS = 12_000;
-
 /**
  * Render memory retrieval as volatile provider evidence, not conversation
  * history. Keeping it after the stable base prompt preserves cache reuse while
  * making the provenance boundary explicit to the model.
+ *
+ * Every retrieved entry goes in whole. Which memories are relevant is the
+ * retrieval layer's decision (its own relevance floor); a fixed character cut
+ * here silently dropped memories it had already chosen.
  */
 function buildMemoryEvidenceBlocks(ctx: Pick<Context, 'memoryEvidence'>): TextBlock[] {
   const blocks: TextBlock[] = [];
-  let remaining = MAX_MEMORY_EVIDENCE_CHARS;
   for (const entry of ctx.memoryEvidence) {
-    if (remaining <= 0) break;
     const text = entry.text.trim();
     if (!text) continue;
-    // Cut at a line boundary when the budget runs out: memory evidence is one
-    // fenced memory per line, and a half line loses its closing fence.
-    let bounded = text.slice(0, remaining);
-    if (bounded.length < text.length) {
-      const lastBreak = bounded.lastIndexOf('\n');
-      if (lastBreak > 0) bounded = bounded.slice(0, lastBreak);
-    }
-    remaining -= bounded.length;
     // `formatMemoryEvidenceBlock` owns the fence and neutralizes the delimiter
     // inside the body — memory text is attacker-influenceable, and a literal
     // `[/memory_evidence]` in it would otherwise close the block early and
     // leave the rest as unfenced live-context text.
-    blocks.push({ type: 'text', text: formatMemoryEvidenceBlock(entry.source, bounded) });
+    blocks.push({ type: 'text', text: formatMemoryEvidenceBlock(entry.source, text) });
   }
   return blocks;
 }

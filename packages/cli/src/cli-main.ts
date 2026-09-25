@@ -1,4 +1,5 @@
 /** Top-level CLI phase orchestrator. */
+import { createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
 import { mailboxSessionTag } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { registerJevTools } from '@wrongstack/core/tools';
@@ -248,6 +249,11 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     sessionRef,
     onlineAgents,
     tuiOwnsScreen,
+  });
+  // A form nobody answers during eternal / parallel autonomy gets no answer
+  // after the approval wait instead of holding the run; WebUI tabs share it.
+  context.userInputAwaiter ??= createEventUserInputAwaiter(events, {
+    isUnattended: (meta) => isUnattendedAutonomy(meta?.['autonomy'], autonomyModeRef.current),
   });
 
   const { governanceHandle } = await setupReplayAndGovernance({

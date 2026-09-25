@@ -1,4 +1,8 @@
 import type { MCPTool, ToolCallResult } from './contracts.js';
+import { parseUrlElicitation, type UrlElicitation } from './elicitation.js';
+
+/** `URLElicitationRequiredError` (spec 2025-11-25). */
+const URL_ELICITATION_REQUIRED = -32042;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -11,9 +15,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 export function toToolCallResult(response: {
   result?: unknown | undefined;
-  error?: { message: string } | undefined;
+  error?: { message: string; code?: number | undefined; data?: unknown } | undefined;
 }): ToolCallResult {
-  if (response.error) return { content: response.error.message, isError: true };
+  if (response.error) {
+    const pages = urlElicitationsOf(response.error);
+    return {
+      content: response.error.message,
+      isError: true,
+      ...(pages.length > 0 ? { urlElicitations: pages } : {}),
+    };
+  }
   const result = isPlainObject(response.result) ? response.result : {};
   const structured = result['structuredContent'];
   return {
@@ -21,6 +32,19 @@ export function toToolCallResult(response: {
     isError: Boolean(result['isError']),
     ...(isPlainObject(structured) ? { structuredContent: structured } : {}),
   };
+}
+
+/** The pages a `-32042` error names; entries that are not valid URL elicitations are dropped. */
+function urlElicitationsOf(error: { code?: number | undefined; data?: unknown }): UrlElicitation[] {
+  if (error.code !== URL_ELICITATION_REQUIRED || !isPlainObject(error.data)) return [];
+  const listed = error.data['elicitations'];
+  if (!Array.isArray(listed)) return [];
+  const pages: UrlElicitation[] = [];
+  for (const entry of listed) {
+    const parsed = parseUrlElicitation(entry);
+    if (parsed.ok) pages.push(parsed.value);
+  }
+  return pages;
 }
 
 const MAX_TOOL_PAGES = 100;

@@ -3,7 +3,6 @@ import * as path from 'node:path';
 import { setSessionSubagentsAllowed } from '../coordination/session-subagent-policy.js';
 import { DefaultPromptLoader, renderPrompt } from '../execution/prompt-loader.js';
 import type { Context, SlashCommand } from '../index.js';
-import { buildPerfCommand } from './perf-command.js';
 import { DefaultPromptStore, migratePromptEntry } from '../storage/prompt-store.js';
 import { PromptUsageStore } from '../storage/prompt-usage-store.js';
 import type { Plugin } from '../types/plugin.js';
@@ -14,6 +13,7 @@ import {
   renderInstructionTemplate,
 } from '../utils/instruction-file.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
+import { buildPerfCommand } from './perf-command.js';
 
 interface PromptsPluginOptions {
   store?: DefaultPromptStore | undefined;
@@ -315,7 +315,6 @@ function buildPromptsCommand(
               {
                 system: 'You improve reusable prompts while preserving their intent and variables.',
                 role: 'prompt-refiner',
-                maxTokens: 2_048,
               },
             );
           } catch {

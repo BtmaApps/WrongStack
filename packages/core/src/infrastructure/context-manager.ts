@@ -89,7 +89,8 @@ export interface ContextManagerToolOptions {
   noopRetryDeltaTokens?: number | undefined;
   /**
    * Provider's max context window in tokens. Used to compute a relative
-   * threshold when `minCompactThreshold` is not set. Default: 128_000.
+   * threshold when `minCompactThreshold` is not set. Unset = the session's
+   * resolved window at call time; unknown skips the threshold gate.
    */
   maxContext?: number | undefined;
   /**

@@ -209,7 +209,6 @@ async function generateDocCommentLlm(
       {
         system: 'You are a precise API documentation writer. Output only JSON.',
         role: 'document',
-        maxTokens: 400,
         responseFormat: 'json',
       },
     );

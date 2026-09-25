@@ -181,8 +181,6 @@ describe('registerProviderUtilityTools', () => {
     expect(mocks.orchestratorCalls[0]).toEqual({
       system: 'Summarize concisely. Keep decisions and key facts.',
       messages: [{ role: 'user' }],
-      model: 'deepseek-chat',
-      maxTokens: 1024,
       timeoutMs: 30_000,
     });
   });

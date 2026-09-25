@@ -173,7 +173,7 @@ export const clarifyTool: Tool<ClarifyQuestionInput, ClarifyOutput> = {
       return skipped(request, 'User cancelled the clarification form.');
     const answers = materializeAnswers(request, resolved.answers);
     const primary = answers[0]!;
-    const decisionSummary = `${autoDecided ? 'Auto-selected recommended answers in non-interactive mode' : 'User clarified'}: ${answers
+    const decisionSummary = `${autoDecided ? 'Auto-selected recommended answers (no one was there to answer)' : 'User clarified'}: ${answers
       .map((answer) => {
         if (answer.delegatedToModel)
           return `"${answer.question}": model should decide (user delegated)`;

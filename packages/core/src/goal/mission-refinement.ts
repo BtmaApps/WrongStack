@@ -106,7 +106,6 @@ export async function refineGoalWithProvider(
         model,
         system: [{ type: 'text', text: buildGoalRefinementPrompt(rawGoal) }],
         messages: [{ role: 'user', content: 'Produce the refined goal.' }],
-        maxTokens: 1000,
       },
       { signal: AbortSignal.timeout(30_000) },
     );

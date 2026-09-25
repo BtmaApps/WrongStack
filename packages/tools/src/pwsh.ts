@@ -13,7 +13,7 @@ import { type DangerAssessment, detectDanger } from './_danger-detect.js';
 import { buildChildEnv } from './_env.js';
 import { createOutputSpool, spoolNote } from './_output-spool.js';
 import { diagnoseBashism, shellArgs } from './_shell-pick.js';
-import { normalizeCommandOutput, safeResolveReal } from './_util.js';
+import { commandOutputPreviewBytes, normalizeCommandOutput, safeResolveReal } from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
 import { closeBackgroundLogFd, openBackgroundLog } from './background-log.js';
 import { checkAndBlockKillCommand } from './bash-kill-guard.js';
@@ -447,7 +447,8 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
     }
 
     // Foreground / Synchronous execution
-    const spool = createOutputSpool({ tool: 'pwsh', thresholdBytes: MAX_OUTPUT });
+    const previewBytes = commandOutputPreviewBytes();
+    const spool = createOutputSpool({ tool: 'pwsh', thresholdBytes: previewBytes });
     let child: ReturnType<typeof spawn>;
     try {
       child = spawn(bin, args, {
@@ -651,8 +652,8 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       if (stream === 'stdout') stdoutBytes += chunk.byteLength;
       else stderrBytes += chunk.byteLength;
       emitProcessOutput({ pid: pid ?? 0, stream, chunk });
-      if (buf.length < MAX_OUTPUT) {
-        buf += text.slice(0, MAX_OUTPUT - buf.length);
+      if (buf.length < previewBytes) {
+        buf += text.slice(0, previewBytes - buf.length);
       }
       spool.write(text);
       pending += text;
@@ -700,7 +701,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
 
       const tail = stdoutDecoder.end() + stderrDecoder.end();
       if (tail) {
-        if (buf.length < MAX_OUTPUT) buf += tail.slice(0, MAX_OUTPUT - buf.length);
+        if (buf.length < previewBytes) buf += tail.slice(0, previewBytes - buf.length);
         spool.write(tail);
         pending += tail;
       }

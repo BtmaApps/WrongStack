@@ -30,12 +30,30 @@ export interface MCPTool {
   outputSchema?: Record<string, unknown> | undefined;
 }
 
+/**
+ * URL-mode elicitation (spec 2025-11-25): the server asks the user to open a
+ * web page for something that must not pass through the client — a
+ * third-party sign-in, an API key, a payment. Only the user's consent crosses
+ * the protocol; what happens on the page stays between the user and the server.
+ */
+export interface UrlElicitation {
+  mode: 'url';
+  message: string;
+  url: string;
+  elicitationId: string;
+}
+
 /** Result envelope returned by an MCP `tools/call`. */
 export interface ToolCallResult {
   content: unknown;
   isError: boolean;
   /** The typed result object, when the tool returns one (spec 2025-06-18). */
   structuredContent?: Record<string, unknown> | undefined;
+  /**
+   * Pages the user must open before the call can succeed: the server answered
+   * with a URL-elicitation-required error (`-32042`, spec 2025-11-25).
+   */
+  urlElicitations?: UrlElicitation[] | undefined;
 }
 
 /** JSON-RPC 2.0 response shape (success or error). */

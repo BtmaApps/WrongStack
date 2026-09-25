@@ -72,6 +72,10 @@ export type {
   InputHistoryConfig,
   LaunchConfig,
   LaunchMenuChoice,
+  LimitBound,
+  LimitsBudgetKey,
+  LimitsConfig,
+  LimitsScalarKey,
   LogConfig,
   LoopDetectionConfig,
   MCPHealthConfig,
@@ -112,17 +116,30 @@ export type {
 } from './config.js';
 // ── config (59 symbols) ──
 export {
+  activeLimits,
   BUILTIN_MODEL_TIER_IDS,
+  clampLimit,
+  clampLimits,
   DEFAULT_TUI_THINKING_WORD,
   FLEET_CHAT_VERBOSITY_VALUES,
+  formatLimitRange,
+  installLimitsSource,
+  LIMIT_BOUNDS,
+  LIMITS_BUDGET_KEYS,
+  LIMITS_SCALAR_KEYS,
+  limitValueError,
   MAX_TUI_THINKING_WORD_LENGTH,
   MAX_WRONGPROXY_URL_LENGTH,
   normalizeTokenSavingTier,
   normalizeTuiThinkingWord,
+  positiveLimit,
   resolveFleetChatVerbosity,
   resolveTokenSavingTier,
   THEME_PRESET_IDS,
+  TOOL_MEMORY_GUARD_BYTES,
 } from './config.js';
+// ── context (2 symbols) ──
+export type { NestedToolCaller, NestedToolCallResult } from './context.js';
 // ── context-evidence (8 symbols) ──
 export type {
   CompletedWorkEvidence,

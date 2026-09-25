@@ -8,6 +8,7 @@ import { useInterruptLadder } from './hooks/use-interrupt-ladder.js';
 
 export function useControllerKeyPipeline({
   sessionGenerationRef,
+  switchQueueSession,
   props,
   state,
   dispatch,
@@ -125,6 +126,8 @@ export function useControllerKeyPipeline({
   bugHuntLoop,
 }: {
   sessionGenerationRef: React.RefObject<number>;
+  /** Move the input queue to a resumed session. */
+  switchQueueSession?: ((sessionId: string) => void) | undefined;
   props: import('./app-props.js').AppProps;
   state: import('./app-state.js').State;
   dispatch: React.ActionDispatch<[action: import('./app-action-type.js').Action]>;
@@ -360,6 +363,7 @@ export function useControllerKeyPipeline({
 }) {
   const tryPickerKey = useAppPickerKeys({
     sessionGenerationRef,
+    switchQueueSession,
     host: props,
     state,
     dispatch,

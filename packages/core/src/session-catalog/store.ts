@@ -388,9 +388,15 @@ export class SessionCatalogStore {
   prune(maxAgeDays: number, holderId: string): number {
     if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0) throw new TypeError('Invalid prune age');
     const cutoff = Date.now() - maxAgeDays * 86_400_000;
+    // A row recorded before its transcript reached disk has mtime 0, which
+    // read as older than any cutoff: a session just created by a process
+    // that then died was deleted on the next start, with whatever its folder
+    // held (a queued prompt). Such a row is aged by when it was recorded.
     const candidates = this.db
-      .prepare('SELECT session_id FROM sessions WHERE transcript_mtime_ms<?')
-      .all(cutoff) as unknown as Array<{ session_id: string }>;
+      .prepare(
+        'SELECT session_id FROM sessions WHERE transcript_mtime_ms<? AND (transcript_mtime_ms>0 OR indexed_at<?)',
+      )
+      .all(cutoff, new Date(cutoff).toISOString()) as unknown as Array<{ session_id: string }>;
     let deleted = 0;
     for (const { session_id: id } of candidates) {
       try {

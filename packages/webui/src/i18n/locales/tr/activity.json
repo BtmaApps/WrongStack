@@ -707,7 +707,12 @@
     "newTerminal": "Yeni terminal",
     "restart": "Etkin terminali yeniden başlat",
     "closeAll": "Tüm terminalleri kapat",
-    "closeDock": "Terminal dock'unu kapat (Ctrl+`)",
+    "hideDock": "Terminal panelini gizle (Ctrl+`) — terminaller çalışmaya devam eder",
+    "stripLabel": "Terminaller",
+    "stripExited": "kapandı ({{code}})",
+    "stripOutputTitle": "{{name}} son satırlar",
+    "stripOpen": "Aç",
+    "stripNoOutput": "Henüz çıktı yok.",
     "closeTab": "{{name}} öğesini kapat",
     "processExited": "[işlem {{code}} koduyla çıktı]"
   },

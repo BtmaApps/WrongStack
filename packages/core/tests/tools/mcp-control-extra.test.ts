@@ -2,8 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMcpControlTool, type MCPRegistryHandle } from '../../src/tools/mcp-control.js';
 import type { Config } from '../../src/index.js';
+import { createMcpControlTool, type MCPRegistryHandle } from '../../src/tools/mcp-control.js';
 
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
 
@@ -162,7 +162,7 @@ describe('mcp_control tools', () => {
     expect(out).toContain('"title":{"type":"string"}');
   });
 
-  it('truncates oversized schemas and reports empty or unknown servers', async () => {
+  it('shows whole schemas and reports empty or unknown servers', async () => {
     const huge = { type: 'object', description: 'x'.repeat(5_000) };
     const reg = fakeRegistry({
       describeTools: vi
@@ -171,7 +171,9 @@ describe('mcp_control tools', () => {
         .mockReturnValueOnce([])
         .mockReturnValueOnce(undefined),
     });
-    expect(await run(make(reg), { action: 'tools', server: 's' })).toContain('[schema truncated]');
+    const listing = await run(make(reg), { action: 'tools', server: 's' });
+    expect(listing).toContain(JSON.stringify(huge));
+    expect(listing).not.toContain('[schema truncated]');
     expect(await run(make(reg), { action: 'tools', server: 's' })).toContain(
       'has not published any tools',
     );

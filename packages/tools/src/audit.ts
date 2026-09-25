@@ -2,7 +2,7 @@ import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { spawnStream } from './_spawn-stream.js';
 import {
-  COMMAND_OUTPUT_MAX_BYTES,
+  commandOutputPreviewBytes,
   detectPackageManager,
   normalizeCommandOutput,
   safeResolveReal,
@@ -214,7 +214,7 @@ function parseAuditOutput(
 
   const cappedOutput = normalizeCommandOutput(json);
   const truncated =
-    opts.spawnTruncated === true || Buffer.byteLength(json, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
+    opts.spawnTruncated === true || Buffer.byteLength(json, 'utf8') > commandOutputPreviewBytes();
 
   let data: Record<string, unknown>;
   try {

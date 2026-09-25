@@ -130,9 +130,14 @@ describe('messages_dropped replay', () => {
    * the journal it wrote, and require the reconstruction to equal live state.
    */
   it('round-trips a real over-cap conversation and stays small on disk', async () => {
+    // Core ships no count cap; an embedder that sets one is the case this
+    // journal shape exists for.
+    class CappedContext extends Context {
+      static override readonly MAX_MESSAGES = 1_000;
+    }
     const store = new DefaultSessionStore({ dir });
     const session = await store.create({ id: SESSION_ID, model: 'm', provider: 'p' });
-    const ctx = new Context({
+    const ctx = new CappedContext({
       systemPrompt: [],
       provider: {} as Provider,
       session,
@@ -144,7 +149,7 @@ describe('messages_dropped replay', () => {
     });
 
     const overflowBy = 25;
-    const total = Context.MAX_MESSAGES + overflowBy;
+    const total = CappedContext.MAX_MESSAGES + overflowBy;
     // Each message is fat enough that a per-append snapshot of the retained
     // history would be unmistakable in the file size.
     const filler = 'x'.repeat(2_000);
@@ -155,7 +160,7 @@ describe('messages_dropped replay', () => {
     await session.flush?.();
 
     const live = ctx.messages;
-    expect(live).toHaveLength(Context.MAX_MESSAGES);
+    expect(live).toHaveLength(CappedContext.MAX_MESSAGES);
 
     const reloaded = await new DefaultSessionStore({ dir }).load(SESSION_ID);
     expect(reloaded.messages).toHaveLength(live.length);

@@ -34,7 +34,7 @@ describe('makeProviderClassifier', () => {
       temperature: number;
     };
     expect(callArgs.model).toBe('gpt-4o');
-    expect(callArgs.maxTokens).toBe(120);
+    expect(callArgs.maxTokens).toBeUndefined();
     expect(callArgs.temperature).toBe(0);
     expect(result).toEqual({ role: 'coder', reason: 'needs coding' });
   });

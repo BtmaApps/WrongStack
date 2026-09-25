@@ -47,6 +47,7 @@ import {
   MCPRegistry,
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
+import { openBrowser } from '../auth-menu/loopback-server.js';
 import type { EventWiring } from '../boot/event-wiring.js';
 import { effectiveMcpServers, parseLaunchMcpServers } from '../boot/mcp-config-flag.js';
 import { isRestrictedMode } from '../boot/restricted-mode.js';
@@ -489,7 +490,7 @@ export async function setupLifecycleAndPlugins(
     authorizationManager: mcpAuthorizationManager,
     // A server's mid-call form goes to the run that made the call; one asked
     // outside any call lands on the root session.
-    elicitationHandler: (request) => elicitViaUserInput(request, context),
+    elicitationHandler: (request) => elicitViaUserInput(request, context, { openUrl: openBrowser }),
   });
   // `--mcp-config` servers (normalized at boot) always start — naming them on
   // the command line is the opt-in. `features.mcp` and `--strict-mcp-config`

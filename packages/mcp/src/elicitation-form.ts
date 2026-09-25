@@ -1,16 +1,32 @@
 import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import type { UserInputAnswer, UserInputQuestion, UserInputRequest } from '@wrongstack/core/types';
 import {
   type ElicitationField,
+  type ElicitationForm,
   type ElicitationRequester,
   type MCPElicitationRequest,
   type MCPElicitationResult,
+  type UrlElicitation,
   validateElicitationContent,
 } from './elicitation.js';
 
 /** Re-asks after an answer the schema rejects, before giving up. */
 const MAX_ATTEMPTS = 3;
 const CONFIRM_QUESTION = 'confirm';
+const URL_QUESTION = 'url';
+
+/** Opens a page in the user's browser; given by a host that can. */
+export type OpenUrl = (url: string) => void;
+
+export interface ElicitViaUserInputOptions {
+  /**
+   * Opens a URL-mode page once the user agrees. Without it the user is only
+   * shown the URL to open themselves (the right thing when the browser is on
+   * another machine than this process).
+   */
+  openUrl?: OpenUrl | undefined;
+}
 
 function questionId(index: number): string {
   return `f${index}`;
@@ -86,7 +102,65 @@ function toQuestion(field: ElicitationField, index: number): UserInputQuestion {
   }
 }
 
-function toUserInputRequest(request: MCPElicitationRequest, problem?: string): UserInputRequest {
+type FormRequest = ElicitationForm & { server: string };
+type PageRequest = UrlElicitation & { server: string };
+
+/** What the user must see before agreeing to open a page (spec: the full URL, the host highlighted). */
+function pageWarnings(url: URL): string[] {
+  const warnings: string[] = [];
+  if (url.hostname.split('.').some((label) => label.startsWith('xn--'))) {
+    warnings.push(
+      'The address uses international characters (punycode); it may imitate another site.',
+    );
+  }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol === 'http:' && !local) {
+    warnings.push('The page is not served over HTTPS.');
+  }
+  if (url.username || url.password) warnings.push('The address carries a user name or password.');
+  return warnings;
+}
+
+function toPageRequest(request: PageRequest, canOpen: boolean): UserInputRequest {
+  const url = new URL(request.url);
+  const description = [
+    request.message,
+    `Page: ${request.url}`,
+    `Site: ${url.host}`,
+    ...pageWarnings(url).map((warning) => `Warning: ${warning}`),
+    'What you do on that page goes to the server directly, not through WrongStack.',
+  ].join('\n\n');
+  return {
+    id: `mcp-elicitation-${randomUUID()}`,
+    title: `MCP server "${request.server}" asks you to open ${url.host}`,
+    description,
+    submitLabel: 'Continue',
+    tabs: [
+      {
+        id: 'page',
+        label: request.server,
+        questions: [
+          {
+            id: URL_QUESTION,
+            prompt: `Open ${url.host}?`,
+            kind: 'single_select',
+            required: true,
+            options: [
+              // Named: with `wstack remote` this process runs on another machine.
+              ...(canOpen
+                ? [{ id: 'open', label: `Open it in the browser on ${hostname()}` }]
+                : []),
+              { id: 'self', label: 'I will open it myself' },
+              { id: 'decline', label: 'Decline' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function toUserInputRequest(request: FormRequest, problem?: string): UserInputRequest {
   const questions: UserInputQuestion[] =
     request.fields.length > 0
       ? request.fields.map(toQuestion)
@@ -150,33 +224,56 @@ function answerValue(field: ElicitationField, answer: UserInputAnswer | undefine
  * No surface to show it on answers `cancel`; the user dismissing the form is an
  * explicit `decline`. An answer the schema rejects is asked again with the
  * reason, a few times, before giving up.
+ *
+ * A URL-mode request asks for consent to open a page instead. Nothing is
+ * fetched or opened before the user agrees, and `accept` then only means they
+ * agreed: the page's outcome reaches the server, not this client.
  */
 export async function elicitViaUserInput(
   request: MCPElicitationRequest,
   fallback?: ElicitationRequester | undefined,
+  options: ElicitViaUserInputOptions = {},
 ): Promise<MCPElicitationResult> {
   const target = request.requester ?? fallback;
   if (!target) return { action: 'cancel' };
+  if (request.mode === 'url') {
+    if (request.signal.aborted) return { action: 'cancel' };
+    const response = await target.requestUserInput(
+      toPageRequest(request, options.openUrl !== undefined),
+      request.signal,
+    );
+    if (!response || request.signal.aborted) return { action: 'cancel' };
+    if (response.status !== 'submitted') return { action: 'decline' };
+    const choice = response.answers.find((a) => a.questionId === URL_QUESTION)
+      ?.selectedOptionIds[0];
+    if (choice === 'open' && options.openUrl) {
+      options.openUrl(request.url);
+      return { action: 'accept', content: {} };
+    }
+    if (choice === 'self') return { action: 'accept', content: {} };
+    return { action: 'decline' };
+  }
+  const form = request;
   let problem: string | undefined;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (request.signal.aborted) return { action: 'cancel' };
     const response = await target.requestUserInput(
-      toUserInputRequest(request, problem),
+      toUserInputRequest(form, problem),
       request.signal,
     );
     if (!response || request.signal.aborted) return { action: 'cancel' };
     if (response.status !== 'submitted') return { action: 'decline' };
     const byId = new Map(response.answers.map((answer) => [answer.questionId, answer]));
-    if (request.fields.length === 0) {
+    if (form.fields.length === 0) {
       return byId.get(CONFIRM_QUESTION)?.selectedOptionIds[0] === 'yes'
         ? { action: 'accept', content: {} }
         : { action: 'decline' };
     }
     const content: Record<string, unknown> = {};
-    request.fields.forEach((field, i) => {
+    form.fields.forEach((field, i) => {
       content[field.name] = answerValue(field, byId.get(questionId(i)));
     });
-    const checked = validateElicitationContent(request.fields, content);
+    const checked = validateElicitationContent(form.fields, content);
     if (checked.ok) return { action: 'accept', content: checked.value };
     problem = checked.error;
   }

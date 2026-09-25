@@ -356,6 +356,35 @@ describe('SessionCatalogStore', () => {
     store.close();
   });
 
+  it('does not prune a session recorded before its transcript reached disk', async () => {
+    const { root, store } = await fixture();
+    const summary = (id: string) => ({
+      id,
+      title: id,
+      startedAt: '2026-09-25T00:00:00.000Z',
+      model: 'm',
+      provider: 'p',
+      tokenTotal: 0,
+      lastActivityAt: '2026-09-25T00:00:00.000Z',
+    });
+    // Just created, then the process died before the first write: mtime 0.
+    const fresh = '2026-09-25/sess_fresh';
+    store.upsertSummary(summary(fresh), `${fresh}.jsonl`, `${fresh}.summary.json`);
+    // Genuinely old.
+    const old = '2026-06-01/sess_old';
+    const transcript = path.join(root, 'sessions', `${old}.jsonl`);
+    await fs.mkdir(path.dirname(transcript), { recursive: true });
+    await fs.writeFile(transcript, '');
+    const longAgo = new Date(Date.now() - 90 * 86_400_000);
+    await fs.utimes(transcript, longAgo, longAgo);
+    store.upsertSummary(summary(old), `${old}.jsonl`, `${old}.summary.json`);
+
+    expect(store.prune(30, 'maintainer')).toBe(1);
+    expect(store.getSummary(old)).toBeNull();
+    expect(store.getSummary(fresh)).not.toBeNull();
+    store.close();
+  });
+
   it('allows non-destructive maintenance from the owning pid but rejects foreign pids', async () => {
     const { store } = await fixture();
     const id = '2026-08-08/sess_self_vs_foreign';

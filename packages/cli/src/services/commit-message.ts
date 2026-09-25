@@ -10,7 +10,8 @@ export interface CommitLLMProvider {
       model: string;
       system?: { type: 'text' | undefined; text: string }[];
       messages: { role: string; content: { type: 'text'; text: string }[] }[];
-      maxTokens: number;
+      /** Unset = the model's own output ceiling. */
+      maxTokens?: number | undefined;
       temperature?: number | undefined;
     },
     opts: { signal: AbortSignal },
@@ -47,7 +48,6 @@ export async function generateCommitMessageWithLLM(
         model: opts.model,
         system: [{ type: 'text', text: systemPrompt }],
         messages: [{ role: 'user', content: [{ type: 'text', text: userPrompt }] }],
-        maxTokens: 80,
         temperature: 0.3,
       },
       { signal: signal.signal },

@@ -177,7 +177,7 @@ export function createBrainPanelHost(deps: BrainPanelServiceDeps): BrainPanelHos
     // Every sub-block below is MERGED field-by-field by `mergePatch`, so a
     // single-key patch leaves the operator's other knobs alone.
     setHeuristic: (key, on) => apply({ heuristics: { [key]: on } }),
-    setLlmMaxTokens: (tokens) => apply({ llm: { maxTokens: tokens } }),
+    setLlmMaxTokens: (tokens) => apply({ llm: { maxTokens: tokens ?? null } }),
     setLlmRejectUncertain: (on) => apply({ llm: { rejectUncertain: on } }),
     setLlmMinConfidence: (value) => apply({ llm: { minConfidence: value } }),
     setLlmDenyIsTerminal: (mode) => apply({ llm: { denyIsTerminal: mode } }),

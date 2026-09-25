@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -125,7 +125,7 @@ describe('learned buffer round-trip', () => {
 });
 
 describe('capture is never permanently blocked by buffer size', () => {
-  it('trims the cheapest entries instead of refusing to learn', () => {
+  it('keeps every directive past the soft limit instead of evicting any', () => {
     const filler = Array.from({ length: 40 }, (_, i) => ({
       key: `k${i}`,
       category: 'fact' as const,
@@ -150,10 +150,12 @@ describe('capture is never permanently blocked by buffer size', () => {
       false,
     );
     expect(result.status).toBe('captured');
-    expect(result.evicted ?? 0).toBeGreaterThan(0);
     const after = loadProjectAgentLearned('executor', projectRoot);
-    expect(Buffer.byteLength(after, 'utf8')).toBeLessThanOrEqual(LEARNED_SOFT_LIMIT);
+    // Growth is the consolidation pass's job; nothing is thrown away here.
+    expect(Buffer.byteLength(after, 'utf8')).toBeGreaterThan(before);
     expect(after).toContain('verify the release checklist');
+    expect(after).toContain('The project fact number 0 ');
+    expect(after).toContain('The project fact number 39 ');
   });
 
   it('evicts plain facts before warnings', () => {

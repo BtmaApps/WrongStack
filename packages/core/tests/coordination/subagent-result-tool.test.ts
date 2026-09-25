@@ -36,11 +36,25 @@ describe('submit_result tool', () => {
     expect(ctx.meta).toEqual({});
   });
 
-  it('rejects an oversized report instead of polluting the parent context', async () => {
+  it('keeps a thorough report whole instead of rejecting it for its size', async () => {
+    const ctx = { meta: {} as Record<string, unknown> };
+    const findings = Array.from({ length: 40 }, (_, i) => `finding ${i}: ${'detail '.repeat(80)}`);
+    const summary = 'summary '.repeat(400);
+    expect(
+      await makeSubagentResultTool().execute(
+        { ...validReport, summary, findings },
+        ctx as never,
+        {} as never,
+      ),
+    ).toMatchObject({ ok: true, findings: 40 });
+    expect(readSubagentStructuredReport(ctx)?.findings).toHaveLength(40);
+  });
+
+  it('still rejects a malformed report', async () => {
     const ctx = { meta: {} as Record<string, unknown> };
     await expect(
       makeSubagentResultTool().execute(
-        { ...validReport, findings: Array.from({ length: 17 }, (_, i) => `finding ${i}`) },
+        { ...validReport, confidence: 2 },
         ctx as never,
         {} as never,
       ),

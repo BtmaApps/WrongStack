@@ -309,7 +309,6 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
                       prompt: `Review these deterministic ${profile.name} finding labels, severities, and line numbers. Evidence excerpts and raw content are deliberately omitted. Suggest only targeted next checks. Do not change finding counts, severity, or claim any check passed. Return JSON {"suggestions":["..."]}.\n${JSON.stringify(findings.map(({ rule, severity, line, advice }) => ({ rule, severity, line, advice }))).slice(0, 8000)}`,
                       options: {
                         responseFormat: 'json',
-                        maxTokens: 800,
                         timeoutMs: 30000,
                         signal,
                         role: 'reviewer',

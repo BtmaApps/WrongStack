@@ -4,10 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  type CheckpointGitResult,
-  SessionCheckpointCas,
-} from '../../src/storage/session-checkpoint-cas.js';
+import { SessionCheckpointCas } from '../../src/storage/session-checkpoint-cas.js';
+import type { VcsRunResult } from '../../src/vcs/vcs-runner.js';
 
 const HEAD = 'a'.repeat(40);
 const execFileAsync = promisify(execFile);
@@ -23,9 +21,13 @@ describe('SessionCheckpointCas', () => {
     project = path.join(tmp, 'project');
     target = path.join(tmp, 'target');
     casRoot = path.join(tmp, 'cas');
+    // A `.git` marker makes both directories read as git checkouts; the
+    // injected runner answers for git.
     await Promise.all([
       fsp.mkdir(path.join(project, 'src'), { recursive: true }),
       fsp.mkdir(path.join(target, 'src'), { recursive: true }),
+      fsp.mkdir(path.join(project, '.git'), { recursive: true }),
+      fsp.mkdir(path.join(target, '.git'), { recursive: true }),
     ]);
   });
 
@@ -34,8 +36,15 @@ describe('SessionCheckpointCas', () => {
     await fsp.rm(tmp, { recursive: true, force: true });
   });
 
+  /** The CAS option that routes every git command to `runGit(args, cwd)`. */
+  function viaGit(runGit: (args: string[], cwd?: string) => Promise<VcsRunResult>) {
+    return {
+      runner: (_binary: string, args: readonly string[], cwd: string) => runGit([...args], cwd),
+    };
+  }
+
   function git(opts: { tracked?: string[]; untracked?: string[] } = {}) {
-    return vi.fn(async (args: string[]): Promise<CheckpointGitResult> => {
+    return vi.fn(async (args: string[]): Promise<VcsRunResult> => {
       if (args[0] === 'rev-parse') return { code: 0, stdout: `${HEAD}\n`, stderr: '' };
       if (args[0] === 'diff') {
         return { code: 0, stdout: `${(opts.tracked ?? []).join('\0')}\0`, stderr: '' };
@@ -60,7 +69,11 @@ describe('SessionCheckpointCas', () => {
       tracked: ['src/a.ts', 'src/deleted.ts'],
       untracked: ['new.bin'],
     });
-    const cas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
+    const cas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
 
     const checkpoint = await cas.capture('session-1', 3);
     expect(checkpoint).toMatchObject({
@@ -80,6 +93,7 @@ describe('SessionCheckpointCas', () => {
 
   it('round-trips through a real Git worktree with the default runner', async () => {
     await fsp.rm(target, { recursive: true, force: true });
+    await fsp.rm(path.join(project, '.git'), { recursive: true, force: true });
     await Promise.all([
       fsp.writeFile(path.join(project, 'src', 'a.ts'), 'base version', 'utf8'),
       fsp.writeFile(path.join(project, 'delete-me.txt'), 'base deletion candidate', 'utf8'),
@@ -119,8 +133,16 @@ describe('SessionCheckpointCas', () => {
       fsp.writeFile(path.join(project, 'src', 'b.ts'), 'same bytes', 'utf8'),
     ]);
     const runGit = git({ tracked: ['src/a.ts', 'src/b.ts'] });
-    const firstCas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
-    const secondCas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
+    const firstCas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
+    const secondCas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
     const [first, second] = await Promise.all([
       firstCas.capture('session-a', 1),
       secondCas.capture('session-b', 99),
@@ -133,7 +155,11 @@ describe('SessionCheckpointCas', () => {
   it('allows parent-root materialization but still rejects base mismatch and tampering', async () => {
     await fsp.writeFile(path.join(project, 'src', 'a.ts'), 'value', 'utf8');
     const runGit = git({ tracked: ['src/a.ts'] });
-    const cas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
+    const cas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
     const checkpoint = await cas.capture('session-2', 1);
 
     await fsp.writeFile(path.join(project, 'src', 'a.ts'), 'after checkpoint', 'utf8');
@@ -165,7 +191,7 @@ describe('SessionCheckpointCas', () => {
     const cas = new SessionCheckpointCas({
       rootDir: casRoot,
       projectRoot: project,
-      runGit: git({ tracked: ['nested-repo'] }),
+      vcs: viaGit(git({ tracked: ['nested-repo'] })),
     });
     const checkpoint = await cas.capture('session-3', 0);
     expect(checkpoint).toMatchObject({ entryCount: 0, unresolvedCount: 1 });
@@ -181,7 +207,7 @@ describe('SessionCheckpointCas', () => {
     const cas = new SessionCheckpointCas({
       rootDir: casRoot,
       projectRoot: project,
-      runGit: git({ tracked: ['large.bin'] }),
+      vcs: viaGit(git({ tracked: ['large.bin'] })),
     });
     await expect(cas.capture('session-large', 0)).resolves.toMatchObject({
       entryCount: 0,
@@ -203,7 +229,11 @@ describe('SessionCheckpointCas', () => {
       tracked: ['src/a.ts'],
       untracked: ['.wrongstack/worktrees/child/nested.ts'],
     });
-    const cas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
+    const cas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
     await expect(cas.capture('session-filter', 0)).resolves.toMatchObject({ entryCount: 1 });
 
     runGit.mockImplementation(async (args: string[]) => {
@@ -216,7 +246,11 @@ describe('SessionCheckpointCas', () => {
   it('refuses to overwrite a dirty materialization target', async () => {
     await fsp.writeFile(path.join(project, 'src', 'a.ts'), 'checkpoint version', 'utf8');
     const runGit = git({ tracked: ['src/a.ts'] });
-    const cas = new SessionCheckpointCas({ rootDir: casRoot, projectRoot: project, runGit });
+    const cas = new SessionCheckpointCas({
+      rootDir: casRoot,
+      projectRoot: project,
+      vcs: viaGit(runGit),
+    });
     const checkpoint = await cas.capture('session-dirty-target', 0);
 
     runGit.mockImplementation(async (args: string[]) => {
@@ -231,7 +265,7 @@ describe('SessionCheckpointCas', () => {
     const cas = new SessionCheckpointCas({
       rootDir: casRoot,
       projectRoot: project,
-      runGit: async () => ({ code: 128, stdout: '', stderr: 'not a git repository' }),
+      vcs: viaGit(async () => ({ code: 128, stdout: '', stderr: 'not a git repository' })),
     });
     await expect(cas.capture('session-4', 0)).resolves.toBeUndefined();
   });

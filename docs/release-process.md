@@ -100,13 +100,13 @@ binary still has to pass the cross-platform smoke.
 | Job | What it does |
 | --- | --- |
 | `binaries` | `node scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `scripts/smoke-binary.mjs` runs the Linux x64 build |
-| `binaries-smoke` | runs the same smoke on real Windows and macOS (arm64) runners |
+| `binaries-smoke` | runs the same smoke on real Windows x64, Windows arm64 and macOS (arm64) runners |
 | `github-release` | verifies manifest coverage and digests, then uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
 | `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
 | `publish-desktop` | merges and verifies package-owned checksum manifests, then attaches Desktop assets to the GitHub Release |
 
-Targets: `windows-x64`, `linux-x64`, `linux-arm64`, `linux-x64-musl`,
-`linux-arm64-musl`, `darwin-x64`, `darwin-arm64`.
+Targets: `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`,
+`linux-x64-musl`, `linux-arm64-musl`, `darwin-x64`, `darwin-arm64`.
 
 Build and smoke locally (Bun required):
 

@@ -50,7 +50,11 @@
 //     call site in main(). The unit test exercises the
 //     helper with fakes that satisfy the local interfaces.
 
-import { DefaultSystemPromptBuilder, type SystemInstructionVariant } from '@wrongstack/core/agent';
+import {
+  DefaultSystemPromptBuilder,
+  isUnattendedAutonomy,
+  type SystemInstructionVariant,
+} from '@wrongstack/core/agent';
 import { makeAutonomyPromptContributor } from '@wrongstack/core/execution';
 import type { TokenSavingTier } from '@wrongstack/core/types';
 import { sessionScopedPath } from '@wrongstack/core/utils';
@@ -247,16 +251,7 @@ export function bindSystemPromptBuilder(deps: BindSystemPromptBuilderDeps): void
             // WebUI tabs it is whichever tab last switched, so reading it
             // alone put the eternal-autonomy block into the prompt of every
             // conversation the moment one of them went eternal.
-            enabled: (ctx) => {
-              const scoped = ctx.autonomy;
-              if (typeof scoped === 'string') {
-                return scoped === 'eternal' || scoped === 'eternal-parallel';
-              }
-              return (
-                deps.autonomyModeRef.current === 'eternal' ||
-                deps.autonomyModeRef.current === 'eternal-parallel'
-              );
-            },
+            enabled: (ctx) => isUnattendedAutonomy(ctx.autonomy, deps.autonomyModeRef.current),
           }),
           // Consumes the WrongTrace observability helpers: when the daemon
           // is reachable, the leader prompt carries a compact atlas digest +

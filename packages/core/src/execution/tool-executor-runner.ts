@@ -60,7 +60,8 @@ export async function runToolWithTimeout(
           progressTailChars: config.progressTailChars,
           progressHeadChars: config.progressHeadChars,
         })
-      : (async () => tool.execute(input, ctx, { signal: combined }))();
+      : (async () =>
+          tool.execute(input, ctx, { signal: combined, ...(toolUseId ? { toolUseId } : {}) }))();
 
   const telemetryToolCallId = toolUseId ?? `nested-${randomUUID()}`;
   const toolPromise: Promise<unknown> = opts.events

@@ -959,7 +959,8 @@ describe('DefaultPluginAPI.llm', () => {
     expect(result.provider).toBe('default-prov');
     expect(result.usage).toEqual({ input: 10, output: 5 });
     expect(calls[0]!.model).toBe('default-model');
-    expect(calls[0]!.maxTokens).toBe(2048);
+    // No invented default: unset = the model's own output ceiling.
+    expect(calls[0]!.maxTokens).toBeUndefined();
     expect(api.llm!.defaults()).toEqual({ provider: 'default-prov', model: 'default-model' });
   });
 
@@ -1142,10 +1143,10 @@ describe('DefaultPluginAPI.llm', () => {
     expect(createProvider).toHaveBeenCalledTimes(2);
   });
 
-  it('hard-caps maxTokens', async () => {
+  it('passes an explicit maxTokens through unchanged', async () => {
     const { api, calls } = mkApiWithLLM();
     await api.llm!.complete('x', { maxTokens: 999_999 });
-    expect(calls[0]!.maxTokens).toBe(32_768);
+    expect(calls[0]!.maxTokens).toBe(999_999);
   });
 
   it('hot-reloads per-plugin overrides from ConfigStore updates (set + clear)', async () => {

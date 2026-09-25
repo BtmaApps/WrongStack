@@ -34,7 +34,7 @@ describe('generateCommitMessageWithLLM', () => {
     });
     expect(message).toBe('feat(a): add x');
     expect(provider.complete).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'test-model', maxTokens: 80 }),
+      expect.objectContaining({ model: 'test-model' }),
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });

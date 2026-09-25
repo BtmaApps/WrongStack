@@ -3,9 +3,9 @@ import { effectiveFallbackChain, setQueuedMessagesSnapshot } from '@wrongstack/c
 import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/core/coordination';
 import { updateReviewReportEvidence } from '@wrongstack/core/plugin';
 import { noOpVault } from '@wrongstack/core/security';
-import { attachTodosCheckpoint } from '@wrongstack/core/storage';
+import { attachTodosCheckpoint, QueueStore } from '@wrongstack/core/storage';
 import { normalizeTokenSavingTier, type SessionSummary } from '@wrongstack/core/types';
-import { mergeCustomModelDefs } from '@wrongstack/core/utils';
+import { mergeCustomModelDefs, sessionScopedPath } from '@wrongstack/core/utils';
 import { listGitWorktrees } from '@wrongstack/core/worktree';
 import { capabilitiesFor } from '@wrongstack/providers';
 import { createToolVisionAdapters } from '@wrongstack/runtime/vision';
@@ -495,6 +495,17 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           model: context.model,
           banner: !flags['no-banner'],
           queueStore,
+          // `/resume` brings the resumed session's queue along; the WebUI
+          // keeps a session's queue in the same file.
+          queueStoreFor: (sessionId: string) => {
+            try {
+              return new QueueStore({
+                dir: sessionScopedPath(state.wpaths.projectSessions, sessionId, ''),
+              });
+            } catch {
+              return undefined;
+            }
+          },
           onQueueChange: (items: string[]) => {
             setQueuedMessagesSnapshot(context, items);
           },
@@ -760,6 +771,16 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
               };
             };
             return summaries.map((s) => toEntry(s));
+          },
+          forkSession: async (sessionId: string, checkpointPromptIndex: number) => {
+            const store = state.activeSessionStore;
+            if (!store?.fork) throw new Error('This session store cannot fork sessions.');
+            // From before the prompt: the TUI hands that prompt back to the composer.
+            const forked = await store.fork(sessionId, {
+              checkpointPromptIndex,
+              beforeCheckpointPrompt: true,
+            });
+            return { id: forked.id };
           },
           onResumeSession: withWorktreeSwitch(
             createTuiResumeCallback({ state, agent, tokenCounter, switchProviderAndModel, events }),

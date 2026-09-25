@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { scrubErrorText } from '../security/error-sanitize.js';
+import { activeLimits, positiveLimit } from '../types/config/limits.js';
 import { FetchError, ToolValidationError, WrongStackError } from '../types/errors.js';
 import type { ToolErrorCategory } from '../types/tool.js';
 import { ToolErrorCategory as ToolErrorCategoryEnum } from '../types/tool.js';
@@ -213,7 +214,11 @@ export async function maybePersistLargeToolOutput(
   budget: number,
 ): Promise<string> {
   const bytes = Buffer.byteLength(content, 'utf8');
-  if (bytes <= Math.min(TOOL_OUTPUT_ARTIFACT_THRESHOLD_BYTES, Math.max(0, budget))) {
+  // The user's `limits.toolOutputPreviewBytes` sizes both the inline cutoff
+  // and the preview; the full output always stays on disk either way.
+  const userPreview = positiveLimit(activeLimits().toolOutputPreviewBytes);
+  const inlineMax = userPreview ?? TOOL_OUTPUT_ARTIFACT_THRESHOLD_BYTES;
+  if (bytes <= Math.min(inlineMax, Math.max(0, budget))) {
     return content;
   }
 
@@ -229,7 +234,7 @@ export async function maybePersistLargeToolOutput(
       'read/grep that file selectively instead of re-running or requesting more output]';
     const fixedBytes = Buffer.byteLength(marker + TOOL_OUTPUT_ARTIFACT_OMISSION, 'utf8');
     const previewBytes = Math.min(
-      TOOL_OUTPUT_ARTIFACT_PREVIEW_BYTES,
+      userPreview ?? TOOL_OUTPUT_ARTIFACT_PREVIEW_BYTES,
       Math.max(0, budget - fixedBytes),
     );
     if (previewBytes < 256) return marker;

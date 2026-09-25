@@ -13,7 +13,7 @@ import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, DependencyScope, EcosystemId, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
 import { xmlTagValue } from './parse-utils.js';
-import { manifestEvidence } from './paths.js';
+import { manifestEvidence, resolveIn, workspaceRoot } from './paths.js';
 
 interface MavenDependency {
   readonly groupId: string;
@@ -104,20 +104,21 @@ export class MavenAdapter implements EcosystemAdapter {
 
   async inventory(
     workspace: Workspace,
-    _options: InventoryOptions,
+    options: InventoryOptions,
   ): Promise<readonly DependencyObservation[]> {
     const observations: DependencyObservation[] = [];
     const pomPath = workspace.manifests.find((m) => m.includes('pom.xml'));
     if (!pomPath) return [];
+    const resolvedPomPath = resolveIn(workspaceRoot(workspace, options), pomPath);
 
     let content: string;
     try {
-      content = readFileSync(pomPath, 'utf-8');
+      content = readFileSync(resolvedPomPath, 'utf-8');
     } catch {
       return [];
     }
 
-    const manifestEv = manifestEvidence(pomPath);
+    const manifestEv = manifestEvidence(resolvedPomPath);
     const deps = parsePomDependencies(content);
     const seen = new Set<string>();
 

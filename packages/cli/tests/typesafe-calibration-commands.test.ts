@@ -251,7 +251,7 @@ describe('replay-topic-shift', () => {
   it('reports only prompts that pass the local gate, with both classifiers', async () => {
     writeSession();
     host.providerReply = '{"decision":"new_context","confidence":0.9}';
-    const { code, out } = await run(replayTopicShift, { json: true });
+    const { code, out } = await run(replayTopicShift, { json: true, 'max-context': '200000' });
     expect(code).toBe(0);
     const report = JSON.parse(out) as {
       scanned: number;
@@ -268,7 +268,7 @@ describe('replay-topic-shift', () => {
   it('records why the provider gave no answer, and the agreement where Jev is decisive', async () => {
     writeSession();
     host.providerReply = 'I think this is a new topic.';
-    const { code, out } = await run(replayTopicShift);
+    const { code, out } = await run(replayTopicShift, { 'max-context': '200000' });
     expect(code).toBe(0);
     expect(out).toContain('10 prompt(s) scanned in 1 session file(s); 1 passed the local gate');
     expect(out).toContain('new 1  same 0');
@@ -278,10 +278,16 @@ describe('replay-topic-shift', () => {
   });
 
   it('runs Jev alone with --no-llm and survives a missing sessions directory', async () => {
-    const { code, out } = await run(replayTopicShift, { 'no-llm': true });
+    const { code, out } = await run(replayTopicShift, { 'no-llm': true, 'max-context': '200000' });
     expect(code).toBe(0);
     expect(out).toContain('0 prompt(s) scanned in 0 session file(s)');
     expect(out).not.toContain('Provider classifier');
+  });
+
+  it('refuses to guess a window when neither the flag nor the catalog knows it', async () => {
+    const { code, out } = await run(replayTopicShift, { 'no-llm': true });
+    expect(code).toBe(2);
+    expect(out).toContain('Pass --max-context');
   });
 });
 

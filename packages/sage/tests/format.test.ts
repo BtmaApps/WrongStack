@@ -82,18 +82,13 @@ describe('formatMemoryHintsDetailed', () => {
     expect(result.text).toContain('(npm test)');
   });
 
-  it('truncates when memory text exceeds maxChars', () => {
+  it('keeps the first memory whole even when it alone exceeds maxChars', () => {
     const longText = 'A'.repeat(500);
     const memory = makeMemory('1', { text: longText });
     const result = formatMemoryHintsDetailed([memory], { maxChars: 100 });
-    expect(result.text.length).toBeLessThan(200);
-    expect(result.text).toContain('…');
-  });
-
-  it('returns empty when no memory fits after truncation', () => {
-    const memory = makeMemory('1', { text: 'Short enough.' });
-    const result = formatMemoryHintsDetailed([memory], { maxChars: 10 });
-    expect(result).toEqual({ text: '', memoryIds: [] });
+    expect(result.text).toContain(longText);
+    expect(result.text).not.toContain('…');
+    expect(result.memoryIds).toEqual(['mem_1']);
   });
 
   it('stops at previous memory when a new one does not fit', () => {
@@ -177,20 +172,11 @@ describe('formatMemoryHintsDetailed', () => {
   // FULL rendered line: prefix + <memory id> fence + ellipsis + close tag.
   // r33: the wrapper was not subtracted, so the fallback overflowed maxChars
   // by the wrapper length (~48 chars for a ULID id).
-  it('keeps the single-item fallback inside maxChars (fence wrapper budgeted)', () => {
-    const memory = makeMemory('oversized', { text: 'A'.repeat(500) });
-    const result = formatMemoryHintsDetailed([memory], { maxChars: 150 });
-    expect(result.text).toContain('…');
-    expect(result.text).toContain('</memory>');
+  it('budgets how many memories go in, never how much of one', () => {
+    const m1 = makeMemory('oversized', { text: 'A'.repeat(500) });
+    const m2 = makeMemory('next', { text: 'Second' });
+    const result = formatMemoryHintsDetailed([m1, m2], { maxChars: 150 });
+    expect(result.text).toContain(`${'A'.repeat(500)}</memory>`);
     expect(result.memoryIds).toEqual(['mem_oversized']);
-    expect(result.text.length).toBeLessThanOrEqual(150);
-  });
-
-  it('returns empty when even a minimal fenced item cannot fit maxChars', () => {
-    // Default heading (57 chars) + prefix + fence wrapper + ellipsis already
-    // exceed 100 — emitting anything would violate the budget.
-    const memory = makeMemory('oversized', { text: 'A'.repeat(500) });
-    const result = formatMemoryHintsDetailed([memory], { maxChars: 100 });
-    expect(result).toEqual({ text: '', memoryIds: [] });
   });
 });

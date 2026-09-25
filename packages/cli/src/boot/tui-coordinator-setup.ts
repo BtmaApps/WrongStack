@@ -120,7 +120,6 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
                 content: [userPrompt],
               },
             ],
-            maxTokens: 1024,
             temperature: 0,
           },
           { signal: context.signal },

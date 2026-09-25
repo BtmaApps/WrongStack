@@ -1,6 +1,7 @@
 import { FileText } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
+import { LimitsSection } from './LimitsSection';
 import { PluginToggleList } from './PluginToggleList';
 import { PreferenceSelect } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
@@ -138,6 +139,8 @@ export function ContextSettingsTab({
           onChange={(v) => syncPref('tokenSavingTier', v)}
         />
       </div>
+
+      <LimitsSection syncPref={syncPref} />
 
       {/* Per-Plugin Toggle List */}
       <PluginToggleList syncPref={syncPref} />

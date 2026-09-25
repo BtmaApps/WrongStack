@@ -7,7 +7,9 @@ import {
   expandSharedSystemInstructions,
   readBundledInstructionText,
 } from '../utils/instruction-file.js';
-import type { SystemInstructionVariant } from './instruction-bundle.js';
+
+/** Which bundled system instruction a preset or session starts from. */
+export type SystemInstructionVariant = 'default' | 'lite' | 'pro';
 
 export interface SystemPromptPreset {
   id: string;

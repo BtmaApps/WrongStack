@@ -18,6 +18,7 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { activeLimits, positiveLimit } from '../types/config/limits.js';
 import type { Tool } from '../types/tool.js';
 import {
   formatProjectSuppliedBlock,
@@ -27,9 +28,6 @@ import type { Context } from './context.js';
 
 /** Checked in order in each directory; the first one that exists wins. */
 const INSTRUCTION_FILE_NAMES = ['AGENTS.md', 'CLAUDE.md'] as const;
-
-const ROOT_MAX_CHARS = 32_768;
-const NESTED_MAX_CHARS = 16_384;
 
 interface InstructionFile {
   file: string;
@@ -51,9 +49,11 @@ async function readInstructionFile(dir: string): Promise<InstructionFile | undef
   return undefined;
 }
 
-function capText(text: string, max: number, rel: string): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}\n\n[truncated at ${max} characters; read ${rel} for the rest]`;
+/** Apply the user's `limits.projectInstructionsChars`, if any. */
+function capInstructions(text: string, rel: string): string {
+  const max = positiveLimit(activeLimits().projectInstructionsChars);
+  if (max === undefined || text.length <= max) return text;
+  return `${text.slice(0, max)}\n\n[cut at ${max} characters by limits.projectInstructionsChars; read ${rel} for the rest]`;
 }
 
 function toPosix(rel: string): string {
@@ -66,7 +66,10 @@ function renderRoot(file: InstructionFile, projectRoot: string): string {
   return formatProjectSuppliedBlock({
     tag: PROJECT_SUPPLIED_INSTRUCTIONS_TAG,
     source: rel,
-    body: capText(file.text, ROOT_MAX_CHARS, rel),
+    // The whole file unless the user set `limits.projectInstructionsChars`:
+    // these are the user's own rules, and a built-in cut silently dropped
+    // whatever came after it.
+    body: capInstructions(file.text, rel),
     notice: [
       'Project instructions from the repository you are working in. Follow them',
       'for work in this project unless they conflict with your operating rules above',
@@ -96,7 +99,8 @@ export class RootInstructionsCache {
       this.cached = undefined;
       return '';
     }
-    const key = `${current.file}|${current.mtimeMs}`;
+    // The user's cap is part of the key so a settings change re-renders.
+    const key = `${current.file}|${current.mtimeMs}|${activeLimits().projectInstructionsChars ?? ''}`;
     if (this.cached?.key === key) return this.cached.text;
     const file = await readInstructionFile(projectRoot);
     const text = file ? renderRoot(file, projectRoot) : '';
@@ -148,7 +152,7 @@ async function collectDirectoryInstructions(
     const block = formatProjectSuppliedBlock({
       tag: PROJECT_SUPPLIED_INSTRUCTIONS_TAG,
       source: rel,
-      body: capText(file.text, NESTED_MAX_CHARS, rel),
+      body: capInstructions(file.text, rel),
       notice: [
         `${previous ? 'Updated directory' : 'Directory'} instructions for work under ${scope}/, from the repository.`,
         'Follow them for files in that directory unless they conflict with your operating',

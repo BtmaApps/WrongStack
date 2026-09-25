@@ -278,6 +278,14 @@ export function validateAction(action: {
       return { valid: true, value: payload };
     }
 
+    case 'checkpointFork': {
+      const promptIndex = Number(action.promptIndex);
+      if (!Number.isInteger(promptIndex) || promptIndex < 0) {
+        return { valid: false, error: `${type}.promptIndex: not a checkpoint index.` };
+      }
+      return { valid: true, value: payload };
+    }
+
     case 'pickerSetMatches':
     case 'slashPickerSetMatches': {
       const matches = action.matches;
@@ -624,6 +632,8 @@ export function validateAction(action: {
     case 'bugHuntRunningOpen':
     case 'bugHuntRunningClose':
     case 'rewindOverlayClose':
+    case 'forkRequestDone':
+    case 'messageJumpClear':
     case 'countdownEnded':
     case 'cancelSend':
     case 'submit':

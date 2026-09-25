@@ -49,7 +49,6 @@ export function makeProviderClassifier(
             },
           ],
           messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-          maxTokens: 120,
           temperature: 0,
         },
         { signal: ctrl.signal },

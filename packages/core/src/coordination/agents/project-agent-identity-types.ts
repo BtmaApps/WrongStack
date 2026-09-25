@@ -75,8 +75,6 @@ export interface LearnedCaptureResult {
   reason?: string | undefined;
   /** Skills the captured directives were routed to, if any. */
   skills?: string[] | undefined;
-  /** Older directives evicted to keep the buffer inside its budget. */
-  evicted?: number | undefined;
 }
 
 /**

@@ -222,7 +222,12 @@ export function UserInputDialog() {
       >
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-10 sm:px-6">
           <DialogTitle>{request.title}</DialogTitle>
-          {request.description && <DialogDescription>{request.description}</DialogDescription>}
+          {/* Line breaks carry structure (an MCP page request puts the URL on its own line). */}
+          {request.description && (
+            <DialogDescription className="whitespace-pre-line">
+              {request.description}
+            </DialogDescription>
+          )}
           {queuedForSession > 1 && (
             <p className="text-left text-xs text-muted-foreground">
               {t('activity:userInput.queuedForms', { count: queuedForSession })}

@@ -63,7 +63,7 @@ describe('ServerRequestResponder', () => {
   it('declares elicitation only when it can answer it', () => {
     expect(new ServerRequestResponder().capabilities()).toEqual({});
     expect(new ServerRequestResponder(async () => ({ action: 'cancel' })).capabilities()).toEqual({
-      elicitation: {},
+      elicitation: { form: {}, url: {} },
     });
   });
 
@@ -102,20 +102,37 @@ describe('ServerRequestResponder', () => {
     expect(
       await r.answer({ id: 2, method: 'elicitation/create', params: { requestedSchema: {} } }),
     ).toMatchObject({ error: { code: -32602 } });
+    // URL mode needs an id, and only a web page is ever handed to the browser.
     expect(
       await r.answer({
         id: 3,
         method: 'elicitation/create',
         params: { mode: 'url', message: 'Sign in', url: 'https://x.example' },
       }),
-    ).toMatchObject({ error: { code: -32602, message: expect.stringContaining('URL-mode') } });
+    ).toMatchObject({ error: { code: -32602, message: expect.stringContaining('elicitationId') } });
+    for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'not a url']) {
+      expect(
+        await r.answer({
+          id: 4,
+          method: 'elicitation/create',
+          params: { mode: 'url', message: 'Sign in', url, elicitationId: 'e1' },
+        }),
+      ).toMatchObject({ error: { code: -32602 } });
+    }
+    expect(
+      await r.answer({
+        id: 5,
+        method: 'elicitation/create',
+        params: { mode: 'sms', message: 'x' },
+      }),
+    ).toMatchObject({ error: { code: -32602, message: expect.stringContaining('"sms"') } });
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('parses every field shape the spec revisions use', async () => {
     let fields: ElicitationField[] = [];
     const r = new ServerRequestResponder(async (form) => {
-      fields = form.fields;
+      if (form.mode !== 'url') fields = form.fields;
       return { action: 'cancel' };
     });
     await r.answer({
@@ -374,6 +391,74 @@ describe('elicitViaUserInput', () => {
   });
 });
 
+describe('elicitViaUserInput in URL mode', () => {
+  const page = (requester?: { requestUserInput: never }): MCPElicitationRequest => ({
+    mode: 'url',
+    message: 'Connect your calendar',
+    url: 'https://auth.example.com/connect?elicitationId=e1',
+    elicitationId: 'e1',
+    server: 'calendar',
+    requester,
+    signal: new AbortController().signal,
+  });
+  const choose = (option: string) =>
+    answering((req) => ({
+      requestId: req.id,
+      status: 'submitted',
+      answers: [{ questionId: 'url', selectedOptionIds: [option], usedRecommendation: false }],
+    }));
+
+  it('shows the full URL and the site, and opens it only when the user picks that', async () => {
+    const openUrl = vi.fn();
+    const user = choose('open');
+    expect(await elicitViaUserInput(page(user as never), undefined, { openUrl })).toEqual({
+      action: 'accept',
+      content: {},
+    });
+    expect(openUrl).toHaveBeenCalledWith('https://auth.example.com/connect?elicitationId=e1');
+    const form = user.requests[0]!;
+    expect(form.title).toBe('MCP server "calendar" asks you to open auth.example.com');
+    expect(form.description).toContain('Page: https://auth.example.com/connect?elicitationId=e1');
+    expect(form.description).toContain('Site: auth.example.com');
+    expect(form.tabs[0]?.questions[0]?.options?.map((o) => o.id)).toEqual([
+      'open',
+      'self',
+      'decline',
+    ]);
+  });
+
+  it('agrees without opening when the user opens it, and declines or cancels otherwise', async () => {
+    const openUrl = vi.fn();
+    expect(await elicitViaUserInput(page(choose('self') as never), undefined, { openUrl })).toEqual(
+      { action: 'accept', content: {} },
+    );
+    expect(
+      await elicitViaUserInput(page(choose('decline') as never), undefined, { openUrl }),
+    ).toEqual({ action: 'decline' });
+    const dismissed = answering((req) => ({ requestId: req.id, status: 'cancelled', answers: [] }));
+    expect(await elicitViaUserInput(page(dismissed as never), undefined, { openUrl })).toEqual({
+      action: 'decline',
+    });
+    // Nobody to ask (or nobody answering in an unattended run): never opened.
+    expect(await elicitViaUserInput(page(answering() as never), undefined, { openUrl })).toEqual({
+      action: 'cancel',
+    });
+    expect(openUrl).not.toHaveBeenCalled();
+  });
+
+  it('offers no "open" when the host cannot open a browser, and warns about lookalike or plain-http sites', async () => {
+    const user = choose('self');
+    await elicitViaUserInput({
+      ...page(user as never),
+      url: 'http://xn--pple-43d.com/login',
+    });
+    const form = user.requests[0]!;
+    expect(form.tabs[0]?.questions[0]?.options?.map((o) => o.id)).toEqual(['self', 'decline']);
+    expect(form.description).toContain('punycode');
+    expect(form.description).toContain('not served over HTTPS');
+  });
+});
+
 // ── Real servers ───────────────────────────────────────────────────────────
 
 /**
@@ -393,7 +478,12 @@ rl.createInterface({ input: process.stdin, terminal: false }).on('line', (line) 
     caps = m.params.capabilities;
     send({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'elicit', version: '1' } } });
   } else if (m.method === 'tools/list') {
-    send({ jsonrpc: '2.0', id: m.id, result: { tools: [{ name: 'ask', inputSchema: { type: 'object' } }] } });
+    send({ jsonrpc: '2.0', id: m.id, result: { tools: [{ name: 'ask', inputSchema: { type: 'object' } }, { name: 'open_page', inputSchema: { type: 'object' } }, { name: 'needs_page', inputSchema: { type: 'object' } }] } });
+  } else if (m.method === 'tools/call' && m.params.name === 'needs_page') {
+    send({ jsonrpc: '2.0', id: m.id, error: { code: -32042, message: 'This request requires more information.', data: { elicitations: [{ mode: 'url', elicitationId: 'e-9', url: 'https://example.com/connect?elicitationId=e-9', message: 'Authorize Example Co' }] } } });
+  } else if (m.method === 'tools/call' && m.params.name === 'open_page') {
+    pendingCall = m.id;
+    send({ jsonrpc: '2.0', id: 'srv-1', method: 'elicitation/create', params: { mode: 'url', elicitationId: 'e-1', url: 'https://example.com/connect?elicitationId=e-1', message: 'Connect Example Co' } });
   } else if (m.method === 'tools/call') {
     pendingCall = m.id;
     send({ jsonrpc: '2.0', id: 'srv-1', method: 'elicitation/create', params: { message: 'Deploy?', requestedSchema: ${JSON.stringify(DEPLOY_SCHEMA)} } });
@@ -467,13 +557,75 @@ describe('elicitation over stdio', () => {
       String(await tool.execute({}, ctx as never, { signal: ctx.signal })),
     ) as { caps: unknown; reply: unknown };
 
-    expect(out.caps).toEqual({ elicitation: {} });
+    expect(out.caps).toEqual({ elicitation: { form: {}, url: {} } });
     expect(out.reply).toEqual({
       action: 'accept',
       content: { env: 'prod', replicas: 3, notify: true },
     });
     expect(slowUser).toHaveBeenCalledOnce();
     expect(slowUser.mock.calls[0]?.[0].title).toContain('"deployer"');
+  });
+
+  it('puts a URL-mode request to the user and answers with their consent only', {
+    timeout: 30_000,
+  }, async () => {
+    const scriptPath = writeStdioServer();
+    cleanups.push(() => unlinkSync(scriptPath));
+    const toolRegistry = new ToolRegistry();
+    const opened: string[] = [];
+    const registry = new MCPRegistry({
+      toolRegistry,
+      events: new EventBus(),
+      log: silentLog,
+      elicitationHandler: (request) =>
+        elicitViaUserInput(request, undefined, { openUrl: (url) => opened.push(url) }),
+    });
+    cleanups.push(() => registry.stopAll());
+    await registry.start({
+      name: 'pages',
+      transport: 'stdio',
+      command: process.execPath,
+      args: [scriptPath],
+      startupTimeoutMs: 30_000,
+    });
+    const tool = (name: string) => {
+      const found = toolRegistry.list().find((t) => t.name === `mcp__pages__${name}`);
+      if (!found) throw new Error(`${name} not registered`);
+      return found;
+    };
+    const user = answering(
+      (req) => ({
+        requestId: req.id,
+        status: 'submitted',
+        answers: [{ questionId: 'url', selectedOptionIds: ['open'], usedRecommendation: false }],
+      }),
+      (req) => ({
+        requestId: req.id,
+        status: 'submitted',
+        answers: [{ questionId: 'url', selectedOptionIds: ['self'], usedRecommendation: false }],
+      }),
+    );
+    const ctx = { requestUserInput: user.requestUserInput, signal: new AbortController().signal };
+
+    const out = JSON.parse(
+      String(await tool('open_page').execute({}, ctx as never, { signal: ctx.signal })),
+    ) as { reply: unknown };
+    // Consent only: no content crosses the protocol in URL mode.
+    expect(out.reply).toEqual({ action: 'accept' });
+    expect(opened).toEqual(['https://example.com/connect?elicitationId=e-1']);
+
+    // A call the server refuses with -32042 puts its page to the same user,
+    // and the model is told what they chose and whether to call again.
+    await expect(
+      tool('needs_page').execute({}, ctx as never, { signal: ctx.signal }),
+    ).rejects.toThrow(
+      /needs the user to finish a step in the browser[\s\S]*example\.com: Authorize Example Co \(the user agreed to open it\)[\s\S]*call the tool again/,
+    );
+    expect(user.requests.map((r) => r.title)).toEqual([
+      'MCP server "pages" asks you to open example.com',
+      'MCP server "pages" asks you to open example.com',
+    ]);
+    expect(opened).toHaveLength(1);
   });
 
   it('declares nothing and refuses the request when the host cannot ask', {
@@ -588,7 +740,7 @@ describe('elicitation over Streamable HTTP', () => {
 
     const result = await client.callTool('ask', {});
 
-    expect(declared).toEqual({ elicitation: {} });
+    expect(declared).toEqual({ elicitation: { form: {}, url: {} } });
     expect(result.isError).toBe(false);
     expect(JSON.stringify(result.content)).toContain(
       JSON.stringify(JSON.stringify({ action: 'accept', content: { name: 'Ada' } })).slice(1, -1),
@@ -650,7 +802,7 @@ describe('elicitation over SSE', () => {
 
     const result = await client.callTool('ask', {});
 
-    expect(declared).toEqual({ elicitation: {} });
+    expect(declared).toEqual({ elicitation: { form: {}, url: {} } });
     expect(JSON.stringify(result.content)).toContain('decline');
   });
 });

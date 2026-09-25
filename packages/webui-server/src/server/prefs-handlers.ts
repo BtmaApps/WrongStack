@@ -139,6 +139,15 @@ function routingPatch(payload: Record<string, unknown>): Record<string, unknown>
     patch['modelMatrix'] = payload['modelMatrix'];
   }
   if (typeof payload['fallbackAuto'] === 'boolean') patch['fallbackAuto'] = payload['fallbackAuto'];
+  // Limits are read live from the ConfigStore (`activeLimits`), so updating
+  // the store is what makes a change apply on the next use.
+  if (
+    payload['limits'] &&
+    typeof payload['limits'] === 'object' &&
+    !Array.isArray(payload['limits'])
+  ) {
+    patch['limits'] = payload['limits'];
+  }
   return patch;
 }
 

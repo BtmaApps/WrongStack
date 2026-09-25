@@ -11,4 +11,5 @@ export * from './config/skills-fleet-brain.js';
 export * from './config/typesafe.js';
 export * from './config/ui.js';
 export * from './config/update.js';
+export * from './config/limits.js';
 export * from './config/root.js';

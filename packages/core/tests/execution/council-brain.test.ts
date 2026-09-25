@@ -694,9 +694,10 @@ describe('makeSeatCallerForVoter — wire fidelity', () => {
 });
 
 describe('createCouncilBrainArbiter — voter output budget', () => {
-  it('defaults voterMaxTokens to 2000 instead of the orchestrator 300', async () => {
+  it('leaves the voter output budget to the model by default', async () => {
     // Brain panels are routinely built from reasoning models whose thinking
-    // tokens count against maxTokens; 300 starved them into `invalid` votes.
+    // tokens count against maxTokens; every fixed default (300, then 2000)
+    // starved some of them into `invalid` votes.
     const provider = fakeProvider(vote('merge'));
     const council = createCouncilBrainArbiter({
       voters: [
@@ -708,7 +709,7 @@ describe('createCouncilBrainArbiter — voter output budget', () => {
     const request = (provider.complete as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
       maxTokens?: number;
     };
-    expect(request.maxTokens).toBe(2000);
+    expect(request.maxTokens).toBeUndefined();
   });
 
   it('honours an explicit voterMaxTokens override', async () => {

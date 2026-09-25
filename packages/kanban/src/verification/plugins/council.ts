@@ -23,9 +23,6 @@ import type { VerifierPlugin } from '../verifier-plugin.js';
 export const COUNCIL_CHECK_PASS_OPTION = 'criterion_met';
 export const COUNCIL_CHECK_FAIL_OPTION = 'criterion_not_met';
 
-/** Files quoted to the panel and turned into backing refs. */
-export const MAX_COUNCIL_EVIDENCE_FILES = 40;
-
 /** The subset of a core `CouncilResult` this plugin consumes. */
 export interface CouncilCheckOutcome {
   status: 'decided' | 'denied' | 'abstained' | 'failed' | 'cancelled';
@@ -212,7 +209,9 @@ export class CouncilVerifierPlugin implements VerifierPlugin {
   ): Promise<Array<{ path: string; operation: string; linesAdded: number; linesRemoved: number }>> {
     try {
       const diff = await context.diffSince();
-      return diff.slice(0, MAX_COUNCIL_EVIDENCE_FILES);
+      // Every changed file: a fixed cut hid part of a large change from the
+      // panel judging it.
+      return diff;
     } catch {
       // A diff failure must not take the check down — it becomes a panel with
       // no evidence, which the pass path above already refuses to certify.

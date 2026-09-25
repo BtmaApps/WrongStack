@@ -12,6 +12,7 @@ import {
   isPersistentApproval,
 } from '../security/scoped-approval.js';
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
+import type { NestedToolCaller } from '../types/context.js';
 import type { SessionEvent } from '../types/session.js';
 import type { Tool, ToolSettlement } from '../types/tool.js';
 import { recordToolOutputEvidence } from '../utils/context-evidence.js';
@@ -358,7 +359,14 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     });
   }
 
-  async function executeTools(toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]> {
+  /**
+   * The one gate every tool call goes through, whether the model made it or a
+   * script composing tools did: the extension filter, the executor
+   * (validation, hooks, permission), a user confirmation when one is needed,
+   * the tool-call pipeline and the `tool.executed` event. Returns the results
+   * and their journal records; appending them is the caller's.
+   */
+  async function runGatedCalls(toolUses: ToolUseBlock[]) {
     const selectedToolUses = await a.extensions.runBeforeToolExecution(a.ctx, toolUses);
 
     const { outputs } = await a.toolExecutor.executeBatch(
@@ -544,6 +552,12 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       );
     }
 
+    return { resultsForMessage, sessionEvents, outputs };
+  }
+
+  async function executeTools(toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]> {
+    const { resultsForMessage, sessionEvents, outputs } = await runGatedCalls(toolUses);
+
     // Batch-append all tool_result events to the session log in one call.
     // This replaces N sequential append() calls (one per tool result) with a
     // single batch write, avoiding N-1 function calls, scrub/observe cycles,
@@ -582,6 +596,39 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     await a.extensions.runAfterToolExecution(a.ctx, outputs);
     return resultsForMessage;
   }
+
+  /**
+   * One call from inside a running tool, through {@link runGatedCalls}. It is
+   * journaled as a call of its own (`tool_use` then `tool_result`, id
+   * `<parent>~<n>`), so the session shows it and a rewind covers its file
+   * changes; its result goes back to the tool, not into the conversation.
+   */
+  const runNestedToolCall: NestedToolCaller = async (call) => {
+    const use: ToolUseBlock = {
+      type: 'tool_use',
+      id: `${call.parentToolUseId}~${call.index}`,
+      name: call.name,
+      input: (call.input && typeof call.input === 'object' ? call.input : {}) as Record<
+        string,
+        unknown
+      >,
+    };
+    const writer = a.ctx.activeRunSessionWriter ?? a.ctx.session;
+    await writer.append({
+      type: 'tool_use',
+      ts: new Date().toISOString(),
+      id: use.id,
+      name: use.name,
+      input: use.input,
+    });
+    const { resultsForMessage, sessionEvents, outputs } = await runGatedCalls([use]);
+    if (sessionEvents.length > 0) await writer.appendBatch(sessionEvents);
+    await a.extensions.runAfterToolExecution(a.ctx, outputs);
+    const result = resultsForMessage[0];
+    if (!result) return { content: `Tool "${call.name}" was not run.`, isError: true };
+    return { content: String(result.content), isError: !!result.is_error };
+  };
+  a.ctx.nestedToolCall = runNestedToolCall;
 
   return { executeTools, executeSingleWithDecision };
 }

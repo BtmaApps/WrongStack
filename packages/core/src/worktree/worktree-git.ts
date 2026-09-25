@@ -7,9 +7,8 @@
  *
  * @module worktree/worktree-git
  */
-import { spawn } from 'node:child_process';
 import { resolve, sep } from 'node:path';
-import { buildChildEnv } from '../utils/child-env.js';
+import { runVcs } from '../vcs/vcs-runner.js';
 import type { RunResult } from './worktree-types.js';
 
 const MAX_SLUG = 40;
@@ -67,30 +66,12 @@ export async function identityArgs(runGit: GitRunner, cwd: string): Promise<stri
   return ['-c', `user.name=${name || 'Goal'}`, '-c', `user.email=${email || 'goal@agent.local'}`];
 }
 
-export function defaultRun(gitBin: string, args: string[], cwd: string): Promise<RunResult> {
-  return new Promise((res) => {
-    let stdout = '';
-    let stderr = '';
-    // Bound the captured output — a merge/status against a huge worktree
-    // can emit MBs that nothing reads in full (parseConflictPaths only
-    // scans for CONFLICT lines). 1 MB matches grep.ts's buffer cap.
-    const MAX_GIT_OUTPUT = 1_000_000;
-    const child = spawn(gitBin, args, {
-      cwd,
-      env: buildChildEnv(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      signal: AbortSignal.timeout(30_000),
-      windowsHide: true,
-    });
-    child.stdout?.on('data', (c: Buffer) => {
-      if (stdout.length < MAX_GIT_OUTPUT) stdout += c.toString();
-    });
-    child.stderr?.on('data', (c: Buffer) => {
-      if (stderr.length < MAX_GIT_OUTPUT) stderr += c.toString();
-    });
-    child.on('error', (err) => res({ code: 1, stdout, stderr: err.message }));
-    child.on('close', (code) => res({ code: code ?? 1, stdout, stderr }));
-  });
+export async function defaultRun(gitBin: string, args: string[], cwd: string): Promise<RunResult> {
+  // Bound the captured output — a merge/status against a huge worktree
+  // can emit MBs that nothing reads in full (parseConflictPaths only
+  // scans for CONFLICT lines). 1 MB matches grep.ts's buffer cap.
+  const { code, stdout, stderr } = await runVcs(gitBin, args, cwd, { maxOutputBytes: 1_000_000 });
+  return { code, stdout, stderr };
 }
 
 /**

@@ -10,9 +10,9 @@ import {
 } from '@wrongstack/core/agent-catalog';
 import { TOKENS } from '@wrongstack/core/kernel';
 import type { SubagentConfig } from '@wrongstack/core/types';
+import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import { formatMemoryEvidenceBlock, formatProjectSuppliedBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed, getSageRetrieval } from '@wrongstack/sage';
-
 import type { MultiAgentDeps } from './host-types.js';
 
 /**
@@ -253,7 +253,7 @@ export async function retrieveHostSubagentMemory(
     // stored instruction reach every worker of that role as instructions.
     const rendered = formatMemoryHintsDetailed(eligible, {
       heading: 'SAGE: project memory for this agent role',
-      maxChars: SUBAGENT_AUDIENCE_MEMORY_CHARS,
+      maxChars: positiveLimit(activeLimits().memoryInjectChars) ?? SUBAGENT_AUDIENCE_MEMORY_CHARS,
     });
     if (!rendered.text || rendered.memoryIds.length === 0) return undefined;
     try {

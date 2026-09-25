@@ -289,8 +289,8 @@ describe('vLLM preset', () => {
     });
   });
 
-  it('advertises a larger default context window than Ollama/LM Studio', () => {
-    expect(vllmWireFormat.capabilities.maxContext).toBe(32_768);
+  it('does not invent a context window (it depends on the served model)', () => {
+    expect(vllmWireFormat.capabilities.maxContext).toBe(0);
   });
 
   it('maps length finish_reason to max_tokens stop reason', async () => {

@@ -23,6 +23,7 @@ import { TopicShiftAdvisor, type TopicShiftDiagnostic } from '@wrongstack/core/e
 import type { Message } from '@wrongstack/core/types';
 import { resolveTypeSafeAccount } from '@wrongstack/core/typesafe';
 import { color } from '@wrongstack/core/utils';
+import { resolveRuntimeMaxContext } from '../../context-limit.js';
 import type { SubcommandDeps } from '../contracts.js';
 import { createProviderForId } from './modeldiag-eval.js';
 
@@ -129,7 +130,6 @@ export async function replayTopicShift(
     return 2;
   }
   const limit = Math.max(1, Number(flags['limit']) || 40);
-  const maxContext = Math.max(1, Number(flags['max-context']) || 200_000);
   const sessionsRoot =
     typeof flags['sessions'] === 'string'
       ? path.resolve(flags['sessions'])
@@ -138,6 +138,25 @@ export async function replayTopicShift(
   const providerId =
     typeof flags['provider'] === 'string' ? flags['provider'] : deps.config.provider;
   const model = typeof flags['model'] === 'string' ? flags['model'] : deps.config.model;
+  // The replayed window is the model's real one: an explicit flag, else the
+  // catalog. Never a guessed default — the advisor's verdict depends on it.
+  const flagMaxContext = Number(flags['max-context']);
+  const maxContext =
+    Number.isFinite(flagMaxContext) && flagMaxContext > 0
+      ? Math.floor(flagMaxContext)
+      : await resolveRuntimeMaxContext({
+          modelsRegistry: deps.modelsRegistry,
+          config: deps.config,
+          provider: { capabilities: { maxContext: 0 } } as never,
+          providerId,
+          modelId: model,
+        }).catch(() => 0);
+  if (maxContext <= 0) {
+    write(
+      `${color.red('✗')} Context window of ${providerId}/${model} is unknown. Pass --max-context <tokens>.`,
+    );
+    return 2;
+  }
   const provider =
     flags['no-llm'] === true
       ? undefined

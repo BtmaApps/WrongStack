@@ -59,5 +59,10 @@ export interface UserInputResponse {
 
 export type UserInputAwaiter = (
   request: UserInputRequest,
-  options: { signal: AbortSignal; sessionId?: string | undefined },
+  options: {
+    signal: AbortSignal;
+    sessionId?: string | undefined;
+    /** The asking conversation's context meta (its autonomy mode, among others). */
+    meta?: Readonly<Record<string, unknown>> | undefined;
+  },
 ) => Promise<UserInputResponse | undefined>;

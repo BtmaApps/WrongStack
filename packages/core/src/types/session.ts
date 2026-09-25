@@ -52,9 +52,15 @@ export interface WorkspaceCheckpointRef {
   entryCount: number;
   unresolvedCount: number;
   capturedAt: string;
-  /** Base Git tree plus every non-ignored changed/untracked path. */
-  coverage: 'git-head-plus-dirty';
+  /** The base commit of the checkout plus every non-ignored changed/untracked path. */
+  coverage: WorkspaceCheckpointCoverage;
 }
+
+/** Which version control the checkpoint's base commit belongs to. */
+export type WorkspaceCheckpointCoverage =
+  | 'git-head-plus-dirty'
+  | 'jj-head-plus-dirty'
+  | 'hg-head-plus-dirty';
 
 export interface WorkspaceMaterializationResult {
   targetRoot: string;
@@ -192,6 +198,12 @@ export interface ResumedSession {
 export interface SessionForkOptions {
   /** Omit to fork the latest persisted event boundary. */
   checkpointPromptIndex?: number | undefined;
+  /**
+   * Fork from just before the checkpoint's prompt rather than just after it,
+   * leaving that prompt out so it can be sent again or changed. The prompt is
+   * recorded before its checkpoint, so a plain checkpoint fork carries it.
+   */
+  beforeCheckpointPrompt?: boolean | undefined;
 }
 
 export interface ForkedSession {

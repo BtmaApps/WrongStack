@@ -77,6 +77,14 @@ export function wrapMCPTool(
         // the in-flight work, instead of it running to completion server-side.
         const signal = opts?.signal ?? ctx?.signal;
         const res = await live.callTool(mcpTool.name, input, signal ? { signal } : undefined);
+        if (res.urlElicitations && res.urlElicitations.length > 0) {
+          // Still inside the call, so the pages go to this run's user.
+          const outcomes = await live.presentUrlElicitations(
+            res.urlElicitations,
+            signal ?? new AbortController().signal,
+          );
+          throw new Error(describeUrlOutcomes(serverName, qualifiedName, outcomes));
+        }
         if (res.isError) {
           const errText = stringify(res.content);
           throw new Error(errText || `MCP tool "${qualifiedName}" failed`);
@@ -93,6 +101,32 @@ export function wrapMCPTool(
       }
     },
   };
+}
+
+/** What the model is told after a `-32042`: which pages, what the user chose, whether to retry. */
+function describeUrlOutcomes(
+  serverName: string,
+  toolName: string,
+  outcomes: Awaited<ReturnType<MCPClient['presentUrlElicitations']>>,
+): string {
+  const lines = outcomes.map(({ elicitation, action }) => {
+    const site = new URL(elicitation.url).host;
+    const choice =
+      action === 'accept'
+        ? 'the user agreed to open it'
+        : action === 'decline'
+          ? 'the user declined'
+          : 'no answer';
+    return `- ${site}: ${elicitation.message} (${choice})`;
+  });
+  const agreed = outcomes.length > 0 && outcomes.every((o) => o.action === 'accept');
+  return [
+    `MCP server "${serverName}" needs the user to finish a step in the browser before "${toolName}" can run:`,
+    ...lines,
+    agreed
+      ? 'Ask the user to tell you when they have finished, then call the tool again.'
+      : 'The user did not agree to every page, so do not call the tool again unless they ask.',
+  ].join('\n');
 }
 
 /**

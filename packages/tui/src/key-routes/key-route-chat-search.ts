@@ -10,6 +10,7 @@
 import type { KeyEvent } from '../components/input.js';
 import { previousGraphemeIndex } from '../input-graphemes.js';
 import type { KeyRouteContext } from '../key-handler-context.js';
+import { checkpointForMessage } from '../message-checkpoint.js';
 
 /** Thinking cards are only searchable while they are shown. */
 export function chatSearchIncludesReasoning(ctx: Pick<KeyRouteContext, 'getSettings'>): boolean {
@@ -73,9 +74,46 @@ export function routeChatSearch(ctx: KeyRouteContext, input: string, key: KeyEve
   return true;
 }
 
-/** Alt+↑ / Alt+↓: jump to the previous / next message the user sent. */
+/**
+ * Alt+↑ / Alt+↓: jump to the previous / next message the user sent.
+ *
+ * The marked message then takes one key: Enter on an empty composer opens
+ * the rewind timeline at that message's checkpoint (Enter rewinds, `f`
+ * forks), Esc lets go of it. Any other key lets go of it too and does its
+ * usual job, so a mark left behind never captures a later Enter.
+ */
 export function routeMessageJump(ctx: KeyRouteContext, _input: string, key: KeyEvent): boolean {
-  if (!key.meta || key.ctrl || !(key.upArrow || key.downArrow)) return false;
-  ctx.dispatch({ type: 'messageJump', direction: key.upArrow ? -1 : 1 });
+  if (key.meta && !key.ctrl && (key.upArrow || key.downArrow)) {
+    ctx.dispatch({ type: 'messageJump', direction: key.upArrow ? -1 : 1 });
+    return true;
+  }
+  const { state } = ctx;
+  const marked = state.messageJump.entryId;
+  if (marked === null) return false;
+  // Scrolling to read around the message keeps it marked.
+  if (key.mouse || key.pageUp || key.pageDown) return false;
+  if (key.escape) {
+    ctx.dispatch({ type: 'messageJumpClear' });
+    return true;
+  }
+  const plainEnter = key.return && !key.meta && !key.ctrl && !key.shift;
+  const empty = ctx.draftRef.current.buffer === '';
+  if (!plainEnter || !empty || ctx.pasteAccumRef.current !== null) {
+    ctx.dispatch({ type: 'messageJumpClear' });
+    return false;
+  }
+  ctx.dispatch({ type: 'messageJumpClear' });
+  if (state.checkpoints.length === 0) {
+    ctx.dispatch({ type: 'hint', text: 'No checkpoints in this session yet.' });
+    return true;
+  }
+  const selected = checkpointForMessage(state.entries, state.checkpoints, marked);
+  ctx.dispatch({ type: 'rewindOverlayOpen', selected });
+  if (selected === undefined) {
+    ctx.dispatch({
+      type: 'hint',
+      text: 'That message could not be matched to a checkpoint; pick it in the list.',
+    });
+  }
   return true;
 }

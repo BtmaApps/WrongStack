@@ -24,20 +24,6 @@ export function isTruncated(stopReason: string | undefined): boolean {
 }
 
 /**
- * Output budget for one single-LLM Brain decision.
- *
- * 200 was sized for "one option id plus a one-sentence rationale", which is
- * true of the OUTPUT but not of the BUDGET: a reasoning model's thinking
- * tokens are drawn from the same allowance, so 200 leaves an empty or
- * mid-JSON response, the parse fails, and the tier reports `unparseable` —
- * i.e. the LLM tier silently never decides anything for that model. This is
- * the exact failure the council hit and fixed with
- * `BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS`; the single-LLM tier shares the
- * root cause and now shares the budget.
- */
-export const DEFAULT_BRAIN_MAX_TOKENS = 2000;
-
-/**
  * Per-call decision timeout. 15s starves the same reasoning models the token
  * budget did — they spend it thinking and the call is aborted mid-response.
  * Matches `BRAIN_COUNCIL_DEFAULT_PER_CALL_TIMEOUT_MS`.
@@ -132,7 +118,10 @@ export async function completeBrainLlmDetailed(
           model: target.model,
           system: [{ type: 'text', text: input.system }],
           messages: [{ role: 'user', content: input.user || 'Decide.' }],
-          maxTokens: input.maxTokens ?? DEFAULT_BRAIN_MAX_TOKENS,
+          // Unset = the model's ceiling: a reasoning model's thinking draws from
+          // this same allowance, and fixed caps (200, then 2000) left empty or
+          // mid-JSON replies that the tier reported as `unparseable`.
+          ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
           ...(input.responseFormat ? { responseFormat: input.responseFormat } : {}),
         },
         { signal },
@@ -285,7 +274,7 @@ export async function llmDecide(
   const systemPrompt = readBundledInstructionText('llm/autonomy-brain.md');
   const userMessage = withDecisionDigest(buildBrainUserMessage(request), digest);
 
-  const effectiveMaxTokens = maxTokens ?? DEFAULT_BRAIN_MAX_TOKENS;
+  const effectiveMaxTokens = maxTokens;
   // Bound the whole pool walk, not just each call. Without this a deep
   // fallback chain of dead endpoints blocks the caller for N x timeoutMs.
   const overallBudgetMs = timeoutMs * Math.min(targets.length, BRAIN_LLM_MAX_BUDGETED_ATTEMPTS);
@@ -372,7 +361,9 @@ export async function llmDecide(
   // so in the deny reason, or the same symptom reads as an unparseable
   // response forever - the council learned this as `withTruncationNote`.
   const withTruncation = (reason: string): string =>
-    truncated ? reason + ' (response truncated at maxTokens=' + effectiveMaxTokens + ')' : reason;
+    truncated
+      ? `${reason} (response truncated at ${effectiveMaxTokens === undefined ? "the model's output ceiling" : `maxTokens=${effectiveMaxTokens}`})`
+      : reason;
 
   const minConfidence = quality?.minConfidence ?? 0;
   const rejectUncertain = quality?.rejectUncertain ?? true;

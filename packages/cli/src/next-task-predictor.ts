@@ -37,23 +37,12 @@ interface PredictOpts {
 
 const SYSTEM_PROMPT = readBundledInstructionText('cli/next-task-predictor.md');
 
-const MAX_REQUEST_CHARS = 1200;
-const MAX_SUMMARY_CHARS = 1200;
-
-/** Clamp a string to `n` chars, appending an ellipsis when truncated. */
-function clamp(text: string, n: number): string {
-  const t = text.trim();
-  return t.length <= n ? t : `${t.slice(0, n)}…`;
-}
-
 /** Build the user-message text from the turn context. Pure + testable. */
 export function buildPredictionPrompt(input: PredictionInput): string {
   const parts: string[] = [];
-  parts.push(`The user asked:\n${clamp(input.userRequest, MAX_REQUEST_CHARS) || '(no text)'}`);
+  parts.push(`The user asked:\n${input.userRequest.trim() || '(no text)'}`);
   if (input.assistantSummary.trim()) {
-    parts.push(
-      `The assistant just finished and reported:\n${clamp(input.assistantSummary, MAX_SUMMARY_CHARS)}`,
-    );
+    parts.push(`The assistant just finished and reported:\n${input.assistantSummary.trim()}`);
   }
   const pending = input.todos.filter((t) => t.status !== 'completed');
   if (pending.length > 0) {
@@ -132,7 +121,6 @@ export async function predictNextTasks(
         messages: [
           { role: 'user', content: [{ type: 'text', text: buildPredictionPrompt(input) }] },
         ],
-        maxTokens: 160,
         temperature: 0.3,
       },
       { signal: internal.signal },

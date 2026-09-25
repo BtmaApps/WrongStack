@@ -14,6 +14,15 @@ import { atomicWrite } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
 import { sessionScopedPath } from '../utils/session-scoped-path.js';
 
+/** The text of a recorded prompt; image and document blocks carry none. */
+function userInputText(content: Extract<SessionEvent, { type: 'user_input' }>['content']): string {
+  if (typeof content === 'string') return content;
+  return content
+    .map((block) => (block.type === 'text' ? block.text : ''))
+    .filter((text) => text.length > 0)
+    .join('\n');
+}
+
 export interface SessionRewinderOptions {
   sessionsDir: string;
   /** The project root directory; used to validate rewind targets stay inside it. */
@@ -94,13 +103,23 @@ export class DefaultSessionRewinder implements SessionRewinder {
     const file = this.sessionFile(sessionId);
     let foundTarget = false;
     let removedEvents = 0;
+    let lastInput: string | undefined;
+    let promptText: string | undefined;
     const snapshotsToRevert: Array<{ promptIndex: number; files: FileSnapshot[] }> = [];
     for await (const event of this.readEvents(file)) {
+      if (event.type === 'user_input') lastInput = userInputText(event.content);
       if (event.type === 'checkpoint') {
         const checkpointEvent = event as { promptIndex: number };
         if (checkpointEvent.promptIndex === checkpointIndex) {
-          foundTarget = true;
-          continue;
+          // After an earlier rewind to this index the journal holds it twice
+          // (the kept one and the next prompt's). The cut is at the first,
+          // which takes the later prompt back too, so that later prompt is
+          // the one handed back.
+          promptText = lastInput;
+          if (!foundTarget) {
+            foundTarget = true;
+            continue;
+          }
         }
       }
       if (!foundTarget) continue;
@@ -126,7 +145,30 @@ export class DefaultSessionRewinder implements SessionRewinder {
     // caller truncates the journal all the way back, leaving the working tree
     // and the conversation in different eras.
     const result = await revertSnapshots(snapshotsToRevert, this.projectRoot);
-    return { ...result, toPromptIndex: checkpointIndex, removedEvents };
+    return {
+      ...result,
+      toPromptIndex: checkpointIndex,
+      removedEvents,
+      ...(promptText !== undefined ? { promptText } : {}),
+    };
+  }
+
+  /**
+   * The prompt checkpoint `checkpointIndex` was taken for: the `user_input`
+   * the agent recorded just before writing it, for the newest checkpoint with
+   * that index (a rewind leaves an older one behind). Undefined when the
+   * checkpoint or its input is not in the journal.
+   */
+  async promptAt(sessionId: string, checkpointIndex: number): Promise<string | undefined> {
+    let lastInput: string | undefined;
+    let promptText: string | undefined;
+    for await (const event of this.readEvents(this.sessionFile(sessionId))) {
+      if (event.type === 'user_input') lastInput = userInputText(event.content);
+      else if (event.type === 'checkpoint' && event.promptIndex === checkpointIndex) {
+        promptText = lastInput;
+      }
+    }
+    return promptText;
   }
 
   async rewindLastN(sessionId: string, n: number): Promise<RewindResultExtended> {

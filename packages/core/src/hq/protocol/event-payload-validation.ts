@@ -537,7 +537,7 @@ function isHqUserInputResolvedPayload(x: unknown): x is HqUserInputResolvedPaylo
     typeof v['requestId'] === 'string' &&
     typeof v['response'] === 'object' &&
     v['response'] !== null &&
-    (v['source'] === 'user' || v['source'] === 'abort')
+    (v['source'] === 'user' || v['source'] === 'abort' || v['source'] === 'unattended')
   );
 }
 

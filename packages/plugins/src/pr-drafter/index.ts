@@ -201,7 +201,6 @@ async function buildDraft(
         {
           system: 'You write terse engineering PR descriptions.',
           role: 'document',
-          maxTokens: 250,
         },
       );
       const text = result.text.trim();

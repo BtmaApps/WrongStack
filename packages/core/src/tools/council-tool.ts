@@ -16,9 +16,6 @@ import type {
 import type { JSONSchema, Tool } from '../types/tool.js';
 
 export const COUNCIL_TOOL_NAME = 'council';
-export const MAX_COUNCIL_TOOL_OPTIONS = 12;
-export const MAX_COUNCIL_QUESTION_CHARS = 20_000;
-export const MAX_COUNCIL_CONTEXT_CHARS = 80_000;
 
 export interface CouncilToolInput {
   question: string;
@@ -44,16 +41,13 @@ const INPUT_SCHEMA: JSONSchema = {
     question: {
       type: 'string',
       description: 'The decision or open question for the Council.',
-      maxLength: MAX_COUNCIL_QUESTION_CHARS,
     },
     context: {
       type: 'string',
       description: 'Optional evidence and constraints. Treated as untrusted quoted data.',
-      maxLength: MAX_COUNCIL_CONTEXT_CHARS,
     },
     options: {
       type: 'array',
-      maxItems: MAX_COUNCIL_TOOL_OPTIONS,
       items: {
         type: 'object',
         properties: {
@@ -142,15 +136,6 @@ function validateCouncilToolInput(input: CouncilToolInput, profileIds: string[])
   }
   const question = input.question?.trim() ?? '';
   if (!question) errors.push('`question` must not be empty.');
-  if (question.length > MAX_COUNCIL_QUESTION_CHARS) {
-    errors.push(`\`question\` must not exceed ${MAX_COUNCIL_QUESTION_CHARS} characters.`);
-  }
-  if ((input.context?.length ?? 0) > MAX_COUNCIL_CONTEXT_CHARS) {
-    errors.push(`\`context\` must not exceed ${MAX_COUNCIL_CONTEXT_CHARS} characters.`);
-  }
-  if ((input.options?.length ?? 0) > MAX_COUNCIL_TOOL_OPTIONS) {
-    errors.push(`\`options\` must not contain more than ${MAX_COUNCIL_TOOL_OPTIONS} items.`);
-  }
   // Shared rule set with the prompt builder (normalizeOptions) — one place
   // owns the id/label/duplicate checks.
   errors.push(...validateCouncilOptions(input.options));

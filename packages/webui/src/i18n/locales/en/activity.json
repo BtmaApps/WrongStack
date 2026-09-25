@@ -715,7 +715,12 @@
     "newTerminal": "New terminal",
     "restart": "Restart active terminal",
     "closeAll": "Close all terminals",
-    "closeDock": "Close terminal dock (Ctrl+`)",
+    "hideDock": "Hide terminal dock (Ctrl+`) — terminals keep running",
+    "stripLabel": "Terminals",
+    "stripExited": "exited ({{code}})",
+    "stripOutputTitle": "Last lines of {{name}}",
+    "stripOpen": "Open",
+    "stripNoOutput": "No output yet.",
     "closeTab": "Close {{name}}",
     "processExited": "[process exited with code {{code}}]"
   },

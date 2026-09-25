@@ -18,7 +18,7 @@ export interface WSUserInputResolved {
   payload: SessionScopedPayload & {
     requestId: string;
     response: UserInputResponse;
-    source: 'user' | 'abort';
+    source: 'user' | 'abort' | 'unattended';
   };
 }
 export interface WSUserInputSubmit {

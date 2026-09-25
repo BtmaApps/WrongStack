@@ -23,11 +23,6 @@ import { estimateRequestTokens } from '../utils/token-estimate.js';
  */
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-/**
- * Default max output tokens when the caller doesn't specify.
- */
-const DEFAULT_MAX_TOKENS = 1024;
-
 type CallAttempt =
   | { response: Response; error?: never; fallbackEligible: false }
   | { response?: never; error: unknown; fallbackEligible: boolean };
@@ -337,7 +332,9 @@ export class OneShotOrchestrator {
       model,
       ...(system.length > 0 ? { system } : {}),
       messages,
-      maxTokens: input.maxTokens ?? DEFAULT_MAX_TOKENS,
+      // Unset = the model's own ceiling (catalog `limit.output`, resolved on
+      // the wire). A literal default here truncated reasoning models mid-answer.
+      ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
       ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
       ...(input.responseFormat ? { responseFormat: input.responseFormat } : {}),
     };

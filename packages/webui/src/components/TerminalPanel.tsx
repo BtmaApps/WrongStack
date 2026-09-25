@@ -12,6 +12,7 @@ import { i18n, useAppTranslation } from '@/i18n';
 import { terminalFontOptions } from '@/lib/fonts';
 import { clampTerminalHeight, TERMINAL_HEIGHT_STORAGE_KEY } from '@/lib/terminal-dock';
 import { cn } from '@/lib/utils';
+import { noteTerminalOutput, useTerminalStripStore } from '@/stores/terminal-strip-store';
 
 /** A reasonable dark palette — terminals read best dark regardless of app theme. */
 const XTERM_THEME = {
@@ -88,13 +89,22 @@ function createTerminalTab(index: number): TerminalTab {
  * sessions (see server/terminal-ws-handler.ts). It now manages multiple PTYs
  * per project WebUI connection through tabs while keeping the dock itself in
  * the normal flex layout, so the main app remains scrollable.
+ *
+ * Hiding the dock (`hidden`) keeps its terminals running; the composer strip
+ * shows them meanwhile. Closing the last one, or all, disposes the dock.
  */
 export function TerminalPanel({
   desktopShell = false,
+  hidden = false,
   onClose,
+  onDispose,
 }: {
   desktopShell?: boolean | undefined;
+  hidden?: boolean | undefined;
+  /** Hide the dock; its terminals keep running. */
   onClose: () => void;
+  /** Every terminal is closed: the dock can go. */
+  onDispose: () => void;
 }) {
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const { t } = useAppTranslation();
@@ -154,6 +164,18 @@ export function TerminalPanel({
 
   useEffect(() => () => resizeCleanupRef.current?.(), []);
 
+  // The composer strip reads the terminals while the dock is hidden.
+  useEffect(() => {
+    useTerminalStripStore.getState().syncTabs(tabs);
+  }, [tabs]);
+  useEffect(() => () => useTerminalStripStore.getState().clear(), []);
+  const focusRequest = useTerminalStripStore((s) => s.focusRequest);
+  useEffect(() => {
+    if (focusRequest && tabs.some((tab) => tab.id === focusRequest.id)) {
+      setActiveId(focusRequest.id);
+    }
+  }, [focusRequest]);
+
   // Updaters must stay pure — the tab id side effects live outside setTabs
   // so a StrictMode double-invoke can't bump the counter or reselect twice.
   const addTerminal = () => {
@@ -176,7 +198,7 @@ export function TerminalPanel({
     const next = tabs.filter((tab) => tab.id !== id);
     setTabs(next);
     if (next.length === 0) {
-      queueMicrotask(onClose);
+      queueMicrotask(onDispose);
       return;
     }
     if (activeId === id) {
@@ -205,7 +227,7 @@ export function TerminalPanel({
   const closeAllTerminals = () => {
     setTabs([]);
     setActiveId('');
-    queueMicrotask(onClose);
+    queueMicrotask(onDispose);
   };
 
   const updateTabStatus = (
@@ -225,7 +247,9 @@ export function TerminalPanel({
       className={cn(
         'z-30 flex min-h-0 shrink-0 flex-col border-t border-border/70 bg-card shadow-2xl',
         desktopShell && 'ws-terminal-desktop',
+        hidden && 'hidden',
       )}
+      {...(hidden ? { 'aria-hidden': true } : {})}
     >
       <hr
         aria-orientation="horizontal"
@@ -286,7 +310,7 @@ export function TerminalPanel({
           <button
             type="button"
             onClick={onClose}
-            title={t('activity:terminal.closeDock')}
+            title={t('activity:terminal.hideDock')}
             className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -445,6 +469,7 @@ function TerminalSession({
           onRunningRef.current();
         }
         term.write(msg.payload.data);
+        noteTerminalOutput(id, msg.payload.data);
       }
     });
     const offExit = ws.on('terminal.exit', (msg: WSServerMessage) => {

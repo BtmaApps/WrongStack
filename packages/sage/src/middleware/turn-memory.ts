@@ -1,7 +1,9 @@
 import type { Middleware } from '@wrongstack/core/kernel';
 import {
+  activeLimits,
   type Message,
   markVolatileSystemBlock,
+  positiveLimit,
   type Request,
   type TextBlock,
 } from '@wrongstack/core/types';
@@ -197,7 +199,7 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
           const kept =
             dropped && dropped.size > 0 ? eligible.filter((m) => !dropped.has(m.id)) : eligible;
           const rendered = formatMemoryHintsDetailed(kept, {
-            maxChars: opts.maxChars ?? 2_400,
+            maxChars: opts.maxChars ?? positiveLimit(activeLimits().memoryInjectChars) ?? 2_400,
           });
           const renderedIds = new Set(rendered.text ? rendered.memoryIds : []);
           const previouslyRendered = renderedBySession.get(sessionKey);

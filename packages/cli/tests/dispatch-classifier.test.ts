@@ -114,7 +114,6 @@ describe('makeProviderClassifier', () => {
     expect(provider.complete).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'test-model',
-        maxTokens: 120,
         temperature: 0,
         system: expect.any(Array),
       }),

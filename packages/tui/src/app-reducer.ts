@@ -8,7 +8,7 @@ import { isDialogAction, reduceDialogs } from './reducers/dialogs.js';
 // Reducer — pure state transformation. Types are in app-state.ts.
 // This file has NO React or Ink dependencies.
 import { reduceFleetState } from './reducers/fleet.js';
-import { reduceMessageJump } from './reducers/message-jump.js';
+import { clearMessageJump, reduceMessageJump } from './reducers/message-jump.js';
 import { isPanelPickerAction, reducePanelPickers } from './reducers/panel-pickers.js';
 import { isSettingsPanelAction, reduceSettingsPanel } from './reducers/settings-panel.js';
 import { isSettingsValueAction, reduceSettingsValues } from './reducers/settings-values.js';
@@ -36,6 +36,7 @@ export function reducer(state: State, action: Action): State {
   if (isDialogAction(action)) return reduceDialogs(state, action);
   if (isChatSearchAction(action)) return reduceChatSearch(state, action);
   if (action.type === 'messageJump') return reduceMessageJump(state, action);
+  if (action.type === 'messageJumpClear') return clearMessageJump(state);
   if (isComposerAction(action)) return reduceComposer(state, action);
   if (isConversationAction(action)) return reduceConversation(state, action);
   if (isPanelPickerAction(action)) return reducePanelPickers(state, action);

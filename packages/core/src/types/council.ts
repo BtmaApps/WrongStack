@@ -110,8 +110,10 @@ export interface ResolvedCouncilProfile {
   /** No-op for optionless questions (see the config-level doc above). */
   approvalFraction: number;
   distinctness: CouncilDistinctness;
-  voterMaxTokens: number;
-  judgeMaxTokens: number;
+  /** Output cap per voter call; undefined = the model's own ceiling. */
+  voterMaxTokens: number | undefined;
+  /** Output cap per judge call; undefined = the model's own ceiling. */
+  judgeMaxTokens: number | undefined;
   perCallTimeoutMs: number;
   overallTimeoutMs: number;
   /** Voting rounds to run; 1 disables deliberation. See the config doc. */

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
+import { detectVcs } from '../vcs/vcs-adapter.js';
 import { atomicWrite } from './atomic-write.js';
 import { isUlid, ulid } from './ulid.js';
 
@@ -29,6 +30,17 @@ const PROJECT_GITIGNORE_RULES = [
   '!/.wrongstack/',
   '/.wrongstack/*',
   '!/.wrongstack/project.json',
+] as const;
+
+/**
+ * The same rules for Mercurial, which does not read `.gitignore`. Per-line
+ * `re:` leaves the syntax of the rest of the user's file alone. Every
+ * `.wrongstack/` file but `project.json` is ignored, at any depth.
+ */
+const PROJECT_HGIGNORE_HEADER = '# WrongStack local state';
+const PROJECT_HGIGNORE_RULES = [
+  're:(^|/)\\.temp_files/',
+  're:(^|/)\\.wrongstack/(?!project\\.json$)',
 ] as const;
 
 export function projectIdentityPath(projectRoot: string): string {
@@ -105,8 +117,35 @@ export async function rekeyProjectIdentity(
 /**
  * Keep local runtime and temporary state ignored while allowing the small,
  * explicitly shared WrongStack project contract to travel with the repository.
+ * In a Mercurial repository the repository's `.hgignore` gets the same rules.
  */
 export async function ensureProjectGitignore(projectRoot: string): Promise<void> {
+  await ensureGitignoreFile(projectRoot);
+  const vcs = await detectVcs(projectRoot);
+  if (vcs?.kind === 'hg') await ensureHgignoreFile(vcs.root);
+}
+
+async function ensureHgignoreFile(repoRoot: string): Promise<void> {
+  const filePath = path.join(repoRoot, '.hgignore');
+  let content = '';
+  try {
+    content = await fsPromises.readFile(filePath, 'utf8');
+  } catch (error) {
+    if (!isMissingFileError(error)) throw error;
+  }
+  const present = new Set(content.split(/\r?\n/).map((line) => line.trim()));
+  const missing = PROJECT_HGIGNORE_RULES.filter((rule) => !present.has(rule));
+  if (missing.length === 0) return;
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  const block = [
+    ...(present.has(PROJECT_HGIGNORE_HEADER) ? [] : [PROJECT_HGIGNORE_HEADER]),
+    ...missing,
+  ];
+  const separator = content.length === 0 ? '' : content.endsWith('\n') ? eol : `${eol}${eol}`;
+  await atomicWrite(filePath, `${content}${separator}${block.join(eol)}${eol}`);
+}
+
+async function ensureGitignoreFile(projectRoot: string): Promise<void> {
   const filePath = path.join(projectRoot, '.gitignore');
   let content = '';
   try {

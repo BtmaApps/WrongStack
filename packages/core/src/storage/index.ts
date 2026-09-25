@@ -224,10 +224,11 @@ export {
 export { stampAgentId, withAgentAttribution } from './session-agent-attribution.js';
 export { SessionAnalyzer } from './session-analyzer.js';
 export {
-  type CheckpointGitResult,
   SessionCheckpointCas,
   type SessionCheckpointCasOptions,
 } from './session-checkpoint-cas.js';
+export type { VcsAdapter, VcsKind, VcsOptions } from '../vcs/vcs-adapter.js';
+export type { VcsRunner, VcsRunResult } from '../vcs/vcs-runner.js';
 export {
   type CheckpointGcResult,
   collectReachableManifestHashes,
@@ -283,6 +284,7 @@ export {
   applyRewindToConversation,
   type RedoRewindResult,
   type RewindableConversation,
+  type RewoundConversation,
   redoLastRewind,
 } from './session-rewind-apply.js';
 export {

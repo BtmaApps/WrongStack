@@ -1151,6 +1151,7 @@
     "packages/tools/src/_util.ts": [
       "collapseCarriageReturns",
       "collapseConsecutiveDuplicates",
+      "COMMAND_OUTPUT_MAX_BYTES",
       "resolvePath",
       "truncateHeadTail"
     ],
@@ -1262,6 +1263,9 @@
     "packages/tools/src/tool-diff.ts": [
       "DIFF_LINE_SAFETY_CAP",
       "TOOL_DIFF_BROWSER_SRC"
+    ],
+    "packages/tools/src/tool-tier.ts": [
+      "BUILTIN_TIER_COUNTS"
     ],
     "packages/tui/src/app-key-handler.ts": [
       "stopNextStepsAutoSubmitOnKey"

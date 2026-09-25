@@ -3,7 +3,10 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { moduleDirFor } from '@wrongstack/persistence';
 import { expandSharedSystemInstructions } from '../utils/instruction-file.js';
-import { activeSystemPromptPresetText } from './system-prompt-presets.js';
+import {
+  activeSystemPromptPresetText,
+  type SystemInstructionVariant,
+} from './system-prompt-presets.js';
 
 export interface SystemInstructionBundle {
   identity?: string | undefined;
@@ -50,7 +53,9 @@ export interface InstructionBundle {
   sections?: Record<string, string> | undefined;
 }
 
-export type SystemInstructionVariant = 'default' | 'lite' | 'pro';
+// Defined beside the presets, which need it and are imported here; this
+// re-export keeps it where callers find it without a module cycle.
+export type { SystemInstructionVariant };
 
 export interface InstructionBundlePaths {
   /** Bundled instruction directory. Defaults to `<@wrongstack/core>/instructions`. */

@@ -20,6 +20,7 @@ import type {
   PluginManagerConfig,
   SageConfig,
 } from './mcp-features.js';
+import type { LimitsConfig } from './limits.js';
 import type { ModelTiersConfig } from './model-tiers.js';
 import type { ObservabilityConfig } from './observability.js';
 import type { CustomModelDefinition, ModelMatrixEntry, ProviderConfig } from './providers.js';
@@ -340,6 +341,11 @@ export interface Config {
   observability?: ObservabilityConfig | undefined;
   /** Standalone-binary self-update. User config only; denied to in-project configs. */
   update?: UpdateConfig | undefined;
+  /**
+   * User-chosen limits; every field optional, unset = no limit. User config
+   * only; denied to in-project configs. See {@link LimitsConfig}.
+   */
+  limits?: LimitsConfig | undefined;
   /**
    * Per-plugin namespaced config sections. Each plugin reads its own
    * subtree via `ConfigStore.getExtension(pluginName)`. Plugins should

@@ -100,7 +100,8 @@ export interface BrainPanelSettings {
   /** Effective heuristic toggles (defaults already filled in by the host). */
   heuristics: BrainPanelHeuristics;
   /** Single-LLM tier quality gate. */
-  llmMaxTokens: number;
+  /** undefined = the model's own output ceiling. */
+  llmMaxTokens?: number | undefined;
   llmRejectUncertain: boolean;
   llmMinConfidence: number;
   llmDenyIsTerminal: BrainDenyIsTerminal;
@@ -171,7 +172,7 @@ export interface BrainPanelHost {
    * positive integer"), so there is no "clear back to default" step here —
    * the preset ladders are number-only.
    */
-  setLlmMaxTokens(tokens: number): Promise<string | null>;
+  setLlmMaxTokens(tokens: number | undefined): Promise<string | null>;
   setLlmRejectUncertain(on: boolean): Promise<string | null>;
   setLlmMinConfidence(value: number): Promise<string | null>;
   setLlmDenyIsTerminal(mode: BrainDenyIsTerminal): Promise<string | null>;
@@ -325,7 +326,14 @@ export const AUTO_DENY_PRESETS: ReadonlyArray<number | undefined> = [undefined, 
  * fields, so there is no `undefined` ("back to default") rung — the default
  * value itself is the first rung.
  */
-export const LLM_MAX_TOKENS_PRESETS: readonly number[] = [200, 400, 800, 1_600, 3_200];
+export const LLM_MAX_TOKENS_PRESETS: ReadonlyArray<number | undefined> = [
+  undefined,
+  400,
+  800,
+  1_600,
+  3_200,
+  8_000,
+];
 export const LLM_MIN_CONFIDENCE_PRESETS: readonly number[] = [0, 0.3, 0.5, 0.7, 0.9];
 export const CACHE_TTL_PRESETS: readonly number[] = [
   60_000, 300_000, 900_000, 1_800_000, 3_600_000,
@@ -365,10 +373,9 @@ export const COUNCIL_JUDGE_MAX_TOKENS_PRESETS: ReadonlyArray<number | undefined>
   1_200,
 ];
 /**
- * Per-seat output budget rungs. The default is 2000 (see
- * `BRAIN_COUNCIL_DEFAULT_VOTER_MAX_TOKENS` in core) — reasoning models spend
- * their thinking tokens from this budget, so the rungs skew higher than the
- * judge ladder.
+ * Per-seat output budget rungs. The default (unset) is the model's own output
+ * ceiling — reasoning models spend their thinking tokens from this budget, so
+ * the rungs skew higher than the judge ladder.
  */
 /**
  * Deliberation round presets. Deliberately short: every step is another

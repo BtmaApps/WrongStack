@@ -25,6 +25,7 @@ import {
   type AgentPipelines,
   type Context,
   createEventUserInputAwaiter,
+  isUnattendedAutonomy,
 } from '@wrongstack/core/agent';
 import type { CollaborationBus, ObservableBrainArbiter } from '@wrongstack/core/coordination';
 import type {
@@ -433,7 +434,11 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   });
 
   // Agent
-  context.userInputAwaiter ??= createEventUserInputAwaiter(events);
+  // A form nobody answers while the tab runs eternal / parallel autonomy gets
+  // no answer after the approval wait instead of holding the run.
+  context.userInputAwaiter ??= createEventUserInputAwaiter(events, {
+    isUnattended: (meta) => isUnattendedAutonomy(meta?.['autonomy']),
+  });
   const secretScrubber = container.resolve(TOKENS.SecretScrubber);
   const renderer = container.has(TOKENS.Renderer) ? container.resolve(TOKENS.Renderer) : undefined;
   const permissionPolicy = container.resolve(TOKENS.PermissionPolicy);

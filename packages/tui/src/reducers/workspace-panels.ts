@@ -181,6 +181,8 @@ const workspacePanelActionTypes = [
   'rewindOverlayOpen',
   'rewindOverlayClose',
   'rewindOverlayMove',
+  'checkpointFork',
+  'forkRequestDone',
   'sessionRewound',
   'eternalStage',
   'goalSummary',
@@ -351,15 +353,34 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
         : { ...state, connectionsPanelOpen: false };
     }
     case 'checkpointReceived': {
-      const existing = state.checkpoints.find((c) => c.promptIndex === action.cp.promptIndex);
-      if (existing) return state;
+      // A prompt sent after a rewind to index N is checkpointed as N again.
+      // The newer one describes the prompt now at N; keeping the first showed
+      // the rewound prompt's preview for it.
+      const existing = state.checkpoints.findIndex((c) => c.promptIndex === action.cp.promptIndex);
+      if (existing >= 0) {
+        const held = state.checkpoints[existing];
+        // A resume replays checkpoints the list already has; nothing to redraw.
+        if (held?.ts === action.cp.ts && held.promptPreview === action.cp.promptPreview) {
+          return state;
+        }
+        const checkpoints = [...state.checkpoints];
+        checkpoints[existing] = action.cp;
+        return { ...state, checkpoints };
+      }
       return { ...state, checkpoints: retainCheckpoints([...state.checkpoints, action.cp]) };
     }
-    case 'rewindOverlayOpen':
-      return {
-        ...state,
-        rewindOverlay: { checkpoints: state.checkpoints, selected: state.checkpoints.length - 1 },
-      };
+    case 'rewindOverlayOpen': {
+      const last = state.checkpoints.length - 1;
+      const selected =
+        action.selected !== undefined && action.selected >= 0 && action.selected <= last
+          ? action.selected
+          : last;
+      return { ...state, rewindOverlay: { checkpoints: state.checkpoints, selected } };
+    }
+    case 'checkpointFork':
+      return { ...state, rewindOverlay: null, forkRequest: { promptIndex: action.promptIndex } };
+    case 'forkRequestDone':
+      return { ...state, forkRequest: null };
     case 'rewindOverlayClose':
       return { ...state, rewindOverlay: null };
     case 'rewindOverlayMove': {

@@ -83,6 +83,7 @@ boundary while preserving encrypted credential material.
   "themePreset": "catppuccin",
   "modelMatrix": { /* ... */ },
   "modelTiers": { /* ... */ },
+  "limits": { /* ... */ },
   "chronicle": { "retentionDays": 30 },
   "cloudSync": { /* ... */ },
   "fleet": { /* ... */ },
@@ -134,6 +135,7 @@ boundary while preserving encrypted credential material.
 | `chronicle` | `object` | `{ retentionDays: 30 }` | Chronicle durable-journal retention. Rotated partitions older than `retentionDays` are auto-purged after append batches. `0` disables auto-purge; positive values below `7` are clamped up to `7` so a repo-committed config cannot flush recent evidence. |
 | `observability` | `ObservabilityConfig` | — | OTLP export of traces and metrics. See [`observability`](#observability--otlp-export) below. User config only; stripped from in-project config. |
 | `update` | `UpdateConfig` | `{ "autoDownload": true }` | Background self-update of the standalone executable. See [`update`](#update--standalone-self-update) below. User config only; stripped from in-project config. |
+| `limits` | `LimitsConfig` | `{}` | Your own ceilings on output tokens, tool-output previews, fetched pages, injected text, history length and default subagent budgets. Every field unset = no limit. See [`limits`](#limits--your-own-ceilings) below. User config only; stripped from in-project config. |
 | `cloudSync` | `CloudSyncConfig` | — | my.wrongstack.com config synchronization. Carries the machine bearer token and portal endpoint, so it is on the in-project deny list and honoured only from the active profile config. Distinct from `sync` (GitHub-repo based, stored in `sync.json`). |
 
 ---
@@ -151,10 +153,10 @@ only things you already configured:
 
 `version`, `model`, `cwd`, `context`, `tools`, `features`, `Sage`, `skills`, `autonomy`, `indexing`, `session`, `chronicle`, `log`, `launch`, `nextPrediction`, `hints`, `debugStream`, `configScope`, `maxConcurrent`, `uiLocale`, `themePreset`, `fallbackModels`, `fallbackBridge`, `fallbackProfiles`, `fallbackProfile`, `favoriteModels`, `favoriteModelsOnly`, `modelAvailabilitySchedule`, `fallbackAuto`, `fallbackStickiness`, `fallbackGateSeconds`, `models`, `modelMatrix`, `modelTiers`, `circuitBreaker`, `adaptiveConcurrency`, `modelRuntime`
 
-**Denied** (22) — each carries a credential, an exec surface, or a control the
+**Denied** (23) — each carries a credential, an exec surface, or a control the
 operator owns:
 
-`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`, `observability`, `update`
+`activeProfile`, `provider`, `apiKey`, `baseUrl`, `providers`, `mcpServers`, `hooks`, `plugins`, `pluginManager`, `sync`, `cloudSync`, `yolo`, `systemPrompt`, `extensions`, `hq`, `acp`, `fleet`, `brain`, `git`, `fallbackMaxLastResortCandidates`, `observability`, `update`, `limits`
 
 `systemPrompt` is denied for a reason worth stating: the `lite` variant omits
 whole sections of `system.md`, among them **Tool output trust boundary** — the
@@ -595,6 +597,72 @@ Wire-level behavior flags for OpenAI-compatible and family-overridden providers.
 | `parallelToolsDisabled` | `boolean` | Disable parallel tool calls. Set for endpoints that return errors when multiple tool calls appear in a single response. |
 | `thinkingParam` | `'zai-glm' \| 'kimi-toggle' \| 'always-on'` | Control how thinking/reasoning parameters are serialized. `zai-glm` maps effort to Z.AI's `reasoning_effort` values; `kimi-toggle` uses Kimi's `{ type: 'enabled' }` toggle; `always-on` suppresses disabled-thinking parameters for models that reject them. |
 | `stripThinkTags` | `boolean` | Route literal `<think>` tags to the thinking channel and drop stray closers. For models that emit raw think tags in content instead of structured thinking blocks. |
+
+---
+
+## `limits` — your own ceilings
+
+WrongStack ships no invented caps. The context window, the output-token
+maximum and the rest come from the model catalog or the provider; when those
+are unknown, nothing is capped. `limits` is where **you** set a ceiling when
+you want one. Every field is optional, and an unset field means no limit.
+
+```jsonc
+{
+  "limits": {
+    "responseOutputTokens": 16000,
+    "historyMessages": 400,
+    "toolOutputPreviewBytes": 65536,
+    "fetchBytes": 2000000,
+    "projectInstructionsChars": 40000,
+    "memoryInjectChars": 3000,
+    "subagentResultChars": 8000,
+    "subagentDefaultBudget": { "maxIterations": 40, "maxToolCalls": 80, "timeoutMs": 900000 }
+  }
+}
+```
+
+| Field | Applies to | When unset | Allowed range |
+|---|---|---|---|
+| `responseOutputTokens` | Output tokens per model response. Lowered to the model's own maximum when that is smaller. A `maxTokens` passed explicitly by a caller still wins. | The model's catalog maximum, or none. | ≥ 1,024 (max: the model's own ceiling) |
+| `historyMessages` | Messages kept in the live conversation before the oldest are dropped. | No count limit; compaction and the model's window bound the history. | ≥ 20 |
+| `toolOutputPreviewBytes` | The inline preview of large tool output (shell, exec, git, …). The full output is still written to disk and can be read back. | 32 KiB preview. | 1,024 – 67,108,864 (64 MiB) |
+| `fetchBytes` | Bytes kept from a page read by `fetch` / `read_url`. | The whole page (a 64 MiB memory guard remains). | 1,024 – 67,108,864 (64 MiB) |
+| `projectInstructionsChars` | Characters of `AGENTS.md` / `CLAUDE.md` placed in the prompt. The cut is marked and names the file to read for the rest. | The whole file. | ≥ 1,000 |
+| `memoryInjectChars` | Characters of automatically injected SAGE memory per injection. | The built-in injection size. | ≥ 500 |
+| `subagentResultChars` | Characters of a subagent's result shown inline. | 4000. | ≥ 500 |
+| `subagentDefaultBudget` | `maxIterations`, `maxToolCalls`, `timeoutMs` for a subagent spawned without its own budget. Auto-extend still raises it while the agent makes progress. | The roster's light tier. | iterations ≥ 2 · tool calls ≥ 1 · timeout 10,000 – 2,147,483,647 ms |
+
+Every value must be a whole number inside its range. The ranges live in one
+table (`LIMIT_BOUNDS`, `packages/core/src/types/config/limits.ts`) that the
+CLI, the WebUI and the server all validate against:
+
+- A **minimum** is the point below which the setting breaks the agent rather
+  than trimming it — for example, fewer than 20 history messages evicts the
+  running turn's own tool calls, and fewer than 1,024 output tokens cuts off a
+  reply that calls a tool.
+- A **maximum** exists only where something real sits above it: tools never
+  hold more than 64 MiB in memory, and Node's timer overflows above
+  2,147,483,647 ms and fires at once. Elsewhere the model, the catalog or the
+  provider is the upper bound, so no number is invented for it.
+
+`/settings limits` and the WebUI refuse an out-of-range value and say why. A
+hand-edited `config.json` is not checked on write, so the runtime pulls such a
+value into range when it reads it, and `/settings limits` marks it
+"out of range, applied as …". The runtime reads the block live, so a
+change applies on the next use without a restart.
+
+Where to set it:
+
+- **CLI / TUI:** `/settings limits` lists every limit;
+  `/settings limits <name> <n>` sets one; `/settings limits <name> off` clears
+  it. Names are kebab-case (`response-output-tokens`, `history-messages`,
+  `subagent-max-iterations`, …).
+- **WebUI:** Settings → Context → **Limits**. Leave a field empty for no limit.
+- **config.json:** the block above, in the active profile.
+
+`limits` is on the in-project deny list: a repo-committed config must not be
+able to shrink what the agent can see.
 
 ---
 

@@ -141,5 +141,9 @@ export {
   type SystemPromptVariantPaths,
   systemPromptVariantLabel,
 } from './system-prompt-variants.js';
-export { createEventUserInputAwaiter } from './user-input-awaiter.js';
+export {
+  createEventUserInputAwaiter,
+  type EventUserInputAwaiterOptions,
+  isUnattendedAutonomy,
+} from './user-input-awaiter.js';
 export { markUserInputObserver, userInputObserverCount } from './user-input-observers.js';

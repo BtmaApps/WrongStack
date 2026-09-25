@@ -41,8 +41,8 @@ describe('Council profiles', () => {
       quorumFraction: 0.5,
       approvalFraction: 0.5,
       distinctness: 'model',
-      voterMaxTokens: 300,
-      judgeMaxTokens: 500,
+      voterMaxTokens: undefined,
+      judgeMaxTokens: undefined,
       perCallTimeoutMs: 30_000,
       deliberationRounds: 2,
       // The overall budget covers EVERY round, so the default scales with the

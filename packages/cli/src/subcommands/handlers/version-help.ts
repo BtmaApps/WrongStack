@@ -42,6 +42,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['wstack webui | simpleui', 'Browser UI / minimal chat UI for this project'],
       ['wstack desktop', 'WrongStack Desktop (requires @wrongstack/desktop)'],
       ['wstack hq', 'HQ command center across projects and machines'],
+      ['wstack remote <user@host:/path>', 'Run on a remote machine over SSH; WebUI tunneled here'],
       ['wstack --eternal "<mission>"', 'Eternal-autonomy loop against a goal (Ctrl+C stops)'],
       ['wstack acp [serve]', 'Agent Client Protocol server for editors'],
     ]),

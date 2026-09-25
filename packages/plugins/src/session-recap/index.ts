@@ -606,7 +606,6 @@ const plugin: Plugin = {
             {
               system: 'You write concise engineering session recaps.',
               role: 'document',
-              maxTokens: 200,
               timeoutMs: 3000,
               signal: hookContext?.signal,
             },

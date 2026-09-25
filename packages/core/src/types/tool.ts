@@ -207,7 +207,15 @@ export interface Tool<I = unknown, O = unknown> {
    * Each UI maps this id to its own icon library.
    */
   icon?: ToolIconId | undefined;
-  execute(input: I, ctx: AgentContext, opts: { signal: AbortSignal }): Promise<O>;
+  execute(
+    input: I,
+    ctx: AgentContext,
+    opts: {
+      signal: AbortSignal;
+      /** The id of this call, when the executor runs it for a `tool_use` block. */
+      toolUseId?: string | undefined;
+    },
+  ): Promise<O>;
   /**
    * Optional cross-field validation hook. Called by the executor AFTER
    * JSON Schema validation passes and AFTER PreToolUse hooks may have

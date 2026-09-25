@@ -191,7 +191,6 @@ describe('/prompts command verbs', () => {
     expect(complete).toHaveBeenCalledWith(expect.stringContaining('Dear team'), {
       system: 'You improve reusable prompts while preserving their intent and variables.',
       role: 'prompt-refiner',
-      maxTokens: 2_048,
     });
     expect((await store.find('Letter'))[0]?.content).toBe('Dear esteemed team');
   });

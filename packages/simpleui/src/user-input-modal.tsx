@@ -172,7 +172,9 @@ export function UserInputModal({
           <span className="fallback-modal-title">{pending.request.title}</span>
         </div>
         {pending.request.description && (
-          <p className="fallback-modal-hint">{pending.request.description}</p>
+          <p className="fallback-modal-hint" style={{ whiteSpace: 'pre-line' }}>
+            {pending.request.description}
+          </p>
         )}
         {queuedCount > 1 && <p className="fallback-modal-hint">Form 1 of {queuedCount} waiting</p>}
         {pending.request.tabs.length > 1 && (

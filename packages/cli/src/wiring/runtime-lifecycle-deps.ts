@@ -112,12 +112,11 @@ async function validateAutoProceed(
             content: [
               {
                 type: 'text',
-                text: `The autonomous agent just completed a turn and generated this top-ranked next-step suggestion:\n\n"${suggestion}"\n\n${lastOutput ? `Recent agent output:\n${lastOutput.slice(0, 500)}\n\n` : ''}Should the agent auto-proceed with this suggestion, or should a human review first?\n\nReply YES to auto-proceed, NO to wait for human input.`,
+                text: `The autonomous agent just completed a turn and generated this top-ranked next-step suggestion:\n\n"${suggestion}"\n\n${lastOutput ? `Recent agent output:\n${lastOutput}\n\n` : ''}Should the agent auto-proceed with this suggestion, or should a human review first?\n\nReply YES to auto-proceed, NO to wait for human input.`,
               },
             ],
           },
         ],
-        maxTokens: 5,
         temperature: 0,
       },
       { signal: AbortSignal.timeout(10_000) },

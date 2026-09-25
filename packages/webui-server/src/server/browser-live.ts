@@ -15,6 +15,7 @@
  *
  * A tab sees only the sessions its own conversation opened, as for processes.
  */
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { liveBrowser } from '@wrongstack/tools';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';
@@ -146,7 +147,7 @@ export async function handleBrowserLiveWatch(
     });
   } catch (err) {
     if (watches.get(ws) === watch) await handleBrowserLiveUnwatch(ws);
-    sendResult(ws, false, err instanceof Error ? err.message : String(err));
+    sendResult(ws, false, toErrorMessage(err));
     return;
   }
   if (stopped) await stopScreencast();

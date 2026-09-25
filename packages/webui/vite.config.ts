@@ -35,6 +35,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../core/src/models/models-dev-schema.ts'),
       },
       {
+        find: /^@wrongstack\/core\/types\/limits$/,
+        replacement: path.resolve(__dirname, '../core/src/types/config/limits.ts'),
+      },
+      {
         find: /^@wrongstack\/core\/utils\/expect-defined$/,
         replacement: path.resolve(__dirname, '../core/src/utils/expect-defined.ts'),
       },

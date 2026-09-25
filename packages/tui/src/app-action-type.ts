@@ -100,6 +100,11 @@ export type Action =
       restoredMessages?: readonly unknown[] | null | undefined;
       restoredToolCalls?: readonly unknown[] | null | undefined;
       restoredEvents?: readonly unknown[] | null | undefined;
+      /**
+       * Keep the checkpoint list. A rewind clears the screen but the
+       * checkpoints up to its target still belong to this conversation.
+       */
+      keepCheckpoints?: boolean | undefined;
     }
   | { type: 'streamDelta'; delta: string }
   | { type: 'streamReset' }
@@ -131,6 +136,7 @@ export type Action =
   | { type: 'chatSearchClose' }
   /** Alt+↑ / Alt+↓: jump to the previous / next user message. */
   | { type: 'messageJump'; direction: -1 | 1 }
+  | { type: 'messageJumpClear' }
   | {
       type: 'brainStatus';
       state: State['brain']['state'];
@@ -725,8 +731,12 @@ export type Action =
   | { type: 'toggleTodosMonitor' }
   | { type: 'toggleQueuePanel' }
   | { type: 'checkpointReceived'; cp: State['checkpoints'][0] }
-  | { type: 'rewindOverlayOpen' }
+  /** `selected` preselects a row (a message picked with Alt+↑); default the newest. */
+  | { type: 'rewindOverlayOpen'; selected?: number | undefined }
   | { type: 'rewindOverlayClose' }
+  /** Fork the session at a checkpoint and switch to the fork. */
+  | { type: 'checkpointFork'; promptIndex: number }
+  | { type: 'forkRequestDone' }
   | { type: 'rewindOverlayMove'; delta: number }
   | { type: 'sessionRewound'; toPromptIndex: number }
   | {

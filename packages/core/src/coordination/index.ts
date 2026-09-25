@@ -63,7 +63,6 @@ export {
   isConsolidated,
   isProvenDirective,
   KNOWLEDGE_AGENTS,
-  LEARNED_HARD_LIMIT,
   LEARNED_SOFT_LIMIT,
   type LearnedCaptureResult,
   LearningOptimizationScheduler,
@@ -692,7 +691,6 @@ export {
 export { assignNickname } from './subagent-nicknames.js';
 export {
   formatSubagentStructuredReport,
-  MAX_SUBAGENT_STRUCTURED_REPORT_CHARS,
   makeSubagentResultTool,
   normalizeSubagentStructuredReport,
   readSubagentStructuredReport,

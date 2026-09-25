@@ -76,14 +76,14 @@ export const FRACTIONS: BrainOption[] = [
   { value: '1', labelKey: 'settings:brainOpt.all' },
 ];
 
-/** Effective-valued numbers: the snapshot always carries a resolved number, so
- *  the default is a LABELLED concrete option rather than a `default` sentinel. */
+/** `default` = no cap: the model's own output ceiling. */
 export const LLM_MAX_TOKENS: BrainOption[] = [
-  { value: '100', label: '100' },
-  { value: '200', labelKey: 'settings:brainOpt.n200Default' },
+  { value: 'default', labelKey: 'settings:brainOpt.default' },
   { value: '400', label: '400' },
   { value: '800', label: '800' },
   { value: '1600', label: '1600' },
+  { value: '3200', label: '3200' },
+  { value: '8000', label: '8000' },
 ];
 
 export const MIN_CONFIDENCE: BrainOption[] = [

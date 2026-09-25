@@ -38,6 +38,61 @@ describe('DefaultSessionRewinder', () => {
     return { type: 'file_snapshot' as const, ts: new Date().toISOString(), promptIndex, files };
   }
 
+  describe('the prompt a checkpoint belongs to', () => {
+    const input = (content: unknown) => ({
+      type: 'user_input',
+      ts: new Date().toISOString(),
+      content,
+    });
+
+    it('hands back the text of the prompt a rewind takes back', async () => {
+      // The agent records the input, then the checkpoint (agent-loop.ts).
+      const id = await writeSession([
+        input('first prompt'),
+        makeCheckpoint(0, 'first prompt'),
+        input([
+          { type: 'text', text: 'second prompt' },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'aGk=' } },
+          { type: 'text', text: 'with a second line' },
+        ]),
+        makeCheckpoint(3, 'second prompt'),
+        input('third prompt'),
+        makeCheckpoint(5, 'third prompt'),
+      ]);
+      const rewind = new DefaultSessionRewinder(tmp, tmp);
+      expect(await rewind.promptAt(id, 0)).toBe('first prompt');
+      expect(await rewind.promptAt(id, 3)).toBe('second prompt\nwith a second line');
+      expect(await rewind.promptAt(id, 9)).toBeUndefined();
+      const result = await rewind.rewindToCheckpoint(id, 3);
+      expect(result.promptText).toBe('second prompt\nwith a second line');
+      expect(result.removedEvents).toBe(2);
+    });
+
+    it('hands back the newest prompt when an earlier rewind left the index behind', async () => {
+      const id = await writeSession([
+        input('first prompt'),
+        makeCheckpoint(0, 'first prompt'),
+        input('rewound prompt'),
+        makeCheckpoint(1, 'rewound prompt'),
+        { type: 'rewound', ts: new Date().toISOString(), toPromptIndex: 1, revertedFiles: [] },
+        input('prompt sent after the rewind'),
+        makeCheckpoint(1, 'prompt sent after the rewind'),
+      ]);
+      const rewind = new DefaultSessionRewinder(tmp, tmp);
+      expect(await rewind.promptAt(id, 1)).toBe('prompt sent after the rewind');
+      expect((await rewind.rewindToCheckpoint(id, 1)).promptText).toBe(
+        'prompt sent after the rewind',
+      );
+    });
+
+    it('reports no prompt when the journal holds no input before the checkpoint', async () => {
+      const id = await writeSession([makeCheckpoint(0, 'legacy')]);
+      const rewind = new DefaultSessionRewinder(tmp, tmp);
+      expect(await rewind.promptAt(id, 0)).toBeUndefined();
+      expect((await rewind.rewindToCheckpoint(id, 0)).promptText).toBeUndefined();
+    });
+  });
+
   describe('listCheckpoints', () => {
     it('reads checkpoints from date-sharded session ids', async () => {
       const id = '2026-06-11/sess_01JX2S9V7T5M6N7P8Q9R0STXVW';

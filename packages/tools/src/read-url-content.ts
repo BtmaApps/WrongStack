@@ -1,4 +1,10 @@
-import { type Tool, ToolValidationError } from '@wrongstack/core/types';
+import {
+  activeLimits,
+  positiveLimit,
+  TOOL_MEMORY_GUARD_BYTES,
+  type Tool,
+  ToolValidationError,
+} from '@wrongstack/core/types';
 import { guardedFetch } from './_fetch-guard.js';
 import { getTurndown } from './_turndown.js';
 
@@ -7,7 +13,7 @@ export interface ReadUrlContentInput {
   url?: string | undefined;
   /** Antigravity parameter alias. */
   Url?: string | undefined;
-  /** Maximum bytes to retrieve and return (default: 131,072 bytes). */
+  /** Maximum bytes to return. Unset = the whole page (up to the memory guard). */
   maxBytes?: number | undefined;
 }
 
@@ -18,23 +24,16 @@ export interface ReadUrlContentOutput {
   content: string;
 }
 
-const DEFAULT_MAX_BYTES = 131_072;
-
 /**
- * Hard ceiling on `maxBytes` (WS-2026-09-17-02).
+ * RAM guard on the raw body (WS-2026-09-17-02) — NOT a context budget.
  *
- * `maxBytes` is model-supplied and its schema declared `minimum` but no
- * `maximum`; the shared validator enforces numeric bounds only where they are
- * declared, so any magnitude passed. It then set the read limit below
- * (`maxBytes * 4`), which is the only bound on the `chunks[]` buffer — so the
- * very allocation `readBounded` was introduced to cap became attacker-chosen.
- * The tool's own 25s timeout bounded it in practice; this bounds it on purpose.
- *
- * 1 MiB is 8x the default and far above anything a model can usefully consume
- * in one tool result (`maxOutputBytes` is DEFAULT_MAX_BYTES), so the clamp is
- * invisible to legitimate use.
+ * `maxBytes` is model-supplied, and the read limit derived from it is the only
+ * bound on the `chunks[]` buffer, so it must never be attacker-chosen without a
+ * ceiling. Unset `maxBytes` reads the whole page up to this guard: a large
+ * result reaches the model through the tool executor's lossless spool (file +
+ * preview), so a fixed 128KB default only threw content away.
  */
-export const MAX_READ_URL_BYTES = 1_048_576;
+export const MAX_READ_URL_BYTES = TOOL_MEMORY_GUARD_BYTES;
 
 /**
  * Read at most `limit` bytes of the body, then cancel the stream. `res.text()`
@@ -80,7 +79,6 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
   capabilities: ['net.outbound'],
   subjectKey: 'url',
   timeoutMs: TIMEOUT_MS,
-  maxOutputBytes: DEFAULT_MAX_BYTES,
   description:
     'Fetch content from a URL via HTTP request (invisible to USER). Use when: ' +
     '(1) extracting text from public pages, (2) reading static content/documentation, ' +
@@ -105,7 +103,7 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
         type: 'number',
         minimum: 1,
         maximum: MAX_READ_URL_BYTES,
-        description: 'Maximum bytes to retrieve (default: 128KB, max 1MB).',
+        description: 'Optional cap on returned bytes. Omit to read the whole page.',
       },
     },
     additionalProperties: false,
@@ -120,11 +118,14 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     // call at the executor, but this tool is also called directly (other hosts,
     // tests), and that path never sees the validator. A non-finite value falls
     // back to the default rather than poisoning the arithmetic below.
-    const requestedMaxBytes =
+    // An explicit per-call `maxBytes` wins; else the user's `limits.fetchBytes`;
+    // else the whole page.
+    const requested =
       typeof input.maxBytes === 'number' && Number.isFinite(input.maxBytes)
         ? Math.trunc(input.maxBytes)
-        : DEFAULT_MAX_BYTES;
-    const maxBytes = Math.min(Math.max(1, requestedMaxBytes), MAX_READ_URL_BYTES);
+        : positiveLimit(activeLimits().fetchBytes);
+    const maxBytes =
+      requested === undefined ? undefined : Math.min(Math.max(1, requested), MAX_READ_URL_BYTES);
     const signal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
 
     const res = await guardedFetch(rawUrl, 5, signal, {
@@ -143,7 +144,7 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     }
     const { text: rawBody, truncated: readTruncated } = await readBounded(
       res,
-      Math.max(maxBytes, DEFAULT_MAX_BYTES) * 4,
+      maxBytes === undefined ? MAX_READ_URL_BYTES : Math.min(maxBytes * 4, MAX_READ_URL_BYTES),
     );
 
     let content: string;
@@ -160,13 +161,13 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
       content = rawBody;
     }
 
-    if (Buffer.byteLength(content, 'utf8') > maxBytes) {
+    if (maxBytes !== undefined && Buffer.byteLength(content, 'utf8') > maxBytes) {
       const buf = Buffer.from(content, 'utf8');
       content = `${buf.subarray(0, maxBytes).toString('utf8')}\n\n[Content truncated at ${maxBytes} bytes]`;
     } else if (readTruncated) {
       content = `${content}
 
-[Content truncated: response body exceeded the read limit]`;
+[Content truncated: response body exceeded the memory guard]`;
     }
 
     return {

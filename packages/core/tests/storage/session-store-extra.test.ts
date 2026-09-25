@@ -306,6 +306,43 @@ describe('DefaultSessionStore — non-destructive journal fork', () => {
     expect(await fs.readFile(path.join(tmp, 'parent.jsonl'), 'utf8')).toBe(parentBefore);
   });
 
+  it('forks from before the checkpoint prompt when asked, leaving that prompt out', async () => {
+    const parent = await store.create({ id: 'before-prompt', model: 'm', provider: 'p' });
+    await parent.append({ type: 'user_input', ts: now(), content: 'first prompt' });
+    await parent.writeCheckpoint(0, 'first prompt');
+    await parent.append({
+      type: 'llm_response',
+      ts: now(),
+      content: [{ type: 'text', text: 'first answer' }],
+      usage: { input: 1, output: 1 },
+      stopReason: 'end_turn',
+    });
+    await parent.append({ type: 'user_input', ts: now(), content: 'second prompt' });
+    await parent.writeCheckpoint(1, 'second prompt');
+    await parent.close();
+
+    const after = await store.fork('before-prompt', { checkpointPromptIndex: 1 });
+    expect(after.data.messages.map((m) => m.content)).toEqual([
+      'first prompt',
+      [{ type: 'text', text: 'first answer' }],
+      'second prompt',
+    ]);
+    const before = await store.fork('before-prompt', {
+      checkpointPromptIndex: 1,
+      beforeCheckpointPrompt: true,
+    });
+    expect(before.data.messages.map((m) => m.content)).toEqual([
+      'first prompt',
+      [{ type: 'text', text: 'first answer' }],
+    ]);
+    expect(before.data.metadata.forkedFrom?.checkpointPromptIndex).toBe(1);
+    const fromStart = await store.fork('before-prompt', {
+      checkpointPromptIndex: 0,
+      beforeCheckpointPrompt: true,
+    });
+    expect(fromStart.data.messages).toEqual([]);
+  });
+
   it('does not inherit parent subagent transcript references into a fork', async () => {
     const parent = await store.create({ id: 'parent-subagents', model: 'm', provider: 'p' });
     await parent.append({ type: 'user_input', ts: now(), content: 'delegate this' });
@@ -1338,6 +1375,44 @@ describe('DefaultSessionStore — summarize / replay over raw event streams', ()
       { role: 'user', content: 'legacy first', ts: '2026-01-01T00:01:00.000Z' },
       { role: 'assistant', content: 'modern reply', ts: '2026-01-01T00:02:00.000Z' },
     ]);
+  });
+
+  it('reads a prompt journaled after its user_input as one message', async () => {
+    // The agent loop records `user_input`, then journals the same message a
+    // moment later. A journal with no snapshot yet (a one-turn session) loaded
+    // that prompt twice.
+    const content = [{ type: 'text', text: 'only prompt' }];
+    await writeRawSession(tmp, 'one-turn', [
+      {
+        type: 'session_start',
+        ts: '2026-01-01T00:00:00.000Z',
+        id: 'one-turn',
+        model: 'm',
+        provider: 'p',
+      },
+      { type: 'user_input', ts: '2026-01-01T00:00:01.000Z', content },
+      {
+        type: 'message_appended',
+        ts: '2026-01-01T00:00:01.002Z',
+        version: 1,
+        message: { role: 'user', content },
+      },
+      {
+        type: 'checkpoint',
+        ts: '2026-01-01T00:00:01.100Z',
+        promptIndex: 0,
+        promptPreview: 'only prompt',
+      },
+      {
+        type: 'message_appended',
+        ts: '2026-01-01T00:00:02.000Z',
+        version: 1,
+        message: { role: 'assistant', content: [{ type: 'text', text: 'answer' }] },
+      },
+    ] as SessionEvent[]);
+
+    const data = await store.load('one-turn');
+    expect(data.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
   });
 
   it('ignores a malformed context_snapshot without discarding replayed history', async () => {

@@ -1,7 +1,12 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { DefaultModelsRegistry } from '@wrongstack/core/models';
-import type { Capabilities, Config, ModelsDevPayload } from '@wrongstack/core/types';
+import {
+  type Capabilities,
+  type Config,
+  installLimitsSource,
+  type ModelsDevPayload,
+} from '@wrongstack/core/types';
 import { afterEach, describe, expect, it } from 'vitest';
 import { capabilitiesForFamily } from '../src/family-capabilities.js';
 import {
@@ -49,8 +54,43 @@ function config(partial: Partial<Config>): Config {
   return partial as Config;
 }
 
+let uninstallLimits: (() => void) | undefined;
+
 afterEach(() => {
   clearModelOutputLimitResolver();
+  uninstallLimits?.();
+  uninstallLimits = undefined;
+});
+
+describe('resolveMaxOutputTokens — limits.responseOutputTokens', () => {
+  it('caps the model ceiling with the user limit when the limit is lower', async () => {
+    await installCatalogModelOutputLimits({ registry: registry() });
+    uninstallLimits = installLimitsSource(() => ({ responseOutputTokens: 16_000 }));
+    expect(resolveMaxOutputTokens({ model: 'big-output' }, ctx())).toBe(16_000);
+  });
+
+  it('never raises past the model ceiling', async () => {
+    await installCatalogModelOutputLimits({ registry: registry() });
+    uninstallLimits = installLimitsSource(() => ({ responseOutputTokens: 16_000 }));
+    expect(resolveMaxOutputTokens({ model: 'small-output' }, ctx())).toBe(4_096);
+  });
+
+  it('is the only number when nothing else knows the ceiling', () => {
+    uninstallLimits = installLimitsSource(() => ({ responseOutputTokens: 9_000 }));
+    expect(resolveMaxOutputTokens({ model: 'big-output' }, ctx())).toBe(9_000);
+    expect(resolveRequiredMaxOutputTokens({ model: 'big-output' }, ctx())).toBe(9_000);
+  });
+
+  it('leaves an explicit req.maxTokens alone', () => {
+    uninstallLimits = installLimitsSource(() => ({ responseOutputTokens: 9_000 }));
+    expect(resolveMaxOutputTokens({ model: 'big-output', maxTokens: 20_000 }, ctx())).toBe(20_000);
+  });
+
+  it('unset = no cap', async () => {
+    await installCatalogModelOutputLimits({ registry: registry() });
+    uninstallLimits = installLimitsSource(() => ({}));
+    expect(resolveMaxOutputTokens({ model: 'big-output' }, ctx())).toBe(64_000);
+  });
 });
 
 describe('resolveMaxOutputTokens', () => {

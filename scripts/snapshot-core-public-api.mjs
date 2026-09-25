@@ -74,6 +74,9 @@ const ownership = {
   types: ['agent-domain contract', 'Core type-only subpaths'],
   typesafe: ['concrete runtime default', 'Runtime or focused TypeSafe integration'],
   utils: ['kernel primitive', 'split dependency-free primitives from concrete helpers'],
+  // vcs: one interface over git, Jujutsu and Mercurial (base revision, changed
+  // paths, branch), read by workspace checkpoints and the environment probe.
+  vcs: ['concrete runtime default', 'Runtime or focused VCS implementation'],
   // wiring: pure-logic shared infrastructure (e.g. the WrongProxy URL
   // rewriter consumed by both cli and runtime; side-effectful companions
   // like the periodic probe stay in their consuming packages).

@@ -1,11 +1,13 @@
 import { isProjectRootLocked } from '../security/process-lockdown.js';
 import type { TextBlock } from '../types/blocks.js';
+import { activeLimits, positiveLimit } from '../types/config/limits.js';
 // Roadmap 10A: TodoItem's canonical home is the types/context.ts leaf
 // (single source of truth, acyclic); re-exported here for existing import paths.
 import type {
   AgentContext,
   ContextMessageLimits,
   ConversationJournalQueueApi,
+  NestedToolCaller,
   TodoItem,
 } from '../types/context.js';
 import type { ContextEvidenceState } from '../types/context-evidence.js';
@@ -118,6 +120,8 @@ export interface ContextInit {
  */
 export class Context implements RunEnv, AgentContext {
   userInputAwaiter: UserInputAwaiter | undefined;
+  /** Installed by the agent's tool handler (see `createAgentToolHandler`). */
+  nestedToolCall?: NestedToolCaller | undefined;
   messages: Message[] = [];
   /**
    * Optional cap on the number of messages retained in the conversation
@@ -409,7 +413,11 @@ export class Context implements RunEnv, AgentContext {
     signal: AbortSignal = this.signal,
   ): Promise<UserInputResponse | undefined> {
     return (
-      this.userInputAwaiter?.(request, { signal, sessionId: this.eventSessionId() }) ??
+      this.userInputAwaiter?.(request, {
+        signal,
+        sessionId: this.eventSessionId(),
+        meta: this.meta,
+      }) ??
       Promise.resolve(undefined)
     );
   }
@@ -557,8 +565,11 @@ export class Context implements RunEnv, AgentContext {
         : typeof providerWindow === 'number' && providerWindow > 0
           ? providerWindow
           : 0;
+    // `limits.historyMessages` is the user's own count cap; a subclass static
+    // (embedders/tests) still applies when the user set none.
+    const userMessages = positiveLimit(activeLimits().historyMessages);
     return Object.freeze({
-      maxMessages: cls.MAX_MESSAGES,
+      maxMessages: userMessages ?? cls.MAX_MESSAGES,
       maxMessageTokens: guard > 0 ? Math.max(guard, window) : guard,
     });
   }

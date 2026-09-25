@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { gitTool } from '../src/git.js';
-import { projectSlug } from '@wrongstack/core/utils';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { projectSlug } from '@wrongstack/core/utils';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { gitTool } from '../src/git.js';
 
 const makeCtx = (cwd = '/fake') =>
   ({ cwd, tools: [], projectRoot: cwd }) as unknown as Parameters<typeof gitTool.execute>[1];
@@ -352,8 +352,10 @@ describe('gitTool truncation', () => {
     // there and carries the truncation marker — it is no longer the raw 100K.
     expect(typeof result.truncated).toBe('boolean');
     if (result.truncated) {
-      expect(Buffer.byteLength(result.stdout, 'utf8')).toBeLessThanOrEqual(32_768);
-      expect(result.stdout).toContain('truncated');
+      // The preview is capped; the spool note after it points at the full log.
+      const [preview] = result.stdout.split('\n[output truncated — full ');
+      expect(Buffer.byteLength(preview ?? '', 'utf8')).toBeLessThanOrEqual(32_768);
+      expect(result.stdout).toMatch(/\[output truncated — full \d+ bytes at /);
     }
   });
 

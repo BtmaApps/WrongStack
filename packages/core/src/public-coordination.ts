@@ -332,7 +332,6 @@ export {
 } from './coordination/subagent-nicknames.js';
 export {
   formatSubagentStructuredReport,
-  MAX_SUBAGENT_STRUCTURED_REPORT_CHARS,
   makeSubagentResultTool,
   normalizeSubagentStructuredReport,
   readSubagentStructuredReport,

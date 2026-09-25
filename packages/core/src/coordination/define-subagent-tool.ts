@@ -1,6 +1,7 @@
+import { ToolCapabilities } from '../security/capabilities.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
-import { ToolCapabilities } from '../security/capabilities.js';
+import { defaultSubagentBudget } from './agents/types.js';
 
 export interface DefineSubagentInput {
   /** Unique name/role id for the subagent (letters, numbers, _, -, .). */
@@ -180,6 +181,7 @@ export function createDefineSubagentTool(
       }
       const tools = input.tools ? [...input.tools] : baseTools;
 
+      const fallbackBudget = defaultSubagentBudget();
       const subagentConfig: SubagentConfig = {
         name: rawName,
         role: rawName,
@@ -189,9 +191,11 @@ export function createDefineSubagentTool(
         tools,
         model: input.model,
         provider: input.provider,
-        maxIterations: input.maxIterations ?? 25,
-        maxToolCalls: input.maxToolCalls ?? 50,
-        timeoutMs: input.timeoutMs ?? 300_000,
+        // Unset = the user's default subagent budget, else the roster's light
+        // tier (auto-extend raises it while the agent makes progress).
+        maxIterations: input.maxIterations ?? fallbackBudget.maxIterations,
+        maxToolCalls: input.maxToolCalls ?? fallbackBudget.maxToolCalls,
+        timeoutMs: input.timeoutMs ?? fallbackBudget.timeoutMs,
         dispatch: {
           summary: input.description,
           keywords: [

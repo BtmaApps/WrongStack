@@ -360,7 +360,6 @@ export class SelectiveCompactor implements Compactor {
           model,
           system: [{ type: 'text', text: systemText }],
           messages: [{ role: 'user', content: body }],
-          maxTokens: 512,
         };
         // 30-second timeout so a stuck summarizer can't hang compaction.
         const timeoutSignal = AbortSignal.timeout(30_000);

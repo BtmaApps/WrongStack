@@ -1,18 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
-import { KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
-import { TaskDAG } from '../../src/coordination/task-dag.js';
-import { TaskAuctioneer } from '../../src/coordination/task-auctioneer.js';
-import { ConsensusProtocol } from '../../src/coordination/consensus-protocol.js';
-import { ChangeManager } from '../../src/coordination/change-manager.js';
-import { AutonomousCoordinator } from '../../src/coordination/autonomous-coordinator.js';
-import type { FleetBus } from '../../src/coordination/fleet-bus.js';
-import type { Mailbox } from '../../src/coordination/mailbox-types.js';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LIGHT_BUDGET } from '../../src/coordination/agents/types.js';
 import type { CoordinatorEvent } from '../../src/coordination/autonomous-coordinator.js';
-import type { TaskSpec } from '../../src/types/multi-agent.js';
+import { AutonomousCoordinator } from '../../src/coordination/autonomous-coordinator.js';
+import { ChangeManager } from '../../src/coordination/change-manager.js';
+import { ConsensusProtocol } from '../../src/coordination/consensus-protocol.js';
 import type { Director } from '../../src/coordination/director.js';
+import type { FleetBus } from '../../src/coordination/fleet-bus.js';
+import { KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
+import type { Mailbox } from '../../src/coordination/mailbox-types.js';
+import { TaskAuctioneer } from '../../src/coordination/task-auctioneer.js';
+import { TaskDAG } from '../../src/coordination/task-dag.js';
+import type { TaskSpec } from '../../src/types/multi-agent.js';
 
 // ── Test setup ─────────────────────────────────────────────────────────────
 
@@ -1012,12 +1013,13 @@ describe('AutonomousCoordinator', () => {
       // Verify director.assign was called exactly once
       expect(director.assign).toHaveBeenCalledTimes(1);
 
-      // Verify spawn was called with a SubagentConfig (role: general, sensible timeout)
+      // Verify spawn was called with a SubagentConfig on the roster's light tier
       const spawnCall = (director.spawn as ReturnType<typeof vi.fn>).mock.calls[0]!;
       expect(spawnCall[0]).toMatchObject({
         role: 'general',
-        maxIterations: 100,
-        timeoutMs: 600_000,
+        maxIterations: LIGHT_BUDGET.maxIterations,
+        maxToolCalls: LIGHT_BUDGET.maxToolCalls,
+        timeoutMs: LIGHT_BUDGET.timeoutMs,
       });
       expect(typeof spawnCall[0].name).toBe('string');
       expect(spawnCall[0].name.startsWith('worker-')).toBe(true);

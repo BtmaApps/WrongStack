@@ -290,12 +290,14 @@ export function BrainSection(): ReactElement {
             <PreferenceSelect
               label={t('settings:brain.qualityResponseBudgetLabel')}
               hint={t('settings:brain.qualityResponseBudgetHint')}
-              value={String(config.llm.maxTokens)}
+              value={optionalValue(config.llm.maxTokens)}
               options={localizeOptions(
-                withCurrent(LLM_MAX_TOKENS, String(config.llm.maxTokens)),
+                withCurrent(LLM_MAX_TOKENS, optionalValue(config.llm.maxTokens)),
                 t,
               )}
-              onChange={(v) => sendPatch({ llm: { maxTokens: Number(v) } })}
+              onChange={(v) =>
+                sendPatch({ llm: { maxTokens: v === 'default' ? null : Number(v) } })
+              }
               disabled={busy}
             />
             <PreferenceToggle

@@ -106,7 +106,7 @@ describe('TopicShiftAdvisor', () => {
     expect(request.messages[0]?.content[0]?.text.length).toBeLessThan(9_000);
     // Room for a reasoning model plus JSON on the wire and no deliberation:
     // at 180 with reasoning on, glm-5.3-flash answered 10 of 30 real prompts.
-    expect(request.maxTokens).toBe(1_024);
+    expect(request.maxTokens).toBeUndefined();
     expect(request).toMatchObject({
       responseFormat: { type: 'json_object' },
       reasoning: { enabled: false },

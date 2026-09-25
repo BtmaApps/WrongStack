@@ -40,6 +40,14 @@ export interface ApplyRewindResult {
   removedEvents: number;
   /** Message count the live conversation was cut back to. */
   messageCount: number;
+  /** The conversation as it now stands, for a surface to redraw its transcript from. */
+  conversation: RewoundConversation;
+}
+
+/** The reloaded journal after a rewind or a redo: its messages and events. */
+export interface RewoundConversation {
+  messages: Message[];
+  events: SessionEvent[];
 }
 
 /**
@@ -76,7 +84,11 @@ export async function applyRewindToConversation(
   state.replaceMessages(data.messages);
   restoreSessionPermissionOverrides(opts.meta, data);
 
-  return { removedEvents, messageCount: data.messages.length };
+  return {
+    removedEvents,
+    messageCount: data.messages.length,
+    conversation: { messages: data.messages, events: data.events },
+  };
 }
 
 export interface RedoRewindResult {
@@ -89,6 +101,8 @@ export interface RedoRewindResult {
   messageCount: number;
   /** Checkpoints the redo brought back, for timeline UIs. */
   checkpoints: Array<{ promptIndex: number; promptPreview: string; ts: string; fileCount: number }>;
+  /** The conversation after the redo; absent when nothing was changed. */
+  conversation?: RewoundConversation | undefined;
 }
 
 /**
@@ -150,5 +164,6 @@ export async function redoLastRewind(opts: {
     conflicts: [],
     messageCount: data.messages.length,
     checkpoints,
+    conversation: { messages: data.messages, events: data.events },
   };
 }

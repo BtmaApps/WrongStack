@@ -24,6 +24,7 @@ import { randomUUID } from 'node:crypto';
 import type { EventBus } from '../kernel/events.js';
 import type { Logger } from '../types/logger.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
+import { defaultSubagentBudget } from './agents/types.js';
 import { AutonomousBrain } from './autonomous-brain.js';
 import {
   rebuildDagFromGraph,
@@ -514,8 +515,7 @@ export class AutonomousCoordinator {
       const config: SubagentConfig = {
         name: `worker-${goalId.slice(0, 8)}`,
         role: 'general',
-        maxIterations: 100,
-        timeoutMs: 600_000,
+        ...defaultSubagentBudget(),
       };
       const subagentId = await this.director.spawn(config);
       await this.auction.claim(goalId, subagentId, config.name);

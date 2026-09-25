@@ -35,6 +35,7 @@ import { ChatDisplayToggles } from './ChatDisplayToggles';
 import { ChatHeader } from './ChatHeader';
 import { ChatRowView } from './ChatRowView';
 import { SubagentTranscriptView } from './SubagentTranscriptView';
+import { TerminalStrip } from './TerminalStrip';
 import { ThinkingBubble } from './ThinkingBubble.js';
 import { ToggleSwitch } from './ToggleSwitch';
 import { useChatViewState } from './useChatViewState';
@@ -427,6 +428,7 @@ export function ChatView() {
             <div className="ws-chat-input-wrap p-0">
               <div className="max-w-6xl mx-auto">
                 <BackgroundShellStrip />
+                <TerminalStrip />
                 <ChatInput onOpenBreakdown={() => state.setBreakdownOpen(true)} />
               </div>
             </div>

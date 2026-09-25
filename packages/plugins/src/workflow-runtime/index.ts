@@ -92,7 +92,7 @@ export async function readBytes(root: string, value: unknown): Promise<Buffer> {
       if (!bytesRead) break;
       total += bytesRead;
     }
-    if (total > info.size) throw new Error('File grew during read; retry with stable inputs');
+    if (total !== info.size) throw new Error('File changed during read; retry with stable inputs');
     return buffer.subarray(0, total);
   } finally {
     await file.close();

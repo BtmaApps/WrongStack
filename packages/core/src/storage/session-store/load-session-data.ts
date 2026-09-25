@@ -87,6 +87,11 @@ export async function loadSessionDataFromFile(params: {
   let usage: UsageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   /** Newest snapshot seen so far; its predecessor is stripped when it arrives. */
   let lastSnapshot: SnapshotEvent | undefined;
+  /**
+   * Conversation length before the newest prompt, for a `rewound` event to cut
+   * back to. Null once a snapshot or eviction has rebased the array.
+   */
+  let lengthBeforeInput: number | null = null;
 
   // Progress is opt-in: without a consumer neither the size stat nor the
   // per-line accounting happens at all. Stat BEFORE constructing the stream:
@@ -194,6 +199,20 @@ export async function loadSessionDataFromFile(params: {
         }
 
         if (params.full && messages !== undefined && openToolUses !== undefined) {
+          if (ev.type === 'user_input') {
+            lengthBeforeInput = messages.length;
+          } else if (
+            ev.type === 'messages_replaced' ||
+            ev.type === 'context_snapshot' ||
+            ev.type === 'messages_dropped'
+          ) {
+            lengthBeforeInput = null;
+          } else if (ev.type === 'rewound' && lengthBeforeInput !== null) {
+            // The agent journals a prompt before writing its checkpoint, so
+            // the cut after that checkpoint left the rewound prompt in.
+            dropRewoundPrompt(messages, openToolUses, lengthBeforeInput);
+            lengthBeforeInput = null;
+          }
           const replayState = replaySessionEvent({
             ev,
             id: params.id,
@@ -348,6 +367,10 @@ function replaySessionEvent(params: {
         messages.length = 0;
         openToolUses.clear();
         messageIndexOffset = 0;
+      } else if (!exactJournalActive && isJournalEchoOfInput(messages, message)) {
+        // The writer records a prompt as `user_input` and then journals the
+        // same message; the inferred copy is that message, not an earlier one.
+        messages.pop();
       }
       exactJournalActive = true;
       messages.push(message);
@@ -455,6 +478,22 @@ function replaySessionEvent(params: {
   }
 
   return { exactJournalActive, messageIndexOffset };
+}
+
+function dropRewoundPrompt(messages: Message[], openToolUses: Set<string>, keep: number): void {
+  if (messages.length <= keep) return;
+  messages.length = keep;
+  openToolUses.clear();
+  for (const current of messages) trackMessageToolState(current, openToolUses);
+}
+
+function isJournalEchoOfInput(messages: readonly Message[], message: Message): boolean {
+  const last = messages[messages.length - 1];
+  return (
+    last?.role === 'user' &&
+    message.role === 'user' &&
+    JSON.stringify(last.content) === JSON.stringify(message.content)
+  );
 }
 
 function shouldReplaceLegacyReplay(messages: readonly Message[], eventTs: string): boolean {

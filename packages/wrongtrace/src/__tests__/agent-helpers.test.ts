@@ -371,7 +371,10 @@ describe('digestAtlas', () => {
           name: 'p1',
           files: [
             { health_score: 20, recent_thrashing_count: 0 },
-            { health_score: 95, recent_thrashing_count: 8 },
+            ...Array.from({ length: 6 }, () => ({
+              health_score: 95,
+              recent_thrashing_count: 8,
+            })),
           ],
         },
         { name: 'p2', files: [{ health_score: 100, recent_thrashing_count: 0 }] },
@@ -382,6 +385,24 @@ describe('digestAtlas', () => {
     expect(d?.fragileFileCount).toBe(1);
     expect(d?.selfThrashWorkspaces).toContain('p1');
     expect(d?.prose).toMatch(/Atlas: 2 workspaces/);
+  });
+
+  it('excludes packages with five or fewer thrashing files', () => {
+    const atlas = {
+      workspaces: ['packages'],
+      packages: [
+        {
+          name: 'one-hot-file',
+          files: [{ recent_thrashing_count: 8 }],
+        },
+        {
+          name: 'five-hot-files',
+          files: Array.from({ length: 5 }, () => ({ recent_thrashing_count: 8 })),
+        },
+      ],
+    };
+
+    expect(digestAtlas(atlas as never)?.selfThrashWorkspaces).toEqual([]);
   });
 
   it('counts fragile files in summary mode from fragile_files_count and is_fragile', () => {

@@ -67,6 +67,31 @@ describe('makeProviderFromConfig (no models.dev dependency)', () => {
     }
   });
 
+  it('builds a keyless server on a loopback address, as boot and the picker accept it', () => {
+    const p = makeProviderFromConfig('my-local', {
+      type: 'my-local',
+      family: 'openai-compatible',
+      baseUrl: 'http://127.0.0.1:9911/v1',
+    });
+    expect(p).toBeInstanceOf(OpenAICompatibleProvider);
+    // A remote address, or a loopback one that names its key variable, still needs the key.
+    expect(() =>
+      makeProviderFromConfig('my-remote', {
+        type: 'my-remote',
+        family: 'openai-compatible',
+        baseUrl: 'https://llm.example.com/v1',
+      }),
+    ).toThrow(/requires an API key/);
+    expect(() =>
+      makeProviderFromConfig('my-local-keyed', {
+        type: 'my-local-keyed',
+        family: 'openai-compatible',
+        baseUrl: 'http://localhost:9911/v1',
+        envVars: ['UNSET_TEST_VAR_Y'],
+      }),
+    ).toThrow(/requires an API key/);
+  });
+
   it('throws if neither apiKey nor envVars match', () => {
     expect(() =>
       makeProviderFromConfig('nokey', {

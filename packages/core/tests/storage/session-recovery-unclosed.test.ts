@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SessionRecovery } from '../../src/storage/session-recovery.js';
 
@@ -97,6 +98,32 @@ describe('SessionRecovery.listUnclosed', () => {
   it('skips an empty file', async () => {
     await fs.writeFile(path.join(dir, 'empty.jsonl'), '', 'utf8');
     expect(await recovery.listUnclosed()).toEqual([]);
+  });
+
+  it('uses a valid cold transcript when its hot companion is empty', async () => {
+    const encode = (events: unknown[]) =>
+      gzipSync(`${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+    await fs.writeFile(
+      path.join(dir, 'crashed-cold.jsonl.gz'),
+      encode([
+        started('crashed-cold'),
+        { type: 'in_flight_start', ts: '2026-01-01T00:00:01Z', context: 'iteration 1' },
+      ]),
+    );
+    await fs.writeFile(path.join(dir, 'crashed-cold.jsonl'), '');
+    await fs.writeFile(
+      path.join(dir, 'clean-cold.jsonl.gz'),
+      encode([
+        started('clean-cold'),
+        { type: 'in_flight_start', ts: '2026-01-01T00:00:01Z', context: 'iteration 1' },
+        { type: 'in_flight_end', ts: '2026-01-01T00:00:02Z', reason: 'clean' },
+        { type: 'session_end', ts: '2026-01-01T00:00:03Z' },
+      ]),
+    );
+
+    expect((await recovery.listUnclosed()).map((session) => session.sessionId)).toEqual([
+      'crashed-cold',
+    ]);
   });
 
   it('finds sessions inside date shards, not just the root', async () => {

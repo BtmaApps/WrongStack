@@ -50,6 +50,7 @@ import { ThemePicker } from './components/theme-picker.js';
 import { ToolsPicker } from './components/tools-picker.js';
 import { TopicCheckPanel } from './components/topic-check-panel.js';
 import { Box } from './ink.js';
+import { showRewind } from './rewind-prompt.js';
 import { getActiveThemeName, THEME_OPTIONS } from './theme.js';
 import type { PanelId, SendMode } from './ui-contracts.js';
 
@@ -429,18 +430,31 @@ export function AppViewPickers({
                 onConfirm={(i) => {
                   const checkpoint = overlay.checkpoints[i];
                   if (checkpoint) {
-                    return handleRewindTo(checkpoint.promptIndex).catch((err: unknown) => {
-                      dispatch({
-                        type: 'addEntry',
-                        entry: {
-                          kind: 'error',
-                          text: `Rewind failed: ${toErrorMessage(err)}`,
-                        },
+                    const draft = state.buffer;
+                    return handleRewindTo(checkpoint.promptIndex)
+                      .then((outcome) => showRewind(dispatch, draft, outcome))
+                      .catch((err: unknown) => {
+                        dispatch({
+                          type: 'addEntry',
+                          entry: {
+                            kind: 'error',
+                            text: `Rewind failed: ${toErrorMessage(err)}`,
+                          },
+                        });
                       });
-                    });
                   }
                   return undefined;
                 }}
+                {...(host.forkSession
+                  ? {
+                      onFork: (i: number) => {
+                        const checkpoint = overlay.checkpoints[i];
+                        if (checkpoint) {
+                          dispatch({ type: 'checkpointFork', promptIndex: checkpoint.promptIndex });
+                        }
+                      },
+                    }
+                  : {})}
                 onClose={() => dispatch({ type: 'rewindOverlayClose' })}
               />
             );

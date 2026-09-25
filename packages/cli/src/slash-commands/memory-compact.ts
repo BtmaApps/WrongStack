@@ -154,7 +154,6 @@ export async function runCompact(opts: SlashCommandContext): Promise<{ message: 
             content: `Review the ${compactEntries.length} memory entries above and return operations as JSON.`,
           },
         ],
-        maxTokens: 2000,
         temperature: 0.1, // low temperature for deterministic curation
       },
       { signal },
