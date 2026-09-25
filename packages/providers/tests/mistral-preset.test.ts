@@ -46,19 +46,24 @@ async function collectEvents(body: ReadableStream<Uint8Array>): Promise<StreamEv
   return events;
 }
 
+const buildCtx = { capabilities: mistralWireFormat.capabilities, providerId: 'mistral' };
+
 describe('Mistral preset', () => {
   it('builds an OpenAI-compatible request body from canonical messages and tools', () => {
-    const body = mistralWireFormat.buildBody({
-      model: 'mistral-large-latest',
-      maxTokens: 100,
-      messages: [{ role: 'user', content: 'hello' }],
-      system: [{ type: 'text', text: 'be concise', cache_control: { type: 'ephemeral' } }],
-      tools: [{ name: 'lookup', description: 'look up stuff', inputSchema: { type: 'object' } }],
-      toolChoice: { type: 'tool', name: 'lookup' },
-      temperature: 0.2,
-      topP: 0.9,
-      stopSequences: ['STOP'],
-    } as Parameters<typeof mistralWireFormat.buildBody>[0]);
+    const body = mistralWireFormat.buildBody(
+      {
+        model: 'mistral-large-latest',
+        maxTokens: 100,
+        messages: [{ role: 'user', content: 'hello' }],
+        system: [{ type: 'text', text: 'be concise', cache_control: { type: 'ephemeral' } }],
+        tools: [{ name: 'lookup', description: 'look up stuff', inputSchema: { type: 'object' } }],
+        toolChoice: { type: 'tool', name: 'lookup' },
+        temperature: 0.2,
+        topP: 0.9,
+        stopSequences: ['STOP'],
+      } as Parameters<typeof mistralWireFormat.buildBody>[0],
+      buildCtx,
+    );
 
     expect(body).toMatchObject({
       model: 'mistral-large-latest',
@@ -86,12 +91,15 @@ describe('Mistral preset', () => {
   });
 
   it('sends prompt_cache_key so prefix-sharing requests hit one cache', () => {
-    const body = mistralWireFormat.buildBody({
-      model: 'mistral-large-latest',
-      maxTokens: 100,
-      messages: [{ role: 'user', content: 'hello' }],
-      cache: { key: 'prefix-abc' },
-    } as Parameters<typeof mistralWireFormat.buildBody>[0]);
+    const body = mistralWireFormat.buildBody(
+      {
+        model: 'mistral-large-latest',
+        maxTokens: 100,
+        messages: [{ role: 'user', content: 'hello' }],
+        cache: { key: 'prefix-abc' },
+      } as Parameters<typeof mistralWireFormat.buildBody>[0],
+      buildCtx,
+    );
     expect(body['prompt_cache_key']).toBe('prefix-abc');
   });
 
@@ -150,22 +158,25 @@ describe('Mistral preset', () => {
   });
 
   it('uses Mistral fields and maps streamed thinking chunks', async () => {
-    const body = mistralWireFormat.buildBody({
-      model: 'mistral-medium-latest',
-      maxTokens: 100,
-      messages: [
-        {
-          role: 'assistant',
-          content: [
-            { type: 'thinking', thinking: 'check' },
-            { type: 'text', text: 'answer' },
-          ],
-        },
-      ],
-      seed: 42,
-      topK: 7,
-      reasoning: { effort: 'high' },
-    } as Parameters<typeof mistralWireFormat.buildBody>[0]);
+    const body = mistralWireFormat.buildBody(
+      {
+        model: 'mistral-medium-latest',
+        maxTokens: 100,
+        messages: [
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'check' },
+              { type: 'text', text: 'answer' },
+            ],
+          },
+        ],
+        seed: 42,
+        topK: 7,
+        reasoning: { effort: 'high' },
+      } as Parameters<typeof mistralWireFormat.buildBody>[0],
+      buildCtx,
+    );
     expect(body).toMatchObject({ random_seed: 42, reasoning_effort: 'high' });
     expect(body['seed']).toBeUndefined();
     expect(body['top_k']).toBeUndefined();

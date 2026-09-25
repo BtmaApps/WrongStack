@@ -131,7 +131,7 @@ export class Context implements RunEnv, AgentContext {
    * while a 1M-window model was far from full. Memory is bounded by
    * {@link MAX_MESSAGE_TOKENS} instead. Embedders/tests may still set one.
    */
-  static readonly MAX_MESSAGES = 0;
+  static readonly MAX_MESSAGES: number = 0;
   /**
    * Companion size cap on the same history, in estimated tokens.
    *

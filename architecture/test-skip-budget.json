@@ -42,6 +42,11 @@
       "fingerprint": "cdceee059ef2523c"
     },
     {
+      "file": "packages/cli/tests/remote-target.test.ts",
+      "kind": "runIf",
+      "fingerprint": "c8f782b6a36ba78c"
+    },
+    {
       "file": "packages/cli/tests/settings-cursor-restore-tui-e2e.test.ts",
       "kind": "skipIf",
       "fingerprint": "397436c28fb32ffa"
@@ -145,6 +150,16 @@
       "file": "packages/core/tests/utils/win32-exe-search.test.ts",
       "kind": "runIf",
       "fingerprint": "b0cd19c2059fe839"
+    },
+    {
+      "file": "packages/core/tests/vcs/vcs-adapter.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "b4a263e22837e6c0"
+    },
+    {
+      "file": "packages/core/tests/vcs/vcs-adapter.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "ce77eb6e6cf8860f"
     },
     {
       "file": "packages/core/tests/worktree/worktree-manager.test.ts",
@@ -387,6 +402,11 @@
       "fingerprint": "fabe0658019e72c5"
     },
     {
+      "file": "packages/tools/tests/background-log.test.ts",
+      "kind": "runIf",
+      "fingerprint": "5791c7d5dc0bfff3"
+    },
+    {
       "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
       "kind": "runIf",
       "fingerprint": "12b19d897b0858fa"
@@ -530,6 +550,11 @@
       "file": "packages/tools/tests/bash.test.ts",
       "kind": "skipIf",
       "fingerprint": "db0bf68ab1a2242a"
+    },
+    {
+      "file": "packages/tools/tests/browser-live-view.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "f111cdbd590d985a"
     },
     {
       "file": "packages/tools/tests/browser-manager-guard-regressions.test.ts",

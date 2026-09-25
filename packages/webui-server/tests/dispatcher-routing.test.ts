@@ -210,7 +210,13 @@ describe('WS message dispatcher routing (Issue #31 PR 0)', () => {
     const out = await handlePrefsRoute(
       ws,
       { type: 'config.doctor', payload: { apply: true } },
-      { getPrefs: vi.fn(), updatePrefs: vi.fn(), getSystemPrompt: vi.fn(), doctorConfig },
+      {
+        getPrefs: vi.fn(),
+        updatePrefs: vi.fn(),
+        getSystemPrompt: vi.fn(),
+        doctorConfig,
+        manageSystemPromptPresets: vi.fn(),
+      },
     );
     expect(out).toBe(true);
     expect(doctorConfig).toHaveBeenCalledWith(ws, true);

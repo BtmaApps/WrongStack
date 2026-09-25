@@ -277,7 +277,7 @@ describe('createPreContextServices', () => {
     expect(touchProject).toHaveBeenCalledWith('D:/repo', 'D:/repo/src');
     // session_rename renames through the host's session store.
     expect(toolRegistry.registerDefault).toHaveBeenCalledWith({ name: 'session_rename' });
-    const renameOpts = mocks.createSessionRenameTool.mock.calls[0]?.[0] as unknown as {
+    const renameOpts = (mocks.createSessionRenameTool.mock.calls as unknown[][])[0]?.[0] as {
       rename: (id: string, name: string) => Promise<unknown>;
     };
     await renameOpts.rename('session-1', 'Named');
