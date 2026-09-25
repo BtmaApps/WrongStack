@@ -5,6 +5,74 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart3: Record<string, ToolDetail> = {
+  git: {
+    longDescription:
+      'Inspect or run scoped Git operations in the project, including status, diff, history, branches, and commits. Review the target and working tree before mutating operations.',
+    params: [
+      {
+        name: 'command',
+        type: "'status' | 'log' | 'diff' | 'commit' | 'branch' | 'checkout' | 'stash' | 'push' | 'pull' | 'fetch' | 'reset' | 'worktree'",
+        required: true,
+        description: 'Git subcommand',
+      },
+      {
+        name: 'files',
+        type: 'string',
+        description:
+          'File(s) for status/diff: single path, comma-separated list, or "**/*.ts" glob',
+      },
+      {
+        name: 'message',
+        type: 'string',
+        description: 'Commit message (required for commit)',
+      },
+      {
+        name: 'branch',
+        type: 'string',
+        description: 'Branch name for checkout/branch',
+      },
+      {
+        name: 'format',
+        type: "'short' | 'oneline' | 'stat' | 'graph'",
+        description: 'Log format (default: short)',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'Limit for log (default: 20)',
+      },
+      {
+        name: 'dry_run',
+        type: 'boolean',
+        description: 'For commit: show what would be committed',
+      },
+      {
+        name: 'worktreeAction',
+        type: "'list' | 'add' | 'remove' | 'prune'",
+        description: 'Worktree action: list, add, remove, prune',
+      },
+      {
+        name: 'worktreePath',
+        type: 'string',
+        description: 'Path for worktree add/remove (e.g. "../wt-feature-xyz")',
+      },
+      {
+        name: 'newBranch',
+        type: 'boolean',
+        description: 'Create new branch when adding worktree',
+      },
+      {
+        name: 'force',
+        type: 'boolean',
+        description: 'Force operation (e.g. worktree remove --force)',
+      },
+    ],
+    notes: [
+      '`command`: one of the supported subcommands (status, log, diff, commit, etc.)',
+      'Use `message` only for commit operations.',
+      'Use `files` array for operations that take paths (status, diff, add, etc.).',
+    ],
+  },
   patch: {
     longDescription:
       'Apply a unified diff to project files with patch-style context checking. Use it for a reviewed multi-file change when exact patch content is available.',
@@ -704,42 +772,6 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
     ],
     notes: [
       'Flow: `design {action:"use", kit:"minimal-clarity", stack:"web"}` → optionally `design {action:"set", set:{primary:"oklch(62% 0.2 25)"}}` → `design {action:"materialize"}` to write tokens to disk → implement against them → `design {action:"verify"}`.',
-    ],
-  },
-  tool_search: {
-    longDescription:
-      'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
-    params: [
-      {
-        name: 'query',
-        type: 'string',
-        description: 'Search query for tool name or description',
-      },
-      {
-        name: 'tags',
-        type: 'string[]',
-        description: 'Filter by tags (e.g. "filesystem", "network", "dev")',
-      },
-      {
-        name: 'permission',
-        type: "'auto' | 'confirm' | 'deny'",
-        description: 'Filter by required permission level',
-      },
-      {
-        name: 'mutating',
-        type: 'boolean',
-        description: 'Filter by mutating flag (true=filters that modify, false=read-only)',
-      },
-      {
-        name: 'limit',
-        type: 'integer',
-        description: 'Maximum results to return (default: 20)',
-      },
-    ],
-    notes: [
-      'Use when you need to find the right tool for a job.',
-      '`query` searches names and descriptions.',
-      'You can filter by `tags` (category), `permission`, or `mutating`.',
     ],
   },
 };

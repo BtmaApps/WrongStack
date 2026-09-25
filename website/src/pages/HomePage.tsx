@@ -305,11 +305,11 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                More ways to work. Clearer ways to inspect.
+                Remote workspaces. Sessions that carry on.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In 1.0.25: GPT-6 Sol and Luna, clearer MCP setup and active-work views, plus
-                stronger command safeguards.
+                In {version}: work over SSH, compose tools in code, watch the live browser, and
+                carry prompts and attachments between the terminal and WebUI.
               </p>
             </div>
             <a
@@ -323,16 +323,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'More model choices',
-                'Choose GPT-6 Sol or Luna through ChatGPT sign-in, with live model discovery at runtime.',
+                'Your remote workspace',
+                'Run wstack remote against a Linux or macOS host. The agent and tools stay there; its WebUI reaches you over SSH.',
               ],
               [
-                'Connected tool setup',
-                'Follow MCP resource updates, use clearer OAuth prompts, and import compatible Claude Code settings.',
+                'Tools working together',
+                'Use tool_script to combine and parallelize tool calls in sandboxed JavaScript, with permission checks on every call.',
               ],
               [
-                'Safer commands',
-                'Wrapped shell commands and inline payloads receive stronger danger checks, with broader secret redaction.',
+                'Keep work in view',
+                'Watch the live browser, keep hidden terminals running, and resume shared prompt queues with their attachments.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">

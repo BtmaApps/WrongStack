@@ -5,6 +5,30 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart1: Record<string, ToolDetail> = {
+  tool_script: {
+    longDescription:
+      'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
+    params: [
+      {
+        name: 'script',
+        type: 'string',
+        required: true,
+        description:
+          'Body of an async JavaScript function. Call tools via `tools.<name>(input)` or `tools.call(name, input)`; `return` the result.',
+      },
+      {
+        name: 'timeout_ms',
+        type: 'integer',
+        description:
+          'Wall-clock limit for the whole script in ms (default 120000). 0 = no limit; the user can still interrupt.',
+      },
+      {
+        name: 'max_calls',
+        type: 'integer',
+        description: 'Most tool calls the script may make. No limit when unset.',
+      },
+    ],
+  },
   browser_open: {
     longDescription:
       'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
@@ -297,35 +321,6 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
         required: true,
         description: 'Browser session id returned by browser_open.',
       },
-    ],
-  },
-  e2e_plan: {
-    longDescription:
-      'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
-    params: [
-      {
-        name: 'cwd',
-        type: 'string',
-        description: 'Directory inside the project to inspect.',
-      },
-      {
-        name: 'framework',
-        type: "'all' | 'playwright' | 'cypress'",
-        description: 'Optional framework filter; defaults to all.',
-      },
-      {
-        name: 'maxDepth',
-        type: 'integer',
-        description: 'Maximum workspace discovery depth; defaults to 5.',
-      },
-      {
-        name: 'includeSpecs',
-        type: 'boolean',
-        description: 'Count and sample specs; defaults to true.',
-      },
-    ],
-    notes: [
-      'Use before running browser E2E tests. The result identifies authoritative configs, package scripts, static server hints, specs, and exact argv.',
     ],
   },
 };

@@ -13,6 +13,14 @@ export type ToolCategory = (typeof toolCategories)[number];
 
 export const toolCatalog = [
   {
+    name: 'tool_script',
+    summary:
+      'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
+  {
     name: 'browser_open',
     summary:
       'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',

@@ -166,6 +166,7 @@ export { buildGoalPreamble } from './goal-preamble.js';
 export { IntelligentCompactor, type IntelligentCompactorOptions } from './intelligent-compactor.js';
 export {
   applyModelRuntime,
+  createModelRuntimeMiddleware,
   type ModelRuntimeMiddlewareOptions,
   mergeModelRuntime,
   type ResolvedModelRuntime,

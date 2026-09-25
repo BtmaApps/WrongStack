@@ -7,7 +7,7 @@ import {
 } from '@wrongstack/core/agent';
 import {
   AutoCompactionMiddleware,
-  applyModelRuntime,
+  createModelRuntimeMiddleware,
   ToolExecutor,
 } from '@wrongstack/core/execution';
 import { type EventBus, TOKENS } from '@wrongstack/core/kernel';
@@ -47,17 +47,14 @@ export function setupPipelines(params: {
   // need to mutate Config.modelRuntime for the change to take effect.
   if (params.modelRuntime) {
     const mr = params.modelRuntime;
-    pipelines.request.use({
-      name: 'ModelRuntimeSettings',
-      async handler(req: import('@wrongstack/core/types').Request) {
-        return applyModelRuntime(req, {
-          getSettings: mr.getSettings,
-          getReasoningConfig: mr.getReasoningConfig,
-          ...(mr.getCapabilities ? { getCapabilities: mr.getCapabilities } : {}),
-          onWarning: mr.onWarning,
-        });
-      },
-    });
+    pipelines.request.use(
+      createModelRuntimeMiddleware({
+        getSettings: mr.getSettings,
+        getReasoningConfig: mr.getReasoningConfig,
+        ...(mr.getCapabilities ? { getCapabilities: mr.getCapabilities } : {}),
+        onWarning: mr.onWarning,
+      }),
+    );
   }
 
   const installBoundary = <_T>(p: {

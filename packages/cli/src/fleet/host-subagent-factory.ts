@@ -24,7 +24,7 @@ import {
 } from '@wrongstack/core/coordination';
 import { installDesignStudioMiddleware } from '@wrongstack/core/design';
 import {
-  applyModelRuntime,
+  createModelRuntimeMiddleware,
   installSubagentAutoCompaction,
   mergeModelRuntime,
   ToolExecutor,
@@ -37,7 +37,6 @@ import { createSessionEventBridge, resolveSessionLoggingConfig } from '@wrongsta
 import type {
   Config,
   Provider,
-  Request,
   SessionWriter,
   SubagentConfig,
   TaskSpec,
@@ -384,20 +383,14 @@ export function createHostSubagentFactory(
 
     const subagentConfigStore = host.deps.configStore;
     const pipelines = createDefaultPipelines();
-    pipelines.request.use({
-      name: 'ModelRuntimeSettings',
-      async handler(req: Request) {
-        return applyModelRuntime(req, {
-          getSettings: () =>
-            mergeModelRuntime(
-              subagentConfigStore.get().modelRuntime,
-              modelSelection.runtimeOverride,
-            ),
-          getReasoningConfig: () => subReasoningConfig,
-          getCapabilities: () => ctx.provider.capabilities,
-        });
-      },
-    });
+    pipelines.request.use(
+      createModelRuntimeMiddleware({
+        getSettings: () =>
+          mergeModelRuntime(subagentConfigStore.get().modelRuntime, modelSelection.runtimeOverride),
+        getReasoningConfig: () => subReasoningConfig,
+        getCapabilities: () => ctx.provider.capabilities,
+      }),
+    );
 
     installDesignStudioMiddleware({ pipelines, ctx });
     installSubagentAutoCompaction(pipelines, ctx, config.context, events);

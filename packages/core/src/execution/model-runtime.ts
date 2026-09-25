@@ -7,7 +7,7 @@
  * surfaced as warnings) instead of triggering provider 400s.
  *
  * Wired once at boot (REPL/TUI/WebUI all go through the same `request`
- * pipeline) — see `installModelRuntimeMiddleware()`. UIs only need to mutate
+ * pipeline) — see `createModelRuntimeMiddleware()`. UIs only need to mutate
  * `Config.modelRuntime` (and persist) for the change to take effect on the next
  * request.
  */
@@ -24,6 +24,7 @@ import {
   inheritRequestConversation,
 } from '../core/request-conversation-binding.js';
 import { providerBoundToRequest } from '../core/request-provider-binding.js';
+import type { Middleware } from '../kernel/pipeline.js';
 
 export interface ResolvedModelRuntime {
   reasoning: Request['reasoning'];
@@ -254,13 +255,6 @@ export interface ModelRuntimeMiddlewareOptions {
 }
 
 /**
- * Build a `request`-pipeline middleware that applies runtime settings. The
- * returned function mutates the outgoing request by overlaying resolved
- * `reasoning` / `cache` fields and generic parameters. Existing fields on
- * the request are preserved only when the resolver produces nothing for
- * that field.
- */
-/**
  * Overlay one conversation's reasoning choice on the project settings.
  *
  * Only the reasoning triple is per conversation (`SESSION_SCOPED_PREF_KEYS` in
@@ -323,4 +317,17 @@ export function applyModelRuntime(req: Request, opts: ModelRuntimeMiddlewareOpti
     Object.assign(next, resolved.parameters);
   }
   return next;
+}
+
+/**
+ * The `request`-pipeline middleware that applies runtime settings: overlays
+ * the resolved `reasoning` / `cache` fields and generic parameters, then hands
+ * the request on. It must hand it on — every request middleware installed
+ * after it (SAGE's use credit, skill mentions) runs only through `next`.
+ */
+export function createModelRuntimeMiddleware(opts: ModelRuntimeMiddlewareOptions): Middleware<Request> {
+  return {
+    name: 'ModelRuntimeSettings',
+    handler: (req, next) => next(applyModelRuntime(req, opts)),
+  };
 }

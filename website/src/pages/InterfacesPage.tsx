@@ -7,8 +7,8 @@ import {
   Reveal,
   SectionIntro,
 } from '@/components/site/primitives';
-import { Link } from '@/lib/router';
 import { surfaces } from '@/data/content';
+import { Link } from '@/lib/router';
 
 const comparison = [
   ['Interactive chat', true, true, true, true, true, false],
@@ -36,6 +36,26 @@ export function InterfacesPage() {
         description="Choose the interface around the job, not around a reduced feature set. Every surface composes the same agent kernel, permissions, sessions and coordination primitives."
         aside={<ExternalDoc path="docs/webui.md">Read the WebUI guide</ExternalDoc>}
       />
+
+      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+        <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+          <h2 className="text-2xl font-black text-fg">Remote agent, local WebUI</h2>
+          <p className="mt-4 text-sm leading-7 text-muted">
+            Run the agent, tools and project daemons on a Linux or macOS machine through your system
+            SSH client. The WebUI connects over a local tunnel. SSH configuration, keys and known
+            hosts apply; the server must allow TCP forwarding. The build is uploaded and
+            checksum-verified, and your local provider configuration stays local. Set up a provider
+            in the remote WebUI on first use.
+          </p>
+          <div className="mt-5">
+            <CopyCommand command="wstack remote user@host:/path --open" />
+          </div>
+          <p className="mt-4 text-sm leading-7 text-muted">
+            A dropped tunnel reconnects to the same host. Ctrl+C stops the remote host by default;
+            add --keep to leave it running for your next connection.
+          </p>
+        </div>
+      </section>
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro

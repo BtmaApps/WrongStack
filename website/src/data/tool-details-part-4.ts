@@ -5,6 +5,42 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart4: Record<string, ToolDetail> = {
+  tool_search: {
+    longDescription:
+      'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
+    params: [
+      {
+        name: 'query',
+        type: 'string',
+        description: 'Search query for tool name or description',
+      },
+      {
+        name: 'tags',
+        type: 'string[]',
+        description: 'Filter by tags (e.g. "filesystem", "network", "dev")',
+      },
+      {
+        name: 'permission',
+        type: "'auto' | 'confirm' | 'deny'",
+        description: 'Filter by required permission level',
+      },
+      {
+        name: 'mutating',
+        type: 'boolean',
+        description: 'Filter by mutating flag (true=filters that modify, false=read-only)',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'Maximum results to return (default: 20)',
+      },
+    ],
+    notes: [
+      'Use when you need to find the right tool for a job.',
+      '`query` searches names and descriptions.',
+      'You can filter by `tags` (category), `permission`, or `mutating`.',
+    ],
+  },
   clarify: {
     longDescription:
       'Record or ask a focused clarification when a missing decision would materially change the implementation. Do not use it for questions that can be answered from the repository.',

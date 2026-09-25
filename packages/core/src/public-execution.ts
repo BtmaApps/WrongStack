@@ -126,6 +126,7 @@ export {
 } from './execution/intelligent-compactor.js';
 export {
   applyModelRuntime,
+  createModelRuntimeMiddleware,
   type ModelRuntimeMiddlewareOptions,
   mergeModelRuntime,
   type ResolvedModelRuntime,

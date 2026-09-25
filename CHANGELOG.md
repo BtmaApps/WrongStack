@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.26] — 2026-09-25
+
+Remote SSH workspaces, scripted tool composition, a live browser view and persistent
+terminals expand where and how you work. Shared prompt queues, message-level
+rewind and fork, and reconnecting clients make sessions easier to continue.
+This release also adds PDF and image workflows, a typed client SDK, Jujutsu and
+Mercurial checkpoints, native Windows ARM64 builds, and OTLP telemetry.
+
 ### Added
 
 - **WebUI: hidden terminals keep running and show above the composer.** Hiding the terminal dock (its button, or Ctrl+`) used to close every terminal in it. It now only hides the dock, and the composer strip lists the terminals meanwhile: a live dot while one is printing, its last lines on click, and Open to bring the dock back on that terminal. Closing the last terminal, or all of them, still ends them. Verified in a real browser with a `ping` left running behind the hidden dock.
@@ -120,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Verified in a real pseudo-terminal:** the TUI's first screen plus the command palette went from 8,143 non-ASCII characters to 0. (`packages/core/src/utils/ascii-fallback.ts`)
 - **Project and directory instruction files (`AGENTS.md`, or `CLAUDE.md`).**
   - **Root file.** The project root's file goes into the system prompt, fenced as instructions supplied by the repository. A repo's root `AGENTS.md` used to be read by `/tuneup` and nothing else. Verified: before this change the model answered "UNKNOWN" when asked for a codeword stated there; now it answers with the codeword.
-  - **Directory files.** A file in a subdirectory such as `packages/foo/AGENTS.md` is sent the first time a file tool (read, edit, write, grep, glob, tree, …) touches a path under that directory. It arrives as a text block next to the tool results and is sent again only if the file changes. The system prompt is not changed, so the provider's prompt cache is kept. After compaction the files are sent again on the next touch, since the summary may have dropped them. Each file is capped: 32k characters for the root file, 16k for a directory file.
+  - **Directory files.** A file in a subdirectory such as `packages/foo/AGENTS.md` is sent the first time a file tool (read, edit, write, grep, glob, tree, …) touches a path under that directory. It arrives as a text block next to the tool results and is sent again only if the file changes. The system prompt is not changed, so the provider's prompt cache is kept. After compaction the files are sent again on the next touch, since the summary may have dropped them. Instruction files are included in full by default; `limits.projectInstructionsChars` sets an optional per-file cap.
   - `/context` lists the root file as its own line. (`packages/core/src/core/project-instructions.ts`)
 - **Shell commands with no time limit, and a hermetic mode.**
   - **No time limit.** `bash` and `pwsh` accept `timeout_ms: 0`, meaning no time limit, for a long build or migration the model has to wait on. The run still streams its output and the user can still interrupt it. Before this, `bash` turned 0 into a 1 ms timeout and `pwsh` turned it into 1 s.
@@ -352,6 +360,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ran with `shell: true`, which was wrong. (`packages/core/src/hooks/shell-executor.ts`)
 
 ### Changed
+
+- **User-controlled limits across the CLI and WebUI.** `/settings limits` and the WebUI limits settings expose response tokens, fetched content, project instructions, history, memory injection, tool previews and subagent budgets. Limits are stored in the active user profile; repository configuration cannot impose them. Unset values use the model or catalog limits, or the documented runtime defaults for previews, memory and subagents. Full tool output remains available in its spool file.
 
 - **Startup no longer waits on models.dev.** With a usable catalog cache on
   disk, the CLI and WebUI server boot from it right away and refresh the

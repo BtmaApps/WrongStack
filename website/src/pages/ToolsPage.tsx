@@ -39,7 +39,7 @@ const MUTATING_COUNT = toolCatalog.filter((t) => t.mutating).length;
  * the marketing page never disagrees with the runtime. Update both together if
  * the tier sets change — regenerate the numbers by importing
  * `BUILTIN_TIER_COUNTS` from packages/tools/src/tool-tier.ts and reading its
- * values (current: off=67, minimal/light/aggressive=26, medium=47).
+ * values derived from the current runtime catalog.
  *
  *   off       → every registered tool
  *   minimal   → TIER1 only (26)

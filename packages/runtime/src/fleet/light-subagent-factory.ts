@@ -31,7 +31,7 @@ import {
   resolveSubagentModelTarget,
 } from '@wrongstack/core/coordination';
 import {
-  applyModelRuntime,
+  createModelRuntimeMiddleware,
   installSubagentAutoCompaction,
   mergeModelRuntime,
   ToolExecutor,
@@ -43,7 +43,6 @@ import type {
   Config,
   ModelsRegistry,
   ReasoningConfig,
-  Request,
   SessionWriter,
   SubagentConfig,
   TextBlock,
@@ -216,16 +215,13 @@ export function makeLightSubagentFactory(deps: LightSubagentFactoryDeps): AgentF
     (ctx.meta[_SUBAGENT_ABORT] as AbortController) = ac;
 
     const pipelines = createDefaultPipelines();
-    pipelines.request.use({
-      name: 'ModelRuntimeSettings',
-      async handler(req: Request) {
-        return applyModelRuntime(req, {
-          getSettings: () => mergeModelRuntime(configStore.get().modelRuntime, runtimeOverride),
-          getReasoningConfig: () => subReasoningConfig,
-          getCapabilities: () => ctx.provider.capabilities,
-        });
-      },
-    });
+    pipelines.request.use(
+      createModelRuntimeMiddleware({
+        getSettings: () => mergeModelRuntime(configStore.get().modelRuntime, runtimeOverride),
+        getReasoningConfig: () => subReasoningConfig,
+        getCapabilities: () => ctx.provider.capabilities,
+      }),
+    );
 
     // Proactive auto-compaction — subagents shrink on the warn/soft/hard
     // thresholds (and get the last-resort emergency trim) like the leader,

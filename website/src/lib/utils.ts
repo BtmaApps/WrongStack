@@ -85,7 +85,7 @@ export const skills = [
   },
 ] as const;
 
-/** The 67 built-in tools from packages/tools/src/builtin.ts, grouped. */
+/** The built-in tools from packages/tools/src/builtin.ts, grouped. */
 export const toolGroups = [
   {
     label: 'Browser & E2E',
@@ -353,9 +353,26 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.26',
+    date: '2026-09-25',
+    latest: true,
+    tagline: 'Remote workspaces, scripted tools, and sessions that carry on',
+    highlights: [
+      'Run the agent on Linux or macOS over SSH and use its WebUI locally with wstack remote',
+      'Compose tools with sandboxed JavaScript through tool_script, preserving each call’s permission checks',
+      'Watch the agent’s live browser and keep hidden terminals running above the composer',
+      'Share prompt queues and attachments between TUI and WebUI; rewind or fork from a TUI message',
+      'Read and attach PDFs, and create or edit images through image_generate',
+      'Integrate with the typed @wrongstack/client SDK, reconnect support, JSON Schema and OpenAPI',
+      'Capture workspace checkpoints in Jujutsu and Mercurial projects; install a native Windows ARM64 binary',
+      'Export OTLP traces and metrics, load directory instructions, and choose optional limits in settings',
+      'Approve MCP URL requests before opening a browser, with a manual option for remote sessions',
+      'Recover streaming results after reconnects and preserve session state through rewind and resume',
+    ],
+  },
+  {
     version: '1.0.25',
     date: '2026-09-23',
-    latest: true,
     tagline: 'More model choices, clearer connected tools, and safer commands',
     highlights: [
       'GPT-6 Sol and Luna join the ChatGPT sign-in model picker',

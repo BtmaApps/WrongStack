@@ -5,6 +5,35 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart2: Record<string, ToolDetail> = {
+  e2e_plan: {
+    longDescription:
+      'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
+    params: [
+      {
+        name: 'cwd',
+        type: 'string',
+        description: 'Directory inside the project to inspect.',
+      },
+      {
+        name: 'framework',
+        type: "'all' | 'playwright' | 'cypress'",
+        description: 'Optional framework filter; defaults to all.',
+      },
+      {
+        name: 'maxDepth',
+        type: 'integer',
+        description: 'Maximum workspace discovery depth; defaults to 5.',
+      },
+      {
+        name: 'includeSpecs',
+        type: 'boolean',
+        description: 'Count and sample specs; defaults to true.',
+      },
+    ],
+    notes: [
+      'Use before running browser E2E tests. The result identifies authoritative configs, package scripts, static server hints, specs, and exact argv.',
+    ],
+  },
   read: {
     longDescription:
       'Read a project file safely, with optional line ranges and binary-aware output. Use it to inspect source before editing; paths must stay within the project.',
@@ -38,6 +67,12 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
         description:
           'When true, include the codebase-index symbol list for this file as a structured `symbols` field in the result. Overrides the advanced-mode meta flag per-call.',
       },
+      {
+        name: 'pages',
+        type: 'string',
+        description:
+          'PDF only: pages to read, e.g. "3" or "1-5" (at most 20 per call; default the first 20).',
+      },
     ],
     doNotUseWhen: ['you need to search many files for matching content.'],
     useInstead: ['grep'],
@@ -65,7 +100,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'maxBytes',
         type: 'number',
-        description: 'Maximum bytes to retrieve (default: 128KB, max 1MB).',
+        description: 'Optional cap on returned bytes. Omit to read the whole page.',
       },
     ],
     notes: [
@@ -281,13 +316,19 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
         name: 'timeout_ms',
         type: 'integer',
         description:
-          'Optional timeout for this specific command in milliseconds (default 300000, max 600000).',
+          'Timeout for this command in ms (default 300000, max 600000). 0 = no limit; the user can still interrupt.',
       },
       {
         name: 'background',
         type: 'boolean',
         description:
-          'If true, launch the process in the background and return the PID immediately.',
+          'If true, launch the process in the background and return its PID and log_file (its output) immediately.',
+      },
+      {
+        name: 'hermetic',
+        type: 'boolean',
+        description:
+          'If true, skip shell startup files (.bashrc, profile, aliases) and pass only a minimal environment (PATH, HOME, temp, locale).',
       },
     ],
     doNotUseWhen: [
@@ -358,7 +399,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
         name: 'timeout_ms',
         type: 'integer',
         description:
-          'Optional timeout for this specific command in milliseconds (default 300000, max 600000).',
+          'Timeout for this command in ms (default 300000, max 600000). 0 = no limit; the user can still interrupt.',
       },
       {
         name: 'run_in_background',
@@ -1336,74 +1377,6 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
     notes: [
       '`action: "replace"` — set the complete task list (tasks ordered by priority)',
       '`action: "status"` — update a task\'s status (e.g. pending→in_progress, in_progress→completed)',
-    ],
-  },
-  git: {
-    longDescription:
-      'Inspect or run scoped Git operations in the project, including status, diff, history, branches, and commits. Review the target and working tree before mutating operations.',
-    params: [
-      {
-        name: 'command',
-        type: "'status' | 'log' | 'diff' | 'commit' | 'branch' | 'checkout' | 'stash' | 'push' | 'pull' | 'fetch' | 'reset' | 'worktree'",
-        required: true,
-        description: 'Git subcommand',
-      },
-      {
-        name: 'files',
-        type: 'string',
-        description:
-          'File(s) for status/diff: single path, comma-separated list, or "**/*.ts" glob',
-      },
-      {
-        name: 'message',
-        type: 'string',
-        description: 'Commit message (required for commit)',
-      },
-      {
-        name: 'branch',
-        type: 'string',
-        description: 'Branch name for checkout/branch',
-      },
-      {
-        name: 'format',
-        type: "'short' | 'oneline' | 'stat' | 'graph'",
-        description: 'Log format (default: short)',
-      },
-      {
-        name: 'limit',
-        type: 'integer',
-        description: 'Limit for log (default: 20)',
-      },
-      {
-        name: 'dry_run',
-        type: 'boolean',
-        description: 'For commit: show what would be committed',
-      },
-      {
-        name: 'worktreeAction',
-        type: "'list' | 'add' | 'remove' | 'prune'",
-        description: 'Worktree action: list, add, remove, prune',
-      },
-      {
-        name: 'worktreePath',
-        type: 'string',
-        description: 'Path for worktree add/remove (e.g. "../wt-feature-xyz")',
-      },
-      {
-        name: 'newBranch',
-        type: 'boolean',
-        description: 'Create new branch when adding worktree',
-      },
-      {
-        name: 'force',
-        type: 'boolean',
-        description: 'Force operation (e.g. worktree remove --force)',
-      },
-    ],
-    notes: [
-      '`command`: one of the supported subcommands (status, log, diff, commit, etc.)',
-      'Use `message` only for commit operations.',
-      'Use `files` array for operations that take paths (status, diff, add, etc.).',
     ],
   },
 };

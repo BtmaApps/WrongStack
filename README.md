@@ -51,43 +51,34 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.25
+### What's new in 1.0.26
 
-Highlights since 1.0.24:
+Highlights since 1.0.25:
 
-- **Choose GPT-6 Sol or Luna with ChatGPT sign-in.** Both models appear in the
-  Codex picker with their supported reasoning efforts.
-- **Set up connected tools more easily.** MCP servers report resource updates,
-  OAuth prompts explain next steps, and the CLI can import Claude Code settings.
-- **Follow active work in the WebUI.** Goal and Kanban views make task execution
-  and state easier to inspect; provider profiles and MCP settings have clearer
-  controls.
-- **Run commands with stronger safeguards.** Danger detection handles wrapped
-  shell commands and inline interpreter payloads, and secret redaction covers
-  compound flags.
-- **Trust dependency findings.** npm audit and OSV advisories retain their real
-  package identities and severity in the techstack adapter.
-
-Earlier additions:
-
-- **Give agents a typed decision specialist.** A configured Jev account exposes
-  `jev` for validated judgments, while `jev_status` checks readiness offline.
-- **Manage Jev where you work.** `/jev` and **Settings → Jev** configure features
-  and show decision activity in the terminal and browser.
-- **Keep SAGE triage scoped and complete.** Daily dry runs carry the owning
-  session's evidence and protect revived records during cleanup.
-- **Use fast judgments with safe fallbacks.** Optional TypeSafe System One
-  decisions support Brain choices, memory triage and recall, topic shifts,
-  compaction, Kanban verification, model-tier routing and semantic linting.
-- **Install from one verified release.** GitHub Releases provide self-contained
-  CLI binaries and per-platform Desktop packages with checksum manifests and
-  smoke-tested installers; npm remains a legacy compatibility path.
-- **Operate Kanban through guarded management APIs.** Assignment, dependency,
-  decomposition, lifecycle and queue-health actions share the same managed
-  boundary across connected surfaces.
-- **Inspect Brain and Council outcomes.** Replay keys bind exact inputs, policy
-  changes invalidate cached approvals, request identities stay unique, and HQ
-  correlates the latest decision lifecycle state.
+- **Work on a remote machine from your browser.**
+  `wstack remote user@host:/path --open` runs the agent and tools remotely,
+  with a local WebUI over SSH. Builds are checksum-verified; configure the
+  provider on the remote host. Linux and macOS hosts are supported.
+- **Chain tools in code.** `tool_script` runs JavaScript in a QuickJS sandbox
+  so the agent can combine, filter and parallelize tool calls. Every nested
+  call keeps its normal validation, permission and confirmation checks.
+- **See more of the work in the WebUI.** Watch the agent's live browser;
+  hidden terminals keep running with activity and previews above the composer.
+- **Continue across sessions and surfaces.** TUI and WebUI share saved prompt
+  queues, including attachments. Rewind or fork from a TUI message and recover
+  its prompt in the composer; reconnecting clients catch up on streamed events.
+- **Use PDFs and generate images.** Read PDF text or attach documents, and use
+  `image_generate` to create or edit images with a configured image provider.
+- **Bring your own workflow.** Workspace checkpoints support Jujutsu and
+  Mercurial, Windows ARM64 gets a native binary, and `--ascii` provides
+  terminal-friendly output. Project and directory instruction files guide
+  the agent as it works.
+- **Integrate and observe.** `@wrongstack/client` provides a typed WebUI client
+  with reconnect support; published JSON Schema and OpenAPI describe the
+  protocol. OTLP export connects traces and metrics to your collector.
+- **Control limits and connected tools.** Set optional limits in
+  `/settings limits` or WebUI settings. MCP URL requests ask for consent
+  before opening a browser, including when the browser is on another machine.
 
 See the complete [release notes](CHANGELOG.md).
 

@@ -181,7 +181,7 @@
     "@wrongstack/core/types": {
       "files": 1205,
       "typeOnly": 1070,
-      "runtimeOrMixed": 357
+      "runtimeOrMixed": 356
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -13300,7 +13300,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/wiring/pipeline.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 10
     },
     {
       "specifier": "@wrongstack/core/types",

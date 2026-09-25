@@ -99,6 +99,31 @@ describe('setupPipelines', () => {
     // Should NOT reject — swallowed.
     await expect(p.response.run({} as never)).resolves.toBeDefined();
   });
+
+  it('hands the request on past the model-runtime settings', async () => {
+    // The settings middleware used to return its request instead of calling
+    // next, so every request middleware installed after it (SAGE's use
+    // credit, skill mentions) silently never ran.
+    const p = setupPipelines({
+      events: new EventBus(),
+      logger: new DefaultLogger({ level: 'error' }),
+      modelRuntime: {
+        getSettings: () => ({ cache: { ttl: '1h' } }),
+        getReasoningConfig: () => undefined,
+      },
+    });
+    const seen: unknown[] = [];
+    p.request.use({
+      name: 'later',
+      handler: (req, next) => {
+        seen.push(req.cache);
+        return next(req);
+      },
+    });
+    const out = await p.request.run({ model: 'm', messages: [] });
+    expect(seen).toEqual([{ ttl: '1h' }]);
+    expect(out.cache).toEqual({ ttl: '1h' });
+  });
 });
 
 describe('setupCompaction', () => {

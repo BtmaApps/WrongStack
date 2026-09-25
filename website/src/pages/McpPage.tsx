@@ -1,5 +1,3 @@
-import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
-import { Link } from '@/lib/router';
 import {
   ArrowDown,
   Check,
@@ -10,6 +8,8 @@ import {
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
+import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
+import { Link } from '@/lib/router';
 
 export function McpPage() {
   return (
@@ -29,6 +29,23 @@ export function McpPage() {
           <ExternalDoc path="docs/subcommands/mcp.md">Open MCP lifecycle reference</ExternalDoc>
         }
       />
+      <section className="mx-auto max-w-[1380px] px-4 pt-12 sm:px-6 lg:px-10">
+        <div className="rounded-2xl border border-line bg-card p-6 sm:p-8">
+          <h2 className="text-2xl font-black text-fg">Consent before opening a page</h2>
+          <p className="mt-4 text-sm leading-7 text-muted">
+            MCP URL elicitation shows the requesting server, full URL and destination site before
+            anything opens. Choose to open it on the host when available, open it yourself on
+            another machine, or decline. Only HTTP and HTTPS URLs are accepted; suspicious host
+            names, embedded credentials and unencrypted remote URLs receive warnings.
+          </p>
+          <p className="mt-4 text-sm leading-7 text-muted">
+            In eternal and parallel autonomy, an unanswered elicitation is cancelled after the
+            tool-approval wait so it cannot hold the run indefinitely. Interactive modes keep
+            waiting for your answer.
+          </p>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro
           index="01"
