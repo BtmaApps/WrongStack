@@ -99,6 +99,7 @@ async function scanDirectory(
   state: ScanState,
   extraIgnores: ReadonlySet<string>,
   signal?: AbortSignal,
+  prefetched?: Promise<import('node:fs').Dirent[] | undefined>,
 ): Promise<void> {
   signal?.throwIfAborted();
   if (depth > limits.maxDepth || state.entries >= limits.maxEntries) {
@@ -106,12 +107,42 @@ async function scanDirectory(
     return;
   }
   let entries: import('node:fs').Dirent[];
-  try {
-    entries = await fs.readdir(directory, { withFileTypes: true });
-  } catch {
-    return;
+  if (prefetched !== undefined) {
+    const fromPrefetch = await prefetched;
+    if (!fromPrefetch) return;
+    entries = fromPrefetch;
+  } else {
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
   }
   entries.sort((a, b) => a.name.localeCompare(b.name));
+  // Prefetch immediate subdirectory listings so their readdir I/O overlaps
+  // this directory's processing (the walk is readdir-syscall-bound — measured
+  // PERF_LOG.md 2026-09-26 tools-discovery round). Recursion still awaits
+  // each child at its ORIGINAL loop position and processes entries in the
+  // identical sequence, so entry accounting, evidence order, and the
+  // maxEntries truncation set stay byte-identical to the sequential walk
+  // (truncated=true makes the counted set observable output). A failed read
+  // resolves undefined and is skipped exactly like the sequential catch
+  // path; a child never reached (entry cap, ignore) leaves its result unused.
+  const childReads = new Map<string, Promise<import('node:fs').Dirent[] | undefined>>();
+  if (depth < limits.maxDepth) {
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+      if (shouldIgnoreDirectory(entry.name, profiles, extraIgnores)) continue;
+      const childPath = path.join(directory, entry.name);
+      childReads.set(
+        childPath,
+        fs.readdir(childPath, { withFileTypes: true }).then(
+          (listing) => listing,
+          () => undefined,
+        ),
+      );
+    }
+  }
   for (const entry of entries) {
     signal?.throwIfAborted();
     if (state.entries >= limits.maxEntries) {
@@ -127,7 +158,16 @@ async function scanDirectory(
         state.truncated = true;
         continue;
       }
-      await scanDirectory(fullPath, depth + 1, profiles, limits, state, extraIgnores, signal);
+      await scanDirectory(
+        fullPath,
+        depth + 1,
+        profiles,
+        limits,
+        state,
+        extraIgnores,
+        signal,
+        childReads.get(fullPath),
+      );
       continue;
     }
     if (!entry.isFile()) continue;

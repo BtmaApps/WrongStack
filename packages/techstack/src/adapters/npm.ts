@@ -9,7 +9,7 @@
  * @see docs/specs/techstack-sdd.md §6 Tier A
  */
 
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { buildPurl } from '../registry/purl.js';
 import type {
@@ -94,12 +94,15 @@ function stripPeerSuffix(version: string): string {
 }
 
 /**
- * Extract the resolved versions pnpm recorded for one importer (workspace).
+ * Extract the resolved versions pnpm recorded for EVERY importer (workspace),
+ * keyed by importer path.
  *
  * pnpm's `importers:` section maps each workspace to the exact version it
  * resolved for every declared dependency — which is precisely the per-workspace
  * question this adapter asks, and it stays correct when two workspaces pin
- * different versions of the same package.
+ * different versions of the same package. Collecting all importers in one pass
+ * (instead of one targeted scan per workspace) is what lets the lockfile be
+ * parsed once and shared across every workspace in a monorepo inventory run.
  *
  * Line-based on purpose: the lockfile is machine-generated with a stable
  * 2-space indent, and pulling in a YAML parser for four fields isn't worth the
@@ -114,12 +117,13 @@ function stripPeerSuffix(version: string): string {
  *         version: 19.1.0
  * ```
  */
-function parsePnpmImporterVersions(lockContent: string, importerPath: string): Map<string, string> {
-  const versions = new Map<string, string>();
+function parsePnpmImporters(lockContent: string): Map<string, Map<string, string>> {
+  const importers = new Map<string, Map<string, string>>();
   const lines = lockContent.split(/\r?\n/);
 
   let inImporters = false;
-  let inTargetImporter = false;
+  let currentImporter: string | undefined;
+  let currentVersions: Map<string, string> | undefined;
   let currentPackage: string | undefined;
 
   for (const raw of lines) {
@@ -139,11 +143,18 @@ function parsePnpmImporterVersions(lockContent: string, importerPath: string): M
     if (indent === 2) {
       // New importer — `packages/cli:` or `.:`
       const key = line.endsWith(':') ? unquote(line.slice(0, -1)) : undefined;
-      inTargetImporter = key === importerPath;
+      if (key === undefined) {
+        currentImporter = undefined;
+        currentVersions = undefined;
+      } else {
+        currentImporter = key;
+        currentVersions = new Map<string, string>();
+        importers.set(currentImporter, currentVersions);
+      }
       currentPackage = undefined;
       continue;
     }
-    if (!inTargetImporter) continue;
+    if (!currentImporter || currentVersions === undefined) continue;
 
     if (indent === 4) {
       currentPackage = undefined; // dependencies: / devDependencies: / …
@@ -158,13 +169,13 @@ function parsePnpmImporterVersions(lockContent: string, importerPath: string): M
       // `link:../core` is a workspace link, not a released version — recording
       // it as `locked` would make a local package look like a registry one.
       if (version && !version.startsWith('link:') && !version.startsWith('file:')) {
-        versions.set(currentPackage, version);
+        currentVersions.set(currentPackage, version);
       }
       currentPackage = undefined;
     }
   }
 
-  return versions;
+  return importers;
 }
 
 function unquote(value: string): string {
@@ -260,6 +271,64 @@ function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
 }
 
 /**
+ * Parsed pnpm lockfile, shared across every workspace governed by the file.
+ * `importers` maps each workspace path to its resolved direct versions;
+ * `allVersions` holds every `name@version` instance in the file.
+ */
+interface PnpmLockParse {
+  readonly importers: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  readonly allVersions: ReadonlyMap<string, readonly string[]>;
+}
+
+/**
+ * Lockfile parses memoised per (path, mtimeMs, size).
+ *
+ * A pnpm monorepo has ONE lockfile governing every workspace: without this
+ * cache, `inventory()` re-reads and re-parses the whole lockfile for every
+ * workspace (this repository: 368 KB × 24 workspaces per run — measured in
+ * PERF_LOG.md, 2026-09-26 techstack round). The stat guard keeps a hit honest
+ * across `pnpm install` runs; the capacity cap bounds memory in long-lived
+ * server processes that scan many projects.
+ */
+const PNPM_LOCK_CACHE_CAPACITY = 4;
+const pnpmLockCache = new Map<string, { mtimeMs: number; size: number; parse: PnpmLockParse }>();
+
+async function loadPnpmLockParse(path: string): Promise<PnpmLockParse | undefined> {
+  let mtimeMs: number;
+  let size: number;
+  try {
+    const stats = await stat(path);
+    mtimeMs = stats.mtimeMs;
+    size = stats.size;
+  } catch {
+    return undefined;
+  }
+  const cached = pnpmLockCache.get(path);
+  if (cached && cached.mtimeMs === mtimeMs && cached.size === size) {
+    // Refresh recency so the eviction below is LRU, not insertion order.
+    pnpmLockCache.delete(path);
+    pnpmLockCache.set(path, cached);
+    return cached.parse;
+  }
+  try {
+    const content = await readFile(path, 'utf-8');
+    const parse: PnpmLockParse = {
+      importers: parsePnpmImporters(content),
+      allVersions: parsePnpmAllVersions(content),
+    };
+    pnpmLockCache.delete(path);
+    pnpmLockCache.set(path, { mtimeMs, size, parse });
+    if (pnpmLockCache.size > PNPM_LOCK_CACHE_CAPACITY) {
+      const oldest = pnpmLockCache.keys().next().value;
+      if (oldest !== undefined) pnpmLockCache.delete(oldest);
+    }
+    return parse;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Determine the dependency scope from the manifest section it appears in.
  */
 function scopeForSection(section: string): DependencyScope {
@@ -336,21 +405,19 @@ export class NpmAdapter implements EcosystemAdapter {
     // Read lockfile for resolved versions
     const lockInfo = await detectLockfile(root, options.projectRoot);
     const resolvedVersions = new Map<string, string>();
-    const allLockVersions = new Map<string, string[]>();
+    const allLockVersions = new Map<string, readonly string[]>();
     let lockEv: Evidence | undefined;
     if (lockInfo.kind === 'pnpm') {
-      try {
-        const lockContent = await readFile(lockInfo.path, 'utf-8');
-        // The importer key is this workspace's path relative to the lockfile,
-        // POSIX-style; the root workspace is `.`.
-        const importerPath =
-          relative(dirname(lockInfo.path), root).split(/[/\\]/).filter(Boolean).join('/') || '.';
-        const parsed = parsePnpmImporterVersions(lockContent, importerPath);
-        for (const [k, v] of parsed) resolvedVersions.set(k, v);
-        for (const [k, v] of parsePnpmAllVersions(lockContent)) allLockVersions.set(k, v);
-        if (parsed.size > 0) lockEv = lockfileEvidence(lockInfo.path);
-      } catch {
-        // ignore
+      // The importer key is this workspace's path relative to the lockfile,
+      // POSIX-style; the root workspace is `.`.
+      const importerPath =
+        relative(dirname(lockInfo.path), root).split(/[/\\]/).filter(Boolean).join('/') || '.';
+      const lockParse = await loadPnpmLockParse(lockInfo.path);
+      if (lockParse) {
+        const parsed = lockParse.importers.get(importerPath);
+        if (parsed) for (const [k, v] of parsed) resolvedVersions.set(k, v);
+        for (const [k, v] of lockParse.allVersions) allLockVersions.set(k, v);
+        if (parsed && parsed.size > 0) lockEv = lockfileEvidence(lockInfo.path);
       }
     } else if (lockInfo.kind === 'npm') {
       try {
