@@ -1,28 +1,26 @@
-## Chimera — project addendum (reviewer)
+## Review basis
+- Resolve findings against live `read`/`grep`, citing current lines; re-read after `file.external.edit`.
 
-### Review basis
-- Resolve every finding against live `read`/`grep` and cite current lines, not stale diff hunks. Re-read after `file.external.edit`; flag disk/diff divergence.
+## Plugin enablement defaults
+- When a seed flips an `enabled` default (`meta['chimeraEnabled']` / `meta['autoReviewEnabled']` in `packages/webui-server/src/server/context-meta.ts`), validate against the host layer, not the plugin resolver: `defaultState` in `HOST_PLUGIN_AUDIT_ENTRIES` (`packages/plugins/src/plugin-audit-catalog/index.ts`) via `resolvePluginEnablement`. `!== false` holds only when the catalog says `defaultState: 'active'`; an `inactive` comment may be stale — confirm on disk. For changed `DEFAULT_*` constants, check consumption: auto-review's truth is `packages/core/src/plugins/auto-review-config.ts`; `auto-review-plugin.ts` has only help text, so a one-file diff can look stale yet be correct.
 
-### TUI contracts (`packages/tui/src/**`)
-- When a diff can make an array newly empty, trace every `options[clamped]`-style lookup and Enter/confirm consumer. In `packages/tui/src/components/theme-picker.tsx`, zero-result filters void the non-empty invariant; require guards such as `selectedOption?.id ?? activeId` and review reducer `selected` plus confirmation as one contract. Reject `array[index] as T`: preserve typed field access because `THEME_OPTIONS` is `ThemePickerOption[]` in `packages/tui/src/theme.ts`, not a cast into primitive `setActiveTheme` sinks.
-- For React keys from caller data, validate `h:${row.family}` against the component’s prop contract, not comments or unrelated tests. If the type does not guarantee ordering and uniqueness, make the component normalize or key safely.
+## TUI (`packages/tui/src/**`)
+- When a diff can newly empty an array (zero-result filters in `packages/tui/src/components/theme-picker.tsx`), trace every `options[clamped]` lookup and Enter/confirm consumer; require guards like `selectedOption?.id ?? activeId` and treat reducer `selected` plus confirmation as one contract.
+- Validate caller-derived React keys (`h:${row.family}`) against the prop contract; if types don't guarantee uniqueness, require safe keying.
 
-### Types and exports
-- Whenever a field changes to `import('./x.js').T`, grep the whole file and remove stale `import type { T }`; `noUnusedLocals: true` in `tsconfig.base.json` turns it into `TS6133`.
-- For a new exported sentinel/constant under `packages/core/src/types/**`, grep `packages/core/src/types/index.ts` before accepting `@wrongstack/core/types` consumers. The barrel lists values explicitly; an unexported sentinel can resolve as `undefined` and turn `@wrongstack/core` comparisons into dead code.
+## Literals and wiring
+- Before accepting a test's `toContain`/`equals` on a literal assembled elsewhere (e.g. `packages/core/src/execution/tool-executor-results.ts`), grep the producer for the exact literal; a paraphrase yields a red test guarding nothing.
+- For security-isolation constants (env map, leading CLI args), verify every adapter call site merges non-mutating (`{ ...base, ...isolated }` before `spawn`) with the prefix before the subcommand — not just the shown hunk.
+- A defaulted option added to a module-private function reached via an injectable `dep = realFn` default is dead wiring unless the injected call site passes it — read that site, not the parameter line.
 
-### Protocol catalogs
-- For a new `SERVER_EXTENSION_MESSAGE_TYPES` entry in `packages/webui-protocol/src/server-integrations.ts`, run the parity test at `packages/webui-protocol/tests/message-catalogs.test.ts`; it owns regex, non-emptiness, and per-domain duplicate checks.
-- Before calling a producer-less entry dead, grep its type repo-wide. A declaration in `packages/webui/src/types/server-message-system.ts` plus dispatch wiring under `packages/webui/src/hooks/ws-handlers/*.ts` is a forward contract; treat `docs/architecture/simpleui-message-lifecycle.md` drift as below the reporting threshold.
+## Types and protocol catalogs
+- When a field becomes `import('./x.js').T`, remove stale `import type { T }`; `noUnusedLocals: true` in `tsconfig.base.json` yields `TS6133`.
+- New exported constant under `packages/core/src/types/**`: grep `packages/core/src/types/index.ts` — the barrel enumerates values, so an omission resolves `undefined` and dead-codes `@wrongstack/core` comparisons.
+- New `SERVER_EXTENSION_MESSAGE_TYPES` entry: run `packages/webui-protocol/tests/message-catalogs.test.ts`. Before flagging producer-less entries dead, grep the type repo-wide; a declaration in `packages/webui/src/types/server-message-system.ts` plus dispatch in `packages/webui/src/hooks/ws-handlers/*.ts` is a forward contract.
 
-### Other repository checks
-- Before judging `architecture/hotspots.json`, read `collectModuleSpecifiers` in `scripts/lib/architecture-health.mjs`; `relativeImports` includes `from './x'`, `import './x.css'`, `import('./x')`, `require()`, and `import x = require()`.
-- Repo-wide grep newly threaded identifiers and their consumed names plus production call sites. For `classifyChimeraReviewSource` in `packages/core/src/plugins/review-finding-integration.ts`, match `ReviewContextBundle` versus `ChimeraReviewCompletePayload`: finding/report integrations pass `payload.bundle`; `packages/cli/src/execution-chimera-review.ts` passes its bare bundle directly.
+## SimpleUI preference toggles
+- Close the contract in one pass: field/default/`parsePrefs` in `packages/simpleui/src/lib/prefs-model.ts`; the key in `shallowEqualPrefs` (`packages/simpleui/src/hooks/use-settings.ts`, else `isAtDefaults` stays stale); catalog id in `packages/simpleui/src/lib/settings-catalog.ts`; `ToggleRow` `settingId`/`hidden` in `packages/simpleui/src/settings-panel.tsx`; the key in `BOOLEAN_PREF_KEYS` (`packages/webui-server/src/server/ws-payload-preferences.ts`) — unlisted `prefs.update` keys are server-rejected, so client-only additions never persist.
 
-- When a component diff introduces a newly-reachable empty state (e.g. a filter that can yield zero options in `packages/tui/src/components/theme-picker.tsx`), trace the previously-safe index lookup (`options[clamped]`) to every consumer — the pre-existing "options is never empty" invariant is silently voided by the new feature, and only guarded consumers (`selectedOption?.id ?? activeId`) keep it from becoming a null-deref. (anchors: `packages/tui/src/components/theme-picker.tsx`, `options[clamped]`, `selectedOption?.id ?? activeId`) [applied 6×, 6 ok]
-- When a TUI component derives React keys from a data property (e.g. `h:${row.family}`) whose uniqueness is asserted only by a comment or an unrelated test, trace the key back to the component's own prop contract: if the property is caller-supplied and the type does not enforce the ordering that guarantees uniqueness, the duplicate-key reconciliation risk is owned by that component, not by the test that pins the current input. (anchors: `h:${row.family}`) [applied 1×, 1 ok]
-- When a diff adds an entry to a protocol message catalog such as `SERVER_EXTENSION_MESSAGE_TYPES` in `packages/webui-protocol/src/server-integrations.ts`, validate it by running the catalog's own parity test (`packages/webui-protocol/tests/message-catalogs.test.ts`) rather than inspecting the array alone — it pins the name regex, non-emptiness, and per-domain duplicate-freedom, which is exactly what a hand-appended string can break. When a new catalog entry appears without a producer, grep the type string repo-wide before flagging it as dead wiring; a type declared in the webui union (`packages/webui/src/types/server-message-system.ts`) and wired into a dispatch map (`packages/webui/src/hooks/ws-handlers/*.ts`) is a forward-declared contract, and the stale catalog list in `docs/architecture/simpleui-message-lifecycle.md` is documentation drift below the reporting threshold, not a finding. (anchors: `SERVER_EXTENSION_MESSAGE_TYPES`, `packages/webui-protocol/src/server-integrations.ts`, `packages/webui-protocol/tests/message-catalogs.test.ts`, `packages/webui/src/types/server-message-system.ts`, `packages/webui/src/hooks/ws-handlers/*.ts`, `docs/architecture/simpleui-message-lifecycle.md`)
-- When a diff introduces a new exported sentinel/constant in `packages/core/src/types/**` and a consumer imports it from the `@wrongstack/core/types` barrel, grep `packages/core/src/types/index.ts` for the new name before accepting the change — the barrel enumerates values explicitly and a missing entry compiles nowhere while silently yielding `undefined` at runtime, which turns a sentinel comparison into dead code. (anchors: `packages/core/src/types/**`, `@wrongstack/core/types`, `packages/core/src/types/index.ts`, `undefined`, `@wrongstack/core`) [applied 2×, 2 ok]
-
----
-*Distilled 2026-09-26T11:34:32.928Z · 4 new directives*
+## Scanners and docs
+- In chunked scanning (`EVIDENCE_MATCH_WINDOW`, `packages/plugins/src/evidence-analyzer/index.ts`), test matches crossing chunk boundaries: 1-char overlap with index-0 skip drops seam-spanning matches — deterministic evasion at `k*WINDOW-1`. Require overlap ≥ max match length or absolute-start dedup.
+- Validate `observeJevClient`/Jev-record claims against `packages/core/src/typesafe/activity.ts` (`ObserveJevClientOptions`, `tailEntry`, `[redacted]`/`[truncated:…]`, `CONTENT_MAX_CHARS`, `LOG_DIR_ENV`) in the same pass. For `logContentWanted` (`packages/core/src/typesafe/resolve.ts`), file empty-string divergence only when a real off-spelling (`0`, `false`, `off`) misbehaves.
