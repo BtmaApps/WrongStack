@@ -16,7 +16,7 @@ describe('auto-proceed after the user stopped the run', () => {
   afterEach(() => vi.useRealTimers());
 
   function setup(steeringPending: boolean) {
-    const runBlocks = vi.fn(async () => undefined);
+    const runBlocks = vi.fn(async (_blocks: unknown) => undefined);
     const stable = {
       autonomyLive: 'auto' as const,
       agent: {

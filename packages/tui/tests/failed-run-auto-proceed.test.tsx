@@ -117,7 +117,7 @@ describe('useNextStepsAutoSubmit: a run an API error killed', () => {
 
   function setup(autonomy: 'auto' | 'off') {
     const events = new EventBus();
-    const runBlocks = vi.fn(async () => undefined);
+    const runBlocks = vi.fn(async (_blocks: unknown) => undefined);
     const dispatch = vi.fn();
     // Everything but the state is stable across renders, as in the app: the
     // callbacks are effect dependencies, and the agent keys the tracker.
