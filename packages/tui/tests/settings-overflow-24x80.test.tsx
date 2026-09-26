@@ -45,6 +45,7 @@ function baseProps(over: Partial<SettingsPickerProps> = {}): SettingsPickerProps
     featureMemory: true,
     featureSkills: true,
     featureModelsRegistry: true,
+    featureToolCoach: true,
     tokenSavingTier: 'off',
     allowOutsideProjectRoot: true,
     contextAutoCompact: true,

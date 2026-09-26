@@ -34,6 +34,7 @@ import { DefaultSecretScrubber } from '../security/secret-scrubber.js';
 import type { SecretScrubber } from '../types/secret-scrubber.js';
 import type { SessionSummary } from '../types/session.js';
 import { atomicWrite } from '../utils/atomic-write.js';
+import { isSessionTranscriptFileName } from '../utils/session-scoped-path.js';
 import { summarizeSessionFile } from './session-store/summary-builder.js';
 
 /** Lifecycle boundaries, in the order a healthy session writes them. */
@@ -185,7 +186,12 @@ async function collectJournals(sessionsDir: string): Promise<Array<{ id: string;
       continue;
     }
     for (const name of names) {
-      if (!name.endsWith('.jsonl')) continue;
+      // Sidecar stores share the shard with the transcript — `.replay.jsonl`,
+      // `.audit.jsonl`, legacy `.annotations.jsonl`, all written via
+      // sessionScopedPath — and would otherwise be diagnosed as phantom
+      // corrupt sessions. Cold `.jsonl.gz` archives stay out too: the
+      // classifier accepts them, but this is a hot-journal scan.
+      if (!name.endsWith('.jsonl') || !isSessionTranscriptFileName(name)) continue;
       out.push({
         id: `${day}/${name.slice(0, -'.jsonl'.length)}`,
         file: path.join(sessionsDir, day, name),

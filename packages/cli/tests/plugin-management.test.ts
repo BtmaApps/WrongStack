@@ -63,8 +63,15 @@ describe('plugin management', () => {
         defaultState: 'active',
       }),
     );
+    // The Chimera review automation ships on: both the post-session plugin and
+    // the mid-session auto-review plugin are host-active out of the box, with
+    // their cascade defaulting to `high`.
+    for (const name of ['wstack-chimera', 'wstack-auto-review']) {
+      expect(PLUGIN_AUDIT_ENTRIES).toContainEqual(
+        expect.objectContaining({ name, defaultState: 'active', canDisable: true }),
+      );
+    }
     for (const name of [
-      'wstack-chimera',
       'agent-handoff',
       'commit-validator',
       'path-guard',

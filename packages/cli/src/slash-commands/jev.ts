@@ -23,6 +23,7 @@ const HELP = [
   `/jev features: ${JEV_FEATURES.join(', ')}`,
   '/jev test — one billed connection probe using saved settings',
   '/jev logs [feature] — recent process activity and persistent log path',
+  '/jev logcontent on|off — record full request/response content in the log file',
   '/jev remove-key — delete the profile key (environment key may still apply)',
   'Changes are saved in the active profile. Restart existing sessions to apply all consumers.',
 ].join('\n');
@@ -49,6 +50,9 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
                 `${on ? 'on ' : 'off'} ${key} · ${s.readiness[key]?.state}: ${s.readiness[key]?.reason}`,
             ),
             `Profile compaction: ${s.contextStrategy}. Model tiers: /tier. Conditions do not prove runtime use.`,
+            s.logContent
+              ? 'Activity log: FULL content (request/response/error) → /jev logcontent off to stop'
+              : 'Activity log: metadata only → /jev logcontent on for full content',
             '',
             HELP,
           ].join('\n'),
@@ -58,10 +62,16 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
       if (sub === 'logs') {
         const log = jevActivitySnapshot();
         const rows = log.entries.filter((entry) => !arg || entry.feature === arg).slice(0, 30);
+        const content = jevSettingsSnapshot(opts.configStore.get()).logContent;
         return {
           message: [
             `Jev activity · this process · ${log.path ?? 'no disk entries yet'}`,
             log.writeError ?? '',
+            `Content: ${
+              content
+                ? 'request/response recorded in the log file only — never in this view'
+                : 'not recorded · /jev logcontent on'
+            }`,
             ...rows.map(
               (e) =>
                 `${new Date(e.at).toISOString()} ${e.feature} ${e.outcome} ${e.durationMs}ms ${e.route}/${e.model} ${e.inputTokens ?? 0}in ${e.reason ?? ''}\n  ${e.project} ${JSON.stringify(e.answers ?? {})}`,
@@ -112,6 +122,8 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
         patch = { recallTurnContext: arg === 'on' };
       else if (sub === 'compaction') patch = { contextStrategy: arg };
       else if (sub === 'timeout') patch = { requestTimeoutMs: Number(arg) };
+      else if (sub === 'logcontent' && ['on', 'off'].includes(arg))
+        patch = { logContent: arg === 'on' };
       else if (sub === 'remove-key') patch = { apiKey: null };
       else if (sub === 'feature' && ['on', 'off'].includes(value))
         patch = { features: { [arg]: value === 'on' } };

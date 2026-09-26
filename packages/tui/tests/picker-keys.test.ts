@@ -8,6 +8,7 @@ import type { ProviderOption } from '../src/components/model-picker.js';
 import { useAppPickerKeys } from '../src/hooks/use-app-picker-keys.js';
 import { type PickerKeysHost, usePickerKeys } from '../src/hooks/use-picker-keys.js';
 import { tryAuthModelPickerKeys } from '../src/hooks/use-picker-keys-auth-model.js';
+import { getActiveThemeName, setActiveTheme } from '../src/theme.js';
 
 function key(overrides: Partial<KeyEvent> = {}): KeyEvent {
   return {
@@ -1014,6 +1015,36 @@ describe('usePickerKeys — theme picker', () => {
     host.dispatch.mockClear();
     runPickerKey(host, '', key({ escape: true }), false);
     expect(host.dispatch).toHaveBeenCalledWith({ type: 'themePickerClose' });
+  });
+
+  it('toggles live preview with `p` and restores the pre-preview palette on Esc', () => {
+    // `p` only toggles outside filter mode — inside a query it is a letter.
+    const typing = makeHost(
+      baseState({ themePicker: { open: true, selected: 0, filtering: true, filter: 'gr' } }),
+    );
+    runPickerKey(typing, 'p', key(), false);
+    expect(typing.dispatch).not.toHaveBeenCalledWith({ type: 'themePickerPreview', on: true });
+
+    const host = makeHost(baseState({ themePicker: { open: true, selected: 0, preview: false } }));
+    runPickerKey(host, 'p', key(), false);
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'themePickerPreview', on: true });
+
+    // Simulate what apply-on-navigate does, then Esc. `previous` is the theme
+    // that was live when preview turned on, and Esc must put it back — the
+    // user only ever glanced at the previewed palette.
+    const before = 'nord';
+    setActiveTheme(before);
+    const previewing = makeHost(
+      baseState({ themePicker: { open: true, selected: 1, preview: true, previous: before } }),
+    );
+    setActiveTheme('gruvbox-dark');
+    expect(getActiveThemeName()).toBe('gruvbox-dark');
+
+    runPickerKey(previewing, '', key({ escape: true }), false);
+
+    expect(getActiveThemeName()).toBe(before);
+    expect(previewing.dispatch).toHaveBeenCalledWith({ type: 'themePickerPreview', on: false });
+    expect(previewing.dispatch).toHaveBeenCalledWith({ type: 'themePickerClose' });
   });
 });
 

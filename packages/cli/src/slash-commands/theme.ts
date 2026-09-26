@@ -1,5 +1,5 @@
 import type { InputReader, SlashCommand, ThemePresetId } from '@wrongstack/core/types';
-import { THEME_PRESET_IDS } from '@wrongstack/core/types';
+import { THEME_PRESET_IDS, THEME_PRESET_META } from '@wrongstack/core/types';
 import { color, writeOut } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -10,158 +10,29 @@ interface ThemeOption {
 }
 
 /**
- * Display metadata per preset. Typed as a total `Record<ThemePresetId, …>` so
- * adding an id to `THEME_PRESET_IDS` without a label here is a compile error
- * rather than a preset that silently renders as `undefined` in the picker.
- * The ORDER shown to the user comes from `THEME_PRESET_IDS`, not from this
- * object, so the CLI and TUI pickers always agree.
+ * Picker rows in canonical `THEME_PRESET_IDS` order.
+ *
+ * Name/description come from `THEME_PRESET_META` in `@wrongstack/core/types` —
+ * the same record the TUI's `theme-presets/options.ts` derives from. This
+ * module used to carry its own hand-written `THEME_META` table duplicating all
+ * 64 entries: the id set was compile-linked, but a reworded or renamed preset
+ * drifted silently between the CLI and TUI pickers. Both surfaces now read one
+ * record, so a mismatch is not expressible.
  */
-const THEME_META: Record<ThemePresetId, { name: string; desc: string }> = {
-  catppuccin: { name: 'Catppuccin Mocha', desc: 'Soft pastel dark theme (Default)' },
-  'tokyo-night': { name: 'Tokyo Night', desc: 'Deep violet, neon orange & cyan' },
-  nord: { name: 'Nord', desc: 'Cool arctic blue & slate pastels' },
-  cyberpunk: { name: 'Cyberpunk Neon', desc: 'High-contrast magenta, cyan & yellow' },
-  dracula: { name: 'Dracula', desc: 'Vibrant purple, pink & green' },
-  'gruvbox-dark': { name: 'Gruvbox Dark', desc: 'Warm earthy retro — orange, olive & aqua' },
-  'solarized-dark': { name: 'Solarized Dark', desc: 'Base16 classic — teal & ochre precision' },
-  'one-dark': { name: 'One Dark', desc: "Atom's iconic palette — blue-led, warm accents" },
-  monokai: { name: 'Monokai', desc: 'Sublime classic — vivid magenta, cyan & lime' },
-  'rose-pine': { name: 'Rosé Pine', desc: 'Aesthetic pine & foam — soft evening pastels' },
-  kanagawa: { name: 'Kanagawa', desc: 'Hokusai-inspired waves — sumi ink on washi' },
-  'ayu-dark': { name: 'Ayu Dark', desc: 'Simple pleasant dark — warm orange + cool blue' },
-  everforest: { name: 'Everforest', desc: 'Green-based comfort — forest greens & warm tans' },
-  'night-owl': { name: 'Night Owl', desc: "Sarah Drasner's night — deep navy + bold accents" },
-  synthwave: { name: "Synthwave '84", desc: 'Hot pink + neon cyan on deep purple' },
-  'github-dark': { name: 'GitHub Dark', desc: "GitHub's default dark — crisp blue on near-black" },
-  'material-ocean': {
-    name: 'Material Ocean',
-    desc: 'Deepest Material variant — ink blue with pastel accents',
-  },
-  nightfox: { name: 'Nightfox', desc: 'Balanced slate blue with muted sage and rose' },
-  oxocarbon: {
-    name: 'Oxocarbon',
-    desc: 'IBM Carbon-derived — neutral greys, electric blue & pink',
-  },
-  'catppuccin-macchiato': {
-    name: 'Catppuccin Macchiato',
-    desc: 'Warmer, one shade lighter than Mocha',
-  },
-  'catppuccin-frappe': {
-    name: 'Catppuccin Frappé',
-    desc: 'The lightest Catppuccin dark — gentle midday contrast',
-  },
-  'gruvbox-material': {
-    name: 'Gruvbox Material',
-    desc: 'Softened Gruvbox — same warmth, lower eye strain',
-  },
-  'tokyo-night-storm': {
-    name: 'Tokyo Night Storm',
-    desc: 'Tokyo Night on a lifted blue-grey base',
-  },
-  'rose-pine-moon': {
-    name: 'Rosé Pine Moon',
-    desc: 'Rosé Pine at dusk — deeper base, same soft accents',
-  },
-  zenburn: { name: 'Zenburn', desc: 'The classic low-contrast grey — desaturated and calm' },
-  palenight: { name: 'Palenight', desc: 'Material Palenight — indigo base, candy accents' },
-  horizon: { name: 'Horizon', desc: 'Warm coral and mint on charcoal — sunset gradient' },
-  sonokai: { name: 'Sonokai', desc: 'Monokai Pro descendant — punchy on warm graphite' },
-  'edge-dark': { name: 'Edge Dark', desc: 'Clean, evenly-weighted palette on desaturated navy' },
-  moonfly: { name: 'Moonfly', desc: 'Near-black base with high-chroma accents — max contrast' },
-  melange: { name: 'Melange', desc: 'Warm sepia and clay — the least blue dark theme here' },
-  poimandres: { name: 'Poimandres', desc: 'Teal-forward, low-saturation — mint on deep indigo' },
-  'vitesse-dark': {
-    name: 'Vitesse Dark',
-    desc: "Anthony Fu's minimal palette — muted, print-like",
-  },
-  aura: { name: 'Aura Dark', desc: 'Vivid purple and spring green on near-black violet' },
-  'dark-plus': { name: 'VS Code Dark+', desc: "VS Code's default — familiar blue/orange/teal" },
-  monochrome: { name: 'Monochrome', desc: 'Pure grayscale — no hue, only luminance' },
-  matrix: { name: 'Matrix Green', desc: 'Phosphor green CRT terminal — digital rain aesthetic' },
-  amber: { name: 'Amber CRT', desc: 'Warm phosphor CRT terminal — glowing vintage amber' },
-  'cyber-noir': {
-    name: 'Cyber Noir',
-    desc: 'Stark white and slate on jet black — minimalist high contrast',
-  },
-  'cobalt-mono': {
-    name: 'Cobalt Monochrome',
-    desc: 'Luminous cyan on deep abyss blue — oceanic blueprint',
-  },
-  'blood-moon': {
-    name: 'Blood Moon',
-    desc: 'Crimson & scarlet on obsidian — brooding dark mode',
-  },
-  cobalt2: {
-    name: 'Cobalt2',
-    desc: "Wes Bos' signature theme — deep navy with golden yellow & cyan",
-  },
-  'shades-of-purple': {
-    name: 'Shades of Purple',
-    desc: "Ahmad Awais' bold purple palette with neon yellow & magenta",
-  },
-  'flexoki-dark': {
-    name: 'Flexoki Dark',
-    desc: "Steph Ango's inky warm paper palette — natural earthy accents",
-  },
-  laserwave: {
-    name: 'LaserWave',
-    desc: '80s retrowave — neon flamingo and turquoise on violet',
-  },
-  andromeda: {
-    name: 'Andromeda',
-    desc: 'Deep interstellar dark with vibrant neon teal and pink',
-  },
-  'github-dark-dimmed': {
-    name: 'GitHub Dark Dimmed',
-    desc: "GitHub's softer slate dark theme — gentle blues and pastels",
-  },
-  snazzy: {
-    name: 'Hyper Snazzy',
-    desc: "Sindre Sorhus' elegant saturated terminal palette",
-  },
-  'tokyo-night-moon': {
-    name: 'Tokyo Night Moon',
-    desc: 'Tokyo Night on balanced deep indigo — vibrant accents',
-  },
-  'gruvbox-dark-hard': {
-    name: 'Gruvbox Dark Hard',
-    desc: 'Maximum contrast Gruvbox on deep pitch charcoal',
-  },
-  'oceanic-next': {
-    name: 'Oceanic Next',
-    desc: 'Teal-and-slate classic — calm blue, warm coral',
-  },
-  'one-half-dark': {
-    name: 'One Half Dark',
-    desc: "Atom's One Half — One Dark with cleaner contrast",
-  },
-  'ayu-mirage': { name: 'Ayu Mirage', desc: 'Dusk-slate Ayu, between Dark and Light' },
-  seti: { name: 'Seti', desc: 'Long-running VS Code classic — charcoal, gold, cyan' },
-  'paraiso-dark': { name: 'Paraiso Dark', desc: 'Base16 plum — warm, muted, low-glare' },
-  darcula: { name: 'Darcula', desc: "JetBrains' default dark — grey-green with amber" },
-  'slack-dark': { name: 'Slack Aubergine', desc: 'Deep aubergine with sky blue and lime' },
-  'vitesse-black': { name: 'Vitesse Black', desc: 'Vitesse on true black — least glare here' },
-  'atom-dark': { name: 'Atom Dark', desc: 'The original Atom grey — neutral, low-chroma' },
-  'github-dark-high-contrast': {
-    name: 'GitHub Dark High Contrast',
-    desc: 'Accessible GitHub — boosted text and borders',
-  },
-  'contrast-max': {
-    name: 'Maximum Contrast',
-    desc: 'Original — pure black, AAA-targeted text and borders',
-  },
-  'colorblind-safe': {
-    name: 'Colorblind Safe',
-    desc: 'Original — blue/orange coding, no red-vs-green reliance',
-  },
-  sandstone: { name: 'Sandstone', desc: 'Original — warm stone neutrals with sage and clay' },
-  'everforest-hard': {
-    name: 'Everforest Hard',
-    desc: 'Everforest on its deepest base — more depth, same greens',
-  },
-};
+const THEME_OPTIONS: ThemeOption[] = THEME_PRESET_IDS.map((id) => ({
+  id,
+  name: THEME_PRESET_META[id].name,
+  desc: THEME_PRESET_META[id].description,
+}));
 
-const THEME_OPTIONS: ThemeOption[] = THEME_PRESET_IDS.map((id) => ({ id, ...THEME_META[id] }));
+/**
+ * The CLI's picker rows, exported for the TUI↔CLI agreement test
+ * (`packages/cli/tests/theme-metadata-agreement.test.ts`). The TUI derives its
+ * own rows from the same `THEME_PRESET_META` record, so this export is the
+ * second side of that comparison — it must stay in step with `THEME_OPTIONS`
+ * above.
+ */
+export const cliThemePickerOptions: readonly ThemeOption[] = THEME_OPTIONS;
 
 /** Wrap the preset ids into short comma-separated lines for `/theme --help`. */
 function presetHelpLines(perLine = 4): string[] {

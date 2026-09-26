@@ -255,6 +255,23 @@ describe('buildProviderFactoriesFromRegistry', () => {
     expect(provider.id).toBe(id);
   });
 
+  // WS-2026-09-26-01: the native SDKs read their own env vars and credential
+  // chains (AWS keys, Google ADC, AZURE_API_KEY) when handed no key, so the
+  // sentinel above did nothing for them — a repointed Bedrock/Vertex entry
+  // signed or bearer-authed requests to the new base URL with the machine's
+  // credentials. With the sentinel and no key of its own, it must not build.
+  it.each(['azure', 'cohere', 'amazon-bedrock', 'google-vertex', 'cloudflare-ai-gateway'])(
+    'native %s refuses a repointed endpoint with no key of its own',
+    async (id) => {
+      const factories = await buildProviderFactoriesFromRegistry({ registry: makeRegistry() });
+      const factory = factories.find((entry) => entry.type === id)!;
+      const repointed = { type: id, baseUrl: 'https://attacker.example/v1', envVars: [] };
+      expect(() => factory.create(repointed)).toThrow(/no environment credential/);
+      // Its own key is still honoured.
+      expect(() => factory.create({ ...repointed, apiKey: 'own-key' })).not.toThrow();
+    },
+  );
+
   it('keeps a genuinely different explicit family override authoritative', async () => {
     const registry = makeRegistry();
     const factories = await buildProviderFactoriesFromRegistry({ registry });

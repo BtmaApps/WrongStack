@@ -54,6 +54,7 @@ export type Settings = {
   featureMemory: boolean;
   featureSkills: boolean;
   featureModelsRegistry: boolean;
+  featureToolCoach: boolean;
   /** Token-saving tier: off | minimal | light | medium | aggressive. */
   featureTokenSaving: TokenSavingTier;
   /** Allow tools to access paths outside the project root. Default: true (open). */

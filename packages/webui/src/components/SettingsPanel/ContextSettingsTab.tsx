@@ -58,6 +58,12 @@ export function ContextSettingsTab({
             onChange={() => syncPref('featureModelsRegistry', !localPrefs.featureModelsRegistry)}
           />
           <PreferenceToggle
+            label={t('settings:context.toolCoachLabel')}
+            hint={t('settings:context.toolCoachHint')}
+            value={localPrefs.featureToolCoach}
+            onChange={() => syncPref('featureToolCoach', !localPrefs.featureToolCoach)}
+          />
+          <PreferenceToggle
             label={t('settings:context.indexOnStartLabel')}
             hint={t('settings:context.indexOnStartHint')}
             value={localPrefs.indexOnStart}

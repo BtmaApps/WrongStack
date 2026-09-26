@@ -77,6 +77,13 @@ describe('computeConfigPrefUpdates', () => {
     expect(next.features?.plugins).toBe(false);
   });
 
+  it('applies the Tool Coach switch to the live config without replacing other flags', () => {
+    const updates = computeConfigPrefUpdates(frozenConfig(), { featureToolCoach: false });
+    expect(updates.features?.toolCoach).toBe(false);
+    expect(updates.features?.memory).toBe(true);
+    expect(computeConfigPrefUpdates(frozenConfig(), { featureToolCoach: 'off' })).toEqual({});
+  });
+
   it('carries every non-feature key the settings pane can send', () => {
     const updates = computeConfigPrefUpdates(frozenConfig(), {
       fallbackModels: ['a', 'b'],

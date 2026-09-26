@@ -83,15 +83,16 @@ const MONITOR_KEYS = ['fleet', 'agents', 'worktree', 'phase'] as const;
 /**
  * Marker-on-wash contrast floor. 3:1 is the WCAG bar for a bold glyph.
  *
- * `rose-pine` is a documented exception: the palette has no green at all, so
- * `success` is pine (#31748f) — dark enough that NO wash which still reads as
- * a tinted "added" row can clear 3:1. Distorting the palette to satisfy the
- * assertion would be worse than recording the floor here. Listed explicitly
- * (not a blanket lower threshold) so the other 34 presets stay held to 3:1.
+ * The map is now EMPTY: `rose-pine` used to sit here at 2.4 because its
+ * `success` was pine (#31748f), too dark to clear 3:1 on any wash that still
+ * reads as a tinted "added" row. That was the recorded "dark marker on a
+ * near-black base" trap — the marker itself had to move, not the wash. It now
+ * uses #3e8fb0, the pine-teal `rose-pine-moon` already shipped in this family,
+ * which measures 3.55:1 on the same wash. Kept as a map (rather than deleted)
+ * so a future palette that genuinely needs an exception is an explicit,
+ * reviewable entry instead of a loosened global threshold.
  */
-const MARKER_CONTRAST_FLOOR: Partial<Record<(typeof THEME_PRESET_IDS)[number], number>> = {
-  'rose-pine': 2.4,
-};
+const MARKER_CONTRAST_FLOOR: Partial<Record<(typeof THEME_PRESET_IDS)[number], number>> = {};
 
 describe('theme preset registry', () => {
   it('boots with the same palette as explicitly selecting the default theme', () => {
@@ -110,11 +111,35 @@ describe('theme preset registry', () => {
     expect(Object.keys(themePresets).sort()).toEqual([...THEME_PRESET_IDS].sort());
   });
 
-  it('exposes exactly one picker option per preset, in canonical order', () => {
-    expect(THEME_OPTIONS.map((o) => o.id)).toEqual([...THEME_PRESET_IDS]);
+  it('exposes exactly one picker option per preset, grouped by family', () => {
+    // One row per canonical id, no extras and none missing. Order is grouped
+    // by family rather than raw `THEME_PRESET_IDS` order: the picker renders
+    // family headers, and a family whose members are scattered ~15 rows apart
+    // is not actually grouped. The set of ids is what must not drift.
+    expect(THEME_OPTIONS.map((o) => o.id).sort()).toEqual([...THEME_PRESET_IDS].sort());
     for (const opt of THEME_OPTIONS) {
       expect(opt.name.trim()).not.toBe('');
       expect(opt.description.trim()).not.toBe('');
+      expect(opt.family.trim()).not.toBe('');
+    }
+    // Canonical order preserved WITHIN each family group, and each family
+    // occupies exactly one contiguous run.
+    //
+    // `seen` MUST be seeded with the first option's family: the loop below
+    // starts at i=1 and only records indices >= 1, so without the seed a family
+    // that appears at index 0 and reappears later (e.g. [A, B, ..., A]) is
+    // never in `seen` at the repeat and the contiguity check passes — voiding
+    // the exact guarantee this assertion exists to make.
+    const seen = new Set<string>([THEME_OPTIONS[0]!.family]);
+    for (let i = 1; i < THEME_OPTIONS.length; i += 1) {
+      const prevIndex = THEME_PRESET_IDS.indexOf(THEME_OPTIONS[i - 1]!.id);
+      const curIndex = THEME_PRESET_IDS.indexOf(THEME_OPTIONS[i]!.id);
+      if (THEME_OPTIONS[i - 1]!.family === THEME_OPTIONS[i]!.family) {
+        expect(curIndex, `within ${THEME_OPTIONS[i]!.family}`).toBeGreaterThan(prevIndex);
+      } else {
+        expect(seen.has(THEME_OPTIONS[i]!.family), 'family groups are contiguous').toBe(false);
+      }
+      seen.add(THEME_OPTIONS[i]!.family);
     }
   });
 

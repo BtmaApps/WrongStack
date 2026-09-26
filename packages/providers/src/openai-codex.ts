@@ -1,9 +1,7 @@
 import {
-  appendVolatileSystem,
   codexCacheSessionId,
   codexClientRequestId,
   DEFAULT_CODEX_BASE,
-  mapToolChoice,
   positiveContextLimit,
   resolveCodexModelsUrl,
   resolveCodexUrl,
@@ -39,7 +37,7 @@ export {
  * path share one definition instead of three that had to be kept in step by hand.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   type ProviderQuotaSnapshot,
   quotaResetInMs,
@@ -47,7 +45,6 @@ import {
 } from '@wrongstack/core/quota';
 import {
   type Capabilities,
-  isVolatileSystemBlock,
   ProviderError,
   type ReasoningEffort,
   type Request,
@@ -73,6 +70,7 @@ import {
 } from './oauth/codex-protocol.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { extractAccountId, extractPlanType } from './openai-codex-account.js';
+import { buildCodexRequestBody } from './openai-codex-body.js';
 import type {
   CodexLiveModel,
   CodexModelMetadata,
@@ -81,21 +79,18 @@ import type {
 } from './openai-codex-model-policy.js';
 import {
   CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT,
-  clampReasoningEffort,
   codexSendCeiling,
   parseReasoningEffort,
   parseSupportedReasoningEfforts,
 } from './openai-codex-model-policy.js';
 import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex-stream.js';
-import { applyPromptCacheKey } from './prompt-cache-key.js';
 import {
   isCacheProbeEnabled,
   recordCacheProbeRequest,
   recordCacheProbeUsage,
 } from './prompt-cache-probe.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
-import { messagesToResponsesInput, toolsToResponses } from './tool-format/to-responses.js';
 import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
 
 // Owned by `codex-websocket.ts` (both transports carry it); re-exported here
@@ -261,6 +256,8 @@ export interface OpenAICodexProviderOptions {
    * Default 'medium'. Set 'none' to omit reasoning entirely.
    */
   reasoningEffort?: ReasoningEffort | undefined;
+  /** Used only when the live model catalog explicitly supports verbosity. */
+  textVerbosity?: 'low' | 'medium' | 'high' | undefined;
 }
 
 export class OpenAICodexProvider extends WireAdapter {
@@ -280,6 +277,7 @@ export class OpenAICodexProvider extends WireAdapter {
     NonNullable<OpenAICodexProviderOptions['onRefresh']> extends (p: infer P) => void ? P : never
   >;
   private readonly reasoningEffort: ReasoningEffort;
+  private readonly textVerbosity: 'low' | 'medium' | 'high';
   /** Explicit caller override; absent means "defer to the model's catalog default". */
   private readonly configuredReasoningEffort: ReasoningEffort | undefined;
   private readonly onResponseMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined;
@@ -289,7 +287,7 @@ export class OpenAICodexProvider extends WireAdapter {
   private readonly useWebSocket: boolean;
   private readonly webSocketPrewarm: boolean;
   private readonly webSocketPool: CodexWebSocketPool | undefined;
-  private webSocketDisabled = false;
+  private readonly webSocketDisabled = new Set<string>();
   private contextLimits = new Map<string, CodexModelPolicy>();
   /**
    * Per-conversation `x-codex-turn-state`, the backend's sticky-routing token.
@@ -304,11 +302,18 @@ export class OpenAICodexProvider extends WireAdapter {
    */
   private readonly turnState = new Map<string, string>();
   /**
-   * Reasoning replay is disabled for the rest of the process once the backend
-   * rejects it. See `stream()` — a 400 on a reasoning item must degrade to the
-   * old (working) behaviour, never strand the session.
+   * A rejected reasoning replay must not disable unrelated models or threads
+   * sharing this provider. Entries are bounded like the turn-state map.
    */
-  private reasoningReplayDisabled = false;
+  private readonly reasoningReplayDisabled = new Set<string>();
+  private readonly cacheProbeRequests = new WeakMap<
+    object,
+    {
+      requestId: string;
+      sessionKey: string;
+      reasoningTokens?: number | undefined;
+    }
+  >();
   private contextLimitsEtag: string | undefined;
   private contextLimitsRefresh: Promise<void> | undefined;
   private contextLimitsFreshUntil = 0;
@@ -371,6 +376,7 @@ export class OpenAICodexProvider extends WireAdapter {
     });
     this.configuredReasoningEffort = opts.reasoningEffort;
     this.reasoningEffort = opts.reasoningEffort ?? 'medium';
+    this.textVerbosity = opts.textVerbosity ?? 'low';
     this.onResponseMetadata = opts.onResponseMetadata;
     this.onModels = opts.onModels;
     this.webSocketPrewarm = opts.webSocketPrewarm ?? false;
@@ -479,6 +485,7 @@ export class OpenAICodexProvider extends WireAdapter {
           ),
           acceptsImages: !Array.isArray(modalities) || modalities.includes('image'),
           parallelToolCalls: entry.supports_parallel_tool_calls !== false,
+          supportsVerbosity: entry.support_verbosity === true,
         });
       }
       if (next.size === 0) {
@@ -514,6 +521,19 @@ export class OpenAICodexProvider extends WireAdapter {
   }
 
   override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
+    // A fresh cache object survives request spreads/tool filtering without
+    // mixing simultaneous calls, even when callers reuse a Request object.
+    const probe = isCacheProbeEnabled()
+      ? {
+          requestId: '',
+          sessionKey: 'no-session',
+          reasoningTokens: undefined as number | undefined,
+        }
+      : undefined;
+    if (probe) {
+      req = { ...req, cache: { ...req.cache } };
+      this.cacheProbeRequests.set(req.cache!, probe);
+    }
     await this.ensureFreshToken(opts.signal);
     let emitted = false;
     // `track` is a plain generator expression, so it has no `this`; the probe
@@ -532,8 +552,12 @@ export class OpenAICodexProvider extends WireAdapter {
         if (event.type === 'message_stop' && isCacheProbeEnabled()) {
           recordCacheProbeUsage({
             provider: providerId,
-            sessionKey: codexCacheSessionId(req.cache?.sessionId) ?? 'no-session',
+            sessionKey: probe?.sessionKey ?? 'no-session',
+            requestId: probe?.requestId,
+            model: req.model,
+            threadId: req.cache?.threadId ?? req.cache?.sessionId,
             usage: event.usage,
+            reasoningTokens: probe?.reasoningTokens,
           });
         }
         yield event;
@@ -541,7 +565,11 @@ export class OpenAICodexProvider extends WireAdapter {
     };
     let transportError: unknown;
     try {
-      if (this.useWebSocket && !this.webSocketDisabled && this.webSocketPool) {
+      if (
+        this.useWebSocket &&
+        !this.webSocketDisabled.has(this.webSocketScope(req)) &&
+        this.webSocketPool
+      ) {
         yield* track(this.streamWebSocket(req, opts));
       } else {
         yield* track(super.stream(req, opts));
@@ -553,7 +581,11 @@ export class OpenAICodexProvider extends WireAdapter {
         // Match the official client: once this session proves WebSocket
         // incompatible, keep using HTTP instead of paying for a failed upgrade
         // before every turn.
-        this.webSocketDisabled = true;
+        this.webSocketDisabled.add(this.webSocketScope(req));
+        if (this.webSocketDisabled.size > CODEX_TURN_STATE_MAX_SESSIONS) {
+          const oldest = this.webSocketDisabled.values().next().value;
+          if (oldest !== undefined) this.webSocketDisabled.delete(oldest);
+        }
         try {
           yield* track(super.stream(req, opts));
           return;
@@ -577,12 +609,16 @@ export class OpenAICodexProvider extends WireAdapter {
     // over SSE without replay rather than stranding the session.
     if (
       !emitted &&
-      !this.reasoningReplayDisabled &&
+      !this.reasoningReplayDisabled.has(this.reasoningReplayKey(req)) &&
       err instanceof ProviderError &&
       err.status === 400 &&
       isReasoningReplayRejection(err)
     ) {
-      this.reasoningReplayDisabled = true;
+      this.reasoningReplayDisabled.add(this.reasoningReplayKey(req));
+      if (this.reasoningReplayDisabled.size > CODEX_TURN_STATE_MAX_SESSIONS) {
+        const oldest = this.reasoningReplayDisabled.values().next().value;
+        if (oldest !== undefined) this.reasoningReplayDisabled.delete(oldest);
+      }
       yield* track(super.stream(req, opts));
       return;
     }
@@ -616,12 +652,16 @@ export class OpenAICodexProvider extends WireAdapter {
         // of the transport's fixed 30s, which killed long silent reasoning.
         stallTimeoutMs: this.streamHangTimeoutMs,
         prewarm: this.webSocketPrewarm,
+        probeRequestId: effectiveReq.cache
+          ? this.cacheProbeRequests.get(effectiveReq.cache)?.requestId
+          : undefined,
         ...(turnState ? { turnState } : {}),
         onTurnState: (value) => this.rememberTurnState(effectiveReq, value),
         onMetadata: (metadata) => this.handleResponseMetadata(effectiveReq, metadata),
         onHeaders: (responseHeaders) => this.onResponseHeaders(responseHeaders, effectiveReq),
       },
-      parseOpenAIResponsesStream,
+      (body, model, _providerId, onMetadata) =>
+        this.parseStream(body, model, effectiveReq, onMetadata),
     );
   }
 
@@ -731,6 +771,14 @@ export class OpenAICodexProvider extends WireAdapter {
     );
   }
 
+  private reasoningReplayKey(req: Request): string {
+    return JSON.stringify([this.accountId, req.model, this.turnStateKey(req)]);
+  }
+
+  private webSocketScope(req: Request): string {
+    return JSON.stringify([this.accountId, this.turnStateKey(req)]);
+  }
+
   /**
    * The sticky-routing token to send with this request, expiring the stored one
    * when the request opens a new turn.
@@ -763,114 +811,42 @@ export class OpenAICodexProvider extends WireAdapter {
   }
 
   protected override buildBody(req: Request, ctx: BuildBodyContext): Record<string, unknown> {
-    // Split the system prompt by cache stability. The Responses wire has no
-    // cache breakpoints: every system block is joined into ONE `instructions`
-    // string at the head of the cached prefix, so a block rebuilt each turn
-    // (recalled memories, a live peer roster, a plugin's per-turn context)
-    // invalidates the prefix from that point on — and everything after it is
-    // the whole conversation. Measured live: 95% hits with a stable prompt,
-    // 85% with one volatile block in `instructions`, 91% with the same bytes
-    // after the conversation. Anthropic can leave these in place because a
-    // breakpoint absorbs them; here they have to move.
-    const stableSystem: string[] = [];
-    const volatileSystem: string[] = [];
-    for (const block of req.system ?? []) {
-      (isVolatileSystemBlock(block) ? volatileSystem : stableSystem).push(block.text);
-    }
-    const instructions = stableSystem.length > 0 ? stableSystem.join('\n\n') : undefined;
-
-    // The live catalog, when this session has already probed it. Absent on the
-    // very first request of a process, which is why every use below falls back
-    // to the previous unconditional behaviour rather than to a guess.
-    const policy = this.contextLimits.get(req.model);
-
-    const body: Record<string, unknown> = {
-      model: req.model,
-      // The ChatGPT Codex backend rejects `store: true` ("Store must be set to
-      // false"). We send the full conversation as `input` each turn.
-      store: false,
-      stream: true,
-      ...(instructions ? { instructions } : {}),
-      // `include: reasoning.encrypted_content` below asks the backend to hand
-      // back the reasoning it produced; replaying it here is the half that
-      // makes asking for it worth anything. Skipped once the backend has
-      // rejected a replay (see `stream`).
-      input: appendVolatileSystem(
-        messagesToResponsesInput(req.messages, {
-          includeReasoning: !this.reasoningReplayDisabled,
-          // gpt-5.3-codex-spark lists `input_modalities: ["text"]`. Sending
-          // it an `input_image` part buys a 400 and a retry; dropping the
-          // image costs the picture but keeps the turn, which is the better
-          // half of a choice the caller already made by picking a text model.
-          allowImages: policy?.acceptsImages ?? true,
-        }),
-        volatileSystem,
-      ),
-      include: ['reasoning.encrypted_content'],
-      parallel_tool_calls: policy?.parallelToolCalls ?? true,
-    };
-    // Responses Lite (`use_responses_lite`, true for gpt-6-astra and the 5.6
-    // family) is deliberately NOT opted into. The official client's lite mode
-    // is a package deal — the internal
-    // `x-openai-internal-codex-responses-lite` header, `parallel_tool_calls:
-    // false`, `reasoning.context: 'all_turns'`, and a different input
-    // formatting — and taking only the parts that are easy to send would ask
-    // the backend for a pipeline this transport does not actually speak. Not
-    // opting in is a supported configuration; half-opting in is not.
-
-    if (req.tools && req.tools.length > 0) {
-      body['tools'] = toolsToResponses(req.tools);
-      body['tool_choice'] = mapToolChoice(req.toolChoice);
-    }
-    // The ChatGPT Codex backend rejects max_output_tokens. This differs from
-    // API-key Responses transports, which can forward the caller's cap.
-    // The ChatGPT Codex request schema used by the official client has no
-    // temperature/top_p fields. Do not forward generic runtime sampling knobs
-    // that this subscription endpoint may reject.
-    // Precedence: an explicit per-request effort, then a configured provider
-    // default, then the model's OWN default from the catalog
-    // (`default_reasoning_level` — `low` for gpt-5.6-sol, `high` for
-    // gpt-5.3-codex-spark, `medium` for the rest), then the generic floor.
-    // A single hardcoded 'medium' silently overrode the picker's per-model
-    // recommendation in both directions.
-    const requestedEffort =
-      req.reasoning?.effort ??
-      this.configuredReasoningEffort ??
-      policy?.defaultReasoningEffort ??
-      this.reasoningEffort;
-    const reasoningEffort = clampReasoningEffort(
-      requestedEffort,
-      policy?.supportedReasoningEfforts ?? [],
-    );
-    if (req.reasoning?.enabled !== false && reasoningEffort !== 'none') {
-      body['reasoning'] = { effort: reasoningEffort, summary: 'auto' };
-    }
-    // `prompt_cache_key` routes requests that share a prefix to the same cache
-    // partition. The official Codex client keys it on the CONVERSATION
-    // (codex-rs/core/src/client.rs `prompt_cache_key` → `session_id`), and that
-    // is the right granularity here: within a conversation the shared prefix is
-    // the entire growing history, while the shared-system-prompt key this used
-    // to send groups every concurrent session of the same agent onto one
-    // partition, where they evict each other over a prefix worth only the
-    // system prompt and tool defs. Fall back to the generic prefix key when a
-    // request carries no conversation (one-shot helpers, embedders).
-    const cacheSessionId = codexCacheSessionId(req.cache?.sessionId);
-    if (cacheSessionId && ctx?.capabilities?.cacheControl === 'auto') {
-      body['prompt_cache_key'] = cacheSessionId;
-    } else {
-      applyPromptCacheKey(body, req, ctx?.capabilities);
-    }
-    // Diagnostic only, and only when explicitly switched on: fingerprint the
-    // segments the backend matches as a prefix, so a low hit ratio can be
-    // attributed to a specific byte that moved rather than guessed at. Keyed
-    // on the same partition key the body carries, so the comparison the probe
-    // makes is the comparison the backend makes.
+    const body = buildCodexRequestBody(req, {
+      capabilities: ctx.capabilities,
+      policy: this.contextLimits.get(req.model),
+      includeReasoning: !this.reasoningReplayDisabled.has(this.reasoningReplayKey(req)),
+      configuredReasoningEffort: this.configuredReasoningEffort,
+      reasoningEffort: this.reasoningEffort,
+      textVerbosity: this.textVerbosity,
+    });
+    // Opt-in local comparison within the same account/model/thread/settings.
+    // Changed segments can explain lost overlap, but unchanged JSON cannot
+    // prove the backend's rendered prefix, cache boundaries or routing.
     if (isCacheProbeEnabled()) {
+      const sessionKey = String(body['prompt_cache_key'] ?? 'no-session');
+      const probe = req.cache ? this.cacheProbeRequests.get(req.cache) : undefined;
+      if (probe) {
+        probe.requestId = randomUUID();
+        probe.sessionKey = sessionKey;
+        probe.reasoningTokens = undefined;
+      }
       recordCacheProbeRequest({
         provider: this.id,
-        sessionKey: String(body['prompt_cache_key'] ?? cacheSessionId ?? 'no-session'),
+        sessionKey,
+        requestId: probe?.requestId,
+        threadId: req.cache?.threadId ?? req.cache?.sessionId,
+        // Used only in the in-memory identity; never written into the log.
+        accountScope: createHash('sha256')
+          .update(this.accountId ?? this.access)
+          .digest('hex'),
+        settings: [
+          body['reasoning'],
+          body['text'],
+          body['tool_choice'],
+          body['parallel_tool_calls'],
+        ],
         model: req.model,
-        instructions: instructions ?? '',
+        instructions: String(body['instructions'] ?? ''),
         tools: body['tools'] as readonly unknown[] | undefined,
         items: body['input'] as readonly unknown[],
       });
@@ -882,10 +858,20 @@ export class OpenAICodexProvider extends WireAdapter {
     body: ReadableStream<Uint8Array> | NodeJS.ReadableStream | null,
     fallbackModel: string,
     req: Request,
+    onMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
   ): AsyncIterable<StreamEvent> {
-    return parseOpenAIResponsesStream(body, fallbackModel, this.id, (metadata) => {
-      this.handleResponseMetadata(req, metadata);
-    });
+    const probe = req.cache ? this.cacheProbeRequests.get(req.cache) : undefined;
+    return parseOpenAIResponsesStream(
+      body,
+      fallbackModel,
+      this.id,
+      onMetadata ?? ((metadata) => this.handleResponseMetadata(req, metadata)),
+      probe
+        ? (tokens) => {
+            probe.reasoningTokens = tokens;
+          }
+        : undefined,
+    );
   }
 
   /**

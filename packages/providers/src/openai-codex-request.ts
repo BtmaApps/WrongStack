@@ -28,7 +28,10 @@ export function appendVolatileSystem(
 /** Header-safe, session-stable affinity key used by the Codex backend. */
 export function codexCacheSessionId(sessionId: string | undefined): string | undefined {
   if (!sessionId) return undefined;
-  const normalized = sessionId.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
+  const normalized = sessionId.replace(/[^A-Za-z0-9._-]/g, '_');
+  if (normalized.length > 64) {
+    return `ws-${createHash('sha256').update(sessionId).digest('hex').slice(0, 61)}`;
+  }
   return normalized || undefined;
 }
 

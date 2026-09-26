@@ -40,14 +40,13 @@ iteration.completed → git diff → trailing quiet window → chimera.review_ne
 ## Status
 
 **This is a built-in plugin** (`packages/core/src/plugins/auto-review-plugin.ts`),
-NOT a skill-based watcher. It is loaded automatically but **disabled by default**.
-Enable it in your config:
+NOT a skill-based watcher. It is loaded automatically and **enabled by default**.
+Optional overrides in your config:
 
 ```json
 {
   "extensions": {
     "wstack-auto-review": {
-      "enabled": true,
       "provider": "deepseek",
       "model": "deepseek-chat",
       "fallbackProfile": "reliable",
@@ -70,7 +69,7 @@ Enable it in your config:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | boolean | false | Master switch |
+| `enabled` | boolean | true | Master switch |
 | `provider` | string | session provider | LLM provider for review agents |
 | `model` | string | session model | LLM model for review agents |
 | `fallbackProfile` | string | effective fallback profile | Named profile from `fallbackProfiles`; its first valid entry supplies the primary provider/model when those are omitted, and its entries form the reviewer selection and retry pool |
@@ -78,8 +77,8 @@ Enable it in your config:
 | `debounceMs` | number | 15000 | Required file-quiet period before a mid-session review starts |
 | `maxFilesPerBatch` | number | 15 | Files per review call |
 | `maxConcurrentReviews` | number | 2 | Parallel review subagent cap |
-| `cascadeOn` | `off` \| `high` \| `critical` | `off` | Opt-in follow-up agents (bug-hunter / security-scanner) for verified findings at or above this severity |
-| `maxCascadeDepth` | number | 2 | Max fix → re-review cycles when `cascadeOn` is set |
+| `cascadeOn` | `off` \| `high` \| `critical` | `high` | Follow-up agents (bug-hunter / security-scanner) for verified findings at or above this severity |
+| `maxCascadeDepth` | number | 2 | Max fix → re-review cycles when the cascade triggers |
 
 ## Slash commands
 
@@ -99,22 +98,22 @@ Enable it in your config:
 - **Skipped** — `.wrongstack/` files
 - **Deleted files** are silently omitted
 
-## Completion and opt-in cascade
+## Completion and cascade
 
 Every completed review is persisted and announced through
-`chimera.report_available`. By default (`cascadeOn: "off"`) that is the end: it
-does not become a normal assistant response, wake the leader, or spawn a fix
-agent, and the user decides later whether to act. Setting `cascadeOn` to
-`"high"` or `"critical"` opts in to follow-up agents (bug-hunter /
-security-scanner) for verified findings at or above that severity, bounded by
-`maxCascadeDepth` fix → re-review cycles.
+`chimera.report_available`. A report never becomes a normal assistant response
+or wakes the leader. By default (`cascadeOn: "high"`) verified findings at High
+or Critical trigger follow-up fix agents (bug-hunter / security-scanner),
+bounded by `maxCascadeDepth` fix → re-review cycles; findings below that
+threshold leave the user to decide later whether to act. Set `cascadeOn` to
+`"critical"` or `"off"` to narrow or disable the cascade.
 
 ## Out of scope
 
-- **Don't enable auto-review without `--director`.** The subagent pipeline requires Director mode; without it, review events silently skip. Verify the director is on before flipping the plugin.
+- **Don't rely on auto-review without `--director`.** The subagent pipeline requires Director mode; without it, review events silently skip. Verify the director is on before relying on its reviews.
 - **Don't start the plugin while a session is mid-flight without a clear contract.** Auto-review dispatches reviewers at trailing-quiet windows; the user has to know it's running.
 - **Don't read untracked files.** `??` files are never reviewed. If a reviewer needs a file, the workflow must have it staged or tracked first.
-- **Don't manually trigger a fix from a report.** The report goes to the mailbox and notifies UIs. A follow-up fix is a separate user-initiated turn unless the user opted in with `cascadeOn`.
+- **Don't manually trigger a fix from a report.** The report goes to the mailbox and notifies UIs. A follow-up fix is a separate user-initiated turn unless the `cascadeOn` threshold (default `high`) triggers the correction cascade.
 - **Don't re-route the report to mailbox peers or the leader.** Runtime handles persistence and notification. Manual mailbox traffic from auto-review is double-handling.
 - **Don't tune `maxFilesPerBatch` above 15** without measuring cost. Larger batches cut parallelism gains and inflate single-review latency.
 - **Don't set the debounce below 5s.** Too-aggressive debounce starts reviews while the user is still mid-edit; they hit a reviewer they didn't ask for.
@@ -122,11 +121,11 @@ security-scanner) for verified findings at or above that severity, bounded by
 ## Before reporting
 
 - [ ] `--director` mode is on (auto-review requires it)
-- [ ] `enabled: true` is set in `config.extensions['wstack-auto-review']`
+- [ ] `wstack-auto-review` is enabled (the default — check nothing set `enabled: false`)
 - [ ] `git` is available in the session working directory
 - [ ] Only git-tracked files are reviewed; untracked files skipped
 - [ ] Reports go to the mailbox + `chimera.report_available` notification, not to peer mail
-- [ ] Follow-up fix agents only when `cascadeOn` is explicitly set
+- [ ] Follow-up fix agents only when findings meet the `cascadeOn` threshold (default `high`)
 - [ ] Debounce and `maxFilesPerBatch` tuned for the workload, not at default
 
 ## Skills in scope

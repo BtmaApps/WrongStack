@@ -21,6 +21,7 @@ import {
   formatQuotaResetIn,
   getAllProviderQuota,
   onProviderQuota,
+  quotaExhaustionInMs,
   quotaResetInMs,
   quotaWindowLabel,
   worstProviderQuotaWindow,
@@ -38,17 +39,26 @@ export interface ProviderQuotaChip {
   resetIn?: string | undefined;
   /** True when this window is the one currently cutting the account off. */
   reached: boolean;
+  /**
+   * `1h 40m`, when the pace of the last hour fills the window before it
+   * resets. Absent while the plan is not on course to run out.
+   */
+  exhaustsIn?: string | undefined;
 }
 
 function readWorst(): ProviderQuotaChip | undefined {
   const worst = worstProviderQuotaWindow(getAllProviderQuota());
   if (!worst) return undefined;
   const resetIn = formatQuotaResetIn(quotaResetInMs(worst.window));
+  const exhaustsIn = formatQuotaResetIn(
+    quotaExhaustionInMs(worst.snapshot.providerId, worst.snapshot.meterId, worst.window),
+  );
   return {
     providerId: worst.snapshot.providerId,
     windowLabel: quotaWindowLabel(worst.window),
     usedPercent: worst.window.usedPercent,
     ...(resetIn !== undefined ? { resetIn } : {}),
+    ...(exhaustsIn !== undefined ? { exhaustsIn } : {}),
     reached: worst.snapshot.reachedWindowId === worst.window.id,
   };
 }

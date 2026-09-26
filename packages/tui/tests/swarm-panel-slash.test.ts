@@ -19,6 +19,7 @@ const baseValues: SettingsPickerValues = {
   featureMemory: true,
   featureSkills: true,
   featureModelsRegistry: false,
+  featureToolCoach: true,
   tokenSavingTier: 'medium',
   allowOutsideProjectRoot: true,
   contextAutoCompact: false,

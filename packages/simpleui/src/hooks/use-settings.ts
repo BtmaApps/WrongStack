@@ -114,6 +114,7 @@ function shallowEqualPrefs(a: SimplePrefs, b: SimplePrefs): boolean {
   const keys: (keyof SimplePrefs)[] = [
     'autonomy',
     'yolo',
+    'featureToolCoach',
     'enhanceEnabled',
     'preRefineSeconds',
     'showModelReasoning',

@@ -8,6 +8,7 @@ import {
 } from '@wrongstack/core/coordination';
 import { ProviderCacheLedger } from '@wrongstack/core/infrastructure';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
+import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import {
   attachTodosCheckpoint,
   cleanOrphanLocks,
@@ -342,6 +343,7 @@ export async function setupSession(params: {
     restoreSessionSubagentPolicy(context, restoredEvents, restoredSubagentsAllowed);
     restoreSessionSubagentModelPlan(context, restoredEvents);
   } else seedSessionSubagentPolicy(context);
+  restoreRequiredSkillsFromEvents(context, restoredEvents);
   restoreSessionPermissionOverrides(context.meta, {
     events: restoredEvents,
     permissionOverrides: restoredPermissionOverrides,

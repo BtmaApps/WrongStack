@@ -49,6 +49,7 @@ export type SettingsPickerPatch = Partial<{
   featureMemory: boolean;
   featureSkills: boolean;
   featureModelsRegistry: boolean;
+  featureToolCoach: boolean;
   tokenSavingTier: TokenSavingTierTui;
   allowOutsideProjectRoot: boolean;
   contextAutoCompact: boolean;

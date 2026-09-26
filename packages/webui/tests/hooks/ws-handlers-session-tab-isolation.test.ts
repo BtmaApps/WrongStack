@@ -64,6 +64,9 @@ const { handleIterationStarted, handleTextDelta, handleThinkingDelta } = await i
 const { handleProviderFallback, handleProviderResponse } = await import(
   '../../src/hooks/ws-handlers/session-execution-handlers'
 );
+const { handleBrainAnswer, handleBrainEvent } = await import(
+  '../../src/hooks/ws-handlers/brain-handlers'
+);
 const { streamCoalescer } = await import('../../src/lib/stream-coalescer');
 
 /** A `session.start` the user asked for: the session takes the foreground. */
@@ -483,6 +486,72 @@ describe('a background run reaches its own tab and no other', () => {
 });
 
 describe('the four slots', () => {
+  it('routes Brain decisions to their own tab and drops unaddressed or fifth-session cards', () => {
+    for (const id of ['s1', 's2', 's3', 's4']) start(id);
+    useSessionTabStore.getState().openTab('s1');
+
+    for (const id of ['s1', 's2', 's3', 's4']) {
+      handleBrainEvent({
+        type: 'brain.event',
+        payload: {
+          sessionId: id,
+          event: 'brain.decision_answered',
+          request: { id: `brain-${id}`, question: `Question ${id}` },
+          decision: { type: 'answer', text: `Answer ${id}` },
+        },
+      } as never);
+    }
+    handleBrainAnswer({
+      type: 'brain.answer',
+      payload: {
+        sessionId: 's3',
+        question: 'Direct question',
+        decision: { type: 'answer', text: 'Direct answer' },
+      },
+    } as never);
+
+    for (const id of ['s1', 's2', 's3', 's4']) {
+      const cards = readLane(id).messages.filter((message) => message.brainDecision);
+      expect(cards.map((message) => message.brainDecision?.text)).toEqual(
+        id === 's3' ? [`Answer ${id}`, 'Direct answer'] : [`Answer ${id}`],
+      );
+    }
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      handleBrainEvent({
+        type: 'brain.event',
+        payload: {
+          event: 'brain.decision_answered',
+          decision: { type: 'answer', text: 'Untagged' },
+        },
+      } as never);
+      handleBrainAnswer({
+        type: 'brain.answer',
+        payload: {
+          question: 'Untagged direct',
+          decision: { type: 'answer', text: 'Untagged direct' },
+        },
+      } as never);
+      handleBrainEvent({
+        type: 'brain.event',
+        payload: {
+          sessionId: 's5',
+          event: 'brain.decision_answered',
+          decision: { type: 'answer', text: 'Fifth session' },
+        },
+      } as never);
+    } finally {
+      warn.mockRestore();
+    }
+    for (const id of ['s1', 's2', 's3', 's4']) {
+      expect(readLane(id).messages.filter((message) => message.brainDecision)).toHaveLength(
+        id === 's3' ? 2 : 1,
+      );
+    }
+    expect(hasLane('s5')).toBe(false);
+  });
+
   it('holds one session per slot and one slot per session', () => {
     for (const id of ['s1', 's2', 's3', 's4']) start(id);
     const tabs = useSessionTabStore.getState().openTabIds;

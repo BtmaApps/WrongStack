@@ -17,6 +17,11 @@ import {
   DEFAULT_ALWAYS_TRUST_TTL_MS,
   isPersistentApproval,
 } from '../security/scoped-approval.js';
+import {
+  pendingRequiredSkills,
+  REQUIRED_SKILLS_LOADER_TOOL,
+  requiredSkillsDeniedMessage,
+} from '../skills/required-skill-gate.js';
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { ToolResultRenderMode, ToolResultRenderModeConfig } from '../types/config.js';
 import { isWrongStackError } from '../types/errors.js';
@@ -40,7 +45,7 @@ import {
   logToolFailure as logToolFailureEvent,
   logToolSuccess as logToolSuccessEvent,
 } from './tool-executor-logging.js';
-import { deniedResult, unknownToolResult } from './tool-executor-results.js';
+import { deniedResult, toolInputCorrection, unknownToolResult } from './tool-executor-results.js';
 import { runToolWithTimeout } from './tool-executor-runner.js';
 import {
   classifyToolError,
@@ -163,6 +168,17 @@ export class ToolExecutor {
         );
         budget = this.budgetForString(result.content, budget);
         return { result, tool, durationMs: Date.now() - start, settlement: 'denied_by_policy' };
+      }
+
+      // A run that declared required skills changes nothing until they are
+      // loaded. Without a loader registered they could never be, so no gate.
+      if (tool.mutating && this.registry.get(REQUIRED_SKILLS_LOADER_TOOL)) {
+        const pendingSkills = pendingRequiredSkills(ctx);
+        if (pendingSkills.length > 0) {
+          const result = deniedResult(use, requiredSkillsDeniedMessage(pendingSkills));
+          budget = this.budgetForString(result.content, budget);
+          return { result, tool, durationMs: Date.now() - start, settlement: 'denied_by_policy' };
+        }
       }
 
       const guard = await validateToolInputAndHooks(tool, use, ctx, this.opts);
@@ -456,6 +472,7 @@ export class ToolExecutor {
         const result = toolErrorResult(use, err, {
           scrubber: (s) => this.opts.secretScrubber.scrub(s),
         });
+        if (category === 'validation') result.content += toolInputCorrection(tool);
         // Error results are iteration output too: cap them with the same byte
         // budget the success path enforces, or a single failing tool whose
         // Error message is huge can defeat perIterationOutputCapBytes
@@ -497,6 +514,9 @@ export class ToolExecutor {
         });
         if (isStructured) {
           result.content = scrubbed;
+        }
+        if (tool && classifyToolError(err).category === 'validation') {
+          result.content += toolInputCorrection(tool);
         }
         // Same cap discipline as the plain-Error catch above — structured
         // describe() payloads are just as unbounded as Error messages.

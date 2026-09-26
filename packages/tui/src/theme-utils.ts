@@ -135,6 +135,36 @@ function parseHexColor(hex: string): [number, number, number] | null {
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
 }
 
+/** WCAG 2.x relative luminance of a hex colour, or `null` if unparseable. */
+export function relativeLuminance(hex: string): number | null {
+  const rgb = parseHexColor(hex);
+  if (!rgb) return null;
+  // WCAG linearises each channel before weighting: sRGB is not linear, and
+  // skipping this step understates contrast for mid-tones.
+  const [r, g, b] = rgb.map((channel) => {
+    const s = channel / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * WCAG 2.x contrast ratio between two hex colours, rounded to one decimal.
+ *
+ * Returns 1 (the ratio of a colour with itself) when either colour cannot be
+ * parsed, so an unparseable token reads as "no measurable separation" rather
+ * than as a passing score. Callers that need to distinguish "bad colour" from
+ * "bad contrast" should use {@link relativeLuminance} directly.
+ */
+export function contrastRatio(foreground: string, background: string): number {
+  const a = relativeLuminance(foreground);
+  const b = relativeLuminance(background);
+  if (a === null || b === null) return 1;
+  const lighter = Math.max(a, b);
+  const darker = Math.min(a, b);
+  return Math.round(((lighter + 0.05) / (darker + 0.05)) * 10) / 10;
+}
+
 export function detectSupportsBackground(
   env: NodeJS.ProcessEnv = process.env,
   isTTY: boolean = process.stdout.isTTY ?? false,

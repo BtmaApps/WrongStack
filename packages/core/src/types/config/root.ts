@@ -12,6 +12,7 @@ import type {
   CircuitBreakerRuntimeConfig,
   ContextConfig,
 } from './context.js';
+import type { LimitsConfig } from './limits.js';
 import type {
   FeaturesConfig,
   LogConfig,
@@ -20,7 +21,6 @@ import type {
   PluginManagerConfig,
   SageConfig,
 } from './mcp-features.js';
-import type { LimitsConfig } from './limits.js';
 import type { ModelTiersConfig } from './model-tiers.js';
 import type { ObservabilityConfig } from './observability.js';
 import type { CustomModelDefinition, ModelMatrixEntry, ProviderConfig } from './providers.js';
@@ -33,7 +33,7 @@ import type {
 import type { BrainConfig, FleetConfig, SkillsConfig } from './skills-fleet-brain.js';
 import type { ToolsConfig } from './tools.js';
 import type { TypeSafeConfig } from './typesafe.js';
-import type { ThemePresetId } from './ui.js';
+import type { ThemeName } from './ui.js';
 import type { UpdateConfig } from './update.js';
 
 export interface GitBehaviorConfig {
@@ -83,7 +83,7 @@ export interface Config {
    * (`catppuccin`) when the stored value is unknown, so a forward-compat
    * drift on the TUI side never breaks the config round-trip.
    */
-  themePreset?: ThemePresetId | undefined;
+  themePreset?: ThemeName | undefined;
   providers?: Record<string, ProviderConfig>;
   /**
    * Top-level custom models (maps modelId → definition). Merged with

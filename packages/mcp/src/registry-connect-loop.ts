@@ -327,6 +327,7 @@ export async function attemptConnectSlot(
         ctx.events.emit('mcp.server.disconnected', {
           name: slot.cfg.name,
           reason: err instanceof Error ? err.message : 'unknown',
+          terminal: true,
         });
         return;
       }

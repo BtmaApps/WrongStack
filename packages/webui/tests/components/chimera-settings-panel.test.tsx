@@ -127,8 +127,9 @@ describe('ChimeraSettingsPanel — toggle emissions', () => {
     const syncPref = vi.fn();
     render(<ChimeraSettingsPanel syncPref={syncPref} />);
     const toggles = screen.getAllByRole('switch');
+    // Second toggle = autoReviewEnabled; clicking it flips the default (true → false).
     fireEvent.click(toggles[1]!);
-    expect(syncPref).toHaveBeenCalledWith('autoReviewEnabled', true);
+    expect(syncPref).toHaveBeenCalledWith('autoReviewEnabled', false);
   });
 });
 

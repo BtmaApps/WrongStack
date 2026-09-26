@@ -106,7 +106,9 @@ export type {
   SkillsConfig,
   SyncCategory,
   SyncConfig,
+  ThemeName,
   ThemePresetId,
+  ThemePresetMeta,
   TokenSavingTier,
   ToolDescriptionMode,
   ToolDescriptionModeConfig,
@@ -136,6 +138,8 @@ export {
   resolveFleetChatVerbosity,
   resolveTokenSavingTier,
   THEME_PRESET_IDS,
+  THEME_PRESET_META,
+  THEME_RANDOM_ID,
   TOOL_MEMORY_GUARD_BYTES,
 } from './config.js';
 // ── context (2 symbols) ──

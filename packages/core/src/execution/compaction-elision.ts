@@ -1,6 +1,7 @@
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { Logger } from '../types/logger.js';
 import type { Message } from '../types/messages.js';
+import { isElidedResultContent, isElidedToolInput } from '../utils/elision-markers.js';
 import { hasMeaningfulContent } from '../utils/message-invariants.js';
 import {
   estimateMessageTokens,
@@ -208,18 +209,7 @@ function analyzeFileToolLifecycle(
   };
 }
 
-export function isElidedResultContent(content: string): boolean {
-  return (
-    typeof content === 'string' &&
-    (content.startsWith('[elided:') || content.startsWith('[stale read of '))
-  );
-}
-
-export function isElidedToolInput(input: Record<string, unknown> | undefined): boolean {
-  return (
-    !!input && (Object.hasOwn(input, '__elided_tool_input') || Object.hasOwn(input, '__stale_read'))
-  );
-}
+export { isElidedResultContent, isElidedToolInput };
 
 export function eliseAcknowledgedToolResults(
   messages: readonly Message[],

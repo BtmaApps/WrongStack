@@ -30,6 +30,8 @@ import type { SddRunStartOpts, SddWizardDeps } from './sdd-wizard-ws-handler.js'
 
 /** Config knobs shared by the wizard start and the launch-from-board start. */
 export interface StartSddRunFromGraphConfig {
+  /** Chat session that initiated the run, captured before asynchronous setup. */
+  sessionId?: string | undefined;
   parallelSlots?: number | undefined;
   defaultModel?: string | undefined;
   defaultProvider?: string | undefined;
@@ -73,6 +75,7 @@ export async function startSddRunFromGraph(
   config: StartSddRunFromGraphConfig = {},
   tracker?: TaskTracker,
 ): Promise<SddRunHandle> {
+  const ownerSessionId = config.sessionId?.trim() || undefined;
   const runTracker =
     tracker ??
     (() => {
@@ -93,7 +96,7 @@ export async function startSddRunFromGraph(
     worktrees = new WorktreeManager({
       projectRoot: deps.projectRoot,
       events: deps.events,
-      sessionId: () => deps.agent.ctx.session?.id,
+      sessionId: () => ownerSessionId ?? deps.agent.ctx.session?.id,
     });
   }
 
@@ -131,6 +134,7 @@ export async function startSddRunFromGraph(
     deps.brain && deps.runIsolatedTurn
       ? new SddSupervisor({
           brain: deps.brain,
+          sessionId: ownerSessionId,
           reassignModels: config.fallbackModels,
           generateSubtasks: makeLlmSubtaskGenerator({
             run: (prompt) => deps.runIsolatedTurn!(prompt, 'Task Splitter'),
@@ -140,6 +144,7 @@ export async function startSddRunFromGraph(
       : deps.brain
         ? new SddSupervisor({
             brain: deps.brain,
+            sessionId: ownerSessionId,
             reassignModels: config.fallbackModels,
             requestLlmVerdict: true,
           }).superviseFailure
@@ -151,7 +156,7 @@ export async function startSddRunFromGraph(
     agent: deps.agent,
     projectRoot: deps.projectRoot,
     events: deps.events,
-    sessionId: () => deps.agent.ctx.session?.id,
+    sessionId: ownerSessionId ?? (() => deps.agent.ctx.session?.id),
     subagentFactory: deps.subagentFactory,
     boardStore: new SddBoardStore({ baseDir: deps.projectSddBoards }),
     registry: deps.registry ?? new SddRunRegistry(),
@@ -285,6 +290,7 @@ export function buildSddWizardDeps(opts: SddWizardWiringOptions): SddWizardDeps 
         ...(opts.brain ? { brain: opts.brain } : {}),
       },
       {
+        ...(config.sessionId ? { sessionId: config.sessionId } : {}),
         ...(config.parallelSlots !== undefined ? { parallelSlots: config.parallelSlots } : {}),
         ...(config.defaultModel !== undefined ? { defaultModel: config.defaultModel } : {}),
         ...(config.defaultProvider !== undefined

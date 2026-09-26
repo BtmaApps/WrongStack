@@ -101,7 +101,7 @@ export type PanelId = (typeof PANEL_IDS)[number];
 
 /** Total field count = legacy 46 + per-panel positions + WrongProxy switch/URL,
  *  showSidebar, and the global tool-result view mode. */
-export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 4;
+export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 5;
 
 /** Map of every tracked panel → its current placement. */
 export type PanelPositionMap = Readonly<Record<PanelId, PanelPosition>>;

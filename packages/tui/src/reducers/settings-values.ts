@@ -628,6 +628,11 @@ export function reduceSettingsValues(state: State, action: SettingsValueAction):
             hint: undefined,
           },
         };
+      if (f === 63)
+        return {
+          ...state,
+          settingsPicker: { ...sp, featureToolCoach: !sp.featureToolCoach, hint: undefined },
+        };
       if (f >= PANEL_POSITION_FIELD_START && f - PANEL_POSITION_FIELD_START < PANEL_IDS.length) {
         const PANEL_POSITION_CYCLE = ['bottom', 'sidebar'] as const;
         const panelId = PANEL_IDS[f - PANEL_POSITION_FIELD_START]!;

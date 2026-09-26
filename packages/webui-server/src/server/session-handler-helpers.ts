@@ -7,8 +7,9 @@ import type { Agent, Context, TodoItem } from '@wrongstack/core/agent';
 import type { createStrategyCompactor } from '@wrongstack/core/execution';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
+import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import type { SessionLoadProgress, SessionStore, TokenCounter } from '@wrongstack/core/types';
-import { sessionScopedPath } from '@wrongstack/core/utils';
+import { resolveWstackPaths, sessionScopedPath } from '@wrongstack/core/utils';
 import {
   buildReplayPayload,
   MAX_OPEN_SESSIONS_PER_CONNECTION,
@@ -370,7 +371,9 @@ export function buildSessionHandlerShared(ctx: SessionHandlersContext): SessionH
     });
   };
   const sessionsDirectory = (): string =>
-    ctx.getSessionsDir?.() ?? ctx.sessionsDir ?? `${ctx.getProjectRoot()}/.wrongstack/sessions`;
+    ctx.getSessionsDir?.() ??
+    ctx.sessionsDir ??
+    resolveWstackPaths({ projectRoot: ctx.getProjectRoot() }).projectSessions;
   const resetContextAccounting = (): void => {
     ctx.context.lastRequestTokens = undefined;
     ctx.context.lastRealInputTokens = undefined;
@@ -420,6 +423,9 @@ export function buildSessionHandlerShared(ctx: SessionHandlersContext): SessionH
       targetCtx.clearMemoryEvidence?.();
       targetCtx.readFiles.clear();
       targetCtx.fileMtimes.clear();
+      // The shared root context can carry another session's required-skill
+      // gate; the resume path rebuilds this session's own from its journal.
+      restoreRequiredSkillsFromEvents(targetCtx, []);
     }
     targetCtx.state.setMeta?.(
       'plan.path',

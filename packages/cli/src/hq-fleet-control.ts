@@ -86,13 +86,20 @@ export async function spawnHqAgent(
   if (!areSubagentsAllowedForSession(sessionId)) {
     throw new Error('Subagents are disabled for this session.');
   }
+  // Forward the caller's maxIterations override onto the base config when
+  // present, so a known roster role can still be capped tighter than its
+  // FLEET_ROSTER_BUDGETS default. applyRosterBudget
+  // (packages/core/src/coordination/fleet.ts:325) honors a non-undefined
+  // cfg.maxIterations via `cfg.maxIterations ?? defaultBudget.maxIterations`,
+  // but it can only see the override if spawnHqAgent forwards it here.
   const base = FLEET_ROSTER[role] ?? {
     id: `manual-${Date.now()}`,
     name: role,
     maxIterations: maxIterations ?? 0,
     maxToolCalls: 200,
   };
-  const config = task !== undefined ? { ...base, task } : base;
+  const overrides = maxIterations !== undefined ? { maxIterations } : {};
+  const config = task !== undefined ? { ...base, ...overrides, task } : { ...base, ...overrides };
   return director.spawn({ ...config, originSessionId: sessionId });
 }
 

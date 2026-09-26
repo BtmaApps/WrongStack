@@ -125,6 +125,21 @@ describe('adapters against a fake runner', () => {
     expect(await vcsAdapter('hg', tmp, { runner: escaping.runner }).changedPaths()).toEqual(['ok']);
   });
 
+  // WS-2026-09-26-02: these run for the first system prompt of every session
+  // in whatever directory was opened, so the repository's own VCS config must
+  // not be read. A committed `.hg/hgrc` [hooks] section is code execution.
+  it('hg never reads the repository hgrc (HGRCSKIPREPO) — observed in the child env', async () => {
+    // `hg status …` with node as the binary is `node status …`: node runs the
+    // `status` script in the repository root, which reports its environment
+    // back as the "paths" hg would have printed.
+    await fsp.writeFile(
+      path.join(tmp, 'status'),
+      'process.stdout.write(`skip=${process.env.HGRCSKIPREPO}\\0plain=${process.env.HGPLAIN}\\0`);\n',
+    );
+    const hg = vcsAdapter('hg', tmp, { binaries: { hg: process.execPath } });
+    expect(await hg.changedPaths()).toEqual(['skip=1', 'plain=1']);
+  });
+
   it('a missing binary reads as no answer', async () => {
     const jj = vcsAdapter('jj', tmp, { binaries: { jj: 'wstack-no-such-vcs-binary' } });
     expect(await jj.baseRevision()).toBeUndefined();
@@ -176,6 +191,36 @@ async function exerciseRealRepo(
 }
 
 describe('adapters against the real binaries', () => {
+  // H-5 (security-check 2026-09-26): `core.fsmonitor` names a program git runs
+  // on status/diff. A git clone cannot carry `.git/config`, but an extracted
+  // archive can — and these commands run on their own at session start.
+  it('git does not run a repository fsmonitor hook', async (ctx) => {
+    if (!(await available('git'))) ctx.skip();
+    const repo = path.join(tmp, 'fsmonitor-repo');
+    await fsp.mkdir(repo);
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: repo, windowsHide: true });
+    await git('init', '-q');
+    const marker = path.join(repo, 'pwned');
+    const hook = path.join(repo, 'hook.sh');
+    await fsp.writeFile(hook, `#!/bin/sh\ntouch "${marker.replace(/\\/g, '/')}"\nexit 1\n`, {
+      mode: 0o755,
+    });
+    await git('config', 'core.fsmonitor', hook.replace(/\\/g, '/'));
+    await fsp.writeFile(path.join(repo, 'a.txt'), 'a\n');
+    // Control: plain git does run it, or this test proves nothing.
+    await git('status', '--porcelain').catch(() => undefined);
+    const controlRan = await fsp.stat(marker).then(
+      () => true,
+      () => false,
+    );
+    if (!controlRan) ctx.skip();
+    await fsp.rm(marker);
+
+    const vcs = vcsAdapter('git', repo);
+    await Promise.all([vcs.changedPaths(), vcs.isPristine()]);
+    await expect(fsp.stat(marker)).rejects.toThrow();
+  });
+
   it('git', async () => {
     const repo = path.join(tmp, 'git-repo');
     await fsp.mkdir(repo);

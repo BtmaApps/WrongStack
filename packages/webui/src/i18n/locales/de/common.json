@@ -114,5 +114,16 @@
     "activityMax": "Aktivitäts-Sparkline: max. {{count}} Ereignisse",
     "activityPeak": "Aktivitäts-Sparkline — Spitze {{count}} Ereignisse/Intervall"
   },
+  "restoreTabs": {
+    "title": "Vorherige Tabs wiederherstellen?",
+    "body": "Diese WebUI wurde neu gestartet. {{count}} Sitzung(en) waren zuvor in diesem Browser geöffnet — sie liegen weiterhin auf der Festplatte. Wähle die aus, die du wieder öffnen möchtest, oder starte neu.",
+    "limit": "Höchstens {{room}} weitere können wieder geöffnet werden ({{max}} Tabs insgesamt). Der Rest bleibt im Verlauf.",
+    "fresh": "Neu starten",
+    "confirm": "{{count}} wieder öffnen"
+  },
+  "mcpStatus": {
+    "down": "MCP-Server „{{name}}“ ist nicht verbunden ({{reason}}); seine Tools sind nicht verfügbar. Mit /mcp restart {{name}} erneut versuchen.",
+    "up": "MCP-Server „{{name}}“ ist wieder verbunden."
+  },
   "loadingNamed": "{{name}} wird geladen…"
 }

@@ -100,6 +100,13 @@ describe('executeSettingsSubcommand — toggles, enums, and numbers', () => {
     },
     { sub: 'debug-stream', args: 'on', msg: 'debug stream → on', at: 'debugStream', want: true },
     {
+      sub: 'tool-coach',
+      args: 'off',
+      msg: 'Tool Coach → off',
+      at: 'features.toolCoach',
+      want: false,
+    },
+    {
       sub: 'config-scope',
       args: 'project',
       msg: 'config scope → project',

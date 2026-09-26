@@ -1,4 +1,5 @@
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
+import { sanitizeTerminalText } from '@wrongstack/core/utils';
 import type { UrlElicitation } from './contracts.js';
 
 export type { UrlElicitation };
@@ -116,6 +117,24 @@ function optionalString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined;
 }
 
+/**
+ * Server-authored text shown to the user (message, titles, descriptions,
+ * choice labels). It lands in the TUI's input form under a host-authored
+ * header, so terminal escapes, carriage returns and bidi controls are dropped:
+ * otherwise a hostile server could clear or overwrite that header and present
+ * its own "WrongStack needs your API key" form, or write the clipboard with
+ * OSC 52 (NV-1, security-check 2026-09-26). Values the server receives back
+ * (`const`, `default`, field names as keys) are left as sent.
+ */
+function displayText(v: string): string {
+  return sanitizeTerminalText(v);
+}
+
+function optionalDisplayString(v: unknown): string | undefined {
+  const text = optionalString(v);
+  return text === undefined ? undefined : optionalString(displayText(text));
+}
+
 function optionalNumber(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
@@ -136,7 +155,7 @@ function parseOptions(schema: Record<string, unknown>): ElicitationOption[] | un
     const names = Array.isArray(schema['enumNames']) ? schema['enumNames'] : [];
     return values.map((value, i) => ({
       value,
-      label: typeof names[i] === 'string' && names[i] ? (names[i] as string) : value,
+      label: displayText(typeof names[i] === 'string' && names[i] ? (names[i] as string) : value),
     }));
   }
   const titled = Array.isArray(schema['oneOf'])
@@ -150,7 +169,7 @@ function parseOptions(schema: Record<string, unknown>): ElicitationOption[] | un
     if (!isRecord(entry) || typeof entry['const'] !== 'string') return undefined;
     options.push({
       value: entry['const'],
-      label: optionalString(entry['title']) ?? entry['const'],
+      label: optionalDisplayString(entry['title']) ?? displayText(entry['const']),
     });
   }
   return options;
@@ -160,8 +179,8 @@ function parseField(name: string, schema: unknown, required: boolean): Parsed<El
   if (!isRecord(schema)) return { ok: false, error: `property "${name}" is not a schema object` };
   const base = {
     name,
-    title: optionalString(schema['title']),
-    description: optionalString(schema['description']),
+    title: optionalDisplayString(schema['title']),
+    description: optionalDisplayString(schema['description']),
     required,
   };
   const type = schema['type'];
@@ -266,7 +285,7 @@ export function parseUrlElicitation(params: unknown): Parsed<UrlElicitation> {
     ok: true,
     value: {
       mode: 'url',
-      message: message.slice(0, MAX_MESSAGE_CHARS),
+      message: displayText(message).slice(0, MAX_MESSAGE_CHARS),
       url: url.href,
       elicitationId,
     },
@@ -303,11 +322,11 @@ function parseElicitationParams(params: unknown): Parsed<ElicitationPrompt> {
     if (!parsed.ok) return parsed;
     fields.push(parsed.value);
   }
-  return { ok: true, value: { message: message.slice(0, MAX_MESSAGE_CHARS), fields } };
+  return { ok: true, value: { message: displayText(message).slice(0, MAX_MESSAGE_CHARS), fields } };
 }
 
 function label(field: ElicitationField): string {
-  return field.title ?? field.name;
+  return field.title ?? displayText(field.name);
 }
 
 function checkValue(field: ElicitationField, raw: unknown): Parsed<ElicitationValue> {

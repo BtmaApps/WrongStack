@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import { modelsDevModelSchema } from '@wrongstack/core/models';
-import { getAllProviderQuota } from '@wrongstack/core/quota';
+import { getAllProviderQuota, withQuotaPace } from '@wrongstack/core/quota';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';
@@ -575,7 +575,7 @@ async function dispatchProviderRoute(
       // turn completes.
       send(ws, {
         type: 'provider.quota',
-        payload: { snapshots: getAllProviderQuota() },
+        payload: { snapshots: withQuotaPace(getAllProviderQuota()) },
       });
       return true;
     }

@@ -110,7 +110,29 @@ export async function readSessionLogEvents(opts: {
 }
 
 /**
- * Newest `*.jsonl` in the sessions directory, or undefined if none.
+ * Session-store JSONLs that share the sessions directory but are NOT
+ * transcripts: the store-level `_index.jsonl` / `_mailbox.jsonl` and the
+ * per-session sidecars (`sess.replay.jsonl`, `sess.audit.jsonl`, legacy
+ * `sess.annotations.jsonl`). Mirrors core's `isSessionTranscriptFileName`
+ * (`core/src/utils/session-scoped-path.ts`) without importing it — this
+ * reader deliberately stays dependency-light.
+ */
+const STORE_SIDECAR_JSONL_NAMES = new Set(['_index.jsonl', '_mailbox.jsonl']);
+const SESSION_SIDECAR_JSONL_SUFFIXES = ['.replay.jsonl', '.audit.jsonl', '.annotations.jsonl'];
+
+function isSessionTranscriptName(name: string): boolean {
+  const lower = name.toLowerCase();
+  if (!lower.endsWith('.jsonl')) return false;
+  if (STORE_SIDECAR_JSONL_NAMES.has(lower)) return false;
+  return !SESSION_SIDECAR_JSONL_SUFFIXES.some((suffix) => lower.endsWith(suffix));
+}
+
+/**
+ * Newest session transcript `*.jsonl` in the sessions directory, or undefined
+ * if none. Store sidecars (`_index.jsonl`, `.replay.jsonl`, …) are NOT
+ * candidates: the store appends its index row at session close — after the
+ * final transcript flush — so an unfiltered newest-file scan reads index rows
+ * instead of session events and every tool metric reports zero.
  *
  * WrongStack session ids are date-sharded in modern builds:
  *
@@ -143,7 +165,7 @@ async function newestJsonl(dir: string): Promise<string | undefined> {
 
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
-    if (entry.name.endsWith('.jsonl')) {
+    if (isSessionTranscriptName(entry.name)) {
       await consider(full);
       continue;
     }
@@ -156,7 +178,7 @@ async function newestJsonl(dir: string): Promise<string | undefined> {
       continue;
     }
     for (const child of nested) {
-      if (!child.name.endsWith('.jsonl')) continue;
+      if (!isSessionTranscriptName(child.name)) continue;
       await consider(path.join(full, child.name));
     }
   }

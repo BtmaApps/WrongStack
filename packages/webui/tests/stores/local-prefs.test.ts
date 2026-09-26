@@ -67,6 +67,7 @@ describe('initial state', () => {
     expect(state.featureMemory).toBe(true);
     expect(state.featureSkills).toBe(true);
     expect(state.featureModelsRegistry).toBe(true);
+    expect(state.featureToolCoach).toBe(true);
     expect(state.indexOnStart).toBe(true);
     expect(state.contextAutoCompact).toBe(true);
     expect(state.contextStrategy).toBe('hybrid');

@@ -1,20 +1,17 @@
-## Vitest invocations
+## Module ownership probes
 
-- The root `vitest.config.ts` excludes `packages/webui/**`, so a root-level `vitest run` that passes says nothing about webui — never cite it as verification there. Run webui suites with `cd packages/webui && npx vitest run <file>`.
-- Inside `packages/webui/vitest.config.ts` two projects split the surface: `browser-jsdom` globs `tests/**/*.test.{ts,tsx}` (excluding `tests/server/**`), so even DOM-free unit tests such as `tests/components/chat-view-auto-collapse.test.ts` execute under jsdom; `tests/server/**` belongs to the node project. Do not assume a plain `.ts` unit test escapes jsdom.
-- `packages/cli/tests/hq-dashboard.test.ts` runs only via `pnpm --filter @wrongstack/cli test:hqdash`, which uses `packages/cli/vitest.hqdash.config.ts`.
-- Before naming any command, read the `exclude` list in the root config and the `test`/`typecheck` scripts in the touched package's `package.json`; report a surface as verified only when your named command actually executes it.
+- Treat `packages/webui/src/components/ChatInput.tsx` as the sole owner of the `ChatInput/` feature directory: only it imports runtime pieces from `./ChatInput/*` (e.g. `file-mention-picker.js`); siblings like `session-draft.ts` and `use-chat-keydown.ts` share only types (e.g. `FileMentionState`) via `import type`. These leaves have no `view-registry.ts` lazy registration — build importer maps from greps scoped to `packages/webui/src` and `packages/webui/tests`.
 
-## Capturing proof
+## Consumers and blast radius
 
-- For a "run tests / capture proof" todo, write captured output to `.reports/release-check-matrix/*.log`, matching the naming already used there; derive the narrowest legitimate filter from the package's `test`/`typecheck` scripts rather than inventing a new invocation.
+- Treat root `CHANGELOG.md` as filename-coupled, never import-coupled. Consumers: `changelog-writer` (`packages/plugins/src/changelog-writer/index.ts`, `filePath`, merges under `## [Unreleased]`), `semver-bump` (`changelogFile`), `doc-sync-guard` (`docNames`), git-autocommit release bumps, and the hand mirror in `website/src/lib/utils.ts`. Inspect path and structure before judging edit risk; `CHANGELOG.md` hits in tests are node_modules mocks or config defaults, not root-file reads.
+- Assess `.temp_files/*.cjs` by hardcoded external targets, not repo grep: `plant-probe.cjs` (`DIR = 'C:/Users/<user>/.wrongstack/projects/<id>'`) mutates user-owned `review-reports.jsonl`, `review-findings.jsonl`, and `.review-store-maintenance.json`; zero filename-grep callers does not mean safe. Flag additive `fs.appendFileSync` probes without idempotency — repeated `node <script>.cjs` runs stack rows; dedupe cleanup by namespaced id prefix.
+- Treat `package.json` and `pnpm-workspace.yaml` probes as index-blind: expect `codebase-skeleton` `symbolCount: 0` and no `codebase-incoming-calls` graph. Read the manifest (`exports`, `main`, `private`), check `packages:` and `link:` in `pnpm-workspace.yaml`, then count-mode grep `package\.json` under `scripts/` to separate root-manifest readers from per-package matches.
+- The todo store is runtime-only: an empty `glob .wrongstack/**/*todo*` proves nothing. Use mtime-ordered `glob` over `packages/*/src` plus `git diff HEAD`; ignore `.wrongstack/domain-terms.md` boilerplate.
 
-## Probing leader todos
+## Verification and reporting
 
-- The session todo store is runtime state with no file backing: `glob .wrongstack/**/*todo*` finds nothing. Fall back to mtime-ordered `glob` over `packages/*/src` plus `git diff HEAD` as ground truth.
-- Treat the auto-mined `.wrongstack/domain-terms.md` list as per-request boilerplate, never as signal about the leader's current work.
-
-## `submit_result` payloads
-
-- Keep every field pure ASCII; em-dashes and arrows (—, ⇒) correlate with "Invalid report" schema rejections, while the same content rewritten in ASCII passes.
-- Keep payloads small — roughly ≤7 short `findings` and ≤3 `files_examined`. Oversized reports are rejected with the misleading "summary/findings/… are required" error even when every field is present and ASCII; treat that error as a size problem first, trim, and retry.
+- Before claiming verification, read `exclude` in root `vitest.config.ts` and the touched package's `package.json` scripts; only a command that executes the target counts.
+- Root `vitest run` excludes `packages/webui/**` — use `cd packages/webui && npx vitest run <file>`. In `packages/webui/vitest.config.ts`, `tests/server/**` uses node; other `tests/**/*.test.{ts,tsx}` use `browser-jsdom`, even when DOM-free.
+- Run `packages/cli/tests/hq-dashboard.test.ts` via `pnpm --filter @wrongstack/cli test:hqdash` (config: `packages/cli/vitest.hqdash.config.ts`); derive the narrowest script-supported filter and save proof under `.reports/release-check-matrix/*.log`.
+- Keep `submit_result` ASCII-only, ≤7 short `findings`, ≤3 `files_examined`; if the required-field error fires on a complete payload, trim size and retry.

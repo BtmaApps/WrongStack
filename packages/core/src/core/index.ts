@@ -132,6 +132,7 @@ export {
   saveSystemPromptPreset,
   validateSystemPromptPreset,
 } from './system-prompt-presets.js';
+export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';
 export {
   countSystemPromptTokens,
   isSystemInstructionVariant,

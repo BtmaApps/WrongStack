@@ -87,6 +87,14 @@ function makeAdapter(initial = baseConfig()) {
 }
 
 describe('TUI settings adapter', () => {
+  it('round-trips Tool Coach through the profile and live ConfigStore', async () => {
+    const { adapter, configStore, globalConfig } = makeAdapter();
+    expect(adapter.getSettings().featureToolCoach).toBe(true);
+    expect(await adapter.saveSettings({ featureToolCoach: false })).toBeNull();
+    expect(adapter.getSettings().featureToolCoach).toBe(false);
+    expect(configStore.get().features.toolCoach).toBe(false);
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).features.toolCoach).toBe(false);
+  });
   it('returns the runtime default maxConcurrent when config has no setting', () => {
     const initial = baseConfig({ maxConcurrent: undefined as never });
     const { adapter } = makeAdapter(initial);

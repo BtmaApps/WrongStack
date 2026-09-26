@@ -138,23 +138,32 @@ describe('DefaultSkillLoader — extra', () => {
   });
 
   describe('readBody caching', () => {
-    it('returns cached body on repeated call', async () => {
+    it('returns cached body while the file stamp (mtime, size) is unchanged', async () => {
       const skillDir = path.join(profileSkills(globalRoot), 'cacheme');
+      const file = path.join(skillDir, 'SKILL.md');
       await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, 'SKILL.md'),
-        `---\nname: cacheme\ndescription: cached\n---\n# original body`,
-      );
+      await fs.writeFile(file, `---\nname: cacheme\ndescription: cached\n---\n# original body`);
+      // A whole-second mtime survives a utimes round-trip exactly on every
+      // filesystem; a stat()'s Date does not (it is rounded to the ms).
+      const fixed = new Date(Math.floor(Date.now() / 1000) * 1000 - 60_000);
+      await fs.utimes(file, fixed, fixed);
       const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
       const loader = new DefaultSkillLoader({ paths });
       const body1 = await loader.readBody('cacheme');
       expect(body1).toContain('original body');
 
-      // Modify the file on disk
-      await fs.writeFile(path.join(skillDir, 'SKILL.md'), 'changed content');
-      // Should still return cached body
-      const body2 = await loader.readBody('cacheme');
-      expect(body2).toContain('original body');
+      // Same size, mtime put back: the stamp matches, so the cache answers —
+      // proof the body is not re-read on every call.
+      await fs.writeFile(file, `---\nname: cacheme\ndescription: cached\n---\n# ORIGINAL BODY`);
+      await fs.utimes(file, fixed, fixed);
+      expect(await loader.readBody('cacheme')).toContain('original body');
+
+      // A real edit changes the stamp and is served.
+      await fs.writeFile(
+        file,
+        `---\nname: cacheme\ndescription: cached\n---\n# edited body, longer`,
+      );
+      expect(await loader.readBody('cacheme')).toContain('edited body');
     });
   });
 
@@ -266,13 +275,15 @@ describe('DefaultSkillLoader — extra', () => {
       const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
       const loader = new DefaultSkillLoader({ paths });
       const body1 = await loader.readSaveBody('alpha');
-      // Modify the file
+      expect(await loader.readSaveBody('alpha')).toBe(body1); // cached
+      // An edit of SKILL.md changes the stamp: the compact body is rebuilt.
       await fs.writeFile(
         path.join(alphaDir, 'SKILL.md'),
-        `---\nname: alpha\ndescription: test\n---\n# modified`,
+        `---\nname: alpha\ndescription: test\n---\n# modified\n## Overview\nNow for something else entirely`,
       );
       const body2 = await loader.readSaveBody('alpha');
-      expect(body2).toBe(body1); // cached
+      expect(body2).not.toBe(body1);
+      expect(body2).toContain('something else');
     });
   });
 

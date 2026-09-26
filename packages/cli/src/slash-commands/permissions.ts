@@ -115,6 +115,13 @@ export function buildPermissionsCommand(opts: SlashCommandContext): SlashCommand
       let next: SessionPermissionOverride[];
       let done: string;
       if (sub === 'allow' || sub === 'deny') {
+        if (sub === 'allow' && isYoloLockedOff()) {
+          return {
+            message: color.yellow(
+              'Session allow rules are not honoured under --restricted (every write asks). Deny rules still apply.',
+            ),
+          };
+        }
         const tool = rest.split(/\s+/)[0] ?? '';
         const pattern = rest.slice(tool.length).trim();
         if (!tool) return { message: color.yellow(`Usage: /permissions ${sub} <tool> [pattern]`) };

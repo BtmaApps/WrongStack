@@ -60,7 +60,7 @@ export {
   setKanbanGovernance,
 } from './kanban-governance-port.js';
 export { withExecutorGate } from './permission-explain.js';
-export { describeWriteTargets } from './permission-helpers.js';
+export { describeWriteTargets, shellCommandLinesFromInput } from './permission-helpers.js';
 export {
   AutoApprovePermissionPolicy,
   alwaysAllowUnavailableReason,

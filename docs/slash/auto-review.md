@@ -1,6 +1,6 @@
 # `/auto-review` — Continuous auto-review status
 
-`/auto-review` is registered by the opt-in `wstack-auto-review` plugin **only when that plugin's resolved `enabled` option is true**. It reports:
+`/auto-review` is registered by the `wstack-auto-review` plugin, which ships enabled by default; the command is present **only when that plugin's resolved `enabled` option is true**. It reports:
 
 - whether auto-review is enabled;
 - the provider and model selected for review subagents;
@@ -41,17 +41,21 @@ iteration.completed
   → persist full report + mailbox result
   → emit chimera.review_complete
   → emit chimera.report_available to TUI, WebUI, and SimpleUI
-  → stop; wait for explicit user action
+  → if findings meet cascadeOn (default `high`): emit chimera.cascade_needed
+      → Director spawns bug-hunter (+ security-scanner for security findings)
+      → edits re-read and re-reviewed, bounded by maxCascadeDepth
+  → otherwise stop; wait for explicit user action
 ```
 
 ## Passive completion boundary
 
 A completed report is advisory. The runtime persists the full text, sends a
 mailbox result, and shows a compact availability notice in TUI, WebUI, and
-SimpleUI. It does not append the report as a normal assistant response, wake the
-leader, spawn a mutating agent, or re-review edits. Legacy `cascadeOn` and
-`maxCascadeDepth` values are accepted for compatibility but resolve to this
-manual policy.
+SimpleUI. It does not append the report as a normal assistant response or wake
+the leader. When findings meet the `cascadeOn` threshold (`high` by default —
+High and Critical), the correction cascade spawns follow-up fix agents
+(bug-hunter, plus security-scanner for security findings), bounded by
+`maxCascadeDepth` fix→re-review cycles (default 2).
 
 ## Configuration
 
@@ -59,7 +63,7 @@ Configuration is read from `extensions["wstack-auto-review"]`:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | boolean | false | Master switch |
+| `enabled` | boolean | true | Master switch |
 | `provider` | string | session provider | LLM provider for review agents |
 | `model` | string | session model | LLM model for review agents |
 | `fallbackProfile` | string | — | Named profile from `config.fallbackProfiles`; its first valid entry supplies the primary provider/model when those are omitted, and its entries form the selection and retry pool |

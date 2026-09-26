@@ -114,5 +114,16 @@
     "activityMax": "Sparkline d'activité : max {{count}} événements",
     "activityPeak": "Sparkline d'activité — pic {{count}} événements/intervalle"
   },
+  "restoreTabs": {
+    "title": "Restaurer vos onglets précédents ?",
+    "body": "Cette WebUI a redémarré à neuf. {{count}} session(s) étaient ouvertes auparavant dans ce navigateur — elles sont toujours sur le disque. Choisissez celles à rouvrir, ou repartez de zéro.",
+    "limit": "Au plus {{room}} de plus peuvent être rouvertes ({{max}} onglets au total). Les autres restent dans l'historique.",
+    "fresh": "Repartir de zéro",
+    "confirm": "Rouvrir {{count}}"
+  },
+  "mcpStatus": {
+    "down": "Le serveur MCP « {{name}} » n'est pas connecté ({{reason}}) ; ses outils sont indisponibles. Réessayez avec /mcp restart {{name}}.",
+    "up": "Le serveur MCP « {{name}} » est de nouveau connecté."
+  },
   "loadingNamed": "Chargement de {{name}}…"
 }

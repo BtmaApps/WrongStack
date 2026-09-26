@@ -114,6 +114,19 @@ export interface HttpTransportOptions {
  * Abort error whose `name` is `'AbortError'` so the core executor's
  * classifyToolError maps it to FATAL / not-retryable (user cancellation).
  */
+/**
+ * `scheme://host:port` of a server URL, for log lines. The path and query can
+ * hold an expanded `${SECRET}` (config-env), and userinfo is a credential.
+ */
+export function urlOriginForLog(raw: string): string {
+  try {
+    const url = new URL(raw);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return '<invalid url>';
+  }
+}
+
 export function makeAbortError(method: string): Error {
   const err = new Error(`MCP request "${method}" aborted by client`);
   err.name = 'AbortError';
@@ -205,17 +218,20 @@ export abstract class BaseHTTPTransport {
     this.requestTimeout = opts.requestTimeoutMs ?? 60_000;
     if (opts.tls) {
       if (opts.tls.rejectUnauthorized === false) {
+        // Origin only: after config-env expansion the URL can carry a
+        // `${SECRET}` in its path or query, and these go to stderr/logs (H-7).
+        const where = urlOriginForLog(this.url);
         if (!isTlsUnsafeAllowed()) {
           throw new ConfigError({
             message:
               `[mcp:${transportName}] TLS verification disabled — set WRONGSTACK_UNSAFE_MCP_TLS=1 ` +
-              `to allow. Rejecting insecure configuration for ${this.url}.`,
+              `to allow. Rejecting insecure configuration for ${where}.`,
             code: 'CONFIG_INVALID',
-            context: { field: 'tls.rejectUnauthorized', transportName, url: this.url },
+            context: { field: 'tls.rejectUnauthorized', transportName, url: where },
           });
         }
         console.error(
-          `[mcp:${transportName}] ⚠️ TLS verification DISABLED for ${this.url}. ` +
+          `[mcp:${transportName}] ⚠️ TLS verification DISABLED for ${where}. ` +
             `Network attacks are possible — only use on localhost.`,
         );
       }

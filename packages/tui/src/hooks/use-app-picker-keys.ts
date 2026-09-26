@@ -57,6 +57,7 @@ interface UseAppPickerKeysOptions {
   statuslineHiddenForPicker: () => StatuslineItem[];
   onPickerEnter: () => Promise<void>;
   onThemePickerEnter?: () => void;
+  onThemePickerUndo?: () => void;
   setPromptFavorite: (slug: string, favorite: boolean) => Promise<void>;
 }
 
@@ -85,6 +86,7 @@ export function useAppPickerKeys({
   statuslineHiddenForPicker,
   onPickerEnter,
   onThemePickerEnter,
+  onThemePickerUndo,
   setPromptFavorite,
 }: UseAppPickerKeysOptions) {
   const {
@@ -704,5 +706,6 @@ export function useAppPickerKeys({
     },
     onPickerEnter,
     onThemePickerEnter,
+    onThemePickerUndo,
   });
 }

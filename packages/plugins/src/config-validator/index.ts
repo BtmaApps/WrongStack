@@ -13,11 +13,14 @@
  *    first); parse errors include the line/column
  *  - `package.json`          → parse + shape checks (name/version
  *    present, `dependencies` is an object)
- *  - `.yaml` / `.yml`        → structural lint: tab indentation
- *    (illegal in YAML), duplicate keys at the same indent within a
- *    block, unclosed quotes
+ *  - `.yaml` / `.yml`        → parsed (every document of a `---`
+ *    stream): syntax errors, duplicate keys, tab indentation, unclosed
+ *    quotes — each with its line and column
  *  - `.toml`                 → duplicate table headers, duplicate
  *    keys within a table
+ *  - `.env`, `.env.<name>`   → every line is `KEY=value`, a comment or
+ *    empty; a multi-line quoted value is closed. Problems name the line,
+ *    never its text (dotenv values are secrets)
  *
  * Valid files produce no output — zero noise on the happy path.
  *
@@ -26,7 +29,7 @@
  * ```jsonc
  * {
  *   "enabled": true,
- *   "extensions": [".json", ".jsonc", ".yaml", ".yml", ".toml"],
+ *   "extensions": [".json", ".jsonc", ".yaml", ".yml", ".toml", ".env"],
  *   "maxFileBytes": 1048576
  * }
  * ```
@@ -39,6 +42,7 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import type { Plugin } from '@wrongstack/core/types';
+import { LineCounter, parseAllDocuments, type YAMLError } from 'yaml';
 import { withinProject } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------
@@ -71,7 +75,8 @@ interface ConfigValidatorConfig {
   maxFileBytes: number;
 }
 
-const DEFAULT_EXTENSIONS = ['.json', '.jsonc', '.yaml', '.yml', '.toml'];
+/** `.env` stands for every dotenv file (`.env.local` too): see {@link isDotEnvFile}. */
+const DEFAULT_EXTENSIONS = ['.json', '.jsonc', '.yaml', '.yml', '.toml', '.env'];
 
 const DEFAULTS: ConfigValidatorConfig = {
   enabled: true,
@@ -247,109 +252,116 @@ export function validateJson(text: string, isJsonc: boolean, fileName: string): 
 }
 
 /**
- * A `key:` line, capturing the key and whatever follows the colon.
+ * YAML is parsed, not linted. The line-based linter this replaced had to
+ * re-derive YAML's grammar with regexes and got it wrong in both directions:
+ * `run: |` bodies read as keys (this repo's own ci.yml reported
+ * `duplicate key "echo "FAIL"`), URL-shaped lockfile keys never matched, and
+ * a shell line with one double quote was an "unclosed quote". The hook hands
+ * its findings to the model as "fix these before moving on", so every false
+ * positive cost a turn and invited an edit to a correct file.
  *
- * The key alternation accepts a quoted key BEFORE the bare form, because a
- * bare key cannot contain a colon: the old pattern (`[^:]*?`) simply failed
- * to match any line whose key holds one — `'@scope/pkg@file:///D:/repo':`,
- * every URL-shaped key a lockfile is full of. A line that fails to match is
- * not harmless: see the pop below.
+ * `parseAllDocuments` reads every document of a `---` stream. Duplicate keys,
+ * tab indentation and unterminated quotes are parse ERRORS there. An
+ * application tag (`!Ref`, `!vault`) is valid YAML and only a warning, so it
+ * is never reported.
  */
-const YAML_KEY_RE = /^\s*((?:'[^']*'|"[^"]*"|[^\s#'"][^:]*?))\s*:(?:\s+(.*))?$/;
-
-/** `|`, `>`, with optional chomping/indent indicators and a trailing comment. */
-const BLOCK_SCALAR_RE = /^[|>][+-]?\d*\s*(?:#.*)?$/;
-
-/** Strip a leading `- ` so `- run: |` is seen as the key line it contains. */
-const LIST_ITEM_PREFIX_RE = /^(\s*)-\s+/;
-
 export function validateYaml(text: string): string[] {
   const problems: string[] = [];
-  const lines = text.split('\n');
-  // Scope stack: one Set of sibling keys per indentation level.
-  // Returning to a shallower indent pops deeper scopes; a list item
-  // (`- …`) resets scopes deeper than itself so repeated item shapes
-  // (`- name: …` per element) don't count as duplicates.
-  const stack: Array<{ level: number; keys: Set<string> }> = [];
-  // Indent of the key that opened a block scalar (`|` / `>`), or null when
-  // not inside one. Everything indented deeper than that key is opaque text,
-  // not YAML, so no rule below may read it. Without this, a GitHub workflow's
-  // `run: |` body was parsed as YAML: shell lines became "keys" (this repo's
-  // own ci.yml reported `duplicate key "echo "FAIL"`) and any shell line with
-  // one double quote tripped the unclosed-quote rule. The hook hands these
-  // straight to the model as "fix these before moving on", so a false
-  // positive costs a turn and invites an edit to a correct file.
-  let blockScalarLevel: number | null = null;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] as string;
-    const lineNo = i + 1;
-    if (/^\s*(#|$)/.test(line)) continue;
-    // Tabs in indentation are illegal in YAML.
-    const indent = /^([ \t]*)/.exec(line)?.[1] ?? '';
-    if (indent.includes('\t')) {
-      // Inside a block scalar a tab is ordinary text (Makefiles, shell
-      // heredocs), not an indentation error.
-      if (blockScalarLevel !== null && indent.length > blockScalarLevel) continue;
-      problems.push(`YAML: tab character in indentation at line ${lineNo} (YAML requires spaces)`);
-      continue;
-    }
-    const level = indent.length;
-    if (blockScalarLevel !== null) {
-      if (level > blockScalarLevel) continue;
-      blockScalarLevel = null;
-    }
-    // Document separator starts a fresh key space.
-    if (/^---\s*$/.test(line.trim())) {
-      stack.length = 0;
-      continue;
-    }
-    // Pop deeper scopes for EVERY content line, not only for lines that parse
-    // as a key. The pop used to live inside the key branch, so a key line the
-    // pattern could not read left the stack holding the previous sibling's
-    // children — and the next nested key was reported as a duplicate of a key
-    // belonging to a different parent.
-    while (stack.length > 0 && (stack[stack.length - 1] as { level: number }).level > level) {
-      stack.pop();
-    }
-
-    // A list item's own `key: value` still opens a block scalar (`- run: |`),
-    // so look inside it — but leave duplicate tracking alone, since repeated
-    // item shapes are legitimate.
-    const listPrefix = LIST_ITEM_PREFIX_RE.exec(line);
-    if (listPrefix) {
-      const body = line.slice(listPrefix[0].length);
-      const itemKey = YAML_KEY_RE.exec(body);
-      if (itemKey && BLOCK_SCALAR_RE.test((itemKey[2] ?? '').trim())) {
-        blockScalarLevel = listPrefix[0].length;
-      }
-      continue;
-    }
-
-    const keyMatch = YAML_KEY_RE.exec(line);
-    if (keyMatch) {
-      const key = (keyMatch[1] ?? '').trim();
-      let top = stack[stack.length - 1];
-      if (!top || top.level < level) {
-        top = { level, keys: new Set<string>() };
-        stack.push(top);
-      }
-      if (top.keys.has(key)) {
-        problems.push(`YAML: duplicate key "${key}" at line ${lineNo}`);
-      }
-      top.keys.add(key);
-      if (BLOCK_SCALAR_RE.test((keyMatch[2] ?? '').trim())) {
-        blockScalarLevel = level;
-        continue;
-      }
-    }
-    // Unclosed quote heuristic: an odd number of unescaped double
-    // quotes on one line (YAML strings rarely span lines quoted).
-    const doubleQuotes = (line.match(/(?<!\\)"/g) ?? []).length;
-    if (doubleQuotes % 2 === 1) {
-      problems.push(`YAML: possibly unclosed double quote at line ${lineNo}`);
+  const lineCounter = new LineCounter();
+  let docs: ReturnType<typeof parseAllDocuments>;
+  try {
+    docs = parseAllDocuments(text, { uniqueKeys: true, prettyErrors: false, lineCounter });
+  } catch (err) {
+    return [`YAML: ${err instanceof Error ? err.message : String(err)}`];
+  }
+  const list = Array.isArray(docs) ? docs : [docs];
+  for (const doc of list) {
+    for (const err of doc.errors) {
+      const at = lineCounter.linePos(err.pos[0]);
+      problems.push(`YAML: ${yamlProblem(err, text)} at line ${at.line}, column ${at.col}`);
     }
   }
   return problems;
+}
+
+/**
+ * The parser's message, in the words a reader fixes it by. Only the first
+ * line: the rest is a source excerpt, which could carry a value.
+ */
+function yamlProblem(err: YAMLError, text: string): string {
+  const first = err.message.split('\n')[0] ?? err.code;
+  switch (err.code) {
+    case 'DUPLICATE_KEY': {
+      // `pos` marks where the key starts; the key runs to its `:`.
+      const rest = text.slice(err.pos[0], err.pos[0] + 200);
+      const key = (/^('[^'\n]*'|"[^"\n]*"|[^:\n]+?)\s*:/.exec(rest)?.[1] ?? '').trim();
+      return key && key.length <= 80
+        ? `duplicate key "${key.replace(/^['"]|['"]$/g, '')}"`
+        : 'duplicate key';
+    }
+    case 'TAB_AS_INDENT':
+      return 'tab character in indentation (YAML requires spaces)';
+    case 'MISSING_CHAR':
+      if (first.includes('closing "quote')) return 'unclosed double quote';
+      if (first.includes("closing 'quote")) return 'unclosed single quote';
+      return first;
+    default:
+      return first;
+  }
+}
+
+/** `.env`, `.env.local`, `.env.production`... — dotenv files carry no extension. */
+export function isDotEnvFile(path: string): boolean {
+  const base = path.split(/[\\/]/).pop() ?? '';
+  return /^\.env(?:\.[\w.-]+)?$/i.test(base);
+}
+
+const DOTENV_ASSIGNMENT_RE = /^(?:export\s+)?[A-Za-z_][A-Za-z0-9_.-]*\s*=/;
+
+/**
+ * Every line of a dotenv file is empty, a comment or `KEY=value`. A quoted
+ * value may span lines (`KEY="a` … `b"`), and those lines are not read as
+ * assignments. Problems name the line only, never its text: the value of a
+ * dotenv line is usually a secret.
+ */
+export function validateDotEnv(text: string): string[] {
+  const problems: string[] = [];
+  const lines = text.split(/\r?\n/);
+  let openQuote: '"' | "'" | null = null;
+  let openedAt = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    if (openQuote) {
+      if (closesQuote(line, openQuote)) openQuote = null;
+      continue;
+    }
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) continue;
+    if (!DOTENV_ASSIGNMENT_RE.test(trimmed)) {
+      problems.push(`.env: line ${i + 1} is not KEY=value, a comment or empty`);
+      continue;
+    }
+    const value = trimmed.slice(trimmed.indexOf('=') + 1).trimStart();
+    const quote = value[0];
+    if ((quote === '"' || quote === "'") && !closesQuote(value.slice(1), quote)) {
+      openQuote = quote;
+      openedAt = i + 1;
+    }
+  }
+  if (openQuote) problems.push(`.env: the quoted value opened at line ${openedAt} is never closed`);
+  return problems;
+}
+
+/** True when `text` holds an unescaped `quote` (the closing one). */
+function closesQuote(text: string, quote: '"' | "'"): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\\' && quote === '"') {
+      i++;
+      continue;
+    }
+    if (text[i] === quote) return true;
+  }
+  return false;
 }
 
 export function validateToml(text: string): string[] {
@@ -399,6 +411,7 @@ export function validateFile(path: string, text: string): string[] {
   if (lower.endsWith('.jsonc')) return validateJson(text, true, path);
   if (lower.endsWith('.yaml') || lower.endsWith('.yml')) return validateYaml(text);
   if (lower.endsWith('.toml')) return validateToml(text);
+  if (isDotEnvFile(path)) return validateDotEnv(text);
   return [];
 }
 
@@ -410,7 +423,7 @@ const plugin: Plugin = {
   name: 'config-validator',
   version: '0.1.0',
   description:
-    'Validates JSON/JSONC/YAML/TOML files right after write/edit and reports syntax problems in the same turn',
+    'Validates JSON/JSONC/YAML/TOML/.env files right after write/edit and reports syntax problems in the same turn',
   apiVersion: '^0.1.10',
   capabilities: { tools: true, hooks: true },
   defaultConfig: { ...DEFAULTS },
@@ -477,7 +490,10 @@ const plugin: Plugin = {
       // statSync/readFileSync, so the model could name any path on the host.
       if (!withinProject(raw)) return;
       const lower = raw.toLowerCase();
-      if (!cfg.extensions.some((ext) => lower.endsWith(ext))) return;
+      const watched =
+        cfg.extensions.some((ext) => lower.endsWith(ext)) ||
+        (cfg.extensions.includes('.env') && isDotEnvFile(raw));
+      if (!watched) return;
 
       let text: string;
       try {

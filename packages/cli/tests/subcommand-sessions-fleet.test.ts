@@ -121,6 +121,32 @@ describe('sessionsFleetCmd — list mode', () => {
     expect(code).toBe(0);
     expect(joined(d.renderer.write)).toContain('No fleet runs');
   });
+
+  it('discovers sharded fleet roots and does not list run-less shards as runs', async () => {
+    // Fleet roots live at <projectSessions>/<shard>/<sessionId>/ because
+    // modern session ids are date-sharded. Discovery must surface those runs
+    // (their ids are what show mode and `--resume` accept) while a shard that
+    // contains no fleet run must not appear as a bogus run row.
+    const sharded = path.join(tmp, '2026-09-26', 'sess_01JA');
+    const directorRun = path.join(sharded, 'subagents', '2026-09-26T10-00-00-000Z-director');
+    await fs.mkdir(directorRun, { recursive: true });
+    await fs.writeFile(
+      path.join(sharded, 'fleet.json'),
+      JSON.stringify({ subagents: [{ id: 'sa_one' }] }),
+    );
+    await fs.writeFile(path.join(directorRun, 'sa_one.jsonl'), '{}\n');
+    // A shard holding only a plain session (no fleet.json anywhere).
+    await fs.mkdir(path.join(tmp, '2026-09-27', 'sess_01JZ'), { recursive: true });
+
+    const d = deps();
+    const code = await sessionsFleetCmd([], d);
+    expect(code).toBe(0);
+    const out = joined(d.renderer.write);
+    expect(out).toContain('2026-09-26/sess_01JA');
+    expect(out).toContain('1 subagent jsonl');
+    expect(out).not.toContain('2026-09-27');
+    expect(out).not.toContain('sess_01JZ');
+  });
 });
 
 describe('sessionsFleetCmd — show mode', () => {
@@ -234,6 +260,48 @@ describe('sessionsFleetCmd — show mode', () => {
     expect(out).toContain('small.jsonl');
     expect(out).toContain('big.jsonl');
     expect(out).toMatch(/2(\.0)?MB/);
+  });
+
+  it('lists transcripts from the real director-run layout, one level deeper', async () => {
+    // makeDirectorSessionFactory roots a DefaultSessionStore at
+    // `subagents/<directorRunId>/`, so journals live one directory below the
+    // level this command originally scanned, next to the run store's own
+    // `_index.jsonl`.
+    const runDir = path.join(tmp, 'r7');
+    const directorRun = path.join(runDir, 'subagents', '2026-09-26T10-00-00-000Z-director');
+    await fs.mkdir(directorRun, { recursive: true });
+    await fs.writeFile(path.join(runDir, 'fleet.json'), JSON.stringify({}));
+    await fs.writeFile(path.join(directorRun, 'sa_one.jsonl'), '{}\n');
+    await fs.writeFile(path.join(directorRun, 'sa_two.jsonl'), '{}\n');
+    await fs.writeFile(
+      path.join(directorRun, '_index.jsonl'),
+      `${JSON.stringify({ id: 'sa_one', title: 'sa_one' })}\n`,
+    );
+    const d = deps();
+    await sessionsFleetCmd(['r7'], d);
+    const out = joined(d.renderer.write);
+    expect(out).toContain('Subagent transcripts (2)');
+    expect(out).toContain('sa_one.jsonl');
+    expect(out).toContain('sa_two.jsonl');
+    expect(out).not.toContain('_index');
+    expect(out).not.toContain('No subagent transcripts');
+  });
+
+  it('counts runId-namespaced transcripts in the runs list', async () => {
+    const runDir = path.join(tmp, 'r8');
+    const directorRun = path.join(runDir, 'subagents', '2026-09-26T10-00-00-000Z-director');
+    await fs.mkdir(directorRun, { recursive: true });
+    await fs.writeFile(
+      path.join(runDir, 'fleet.json'),
+      JSON.stringify({ subagents: [{ id: 'sa_one' }, { id: 'sa_two' }] }),
+    );
+    await fs.writeFile(path.join(directorRun, 'sa_one.jsonl'), '{}\n');
+    await fs.writeFile(path.join(directorRun, 'sa_two.jsonl'), '{}\n');
+    const d = deps();
+    await sessionsFleetCmd([], d);
+    const out = joined(d.renderer.write);
+    expect(out).toContain('r8');
+    expect(out).toContain('2 subagent jsonl');
   });
 
   it('reports shared scratchpad file count when present', async () => {

@@ -15,6 +15,7 @@
  * @see docs/specs/techstack-sdd.md §4.2, §6
  */
 
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import {
   Boxes,
   Download,
@@ -35,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import {
   type TechStackDependency,
@@ -60,7 +62,6 @@ import {
 } from './shared';
 import { type DependencySort, TechStackToolbar } from './TechStackToolbar';
 import { TrendsTab } from './TrendsTab';
-import { useAppTranslation } from '@/i18n';
 
 interface SnapshotResponse {
   snapshot: TechStackSnapshot | null;
@@ -114,7 +115,7 @@ export function TechStackView() {
       const data = (await response.json()) as SnapshotResponse;
       store.setSnapshot(data.snapshot, data.stale);
     } catch (cause) {
-      const raw = cause instanceof Error ? cause.message : String(cause);
+      const raw = toErrorMessage(cause);
       // A static/dev server answers an unknown /api route with index.html, so the
       // JSON parse fails with "Unexpected token '<' …" — meaningless to operators.
       // Collapse that one shape to a state claim; real server errors stay verbatim.
@@ -170,7 +171,7 @@ export function TechStackView() {
           : undefined,
       );
     } catch (cause) {
-      store.setError(cause instanceof Error ? cause.message : String(cause));
+      store.setError(toErrorMessage(cause));
     }
   }, []);
 
@@ -184,7 +185,7 @@ export function TechStackView() {
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       useTechStackStore.getState().jobCancelled(job.id);
     } catch (cause) {
-      useTechStackStore.getState().setError(cause instanceof Error ? cause.message : String(cause));
+      useTechStackStore.getState().setError(toErrorMessage(cause));
     }
   }, []);
 
@@ -205,7 +206,7 @@ export function TechStackView() {
     } catch (cause) {
       setDeepDive({
         status: 'error',
-        error: cause instanceof Error ? cause.message : String(cause),
+        error: toErrorMessage(cause),
       });
     }
   }, []);

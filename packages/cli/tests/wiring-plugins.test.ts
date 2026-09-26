@@ -346,7 +346,10 @@ describe('setupPlugins', () => {
     expect(names).toEqual(expect.arrayContaining(EXPECTED_BUILTINS));
     expect(names).not.toContain('duplicate-code-detector');
     expect(names).not.toContain('format-on-save');
-    expect(names).not.toContain('wstack-chimera');
+    // The Chimera review automation is on out of the box: the post-session
+    // plugin, the mid-session auto-review plugin, and their `high` cascade.
+    expect(names).toContain('wstack-chimera');
+    expect(names).toContain('wstack-auto-review');
     expect(names).not.toContain('agent-handoff');
     expect(names).not.toContain('branch-guard');
     expect(names).not.toContain('commit-validator');

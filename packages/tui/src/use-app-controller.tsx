@@ -1,4 +1,5 @@
 import type { Director } from '@wrongstack/core/coordination';
+import type { ThemePresetId } from '@wrongstack/core/types';
 import { useCallback, useEffect } from 'react';
 import type { AppProps } from './app-props.js';
 import { effectivePanelPositions, mergeStatuslineHiddenItems } from './app-ui-state.js';
@@ -50,6 +51,7 @@ import { useTuiControllers } from './hooks/use-tui-controllers.js';
 import { useTuiEventBridge } from './hooks/use-tui-event-bridge.js';
 import { useTuiSlashCommands } from './hooks/use-tui-slash-commands.js';
 import { useApp, useStdout } from './ink.js';
+import { setActiveTheme } from './theme.js';
 import { useControllerKeyPipeline } from './use-controller-key-pipeline.js';
 
 export function useAppController(props: AppProps) {
@@ -588,6 +590,46 @@ export function useAppController(props: AppProps) {
     runBlocksRef,
   });
 
+  /**
+   * Applies `/theme <preset>` immediately: swap the live palette, write the
+   * choice to the ConfigStore, and persist it to disk. Extracted here so the
+   * slash command does not need its own copy of the persist-and-report
+   * sequence — the picker (`useThemePickerHandler`) has the same three steps
+   * and both report persistence failure the same way.
+   */
+  const applyThemePreset = useCallback(
+    (preset: ThemePresetId) => {
+      setActiveTheme(preset);
+      const warnPersist = (err: unknown) =>
+        dispatch({
+          type: 'addEntry',
+          entry: {
+            kind: 'warn',
+            text: `Theme applied in-memory but could not persist to disk: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+        });
+      try {
+        configStore?.update({ themePreset: preset });
+      } catch (err) {
+        // A synchronous store failure is reported too — swallowing it left the
+        // user believing a theme was saved when the write never happened.
+        warnPersist(err);
+        return;
+      }
+      // `saveThemePreset` is optional, so the promise has to be produced
+      // inside the try: `void undefined.catch(...)` would throw a TypeError
+      // whenever the host wired no persistence.
+      try {
+        void props.saveThemePreset?.(preset).catch(warnPersist);
+      } catch (err) {
+        warnPersist(err);
+      }
+    },
+    [configStore, dispatch, props.saveThemePreset],
+  );
+
   useTuiSlashCommands({
     slashRegistry,
     skillLoader: props.skillLoader,
@@ -610,6 +652,8 @@ export function useAppController(props: AppProps) {
     switchAutonomy,
     listSessions,
     openPromptPicker,
+    configStore,
+    applyThemePreset,
   });
 
   useProviderEventBridge({
@@ -743,11 +787,13 @@ export function useAppController(props: AppProps) {
     tokenPreviewsRef,
   });
 
-  const { onThemePickerEnter } = useThemePickerHandler({
+  const { onThemePickerEnter, onThemePickerUndo } = useThemePickerHandler({
     configStore,
     saveThemePreset: props.saveThemePreset,
     dispatch,
     selectedIndex: state.themePicker.selected,
+    filter: state.themePicker.filter,
+    previous: state.themePicker.previous,
   });
 
   const { runInterruptLadder, stableOnKey } = useControllerKeyPipeline({
@@ -775,6 +821,7 @@ export function useAppController(props: AppProps) {
     statuslineHiddenForPicker,
     onPickerEnter,
     onThemePickerEnter,
+    onThemePickerUndo,
     setPromptFavorite,
     stateRef,
     exitRequestedRef,

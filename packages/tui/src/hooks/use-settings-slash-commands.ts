@@ -66,6 +66,7 @@ export function useSettingsSlashCommands(
     hiddenItemsRef,
     setHiddenItems,
     openStatuslinePicker,
+    applyThemePreset,
   } = deps;
 
   // Register the TUI-only `/settings` command — opens the interactive
@@ -462,14 +463,21 @@ export function useSettingsSlashCommands(
               message: `Unknown theme preset "${arg}". Available: ${names}`,
             };
           }
-          // Direct apply path — open the picker on the matching row so the
-          // user sees the [active] marker land on their pick. The picker
-          // closes on Enter (`onThemePickerEnter`), which also persists to
-          // disk via `saveThemePreset`.
-          dispatch({
-            type: 'themePickerOpen',
-            selected: presetIdx,
-          });
+          // Direct apply — a fully-specified argument means the user already
+          // knows which preset they want, so honour it immediately instead of
+          // making them confirm with Enter. This is what the CLI has always
+          // done for the same argument, and the two surfaces diverging on it
+          // was a papercut: the TUI's own help text already promised
+          // "Apply a preset directly".
+          //
+          // `applyThemePreset` is absent only when the host wired no theme
+          // persistence; fall back to the old preselect behaviour there so the
+          // command still does something useful.
+          if (applyThemePreset) {
+            applyThemePreset(THEME_OPTIONS[presetIdx]!.id);
+            return { message: undefined };
+          }
+          dispatch({ type: 'themePickerOpen', selected: presetIdx });
           return { message: undefined };
         }
         dispatch({ type: 'themePickerOpen' });

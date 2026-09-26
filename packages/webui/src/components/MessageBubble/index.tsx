@@ -554,6 +554,7 @@ export const MessageBubble = memo(function MessageBubble({
                             <FailedRunContinue
                               text={message.content}
                               timestamp={message.timestamp}
+                              autoArm={autonomy === 'auto' && message.autoContinue === true}
                             />
                           )}
                         </>

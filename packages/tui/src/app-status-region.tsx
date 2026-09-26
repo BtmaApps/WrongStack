@@ -163,6 +163,20 @@ export function AppStatusRegion({
         <StatusBar
           provider={liveProvider}
           model={liveModel}
+          // Reasoning effort rides INSIDE the model chip. Sourced the same
+          // read-only way as promptVariant below (config → getSettings), and
+          // the /model picker's effort strip writes through the same
+          // saveSettings, so both surfaces land on one value. While the
+          // settings picker is open we preview its live ←/→ selection:
+          // saveSettings → configStore is async, so the persisted read would
+          // lag the keystroke the way the animation style does.
+          effort={
+            getSettings
+              ? state.settingsPicker.open
+                ? state.settingsPicker.reasoningEffort
+                : getSettings().reasoningEffort
+              : undefined
+          }
           version={appVersion}
           latestVersion={latestVersion}
           updateAvailable={updateAvailable}

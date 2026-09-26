@@ -1,4 +1,4 @@
-import type { Request, StreamEvent } from '@wrongstack/core/types';
+import type { Request } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import {
   type CodexWebSocketLike,
@@ -53,15 +53,10 @@ function observingFactory(
   };
 }
 
-async function collect(stream: AsyncIterable<StreamEvent>): Promise<StreamEvent[]> {
-  const events: StreamEvent[] = [];
-  for await (const event of stream) events.push(event);
-  return events;
-}
-
 function request(sessionId: string, text: string): Request {
   return {
     model,
+    system: [{ type: 'text', text: 'Reply briefly.' }],
     messages: [{ role: 'user', content: text }],
     cache: { sessionId },
   };
@@ -82,8 +77,26 @@ describe.skipIf(!enabled || !accessToken)('Codex live WebSocket integration (opt
     const sessionId = `live-ws-${Date.now().toString(36)}`;
     const signal = AbortSignal.timeout(90_000);
 
-    await collect(provider.stream(request(sessionId, 'Reply with exactly OK.'), { signal }));
-    await collect(provider.stream(request(sessionId, 'Reply with exactly SECOND.'), { signal }));
+    const firstRequest = request(sessionId, 'Reply with exactly OK.');
+    const first = await provider.complete(firstRequest, { signal });
+    expect(
+      first.content.some((block) => block.type === 'text' && block.text.trim().length > 0),
+    ).toBe(true);
+    const secondRequest = request(sessionId, 'Reply with exactly SECOND.');
+    const second = await provider.complete(
+      {
+        ...secondRequest,
+        messages: [
+          ...firstRequest.messages,
+          { role: 'assistant', content: first.content },
+          ...secondRequest.messages,
+        ],
+      },
+      { signal },
+    );
+    expect(
+      second.content.some((block) => block.type === 'text' && block.text.trim().length > 0),
+    ).toBe(true);
 
     const prewarm = frames.find((frame) => frame['generate'] === false);
     const turns = frames.filter((frame) => frame['generate'] !== false);
@@ -92,8 +105,14 @@ describe.skipIf(!enabled || !accessToken)('Codex live WebSocket integration (opt
     expect(turns.length).toBeGreaterThanOrEqual(2);
     expect(typeof turns[0]?.['previous_response_id']).toBe('string');
     expect(turns[0]?.['input']).toEqual([]);
-    expect(connectionHeaders[0]?.authorization?.startsWith('Bearer ')).toBe(true);
-    expect(connectionHeaders[0]?.authorization).not.toBe(accessToken);
+    // The second real turn must reuse the first generated response, not merely
+    // prove the warmup id was used for the first turn.
+    expect(typeof turns[1]?.['previous_response_id']).toBe('string');
+    expect(turns[1]?.['previous_response_id']).not.toBe(turns[0]?.['previous_response_id']);
+    expect(turns[1]?.['input']).toEqual([
+      { role: 'user', content: [{ type: 'input_text', text: 'Reply with exactly SECOND.' }] },
+    ]);
+    expect(connectionHeaders[0]?.authorization === 'Bearer <present>').toBe(true);
     expect(metadata.some((entry) => Boolean(entry.headers['x-codex-turn-state']))).toBe(true);
   }, 120_000);
 });

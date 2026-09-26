@@ -5,6 +5,7 @@ import { drainLeaderDeliveries } from '../leader-delivery-attach.js';
 import { attachFleetPulse, attachMailboxChecker } from '../mailbox-attach.js';
 import { recordPromptJournalEntry } from '../prompts/prompt-journal.js';
 import { attachSessionNotes } from '../session-note-attach.js';
+import { armRequiredSkills } from '../skills/required-skill-gate.js';
 import type { TextBlock } from '../types/blocks.js';
 import { isToolUseBlock } from '../types/blocks.js';
 import { toWrongStackError } from '../types/errors.js';
@@ -32,6 +33,7 @@ import { runProviderWithRetry } from './provider-runner.js';
 import { buildQueuedMessagesBlock, consumeQueuedMessagesUpdate } from './queued-messages.js';
 import { providerBoundToRequest } from './request-provider-binding.js';
 import { buildSessionNoteBlock, consumeSessionNotes } from './session-notes.js';
+import { createToolCoach, isToolCoachEnabled } from './tool-coach.js';
 
 function toError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
@@ -257,6 +259,9 @@ export function createAgentLoopHandler(
       content: inputPayload.content,
       origin: inputOrigin,
     });
+    // Every host's user turn passes here, so this one call arms the gate for
+    // the CLI, TUI and WebUI alike. Runtime-injected context never arms it.
+    if (inputOrigin === 'user_input') armRequiredSkills(a.ctx, inputPayload.text);
     const promptIndex = a.ctx.messages.filter((m) => m.role === 'user').length - 1;
     const preview = inputPayload.text.slice(0, 80) + (inputPayload.text.length > 80 ? '…' : '');
     await sessionWriter.writeCheckpoint(promptIndex, preview);
@@ -292,6 +297,18 @@ export function createAgentLoopHandler(
     }
 
     const loopDetector = new AgentLoopDetector(a);
+    const toolCoach = createToolCoach(
+      a.ctx.catalogTools.length > 0 ? a.ctx.catalogTools : a.ctx.tools,
+    );
+    const toolCoachEnabled = () =>
+      isToolCoachEnabled(
+        a.ctx.meta,
+        a.container.safeResolve(TOKENS.ConfigStore)?.get().features.toolCoach,
+      );
+    const initialToolAdvice =
+      inputOrigin === 'user_input' && toolCoachEnabled()
+        ? toolCoach.initialNote(inputPayload.text)
+        : null;
     let pendingLoopSteer: string | null = null;
     let todoReconcileSteers = 0;
 
@@ -405,6 +422,9 @@ export function createAgentLoopHandler(
         injectPendingSessionNotes();
         await injectPendingDeliveries();
         injectQueueAwareness();
+        if (i === 0 && initialToolAdvice) {
+          foldBlockIntoConversation({ type: 'text', text: initialToolAdvice });
+        }
 
         if (pendingLoopSteer) {
           foldBlockIntoConversation({ type: 'text', text: pendingLoopSteer });
@@ -663,7 +683,11 @@ export function createAgentLoopHandler(
         }
 
         try {
-          await handlers.tools.executeTools(toolUses);
+          const toolExecution = await handlers.tools.executeTools(toolUses);
+          const advice = toolCoachEnabled()
+            ? toolCoach.afterTools(toolUses, toolExecution.results, toolExecution.settlements)
+            : null;
+          if (advice) queueLoopSteer(advice);
         } catch (toolErr) {
           if (controller.signal.aborted) {
             a.events.emit('error', {

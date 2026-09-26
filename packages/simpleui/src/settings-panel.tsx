@@ -678,6 +678,15 @@ export function SettingsPanel({
               ))}
             </div>
             <ToggleRow
+              label="Tool Coach"
+              hint="Suggest enabled tools during tasks and guide recovery after tool errors. On by default."
+              checked={prefs.featureToolCoach}
+              disabled={offline}
+              onChange={(featureToolCoach) => onPrefChange({ featureToolCoach })}
+              settingId="session.toolCoach"
+              hidden={rowHidden('session.toolCoach')}
+            />
+            <ToggleRow
               label="Model reasoning"
               hint="Show the model's thinking and reasoning in the chat."
               checked={prefs.showModelReasoning}

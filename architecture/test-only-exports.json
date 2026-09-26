@@ -257,6 +257,7 @@
       "extractTelegramPairingCandidates"
     ],
     "packages/cli/src/slash-commands/theme.ts": [
+      "cliThemePickerOptions",
       "truncateDesc"
     ],
     "packages/cli/src/standalone-update.ts": [
@@ -567,7 +568,11 @@
       "InvalidReportTransitionError"
     ],
     "packages/core/src/plugins/review-store-maintenance.ts": [
-      "REVIEW_STORE_MAINTENANCE_FILE"
+      "resolveFindingNonTerminalRetentionMs",
+      "resolveNonTerminalRetentionMs",
+      "REVIEW_FINDING_NON_TERMINAL_RETENTION_MS",
+      "REVIEW_STORE_MAINTENANCE_FILE",
+      "REVIEW_STORE_NON_TERMINAL_RETENTION_MS"
     ],
     "packages/core/src/plugins/skills-plugin.ts": [
       "buildSkillCommand",
@@ -588,6 +593,7 @@
       "resetProviderQuota"
     ],
     "packages/core/src/security/permission-helpers.ts": [
+      "MAX_COMMAND_SCAN_NODES",
       "SENSITIVE_PATH_INPUT_KEYS"
     ],
     "packages/core/src/security/process-lockdown.ts": [
@@ -775,6 +781,12 @@
     "packages/persistence/src/file-permissions.ts": [
       "_filePermOps"
     ],
+    "packages/persistence/src/ipc-endpoint-secret.ts": [
+      "__createIpcEndpointSecretForTests",
+      "__resetIpcEndpointSecretForTests",
+      "_ipcEndpointSecretOps",
+      "ipcEndpointSecret"
+    ],
     "packages/persistence/src/project-endpoint.ts": [
       "_projectEndpointOps"
     ],
@@ -859,6 +871,8 @@
       "mergeIntoChangelog"
     ],
     "packages/plugins/src/config-validator/index.ts": [
+      "isDotEnvFile",
+      "validateDotEnv",
       "validateFile",
       "validateJson",
       "validateToml",
@@ -866,6 +880,12 @@
     ],
     "packages/plugins/src/dep-guard/index.ts": [
       "typosquatOf"
+    ],
+    "packages/plugins/src/dep-guard/lockfile-sync.ts": [
+      "dependencyChange",
+      "findLockfileDrift",
+      "isCommitCall",
+      "lockfileDriftNote"
     ],
     "packages/plugins/src/dependency-vulnerability-gate/index.ts": [
       "isInstallCommand"
@@ -877,6 +897,11 @@
     "packages/plugins/src/error-lens/index.ts": [
       "extractErrorLine",
       "extractFrames"
+    ],
+    "packages/plugins/src/evidence-analyzer/index.ts": [
+      "analyzeEvidence",
+      "EVIDENCE_ANALYZE_BUDGET_MS",
+      "EVIDENCE_MATCH_WINDOW"
     ],
     "packages/plugins/src/gitignore-guard/index.ts": [
       "classifyArtifact",
@@ -902,6 +927,10 @@
     "packages/plugins/src/model-router/index.ts": [
       "pickRule",
       "requestCharSize"
+    ],
+    "packages/plugins/src/notify-hub/desktop-notifier.ts": [
+      "desktopCommand",
+      "toastText"
     ],
     "packages/plugins/src/path-guard/index.ts": [
       "isSymlinkEscape"
@@ -946,9 +975,6 @@
     ],
     "packages/providers/src/presets/mistral.ts": [
       "mistralToolCallId"
-    ],
-    "packages/providers/src/tool-priority.ts": [
-      "scoreTool"
     ],
     "packages/requirement-intake/src/service-helpers.ts": [
       "ANSWER_FIELD_MAPPING",
@@ -1141,6 +1167,9 @@
     ],
     "packages/tools/src/_danger-detect.ts": [
       "unwrapArgvLaunchers"
+    ],
+    "packages/tools/src/_output-diet.ts": [
+      "classifyCommandForDiet"
     ],
     "packages/tools/src/_output-spool.ts": [
       "_resetOutputSpoolForTests",
@@ -1533,6 +1562,9 @@
       "frameRule",
       "frameRuleParts"
     ],
+    "packages/tui/src/theme-utils.ts": [
+      "relativeLuminance"
+    ],
     "packages/tui/src/thinking-word.ts": [
       "TUI_THINKING_WORD_POOL"
     ],
@@ -1783,7 +1815,8 @@
       "handleRunResult",
       "handleSessionRunState",
       "handleToolConfirmNeeded",
-      "handleToolConfirmResolved"
+      "handleToolConfirmResolved",
+      "isAutoContinuableRunError"
     ],
     "packages/webui/src/hooks/ws-handlers/files-mailbox-handlers.ts": [
       "debouncedRefresh",
@@ -1811,6 +1844,9 @@
       "handleWorktreeMergeResult",
       "handleWorktreeOrphans",
       "handleWorktreeState"
+    ],
+    "packages/webui/src/hooks/ws-handlers/mcp-status-handlers.ts": [
+      "_resetMcpStatusHandlersForTests"
     ],
     "packages/webui/src/hooks/ws-handlers/misc-handlers.ts": [
       "handleChimeraReportAvailable",

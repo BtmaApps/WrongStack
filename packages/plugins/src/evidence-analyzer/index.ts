@@ -60,47 +60,79 @@ function redactExcerpt(line: string): string {
     .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]{12,}/gi, '$1 [REDACTED]');
 }
 
-function analyze(content: string, profile: EvidenceAnalyzerProfile, maxFindings: number) {
+/**
+ * Longest stretch of evidence one regex call sees.
+ *
+ * The rules are written for readability, not linear time: two `.*` in a row
+ * (`bundle.*budget.*exceeded`) backtrack O(n^3) on a line full of the first
+ * two words and missing the third. Run over the whole 1 MB input, one crafted
+ * line froze the host's event loop indefinitely — these tools are `auto`, and
+ * the evidence can be a log file a repository ships (NV-2, security-check
+ * 2026-09-26). No rule can span a newline (none uses the `s` flag, and `.`
+ * stops at `\n`), so matching line by line loses nothing; a longer line is cut
+ * into windows so a single call is bounded by the window, not the input.
+ */
+export const EVIDENCE_MATCH_WINDOW = 1024;
+/**
+ * Wall-clock budget for one analysis, checked between regex calls. A single
+ * call cannot be interrupted, but it is bounded by the window above, so the
+ * whole analysis ends within the budget plus one window.
+ */
+export const EVIDENCE_ANALYZE_BUDGET_MS = 2000;
+
+interface EvidenceFinding {
+  rule: string;
+  severity: EvidenceRule['severity'];
+  line: number;
+  excerpt: string;
+  advice: string;
+}
+
+export function analyzeEvidence(
+  content: string,
+  profile: EvidenceAnalyzerProfile,
+  maxFindings: number,
+  now: () => number = Date.now,
+): { findings: EvidenceFinding[]; partial: boolean } {
   const starts = [0];
   for (let index = content.indexOf('\n'); index !== -1; index = content.indexOf('\n', index + 1)) {
     starts.push(index + 1);
   }
-  const findings: Array<{
-    rule: string;
-    severity: EvidenceRule['severity'];
-    line: number;
-    excerpt: string;
-    advice: string;
-  }> = [];
+  const findings: EvidenceFinding[] = [];
+  const deadline = now() + EVIDENCE_ANALYZE_BUDGET_MS;
   for (const rule of profile.rules) {
     const matcher = new RegExp(rule.pattern.source, rule.pattern.flags.replace('g', '') + 'g');
-    for (const match of content.matchAll(matcher)) {
-      const index = match.index ?? 0;
-      let low = 0;
-      let high = starts.length;
-      while (low + 1 < high) {
-        const middle = (low + high) >>> 1;
-        if (starts[middle]! <= index) low = middle;
-        else high = middle;
+    for (let lineIndex = 0; lineIndex < starts.length; lineIndex++) {
+      const next = starts[lineIndex + 1];
+      const line = content.slice(starts[lineIndex], next === undefined ? content.length : next - 1);
+      for (let offset = 0; offset === 0 || offset < line.length; offset += EVIDENCE_MATCH_WINDOW) {
+        if (now() > deadline) return { findings, partial: true };
+        // A later window starts one character early and drops matches at its
+        // index 0: that position belongs to the previous window, and `^` (with
+        // the `m` flag some rules use) would otherwise match mid-line there.
+        const from = offset === 0 ? 0 : offset - 1;
+        const window = line.slice(from, offset + EVIDENCE_MATCH_WINDOW);
+        for (const match of window.matchAll(matcher)) {
+          if (offset > 0 && match.index === 0) continue;
+          findings.push({
+            rule: rule.label,
+            severity: rule.severity,
+            line: lineIndex + 1,
+            excerpt: redactExcerpt(line.trim()).slice(0, 240),
+            advice: rule.advice,
+          });
+          if (findings.length >= maxFindings) return { findings, partial: false };
+        }
       }
-      const line = content.slice(starts[low], starts[low + 1] ?? content.length);
-      findings.push({
-        rule: rule.label,
-        severity: rule.severity,
-        line: low + 1,
-        excerpt: redactExcerpt(line.trim()).slice(0, 240),
-        advice: rule.advice,
-      });
-      if (findings.length >= maxFindings) return findings;
     }
   }
-  return findings;
+  return { findings, partial: false };
 }
 
 async function jevReview(
   api: PluginAPI,
   profile: EvidenceAnalyzerProfile,
-  findings: ReturnType<typeof analyze>,
+  findings: EvidenceFinding[],
   signal: AbortSignal,
 ) {
   if (!api.jev) return { used: false, value: null, fallbackReason: 'unavailable' };
@@ -287,7 +319,11 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
               signal,
             );
             signal.throwIfAborted();
-            const findings = analyze(evidence.content, profile, config.maxFindings);
+            const { findings, partial } = analyzeEvidence(
+              evidence.content,
+              profile,
+              config.maxFindings,
+            );
             if (
               input.review !== undefined &&
               !['none', 'one-shot', 'council', 'jev'].includes(input.review)
@@ -347,8 +383,10 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
                 warnings: findings.filter((finding) => finding.severity === 'warning').length,
                 info: findings.filter((finding) => finding.severity === 'info').length,
               },
-              limitation:
-                'Only the supplied evidence was inspected; no project command was executed.',
+              ...(partial ? { partial: true } : {}),
+              limitation: partial
+                ? `Only part of the supplied evidence was inspected (analysis stopped after ${EVIDENCE_ANALYZE_BUDGET_MS} ms); no project command was executed.`
+                : 'Only the supplied evidence was inspected; no project command was executed.',
             };
           } catch (error) {
             if (!signal.aborted) state.readErrors += 1;

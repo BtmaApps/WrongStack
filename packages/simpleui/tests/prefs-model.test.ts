@@ -63,6 +63,12 @@ describe('parsePrefs', () => {
     expect(parsePrefs({ showTabTitle: false }, seeded).showTabTitle).toBe(false);
   });
 
+  it('defaults Tool Coach on and accepts the server off switch', () => {
+    expect(parsePrefs({}).featureToolCoach).toBe(true);
+    expect(parsePrefs({ featureToolCoach: false }).featureToolCoach).toBe(false);
+    expect(parsePrefs({ featureToolCoach: 'off' }).featureToolCoach).toBe(true);
+  });
+
   it('holds the previous showTabTitle for malformed values', () => {
     expect(parsePrefs({ showTabTitle: 'nope' }, seeded).showTabTitle).toBe(true);
   });

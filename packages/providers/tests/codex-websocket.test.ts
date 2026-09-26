@@ -170,49 +170,151 @@ describe('Codex WebSocket Responses transport', () => {
     });
   });
 
-  it('prewarms with the real input, then generates from an empty incremental delta', async () => {
+  it.each(['response.completed', 'response.done'])(
+    'prewarms with real input and an empty incremental delta (%s)',
+    async (terminalType) => {
+      const frames: Array<Record<string, unknown>> = [];
+      const pool = new CodexWebSocketPool(
+        (_url, _options) =>
+          new FakeSocket((socket, raw) => {
+            const frame = JSON.parse(raw) as Record<string, unknown>;
+            frames.push(frame);
+            const warmup = frame['generate'] === false;
+            socket.message({
+              type: 'response.created',
+              response: { id: warmup ? 'resp-prewarm' : 'resp-real', model: 'gpt-5-codex' },
+            });
+            if (warmup) {
+              socket.message({
+                type: 'response.metadata',
+                metadata: { headers: { 'x-codex-turn-state': 'turn-prewarm' } },
+              });
+            }
+            if (!warmup) socket.message({ type: 'response.output_text.delta', delta: 'ok' });
+            socket.message({
+              type: terminalType,
+              response: { id: warmup ? 'resp-prewarm' : 'resp-real', status: 'completed' },
+            });
+          }),
+      );
+
+      await collect(pool.stream(options('prewarm', true), parseOpenAIResponsesStream));
+
+      expect(frames).toHaveLength(2);
+      expect(frames[0]).toMatchObject({
+        type: 'response.create',
+        stream: true,
+        store: false,
+        generate: false,
+      });
+      expect(frames[0]?.input).toEqual(body.input);
+      expect(frames[1]).toMatchObject({
+        type: 'response.create',
+        previous_response_id: 'resp-prewarm',
+        input: [],
+        client_metadata: { 'x-codex-turn-state': 'turn-prewarm' },
+      });
+      expect(frames[1]).not.toHaveProperty('generate');
+    },
+  );
+
+  it.each([
+    { type: 'response.failed', status: 'failed' },
+    { type: 'response.incomplete', status: 'incomplete' },
+    { type: 'response.done', status: 'failed' },
+    { type: 'response.done', status: 'incomplete' },
+    { type: 'response.done', status: 'cancelled' },
+  ])('rejects a batched unsuccessful prewarm (%j) without sending inference', async (terminal) => {
     const frames: Array<Record<string, unknown>> = [];
     const pool = new CodexWebSocketPool(
-      (_url, _options) =>
+      () =>
         new FakeSocket((socket, raw) => {
-          const frame = JSON.parse(raw) as Record<string, unknown>;
+          const frame = JSON.parse(raw);
           frames.push(frame);
-          const warmup = frame['generate'] === false;
-          socket.message({
-            type: 'response.created',
-            response: { id: warmup ? 'resp-prewarm' : 'resp-real', model: 'gpt-5-codex' },
-          });
-          if (warmup) {
-            socket.message({
-              type: 'response.metadata',
-              metadata: { headers: { 'x-codex-turn-state': 'turn-prewarm' } },
-            });
-          }
-          if (!warmup) socket.message({ type: 'response.output_text.delta', delta: 'ok' });
-          socket.message({
-            type: 'response.completed',
-            response: { id: warmup ? 'resp-prewarm' : 'resp-real', status: 'completed' },
-          });
+          socket.message({ type: 'response.created', response: { id: 'warm-id' } });
+          socket.message(
+            frame.generate === false
+              ? { type: terminal.type, response: { id: 'warm-id', status: terminal.status } }
+              : { type: 'response.completed', response: { id: 'real-id', status: 'completed' } },
+          );
         }),
     );
+    try {
+      await expect(
+        collect(pool.stream(options('failed-prewarm', true), parseOpenAIResponsesStream)),
+      ).rejects.toBeInstanceOf(CodexWebSocketFallbackError);
+      expect(frames).toHaveLength(1);
+    } finally {
+      pool.close();
+    }
+  });
 
-    await collect(pool.stream(options('prewarm', true), parseOpenAIResponsesStream));
+  it('does not send inference when cancelled as the prewarm completes', async () => {
+    const controller = new AbortController();
+    const frames: Array<Record<string, unknown>> = [];
+    const pool = new CodexWebSocketPool(
+      () =>
+        new FakeSocket((socket, raw) => {
+          frames.push(JSON.parse(raw));
+          socket.message({
+            type: 'response.completed',
+            response: { id: 'warm-id', status: 'completed' },
+          });
+          controller.abort(new Error('cancelled during prewarm'));
+        }),
+    );
+    try {
+      await expect(
+        collect(
+          pool.stream(
+            { ...options('aborted-prewarm', true), signal: controller.signal },
+            parseOpenAIResponsesStream,
+          ),
+        ),
+      ).rejects.toThrow('cancelled during prewarm');
+      expect(frames).toHaveLength(1);
+    } finally {
+      pool.close();
+    }
+  });
 
-    expect(frames).toHaveLength(2);
-    expect(frames[0]).toMatchObject({
-      type: 'response.create',
-      stream: true,
-      store: false,
-      generate: false,
-    });
-    expect(frames[0]?.input).toEqual(body.input);
-    expect(frames[1]).toMatchObject({
-      type: 'response.create',
-      previous_response_id: 'resp-prewarm',
-      input: [],
-      client_metadata: { 'x-codex-turn-state': 'turn-prewarm' },
-    });
-    expect(frames[1]).not.toHaveProperty('generate');
+  it('starts the inference watchdog after prewarm finishes', async () => {
+    vi.useFakeTimers();
+    const pool = new CodexWebSocketPool(
+      () =>
+        new FakeSocket((socket, raw) => {
+          const frame = JSON.parse(raw);
+          const complete = () => {
+            socket.message({ type: 'response.created', response: { id: 'ready' } });
+            if (frame.generate !== false)
+              socket.message({ type: 'response.output_text.delta', delta: 'ok' });
+            socket.message({
+              type: 'response.completed',
+              response: { id: 'ready', status: 'completed' },
+            });
+          };
+          if (frame.generate === false) setTimeout(complete, 100);
+          else complete();
+        }),
+    );
+    try {
+      const result = collect(
+        pool.stream(
+          { ...options('slow-prewarm', true), stallTimeoutMs: 10 },
+          parseOpenAIResponsesStream,
+        ),
+      ).then(
+        (events) => ({ events, error: undefined }),
+        (error) => ({ events: [], error }),
+      );
+      await vi.advanceTimersByTimeAsync(101);
+      const outcome = await result;
+      expect(outcome.error).toBeUndefined();
+      expect(outcome.events).toContainEqual({ type: 'text_delta', text: 'ok' });
+    } finally {
+      pool.close();
+      vi.useRealTimers();
+    }
   });
 
   it('chains only when the next full conversation extends the prior request and output', async () => {
@@ -306,7 +408,193 @@ describe('Codex WebSocket Responses transport', () => {
     await expect(
       collect(pool.stream(options('expired-chain'), parseOpenAIResponsesStream)),
     ).rejects.toBeInstanceOf(CodexWebSocketFallbackError);
+    expect(call).toBe(3); // original turn, rejected delta, one full-input retry
   });
+
+  it('does not warm an already recovered connection again', async () => {
+    const frames: Array<Record<string, unknown>> = [];
+    const pool = new CodexWebSocketPool(
+      () =>
+        new FakeSocket((socket, raw) => {
+          frames.push(JSON.parse(raw));
+          if (frames.length === 2) {
+            socket.message({
+              type: 'error',
+              code: 'websocket_connection_limit_reached',
+              message: 'Connection expired',
+            });
+            return;
+          }
+          socket.message({ type: 'response.created', response: { id: `resp-${frames.length}` } });
+          socket.message({
+            type: 'response.completed',
+            response: { id: `resp-${frames.length}`, status: 'completed' },
+          });
+        }),
+    );
+    try {
+      await collect(pool.stream(options('recover-prewarm', true), parseOpenAIResponsesStream));
+      await collect(pool.stream(options('recover-prewarm', true), parseOpenAIResponsesStream));
+      expect(frames).toHaveLength(4);
+      expect(frames[0]).toHaveProperty('generate', false);
+      expect(frames[2]).not.toHaveProperty('generate');
+      expect(frames[2]).not.toHaveProperty('previous_response_id');
+      expect(frames[2]?.input).toEqual(body.input);
+      expect(frames[3]).toMatchObject({ previous_response_id: 'resp-3', input: [] });
+      expect(frames[3]).not.toHaveProperty('generate');
+    } finally {
+      pool.close();
+    }
+  });
+
+  it.each(['partial', 'cancelled', 'message-only'] as const)(
+    'does not reconnect on %s recovery evidence',
+    async (mode) => {
+      let connections = 0;
+      let sends = 0;
+      const controller = new AbortController();
+      const pool = new CodexWebSocketPool(() => {
+        connections++;
+        return new FakeSocket((socket) => {
+          sends++;
+          socket.message({ type: 'response.created', response: { id: 'r' } });
+          if (mode === 'partial')
+            socket.message({ type: 'response.output_text.delta', delta: 'already emitted' });
+          socket.message({
+            type: 'error',
+            error: {
+              type: 'invalid_request_error',
+              code:
+                mode === 'message-only'
+                  ? 'invalid_tool_schema'
+                  : 'websocket_connection_limit_reached',
+              message:
+                mode === 'message-only'
+                  ? 'Bad tool named previous_response_not_found'
+                  : 'Connection expired',
+            },
+          });
+          if (mode === 'cancelled') controller.abort(new Error('cancelled'));
+        });
+      });
+      try {
+        const error = await collect(
+          pool.stream(
+            { ...options('no-retry'), signal: controller.signal },
+            parseOpenAIResponsesStream,
+          ),
+        ).then(
+          () => undefined,
+          (failure) => failure,
+        );
+        expect(error).toBeInstanceOf(Error);
+        expect(error).not.toBeInstanceOf(CodexWebSocketFallbackError);
+        expect(connections).toBe(1);
+        expect(sends).toBe(1);
+      } finally {
+        pool.close();
+      }
+    },
+  );
+
+  it.each(['previous_response_not_found', 'websocket_connection_limit_reached'])(
+    'recovers %s over a fresh socket without disabling the session transport',
+    async (code) => {
+      const frames: Array<Record<string, unknown>> = [];
+      const sockets: FakeSocket[] = [];
+      let httpCalls = 0;
+      const provider = new OpenAICodexProvider({
+        credentials: { accessToken: 'test' },
+        webSocket: true,
+        webSocketFactory: () => {
+          const socket = new FakeSocket((current, raw) => {
+            frames.push(JSON.parse(raw));
+            if (frames.length === 2) {
+              current.message({
+                type: 'error',
+                status: 400,
+                error: {
+                  type: 'invalid_request_error',
+                  code,
+                  message: 'Continuation unavailable',
+                },
+              });
+              return;
+            }
+            const id = `resp-${frames.length}`;
+            const item = {
+              type: 'message',
+              role: 'assistant',
+              content: [{ type: 'output_text', text: 'ok' }],
+            };
+            current.message({ type: 'response.created', response: { id, model: 'gpt-5-codex' } });
+            current.message({ type: 'response.output_item.done', item });
+            current.message({
+              type: 'response.completed',
+              response: {
+                id,
+                status: 'completed',
+                output: [item],
+                usage: { input_tokens: 10, output_tokens: 1 },
+              },
+            });
+          });
+          sockets.push(socket);
+          return socket;
+        },
+        fetchImpl: async () => {
+          httpCalls++;
+          return new Response(
+            sseBody(
+              'data: {"type":"response.completed","response":{"usage":{"input_tokens":10,"output_tokens":0}}}\n\n',
+            ),
+          );
+        },
+      });
+      const req = request('recoverable');
+      const signal = new AbortController().signal;
+      try {
+        const first = await provider.complete(req, { signal });
+        const next: Request = {
+          ...req,
+          messages: [
+            ...req.messages,
+            { role: 'assistant', content: first.content },
+            { role: 'user', content: 'continue' },
+          ],
+        };
+        const second = await provider.complete(next, { signal });
+        expect(second.content).toEqual([{ type: 'text', text: 'ok' }]);
+        expect(httpCalls).toBe(0);
+        expect(sockets).toHaveLength(2);
+        expect(sockets[0]?.closeCount).toBe(1);
+        expect(frames[1]).toMatchObject({
+          previous_response_id: 'resp-1',
+          input: [{ role: 'user', content: [{ type: 'input_text', text: 'continue' }] }],
+        });
+        expect(frames[2]).not.toHaveProperty('previous_response_id');
+        expect(frames[2]?.input as unknown[]).toHaveLength(3);
+        await provider.complete(
+          {
+            ...next,
+            messages: [
+              ...next.messages,
+              { role: 'assistant', content: second.content },
+              { role: 'user', content: 'again' },
+            ],
+          },
+          { signal },
+        );
+        expect(frames[3]).toMatchObject({
+          previous_response_id: 'resp-3',
+          input: [{ role: 'user', content: [{ type: 'input_text', text: 'again' }] }],
+        });
+        expect(httpCalls).toBe(0);
+      } finally {
+        for (const socket of sockets) socket.close();
+      }
+    },
+  );
 
   it('reconnects after a closed socket without replaying stale response ids', async () => {
     const sockets: FakeSocket[] = [];
@@ -410,7 +698,17 @@ describe('Codex WebSocket Responses transport', () => {
       webSocket: true,
       webSocketFactory: () => {
         webSocketCalls++;
-        return new FakeSocket((socket) => queueMicrotask(() => socket.fail()));
+        const fails = webSocketCalls === 1;
+        return new FakeSocket((socket) =>
+          queueMicrotask(() => {
+            if (fails) socket.fail();
+            else {
+              socket.message({ type: 'response.created', response: { model: 'gpt-5-codex' } });
+              socket.message({ type: 'response.output_text.delta', delta: 'websocket' });
+              socket.message({ type: 'response.completed', response: { status: 'completed' } });
+            }
+          }),
+        );
       },
       fetchImpl: (async () => {
         fetchCalls++;
@@ -436,6 +734,23 @@ describe('Codex WebSocket Responses transport', () => {
     );
     expect(fetchCalls).toBe(2);
     expect(webSocketCalls).toBe(1);
+    const sibling = await collect(
+      provider.stream(
+        {
+          ...request('fallback-provider'),
+          cache: { sessionId: 'fallback-provider', threadId: 'healthy-sibling' },
+        },
+        { signal: new AbortController().signal },
+      ),
+    );
+    expect(sibling).toContainEqual({ type: 'text_delta', text: 'websocket' });
+    expect(fetchCalls).toBe(2);
+    expect(webSocketCalls).toBe(2);
+    await collect(
+      provider.stream(request('fallback-provider'), { signal: new AbortController().signal }),
+    );
+    expect(fetchCalls).toBe(3);
+    expect(webSocketCalls).toBe(2);
   });
 
   it('drops auth-bound pooled sockets before using a rotated access token', async () => {

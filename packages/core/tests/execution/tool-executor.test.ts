@@ -3,6 +3,7 @@ import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { EventBus } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
 import { DEFAULT_ALWAYS_TRUST_TTL_MS } from '../../src/security/scoped-approval.js';
+import { ToolValidationError } from '../../src/types/errors.js';
 import type { Tool, ToolUseBlock } from '../../src/types/tool.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
@@ -80,6 +81,70 @@ describe('ToolExecutor — executeTool', () => {
 });
 
 describe('ToolExecutor — executeBatch', () => {
+  it('returns the registered schema and usage when arguments have an unknown field', async () => {
+    const tool = createMockTool({ name: 'strict', result: 'ok' });
+    tool.description = 'Read an item by path.';
+    tool.usageHint = 'strict({ path })';
+    tool.selection = { doNotUseWhen: 'the task needs a directory listing', useInstead: ['glob'] };
+    tool.inputSchema = {
+      type: 'object',
+      properties: { path: { type: 'string', description: 'Item path' } },
+      required: ['path'],
+      additionalProperties: false,
+    };
+    const execute = vi.spyOn(tool, 'execute');
+    const executor = new ToolExecutor(makeRegistry([tool]), {
+      secretScrubber: noopScrubber,
+    } as any);
+
+    const batch = await executor.executeBatch(
+      [makeToolUse('strict', 'bad-1', { path: 'a', nonexistent: true })],
+      makeCtx(),
+      'sequential',
+    );
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(batch.outputs[0]?.settlement).toBe('invalid_input');
+    const result = batch.outputs[0]?.result;
+    expect(result?.type).toBe('tool_result');
+    if (result?.type !== 'tool_result') throw new Error('Expected tool_result');
+    const content = result.content;
+    expect(content).toContain('nonexistent: unknown property');
+    expect(content).toContain('Usage: strict({ path })');
+    expect(content).toContain('Declared top-level fields: path');
+    expect(content).toContain('Required top-level fields: path');
+    expect(content).toContain('Do not use this tool when: the task needs a directory listing');
+    expect(content).toContain('Use instead: glob');
+    expect(content).toContain('Do not repeat the same arguments unchanged');
+    expect(content).toContain(JSON.stringify(tool.inputSchema, null, 2));
+  });
+
+  it('returns the registered schema for validation errors raised by a tool', async () => {
+    const tool = createMockTool({ name: 'validate_later' });
+    tool.inputSchema = { type: 'object', properties: { path: { type: 'string' } } };
+    tool.execute = async () => {
+      throw new ToolValidationError({ message: 'path is not usable', field: 'path' });
+    };
+    const executor = new ToolExecutor(makeRegistry([tool]), {
+      secretScrubber: noopScrubber,
+      permissionPolicy: {
+        evaluate: vi.fn().mockResolvedValue({ permission: 'auto', source: 'default' }),
+      },
+    } as any);
+
+    const batch = await executor.executeBatch(
+      [makeToolUse('validate_later', 'bad-2', { path: 'a' })],
+      makeCtx(),
+      'sequential',
+    );
+
+    const result = batch.outputs[0]?.result;
+    expect(result?.type).toBe('tool_result');
+    if (result?.type !== 'tool_result') throw new Error('Expected tool_result');
+    expect(result.content).toContain('path is not usable');
+    expect(result.content).toContain(JSON.stringify(tool.inputSchema, null, 2));
+  });
+
   it('blocks every subagent-spawn capability when the session policy is off', async () => {
     const tool = createMockTool({ name: 'custom_agent_launcher', result: 'spawned' });
     tool.capabilities = [ToolCapabilities.SUBAGENT_SPAWN];

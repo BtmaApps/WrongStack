@@ -106,6 +106,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     const readTool: Tool = {
       name: 'read',
       description: 'read a file',
+      usageHint: 'read({ path, limit? })',
       inputSchema: {
         type: 'object',
         properties: { path: { type: 'string' }, limit: { type: 'integer' } },
@@ -148,6 +149,10 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     expect(result.status).toBe('done');
     expect(result.finalText).toBe('done reading');
     expect(provider.calls).toBe(4);
+    expect(JSON.stringify(provider.receivedRequests[0]?.messages)).toContain('[TOOL COACH');
+    expect(JSON.stringify(provider.receivedRequests[1]?.messages)).toContain(
+      'Do not repeat the same call unchanged',
+    );
 
     // The tool executed exactly once, with the COERCED input.
     expect(execute).toHaveBeenCalledTimes(1);
@@ -163,19 +168,58 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     const toolResults = ctx.messages
       .filter((m) => m.role === 'user')
       .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
-      .filter(
-        (b): b is Extract<ContentBlock, { type: 'tool_result' }> =>
-          b.type === 'tool_result',
-      );
+      .filter((b): b is Extract<ContentBlock, { type: 'tool_result' }> => b.type === 'tool_result');
     const errorTexts = toolResults
       .filter((r) => r.is_error)
       .map((r) => (typeof r.content === 'string' ? r.content : JSON.stringify(r.content)));
     expect(errorTexts).toHaveLength(2);
+    expect(
+      ctx.messages.some(
+        (message) =>
+          message.role === 'user' &&
+          Array.isArray(message.content) &&
+          message.content.some(
+            (block) => block.type === 'text' && block.text.includes('[TOOL COACH'),
+          ),
+      ),
+    ).toBe(true);
     expect(errorTexts[0]).toContain('not a valid JSON object');
     expect(errorTexts[0]).toContain('{"pa'); // raw payload echoed back
     expect(errorTexts[1]).toContain('path: required property missing (expected string)');
+    for (const feedback of errorTexts) {
+      expect(feedback).toContain('Usage: read({ path, limit? })');
+      expect(feedback).toContain('Input schema:');
+      expect(feedback).toContain('"required": [');
+      expect(feedback).toContain('"path"');
+    }
 
     // And exactly one successful tool_result followed.
     expect(toolResults.filter((r) => !r.is_error)).toHaveLength(1);
+  });
+
+  it('does not inject Tool Coach notes when the feature is off', async () => {
+    const readTool: Tool = {
+      name: 'read',
+      description: 'Read a file.',
+      inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+      permission: 'auto',
+      mutating: false,
+      execute: async () => 'ok',
+    };
+    const provider = new MockProvider([
+      {
+        content: [{ type: 'tool_use', id: 'off-1', name: 'read', input: { path: 'a.ts' } }],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider, [readTool]);
+    cleanupDirs.push(tmp);
+    ctx.meta['featureToolCoach'] = false;
+
+    await agent.run('Read a.ts');
+
+    expect(provider.calls).toBe(2);
+    expect(JSON.stringify(provider.receivedRequests)).not.toContain('[TOOL COACH');
   });
 });

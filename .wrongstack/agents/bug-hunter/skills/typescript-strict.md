@@ -1,9 +1,21 @@
 ## Commands
-- Before tracing any claimed type error by hand, run `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/<pkg>/tsconfig.json` (same as `-p packages/<pkg>`). Exit 0 instantly falsifies a claimed `TS2339 Property does not exist` in `packages/cli` or `packages/core`.
+- Typecheck per package: `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/core/tsconfig.json` (likewise `packages/cli`, `packages/plugins`, `packages/tui`).
+- Lint only touched files: `pnpm exec biome check <files>`. Tests: `pnpm exec vitest run <test files>`.
 
-## Procedure
-- When a Chimera review lists files under "Assumptions / unverified" as not-read, read those exact files FIRST — before dispatching or applying any fix. Findings whose suggested fix lives in an unread module (e.g. a hook the refactor moved logic into, such as `packages/simpleui/src/hooks/use-composer-state.ts`) are high-probability false positives already resolved on disk.
-- Disprove a quoted-code claim with one direct read plus the typecheck above. Never patch text that a fresh read shows absent.
+## Verify before believing a failure or finding
+- Re-run a red typecheck/test cascade once before calling it a defect: parallel workers' in-flight edits cause phantom failures (a transient missing `failUndeliveredCommands` export at `packages/cli/src/hq-server/ws.ts`) that pass once the tree settles. [applied 4×, 4 ok]
+- On `TS2305` for a cross-package import, rebuild the exporter first: `pnpm --filter @wrongstack/<pkg> build`. `@wrongstack/*` resolves subpaths via `package.json` `exports` to git-ignored `dist/*.d.ts`, so stale dist fabricates missing exports (root script: `pnpm build && pnpm -r typecheck`).
+- When a finding names a missing export, re-grep the exact symbol in the target file immediately before editing — the remediation race can fall inside one turn (`THEME_RANDOM_ID`: absent on `read`, present seconds later in `packages/core/src/types/index.ts`).
+- Cross-check Chimera ordering/semantics claims against the repo's pinned tests before accepting them: `expect(log.recent().map(...)).toEqual(['old','live'])` in `packages/cli/tests/hq-command-credential-lifecycle.test.ts` disproved a "newest-first" claim.
 
-## Pitfalls
-- In `packages/cli/src/wiring/*`, when a wiring function registers cleanup on an external `teardownHandlers` array, also fold that cleanup into its own returned `dispose()` behind an idempotence flag. Callers may drain the array, call `dispose()`, or both; early-return branches that omit `dispose` leave tracer/exporter handles unowned.
+## Flipping a config default
+- Grep the whole package's tests for the old literal first (`cascadeOn: 'off'` in `packages/core/tests/plugins/`): full-object `toEqual` default assertions pin the old value in more cases than any reviewer cites. Confirm no hits are explicit override inputs before `replace_all`.
+- Update every operator-facing restatement: help strings and JSDoc in both `packages/core/src/plugins/chimera-plugin.ts` and `packages/core/src/plugins/auto-review-plugin.ts`.
+- Verify: `pnpm exec vitest run packages/core/tests/plugins/auto-review-plugin.test.ts packages/core/tests/plugins/chimera-plugin.test.ts`.
+
+## Lint handling of peer edits
+- Fix `assist/source/organizeImports` noise from a peer's change with `pnpm exec biome check --write <file>` scoped to that file — never hand-reorder.
+- Classify other assists as pre-existing only after `git diff -- <file>` shows your working-tree delta does not touch those lines.
+
+## Security invariant
+- Destructure and honor the `truncated` flag from `shellCommandLinesFromInput` (`packages/core/src/security/permission-helpers.ts`): fail closed — block/warn on truncated walks, mirroring `classifyShellSurfaceInput`. Silent `.lines` access (as in `packages/plugins/src/dep-guard/index.ts`) is a confirmed fail-open smuggling vector.

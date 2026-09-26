@@ -62,8 +62,14 @@ export function resolveRawProviderConnection(config: ProviderConnectionConfig, p
   const isAccountAlias = savedCfg?.type !== undefined && savedCfg.type !== providerId;
   const inheritsPrimary =
     !isAccountAlias && (config.provider === undefined || config.provider === providerId);
+  // The VULN-006 sentinel (`endpointCredentialsSuppressed` in
+  // @wrongstack/providers; inlined because many suites mock that package).
+  const repointed = Array.isArray(savedCfg?.envVars) && savedCfg.envVars.length === 0;
   return {
-    apiKey: savedCfg?.apiKey ?? (inheritsPrimary ? config.apiKey : undefined),
+    // A repointed entry (`envVars: []` sentinel) must not inherit the legacy
+    // top-level key: `leader_model_set` could otherwise make it primary and
+    // carry that key to the new base URL (WS-2026-09-26-01).
+    apiKey: savedCfg?.apiKey ?? (inheritsPrimary && !repointed ? config.apiKey : undefined),
     baseUrl: savedCfg?.baseUrl ?? (inheritsPrimary ? config.baseUrl : undefined),
   };
 }

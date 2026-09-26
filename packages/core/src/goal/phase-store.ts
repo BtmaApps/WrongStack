@@ -36,6 +36,7 @@ interface SerializedPhaseGraph {
   /** Schema version for forward-compatibility. Missing/0 means pre-v1. */
   version: number;
   id: string;
+  sessionId?: string | undefined;
   title: string;
   description: string;
   phases: SerializedPhaseNode[];
@@ -369,6 +370,7 @@ export class PhaseStore {
     return {
       version: PHASE_STORE_VERSION,
       id: graph.id,
+      sessionId: graph.sessionId,
       title: graph.title,
       description: graph.description,
       phases: Array.from(graph.phases.values()).map((p) => this.serializePhase(p)),
@@ -448,6 +450,7 @@ export class PhaseStore {
 
     return {
       id: serialized.id,
+      sessionId: serialized.sessionId,
       title: serialized.title,
       description: serialized.description,
       phases,

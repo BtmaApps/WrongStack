@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.26",
+  "packageVersion": "1.0.27",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -151,6 +151,7 @@
         "export { createEventUserInputAwaiter, type EventUserInputAwaiterOptions, isUnattendedAutonomy, } from './user-input-awaiter.js';",
         "export { createFallbackModelExtension, effectiveFallbackChain, type FallbackGateFn, type FallbackModelDeps, fallbackProfileChain, runtimeFallbackChain, smartDefaultFallbackChain, } from './fallback-model.js';",
         "export { diagnoseFallbackConfig, type FallbackDiagnosticReport, type FallbackDiagnosticWarning, type FallbackSimulationResult, type FallbackSimulationStep, simulateFallbackFailover, } from './fallback-doctor.js';",
+        "export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';",
         "export { formatModelRef, type ModelRef, normalizeModelRef, parseModelRef, } from './model-ref.js';",
         "export { markUserInputObserver, userInputObserverCount } from './user-input-observers.js';",
         "export { runProviderWithRetry } from './provider-runner.js';",
@@ -228,7 +229,7 @@
       },
       "source": "packages/core/src/types/index.ts",
       "declarations": [
-        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LimitBound, LimitsBudgetKey, LimitsConfig, LimitsScalarKey, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, ObservabilityConfig, OtlpExportConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemePresetId, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
+        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LimitBound, LimitsBudgetKey, LimitsConfig, LimitsScalarKey, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, ObservabilityConfig, OtlpExportConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemeName, ThemePresetId, ThemePresetMeta, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
         "export type { AddAttachmentInput, Attachment, AttachmentKind, AttachmentMeta, AttachmentRef, AttachmentStore, } from './attachment.js';",
         "export type { AggregateHealth, HealthCheck, HealthCheckResult, HealthRegistry, HealthStatus, MetricLabels, MetricSeries, MetricsRuntimeStatus, MetricsSink, MetricsSnapshot, Span, Tracer, } from './observability.js';",
         "export type { AnyHookOutcome, ConfiguredHook, HookEntry, HookEvent, HookFailurePolicy, HookInput, HookInvocationContext, HookMatcher, HookOutcome, HookRegistrationOptions, HttpHook, InProcessHook, ObservationalHookEvent, PreToolUseOutcome, PreToolUseStage, ShellHook, } from './hooks.js';",
@@ -291,7 +292,7 @@
         "export { HOOK_EVENTS, isHookEvent } from './hooks.js';",
         "export { MALFORMED_ARG_MARKERS } from './tool-markers.js';",
         "export { ToolErrorCategory } from './tool.js';",
-        "export { activeLimits, BUILTIN_MODEL_TIER_IDS, clampLimit, clampLimits, DEFAULT_TUI_THINKING_WORD, FLEET_CHAT_VERBOSITY_VALUES, formatLimitRange, installLimitsSource, LIMIT_BOUNDS, LIMITS_BUDGET_KEYS, LIMITS_SCALAR_KEYS, limitValueError, MAX_TUI_THINKING_WORD_LENGTH, MAX_WRONGPROXY_URL_LENGTH, normalizeTokenSavingTier, normalizeTuiThinkingWord, positiveLimit, resolveFleetChatVerbosity, resolveTokenSavingTier, THEME_PRESET_IDS, TOOL_MEMORY_GUARD_BYTES, } from './config.js';",
+        "export { activeLimits, BUILTIN_MODEL_TIER_IDS, clampLimit, clampLimits, DEFAULT_TUI_THINKING_WORD, FLEET_CHAT_VERBOSITY_VALUES, formatLimitRange, installLimitsSource, LIMIT_BOUNDS, LIMITS_BUDGET_KEYS, LIMITS_SCALAR_KEYS, limitValueError, MAX_TUI_THINKING_WORD_LENGTH, MAX_WRONGPROXY_URL_LENGTH, normalizeTokenSavingTier, normalizeTuiThinkingWord, positiveLimit, resolveFleetChatVerbosity, resolveTokenSavingTier, THEME_PRESET_IDS, THEME_PRESET_META, THEME_RANDOM_ID, TOOL_MEMORY_GUARD_BYTES, } from './config.js';",
         "export { classifyProviderError, effectiveInputTokens, freshInputTokens, isContextOverflowShaped, isFallbackWorthy, isReasoningEffort, isRetryableKind, ProviderError, promptCacheHitRatio, REASONING_EFFORT_LEVELS, StreamHangError, totalUsageTokens, } from './provider.js';",
         "export { defineMemoryCapability, MEMORY_TYPE_LABELS } from './memory.js';",
         "export { diffRegistry, validateRegistryManifest } from './prompt-registry.js';",
@@ -441,6 +442,7 @@
         "export { hasMeaningfulContent, type MessageRepairReport, type MessageRepairResult, repairToolUseAdjacency, } from './message-invariants.js';",
         "export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';",
         "export { isPidAlive } from './pid.js';",
+        "export { isSessionTranscriptFileName, sessionScopedPath } from './session-scoped-path.js';",
         "export { isUlid, ulid } from './ulid.js';",
         "export { mcpQualifiedToolName, mcpServerToolPrefix, sanitizeWireToolName, WIRE_TOOL_NAME_MAX_LENGTH, WIRE_TOOL_NAME_PATTERN, } from './tool-name.js';",
         "export { mergeCustomModelDefs } from './merge-custom-models.js';",
@@ -448,7 +450,6 @@
         "export { rawErrorMessage, toErrorMessage } from './error.js';",
         "export { readBundledInstructionText, renderInstructionTemplate } from './instruction-file.js';",
         "export { sanitizeTerminalPreview, sanitizeTerminalText } from './terminal-sanitize.js';",
-        "export { sessionScopedPath } from './session-scoped-path.js';",
         "export { slugify } from './slug.js';",
         "export { type CoercionResult, coerceAgainstSchema, type ValidationError, type ValidationResult, validateAgainstSchema, } from './json-schema-validate.js';",
         "export { type CompactToolDefinitionForWireOptions, type CompactWireToolDefinition, compactSchemaDescriptions, compactToolDefinitionForWire, normalizeTopLevelToolSchema, SCHEMA_DESCRIPTION_MAX_CHARS, TOOL_DESCRIPTION_MAX_CHARS, type ToolWireDefinitionLike, } from './tool-wire-compact.js';",
@@ -1004,7 +1005,7 @@
         "export { createCompatibilityTrustBoundary, decodeTrustBoundaryDecision, decodeTrustBoundaryRequest, isTrustDecisionAllowed, TRUST_BOUNDARY_VERSION, } from './trust-boundary.js';",
         "export { decryptConfigSecrets, decryptConfigSecretsForRewrite, encryptConfigSecrets, isSecretField, } from './config-secrets.js';",
         "export { describeSessionPermissionOverride, readSessionPermissionOverrides, restoreSessionPermissionOverrides, setSessionPermissionOverrides, } from './session-permission-overrides.js';",
-        "export { describeWriteTargets } from './permission-helpers.js';",
+        "export { describeWriteTargets, shellCommandLinesFromInput } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
         "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
@@ -1059,11 +1060,13 @@
         "export function hasQuotaData",
         "export function listQuotaProviders",
         "export function onProviderQuota",
+        "export function quotaExhaustionInMs",
         "export function quotaResetInMs",
         "export function quotaWindowLabel",
         "export function reachedQuotaWindow",
         "export function recordProviderQuota",
         "export function resetProviderQuota",
+        "export function withQuotaPace",
         "export function worstProviderQuotaWindow",
         "export interface ProviderQuotaCredits",
         "export interface ProviderQuotaSnapshot",
@@ -1234,6 +1237,7 @@
         "export type { RegistrySearchOptions, RegistrySearchResult, RegistrySkillSummary, SkillRegistryAdapter, } from './registry/registry-adapter.js';",
         "export { FOREIGN_SKILL_TOOLS, type ForeignSkillTool, type ResolvedForeignTools, resolveForeignToolIds, resolveForeignToolIdsWithWarnings, type SkillSecurityTier, securityScoreToTier, } from './foreign-sources.js';",
         "export { SKILL_LIMITS } from './limits.js';",
+        "export { armRequiredSkills, markRequiredSkillLoaded, markRequiredSkillUnavailable, parseRequiredSkillsMarker, pendingRequiredSkills, REQUIRED_SKILLS_LOADER_TOOL, REQUIRED_SKILLS_META_KEY, type RequiredSkillsState, readRequiredSkillsState, requiredSkillsDeniedMessage, restoreRequiredSkillsFromEvents, } from './required-skill-gate.js';",
         "export { bodyLineAdvisory, type ExtractedSkillDraft, extractSkillFromPrompt, generateSkillSkeleton, openInEditor, type SkillNameValidation, type SkillSkeletonOptions, validateSkillNameAvailable, writeSkeletonSkill, } from './skill-generator.js';",
         "export { buildSuggesterFromConfig, type ChoiceAnswer, type ChoiceQuestion, classifyCase, createSkillSuggester, createSkillSuggestionMiddleware, createSkillSuggestionSetup, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type ExplainOptions, type LabeledRequest, type NoulAnswer, type NoulQuestion, parseEvalJsonl, parseSystemOneResult, redecide, renderSuggestionBlock, type ScoredCase, type SkillSuggester, type SkillSuggesterOptions, type SkillSuggestion, type SkillSuggestionMiddlewareOptions, type SkillSuggestionSetupDeps, type SkillSuggestionTrace, type SuggestionScore, type SuggestionStop, type SweepRow, type SystemOneRequest, type SystemOneResult, scoreSuggestions, sweepThresholds, TYPESAFE_API_KEY_ENV, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, unknownGoldLabels, } from './suggest/index.js';",
         "export { collectSkillFiles } from './skill-files.js';",
@@ -1496,21 +1500,21 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 42,
-      "sourceLines": 11911
+      "sourceLines": 11913
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57769
+      "sourceLines": 57820
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 62,
-      "sourceLines": 14490
+      "sourceFiles": 63,
+      "sourceLines": 14795
     },
     {
       "directory": "design",
@@ -1524,7 +1528,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20334
+      "sourceLines": 20418
     },
     {
       "directory": "extension",
@@ -1538,7 +1542,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 18,
-      "sourceLines": 4180
+      "sourceLines": 4192
     },
     {
       "directory": "hooks",
@@ -1566,7 +1570,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4299
+      "sourceLines": 4317
     },
     {
       "directory": "models",
@@ -1608,7 +1612,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9290
+      "sourceLines": 9517
     },
     {
       "directory": "prompts",
@@ -1622,7 +1626,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 1,
-      "sourceLines": 268
+      "sourceLines": 364
     },
     {
       "directory": "registry",
@@ -1643,21 +1647,21 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 26,
-      "sourceLines": 9335
+      "sourceLines": 9425
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5222
+      "sourceLines": 5224
     },
     {
       "directory": "skills",
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
-      "sourceFiles": 19,
-      "sourceLines": 3657
+      "sourceFiles": 20,
+      "sourceLines": 3887
     },
     {
       "directory": "statusline",
@@ -1671,7 +1675,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 24701
+      "sourceLines": 24709
     },
     {
       "directory": "tasking",
@@ -1685,35 +1689,35 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 23,
-      "sourceLines": 4459
+      "sourceLines": 4490
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 81,
-      "sourceLines": 15026
+      "sourceLines": 15427
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 13,
-      "sourceLines": 2073
+      "sourceLines": 2236
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 76,
-      "sourceLines": 13298
+      "sourceFiles": 77,
+      "sourceLines": 13319
     },
     {
       "directory": "vcs",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused VCS implementation",
       "sourceFiles": 2,
-      "sourceLines": 318
+      "sourceLines": 346
     },
     {
       "directory": "wiring",

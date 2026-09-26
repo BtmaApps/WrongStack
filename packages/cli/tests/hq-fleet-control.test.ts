@@ -5,8 +5,9 @@
  * Director held — in the WebUI host, a Stop aimed at one tab's fleet killed
  * every tab's workers. WebUI tabs had no fleet hooks at all.
  */
+import { FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { describe, expect, it, vi } from 'vitest';
-import { createHqFleetControl, killHqSessionFleet } from '../src/hq-fleet-control.js';
+import { createHqFleetControl, killHqSessionFleet, spawnHqAgent } from '../src/hq-fleet-control.js';
 
 function fakeDirector(bySession: Record<string, string[]>) {
   const all = Object.values(bySession).flat();
@@ -16,6 +17,18 @@ function fakeDirector(bySession: Record<string, string[]>) {
     status: () => ({ subagents: all.map((id) => ({ id, status: 'running' })) }),
     remove: vi.fn(async () => undefined),
     terminate: vi.fn(async () => undefined),
+    spawn: vi.fn(async () => 'fake-subagent-id'),
+  };
+}
+
+function capturingDirector() {
+  const captured: unknown[] = [];
+  return {
+    captured,
+    spawn: vi.fn(async (cfg: unknown) => {
+      captured.push(cfg);
+      return 'fake-subagent-id';
+    }),
   };
 }
 
@@ -63,5 +76,28 @@ describe('createHqFleetControl', () => {
     director = fakeDirector({ 'tab-1': ['a'] });
     expect(await control.killFleet('tab-1')).toBe(1);
     expect(await control.terminateAgent('a')).toBe(true);
+  });
+});
+
+// Regression: spawnHqAgent silently dropped the caller's `maxIterations` when
+// the role was in FLEET_ROSTER. The runtime budget path
+// (applyRosterBudget at packages/core/src/coordination/fleet.ts:325) honors
+// a non-undefined `cfg.maxIterations`, but the override only reaches it when
+// spawnHqAgent forwards the caller's value onto the spawn config.
+describe('spawnHqAgent', () => {
+  it("forwards the caller's maxIterations onto the spawn config for a known roster role", async () => {
+    const director = capturingDirector();
+    // 'audit-log' is a real entry in the production FLEET_ROSTER.
+    expect(FLEET_ROSTER['audit-log']).toBeDefined();
+    await spawnHqAgent(director as never, 'sess-target', 'audit-log', undefined, 10);
+    const cfg = director.captured[0] as { maxIterations?: number };
+    expect(cfg.maxIterations).toBe(10);
+  });
+
+  it("honors the caller's maxIterations for an ad-hoc role", async () => {
+    const director = capturingDirector();
+    await spawnHqAgent(director as never, 'sess-ctrl', 'ad-hoc-unknown-role-xyz', undefined, 7);
+    const cfg = director.captured[0] as { maxIterations?: number };
+    expect(cfg.maxIterations).toBe(7);
   });
 });

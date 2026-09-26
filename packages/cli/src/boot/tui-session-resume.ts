@@ -15,6 +15,7 @@ import {
 } from '@wrongstack/core/coordination';
 import { type EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
+import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { attachTodosCheckpoint, loadTodosCheckpoint } from '@wrongstack/core/storage';
 import type {
   ContextSnapshot,
@@ -409,6 +410,7 @@ export async function resumeSession(
       restoreSessionSubagentPolicy(agent.ctx, resumed.data.events, resumed.data.subagentsAllowed);
       restoreSessionSubagentModelPlan(agent.ctx, resumed.data.events);
       restoreSessionPermissionOverrides(agent.ctx.meta, resumed.data);
+      restoreRequiredSkillsFromEvents(agent.ctx, resumed.data.events);
     } catch (err) {
       agent.ctx.session = oldWriter;
       agent.ctx.state.replaceMessages(oldMessages);

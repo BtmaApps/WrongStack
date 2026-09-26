@@ -114,5 +114,16 @@
     "activityMax": "Activity sparkline: max {{count}} events",
     "activityPeak": "Activity sparkline — peak {{count}} events/bucket"
   },
+  "restoreTabs": {
+    "title": "Restore your previous tabs?",
+    "body": "This WebUI started fresh. {{count}} session(s) were open in this browser before — they are still on disk. Pick the ones to reopen, or start clean.",
+    "limit": "At most {{room}} more can be reopened ({{max}} tabs total). The rest stay in History.",
+    "fresh": "Start fresh",
+    "confirm": "Reopen {{count}}"
+  },
+  "mcpStatus": {
+    "down": "MCP server \"{{name}}\" is not connected ({{reason}}); its tools are unavailable. Retry with /mcp restart {{name}}.",
+    "up": "MCP server \"{{name}}\" is connected again."
+  },
   "loadingNamed": "Loading {{name}}…"
 }

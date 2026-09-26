@@ -125,6 +125,87 @@ describe('acceptMailboxMessageForSession', () => {
     expect(accepted).toBe(false);
   });
 
+  // ── Wrong-typed affinity fields (round-13 regression) ───────────────
+  // A tampered JSONL line can surface `sessionId: 42` or `reportId: 42`
+  // — primitives where the schema declares string. The strict `!==
+  // undefined` presence guard on EACH optional field must fail closed, in
+  // BOTH the async and sync helpers, even when allowUnscoped is true. A
+  // sync helper that omitted this guard would silently accept malformed
+  // tokens by passing them to the resolver (which may return undefined or
+  // the current session id by accident).
+
+  it('rejects non-string sessionId inside an affinity object (async)', async () => {
+    const accepted = await acceptMailboxMessageForSession(
+      {
+        ...baseMessage,
+        sessionAffinity: {
+          sessionId: 42 as unknown as string,
+          kind: 'chimera.review',
+        },
+      },
+      'session-1',
+      {
+        allowUnscoped: true,
+        resolveChimeraReportSessionId: () => 'session-1',
+      },
+    );
+    expect(accepted).toBe(false);
+  });
+
+  it('rejects non-string sessionId inside an affinity object (sync)', () => {
+    const accepted = acceptMailboxMessageForSessionSync(
+      {
+        ...baseMessage,
+        sessionAffinity: {
+          sessionId: 42 as unknown as string,
+          kind: 'chimera.review',
+        },
+      },
+      'session-1',
+      {
+        allowUnscoped: true,
+        resolveChimeraReportSessionId: () => 'session-1',
+      },
+    );
+    expect(accepted).toBe(false);
+  });
+
+  it('rejects non-string reportId inside an affinity object (async)', async () => {
+    const accepted = await acceptMailboxMessageForSession(
+      {
+        ...baseMessage,
+        sessionAffinity: {
+          reportId: 42 as unknown as string,
+          kind: 'chimera.review',
+        },
+      },
+      'session-1',
+      {
+        allowUnscoped: true,
+        resolveChimeraReportSessionId: () => 'session-1',
+      },
+    );
+    expect(accepted).toBe(false);
+  });
+
+  it('rejects non-string reportId inside an affinity object (sync)', () => {
+    const accepted = acceptMailboxMessageForSessionSync(
+      {
+        ...baseMessage,
+        sessionAffinity: {
+          reportId: 42 as unknown as string,
+          kind: 'chimera.review',
+        },
+      },
+      'session-1',
+      {
+        allowUnscoped: true,
+        resolveChimeraReportSessionId: () => 'session-1',
+      },
+    );
+    expect(accepted).toBe(false);
+  });
+
   // ── Resolved-mismatch is non-overridable ─────────────────────────────
   // When the resolver returns a sessionId that does NOT match the current
   // session, the message must be rejected — even if allowUnscoped is true.

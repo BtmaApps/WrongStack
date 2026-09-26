@@ -59,15 +59,21 @@ export const HOST_PLUGIN_AUDIT_ENTRIES: readonly PluginAuditEntry[] = [
   {
     name: 'wstack-chimera',
     risk: 'medium',
-    summary: 'Spawns a post-session code review subagent when explicitly enabled.',
-    defaultState: 'inactive',
+    summary: 'Spawns a post-session code review subagent, on by default.',
+    // Enabled out of the box (2026-09-26): the Chimera review automation is a
+    // core quality loop, not an opt-in extra. `canDisable` stays true, and
+    // `extensions['wstack-chimera'].enabled = false` still turns it off —
+    // `resolvePluginEnablement` reads the extension switch before this default.
+    defaultState: 'active',
     canDisable: true,
   },
   {
     name: 'wstack-auto-review',
     risk: 'medium',
     summary: 'Tracks changed files and requests bounded mid-session Chimera reviews.',
-    defaultState: 'inactive',
+    // Same reasoning as wstack-chimera: mid-session review is part of the
+    // default Chimera automation, so the host enables it on a fresh install.
+    defaultState: 'active',
     canDisable: true,
   },
   {

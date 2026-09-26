@@ -172,6 +172,7 @@ export function usePanelControllers({
       featureMemory: s.featureMemory ?? true,
       featureSkills: s.featureSkills ?? true,
       featureModelsRegistry: s.featureModelsRegistry ?? true,
+      featureToolCoach: s.featureToolCoach ?? true,
       tokenSavingTier: s.featureTokenSaving ?? ('off' as TokenSavingTier),
       allowOutsideProjectRoot: s.allowOutsideProjectRoot ?? true,
       contextAutoCompact: s.contextAutoCompact ?? true,

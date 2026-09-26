@@ -83,9 +83,17 @@ describe('CLI setup-events canonical adapter', () => {
     h.setup();
     (h.events as unknown as { emit(event: string, payload: unknown): void }).emit(
       'brain.decision',
-      { choice: 'continue' },
+      { sessionId: 'session-live', choice: 'continue' },
     );
 
+    expect(
+      h.broadcast.mock.calls.filter(([message]) => message.type === 'brain.event'),
+    ).toHaveLength(1);
+    // Unowned Brain events must not be stamped with whichever tab is active.
+    (h.events as unknown as { emit(event: string, payload: unknown): void }).emit(
+      'brain.decision',
+      { choice: 'continue' },
+    );
     expect(
       h.broadcast.mock.calls.filter(([message]) => message.type === 'brain.event'),
     ).toHaveLength(1);

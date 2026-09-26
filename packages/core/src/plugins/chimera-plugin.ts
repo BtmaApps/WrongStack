@@ -55,7 +55,8 @@ interface ChimeraConfig {
    * Cascade severity threshold for follow-up agents. When the post-session
    * review finds findings at or above this level, security-scanner and/or
    * bug-hunter agents are spawned to investigate and fix. Mirrors the
-   * auto-review plugin's cascadeOn. Default: "off" (no cascade).
+   * auto-review plugin's cascadeOn. Default: "high" (cascades on High and
+   * Critical findings; turn down explicitly to opt out).
    */
   cascadeOn?: 'off' | 'critical' | 'high' | undefined;
   /**
@@ -88,7 +89,14 @@ interface ChimeraConfig {
 }
 
 const DEFAULT_MAX_FILES = 15;
-const DEFAULT_CASCADE_ON = 'off' as const;
+/**
+ * Chimera ships fully on: post-session review runs by default, and so does the
+ * correction cascade. `'high'` is the inclusive end of the threshold — it
+ * cascades on High *and* Critical findings — matching the auto-review plugin's
+ * `DEFAULT_CASCADE_ON`. Turning it down to `'critical'` or off is an explicit
+ * config choice, not the factory state.
+ */
+const DEFAULT_CASCADE_ON = 'high' as const;
 const DEFAULT_MAX_CASCADE_DEPTH = 2;
 
 export function resolveChimeraConfig(
@@ -209,7 +217,7 @@ function buildChimeraCommand(
       '  extensions.wstack-chimera.model      model id',
       '  extensions.wstack-chimera.maxFiles   max files (default 15)',
       '  extensions.wstack-chimera.autoFix    off | ask | auto (default off)',
-      '  extensions.wstack-chimera.cascadeOn  off | critical | high (default off)',
+      '  extensions.wstack-chimera.cascadeOn  off | critical | high (default high)',
       '  extensions.wstack-chimera.maxCascadeDepth  max fix+re-review cycles (default 2)',
       '',
       "Output cap: the subagent runs up to the provider's model-native",

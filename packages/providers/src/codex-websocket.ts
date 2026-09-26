@@ -1,46 +1,34 @@
 import { isDeepStrictEqual } from 'node:util';
-import type { Request, StreamEvent } from '@wrongstack/core/types';
+import type { StreamEvent } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import WebSocket from 'ws';
+import {
+  CodexWebSocketFallbackError,
+  CodexWebSocketRecoveryError,
+  type WebSocketRecoveryCode,
+  webSocketRecoveryCode,
+} from './codex-websocket-recovery.js';
 
-/**
- * Response metadata surfaced by a Codex Responses stream.
- *
- * Defined here rather than in `openai-codex.ts` because both transports carry
- * it and `openai-codex.ts` already imports this module: keeping the shape on
- * the provider would make the pair a module cycle. `openai-codex.ts`
- * re-exports it, so the public name is unchanged.
- */
-export interface CodexResponseMetadata {
-  /** Response metadata headers surfaced by the Responses stream. */
-  headers: Readonly<Record<string, string>>;
-  /** Provider request id, when the backend supplies one. */
-  requestId?: string | undefined;
-  /** Server-selected model, when the backend supplies one. */
-  model?: string | undefined;
-}
+export { CodexWebSocketFallbackError } from './codex-websocket-recovery.js';
 
-export interface CodexWebSocketOptions {
-  headers: Record<string, string>;
-  signal: AbortSignal;
-  /** Never follow redirects on an authenticated WebSocket handshake. */
-  followRedirects?: boolean | undefined;
-  /** Opening-handshake deadline (ms). The frame watchdog only starts after open. */
-  handshakeTimeoutMs?: number | undefined;
-}
+import type {
+  CodexResponseMetadata,
+  CodexResponsesParser,
+  CodexWebSocketFactory,
+  CodexWebSocketLike,
+  CodexWebSocketOptions,
+  CodexWebSocketStreamOptions,
+} from './codex-websocket-types.js';
+import { isCacheProbeEnabled, recordCacheProbeTransport } from './prompt-cache-probe.js';
 
-type CodexWebSocketListener = {
-  bivarianceHack(...args: unknown[]): void;
-}['bivarianceHack'];
-
-export interface CodexWebSocketLike {
-  readonly readyState: number;
-  send(data: string): void;
-  close(): void;
-  on(event: string, listener: CodexWebSocketListener): CodexWebSocketLike;
-  once(event: string, listener: CodexWebSocketListener): CodexWebSocketLike;
-  removeListener(event: string, listener: CodexWebSocketListener): CodexWebSocketLike;
-}
+export type {
+  CodexResponseMetadata,
+  CodexResponsesParser,
+  CodexWebSocketFactory,
+  CodexWebSocketLike,
+  CodexWebSocketOptions,
+  CodexWebSocketStreamOptions,
+} from './codex-websocket-types.js';
 
 function decodeWebSocketMessage(data: unknown): string {
   if (typeof data === 'string') return data;
@@ -53,61 +41,6 @@ function decodeWebSocketMessage(data: unknown): string {
     return Buffer.concat(data).toString('utf8');
   }
   throw new TypeError('Unsupported Codex WebSocket message payload');
-}
-
-export type CodexWebSocketFactory = (
-  url: string,
-  options: CodexWebSocketOptions,
-) => CodexWebSocketLike;
-
-export type CodexResponsesParser = (
-  body: ReadableStream<Uint8Array>,
-  fallbackModel: string,
-  providerId: string,
-  onMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
-) => AsyncIterable<StreamEvent>;
-
-export interface CodexWebSocketStreamOptions {
-  url: string;
-  headers: Record<string, string>;
-  request: Request;
-  body: Record<string, unknown>;
-  fallbackModel: string;
-  providerId: string;
-  signal: AbortSignal;
-  /** Best-effort connection prewarm before the first real response.create. */
-  prewarm?: boolean | undefined;
-  /**
-   * Max silence between WebSocket frames before the turn fails (pre-output
-   * failures fall back to SSE). Defaults to `DEFAULT_STALL_TIMEOUT_MS`; `0`
-   * disables the watchdog.
-   */
-  stallTimeoutMs?: number | undefined;
-  /**
-   * Sticky-routing token for the turn this request belongs to, replayed as
-   * `client_metadata['x-codex-turn-state']`.
-   *
-   * Owned by the caller, not the connection: a turn spans several requests and
-   * the connection cannot tell which of them start a new one. This used to be
-   * connection-local state that `stream()` cleared on entry, so nothing but a
-   * prewarm could ever populate it and the token was never actually sent.
-   */
-  turnState?: string | undefined;
-  /** Receives the turn state the backend published in `response.metadata`. */
-  onTurnState?: ((turnState: string) => void) | undefined;
-  onMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined;
-  onHeaders?: ((headers: Headers) => void) | undefined;
-}
-
-/** A pre-output WS failure is safe to retry over SSE without duplicate output. */
-export class CodexWebSocketFallbackError extends Error {
-  override readonly name = 'CodexWebSocketFallbackError';
-  constructor(
-    message: string,
-    override readonly cause?: unknown,
-  ) {
-    super(message, { cause });
-  }
 }
 
 const WS_OPEN = 1;
@@ -177,11 +110,6 @@ function replayableResponseItem(value: unknown): Record<string, unknown> | undef
   return undefined;
 }
 
-function isRecoverableWebSocketStateError(error: ProviderError): boolean {
-  const details = `${error.message}\n${JSON.stringify(error.body ?? {})}`;
-  return /previous_response_not_found|websocket_connection_limit_reached/i.test(details);
-}
-
 class AsyncQueue<T> {
   private values: T[] = [];
   private waiters: Array<{
@@ -220,6 +148,13 @@ class AsyncQueue<T> {
   }
 }
 
+type CodexWebSocketTurnOptions = Omit<
+  CodexWebSocketStreamOptions,
+  'url' | 'headers' | 'body' | 'onHeaders'
+> & {
+  recoveryReason?: WebSocketRecoveryCode | undefined;
+};
+
 class CodexWebSocketConnection {
   private socket: CodexWebSocketLike | undefined;
   private activeQueue: AsyncQueue<string> | undefined;
@@ -250,17 +185,7 @@ class CodexWebSocketConnection {
 
   async *stream(
     body: Record<string, unknown>,
-    opts: Pick<
-      CodexWebSocketStreamOptions,
-      | 'fallbackModel'
-      | 'providerId'
-      | 'signal'
-      | 'prewarm'
-      | 'onMetadata'
-      | 'stallTimeoutMs'
-      | 'turnState'
-      | 'onTurnState'
-    >,
+    opts: CodexWebSocketTurnOptions,
     parse: (
       body: ReadableStream<Uint8Array>,
       fallbackModel: string,
@@ -279,17 +204,7 @@ class CodexWebSocketConnection {
 
   private async *streamInner(
     body: Record<string, unknown>,
-    opts: Pick<
-      CodexWebSocketStreamOptions,
-      | 'fallbackModel'
-      | 'providerId'
-      | 'signal'
-      | 'prewarm'
-      | 'onMetadata'
-      | 'stallTimeoutMs'
-      | 'turnState'
-      | 'onTurnState'
-    >,
+    opts: CodexWebSocketTurnOptions,
     parse: (
       body: ReadableStream<Uint8Array>,
       fallbackModel: string,
@@ -364,31 +279,48 @@ class CodexWebSocketConnection {
       }
     };
 
-    const bodyStream = new ReadableStream<Uint8Array>({
-      pull: async (controller) => {
-        try {
-          armStall();
-          const item = await queue.next();
-          disarmStall();
-          if (item.done) controller.close();
-          else controller.enqueue(new TextEncoder().encode(`data: ${item.value}\n\n`));
-        } catch (error) {
-          disarmStall();
-          controller.error(error);
-        }
-      },
-      cancel: () => {
-        disarmStall();
-        queue.end();
-      },
-    });
-
+    let usedContinuation = false;
     try {
       if (opts.prewarm && !this.prewarmed) {
         await this.tryPrewarm(body, opts.signal, socket);
         this.activeQueue = queue;
       }
-      const requestBody = this.prepareRequestBody(body);
+      if (opts.signal.aborted) throw abort();
+      // ReadableStream pulls eagerly; create it only once prewarm has ended.
+      const bodyStream = new ReadableStream<Uint8Array>({
+        pull: async (controller) => {
+          try {
+            armStall();
+            const item = await queue.next();
+            disarmStall();
+            if (item.done) controller.close();
+            else controller.enqueue(new TextEncoder().encode(`data: ${item.value}\n\n`));
+          } catch (error) {
+            disarmStall();
+            controller.error(error);
+          }
+        },
+        cancel: () => {
+          disarmStall();
+          queue.end();
+        },
+      });
+      const prepared = this.prepareRequestBody(body);
+      const requestBody = prepared.body;
+      usedContinuation = typeof requestBody.previous_response_id === 'string';
+      if (isCacheProbeEnabled()) {
+        recordCacheProbeTransport({
+          provider: opts.providerId,
+          sessionKey: String(body.prompt_cache_key ?? 'no-session'),
+          threadId: opts.request.cache?.threadId ?? opts.request.cache?.sessionId,
+          requestId: opts.probeRequestId,
+          model: opts.request.model,
+          mode: requestBody.previous_response_id ? 'delta' : 'full',
+          reason: opts.recoveryReason ? `reconnect:${opts.recoveryReason}` : prepared.reason,
+          fullInputItems: Array.isArray(body.input) ? body.input.length : 0,
+          sentInputItems: Array.isArray(requestBody.input) ? requestBody.input.length : 0,
+        });
+      }
       this.beginResponse(body);
       socket.send(JSON.stringify({ type: 'response.create', ...requestBody }));
       for await (const event of parse(
@@ -410,12 +342,14 @@ class CodexWebSocketConnection {
       this.commitResponse();
     } catch (error) {
       if (opts.signal.aborted) throw abort();
-      if (
-        error instanceof ProviderError &&
-        !this.emitted &&
-        isRecoverableWebSocketStateError(error)
-      ) {
-        throw new CodexWebSocketFallbackError('Codex WebSocket continuation state expired', error);
+      if (error instanceof ProviderError && !this.emitted) {
+        const code = webSocketRecoveryCode(error);
+        if (code)
+          throw new CodexWebSocketRecoveryError(
+            code,
+            error,
+            code === 'websocket_connection_limit_reached' || usedContinuation,
+          );
       }
       if (error instanceof CodexWebSocketFallbackError && this.emitted) {
         throw new ProviderError(error.message, 0, true, opts.providerId, {
@@ -592,6 +526,9 @@ class CodexWebSocketConnection {
     this.lastResponseId = this.currentResponseId;
     this.lastRequestBody = this.pendingRequestBody;
     this.lastResponseItems = this.pendingResponseItems;
+    // A generated response also warms the connection, including recovery
+    // requests that deliberately skip a separate generate=false round trip.
+    this.prewarmed = true;
   }
 
   /**
@@ -599,26 +536,35 @@ class CodexWebSocketConnection {
    * extension of the exact full request + server output that produced it.
    * Otherwise send the full request without a stale response id.
    */
-  private prepareRequestBody(body: Record<string, unknown>): Record<string, unknown> {
+  private prepareRequestBody(body: Record<string, unknown>): {
+    body: Record<string, unknown>;
+    reason: string;
+  } {
     // Turn state is sticky routing, not a continuation detail: it belongs on
     // every request of the turn, including the ones that resend the full input.
     const withTurnState = this.turnState
       ? { ...body, client_metadata: { 'x-codex-turn-state': this.turnState } }
       : body;
-    if (!this.lastResponseId || !this.lastRequestBody) return withTurnState;
-    if (!requestPropertiesMatch(this.lastRequestBody, body)) return withTurnState;
+    const full = (reason: string) => ({ body: withTurnState, reason });
+    if (!this.lastResponseId || !this.lastRequestBody) return full('no-previous-response');
+    if (!requestPropertiesMatch(this.lastRequestBody, body))
+      return full('request-settings-changed');
     const previousInput = this.lastRequestBody.input;
     const currentInput = body.input;
-    if (!Array.isArray(previousInput) || !Array.isArray(currentInput)) return withTurnState;
+    if (!Array.isArray(previousInput) || !Array.isArray(currentInput))
+      return full('non-array-input');
     const baseline = [...previousInput, ...this.lastResponseItems];
-    if (currentInput.length < baseline.length) return withTurnState;
+    if (currentInput.length < baseline.length) return full('history-shortened');
     for (let index = 0; index < baseline.length; index++) {
-      if (!isDeepStrictEqual(baseline[index], currentInput[index])) return withTurnState;
+      if (!isDeepStrictEqual(baseline[index], currentInput[index])) return full('history-changed');
     }
     return {
-      ...withTurnState,
-      previous_response_id: this.lastResponseId,
-      input: currentInput.slice(baseline.length),
+      reason: 'prefix-match',
+      body: {
+        ...withTurnState,
+        previous_response_id: this.lastResponseId,
+        input: currentInput.slice(baseline.length),
+      },
     };
   }
 
@@ -647,15 +593,28 @@ class CodexWebSocketConnection {
     );
     try {
       socket.send(JSON.stringify({ type: 'response.create', ...body, generate: false }));
-      while (!this.terminalSeen) {
+      // Frames can arrive in one batch. The listener's terminalSeen flag may
+      // already be set before this consumer reads the failure/completion frame.
+      let completed = false;
+      while (!completed) {
         const item = await queue.next();
         if (item.done || signal.aborted) break;
-        const event = JSON.parse(item.value) as { type?: string };
-        if (event.type === 'response.failed' || event.type === 'error') {
+        const event = JSON.parse(item.value) as { type?: string; response?: { status?: string } };
+        const terminal = event.type === 'response.completed' || event.type === 'response.done';
+        if (
+          event.type === 'response.failed' ||
+          event.type === 'error' ||
+          event.type === 'response.incomplete' ||
+          (terminal &&
+            event.response?.status !== undefined &&
+            event.response.status !== 'completed')
+        ) {
           throw new Error('Codex WebSocket prewarm was rejected');
         }
+        completed = terminal;
       }
-      if (!this.terminalSeen || !this.currentResponseId) {
+      if (signal.aborted) throw signal.reason ?? new Error('Codex WebSocket prewarm aborted');
+      if (!completed || !this.currentResponseId) {
         throw new Error('Codex WebSocket prewarm produced no reusable response');
       }
       this.commitResponse();
@@ -697,29 +656,48 @@ export class CodexWebSocketPool {
     this.locks.set(key, chain);
     await previous.catch(() => undefined);
     try {
-      let connection = this.connections.get(key);
-      if (!connection) {
-        connection = new CodexWebSocketConnection(
-          this.factory,
-          opts.url,
-          opts.headers,
-          opts.onHeaders,
-        );
-        this.connections.set(key, connection);
-        while (this.connections.size > this.maxSessions) {
-          const oldest = this.connections.keys().next().value;
-          if (oldest === undefined || oldest === key) break;
-          // Eviction must not cut another session's live response.
-          this.connections.get(oldest)?.retire();
-          this.connections.delete(oldest);
+      let recoveryReason: WebSocketRecoveryCode | undefined;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (opts.signal.aborted)
+          throw opts.signal.reason ?? new Error('Codex WebSocket request aborted');
+        let connection = this.connections.get(key);
+        if (!connection) {
+          connection = new CodexWebSocketConnection(
+            this.factory,
+            opts.url,
+            opts.headers,
+            opts.onHeaders,
+          );
+          this.connections.set(key, connection);
+          while (this.connections.size > this.maxSessions) {
+            const oldest = this.connections.keys().next().value;
+            if (oldest === undefined || oldest === key) break;
+            // Eviction must not cut another session's live response.
+            this.connections.get(oldest)?.retire();
+            this.connections.delete(oldest);
+          }
         }
-      }
-      try {
-        yield* connection.stream(opts.body, opts, parse);
-      } catch (error) {
-        connection.close();
-        this.connections.delete(key);
-        throw error;
+        try {
+          yield* connection.stream(
+            opts.body,
+            recoveryReason ? { ...opts, prewarm: false, recoveryReason } : opts,
+            parse,
+          );
+          return;
+        } catch (error) {
+          connection.close();
+          if (this.connections.get(key) === connection) this.connections.delete(key);
+          if (
+            attempt === 0 &&
+            error instanceof CodexWebSocketRecoveryError &&
+            error.canReconnect &&
+            !opts.signal.aborted
+          ) {
+            recoveryReason = error.code;
+            continue;
+          }
+          throw error;
+        }
       }
     } finally {
       release();

@@ -1,6 +1,6 @@
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
-import { COPY_ICON } from '../src/components/history/copy-icon.js';
+import { COPY_ICON, INSPECT_ICON } from '../src/components/history/copy-icon.js';
 import { groupEntries, renderGroupId } from '../src/components/history/tool-group.js';
 import type { HistoryEntry } from '../src/components/history.js';
 import {
@@ -123,6 +123,15 @@ describe('virtual scroll copy rail geometry', () => {
     expect(iconRow).toBeGreaterThanOrEqual(0);
     expect(controllerRef.current?.hasCopyTargetAt(iconRow, expectedLayoutWidth)).toBe(true);
     expect(controllerRef.current?.hasCopyTargetAt(iconRow, expectedLayoutWidth + 1)).toBe(false);
+    const inspectRow = lines.findIndex((line) =>
+      line.slice(-SCROLLBAR_HIT_WIDTH).includes(INSPECT_ICON),
+    );
+    expect(inspectRow).toBeGreaterThanOrEqual(0);
+    expect(lines[inspectRow]?.slice(-SCROLLBAR_HIT_WIDTH)).toMatch(/^❏ ⌕ {3}.[█│]$/);
+    expect(controllerRef.current?.hasInspectTargetAt(inspectRow, expectedLayoutWidth + 2)).toBe(
+      true,
+    );
+    expect(controllerRef.current?.hasInspectTargetAt(inspectRow, columns - 2)).toBe(false);
     tty.unmount();
   });
 

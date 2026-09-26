@@ -114,5 +114,16 @@
     "activityMax": "Etkinlik sparkline: en fazla {{count}} olay",
     "activityPeak": "Etkinlik sparkline — tepe {{count}} olay/kova"
   },
+  "restoreTabs": {
+    "title": "Önceki sekmeleriniz geri yüklensin mi?",
+    "body": "Bu WebUI sıfırdan başladı. Bu tarayıcıda daha önce {{count}} oturum açıktı — hâlâ diskte duruyorlar. Yeniden açmak istediklerinizi seçin ya da temiz başlayın.",
+    "limit": "En fazla {{room}} tane daha yeniden açılabilir (toplam {{max}} sekme). Geri kalanlar Geçmiş'te kalır.",
+    "fresh": "Temiz başla",
+    "confirm": "{{count}} tanesini yeniden aç"
+  },
+  "mcpStatus": {
+    "down": "\"{{name}}\" MCP sunucusu bağlı değil ({{reason}}); araçları kullanılamıyor. /mcp restart {{name}} ile yeniden deneyin.",
+    "up": "\"{{name}}\" MCP sunucusu yeniden bağlandı."
+  },
   "loadingNamed": "{{name}} yükleniyor…"
 }

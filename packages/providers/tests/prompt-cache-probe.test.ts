@@ -19,13 +19,14 @@ afterEach(() => {
 });
 
 describe('diffCacheProbe', () => {
-  it('reports append-only growth as a fully reusable prefix', () => {
+  it('reports local prefix overlap for append-only growth', () => {
     const prev = seg('sys', [{ name: 'read' }], [{ a: 1 }, { b: 2 }]);
     const cur = seg('sys', [{ name: 'read' }], [{ a: 1 }, { b: 2 }, { c: 3 }]);
     const diff = diffCacheProbe(prev, cur);
     expect(diff.firstDivergentItem).toBeNull();
     expect(diff.instructionsChanged).toBe(false);
-    // Everything except the newly appended item is reusable.
+    // Everything except the newly appended item matches locally. This does
+    // not establish a server cache entry at the shared boundary.
     expect(diff.promptChars - diff.cacheablePrefixChars).toBe(JSON.stringify({ c: 3 }).length);
   });
 
@@ -39,23 +40,23 @@ describe('diffCacheProbe', () => {
     );
   });
 
-  it('voids the whole prefix when instructions change', () => {
+  it('retains only matching tools when instructions change', () => {
     const prev = seg('sys A', [{ name: 'read' }], [{ a: 1 }]);
     const cur = seg('sys B', [{ name: 'read' }], [{ a: 1 }]);
     const diff = diffCacheProbe(prev, cur);
     expect(diff.instructionsChanged).toBe(true);
-    expect(diff.cacheablePrefixChars).toBe(0);
+    expect(diff.cacheablePrefixChars).toBe(JSON.stringify([{ name: 'read' }]).length);
   });
 
-  it('keeps only instructions when the tool list changes', () => {
+  it('does not count unchanged instructions behind changed tools', () => {
     const prev = seg('sys', [{ name: 'read' }], [{ a: 1 }]);
     const cur = seg('sys', [{ name: 'read' }, { name: 'write' }], [{ a: 1 }]);
     const diff = diffCacheProbe(prev, cur);
     expect(diff.toolsChanged).toBe(true);
-    expect(diff.cacheablePrefixChars).toBe('sys'.length);
+    expect(diff.cacheablePrefixChars).toBe(0);
   });
 
-  it('treats the first request of a session as an unavoidable miss', () => {
+  it('reports no local comparison on the first observed request', () => {
     const diff = diffCacheProbe(undefined, seg('sys', [], [{ a: 1 }]));
     expect(diff.cacheablePrefixChars).toBe(0);
   });
@@ -118,8 +119,8 @@ describe('probe gate', () => {
     expect(lines[0]?.['first']).toBe(true);
     expect(lines[2]?.['session']).toBe('sess-probe');
     expect(lines[2]?.['instructionsChanged']).toBe(false);
-    // The backend's own number rides alongside, so an expected-vs-actual gap
-    // separates a broken prefix from an expired cache entry.
+    // Actual backend usage is separate from local overlap: matching text
+    // cannot establish cache boundaries, expiry, or server routing.
     expect(lines[3]?.['cachedTokens']).toBe(80);
     expect(lines[3]?.['actualHitPct']).toBe(80);
 

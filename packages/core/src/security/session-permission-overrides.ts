@@ -14,6 +14,13 @@
  * user-owned autonomy invariant holds: an allow here is the user's decision, and
  * the policy treats it like an approval given at a prompt. Deny rules, the
  * sensitive-read prompt and the destructive-call confirm still win over it.
+ *
+ * The journal is a file, so "no model tool writes them" is only true while the
+ * journal cannot be written behind the user's back: a write into the global
+ * root (sessions/ included) is the `agent-state` kind for the write tools AND
+ * for the shell detector (yolo-risk.ts `looksLikeAgentStateTarget`), and that
+ * kind is locked — YOLO cannot un-gate it. `--restricted` ignores allows
+ * entirely (WS-2026-09-26-04).
  */
 
 import type { SessionEvent, SessionWriter } from '../types/session.js';

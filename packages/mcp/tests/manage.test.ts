@@ -563,3 +563,76 @@ describe('readConfig corrupt-config guard', () => {
     expect(written.mcpServers.proof).toBeTruthy();
   });
 });
+
+describe('buildConfig timeout-field preservation', () => {
+  // `buildConfig` rebuilds an MCPServerConfig field-by-field. It once omitted
+  // `startupTimeoutMs` and `requestTimeoutMs`, so any add-from-preset that
+  // carried a tuned timeout (the first-party `ssh` preset sets
+  // `requestTimeoutMs: 180_000`) persisted `undefined`, and every update reset
+  // a hand-tuned value back to the client default (10s / 60s). These fields are
+  // real config (MCPServerConfig) that the runtime consumes via
+  // registry-connect-loop -> MCPClient, so dropping them is silent data loss.
+  const sshLikePreset: MCPServerConfig = {
+    name: 'ssh',
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', 'mcp-ssh-manager'],
+    permission: 'confirm',
+    requestTimeoutMs: 180_000,
+  };
+
+  it('addMcp from a preset keeps the preset requestTimeoutMs', async () => {
+    const r = await addMcp({ name: 'ssh' }, deps(makeRegistry(), { ssh: sshLikePreset }));
+    expect(r.ok).toBe(true);
+    const servers = await readServers();
+    expect(servers.ssh?.requestTimeoutMs).toBe(180_000);
+  });
+
+  it('updateMcp does not reset hand-tuned startup/request timeouts', async () => {
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          custom: {
+            name: 'custom',
+            transport: 'stdio',
+            command: 'node',
+            args: ['server.js'],
+            enabled: false,
+            startupTimeoutMs: 30_000,
+            requestTimeoutMs: 180_000,
+          },
+        },
+      }),
+      'utf8',
+    );
+    const r = await updateMcp({ name: 'custom', description: 'renamed' }, deps(makeRegistry()));
+    expect(r.ok).toBe(true);
+    const servers = await readServers();
+    expect(servers.custom?.startupTimeoutMs).toBe(30_000);
+    expect(servers.custom?.requestTimeoutMs).toBe(180_000);
+    // control: a field buildConfig does copy must still round-trip unchanged.
+    expect(servers.custom?.command).toBe('node');
+  });
+
+  it('an explicit input timeout overrides the base on update', async () => {
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          custom: {
+            name: 'custom',
+            transport: 'stdio',
+            command: 'node',
+            requestTimeoutMs: 180_000,
+          },
+        },
+      }),
+      'utf8',
+    );
+    const r = await updateMcp({ name: 'custom', requestTimeoutMs: 5_000 }, deps(makeRegistry()));
+    expect(r.ok).toBe(true);
+    const servers = await readServers();
+    expect(servers.custom?.requestTimeoutMs).toBe(5_000);
+  });
+});

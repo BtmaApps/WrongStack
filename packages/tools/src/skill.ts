@@ -6,7 +6,12 @@ import {
   missingRuntimeCapabilities,
   runtimeToolReferencesFromText,
 } from '@wrongstack/core/agent-catalog';
-import { SKILL_LIMITS, stripFrontmatter } from '@wrongstack/core/skills';
+import {
+  markRequiredSkillLoaded,
+  markRequiredSkillUnavailable,
+  SKILL_LIMITS,
+  stripFrontmatter,
+} from '@wrongstack/core/skills';
 import type { SkillLoader, Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 
@@ -89,6 +94,13 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       'The body call lists every bundled resource; load the ones you need. Run scripts via bash using the returned abs path.',
     permission: 'auto',
     mutating: false,
+    // A page is already bounded (MAX_SKILL_BODY_CHARS body, MAX_RESOURCE_CHARS
+    // resource, MAX_LISTED_RESOURCES entries) and continues via nextOffset.
+    // Previewing it instead — a lowered `limits.toolOutputPreviewBytes`, or a
+    // batch whose other results used up the iteration budget — handed the model
+    // the head of the instructions and a file path while the call still
+    // reported the skill as loaded.
+    preserveFullOutput: true,
     capabilities: ['fs.read'],
     icon: 'document',
     timeoutMs: 5_000,
@@ -113,7 +125,7 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       },
       required: ['name'],
     },
-    async execute(input, ctx) {
+    async execute(input, ctx, opts) {
       const name = input?.name?.trim();
       if (!name) {
         throw new ToolValidationError({ message: 'skill: name is required', field: 'name' });
@@ -128,6 +140,9 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       skillLoader.invalidateCache?.();
       const manifest = await skillLoader.find(name);
       if (!manifest) {
+        // A required skill that cannot be provided must not hold the run's
+        // edits hostage; the failed load releases it and the run reports it.
+        markRequiredSkillUnavailable(ctx, name);
         throw new ToolValidationError({
           message: `skill "${name}" not found — use /skill to list available skills`,
           field: 'name',
@@ -140,6 +155,7 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       );
       const missingTools = missingRequiredRuntimeTools(manifest.requiredTools, availableToolNames);
       if (missingCapabilities.length > 0 || missingTools.length > 0) {
+        markRequiredSkillUnavailable(ctx, manifest.name);
         throw new ToolValidationError({
           message:
             `skill "${name}" is unavailable in this runtime; ` +
@@ -180,15 +196,18 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       const body = fullBody.slice(offset, offset + MAX_BODY_CHARS);
       const nextOffset = offset + body.length < fullBody.length ? offset + body.length : undefined;
       const resources = loadedResource ? [] : await listResources(dir);
-
-      try {
-        await ctx?.session?.append({
-          type: 'skill_activated',
-          ts: new Date().toISOString(),
-          skillName: manifest.name,
-        });
-      } catch {
-        // best-effort: session recording must never break skill loading
+      // Only the page that finishes the body counts toward a required-skill gate.
+      if (!loadedResource && nextOffset === undefined) {
+        markRequiredSkillLoaded(ctx, manifest.name, opts?.toolUseId);
+        try {
+          await ctx?.session?.append({
+            type: 'skill_activated',
+            ts: new Date().toISOString(),
+            skillName: manifest.name,
+          });
+        } catch {
+          // best-effort: session recording must never break skill loading
+        }
       }
 
       return {
@@ -298,12 +317,25 @@ async function loadResource(skillDir: string, rel: string, offset = 0): Promise<
 /** Recursively list every file in the skill dir (any subdir), except SKILL.md. */
 async function listResources(skillDir: string): Promise<SkillResource[]> {
   const out: SkillResource[] = [];
-  await walk(skillDir, skillDir, out);
+  const realRoot = await safeRealpath(skillDir);
+  // The walk contract takes (root, rootReal, dir, out): `root` is the string-form
+  // path used to label entries (path.relative(root, fullPath)), `rootReal` is
+  // the realpath containment boundary (undefined when realpath failed), and
+  // `dir` is the starting directory to walk. The round-1 fix accidentally
+  // swapped `realRoot` and `skillDir` between the rootReal and dir positions,
+  // which typechecked as `string | undefined` against `dir: string`. Pass
+  // `realRoot` as the boundary and `skillDir` as the starting directory.
+  await walk(realRoot ?? path.resolve(skillDir), realRoot, skillDir, out);
   out.sort((a, b) => a.path.localeCompare(b.path));
   return out.slice(0, MAX_LISTED_RESOURCES);
 }
 
-async function walk(root: string, dir: string, out: SkillResource[]): Promise<void> {
+async function walk(
+  root: string,
+  rootReal: string | undefined,
+  dir: string,
+  out: SkillResource[],
+): Promise<void> {
   if (out.length >= MAX_LISTED_RESOURCES) return;
   let entries: Dirent[];
   try {
@@ -315,7 +347,33 @@ async function walk(root: string, dir: string, out: SkillResource[]): Promise<vo
     if (out.length >= MAX_LISTED_RESOURCES) return;
     const fullPath = path.join(dir, e.name);
     let isDir = e.isDirectory();
-    if (e.isSymbolicLink()) {
+    // Re-check containment on the RESOLVED path before treating any entry —
+    // symlink or otherwise — as part of the listing. The string-based
+    // `path.relative(root, fullPath)` check below is a label, not a boundary:
+    // a symlink under the skill dir can resolve anywhere on the host, and
+    // `loadResource` already enforces the same `realpath` containment via
+    // WS-048. Without this, the listing discloses names and sizes of files
+    // under an attacker-chosen external directory into the model-facing tool
+    // output and the session log, even though the subsequent read is blocked.
+    let resolvedFull: string | undefined;
+    if (rootReal !== undefined) {
+      try {
+        resolvedFull = await fs.realpath(fullPath);
+      } catch {
+        if (e.isSymbolicLink()) continue; // broken symlink
+      }
+      if (
+        resolvedFull !== undefined &&
+        resolvedFull !== rootReal &&
+        !resolvedFull.startsWith(rootReal + path.sep)
+      ) {
+        // Symlink (or hardlink via a junction) escapes the skill directory.
+        // Refuse to enumerate it — both as a directory (no recursion) and as
+        // a file (no listing entry).
+        continue;
+      }
+    }
+    if (e.isSymbolicLink() && resolvedFull === undefined) {
       try {
         isDir = (await fs.stat(fullPath)).isDirectory();
       } catch {
@@ -324,7 +382,7 @@ async function walk(root: string, dir: string, out: SkillResource[]): Promise<vo
     }
     if (isDir) {
       if (SKIP_DIRS.has(e.name) || e.name.startsWith('.')) continue;
-      await walk(root, fullPath, out);
+      await walk(root, rootReal, fullPath, out);
     } else if (e.isFile()) {
       if (e.name === 'SKILL.md' || e.name === 'SKILL.save.md') continue;
       try {
@@ -335,5 +393,14 @@ async function walk(root: string, dir: string, out: SkillResource[]): Promise<vo
         // skip unreadable entry
       }
     }
+  }
+}
+
+/** Resolve `p` to its real path, or `undefined` if it can't be resolved. */
+async function safeRealpath(p: string): Promise<string | undefined> {
+  try {
+    return await fs.realpath(p);
+  } catch {
+    return undefined;
   }
 }

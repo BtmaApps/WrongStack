@@ -34,6 +34,8 @@ interface HqUpgradeHandlerDeps {
    * the revocation path treats that absence as "affected" (fail closed).
    */
   browserSocketSessions: Map<WebSocket, string>;
+  /** Browser-token verifier behind each bare `?token=` browser socket (H-3). */
+  browserSocketTokenKeys?: Map<WebSocket, string> | undefined;
   browsers: Set<WebSocket>;
   eventLog: import('@wrongstack/core/hq').HqEventEnvelope[];
   transcripts: Map<string, TranscriptRing>;
@@ -124,7 +126,11 @@ export function handleHqUpgrade(
         supplied = '';
       }
     }
-    const tokenValid = HqServerAuth.timingSafeTokenMatch(tokenSet, supplied) !== undefined;
+    const matchedTokenKey = HqServerAuth.timingSafeTokenMatch(tokenSet, supplied);
+    const tokenValid = matchedTokenKey !== undefined;
+    if (tokenValid && pathname === '/ws/browser') {
+      (req as HqUpgradeRequest).hqBrowserTokenKey = matchedTokenKey;
+    }
     // Captured before the cookie branch: `mutableAuth` is re-projected by
     // every auth-file reload (`HqAuthState.apply`), so the guarded reference
     // and the used reference must be the same narrowed local, not a re-read.
@@ -192,6 +198,8 @@ export function handleHqUpgrade(
  */
 interface HqUpgradeRequest extends IncomingMessage {
   hqBrowserSessionId?: string;
+  /** Verifier of the browser token a bare `?token=` socket presented. */
+  hqBrowserTokenKey?: string;
 }
 
 export function handleHqConnection(
@@ -210,6 +218,15 @@ export function handleHqConnection(
     if (sessionId !== undefined) {
       deps.browserSocketSessions.set(ws, sessionId);
       ws.once('close', () => deps.browserSocketSessions.delete(ws));
+    } else {
+      // No session to expire with: remember the token, so the periodic sweep
+      // can close the socket when that token expires or is revoked (H-3).
+      const tokenKey = (req as HqUpgradeRequest).hqBrowserTokenKey;
+      const tokenSockets = deps.browserSocketTokenKeys;
+      if (tokenKey !== undefined && tokenSockets !== undefined) {
+        tokenSockets.set(ws, tokenKey);
+        ws.once('close', () => tokenSockets.delete(ws));
+      }
     }
     HqServerWs.handleBrowser(ws, deps.snapshotBroadcaster, deps.browsers, deps.eventLog);
   } else {

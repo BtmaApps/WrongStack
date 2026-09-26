@@ -30,6 +30,7 @@
  * Responses API rejects a reasoning item that is not followed by its output.
  */
 
+import { isDeepStrictEqual } from 'node:util';
 import type {
   ContentBlock,
   ImageBlock,
@@ -51,15 +52,6 @@ export interface ResponsesTool {
 }
 
 const _toolCache = new WeakMap<Tool[], ResponsesTool[]>();
-const _stringifiedToolInputs = new WeakMap<Record<string, unknown>, string>();
-
-function stringifyToolInputOnce(input: Record<string, unknown>): string {
-  const hit = _stringifiedToolInputs.get(input);
-  if (hit) return hit;
-  const json = JSON.stringify(input);
-  _stringifiedToolInputs.set(input, json);
-  return json;
-}
 
 export function toolsToResponses(tools: Tool[]): ResponsesTool[] {
   const hit = _toolCache.get(tools);
@@ -101,6 +93,22 @@ function imageUrl(b: ImageBlock): string {
  */
 export const CODEX_REASONING_ID_META = 'codexReasoningId';
 export const CODEX_REASONING_ENCRYPTED_META = 'codexReasoningEncrypted';
+export const CODEX_TOOL_ARGUMENTS_META = 'codexToolArguments';
+
+/** Preserve server formatting only while the validated tool input still agrees. */
+function replayToolArguments(block: ToolUseBlock): string {
+  const raw = block.providerMeta?.[CODEX_TOOL_ARGUMENTS_META];
+  if (typeof raw === 'string') {
+    try {
+      if (isDeepStrictEqual(JSON.parse(raw), block.input)) return raw;
+    } catch {
+      // Repaired/malformed arguments must use the canonical validated input.
+    }
+  }
+  // Request inputs are mutable, including nested values. An identity-only
+  // serialization cache can replay arguments that are no longer in the request.
+  return JSON.stringify(block.input ?? {});
+}
 
 export interface ResponsesInputOptions {
   /**
@@ -178,12 +186,12 @@ export function messagesToResponsesInput(
       // produced. An assistant message that is nothing but thinking (an
       // interrupted turn, a truncated replay) has no such follower, so its
       // reasoning is dropped rather than sent and rejected.
-      const hasFollower = blocks.some(
+      const lastFollower = blocks.findLastIndex(
         (b) => (b.type === 'text' && b.text.length > 0) || b.type === 'tool_use',
       );
-      for (const block of blocks) {
+      for (const [index, block] of blocks.entries()) {
         if (block.type === 'thinking') {
-          if (!opts.includeReasoning || !hasFollower) continue;
+          if (!opts.includeReasoning || index >= lastFollower) continue;
           const item = reasoningItem(block);
           if (item) out.push(item);
           continue;
@@ -202,7 +210,7 @@ export function messagesToResponsesInput(
           type: 'function_call',
           call_id: u.id,
           name: u.name,
-          arguments: stringifyToolInputOnce(u.input ?? {}),
+          arguments: replayToolArguments(u),
         });
       }
     } else if (msg.role === 'system') {

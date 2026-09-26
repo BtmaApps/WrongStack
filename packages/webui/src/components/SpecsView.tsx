@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { openMainView } from '@/lib/view-navigation';
-import { useSpecsStore, type SpecDetail, type SpecListItem } from '@/stores';
-import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight, FileText, LayoutList, Network, Play, X } from 'lucide-react';
-import { Button } from './ui/button';
+import { useCallback, useEffect, useState } from 'react';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { openMainView } from '@/lib/view-navigation';
+import { type SpecDetail, type SpecListItem, useSpecsStore } from '@/stores';
 import { DependencyGraph } from './DependencyGraph';
+import { Button } from './ui/button';
 
 // Specs are bounded (user-created), show all without pagination.
 
@@ -71,12 +71,12 @@ export function SpecsView({
       if (graphId) {
         client?.send?.({
           type: 'sdd.run.from_graph',
-          payload: { graphId, worktrees: true },
+          payload: { graphId, worktrees: true, ...client?.withSession({}) },
         });
       } else {
         client?.send?.({
           type: 'sdd.run.from_spec',
-          payload: { specId: spec.id, worktrees: true },
+          payload: { specId: spec.id, worktrees: true, ...client?.withSession({}) },
         });
       }
       onRunStarted?.();

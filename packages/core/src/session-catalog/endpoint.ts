@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { privateEndpointKey } from '@wrongstack/persistence';
 import { assertUnixSocketPathWithinLimit } from '../utils/socket-path.js';
 import { SESSION_CATALOG_PROTOCOL_VERSION } from './protocol.js';
 
@@ -17,7 +18,8 @@ export function sessionCatalogProjectServerKey(projectDir: string): string {
 }
 
 export function sessionCatalogProjectServerEndpoint(projectDir: string): string {
-  const key = sessionCatalogProjectServerKey(projectDir);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(sessionCatalogProjectServerKey(projectDir));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-session-catalog-v${SESSION_CATALOG_PROTOCOL_VERSION}-${key}`;
   }

@@ -43,6 +43,7 @@ describe('PhaseStore', () => {
     });
 
     const graph = await builder.build();
+    graph.sessionId = 'goal-owner-s3';
     graph.worktrees = true;
     graph.runBase = { branch: 'main', sha: 'abc123' };
     graph.finalVerification = { status: 'passed', checkedAt: 123 };
@@ -51,6 +52,7 @@ describe('PhaseStore', () => {
     const loaded = await store.load(graph.id);
     expect(loaded).not.toBeNull();
     expect(loaded!.title).toBe('Store Test');
+    expect(loaded!.sessionId).toBe('goal-owner-s3');
     expect(loaded!.phases.size).toBe(2);
     expect(loaded!.autonomous).toBe(true);
     expect(loaded!.multiBoard).toBe(true);

@@ -23,6 +23,13 @@ export interface HqSocketCredentialState {
   browserSocketSessions: Map<WebSocket, string>;
   /** Token each `/ws/client` socket authenticated with (absent in open mode). */
   clientSocketTokens: Map<WebSocket, HqToken | undefined>;
+  /**
+   * Browser-token verifier each bare loopback `?token=` `/ws/browser` socket
+   * authenticated with. Those sockets have no session, so the session sweep
+   * never saw them: one kept streaming after its token expired by the clock
+   * (H-3, security-check 2026-09-26). Optional for callers that predate it.
+   */
+  browserSocketTokenKeys?: Map<WebSocket, string> | undefined;
 }
 
 export interface HqSocketCredentialEnforcer {
@@ -101,12 +108,29 @@ export function createHqSocketCredentialEnforcer(
     closeUnauthorizedClientSockets,
     sweepExpiredSocketCredentials(now = Date.now()) {
       closeUnauthorizedClientSockets();
+      for (const [browser, key] of state.browserSocketTokenKeys ?? []) {
+        const token = state.mutableAuth.browserTokenObjs.get(key);
+        const live =
+          state.mutableAuth.browserTokens.has(key) &&
+          token !== undefined &&
+          !isTokenExpired(token, now);
+        if (!live && browser.readyState === WebSocket.OPEN) {
+          browser.close(1008, 'Browser token expired or revoked');
+        }
+      }
       const expiredTokenIds = new Set(
         [...state.mutableAuth.browserTokenObjs.values()]
           .filter((token) => isTokenExpired(token, now))
           .map((token) => token.id),
       );
-      for (const sessionId of new Set(state.browserSocketSessions.values())) {
+      // Iterate state.sessions.keys() — NOT browserSocketSessions.values() —
+      // so sessions whose bound browser has already closed (the upgrade
+      // handler removes the socket from browserSocketSessions on 'close',
+      // but the session entry is left behind) are still expired and
+      // evicted. The previous shape left orphans in state.sessions for the
+      // rest of the process lifetime, which grew the map unboundedly
+      // across session churn.
+      for (const sessionId of new Set(state.sessions.keys())) {
         const session = state.sessions.get(sessionId);
         if (session === undefined) continue;
         const expired =

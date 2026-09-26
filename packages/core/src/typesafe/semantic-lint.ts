@@ -14,6 +14,7 @@
  * reported. Pattern matching, line numbers and thresholds stay in code.
  */
 
+import { toErrorMessage } from '../utils/error.js';
 import type { TypeSafeQuestion } from './client.js';
 import type { TypeSafeJudge } from './judgments.js';
 
@@ -259,7 +260,7 @@ export function parseSemanticLintRules(raw: unknown): {
         question: e['question'],
       });
     } catch (err) {
-      errors.push(`rule ${e['id']}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`rule ${e['id']}: ${toErrorMessage(err)}`);
     }
   });
   return { rules, errors };

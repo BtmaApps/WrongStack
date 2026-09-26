@@ -79,6 +79,7 @@ export interface SettingsPickerProps {
   featureMemory: boolean;
   featureSkills: boolean;
   featureModelsRegistry: boolean;
+  featureToolCoach: boolean;
   /** Token-saving tier: off | minimal | light | medium | aggressive. */
   tokenSavingTier: TokenSavingTierTui;
   /** Allow tools to read/write paths outside the project root directory. Default: true. */
@@ -224,6 +225,7 @@ export function SettingsPicker({
   featureMemory,
   featureSkills,
   featureModelsRegistry,
+  featureToolCoach,
   tokenSavingTier,
   allowOutsideProjectRoot,
   maxIterations,
@@ -591,6 +593,12 @@ export function SettingsPicker({
         : 'Show or hide the right sidebar in the TUI (chat history takes full width when off)',
     },
     toolResultViewSettingRow(toolResultViewMode),
+    { section: 'Agent guidance' },
+    {
+      label: 'Tool Coach',
+      value: boolVal(featureToolCoach),
+      detail: 'Suggest enabled tools and guide recovery after tool errors (default on)',
+    },
   ];
 
   // Build field → row index mapping. `rows` includes section headers

@@ -31,6 +31,47 @@ describe('bashTool', () => {
     }
   });
 
+  it('keeps the tail of an output larger than the preview — the verdict lands last', async () => {
+    const sb = await mkSandbox();
+    try {
+      // ~200 KB of noise between a head line and a summary line.
+      await fs.writeFile(
+        path.join(sb.dir, 'gen.js'),
+        "process.stdout.write('HEAD-LINE\\n' + ('x'.repeat(99) + '\\n').repeat(2000) + 'SUMMARY: 3 failed\\n');",
+      );
+      const out = await bashTool.execute({ command: 'node gen.js' }, sb.ctx, {
+        signal: newSignal(),
+      });
+      expect(out.exit_code).toBe(0);
+      expect(out.output).toContain('HEAD-LINE');
+      expect(out.output).toContain('SUMMARY: 3 failed');
+      expect(out.output).toMatch(/full \d+ bytes at /);
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
+  it('diets a passing test run and points at the full output', async () => {
+    const sb = await mkSandbox();
+    try {
+      await fs.writeFile(
+        path.join(sb.dir, 'fake-vitest.js'),
+        "let s='';for(let i=0;i<60;i++)s+=' \\u2713 tests/unit-'+i+'.test.ts (4 tests) 3ms\\n';process.stdout.write(s+' Tests  240 passed (240)\\n');",
+      );
+      // A trailing `# vitest` comment marks the command as a test run.
+      const out = await bashTool.execute({ command: 'node fake-vitest.js # vitest' }, sb.ctx, {
+        signal: newSignal(),
+      });
+      expect(out.output).toContain('Tests  240 passed (240)');
+      expect(out.output).not.toContain('unit-0.test.ts');
+      expect(out.output).toMatch(
+        /\[output-diet: omitted 60 line\(s\) of passing tests.* full output at /,
+      );
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
   it('reports non-zero exit code', async () => {
     const sb = await mkSandbox();
     try {

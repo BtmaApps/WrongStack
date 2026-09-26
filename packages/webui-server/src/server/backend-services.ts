@@ -91,10 +91,7 @@ import {
   type ProviderConfig,
   resolveContextWindowPolicy,
 } from '@wrongstack/core/types';
-import {
-  estimateRequestTokensCalibrated,
-  type WstackPaths,
-} from '@wrongstack/core/utils';
+import { estimateRequestTokensCalibrated, type WstackPaths } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
 import { getSageService, setupSage } from '@wrongstack/sage';
@@ -582,13 +579,22 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     resolveProvider: (providerId) => {
       const savedCfg: Partial<import('@wrongstack/core/types').ProviderConfig> =
         config.providers?.[providerId] ?? {};
+      // The legacy top-level key/baseUrl belong to the primary only (same rule
+      // as the CLI's resolveRawProviderConnection). Handing them to every
+      // provider sent the primary's key to other vendors, and to any base URL
+      // `provider_manage` repointed (WS-2026-09-26-01).
+      const isAccountAlias = savedCfg.type !== undefined && savedCfg.type !== providerId;
+      const inheritsPrimary =
+        !isAccountAlias && (config.provider === undefined || config.provider === providerId);
+      // The VULN-006 sentinel (`endpointCredentialsSuppressed` in @wrongstack/providers).
+      const repointed = Array.isArray(savedCfg.envVars) && savedCfg.envVars.length === 0;
       // `type` names the provider; the factory is the saved type (an alias
       // `work` is built by the `anthropic` factory, not looked up as `work`).
       return providerRegistry.create(
         {
           ...savedCfg,
-          apiKey: savedCfg.apiKey ?? config.apiKey,
-          baseUrl: savedCfg.baseUrl ?? config.baseUrl,
+          apiKey: savedCfg.apiKey ?? (inheritsPrimary && !repointed ? config.apiKey : undefined),
+          baseUrl: savedCfg.baseUrl ?? (inheritsPrimary ? config.baseUrl : undefined),
           type: providerId,
         } as never,
         savedCfg.type ?? providerId,
@@ -686,9 +692,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     ),
   ];
 
-  // Self-activation: watch for tool-failure streaks / error storms. `session`
-  // is read at send time via the getter the caller passes, so the steer
-  // always targets the LIVE session's leader identity.
+  // Self-activation: watch for tool-failure streaks / error storms. Only
+  // events with an originating session can steer a WebUI leader.
   const brainMailbox = getSharedProjectMailbox(wpaths.projectDir, events);
   brainMonitor = new BrainMonitor({
     events,
@@ -710,16 +715,11 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     fileChurnWindowMs: brainCfg.monitor?.fileChurnWindowMs,
     fileEditTools: brainCfg.monitor?.fileEditTools,
     cooldownMs: brainCfg.monitor?.cooldownMs,
-    // Watch the session that is actually in front. Pinning this to the ROOT
-    // context meant the monitor kept watching whichever session the host
-    // booted on, while `intervene` steered the live one — with several
-    // sessions under one host those are different tabs.
-    sessionId: () => input.sessionGetter().id,
+    // Never infer an owner from the foreground tab: WebUI events must carry
+    // their originating session, even if that tab is now in the background.
     intervene: async ({ subject, body, sessionId }) => {
-      // Steer the session whose distress triggered this, not "the current
-      // one": by the time an LLM-backed engagement resolves, the user may
-      // have switched tabs.
-      const tag = mailboxSessionTag(sessionId || input.sessionGetter().id);
+      if (!sessionId) return;
+      const tag = mailboxSessionTag(sessionId);
       await brainMailbox.send({
         from: `brain@${tag}`,
         to: `leader@${tag}`,

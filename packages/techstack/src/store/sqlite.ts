@@ -17,6 +17,7 @@ import {
   withSqliteExperimentalWarningSuppressed,
   wstackGlobalRoot,
 } from '@wrongstack/core/utils';
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import { loadRuntimeDatabaseSync } from '@wrongstack/persistence';
 import type {
   DeliveryOutbox,
@@ -46,7 +47,7 @@ function loadDatabaseSync(): typeof DatabaseSync {
       return DatabaseSyncCtor;
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = toErrorMessage(error);
     throw new Error(
       'TechStack SQLite store needs node:sqlite (Node >= 22.5) or bun:sqlite. ' +
         `This runtime doesn't provide it: ${message}`,

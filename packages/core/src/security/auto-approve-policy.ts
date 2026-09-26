@@ -30,17 +30,16 @@ import { subjectForToolInput } from '../utils/tool-subject.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
 import { getDangerousCapabilities, hasCapability, ToolCapabilities } from './capabilities.js';
 import {
+  classifyShellSurfaceInput,
   fsWriteTargetPaths,
   hasShellSubject,
   isInsideAgentStateRoot,
   isSensitiveReadCall,
   matchesTrust,
-  shellCommandLineFromInput,
 } from './permission-helpers.js';
 import { validateTrustPolicy } from './permission-policy-schema.js';
 import {
   attachesWellKnownCredential,
-  classifyDestructiveCommand,
   type DestructiveKind,
   normalizeYoloConfirmKinds,
 } from './yolo-risk.js';
@@ -226,9 +225,7 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
     // shell.restricted / shell.exec tools run commands too, and deny is the
     // safe direction for anything the classifier flags.
     if (!hasShellSubject(tool)) return undefined;
-    const command = shellCommandLineFromInput(input);
-    if (!command) return undefined;
-    const kind = classifyDestructiveCommand(command, ctx?.projectRoot);
+    const kind = classifyShellSurfaceInput(input, ctx?.projectRoot);
     if (kind !== undefined && this.yoloConfirmKinds.has(kind)) {
       return `subagents may not run ${kind} commands — the leader gates these even with YOLO enabled`;
     }

@@ -44,6 +44,7 @@ export function createSddHandlers(
   const onSddParallelRun = async (opts?: {
     parallelSlots?: number | undefined;
   }): Promise<string> => {
+    const ownerSessionId = sessionRef.current?.id ?? session.id;
     const { tracker, builder, graphId } = await getSddRuntimeState();
     if (!tracker || !builder) {
       return 'No active SDD session with tasks. Use /sdd new to start one.';
@@ -121,6 +122,7 @@ export function createSddHandlers(
 
     const sddSupervisor = new sddApi.SddSupervisor({
       brain,
+      sessionId: ownerSessionId,
       reassignModels: agentCore.effectiveFallbackChain(config),
     });
 

@@ -571,6 +571,21 @@ export async function executeSettingsSubcommand(
       };
     }
 
+    if (sub === 'tool-coach') {
+      const raw = (rest[0] ?? '').toLowerCase();
+      if (!['on', 'off'].includes(raw))
+        return { message: `${color.amber('Usage:')} /settings tool-coach on|off` };
+      const on = raw === 'on';
+      await persistConfigSetting(persistDeps, (cfg) => {
+        const feats = (cfg.features as Record<string, unknown>) ?? {};
+        feats.toolCoach = on;
+        cfg.features = feats;
+      });
+      return {
+        message: `${color.green('✓')} Tool Coach → ${on ? color.cyan('on') : color.dim('off')}   ${color.dim('applies to the next task')}`,
+      };
+    }
+
     if (sub === 'stream-fleet') {
       const raw = (rest[0] ?? '').toLowerCase();
       const mode: FleetChatVerbosity | undefined =

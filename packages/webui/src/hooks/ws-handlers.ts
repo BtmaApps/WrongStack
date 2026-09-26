@@ -35,6 +35,10 @@ import { filesMailboxHandlerMap, queryMailbox } from './ws-handlers/files-mailbo
 // Fleet domain handlers extracted to fleet-handlers.ts
 import { fleetHandlerMap } from './ws-handlers/fleet-handlers.js';
 // Misc domain handlers extracted to misc-handlers.ts
+import {
+  handleMcpServerDisconnected,
+  handleMcpServerUp,
+} from './ws-handlers/mcp-status-handlers.js';
 import { handleMemoryEvent, miscHandlerMap } from './ws-handlers/misc-handlers.js';
 import { promptQueueHandlerMap, requestPromptQueue } from './ws-handlers/prompt-queue-handlers.js';
 // Session domain handlers extracted to session-handlers.ts
@@ -606,6 +610,9 @@ export const WS_HANDLERS: Partial<Record<WSServerMessage['type'], (msg: WSServer
     ...coordinatorHandlerMap,
     ...techStackHandlerMap,
     ...promptQueueHandlerMap,
+    'mcp.server.disconnected': handleMcpServerDisconnected,
+    'mcp.server.connected': handleMcpServerUp,
+    'mcp.server.reconnected': handleMcpServerUp,
     'config.doctor.result': handleConfigDoctorResult,
     'session.start': (msg: WSServerMessage) => {
       handleSessionStart(msg);

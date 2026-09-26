@@ -21,6 +21,7 @@ export interface JevSettingsPatch {
   endpoint?: string | null;
   model?: string | null;
   requestTimeoutMs?: number;
+  logContent?: boolean;
   contextStrategy?: 'hybrid' | 'intelligent' | 'selective';
   recallTurnContext?: boolean;
   features?: Partial<Record<JevFeature, boolean>>;
@@ -39,6 +40,8 @@ export function validateJevSettingsPatch(value: unknown): JevSettingsPatch {
     } else if (key === 'requestTimeoutMs') {
       if (typeof val !== 'number' || !Number.isInteger(val) || val < 100 || val > 120000)
         throw new Error('Timeout must be 100–120000 ms');
+    } else if (key === 'logContent') {
+      if (typeof val !== 'boolean') throw new Error('Invalid Jev log content setting');
     } else if (key === 'recallTurnContext') {
       if (typeof val !== 'boolean') throw new Error('Invalid recall turn context setting');
     } else if (key === 'contextStrategy') {
@@ -87,7 +90,14 @@ function apply(config: Partial<Config>, patch: JevSettingsPatch): Partial<Config
     delete typesafe.endpoint;
     delete typesafe.model;
   }
-  for (const key of ['route', 'apiKey', 'endpoint', 'model', 'requestTimeoutMs'] as const) {
+  for (const key of [
+    'route',
+    'apiKey',
+    'endpoint',
+    'model',
+    'requestTimeoutMs',
+    'logContent',
+  ] as const) {
     if (!(key in patch)) continue;
     const val = patch[key];
     if (val === null) delete typesafe[key];
@@ -157,6 +167,7 @@ export function jevSettingsSnapshot(config: Readonly<Config>) {
     requestTimeoutMs: config.typesafe?.requestTimeoutMs ?? 4000,
     keySource: account.status === 'ready' ? account.keySource : 'none',
     features,
+    logContent: config.typesafe?.logContent === true,
     recallTurnContext: config.Sage?.inject?.turnContext === true,
     readiness: jevFeatureReadiness(config, features, account.status === 'ready'),
     contextStrategy:

@@ -29,7 +29,6 @@ import {
 import {
   ALL_DESTRUCTIVE_KINDS,
   attachesWellKnownCredential,
-  classifyDestructiveCommand,
   type DestructiveKind,
   LOCKED_DESTRUCTIVE_KINDS,
   normalizeYoloConfirmKinds,
@@ -47,6 +46,7 @@ export {
 
 import {
   alwaysAllowUnavailableReason,
+  classifyShellSurfaceInput,
   fsWriteTargetPaths,
   hasShellSubject,
   isInsideAgentStateRoot,
@@ -54,7 +54,6 @@ import {
   matchesCommandTrust,
   matchesTrust,
   permissionFingerprint,
-  shellCommandLineFromInput,
 } from './permission-helpers.js';
 
 import { isYoloLockedOff } from './process-lockdown.js';
@@ -221,10 +220,9 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // short-circuited on the bare program name, so the classifier never saw the
     // args — `{command:'rm', args:['-rf','/']}` classified as "rm".
     // `shellCommandLineFromInput` already joins command/cmd/script with args; it
-    // is the whole reason this branch exists.
-    const command = shellCommandLineFromInput(input);
-    if (!command) return undefined;
-    return classifyDestructiveCommand(command, ctx.projectRoot);
+    // is the whole reason this branch exists. Structured `{ program, args }`
+    // commands (workflow plugins) are read too — WS-2026-09-26-03.
+    return classifyShellSurfaceInput(input, ctx.projectRoot);
   }
 
   /** The kind holding this call back, or `undefined` when nothing gates it. */
@@ -465,9 +463,15 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // The user's own rule for this session: honoured like an approval given at
     // a prompt, and stopped short by the same things (a sensitive read, a
     // destructive call).
-    const sessionAllow = denyUnevaluated
-      ? undefined
-      : matchSessionPermissionOverride(overrides, 'allow', tool, subject);
+    // `--restricted` promises that every write asks, which is why it refuses
+    // `--allowed-tools`. A session rule is the same pre-approval, and one can
+    // arrive with a resumed journal rather than from this run's user
+    // (WS-2026-09-26-04) — so under that lockdown allows are not honoured.
+    // Denies still are.
+    const sessionAllow =
+      denyUnevaluated || isYoloLockedOff()
+        ? undefined
+        : matchSessionPermissionOverride(overrides, 'allow', tool, subject);
     if (sessionAllow && (this.effectiveYolo(ctx) || !this.isSensitiveReadCall(tool, input))) {
       const rule = describeSessionPermissionOverride(sessionAllow.override);
       if (this.broadApprovalStopsShort(tool, input, ctx)) {

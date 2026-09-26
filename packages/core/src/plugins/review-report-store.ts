@@ -18,7 +18,6 @@ import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { SECRET_FILE_MODE } from '../security/file-permissions.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
-import type { CascadeEvidenceCheckResult, CascadeEvidenceStatus } from './review-types.js';
 import type {
   ReviewReport,
   ReviewReportCounts,
@@ -31,6 +30,7 @@ import {
   reportEventTypeFor,
   validateReportTransition,
 } from './review-report-types.js';
+import type { CascadeEvidenceCheckResult, CascadeEvidenceStatus } from './review-types.js';
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -65,7 +65,14 @@ interface ReportEventRecord {
 interface ReportCompactMarker {
   __reportCompact: 1;
   compactedAt: string;
+  /** Terminal (completed/skipped) reports dropped by their own retention. */
   removedReports: number;
+  /**
+   * Non-terminal (`open`/`actioned`) reports dropped by the bounded-retention
+   * path. Absent from stores last compacted before that path existed, so it
+   * must stay optional.
+   */
+  removedNonTerminalReports?: number;
   foldedEvents: number;
 }
 
@@ -122,7 +129,16 @@ export interface ReportStore {
   list(opts?: ListReportsOptions): Promise<ReviewReport[]>;
   get(id: string): Promise<ReviewReport | null>;
   getEvents(reportId: string): Promise<ReviewReportEvent[]>;
-  compact(opts?: { maxAgeMs?: number }): Promise<{ removed: number; eventsFolded: number }>;
+  /**
+   * Drop terminal (completed/skipped) reports older than `maxAgeMs`, and — when
+   * `nonTerminalMaxAgeMs` is supplied — drop non-terminal (`open`/`actioned`)
+   * reports older than that cap. Omitting `nonTerminalMaxAgeMs` keeps the
+   * historical contract: a report that was never closed out is never removed.
+   */
+  compact(opts?: {
+    maxAgeMs?: number | undefined;
+    nonTerminalMaxAgeMs?: number | undefined;
+  }): Promise<{ removed: number; removedNonTerminal: number; eventsFolded: number }>;
 }
 
 // ── Implementation ─────────────────────────────────────────────────
@@ -346,14 +362,23 @@ export class JsonlReportStore implements ReportStore {
 
   // ── Compaction ───────────────────────────────────────────────────
 
-  async compact(opts?: { maxAgeMs?: number }): Promise<{ removed: number; eventsFolded: number }> {
+  async compact(opts?: {
+    maxAgeMs?: number;
+    nonTerminalMaxAgeMs?: number;
+  }): Promise<{ removed: number; removedNonTerminal: number; eventsFolded: number }> {
     return withFileLock(this.filePath, async () => {
       const maxAge = opts?.maxAgeMs ?? REPORT_RETENTION_MS;
+      // Bounded retention for reports that never reached a terminal state.
+      // Left undefined, the historical behavior is preserved exactly: an
+      // `open`/`actioned` report is kept at any age. Only the maintenance
+      // owner (review-store-maintenance.ts) supplies a cap in production.
+      const nonTerminalMaxAge = opts?.nonTerminalMaxAgeMs;
       const now = Date.now();
 
       const all = await this._readAll();
       const kept: Array<{ record: ReportRecord | null; events: ReviewReportEvent[] }> = [];
       let removed = 0;
+      let removedNonTerminal = 0;
       let eventsFolded = 0;
 
       for (const entry of all) {
@@ -364,6 +389,12 @@ export class JsonlReportStore implements ReportStore {
 
         if (isTerminal && age > maxAge) {
           removed++;
+          eventsFolded += entry.events.length;
+          continue;
+        }
+
+        if (!isTerminal && nonTerminalMaxAge !== undefined && age > nonTerminalMaxAge) {
+          removedNonTerminal++;
           eventsFolded += entry.events.length;
           continue;
         }
@@ -395,12 +426,13 @@ export class JsonlReportStore implements ReportStore {
           __reportCompact: 1,
           compactedAt: new Date().toISOString(),
           removedReports: removed,
+          removedNonTerminalReports: removedNonTerminal,
           foldedEvents: eventsFolded,
         } as ReportCompactMarker),
       );
 
       await atomicWrite(this.filePath, lines.join(NL) + NL, { mode: 0o600 });
-      return { removed, eventsFolded };
+      return { removed, removedNonTerminal, eventsFolded };
     });
   }
 

@@ -1,3 +1,4 @@
+import { fenceIfUntrusted } from '@wrongstack/core/agent';
 import {
   DEFAULT_EAGER_SKILL_LIMIT,
   loadProjectSkillAugmentation,
@@ -121,13 +122,24 @@ export async function resolveHostSubagentSkillResolution(
       const augmentation = role
         ? loadProjectSkillAugmentation(role, skillName, deps.projectRoot)
         : '';
+      // The skill body itself can be untrusted too: a foreign skill from
+      // another agent's `~/.codex/skills/` or a repo-committed `project` skill
+      // arrives without the operator's review and would otherwise read as
+      // operating rules rather than as material. The eager/compact builders
+      // fence the body via fenceIfUntrusted; this path must do the same so
+      // the "not ours" boundary and label cannot drift apart.
       const compose = (bodyChars: number): string =>
         [
           `## Skill: ${skillName}`,
           '',
-          body.length > bodyChars
-            ? `${body.slice(0, bodyChars).trimEnd()}\n\n_(body trimmed)_`
-            : body,
+          fenceIfUntrusted(
+            manifest.source,
+            skillName,
+            body.length > bodyChars
+              ? `${body.slice(0, bodyChars).trimEnd()}\n\n_(body trimmed)_`
+              : body,
+            manifest.originTool,
+          ),
           ...(augmentation
             ? [
                 '',

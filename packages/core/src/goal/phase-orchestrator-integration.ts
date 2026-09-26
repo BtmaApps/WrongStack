@@ -197,6 +197,7 @@ async function shouldAttemptConflictResolution(
 
   const decision = await int.ctx.brain.decide({
     id: `goal-conflict-${phase.id}`,
+    sessionId: int.ctx.sessionId,
     source: 'goal',
     question: `Should Goal try to resolve merge conflicts for phase "${phase.name}" automatically?`,
     context: [

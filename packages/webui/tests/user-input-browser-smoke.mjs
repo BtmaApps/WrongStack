@@ -78,7 +78,10 @@ const pending = { sessionId: 'simple-session', request: { id: 'simple-form', tit
 ] } };
 window.__sent = [];
 const send = (type, payload) => { window.__sent.push({ type, payload }); };
-createRoot(document.getElementById('root')).render(React.createElement(UserInputModal, { pending, queuedCount: 2, send }));
+// UserInputModal takes the pending form nested under an "input:" prop
+// (see simple-ui-session.tsx) — the Sep 25 2026 refactor moved the
+// props into that shape, so the fixture must match it.
+createRoot(document.getElementById('root')).render(React.createElement(UserInputModal, { input: { pending, queuedCount: 2 }, send }));
 window.__userInputReady = true;
 `;
 
@@ -147,7 +150,13 @@ async function assertGeometry(page, width, height) {
 
 async function runSurface(browser, root, source, name) {
   const { server, url } = await start(root, source);
-  const page = await browser.newPage();
+  // Pin the browser locale: Playwright inherits the host OS locale (tr-TR
+  // on some dev machines) and the app boots its UI language from the
+  // browser language, but every accessible-name assertion below expects
+  // English ("Custom answer", "Select custom answer", …). Pinning the
+  // context locale keeps the smoke deterministic on any host.
+  const context = await browser.newContext({ locale: 'en-US' });
+  const page = await context.newPage();
   try {
     for (const [width, height] of [
       [390, 520],
@@ -248,6 +257,7 @@ async function runSurface(browser, root, source, name) {
     };
   } finally {
     await page.close();
+    await context.close();
     await server.close();
   }
 }

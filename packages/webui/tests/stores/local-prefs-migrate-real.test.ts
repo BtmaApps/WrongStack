@@ -226,9 +226,11 @@ describe('local-prefs migrate() — persist option (real implementation)', () =>
 
   // ── v9: auto-review ──────────────────────────────────────────────────────
 
-  it('defaults autoReviewEnabled to false (strict opt-in)', () => {
-    expect(migrate({}).autoReviewEnabled).toBe(false);
+  it('defaults autoReviewEnabled to true (default-on)', () => {
+    expect(migrate({}).autoReviewEnabled).toBe(true);
     expect(migrate({ autoReviewEnabled: true }).autoReviewEnabled).toBe(true);
+    // An explicit opt-out must survive the default-on migration.
+    expect(migrate({ autoReviewEnabled: false }).autoReviewEnabled).toBe(false);
   });
 
   it('defaults auto-review string prefs to empty strings', () => {
@@ -301,7 +303,7 @@ describe('local-prefs migrate() — persist option (real implementation)', () =>
   });
 
   it.each(['medium', '', undefined, 1])('rejects invalid autoReviewCascadeOn %p', (v) => {
-    expect(migrate({ autoReviewCascadeOn: v }).autoReviewCascadeOn).toBe('off');
+    expect(migrate({ autoReviewCascadeOn: v }).autoReviewCascadeOn).toBe('high');
   });
 
   // ── v11: display / access flags ──────────────────────────────────────────

@@ -24,6 +24,12 @@ export interface ThemePickerOption {
   id: ThemeName;
   name: string;
   description: string;
+  /**
+   * Palette family (Catppuccin, Tokyo Night, Gruvbox, …) used to group
+   * related rows in the picker. Sourced from `THEME_PRESET_META` in
+   * `@wrongstack/core/types`, the same table the CLI reads.
+   */
+  family: string;
 }
 
 export interface Theme {

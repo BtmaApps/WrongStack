@@ -52,6 +52,7 @@ export interface CodexModelMetadata {
   supported_reasoning_levels?: unknown;
   input_modalities?: unknown;
   supports_parallel_tool_calls?: unknown;
+  support_verbosity?: unknown;
   visibility?: unknown;
   display_name?: unknown;
   description?: unknown;
@@ -81,6 +82,7 @@ export interface CodexModelPolicy {
   acceptsImages: boolean;
   /** False only when the catalog explicitly says the model cannot parallelise. */
   parallelToolCalls: boolean;
+  supportsVerbosity: boolean;
 }
 
 /**

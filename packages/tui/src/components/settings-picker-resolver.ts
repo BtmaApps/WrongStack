@@ -74,6 +74,7 @@ export function resolveSettingsFieldValue(
     [10, 'featureMemory'],
     [11, 'featureSkills'],
     [12, 'featureModelsRegistry'],
+    [63, 'featureToolCoach'],
     [14, 'allowOutsideProjectRoot'],
     [18, 'enhanceEnabled'],
     [20, 'indexOnStart'],

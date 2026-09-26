@@ -305,6 +305,78 @@ describe('StatusBar chip separators', () => {
     view.unmount();
   });
 
+  it('renders the reasoning effort inside the model chip, not as its own chip', () => {
+    const frame = frameOf({
+      provider: 'openai',
+      model: 'gpt-5.6',
+      effort: 'xhigh',
+      projectName: 'WrongStack',
+      hiddenItems: ['state'],
+    });
+    const [line1 = ''] = frame.split('\n');
+
+    // Effort qualifies the model, so it shares the chip — `openai/gpt-5.6 · xhigh`
+    // as one contiguous run, not two powerline segments.
+    expect(line1).toContain('openai/gpt-5.6 · xhigh');
+  });
+
+  it('omits the effort suffix entirely when the host reports no effort', () => {
+    // Backward compat: a caller that never passes `effort` must render
+    // byte-for-byte the old chip — no stray separator, no trailing space.
+    const frame = frameOf({
+      provider: 'openai',
+      model: 'gpt-5.6',
+      projectName: 'WrongStack',
+      hiddenItems: ['state'],
+    });
+    const [line1 = ''] = frame.split('\n');
+
+    expect(line1).toContain('openai/gpt-5.6');
+    expect(line1).not.toContain('gpt-5.6 ·');
+  });
+
+  it('keeps the effort suffix at `short` density but drops it at `micro`', () => {
+    // `gpt-5.6` is 7 columns, so at `micro` the model survives
+    // `truncateChip(model, 10)` unchanged — a suffix there would render micro
+    // byte-identical to short, the zero-gain rung the fitter can never reach.
+    // The ladder must stay strictly decreasing, so `micro` drops the suffix.
+    const base: Partial<StatusBarProps> = {
+      provider: 'openai',
+      model: 'gpt-5.6',
+      effort: 'xhigh',
+      projectName: 'WrongStack',
+      hiddenItems: ['state'],
+    };
+    const shortFrame = frameOf({ ...base, statuslineDensities: { model: 'short' } });
+    const microFrame = frameOf({ ...base, statuslineDensities: { model: 'micro' } });
+
+    // `short` keeps the suffix AND drops the provider prefix — without the
+    // provider assertion this would also pass at `full`, where the chip reads
+    // `openai/gpt-5.6 · xhigh`, so the pin would prove nothing.
+    expect(shortFrame).toContain('gpt-5.6 · xhigh');
+    expect(shortFrame).not.toContain('openai/');
+    expect(microFrame).toContain('gpt-5.6'); // micro keeps the (untruncated) model
+    expect(microFrame).not.toContain('openai/');
+    expect(microFrame).not.toContain('xhigh'); // micro drops the suffix
+  });
+
+  it('omits the effort suffix in minimum mode', () => {
+    // Minimum is the default statusline and its chips are single-level
+    // elements the fitter can only DROP, never degrade — a qualifier here
+    // could never shed, so it would evict trailing chips at moderate widths.
+    // Same reason the minimum context chip omits its `[strategy]`.
+    const frame = frameOf({
+      mode: 'minimum',
+      provider: 'openai',
+      model: 'gpt-5.6',
+      effort: 'xhigh',
+      hiddenItems: ['state'],
+    });
+
+    expect(frame).toContain('openai/gpt-5.6');
+    expect(frame).not.toContain('xhigh');
+  });
+
   it('renders a customized left-to-right chip order', () => {
     const frame = frameOf({
       provider: 'openai',

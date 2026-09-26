@@ -133,6 +133,23 @@ describe('resolveProviderCfg', () => {
     expect(out.cfg.apiKey).toBe('sk-test');
     expect(out.cfg.baseUrl).toBe('https://legacy.example/v1');
   });
+
+  it('does not hand the legacy top-level key to a repointed primary (WS-2026-09-26-01)', () => {
+    // provider_manage writes the `envVars: []` sentinel when it repoints an
+    // entry; leader_model_set can then make that entry primary. Inheriting the
+    // top-level key there carried it to the new base URL.
+    const config = fakeConfig({
+      providers: {
+        anthropic: {
+          type: 'anthropic',
+          baseUrl: 'https://attacker.example/v1',
+          envVars: [],
+        },
+      },
+    });
+    const out = resolveProviderCfg(config, 'anthropic');
+    expect(out.cfg.apiKey).toBeUndefined();
+  });
 });
 
 describe('buildProviderForId', () => {

@@ -3,16 +3,13 @@
  *
  * The question this answers is not "what is the hit ratio" — the session
  * ledger already reports that — but "WHICH PART of the request stopped
- * matching what the backend had cached". On a wire with no cache breakpoints
- * (OpenAI Responses / the ChatGPT Codex backend) the cached prefix is
- * `instructions` + `tools` + the input array in order, so a single byte that
- * moves near the front re-bills everything behind it, which by that point is
- * the whole conversation. A ratio alone cannot distinguish that from a cache
- * that simply expired between turns.
+ * matching the previous request". We compare instructions, tools and input
+ * items locally. The backend's rendered prefix, token boundaries and routing
+ * are not observable here; character overlap is not a cache-hit prediction.
  *
  * So the probe fingerprints the three segments per request, diffs them against
- * the previous request of the SAME session, and appends one JSONL line saying
- * where the divergence was and how many characters it cost. The usage line
+ * the previous request of the same account/provider/model/thread/settings,
+ * and appends one JSONL line saying where the divergence was. The usage line
  * that follows carries what the backend actually charged, so a reader can pair
  * "prefix broke at item 4" with "cached_tokens collapsed to 0".
  *
@@ -49,7 +46,11 @@ export interface CacheProbeDiff {
    * the healthy case).
    */
   firstDivergentItem: number | null;
-  /** Characters of THIS request the previous request's cache entry can cover. */
+  /**
+   * Local matching characters in tools → instructions → input order.
+   * Historical field name; this does not establish a server cache entry or
+   * eligible breakpoint at the end of the matching text.
+   */
   cacheablePrefixChars: number;
   /** Total characters in the cacheable segments of this request. */
   promptChars: number;
@@ -92,12 +93,12 @@ export function fingerprintCacheProbe(segments: {
 }
 
 /**
- * Diff two fingerprints into the per-request cache verdict.
+ * Diff two fingerprints into a local prefix comparison.
  *
- * `cacheablePrefixChars` is deliberately pessimistic in the two ways the wire
- * is: a changed `instructions` voids everything (it leads the prefix), and a
- * changed `tools` array voids everything after `instructions` — neither can be
- * partially reused, because the backend matches a prefix, not a diff.
+ * Follow the documented rendered order: tools precede developer instructions,
+ * then conversation input. Each segment is compared as a whole; hidden server
+ * content, partial segment matches and eligible cache boundaries are unknown.
+ * This is character overlap, not a cache verdict, even when it reaches 100%.
  */
 export function diffCacheProbe(
   prev: CacheProbeFingerprint | undefined,
@@ -127,10 +128,10 @@ export function diffCacheProbe(
   }
 
   let cacheablePrefixChars = 0;
-  if (instructionsChanged) {
+  if (toolsChanged) {
     cacheablePrefixChars = 0;
-  } else if (toolsChanged) {
-    cacheablePrefixChars = cur.instructionsChars;
+  } else if (instructionsChanged) {
+    cacheablePrefixChars = cur.toolsChars;
   } else {
     cacheablePrefixChars = cur.instructionsChars + cur.toolsChars;
     const upTo = firstDivergentItem ?? shared;
@@ -190,25 +191,36 @@ function append(line: Record<string, unknown>): void {
 }
 
 /**
- * Record one request's prefix verdict. `sessionKey` must be the same value the
- * wire sends as its cache partition key, so the probe compares exactly what
- * the backend compares.
+ * Record local prefix similarity. Keep the wire partition key for attribution,
+ * but compare individual threads/models rather than siblings sharing that key.
  */
 export function recordCacheProbeRequest(input: {
   provider: string;
   sessionKey: string;
   model: string;
+  threadId?: string | undefined;
+  requestId?: string | undefined;
+  accountScope?: string | undefined;
+  settings?: unknown;
   instructions: string;
   tools: readonly unknown[] | undefined;
   items: readonly unknown[];
 }): void {
   if (!isCacheProbeEnabled()) return;
   const cur = fingerprintCacheProbe(input);
-  const prev = lastBySession.get(input.sessionKey);
+  const identity = JSON.stringify([
+    input.provider,
+    input.accountScope,
+    input.model,
+    input.sessionKey,
+    input.threadId,
+    input.settings,
+  ]);
+  const prev = lastBySession.get(identity);
   const diff = diffCacheProbe(prev, cur);
 
-  lastBySession.delete(input.sessionKey);
-  lastBySession.set(input.sessionKey, cur);
+  lastBySession.delete(identity);
+  lastBySession.set(identity, cur);
   while (lastBySession.size > MAX_TRACKED_SESSIONS) {
     const oldest = lastBySession.keys().next().value;
     if (oldest === undefined) break;
@@ -221,6 +233,8 @@ export function recordCacheProbeRequest(input: {
     provider: input.provider,
     session: input.sessionKey,
     model: input.model,
+    threadId: input.threadId,
+    requestId: input.requestId,
     first: prev === undefined,
     items: cur.items.length,
     prevItems: prev?.items.length ?? 0,
@@ -231,10 +245,9 @@ export function recordCacheProbeRequest(input: {
     firstDivergentItem: diff.firstDivergentItem,
     cacheablePrefixChars: diff.cacheablePrefixChars,
     promptChars: diff.promptChars,
-    // What the transport could reuse if the entry is still alive server-side.
-    // Compared against the usage line's real `cacheRead`, the gap between the
-    // two separates "we broke the prefix" from "the entry expired".
-    expectedHitPct:
+    // JSON character overlap is diagnostic evidence, not a prediction of
+    // token cache hits: server rendering, breakpoints and routing are unknown.
+    matchingPrefixCharsPct:
       diff.promptChars > 0 ? Math.round((diff.cacheablePrefixChars / diff.promptChars) * 100) : 0,
   });
 }
@@ -243,19 +256,51 @@ export function recordCacheProbeRequest(input: {
 export function recordCacheProbeUsage(input: {
   provider: string;
   sessionKey: string;
-  usage: { input: number; output: number; cacheRead?: number | undefined };
+  model?: string | undefined;
+  threadId?: string | undefined;
+  requestId?: string | undefined;
+  /** Subset of output tokens, never added to the charged output total. */
+  reasoningTokens?: number | undefined;
+  usage: {
+    input: number;
+    output: number;
+    cacheRead?: number | undefined;
+    cacheWrite?: number | undefined;
+  };
 }): void {
   if (!isCacheProbeEnabled()) return;
   const cacheRead = input.usage.cacheRead ?? 0;
-  const prompt = input.usage.input + cacheRead;
+  const cacheWrite = input.usage.cacheWrite ?? 0;
+  const prompt = input.usage.input + cacheRead + cacheWrite;
   append({
     kind: 'usage',
     ts: new Date().toISOString(),
     provider: input.provider,
     session: input.sessionKey,
+    model: input.model,
+    threadId: input.threadId,
+    requestId: input.requestId,
     promptTokens: prompt,
     cachedTokens: cacheRead,
+    cacheWriteTokens: cacheWrite,
     outputTokens: input.usage.output,
+    reasoningOutputTokens: input.reasoningTokens,
     actualHitPct: prompt > 0 ? Math.round((cacheRead / prompt) * 100) : 0,
   });
+}
+
+/** Transport reuse is separate from backend token cache hits. No prompt text is logged. */
+export function recordCacheProbeTransport(input: {
+  provider: string;
+  sessionKey: string;
+  threadId?: string | undefined;
+  requestId?: string | undefined;
+  model: string;
+  mode: 'full' | 'delta';
+  reason: string;
+  fullInputItems: number;
+  sentInputItems: number;
+}): void {
+  if (!isCacheProbeEnabled()) return;
+  append({ kind: 'transport', ts: new Date().toISOString(), ...input });
 }

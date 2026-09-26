@@ -1,6 +1,12 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import {
+  armRequiredSkills,
+  pendingRequiredSkills,
+  readRequiredSkillsState,
+  SKILL_LIMITS,
+} from '@wrongstack/core/skills';
 import type { SkillLoader, SkillManifest } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeSkillTool } from '../src/skill.js';
@@ -258,5 +264,65 @@ describe('makeSkillTool', () => {
       type: 'skill_activated',
       skillName: 'ev-skill',
     });
+  });
+});
+
+describe('makeSkillTool — required-skill gate', () => {
+  async function gatedTool(body: string) {
+    const dir = path.join(tmp, 'gate-skill');
+    await fs.mkdir(dir, { recursive: true });
+    const raw = `---\nname: gate-skill\ndescription: d\n---\n${body}`;
+    await fs.writeFile(path.join(dir, 'SKILL.md'), raw);
+    return makeSkillTool(
+      loader(
+        [
+          {
+            name: 'gate-skill',
+            description: 'd',
+            path: path.join(dir, 'SKILL.md'),
+            source: 'project',
+          },
+        ],
+        { 'gate-skill': raw },
+      ),
+    );
+  }
+
+  function armedCtx() {
+    const ctx = { meta: {} as Record<string, unknown> };
+    armRequiredSkills(ctx, '<!-- wrongstack:required-skills gate-skill missing-skill -->');
+    return ctx;
+  }
+
+  it('counts a skill as loaded only once its last page is delivered', async () => {
+    const tool = await gatedTool('x'.repeat(SKILL_LIMITS.MAX_SKILL_BODY_CHARS + 10));
+    const ctx = armedCtx();
+
+    const first = await tool.execute({ name: 'gate-skill' }, ctx as never, RUN_OPTS);
+    expect(first.nextOffset).toBeDefined();
+    expect(pendingRequiredSkills(ctx)).toContain('gate-skill');
+
+    await tool.execute({ name: 'gate-skill', offset: first.nextOffset }, ctx as never, RUN_OPTS);
+    expect(pendingRequiredSkills(ctx)).not.toContain('gate-skill');
+  });
+
+  it('releases a required skill the runtime cannot find', async () => {
+    const tool = await gatedTool('body');
+    const ctx = armedCtx();
+    await expect(tool.execute({ name: 'missing-skill' }, ctx as never, RUN_OPTS)).rejects.toThrow(
+      /not found/,
+    );
+    expect(pendingRequiredSkills(ctx)).toEqual(['gate-skill']);
+  });
+
+  it('records which call delivered the skill, so compaction can be detected', async () => {
+    const tool = await gatedTool('body');
+    const ctx = armedCtx();
+    await tool.execute({ name: 'gate-skill' }, ctx as never, { ...RUN_OPTS, toolUseId: 'use-7' });
+    expect(readRequiredSkillsState(ctx)?.deliveries).toEqual({ 'gate-skill': 'use-7' });
+  });
+
+  it('is exempt from output previewing, so a counted page is a delivered page', async () => {
+    expect((await gatedTool('body')).preserveFullOutput).toBe(true);
   });
 });

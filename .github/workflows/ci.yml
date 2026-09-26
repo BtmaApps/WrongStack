@@ -119,6 +119,12 @@ jobs:
       - name: Check (lint warning ratchet)
         run: pnpm check:lint-warnings
 
+      # Every `uses:` is pinned to a commit SHA (WS-041): a tag or a branch
+      # can be moved to other code after review, and a workflow with write
+      # access runs whatever it points at. The policy was a habit until this.
+      - name: Check (GitHub Actions pinned to commit SHAs)
+        run: pnpm check:action-pins
+
   typecheck:
     name: TypeCheck (tsc)
     needs: reuse-checks

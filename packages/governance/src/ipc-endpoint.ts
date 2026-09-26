@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
+import { privateEndpointKey } from '@wrongstack/persistence';
 
 import { GOVERNANCE_SERVICE_PROTOCOL_VERSION } from './service-protocol.js';
 
@@ -22,7 +23,8 @@ export function governanceProjectKey(projectRoot: string): string {
 }
 
 export function governanceProjectServerEndpoint(projectRoot: string): string {
-  const key = governanceProjectKey(projectRoot);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(governanceProjectKey(projectRoot));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-governance-v${GOVERNANCE_SERVICE_PROTOCOL_VERSION}-${key}`;
   }

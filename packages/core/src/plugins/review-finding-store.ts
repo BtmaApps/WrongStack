@@ -64,7 +64,13 @@ interface LifecycleEventRecord {
 interface CompactMarker {
   __findingCompact: 1;
   compactedAt: string;
+  /** Terminal findings (resolved/ignored) dropped by their own windows. */
   removedFindings: number;
+  /**
+   * Non-terminal findings (active/triaged/in_progress) dropped by the bounded
+   * cap. Optional so markers written before that path existed still parse.
+   */
+  removedNonTerminalFindings?: number;
   foldedEvents: number;
 }
 
@@ -97,6 +103,17 @@ export interface CompactOptions {
   resolvedMaxAgeMs?: number | undefined;
   /** Ignored findings use this separately. Default: FINDING_IGNORED_RETENTION_MS. */
   ignoredMaxAgeMs?: number | undefined;
+  /**
+   * Bounded retention for findings that never reached a terminal status —
+   * `active`, `triaged` and `in_progress` alike. Without it those rows are
+   * immortal at any age, because the terminal rule above keys only on
+   * `resolved`/`ignored`.
+   *
+   * Omit to preserve the historical contract exactly: a non-terminal finding is
+   * never removed. Only the maintenance owner supplies a cap in production.
+   * Age is measured from `createdAt`, the same basis the terminal rule uses.
+   */
+  nonTerminalMaxAgeMs?: number | undefined;
 }
 
 export interface FindingStore {
@@ -110,7 +127,17 @@ export interface FindingStore {
   list(opts?: ListOptions): Promise<ChimeraFinding[]>;
   get(idOrFingerprint: string): Promise<ChimeraFinding | null>;
   getEvents(findingId: string): Promise<FindingLifecycleEvent[]>;
-  compact(opts?: CompactOptions): Promise<{ removed: number; eventsFolded: number }>;
+  /**
+   * Drops `resolved`/`ignored` findings past their own 30d/14d windows, and —
+   * only when `nonTerminalMaxAgeMs` is supplied — `active`/`triaged`/
+   * `in_progress` findings past that cap. Omitting it preserves the historical
+   * contract: a finding that was never resolved or ignored is never removed.
+   */
+  compact(opts?: CompactOptions): Promise<{
+    removed: number;
+    removedNonTerminal: number;
+    eventsFolded: number;
+  }>;
 }
 
 export class JsonlFindingStore implements FindingStore {
@@ -312,25 +339,42 @@ export class JsonlFindingStore implements FindingStore {
     return events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 
-  async compact(opts?: CompactOptions): Promise<{ removed: number; eventsFolded: number }> {
+  async compact(opts?: CompactOptions): Promise<{
+    removed: number;
+    removedNonTerminal: number;
+    eventsFolded: number;
+  }> {
     return withFileLock(this.filePath, async () => {
       const resolvedMaxAge = opts?.resolvedMaxAgeMs ?? FINDING_RESOLVED_RETENTION_MS;
       const ignoredMaxAge = opts?.ignoredMaxAgeMs ?? FINDING_IGNORED_RETENTION_MS;
+      const nonTerminalMaxAge = opts?.nonTerminalMaxAgeMs;
       const now = Date.now();
 
       const all = await this._readAll();
       const kept: Array<{ record: FindingRecord | null; events: FindingLifecycleEvent[] }> = [];
       let removed = 0;
+      let removedNonTerminal = 0;
       let eventsFolded = 0;
 
       for (const entry of all) {
         const age = now - new Date(entry.finding.createdAt).getTime();
         const isResolved = entry.finding.status === 'resolved';
         const isIgnored = entry.finding.status === 'ignored';
+        const isTerminal = isResolved || isIgnored;
         const maxAge = isResolved ? resolvedMaxAge : isIgnored ? ignoredMaxAge : Infinity;
 
-        if (age > maxAge && (isResolved || isIgnored)) {
+        if (age > maxAge && isTerminal) {
           removed++;
+          eventsFolded += entry.events.length;
+          continue;
+        }
+
+        // Bounded retention for `active`/`triaged`/`in_progress`. This branch is
+        // guarded by `!isTerminal`, i.e. the exact complement of the rule above,
+        // so a resolved or ignored finding can never be reached here and its
+        // 30d/14d windows are unaffected.
+        if (!isTerminal && nonTerminalMaxAge !== undefined && age > nonTerminalMaxAge) {
+          removedNonTerminal++;
           eventsFolded += entry.events.length;
           continue;
         }
@@ -365,6 +409,7 @@ export class JsonlFindingStore implements FindingStore {
           __findingCompact: 1,
           compactedAt: new Date().toISOString(),
           removedFindings: removed,
+          removedNonTerminalFindings: removedNonTerminal,
           foldedEvents: eventsFolded,
         } as CompactMarker),
       );
@@ -373,7 +418,7 @@ export class JsonlFindingStore implements FindingStore {
         mode: 0o600,
       });
 
-      return { removed, eventsFolded };
+      return { removed, removedNonTerminal, eventsFolded };
     });
   }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import type { UserInputAnswer, UserInputQuestion, UserInputRequest } from '@wrongstack/core/types';
+import { sanitizeTerminalText } from '@wrongstack/core/utils';
 import {
   type ElicitationField,
   type ElicitationForm,
@@ -61,7 +62,8 @@ function describe(field: ElicitationField): string | undefined {
 function toQuestion(field: ElicitationField, index: number): UserInputQuestion {
   const base = {
     id: questionId(index),
-    prompt: field.title ?? field.name,
+    // Titles arrive sanitized from the parser; a bare field name does not.
+    prompt: field.title ?? sanitizeTerminalText(field.name),
     description: describe(field),
     required: field.required,
   };

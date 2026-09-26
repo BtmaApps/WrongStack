@@ -284,6 +284,13 @@ export interface ToolEventMap {
     /** Canonical tool-registry mutation classification; absent only on legacy emit sites. */
     mutating?: boolean | undefined;
     input?: unknown | undefined;
+    /**
+     * Files a successful call wrote, as the tool declares them through
+     * `Tool.writeTargets` (the targets inside a `patch` diff, a `format` or
+     * `lint --fix` target list). Absent when the tool declares none — read
+     * `input.path` for the ordinary edit/write.
+     */
+    writeTargets?: string[] | undefined;
     output?: string | undefined;
     /**
      * Legacy inline `--- SAGE: … (Memory Injector) ---` content split off
@@ -334,7 +341,18 @@ export interface ToolEventMap {
   };
   'mcp.server.connected': { name: string; toolCount: number };
   'mcp.server.reconnected': { name: string; toolCount: number };
-  'mcp.server.disconnected': { name: string; reason: string };
+  'mcp.server.disconnected': {
+    name: string;
+    reason: string;
+    /**
+     * True when the registry gave up on the server: connect attempts or
+     * reconnect cycles are exhausted and nothing retries by itself — only
+     * `/mcp restart <name>` does. Absent for a stop, an idle sleep or a drop
+     * that an automatic reconnect follows, so a surface can tell the person
+     * about the failures that need them and stay quiet about the rest.
+     */
+    terminal?: boolean | undefined;
+  };
   /**
    * `notifications/resources/updated` for a resource this client subscribed to.
    * Carries the URI only — the content is fetched with `resources/read`.

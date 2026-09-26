@@ -25,6 +25,7 @@
  */
 
 import { FetchError } from '../types/errors.js';
+import { toErrorMessage } from '../utils/error.js';
 import { TYPESAFE_ROUTES } from './route.js';
 
 /**
@@ -233,7 +234,7 @@ async function postOnce(
     throw new FetchError({
       // The key is in a header, never in `endpoint`, so echoing the URL here
       // cannot leak it.
-      message: `Network error calling TypeSafe: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Network error calling TypeSafe: ${toErrorMessage(err)}`,
       status: 0,
       context: { url: endpoint, op: 'typesafe.systemOne' },
       cause: err,

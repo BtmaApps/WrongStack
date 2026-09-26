@@ -51,6 +51,7 @@ export const CONFIG_BEHAVIOR_DEFAULTS: Omit<Config, 'provider' | 'model'> = {
     memory: true,
     modelsRegistry: true,
     skills: true,
+    toolCoach: true,
     prompts: true,
     // 'auto' → resolveTokenSavingTier picks a concrete tier from the model's
     // context window ONCE per session (cache-safe): lean prompt on small

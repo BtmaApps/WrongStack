@@ -38,6 +38,7 @@ export const ALL_SETTINGS_KEYS = [
   'memory',
   'skills',
   'models-registry',
+  'tool-coach',
   'max-iterations',
   'limits',
   'auto-proceed-max-iterations',

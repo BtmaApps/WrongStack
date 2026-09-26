@@ -155,6 +155,7 @@ export interface LocalPrefs {
   featureMemory: boolean;
   featureSkills: boolean;
   featureModelsRegistry: boolean;
+  featureToolCoach: boolean;
   indexOnStart: boolean;
 
   /** Per-plugin enabled/disabled state. Keys are plugin names (e.g. "wstack-chimera"). */
@@ -286,7 +287,7 @@ export interface LocalPrefs {
   chimeraMaxFiles: number;
 
   // ── Auto-review (mid-session continuous) — mirrors ResolvedAutoReviewConfig ──
-  /** Master enable for `wstack-auto-review`. Defaults to false (matches plugin: `cfg.enabled === true`). */
+  /** Master enable for `wstack-auto-review`. Defaults to true (matches plugin: `cfg.enabled !== false`). */
   autoReviewEnabled: boolean;
   /** Override provider id for the review subagent. Empty = resolve via fallbackProfile/effective chain. */
   autoReviewProvider: string;
@@ -407,6 +408,7 @@ export const DEFAULTS: LocalPrefsData = {
   featureMemory: true,
   featureSkills: true,
   featureModelsRegistry: true,
+  featureToolCoach: true,
   indexOnStart: true,
   contextAutoCompact: true,
   contextStrategy: 'hybrid',
@@ -465,9 +467,10 @@ export const DEFAULTS: LocalPrefsData = {
   chimeraProvider: '',
   chimeraModel: '',
   chimeraMaxFiles: 15,
-  // Auto-review (mid-session): mirrors ResolvedAutoReviewConfig. Strict opt-in
-  // matches `cfg.enabled === true` in auto-review-plugin.ts:72.
-  autoReviewEnabled: false,
+  // Auto-review (mid-session): mirrors ResolvedAutoReviewConfig. Enabled-by-default
+  // matches `cfg.enabled !== false` in auto-review-plugin.ts; cascade 'high' is
+  // the inclusive threshold ('off'/'critical' only when configured).
+  autoReviewEnabled: true,
   autoReviewProvider: '',
   autoReviewModel: '',
   autoReviewFallbackProfile: '',
@@ -476,7 +479,7 @@ export const DEFAULTS: LocalPrefsData = {
   autoReviewDebounceMs: 15_000,
   autoReviewMaxFilesPerBatch: 15,
   autoReviewMaxConcurrentReviews: 2,
-  autoReviewCascadeOn: 'off',
+  autoReviewCascadeOn: 'high',
   pluginsEnabled: {},
   // WrongProxy / WrongTrace. Master switch defaults to off so the feature
   // ships silent; URL defaults to the dev-script daemon's documented port.

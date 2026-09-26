@@ -287,6 +287,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       featureMemory: true,
       featureSkills: true,
       featureModelsRegistry: true,
+      featureToolCoach: true,
       tokenSavingTier: 'off' as TokenSavingTier,
       allowOutsideProjectRoot: true,
       contextAutoCompact: true,

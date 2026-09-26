@@ -85,7 +85,11 @@ export type WSMcpServerMessage =
   | { type: 'mcp.server.waking'; payload: { name: string } }
   | { type: 'mcp.server.connected'; payload: { name: string; pid?: number; toolCount?: number } }
   | { type: 'mcp.server.reconnected'; payload: { name: string; toolCount: number } }
-  | { type: 'mcp.server.disconnected'; payload: { name: string; reason: string } }
+  | {
+      type: 'mcp.server.disconnected';
+      /** `terminal`: connect/reconnect exhausted; only `/mcp restart` brings it back. */
+      payload: { name: string; reason: string; terminal?: boolean | undefined };
+    }
   | { type: 'mcp.server.error'; payload: { name: string; error: string } }
   | { type: 'mcp.operation_result'; payload: { success: boolean; message: string } }
   | {

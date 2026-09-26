@@ -27,6 +27,11 @@ export interface QuotaWindow {
   windowMinutes?: number | undefined;
   /** Absolute reset time in epoch **seconds**. */
   resetsAt?: number | undefined;
+  /**
+   * When the last hour's pace fills the window (epoch **seconds**). Set by the
+   * server only when that lands before `resetsAt`.
+   */
+  exhaustsAt?: number | undefined;
 }
 
 export interface QuotaCredits {

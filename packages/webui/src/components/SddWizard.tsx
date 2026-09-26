@@ -22,9 +22,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { priorityStyle } from '@/lib/sdd-theme';
 import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
 import { useSddWizardStore } from '@/stores';
 import { FallbackEditor } from './FallbackEditor';
 import { ModelPicker } from './ModelPicker';
@@ -148,13 +148,13 @@ export function SddWizard({
   const startRun = () => {
     send({
       type: 'sdd.run.start',
-      payload: {
+      payload: client?.withSession({
         parallelSlots: runSlots,
         worktrees: runWorktrees,
         planDecompose: runPlanDecompose,
         ...(runModel ? { model: runModel, provider: runProvider } : {}),
         ...(runFallbacks.length ? { fallbackModels: runFallbacks } : {}),
-      },
+      }),
     });
     setRunCfgOpen(false);
   };

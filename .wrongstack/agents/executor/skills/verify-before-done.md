@@ -1,0 +1,3 @@
+- Open SimpleUI diff in tests through the UtilityDock “Changes” badge (`utility-dock.tsx`, gated by `aggregateFileEdits` over completed mutating tool calls). Do not rely on the per-entry `ToolCallEntry` View-diff in `chat-message-list.tsx`; it omits `onOpenDiff`, so that button never renders.
+- Verify `.temp_files` cleanup with `dir /b .temp_files` (cmd) after any multi-path quoted `del /q`; `glob` can hide the directory and `del /q` can fail while reporting success.
+- If no MCP `remember` tool is registered, record SAGE memories via `packages/sage/dist/index.js`: `createSqliteMemoryPort({ projectRoot })` → `getSageService(port)` → `service.rememberSage({ text, kind, scope, anchors, supersedes, tags, importance, confidence })`.

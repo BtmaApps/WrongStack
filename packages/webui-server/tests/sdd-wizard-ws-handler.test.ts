@@ -180,10 +180,11 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
     // Start with explicit parallel slots + worktrees disabled + plan decompose on.
     await handler.handleMessage({
       type: 'sdd.run.start',
-      payload: { parallelSlots: 8, worktrees: false, planDecompose: true },
+      payload: { parallelSlots: 8, worktrees: false, planDecompose: true, sessionId: 'tab-3' },
     });
 
     expect(startRunCalls).toHaveLength(1);
+    expect(startRunCalls[0]?.opts.sessionId).toBe('tab-3');
     expect(startRunCalls[0]?.opts.parallelSlots).toBe(8);
     expect(startRunCalls[0]?.opts.worktrees).toBe(false);
     expect(startRunCalls[0]?.opts.planDecompose).toBe(true);
@@ -215,7 +216,7 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
   });
 
   it('starts a run from a graph id when startRunFromGraphId is wired', async () => {
-    const fromGraph: string[] = [];
+    const fromGraph: Array<{ graphId: string; sessionId?: string }> = [];
     const handler = new SddWizardWebSocketHandler({
       makeDriver: () =>
         new SddInterviewDriver({
@@ -224,8 +225,8 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
         }),
       runInterviewTurn: async () => '',
       startRun: async () => ({ runId: 'unused' }),
-      startRunFromGraphId: async (graphId) => {
-        fromGraph.push(graphId);
+      startRunFromGraphId: async (graphId, opts) => {
+        fromGraph.push({ graphId, sessionId: opts.sessionId });
         return { runId: 'from-g' };
       },
     });
@@ -233,9 +234,9 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
     handler.addClient(ws);
     await handler.handleMessage({
       type: 'sdd.run.from_graph',
-      payload: { graphId: 'graph-abc', worktrees: true },
+      payload: { graphId: 'graph-abc', worktrees: true, sessionId: 'tab-3' },
     });
-    expect(fromGraph).toEqual(['graph-abc']);
+    expect(fromGraph).toEqual([{ graphId: 'graph-abc', sessionId: 'tab-3' }]);
     expect(requireLastOfType(ws, 'sdd.run.started').payload).toMatchObject({
       runId: 'from-g',
       graphId: 'graph-abc',
@@ -243,7 +244,7 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
   });
 
   it('starts a run from a spec id via resolveGraphIdForSpec', async () => {
-    const fromGraph: string[] = [];
+    const fromGraph: Array<{ graphId: string; sessionId?: string }> = [];
     const handler = new SddWizardWebSocketHandler({
       makeDriver: () =>
         new SddInterviewDriver({
@@ -252,8 +253,8 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
         }),
       runInterviewTurn: async () => '',
       startRun: async () => ({ runId: 'unused' }),
-      startRunFromGraphId: async (graphId) => {
-        fromGraph.push(graphId);
+      startRunFromGraphId: async (graphId, opts) => {
+        fromGraph.push({ graphId, sessionId: opts.sessionId });
         return { runId: 'from-spec-run' };
       },
       resolveGraphIdForSpec: async (specId) => (specId === 'spec-1' ? 'graph-from-spec' : null),
@@ -262,9 +263,9 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
     handler.addClient(ws);
     await handler.handleMessage({
       type: 'sdd.run.from_spec',
-      payload: { specId: 'spec-1', worktrees: true },
+      payload: { specId: 'spec-1', worktrees: true, sessionId: 'tab-3' },
     });
-    expect(fromGraph).toEqual(['graph-from-spec']);
+    expect(fromGraph).toEqual([{ graphId: 'graph-from-spec', sessionId: 'tab-3' }]);
     expect(requireLastOfType(ws, 'sdd.run.started').payload).toMatchObject({
       runId: 'from-spec-run',
       graphId: 'graph-from-spec',

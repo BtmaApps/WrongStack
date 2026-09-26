@@ -265,4 +265,5 @@ export const SETTINGS_FIELD_LABELS: readonly string[] = [
   'WrongProxy URL', // 60
   'Right sidebar', // 61
   'Tool result view', // 62
+  'Tool Coach', // 63
 ];

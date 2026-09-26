@@ -14,7 +14,7 @@ import { matchAny, matchAnyCommand } from '../utils/glob-match.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { wstackGlobalRoot } from '../utils/wstack-paths.js';
 import { hasCapability, ToolCapabilities } from './capabilities.js';
-import { getInputString } from './yolo-risk.js';
+import { classifyDestructiveCommand, type DestructiveKind, getInputString } from './yolo-risk.js';
 
 /**
  * Match a computed subject against stored trust patterns.
@@ -266,6 +266,78 @@ export function shellCommandLineFromInput(input: unknown): string | undefined {
   return [command, ...renderedArgs].join(' ');
 }
 
+/** Bounds for the structured-command walk — tool inputs are model-supplied. */
+export const MAX_COMMAND_SCAN_DEPTH = 8;
+export const MAX_COMMAND_SCAN_NODES = 2000;
+
+function renderArgv(argv: readonly string[]): string {
+  return argv.map((arg) => (/\s/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg)).join(' ');
+}
+
+/**
+ * Every command line a shell-surface tool's input can run.
+ *
+ * `shellCommandLineFromInput` reads the top-level string only — the shape of
+ * `bash`/`exec`. Tools that declare `shell.arbitrary` may take structured
+ * commands instead: the workflow plugins run `{ program, args }` objects, at
+ * the top (`command`) or nested (`criteria[].command`, `checks[]`). Reading
+ * only the string shape left those calls unclassified, so YOLO auto-approved
+ * them — the locked `agent-state` kind included (WS-2026-09-26-03).
+ *
+ * `truncated` is set when the walk hit its bounds: the unread part could hold
+ * a command, so callers must not read the call as clean. A model can put a
+ * large unrelated field ahead of the real one to exhaust a budget.
+ */
+export function shellCommandLinesFromInput(input: unknown): {
+  lines: string[];
+  truncated: boolean;
+} {
+  const lines: string[] = [];
+  const top = shellCommandLineFromInput(input);
+  if (top) lines.push(top);
+  let nodes = 0;
+  let truncated = false;
+  const visit = (node: unknown, depth: number): void => {
+    if (truncated || !node || typeof node !== 'object') return;
+    if (depth > MAX_COMMAND_SCAN_DEPTH || ++nodes > MAX_COMMAND_SCAN_NODES) {
+      truncated = true;
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item, depth + 1);
+      return;
+    }
+    const record = node as Record<string, unknown>;
+    const program = record['program'];
+    if (typeof program === 'string' && program.trim()) {
+      const args = Array.isArray(record['args'])
+        ? record['args'].filter((arg): arg is string => typeof arg === 'string')
+        : [];
+      lines.push(renderArgv([program, ...args]));
+    }
+    for (const value of Object.values(record)) visit(value, depth + 1);
+  };
+  visit(input, 0);
+  return { lines, truncated };
+}
+
+/**
+ * The destructive kind of a shell-surface call: the first command line that
+ * classifies. A walk that hit its bounds is `download-and-run` — the unread
+ * part is a command whose damage cannot be known in advance.
+ */
+export function classifyShellSurfaceInput(
+  input: unknown,
+  projectRoot: string | undefined,
+): DestructiveKind | undefined {
+  const { lines, truncated } = shellCommandLinesFromInput(input);
+  for (const line of lines) {
+    const kind = classifyDestructiveCommand(line, projectRoot);
+    if (kind !== undefined) return kind;
+  }
+  return truncated ? 'download-and-run' : undefined;
+}
+
 // ── Sensitive-read detection ─────────────────────────────────────────────
 
 const SENSITIVE_READ_PATHS: RegExp[] = [
@@ -514,6 +586,5 @@ export function isSensitiveReadCall(tool: Tool, input: unknown): boolean {
   if (!hasShellCap && tool.name !== 'bash' && tool.name !== 'shell' && tool.name !== 'exec') {
     return false;
   }
-  const command = shellCommandLineFromInput(input);
-  return command ? shellCommandReadsSensitivePath(command) : false;
+  return shellCommandLinesFromInput(input).lines.some(shellCommandReadsSensitivePath);
 }

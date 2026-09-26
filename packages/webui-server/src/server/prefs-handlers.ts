@@ -426,6 +426,16 @@ export async function handlePrefsUpdate(
   }
 
   ctx.applyConfigPrefs?.(payload);
+  // Feature flags are global. Keep the live ConfigStore in step so every
+  // session's next agent turn observes this toggle, not a boot-time meta copy.
+  if (typeof payload['featureToolCoach'] === 'boolean' && ctx.configStore) {
+    ctx.configStore.update({
+      features: {
+        ...ctx.configStore.get().features,
+        toolCoach: payload['featureToolCoach'],
+      },
+    });
+  }
   const patch = routingPatch(payload);
   if (ctx.configStore && Object.keys(patch).length > 0) ctx.configStore.update(patch as never);
 

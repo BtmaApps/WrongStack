@@ -1,16 +1,13 @@
 import type { State } from '../app-state.js';
-
 import {
   cycleEffort,
   EFFORT_KEEP,
   effortOptionsForFocused,
 } from '../components/model-picker-effort.js';
-
 import { filterPromptPicker } from '../components/prompt-picker-model.js';
-
 import { filterResourceMenuItems } from '../components/resource-menu-model.js';
-
 import { getActiveThemeName, THEME_OPTIONS } from '../theme.js';
+import { filterThemeOptions } from '../theme-picker-rows.js';
 
 import * as h from './helpers.js';
 export function reduceComposerPickers(state: State, action: ComposerAction): State {
@@ -172,6 +169,11 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
       // override via `action.selected` (used by `/theme <preset>` to drop
       // the user on the matching row). Safe to read synchronously —
       // `theme.ts` is module-scoped state, not a hook.
+      //
+      // `previous` seeds the undo target: the preset in effect when the
+      // picker opened, so `themePickerUndo` can swap back to it. It is
+      // re-read on every open, so a second `/theme` always undoes to the
+      // currently live palette rather than to a stale value.
       const fallback = Math.max(
         0,
         THEME_OPTIONS.findIndex((o) => o.id === getActiveThemeName()),
@@ -180,7 +182,14 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
       return {
         ...state,
         ...h.closePanels(state),
-        themePicker: { open: true, selected, hint: undefined },
+        themePicker: {
+          open: true,
+          selected,
+          hint: undefined,
+          filter: '',
+          filtering: false,
+          previous: getActiveThemeName(),
+        },
       };
     }
     case 'themePickerClose':
@@ -189,7 +198,11 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
         themePicker: { open: false, selected: 0 },
       };
     case 'themePickerMove': {
-      const n = THEME_OPTIONS.length;
+      // `selected` indexes the FILTERED list, so a query that hides rows must
+      // not let ↑↓ walk past the end of what is actually on screen.
+      const visible = filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '');
+      const n = visible.length;
+      if (n === 0) return state;
       const next = (state.themePicker.selected + action.delta + n) % n;
       if (next === state.themePicker.selected) return state;
       return {
@@ -202,6 +215,68 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
         ...state,
         themePicker: { ...state.themePicker, hint: action.text },
       };
+    case 'themePickerPreview':
+      return {
+        ...state,
+        themePicker: {
+          ...state.themePicker,
+          preview: action.on,
+          // Entering preview re-baselines `previous` to whatever is live RIGHT
+          // NOW, so Esc restores the palette that was in effect when preview
+          // began — not the one from when the picker was first opened.
+          ...(action.on ? { previous: getActiveThemeName() } : {}),
+        },
+      };
+    case 'themePickerFilterMode':
+      return {
+        ...state,
+        themePicker: {
+          ...state.themePicker,
+          filtering: action.on,
+          // Leaving filter mode with `/` also drops the query, so the mode
+          // flag and the visible list can never disagree about what is shown.
+          filter: action.on ? state.themePicker.filter : '',
+        },
+      };
+    case 'themePickerFilter': {
+      // Keep the focused row pointing at the SAME preset across a query
+      // change where possible: resolve the previously focused id against the
+      // new filtered list, and only fall back to 0 when it was filtered out.
+      // Without this, every keystroke would yank the cursor back to the top.
+      const previousId = filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '')[
+        state.themePicker.selected
+      ]?.id;
+      const visible = filterThemeOptions(THEME_OPTIONS, action.text);
+      const retained = visible.findIndex((o) => o.id === previousId);
+      return {
+        ...state,
+        themePicker: {
+          ...state.themePicker,
+          filter: action.text,
+          selected: retained >= 0 ? retained : 0,
+          hint: undefined,
+        },
+      };
+    }
+    case 'themePickerUndo':
+      // The handler applies the swap (it owns setActiveTheme + persistence);
+      // the reducer has no theme work to do here.
+      return state;
+    case 'themePickerSwapPrevious': {
+      // After an undo the swap target becomes the palette we just left, so a
+      // second press toggles back. Reuse `selected`'s row by looking up the
+      // newly-active preset in the filtered list.
+      const visible = filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '');
+      const activeIndex = visible.findIndex((o) => o.id === getActiveThemeName());
+      return {
+        ...state,
+        themePicker: {
+          ...state.themePicker,
+          previous: getActiveThemeName(),
+          ...(activeIndex >= 0 ? { selected: activeIndex } : {}),
+        },
+      };
+    }
     case 'modePickerOpen':
       return {
         ...state,

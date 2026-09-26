@@ -117,15 +117,27 @@ function balancedEnd(text: string, start: number): number | undefined {
 /**
  * Pull the outermost JSON object out of a response.
  *
- * Every `{` is tried in turn and the first BALANCED object that parses wins:
- * prose around the object has braces of its own ("see the range {>=1.0}"), and
- * both the old early return (`startsWith('{')` → the whole text, so ANY trailing
- * prose broke the parse) and the first-`{`/last-`}` slice pulled that prose into
- * the slice. `JSON.parse` then failed, `parseResearchJson` returned null, and the
- * whole cluster's findings were dropped without a trace.
+ * Three salvage passes, in order:
+ *
+ *   1. Try every `{` and pick the first BALANCED object that parses. Prose
+ *      around the object has braces of its own ("see the range {>=1.0}"),
+ *      and the first-`{`/last-`}` slice pulled that prose in. `JSON.parse`
+ *      then failed, `parseFindings` was skipped, and the whole cluster's
+ *      findings were dropped without a trace.
+ *   2. If no balanced object exists, the response is a maxTokens-cut prefix
+ *      (canonical shape: outermost `{` never closes). Repair the prefix by
+ *      closing any unclosed string / object / array, then re-attempt the
+ *      balanced scan. A recovered prefix still yields every finding whose
+ *      object completed before the cut.
+ *   3. Fall through to the raw trimmed text — `JSON.parse` will throw and
+ *      `parseResearchJson` will return null, preserving the r25 promise that
+ *      a truly unrecoverable response degrades the cluster to zero findings
+ *      rather than failing the analyze job.
  */
 function extractJsonObject(text: string): string {
   const trimmed = stripOuterFence(text);
+
+  // Pass 1: balanced outermost object.
   for (let start = trimmed.indexOf('{'); start !== -1; start = trimmed.indexOf('{', start + 1)) {
     const end = balancedEnd(trimmed, start);
     if (end === undefined) break;
@@ -137,7 +149,109 @@ function extractJsonObject(text: string): string {
       // Braces in prose are not JSON — try the next `{`.
     }
   }
+
+  // Pass 2: truncated-prefix repair. Close any open string / object / array
+  // so the balanced scan above can find a parseable outermost object.
+  const repaired = repairTruncatedJson(trimmed);
+  if (repaired !== null) {
+    for (
+      let start = repaired.indexOf('{');
+      start !== -1;
+      start = repaired.indexOf('{', start + 1)
+    ) {
+      const end = balancedEnd(repaired, start);
+      if (end === undefined) break;
+      const candidate = repaired.slice(start, end);
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {
+        // Try the next `{`.
+      }
+    }
+  }
+
+  // Pass 3: unrecoverable — let `parseResearchJson` return null.
   return trimmed;
+}
+
+/**
+ * Close any unclosed string, object, or array in `text` so a truncated JSON
+ * prefix becomes parseable. Returns `null` when the prefix has no `{` to
+ * anchor on (so there is nothing recoverable).
+ *
+ * String-aware: an open string at the cut point is closed with `"`. A single
+ * container stack tracks `{` and `[` in nesting order so the emitted closing
+ * sequence is the correct reverse — `{"a":[1,` → `{"a":[1]}` and
+ * `{"findings":[{…},{…,"severity":"med` → `{"findings":[{…},{…,"med"}]}`.
+ *
+ * An escape the cut interrupted is dropped before that quote is appended:
+ * landing right after a `\` (inside an intended `\\`) or inside a partial
+ * `\uXXXX`, the appended `"` is swallowed by the escape (`\"`) or invalidates
+ * it (`\uD83"`), the string never closes, and the repaired object stays
+ * unparseable — the cluster degrades to zero findings exactly as if the
+ * repair pass did not exist.
+ *
+ * Also strips a dangling element-separator comma that the cut left behind
+ * (e.g. `{"items": [1, 2, 3,` → `{"items": [1, 2, 3]}`), since `,` immediately
+ * before `]` or `}` is invalid JSON.
+ */
+function repairTruncatedJson(text: string): string | null {
+  if (!text.includes('{')) return null;
+  let inString = false;
+  let escaped = false;
+  // Index of the `\` that opened the escape currently being scanned; escapes
+  // only exist inside strings, and only the last one can still be incomplete.
+  let escapeStart = -1;
+  const stack: string[] = [];
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (inString) {
+      if (escaped)
+        escaped = false; // this char completes a 2-char escape
+      else if (char === '\\') {
+        escaped = true;
+        escapeStart = index;
+      } else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      stack.push('}');
+    } else if (char === '[') {
+      stack.push(']');
+    } else if (char === '}' || char === ']') {
+      const expected = stack.pop();
+      // Mismatched closer (prose between containers) — bail.
+      if (expected !== char) return null;
+    }
+  }
+  let repaired = text;
+  if (inString) {
+    // The cut landed mid-escape when the text ends right after a `\`, or when
+    // everything past an unescaped `\` is `u` plus fewer than 4 hex digits.
+    // (A stale `escapeStart` from an earlier, properly closed string can never
+    // satisfy either test: the closed string's `"` would sit inside the slice.)
+    const incompleteEscape =
+      escapeStart >= 0 && (escaped || /^\\u[0-9a-fA-F]{0,3}$/.test(text.slice(escapeStart)));
+    if (incompleteEscape) repaired = text.slice(0, escapeStart);
+    repaired += '"';
+  }
+  // Strip a dangling comma the cut left immediately before the next closer.
+  // Walk the repair suffix backwards: the next character is the last emitted
+  // (or pre-existing) one; if it is `,` and the top of stack is `}` or `]`,
+  // drop the comma.
+  while (
+    repaired.endsWith(',') &&
+    (stack[stack.length - 1] === '}' || stack[stack.length - 1] === ']')
+  ) {
+    repaired = repaired.slice(0, -1);
+  }
+  while (stack.length > 0) {
+    repaired += stack.pop();
+  }
+  return repaired;
 }
 
 /**

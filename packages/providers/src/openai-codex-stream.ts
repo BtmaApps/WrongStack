@@ -18,6 +18,7 @@ import { createSseLineFoldingTransform, parseSSE } from './sse.js';
 import {
   CODEX_REASONING_ENCRYPTED_META,
   CODEX_REASONING_ID_META,
+  CODEX_TOOL_ARGUMENTS_META,
 } from './tool-format/to-responses.js';
 
 // ── Responses SSE → StreamEvent ──────────────────────────────────────────────
@@ -27,6 +28,7 @@ interface ResponsesUsage {
   output_tokens?: number;
   total_tokens?: number;
   input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+  output_tokens_details?: { reasoning_tokens?: number };
 }
 
 interface StreamingArgBuffer {
@@ -112,6 +114,7 @@ export async function* parseOpenAIResponsesStream(
   fallbackModel: string,
   providerId = 'openai-codex',
   onResponseMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
+  onReasoningUsage?: ((tokens: number | undefined) => void) | undefined,
 ): AsyncIterable<StreamEvent> {
   let model = fallbackModel;
   let started = false;
@@ -328,7 +331,12 @@ export async function* parseOpenAIResponsesStream(
             item.arguments && item.arguments.length > 0
               ? item.arguments
               : joinArgBuffer(toolArgBuf);
-          yield { type: 'tool_use_stop', id, input: parseToolInput(raw || '{}') };
+          yield {
+            type: 'tool_use_stop',
+            id,
+            input: parseToolInput(raw || '{}'),
+            providerMeta: { [CODEX_TOOL_ARGUMENTS_META]: raw || '{}' },
+          };
           toolCallId = undefined;
           toolArgBuf = { chunks: [], length: 0 };
         } else if (item.type === 'message') {
@@ -368,6 +376,12 @@ export async function* parseOpenAIResponsesStream(
         }
         if (resp?.usage) {
           usage = normalizeUsage(resp.usage);
+          const reasoning = resp.usage.output_tokens_details?.reasoning_tokens;
+          onReasoningUsage?.(
+            typeof reasoning === 'number' && Number.isFinite(reasoning) && reasoning >= 0
+              ? reasoning
+              : undefined,
+          );
           // A usage-bearing terminal envelope must never silently drop its
           // telemetry, even when the backend skipped every start-producing
           // event (`response.created`/`in_progress`/`output_item.added`):

@@ -2,8 +2,9 @@
 name: testing
 description: |
   Use this skill when writing, fixing, reviewing, or planning tests in any project, in whatever runner the project already uses.
-  Triggers: user says "test", "unit test", "integration test", "e2e", "mock", "coverage", "flaky", "failing test", "regression test", "write tests", "vitest", "jest", "pytest", "go test".
-version: 2.0.0
+  Also use it to write the failing proof for a suspected bug and to promote that proof into a durable regression test.
+  Triggers: user says "test", "unit test", "integration test", "e2e", "mock", "coverage", "flaky", "failing test", "regression test", "write tests", "vitest", "jest", "pytest", "go test", "proof", "red/green".
+version: 2.1.0
 required-capabilities: [filesystem.read, verification.run]
 required-tools: []
 optional-capabilities: [execution.shell, code.inspect]
@@ -48,6 +49,30 @@ cost.
 5. **Widen.** Run the covering suites (the codebase-targeted-test tool finds
    them for a symbol or file), then the full suite when the change touches
    shared code.
+
+## From proof to regression test
+
+A bug fix usually starts with a throwaway proof — a script or scratch test that
+went red against the unfixed code. It is not done until that case lives in the
+project's normal suite.
+
+1. **Place it where the suite runs it.** Same runner, same layout, next to the
+   existing tests for that module. Check the runner's include and exclude
+   patterns: a test file the config never picks up passes forever by not running.
+2. **Keep the exact trigger** from the proof, then add what the proof skipped:
+   the important boundary (empty, exact limit, last item), the secondary branch
+   the fix touched, and the control case that must keep passing.
+3. **Name the behaviour, not the ticket.** "keeps the abort listener count flat
+   across retries" survives; "fixes bug 42" tells the next reader nothing.
+4. **See it red against the unfixed code.** If the proof already went red with
+   the same assertions, that counts. Otherwise run a mutation check: back up the
+   fixed file, restore the old code in place, run the test and watch it fail,
+   then restore the backup and watch it pass. Never use stash, checkout, or
+   reset for this in a shared working tree — they carry other people's edits
+   away with yours.
+5. **Make it a good citizen.** No real sleeps, no leaked timers, handles,
+   listeners, or temp files; every wait bounded. A regression test that is
+   itself flaky will get skipped, and the bug comes back.
 
 ## Choosing what to assert
 
@@ -119,11 +144,17 @@ describe('withRetry', () => {
 - **Skipping tests or lowering coverage thresholds** to get a green run.
 - **Snapshots as the only assertion** on logic.
 - **Claiming "tests pass"** from a filtered or partial run without saying so.
+- **Leaving the proof only in a scratch directory** — deleted with the cleanup,
+  so nothing guards the fix.
+- **A red run that failed for the wrong reason** — import error, missing
+  fixture, timeout — counted as the bug reproducing.
 
 ## Before returning
 
 - [ ] Runner, layout, naming, and helpers match the project's existing tests
-- [ ] Every new regression test was seen failing before the fix
+- [ ] Every new regression test was seen failing before the fix, on its
+      assertion rather than on setup
+- [ ] The test file is inside the runner's include patterns and actually ran
 - [ ] Assertions target behaviour with specific matchers
 - [ ] Mocks, timers, and environment restored; no order dependence
 - [ ] Commands and results reported exactly, including skips and filters

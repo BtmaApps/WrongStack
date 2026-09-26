@@ -29,6 +29,7 @@
  */
 
 import type { Config } from '../types/config/root.js';
+import type { TypeSafeConfig } from '../types/config/typesafe.js';
 import { observeJevClient } from './activity.js';
 import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
@@ -203,7 +204,12 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
 
   return {
     status: 'ready',
-    client: observeJevClient(client, route, model),
+    client: observeJevClient(client, route, model, {
+      logContent: logContentWanted(account, env),
+      // The key never leaves the process in a body, but a `state` blob built
+      // from arbitrary text can still carry one into a debug log.
+      secrets: [apiKey],
+    }),
     route,
     endpoint,
     model,
@@ -211,6 +217,21 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
     keyEnv: configured ? undefined : keyEnv,
     rest,
   };
+}
+
+/**
+ * Whether this process should write full Jev request/response records.
+ *
+ * The profile setting is the durable answer; the environment variable exists
+ * for the "record the next hour while I chase this" case, where editing the
+ * profile and restarting every consumer is more than a debugging step should
+ * cost. Setting either to a falsy value wins over the other's truthy value, so
+ * `logContent: false` in the profile still wins.
+ */
+function logContentWanted(account: TypeSafeConfig, env: NodeJS.ProcessEnv): boolean {
+  const override = env['WRONGSTACK_JEV_LOG_CONTENT']?.trim();
+  if (override !== undefined) return /^(1|true|yes|on)$/i.test(override);
+  return account.logContent === true;
 }
 
 /**

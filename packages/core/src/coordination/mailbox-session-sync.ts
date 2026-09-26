@@ -78,6 +78,12 @@ export function acceptMailboxMessageForSessionSync(
   if (affinity === null || typeof affinity !== 'object' || Array.isArray(affinity)) {
     return false;
   }
+  if (
+    (affinity.sessionId !== undefined && typeof affinity.sessionId !== 'string') ||
+    (affinity.reportId !== undefined && typeof affinity.reportId !== 'string')
+  ) {
+    return false;
+  }
   if (!currentSessionId) {
     return ctx?.allowUnscoped === true;
   }

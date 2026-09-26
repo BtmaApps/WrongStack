@@ -50,6 +50,12 @@ export interface ProviderQuotaWindow {
   windowMinutes?: number | undefined;
   /** Absolute reset time in epoch **seconds**, when reported. */
   resetsAt?: number | undefined;
+  /**
+   * Derived, never reported by a provider: when the last hour's pace fills the
+   * window (epoch **seconds**), set only when that lands before `resetsAt`.
+   * Added by {@link withQuotaPace} for surfaces that cannot see the pace record.
+   */
+  exhaustsAt?: number | undefined;
 }
 
 /** Pay-as-you-go balance that backs an account past its plan allowance. */
@@ -114,8 +120,10 @@ const _listeners = new Set<ProviderQuotaListener>();
 export function recordProviderQuota(
   providerId: string,
   snapshots: readonly ProviderQuotaSnapshot[],
+  now: number = Date.now(),
 ): void {
   const meaningful = snapshots.filter(hasQuotaData);
+  for (const snapshot of meaningful) recordPace(providerId, snapshot, now);
   const note = snapshots.find((s) => s.note !== undefined)?.note;
   const reached = snapshots.find((s) => s.reachedWindowId !== undefined);
   if (meaningful.length === 0 && note === undefined && reached === undefined) return;
@@ -176,6 +184,94 @@ export function onProviderQuota(listener: ProviderQuotaListener): () => void {
 export function resetProviderQuota(): void {
   _byProvider.clear();
   _listeners.clear();
+  _pace.clear();
+}
+
+// ── Pace ────────────────────────────────────────────────────────────────────
+
+/**
+ * Readings of one window, oldest first, for the pace forecast. A reading is
+ * where the plan stood when a request returned, so the forecast needs no
+ * timer: it moves exactly when a new reading lands.
+ */
+interface PaceSample {
+  at: number;
+  usedPercent: number;
+  resetsAt: number | undefined;
+}
+
+const _pace = new Map<string, PaceSample[]>();
+/** RAM guard per window; the forecast reads only the last hour anyway. */
+const MAX_PACE_SAMPLES = 256;
+/** The pace is the climb over the readings of the last hour... */
+const PACE_LOOKBACK_MS = 60 * 60_000;
+/** ...and needs at least this much of it: two readings a minute apart are noise. */
+const MIN_PACE_SPAN_MS = 10 * 60_000;
+
+function paceKey(providerId: string, meterId: string, windowId: string): string {
+  return `${providerId}\0${meterId}\0${windowId}`;
+}
+
+function recordPace(providerId: string, snapshot: ProviderQuotaSnapshot, now: number): void {
+  for (const window of snapshot.windows) {
+    if (!Number.isFinite(window.usedPercent)) continue;
+    const key = paceKey(providerId, snapshot.meterId, window.id);
+    let samples = _pace.get(key) ?? [];
+    const last = samples.at(-1);
+    // A new reset time or a falling percentage is a new cycle: the old
+    // readings describe spending that no longer counts.
+    if (last && (last.resetsAt !== window.resetsAt || window.usedPercent < last.usedPercent)) {
+      samples = [];
+    }
+    samples.push({ at: now, usedPercent: window.usedPercent, resetsAt: window.resetsAt });
+    if (samples.length > MAX_PACE_SAMPLES) samples.splice(0, samples.length - MAX_PACE_SAMPLES);
+    _pace.set(key, samples);
+  }
+}
+
+/**
+ * Milliseconds until the window reaches 100% at the pace of the last hour,
+ * or undefined when that does not happen before it resets, when the plan is
+ * not climbing, or when there is not enough of a record to tell.
+ */
+export function quotaExhaustionInMs(
+  providerId: string,
+  meterId: string,
+  window: ProviderQuotaWindow,
+  now: number = Date.now(),
+): number | undefined {
+  if (window.usedPercent >= 100) return undefined;
+  const samples = (_pace.get(paceKey(providerId, meterId, window.id)) ?? []).filter(
+    (s) => now - s.at <= PACE_LOOKBACK_MS,
+  );
+  const first = samples[0];
+  const last = samples.at(-1);
+  if (!first || !last || last.at - first.at < MIN_PACE_SPAN_MS) return undefined;
+  const climb = last.usedPercent - first.usedPercent;
+  if (climb <= 0) return undefined;
+  const perMs = climb / (last.at - first.at);
+  const eta = (100 - window.usedPercent) / perMs;
+  const resetIn = quotaResetInMs(window, now);
+  if (resetIn !== undefined && eta >= resetIn) return undefined;
+  return eta;
+}
+
+/**
+ * Copies of `snapshots` whose windows carry `exhaustsAt` where the pace
+ * forecast has one. For a surface in another process (the WebUI page), which
+ * receives snapshots but not the pace record they were measured against.
+ */
+export function withQuotaPace(
+  snapshots: readonly ProviderQuotaSnapshot[],
+  now: number = Date.now(),
+): ProviderQuotaSnapshot[] {
+  return snapshots.map((snapshot) => ({
+    ...snapshot,
+    windows: snapshot.windows.map((window) => {
+      const eta = quotaExhaustionInMs(snapshot.providerId, snapshot.meterId, window, now);
+      return eta === undefined ? window : { ...window, exhaustsAt: (now + eta) / 1000 };
+    }),
+  }));
 }
 
 // ── Selection ───────────────────────────────────────────────────────────────

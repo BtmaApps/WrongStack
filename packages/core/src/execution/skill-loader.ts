@@ -97,7 +97,8 @@ export class DefaultSkillLoader implements SkillLoader {
   private readonly dirs: { dir: string; source: SkillManifest['source']; originTool?: string }[];
   private cache?: SkillManifest[] | undefined;
   private entriesCache?: SkillEntry[] | undefined;
-  private readonly bodyCache = new Map<string, string>();
+  /** Bodies with the `mtime:size` stamp of the files they were read from. */
+  private readonly bodyCache = new Map<string, { text: string; stamp: string }>();
   /** Load-time diagnostics from the most recent full `list()` scan. */
   private skipped: SkippedSkill[] = [];
   private shadowed: ShadowedSkill[] = [];
@@ -294,25 +295,46 @@ export class DefaultSkillLoader implements SkillLoader {
     return { skipped: [...this.skipped], shadowed: [...this.shadowed] };
   }
 
+  /**
+   * A cached body is served only while the files it was read from are
+   * unchanged on disk. The loader's own write paths call `invalidateCache()`,
+   * but a skill edited any other way — the `edit` tool on a SKILL.md, the
+   * user's editor, an agent's learning pass — used to be served stale until
+   * the process restarted. One `stat` per read keeps it current. A changed
+   * file also drops the manifest lists, since its frontmatter (description,
+   * trigger) may have changed with it.
+   */
+  private async cachedBody(key: string, files: readonly string[]): Promise<string | undefined> {
+    const cached = this.bodyCache.get(key);
+    if (cached === undefined) return undefined;
+    if ((await fileStamp(files)) === cached.stamp) return cached.text;
+    this.bodyCache.delete(key);
+    this.cache = undefined;
+    this.entriesCache = undefined;
+    return undefined;
+  }
+
   async readBody(name: string): Promise<string> {
     const key = name.toLowerCase();
-    const cached = this.bodyCache.get(key);
-    if (cached !== undefined) return cached;
     const m = await this.find(name);
     if (!m) throw new Error(`Skill "${name}" not found`);
+    const cached = await this.cachedBody(key, [m.path]);
+    if (cached !== undefined) return cached;
+    const stamp = await fileStamp([m.path]);
     const body = await fs.readFile(m.path, 'utf8');
-    this.bodyCache.set(key, body);
+    this.bodyCache.set(key, { text: body, stamp });
     return body;
   }
 
   async readSaveBody(name: string): Promise<string> {
     const key = `save:${name.toLowerCase()}`;
-    const cached = this.bodyCache.get(key);
-    if (cached !== undefined) return cached;
     const m = await this.find(name);
     if (!m) throw new Error(`Skill "${name}" not found`);
     // Try SKILL.save.md in the same directory as SKILL.md
     const savePath = path.join(path.dirname(m.path), 'SKILL.save.md');
+    const cached = await this.cachedBody(key, [savePath, m.path]);
+    if (cached !== undefined) return cached;
+    const stamp = await fileStamp([savePath, m.path]);
     let result: string;
     try {
       result = await fs.readFile(savePath, 'utf8');
@@ -328,9 +350,29 @@ export class DefaultSkillLoader implements SkillLoader {
         result = body.trim().slice(0, 300);
       }
     }
-    this.bodyCache.set(key, result);
+    this.bodyCache.set(key, { text: result, stamp });
     return result;
   }
+}
+
+/**
+ * `mtime:size` of each file, `-` for one that does not exist. A save variant
+ * appearing or disappearing changes the stamp too.
+ */
+async function fileStamp(files: readonly string[]): Promise<string> {
+  const parts = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const st = await fs.stat(file);
+        // Whole milliseconds: sub-ms mtime digits differ between stat and
+        // utimes round-trips on some filesystems; size catches the rest.
+        return `${Math.trunc(st.mtimeMs)}:${st.size}`;
+      } catch {
+        return '-';
+      }
+    }),
+  );
+  return parts.join('|');
 }
 
 /**

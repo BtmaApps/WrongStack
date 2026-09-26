@@ -22,7 +22,7 @@ const CHIMERA_PROVIDER_DEFAULT = '';
 const CHIMERA_MODEL_DEFAULT = '';
 const CHIMERA_MAX_FILES_DEFAULT = 15;
 const CHIMERA_AUTOFIX_DEFAULT = 'off';
-const AUTOREVIEW_ENABLED_DEFAULT = false;
+const AUTOREVIEW_ENABLED_DEFAULT = true;
 const AUTOREVIEW_PROVIDER_DEFAULT = '';
 const AUTOREVIEW_MODEL_DEFAULT = '';
 const AUTOREVIEW_FALLBACK_PROFILE_DEFAULT = '';
@@ -31,7 +31,7 @@ const AUTOREVIEW_DEBOUNCE_MS_DEFAULT = 15_000;
 const AUTOREVIEW_MAX_FILES_PER_BATCH_DEFAULT = 15;
 const AUTOREVIEW_MAX_CONCURRENT_REVIEWS_DEFAULT = 2;
 const VALID_AUTOREVIEW_CASCADE = ['off', 'critical', 'high'] as const;
-const AUTOREVIEW_CASCADE_DEFAULT = 'off';
+const AUTOREVIEW_CASCADE_DEFAULT = 'high';
 
 // Version 15 added the `autoCollapseInput` display toggle (default false).
 // Default version for the replica is 15 so the autoCollapseInput guard
@@ -58,9 +58,9 @@ function migrate(persisted: Record<string, unknown> | null, version = 15): Recor
 
   // ── v9: Chimera + auto-review backfill ────────────────────────────────
   // Booleans — `typeof` guard (NOT `=== undefined`) so `null`/`0`/etc. are
-  // also defaulted. `chimeraEnabled` defaults to true to match the plugin's
-  // `cfg.enabled !== false` semantics; `autoReviewEnabled` defaults to false
-  // to match the plugin's strict opt-in `cfg.enabled === true`.
+  // also defaulted. Both `chimeraEnabled` and `autoReviewEnabled` default to
+  // true to match the plugins' default-on `cfg.enabled !== false` semantics;
+  // an explicitly persisted false is still honored verbatim.
   if (typeof p.chimeraEnabled !== 'boolean') p.chimeraEnabled = CHIMERA_ENABLED_DEFAULT;
   if (typeof p.chimeraProvider !== 'string') p.chimeraProvider = CHIMERA_PROVIDER_DEFAULT;
   if (typeof p.chimeraModel !== 'string') p.chimeraModel = CHIMERA_MODEL_DEFAULT;
@@ -372,17 +372,22 @@ describe('migrate — chimera (v9)', () => {
 });
 
 describe('migrate — auto-review (v9)', () => {
-  it('defaults autoReviewEnabled to false on missing/non-boolean', () => {
+  it('defaults autoReviewEnabled to true on missing/non-boolean', () => {
     for (const v of [undefined, null, 'yes', 1, {}, []]) {
       // Persistence input is unknown at runtime; intentionally pass invalid values.
       const result = migrate({ autoReviewEnabled: v });
-      expect(result.autoReviewEnabled).toBe(false);
+      expect(result.autoReviewEnabled).toBe(true);
     }
   });
 
-  it('preserves autoReviewEnabled=true (strict opt-in)', () => {
+  it('preserves autoReviewEnabled=true', () => {
     const result = migrate({ autoReviewEnabled: true });
     expect(result.autoReviewEnabled).toBe(true);
+  });
+
+  it('preserves an explicit autoReviewEnabled=false (opt-out wins over default-on)', () => {
+    const result = migrate({ autoReviewEnabled: false });
+    expect(result.autoReviewEnabled).toBe(false);
   });
 
   it('defaults autoReviewProvider/Model/FallbackProfile to empty string on non-string', () => {
@@ -483,11 +488,11 @@ describe('migrate — auto-review (v9)', () => {
     }
   });
 
-  it('coerces unknown autoReviewCascadeOn back to off', () => {
+  it('coerces unknown autoReviewCascadeOn back to high (default-on)', () => {
     for (const v of ['medium', '', 'OFF', 'critical ', undefined, null, 1, true, {}, []]) {
       // Persistence input is unknown at runtime; intentionally pass invalid values.
       const result = migrate({ autoReviewCascadeOn: v });
-      expect(result.autoReviewCascadeOn).toBe('off');
+      expect(result.autoReviewCascadeOn).toBe('high');
     }
   });
 });
@@ -502,7 +507,7 @@ describe('migrate — v9 null/undefined persisted', () => {
     expect(result.chimeraMaxFiles).toBe(15);
     expect(result.chimeraAutoFix).toBe('off');
     // Auto-review
-    expect(result.autoReviewEnabled).toBe(false);
+    expect(result.autoReviewEnabled).toBe(true);
     expect(result.autoReviewProvider).toBe('');
     expect(result.autoReviewModel).toBe('');
     expect(result.autoReviewFallbackProfile).toBe('');
@@ -510,16 +515,16 @@ describe('migrate — v9 null/undefined persisted', () => {
     expect(result.autoReviewDebounceMs).toBe(15_000);
     expect(result.autoReviewMaxFilesPerBatch).toBe(15);
     expect(result.autoReviewMaxConcurrentReviews).toBe(2);
-    expect(result.autoReviewCascadeOn).toBe('off');
+    expect(result.autoReviewCascadeOn).toBe('high');
   });
 
   it('backfills every v9 field when persisted is undefined', () => {
     const result = migrate(undefined as never as null);
     expect(result.chimeraEnabled).toBe(true);
     expect(result.chimeraMaxFiles).toBe(15);
-    expect(result.autoReviewEnabled).toBe(false);
+    expect(result.autoReviewEnabled).toBe(true);
     expect(result.autoReviewDebounceMs).toBe(15_000);
-    expect(result.autoReviewCascadeOn).toBe('off');
+    expect(result.autoReviewCascadeOn).toBe('high');
   });
 });
 
@@ -546,7 +551,7 @@ describe('migrate — v9 combined', () => {
     expect(result.chimeraModel).toBe('');
     expect(result.chimeraMaxFiles).toBe(15);
     expect(result.chimeraAutoFix).toBe('off');
-    expect(result.autoReviewEnabled).toBe(false);
+    expect(result.autoReviewEnabled).toBe(true);
     expect(result.autoReviewProvider).toBe('');
     expect(result.autoReviewModel).toBe('');
     expect(result.autoReviewFallbackProfile).toBe('');
@@ -554,7 +559,7 @@ describe('migrate — v9 combined', () => {
     expect(result.autoReviewDebounceMs).toBe(15_000);
     expect(result.autoReviewMaxFilesPerBatch).toBe(15);
     expect(result.autoReviewMaxConcurrentReviews).toBe(2);
-    expect(result.autoReviewCascadeOn).toBe('off');
+    expect(result.autoReviewCascadeOn).toBe('high');
   });
 
   it('preserves every valid v9 value during migration', () => {

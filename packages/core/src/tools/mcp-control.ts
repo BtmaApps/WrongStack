@@ -325,6 +325,15 @@ async function runEnable(
   // is a JSON-derived record — a bare `configured[name]` resolves through
   // Object.prototype for '__proto__'-shaped names.
   const fromConfig = Object.hasOwn(configured, name) ? configured[name] : undefined;
+  // A server imported from a repository runs a command the repository chose.
+  // Turning it on is the user's call, made after reading that command — not
+  // one a model (or text it read) makes, and not one YOLO approves (H-8).
+  if (fromConfig?.origin === 'repository' && fromConfig.enabled !== true) {
+    throw new Error(
+      `Server "${name}" was imported from a repository's .mcp.json and is not enabled. ` +
+        `Ask the user to review it (\`wstack mcp list\`) and run \`/mcp enable ${name}\` themselves.`,
+    );
+  }
   const cfg = resolveMcpServerConfig(name, fromConfig);
   if (!cfg) {
     const known = Object.keys(all).join(', ');

@@ -79,6 +79,35 @@ describe('safePath', () => {
     expect(safePath('escape.txt', { projectRoot: root })).toBeNull();
   });
 
+  // WS-2026-09-26-06: a DANGLING link also fails realpath with ENOENT and was
+  // read as "a new file under this directory" — inside the project — while
+  // appendFile/open(O_CREAT) follow it and create the target outside.
+  it('rejects a dangling symlink whose target is outside the project', async (ctx) => {
+    const link = path.join(root, 'decisions.jsonl');
+    try {
+      await fs.symlink(path.join(outside, 'not-yet', '.bash_login'), link, 'file');
+    } catch {
+      ctx.skip(); // No symlink privilege (Windows without developer mode).
+    }
+    expect(safePath('decisions.jsonl', { projectRoot: root })).toBeNull();
+    // Through a dangling directory link too, with a missing tail below it.
+    const dirLink = path.join(root, 'logs');
+    await fs.symlink(path.join(outside, 'gone'), dirLink, 'dir');
+    expect(safePath('logs/today.jsonl', { projectRoot: root })).toBeNull();
+  });
+
+  it('still accepts a dangling symlink whose target stays inside the project', async (ctx) => {
+    const link = path.join(root, 'current.log');
+    try {
+      await fs.symlink(path.join(root, 'src', 'later.log'), link, 'file');
+    } catch {
+      ctx.skip();
+    }
+    expect(safePath('current.log', { projectRoot: root })).toBe(
+      path.join(root, 'src', 'later.log'),
+    );
+  });
+
   it('can be asked to keep the literal path instead of following the link', async () => {
     const link = path.join(root, 'escape.txt');
     try {

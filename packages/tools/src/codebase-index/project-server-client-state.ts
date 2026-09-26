@@ -8,6 +8,7 @@ import {
 import { IndexTimeoutError, LockError } from './circuit-breaker.js';
 import {
   projectIndexServerBuildId,
+  projectIndexServerBuiltAt,
   projectIndexServerEndpoint,
 } from './project-server-endpoint.js';
 import type {
@@ -174,6 +175,30 @@ export function projectIndexServerExpectedBuildId(): string | null {
   if (override) return override;
   const url = resolveProjectServerUrl();
   return url ? projectIndexServerBuildId(url) : null;
+}
+
+/**
+ * Whether a daemon of a different build should be replaced rather than used.
+ *
+ * Only an OLDER daemon is replaced: an older client accepts a newer daemon on
+ * the same protocol, so two installations sharing a project converge on the
+ * newest build instead of killing each other's daemon on every reconnect (see
+ * `projectIndexServerBuiltAt`). Unknown build times — a legacy daemon, or the
+ * `WRONGSTACK_INDEX_SERVER_BUILD_ID` override — keep the strict replacement.
+ */
+export function shouldReplaceProjectIndexServer(
+  serverBuiltAt: number | null | undefined,
+  clientBuiltAt: number | null = projectIndexServerExpectedBuiltAt(),
+): boolean {
+  if (process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID']?.trim()) return true;
+  if (typeof serverBuiltAt !== 'number' || !Number.isFinite(serverBuiltAt)) return true;
+  if (clientBuiltAt === null) return true;
+  return serverBuiltAt < clientBuiltAt;
+}
+
+function projectIndexServerExpectedBuiltAt(): number | null {
+  const url = resolveProjectServerUrl();
+  return url ? projectIndexServerBuiltAt(url) : null;
 }
 
 export function isProjectIndexServerAvailable(): boolean {

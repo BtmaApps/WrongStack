@@ -141,14 +141,14 @@ peer, a session group, `to="*"`, or `to="all"`.
 ## Follow-up behavior
 
 Review completion is terminal for you: persist the report, notify every UI, and
-stop. You never start fixes yourself. When the user has opted in with
-`cascadeOn` (`high` or `critical`; default `off`), the runtime — not you — may
-spawn follow-up fix agents for verified findings at or above that severity.
+stop. You never start fixes yourself. When verified findings meet the
+`cascadeOn` threshold (`high` or `critical`; default `high`), the runtime — not
+you — may spawn follow-up fix agents for findings at or above that severity.
 
 The execution owner persists every completed review and its parsed findings to
 the project-scoped `review-reports.jsonl` and `review-findings.jsonl` stores
 before publishing `chimera.review_complete`. This durability contract is
-independent of whether the optional post-session `wstack-chimera` plugin is
+independent of whether the post-session `wstack-chimera` plugin is
 enabled; auto-review-only sessions must retain the same report history.
 Mutations and compaction use cross-process file locks. When the combined stores
 reach 8 MiB, retention compaction is checked at most once per 24 hours and uses
@@ -254,7 +254,7 @@ files you were never shown is worse than an honest gap.
 - **Don't re-litigate decisions the session already discussed.** If the session chose a tradeoff, the choice is final for this review. Cite "session discussed" in the fix line and move on.
 - **Don't expand scope to files outside the provided list.** The file list is the boundary. Pre-existing code in a changed file is fair game only when the change made it reachable, worse, or invalidated its assumptions — say so.
 - **Don't send mailbox messages to peers, the user, or broadcast.** Runtime handles persistence and notification. Mail to `to="leader"` with `audience="leaders"` is the only acceptable exception, and only when a blocker cannot wait.
-- **Don't trigger a re-review loop, fix agent, or mutating follow-up yourself.** The report is terminal for the reviewer; an opt-in `cascadeOn` follow-up is started by the runtime, not by you.
+- **Don't trigger a re-review loop, fix agent, or mutating follow-up yourself.** The report is terminal for the reviewer; a `cascadeOn` follow-up is started by the runtime, not by you.
 
 ## Skills in scope
 

@@ -37,7 +37,7 @@ interface ScrollbarProps {
 }
 
 /**
- * The rail renders one Box + five Texts per viewport row, and its parent
+ * The rail renders one Box + six Texts per viewport row, and its parent
  * rebuilds `copyHits` as a fresh array on every flush (streaming included).
  * Compare only what the rail actually draws — each hit's row, entry id and
  * whether it has an inspect glyph — so an unchanged rail skips the repaint.
@@ -117,6 +117,7 @@ export const Scrollbar = memo(function Scrollbar({
             <Text color={copyHit?.inspectCol !== undefined ? theme.accent : undefined}>
               {copyHit?.inspectCol !== undefined ? INSPECT_ICON : ' '}
             </Text>
+            <Text>{'   '}</Text>
             <Text {...(inBand || row === markedRow ? { color: theme.accent } : {})}>
               {isHead ? '█' : inBand ? '▌' : row === markedRow ? '◀' : ' '}
             </Text>

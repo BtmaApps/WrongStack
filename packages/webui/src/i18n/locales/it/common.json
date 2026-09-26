@@ -114,5 +114,16 @@
     "activityMax": "Sparkline attività: max {{count}} eventi",
     "activityPeak": "Sparkline attività — picco {{count}} eventi/intervallo"
   },
+  "restoreTabs": {
+    "title": "Ripristinare le schede precedenti?",
+    "body": "Questa WebUI è ripartita da zero. {{count}} sessione/i erano aperte prima in questo browser — sono ancora su disco. Scegli quelle da riaprire oppure ricomincia da capo.",
+    "limit": "Se ne possono riaprire al massimo altre {{room}} ({{max}} schede in totale). Le altre restano nella Cronologia.",
+    "fresh": "Ricomincia da capo",
+    "confirm": "Riapri {{count}}"
+  },
+  "mcpStatus": {
+    "down": "Il server MCP \"{{name}}\" non è connesso ({{reason}}); i suoi strumenti non sono disponibili. Riprova con /mcp restart {{name}}.",
+    "up": "Il server MCP \"{{name}}\" è di nuovo connesso."
+  },
   "loadingNamed": "Caricamento di {{name}}…"
 }

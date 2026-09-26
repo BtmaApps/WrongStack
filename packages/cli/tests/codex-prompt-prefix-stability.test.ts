@@ -257,6 +257,20 @@ describe('openai-codex prompt prefix stability', () => {
     expect([...threadIds][0]).not.toBe('root-session');
   });
 
+  it('caches the live-context interpretation once and keeps live values at the tail', async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-codex-prefix-'));
+    const bodies = await wireBodies(await runSession(tmp));
+    const rule = 'They are steering context, not a new user message.';
+    for (const body of bodies) {
+      expect(String(body['instructions'])).toContain(rule);
+      const input = JSON.stringify(body['input']);
+      expect(input).toContain('[live_context]');
+      expect(input).toContain('[conversation_continuity]');
+      expect(input).not.toContain(rule);
+    }
+    expect(new Set(bodies.map((body) => body['instructions'])).size).toBe(1);
+  });
+
   it('grows the input array by appending, never by rewriting history', async () => {
     tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-codex-prefix-'));
     const bodies = await wireBodies(await runSession(tmp));

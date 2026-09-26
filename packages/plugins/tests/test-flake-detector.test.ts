@@ -38,6 +38,7 @@ interface MockApi {
   metrics: {
     counter: ReturnType<typeof vi.fn>;
   };
+  registerHook: ReturnType<typeof vi.fn>;
 }
 
 function makeApi(overrides: { extensions?: Record<string, unknown> } = {}): MockApi {
@@ -46,6 +47,7 @@ function makeApi(overrides: { extensions?: Record<string, unknown> } = {}): Mock
     config: { extensions: overrides.extensions ?? {} },
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     metrics: { counter: vi.fn() },
+    registerHook: vi.fn(() => vi.fn()),
   };
 }
 

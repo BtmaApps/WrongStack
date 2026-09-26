@@ -12,8 +12,17 @@
  *    react? you typed raect") via Levenshtein distance 1
  *  - unpinned installs (no version)     → optional warning when
  *    `warnOnUnpinned` is set
+ *  - the public registry (`registryCheck`) → a name the registry does not
+ *    know is flagged as possibly hallucinated; a package first published
+ *    under `minPackageAgeDays` ago is refused in block mode (the
+ *    slopsquatting shape: a hallucinated name someone registered); a
+ *    version OSV.dev lists advisories for is flagged. A registry that does
+ *    not answer never blocks — the install runs and the note says unchecked.
  *  - every install                      → a compact context note so
  *    the model consciously confirms new dependencies
+ *  - after a commit (`lockfileSync`)    → a note when it changed a
+ *    manifest's dependencies but not the tracked lockfile pinning them
+ *    (see lockfile-sync.ts)
  *
  * Non-install commands pass through untouched.
  *
@@ -26,7 +35,12 @@
  *   "deny": [],                 // exact names or prefix globs ("left-pad", "@evil/*")
  *   "allow": [],                // exemptions from deny
  *   "warnOnUnpinned": false,    // warn when no version is specified
- *   "typosquatCheck": true      // warn on 1-edit lookalikes of popular packages
+ *   "typosquatCheck": true,     // warn on 1-edit lookalikes of popular packages
+ *   "registryCheck": true,      // ask npm / PyPI / crates.io and OSV.dev
+ *   "minPackageAgeDays": 7,     // refuse packages younger than this (block mode)
+ *   "vulnerabilityCheck": true, // OSV.dev advisories for the version installed
+ *   "registryTimeoutMs": 3000,  // per install command, all packages together
+ *   "lockfileSync": true        // note a commit that leaves its lockfile behind
  * }
  * ```
  *
@@ -35,7 +49,10 @@
  *
  * @public
  */
+import { shellCommandLinesFromInput } from '@wrongstack/core/security';
 import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
+import { registerLockfileSync } from './lockfile-sync.js';
+import { type RegistryFinding, registryVerdict } from './registry.js';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -51,7 +68,10 @@ interface DepGuardState {
   /** Times the LLM confirmation call failed or was skipped. */
   llmConfirmErrors: number;
   lastBlock: { pkg: string; command: string; when: string } | null;
+  /** Registry answers, keyed `ecosystem:name@version` — each asked once per process. */
+  registryCache: Map<string, RegistryFinding[]>;
   hookUnregister: null | (() => void);
+  lockfileUnregister: null | (() => void);
 }
 
 const state: DepGuardState = {
@@ -62,7 +82,9 @@ const state: DepGuardState = {
   llmConfirmCount: 0,
   llmConfirmErrors: 0,
   lastBlock: null,
+  registryCache: new Map(),
   hookUnregister: null,
+  lockfileUnregister: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -87,6 +109,11 @@ interface DepGuardConfig {
    * strong signal.
    */
   confirmTyposquatsWithLlm: boolean;
+  registryCheck: boolean;
+  minPackageAgeDays: number;
+  vulnerabilityCheck: boolean;
+  registryTimeoutMs: number;
+  lockfileSync: boolean;
 }
 
 const DEFAULTS: DepGuardConfig = {
@@ -97,7 +124,15 @@ const DEFAULTS: DepGuardConfig = {
   warnOnUnpinned: false,
   typosquatCheck: true,
   confirmTyposquatsWithLlm: false,
+  registryCheck: true,
+  minPackageAgeDays: 7,
+  vulnerabilityCheck: true,
+  registryTimeoutMs: 3000,
+  lockfileSync: true,
 };
+
+/** RAM guard for remembered registry answers; the oldest go first. */
+const MAX_REGISTRY_CACHE = 500;
 
 function readConfig(raw: unknown): DepGuardConfig {
   if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
@@ -112,7 +147,16 @@ function readConfig(raw: unknown): DepGuardConfig {
     warnOnUnpinned: r['warnOnUnpinned'] === true,
     typosquatCheck: r['typosquatCheck'] !== false,
     confirmTyposquatsWithLlm: r['confirmTyposquatsWithLlm'] === true,
+    registryCheck: r['registryCheck'] !== false,
+    minPackageAgeDays: nonNegative(r['minPackageAgeDays'], DEFAULTS.minPackageAgeDays),
+    vulnerabilityCheck: r['vulnerabilityCheck'] !== false,
+    registryTimeoutMs: nonNegative(r['registryTimeoutMs'], DEFAULTS.registryTimeoutMs) || 1,
+    lockfileSync: r['lockfileSync'] !== false,
   };
+}
+
+function nonNegative(v: unknown, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,11 +351,20 @@ export function typosquatOf(name: string): string | null {
 // Plugin
 // ---------------------------------------------------------------------------
 
+function releaseLockfileSync(): void {
+  try {
+    state.lockfileUnregister?.();
+  } catch {
+    // best-effort
+  }
+  state.lockfileUnregister = null;
+}
+
 const plugin: Plugin = {
   name: 'dep-guard',
   version: '0.1.0',
   description:
-    'Supervises dependency installs: blocks deny-listed packages, flags typosquat lookalikes, and optionally warns on unpinned versions',
+    'Supervises dependency installs: blocks deny-listed and just-published packages, flags typosquat lookalikes, unknown names and vulnerable versions',
   apiVersion: '^0.1.10',
   capabilities: { tools: true, hooks: true, llm: true },
   defaultConfig: { ...DEFAULTS },
@@ -354,6 +407,35 @@ const plugin: Plugin = {
         description:
           'Ask the risk-review Council to assess a flagged typosquat, with One Shot fallback. Appended to the warn context, never escalates to a block. Off by default.',
       },
+      registryCheck: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Ask the public registry (npm, PyPI, crates.io) about each package before install: flag unknown names, refuse just-published ones in block mode. Fails open.',
+      },
+      minPackageAgeDays: {
+        type: 'number',
+        default: 7,
+        description:
+          'A package first published fewer days ago is refused (block mode) or flagged (warn mode).',
+      },
+      vulnerabilityCheck: {
+        type: 'boolean',
+        default: true,
+        description: 'Ask OSV.dev whether the version to be installed has known advisories.',
+      },
+      registryTimeoutMs: {
+        type: 'number',
+        default: 3000,
+        description:
+          'Time budget for all registry lookups of one command; past it the install runs unchecked.',
+      },
+      lockfileSync: {
+        type: 'boolean',
+        default: true,
+        description:
+          "After a commit, note it when it changed a manifest's dependencies but not the tracked lockfile.",
+      },
     },
   },
 
@@ -366,6 +448,7 @@ const plugin: Plugin = {
     state.llmConfirmCount = 0;
     state.llmConfirmErrors = 0;
     state.lastBlock = null;
+    state.registryCache.clear();
     if (state.hookUnregister) {
       try {
         state.hookUnregister();
@@ -374,6 +457,8 @@ const plugin: Plugin = {
       }
       state.hookUnregister = null;
     }
+
+    releaseLockfileSync();
 
     const cfg = readConfig(api.config.extensions?.['dep-guard']);
 
@@ -384,8 +469,44 @@ const plugin: Plugin = {
       if (!cfg.enabled) return;
       state.invocations += 1;
       const ti = (input.toolInput ?? {}) as Record<string, unknown>;
-      const rawCmd = ti['command'] ?? ti['CommandLine'] ?? ti['cmd'] ?? ti['script'] ?? ti['input'];
-      const command = typeof rawCmd === 'string' ? rawCmd : '';
+      // Every command line the call can run: `bash`'s string, `exec`'s
+      // command + args, and the workflow plugins' `{ program, args }` objects
+      // (top-level or nested). Reading only a top-level string missed the last
+      // two, so `exec npm install x` and `workspace_recipe_run` installs were
+      // never seen (WS-2026-09-26-03).
+      const { lines, truncated } = shellCommandLinesFromInput(ti);
+      for (const key of ['CommandLine', 'input']) {
+        const legacy = ti[key];
+        if (typeof legacy === 'string' && legacy) lines.push(legacy);
+      }
+      const command = lines.join('\n');
+      // A walk that hit its scan bounds may be hiding an install in the
+      // unread region — the padding vector classifyShellSurfaceInput closes
+      // by reading truncation as the worst kind. A truncated call is never
+      // certified clean, whatever the visible lines show.
+      if (truncated) {
+        if (cfg.mode === 'block') {
+          state.blocks += 1;
+          state.lastBlock = {
+            pkg: '<unknown: scan truncated>',
+            command: command.slice(0, 200) || '<no visible command>',
+            when: new Date().toISOString(),
+          };
+          api.metrics.counter('blocks');
+          return {
+            decision: 'block' as const,
+            reason:
+              'dep-guard: the command scan hit its depth/size bounds before reading the whole tool input — refusing to evaluate installs from an incomplete scan. Shrink or flatten the tool input and retry.',
+          };
+        }
+        state.warns += 1;
+        api.metrics.counter('warns');
+        return {
+          decision: 'allow' as const,
+          additionalContext:
+            'dep-guard: the command scan was TRUNCATED — part of this call was not scanned and may contain additional installs. Do not add dependencies from it without explicit user approval.',
+        };
+      }
       if (!command) return;
 
       const installs = parseInstallCommands(command);
@@ -482,6 +603,33 @@ const plugin: Plugin = {
         }
       }
 
+      if (cfg.registryCheck) {
+        const verdict = await registryVerdict(
+          installs,
+          {
+            isAllowed: (name) => cfg.allow.some((p) => matchesPattern(name, p)),
+            minPackageAgeDays: cfg.minPackageAgeDays,
+            vulnerabilityCheck: cfg.vulnerabilityCheck,
+            registryTimeoutMs: cfg.registryTimeoutMs,
+            cache: state.registryCache,
+            maxCacheEntries: MAX_REGISTRY_CACHE,
+          },
+          hookContext?.signal,
+        );
+        if (verdict.block && cfg.mode === 'block') {
+          state.blocks += 1;
+          state.lastBlock = {
+            pkg: verdict.block.name,
+            command: command.slice(0, 200),
+            when: new Date().toISOString(),
+          };
+          api.metrics.counter('blocks');
+          return { decision: 'block' as const, reason: verdict.block.reason };
+        }
+        if (verdict.block) notes.push(verdict.block.reason);
+        notes.push(...verdict.notes);
+      }
+
       if (notes.length > 0) {
         state.warns += 1;
         api.metrics.counter('warns');
@@ -497,12 +645,13 @@ const plugin: Plugin = {
       };
     };
 
-    state.hookUnregister = api.registerHook('PreToolUse', 'bash|exec', hook as never, {
+    state.hookUnregister = api.registerHook('PreToolUse', '*', hook as never, {
       name: 'dep-guard',
       stage: 'validate',
       failurePolicy: 'closed',
       policy: true,
     });
+    if (cfg.enabled && cfg.lockfileSync) state.lockfileUnregister = registerLockfileSync(api);
 
     // ── dep_guard_status tool ─────────────────────────────────────────
     api.tools.register({
@@ -522,6 +671,9 @@ const plugin: Plugin = {
           allow: cfg.allow,
           warnOnUnpinned: cfg.warnOnUnpinned,
           typosquatCheck: cfg.typosquatCheck,
+          registryCheck: cfg.registryCheck,
+          minPackageAgeDays: cfg.minPackageAgeDays,
+          vulnerabilityCheck: cfg.vulnerabilityCheck,
           counters: {
             invocations: state.invocations,
             installsSeen: state.installsSeen,
@@ -544,6 +696,7 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
+    releaseLockfileSync();
     if (state.hookUnregister) {
       try {
         state.hookUnregister();

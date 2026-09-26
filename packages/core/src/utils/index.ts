@@ -1,3 +1,12 @@
+export {
+  cliSpawnArgs,
+  isStandaloneBinary,
+  moduleDirFor,
+  moduleUrlFor,
+  scriptSpawnArgs,
+  standalonePackageDir,
+  wrongstackPackageJsonPath,
+} from '@wrongstack/persistence';
 export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';
 export * from './assert-never.js';
 export * from './atomic-write.js';
@@ -161,7 +170,7 @@ export {
   type SageOutputSplit,
   splitSageOutputBlock,
 } from './sage-output-block.js';
-export { sessionScopedPath } from './session-scoped-path.js';
+export { isSessionTranscriptFileName, sessionScopedPath } from './session-scoped-path.js';
 export * from './sleep.js';
 export { slugify } from './slug.js';
 export * from './socket-path.js';
@@ -251,12 +260,3 @@ export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore
 export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';
 export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';
 export * from './wstack-paths.js';
-export {
-  cliSpawnArgs,
-  isStandaloneBinary,
-  moduleDirFor,
-  moduleUrlFor,
-  scriptSpawnArgs,
-  standalonePackageDir,
-  wrongstackPackageJsonPath,
-} from '@wrongstack/persistence';

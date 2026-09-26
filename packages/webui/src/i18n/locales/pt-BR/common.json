@@ -114,5 +114,16 @@
     "activityMax": "Sparkline de atividade: máx {{count}} eventos",
     "activityPeak": "Sparkline de atividade — pico {{count}} eventos/intervalo"
   },
+  "restoreTabs": {
+    "title": "Restaurar suas abas anteriores?",
+    "body": "Esta WebUI começou do zero. {{count}} sessão(ões) estavam abertas antes neste navegador — elas continuam no disco. Escolha as que quer reabrir ou comece do zero.",
+    "limit": "No máximo mais {{room}} podem ser reabertas ({{max}} abas no total). O restante fica no Histórico.",
+    "fresh": "Começar do zero",
+    "confirm": "Reabrir {{count}}"
+  },
+  "mcpStatus": {
+    "down": "O servidor MCP \"{{name}}\" não está conectado ({{reason}}); suas ferramentas estão indisponíveis. Tente novamente com /mcp restart {{name}}.",
+    "up": "O servidor MCP \"{{name}}\" está conectado novamente."
+  },
   "loadingNamed": "Carregando {{name}}…"
 }

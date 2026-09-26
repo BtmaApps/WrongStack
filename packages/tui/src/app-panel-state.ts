@@ -128,8 +128,31 @@ export type PanelState = {
    *  applies the chosen one instantly (in-place palette mutation + persist). */
   themePicker: {
     open: boolean;
+    /** Index into the FILTERED option list (see `filter`). */
     selected: number;
     hint?: string | undefined;
+    /** Type-to-filter query. Empty means "show every preset". */
+    filter?: string | undefined;
+    /**
+     * Whether printable keys currently feed `filter`. Entered with `/` and
+     * left when the query is emptied. While this is false, `u` means "undo"
+     * and ordinary letters do nothing — without an explicit mode, every
+     * letter typed into the filter (descriptions are full of them) would
+     * shadow the undo key.
+     */
+    filtering?: boolean | undefined;
+    /**
+     * The preset that was active when the picker opened — the target of the
+     * undo key. Undefined on the first ever open, where there is nothing to go
+     * back to.
+     */
+    previous?: import('@wrongstack/core/types').ThemePresetId | undefined;
+    /**
+     * Live-preview mode: while true, moving the cursor applies each focused
+     * preset immediately, and Esc restores `previous` before closing. Off by
+     * default because it repaints the whole chat on every arrow key.
+     */
+    preview?: boolean | undefined;
   };
   /** Agent mode picker — opened by `/mode`. Selects teach/brief/code-reviewer/etc. */
   modePicker: {
@@ -204,6 +227,7 @@ export type PanelState = {
     featureMemory: boolean;
     featureSkills: boolean;
     featureModelsRegistry: boolean;
+    featureToolCoach: boolean;
     tokenSavingTier: TokenSavingTier;
     allowOutsideProjectRoot: boolean;
     // Context

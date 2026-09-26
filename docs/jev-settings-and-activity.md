@@ -120,8 +120,9 @@ The WebUI activity view refreshes every three seconds and shows the most recent
 contains a request ID, time, consumer, process working directory, route, model,
 elapsed time, token usage, bounded answer identifiers/numbers and a safe failure
 category. It covers judgment features, skill suggestions, fleet classification
-and connection probes. No prompt state, question instructions, API credentials,
-response legends or raw provider error bodies are recorded.
+and connection probes. By default no prompt state, question instructions, API
+credentials, response legends or raw provider error bodies are recorded — see
+[Full content records](#full-content-records) for the opt-in that changes that.
 
 `answered` means the service returned a typed response; the consumer may still
 decline a low-confidence answer. `incomplete` means required answers were missing
@@ -134,3 +135,48 @@ Activity is also written to `~/.wrongstack/logs/jev-<pid>.jsonl`. The panel and
 at 5 MB with one `.1` backup. Files from previous processes remain on disk for
 investigation; the browser tail is current-process only. The working directory
 is process attribution, not a per-session project identifier.
+
+Set `WRONGSTACK_JEV_LOG_DIR` to write the log somewhere else; the file name is
+still `jev-<pid>.jsonl` and its mode is still `0600`.
+
+## Full content records
+
+The default record answers *which* feature asked, on which route and model, for
+how long, and what it was answered. It cannot answer *what was asked* — and
+that is the question you have when a feature's judgment is wrong and you need
+the evidence it passed, the wording of the question, or the distribution it got
+back. `typesafe.logContent: true` records that too.
+
+```text
+/jev logcontent on
+```
+
+Each line of the log then carries, alongside the metadata:
+
+- `request` — the `state` sent, the full typed `questions` (instructions,
+  criteria, legends you defined) and the model.
+- `response` — the whole parsed result: typed answers, `probabilities`,
+  `confidence`, the `legend` the service echoed, `usage` and the model that
+  answered.
+- `error` — the failure's name, message and status, plus the underlying cause
+  when there is one. `reason` still carries the safe category.
+
+Three properties hold regardless:
+
+- **Disk only.** `recordJevActivity` strips these fields as the entry enters
+  the in-process tail, so the live views — WebUI, SimpleUI, TUI, `/jev logs` —
+  stay metadata-only even while the file beside them holds full content. The
+  wire payload is unchanged in both modes.
+- **Key scrubbed.** The account key is replaced with `[redacted]` in recorded
+  content. It is never sent to the host in the first place, but a `state` blob
+  built from arbitrary text can carry one.
+- **Bounded.** A single payload over 256 KB is replaced with a
+  `[truncated: N chars, limit N]` marker rather than writing a line too large
+  to parse or for rotation to split.
+
+Set it for one process without touching the profile with
+`WRONGSTACK_JEV_LOG_CONTENT=1`. A falsy value in the environment wins over the
+profile. Like every other Jev setting, it is read when a client is built, so
+restart existing sessions. This records material derived from your project — the
+same material the session log already keeps — so turn it off when you are done
+and delete the log file.

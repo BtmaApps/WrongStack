@@ -31,6 +31,7 @@ export function useControllerKeyPipeline({
   statuslineHiddenForPicker,
   onPickerEnter,
   onThemePickerEnter,
+  onThemePickerUndo,
   setPromptFavorite,
   stateRef,
   exitRequestedRef,
@@ -244,6 +245,7 @@ export function useControllerKeyPipeline({
   statuslineHiddenForPicker: () => import('@wrongstack/core/statusline').StatuslineItem[];
   onPickerEnter: () => Promise<void>;
   onThemePickerEnter: () => void;
+  onThemePickerUndo: () => void;
   setPromptFavorite: (slug: string, favorite: boolean) => Promise<void>;
   stateRef: React.RefObject<import('./app-state.js').State>;
   exitRequestedRef: React.RefObject<boolean>;
@@ -386,6 +388,7 @@ export function useControllerKeyPipeline({
     statuslineHiddenForPicker,
     onPickerEnter,
     onThemePickerEnter,
+    onThemePickerUndo,
     setPromptFavorite,
   });
 

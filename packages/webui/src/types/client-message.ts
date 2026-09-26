@@ -227,7 +227,7 @@ export type WSClientMessageCore =
         worktrees?: boolean | undefined;
         /** Split non-atomic tasks before dispatch (planning-time decompose). */
         planDecompose?: boolean | undefined;
-      };
+      } & SessionScopedPayload;
     }
   | {
       type: 'sdd.run.from_graph';
@@ -239,7 +239,7 @@ export type WSClientMessageCore =
         fallbackModels?: string[] | undefined;
         worktrees?: boolean | undefined;
         planDecompose?: boolean | undefined;
-      };
+      } & SessionScopedPayload;
     }
   | {
       type: 'sdd.run.from_spec';
@@ -251,7 +251,7 @@ export type WSClientMessageCore =
         fallbackModels?: string[] | undefined;
         worktrees?: boolean | undefined;
         planDecompose?: boolean | undefined;
-      };
+      } & SessionScopedPayload;
     }
   | { type: 'abort'; payload: SessionScopedPayload }
   | { type: 'session.resume'; payload: { id: string } & SessionScopedPayload }

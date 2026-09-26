@@ -10,8 +10,13 @@ import type { Tool } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils/error';
 import { type DangerAssessment, detectDanger } from './_danger-detect.js';
 import { buildChildEnv } from './_env.js';
-import { createOutputSpool, spoolNote } from './_output-spool.js';
-import { commandOutputPreviewBytes, normalizeCommandOutput, safeResolveReal } from './_util.js';
+import { createOutputSpool, finishCommandOutput } from './_output-spool.js';
+import {
+  commandOutputPreviewBytes,
+  createCommandOutputCapture,
+  normalizeCommandOutput,
+  safeResolveReal,
+} from './_util.js';
 import {
   buildWin32CmdShimInvocation,
   isWinCmdShim,
@@ -114,11 +119,6 @@ export function getExecAllowlist(): string[] {
 }
 
 const MAX_ARGS = 20;
-// 200 KB — larger than bash's 32 KB cap. exec commands produce structured,
-// predictable output (build logs, test results, git diffs) that the agent
-// needs in full. 200 KB is safe for context windows ≥200K tokens while
-// still preventing a rogue build from filling the context.
-const MAX_OUTPUT = 200_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 // Hard ceiling for the per-call `timeout` parameter. The old clamp used
 // DEFAULT_TIMEOUT_MS as the ceiling too, which silently capped EVERY call at
@@ -495,8 +495,11 @@ function runCommand(
   danger: DangerAssessment,
 ): Promise<ExecOutput> {
   return new Promise((resolve, reject) => {
-    let stdout = '';
-    let stderr = '';
+    // Head + rolling tail of each stream: a build or a test run prints its
+    // verdict last, and a head-only buffer cut exactly that off.
+    const previewBytes = commandOutputPreviewBytes();
+    const stdout = createCommandOutputCapture(previewBytes);
+    const stderr = createCommandOutputCapture(previewBytes);
     let killed = false;
     const resolvedOnce = { value: false };
     const finish = (result: ExecOutput): void => {
@@ -659,10 +662,10 @@ function runCommand(
       finish({
         command: cmd,
         args,
-        stdout: normalizeCommandOutput(stdout),
+        stdout: normalizeCommandOutput(stdout.text()),
         stderr: `Aborted: ${err.message}`,
         exitCode: 124,
-        truncated: Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes(),
+        truncated: stdoutBytes > previewBytes,
         allowed: true,
         danger,
       });
@@ -700,7 +703,7 @@ function runCommand(
       stdoutBytes += chunk.byteLength;
       emitProcessOutput({ pid, stream: 'stdout', chunk });
       if (text.length > 0) {
-        if (stdout.length < MAX_OUTPUT) stdout += text.slice(0, MAX_OUTPUT - stdout.length);
+        stdout.push(text);
         spool.write(text);
       }
     });
@@ -710,7 +713,7 @@ function runCommand(
       stderrBytes += chunk.byteLength;
       emitProcessOutput({ pid, stream: 'stderr', chunk });
       if (text.length > 0) {
-        if (stderr.length < MAX_OUTPUT) stderr += text.slice(0, MAX_OUTPUT - stderr.length);
+        stderr.push(text);
         spool.write(text);
       }
     });
@@ -726,27 +729,23 @@ function runCommand(
       registry.afterCall(durationMs, exitCode !== 0);
       const stdoutTail = stdoutDecoder.end();
       if (stdoutTail) {
-        if (stdout.length < MAX_OUTPUT) stdout += stdoutTail.slice(0, MAX_OUTPUT - stdout.length);
+        stdout.push(stdoutTail);
         spool.write(stdoutTail);
       }
       const stderrTail = stderrDecoder.end();
       if (stderrTail) {
-        if (stderr.length < MAX_OUTPUT) stderr += stderrTail.slice(0, MAX_OUTPUT - stderr.length);
+        stderr.push(stderrTail);
         spool.write(stderrTail);
       }
-      const spooled = spool.finalize();
-      const isTruncated =
-        stdoutBytes > MAX_OUTPUT ||
-        stderrBytes > MAX_OUTPUT ||
-        Buffer.byteLength(stdout, 'utf8') > commandOutputPreviewBytes() ||
-        Buffer.byteLength(stderr, 'utf8') > commandOutputPreviewBytes();
+      // The command-aware diet (`_output-diet.ts`) reads stdout, where test
+      // runners and installers print; stderr keeps the plain normalization.
       finish({
         command: cmd,
         args,
-        stdout: normalizeCommandOutput(stdout) + (spooled ? spoolNote(spooled) : ''),
-        stderr: normalizeCommandOutput(stderr),
+        stdout: finishCommandOutput(spool, stdout.text(), [cmd, ...args].join(' ')),
+        stderr: normalizeCommandOutput(stderr.text()),
         exitCode,
-        truncated: isTruncated,
+        truncated: stdoutBytes > previewBytes || stderrBytes > previewBytes,
         allowed: true,
         danger,
       });

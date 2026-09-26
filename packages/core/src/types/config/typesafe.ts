@@ -52,6 +52,25 @@ export interface TypeSafeConfig {
   /** Per-HTTP-attempt timeout, in ms. Default 4000. */
   requestTimeoutMs?: number | undefined;
   /**
+   * Record the full Jev request, the full response and the failure in
+   * `~/.wrongstack/logs/jev-<pid>.jsonl`, not just the attribution fields:
+   * the state a feature sent, the question instructions, the typed answers
+   * with their distributions and legends, and the provider's error.
+   *
+   * Off by default. Off means the log records WHAT was asked and never WHAT
+   * was said — no prompt state, no instructions, no response legends, nothing
+   * derived from your project content. On means the debug log holds that
+   * material too, which is what makes it useful for reading back what a
+   * feature actually asked Jev, and what makes it a file you delete when you
+   * are done.
+   *
+   * Full records are written to the process log file only. The live view in
+   * WebUI, SimpleUI and the TUI stays metadata-only either way, and the account
+   * key is scrubbed from recorded content. `WRONGSTACK_JEV_LOG_CONTENT=1` sets
+   * it for one process without editing the profile.
+   */
+  logContent?: boolean | undefined;
+  /**
    * Consecutive 401/403 responses that disable this TypeSafe client instance.
    * Default 3. Rate limits and network errors never count toward this — only
    * a credential the host has actually rejected.

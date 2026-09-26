@@ -19,6 +19,8 @@ import type { SddSubtaskSpec, SddSupervisorVerdict } from './sdd-parallel-run.js
 export interface SddSupervisorOptions {
   /** Decision authority (policy/LLM/human). Reuse the session's TOKENS.BrainArbiter. */
   brain: BrainArbiter;
+  /** Session that started this run, retained when another tab becomes foreground. */
+  sessionId?: string | undefined;
   /**
    * Models to rotate through on a `reassign` verdict (e.g. the run's fallback
    * chain). Omit to drop the reassign option entirely.
@@ -69,6 +71,7 @@ export class SddSupervisor {
 
     const decision = await this.opts.brain.decide({
       id: `sdd-supervisor-${task.id}-${attempts}`,
+      sessionId: this.opts.sessionId,
       source: 'system',
       question: `SDD task "${task.title}" exhausted its retries. How should the run proceed?`,
       context: `Error: ${error}\nSupervisor rescues already used: ${attempts}`,

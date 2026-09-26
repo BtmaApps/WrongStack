@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 350,
+      "files": 351,
       "typeOnly": 277,
-      "runtimeOrMixed": 94
+      "runtimeOrMixed": 95
     },
     "@wrongstack/core/agent-catalog": {
       "files": 17,
@@ -14,14 +14,14 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/chronicle": {
-      "files": 13,
+      "files": 14,
       "typeOnly": 3,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 234,
+      "files": 240,
       "typeOnly": 89,
-      "runtimeOrMixed": 203
+      "runtimeOrMixed": 209
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 48
     },
     "@wrongstack/core/kernel": {
-      "files": 301,
+      "files": 307,
       "typeOnly": 148,
-      "runtimeOrMixed": 167
+      "runtimeOrMixed": 173
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -124,9 +124,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 138,
+      "files": 139,
       "typeOnly": 64,
-      "runtimeOrMixed": 77
+      "runtimeOrMixed": 78
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -139,14 +139,14 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 171,
+      "files": 174,
       "typeOnly": 27,
-      "runtimeOrMixed": 147
+      "runtimeOrMixed": 150
     },
     "@wrongstack/core/session-catalog": {
-      "files": 12,
+      "files": 13,
       "typeOnly": 0,
-      "runtimeOrMixed": 13
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/skill-mentions": {
       "files": 5,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 16,
+      "files": 23,
       "typeOnly": 2,
-      "runtimeOrMixed": 15
+      "runtimeOrMixed": 22
     },
     "@wrongstack/core/statusline": {
       "files": 26,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1211,
-      "typeOnly": 1074,
-      "runtimeOrMixed": 355
+      "files": 1224,
+      "typeOnly": 1082,
+      "runtimeOrMixed": 363
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -214,14 +214,14 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 22,
+      "files": 23,
       "typeOnly": 6,
-      "runtimeOrMixed": 17
+      "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 660,
+      "files": 667,
       "typeOnly": 62,
-      "runtimeOrMixed": 628
+      "runtimeOrMixed": 635
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -229,9 +229,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 12,
+      "files": 15,
       "typeOnly": 0,
-      "runtimeOrMixed": 12
+      "runtimeOrMixed": 15
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 13,
@@ -393,6 +393,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/execution.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/fleet/host-context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -2504,6 +2510,12 @@
     },
     {
       "specifier": "@wrongstack/core/chronicle",
+      "file": "packages/cli/tests/daemon-endpoint-secret.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/chronicle",
       "file": "packages/cli/tests/daemon-inventory.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3182,6 +3194,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/daemon-endpoint-secret.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/director-setup.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3213,6 +3231,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/helpers/mailbox-daemon.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/hq-fleet-control.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -3890,6 +3914,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/backend-services.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/tests/brain-request-correlation.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3944,13 +3974,31 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/sdd-supervisor-wiring.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/tests/service-actions.gaps.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/setup-events-pattern-session-scope.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui/tests/helpers/mailbox-daemon.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7382,9 +7430,27 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/tests/auto-proceed-after-esc.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/tests/failed-run-auto-proceed.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/tui/tests/helpers/app-journey-harness.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/tests/mcp-status-bridge.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -7730,7 +7796,19 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/sdd-supervisor-wiring.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/setup-events-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/setup-events-pattern-session-scope.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7755,6 +7833,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/worktree-ws-handler.gaps.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9188,6 +9272,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/tui/tests/settings-jev-delegation.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/tui/tests/settings-slash-persistence.test.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9944,6 +10034,24 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/plugins/src/dep-guard/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/plugins/src/dep-guard/lockfile-sync.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/plugins/src/test-flake-detector/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/plugins/tests/credential-pattern-parity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10370,6 +10478,12 @@
     },
     {
       "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/cli/tests/daemon-endpoint-secret.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
       "file": "packages/cli/tests/hq-mailbox-actions.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10466,6 +10580,18 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/boot/tui-project-switch.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/boot/tui-session-resume.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/execution-kanban-dispatch.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10485,6 +10611,12 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/wiring/runtime-dispatch-state.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/wiring/session.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10520,6 +10652,18 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/tools/tests/skill-activated-event-gating.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/tools/tests/skill.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/tui/src/hooks/use-resource-slash-commands.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10547,6 +10691,18 @@
       "file": "packages/webui-server/src/server/route-contracts.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/webui-server/src/server/session-handler-helpers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/webui-server/src/server/session-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/skills",
@@ -13742,6 +13898,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/host-context-skill-fence.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-helpers-capabilities.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14177,6 +14339,12 @@
       "file": "packages/cli/tests/system-prompt-phantom-tools.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/theme-metadata-agreement.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14840,6 +15008,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/dep-guard/lockfile-sync.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/dependency-vulnerability-gate/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15224,6 +15398,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/codex-websocket-recovery.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/codex-websocket-types.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/codex-websocket.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -15365,6 +15551,12 @@
       "file": "packages/providers/src/openai-chat-usage.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/openai-codex-body.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15603,6 +15795,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/catalog-routed.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/codex-cache-regressions.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/codex-replay-edge-cases.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17308,7 +17512,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/app-panel-state.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17417,6 +17621,12 @@
       "file": "packages/tui/src/exit-slash.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/hooks/tui-slash-command-options.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17530,7 +17740,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/hooks/use-theme-state.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17696,6 +17906,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/theme-presets/options.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/theme-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17709,6 +17925,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/tui-host-capabilities.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/use-app-controller.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17885,6 +18107,12 @@
       "file": "packages/tui/tests/submit-prompt-refinement.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/tests/theme-contrast.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -18854,6 +19082,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/sdd-supervisor-wiring.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/sdd-wizard-and-agent-sessions.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -19310,6 +19544,12 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/tests/jev-command.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/tests/typesafe-calibration-commands.test.ts",
       "typeOnly": 2,
       "runtimeOrMixed": 0
@@ -19479,6 +19719,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/tests/session-metrics-extra.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/tests/session-metrics-sidecar.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -21464,6 +21710,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/mcp/src/elicitation-form.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/mcp/src/elicitation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/mcp/src/registry-connect-loop.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -21584,7 +21842,19 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/dep-guard/lockfile-sync.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/lint-gate/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/notify-hub/desktop-notifier.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -21597,6 +21867,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/test-flake-detector/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/test-flake-detector/memory.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -22916,6 +23192,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/entry.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23366,6 +23648,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/techstack/src/remediation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/techstack/src/store/sqlite.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
       "file": "packages/tools/src/exec.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23385,6 +23679,12 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/webui/src/components/SessionsDashboard.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/webui/src/components/TechStackView/index.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

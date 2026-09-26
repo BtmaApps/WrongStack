@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { privateEndpointKey } from '@wrongstack/persistence';
 import { assertUnixSocketPathWithinLimit } from '../utils/socket-path.js';
 import { CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION } from './project-server-protocol.js';
 
@@ -39,7 +40,8 @@ export function chronicleProjectServerKey(projectDir: string): string {
  * `sun_path` limit.
  */
 export function chronicleProjectServerEndpoint(projectDir: string): string {
-  const key = chronicleProjectServerKey(projectDir);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(chronicleProjectServerKey(projectDir));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-chronicle-v${CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION}-${key}`;
   }

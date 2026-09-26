@@ -64,6 +64,7 @@ const BOOLEAN_PREF_KEYS = new Set([
   'featureMemory',
   'featureSkills',
   'featureModelsRegistry',
+  'featureToolCoach',
   'indexOnStart',
   'contextAutoCompact',
   'tgSessionEnd',

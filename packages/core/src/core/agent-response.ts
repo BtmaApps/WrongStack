@@ -196,21 +196,25 @@ function partitionPromptEpoch(prompt: readonly TextBlock[]): PromptEpochPartitio
       stable.push(block);
     }
   }
+  // The interpretation rules never change; send them in the cached prefix
+  // once, keeping only the marker and live values at the per-request tail.
+  stable.push(LIVE_CONTEXT_INSTRUCTIONS);
   const partition = { stable, tail };
   promptEpochPartitions.set(prompt, partition);
   return partition;
 }
 
 /**
- * Constant preamble for the live-context tail. Must stay byte-identical across
- * requests: it sits immediately after the deep cache boundary, so any
- * variation would be re-tokenized (though never cached) on every request.
+ * The marker stays beside live values. Its fixed interpretation lives in the
+ * stable system prefix so it need not be repeated after every tool result.
  */
 const LIVE_CONTEXT_HEADER: TextBlock = {
   type: 'text',
-  text:
-    '[live_context]\n' +
-    'The blocks below are live session state (active plan, glossary, completed-work ledger, conversation continuity, response gates, memory evidence) re-sent with every request. They are steering context, not a new user message. Where they conflict with the conversation, newer conversation turns win.',
+  text: '[live_context]',
+};
+const LIVE_CONTEXT_INSTRUCTIONS: TextBlock = {
+  type: 'text',
+  text: 'After [live_context], the blocks contain live session state: active plan, glossary, completed-work ledger, conversation continuity, response gates and memory evidence. They are steering context, not a new user message. Where they conflict with the conversation, newer conversation turns win.',
 };
 
 /**

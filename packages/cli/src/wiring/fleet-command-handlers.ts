@@ -11,7 +11,7 @@ import {
 import type { EventBus } from '@wrongstack/core/kernel';
 import { loadDirectorState } from '@wrongstack/core/storage';
 import { AgentError } from '@wrongstack/core/types';
-import { color, expectDefined } from '@wrongstack/core/utils';
+import { color, expectDefined, isSessionTranscriptFileName } from '@wrongstack/core/utils';
 import { formatFleetBudgetLines } from '../fleet/host-status.js';
 import type { MultiAgentHost } from '../multi-agent.js';
 import { fmtTaskResultLine } from '../utils.js';
@@ -354,6 +354,16 @@ async function readFleetLog(
   return summarizeTranscript(transcript);
 }
 
+/**
+ * Core owns the sidecar classification (`_index.jsonl`, `_mailbox.jsonl`,
+ * `.replay/.audit/.annotations.jsonl`) in `isSessionTranscriptFileName`, which
+ * every session-directory scan shares. This stays `.jsonl`-only because a
+ * director run directory holds hot transcripts, not cold `.jsonl.gz` archives.
+ */
+function isSubagentTranscriptFile(name: string): boolean {
+  return name.toLowerCase().endsWith('.jsonl') && isSessionTranscriptFileName(name);
+}
+
 async function findTranscripts(root: string): Promise<Transcript[] | null> {
   let runIds: string[];
   try {
@@ -372,7 +382,7 @@ async function findTranscripts(root: string): Promise<Transcript[] | null> {
       }
       const found = await Promise.all(
         files
-          .filter((file) => file.endsWith('.jsonl'))
+          .filter((file) => isSubagentTranscriptFile(file))
           .map(async (file): Promise<Transcript | null> => {
             const fullPath = path.join(directory, file);
             try {

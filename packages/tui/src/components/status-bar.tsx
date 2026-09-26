@@ -92,6 +92,7 @@ export type {
 export const StatusBar = memo(function StatusBar({
   model,
   provider,
+  effort,
   version,
   latestVersion,
   updateAvailable,
@@ -268,14 +269,30 @@ export const StatusBar = memo(function StatusBar({
     ) : null;
 
   // Model chip density levels: `provider/model` → `model` → truncated model.
+  // The reasoning effort rides inside the chip as a suffix — it qualifies the
+  // model, so it sheds with the model at overflow rather than costing a
+  // statusline slot of its own. `micro` drops it: for a model of 10 columns or
+  // fewer, `truncateChip(model, 10)` is the model unchanged, so a suffix there
+  // would render micro byte-identical to short. That leaves the bottom rung
+  // with zero width gain, so the rail fitter's last concession re-renders the
+  // same frame and the tightest level is never actually reached. Dropping the
+  // suffix makes the ladder strictly decreasing at every model length
+  // (`gpt-5.6 · xhigh`: 22 → 15 → 7, versus 14 → 7 → 7 before the suffix).
   const modelColor = isNoColor ? undefined : theme.monitor.agents;
+  const effortSuffix = effort ? <Text dimColor={!isNoColor}>{` · ${effort}`}</Text> : null;
   const modelStatusChip = showChip('model') ? (
     <Text color={modelColor}>
       {provider ? <Text dimColor={!isNoColor}>{provider}/</Text> : null}
       {model}
+      {effortSuffix}
     </Text>
   ) : null;
-  const modelShortChip = showChip('model') ? <Text color={modelColor}>{model}</Text> : null;
+  const modelShortChip = showChip('model') ? (
+    <Text color={modelColor}>
+      {model}
+      {effortSuffix}
+    </Text>
+  ) : null;
   const modelMicroChip = showChip('model') ? (
     <Text color={modelColor}>{truncateChip(model, 10)}</Text>
   ) : null;

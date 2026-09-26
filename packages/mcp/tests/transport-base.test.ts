@@ -187,6 +187,29 @@ describe('BaseHTTPTransport helpers', () => {
     expect(verifiedInit.dispatcher).toBeDefined();
   });
 
+  // H-7 (security-check 2026-09-26): after config-env expansion the URL can
+  // carry a secret in its path/query (userinfo is refused earlier, by
+  // canonicalMcpResource); only the origin is logged.
+  it('names only the origin when TLS verification is off', () => {
+    const secretUrl = 'https://mcp.example.test:8443/v1/sk-live-123?key=sk-live-123';
+    process.env['WRONGSTACK_UNSAFE_MCP_TLS'] = '1';
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    new TestTransport({ name: 'w', url: secretUrl, tls: { rejectUnauthorized: false } });
+    const logged = warn.mock.calls.flat().join(' ');
+    expect(logged).toContain('https://mcp.example.test:8443');
+    expect(logged).not.toMatch(/sk-live-123/);
+
+    delete process.env['WRONGSTACK_UNSAFE_MCP_TLS'];
+    let message = '';
+    try {
+      new TestTransport({ name: 'w', url: secretUrl, tls: { rejectUnauthorized: false } });
+    } catch (err) {
+      message = `${(err as Error).message} ${JSON.stringify((err as { context?: unknown }).context)}`;
+    }
+    expect(message).toContain('https://mcp.example.test:8443');
+    expect(message).not.toMatch(/sk-live-123/);
+  });
+
   it('rejects disabled TLS verification without the explicit opt-in', () => {
     delete process.env['WRONGSTACK_UNSAFE_MCP_TLS'];
     expect(

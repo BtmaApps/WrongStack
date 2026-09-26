@@ -74,6 +74,7 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['featureMemory'] = config.features?.memory !== false;
   meta['featureSkills'] = config.features?.skills !== false;
   meta['featureModelsRegistry'] = config.features?.modelsRegistry !== false;
+  meta['featureToolCoach'] = config.features?.toolCoach !== false;
   meta['indexOnStart'] = config.indexing?.onSessionStart !== false;
   meta['contextAutoCompact'] = config.context?.autoCompact !== false;
   meta['contextStrategy'] = config.context?.strategy ?? 'hybrid';
@@ -197,16 +198,14 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
 
   // Chimera (post-session review) — seed from extensions['wstack-chimera']
   // so the dedicated panel reflects the persisted config on first connect,
-  // before any prefs.update arrives. The chimera plugin registers itself with
-  // defaultState: 'inactive' — when there is no extensions.wstack-chimera
-  // entry at all the plugin is NOT loaded, so the WebUI must default to
-  // disabled to match. Contrast with the chimera-plugin.ts internal default
-  // (enabled !== false) which only applies AFTER the plugin is explicitly
-  // opted into. See also plugin-manager.ts defaultState.
+  // before any prefs.update arrives. The chimera plugin registers with
+  // the review on. The WebUI must mirror that or the panel shows a disabled
+  // feature that is actually running. The host default lives in
+  // HOST_PLUGIN_AUDIT_ENTRIES in packages/plugins/src/plugin-audit-catalog/index.ts.
   const chimeraExt = (config.extensions as Record<string, Record<string, unknown>> | undefined)?.[
     'wstack-chimera'
   ];
-  meta['chimeraEnabled'] = chimeraExt?.['enabled'] === true; // default false (matches defaultState: 'inactive')
+  meta['chimeraEnabled'] = chimeraExt?.['enabled'] !== false; // default true (on by default)
   meta['chimeraProvider'] = (chimeraExt?.['provider'] as string) ?? '';
   meta['chimeraModel'] = (chimeraExt?.['model'] as string) ?? '';
   meta['chimeraMaxFiles'] =
@@ -218,12 +217,13 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
     autoFix === 'off' || autoFix === 'ask' || autoFix === 'auto' ? autoFix : 'off';
 
   // Auto-review (mid-session continuous) — seed from extensions['wstack-auto-review'].
-  // Defaults match ResolvedAutoReviewConfig in auto-review-plugin.ts:42
-  // (enabled=false; provider/model resolve via fallbackProfile/effective chain).
+  // Defaults match resolveAutoReviewConfig in auto-review-config.ts
+  // (enabled=true, cascadeOn='high'; provider/model resolve via fallbackProfile/
+  // effective chain).
   const autoReviewExt = (
     config.extensions as Record<string, Record<string, unknown>> | undefined
   )?.['wstack-auto-review'];
-  meta['autoReviewEnabled'] = autoReviewExt?.['enabled'] === true; // default false (strict opt-in)
+  meta['autoReviewEnabled'] = autoReviewExt?.['enabled'] !== false; // default true (on by default)
   meta['autoReviewProvider'] = (autoReviewExt?.['provider'] as string) ?? '';
   meta['autoReviewModel'] = (autoReviewExt?.['model'] as string) ?? '';
   meta['autoReviewFallbackProfile'] = (autoReviewExt?.['fallbackProfile'] as string) ?? '';
@@ -248,7 +248,7 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
       ? (autoReviewExt['maxConcurrentReviews'] as number)
       : 2;
   const cascade = autoReviewExt?.['cascadeOn'];
-  meta['autoReviewCascadeOn'] = cascade === 'critical' || cascade === 'high' ? cascade : 'off';
+  meta['autoReviewCascadeOn'] = cascade === 'off' || cascade === 'critical' ? cascade : 'high'; // default 'high'
 
   // Resolve the effective fallback chain for auto-review via the same
   // FallbackProfileManager the plugin uses (auto-review-plugin.ts:62-69), so

@@ -445,14 +445,22 @@ describe('HistoryScrollController: beginSelection / extendSelection / commitSele
 
   it('copies the full source text even when the card wraps on screen', async () => {
     writeClipboardTextMock.mockClear();
-    // maxWidth=16 → banded termWidth 11 → gutter leaves content width 9, so
-    // 'aaaa bbbb cccc' WRAPS into two visual rows on screen. Block-based copy
-    // is geometry-blind: the payload is the card's whole source text, never
-    // the dragged visual rows (the old wrap-map translation is gone).
+    // maxWidth=16 → banded termWidth `16 - SCROLLBAR_HIT_WIDTH` → gutter leaves
+    // the content a few columns, so 'aaaa bbbb cccc' WRAPS into two visual rows
+    // on screen. Block-based copy is geometry-blind: the payload is the card's
+    // whole source text, never the dragged visual rows (the old wrap-map
+    // translation is gone).
+    //
+    // The drag end column is derived from SCROLLBAR_HIT_WIDTH rather than
+    // hardcoded: the rail reserves those columns at the right edge, so bumping
+    // the constant shrinks the card band and an out-of-band end column makes
+    // commitSelection() correctly return false. Keeping it in sync here is what
+    // lets this case keep proving the wrap contract after a rail-width change.
+    const bandWidth = 16 - SCROLLBAR_HIT_WIDTH; // 8 when the rail reserves 8
     const h = mountHistory([textEntry(1, 'aaaa bbbb cccc')], 16);
     try {
       h.controller.beginSelection(0, 2);
-      h.controller.extendSelection(0, 10);
+      h.controller.extendSelection(0, bandWidth - 1); // last in-band column
       h.controller.endSelection();
       const ok = await h.controller.commitSelection();
       expect(ok).toBe(true);

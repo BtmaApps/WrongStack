@@ -131,6 +131,34 @@ describe('DefaultSkillLoader', () => {
     expect(body).toContain('beta body');
   });
 
+  it('readBody serves a SKILL.md edited on disk without invalidateCache()', async () => {
+    // The loader's own write paths invalidate; an `edit` tool call, the user's
+    // editor or an agent's learning pass does not — and used to get the old body.
+    const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
+    const loader = new DefaultSkillLoader({ paths });
+    const file = path.join(profileSkills, 'beta', 'SKILL.md');
+    expect(await loader.readBody('beta')).toContain('beta body');
+    await fs.writeFile(
+      file,
+      '---\nname: beta\ndescription: rewritten trigger\n---\nthe NEW beta body, longer than before\n',
+    );
+    expect(await loader.readBody('beta')).toContain('the NEW beta body');
+    // The frontmatter changed with it, so the manifest list is re-read too.
+    expect((await loader.find('beta'))?.description).toBe('rewritten trigger');
+    // Unchanged file: served from the cache.
+    expect(await loader.readBody('beta')).toContain('the NEW beta body');
+  });
+
+  it('readSaveBody follows a SKILL.save.md that appears after the first read', async () => {
+    const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
+    const loader = new DefaultSkillLoader({ paths });
+    const first = await loader.readSaveBody('beta');
+    await fs.writeFile(path.join(profileSkills, 'beta', 'SKILL.save.md'), 'hand-made save variant');
+    const second = await loader.readSaveBody('beta');
+    expect(second).toBe('hand-made save variant');
+    expect(second).not.toBe(first);
+  });
+
   it('readBody throws for unknown skill', async () => {
     const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
     const loader = new DefaultSkillLoader({ paths });

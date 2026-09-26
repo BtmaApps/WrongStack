@@ -8,6 +8,7 @@
  * @see docs/specs/techstack-sdd.md §2 (R25), §9
  */
 
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { LanguagePackageInput, LanguageProfileId } from '@wrongstack/tools';
 import type { DependencyObservation, Finding, Snapshot } from './types.js';
 
@@ -347,7 +348,7 @@ export async function applyPlan(
       results.push({
         dependencyName: item.dependencyName,
         status: 'failed',
-        detail: error instanceof Error ? error.message : String(error),
+        detail: toErrorMessage(error),
       });
     }
   }

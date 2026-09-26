@@ -3,6 +3,7 @@ import { leaderTimelineFromEntries } from '../components/agents-monitor.js';
 import { useClientTelemetry } from './use-client-telemetry.js';
 import { useDirectorFleetBridge } from './use-director-fleet-bridge.js';
 import { useExitCommand } from './use-exit-command.js';
+import { useMcpStatusBridge } from './use-mcp-status-bridge.js';
 import { useProviderEventBridge } from './use-provider-event-bridge.js';
 import { useSessionInterruptController } from './use-session-interrupt-controller.js';
 import { useTuiControllers } from './use-tui-controllers.js';
@@ -72,6 +73,8 @@ export function useAppEventBridges(params: AppEventBridgeParams) {
     liveDirector,
     director,
   } = params;
+
+  useMcpStatusBridge({ events, dispatch });
 
   useProviderEventBridge({
     events,

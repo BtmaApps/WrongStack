@@ -585,15 +585,15 @@ export const pluginCatalog = [
   {
     name: 'wstack-chimera',
     risk: 'medium',
-    summary: 'Spawns a post-session code review subagent when explicitly enabled.',
-    defaultState: 'inactive',
+    summary: 'Spawns a post-session code review subagent, on by default.',
+    defaultState: 'active',
     source: 'Core',
   },
   {
     name: 'wstack-auto-review',
     risk: 'medium',
     summary: 'Tracks changed files and requests bounded mid-session Chimera reviews.',
-    defaultState: 'inactive',
+    defaultState: 'active',
     source: 'Core',
   },
   {
@@ -845,7 +845,7 @@ export const pluginCatalog = [
     name: 'dep-guard',
     risk: 'medium',
     summary:
-      'Supervises dependency installs: blocks deny-listed packages, flags typosquat lookalikes, and optionally warns on unpinned versions',
+      'Supervises dependency installs: blocks deny-listed and just-published packages, flags typosquat lookalikes, unknown names and vulnerable versions',
     defaultState: 'active',
     source: 'Suite',
   },
@@ -853,7 +853,7 @@ export const pluginCatalog = [
     name: 'config-validator',
     risk: 'low',
     summary:
-      'Validates JSON/JSONC/YAML/TOML files right after write/edit and reports syntax problems in the same turn',
+      'Validates JSON/JSONC/YAML/TOML/.env files right after write/edit and reports syntax problems in the same turn',
     defaultState: 'inactive',
     source: 'Suite',
   },

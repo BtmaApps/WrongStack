@@ -24,6 +24,8 @@ function deriveTitle(goal: string): string {
 }
 
 export interface SddRunStartOpts {
+  /** Chat session that initiated this run; never infer it from the foreground runtime. */
+  sessionId?: string | undefined;
   parallelSlots?: number | undefined;
   defaultModel?: string | undefined;
   defaultProvider?: string | undefined;
@@ -265,6 +267,10 @@ export class SddWizardWebSocketHandler {
 
   private parseRunOpts(payload?: Record<string, unknown>): SddRunStartOpts {
     return {
+      sessionId:
+        typeof payload?.sessionId === 'string' && payload.sessionId.trim()
+          ? payload.sessionId
+          : undefined,
       parallelSlots: payload?.parallelSlots as number | undefined,
       defaultModel:
         (payload?.model as string | undefined) ?? (payload?.defaultModel as string | undefined),

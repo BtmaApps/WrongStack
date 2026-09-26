@@ -420,7 +420,10 @@ function sessionStoreFor(opts: EmbeddedSessionOptions): SessionStore {
   const projectRoot = opts.projectRoot ?? opts.agent.ctx.projectRoot;
   return (
     opts.sessionStore ??
-    new DefaultSessionStore({ dir: path.join(projectRoot, '.wrongstack', 'sessions'), projectRoot })
+    new DefaultSessionStore({
+      dir: resolveWstackPaths({ projectRoot }).projectSessions,
+      projectRoot,
+    })
   );
 }
 
@@ -471,7 +474,7 @@ export function createEmbeddedSessionRoutes(ctx: EmbeddedSessionContext): Sessio
     getSessionStore: () => sessionStoreFor(opts),
     canSwapSessions: () => opts.sessionStore !== undefined,
     getSessionsDir: () =>
-      opts.sessionsDir ?? path.join(getProjectRoot(), '.wrongstack', 'sessions'),
+      opts.sessionsDir ?? resolveWstackPaths({ projectRoot: getProjectRoot() }).projectSessions,
     setSession: (next) => {
       ctx.setForegroundSession?.(next);
       // Re-point a CONTEXT only when it is the context that owns this session.

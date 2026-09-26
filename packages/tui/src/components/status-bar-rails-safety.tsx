@@ -97,10 +97,14 @@ export function buildSafetyWorkEntries(p: StatusBarRailBuildParams): RailSpanEnt
             isNoColor,
           );
           const reset = quota.resetIn ? ` ${glyphs.clock}${quota.resetIn}` : '';
+          // Only when the last hour's pace fills the window before it resets;
+          // the widest variant alone, so a narrow bar is unchanged.
+          const pace = quota.exhaustsIn ? ` →100% ~${quota.exhaustsIn}` : '';
           return entry('quota', 'quota', p, [
             <Text color={color}>
               {icon(STATUSLINE_ICONS.quota, isNoColor)}
               {quota.windowLabel} {pct}%{reset}
+              {pace}
             </Text>,
             <Text color={color}>
               {icon(STATUSLINE_ICONS.quota, isNoColor)}

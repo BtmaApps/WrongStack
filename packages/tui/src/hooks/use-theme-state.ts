@@ -1,4 +1,5 @@
 import type { ConfigStore } from '@wrongstack/core/types';
+import { THEME_RANDOM_ID } from '@wrongstack/core/types';
 import { useEffect } from 'react';
 import {
   getActiveThemeName,
@@ -34,7 +35,12 @@ export function useThemeState({ configStore }: { configStore: ConfigStore | unde
     };
 
     const syncTheme = (preset: string | undefined) => {
-      if (!preset) {
+      // The `random` sentinel and an ABSENT value both mean rotation, but they
+      // are different states: absent is "nothing was ever configured", while
+      // `random` is "the user explicitly asked to rotate". Treating them alike
+      // meant pressing Enter on any palette silently pinned it — there was no
+      // way back to rotation. The sentinel is what makes the choice explicit.
+      if (!preset || preset === THEME_RANDOM_ID) {
         startRandomMode();
         return;
       }

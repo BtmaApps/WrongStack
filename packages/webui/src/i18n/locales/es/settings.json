@@ -672,6 +672,8 @@
     "skillsHint": "Carga prompts de habilidades específicas del dominio.",
     "modelsRegistryLabel": "Registro de modelos",
     "modelsRegistryHint": "Usa el catálogo models.dev para el descubrimiento de proveedores.",
+    "toolCoachLabel": "Guía de herramientas",
+    "toolCoachHint": "Sugiere herramientas activadas durante la tarea y orienta tras errores. Activada de forma predeterminada.",
     "indexOnStartLabel": "Indexar al inicio",
     "indexOnStartHint": "Construye el índice de símbolos del código al iniciar la sesión.",
     "pluginsPerPluginHeading": "🔌 Controles por Plugin",
@@ -1216,6 +1218,10 @@
       "fleetDispatch": "Runs only for ambiguous routing with multiple candidate roles."
     },
     "recallTurnContext": "SAGE turn context recall",
-    "recallTurnHint": "Adds relevant memories to each new turn; the Jev recall filter runs on this path. Memory and SAGE must also be enabled. Save and restart existing sessions."
+    "recallTurnHint": "Adds relevant memories to each new turn; the Jev recall filter runs on this path. Memory and SAGE must also be enabled. Save and restart existing sessions.",
+    "logContent": "Record full request/response content in the log file",
+    "logContentHint": "Writes the state sent, the full question wording and the answers with their distributions to the Jev log file. This view stays metadata-only either way, and the account key is scrubbed. Turn it off when you are done. Save and restart existing sessions.",
+    "logContentOn": "Full request/response content is recorded in this file. It is never shown here.",
+    "logContentOff": "Metadata only. Full request/response content is not recorded."
   }
 }

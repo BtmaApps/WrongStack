@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *
  * Contract:
  * - Countdown auto-fires a continuation send: 30s for expensive report
- *   failures (Chimera), 15s for everything else — but ONLY for fresh
- *   failures (a stale transcript's button stays manual).
+ *   failures (Chimera), 15s for everything else — but ONLY when the caller
+ *   arms it (`auto` autonomy + a retryable provider failure) and ONLY for
+ *   fresh failures (a stale transcript's button stays manual).
+ * - The gate closing mid-countdown disarms it.
  * - Cancel/Stop disarms the auto-fire; the manual button stays.
  * - A run the user already restarted disarms the auto-fire (isLoading gate).
  */
@@ -46,13 +48,17 @@ const { FailedRunContinue, autoTriggerMsFor } = await import(
 );
 const { useChatLanes } = await import('../../src/stores/chat-lanes');
 
-function renderWith(opts: { text?: string; timestamp?: number } = {}) {
-  return render(
+function renderWith(opts: { text?: string; timestamp?: number; autoArm?: boolean } = {}) {
+  const timestamp = opts.timestamp ?? Date.now();
+  const element = (autoArm: boolean) => (
     <FailedRunContinue
       text={opts.text ?? 'Run failed: boom'}
-      timestamp={opts.timestamp ?? Date.now()}
-    />,
+      timestamp={timestamp}
+      autoArm={autoArm}
+    />
   );
+  const view = render(element(opts.autoArm ?? true));
+  return { ...view, setAutoArm: (autoArm: boolean) => view.rerender(element(autoArm)) };
 }
 
 const continueButton = () => screen.getByRole('button', { name: /Continue/ });
@@ -119,6 +125,38 @@ describe('countdown', () => {
     renderWith();
     fireEvent.click(continueButton());
     expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('arming gate', () => {
+  it('an unarmed failure keeps the button manual — no countdown, no auto-fire', async () => {
+    renderWith({ autoArm: false });
+
+    expect(continueButton().textContent).not.toContain('s');
+    expect(screen.queryByRole('button', { name: /Cancel/ })).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
+
+    fireEvent.click(continueButton());
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('the gate closing mid-countdown disarms it, and reopening does not re-arm', async () => {
+    const view = renderWith();
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    view.setAutoArm(false);
+    expect(continueButton().textContent).not.toContain('s');
+    view.setAutoArm(true);
+    for (let step = 0; step < 20; step += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 });
 

@@ -295,10 +295,23 @@ describe('resolveAutoReviewConfig — empty/unknown fallbackProfile', () => {
     expect(resolved.maxCascadeDepth).toBe(4);
   });
 
-  it('defaults cascade settings to off/2 when not specified', () => {
+  it('defaults cascade settings to high/2 when not specified', () => {
     const resolved = resolveAutoReviewConfig({ enabled: true }, sessionConfig());
-    expect(resolved.cascadeOn).toBe('off');
+    expect(resolved.cascadeOn).toBe('high');
     expect(resolved.maxCascadeDepth).toBe(2);
+  });
+
+  it('is enabled with the cascade on for a fresh install (no config at all)', () => {
+    // Regression: `enabled` used to be `cfg.enabled === true`, so a config with
+    // no `extensions['wstack-auto-review']` entry resolved to disabled and the
+    // plugin logged "disabled by config" even though the host had loaded it.
+    const resolved = resolveAutoReviewConfig({}, sessionConfig());
+    expect(resolved.enabled).toBe(true);
+    expect(resolved.cascadeOn).toBe('high');
+    expect(resolved.maxCascadeDepth).toBe(2);
+    // An explicit opt-out still wins over the default-on.
+    expect(resolveAutoReviewConfig({ enabled: false }, sessionConfig()).enabled).toBe(false);
+    expect(resolveAutoReviewConfig({ cascadeOn: 'off' }, sessionConfig()).cascadeOn).toBe('off');
   });
 
   it('defaults profile selection to round-robin and preserves random', () => {

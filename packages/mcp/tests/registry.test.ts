@@ -213,12 +213,14 @@ describe('MCPRegistry', () => {
         reconnectCycles: 5,
       };
       (reg as never as { servers: Map<string, typeof slot> }).servers.set('exhausted', slot);
-      const disconnected: { name: string; reason: string }[] = [];
+      const disconnected: { name: string; reason: string; terminal?: boolean | undefined }[] = [];
       events.on('mcp.server.disconnected', (e) => disconnected.push(e));
       (reg as never as { scheduleReconnect: (s: typeof slot) => void }).scheduleReconnect(slot);
       expect(slot.state).toBe('failed');
       expect(slot.reconnectPending).toBe(false);
       expect(disconnected[0]?.reason).toContain('reconnect-exhausted');
+      // Nothing retries by itself any more: surfaces tell the person.
+      expect(disconnected[0]?.terminal).toBe(true);
     });
 
     it('scheduleReconnect is a no-op while a reconnect is already pending', () => {

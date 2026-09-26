@@ -18,11 +18,13 @@ import {
   listQuotaProviders,
   onProviderQuota,
   type ProviderQuotaSnapshot,
+  quotaExhaustionInMs,
   quotaResetInMs,
   quotaWindowLabel,
   reachedQuotaWindow,
   recordProviderQuota,
   resetProviderQuota,
+  withQuotaPace,
   worstProviderQuotaWindow,
 } from '../src/quota/index.js';
 
@@ -173,5 +175,84 @@ describe('presentation', () => {
     });
     expect(reachedQuotaWindow(s)?.id).toBe('primary');
     expect(reachedQuotaWindow(snapshot())).toBeUndefined();
+  });
+});
+
+describe('quotaExhaustionInMs (pace forecast)', () => {
+  const MIN = 60_000;
+  const T0 = 1_800_000_000_000;
+  /** A 5h window resetting 3 hours after T0 (resetsAt is epoch seconds). */
+  const reading = (usedPercent: number, resetsAt = (T0 + 180 * MIN) / 1000) =>
+    snapshot({ windows: [{ id: 'primary', usedPercent, resetsAt }] });
+  const window = (usedPercent: number, resetsAt = (T0 + 180 * MIN) / 1000) => ({
+    id: 'primary',
+    usedPercent,
+    resetsAt,
+  });
+
+  it('projects the climb of the last hour to 100% when that lands before the reset', () => {
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(50)], T0 + 20 * MIN);
+    // 10 points in 20 minutes; 50 points left → 100 minutes.
+    const eta = quotaExhaustionInMs('openai-codex', 'default', window(50), T0 + 20 * MIN);
+    expect(eta).toBe(100 * MIN);
+    expect(formatQuotaResetIn(eta)).toBe('1h 40m');
+  });
+
+  it('says nothing when the pace resets first, the plan is flat, or the record is too short', () => {
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(41)], T0 + 30 * MIN);
+    // 1 point per 30 minutes: 59 points take far longer than the 150 minutes left.
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(41), T0 + 30 * MIN),
+    ).toBeUndefined();
+
+    resetProviderQuota();
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(40)], T0 + 30 * MIN);
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(40), T0 + 30 * MIN),
+    ).toBeUndefined();
+
+    resetProviderQuota();
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(60)], T0 + 2 * MIN);
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(60), T0 + 2 * MIN),
+    ).toBeUndefined();
+  });
+
+  it('starts over when the window resets', () => {
+    recordProviderQuota('openai-codex', [reading(80)], T0);
+    recordProviderQuota('openai-codex', [reading(90)], T0 + 20 * MIN);
+    // New cycle: a new reset time and a lower percentage.
+    const next = (T0 + 500 * MIN) / 1000;
+    recordProviderQuota('openai-codex', [reading(2, next)], T0 + 25 * MIN);
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(2, next), T0 + 25 * MIN),
+    ).toBeUndefined();
+  });
+
+  it('forgets a pace older than an hour: an idle stretch is not a burn rate', () => {
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(60)], T0 + 20 * MIN);
+    expect(
+      quotaExhaustionInMs('openai-codex', 'default', window(60), T0 + 120 * MIN),
+    ).toBeUndefined();
+  });
+
+  it('withQuotaPace stamps exhaustsAt on copies, for a surface in another process', () => {
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    recordProviderQuota('openai-codex', [reading(50)], T0 + 20 * MIN);
+    const stored = getProviderQuota('openai-codex');
+    const [paced] = withQuotaPace(stored, T0 + 20 * MIN);
+    expect(paced?.windows[0]?.exhaustsAt).toBe((T0 + 120 * MIN) / 1000);
+    // The store itself is untouched: the forecast is derived, never recorded.
+    expect(stored[0]?.windows[0]?.exhaustsAt).toBeUndefined();
+    // No forecast → the window is passed through as it was.
+    resetProviderQuota();
+    recordProviderQuota('openai-codex', [reading(40)], T0);
+    const [flat] = withQuotaPace(getProviderQuota('openai-codex'), T0);
+    expect(flat?.windows[0]).not.toHaveProperty('exhaustsAt');
   });
 });

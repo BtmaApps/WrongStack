@@ -13,6 +13,7 @@ import {
   onProjectIndexServerConnectionStateChange,
   projectIndexServerExpectedBuildId,
 } from '../src/codebase-index/project-server-client.js';
+import { shouldReplaceProjectIndexServer } from '../src/codebase-index/project-server-client-state.js';
 import {
   PROJECT_INDEX_SERVER_PROTOCOL_VERSION,
   projectIndexServerEndpoint,
@@ -90,6 +91,27 @@ describe('project index server client cancellation', () => {
       ).rejects.toThrow(/build mismatch/);
       await new Promise((resolve) => setTimeout(resolve, 30));
       expect(shutdownReason).toBe('stale-build-replacement');
+    } finally {
+      if (previousBuildId === undefined) delete process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'];
+      else process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'] = previousBuildId;
+    }
+  });
+
+  // Two installations on one project (standalone binary + repo dist) used to
+  // replace each other's daemon forever. Only the older build yields.
+  it('replaces only a daemon built before this client', () => {
+    const previousBuildId = process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'];
+    delete process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'];
+    try {
+      expect(shouldReplaceProjectIndexServer(2_000, 1_000)).toBe(false);
+      expect(shouldReplaceProjectIndexServer(1_000, 1_000)).toBe(false);
+      expect(shouldReplaceProjectIndexServer(500, 1_000)).toBe(true);
+      // A legacy daemon or an unresolvable client build keeps strict replacement.
+      expect(shouldReplaceProjectIndexServer(undefined, 1_000)).toBe(true);
+      expect(shouldReplaceProjectIndexServer(null, 1_000)).toBe(true);
+      expect(shouldReplaceProjectIndexServer(2_000, null)).toBe(true);
+      process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'] = 'pinned';
+      expect(shouldReplaceProjectIndexServer(2_000, 1_000)).toBe(true);
     } finally {
       if (previousBuildId === undefined) delete process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'];
       else process.env['WRONGSTACK_INDEX_SERVER_BUILD_ID'] = previousBuildId;

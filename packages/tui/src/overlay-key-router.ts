@@ -339,6 +339,7 @@ export function routeSettingsOverlayKey(
     featureMemory: config.featureMemory ?? true,
     featureSkills: config.featureSkills ?? true,
     featureModelsRegistry: config.featureModelsRegistry ?? true,
+    featureToolCoach: config.featureToolCoach ?? true,
     tokenSavingTier: config.featureTokenSaving ?? 'off',
     allowOutsideProjectRoot: config.allowOutsideProjectRoot ?? true,
     contextAutoCompact: config.contextAutoCompact ?? true,

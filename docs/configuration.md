@@ -1077,6 +1077,7 @@ gain new approval prompts. Plugins can register in-process hooks via
     "memory": true,
     "modelsRegistry": true,
     "skills": true,
+    "toolCoach": true,
     "tokenSavingMode": "auto"
   }
 }
@@ -1089,6 +1090,7 @@ gain new approval prompts. Plugins can register in-process hooks via
 | `memory` | `boolean` | `true` | Register `remember`/`forget` tools backed by memory store. |
 | `modelsRegistry` | `boolean` | `true` | Fetch models.dev catalog at startup. Set `false` for offline use. |
 | `skills` | `boolean` | `true` | Discover and load skills from disk. |
+| `toolCoach` | `boolean` | `true` | Give the agent brief, task-aware guidance from the enabled tool catalog and tool outcomes. Can be changed with `/settings tool-coach on|off`, TUI Settings, WebUI Context settings, or SimpleUI Settings. |
 | `tokenSavingMode` | `TokenSavingTier` | `"auto"` | Token-saving tier. Controls the direct tool surface, tool-description length, and prompt guidance sections. `"auto"` picks a tier from the model's context window at startup. |
 
 ### Token-saving tiers
@@ -1617,13 +1619,15 @@ See [`/chimera`](slash/chimera.md) for full usage. The Chimera plugin runs a rea
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `enabled` | boolean | `false` | Master switch. |
+| `enabled` | boolean | `true` | Master switch. |
 | `provider` | string | session provider | LLM provider for the review subagent. |
 | `model` | string | session model | LLM model for the review subagent. |
 | `maxFiles` | number | `15` | Max changed files per review. |
 | `autoFix` | `off` \| `ask` \| `auto` | `off` | Follow-up policy (reports are always advisory). |
 | `cascadeOn` | `off` \| `critical` \| `high` | `high` | Severity threshold for cascade re-checks. |
 | `maxCascadeDepth` | number | `2` | Max cascade depth. |
+| `openRetentionDays` | number | `180` | Bounded-retention cap, in whole days, for review rows still non-terminal (`open`/`actioned`). `0` disables the sweep; malformed values fall back to the default. |
+| `activeRetentionDays` | number | `60` | Same cap for findings that never reached a terminal status (`active`/`triaged`/`in_progress`). `resolved` (30d) and `ignored` (14d) keep their own windows. |
 | `fallbackModels` | string[] | `[]` | Chimera-specific fallback chain (`provider/model` refs), tried before the session-level chain. |
 | `fallbackProfile` | string | — | Named profile from `fallbackProfiles`; its chain is merged into the reviewer ladder ahead of the session-level profile. |
 

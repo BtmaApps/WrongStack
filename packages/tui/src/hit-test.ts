@@ -35,9 +35,9 @@ type HitRegion =
 
 /**
  * Columns at the right edge of the history viewport reserved for the rail.
- * Layout: copy · gap · inspect · selection band · scrollbar track.
+ * Layout: copy · gap · inspect · three-cell spacer · selection band · scrollbar track.
  */
-export const SCROLLBAR_HIT_WIDTH = 5;
+export const SCROLLBAR_HIT_WIDTH = 8;
 
 /** Rows available to managed history after reserving the measured bottom UI. */
 export function historyViewportRows(termRows: number, bottomHeight: number): number {

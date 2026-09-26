@@ -32,8 +32,8 @@
 | context-pins | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/context-pins` | Pin durable facts into the system prompt (pin_add/pin_remove/pin_list) — pins survive compaction and persist across sessions |
 | checkpoint | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/checkpoint` | In-session file snapshots: auto-captures content before every write/edit and restores any pre-edit state on demand |
 | error-lens | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/error-lens` | Distills failed command output into a compact digest (error line + project stack frames) and flags repeated failures |
-| dep-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/dep-guard` | Supervises dependency installs: blocks deny-listed packages, flags typosquat lookalikes, and optionally warns on unpinned versions |
-| config-validator | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/config-validator` | Validates JSON/JSONC/YAML/TOML files right after write/edit and reports syntax problems in the same turn |
+| dep-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/dep-guard` | Supervises dependency installs: blocks deny-listed and just-published packages, flags typosquat lookalikes, unknown names and vulnerable versions |
+| config-validator | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/config-validator` | Validates JSON/JSONC/YAML/TOML/.env files right after write/edit and reports syntax problems in the same turn |
 | notify-hub | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/notify-hub` | POSTs session events (stop, tool errors, budget thresholds) and ad-hoc notify_send messages to a configurable webhook |
 | changelog-writer | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/changelog-writer` | Collects session work (commits, edits, manual notes) and writes Keep-a-Changelog entries under [Unreleased] on demand |
 | injection-shield | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/injection-shield` | Scans tool output (fetched pages, files) for prompt-injection patterns and warns the model that content is data, not instructions |

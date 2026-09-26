@@ -114,5 +114,16 @@
     "activityMax": "Sparkline de actividad: máx {{count}} eventos",
     "activityPeak": "Sparkline de actividad — pico {{count}} eventos/intervalo"
   },
+  "restoreTabs": {
+    "title": "¿Restaurar tus pestañas anteriores?",
+    "body": "Esta WebUI se inició desde cero. {{count}} sesión(es) estaban abiertas antes en este navegador — siguen en el disco. Elige las que quieres volver a abrir o empieza de nuevo.",
+    "limit": "Se pueden volver a abrir como máximo {{room}} más ({{max}} pestañas en total). El resto se queda en el Historial.",
+    "fresh": "Empezar de nuevo",
+    "confirm": "Volver a abrir {{count}}"
+  },
+  "mcpStatus": {
+    "down": "El servidor MCP \"{{name}}\" no está conectado ({{reason}}); sus herramientas no están disponibles. Reinténtalo con /mcp restart {{name}}.",
+    "up": "El servidor MCP \"{{name}}\" vuelve a estar conectado."
+  },
   "loadingNamed": "Cargando {{name}}…"
 }

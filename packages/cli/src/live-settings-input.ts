@@ -20,6 +20,7 @@ export interface LiveSettingsInput {
   featureMemory?: boolean | undefined;
   featureSkills?: boolean | undefined;
   featureModelsRegistry?: boolean | undefined;
+  featureToolCoach?: boolean | undefined;
   featureTokenSaving?: TokenSavingTier | undefined;
   allowOutsideProjectRoot?: boolean | undefined;
   contextAutoCompact?: boolean | undefined;

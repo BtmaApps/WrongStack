@@ -5,7 +5,7 @@ import {
   SETTINGS_FIELD_LABELS,
   type SettingsPickerValues,
 } from '../src/components/settings-picker.js';
-import { DEFAULT_PANEL_POSITIONS } from '../src/ui-contracts.js';
+import { DEFAULT_PANEL_POSITIONS, TOTAL_SETTINGS_FIELD_COUNT } from '../src/ui-contracts.js';
 
 describe('resolveSettingsFieldValue', () => {
   // ── Boolean fields ──────────────────────────────────────────────
@@ -17,6 +17,7 @@ describe('resolveSettingsFieldValue', () => {
       [6, 'confirmExit'],
       [14, 'allowOutsideProjectRoot'],
       [33, 'debugStream'],
+      [63, 'featureToolCoach'],
     ];
 
     for (const [field, _key] of boolCases) {
@@ -219,8 +220,8 @@ describe('resolveSettingsFieldValue', () => {
       if (!r.ok) expect(r.error).toContain('99');
     });
 
-    it('SETTINGS_FIELD_LABELS has 63 entries', () => {
-      expect(SETTINGS_FIELD_LABELS.length).toBe(63);
+    it('SETTINGS_FIELD_LABELS matches the settings field count', () => {
+      expect(SETTINGS_FIELD_LABELS.length).toBe(TOTAL_SETTINGS_FIELD_COUNT);
     });
 
     it('trims whitespace from input', () => {
@@ -276,6 +277,7 @@ describe('getSettingsFieldValue', () => {
     featureMemory: true,
     featureSkills: true,
     featureModelsRegistry: false,
+    featureToolCoach: true,
     tokenSavingTier: 'medium',
     allowOutsideProjectRoot: true,
     contextAutoCompact: false,
@@ -443,6 +445,7 @@ describe('formatAllSettingsSummary', () => {
     featureMemory: true,
     featureSkills: true,
     featureModelsRegistry: false,
+    featureToolCoach: true,
     tokenSavingTier: 'off',
     allowOutsideProjectRoot: true,
     contextAutoCompact: true,
@@ -508,7 +511,7 @@ describe('formatAllSettingsSummary', () => {
   it('renders exactly 63 value lines (one per field)', () => {
     const out = formatAllSettingsSummary(testValues);
     const fieldLines = out.split('\n').filter((l) => l.startsWith('  ') && l.trim().length > 0);
-    expect(fieldLines).toHaveLength(63);
+    expect(fieldLines).toHaveLength(TOTAL_SETTINGS_FIELD_COUNT);
   });
 
   it('includes the thinking word value', () => {
@@ -590,8 +593,9 @@ describe('resetSettingsFieldValue', () => {
     if (!r.ok) expect(r.error).toContain('99');
   });
 
-  it('SETTINGS_DEFAULTS has all 51 keys including tool result view', () => {
-    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(51);
+  it('SETTINGS_DEFAULTS has all 52 keys including Tool Coach', () => {
+    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(52);
+    expect(SETTINGS_DEFAULTS.featureToolCoach).toBe(true);
   });
 
   it('every field 0-57 can be reset', () => {

@@ -58,6 +58,46 @@ describe('diagnoseSessions', () => {
     expect(codes(report.sessions[0]?.findings ?? [])).toEqual([]);
   });
 
+  it('does not diagnose per-session sidecar stores as corrupt sessions', async () => {
+    // `.replay.jsonl` / `.audit.jsonl` (and legacy `.annotations.jsonl`) are
+    // written via sessionScopedPath into the SAME shard directory as the
+    // transcript. A shard scan that trusts the extension alone reports each
+    // sidecar as a phantom session (missing session_start, never closed,
+    // fixable missing_summary) and hands repairSessionSummaries a replay log
+    // to write a garbage summary from.
+    const dir = await tempSessions();
+    await writeJournal(
+      dir,
+      '2026-08-29/sess_ok',
+      ev('session_start', { id: 'sess_ok' }) + ev('session_end'),
+    );
+    await fs.writeFile(path.join(dir, '2026-08-29', 'sess_ok.summary.json'), '{}');
+    // Realistic ReplayLogStore entry: { hash, ts, request, response } — no
+    // top-level `type` key.
+    const replayEntry = JSON.stringify({
+      hash: 'abc123',
+      ts: '2026-08-29T10:00:01.000Z',
+      request: { model: 'm', messages: [{ role: 'user', content: 'hi' }] },
+      response: { content: [{ type: 'text', text: 'hello' }] },
+    });
+    await fs.writeFile(path.join(dir, '2026-08-29', 'sess_ok.replay.jsonl'), `${replayEntry}\n`);
+    await fs.writeFile(path.join(dir, '2026-08-29', 'sess_ok.audit.jsonl'), `${replayEntry}\n`);
+
+    const report = await diagnoseSessions({ sessionsDir: dir });
+
+    expect(report.totals.sessions).toBe(1);
+    expect(report.sessions.map((s) => s.id)).toEqual(['2026-08-29/sess_ok']);
+    expect(report.totals.unparsableLines).toBe(0);
+
+    // Nothing fixable: the one real session has a current summary, and no
+    // phantom may gain a sidecar from the repair path.
+    const repair = await repairSessionSummaries({ report });
+    expect(repair.repaired).toEqual([]);
+    await expect(
+      fs.stat(path.join(dir, '2026-08-29', 'sess_ok.replay.summary.json')),
+    ).rejects.toThrow();
+  });
+
   it('does not call a hyphenated or namespaced event type corruption', async () => {
     // Regression for a real false positive: a `[a-z_]+` type pattern reported
     // 16 valid `git-autocommit:commit` events in the live corpus as unparsable,

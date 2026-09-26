@@ -3,7 +3,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isStandaloneBinary, standaloneBinaryBuildId } from '@wrongstack/persistence';
+import {
+  isStandaloneBinary,
+  privateEndpointKey,
+  standaloneBinaryBuildId,
+} from '@wrongstack/persistence';
 import { resolveIndexDir } from './writer.js';
 
 export const PROJECT_INDEX_SERVER_PROTOCOL_VERSION = 1;
@@ -44,15 +48,11 @@ let buildIdCache:
  * long-lived client process.
  */
 export function projectIndexServerBuildId(entrypoint: string | URL): string {
-  // Vite query-suffixed imports (`project-server.ts?case=…`) surface in
-  // import.meta.url; fileURLToPath rejects the query, so strip it. The
-  // artifact identity is the file content, which the query does not change.
-  // The standalone binary is client and daemon at once, and its embedded
+  // The artifact identity is the file content, which a Vite query suffix does
+  // not change. The standalone binary is client and daemon at once, and its embedded
   // modules have no file of their own: the executable is the artifact.
   if (isStandaloneBinary()) return standaloneBinaryBuildId();
-  const href = entrypoint instanceof URL ? entrypoint.href : entrypoint;
-  const cleanHref = href.split(/[?#]/, 1)[0] ?? href;
-  const file = cleanHref.startsWith('file:') ? fileURLToPath(cleanHref) : path.resolve(cleanHref);
+  const file = serverArtifactPath(entrypoint);
   try {
     const stat = fs.statSync(file);
     if (
@@ -70,6 +70,34 @@ export function projectIndexServerBuildId(entrypoint: string | URL): string {
     // read-only packagers usable, though normal builds always take the hash.
     return `unreadable:${path.basename(file)}`;
   }
+}
+
+/**
+ * When the server artifact was built (its mtime), or null when unknown.
+ *
+ * `buildId` only says two builds differ, not which is newer. Two different
+ * installations on one project — the standalone binary and a repo `dist` run,
+ * observed 2026-09-26 — each treated the other's daemon as stale and replaced
+ * it, killing a dozen daemons in ten minutes and leaving the losing surface
+ * stuck on "build mismatch". Ordering by build time makes the newest build win
+ * once: an older client accepts a newer same-protocol daemon instead of
+ * fighting it.
+ */
+export function projectIndexServerBuiltAt(entrypoint: string | URL): number | null {
+  try {
+    const file = isStandaloneBinary() ? process.execPath : serverArtifactPath(entrypoint);
+    return Math.trunc(fs.statSync(file).mtimeMs);
+  } catch {
+    return null;
+  }
+}
+
+function serverArtifactPath(entrypoint: string | URL): string {
+  // Vite query-suffixed imports (`project-server.ts?case=…`) surface in
+  // import.meta.url; fileURLToPath rejects the query, so strip it.
+  const href = entrypoint instanceof URL ? entrypoint.href : entrypoint;
+  const cleanHref = href.split(/[?#]/, 1)[0] ?? href;
+  return cleanHref.startsWith('file:') ? fileURLToPath(cleanHref) : path.resolve(cleanHref);
 }
 
 function normalizeLocalPath(value: string): string {
@@ -105,7 +133,8 @@ export function projectIndexServerKey(projectRoot: string, indexDir?: string): s
  * prefix because named pipes have no such limit.
  */
 export function projectIndexServerEndpoint(projectRoot: string, indexDir?: string): string {
-  const key = projectIndexServerKey(projectRoot, indexDir);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(projectIndexServerKey(projectRoot, indexDir));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-codebase-index-v${PROJECT_INDEX_SERVER_PROTOCOL_VERSION}-${key}`;
   }

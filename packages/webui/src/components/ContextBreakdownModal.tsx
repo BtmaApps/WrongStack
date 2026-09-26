@@ -11,7 +11,7 @@ import {
 import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { fmtTok } from '@/components/ChatView/utils';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useLiveContextDebug } from '@/hooks/useLiveContextDebug';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -113,23 +113,30 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
         <div className="flex items-center gap-2 mb-2">
           <Zap className="h-4 w-4 text-success" />
           <span className="text-xs font-bold uppercase tracking-wider text-foreground/80">
-            Cache coverage
+            {t('activity:ctxBreakdown.cacheCoverage')}
           </span>
           <span className="text-[10px] text-muted-foreground ml-auto">
-            {fmtTok(cacheStats.coverageTokens)} of {fmtTok(maxContext)} (
-            {((cacheStats.coverageTokens / maxContext) * 100).toFixed(1)}%)
+            {t('activity:ctxBreakdown.cacheCoverageOf', {
+              covered: fmtTok(cacheStats.coverageTokens),
+              total: fmtTok(maxContext),
+              pct: ((cacheStats.coverageTokens / maxContext) * 100).toFixed(1),
+            })}
           </span>
         </div>
         <div className="h-3 w-full overflow-hidden rounded-full bg-muted/50 ring-1 ring-inset ring-border/20">
           <div
             className="h-full rounded-full bg-success transition-all duration-700 ease-out"
             style={{ width: `${Math.max(2, (cacheStats.coverageTokens / maxContext) * 100)}%` }}
-            title={`Cached prefix: ${fmtTok(cacheStats.coverageTokens)} of ${fmtTok(maxContext)}`}
+            title={t('activity:ctxBreakdown.cachedPrefixTitle', {
+              covered: fmtTok(cacheStats.coverageTokens),
+              total: fmtTok(maxContext),
+            })}
           />
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          The first {fmtTok(cacheStats.coverageTokens)} of this prompt are served from the provider
-          cache; everything past that boundary is fresh and billed at full input rate.
+          {t('activity:ctxBreakdown.cacheCoverageExplainer', {
+            covered: fmtTok(cacheStats.coverageTokens),
+          })}
         </p>
       </section>
     ) : null;
@@ -140,7 +147,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
         <div className="mb-2 flex items-center gap-2">
           <Zap className="h-4 w-4 text-success" />
           <span className="text-xs font-bold uppercase tracking-wider text-foreground/80">
-            Provider cache hit ratio
+            {t('activity:ctxBreakdown.providerHitRatio')}
           </span>
         </div>
         <div className="space-y-2">
@@ -151,10 +158,15 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
             >
               <span className="truncate font-mono text-foreground">{provider.provider}</span>
               <span className="tabular-nums text-success">
-                {(provider.hitRatio * 100).toFixed(1)}% hit
+                {t('activity:ctxBreakdown.hitPct', {
+                  pct: (provider.hitRatio * 100).toFixed(1),
+                })}
               </span>
               <span className="tabular-nums text-muted-foreground">
-                {fmtTok(provider.cacheRead)} read · {fmtTok(provider.cacheWrite)} write
+                {t('activity:ctxBreakdown.cacheReadWrite', {
+                  read: fmtTok(provider.cacheRead),
+                  write: fmtTok(provider.cacheWrite),
+                })}
               </span>
             </div>
           ))}
@@ -194,12 +206,16 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
             <BarChart3 className="h-4 w-4 text-primary" />
             {t('activity:context.title')}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {t('activity:ctxBreakdown.description')}
+          </DialogDescription>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={refresh}
-              className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              className="ws-touch-target p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
               title={t('activity:ctxBreakdown.refresh')}
+              aria-label={t('activity:ctxBreakdown.refresh')}
             >
               <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             </button>
@@ -207,7 +223,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
               type="button"
               onClick={onClose}
               aria-label={t('common:action.close')}
-              className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="ws-touch-target p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -218,7 +234,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-4 space-y-5">
             {/* ── Quick summary cards ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               <SummaryCard
                 icon={AlertTriangle}
                 label={t('activity:context.windowUsage')}
@@ -228,7 +244,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
               />
               <SummaryCard
                 icon={Zap}
-                label="Cache hit"
+                label={t('activity:ctxBreakdown.cacheHit')}
                 value={
                   cacheStats && cacheStats.readTokens + cacheStats.writeTokens > 0
                     ? `${(cacheStats.hitRatio * 100).toFixed(1)}%`
@@ -236,8 +252,10 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                 }
                 sub={
                   cacheStats && cacheStats.coverageTokens > 0 && maxContext > 0
-                    ? `covers ${fmtTok(cacheStats.coverageTokens)}`
-                    : 'prompt-cache'
+                    ? t('activity:ctxBreakdown.cacheHitCovers', {
+                        covered: fmtTok(cacheStats.coverageTokens),
+                      })
+                    : t('activity:ctxBreakdown.promptCache')
                 }
                 accent={
                   cacheStats && cacheStats.readTokens + cacheStats.writeTokens > 0
@@ -249,7 +267,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                 icon={Code2}
                 label={t('activity:context.contextMode')}
                 value={data?.mode ?? '—'}
-                sub="mode"
+                sub={t('activity:ctxBreakdown.modeLabel')}
                 accent="default"
               />
               {data && (
@@ -258,14 +276,18 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                     icon={Wrench}
                     label={t('activity:ctxBreakdown.toolsRegistered')}
                     value={String(data.tools.count)}
-                    sub={`${fmtTok(data.tools.total)} tokens`}
+                    sub={t('activity:ctxBreakdown.tokensSuffix', {
+                      tokens: fmtTok(data.tools.total),
+                    })}
                     accent="default"
                   />
                   <SummaryCard
                     icon={MessageSquare}
                     label={t('activity:ctxDash.messages')}
                     value={String(data.messages.count)}
-                    sub={`${fmtTok(data.messages.total)} tokens`}
+                    sub={t('activity:ctxBreakdown.tokensSuffix', {
+                      tokens: fmtTok(data.messages.total),
+                    })}
                     accent="default"
                   />
                 </>
@@ -297,7 +319,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                       {t('activity:ctxBreakdown.tokenAllocation')}
                     </span>
                     <span className="text-[10px] text-muted-foreground ml-auto">
-                      {fmtTok(data.total)} total
+                      {t('activity:ctxBreakdown.totalTokens', { total: fmtTok(data.total) })}
                     </span>
                   </div>
 
@@ -305,8 +327,12 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                     {/* Donut ring */}
                     {categories && (
                       <div className="relative shrink-0 flex items-center justify-center">
-                        <svg width="96" height="96" viewBox="0 0 96 96" className="drop-shadow-md">
-                          <title>Token allocation: {ctxPct}% context usage</title>
+                        <svg width="96" height="96" viewBox="0 0 96 96">
+                          <title>
+                            {t('activity:ctxBreakdown.allocationRingLabel', {
+                              total: fmtTok(data.total),
+                            })}
+                          </title>
                           {(() => {
                             const total = categories.reduce((s, c) => s + c.value, 0) || 1;
                             let offset = 0;
@@ -335,13 +361,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                               return seg;
                             });
                           })()}
-                          <circle
-                            cx="48"
-                            cy="48"
-                            r="24"
-                            fill="hsl(var(--card))"
-                            className="drop-shadow-sm"
-                          />
+                          <circle cx="48" cy="48" r="24" fill="hsl(var(--card))" />
                           <text
                             x="48"
                             y="48"
@@ -350,7 +370,7 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                             fill="currentColor"
                             className="text-[10px] font-bold font-mono tabular-nums"
                           >
-                            {ctxPct}%
+                            {fmtTok(data.total)}
                           </text>
                         </svg>
                       </div>
@@ -405,7 +425,10 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                         {t('activity:ctxBreakdown.toolBreakdown')}
                       </span>
                       <span className="text-[10px] text-muted-foreground ml-auto">
-                        {data.tools.breakdown.length} tools · {fmtTok(data.tools.total)} tokens
+                        {t('activity:ctxBreakdown.toolCountAndTokens', {
+                          count: data.tools.breakdown.length,
+                          tokens: fmtTok(data.tools.total),
+                        })}
                       </span>
                     </div>
                     <div className="max-h-48 overflow-y-auto overscroll-contain space-y-0.5 rounded-lg border bg-muted/20 p-2">
@@ -453,7 +476,10 @@ export function ContextBreakdownModal({ open, onClose }: ContextBreakdownModalPr
                       {t('activity:ctxBreakdown.messageBreakdown')}
                     </span>
                     <span className="text-[10px] text-muted-foreground ml-auto">
-                      {data.messages.count} messages · {fmtTok(data.messages.total)} tokens
+                      {t('activity:ctxBreakdown.messageCountAndTokens', {
+                        count: data.messages.count,
+                        tokens: fmtTok(data.messages.total),
+                      })}
                     </span>
                   </div>
                   <div className="max-h-64 overflow-y-auto overscroll-contain space-y-0.5 rounded-lg border bg-muted/20 p-2">
@@ -540,12 +566,7 @@ function SummaryCard({
     default: 'border-border/50 bg-muted/30 text-muted-foreground',
   };
   return (
-    <div
-      className={cn(
-        'rounded-lg border px-3 py-2.5 transition-all duration-300 hover:shadow-sm',
-        accentColors[accent],
-      )}
-    >
+    <div className={cn('rounded-lg border px-3 py-2.5', accentColors[accent])}>
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
         <Icon className="h-3 w-3" />
         <span className="truncate">{label}</span>

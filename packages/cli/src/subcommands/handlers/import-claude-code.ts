@@ -7,7 +7,10 @@
  * `~/.claude.json`, and the repository's `.mcp.json`. The repository file
  * ships with the code, so its servers (which run commands) arrive DISABLED
  * unless `--enable-project-servers` is given — the same trust line the
- * in-project config loader draws when it strips `mcpServers`.
+ * in-project config loader draws when it strips `mcpServers`. They also never
+ * replace a user server of the same name, and arrive without the fields that
+ * would pre-approve their tools or hand them the user's environment
+ * (`REPOSITORY_STRIPPED_MCP_FIELDS`).
  *
  * Reported, not imported: skills (already read in place from `.claude/skills`),
  * hooks and permission rules (different matcher semantics — a silently
@@ -55,6 +58,39 @@ export interface ClaudeCodeSources {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Fields a repository entry may not carry into the user's profile. Each one
+ * widens what the server gets on enable beyond "run this command / reach this
+ * URL": `permission` pre-approves every tool it exposes, `bearerTokenEnv` and
+ * `passthroughEnv` send the named environment variables to it, and
+ * `allowPrivateNetworks` lifts the internal-network guard. The repository
+ * chooses the command and URL, so it must not also choose those
+ * (WS-2026-09-26-05). The user can still set them after reviewing.
+ */
+export const REPOSITORY_STRIPPED_MCP_FIELDS = [
+  'permission',
+  'bearerTokenEnv',
+  'passthroughEnv',
+  'allowPrivateNetworks',
+] as const;
+
+/** Environment variables an entry would read on start: placeholders and named fields. */
+function envReads(config: Partial<MCPServerConfig>): string[] {
+  const reads = new Set(mcpEnvPlaceholders(config));
+  if (config.bearerTokenEnv) reads.add(config.bearerTokenEnv);
+  for (const name of config.passthroughEnv ?? []) reads.add(name);
+  return [...reads];
+}
+
+/** What the entry runs or reaches, for the preview. */
+function describeTarget(config: Partial<MCPServerConfig>): string | undefined {
+  if (typeof config.command === 'string') {
+    return `runs: ${[config.command, ...(config.args ?? [])].join(' ')}`;
+  }
+  if (typeof config.url === 'string') return `connects to: ${config.url}`;
+  return undefined;
 }
 
 /** Claude keys projects by absolute path; spelling varies (slashes, drive case). */
@@ -113,14 +149,30 @@ export function planClaudeCodeImport(opts: {
       const exists = Object.hasOwn(opts.existingServers, name);
       const repository = source === 'repository';
       const enabled = !repository || opts.enableProjectServers;
-      // `${VAR}` placeholders are resolved from YOUR environment when the
-      // server starts — say which, before anything is written.
-      const reads = mcpEnvPlaceholders(config);
+      const stripped: string[] = [];
+      if (repository) {
+        for (const field of REPOSITORY_STRIPPED_MCP_FIELDS) {
+          if (config[field] === undefined) continue;
+          delete config[field];
+          stripped.push(field);
+        }
+        // Marks it as not the user's: `mcp_control` will not enable it (H-8).
+        config.origin = 'repository';
+      }
+      // `${VAR}` placeholders and the named env fields are resolved from YOUR
+      // environment when the server starts — say which, before anything is
+      // written, together with what the server runs or reaches.
+      const reads = envReads(config);
+      const target = describeTarget(config);
       const notes = [
+        target,
         repository && !enabled
           ? 'from the repository — imported disabled; review, then `/mcp enable`'
           : undefined,
         reads.length > 0 ? `reads environment: ${reads.join(', ')}` : undefined,
+        stripped.length > 0
+          ? `not imported from the repository: ${stripped.join(', ')} (set them yourself after review)`
+          : undefined,
       ].filter((note): note is string => note !== undefined);
       mcp.push({
         name,
@@ -133,12 +185,15 @@ export function planClaudeCodeImport(opts: {
     }
   };
 
+  // The user's own entries come first: a repository `.mcp.json` must not be
+  // able to replace the user's `github` with its own command under the same
+  // name (WS-2026-09-26-05). The repository only adds names nobody else uses.
   collect(
     projectEntry(sources.userState, opts.projectRoot)?.['mcpServers'],
     'claude-project-local',
   );
-  collect(sources.projectMcp?.['mcpServers'] ?? sources.projectMcp, 'repository');
   collect(sources.userState?.['mcpServers'], 'claude-user');
+  collect(sources.projectMcp?.['mcpServers'] ?? sources.projectMcp, 'repository');
 
   const notes: string[] = [];
   if (sources.skillDirs.length > 0) {

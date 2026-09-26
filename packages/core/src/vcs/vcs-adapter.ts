@@ -50,6 +50,31 @@ export interface VcsOptions {
   timeoutMs?: number | undefined;
 }
 
+/**
+ * Environment for every `hg` this module runs.
+ *
+ * These run on their own — the system-prompt environment block calls them for
+ * the first prompt of every session, before any tool call, under `--restricted`
+ * too — in whatever directory the user opened. `.hg/` is not special to git, so
+ * a repository can commit one and a "Download ZIP" of it (no `.git/`) makes hg
+ * the nearest VCS. Mercurial reads that repository's `.hg/hgrc` for every
+ * command, and `[hooks]` / `[extensions]` there run code: HGPLAIN only drops
+ * aliases, defaults and output settings. HGRCSKIPREPO (Mercurial 5.4+) stops
+ * the repository file from being read at all; the user's and system config
+ * still apply (WS-2026-09-26-02).
+ */
+export const HG_ISOLATED_ENV: Readonly<Record<string, string>> = Object.freeze({
+  HGPLAIN: '1',
+  HGRCSKIPREPO: '1',
+});
+
+/**
+ * Leading `git` options for commands run on a repository the user has not
+ * vouched for. `core.fsmonitor` names a program git runs on status/diff; an
+ * extracted archive can carry a `.git/config` that sets it.
+ */
+export const GIT_ISOLATION_ARGS: readonly string[] = Object.freeze(['-c', 'core.fsmonitor=false']);
+
 /** Nearest repository first; at the same level git, then jj, then hg. */
 const MARKERS: ReadonlyArray<{ kind: VcsKind; marker: string }> = [
   // A colocated jj repository also has `.git`, and git answers correctly
@@ -88,10 +113,13 @@ export async function openVcs(dir: string, opts: VcsOptions = {}): Promise<VcsAd
 export function vcsAdapter(kind: VcsKind, root: string, opts: VcsOptions = {}): VcsAdapter {
   const binary = opts.binaries?.[kind] ?? kind;
   const resolvedRoot = path.resolve(root);
-  // Mercurial's scripting mode: stable output, no user aliases, root-relative paths.
-  const env = kind === 'hg' ? { HGPLAIN: '1' } : undefined;
+  const env = kind === 'hg' ? HG_ISOLATED_ENV : undefined;
+  // The isolation is applied where the process is spawned, so an injected
+  // runner still sees the bare subcommand (`rev-parse`, `status`, …).
+  const lead = kind === 'git' ? GIT_ISOLATION_ARGS : [];
   const run: VcsRunner =
-    opts.runner ?? ((bin, args, cwd) => runVcs(bin, args, cwd, { env, timeoutMs: opts.timeoutMs }));
+    opts.runner ??
+    ((bin, args, cwd) => runVcs(bin, [...lead, ...args], cwd, { env, timeoutMs: opts.timeoutMs }));
   if (kind === 'git') return gitAdapter(resolvedRoot, binary, run);
   if (kind === 'jj') return jjAdapter(resolvedRoot, binary, run);
   return hgAdapter(resolvedRoot, binary, run);

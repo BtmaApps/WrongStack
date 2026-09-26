@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DefaultPromptLoader } from '../../src/execution/prompt-loader.js';
 import { PERF_MODES, PERF_PROMPT_SLUGS } from '../../src/performance/perf-modes.js';
+import { extractSkillMentions } from '../../src/skills/mentions.js';
+import { parseRequiredSkillsMarker } from '../../src/skills/required-skill-gate.js';
 import { promptChecksum } from '../../src/storage/prompt-store.js';
 import { BUILTIN_PROMPT_CATEGORIES } from '../../src/types/prompt.js';
 import type { JSONSchema } from '../../src/types/tool.js';
@@ -167,6 +169,30 @@ describe('builtin prompt dataset', () => {
     expect(entry.content).toContain('Do not rediscover or count the same root cause');
     expect(entry.content).toContain('fixed-verification-incomplete');
     expect(entry.content).toContain('next-round continuation is already authorized');
+  });
+
+  it('makes the Proof-Driven Bug Hunter load its playbook skills before discovery', () => {
+    // Both /bughunt and the WebUI card send this content verbatim. The
+    // skill-mention middleware turns `$name` into a load instruction, and the
+    // required-skills marker makes the host refuse edits until they load. A
+    // backticked or misspelled name is silently not a mention, and a renamed
+    // skill would be reported as unavailable, so pin both.
+    const { content } = JSON.parse(
+      fs.readFileSync(path.join(promptsDir, 'debugging', 'proof-driven-bug-hunter.json'), 'utf8'),
+    ) as { content: string };
+    const required = ['bug-hunter', 'debugging', 'testing', 'verify-before-done'];
+    expect(extractSkillMentions(content)).toEqual(required);
+    // The marker is what the host enforces; the mentions are what the model is
+    // told. They must name the same skills.
+    expect(parseRequiredSkillsMarker(content)).toEqual(required);
+    const bundledSkillsDir = path.join(here, '..', '..', 'skills');
+    for (const name of required) {
+      expect(fs.existsSync(path.join(bundledSkillsDir, name, 'SKILL.md')), name).toBe(true);
+    }
+    const gate = content.indexOf('## Required skills');
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(content.indexOf('### 1. Discover and isolate'));
+    expect(content).toContain('Required skills loaded, and any that were unavailable.');
   });
 
   it('ships a prompt for every performance mode', () => {

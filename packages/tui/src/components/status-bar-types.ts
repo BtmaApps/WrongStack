@@ -112,6 +112,19 @@ export interface StatusBarProps {
    */
   provider?: string | undefined;
   /**
+   * Active reasoning-effort level (e.g. "high"), rendered as a suffix INSIDE
+   * the model chip (`provider/model · high`) rather than as a chip of its own:
+   * it qualifies the model, so the density ladder sheds it with the model at
+   * overflow instead of spending a separate statusline slot on it. Shown at
+   * the `full` and `short` density levels; `micro` drops it so the bottom rung
+   * stays strictly narrower than the one above it. NOT rendered in minimum
+   * mode — see `buildMinimumChips` for why that rail omits the qualifier.
+   *
+   * Omitted when the host has no effort to report — the chip then renders
+   * byte-for-byte as it did before, so legacy callers and tests are unaffected.
+   */
+  effort?: string | undefined;
+  /**
    * App version string (e.g. "0.7.0"). Rendered as a right-anchored version
    * chip on the status bar (line 1, and the minimum-mode rail) so it stays
    * visible after the startup banner scrolls off — in addition to the

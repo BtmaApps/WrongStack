@@ -57,6 +57,7 @@ export function reduceSettingsPanel(state: State, action: SettingsPanelAction): 
           featureMemory: action.featureMemory,
           featureSkills: action.featureSkills,
           featureModelsRegistry: action.featureModelsRegistry,
+          featureToolCoach: action.featureToolCoach,
           tokenSavingTier: action.tokenSavingTier,
           allowOutsideProjectRoot: action.allowOutsideProjectRoot,
           contextAutoCompact: action.contextAutoCompact,

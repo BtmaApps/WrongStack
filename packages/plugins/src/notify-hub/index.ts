@@ -44,7 +44,8 @@
  *   "events": ["session.stop", "tool.error"],
  *   "headers": {},                     // extra HTTP headers (auth…)
  *   "timeoutMs": 5000,
- *   "maxConsecutiveFailures": 5
+ *   "maxConsecutiveFailures": 5,
+ *   "desktop": false                  // local toast: approval/question waiting, turn finished
  * }
  * ```
  *
@@ -54,9 +55,11 @@
  * @public
  */
 import { lookup } from 'node:dns/promises';
+import { basename } from 'node:path';
 import type { NotificationMessage, NotificationResult } from '@wrongstack/core/notifications';
 import { type Logger, type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { safeJsonStringify } from '../runtime/index.js';
+import { DesktopNotifier } from './desktop-notifier.js';
 import { WebhookNotificationChannel } from './webhook-channel.js';
 
 // ---------------------------------------------------------------------------
@@ -74,6 +77,8 @@ interface NotifyHubState {
   circuitWarned: boolean;
   /** Why a configured webhook was refused at setup; null when none was refused. */
   disabledReason: string | null;
+  /** Local desktop notifier; null unless `desktop` is on. */
+  desktop: DesktopNotifier | null;
 }
 
 const state: NotifyHubState = {
@@ -83,6 +88,7 @@ const state: NotifyHubState = {
   eventUnsubscribers: [],
   circuitWarned: false,
   disabledReason: null,
+  desktop: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -98,6 +104,8 @@ interface NotifyHubConfig {
   headers: Record<string, string>;
   timeoutMs: number;
   maxConsecutiveFailures: number;
+  /** Local desktop toasts when the run waits on the user and when a turn ends. */
+  desktop: boolean;
 }
 
 const KNOWN_EVENTS: NotifyEvent[] = ['session.stop', 'tool.error', 'budget.threshold'];
@@ -109,6 +117,7 @@ const DEFAULTS: NotifyHubConfig = {
   headers: {},
   timeoutMs: 5_000,
   maxConsecutiveFailures: 5,
+  desktop: false,
 };
 
 function isPrivateIPv4(hostname: string): boolean {
@@ -246,6 +255,7 @@ function readConfig(raw: unknown): NotifyHubConfig {
       typeof rawFailures === 'number' && rawFailures >= 1
         ? rawFailures
         : DEFAULTS.maxConsecutiveFailures,
+    desktop: r['desktop'] === true,
   };
 }
 
@@ -368,6 +378,12 @@ const plugin: Plugin = {
         default: 5,
         description: 'Circuit breaker: stop trying after this many consecutive failures.',
       },
+      desktop: {
+        type: 'boolean',
+        default: false,
+        description:
+          'Show a local desktop notification when a permission prompt or a question waits on you, and when a turn ends. Works without a webhook.',
+      },
     },
   },
 
@@ -481,6 +497,49 @@ const plugin: Plugin = {
       state.eventUnsubscribers.push(off);
     }
 
+    // ── desktop notifications (local, no webhook needed) ─────────────
+    // A toast when the run waits on the user and when a turn ends. The
+    // Notification hook is the core's own "waiting on the user" signal
+    // (`tool.confirm_needed`, `user.input_requested`).
+    state.desktop = null;
+    if (cfg.enabled && cfg.desktop) {
+      const desktop = new DesktopNotifier({
+        onError: (message) => api.log.warn(`notify-hub: desktop notification failed: ${message}`),
+      });
+      state.desktop = desktop;
+      if (!desktop.supported) {
+        api.log.warn(`notify-hub: no desktop notification command for ${process.platform}`);
+      } else {
+        const titleFor = (cwd: string | undefined) => {
+          const project = cwd ? basename(cwd) : '';
+          return project ? `WrongStack · ${project}` : 'WrongStack';
+        };
+        const onAttention = (input: {
+          cwd?: string | undefined;
+          notification?: { kind: 'permission' | 'input'; message: string } | undefined;
+        }) => {
+          const n = input.notification;
+          if (!n) return;
+          desktop.notify(
+            n.kind,
+            titleFor(input.cwd),
+            n.kind === 'permission' ? n.message : `Question awaiting your answer: ${n.message}`,
+          );
+        };
+        state.eventUnsubscribers.push(
+          api.registerHook('Notification', undefined, onAttention as never, {
+            name: 'notify-hub:desktop',
+          }),
+        );
+        const onStop = (input: { cwd?: string | undefined }) => {
+          desktop.notify('stop', titleFor(input.cwd), 'Turn finished');
+        };
+        state.eventUnsubscribers.push(
+          api.registerHook('Stop', undefined, onStop as never, { name: 'notify-hub:desktop-stop' }),
+        );
+      }
+    }
+
     // ── notify_send tool ──────────────────────────────────────────────
     api.tools.register({
       name: 'notify_send',
@@ -569,6 +628,13 @@ const plugin: Plugin = {
           enabled: cfg.enabled,
           webhookConfigured: cfg.webhookUrl.length > 0,
           events: cfg.events,
+          desktop: state.desktop
+            ? {
+                supported: state.desktop.supported,
+                sent: state.desktop.sent,
+                failed: state.desktop.failed,
+              }
+            : { enabled: false },
           timeoutMs: cfg.timeoutMs,
           circuitOpen: ch?.circuitStatus().open ?? false,
           counters: {
@@ -594,6 +660,7 @@ const plugin: Plugin = {
   teardown(api) {
     _pluginLog = null;
     state.circuitWarned = false;
+    state.desktop = null;
     if (state.stopHookUnregister) {
       try {
         state.stopHookUnregister();

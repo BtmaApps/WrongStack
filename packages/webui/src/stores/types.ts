@@ -108,6 +108,11 @@ export interface ChatMessage {
    *  most recent start and would leave earlier ones stuck on "Running...". */
   toolUseId?: string | undefined;
   isError?: boolean | undefined;
+  /** Set on the error bubble of a run a provider killed on a retryable
+   *  failure (overload, dropped connection, 5xx): the one error the Continue
+   *  countdown may auto-fire for, in `auto` autonomy. Every other error —
+   *  loop guard, iteration limit, auth, bad request — keeps a manual button. */
+  autoContinue?: boolean | undefined;
   timestamp: number;
   usage?: Usage | undefined;
   streaming?: boolean | undefined;

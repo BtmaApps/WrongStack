@@ -1,4 +1,28 @@
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
+import type { Tool } from '../types/tool.js';
+
+/** Give the model the registered contract on the failing call itself. */
+export function toolInputCorrection(tool: Tool): string {
+  const declared = Object.keys(tool.inputSchema.properties ?? {});
+  const required = tool.inputSchema.required ?? [];
+  const selection = tool.selection;
+  return (
+    `\n\nRegistered usage for "${tool.name}":\n` +
+    `${tool.description}` +
+    (tool.usageHint ? `\nUsage: ${tool.usageHint}` : '') +
+    (declared.length > 0 ? `\nDeclared top-level fields: ${declared.join(', ')}` : '') +
+    (required.length > 0 ? `\nRequired top-level fields: ${required.join(', ')}` : '') +
+    (selection
+      ? `\nDo not use this tool when: ${selection.doNotUseWhen}` +
+        (selection.useInstead?.length ? `\nUse instead: ${selection.useInstead.join(', ')}` : '')
+      : '') +
+    `\nInput schema:\n${JSON.stringify(tool.inputSchema, null, 2)}\n` +
+    `Recovery steps: First check whether this tool actually fits the task. ` +
+    `If it does, apply the validation error above: remove unsupported fields, add missing required fields, and correct types or values using the schema and usage hint. ` +
+    `Do not repeat the same arguments unchanged. If the tool is wrong for the task, choose a registered alternative. ` +
+    `If a required value cannot be determined, ask for that value instead of inventing it.`
+  );
+}
 
 export function unknownToolResult(use: ToolUseBlock, listFns: () => string[]): ToolResultBlock {
   return {
@@ -9,7 +33,7 @@ export function unknownToolResult(use: ToolUseBlock, listFns: () => string[]): T
   };
 }
 
-export function malformedInputResult(use: ToolUseBlock, raw?: string): ToolResultBlock {
+export function malformedInputResult(use: ToolUseBlock, tool: Tool, raw?: string): ToolResultBlock {
   let content =
     `Tool "${use.name}" received arguments that were not a valid JSON object, so they ` +
     `could not be parsed. Re-issue the call with the arguments encoded as a single ` +
@@ -23,6 +47,7 @@ export function malformedInputResult(use: ToolUseBlock, raw?: string): ToolResul
       `contains literal newlines, quotes, or backslashes that must be JSON-escaped, ` +
       `or the payload was cut off mid-stream. The raw arguments received were:\n${excerpt}`;
   }
+  content += toolInputCorrection(tool);
   return {
     type: 'tool_result',
     tool_use_id: use.id,

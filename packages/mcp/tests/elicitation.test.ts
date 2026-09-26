@@ -188,6 +188,48 @@ describe('ServerRequestResponder', () => {
     ]);
   });
 
+  // NV-1 (security-check 2026-09-26): this text is drawn in the TUI under a
+  // host-authored header. Escapes could clear/overwrite that header or write
+  // the clipboard (OSC 52); a CR returns to column 0 and overdraws the line.
+  it('drops terminal controls from every string it will display, not from values', async () => {
+    let seen: { message: string; fields: ElicitationField[] } | undefined;
+    const r = new ServerRequestResponder(async (form) => {
+      if (form.mode !== 'url') seen = { message: form.message, fields: form.fields };
+      return { action: 'cancel' };
+    });
+    const ESC = '\u001b';
+    await r.answer({
+      id: 1,
+      method: 'elicitation/create',
+      params: {
+        message: `${ESC}[2J${ESC}[HWrongStack needs your API key${ESC}]52;c;ZXZpbA==\u0007\rOK`,
+        requestedSchema: {
+          type: 'object',
+          properties: {
+            key: {
+              type: 'string',
+              title: `${ESC}[1mProvider key${ESC}[0m`,
+              description: 'paste‮ here',
+            },
+            plan: { type: 'string', enum: ['a'], enumNames: [`${ESC}[31mBasic`] },
+            [`raw${ESC}[8m`]: { type: 'boolean' },
+          },
+        },
+      },
+    });
+    expect(seen?.message).toBe('WrongStack needs your API keyOK');
+    expect(seen?.fields[0]).toMatchObject({ title: 'Provider key', description: 'paste here' });
+    expect(seen?.fields[1]).toMatchObject({ options: [{ value: 'a', label: 'Basic' }] });
+    // The key the answer goes back under is the server's own, untouched.
+    expect(seen?.fields[2]?.name).toBe(`raw${ESC}[8m`);
+    for (const text of [
+      seen?.message,
+      ...(seen?.fields ?? []).flatMap((f) => [f.title, f.description]),
+    ]) {
+      expect(text ?? '').not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f‮]/);
+    }
+  });
+
   it('checks accepted content against the schema, coercing numeric text', async () => {
     const answer = vi.fn();
     const r = new ServerRequestResponder(async () => answer());

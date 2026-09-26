@@ -10,7 +10,7 @@ import {
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv } from './_env.js';
-import { createOutputSpool, spoolNote } from './_output-spool.js';
+import { createOutputSpool, finishCommandOutput, spoolNote } from './_output-spool.js';
 import {
   type BashShell,
   diagnoseBashism,
@@ -18,7 +18,11 @@ import {
   shellArgs,
   wrapPowerShellScript,
 } from './_shell-pick.js';
-import { commandOutputPreviewBytes, normalizeCommandOutput } from './_util.js';
+import {
+  commandOutputPreviewBytes,
+  createCommandOutputCapture,
+  normalizeCommandOutput,
+} from './_util.js';
 import { resolvePowerShell } from './_win32-resolve.js';
 import { closeBackgroundLogFd, openBackgroundLog } from './background-log.js';
 import { hermeticEnv, hermeticPosixArgv } from './bash-hermetic.js';
@@ -558,15 +562,14 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       });
     }
 
-    let buf = '';
     let pending = '';
     let timedOut = false;
     const timers: NodeJS.Timeout[] = [];
-    // Full-output spool: `buf` keeps only the first MAX_OUTPUT bytes for the
-    // model; everything else used to be dropped. The spool streams the FULL
-    // output to a file once it exceeds the cap, and the final result carries
-    // a marker pointing at it — file-based instead of in-memory/in-context.
+    // `capture` keeps the head and tail for the model (a test run's summary
+    // and failures land last). The spool streams the FULL output to a file
+    // once it exceeds the cap; the result carries a marker pointing at it.
     const previewBytes = commandOutputPreviewBytes();
+    const capture = createCommandOutputCapture(previewBytes);
     const spool = createOutputSpool({ tool: 'bash', thresholdBytes: previewBytes });
 
     function killWithTimeout(child: ReturnType<typeof spawn>, timeoutMs: number): void {
@@ -693,9 +696,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       else stderrBytes += chunk.byteLength;
       emitProcessOutput({ pid, stream, chunk });
       if (text.length > 0) {
-        if (buf.length < previewBytes) {
-          buf += text.slice(0, previewBytes - buf.length);
-        }
+        capture.push(text);
         spool.write(text);
         pending += text;
         push({ kind: 'data', text });
@@ -736,7 +737,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       // silently dropped.
       const tail = stdoutDecoder.end() + stderrDecoder.end();
       if (tail) {
-        if (buf.length < previewBytes) buf += tail.slice(0, previewBytes - buf.length);
+        capture.push(tail);
         spool.write(tail);
         pending += tail;
       }
@@ -772,7 +773,9 @@ export const bashTool: Tool<BashInput, BashOutput> = {
             type: 'final',
             output: {
               output:
-                normalizeCommandOutput(buf) + (spooled ? spoolNote(spooled) : '') + pipeToShellNote,
+                normalizeCommandOutput(capture.text()) +
+                (spooled ? spoolNote(spooled) : '') +
+                pipeToShellNote,
               exit_code: 124,
               timed_out: true,
               pid: pid ?? null,
@@ -786,7 +789,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           if (remainder !== null) {
             yield { type: 'partial_output', text: remainder };
           }
-          const spooled = spool.finalize();
+          const output = finishCommandOutput(spool, capture.text(), input.command);
           // Advisory bash-ism guard: on a genuine non-zero exit (not a
           // timeout), if the command used POSIX syntax the resolved Windows
           // shell can't accept, append a targeted hint so the model rewrites it
@@ -799,11 +802,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           yield {
             type: 'final',
             output: {
-              output:
-                normalizeCommandOutput(buf) +
-                (spooled ? spoolNote(spooled) : '') +
-                (hint ? `\n\n${hint}` : '') +
-                pipeToShellNote,
+              output: output + (hint ? `\n\n${hint}` : '') + pipeToShellNote,
               exit_code: timedOut || isAborted ? 124 : c.code,
               timed_out: timedOut || isAborted,
               pid: pid ?? null,

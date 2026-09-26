@@ -62,6 +62,12 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     const indexDir = path.join(projectRoot, '.index');
     const endpoint = projectIndexServerEndpoint(projectRoot, indexDir);
     const metadataPath = path.join(indexDir, 'server.json');
+    // Capture the daemon's stderr so a future failure discriminates its
+    // mechanism: an unhandled-rejection teardown crash exits non-zero with a
+    // stack on stderr, a swallowed rmSync failure exits 0 with the file left
+    // behind. stdio:'ignore' recorded neither.
+    const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
+    const stderrFd = fsSync.openSync(stderrLogPath, 'w');
     const child = spawn(
       process.execPath,
       [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
@@ -71,7 +77,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
           WRONGSTACK_INDEX_SERVER_IDLE_MS: '350',
           WRONGSTACK_INDEX_SERVER_CLIENT_LEASE_MS: '2000',
         },
-        stdio: 'ignore',
+        stdio: ['ignore', 'ignore', stderrFd],
         windowsHide: true,
       },
     );
@@ -81,8 +87,69 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
       const socket = await connect(endpoint);
       socket.destroy();
       await waitForExit(child);
-      expect(fsSync.existsSync(metadataPath)).toBe(false);
+      fsSync.closeSync(stderrFd);
+      const stderrText = fsSync.readFileSync(stderrLogPath, 'utf8');
+      expect(child.exitCode, `daemon exit ${child.exitCode}; stderr: ${stderrText}`).toBe(0);
+      expect(fsSync.existsSync(metadataPath), `metadata survived exit; stderr: ${stderrText}`).toBe(
+        false,
+      );
     } finally {
+      try {
+        fsSync.closeSync(stderrFd);
+      } catch {
+        /* closed after a successful waitForExit */
+      }
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('removes metadata and exits cleanly when a teardown step throws', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-index-fault-'));
+    const indexDir = path.join(projectRoot, '.index');
+    const endpoint = projectIndexServerEndpoint(projectRoot, indexDir);
+    const metadataPath = path.join(indexDir, 'server.json');
+    const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
+    const stderrFd = fsSync.openSync(stderrLogPath, 'w');
+    const child = spawn(
+      process.execPath,
+      [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
+      {
+        env: {
+          ...process.env,
+          WRONGSTACK_INDEX_SERVER_IDLE_MS: '350',
+          WRONGSTACK_INDEX_SERVER_CLIENT_LEASE_MS: '2000',
+          // Inject a synchronous teardown failure exactly where
+          // indexStorePool.closeAll() sits: before metadata removal. The
+          // shutdown-ordering contract: report it, still remove the metadata,
+          // and exit 0 — an unawaited `void stop()` rejection once killed the
+          // process with the file still on disk (a stale-server claim that
+          // blocks the next daemon from reclaiming the endpoint).
+          WRONGSTACK_INDEX_SERVER_FAULT: 'teardown-throw',
+        },
+        stdio: ['ignore', 'ignore', stderrFd],
+        windowsHide: true,
+      },
+    );
+
+    try {
+      await waitUntil(() => fsSync.existsSync(metadataPath));
+      const socket = await connect(endpoint);
+      socket.destroy();
+      await waitForExit(child);
+      fsSync.closeSync(stderrFd);
+      const stderrText = fsSync.readFileSync(stderrLogPath, 'utf8');
+      expect(child.exitCode, `daemon exit ${child.exitCode}; stderr: ${stderrText}`).toBe(0);
+      expect(stderrText).toContain('teardown error');
+      expect(fsSync.existsSync(metadataPath), `metadata survived exit; stderr: ${stderrText}`).toBe(
+        false,
+      );
+    } finally {
+      try {
+        fsSync.closeSync(stderrFd);
+      } catch {
+        /* closed after a successful waitForExit */
+      }
       if (child.exitCode === null && child.signalCode === null) child.kill();
       await fs.rm(projectRoot, { recursive: true, force: true });
     }
@@ -93,6 +160,10 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     const indexDir = path.join(projectRoot, '.index');
     const endpoint = projectIndexServerEndpoint(projectRoot, indexDir);
     const metadataPath = path.join(indexDir, 'server.json');
+    // Same evidence capture as the idle-exit case above: exit code + stderr
+    // discriminate a teardown crash from a swallowed rmSync failure.
+    const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
+    const stderrFd = fsSync.openSync(stderrLogPath, 'w');
     const child = spawn(
       process.execPath,
       [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
@@ -102,7 +173,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
           WRONGSTACK_INDEX_SERVER_IDLE_MS: '150',
           WRONGSTACK_INDEX_SERVER_CLIENT_LEASE_MS: '200',
         },
-        stdio: 'ignore',
+        stdio: ['ignore', 'ignore', stderrFd],
         windowsHide: true,
       },
     );
@@ -126,9 +197,19 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
       clearInterval(heartbeat);
       heartbeat = undefined;
       await Promise.all([socketClosed, waitForExit(child)]);
+      fsSync.closeSync(stderrFd);
+      const stderrText = fsSync.readFileSync(stderrLogPath, 'utf8');
       expect(socket.destroyed).toBe(true);
-      expect(fsSync.existsSync(metadataPath)).toBe(false);
+      expect(child.exitCode, `daemon exit ${child.exitCode}; stderr: ${stderrText}`).toBe(0);
+      expect(fsSync.existsSync(metadataPath), `metadata survived exit; stderr: ${stderrText}`).toBe(
+        false,
+      );
     } finally {
+      try {
+        fsSync.closeSync(stderrFd);
+      } catch {
+        /* closed after a successful waitForExit */
+      }
       if (heartbeat) clearInterval(heartbeat);
       socket?.destroy();
       if (child.exitCode === null && child.signalCode === null) child.kill();

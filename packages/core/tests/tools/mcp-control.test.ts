@@ -225,6 +225,37 @@ describe('createMcpControlTool', () => {
     expect(result).toContain('already running');
   });
 
+  // H-8 (security-check 2026-09-26): `import-claude-code` brings a repository's
+  // .mcp.json servers in disabled, marked `origin: 'repository'`. Their
+  // command is the repository's; turning one on is the user's decision, and
+  // `mcp_control` is auto-approved under YOLO — so the tool refuses.
+  it('enable: refuses a repository-imported server the user has not enabled', async () => {
+    const repoServer = {
+      name: 'tool',
+      transport: 'stdio' as const,
+      command: 'node',
+      args: ['./scripts/mcp.js'],
+      enabled: false,
+      origin: 'repository' as const,
+    };
+    getConfig = () => fakeConfig({ mcpServers: { tool: repoServer } });
+    tool = createMcpControlTool({ getConfig, configPath, registry });
+    await expect(
+      tool.execute({ action: 'enable', server: 'tool' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/imported from a repository.*\/mcp enable tool/);
+    expect(registry.start).not.toHaveBeenCalled();
+
+    // Once the user has enabled it, restarting it through the tool is fine.
+    getConfig = () => fakeConfig({ mcpServers: { tool: { ...repoServer, enabled: true } } });
+    tool = createMcpControlTool({ getConfig, configPath, registry });
+    await tool.execute({ action: 'enable', server: 'tool' }, undefined as never, {
+      signal: new AbortController().signal,
+    });
+    expect(registry.start).toHaveBeenCalled();
+  });
+
   // ── disable action ────────────────────────────────────────────────────────
 
   it('disable: missing server name throws', async () => {

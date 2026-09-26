@@ -9,10 +9,14 @@ import { renderRealTty, settle } from './helpers/real-tty.js';
 
 describe('ThemePicker', () => {
   it('renders the title, controls, active theme, and hint', () => {
+    // `THEME_OPTIONS` is sorted by family, so the default preset is NOT at
+    // index 0 — focus its real row rather than pinning an ordering the picker
+    // does not promise.
+    const catIndex = THEME_OPTIONS.findIndex((o) => o.id === 'catppuccin');
     const view = render(
       React.createElement(ThemePicker, {
         options: THEME_OPTIONS,
-        selected: 0,
+        selected: catIndex,
         activeId: 'catppuccin',
         hint: 'Theme saved',
       }),
@@ -42,6 +46,46 @@ describe('ThemePicker', () => {
     view.unmount();
   });
 
+  it('keeps the cursor visible when a filter shrinks the list below the parent selected index', () => {
+    // Regression pin for the clamp-ordering fix in theme-picker.tsx.
+    //
+    // `selected` is an index into the FILTERED list. A query can leave the
+    // parent's index pointing past the end of what is now on screen. The
+    // picker clamps that index BEFORE windowing, so the window and the `›`
+    // highlight agree and the cursor stays on screen. Clamping only at render
+    // time (the previous order) let the raw index reach `windowThemeRows`,
+    // whose `findIndex` then missed, snapped the window to the top of the
+    // list, and left the highlight on a row that was no longer in view — the
+    // cursor disappeared until the next keypress.
+    const matches = THEME_OPTIONS.filter((o) => /gruvbox/i.test(o.name));
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.length).toBeLessThan(THEME_OPTIONS.length);
+
+    const view = render(
+      React.createElement(ThemePicker, {
+        options: THEME_OPTIONS,
+        // Deliberately stale: far beyond the filtered list's length.
+        selected: THEME_OPTIONS.length - 1,
+        activeId: 'catppuccin',
+        filter: 'gruvbox',
+        columns: 100,
+        maxRows: 20,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+
+    // The cursor is on a row, and that row is one the filter actually shows.
+    expect(frame).toContain('›');
+    const cursorRow = frame.split('\n').find((line) => line.includes('›'));
+    expect(cursorRow).toBeDefined();
+    expect(matches.some((m) => cursorRow!.includes(m.name))).toBe(true);
+
+    // And the box still honours the row budget after the swap to a Box row.
+    const lineCount = frame.replace(/\s+$/gm, '').split('\n').filter(Boolean).length;
+    expect(lineCount).toBeLessThanOrEqual(20);
+    view.unmount();
+  });
+
   it('renders an empty option list without placeholder artifacts', () => {
     const view = render(
       React.createElement(ThemePicker, {
@@ -54,6 +98,74 @@ describe('ThemePicker', () => {
 
     expect(frame).toContain('TUI Theme');
     expect(frame).not.toContain('undefined');
+    view.unmount();
+  });
+
+  it('groups the rendered list under one header per family, with related presets adjacent', async () => {
+    // Family grouping is only real if it survives into the RENDERED frame, not
+    // just the source array. Render every preset (64 rows + 21 headers + list
+    // chrome) on a terminal tall enough that nothing is windowed away, then
+    // read the frame back and check the two properties a user actually sees:
+    // one header per family, and a family's presets contiguous beneath it.
+    const families = [...new Set(THEME_OPTIONS.map((o) => o.family))];
+    const neededRows = THEME_OPTIONS.length + families.length + 12;
+    const view = renderRealTty(
+      React.createElement(ThemePicker, {
+        options: THEME_OPTIONS,
+        selected: 0,
+        activeId: 'catppuccin',
+        // Below SPLIT_MIN_COLUMNS so the list renders full-width and the
+        // description column is present; the grouping assertions do not care
+        // about it, but a split pane would cap the list at PREVIEW_FULL_ROWS.
+        columns: 80,
+        maxRows: neededRows,
+      }),
+      { columns: 100, rows: neededRows + 6 },
+    );
+    await settle();
+    const frame = view.lastFrame() ?? '';
+
+    // Strip the box frame: keep the inner content of each line.
+    const inner = frame
+      .split('\n')
+      .map((line) =>
+        line
+          .replace(/^[^A-Za-z\u2191\u2026/]*/, '')
+          .replace(/[^A-Za-z\u2026]*$/, '')
+          .trim(),
+      )
+      .filter((line) => line.length > 0);
+
+    // A header line's whole content is exactly a family name. One family name
+    // IS also a preset name ("Everforest" / "Everforest Hard"), so the two are
+    // told apart by what follows: a header is the entire line, whereas a preset
+    // row always continues with its description (or the swatch run). Matching
+    // on exact equality — rather than `includes` — is what keeps a preset row
+    // from being miscounted as a header, and is asserted below via the walk.
+    const headerCount = (family: string) => inner.filter((line) => line === family).length;
+
+    for (const family of families) {
+      expect(headerCount(family), `exactly one header for ${family}`).toBe(1);
+    }
+
+    // Walk the frame: a preset row must sit under the header of its own
+    // family, and the family in effect may not change back once it has.
+    let currentFamily: string | undefined;
+    const seen = new Set<string>();
+    for (const line of inner) {
+      if (families.includes(line)) {
+        // Re-entering a family already passed would mean its presets are split
+        // across non-adjacent blocks.
+        expect(seen.has(line), `family ${line} is rendered in more than one block`).toBe(false);
+        seen.add(line);
+        currentFamily = line;
+        continue;
+      }
+      const match = THEME_OPTIONS.find((o) => line.includes(o.name));
+      if (!match) continue; // chrome line (title, hint, markers)
+      expect(match.family, `${match.name} appears under ${currentFamily}`).toBe(currentFamily);
+    }
+    expect(seen.size, 'every family is represented in the frame').toBe(families.length);
     view.unmount();
   });
 
@@ -189,22 +301,30 @@ describe('ThemePicker', () => {
     // Ink delivers stdin asynchronously — wait for the committed selection
     // update before reading each frame so the assertions never observe a
     // stale pre-commit render (see helpers/frame-wait.ts).
+    //
+    // Sample the presets by INDEX rather than hardcoding ids: `THEME_OPTIONS`
+    // is grouped by family, so the first three rows are whatever family sorts
+    // first. What is under test is that the preview tracks the focused row,
+    // not which palette happens to be at position 0.
+    const first = THEME_OPTIONS[0]!.id;
+    const second = THEME_OPTIONS[1]!.id;
+    const third = THEME_OPTIONS[2]!.id;
 
-    // Initial focus: preset 0 → preview header shows `catppuccin`.
-    expect(view.lastFrame() ?? '').toContain('catppuccin');
-    expect(view.lastFrame() ?? '').not.toContain('tokyo-night');
+    // Initial focus: row 0 → preview header shows that preset.
+    expect(view.lastFrame() ?? '').toContain(first);
+    expect(view.lastFrame() ?? '').not.toContain(second);
 
-    // ↓ → preset 1 → the preview header follows to `tokyo-night`.
+    // ↓ → row 1 → the preview header follows.
     view.stdin.write('\u001b[B');
-    expect(await waitForFrame(view, (f) => f.includes('tokyo-night'))).toContain('tokyo-night');
+    expect(await waitForFrame(view, (f) => f.includes(second))).toContain(second);
 
-    // ↓ → preset 2 → `nord`.
+    // ↓ → row 2 → still tracking.
     view.stdin.write('\u001b[B');
-    expect(await waitForFrame(view, (f) => f.includes('nord'))).toContain('nord');
+    expect(await waitForFrame(view, (f) => f.includes(third))).toContain(third);
 
-    // ↑ back to preset 1.
+    // ↑ back to row 1.
     view.stdin.write('\u001b[A');
-    expect(await waitForFrame(view, (f) => f.includes('tokyo-night'))).toContain('tokyo-night');
+    expect(await waitForFrame(view, (f) => f.includes(second))).toContain(second);
     view.unmount();
   });
 });

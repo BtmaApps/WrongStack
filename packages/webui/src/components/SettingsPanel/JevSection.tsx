@@ -93,6 +93,7 @@ export function JevSection({
             endpoint: form.endpoint.trim() || null,
             model: form.model.trim() || null,
             requestTimeoutMs: form.requestTimeoutMs,
+            logContent: form.logContent === true,
             features: form.features,
             ...(form.recallTurnContext !== undefined &&
             form.recallTurnContext !== state.settings?.recallTurnContext
@@ -196,6 +197,15 @@ export function JevSection({
               onChange={(e) => setForm({ ...form, requestTimeoutMs: Number(e.target.value) })}
             />
           </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.logContent === true}
+              onChange={(e) => setForm({ ...form, logContent: e.target.checked })}
+            />
+            {t('settings:jev.logContent')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('settings:jev.logContentHint')}</p>
           <p className="text-xs text-muted-foreground">{t('settings:jev.featureHint')}</p>
           <p className="text-xs text-muted-foreground">{t('settings:jev.readinessScope')}</p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -360,6 +370,13 @@ export function JevSection({
         {state.activity?.path && (
           <p className="break-all text-xs font-mono">{state.activity.path}</p>
         )}
+        {/* The SAVED value, not the draft: the file below is written by this
+            process, which read the switch when it built its client. */}
+        <p className="text-xs text-muted-foreground" role="status">
+          {state.settings?.logContent
+            ? t('settings:jev.logContentOn')
+            : t('settings:jev.logContentOff')}
+        </p>
         {state.activity?.writeError && <p role="alert">{state.activity.writeError}</p>}
         <label className="block text-sm">
           {t('settings:jev.filter')}

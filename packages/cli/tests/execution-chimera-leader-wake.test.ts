@@ -10,8 +10,9 @@ function harness(
   options: {
     projectDir?: string;
     realPersistence?: boolean;
-    persistReview?: (payload: unknown, projectDir: string) => Promise<void>;
+    persistReview?: (payload: unknown, projectDir: string, maintenance?: unknown) => Promise<void>;
     cwd?: string;
+    config?: Record<string, unknown>;
     reviewFiles?: Array<{ path: string; status: string; content: string }>;
   } = {},
 ) {
@@ -69,7 +70,7 @@ function harness(
     session: session as never,
     mailbox: mailbox as never,
     agent: agent as never,
-    config: { provider: 'test', model: 'reviewer' } as never,
+    config: (options.config ?? { provider: 'test', model: 'reviewer' }) as never,
     projectDir: options.projectDir ?? 'D:/project-data',
     ...(options.realPersistence
       ? {}
@@ -271,5 +272,56 @@ describe('Chimera passive report integration', () => {
       'chimera.review_complete',
       expect.objectContaining({ reportId: expect.any(String) }),
     );
+  });
+
+  // ── Operator store-retention caps are read from config by the CLI ──
+
+  const ALL_CLEAR = '## 🦂 Chimera Review — all clear ✅\n\nNo issues found.';
+
+  async function maintenanceArgFor(extensions: unknown): Promise<Record<string, unknown>> {
+    const persistReview = vi.fn().mockResolvedValue(undefined);
+    const h = harness(ALL_CLEAR, 'off', {
+      persistReview,
+      config: { provider: 'test', model: 'reviewer', extensions },
+    });
+    h.emitReview();
+    await vi.waitFor(() => expect(persistReview).toHaveBeenCalledTimes(1));
+    return persistReview.mock.calls[0]![2] as Record<string, unknown>;
+  }
+
+  it('passes both retention caps read from extensions["wstack-chimera"]', async () => {
+    const maintenance = await maintenanceArgFor({
+      'wstack-chimera': { openRetentionDays: 45, activeRetentionDays: 30 },
+    });
+    // Exact object: the CLI owns reading config, core owns interpreting it.
+    expect(maintenance).toStrictEqual({ openRetentionDays: 45, activeRetentionDays: 30 });
+  });
+
+  it('leaves caps unset when no config exists, so core applies its defaults', async () => {
+    expect(await maintenanceArgFor(undefined)).toStrictEqual({
+      openRetentionDays: undefined,
+      activeRetentionDays: undefined,
+    });
+  });
+
+  it('ignores malformed retention values instead of forwarding them to core', async () => {
+    // A string, a negative number and NaN must not reach the sweep: `0` means
+    // "disabled" and a negative cap would evict every non-terminal row.
+    expect(
+      await maintenanceArgFor({
+        'wstack-chimera': { openRetentionDays: '45', activeRetentionDays: -1 },
+      }),
+    ).toStrictEqual({ openRetentionDays: undefined, activeRetentionDays: undefined });
+    expect(
+      await maintenanceArgFor({
+        'wstack-chimera': { openRetentionDays: Number.NaN, activeRetentionDays: null },
+      }),
+    ).toStrictEqual({ openRetentionDays: undefined, activeRetentionDays: undefined });
+    // 0 is a legitimate operator value (sweep disabled) and must pass through.
+    expect(
+      await maintenanceArgFor({
+        'wstack-chimera': { openRetentionDays: 0, activeRetentionDays: 0 },
+      }),
+    ).toStrictEqual({ openRetentionDays: 0, activeRetentionDays: 0 });
   });
 });

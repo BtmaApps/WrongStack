@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrainArbiter, BrainDecision } from '../../src/coordination/brain.js';
-import { type BrainInterventionInput, BrainMonitor } from '../../src/coordination/brain-monitor.js';
 import {
   BrainDecisionLedger,
   createLedgerGuardBrainArbiter,
 } from '../../src/coordination/brain-ledger.js';
+import { type BrainInterventionInput, BrainMonitor } from '../../src/coordination/brain-monitor.js';
 import { EventBus, type EventMap } from '../../src/kernel/events.js';
 
 const STEER: BrainDecision = {
@@ -97,6 +97,42 @@ describe('BrainMonitor — file churn signal', () => {
     await settle();
 
     expect(emitted).toHaveLength(0);
+  });
+
+  it('counts the files a patch declares, which no input key names', async () => {
+    const emitted: EventMap['brain.intervention'][] = [];
+    events.on('brain.intervention', (e) => emitted.push(e));
+    monitor({ fileChurnThreshold: 3 });
+
+    const okPatch = {
+      name: 'patch',
+      durationMs: 1,
+      ok: true,
+      input: { patch: '--- a/src/a.ts\n+++ b/src/a.ts\n' },
+      writeTargets: ['src/a.ts', 'src/b.ts'],
+    };
+    events.emit('tool.executed', okPatch);
+    events.emit('tool.executed', okEdit('src/a.ts'));
+    events.emit('tool.executed', okPatch);
+    await settle();
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]?.request.question).toContain('src/a.ts');
+  });
+
+  it('counts one file however its path is spelled', async () => {
+    const emitted: EventMap['brain.intervention'][] = [];
+    events.on('brain.intervention', (e) => emitted.push(e));
+    monitor({ fileChurnThreshold: 3 });
+
+    events.emit('tool.executed', okEdit('src/a.ts'));
+    events.emit('tool.executed', okEdit('./src/a.ts'));
+    events.emit('tool.executed', okEdit('src\\a.ts'));
+    await settle();
+
+    expect(emitted).toHaveLength(1);
+    // The steer names the file as the edit that crossed the threshold spelled it.
+    expect(emitted[0]?.request.question).toContain('"src\\a.ts"');
   });
 });
 

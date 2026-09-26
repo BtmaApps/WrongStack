@@ -2,6 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Heavy mocking: backend-services constructs ~20 core modules.
 // We mock the constructor-level imports so the factory body runs.
+const brainMonitorOptions = vi.hoisted(
+  () =>
+    [] as Array<{
+      sessionId?: () => string | undefined;
+      intervene: (input: { subject: string; body: string; sessionId?: string }) => Promise<void>;
+    }>,
+);
+
 vi.mock('@wrongstack/core/agent', () => ({
   createEventUserInputAwaiter: vi.fn(() => vi.fn(async () => undefined)),
   Agent: class FakeAgent {
@@ -21,6 +29,9 @@ vi.mock('@wrongstack/core/coordination', () => ({
     digestFor = vi.fn(() => undefined);
   },
   BrainMonitor: class {
+    constructor(options: (typeof brainMonitorOptions)[number]) {
+      brainMonitorOptions.push(options);
+    }
     start = vi.fn();
     reconfigure = vi.fn();
   },
@@ -142,6 +153,7 @@ vi.mock('../src/server/model-catalog.js', () => ({
   resolveProviderModelMetadata: vi.fn(async () => null),
 }));
 
+import { getSharedProjectMailbox, mailboxSessionTag } from '@wrongstack/core/coordination';
 import { createStrategyCompactor } from '@wrongstack/core/execution';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { CONTEXT_WINDOW_MODE_PINNED_META_KEY } from '@wrongstack/core/types';
@@ -245,6 +257,27 @@ function makeInput(): any {
 describe('createAgentServices', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    brainMonitorOptions.length = 0;
+  });
+
+  it('does not attribute ownerless monitor events or steers to the foreground tab', async () => {
+    const input = makeInput();
+    let foreground = 'tab-1';
+    input.sessionGetter = () => ({ id: foreground });
+    await createAgentServices(input);
+    const options = brainMonitorOptions.at(-1);
+    const mailbox = vi.mocked(getSharedProjectMailbox).mock.results.at(-1)?.value;
+
+    expect(options?.sessionId).toBeUndefined();
+    foreground = 'tab-2';
+    await options?.intervene({ subject: 'signal', body: 'guidance' });
+    expect(mailbox?.send).not.toHaveBeenCalled();
+
+    await options?.intervene({ subject: 'signal', body: 'guidance', sessionId: 'tab-3' });
+    expect(mailboxSessionTag).toHaveBeenCalledWith('tab-3');
+    expect(mailbox?.send).toHaveBeenCalledWith(
+      expect.objectContaining({ from: 'brain@tag', to: 'leader@tag' }),
+    );
   });
 
   it('installs VIBE protocol middleware on userInput and response pipelines', async () => {

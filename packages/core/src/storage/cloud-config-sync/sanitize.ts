@@ -99,6 +99,7 @@ const CORE_RUNTIME_TREE: ContractNode = {
     memory: true,
     modelsRegistry: true,
     skills: true,
+    toolCoach: true,
     prompts: true,
     tokenSavingMode: true,
     allowOutsideProjectRoot: true,

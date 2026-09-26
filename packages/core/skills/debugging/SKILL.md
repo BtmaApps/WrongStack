@@ -2,8 +2,9 @@
 name: debugging
 description: |
   Use this skill when something is broken and the cause is unknown — a failing test, a crash, an error message, wrong output, a regression, a hang, or behaviour that differs between environments — and it has to be found and fixed at the root.
-  Triggers: user says "debug", "broken", "doesn't work", "failing", "error", "exception", "stack trace", "crash", "regression", "it used to work", "hangs", "why does", "root cause", "works on my machine".
-version: 1.0.0
+  Also use it to build the failing proof for a suspected defect before fixing it, as in a proof-driven bug hunt.
+  Triggers: user says "debug", "broken", "doesn't work", "failing", "error", "exception", "stack trace", "crash", "regression", "it used to work", "hangs", "why does", "root cause", "works on my machine", "reproduce", "prove it".
+version: 1.1.0
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [execution.shell, verification.run, code.inspect, version-control.manage]
@@ -19,14 +20,17 @@ slowly when it guesses and patches symptoms. The deliverable is a fix at the
 cause, a test that fails without it, and an explanation that accounts for every
 observation.
 
-This skill starts from an observed failure. Scanning code for defects nobody has
-reported yet is `bug-hunter`.
+This skill starts from an observed failure, or from a suspected defect that
+`bug-hunter` selected and that now has to be proven. Scanning code for defects
+nobody has reported yet is `bug-hunter`.
 
 ## Rules
 
 1. Reproduce before fixing. Get a command, test, or input that shows the failure
    on demand. If that isn't possible yet, the first job is making it
-   reproducible — logs, inputs, environment — not changing code.
+   reproducible — logs, inputs, environment — not changing code. If it never
+   becomes reproducible, production code stays untouched and the report says
+   what was tried.
 2. Read the whole error. The top of a stack trace is where the failure surfaced;
    the cause is often further down: a `Caused by`, the first frame in project
    code, or the earliest error in the log.
@@ -63,6 +67,43 @@ reported yet is `bug-hunter`.
 6. **Verify**: the reproduction passes; the regression test goes red then green;
    covering tests (the codebase-targeted-test tool finds them) and the type
    checker pass.
+
+## Proof-grade reproduction
+
+A reproduction is evidence only if it could not have failed for any other
+reason. Before trusting a red run:
+
+- **It runs the production path.** Call the real implementation; mock only the
+  boundaries you don't own (network, clock, randomness, third-party services).
+  A copied algorithm or a mock of the code under suspicion proves nothing.
+- **It asserts the contract.** The assertion encodes the expected behaviour and
+  its basis — a documented contract, a caller's requirement, or an established
+  test — not whatever the code happens to return.
+- **It fails on that assertion.** An import error, a setup failure, a missing
+  dependency, or a timeout is blocked verification, not a red proof. Fix the
+  harness until the failure message is about the defect.
+- **It has a control.** Pair it with a neighbouring valid input or an unaffected
+  path that passes before and after the fix, so a broken harness cannot
+  masquerade as the bug.
+- **It is deterministic.** Fake timers, seeded randomness, controlled async
+  ordering, fixed fixtures. For anything timing-related, run it several times.
+- **It runs the code you think it runs.** Check whether the runner loads source
+  or built output. In a monorepo a stale build of a dependency makes red and
+  green compare the wrong code; rebuild the chain or point the runner at source.
+- **It is recorded before any fix.** Keep the working directory, command, exit
+  code, and the meaningful failure lines; the same command must later go green
+  with unchanged assertions and fixtures.
+
+Keep throwaway proof scripts and fixtures in a scratch directory you own, and
+remove only that directory once the evidence is in the report.
+
+### Shared checkouts
+
+Other people or processes may be editing the same working tree. Record the
+starting revision and dirty paths first. If the affected source changes between
+the red run and the fix, re-read it and reproduce again. Never revert, stash, or
+check out over someone else's changes to manufacture a baseline — copy the
+unfixed implementation to an isolated location instead.
 
 ## First moves by symptom
 
@@ -113,10 +154,16 @@ src/net/retry.ts:41 — create a fresh timeout signal per attempt, combined with
 - **Blaming the framework, compiler, or cache** before ruling out the project's
   own code — and clearing caches only when evidence points there.
 - **Naming a cause from the error message alone** without reading the code.
+- **Proof theatre** — a "reproduction" that fails on setup, a mock, or an
+  artificial `throw`, or that re-implements the logic instead of calling it.
+- **Moving the goalposts** — changing the proof's assertions or fixtures after
+  the fix without re-running the changed proof against the unfixed code.
 
 ## Before returning
 
 - [ ] Failure reproduced, or it is stated plainly why it couldn't be
+- [ ] Reproduction calls the production path, fails on the contract assertion,
+      and has a passing control
 - [ ] Root cause stated, consistent with every symptom
 - [ ] Fix at the cause; no swallowed errors or special-casing
 - [ ] Regression test seen red, then green; related suites pass

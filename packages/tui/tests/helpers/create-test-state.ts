@@ -136,6 +136,7 @@ export function createTestState(
       featureMemory: true,
       featureSkills: true,
       featureModelsRegistry: true,
+      featureToolCoach: true,
       tokenSavingTier: 'off',
       allowOutsideProjectRoot: true,
       contextAutoCompact: true,

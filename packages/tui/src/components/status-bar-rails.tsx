@@ -335,6 +335,11 @@ export function buildMinimumChips(p: StatusBarRailBuildParams): React.ReactEleme
         {isNoColor ? 'YOLO' : `${STATUSLINE_ICONS.yolo} YOLO`}
       </Text>
     ) : null,
+    // No effort suffix here: minimum mode is the DEFAULT statusline and its
+    // chips are single-level elements the fitter can only DROP, never degrade,
+    // so a qualifier on this chip could never shed — it would evict trailing
+    // chips at moderate widths instead. Same reason the minimum context chip
+    // omits its `[strategy]`, which the detailed full level does render.
     showChip('model') ? (
       <Text color={chipColor(theme.monitor.agents, isNoColor)}>
         {provider ? `${provider}/` : ''}

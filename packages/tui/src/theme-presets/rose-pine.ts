@@ -16,7 +16,7 @@ export const rosePinePresets = {
     user: '#f6c177',
     assistant: '#c4a7e7',
     tool: '#9ccfd8',
-    success: '#31748f',
+    success: '#3e8fb0',
     warn: '#f6c177',
     error: '#eb6f92',
     borderDefault: '#524f67',

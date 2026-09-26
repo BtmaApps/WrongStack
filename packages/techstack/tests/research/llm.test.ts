@@ -353,6 +353,84 @@ describe('parseResearchJson', () => {
     );
     expect(result).toEqual({ answer: 42 });
   });
+
+  // Regression: a maxTokens-cut cluster response is a valid JSON prefix whose
+  // outermost object never closes. Before the repair pass, parseResearchJson
+  // returned null and the cluster contributed zero findings silently. After
+  // the repair, the parser must close the cut string + any unclosed
+  // object/array containers and surface every finding whose object completed
+  // before the cut.
+  it('repairs a truncated prefix and recovers the complete finding inside it', () => {
+    const truncated =
+      '{"findings":[{"id":"trunc-complete-1","severity":"high","dependencyName":"truncated-pkg","summary":"truncated summary","rationale":"truncated rationale","sources":[{"title":"src","url":"https://example.test","snippet":"snip"}]},{"id":"trunc-partial-2","severity":"med';
+    const result = parseResearchJson(truncated);
+    expect(result).not.toBeNull();
+    expect(Array.isArray(result?.findings)).toBe(true);
+    const findings = (result as { findings: Array<{ id: string }> }).findings;
+    expect(findings[0]?.id).toBe('trunc-complete-1');
+  });
+
+  it('repairs a truncated prefix that cuts mid-string value', () => {
+    const truncated = '{"answer": "the migration guide suggests upgradi';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'the migration guide suggests upgradi' });
+  });
+
+  it('repairs a truncated prefix that cuts mid-array', () => {
+    const truncated = '{"items": [1, 2, 3,';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ items: [1, 2, 3] });
+  });
+
+  it('returns null for a truncated prefix with no recoverable anchor', () => {
+    // No `{` to anchor on — the repair helper bails and the parser falls
+    // through to the r25 "let JSON.parse throw and return null" path.
+    const result = parseResearchJson('"hello');
+    expect(result).toBeNull();
+  });
+
+  // Regression: the cut can land mid-escape — right after a `\` that was
+  // opening the next escape of a `C:\\Windows\\…` value, or inside a partial
+  // `\uXXXX`. The closing quote the repair appends is then swallowed by the
+  // escape (`\"`) or invalidates it (`\uD83"`), the string never closes, and
+  // the cluster degrades to zero findings exactly as if the repair pass did
+  // not exist. The interrupted escape is dropped before closing the string.
+  it('repairs a truncated prefix cut right after a backslash in a string value', () => {
+    // JSON text: {"answer": "path C:\Windows\  — ends on ONE unpaired `\`
+    // (cut between the two chars of an intended `\\`).
+    const truncated = '{"answer": "path C:\\\\Windows\\';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'path C:\\Windows' });
+  });
+
+  it('repairs a truncated prefix cut inside a partial \\uXXXX escape', () => {
+    // JSON text: {"answer": "emoji \uD83  — cut before the 4th hex digit.
+    const truncated = '{"answer": "emoji \\uD83';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'emoji ' });
+  });
+
+  it('keeps a complete escaped backslash at the cut when closing the string', () => {
+    // JSON text: {"answer": "path C:\\Windows\\  — the trailing `\\` is a
+    // COMPLETE escape, so the repair must close after it, not strip it.
+    const truncated = '{"answer": "path C:\\\\Windows\\\\';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'path C:\\Windows\\' });
+  });
+
+  it('keeps a complete \\uXXXX escape at the cut when closing the string', () => {
+    // JSON text: {"answer": "star \u2605  — all 4 hex digits present.
+    const truncated = '{"answer": "star \\u2605';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'star \u2605' });
+  });
+
+  it('keeps a complete escape earlier in a cut string value', () => {
+    // JSON text: {"answer": "line1\nline2  — the \n must survive the repair.
+    const truncated = '{"answer": "line1\\nline2';
+    const result = parseResearchJson(truncated);
+    expect(result).toEqual({ answer: 'line1\nline2' });
+  });
 });
 
 // ── Content concatenation ────────────────────────────────────────────────

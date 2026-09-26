@@ -7,6 +7,8 @@ export interface JevSettings {
   requestTimeoutMs: number;
   keySource: string;
   features: Record<string, boolean>;
+  /** Full request/response recording in the log file. Never sent to this view. */
+  logContent?: boolean;
   contextStrategy?: 'hybrid' | 'intelligent' | 'selective';
   recallTurnContext?: boolean;
   readiness?: Record<

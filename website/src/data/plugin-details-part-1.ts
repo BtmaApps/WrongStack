@@ -29,7 +29,7 @@ export const pluginDetailsPart1: Record<string, PluginDetail> = {
   'wstack-chimera': {
     version: '1.0.0',
     longDescription:
-      'Post-session code quality guardian with context-aware review, three auto-fix modes, and an optional bounded correction cascade. When enabled it registers the /chimera status command and subscribes to session.ended: it collects changed files from git (capped at maxFiles, skipping .wrongstack/) and enriches them with diffs, sibling changes, recent commits, active TODOs, the current Kanban card, and Chronicle provenance before spawning a dedicated review subagent.\n\nThe review report is sent to the inter-agent mailbox so the leader sees it before its next turn. How the report is handled depends on autoFix: off reports only, ask requests permission, and auto immediately spawns a chimera-fix subagent. Independently, cascadeOn can dispatch bug-hunter and security-scanner agents for High or Critical findings. Their edits are re-read and re-reviewed until clean or maxCascadeDepth is reached.\n\nThe autoFix mode can be changed at runtime via /chimera autoFix <mode>, --chimera-auto-fix <mode>, or the Web UI Settings panel.',
+      'Post-session code quality guardian with context-aware review, three auto-fix modes, and a bounded correction cascade. When enabled it registers the /chimera status command and subscribes to session.ended: it collects changed files from git (capped at maxFiles, skipping .wrongstack/) and enriches them with diffs, sibling changes, recent commits, active TODOs, the current Kanban card, and Chronicle provenance before spawning a dedicated review subagent.\n\nThe review report is sent to the inter-agent mailbox so the leader sees it before its next turn. How the report is handled depends on autoFix: off reports only, ask requests permission, and auto immediately spawns a chimera-fix subagent. Independently, cascadeOn can dispatch bug-hunter and security-scanner agents for High or Critical findings. Their edits are re-read and re-reviewed until clean or maxCascadeDepth is reached.\n\nThe autoFix mode can be changed at runtime via /chimera autoFix <mode>, --chimera-auto-fix <mode>, or the Web UI Settings panel.',
     tools: [],
     configOptions: [
       {
@@ -66,7 +66,7 @@ export const pluginDetailsPart1: Record<string, PluginDetail> = {
       {
         name: 'cascadeOn',
         type: '"off" | "critical" | "high"',
-        defaultValue: 'off',
+        defaultValue: 'high',
         description:
           'Severity threshold that dispatches targeted follow-up agents to investigate and fix findings.',
       },
@@ -80,18 +80,18 @@ export const pluginDetailsPart1: Record<string, PluginDetail> = {
     hooks: [],
     apiVersion: '^0.1',
     example:
-      '{\n  "extensions": {\n    "wstack-chimera": {\n      "enabled": true,\n      "model": "gpt-5-mini",\n      "maxFiles": 15,\n      "autoFix": "ask",\n      "cascadeOn": "high",\n      "maxCascadeDepth": 2\n    }\n  }\n}',
+      '{\n  "extensions": {\n    "wstack-chimera": {\n      "model": "gpt-5-mini",\n      "maxFiles": 15,\n      "autoFix": "ask",\n      "cascadeOn": "high",\n      "maxCascadeDepth": 2\n    }\n  }\n}',
   },
   'wstack-auto-review': {
     version: '1.0.0',
     longDescription:
-      "Mid-session continuous code guardian. Watches for git-tracked file changes during a session and dispatches a bounded review subagent after a quiet period, so review feedback lands while the work is still fresh. Reads its configuration from extensions.wstack-auto-review: enabled (default false), provider/model for the review subagent (falling back to the session's), debounceMs (default 15000) before firing after changes stop, maxFilesPerBatch (default 15), maxConcurrentReviews (default 2), and an optional cascadeOn / maxCascadeDepth pair that spawns targeted follow-up agents for findings at or above a severity threshold. Reports are sent to the inter-agent mailbox for the leader.",
+      "Mid-session continuous code guardian. Watches for git-tracked file changes during a session and dispatches a bounded review subagent after a quiet period, so review feedback lands while the work is still fresh. Reads its configuration from extensions.wstack-auto-review: enabled (default true), provider/model for the review subagent (falling back to the session's), debounceMs (default 15000) before firing after changes stop, maxFilesPerBatch (default 15), maxConcurrentReviews (default 2), and a cascadeOn / maxCascadeDepth pair that spawns targeted follow-up agents for findings at or above a severity threshold. Reports are sent to the inter-agent mailbox for the leader.",
     tools: [],
     configOptions: [
       {
         name: 'enabled',
         type: 'boolean',
-        defaultValue: 'false',
+        defaultValue: 'true',
         description: 'Master switch for the mid-session continuous review.',
       },
       {
@@ -127,7 +127,7 @@ export const pluginDetailsPart1: Record<string, PluginDetail> = {
       {
         name: 'cascadeOn',
         type: '"off" | "critical" | "high"',
-        defaultValue: 'off',
+        defaultValue: 'high',
         description: 'Severity threshold that dispatches targeted follow-up agents.',
       },
       {
@@ -140,7 +140,7 @@ export const pluginDetailsPart1: Record<string, PluginDetail> = {
     hooks: [],
     apiVersion: '^0.1',
     example:
-      '{\n  "extensions": {\n    "wstack-auto-review": {\n      "enabled": true,\n      "model": "gpt-5-mini",\n      "debounceMs": 15000,\n      "maxConcurrentReviews": 2\n    }\n  }\n}',
+      '{\n  "extensions": {\n    "wstack-auto-review": {\n      "model": "gpt-5-mini",\n      "debounceMs": 15000,\n      "maxConcurrentReviews": 2\n    }\n  }\n}',
   },
   'wstack-skills': {
     version: '1.1.0',

@@ -93,17 +93,15 @@ describe('misc ws-handlers — brain / memory / collab / git / cron', () => {
   // ── session gating ────────────────────────────────────────────────────────
 
   describe('active-session gating', () => {
-    it('accepts a message with no sessionId', () => {
+    it('drops a Brain answer without sessionId once a session is bound', () => {
       useSessionStore.setState({ session: { id: 's1' } } as never);
-      // Untagged chat frames log the guard event before landing in the
-      // bound session — capture it to pin the observability contract.
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       handleBrainAnswer(
         msg('brain.answer', { question: 'q', decision: { type: 'answer', text: 'yes' } }),
       );
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('ws_client.untagged_chat_event'));
       warn.mockRestore();
-      expect(lastChat()?.content).toContain('yes');
+      expect(lastChat()).toBeUndefined();
     });
 
     it('accepts a message for the active session', () => {

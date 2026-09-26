@@ -34,6 +34,11 @@ export function QuotaChip({ className }: { className?: string | undefined }) {
   const reached = snapshot.reachedWindowId === window.id;
   const label = quotaWindowLabel(window);
   const resetIn = formatQuotaResetIn(window);
+  // Same countdown formatting, pointed at the pace forecast instead of the reset.
+  const fullIn =
+    window.exhaustsAt === undefined
+      ? undefined
+      : formatQuotaResetIn({ ...window, resetsAt: window.exhaustsAt });
 
   // Advisory thresholds, not the provider's: amber is early enough to change
   // what you spend the rest of the window on, red is the point where the next
@@ -49,6 +54,7 @@ export function QuotaChip({ className }: { className?: string | undefined }) {
     `${snapshot.providerId}${snapshot.planLabel ? ` (${snapshot.planLabel})` : ''}`,
     `${label} window: ${pct}% used`,
     resetIn ? `resets in ${resetIn}` : null,
+    fullIn ? `at the last hour's pace, full in ~${fullIn}` : null,
     reached ? 'limit reached' : null,
   ]
     .filter(Boolean)
@@ -64,6 +70,7 @@ export function QuotaChip({ className }: { className?: string | undefined }) {
         {label} {pct}%
       </span>
       {resetIn && <span className="text-muted-foreground/50">{resetIn}</span>}
+      {fullIn && <span className="text-warning">→100% ~{fullIn}</span>}
     </span>
   );
 }

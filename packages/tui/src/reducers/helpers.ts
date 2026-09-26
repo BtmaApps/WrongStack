@@ -88,7 +88,10 @@ export function closePanels(state: State): PanelResetState {
     sddBoard: state.sddBoard ? { ...state.sddBoard, monitorOpen: false } : state.sddBoard,
     worktreeMonitorOpen: false,
     coordinator: { ...state.coordinator, monitorOpen: false },
-    themePicker: { ...state.themePicker, open: false },
+    // `preview` is explicitly cleared: the spread would carry a live-preview
+    // flag into the next `/theme` open, so arrows would start applying themes
+    // with no keypress opting in.
+    themePicker: { ...state.themePicker, open: false, preview: false },
     skillPicker: { ...state.skillPicker, open: false },
     resourceMenu: { ...state.resourceMenu, open: false, pendingAction: undefined },
   };

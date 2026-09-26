@@ -5,6 +5,46 @@
 offers a scope selector and a one-to-three-round budget. Each round may fix one
 proven root cause; the budget does not guarantee that many bugs exist.
 
+## Required skills
+
+Before discovery, the round loads four bundled skills: `bug-hunter` (its
+proof-driven mode chooses one provable candidate), `debugging` (reproduction
+and root cause), `testing` (the proof and the durable regression test), and
+`verify-before-done` (final evidence and the report). The prompt names them as
+`$bug-hunter`, `$debugging`, `$testing`, and `$verify-before-done`. The
+skill-mention middleware, installed on both the CLI and WebUI hosts, turns
+those into an instruction to load each skill with the `skill` tool.
+
+The host also enforces it. The prompt carries a marker:
+
+```text
+<!-- wrongstack:required-skills bug-hunter debugging testing verify-before-done -->
+```
+
+When a user turn containing that marker reaches the agent loop, the gate is
+armed for the session. Until each named skill is either delivered to its last
+page by the `skill` tool or reported by that tool as missing or unavailable,
+the tool executor refuses every mutating tool call: `edit`, `write`, `patch`,
+`bash`, `exec`, and any other tool marked mutating. The refusal names the skills
+still pending. Reading and searching stay allowed. The requirement lives in
+the session context, not the transcript, so compaction does not remove it;
+later rounds, which carry no marker, keep it. A loaded skill, however, counts
+only while the `skill` call that delivered it is still readable: once
+compaction folds that call into a digest or elides its input or result, the
+skill is pending again and the next edit is refused until it is reloaded. A new
+marker (a new hunt) starts over, and `/clear`, `/resume`, and project switching
+reset or rebuild it. After a resume, the latest `skill` call naming the skill in
+the restored transcript stands in for the delivery. A runtime without the
+`skill` tool is not gated, because it could never satisfy the gate. The `skill`
+tool's pages are exempt from output previewing, so a page it counts is a page
+the model received in full. The code is in
+`packages/core/src/skills/required-skill-gate.ts`.
+
+The round report lists the skills it loaded and any that were unavailable. The
+prompt still wins
+where a skill's default conflicts with it. For example, `bug-hunter` scans are
+report-only, but this round fixes the bug and writes its test.
+
 ## Evidence required in each round
 
 1. Record the starting revision, dirty paths, environment, and scope. Establish
@@ -33,6 +73,7 @@ Use a short report that another engineer can reproduce:
 ```text
 Outcome: fixed-and-verified | fixed-verification-incomplete | no-proven-bug | blocked
 Scope / starting revision / dirty paths:
+Skills: loaded | unavailable
 Root-cause fingerprint: affected path + trigger + violated contract
 Impact and expected-behavior evidence:
 Before: working directory, command, exit code, meaningful failure output

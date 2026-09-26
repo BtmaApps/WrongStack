@@ -41,7 +41,7 @@ pick the right one for a job without scrolling through 56 entries.
 | 26 | [`error-lens`](../packages/plugins/src/error-lens)      | observability | `PostToolUse` (`bash\|exec`) | `error_lens_status` |
 | 27 | [`dep-guard`](../packages/plugins/src/dep-guard)        | safety | `PreToolUse` (`install`) | `dep_guard_status` |
 | 28 | [`config-validator`](../packages/plugins/src/config-validator) | quality | `PostToolUse` (`write\|edit`) | `config_validator_status` |
-| 29 | [`notify-hub`](../packages/plugins/src/notify-hub)      | observability | `Stop` + `PostToolUse` (`*`) | `notify_hub_status`, `notify_send` |
+| 29 | [`notify-hub`](../packages/plugins/src/notify-hub)      | observability | `Stop` + `Notification` + `PostToolUse` (`*`) | `notify_hub_status`, `notify_send` |
 | 30 | [`changelog-writer`](../packages/plugins/src/changelog-writer) | developer workflow | — | `changelog_add`, `changelog_preview`, `changelog_write` |
 | 31 | [`injection-shield`](../packages/plugins/src/injection-shield) | safety | `PostToolUse` (`*`) | `injection_shield_status` |
 | 32 | [`llm-cache`](../packages/plugins/src/llm-cache) | performance | — | `llm_cache_status`, `llm_cache_clear` |
@@ -66,7 +66,7 @@ pick the right one for a job without scrolling through 56 entries.
 | 51 | [`release-notes-generator`](../packages/plugins/src/release-notes-generator) | developer workflow | — | `generate_release_notes` |
 | 52 | [`schema-evolution-guard`](../packages/plugins/src/schema-evolution-guard) | safety | — | `schema_evolution_status` |
 | 53 | [`security-hotspot-scanner`](../packages/plugins/src/security-hotspot-scanner) | safety | — | `security_hotspot_scan` |
-| 54 | [`test-flake-detector`](../packages/plugins/src/test-flake-detector) | quality | — | `flake_detect`, `flake_status` |
+| 54 | [`test-flake-detector`](../packages/plugins/src/test-flake-detector) | quality | `PostToolUse` (`bash\|exec`) | `flake_detect`, `flake_status` |
 | 55 | [`test-generator`](../packages/plugins/src/test-generator) | quality | — | `generate_unit_tests` |
 | 56 | [`gitignore-guard`](../packages/plugins/src/gitignore-guard) | developer workflow | `PostToolUse` (`write\|edit`) | `gitignore_guard_append`, `gitignore_guard_status` |
 | 57 | [`acceptance-verifier`](../packages/plugins/src/acceptance-verifier) | developer workflow | — | `acceptance_verify` |
@@ -143,7 +143,7 @@ fire on `write|edit` either *before* (block / warn) or *after*
 | `commit-validator` | `PreToolUse` `bash\|git_autocommit` | conventional-commit format gate | `block` / `warn` |
 | `test-runner-gate` | `PostToolUse` `write\|edit` | runs the matching test file | `block` / `injectOnPass` |
 | `spec-linker` | `PostToolUse` `write\|edit` + `PreToolUse` `write` (when `autoFix: true`) | surfaces unlinked plugin references in markdown files (read-only by default; opt-in auto-link via PreToolUse) | `enabled` / `fileGlobs` / `maxReferences` / `autoFix` |
-| `config-validator` | `PostToolUse` `write\|edit` | validates JSON/JSONC/YAML/TOML files in the same turn; reports syntax problems | `enabled` / `fileGlobs` |
+| `config-validator` | `PostToolUse` `write\|edit` | validates JSON/JSONC/YAML/TOML/.env files in the same turn (YAML is parsed); reports syntax problems | `enabled` / `fileGlobs` |
 | `test-coverage-gate` | on demand | checks test coverage against thresholds | `threshold` / `enabled` |
 | `type-gate` | on demand | enforces strict type boundaries across modules | `block` / `warn` |
 | `accessibility-auditor` | on demand | audits HTML/JSX for a11y issues | — |
@@ -170,7 +170,7 @@ Plugins that stop destructive operations from happening by accident.
 | `path-guard` | Writes/edits/destructive shell on protected paths (lockfiles, `.env`, `.git`, migrations) | `block` |
 | `process-guard` | `kill`/`taskkill`/`Stop-Process`/`pkill`/`killall` targeting active WrongStack PIDs or host terminals (cross-instance registry) | `block` |
 | `loop-breaker` | Runaway tool-call loops — identical repeats *and* A-B-A-B oscillation; warns then blocks | `warn` → `block` after threshold |
-| `dep-guard` | Risky `install` calls: deny list, typosquat lookalike warnings, unpinned version warnings | `warn` |
+| `dep-guard` | Risky `install` calls: deny list, just-published packages (registry age), typosquat lookalike warnings, unknown names, OSV advisories, unpinned version warnings | `warn` |
 | `injection-shield` | Prompt-injection patterns in tool *output* (warns the model that content is data, not instructions) | `warn` |
 | `prompt-firewall` | Credential-leak scanner on the provider wire (provider wrapper) | `warn` |
 | `dependency-vulnerability-gate` | Surfaces `pnpm audit` results before/after installs | `block` / `warn` |
@@ -192,7 +192,7 @@ Plugins that surface session activity to humans or other systems.
 | `token-budget` | every tool, plus `Stop` | Per-session token usage; warns at `warnPercent` (default 80%), stops the agent loop at `stopPercent` (default 100%) |
 | `diff-summary` | after every `write\|edit` | Compact `git diff` injected into the LLM's context |
 | `error-lens` | `PostToolUse` `bash\|exec` | Distills failed command output to error line + project stack frames; flags repeated failures |
-| `notify-hub` | `Stop` + `PostToolUse` (`*`) | POSTs session events (stop, tool errors, budget thresholds) and ad-hoc `notify_send` messages to a configurable webhook |
+| `notify-hub` | `Stop` + `Notification` + `PostToolUse` (`*`) | POSTs session events (stop, tool errors, budget thresholds) and ad-hoc `notify_send` messages to a configurable webhook; with `desktop: true`, a local toast when approval or an answer is waiting and when a turn ends |
 | `plugin-stack-observer` | `PostToolUse` | Observes plugin registration/loading order and reports conflicts |
 
 `cost-tracker` and `token-budget` are complementary: the former
@@ -247,7 +247,7 @@ noticeable per-tool overhead.
 | `bash\|git_autocommit` | `commit-validator` | Blocks on invalid conventional-commit format |
 | `write\|edit\|bash` | `path-guard` | Blocks touches on protected paths (lockfiles, `.env`, `.git`, migrations) |
 | `bash\|exec` | `process-guard` | Blocks `kill`/`taskkill`/`Stop-Process`/`pkill`/`killall` against active WrongStack PIDs or host terminals (cross-instance persistent registry) |
-| `install` | `dep-guard` | Warns on deny list / typosquat / unpinned install calls |
+| `install` | `dep-guard` | Refuses deny-listed and just-published packages; warns on typosquat / unknown-name / vulnerable-version / unpinned install calls |
 | `*` | `loop-breaker` | Detects identical-repeat and A-B-A-B oscillation loops; warns then blocks after threshold |
 | `*` | `prompt-firewall` | Scans provider request wire for credential leaks before sending |
 | `todo` | `todo-listener` | (technically PostToolUse; tracks todo changes) |
@@ -265,7 +265,7 @@ noticeable per-tool overhead.
 | `write\|edit` | `import-organizer` | `biome check --write --unsafe` (sort, group, remove unused) |
 | `write\|edit` | `test-runner-gate` | Runs the relevant test file |
 | `write\|edit` | `spec-linker` | Surfaces unlinked plugin references in markdown files |
-| `write\|edit` | `config-validator` | Validates JSON/JSONC/YAML/TOML files in the same turn |
+| `write\|edit` | `config-validator` | Validates JSON/JSONC/YAML/TOML/.env files in the same turn |
 | `write\|edit` | `doc-sync-guard` | Surfaces unlinked doc references in markdown files |
 | `bash\|exec` | `error-lens` | Distills failed command output to error line + project stack frames |
 | `*` | `plugin-stack-observer` | Observes plugin registration order and reports loading conflicts |

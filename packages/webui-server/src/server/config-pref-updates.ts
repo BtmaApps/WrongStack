@@ -5,13 +5,14 @@ import type { Config } from '@wrongstack/core/types';
  * are exactly the five REQUIRED booleans of `FeaturesConfig`, so a typo in a
  * target key is a compile error rather than a silently-ignored setting.
  */
-type FeatureFlagKey = 'mcp' | 'plugins' | 'memory' | 'modelsRegistry' | 'skills';
+type FeatureFlagKey = 'mcp' | 'plugins' | 'memory' | 'modelsRegistry' | 'skills' | 'toolCoach';
 const FEATURE_PREF_KEYS: ReadonlyArray<readonly [string, FeatureFlagKey]> = [
   ['featureMcp', 'mcp'],
   ['featurePlugins', 'plugins'],
   ['featureMemory', 'memory'],
   ['featureSkills', 'skills'],
   ['featureModelsRegistry', 'modelsRegistry'],
+  ['featureToolCoach', 'toolCoach'],
 ];
 
 /**

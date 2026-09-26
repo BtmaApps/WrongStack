@@ -971,16 +971,6 @@
       "file": "prompts/debugging/diagnose-a-memory-leak.json"
     },
     {
-      "id": "proof-driven-bug-hunter",
-      "slug": "proof-driven-bug-hunter",
-      "title": "Proof-Driven Bug Hunter",
-      "description": "Autonomously discover, prove, fix, and verify exactly one real bug per round.",
-      "category": "debugging",
-      "tags": ["autonomous", "bug-hunt", "proof", "regression", "fix"],
-      "checksum": "4dab8f8e654ec59848a73ba6b5337a076a1d9b0bcc4898f4c357a181b10ed5d1",
-      "file": "prompts/debugging/proof-driven-bug-hunter.json"
-    },
-    {
       "id": "explain-this-error",
       "slug": "explain-this-error",
       "title": "Explain This Error",
@@ -1009,6 +999,16 @@
       "tags": ["repro", "isolation"],
       "checksum": "57cdbdf2ec05f1732ec3b7d33828ee06dad9b918a87bbb319a8824ee89672dea",
       "file": "prompts/debugging/minimal-reproduction.json"
+    },
+    {
+      "id": "proof-driven-bug-hunter",
+      "slug": "proof-driven-bug-hunter",
+      "title": "Proof-Driven Bug Hunter",
+      "description": "Autonomously discover, prove, fix, and verify exactly one real bug per round.",
+      "category": "debugging",
+      "tags": ["autonomous", "bug-hunt", "proof", "regression", "fix"],
+      "checksum": "02e9a29cf3f20168072e5031d763e39d78ac1a70dd4b08757d44d685ed836ccf",
+      "file": "prompts/debugging/proof-driven-bug-hunter.json"
     },
     {
       "id": "read-a-stack-trace",

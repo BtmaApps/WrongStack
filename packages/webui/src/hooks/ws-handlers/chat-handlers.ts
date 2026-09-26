@@ -49,6 +49,22 @@ export const chatHandlerMap: Partial<Record<string, (msg: WSServerMessage) => vo
 type NextSteps = ReturnType<typeof projectNextStepsToolInput>;
 
 /**
+ * A run a provider killed after its own retries, on a failure a later attempt
+ * usually gets through: a `PROVIDER_*` code the provider marked recoverable
+ * (rate limit, overload, 5xx, dropped connection). The only run failure the
+ * Continue countdown may auto-fire for. A recoverable non-provider failure is
+ * not one — a context overflow would overflow again, and the loop guard or
+ * iteration limit stopped the run on purpose.
+ */
+export function isAutoContinuableRunError(
+  error: { code?: string | undefined; recoverable?: boolean | undefined } | undefined,
+): boolean {
+  if (error?.recoverable !== true) return false;
+  const code = error.code ?? '';
+  return code.startsWith('PROVIDER_') && code !== 'PROVIDER_CONTEXT_OVERFLOW';
+}
+
+/**
  * Per-lane run bookkeeping. These used to be two module-level globals, which
  * meant tab 2's `nextsteps` tool output became tab 1's suggestion chips the
  * moment both were running. Everything scoped to a run is now keyed by the
@@ -572,6 +588,7 @@ export function handleRunResult(msg: WSServerMessage) {
       role: 'assistant',
       content: `Error: ${payload.error.message}`,
       isError: true,
+      ...(isAutoContinuableRunError(payload.error) ? { autoContinue: true } : {}),
     });
     const isSilentAbort =
       payload.error.message === 'User aborted' || payload.error.message === 'aborted';

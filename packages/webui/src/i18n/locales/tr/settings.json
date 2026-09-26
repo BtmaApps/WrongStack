@@ -672,6 +672,8 @@
     "skillsHint": "Alan özelinde beceri istemlerini yükle.",
     "modelsRegistryLabel": "Model kayıt defteri",
     "modelsRegistryHint": "Salayıcı keşfi için models.dev kataloğunu kullan.",
+    "toolCoachLabel": "Araç Rehberi",
+    "toolCoachHint": "Görev sırasında uygun etkin araçları önerir ve araç hatalarından sonra yol gösterir. Varsayılan olarak açıktır.",
     "indexOnStartLabel": "Başlangıçta dizine ekle",
     "indexOnStartHint": "Oturum başlangıcında kod tabanı sembol dizinini oluştur.",
     "pluginsPerPluginHeading": "🔌 Per-Plugin Controls",
@@ -1216,6 +1218,10 @@
       "fleetDispatch": "Yalnızca birden fazla aday rol arasında belirsiz yönlendirmede çalışır."
     },
     "recallTurnContext": "SAGE konuşma başı bellek getirme",
-    "recallTurnHint": "Her yeni turda uygun bellekleri bağlama ekler; Jev filtresi bu yolda çalışır. Genel bellek ve SAGE de açık olmalıdır. Kaydedip mevcut oturumları yeniden başlatın."
+    "recallTurnHint": "Her yeni turda uygun bellekleri bağlama ekler; Jev filtresi bu yolda çalışır. Genel bellek ve SAGE de açık olmalıdır. Kaydedip mevcut oturumları yeniden başlatın.",
+    "logContent": "Günlük dosyasına tam istek/yanıt içeriğini kaydet",
+    "logContentHint": "Gönderilen durumu, sorunun tam ifadesini ve dağılımlarıyla birlikte yanıtları Jev günlük dosyasına yazar. Bu görünüm her iki modda da yalnızca meta veri gösterir ve hesap anahtarı temizlenir. İşiniz bitince kapatın. Kaydedin ve mevcut oturumları yeniden başlatın.",
+    "logContentOn": "Tam istek/yanıt içeriği bu dosyaya kaydedilir. Burada hiçbir zaman gösterilmez.",
+    "logContentOff": "Yalnızca meta veri. Tam istek/yanıt içeriği kaydedilmez."
   }
 }

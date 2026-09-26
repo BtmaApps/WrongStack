@@ -16,6 +16,10 @@ import {
   matchedPermissionRule,
 } from '../../src/security/permission-rules.js';
 import {
+  __resetProcessLockdownForTests,
+  lockYoloOff,
+} from '../../src/security/process-lockdown.js';
+import {
   readSessionPermissionOverrides,
   restoreSessionPermissionOverrides,
   setSessionPermissionOverrides,
@@ -114,6 +118,26 @@ describe('session rules in the permission policy', () => {
       source: 'session_override',
     });
     expect((await p.evaluate(bash, { command: 'git status' }, ctx)).permission).toBe('auto');
+  });
+
+  // WS-2026-09-26-04: a journal can bring an allow back on resume that this
+  // run's user never gave. `--restricted` promises every write asks (it refuses
+  // `--allowed-tools` for the same reason), so allows are ignored under it.
+  it('under --restricted an allow is not honoured, and a deny still is', async () => {
+    lockYoloOff();
+    try {
+      const p = await policy();
+      const ctx = ctxWith([
+        { effect: 'allow', tool: 'bash', pattern: 'pnpm test*' },
+        { effect: 'deny', tool: 'bash', pattern: 'git push*' },
+      ]);
+      expect((await p.evaluate(bash, { command: 'pnpm test --run' }, ctx)).permission).toBe(
+        'confirm',
+      );
+      expect((await p.evaluate(bash, { command: 'git push' }, ctx)).permission).toBe('deny');
+    } finally {
+      __resetProcessLockdownForTests();
+    }
   });
 
   it('a deny it cannot check (no subject) blocks the permissive shortcuts', async () => {

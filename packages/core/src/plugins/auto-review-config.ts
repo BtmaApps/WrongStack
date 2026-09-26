@@ -35,6 +35,13 @@ export const DEFAULT_DEBOUNCE_MS = 15_000;
 export const DEFAULT_MAX_FILES_PER_BATCH = 15;
 export const DEFAULT_MAX_CONCURRENT_REVIEWS = 2;
 export const DEFAULT_MAX_CASCADE_DEPTH = 2;
+/**
+ * The automation ships fully on: a fresh install reviews mid-session changes
+ * and cascades follow-up fix agents from `high` findings upward. `high` is the
+ * inclusive end of the threshold — it cascades on High *and* Critical — so the
+ * only way to get less cascade is to ask for it explicitly in config.
+ */
+export const DEFAULT_CASCADE_ON: ResolvedAutoReviewConfig['cascadeOn'] = 'high';
 
 export const MAX_KNOWN_FINGERPRINTS = 5_000;
 
@@ -147,7 +154,11 @@ export function resolveAutoReviewConfig(
   ].filter((ref) => ref !== `${resolvedProvider}/${resolvedModel}`);
 
   return {
-    enabled: cfg.enabled === true,
+    // Master switch defaults ON, mirroring `resolveChimeraConfig`. Opting in is
+    // the host enablement layer's job (the plugin audit catalog's `defaultState`);
+    // a second gate here only means `wstack plugin enable wstack-auto-review`
+    // appears to do nothing.
+    enabled: cfg.enabled !== false,
     provider: resolvedProvider,
     model: resolvedModel,
     fallbackModels,
@@ -155,7 +166,7 @@ export function resolveAutoReviewConfig(
     debounceMs: cfg.debounceMs ?? DEFAULT_DEBOUNCE_MS,
     maxFilesPerBatch: cfg.maxFilesPerBatch ?? DEFAULT_MAX_FILES_PER_BATCH,
     maxConcurrentReviews: cfg.maxConcurrentReviews ?? DEFAULT_MAX_CONCURRENT_REVIEWS,
-    cascadeOn: cfg.cascadeOn ?? 'off',
+    cascadeOn: cfg.cascadeOn ?? DEFAULT_CASCADE_ON,
     maxCascadeDepth: cfg.maxCascadeDepth ?? DEFAULT_MAX_CASCADE_DEPTH,
   };
 }

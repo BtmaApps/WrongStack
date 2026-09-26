@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PhaseGraphBuilder } from '../../src/goal/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../../src/goal/phase-orchestrator.js';
 import type { PhaseExecutionContext, PhaseGraph } from '../../src/goal/types.js';
@@ -713,18 +713,17 @@ describe('PhaseOrchestrator + conflict resolution', () => {
     const graph = await singlePhaseGraph();
     const name = Array.from(graph.phases.values())[0]!.name;
     const wt = fakeWorktrees({ conflictOn: (slug) => slug === name });
-    let brainCalls = 0;
+    const decide = vi.fn(async () => ({
+      type: 'ask_human' as const,
+      prompt: 'Need human decision',
+    }));
     let resolves = 0;
     const orchestrator = new PhaseOrchestrator({
       graph,
       ctx: {
+        sessionId: 'goal-owner-s3',
         executeTask: async () => {},
-        brain: {
-          decide: async () => {
-            brainCalls++;
-            return { type: 'ask_human', prompt: 'Need human decision' };
-          },
-        },
+        brain: { decide },
         resolveConflict: async () => {
           resolves++;
           return true;
@@ -736,7 +735,9 @@ describe('PhaseOrchestrator + conflict resolution', () => {
     await orchestrator.start();
 
     const phase = Array.from(graph.phases.values())[0]!;
-    expect(brainCalls).toBe(1);
+    expect(decide).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: `goal-conflict-${phase.id}`, sessionId: 'goal-owner-s3' }),
+    );
     expect(resolves).toBe(0);
     expect(phase.metadata?.brainConflictDecision).toBe('ask_human');
     expect(phase.metadata?.integrationStatus).toBe('needs_review');

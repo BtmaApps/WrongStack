@@ -27,4 +27,13 @@ export interface TuiSlashCommandOptions {
   switchAutonomy: AppProps['switchAutonomy'];
   listSessions: AppProps['listSessions'];
   openPromptPicker: () => Promise<void>;
+  /**
+   * Live ConfigStore + the persist callback, threaded here so `/theme <preset>`
+   * can apply a named preset directly instead of only opening the picker. Both
+   * are optional: without them the command still opens the picker, it just
+   * cannot persist an immediate apply.
+   */
+  configStore?: import('@wrongstack/core/types').ConfigStore | undefined;
+  saveThemePreset?: AppProps['saveThemePreset'];
+  applyThemePreset?: ((preset: import('@wrongstack/core/types').ThemePresetId) => void) | undefined;
 }

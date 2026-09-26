@@ -6,7 +6,6 @@ import {
   useCouncilLogStore,
   useVizStore,
 } from '@/stores';
-import { activeChatLane } from '@/stores/chat-lanes';
 import type { WSServerMessage } from '@/types';
 
 /**
@@ -21,11 +20,10 @@ function councilLogFor(msg: WSServerMessage) {
 }
 
 export function handleBrainStatus(msg: WSServerMessage) {
-  // `brain.*` is fail-OPEN: the arbiter is global and legitimately emits
-  // untagged, which belongs to whoever is in front. A TAGGED one lands in its
-  // own lane — including a background tab's, which an `isActiveSessionMessage`
-  // gate here used to throw away after the router had already addressed it.
-  const chat = chatFor(msg) ?? activeChatLane();
+  // A decision with no address (or no available lane) cannot be attributed
+  // to the foreground tab: four conversations share this socket.
+  const chat = chatFor(msg);
+  if (!chat) return;
   const p = msg.payload as {
     maxAutoRisk: string;
     log: Array<{ at: number; kind: string; question: string; outcome: string }>;
@@ -57,11 +55,10 @@ export function handleBrainStatus(msg: WSServerMessage) {
 }
 
 export function handleBrainAnswer(msg: WSServerMessage) {
-  // `brain.*` is fail-OPEN: the arbiter is global and legitimately emits
-  // untagged, which belongs to whoever is in front. A TAGGED one lands in its
-  // own lane — including a background tab's, which an `isActiveSessionMessage`
-  // gate here used to throw away after the router had already addressed it.
-  const chat = chatFor(msg) ?? activeChatLane();
+  // A decision with no address (or no available lane) cannot be attributed
+  // to the foreground tab: four conversations share this socket.
+  const chat = chatFor(msg);
+  if (!chat) return;
   const p = msg.payload as {
     question: string;
     decision: {
@@ -116,11 +113,10 @@ export function handleBrainAnswer(msg: WSServerMessage) {
  * store's ring buffer, which is the intended log retention.
  */
 export function handleBrainEvent(msg: WSServerMessage) {
-  // `brain.*` is fail-OPEN: the arbiter is global and legitimately emits
-  // untagged, which belongs to whoever is in front. A TAGGED one lands in its
-  // own lane — including a background tab's, which an `isActiveSessionMessage`
-  // gate here used to throw away after the router had already addressed it.
-  const chat = chatFor(msg) ?? activeChatLane();
+  // A decision with no address (or no available lane) cannot be attributed
+  // to the foreground tab: four conversations share this socket.
+  const chat = chatFor(msg);
+  if (!chat) return;
   const p = msg.payload as {
     event: string;
     intervened?: boolean;

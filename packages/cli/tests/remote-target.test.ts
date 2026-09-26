@@ -31,6 +31,11 @@ describe('parseRemoteTarget', () => {
     });
   });
 
+  it('refuses a host that ssh would read as an option (H-2)', () => {
+    expect(() => parseRemoteTarget('-oProxyCommand=calc:/srv')).toThrow('cannot start with "-"');
+    expect(() => parseRemoteTarget('ssh://-oProxyCommand=x@h/srv')).toThrow();
+  });
+
   it('requires a host and a project directory', () => {
     expect(() => parseRemoteTarget('box')).toThrow('user@host:/path');
     expect(() => parseRemoteTarget('box:')).toThrow('user@host:/path');
@@ -121,27 +126,46 @@ describe.runIf(sh)('the remote scripts in a real shell', () => {
     expect(run(stopScript(`~/it's here`), home)).toBe('');
   });
 
+  /** Where the scripts keep the state for `~/p` (same key recipe as the scripts). */
+  const STATE_FOR_P = `servers="$HOME/.wrongstack/remote/servers"
+mkdir -p "$servers"
+key=$(printf '%s' "$(cd "$HOME/p" && pwd -P)" | cksum | tr ' ' '-')`;
+
   it('probe finds the state a start left and stop clears it', () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wst-remote-'));
     dirs.push(home);
-    const state = path.join(home, 'p', '.wrongstack');
-    fs.mkdirSync(state, { recursive: true });
+    fs.mkdirSync(path.join(home, 'p'));
+    const servers = path.join(home, '.wrongstack', 'remote', 'servers');
     // The shell itself stands in for a live server process.
-    const script = `printf '{"pid":%s,"port":4000,"version":"9.9.9"}' "$$" > "$HOME/p/.wrongstack/remote-webui.json"
-printf 'tok' > "$HOME/p/.wrongstack/remote-webui.token"
+    const script = `${STATE_FOR_P}
+printf '{"pid":%s,"port":4000,"version":"9.9.9"}' "$$" > "$servers/$key.json"
+printf 'tok' > "$servers/$key.token"
 ${probeScript('~/p')}`;
     expect(parseProbe(run(script, home)).server).toMatchObject({
       port: 4000,
       version: '9.9.9',
       token: 'tok',
     });
-    fs.writeFileSync(
-      path.join(state, 'remote-webui.json'),
-      '{"pid":999999,"port":4000,"version":"x"}',
+    run(
+      `${STATE_FOR_P}\nprintf '{"pid":999999,"port":4000,"version":"x"}' > "$servers/$key.json"`,
+      home,
     );
     expect(run(stopScript('~/p'), home)).toBe('stopped=1\n');
-    expect(fs.existsSync(path.join(state, 'remote-webui.json'))).toBe(false);
-    expect(fs.existsSync(path.join(state, 'remote-webui.token'))).toBe(false);
+    expect(fs.readdirSync(servers)).toEqual([]);
+  });
+
+  // H-1 (security-check 2026-09-26): the state used to live in the project
+  // directory, which another user (or the repository itself) can write. Whoever
+  // wrote it chose the port the client tunnelled the browser to.
+  it('ignores server state planted in the project directory', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wst-remote-'));
+    dirs.push(home);
+    const planted = path.join(home, 'p', '.wrongstack');
+    fs.mkdirSync(planted, { recursive: true });
+    const script = `printf '{"pid":%s,"port":4000,"version":"9.9.9"}' "$$" > "$HOME/p/.wrongstack/remote-webui.json"
+printf 'tok' > "$HOME/p/.wrongstack/remote-webui.token"
+${probeScript('~/p')}`;
+    expect(parseProbe(run(script, home)).server).toBeUndefined();
   });
 
   /** A home with a fake build that behaves like the host with no provider set up. */
@@ -192,6 +216,8 @@ esac`);
       out = String((err as { stdout?: string }).stdout);
     }
     expect(out).toBe('error=exited\nlog=port 3456 is taken\n');
-    expect(fs.existsSync(path.join(home, 'p', '.wrongstack', 'remote-webui.token'))).toBe(false);
+    const servers = path.join(home, '.wrongstack', 'remote', 'servers');
+    expect(fs.readdirSync(servers).filter((name) => name.endsWith('.token'))).toEqual([]);
+    expect(fs.existsSync(path.join(home, 'p', '.wrongstack'))).toBe(false);
   });
 });

@@ -943,6 +943,15 @@ const LAST_OPERAND_WRITERS: ReadonlySet<string> = new Set([
  *      No basename whitelist is needed: the global plugin root is itself
  *      the trust anchor, and every file inside it is part of the closure
  *      a plugin load imports.
+ *   3. Anything else under the global root — the same line the write/edit
+ *      tools draw (`isInsideAgentStateRoot` in permission-policy's
+ *      hasAgentStateWriteTarget). The root holds more state that decides what
+ *      runs or what is approved than the two cases above: session journals
+ *      carry `permission_overrides` that come back live on resume, and
+ *      `updates/pending.json` names the executable swapped in at exit. With
+ *      only (1)+(2) a shell `echo >>` reached them while the write tool was
+ *      stopped (WS-2026-09-26-04). This judges WRITES only, so the agent
+ *      still reads memory and sessions without a prompt.
  */
 function looksLikeAgentStateTarget(rawPath: string): boolean {
   // Expand ~ to the home directory for the comparison.
@@ -956,6 +965,8 @@ function looksLikeAgentStateTarget(rawPath: string): boolean {
   if (!resolvedNorm.startsWith(rootNorm) && !resolvedNorm.includes('.wrongstack')) {
     return false;
   }
+  // Coverage (3), which subsumes (2): the whole global root.
+  if (resolvedNorm === rootNorm || resolvedNorm.startsWith(`${rootNorm}/`)) return true;
   // Coverage (2): any path inside the global plugin root is a protected
   // write target — not just the .mjs/.js entry, but the whole closure the
   // entry imports. We resolve the plugins root once per call; cheap.

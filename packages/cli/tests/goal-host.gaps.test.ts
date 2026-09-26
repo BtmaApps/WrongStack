@@ -139,7 +139,11 @@ describe('createGoalHost — start failures and task errors', () => {
     await fs.rm(projectRoot, rmOpts);
   });
 
-  const makeHost = (host: GoalHostDeps['multiAgentHost'], events: EventBus) =>
+  const makeHost = (
+    host: GoalHostDeps['multiAgentHost'],
+    events: EventBus,
+    getSessionId?: () => string | undefined,
+  ) =>
     createGoalHost({
       multiAgentHost: host,
       getConfig: () => ({}) as never,
@@ -147,7 +151,32 @@ describe('createGoalHost — start failures and task errors', () => {
       storeDir,
       projectRoot,
       worktrees: false,
+      getSessionId,
     });
+
+  it('keeps the starting session as the Goal owner when the foreground changes during planning', async () => {
+    let foreground = 'session-3';
+    const events = new EventBus();
+    const completed = new Promise<void>((resolve) => {
+      (events as unknown as { on(e: string, h: () => void): void }).on('graph.completed', resolve);
+    });
+    const host = makeHost(
+      fakeHost({
+        plan: ONE_PHASE_PLAN,
+        onPlannerRun: () => {
+          foreground = 'session-1';
+        },
+      }),
+      events,
+      () => foreground,
+    );
+
+    const result = await host.onGoalStart({ goal: 'owned by tab 3' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.graph.sessionId).toBe('session-3');
+    await completed;
+  });
 
   it('surfaces planner exceptions as a friendly error', async () => {
     const host = makeHost(fakeHost({ plan: ONE_PHASE_PLAN, plannerThrows: true }), new EventBus());
@@ -222,7 +251,11 @@ describe('createGoalHost — start failures and task errors', () => {
     const held = new Promise<void>((r) => {
       release = r;
     });
-    const host = makeHost(fakeHost({ plan: TWO_PHASE_PLAN, onTaskRun: () => held }), events);
+    const host = makeHost(
+      fakeHost({ plan: TWO_PHASE_PLAN, onTaskRun: () => held }),
+      events,
+      () => 'session-1',
+    );
 
     // The builder materializes tasks from taskTemplates — the same shape the
     // GoalPlanner emits (the `tasks` key is the wire format it parses).
@@ -248,8 +281,10 @@ describe('createGoalHost — start failures and task errors', () => {
       ],
       autonomous: true,
     }).build();
+    graph.sessionId = 'session-3';
     const result = await host.onGoalResumeFromGraph(graph);
     expect(result.ok).toBe(true);
+    expect(result.ok && result.graph.sessionId).toBe('session-3');
     for (let i = 0; i < 100 && host.getGoalRunner()?.isRunning() !== true; i++) {
       await new Promise((r) => setTimeout(r, 20));
     }

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { buildChildEnv } from '../utils/child-env.js';
-import { vcsAdapter } from '../vcs/vcs-adapter.js';
+import { GIT_ISOLATION_ARGS, vcsAdapter } from '../vcs/vcs-adapter.js';
 
 /**
  * Ceiling on the in-flight partial line while folding `git status` output.
@@ -32,7 +32,7 @@ export async function gitStatus(root: string): Promise<string> {
       finish('git timeout');
     }, 10_000);
     try {
-      proc = spawn('git', ['status', '--porcelain=v1', '--branch'], {
+      proc = spawn('git', [...GIT_ISOLATION_ARGS, 'status', '--porcelain=v1', '--branch'], {
         cwd: root,
         env: buildChildEnv(),
         stdio: ['ignore', 'pipe', 'ignore'],

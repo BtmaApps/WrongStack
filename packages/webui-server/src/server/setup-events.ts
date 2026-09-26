@@ -1,6 +1,6 @@
 import type { Context } from '@wrongstack/core/agent';
 import type { EventBus, EventName, Listener } from '@wrongstack/core/kernel';
-import { onProviderQuota } from '@wrongstack/core/quota';
+import { onProviderQuota, withQuotaPace } from '@wrongstack/core/quota';
 import type { SessionEventBridge } from '@wrongstack/core/storage';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
@@ -350,7 +350,8 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
     onProviderQuota((providerId, snapshots) => {
       broadcast(clients, {
         type: 'provider.quota',
-        payload: { providerId, snapshots },
+        // With the pace forecast: the page cannot see the readings it is measured on.
+        payload: { providerId, snapshots: withQuotaPace(snapshots) },
       });
     }),
   );
@@ -499,7 +500,8 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
   on('mcp.server.disconnected', (e) => {
     broadcast(clients, {
       type: 'mcp.server.disconnected',
-      payload: { name: e.name, reason: e.reason },
+      // `terminal`: nothing retries by itself — the one case the page tells the person about.
+      payload: { name: e.name, reason: e.reason, ...(e.terminal ? { terminal: true } : {}) },
     });
   });
 

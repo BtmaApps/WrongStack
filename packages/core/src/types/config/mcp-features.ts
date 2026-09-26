@@ -18,6 +18,14 @@ export interface MCPServerConfig {
    */
   bearerTokenEnv?: string | undefined;
   enabled?: boolean | undefined;
+  /**
+   * Where WrongStack imported the entry from, when that source is not the
+   * user. `'repository'`: a project's `.mcp.json` (`wstack import-claude-code`).
+   * The repository chose its command/URL, so the agent may not turn it on —
+   * `mcp_control enable` refuses until the user enables it with `/mcp enable`
+   * (H-8, security-check 2026-09-26).
+   */
+  origin?: 'repository' | undefined;
   allowedTools?: string[] | undefined;
   permission?: Permission | undefined;
   startupTimeoutMs?: number | undefined;
@@ -177,6 +185,8 @@ export interface FeaturesConfig {
   modelsRegistry: boolean;
   /** Discover + load skills from disk. */
   skills: boolean;
+  /** Proactive task and tool-result guidance from the enabled tool catalog. Default: true. */
+  toolCoach?: boolean | undefined;
   /**
    * Enable the prompt library (`/prompt`, `/prompts`, `/prompt-gen`, the WebUI
    * modal and the bundled 168-prompt dataset). Defaults to on; set to false to

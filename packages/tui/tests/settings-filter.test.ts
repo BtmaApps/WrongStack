@@ -23,6 +23,7 @@ function baseProps(over: Record<string, unknown> = {}) {
     featureMemory: true,
     featureSkills: true,
     featureModelsRegistry: true,
+    featureToolCoach: true,
     tokenSavingTier: 'off' as const,
     allowOutsideProjectRoot: true,
     contextAutoCompact: true,

@@ -5,6 +5,20 @@ import type { SessionEventBridge } from '@wrongstack/core/storage';
 import { describe, expect, it, vi } from 'vitest';
 import { setupEvents } from '../src/server/setup-events.js';
 
+// Mock the kanban IPC boundary. The CodeMap test below passes a `projectRoot`,
+// which makes setupEvents wire the REAL kanban daemon IPC: a named-pipe
+// connect, a detached daemon spawn when nothing answers, and a retry loop
+// that races this file's synchronous `dispose()`. A connect that succeeds
+// after dispose leaves a ref'd socket in the kanban client's process-wide
+// connection cache — unreachable from `dispose()` — and the runner then
+// never exits after the last assertion. Every other kanban-touching test in
+// this suite mocks the same boundary for the same reason.
+vi.mock('@wrongstack/kanban', () => ({
+  bridgeKanbanSupervisor: vi.fn(() => vi.fn()),
+  getServerKanbanStore: vi.fn(() => ({ getBoard: vi.fn(), listBoards: vi.fn() })),
+  recordTaskFileActivity: vi.fn(async () => false),
+}));
+
 describe('setupEvents session scoping', () => {
   it('broadcasts the human deadline and retires a prompt after Brain resolves it', () => {
     const events = new EventBus();

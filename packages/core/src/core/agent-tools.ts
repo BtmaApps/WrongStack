@@ -58,7 +58,10 @@ function approvalBrainRisk(
 }
 
 export interface AgentToolHandler {
-  executeTools(toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]>;
+  executeTools(toolUses: ToolUseBlock[]): Promise<{
+    results: ToolResultBlock[];
+    settlements: ReadonlyMap<string, ToolSettlement>;
+  }>;
   executeSingleWithDecision(
     tool: Tool,
     use: { id: string; name: string; input: unknown },
@@ -302,17 +305,33 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     return a.ctx.signal?.aborted ? 'aborted' : 'failed';
   }
 
+  /**
+   * Destinations a tool declares through `Tool.writeTargets` (the files inside
+   * a `patch` diff, a `format`/`lint --fix` target list). Unlike the
+   * permission gate, the input-key heuristic is left out: it only repeats
+   * `input.path`, which subscribers already read.
+   */
+  function declaredWriteTargets(tool: Tool | undefined, input: unknown): string[] {
+    if (typeof tool?.writeTargets !== 'function') return [];
+    try {
+      return tool.writeTargets(input).filter((p) => typeof p === 'string' && p.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
   function emitToolExecuted(
     toolUseId: string,
     toolName: string,
     durationMs: number,
     ok: boolean,
-    mutating: boolean,
+    tool: Tool | undefined,
     input: unknown,
     content: string,
     settlement: ToolSettlement,
   ): void {
     const sig = sizeSignals(toolName, content);
+    const writeTargets = ok ? declaredWriteTargets(tool, input) : [];
     // New SAGE retrievals live in Context.memoryEvidence. Keep splitting old
     // inline suffixes so replayed/pre-migration results remain clean.
     const { body, sageLines } = splitSageOutputBlock(content);
@@ -339,8 +358,9 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       durationMs,
       ok,
       settlement,
-      mutating,
+      mutating: tool?.mutating ?? false,
       input,
+      ...(writeTargets.length > 0 ? { writeTargets } : {}),
       output: truncateForEvent(
         body,
         DIFF_TOOL_NAMES.has(toolName) ? DIFF_TOOL_EVENT_PREVIEW_MAX : undefined,
@@ -378,6 +398,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     const useById = new Map(selectedToolUses.map((u) => [u.id, u]));
     const resultsForMessage: ToolResultBlock[] = [];
     const sessionEvents: SessionEvent[] = [];
+    const settlements = new Map<string, ToolSettlement>();
 
     for (const { result, tool, durationMs, settlement: executorSettlement } of outputs) {
       if (result.type === 'tool_confirm_pending' && tool) {
@@ -494,6 +515,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
           : decision === 'abort'
             ? 'aborted'
             : 'declined';
+        settlements.set(reRunResult.result.tool_use_id, settlement);
         const use = useById.get(reRunResult.result.tool_use_id);
         if (use) {
           await a.pipelines.toolCall.run({
@@ -515,7 +537,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
             tool.name,
             reRunResult.durationMs,
             !reRunResult.result.is_error,
-            tool.mutating,
+            tool,
             result.input,
             reRunResult.result.content,
             settlement,
@@ -532,6 +554,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       if (!use) continue;
       await a.pipelines.toolCall.run({ toolUse: use, result, ctx: a.ctx, tool: tool ?? undefined });
       const settlement = executorSettlement ?? derivedSettlement(result);
+      settlements.set(result.tool_use_id, settlement);
       sessionEvents.push({
         type: 'tool_result',
         ts: new Date().toISOString(),
@@ -545,18 +568,19 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
         use.name,
         durationMs,
         !result.is_error,
-        tool?.mutating ?? false,
+        tool ?? undefined,
         use.input,
         result.content,
         settlement,
       );
     }
 
-    return { resultsForMessage, sessionEvents, outputs };
+    return { resultsForMessage, sessionEvents, outputs, settlements };
   }
 
-  async function executeTools(toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]> {
-    const { resultsForMessage, sessionEvents, outputs } = await runGatedCalls(toolUses);
+  async function executeTools(toolUses: ToolUseBlock[]) {
+    const { resultsForMessage, sessionEvents, outputs, settlements } =
+      await runGatedCalls(toolUses);
 
     // Batch-append all tool_result events to the session log in one call.
     // This replaces N sequential append() calls (one per tool result) with a
@@ -594,7 +618,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       );
     }
     await a.extensions.runAfterToolExecution(a.ctx, outputs);
-    return resultsForMessage;
+    return { results: resultsForMessage, settlements };
   }
 
   /**

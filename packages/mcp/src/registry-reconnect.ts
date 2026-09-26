@@ -34,6 +34,7 @@ export function scheduleRegistryReconnect({
     events.emit('mcp.server.disconnected', {
       name: slot.cfg.name,
       reason: `reconnect-exhausted:${slot.reconnectCycles}`,
+      terminal: true,
     });
     return;
   }

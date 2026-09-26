@@ -26,6 +26,8 @@ import { createWriteStream, mkdirSync, type WriteStream } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
+import { dietNote } from './_output-diet.js';
+import { shapeCommandOutput } from './_util.js';
 
 const SPOOL_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 /** Stop queueing chunks on the heap when the fs stream falls this far behind. */
@@ -80,8 +82,12 @@ interface OutputSpool {
   /**
    * Close the file (if one was opened) and return its info, or null when the
    * output never exceeded the threshold. Idempotent.
+   *
+   * `persist: true` writes the buffered output to a file even below the
+   * threshold — for a caller that left lines out of what the model reads
+   * (the output diet) and must still point at the complete output.
    */
-  finalize(): SpoolInfo | null;
+  finalize(opts?: { persist?: boolean | undefined }): SpoolInfo | null;
 }
 
 interface CreateOutputSpoolOptions {
@@ -104,6 +110,20 @@ export function spoolNote(info: SpoolInfo): string {
   const dropped =
     info.droppedBytes > 0 ? `, ~${info.droppedBytes} bytes dropped under backpressure` : '';
   return `\n[output truncated — full ${info.bytes} bytes at ${info.path}${dropped}; read/grep that file selectively instead of re-running with more output]`;
+}
+
+/**
+ * Close a command's spool and return what the model reads: the output shaped
+ * for `command` (normalized, dieted, head+tail cut) plus the one note that
+ * says where the rest is. When the diet left lines out, the spool keeps the
+ * full output even below its threshold, so the note can point at it. The one
+ * place `bash` and `exec` finish a command's output.
+ */
+export function finishCommandOutput(spool: OutputSpool, raw: string, command: string): string {
+  const shaped = shapeCommandOutput(raw, command);
+  const spooled = spool.finalize({ persist: shaped.diet !== null });
+  if (shaped.diet) return shaped.text + dietNote(shaped.diet, spooled?.path ?? null);
+  return shaped.text + (spooled ? spoolNote(spooled) : '');
 }
 
 export function createOutputSpool(opts: CreateOutputSpoolOptions): OutputSpool {
@@ -172,10 +192,11 @@ export function createOutputSpool(opts: CreateOutputSpoolOptions): OutputSpool {
         stream.write(text);
       }
     },
-    finalize(): SpoolInfo | null {
+    finalize(finalizeOpts?: { persist?: boolean | undefined }): SpoolInfo | null {
       if (finalized) {
         return filePath ? { path: filePath, bytes: totalBytes, droppedBytes } : null;
       }
+      if (finalizeOpts?.persist && !stream && !failed && head) open();
       finalized = true;
       head = '';
       if (!stream || !filePath) return null;

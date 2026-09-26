@@ -3,6 +3,8 @@ import type { KeyEvent } from '../components/input.js';
 import { EFFORT_KEEP, effortOptionsForFocused } from '../components/model-picker-effort.js';
 import { pickerBackspace } from '../picker-text-input.js';
 import type { ReasoningEffort } from '../settings-contracts.js';
+import { setActiveTheme, THEME_OPTIONS } from '../theme.js';
+import { filterThemeOptions } from '../theme-picker-rows.js';
 import type { PickerKeysHost } from './use-picker-keys-types.js';
 
 export function tryAuthModelPickerKeys(
@@ -393,19 +395,45 @@ export function tryAuthModelPickerKeys(
   if (state.themePicker.open) {
     if (key.ctrl || key.meta) return true;
     if (key.escape) {
+      // Esc backs out one level at a time: drop a live preview first (restoring
+      // the palette that was live when preview began), then a filter, then
+      // close. A mis-pressed Esc must not leave the chat on a theme the user
+      // only ever glanced at.
+      if (state.themePicker.preview) {
+        if (state.themePicker.previous) setActiveTheme(state.themePicker.previous);
+        dispatch({ type: 'themePickerPreview', on: false });
+        dispatch({ type: 'themePickerClose' });
+        return true;
+      }
+      if (state.themePicker.filtering || state.themePicker.filter) {
+        dispatch({ type: 'themePickerFilterMode', on: false });
+        return true;
+      }
       dispatch({ type: 'themePickerClose' });
       return true;
     }
-    if (key.mouse?.kind === 'wheel') {
-      dispatch({ type: 'themePickerMove', delta: key.mouse.wheel > 0 ? -1 : 1 });
+    // `p` toggles live preview. Outside filter mode only, so it is still
+    // typeable into a query.
+    if (!state.themePicker.filtering && input === 'p') {
+      dispatch({ type: 'themePickerPreview', on: !state.themePicker.preview });
       return true;
     }
-    if (key.upArrow) {
-      dispatch({ type: 'themePickerMove', delta: -1 });
-      return true;
-    }
-    if (key.downArrow) {
-      dispatch({ type: 'themePickerMove', delta: 1 });
+    // Apply-on-navigate. The marginal cost of a theme swap is ~9ms regardless
+    // of history depth (measured), so this is opt-in rather than the default.
+    const previewed = state.themePicker.preview;
+    const moveBy = key.mouse?.kind === 'wheel' ? (key.mouse.wheel > 0 ? -1 : 1) : 0;
+    if (key.upArrow || key.downArrow || moveBy !== 0) {
+      const delta = key.upArrow ? -1 : key.downArrow ? 1 : moveBy;
+      const next =
+        (state.themePicker.selected +
+          delta +
+          filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '').length) %
+        filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '').length;
+      if (previewed) {
+        const focused = filterThemeOptions(THEME_OPTIONS, state.themePicker.filter ?? '')[next];
+        if (focused) setActiveTheme(focused.id);
+      }
+      dispatch({ type: 'themePickerMove', delta });
       return true;
     }
     if (isEnter) {
@@ -413,6 +441,37 @@ export function tryAuthModelPickerKeys(
       host.inputGateRef.current = true;
       try {
         host.onThemePickerEnter?.();
+      } finally {
+        host.inputGateRef.current = false;
+      }
+      return true;
+    }
+
+    const query = state.themePicker.filter ?? '';
+    // `/` toggles filter mode. Toggling OFF clears the query (see the
+    // reducer) so the visible list and the mode flag never disagree.
+    if (!key.ctrl && input === '/') {
+      dispatch({ type: 'themePickerFilterMode', on: !state.themePicker.filtering });
+      return true;
+    }
+    if (state.themePicker.filtering) {
+      if (key.delete || input === '\x7f' || key.backspace) {
+        dispatch({ type: 'themePickerFilter', text: query.slice(0, -1) });
+        return true;
+      }
+      // Printable, single-character input extends the query. Ink hands over
+      // the raw chunk, so ignore escapes, control codes and pasted blobs.
+      if (input && !key.ctrl && !key.meta && input.length === 1 && input >= ' ') {
+        dispatch({ type: 'themePickerFilter', text: query + input });
+        return true;
+      }
+    }
+    // Outside filter mode `u` undoes the last apply. It only means "undo" in
+    // this mode — inside the filter it is just the letter u.
+    if (!state.themePicker.filtering && input === 'u') {
+      host.inputGateRef.current = true;
+      try {
+        host.onThemePickerUndo?.();
       } finally {
         host.inputGateRef.current = false;
       }

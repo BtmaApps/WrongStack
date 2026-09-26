@@ -178,6 +178,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
       featureMemory: cfg.features?.memory !== false,
       featureSkills: cfg.features?.skills !== false,
       featureModelsRegistry: cfg.features?.modelsRegistry !== false,
+      featureToolCoach: cfg.features?.toolCoach !== false,
       // Preserve the 'auto' sentinel for the picker DISPLAY (normalize would
       // collapse it to 'off', which would then overwrite 'auto' on save);
       // everything else normalizes to a concrete tier.
@@ -312,6 +313,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.featureMemory !== undefined ||
         s.featureSkills !== undefined ||
         s.featureModelsRegistry !== undefined ||
+        s.featureToolCoach !== undefined ||
         s.featureTokenSaving !== undefined ||
         s.allowOutsideProjectRoot !== undefined ||
         s.contextAutoCompact !== undefined ||
@@ -435,6 +437,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             s.featureMemory !== undefined ||
             s.featureSkills !== undefined ||
             s.featureModelsRegistry !== undefined ||
+            s.featureToolCoach !== undefined ||
             s.featureTokenSaving !== undefined ||
             fsAccess !== undefined
           ) {
@@ -445,6 +448,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             if (s.featureSkills !== undefined) feats.skills = s.featureSkills;
             if (s.featureModelsRegistry !== undefined)
               feats.modelsRegistry = s.featureModelsRegistry;
+            if (s.featureToolCoach !== undefined) feats.toolCoach = s.featureToolCoach;
             if (s.featureTokenSaving !== undefined) feats.tokenSavingMode = s.featureTokenSaving;
             if (fsAccess !== undefined)
               feats.allowOutsideProjectRoot = fsAccess.allowOutsideProjectRoot;
@@ -632,6 +636,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           s.featureMemory !== undefined ||
           s.featureSkills !== undefined ||
           s.featureModelsRegistry !== undefined ||
+          s.featureToolCoach !== undefined ||
           s.featureTokenSaving !== undefined ||
           fsAccess !== undefined
             ? {

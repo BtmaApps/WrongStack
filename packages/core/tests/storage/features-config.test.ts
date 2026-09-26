@@ -31,6 +31,7 @@ describe('Config.features defaults', () => {
       modelsRegistry: true,
       skills: true,
       prompts: true,
+      toolCoach: true,
       // Default is 'auto' — the prompt builder resolves it from the model's
       // context window; consumers without that context use the medium baseline.
       tokenSavingMode: 'auto',

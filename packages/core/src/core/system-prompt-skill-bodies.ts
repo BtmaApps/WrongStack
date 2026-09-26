@@ -60,7 +60,7 @@ function foreignProvenanceTag(source: SkillManifest['source'], originTool?: stri
  * apart. `bundled` and `user` skills are first-party and operator-owned
  * respectively, and render exactly as before.
  */
-function fenceIfUntrusted(
+export function fenceIfUntrusted(
   source: SkillManifest['source'],
   name: string,
   body: string,

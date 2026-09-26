@@ -234,12 +234,51 @@ describe('ChatInput — @-mention Enter does not submit', () => {
     expect(wsMock.sendMessage).toHaveBeenCalledWith('plain message no at-sign', undefined);
   });
 
-  it('pressing Enter while the @-mention picker is open but HAS NOT consumed the key still submits', () => {
-    // Regression for the chimera review: when atMention is active but the
-    // picker has zero results, FilePicker's window listener bails WITHOUT
-    // calling preventDefault() — so the textarea's Enter-to-submit must
-    // still fire. The fix only yields when the picker has consumed the
-    // key, which preserves the prior zero-results behavior.
+  it('pressing Enter that another surface already consumed does NOT submit even after the picker has closed', () => {
+    // Real-browser race pinned 2026-09-26 (Playwright check against the
+    // real ChatInput): FilePicker's window-capture listener runs
+    // preventDefault() + pick(); React 18 flushes that pick's
+    // setAtMention(null) between the capture listener and the textarea's
+    // bubble-phase handler, so handleKeyDown runs with atMention ALREADY
+    // null — but the native event still carries defaultPrevented === true.
+    // A key another surface consumed must never submit, in any closure
+    // state. Simulated here in two steps: first a consuming pick (clears
+    // atMention), then a second consumed Enter with the picker closed.
+    mockFilePicker.shouldConsume = true;
+    render(<ChatInput />);
+    const textarea = screen.getByPlaceholderText(/Message the agent/) as HTMLTextAreaElement;
+
+    typeInto(textarea, 'look at @index');
+    expect(atMentionDetection).not.toBeNull();
+
+    // Step 1: the picker consumes Enter and picks — selection happens,
+    // no submit, and the pick clears the @-mention state.
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(wsMock.sendMessage).not.toHaveBeenCalled();
+
+    // Step 2: the raced same-event state — atMention already null, but
+    // the keydown was consumed by a window-capture listener.
+    const consume = (e: KeyboardEvent) => e.preventDefault();
+    window.addEventListener('keydown', consume, true);
+    try {
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+    } finally {
+      window.removeEventListener('keydown', consume, true);
+    }
+
+    expect(wsMock.sendMessage).not.toHaveBeenCalled();
+    // Leave the shared draft store clean for the next test case.
+    useUIStore.setState({ draftInput: '' });
+  });
+
+  it('pressing Enter while the @-mention picker is open but HAS NOT consumed the key does NOT submit', () => {
+    // Contract update (2026-09-26, explicit user requirement): while the
+    // @-mention picker is open, Enter belongs to the picker — it only
+    // confirms the mention selection. When the picker has zero results or
+    // matches are still loading, FilePicker's window listener bails
+    // WITHOUT calling preventDefault(); ChatInput.handleKeyDown must then
+    // swallow the key itself. The previous contract let it fall through
+    // to Enter-to-submit, which sent the half-typed `@query` draft.
     mockFilePicker.shouldConsume = false;
     render(<ChatInput />);
     const textarea = screen.getByPlaceholderText(/Message the agent/) as HTMLTextAreaElement;
@@ -249,8 +288,10 @@ describe('ChatInput — @-mention Enter does not submit', () => {
 
     fireEvent.keyDown(textarea, { key: 'Enter' });
 
-    expect(wsMock.sendMessage).toHaveBeenCalledTimes(1);
-    expect(wsMock.sendMessage).toHaveBeenCalledWith('look at @index', undefined);
+    expect(wsMock.sendMessage).not.toHaveBeenCalled();
+    // The draft is neither submitted nor polluted with a newline: Enter
+    // is a pure no-op until a selection exists.
+    expect(textarea.value).toBe('look at @index');
   });
 });
 

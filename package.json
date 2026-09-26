@@ -1,7 +1,7 @@
 {
   "name": "wrongstack-monorepo",
   "private": true,
-  "version": "1.0.26",
+  "version": "1.0.27",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@12.3.4+sha512.961aa41fb077da3a04a441d9f8e15ebc0c96da8ef710b2eb67bf9ee7cb0610eabd48f1fd85f51cffe73846785fa0f87c56a3a872a1d893f8446741b5cce45457",
@@ -66,6 +66,7 @@
     "check:clean-dist": "node scripts/check-build-lineage.mjs --assert-clean",
     "check:dist-hidden": "node scripts/check-dist-hidden-files.mjs",
     "check:dep-paths": "node scripts/check-dep-path-separators.mjs",
+    "check:action-pins": "node scripts/check-action-pins.mjs",
     "check:feature-matrix": "node scripts/check-feature-matrix.mjs",
     "check:lint-warnings": "node scripts/check-lint-warnings.mjs",
     "check:build-manifest": "node scripts/check-build-lineage.mjs --verify .reports/build-artifact-manifest.json",

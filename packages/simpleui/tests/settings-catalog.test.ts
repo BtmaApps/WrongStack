@@ -58,6 +58,9 @@ describe('settings-catalog', () => {
     expect(matchesQuery(refiner, 'Refine', 'refiner')).toBe(true);
     const tabTitle = SETTINGS_CATALOG.find((e) => e.id === 'session.showTabTitle')!;
     expect(matchesQuery(tabTitle, 'Session', 'tab')).toBe(true);
+    const coach = SETTINGS_CATALOG.find((e) => e.id === 'session.toolCoach')!;
+    expect(coach.kind).toBe('toggle');
+    expect(matchesQuery(coach, 'Session', 'tool coach')).toBe(true);
   });
 });
 

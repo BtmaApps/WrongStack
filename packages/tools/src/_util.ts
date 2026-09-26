@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { activeLimits, positiveLimit, TOOL_MEMORY_GUARD_BYTES } from '@wrongstack/core/types';
 import * as Core from '@wrongstack/core/utils';
+import { type DietResult, dietCommandOutput } from './_output-diet.js';
 
 /**
  * sha-256 hex of a UTF-8 string. Used by the file tools to record a content
@@ -443,12 +444,86 @@ export function normalizeCommandOutput(
   opts: { maxBytes?: number | undefined } = {},
 ): string {
   if (!raw) return raw;
+  return truncateHeadTail(cleanCommandOutput(raw), opts.maxBytes ?? commandOutputPreviewBytes());
+}
+
+/** Every step of {@link normalizeCommandOutput} but the final cut. */
+function cleanCommandOutput(raw: string): string {
   let text = Core.stripAnsi(raw);
   text = collapseCarriageReturns(text);
   text = text.replace(/[ \t]+$/gm, ''); // trailing whitespace per line
   text = collapseConsecutiveDuplicates(text);
-  text = text.replace(/\n{3,}/g, '\n\n'); // >=2 blank lines → 1
-  return truncateHeadTail(text, opts.maxBytes ?? commandOutputPreviewBytes());
+  return text.replace(/\n{3,}/g, '\n\n'); // >=2 blank lines → 1
+}
+
+/**
+ * {@link normalizeCommandOutput} plus the command-aware diet
+ * (`_output-diet.ts`), applied BEFORE the head+tail cut so a dieted test run
+ * keeps more of its failures within the cap. `diet` is non-null when lines
+ * were left out: the caller must persist the full output and append
+ * {@link dietNote}.
+ */
+export function shapeCommandOutput(
+  raw: string,
+  command: string,
+  opts: { maxBytes?: number | undefined } = {},
+): { text: string; diet: DietResult | null } {
+  if (!raw) return { text: raw, diet: null };
+  const clean = cleanCommandOutput(raw);
+  const diet = dietCommandOutput(command, clean);
+  const maxBytes = opts.maxBytes ?? commandOutputPreviewBytes();
+  return { text: truncateHeadTail(diet ? diet.text : clean, maxBytes), diet };
+}
+
+/**
+ * Collects a command's output for the model: the first `maxChars` and a
+ * rolling window of the last `maxChars`. A shell tool used to keep only the
+ * head, so a test run or a build that printed more than the preview cap lost
+ * exactly the part a reader runs it for — the summary and the failures land
+ * last. The dropped middle is still in the output spool.
+ */
+export interface CommandOutputCapture {
+  push(text: string): void;
+  /** Head, an omission marker when the middle was dropped, and the tail. */
+  text(): string;
+}
+
+export function createCommandOutputCapture(maxChars: number): CommandOutputCapture {
+  let head = '';
+  let tail = '';
+  let omitted = 0;
+  return {
+    push(text) {
+      if (!text) return;
+      let rest = text;
+      if (head.length < maxChars) {
+        const take = rest.slice(0, maxChars - head.length);
+        head += take;
+        rest = rest.slice(take.length);
+      }
+      if (!rest) return;
+      tail += rest;
+      // Trim in batches, not per chunk, so a stream of small chunks does not
+      // re-slice a maxChars string on every write.
+      if (tail.length > maxChars * 2) {
+        const cut = tail.length - maxChars;
+        omitted += cut;
+        tail = tail.slice(cut);
+      }
+    },
+    text() {
+      if (tail.length > maxChars) {
+        omitted += tail.length - maxChars;
+        tail = tail.slice(tail.length - maxChars);
+      }
+      if (omitted === 0) return head + tail;
+      // Start the tail on a whole line: a half line reads as garbage.
+      const nl = tail.indexOf('\n');
+      const cleanTail = nl >= 0 && nl < 512 ? tail.slice(nl + 1) : tail;
+      const dropped = omitted + (tail.length - cleanTail.length);
+      return `${head}\n…[${dropped} chars omitted from the middle]…\n${cleanTail}`;
+    },
+  };
 }
 
 /**

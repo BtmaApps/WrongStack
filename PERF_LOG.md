@@ -1,5 +1,10 @@
 # Performance log
 
+## 2026-09-27 — Codex expired continuation recovery baseline
+
+Workload: fake WebSocket provider with one explicit expired-state rejection between valid turns. Command: `pnpm exec vitest run packages/providers/tests/codex-websocket.test.ts -t 'recovers.*fresh socket'`. Baseline: both missing-response and connection-limit cases fall back to HTTP and fail the transport-continuity expectations (2 failing regressions). Shared HEAD 63a918164b7c081a924d6f60a7f17071d2d2893f; Windows x64 / AMD Ryzen 9 9950X3D / Node v24.13.0. This measures protocol recovery, not live cache-hit or quota savings.
+After: both fixtures use two sockets and zero HTTP calls, resend full input once without the expired ID, then resume delta requests on the recovered connection. Recovery is bounded to one reconnect and disabled after partial output/cancellation; error-message text alone cannot trigger it. A successful generated response marks a recovery connection warm so the next turn avoids a redundant generate=false request. Final provider + relevant CLI run: 1307 passed, 1 skipped. This is a correctness/transport result, not a token-price or latency benchmark.
+
 ## 2026-09-26 — techstack: end-to-end inventory-phase bank of both kept changes (perf-ratchet round techstack-inventory-bank-2026-09-26, measurement only)
 
 commit: 63a918164b7c081a924d6f60a7f17071d2d2893f (shared working tree with the two kept changes: npm.ts lockfile memo + detect.ts concurrent readdir prefetch; no code change this round — suites green at this exact tree state this session: tools exit 0 23:22, techstack exit 0 23:24)

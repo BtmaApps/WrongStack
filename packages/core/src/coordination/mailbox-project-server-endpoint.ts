@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { privateEndpointKey } from '@wrongstack/persistence';
 import { assertUnixSocketPathWithinLimit } from '../utils/socket-path.js';
 import { MAILBOX_PROJECT_SERVER_PROTOCOL_VERSION } from './mailbox-project-server-protocol.js';
 
@@ -36,7 +37,8 @@ export function mailboxProjectServerKey(projectDir: string): string {
  * `sun_path` limit.
  */
 export function mailboxProjectServerEndpoint(projectDir: string): string {
-  const key = mailboxProjectServerKey(projectDir);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(mailboxProjectServerKey(projectDir));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-mailbox-v${MAILBOX_PROJECT_SERVER_PROTOCOL_VERSION}-${key}`;
   }

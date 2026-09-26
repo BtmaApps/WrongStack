@@ -218,6 +218,7 @@ describe('seedContextMeta', () => {
     expect(context.meta['featureMemory']).toBe(true);
     expect(context.meta['featureSkills']).toBe(true);
     expect(context.meta['featureModelsRegistry']).toBe(true);
+    expect((context.meta as Record<string, unknown>)['featureToolCoach']).toBe(true);
   });
 
   it('disables features when configured', () => {
@@ -230,6 +231,7 @@ describe('seedContextMeta', () => {
           memory: false,
           skills: false,
           modelsRegistry: false,
+          toolCoach: false,
         },
       }),
       context,
@@ -239,6 +241,7 @@ describe('seedContextMeta', () => {
     expect(context.meta['featureMemory']).toBe(false);
     expect(context.meta['featureSkills']).toBe(false);
     expect(context.meta['featureModelsRegistry']).toBe(false);
+    expect((context.meta as Record<string, unknown>)['featureToolCoach']).toBe(false);
   });
 
   it('sets indexOnStart default to true', () => {

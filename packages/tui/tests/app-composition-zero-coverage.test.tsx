@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   leaderTimelineFromEntries: vi.fn(),
   useProviderEventBridge: vi.fn(),
+  useMcpStatusBridge: vi.fn(),
   useClientTelemetry: vi.fn(),
   useTuiEventBridge: vi.fn(),
   useTuiControllers: vi.fn(),
@@ -30,6 +31,9 @@ vi.mock('../src/components/agents-monitor.js', () => ({
 }));
 vi.mock('../src/hooks/use-provider-event-bridge.js', () => ({
   useProviderEventBridge: mocks.useProviderEventBridge,
+}));
+vi.mock('../src/hooks/use-mcp-status-bridge.js', () => ({
+  useMcpStatusBridge: mocks.useMcpStatusBridge,
 }));
 vi.mock('../src/hooks/use-client-telemetry.js', () => ({
   useClientTelemetry: mocks.useClientTelemetry,
@@ -142,6 +146,10 @@ describe('useAppEventBridges composition', () => {
         dispatch: params.dispatch,
       }),
     );
+    expect(mocks.useMcpStatusBridge).toHaveBeenCalledWith({
+      events: params.events,
+      dispatch: params.dispatch,
+    });
     expect(mocks.useClientTelemetry).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: 'client-1', tokenCounter: params.tokenCounter }),
     );

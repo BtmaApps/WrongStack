@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { SddSupervisor } from '../src/sdd-supervisor.js';
 import {
-  DefaultBrainArbiter,
   type BrainArbiter,
   type BrainDecision,
+  DefaultBrainArbiter,
 } from '@wrongstack/core/coordination/brain.js';
 import type { TaskNode } from '@wrongstack/core/types/task-graph.js';
+import { describe, expect, it } from 'vitest';
+import { SddSupervisor } from '../src/sdd-supervisor.js';
 
 const task = (): TaskNode => ({
   id: 't1',
@@ -28,6 +28,25 @@ function brainAnswering(optionId: string): BrainArbiter {
 }
 
 describe('SddSupervisor', () => {
+  it('tags a failure decision with its run owner even after another tab becomes foreground', async () => {
+    let foreground = 'tab-3';
+    let decisionSessionId: string | undefined;
+    const supervisor = new SddSupervisor({
+      sessionId: foreground,
+      brain: {
+        async decide(request) {
+          decisionSessionId = request.sessionId;
+          return { type: 'answer', text: 'Retry' };
+        },
+      },
+    });
+    foreground = 'tab-1';
+
+    await supervisor.superviseFailure({ task: task(), error: 'failed', attempts: 1 });
+    expect(foreground).toBe('tab-1');
+    expect(decisionSessionId).toBe('tab-3');
+  });
+
   it('defaults to retry under the conservative DefaultBrainArbiter (no LLM)', async () => {
     const sup = new SddSupervisor({ brain: new DefaultBrainArbiter() });
     const verdict = await sup.superviseFailure({ task: task(), error: 'boom', attempts: 0 });

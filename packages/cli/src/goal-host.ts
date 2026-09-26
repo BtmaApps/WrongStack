@@ -307,6 +307,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         };
       }
       starting = true;
+      const ownerSessionId = deps.getSessionId?.();
       let releaseRunLease: (() => Promise<void>) | undefined;
       try {
         releaseRunLease = await store.acquireRunLease(`cli:${process.pid}:${crypto.randomUUID()}`);
@@ -354,6 +355,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           phases,
           autonomous: true,
         }).build();
+        graph.sessionId = ownerSessionId;
         await persist(graph);
 
         // Per-phase git-worktree isolation. When enabled and inside a git repo,
@@ -448,6 +450,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                   }
                 }
               : undefined,
+            sessionId: graph.sessionId,
             brain: deps.brain,
             onTaskUpdate: () => {
               void persist(graph);
@@ -512,6 +515,8 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
         };
       }
       starting = true;
+      // Older saved graphs have no owner; attribute them to the resuming session.
+      if (!graph.sessionId) graph.sessionId = deps.getSessionId?.();
       let releaseRunLease: (() => Promise<void>) | undefined;
       try {
         releaseRunLease = await store.acquireRunLease(
@@ -597,6 +602,7 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
                   }
                 }
               : undefined,
+            sessionId: graph.sessionId,
             brain: deps.brain,
             onTaskUpdate: () => {
               void persist(graph);

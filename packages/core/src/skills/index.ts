@@ -37,6 +37,19 @@ export type {
   SkillRegistryAdapter,
 } from './registry/registry-adapter.js';
 export { createSkillsShAdapter, DEFAULT_SKILLS_SH_URL } from './registry/skills-sh-adapter.js';
+export {
+  armRequiredSkills,
+  markRequiredSkillLoaded,
+  markRequiredSkillUnavailable,
+  parseRequiredSkillsMarker,
+  pendingRequiredSkills,
+  REQUIRED_SKILLS_LOADER_TOOL,
+  REQUIRED_SKILLS_META_KEY,
+  type RequiredSkillsState,
+  readRequiredSkillsState,
+  requiredSkillsDeniedMessage,
+  restoreRequiredSkillsFromEvents,
+} from './required-skill-gate.js';
 export { collectSkillFiles } from './skill-files.js';
 export {
   bodyLineAdvisory,

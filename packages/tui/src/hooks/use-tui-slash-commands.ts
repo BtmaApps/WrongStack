@@ -30,6 +30,9 @@ export function useTuiSlashCommands({
   switchAutonomy,
   listSessions,
   openPromptPicker,
+  configStore,
+  saveThemePreset,
+  applyThemePreset,
 }: TuiSlashCommandOptions): void {
   // Session-domain slash commands moved to slices (decomposition Phase 2):
   // 'head' → /solo · 'mid' → /mailbox, /autonomy · 'tail' → /resume.
@@ -55,6 +58,9 @@ export function useTuiSlashCommands({
     switchAutonomy,
     listSessions,
     openPromptPicker,
+    configStore,
+    saveThemePreset,
+    applyThemePreset,
   };
 
   useSessionSlashCommands(sliceDeps, 'head');

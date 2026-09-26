@@ -231,7 +231,7 @@ export async function runRemoteSession(opts: RemoteSessionOptions): Promise<numb
           throw new Error(
             `The WebUI on ${opts.target.destination} did not answer through the SSH tunnel. ` +
               'Check that its sshd allows port forwarding (AllowTcpForwarding) and see ' +
-              `${opts.target.path}/.wrongstack/remote-webui.log there.`,
+              'the host log under ~/.wrongstack/remote/servers/ there.',
           );
         }
       }
@@ -325,7 +325,8 @@ export function systemSsh(
   const base = sshCommandLine(target, options);
   const run: SshRunner = (remoteCommand, input) =>
     new Promise((resolve) => {
-      const child = spawn('ssh', [...base, target.destination, remoteCommand], {
+      // `--`: the destination is never read as an option (`-oProxyCommand=…`).
+      const child = spawn('ssh', [...base, '--', target.destination, remoteCommand], {
         stdio: ['pipe', 'pipe', 'inherit'],
         env: { ...buildChildEnv(), ...sshAgentEnv() },
         windowsHide: true,
@@ -351,6 +352,7 @@ export function systemSsh(
         'ExitOnForwardFailure=yes',
         '-L',
         `127.0.0.1:${localPort}:127.0.0.1:${remotePort}`,
+        '--',
         target.destination,
       ],
       {

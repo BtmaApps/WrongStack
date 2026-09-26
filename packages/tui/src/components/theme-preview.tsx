@@ -1,7 +1,46 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
 import { resolveSyntaxColor, type ThemeName, themePresets } from '../theme.js';
+import { contrastRatio } from '../theme-utils.js';
 import { PowerlineRail } from './powerline-rail.js';
+
+/**
+ * Minimum ratio before a reading is flagged. 3:1 is WCAG's floor for
+ * non-text/UI content and for large text; the muted-text token is checked
+ * against the same floor rather than the 4.5:1 body-text rule because it is
+ * deliberately de-emphasised. Thresholds mirror the measured floor of the 64
+ * shipped palettes (see `tests/theme-contrast.test.ts`).
+ */
+const CONTRAST_FLOOR = 3;
+
+/**
+ * One labelled contrast reading. The ratio is drawn in the palette's own
+ * `warn`/`error` token when it falls under the floor, so a weak pairing is
+ * visible at selection time without the preview having to introduce a colour
+ * that is not in the theme being judged.
+ */
+function ContrastRow({
+  fg,
+  bg,
+  label,
+}: {
+  fg: string;
+  bg: string;
+  label: string;
+}): React.ReactElement {
+  const ratio = contrastRatio(fg, bg);
+  const weak = ratio < CONTRAST_FLOOR;
+  return (
+    <Text>
+      {'  '}
+      <Text dimColor>{label.padEnd(5)}</Text>
+      <Text color={weak ? 'yellow' : undefined}>{weak ? '▲' : '·'}</Text>
+      <Text color={weak ? 'yellow' : undefined} bold={weak}>
+        {ratio.toFixed(1)}:1
+      </Text>
+    </Text>
+  );
+}
 
 interface ThemePreviewProps {
   /** Preset whose palette this preview renders. Must exist in `themePresets`. */
@@ -155,6 +194,23 @@ export function ThemePreview({
             <Text backgroundColor={preset.diffAddBg}> </Text>
             <Text backgroundColor={preset.diffDelBg}> </Text>
           </Box>
+        </Box>
+      ),
+    },
+    {
+      // Placed LAST so the existing trim-from-bottom order is untouched: a
+      // short terminal drops contrast before it drops the sample/diff the user
+      // actually judges the palette by.
+      key: 'contrast',
+      // Label + three readings = 4 physical rows. The cost must match the real
+      // height or the trim loop lets the preview overrun the picker's budget.
+      cost: 4,
+      render: (
+        <Box flexDirection="column">
+          <Text dimColor>contrast</Text>
+          <ContrastRow fg={preset.textPrimary} bg={preset.surface} label="text" />
+          <ContrastRow fg={preset.success} bg={preset.diffAddBg} label="+add" />
+          <ContrastRow fg={preset.error} bg={preset.diffDelBg} label="-del" />
         </Box>
       ),
     },

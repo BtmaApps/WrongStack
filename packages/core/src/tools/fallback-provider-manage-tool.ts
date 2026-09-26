@@ -310,6 +310,13 @@ export function createProviderManageTool(
         if (input.baseUrl) entry.baseUrl = input.baseUrl;
         if (input.family) entry.family = input.family;
         if (input.envVars) entry.envVars = input.envVars;
+        // VULN-006 (WS-2026-09-26-01): without envVars the resolver reads the
+        // catalog preset of `type` (`type: 'anthropic'` → ANTHROPIC_API_KEY)
+        // and sends it to this baseUrl. The credential-bind gate only sees
+        // env var NAMES in the input, so under YOLO that was an unprompted
+        // "send my key to a host I chose". A new endpoint gets no environment
+        // credential unless the caller names one (which the gate then sees).
+        if (input.baseUrl && input.envVars === undefined) entry.envVars = [];
         if (input.autoDiscoverModels !== undefined)
           entry.autoDiscoverModels = input.autoDiscoverModels;
         if (input.apiKey) entry.apiKey = input.apiKey;
@@ -319,7 +326,11 @@ export function createProviderManageTool(
         });
         return {
           status: 'ok',
-          message: `✓ Added provider: ${input.provider} (type: ${input.type})`,
+          message: `✓ Added provider: ${input.provider} (type: ${input.type})${
+            Array.isArray(entry.envVars) && entry.envVars.length === 0 && !entry.apiKey
+              ? ' — no environment key is sent to this base URL; set one with provider_key_set'
+              : ''
+          }`,
         };
       }
 
@@ -357,9 +368,17 @@ export function createProviderManageTool(
           ...(input.apiKey !== undefined ? ['apiKey'] : []),
           ...(input.envVars !== undefined ? ['envVars'] : []),
         ]);
+        // `envVars` is dropped to the sentinel even when the previous entry
+        // never listed it: the common `{ type: 'anthropic' }` entry is keyed
+        // by the catalog preset alone, and skipping it re-armed that key for
+        // the new endpoint (WS-2026-09-26-01). A reset to the default endpoint
+        // (`baseUrl: ''`) points back at the vendor, so it adds no sentinel.
         const droppedFields = endpointChanged
           ? CREDENTIAL_SELECTOR_FIELDS.filter(
-              (field) => !explicitlySupplied.has(field) && previous[field] !== undefined,
+              (field) =>
+                !explicitlySupplied.has(field) &&
+                (previous[field] !== undefined ||
+                  (field === 'envVars' && entry.baseUrl !== undefined)),
             )
           : [];
         for (const field of droppedFields) {
@@ -370,6 +389,7 @@ export function createProviderManageTool(
           // that fallback (providers/src/index.ts honors the sentinel).
           entry[field] = field === 'envVars' ? [] : undefined;
         }
+        const clearedFields = droppedFields.filter((field) => previous[field] !== undefined);
 
         const borrowed = rejectBorrowedEnvVars(providers, input.provider, input.envVars);
         if (borrowed) throw new ToolValidationError({ message: borrowed, field: 'envVars' });
@@ -382,9 +402,11 @@ export function createProviderManageTool(
           .filter((k) => k !== 'apiKey')
           .join(', ');
         const keyNote =
-          droppedFields.length > 0
-            ? ` — cleared ${droppedFields.join(', ')} because the base URL changed; set the key again with provider_key_set`
-            : '';
+          clearedFields.length > 0
+            ? ` — cleared ${clearedFields.join(', ')} because the base URL changed; set the key again with provider_key_set`
+            : droppedFields.length > 0
+              ? ' — the environment key is not sent to the new base URL; set one with provider_key_set'
+              : '';
         return { status: 'ok', message: `✓ Updated ${input.provider}: ${updated}${keyNote}` };
       }
 

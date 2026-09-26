@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configValidatorPlugin = (await import('../src/config-validator')).default;
-const { validateJson, validateYaml, validateToml } = await import('../src/config-validator');
+const { validateJson, validateYaml, validateToml, validateDotEnv, isDotEnvFile } = await import(
+  '../src/config-validator'
+);
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -280,5 +282,56 @@ describe('config-validator plugin', () => {
       'config-validator: teardown complete',
       expect.any(Object),
     );
+  });
+});
+
+describe('validateYaml (parsed, not linted)', () => {
+  it('accepts application tags and multi-document streams', () => {
+    expect(validateYaml('Resources:\n  Bucket:\n    Name: !Ref BucketName\n')).toEqual([]);
+    expect(validateYaml('a: 1\n---\nb: 2\n')).toEqual([]);
+  });
+
+  it('reads every document of a stream', () => {
+    const problems = validateYaml('a: 1\n---\nb: 1\nb: 2\n');
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/duplicate key "b" at line 4/);
+  });
+
+  it('reports a syntax error with its position', () => {
+    expect(validateYaml('key: [1, 2\n')[0]).toMatch(/^YAML: .* at line \d+, column \d+$/);
+  });
+});
+
+describe('validateDotEnv', () => {
+  it('accepts assignments, exports, comments and multi-line quoted values', () => {
+    const text = [
+      '# comment',
+      'API_URL=https://example.com',
+      'export TOKEN=abc',
+      '',
+      'CERT="-----BEGIN',
+      'body',
+      '-----END"',
+      "SINGLE='x'",
+    ].join('\n');
+    expect(validateDotEnv(text)).toEqual([]);
+  });
+
+  it('names the line, never its text', () => {
+    const problems = validateDotEnv('OK=1\nsecret-value-without-key\n');
+    expect(problems).toEqual(['.env: line 2 is not KEY=value, a comment or empty']);
+    expect(problems.join('')).not.toContain('secret-value');
+  });
+
+  it('flags a quoted value that never closes', () => {
+    expect(validateDotEnv('A="open\nB=2\n')).toEqual([
+      '.env: the quoted value opened at line 1 is never closed',
+    ]);
+  });
+
+  it('recognizes dotenv file names', () => {
+    expect(isDotEnvFile('/repo/.env')).toBe(true);
+    expect(isDotEnvFile('C:\\repo\\.env.local')).toBe(true);
+    expect(isDotEnvFile('/repo/app.env.ts')).toBe(false);
   });
 });

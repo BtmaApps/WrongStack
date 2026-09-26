@@ -31,8 +31,17 @@
  *   - symlink target is outside the project
  */
 
-import { realpathSync } from 'node:fs';
+import { lstatSync, readlinkSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+
+/** The target text of `p` when it is a symlink, otherwise `undefined`. */
+function danglingLinkTarget(p: string): string | undefined {
+  try {
+    return lstatSync(p).isSymbolicLink() ? readlinkSync(p) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface SafePathOptions {
   /**
@@ -89,8 +98,20 @@ export function safePath(input: string, options: SafePathOptions = {}): string |
   return withinLexical(configuredRoot, lexical) ? lexical : null;
 }
 
-/** Canonicalize existing ancestors while preserving a new leaf path. */
-function realpathWithMissingLeaf(candidate: string): string | null {
+/** Symlink hops followed before giving up (the kernel's own ELOOP limit is 40). */
+const MAX_DANGLING_LINK_HOPS = 40;
+
+/**
+ * Canonicalize existing ancestors while preserving a new leaf path.
+ *
+ * A DANGLING symlink also fails realpath with ENOENT, but it is not a new
+ * file: `open(O_CREAT)` / `appendFile` follow it and create its target. Read
+ * as "missing", `<root>/notes.jsonl -> ~/.bash_login` was judged to be inside
+ * the project while the write landed in the user's shell profile
+ * (WS-2026-09-26-06). So a link found on the way is replaced by its target
+ * and resolution starts over from there.
+ */
+function realpathWithMissingLeaf(candidate: string, hops = 0): string | null {
   let current = candidate;
   const missing: string[] = [];
   while (true) {
@@ -100,6 +121,15 @@ function realpathWithMissingLeaf(candidate: string): string | null {
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT' && code !== 'ENOTDIR') return null;
+      const linkTarget = danglingLinkTarget(current);
+      if (linkTarget !== undefined) {
+        if (hops >= MAX_DANGLING_LINK_HOPS) return null;
+        const target = resolve(dirname(current), linkTarget);
+        return realpathWithMissingLeaf(
+          missing.reduceRight((parent, part) => join(parent, part), target),
+          hops + 1,
+        );
+      }
       const parent = dirname(current);
       if (parent === current) return null;
       missing.push(basename(current));

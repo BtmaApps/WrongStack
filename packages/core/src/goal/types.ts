@@ -58,6 +58,8 @@ export interface PhaseNode {
 
 export interface PhaseGraph {
   id: string;
+  /** Session that started this Goal run, retained when its graph is resumed. */
+  sessionId?: string | undefined;
   /** Project title. */
   title: string;
   description: string;
@@ -272,6 +274,8 @@ export interface PhaseExecutionContext {
   resolveConflict?:
     | ((phase: PhaseNode, info: { conflictFiles: string[]; cwd: string }) => Promise<boolean>)
     | undefined;
+  /** Session that owns this Goal run, captured at start rather than read after tab switches. */
+  sessionId?: string | undefined;
   /** Optional global Brain arbiter for the policy, decision, and escalation layer. */
   brain?: BrainArbiter | undefined;
   /** Called when a phase completes. */

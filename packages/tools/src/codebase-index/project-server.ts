@@ -21,6 +21,7 @@ import { recordWriteQueueWait } from './perf-metrics.js';
 import {
   PROJECT_INDEX_SERVER_PROTOCOL_VERSION,
   projectIndexServerBuildId,
+  projectIndexServerBuiltAt,
   projectIndexServerEndpoint,
   projectIndexServerMetadataPath,
 } from './project-server-endpoint.js';
@@ -114,6 +115,7 @@ const metadataWritten = new Promise<void>((resolve) => {
 const serverInfo: ProjectIndexServerInfo = {
   protocolVersion: PROJECT_INDEX_SERVER_PROTOCOL_VERSION,
   buildId: projectIndexServerBuildId(import.meta.url),
+  builtAt: projectIndexServerBuiltAt(import.meta.url),
   pid: process.pid,
   projectRoot,
   indexDir,
@@ -590,15 +592,33 @@ async function stop(_reason: string): Promise<void> {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
   clearInterval(clientLeaseTimer);
-  for (const state of clients) {
-    for (const cancel of state.cancel.values()) cancel();
-    state.socket.end();
+  // A failure in any teardown step must not skip metadata removal below or
+  // the socket close after it: the idle timer invokes stop() unawaited
+  // (`void stop(...)`), so an escaping rejection killed the process with the
+  // metadata file still on disk — a stale-server claim the next daemon then
+  // has to reclaim. Report the failure and keep shutting down gracefully.
+  try {
+    for (const state of clients) {
+      for (const cancel of state.cancel.values()) cancel();
+      state.socket.end();
+    }
+    activeFullIndex?.controller.abort(new Error('codebase-index server stopping'));
+    watcherManager.stop();
+    walMaintenance.dispose();
+    if (wiringPrewarmTimer) clearTimeout(wiringPrewarmTimer);
+    indexStorePool.closeAll();
+    // Fault-injection seam for the shutdown-ordering regression test
+    // (project-server-idle.test.ts): WRONGSTACK_INDEX_SERVER_FAULT=teardown-throw
+    // throws exactly where a real teardown failure would, before metadata
+    // removal — the daemon must still remove its metadata and exit cleanly.
+    if (process.env['WRONGSTACK_INDEX_SERVER_FAULT'] === 'teardown-throw') {
+      throw new Error('injected teardown failure');
+    }
+  } catch (error) {
+    process.stderr.write(
+      `codebase-index server teardown error: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
   }
-  activeFullIndex?.controller.abort(new Error('codebase-index server stopping'));
-  watcherManager.stop();
-  walMaintenance.dispose();
-  if (wiringPrewarmTimer) clearTimeout(wiringPrewarmTimer);
-  indexStorePool.closeAll();
   removeMetadataIfOwned(metadataPath, process.pid);
   await new Promise<void>((resolve) => {
     server.close(() => resolve());

@@ -28,7 +28,11 @@ import { activeProfileConfigPath } from '../profile-config-path.js';
  * here was rejected at save time with "Unknown theme preset". Deriving it
  * makes that class of drift impossible.
  */
-const VALID_PRESETS: ReadonlySet<ThemePresetId> = new Set<ThemePresetId>(THEME_PRESET_IDS);
+const VALID_PRESETS: ReadonlySet<string> = new Set(THEME_PRESET_IDS);
+
+function isThemePresetId(candidate: string): candidate is ThemePresetId {
+  return VALID_PRESETS.has(candidate);
+}
 
 interface ThemeAdapterDeps {
   configStore: ConfigStore;
@@ -52,10 +56,10 @@ export function createThemeAdapter({ configStore, wpaths }: ThemeAdapterDeps): T
     getThemePreset: () => {
       const live = configStore.get() as Pick<Config, 'themePreset'>;
       const candidate = live.themePreset;
-      return candidate && VALID_PRESETS.has(candidate) ? candidate : undefined;
+      return candidate && isThemePresetId(candidate) ? candidate : undefined;
     },
     saveThemePreset: async (preset: ThemePresetId) => {
-      if (!VALID_PRESETS.has(preset)) {
+      if (!isThemePresetId(preset)) {
         throw new Error(`Unknown theme preset: ${preset}`);
       }
       // Persist to disk first. A failed write must not leave the running UI

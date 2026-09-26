@@ -15,7 +15,7 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 848,
+      "lines": 850,
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
@@ -123,7 +123,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1252,
+      "lines": 1263,
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
@@ -199,12 +199,12 @@
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
-      "lines": 907,
-      "relativeImports": 66
+      "lines": 908,
+      "relativeImports": 67
     },
     "packages/providers/src/openai-codex.ts": {
-      "lines": 918,
-      "relativeImports": 22
+      "lines": 904,
+      "relativeImports": 21
     },
     "packages/requirement-intake/src/service.ts": {
       "lines": 815,
@@ -243,7 +243,7 @@
       "relativeImports": 19
     },
     "packages/tools/src/bash.ts": {
-      "lines": 895,
+      "lines": 894,
       "relativeImports": 9
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
@@ -255,7 +255,7 @@
       "relativeImports": 13
     },
     "packages/tools/src/codebase-index/project-server-client.ts": {
-      "lines": 877,
+      "lines": 882,
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/writer.ts": {
@@ -279,7 +279,7 @@
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 933,
+      "lines": 939,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -287,16 +287,16 @@
       "relativeImports": 10
     },
     "packages/tui/src/components/settings-picker.tsx": {
-      "lines": 856,
+      "lines": 864,
       "relativeImports": 12
     },
     "packages/tui/src/reducers/settings-values.ts": {
-      "lines": 880,
+      "lines": 885,
       "relativeImports": 6
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 950,
-      "relativeImports": 51
+      "lines": 997,
+      "relativeImports": 52
     },
     "packages/vector-memory/src/store.ts": {
       "lines": 810,
@@ -335,8 +335,8 @@
       "relativeImports": 0
     },
     "packages/webui/src/hooks/ws-handlers.ts": {
-      "lines": 916,
-      "relativeImports": 8
+      "lines": 923,
+      "relativeImports": 9
     },
     "packages/webui/src/lib/fonts.ts": {
       "lines": 873,
@@ -359,7 +359,7 @@
       "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 969,
+      "lines": 972,
       "relativeImports": 56
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {

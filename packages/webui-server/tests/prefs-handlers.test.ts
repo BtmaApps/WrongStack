@@ -26,7 +26,7 @@ function makeContext() {
     snapshot: () => ({ ...meta }),
     persist,
     pendingConfirms: new Map(),
-    configStore: { update: updateConfig } as never,
+    configStore: { get: () => ({ features: { memory: true } }), update: updateConfig } as never,
     setYolo,
     setAutonomy,
     applyConfigPrefs,
@@ -51,6 +51,15 @@ function makeContext() {
 }
 
 describe('canonical preference handlers', () => {
+  it('updates the live shared config when Tool Coach is switched off', async () => {
+    const state = makeContext();
+    await handlePrefsUpdate(state.context, ws, { featureToolCoach: false });
+    expect(state.persist).toHaveBeenCalledWith({ featureToolCoach: false });
+    expect(state.updateConfig).toHaveBeenCalledWith({
+      features: { memory: true, toolCoach: false },
+    });
+    expect(state.meta['featureToolCoach']).toBe(false);
+  });
   it('returns the live preference snapshot', () => {
     const { context, meta, sent } = makeContext();
     meta['autonomy'] = 'auto';

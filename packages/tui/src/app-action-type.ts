@@ -209,6 +209,11 @@ export type Action =
   | { type: 'themePickerClose' }
   | { type: 'themePickerMove'; delta: number }
   | { type: 'themePickerHint'; text?: string | undefined }
+  | { type: 'themePickerFilter'; text: string }
+  | { type: 'themePickerFilterMode'; on: boolean }
+  | { type: 'themePickerPreview'; on: boolean }
+  | { type: 'themePickerUndo' }
+  | { type: 'themePickerSwapPrevious' }
   | {
       type: 'skillPickerOpen';
       entries: SkillEntry[];
@@ -360,6 +365,7 @@ export type Action =
       featureMemory: boolean;
       featureSkills: boolean;
       featureModelsRegistry: boolean;
+      featureToolCoach: boolean;
       tokenSavingTier: TokenSavingTier;
       allowOutsideProjectRoot: boolean;
       contextAutoCompact: boolean;

@@ -39,6 +39,7 @@ export interface SimplePrefs {
   subagentsPolicyLocked: boolean;
   autonomy: AutonomyMode;
   yolo: boolean;
+  featureToolCoach: boolean;
   enhanceEnabled: boolean;
   /** Pre-refine grace countdown (seconds). 0 = skip. */
   preRefineSeconds: number;
@@ -59,6 +60,7 @@ export const DEFAULT_PREFS: SimplePrefs = {
   subagentsPolicyLocked: false,
   autonomy: 'off',
   yolo: false,
+  featureToolCoach: true,
   enhanceEnabled: false,
   preRefineSeconds: 3,
   showModelReasoning: true,
@@ -96,6 +98,7 @@ export function parsePrefs(payload: unknown, previous: SimplePrefs = DEFAULT_PRE
         // than misrepresenting the running mode as `off`.
         previous.autonomy,
     yolo: bool(raw['yolo'], previous.yolo),
+    featureToolCoach: bool(raw['featureToolCoach'], previous.featureToolCoach),
     enhanceEnabled: bool(raw['enhanceEnabled'], previous.enhanceEnabled),
     preRefineSeconds:
       typeof raw['preRefineSeconds'] === 'number' && raw['preRefineSeconds'] >= 0

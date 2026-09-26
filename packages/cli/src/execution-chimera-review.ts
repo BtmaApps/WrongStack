@@ -63,6 +63,37 @@ export function normalizeFileKeyForCitation(raw: string, cwd: string): string {
   return process.platform === 'win32' ? relative.toLowerCase() : relative;
 }
 
+/**
+ * Operator-facing store-maintenance knobs, read live from `config` so a hot
+ * config edit is picked up on the next review completion. Deliberately narrower
+ * than core's `ReviewStoreMaintenanceOptions`: the CLI owns *reading config*,
+ * core owns *interpreting it* (day→ms, `0` = disabled, garbage = default).
+ */
+type ChimeraStoreMaintenanceOptions = {
+  /** Cap for non-terminal (`open`/`actioned`) review rows, in days. */
+  openRetentionDays?: number | undefined;
+  /** Cap for non-terminal (`active`/`triaged`/`in_progress`) findings, in days. */
+  activeRetentionDays?: number | undefined;
+};
+
+/**
+ * `config.extensions['wstack-chimera'].openRetentionDays` and
+ * `...activeRetentionDays` — whole-day caps for the bounded-retention sweeps of
+ * non-terminal review rows and non-terminal findings respectively.
+ *
+ * `extensions` is typed `Record<string, unknown>` at the source, so the value is
+ * unvalidated user input: a string, `null`, a negative number or `NaN` must not
+ * reach core as a usable cap. Anything that is not a finite non-negative number
+ * is reported as unset, which leaves the decision to core's default rather than
+ * silently picking a policy here.
+ */
+function readPositiveNumber(config: Config, key: string): number | undefined {
+  const raw = (config.extensions as Record<string, Record<string, unknown>> | undefined)?.[
+    'wstack-chimera'
+  ]?.[key];
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : undefined;
+}
+
 type InstallChimeraReviewHandlerOptions = {
   events: Events;
   director: Director | null | undefined;
@@ -80,8 +111,17 @@ type InstallChimeraReviewHandlerOptions = {
    * `packages/core/src/coordination/provider-status-tracker.ts`.
    */
   statusTracker?: ProviderModelStatusTracker | undefined;
+  /**
+   * Persistence seam, injectable for tests. The third argument carries the
+   * operator's store-maintenance knobs resolved from `config` at call time, so
+   * a hot config edit applies to the next completion. Test doubles may ignore it.
+   */
   persistReview?:
-    | ((payload: ChimeraReviewCompletePayload, projectDir: string) => Promise<void>)
+    | ((
+        payload: ChimeraReviewCompletePayload,
+        projectDir: string,
+        maintenance?: ChimeraStoreMaintenanceOptions,
+      ) => Promise<void>)
     | undefined;
   trackWork: (work: Promise<void>) => void;
   /** Optional session-teardown chain — the wildcard listener disposer is
@@ -162,7 +202,12 @@ export function installChimeraReviewHandler({
         completion: ChimeraReviewCompletePayload,
       ): Promise<void> => {
         try {
-          await persistReview(completion, projectDir);
+          await persistReview(completion, projectDir, {
+            // Read per completion, not once at install time, so an operator
+            // editing either key takes effect without a restart.
+            openRetentionDays: readPositiveNumber(config, 'openRetentionDays'),
+            activeRetentionDays: readPositiveNumber(config, 'activeRetentionDays'),
+          });
           events.emitCustom('chimera.review_persisted', {
             reportId: completion.reportId,
             sessionId: completion.sessionId,
@@ -594,6 +639,7 @@ export function installChimeraReviewHandler({
 async function persistChimeraReview(
   payload: ChimeraReviewCompletePayload,
   projectDir: string,
+  maintenance: ChimeraStoreMaintenanceOptions = {},
 ): Promise<void> {
   const reportId = payload.reportId;
   if (!reportId) throw new Error('Chimera completion is missing reportId');
@@ -604,7 +650,7 @@ async function persistChimeraReview(
   await integrateFindings(payload, projectDir, reportId);
 
   try {
-    await maybeCompactReviewStores(projectDir);
+    await maybeCompactReviewStores(projectDir, maintenance);
   } catch (error) {
     console.error(
       JSON.stringify({

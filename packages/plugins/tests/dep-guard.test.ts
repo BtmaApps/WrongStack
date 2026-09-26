@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const depGuardPlugin = (await import('../src/dep-guard/index.js')).default;
 const { parseInstallCommands, editDistance, typosquatOf } = await import(
@@ -48,8 +48,127 @@ function getHook(
   return (call as unknown[])[2] as ReturnType<typeof getHook>;
 }
 
+/**
+ * The registry check is on by default. Tests never reach the network: this
+ * stub answers every registry as an established package with no advisories,
+ * so the offline-check expectations below are unaffected. Registry tests
+ * install their own stub.
+ */
+function registryStub(
+  answer: (url: string) => { status: number; body?: unknown } = (url) =>
+    url.includes('osv.dev')
+      ? { status: 200, body: { vulns: [] } }
+      : {
+          status: 200,
+          body: { time: { created: '2015-01-01T00:00:00Z' }, 'dist-tags': { latest: '1.0.0' } },
+        },
+): ReturnType<typeof vi.fn> {
+  return vi.fn(async (url: string | URL) => {
+    const { status, body } = answer(String(url));
+    return new Response(body === undefined ? null : JSON.stringify(body), { status });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal('fetch', registryStub());
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('registry check (hallucinated / just-published / vulnerable packages)', () => {
+  const DAY = 86_400_000;
+  async function runInstall(command: string, extensions: Record<string, unknown> = {}) {
+    const api = makeApi({ extensions: { 'dep-guard': extensions } });
+    depGuardPlugin.setup(api as never);
+    return getHook(api)({ toolName: 'bash', toolInput: { command } });
+  }
+
+  it('refuses a package first published days ago (block mode)', async () => {
+    const created = new Date(Date.now() - 2 * DAY).toISOString();
+    vi.stubGlobal(
+      'fetch',
+      registryStub((url) =>
+        url.includes('osv.dev')
+          ? { status: 200, body: { vulns: [] } }
+          : { status: 200, body: { time: { created }, 'dist-tags': { latest: '0.0.1' } } },
+      ),
+    );
+    const out = await runInstall('pnpm add react-query-utilz');
+    expect(out?.decision).toBe('block');
+    expect(out?.reason).toMatch(/first published 2 day\(s\) ago/);
+    expect(out?.reason).toMatch(/allow/);
+  });
+
+  it('only warns about a just-published package in warn mode', async () => {
+    const created = new Date(Date.now() - DAY).toISOString();
+    vi.stubGlobal(
+      'fetch',
+      registryStub((url) =>
+        url.includes('osv.dev')
+          ? { status: 200, body: { vulns: [] } }
+          : { status: 200, body: { time: { created } } },
+      ),
+    );
+    const out = await runInstall('npm i fresh-pkg', { mode: 'warn' });
+    expect(out?.decision).toBe('allow');
+    expect(out?.additionalContext).toMatch(/fresh-pkg.*first published/);
+  });
+
+  it('flags a name the registry does not know, without blocking', async () => {
+    vi.stubGlobal(
+      'fetch',
+      registryStub(() => ({ status: 404 })),
+    );
+    const out = await runInstall('pip install reqeusts-oauthlibx');
+    expect(out?.decision).toBe('allow');
+    expect(out?.additionalContext).toMatch(/no package named "reqeusts-oauthlibx".*hallucinated/);
+  });
+
+  it('flags a pinned version with OSV advisories', async () => {
+    vi.stubGlobal(
+      'fetch',
+      registryStub((url) =>
+        url.includes('osv.dev')
+          ? { status: 200, body: { vulns: [{ id: 'GHSA-p6mc-m468-83gw' }] } }
+          : { status: 200, body: { time: { created: '2012-01-01T00:00:00Z' } } },
+      ),
+    );
+    const out = await runInstall('npm i lodash@4.17.15');
+    expect(out?.decision).toBe('allow');
+    expect(out?.additionalContext).toMatch(
+      /lodash@4\.17\.15 has known advisories: GHSA-p6mc-m468-83gw/,
+    );
+  });
+
+  it('fails open when the registry cannot answer', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('fetch failed');
+      }),
+    );
+    const out = await runInstall('pnpm add zod');
+    expect(out?.decision).toBe('allow');
+    expect(out?.additionalContext).toMatch(/registry check did not run for: zod \(fetch failed\)/);
+  });
+
+  it('does not ask about allow-listed packages or workspace protocols', async () => {
+    const fetchSpy = registryStub(() => ({ status: 404 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await runInstall('pnpm add internal-lib @me/core@workspace:*', { allow: ['internal-lib'] });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('can be switched off', async () => {
+    const fetchSpy = registryStub(() => ({ status: 404 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const out = await runInstall('npm i whatever', { registryCheck: false });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(out?.additionalContext).toMatch(/adds 1 dependency/);
+  });
 });
 
 describe('install parsing reaches past launchers, grouping and newlines', () => {
@@ -204,13 +323,71 @@ describe('typosquat detection', () => {
 });
 
 describe('dep-guard plugin', () => {
-  it('registers dep_guard_status and a PreToolUse bash|exec hook', async () => {
+  it('registers dep_guard_status and a PreToolUse hook on every tool', async () => {
+    // Every tool, not `bash|exec`: shell-surface plugin tools (workflow
+    // recipes, acceptance checks, upgrade sandboxes) run installs too, and a
+    // name list would miss the next one (WS-2026-09-26-03).
     const api = makeApi();
     depGuardPlugin.setup(api as never);
     expect(api.tools.register).toHaveBeenCalledTimes(1);
     const [event, matcher] = api.registerHook.mock.calls[0]!;
     expect(event).toBe('PreToolUse');
-    expect(matcher).toBe('bash|exec');
+    expect(matcher).toBe('*');
+  });
+
+  it.each([
+    ['exec argv', 'exec', { command: 'npm', args: ['install', 'left-pad'] }],
+    [
+      'workflow command',
+      'workspace_recipe_run',
+      { command: { program: 'npm', args: ['i', 'left-pad'] } },
+    ],
+    [
+      'nested workflow check',
+      'dependency_upgrade_try',
+      {
+        checks: [
+          { program: 'pnpm', args: ['test'] },
+          { program: 'pnpm', args: ['add', 'left-pad'] },
+        ],
+      },
+    ],
+  ])('blocks a deny-listed install in the %s shape', async (_label, toolName, toolInput) => {
+    const api = makeApi({ extensions: { 'dep-guard': { deny: ['left-pad'] } } });
+    depGuardPlugin.setup(api as never);
+    const result = await getHook(api)({ toolName, toolInput });
+    expect(result?.decision).toBe('block');
+  });
+
+  it('refuses to certify a call whose command scan was truncated (deny buried past the budget)', async () => {
+    const api = makeApi({ extensions: { 'dep-guard': { deny: ['left-pad'] } } });
+    depGuardPlugin.setup(api as never);
+    const hook = getHook(api);
+    // 12 nesting levels > MAX_COMMAND_SCAN_DEPTH (8): the walk stops before
+    // reading the install, so only the discarded `truncated` flag knew.
+    let buried: Record<string, unknown> = { program: 'npm', args: ['install', 'left-pad'] };
+    for (let i = 0; i < 12; i++) buried = { buried };
+    const result = await hook({ toolName: 'workspace_recipe_run', toolInput: buried });
+    expect(result?.decision).toBe('block');
+    expect(result?.reason).toContain('incomplete scan');
+  });
+
+  it('warn mode annotates a truncated scan instead of passing it silently', async () => {
+    const api = makeApi({ extensions: { 'dep-guard': { deny: ['left-pad'], mode: 'warn' } } });
+    depGuardPlugin.setup(api as never);
+    const hook = getHook(api);
+    let buried: Record<string, unknown> = { program: 'npm', args: ['install', 'left-pad'] };
+    for (let i = 0; i < 12; i++) buried = { buried };
+    const result = await hook({ toolName: 'workspace_recipe_run', toolInput: buried });
+    expect(result?.decision).toBe('allow');
+    expect(result?.additionalContext).toContain('TRUNCATED');
+  });
+
+  it('ignores tools with no command line at all', async () => {
+    const api = makeApi({ extensions: { 'dep-guard': { deny: ['left-pad'] } } });
+    depGuardPlugin.setup(api as never);
+    const hook = getHook(api);
+    expect(await hook({ toolName: 'read', toolInput: { path: 'left-pad.md' } })).toBeUndefined();
   });
 
   it('passes through non-install commands silently', async () => {

@@ -65,6 +65,7 @@ describe('DefaultConfigLoader', () => {
     expect(cfg.context.softThreshold).toBe(0.75);
     expect(cfg.tools.maxIterations).toBe(0);
     expect(cfg.features.mcp).toBe(true);
+    expect(cfg.features.toolCoach).toBe(true);
     expect(cfg.mcpServers).toEqual({});
 
     // Bootstrap config only stores version + activeProfile
@@ -81,6 +82,7 @@ describe('DefaultConfigLoader', () => {
     expect(written.maxConcurrent).toBe(10);
     expect(written.context.mode).toBe('balanced');
     expect(written.context.strategy).toBe('hybrid');
+    expect(written.features.toolCoach).toBe(true);
     expect(written.autonomy.defaultMode).toBe('auto');
     expect(written.autonomy.autoProceedDelayMs).toBe(15_000);
     expect(written.autonomy.enhanceDelayMs).toBe(15_000);

@@ -144,3 +144,40 @@ it('distinguishes blocked features from diagnostic evidence and sends explicit c
   expect(client.send.mock.calls.at(-1)?.[0].payload.patch.contextStrategy).toBe('selective');
   expect(client.send.mock.calls.at(-1)?.[0].payload.patch.recallTurnContext).toBe(true);
 });
+
+it('round-trips the content-logging switch through jev.set', () => {
+  render(<JevSection />);
+  const requestId = client.send.mock.calls[0]?.[0].payload.requestId;
+  const settings = {
+    status: 'ready',
+    route: 'typesafe',
+    keySource: 'config',
+    endpoint: 'https://api.typesafe.ai/v1/systemone',
+    model: 'jev-latest',
+    requestTimeoutMs: 4000,
+    logContent: false,
+    features: { tool: true },
+  };
+  act(() =>
+    handlers.get('jev.state')?.({ payload: { requestId, settings, activity: { entries: [] } } }),
+  );
+  const toggle = screen.getByLabelText('settings:jev.logContent') as HTMLInputElement;
+  expect(toggle.checked).toBe(false);
+  fireEvent.click(toggle);
+  fireEvent.click(screen.getByText('settings:jev.save'));
+  const sent = client.send.mock.calls.at(-1)?.[0];
+  expect(sent.type).toBe('jev.set');
+  expect(sent.payload.patch.logContent).toBe(true);
+  // The correlated jev.state is what makes the server's value authoritative.
+  act(() =>
+    handlers.get('jev.state')?.({
+      payload: { requestId: sent.payload.requestId, settings: { ...settings, logContent: true } },
+    }),
+  );
+  expect((screen.getByLabelText('settings:jev.logContent') as HTMLInputElement).checked).toBe(true);
+  // Turning it back off sends false rather than dropping the field, so a
+  // profile that had it on is actually cleared.
+  fireEvent.click(screen.getByLabelText('settings:jev.logContent'));
+  fireEvent.click(screen.getByText('settings:jev.save'));
+  expect(client.send.mock.calls.at(-1)?.[0].payload.patch.logContent).toBe(false);
+});

@@ -55,8 +55,8 @@ import {
   sanitizeApiError,
 } from './hq-server/routes.js';
 import { createHqServerShutdown } from './hq-server/server-lifecycle.js';
-import { createHqSocketCredentialEnforcer } from './hq-server/socket-credentials.js';
 import * as HqServerSnapshot from './hq-server/snapshot.js';
+import { createHqSocketCredentialEnforcer } from './hq-server/socket-credentials.js';
 import { writeHqRuntimeMarker, writeHqStartupInfo } from './hq-server/startup.js';
 import type { ConnectedClient, HqSessionEntry, TranscriptRing } from './hq-server/types.js';
 import { handleHqConnection, handleHqUpgrade } from './hq-server/upgrade-handler.js';
@@ -238,6 +238,8 @@ async function startHqServerWithAuth(
     // the revocation close loop can target the affected browsers instead of
     // every browser. Populated at connection time by the upgrade handoff.
     const browserSocketSessions = new Map<WebSocket, string>();
+    // H-3: the token behind each bare `?token=` browser socket (no session).
+    const browserSocketTokenKeys = new Map<WebSocket, string>();
     const browsers = new Set<WebSocket>();
     const sessions = new Map<string, HqSessionEntry>();
     // W4 #15: a revoked browser token has to evacuate sockets that are ALREADY
@@ -248,6 +250,7 @@ async function startHqServerWithAuth(
       sessions,
       browsers,
       browserSocketSessions,
+      browserSocketTokenKeys,
       clientSocketTokens,
     });
     revokeBrowserSessions = (keys, ids) => socketCredentials.announceRevokedTokens(keys, ids);
@@ -532,6 +535,7 @@ async function startHqServerWithAuth(
       clients,
       clientSocketTokens,
       browserSocketSessions,
+      browserSocketTokenKeys,
       browsers,
       eventLog,
       transcripts,

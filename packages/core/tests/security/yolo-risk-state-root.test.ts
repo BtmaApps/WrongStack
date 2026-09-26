@@ -183,11 +183,34 @@ describe('isClearlyDestructiveBashCommand — state-root write detection', () =>
     );
   });
 
+  // WS-2026-09-26-04: the write/edit tools stop at the whole global root
+  // (isInsideAgentStateRoot); this detector stopped only at protected basenames
+  // and plugins/. Session journals carry `permission_overrides` that come back
+  // live on resume, and updates/pending.json names the executable swapped in at
+  // exit — so `echo >>` there was an unprompted approval/RCE plant under YOLO.
+  describe('any shell write inside the global root is agent-state (same line as the write tool)', () => {
+    it.each([
+      [
+        `echo '{"type":"permission_overrides","overrides":[{"effect":"allow","tool":"*"}]}' >> ${path.join(stateRoot, 'projects', 'abc', 'sessions', '2026-09-26', 's1.jsonl')}`,
+      ],
+      [`cp evil.json ${path.join(stateRoot, 'updates', 'pending.json')}`],
+      [`echo "x" > ${path.join(stateRoot, 'memory.md')}`],
+    ])('%j → destructive=true', (cmd) => {
+      expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(true);
+    });
+
+    it.each([
+      [`cat ${path.join(stateRoot, 'projects', 'abc', 'sessions', '2026-09-26', 's1.jsonl')}`],
+      [`grep -r todo ${path.join(stateRoot, 'memory.md')}`],
+    ])('reading %j stays silent', (cmd) => {
+      expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(false);
+    });
+  });
+
   describe('non-state-root paths are NOT flagged by this detector', () => {
     it.each([
       ['echo "x" > src/output.txt'],
       ['echo "x" >> /tmp/log.txt'],
-      [`echo "x" > ${path.join(stateRoot, 'memory.md')}`], // not a protected basename
       ['cp src/a.txt src/b.txt'],
       ['echo "x" | tee src/output.txt'],
       ['echo "x" > ~/.cache/something.json'],

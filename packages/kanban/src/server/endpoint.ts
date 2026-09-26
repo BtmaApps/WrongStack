@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
+import { privateEndpointKey } from '@wrongstack/persistence';
 
 import { KANBAN_PROJECT_SERVER_PROTOCOL_VERSION } from './protocol.js';
 
@@ -33,7 +34,8 @@ function projectKey(projectRoot: string): string {
  * `ensureParentDir` in project-server.ts.
  */
 export function kanbanProjectServerEndpoint(projectRoot: string): string {
-  const key = projectKey(projectRoot);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(projectKey(projectRoot));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-kanban-v${KANBAN_PROJECT_SERVER_PROTOCOL_VERSION}-${key}`;
   }

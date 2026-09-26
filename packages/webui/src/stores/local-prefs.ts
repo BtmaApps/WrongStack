@@ -350,7 +350,10 @@ export const useLocalPrefs = create<LocalPrefs>()(
         ) {
           p.chimeraMaxFiles = 15;
         }
-        if (typeof p.autoReviewEnabled !== 'boolean') p.autoReviewEnabled = false;
+        // Default-on (2026-09): mirrors the plugin's `cfg.enabled !== false`
+        // resolver semantics — only absent/invalid values fall back to true;
+        // an explicitly persisted false is honored verbatim.
+        if (typeof p.autoReviewEnabled !== 'boolean') p.autoReviewEnabled = true;
         if (typeof p.autoReviewProvider !== 'string') p.autoReviewProvider = '';
         if (typeof p.autoReviewModel !== 'string') p.autoReviewModel = '';
         if (typeof p.autoReviewFallbackProfile !== 'string') p.autoReviewFallbackProfile = '';
@@ -385,12 +388,15 @@ export const useLocalPrefs = create<LocalPrefs>()(
         ) {
           p.autoReviewMaxConcurrentReviews = 2;
         }
+        // Cascade severity threshold: 'off' | 'critical' | 'high' all remain
+        // valid persisted values; only absent/invalid input falls back to the
+        // default-on 'high' (inclusive threshold).
         if (
           p.autoReviewCascadeOn !== 'off' &&
           p.autoReviewCascadeOn !== 'critical' &&
           p.autoReviewCascadeOn !== 'high'
         ) {
-          p.autoReviewCascadeOn = 'off';
+          p.autoReviewCascadeOn = 'high';
         }
         // v11: new boolean flags — backfill with defaults
         if (typeof p.showModelReasoning !== 'boolean') p.showModelReasoning = true;

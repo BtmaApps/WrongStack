@@ -79,7 +79,7 @@ describe('resolveChimeraConfig', () => {
       fallbackModels: [],
       maxFiles: 15,
       autoFix: 'off',
-      cascadeOn: 'off',
+      cascadeOn: 'high',
       maxCascadeDepth: 2,
     });
     expect(
@@ -91,7 +91,7 @@ describe('resolveChimeraConfig', () => {
       fallbackModels: [],
       maxFiles: 3,
       autoFix: 'off',
-      cascadeOn: 'off',
+      cascadeOn: 'high',
       maxCascadeDepth: 2,
     });
   });
@@ -112,7 +112,7 @@ describe('resolveChimeraConfig', () => {
       fallbackModels: ['anthropic/claude-sonnet', 'openai/gpt-4o'],
       maxFiles: 15,
       autoFix: 'off',
-      cascadeOn: 'off',
+      cascadeOn: 'high',
       maxCascadeDepth: 2,
     });
   });
@@ -138,7 +138,7 @@ describe('resolveChimeraConfig', () => {
       fallbackProfile: undefined,
       maxFiles: 15,
       autoFix: 'off',
-      cascadeOn: 'off',
+      cascadeOn: 'high',
       maxCascadeDepth: 2,
     });
   });

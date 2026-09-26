@@ -30,9 +30,9 @@ export function registerSetupEventsPatternHandlers(options: {
    * and a frozen cron table. Unstamped frames reach every connection, which
    * is what a project-wide fact needs.
    *
-   * Only for events whose consumers are genuinely global. `chimera.*`,
-   * `brain.*` and `memory.*` keep the stamp — their handlers address the
-   * lane the id names.
+   * Only for events whose consumers are genuinely global. `chimera.*` and
+   * `memory.*` retain the helper's stamp; Brain events require the emitter's
+   * own session id, because the current runtime session may be another tab.
    */
   const projectWide = (payload: unknown): Record<string, unknown> => {
     const { sessionId: _dropped, ...rest } = (payload ?? {}) as Record<string, unknown>;
@@ -70,9 +70,14 @@ export function registerSetupEventsPatternHandlers(options: {
       });
     }),
     events.onPattern('brain.*', (eventName, payload) => {
+      const eventPayload = payload as Record<string, unknown> | null;
+      const sessionId = eventPayload?.['sessionId'];
+      // The runtime's current session is not necessarily the producer's session.
+      // Do not substitute it (or broadcast globally) when the emitter has no owner.
+      if (typeof sessionId !== 'string' || !sessionId.trim()) return;
       broadcast(clients, {
         type: 'brain.event',
-        payload: sessionPayload({ event: eventName, ...(payload as Record<string, unknown>) }),
+        payload: { event: eventName, ...eventPayload },
       } as never as WSServerMessage);
     }),
     events.onPattern('memory.*', (eventName, payload) => {

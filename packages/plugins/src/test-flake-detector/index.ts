@@ -6,6 +6,12 @@
  * - `flake_detect` : run a test command N times and identify flaky tests
  * - `flake_status` : show config + per-session counters
  *
+ * Hook registered (`passiveMemory`):
+ * - PostToolUse on `bash|exec`: every test run the agent makes is remembered
+ *   against a fingerprint of the working tree. When a test fails that the
+ *   identical command passed on the identical code earlier, the model is told
+ *   it may be a flake — before it changes code for it (`memory.ts`).
+ *
  * Config (`config.extensions['test-flake-detector']`):
  *
  * ```jsonc
@@ -13,7 +19,8 @@
  *   "enabled": true,
  *   "defaultCommand": "npx vitest run", // used when flake_detect.command is omitted
  *   "maxRuns": 20,                      // hard upper bound for runs param
- *   "timeoutMs": 120000                 // per-run timeout
+ *   "timeoutMs": 120000,                // per-run timeout
+ *   "passiveMemory": true               // remember test runs of bash/exec (see above)
  * }
  * ```
  *
@@ -24,9 +31,18 @@ import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { shellCommandLinesFromInput } from '@wrongstack/core/security';
+import { type HookInput, type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { withinProject } from '../runtime/index.js';
+import {
+  FlakyMemory,
+  flakyNote,
+  isTestCommand,
+  parseFailedTests,
+  runCompleted,
+  treeFingerprint,
+} from './memory.js';
 
 const API_VERSION = '^0.1.10';
 
@@ -62,6 +78,12 @@ const state: FlakeDetectState = {
   lastResult: null,
 };
 
+/** Test runs the agent made through bash/exec, keyed by tree fingerprint + command. */
+const memory = new FlakyMemory();
+let memoryHookUnregister: (() => void) | null = null;
+let passiveRunsSeen = 0;
+let passiveFlakyNotes = 0;
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -71,6 +93,7 @@ interface FlakeDetectConfig {
   defaultCommand: string;
   maxRuns: number;
   timeoutMs: number;
+  passiveMemory: boolean;
 }
 
 const DEFAULTS: FlakeDetectConfig = {
@@ -78,6 +101,7 @@ const DEFAULTS: FlakeDetectConfig = {
   defaultCommand: 'npx vitest run',
   maxRuns: 20,
   timeoutMs: 120_000,
+  passiveMemory: true,
 };
 
 function readConfig(raw: unknown): FlakeDetectConfig {
@@ -95,6 +119,7 @@ function readConfig(raw: unknown): FlakeDetectConfig {
       typeof r['timeoutMs'] === 'number' && r['timeoutMs'] > 0
         ? r['timeoutMs']
         : DEFAULTS.timeoutMs,
+    passiveMemory: r['passiveMemory'] !== false,
   };
 }
 
@@ -314,7 +339,7 @@ const plugin: Plugin = {
   description:
     'Runs a test command multiple times and reports tests that fail non-deterministically',
   apiVersion: API_VERSION,
-  capabilities: { tools: true },
+  capabilities: { tools: true, hooks: true },
   defaultConfig: { ...DEFAULTS },
   configSchema: {
     type: 'object',
@@ -342,6 +367,12 @@ const plugin: Plugin = {
         default: 120_000,
         description: 'Per-run timeout in milliseconds.',
       },
+      passiveMemory: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Remember every bash/exec test run against a fingerprint of the working tree, and flag a failing test the identical command passed on the same code earlier.',
+      },
     },
   },
 
@@ -351,8 +382,39 @@ const plugin: Plugin = {
     state.runCount = 0;
     state.errorCount = 0;
     state.lastResult = null;
+    memory.clear();
+    passiveRunsSeen = 0;
+    passiveFlakyNotes = 0;
+    memoryHookUnregister?.();
+    memoryHookUnregister = null;
 
     const cfg = readConfig(api.config.extensions?.['test-flake-detector']);
+
+    if (cfg.enabled && cfg.passiveMemory) {
+      memoryHookUnregister = api.registerHook(
+        'PostToolUse',
+        'bash|exec',
+        (async (input: HookInput) => {
+          const command = shellCommandLinesFromInput(
+            (input.toolInput ?? {}) as Record<string, unknown>,
+          ).lines.join('\n');
+          if (!command || !isTestCommand(command)) return;
+          const output = input.toolResult?.content ?? '';
+          // A run that never reached its summary (crash, timeout) says
+          // nothing about which tests pass.
+          if (!runCompleted(output)) return;
+          const fingerprint = await treeFingerprint(input.cwd);
+          if (!fingerprint) return;
+          passiveRunsSeen += 1;
+          const findings = memory.record(fingerprint, command, parseFailedTests(output));
+          if (findings.length === 0) return;
+          passiveFlakyNotes += 1;
+          api.metrics.counter('passive_flaky_notes');
+          return { additionalContext: flakyNote(findings) };
+        }) as never,
+        { name: 'test-flake-detector:memory' },
+      );
+    }
 
     // --- flake_detect tool ---
     api.tools.register({
@@ -510,10 +572,14 @@ const plugin: Plugin = {
           defaultCommand: cfg.defaultCommand,
           maxRuns: cfg.maxRuns,
           timeoutMs: cfg.timeoutMs,
+          passiveMemory: cfg.passiveMemory,
           counters: {
             invocations: state.invocationCount,
             runs: state.runCount,
             errors: state.errorCount,
+            passiveRunsSeen,
+            passiveFlakyNotes,
+            rememberedKeys: memory.size,
           },
           lastResult: state.lastResult,
         };
@@ -537,6 +603,9 @@ const plugin: Plugin = {
     state.runCount = 0;
     state.errorCount = 0;
     state.lastResult = null;
+    memoryHookUnregister?.();
+    memoryHookUnregister = null;
+    memory.clear();
     api.log.info('test-flake-detector: teardown complete', { final });
   },
 

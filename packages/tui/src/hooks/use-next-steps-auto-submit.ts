@@ -21,6 +21,11 @@ import {
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
+import {
+  createFailedRunTracker,
+  FAILED_RUN_CONTINUE_PROMPT,
+  type FailedRunTracker,
+} from './failed-run-tracker.js';
 
 interface NextStepsAutoSubmitOptions {
   state: State;
@@ -44,10 +49,12 @@ interface AutoProceedCandidateInput {
   autoSuggestions?: readonly string[] | undefined;
   yolo?: boolean | undefined;
   autonomyNextPrompt?: string | undefined;
+  /** The last run died on a retryable provider failure (see failed-run-tracker). */
+  failedRun?: boolean | undefined;
 }
 
 interface AutoProceedCandidate {
-  source: 'todo' | 'suggestion' | 'auto-suggestion';
+  source: 'todo' | 'suggestion' | 'auto-suggestion' | 'failed-run';
   prompt: string;
   label: string;
   todoId?: string | undefined;
@@ -73,6 +80,7 @@ export function selectAutoProceedCandidate({
   autoSuggestions = [],
   yolo = false,
   autonomyNextPrompt,
+  failedRun = false,
 }: AutoProceedCandidateInput): AutoProceedCandidate | null {
   const todo = resolveContinuation({ todos, suggestions: [] });
   if (todo.source === 'todo') {
@@ -90,7 +98,16 @@ export function selectAutoProceedCandidate({
   }
 
   const suggestion = suggestions.find((item) => item.trim().length > 0)?.trim();
-  return suggestion ? { source: 'suggestion', prompt: suggestion, label: suggestion } : null;
+  if (suggestion) return { source: 'suggestion', prompt: suggestion, label: suggestion };
+  // Last resort: a run an API error killed with nothing else to go on. Without
+  // it an 'auto' session stopped dead on a dropped connection mid-task.
+  return failedRun
+    ? {
+        source: 'failed-run',
+        prompt: FAILED_RUN_CONTINUE_PROMPT,
+        label: 'resume after the API error',
+      }
+    : null;
 }
 
 /** Owns grounded next-step countdowns and automatic-turn loop guards. */
@@ -168,6 +185,19 @@ export function useNextStepsAutoSubmit({
   // Bumped on a slow poll while idle+auto with no suggestions, so the
   // auto-submit effect re-checks for suggestions that arrived out-of-band.
   const [nextStepsRecheck, setNextStepsRecheck] = useState(0);
+  // Leader runs that died on a retryable provider failure: the one ending the
+  // loop can recover from when there is no todo or suggestion to continue with.
+  const failedRunTrackerRef = useRef<FailedRunTracker | null>(null);
+  useEffect(() => {
+    const events = agent?.events;
+    if (!events) return;
+    const tracker = createFailedRunTracker(events, () => agent?.ctx?.session?.id);
+    failedRunTrackerRef.current = tracker;
+    return () => {
+      tracker.dispose();
+      failedRunTrackerRef.current = null;
+    };
+  }, [agent]);
   // A mode change is always a user action (the system never flips autonomy)
   // — re-arm the cap on any switch. Deliberately NOT tied to state.status:
   // every automatic turn passes through 'running', and resetting there
@@ -199,7 +229,10 @@ export function useNextStepsAutoSubmit({
     // never armed. Autonomy is untouched (it is the user's setting) — the hold
     // clears on the next manual submit, the same trigger that re-arms the
     // consecutive-turn cap.
-    if (state.autoProceedHold) {
+    // Esc (or /steer) stopped the leader and is waiting for the user's new
+    // direction; `steeringPending` clears on their next message. An open
+    // todo restarting the run on a countdown in between overrides the stop.
+    if (state.autoProceedHold || state.steeringPending) {
       clearInterval(nextStepsAutoSubmitTimerRef.current);
       nextStepsAutoSubmitTimerRef.current = undefined;
       setNextStepsAutoSubmitCountdown(null);
@@ -253,6 +286,7 @@ export function useNextStepsAutoSubmit({
       autoSuggestions: isYolo ? (getAutoSuggestions?.() ?? []) : [],
       yolo: isYolo,
       autonomyNextPrompt,
+      failedRun: failedRunTrackerRef.current?.pending() ?? false,
     });
     // Snapshot the FULL todo list (including skipped items) so the countdown
     // handler can re-evaluate if a grounded prompt stalls and needs to advance
@@ -320,6 +354,7 @@ export function useNextStepsAutoSubmit({
         nextStepsAutoSubmitSuggestionRef.current = null;
         nextStepsAutoSubmitSourceRef.current = null;
         nextStepsAutoSubmitTodoIdRef.current = null;
+        if (source === 'failed-run') failedRunTrackerRef.current?.consume();
         if (suggestion) {
           // Starting grounded work is a real lifecycle transition. Route it
           // through ConversationState so TUI, WebUI, persistence, and the
@@ -487,11 +522,13 @@ export function useNextStepsAutoSubmit({
             const truncatedForMessage =
               suggestion.length > 100 ? `${suggestion.slice(0, 97)}…` : suggestion;
             const reason =
-              source === 'todo'
-                ? stalledMatchFailed
-                  ? 'the stalled prompt could not be matched to any todo on the board'
-                  : 'No more open todos to advance to'
-                : `the same prompt was fed ${repetition.runLength} times in a row`;
+              source === 'failed-run'
+                ? 'the run failed on an API error again after one automatic retry'
+                : source === 'todo'
+                  ? stalledMatchFailed
+                    ? 'the stalled prompt could not be matched to any todo on the board'
+                    : 'No more open todos to advance to'
+                  : `the same prompt was fed ${repetition.runLength} times in a row`;
             dispatch({
               type: 'addEntry',
               entry: {
@@ -548,6 +585,7 @@ export function useNextStepsAutoSubmit({
   }, [
     state.status,
     state.autoProceedHold,
+    state.steeringPending,
     autonomyLive,
     state.enhance,
     state.enhanceBusy,

@@ -9,6 +9,7 @@ import {
   restoreSessionSubagentPolicy,
 } from '@wrongstack/core/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
+import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { loadTodosCheckpoint } from '@wrongstack/core/storage';
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
 import { sessionScopedPath } from '@wrongstack/core/utils';
@@ -495,6 +496,7 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
             resumed.data.subagentsAllowed,
           );
           restoreSessionPermissionOverrides(resumedContext.meta, resumed.data);
+          restoreRequiredSkillsFromEvents(resumedContext, resumed.data.events);
           // Re-queue background delegation results this session never
           // received. Never wakes by itself; the tab displaying the session
           // (below) or the next turn picks them up.

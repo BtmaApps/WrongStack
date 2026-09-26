@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { canonicalProjectRoot } from '@wrongstack/core/utils';
+import { privateEndpointKey } from '@wrongstack/persistence';
 import { resolveSagePaths } from './paths.js';
 import { SAGE_PROJECT_SERVER_PROTOCOL_VERSION } from './project-server-protocol.js';
 
@@ -36,7 +37,8 @@ export function sageProjectServerKey(projectRoot: string, directory?: string): s
  * pipes have no `sun_path` limit.
  */
 export function sageProjectServerEndpoint(projectRoot: string, directory?: string): string {
-  const key = sageProjectServerKey(projectRoot, directory);
+  // H-9: the name carries a per-user secret — see privateEndpointKey.
+  const key = privateEndpointKey(sageProjectServerKey(projectRoot, directory));
   if (process.platform === 'win32') {
     return `\\\\.\\pipe\\wrongstack-sage-v${SAGE_PROJECT_SERVER_PROTOCOL_VERSION}-${key}`;
   }

@@ -159,11 +159,11 @@ describe('security helpers are wired, not just present', () => {
       ({ rel }) => rel,
     );
 
-    // A ratchet, not a zero. 335 files still write this expression by hand
+    // A ratchet, not a zero. 334 files still write this expression by hand
     // after the fourth high-risk migration tranche on 2026-09-10. The remaining
     // surface is recorded in the security report rather than swept in one
     // commit. The number must only ever go DOWN from here.
-    expect(offenders.length).toBeLessThanOrEqual(335);
+    expect(offenders.length).toBeLessThanOrEqual(334);
   });
 
   /**

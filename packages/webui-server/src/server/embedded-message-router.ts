@@ -3,6 +3,7 @@ import type { Agent } from '@wrongstack/core/agent';
 import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { TrustBoundary } from '@wrongstack/core/security';
 import type { Logger, MemoryPort, ProviderConfig } from '@wrongstack/core/types';
+import { resolveWstackPaths } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
@@ -712,7 +713,8 @@ export function createEmbeddedMessageRouter(
     ...(deps.sessionCtx.peekAgent ? { peekAgent: deps.sessionCtx.peekAgent } : {}),
     ...(deps.sessionCtx.getAgent ? { getAgent: deps.sessionCtx.getAgent } : {}),
     sessionsDir:
-      deps.sessionCtx.opts.sessionsDir ?? path.join(projectRoot(), '.wrongstack', 'sessions'),
+      deps.sessionCtx.opts.sessionsDir ??
+      resolveWstackPaths({ projectRoot: projectRoot() }).projectSessions,
     send: (ws, message) => send(ws, message as never),
     broadcast: (message) => deps.providerCtx.broadcast(message as never),
   });
@@ -860,7 +862,8 @@ export function createEmbeddedMessageRouter(
         ...deps.conversationCtx,
         withSessionTransition: sessionTransitionGate,
         promptQueueSessionsDir:
-          deps.sessionCtx.opts.sessionsDir ?? path.join(projectRoot(), '.wrongstack', 'sessions'),
+          deps.sessionCtx.opts.sessionsDir ??
+          resolveWstackPaths({ projectRoot: projectRoot() }).projectSessions,
       }),
       completion,
       autonomy: createAutonomyRouteHandlers(deps.prefsCtx),

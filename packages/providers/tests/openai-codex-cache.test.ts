@@ -505,6 +505,25 @@ describe('reasoning replay', () => {
     const second = calls[1]?.body['input'] as Array<Record<string, unknown>>;
     expect(first.some((item) => item['type'] === 'reasoning')).toBe(true);
     expect(second.some((item) => item['type'] === 'reasoning')).toBe(false);
+    // The provider instance is shared: one rejected replay must not poison
+    // another thread or model, but the affected thread still uses its fallback.
+    await collect(
+      provider.stream(
+        { ...req, cache: { ...req.cache, threadId: 'sibling' } },
+        { signal: new AbortController().signal },
+      ),
+    );
+    await collect(
+      provider.stream({ ...req, model: 'another-model' }, { signal: new AbortController().signal }),
+    );
+    await collect(provider.stream(req, { signal: new AbortController().signal }));
+    const hasReasoning = (index: number) =>
+      ((calls[index]?.body['input'] ?? []) as Array<Record<string, unknown>>).some(
+        (item) => item['type'] === 'reasoning',
+      );
+    expect(hasReasoning(2)).toBe(true);
+    expect(hasReasoning(3)).toBe(true);
+    expect(hasReasoning(4)).toBe(false);
   });
 
   it('does not swallow an unrelated 400', async () => {

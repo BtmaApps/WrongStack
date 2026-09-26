@@ -123,6 +123,14 @@ export const SETTINGS_CATALOG: readonly SettingsEntry[] = [
 
   // ── Session ─────────────────────────────────────────────────────────
   {
+    id: 'session.toolCoach',
+    group: 'session',
+    label: 'Tool Coach',
+    hint: 'Suggest enabled tools during tasks and guide recovery after tool errors.',
+    keywords: ['tool', 'coach', 'guide', 'suggest', 'catalog'],
+    kind: 'toggle',
+  },
+  {
     id: 'session.solo',
     group: 'session',
     label: 'Solo session',

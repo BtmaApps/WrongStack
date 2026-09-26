@@ -49,6 +49,7 @@ export const PREF_KEYS = [
   'featureMemory',
   'featureSkills',
   'featureModelsRegistry',
+  'featureToolCoach',
   'indexOnStart',
   'contextAutoCompact',
   'contextStrategy',
@@ -437,6 +438,7 @@ export async function persistPrefsToConfig(
         featureMemory: 'memory',
         featureSkills: 'skills',
         featureModelsRegistry: 'modelsRegistry',
+        featureToolCoach: 'toolCoach',
       };
       for (const [prefKey, cfgKey] of Object.entries(FEATURE_MAP)) {
         if (typeof payload[prefKey] === 'boolean') {

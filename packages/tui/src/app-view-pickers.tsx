@@ -159,6 +159,7 @@ export function AppViewPickers({
             selected={state.themePicker.selected}
             activeId={getActiveThemeName()}
             hint={state.themePicker.hint}
+            filter={state.themePicker.filter}
             columns={mainColumnWidth}
             maxRows={pickerMaxRows}
           />
@@ -238,6 +239,7 @@ export function AppViewPickers({
             featureMemory={state.settingsPicker.featureMemory}
             featureSkills={state.settingsPicker.featureSkills}
             featureModelsRegistry={state.settingsPicker.featureModelsRegistry}
+            featureToolCoach={state.settingsPicker.featureToolCoach}
             tokenSavingTier={state.settingsPicker.tokenSavingTier}
             allowOutsideProjectRoot={state.settingsPicker.allowOutsideProjectRoot}
             contextAutoCompact={state.settingsPicker.contextAutoCompact}

@@ -5,16 +5,16 @@
  * leader model set, and the factory itself.
  */
 import { describe, expect, it, vi } from 'vitest';
+import type { FallbackManageToolOptions } from '../../src/tools/fallback-manage-tool-options.js';
 import {
   AGENT_MODEL_ASSIGN_TOOL_NAME,
+  createFallbackManageTools,
   FALLBACK_PROFILE_MANAGE_TOOL_NAME,
   LEADER_MODEL_SET_TOOL_NAME,
   PROVIDER_KEY_SET_TOOL_NAME,
   PROVIDER_MANAGE_TOOL_NAME,
-  createFallbackManageTools,
   validateProviderBaseUrl,
 } from '../../src/tools/fallback-manage-tools.js';
-import type { FallbackManageToolOptions } from '../../src/tools/fallback-manage-tool-options.js';
 import type { Tool } from '../../src/types/tool.js';
 
 function makeOpts(overrides: Record<string, unknown> = {}): FallbackManageToolOptions {
@@ -880,6 +880,69 @@ describe('provider_manage — VULN-006 endpoint guard (tool level)', () => {
     const entry = cfg.providers['test-provider']!;
     expect(entry.envVars).toEqual([]);
     expect(entry.apiKey).toBeUndefined();
+  });
+
+  // WS-2026-09-26-01: the sentinel above was only written when the previous
+  // entry already HAD a credential selector, and `add` never wrote it. Both
+  // left the catalog preset of `type` armed for a base URL the model chose —
+  // and neither input names an env var, so the YOLO credential-bind gate never
+  // saw them. These start from the shapes real configs have.
+  it('add with a baseUrl and a catalog type persists the sentinel', async () => {
+    const opts = makeOpts({ providers: {} });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+    const result = await run(tool, {
+      action: 'add',
+      provider: 'backup',
+      type: 'anthropic',
+      baseUrl: 'https://attacker.example/v1',
+    });
+    expect(result.status).toBe('ok');
+    expect(result.message).toContain('no environment key');
+    const cfg = opts.getConfig() as unknown as {
+      providers: Record<string, Record<string, unknown>>;
+    };
+    expect(cfg.providers['backup']).toEqual({
+      type: 'anthropic',
+      baseUrl: 'https://attacker.example/v1',
+      envVars: [],
+    });
+  });
+
+  it('add without a baseUrl keeps the catalog preset (default vendor endpoint)', async () => {
+    const opts = makeOpts({ providers: {} });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+    await run(tool, { action: 'add', provider: 'work', type: 'anthropic' });
+    const cfg = opts.getConfig() as unknown as {
+      providers: Record<string, Record<string, unknown>>;
+    };
+    expect(cfg.providers['work']).toEqual({ type: 'anthropic' });
+  });
+
+  it('configure of an env-keyed entry with no selectors still writes the sentinel', async () => {
+    const opts = makeOpts({ providers: { anthropic: { type: 'anthropic' } } });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+    const result = await run(tool, {
+      action: 'configure',
+      provider: 'anthropic',
+      baseUrl: 'https://attacker.example/v1',
+    });
+    expect(result.message).toContain('environment key is not sent');
+    const cfg = opts.getConfig() as unknown as {
+      providers: Record<string, Record<string, unknown>>;
+    };
+    expect(cfg.providers['anthropic']?.envVars).toEqual([]);
+  });
+
+  it('configure back to the default endpoint adds no sentinel', async () => {
+    const opts = makeOpts({
+      providers: { anthropic: { type: 'anthropic', baseUrl: 'https://proxy.example/v1' } },
+    });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+    await run(tool, { action: 'configure', provider: 'anthropic', baseUrl: '' });
+    const cfg = opts.getConfig() as unknown as {
+      providers: Record<string, Record<string, unknown>>;
+    };
+    expect(cfg.providers['anthropic']?.envVars).toBeUndefined();
   });
 });
 

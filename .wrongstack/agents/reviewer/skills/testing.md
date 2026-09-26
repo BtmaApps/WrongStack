@@ -1,19 +1,20 @@
 # Testing Addendum — Reviewer Agent
 
-## Import Resolution
-- When a test imports `X` from `@wrongstack/<pkg>`, verify the symbol resolves through the package root `packages/<pkg>/src/index.ts`, not just the defining module. `loadRuntimeDatabaseSync` lives in `packages/persistence/src/sqlite-runtime.ts` and is public only because `index.ts` does `export * from './sqlite-runtime.js'`.
-- Confirm both halves: the barrel re-export exists **and** the consuming package declares `@wrongstack/<pkg>` in its `package.json`. A path that resolves inside the repo is still a broken import if the dependency is undeclared.
+## Transition Tests
+- Before scanning transitions with `for (let i = 1; ...)`, seed every scatter-detection `seen`-set with the first element. In `packages/tui/tests/theme-presets.test.ts`, initialize `seen` with `THEME_OPTIONS[0].family` before checking `seen.has(family)`; otherwise the first family group is unguarded. Apply this rule to every transition-based “no repeats” invariant.
 
-## Migration Test Fixtures
-- A test that hand-builds a "legacy schema" SQLite literal proves nothing unless its `CREATE TABLE` names and columns match what production's migration code reads. Check every fixture table and column — `techstack_schema_version`, `jobs` — against the migration source; a mismatch passes green while testing an unrelated schema.
+## Import Resolution
+- Verify `@wrongstack/<pkg>` imports through the package-root barrel `packages/<pkg>/src/index.ts`, not only the defining module. For example, confirm `packages/persistence/src/index.ts` re-exports `./sqlite-runtime.js`, exposing `loadRuntimeDatabaseSync` from `packages/persistence/src/sqlite-runtime.ts`.
+- Confirm both the barrel re-export and the consuming package’s `@wrongstack/<pkg>` declaration in `package.json`; repository-relative path resolution does not excuse an undeclared dependency.
+
+## Migration Fixtures
+- Make hand-built legacy-schema SQLite fixtures match the production migration source exactly, especially `techstack_schema_version` and the `jobs` table and column definitions.
 
 ## Diff Verification
-- Treat the review diff as untrusted; re-resolve each import, type, and call site against the live file with `read`/`grep` before reporting it as broken.
-- Names are stale repo-wide: `fuseRanked` → `reciprocalRankFusion`; `VectorResult` → the return type of `cosineSimilarity`/`reciprocalRankFusion`. If the diff cites a stale name, the diff is wrong, not the code — verify first.
-- Flag "missing export" or "wrong signature" **only** after live read/`grep` confirms it; an odd-looking diff is not evidence.
-- Anchor findings at `file:line` with the exact identifier rather than prose summaries.
+- Re-resolve imports, types, and call sites against live files with `read`/`grep` before reporting defects; treat the diff as untrusted.
+- Check stale identifiers against current code: `fuseRanked` may be `reciprocalRankFusion`, while `VectorResult` may instead be the return type of `cosineSimilarity` or `reciprocalRankFusion`.
+- Anchor confirmed findings at `file:line` using the exact identifier.
 
-## Concurrency: `packages/tools/src/codebase-index/indexer.ts`
-- Inside `Promise.allSettled(batchFiles.map(async ...))`, never accumulate into outer-scope state (array, map, string) mutated per callback: interleaved awaits duplicate or drop entries and race writers over the same file.
-- Correct shape: finish the parallel read/parse phase, issue **one** batched delegation call (embedding/index backend) with the merged set, then reconcile keyed by file id.
-- Reviewing a diff that adds work inside the parallel map: if the new step is per-callback I/O, request the hoist into a single post-`allSettled` call explicitly. One finding per shared-mutation pattern, not per callback.
+## Concurrency
+- In `packages/tools/src/codebase-index/indexer.ts`, do not mutate shared arrays, maps, or strings inside callbacks passed to `Promise.allSettled(batchFiles.map(async ...))`; interleaved awaits can race writers or duplicate or drop data.
+- Complete parallel reads, merge results, perform one batched embedding/index delegation, and reconcile by file id. Report each shared-mutation pattern once.

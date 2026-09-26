@@ -264,6 +264,11 @@ export function reduceComposer(state: State, action: ComposerAction): State {
     case 'themePickerClose':
     case 'themePickerMove':
     case 'themePickerHint':
+    case 'themePickerFilter':
+    case 'themePickerFilterMode':
+    case 'themePickerPreview':
+    case 'themePickerUndo':
+    case 'themePickerSwapPrevious':
     case 'modePickerOpen':
     case 'modePickerClose':
     case 'modePickerMove':

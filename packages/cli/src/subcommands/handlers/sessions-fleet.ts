@@ -15,6 +15,60 @@ import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
  *   - shared/            (scratchpad directory)
  *   - subagents/         (per-subagent JSONL transcripts)
  */
+/**
+ * Files the run store maintains that are not subagent transcripts: the
+ * store-level `_index.jsonl` (written into every director run directory on
+ * create) and per-session sidecars (`.replay.jsonl`, `.audit.jsonl`, legacy
+ * `.annotations.jsonl`). Mirrors core's `isSessionTranscriptFileName` — it is
+ * not exported from `@wrongstack/core/utils`.
+ */
+const STORE_SIDECAR_JSONL_NAMES = new Set(['_index.jsonl', '_mailbox.jsonl']);
+const SESSION_SIDECAR_JSONL_SUFFIXES = ['.replay.jsonl', '.audit.jsonl', '.annotations.jsonl'];
+
+function isSubagentTranscriptFile(name: string): boolean {
+  const lower = name.toLowerCase();
+  if (!lower.endsWith('.jsonl')) return false;
+  if (STORE_SIDECAR_JSONL_NAMES.has(lower)) return false;
+  return !SESSION_SIDECAR_JSONL_SUFFIXES.some((suffix) => lower.endsWith(suffix));
+}
+
+/**
+ * Subagent transcript names under a fleet run's `subagents/` directory.
+ *
+ * The director session factory roots a DefaultSessionStore at
+ * `subagents/<directorRunId>/`, so journals live ONE level deeper than the
+ * flat `subagents/<subagentId>.jsonl` layout this command was written
+ * against — both are collected. Reserved subdirectories are skipped:
+ * `transcripts` holds the agent-monitor's copies (at
+ * `transcripts/<id>/transcript.jsonl`) and `shared` is the scratchpad.
+ */
+async function collectSubagentTranscripts(subagentsDir: string): Promise<string[]> {
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = await fsp.readdir(subagentsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const out: string[] = [];
+  for (const entry of entries) {
+    if (entry.isFile()) {
+      if (isSubagentTranscriptFile(entry.name)) out.push(entry.name);
+      continue;
+    }
+    if (!entry.isDirectory() || entry.name === 'transcripts' || entry.name === 'shared') continue;
+    let nested: string[];
+    try {
+      nested = await fsp.readdir(path.join(subagentsDir, entry.name));
+    } catch {
+      continue;
+    }
+    for (const name of nested) {
+      if (isSubagentTranscriptFile(name)) out.push(`${entry.name}/${name}`);
+    }
+  }
+  return out;
+}
+
 export const sessionsFleetCmd: SubcommandHandler = async (args, deps) => {
   const runId = args.find((a) => !a.startsWith('-'));
 
@@ -24,10 +78,59 @@ export const sessionsFleetCmd: SubcommandHandler = async (args, deps) => {
   return listFleetRuns(deps);
 };
 
+/** A directory counts as a fleet run when any fleet artifact sits at its root. */
+async function hasFleetRunArtifacts(dir: string): Promise<boolean> {
+  const markers = await Promise.all(
+    (['fleet.json', 'checkpoint.json', 'subagents'] as const).map((name) =>
+      fsp.access(path.join(dir, name)).then(
+        () => true,
+        () => false,
+      ),
+    ),
+  );
+  return markers.some((found) => found);
+}
+
+/**
+ * Fleet-run ids under projectSessions.
+ *
+ * Fleet roots are `sessionScopedPath(projectSessions, session.id, '')` and
+ * modern session ids are date-sharded, so a real run lives at
+ * `<projectSessions>/<shard>/<sessionId>/` — two levels deep. A directory
+ * with fleet artifacts at its own root is a (legacy, flat) run; otherwise it
+ * is a container (a date shard) and its marker-bearing children are the
+ * runs. Containers with no run children are not runs and are not listed.
+ */
+async function discoverFleetRunIds(projectSessions: string): Promise<string[]> {
+  const entries = await fsp.readdir(projectSessions, { withFileTypes: true });
+  const ids: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(projectSessions, entry.name);
+    if (await hasFleetRunArtifacts(dir)) {
+      ids.push(entry.name);
+      continue;
+    }
+    let children: import('node:fs').Dirent[];
+    try {
+      children = await fsp.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const child of children) {
+      if (!child.isDirectory()) continue;
+      if (await hasFleetRunArtifacts(path.join(dir, child.name))) {
+        ids.push(`${entry.name}/${child.name}`);
+      }
+    }
+  }
+  return ids;
+}
+
 async function listFleetRuns(deps: SubcommandDeps): Promise<number> {
   let entries: string[] = [];
   try {
-    entries = await fsp.readdir(deps.paths.projectSessions);
+    entries = await discoverFleetRunIds(deps.paths.projectSessions);
   } catch {
     deps.renderer.writeError(`Cannot read projectSessions: ${deps.paths.projectSessions}\n`);
     return 1;
@@ -68,8 +171,8 @@ async function listFleetRuns(deps: SubcommandDeps): Promise<number> {
             () => true,
             () => false,
           ),
-          fsp.readdir(path.join(runDir, 'subagents')).then(
-            (files) => files.filter((f) => f.endsWith('.jsonl')).length,
+          collectSubagentTranscripts(path.join(runDir, 'subagents')).then(
+            (files) => files.length,
             () => 0,
           ),
         ]);
@@ -193,8 +296,7 @@ async function showFleetRun(runId: string, deps: SubcommandDeps): Promise<number
   const subagentsDir = path.join(runDir, 'subagents');
   let subagentFiles: string[] = [];
   try {
-    subagentFiles = await fsp.readdir(subagentsDir);
-    subagentFiles = subagentFiles.filter((f) => f.endsWith('.jsonl'));
+    subagentFiles = await collectSubagentTranscripts(subagentsDir);
   } catch {
     // no subagents dir
   }

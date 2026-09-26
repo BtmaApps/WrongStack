@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/plugins",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Official WrongStack collection of focused plugins for code quality, security, observability, planning, and agent coordination",
   "license": "MIT",
   "author": "ECOSTACK TECHNOLOGY OÜ",
@@ -413,7 +413,8 @@
     "@wrongstack/core": "workspace:*",
     "@wrongstack/plugin-sdk": "workspace:*",
     "@wrongstack/primitives": "workspace:*",
-    "@wrongstack/tools": "workspace:*"
+    "@wrongstack/tools": "workspace:*",
+    "yaml": "^2.9.1"
   },
   "publishConfig": {
     "access": "public"

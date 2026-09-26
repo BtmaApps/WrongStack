@@ -7,6 +7,7 @@ import type {
 import { ConfigError } from '@wrongstack/core/types';
 import { CatalogRoutedProvider, type CatalogWireNpm, isCatalogWireNpm } from './catalog-routed.js';
 import type { CompatibilityQuirks } from './compatibility-quirks.js';
+import { endpointCredentialsSuppressed } from './endpoint-credentials.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { createNativeCatalogProvider, isNativeCatalogNpm } from './native-catalog.js';
 
@@ -32,6 +33,16 @@ export function createCatalogAwareProvider(
   if (!usesCatalogFamily) return undefined;
 
   if (isNativeCatalogNpm(provider.npm)) {
+    // The native SDKs fall back to their own env vars and credential chains
+    // (AWS keys, Google ADC, AZURE_API_KEY…) when handed no key, so for a
+    // repointed endpoint "don't look the key up" is not enough — refuse to
+    // build instead (WS-2026-09-26-01).
+    if (!explicitApiKey && endpointCredentialsSuppressed(config)) {
+      throw new ConfigError({
+        message: `Provider "${id}" points at a base URL that no environment credential is sent to. Set its own key (provider_key_set or \`wstack auth ${id}\`).`,
+        code: 'CONFIG_INVALID',
+      });
+    }
     const apiKey = explicitApiKey ?? resolveNativeCatalogKey(provider.id, provider.npm);
     if ((provider.npm === '@ai-sdk/azure' || provider.npm === '@ai-sdk/cohere') && !apiKey) {
       throw new ConfigError({

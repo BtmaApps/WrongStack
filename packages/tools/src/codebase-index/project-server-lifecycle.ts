@@ -5,13 +5,34 @@ import { restrictFilePermissions } from '@wrongstack/core/security';
 import { atomicWrite } from '@wrongstack/persistence';
 import type { ProjectIndexServerMetadata } from './project-server-protocol.js';
 
+/** Synchronous pause between metadata-removal retries (bounded, shutdown-only). */
+const removalRetryWaitCell = new Int32Array(new SharedArrayBuffer(4));
+
 export function removeMetadataIfOwned(metadataPath: string, pid: number): void {
   try {
     const current = JSON.parse(fs.readFileSync(metadataPath, 'utf8')) as { pid?: number };
-    if (current.pid === pid) fs.rmSync(metadataPath, { force: true });
+    if (current.pid !== pid) return;
   } catch {
     /* absent or owned by a successor */
+    return;
   }
+  // A transient rmSync failure (Windows EPERM/EBUSY from antivirus or a
+  // lingering handle) once left the metadata behind on an otherwise clean
+  // exit, resurrecting a stale-server claim. Retry briefly, then surface the
+  // failure instead of swallowing it.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      fs.rmSync(metadataPath, { force: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) Atomics.wait(removalRetryWaitCell, 0, 0, 15);
+    }
+  }
+  process.stderr.write(
+    `codebase-index server could not remove ${metadataPath}: ${lastError instanceof Error ? lastError.message : String(lastError)}\n`,
+  );
 }
 
 export async function writeProjectServerMetadata(

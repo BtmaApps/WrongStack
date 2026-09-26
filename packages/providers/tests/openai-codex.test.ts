@@ -972,7 +972,13 @@ describe('OpenAICodexProvider stream parsing', () => {
 
     expect(res.content).toEqual([
       { type: 'text', text: 'Hello world' },
-      { type: 'tool_use', id: 'call_1', name: 'get_weather', input: { city: 'NYC' } },
+      {
+        type: 'tool_use',
+        id: 'call_1',
+        name: 'get_weather',
+        input: { city: 'NYC' },
+        providerMeta: { codexToolArguments: '{"city":"NYC"}' },
+      },
     ]);
     expect(res.stopReason).toBe('tool_use');
     expect(res.usage).toMatchObject({ input: 8, output: 5, cacheRead: 2 });
@@ -1210,6 +1216,7 @@ describe('OpenAICodexProvider stream parsing', () => {
       id: 'call_late',
       name: 'lookup',
       input: { city: 'NYC' },
+      providerMeta: { codexToolArguments: '{"city":"NYC"}' },
     });
   });
 

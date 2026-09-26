@@ -173,12 +173,40 @@ export const DEFAULT_FILE_EDIT_TOOLS: readonly string[] = [
   'str_replace',
 ];
 
-/** Best-effort path extraction from a file-editing tool's input. */
-function editedPath(input: unknown): string | undefined {
-  if (!input || typeof input !== 'object') return undefined;
-  const r = input as Record<string, unknown>;
-  const candidate = r['file_path'] ?? r['path'] ?? r['filePath'] ?? r['file'];
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+/**
+ * One spelling per file, so `./src/a.ts`, `src\a.ts` and `src/a.ts` count as
+ * the same file's edits. Windows paths are case-insensitive, so they are
+ * compared lowercased there. Relative and absolute spellings of one file are
+ * still two keys: resolving them needs the session's cwd, which the event
+ * does not carry.
+ */
+function churnPathKey(path: string, platform: NodeJS.Platform = process.platform): string {
+  let key = path.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+  while (key.startsWith('./')) key = key.slice(2);
+  return platform === 'win32' ? key.toLowerCase() : key;
+}
+
+/**
+ * The files a file-editing call changed: the tool's declared write targets
+ * (the files inside a `patch` diff, which no input key names), else the
+ * path in its input.
+ */
+function editedPaths(
+  input: unknown,
+  writeTargets: readonly string[] | undefined,
+): Array<{ key: string; path: string }> {
+  const out = new Map<string, string>();
+  const add = (path: unknown) => {
+    if (typeof path !== 'string' || path.length === 0) return;
+    const key = churnPathKey(path);
+    if (!out.has(key)) out.set(key, path);
+  };
+  for (const target of writeTargets ?? []) add(target);
+  if (out.size === 0 && input && typeof input === 'object') {
+    const r = input as Record<string, unknown>;
+    add(r['file_path'] ?? r['path'] ?? r['filePath'] ?? r['file']);
+  }
+  return [...out].map(([key, path]) => ({ key, path }));
 }
 
 /**
@@ -414,7 +442,7 @@ export class BrainMonitor {
 
         const state = this.stateFor(e.sessionId);
         state.lastProgressAt = Date.now();
-        this.trackFileChurn(state, e.sessionId, e.name, e.ok, e.input);
+        this.trackFileChurn(state, e.sessionId, e.name, e.ok, e.input, e.writeTargets);
         if (!this.signals.toolFailureStreak) return;
         if (e.ok) {
           state.failStreaks.delete(e.name);
@@ -558,18 +586,32 @@ export class BrainMonitor {
     toolName: string,
     ok: boolean,
     input: unknown,
+    writeTargets?: readonly string[] | undefined,
   ): void {
     if (!this.signals.fileChurn) return;
     if (!ok || !this.fileEditTools.has(toolName.toLowerCase())) return;
-    const path = editedPath(input);
-    if (!path) return;
     const now = Date.now();
-    const stamps = (state.editTimestamps.get(path) ?? []).filter(
+    for (const { key, path } of editedPaths(input, writeTargets)) {
+      // One engagement per call: a patch touching several churned files is
+      // one oscillation to steer, and engage() is rate-limited anyway.
+      if (this.trackFileEdit(state, sessionId, key, path, now)) return;
+    }
+  }
+
+  /** Record one edit (`key` counts, `path` is shown); true when it engaged the churn signal. */
+  private trackFileEdit(
+    state: SessionSignalState,
+    sessionId: string | undefined,
+    key: string,
+    path: string,
+    now: number,
+  ): boolean {
+    const stamps = (state.editTimestamps.get(key) ?? []).filter(
       (t) => now - t <= this.fileChurnWindowMs,
     );
     stamps.push(now);
     if (stamps.length >= this.fileChurnThreshold) {
-      state.editTimestamps.delete(path);
+      state.editTimestamps.delete(key);
       void this.engage('file_churn', sessionId, {
         question: `The file "${path}" has been edited ${stamps.length} times within ${Math.round(this.fileChurnWindowMs / 60_000)} minutes — the agent may be oscillating (edit/revert loop) instead of converging. Should it be steered?`,
         context: [
@@ -578,9 +620,9 @@ export class BrainMonitor {
           `Window: ${Math.round(this.fileChurnWindowMs / 1000)}s`,
         ].join('\n'),
       });
-      return;
+      return true;
     }
-    if (state.editTimestamps.size >= 500 && !state.editTimestamps.has(path)) {
+    if (state.editTimestamps.size >= 500 && !state.editTimestamps.has(key)) {
       for (const [p, times] of state.editTimestamps) {
         if (times.every((t) => now - t > this.fileChurnWindowMs)) {
           state.editTimestamps.delete(p);
@@ -591,7 +633,8 @@ export class BrainMonitor {
         if (oldest !== undefined) state.editTimestamps.delete(oldest);
       }
     }
-    state.editTimestamps.set(path, stamps);
+    state.editTimestamps.set(key, stamps);
+    return false;
   }
 
   private async engage(

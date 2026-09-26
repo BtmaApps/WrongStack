@@ -5,7 +5,11 @@ import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { Tool, ToolSettlement } from '../types/tool.js';
 import type { ToolExecutorOptions } from '../types/tool-executor.js';
 import { coerceAgainstSchema, validateAgainstSchema } from '../utils/json-schema-validate.js';
-import { blockedByHookResult, malformedInputResult } from './tool-executor-results.js';
+import {
+  blockedByHookResult,
+  malformedInputResult,
+  toolInputCorrection,
+} from './tool-executor-results.js';
 import { extractMalformedRaw, hasMalformedArguments } from './tool-executor-support.js';
 
 export type KanbanBoundaryResult = Awaited<ReturnType<typeof evaluateToolKanbanBoundary>>;
@@ -33,7 +37,7 @@ export async function validateToolInputAndHooks(
     return {
       ok: false,
       use,
-      errorResult: malformedInputResult(use, extractMalformedRaw(use.input)),
+      errorResult: malformedInputResult(use, tool, extractMalformedRaw(use.input)),
       settlement: 'invalid_input',
     };
   }
@@ -61,8 +65,8 @@ export async function validateToolInputAndHooks(
         content:
           `Invalid arguments for tool "${tool.name}".\n\n` +
           `Validation errors:\n${errorDetails}\n\n` +
-          `Fix exactly the fields listed above and call the tool again. ` +
-          `You can use the "tool-help" tool with name="${tool.name}" to see the exact expected schema.`,
+          `Fix the arguments using the registered contract below.` +
+          toolInputCorrection(tool),
         is_error: true,
       };
       return { ok: false, use, errorResult, settlement: 'invalid_input' };
@@ -100,7 +104,8 @@ export async function validateToolInputAndHooks(
             tool_use_id: use.id,
             content:
               `A PreToolUse hook rewrote the arguments for "${tool.name}" into an invalid shape.\n\n` +
-              `Validation errors:\n${errorDetails}`,
+              `Validation errors:\n${errorDetails}` +
+              toolInputCorrection(tool),
             is_error: true,
           };
           return { ok: false, use, errorResult, settlement: 'blocked_by_hook' };
@@ -118,7 +123,9 @@ export async function validateToolInputAndHooks(
         type: 'tool_result',
         tool_use_id: use.id,
         content:
-          `Invalid arguments for tool "${tool.name}".\n\n` + `Validation errors:\n${errorDetails}`,
+          `Invalid arguments for tool "${tool.name}".\n\n` +
+          `Validation errors:\n${errorDetails}` +
+          toolInputCorrection(tool),
         is_error: true,
       };
       return { ok: false, use, errorResult, settlement: 'invalid_input' };

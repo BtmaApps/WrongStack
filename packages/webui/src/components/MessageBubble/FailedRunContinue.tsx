@@ -20,10 +20,21 @@ export function autoTriggerMsFor(text: string): number {
 /**
  * Continue button for a failed assistant message, with an optional
  * self-triggering countdown (15s default, 30s for Chimera-style report
- * failures). The countdown arms only for FRESH failures; Cancel/Stop
- * disarms it; a run already restarted by the user disarms it too.
+ * failures). The button is always there; the countdown arms only when
+ * `autoArm` holds (the caller's gate: `auto` autonomy AND a run a provider
+ * killed on a retryable failure) and only for FRESH failures. Cancel/Stop
+ * disarms it, so does `autoArm` turning false (autonomy switched off), and a
+ * run already restarted by the user disarms it too.
  */
-export function FailedRunContinue({ text, timestamp }: { text: string; timestamp?: number }) {
+export function FailedRunContinue({
+  text,
+  timestamp,
+  autoArm = false,
+}: {
+  text: string;
+  timestamp?: number;
+  autoArm?: boolean;
+}) {
   const { t } = useAppTranslation();
   const addMessage = useChatStore((s) => s.addMessage);
   const setLoading = useChatStore((s) => s.setLoading);
@@ -36,6 +47,7 @@ export function FailedRunContinue({ text, timestamp }: { text: string; timestamp
   });
 
   const [remainingMs, setRemainingMs] = useState<number | null>(() => {
+    if (!autoArm) return null;
     if (timestamp === undefined || Date.now() - timestamp >= FRESH_FAILURE_WINDOW_MS) return null;
     return autoTriggerMsFor(text);
   });
@@ -62,6 +74,12 @@ export function FailedRunContinue({ text, timestamp }: { text: string; timestamp
     client.sendMessage(prompt);
     setGone(true);
   };
+
+  // The gate closing mid-countdown (autonomy switched off) cancels it; it
+  // does not re-arm when the gate reopens — that would be a surprise send.
+  useEffect(() => {
+    if (!autoArm) setRemainingMs(null);
+  }, [autoArm]);
 
   // 1s countdown ticks; each tick re-checks the live loading flag so a
   // manually restarted run disarms the auto-fire immediately.

@@ -25,6 +25,16 @@ describe('createOutputSpool', () => {
     expect(spool.finalize()).toBeNull();
   });
 
+  it('persists output under the threshold when the caller asks (output diet)', async () => {
+    const spool = createOutputSpool({ tool: 'diet', thresholdBytes: 1024 });
+    spool.write('hello ');
+    spool.write('world');
+    const info = spool.finalize({ persist: true });
+    expect(info).not.toBeNull();
+    expect(info!.bytes).toBe(11);
+    await expect.poll(async () => fsp.readFile(info!.path, 'utf8')).toBe('hello world');
+  });
+
   it('spools the FULL output to disk once the threshold is crossed', async () => {
     const spool = createOutputSpool({ tool: 'big', thresholdBytes: 100 });
     const chunkA = 'a'.repeat(80);

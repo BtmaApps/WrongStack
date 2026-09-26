@@ -39,6 +39,10 @@ export interface McpServerInput {
   bearerTokenEnv?: string | undefined;
   allowedTools?: string[] | undefined;
   permission?: Permission | undefined;
+  /** Connect/startup timeout in ms. Defaults to 10s when omitted. */
+  startupTimeoutMs?: number | undefined;
+  /** Per-request JSON-RPC timeout in ms. Defaults to 60s when omitted. */
+  requestTimeoutMs?: number | undefined;
   /** Lazy connect — spawn the process only on first tool call (see config). */
   lazy?: boolean | undefined;
   /** Env var names to forward from parent process at spawn time. */
@@ -257,6 +261,10 @@ function buildConfig(input: McpServerInput, base?: MCPServerConfig | undefined):
   if (allowedTools !== undefined) cfg.allowedTools = allowedTools;
   const permission = input.permission ?? base?.permission;
   if (permission !== undefined) cfg.permission = permission;
+  const startupTimeoutMs = input.startupTimeoutMs ?? base?.startupTimeoutMs;
+  if (startupTimeoutMs !== undefined) cfg.startupTimeoutMs = startupTimeoutMs;
+  const requestTimeoutMs = input.requestTimeoutMs ?? base?.requestTimeoutMs;
+  if (requestTimeoutMs !== undefined) cfg.requestTimeoutMs = requestTimeoutMs;
   const allowPrivateNetworks = input.allowPrivateNetworks ?? base?.allowPrivateNetworks;
   if (allowPrivateNetworks !== undefined) cfg.allowPrivateNetworks = allowPrivateNetworks;
   const enabled = input.enabled ?? base?.enabled;

@@ -333,6 +333,11 @@ describe('WebUI payload validation', () => {
       expect(result).toMatchObject({ ok: true });
     });
 
+    it('accepts Tool Coach as a boolean feature preference only', () => {
+      expect(validatePrefsUpdatePayload({ featureToolCoach: false })).toMatchObject({ ok: true });
+      expectInvalid(validatePrefsUpdatePayload, [{ featureToolCoach: 'off' }]);
+    });
+
     it('rejects v13 Display parity keys with the wrong type', () => {
       expectInvalid(validatePrefsUpdatePayload, [
         { readSymbols: 'yes' },

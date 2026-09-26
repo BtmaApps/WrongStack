@@ -331,6 +331,15 @@ export function Composer({
                 if (path) selectFile(path);
                 return;
               }
+              if (event.key === 'Enter' || event.key === 'Tab') {
+                // No matches (still searching or none): the picker owns
+                // Enter/Tab anyway. Swallow the key so the half-typed
+                // `@query` draft is neither submitted nor polluted with a
+                // newline — same contract as the WebUI composer's
+                // @-mention gate in use-chat-keydown.ts.
+                event.preventDefault();
+                return;
+              }
               if (event.key === 'Escape') {
                 event.preventDefault();
                 setFileMention(null);

@@ -1,7 +1,7 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { EventMap } from '../kernel/events.js';
 import { areSubagentsAllowed } from '../coordination/session-subagent-policy.js';
+import type { EventMap } from '../kernel/events.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SlashCommand } from '../types/slash-command.js';
 import { toErrorMessage } from '../utils/error.js';
@@ -11,9 +11,9 @@ import {
   decideCascadeAgents,
   MAX_KNOWN_FINGERPRINTS,
   parseReviewSeverity,
-  resolveAutoReviewConfig,
   type ResolvedAutoReviewConfig,
   type ReviewerModelAssignment,
+  resolveAutoReviewConfig,
   selectRoundRobinReviewerAssignment,
   severitiesFromFindings,
   shouldCascade,
@@ -21,6 +21,7 @@ import {
 } from './auto-review-config.js';
 
 export type { ReviewerModelAssignment };
+
 import {
   type ChangedFile,
   type ChangedFileSnapshot,
@@ -68,8 +69,9 @@ function buildAutoReviewCommand(
       'Detects git-tracked file edits and dispatches review subagents',
       'with configurable provider/model/fallback and profile selection.',
       '',
-      'Reports are persisted and shown as passive notifications.',
-      'They never wake the leader or spawn mutating follow-up agents.',
+      'Reports are persisted and shown as passive notifications. With',
+      '`cascadeOn` (on by default) a High or Critical finding additionally',
+      'dispatches follow-up security-scanner/bug-hunter agents that can edit code.',
       '',
       'Commands:',
       '  /auto-review           Show current status and config',
@@ -77,7 +79,7 @@ function buildAutoReviewCommand(
       '  /auto-review off       Disable auto-review',
       '',
       'Configuration (edit config.json extensions.wstack-auto-review):',
-      '  enabled              true | false',
+      '  enabled              true | false (default true — on after a fresh install)',
       '  provider             provider id for review agents',
       '  model                model id for review agents',
       '  fallbackProfile      named profile from config.fallbackProfiles',
@@ -85,7 +87,7 @@ function buildAutoReviewCommand(
       '  debounceMs           debounce window (default 15000)',
       '  maxFilesPerBatch     max files per review (default 15)',
       '  maxConcurrentReviews max parallel reviews (default 2)',
-      '  cascadeOn            off | critical | high (default off)',
+      '  cascadeOn            off | critical | high (default high)',
       '  maxCascadeDepth      max fix+re-review cycles (default 2)',
     ].join('\n'),
     async run(args: string) {
@@ -121,7 +123,7 @@ function buildAutoReviewCommand(
           `  In-flight:      ${inFlight} review(s)`,
           '',
           'Fires on every git-tracked file change during the session.',
-          'Disabled by default. Enable via config.json.',
+          'On by default. Disable via config.json extensions.wstack-auto-review.enabled.',
         ].join('\n'),
       };
     },

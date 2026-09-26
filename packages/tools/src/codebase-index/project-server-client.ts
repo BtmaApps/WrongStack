@@ -35,6 +35,7 @@ import {
   SERVER_START_TIMEOUT_MS,
   StaleProjectIndexServerError,
   setLatestConnectionState,
+  shouldReplaceProjectIndexServer,
 } from './project-server-client-state.js';
 import {
   formatProjectIndexServerCloseError,
@@ -584,7 +585,11 @@ class ProjectServerConnection {
         return;
       }
       const expectedBuildId = projectIndexServerExpectedBuildId();
-      if (expectedBuildId && message.buildId !== expectedBuildId) {
+      if (
+        expectedBuildId &&
+        message.buildId !== expectedBuildId &&
+        shouldReplaceProjectIndexServer(message.builtAt)
+      ) {
         this.rejectStaleServer(
           message,
           `codebase-index build mismatch: client=${expectedBuildId}, server=${message.buildId ?? 'legacy'}`,

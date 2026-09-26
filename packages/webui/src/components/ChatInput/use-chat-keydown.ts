@@ -34,7 +34,29 @@ export function useChatKeyDown({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (atMention && e.defaultPrevented) return;
+      // A key another surface already consumed must never submit. In a
+      // real browser, FilePicker's window-capture listener runs
+      // preventDefault() + pick(), and React 18 flushes that pick's
+      // setAtMention(null) between the capture listener and this
+      // bubble-phase handler — so the `atMention` gate below can already
+      // see null on the SAME keypress. defaultPrevented travels on the
+      // native event and survives that re-render, making this the only
+      // reliable signal that the key was claimed (picker, modal, hotkey).
+      if (e.defaultPrevented) return;
+      if (atMention) {
+        // While the @-mention file picker is open it owns the keyboard:
+        // FilePicker's window-capture listener consumes Enter/Tab/↑/↓/Esc
+        // with preventDefault(). A key it cannot act on (Enter while file
+        // matches are still loading or empty, for example) must degrade to
+        // a no-op here — falling through to the Enter-to-submit below
+        // would send the half-typed `@query` draft. While the picker is
+        // open, Enter only ever confirms the mention selection.
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          return;
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Escape') return;
+      }
       if (slashSuggestions.length === 0 && !atMention && promptHistory.length > 0) {
         if (e.key === 'ArrowUp') {
           const ta = e.currentTarget;

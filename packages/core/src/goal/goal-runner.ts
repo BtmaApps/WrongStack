@@ -23,6 +23,8 @@ export interface GoalRunnerOptions extends GoalOptions {
   repairPhase?: PhaseExecutionContext['repairPhase'] | undefined;
   /** Optional resolver for worktree merge conflicts. */
   resolveConflict?: PhaseExecutionContext['resolveConflict'] | undefined;
+  /** Session that owns this Goal run's Brain decisions. */
+  sessionId?: string | undefined;
   /** Optional Brain arbiter. */
   brain?: PhaseExecutionContext['brain'] | undefined;
   /** Called when a phase completes. */
@@ -100,10 +102,12 @@ export class GoalRunner {
     });
 
     this.graph = await builder.build();
+    this.graph.sessionId = this.opts.sessionId;
 
     // Execution context
     const ctx: PhaseExecutionContext = {
       executeTask: this.opts.executeTask,
+      sessionId: this.graph.sessionId,
       brain: this.opts.brain,
       onPhaseComplete: (phase) => {
         this.opts.onPhaseComplete?.(phase);

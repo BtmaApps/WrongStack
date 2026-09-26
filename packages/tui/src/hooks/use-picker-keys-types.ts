@@ -80,6 +80,11 @@ export interface PickerKeysHost {
    * leave Enter as a no-op (the picker still navigates, just doesn't apply).
    */
   onThemePickerEnter?: (() => void) | undefined;
+  /**
+   * Restores the preset that was live when the picker opened, keeping the
+   * picker open. Optional — omitted hosts leave `u` inert.
+   */
+  onThemePickerUndo?: (() => void) | undefined;
 
   onSlashPickerTab: (() => void) | undefined;
 }
