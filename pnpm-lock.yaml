@@ -362,6 +362,9 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      '@wrongstack/governance':
+        specifier: workspace:*
+        version: link:../governance
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1(@noble/hashes@2.4.0)

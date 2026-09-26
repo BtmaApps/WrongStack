@@ -52,6 +52,20 @@ async function projectDirectoryExists(globalRoot: string, projectId: string): Pr
   }
 }
 
+/**
+ * One structured line per 503, so the next occurrence names its mechanism
+ * instead of collapsing four swallowing layers into "unreachable":
+ * `registry-error` (the registry itself threw) vs `probe-failed
+ * <slug>/<phase>/<code>...` (per-project probe failures: metadata-missing vs
+ * call-existing failure) vs `no-live-lease` (every probe answered fine, the
+ * catalog just reported no matching live lease).
+ */
+function warnProjectUnavailable(projectId: string, reason: string): void {
+  process.stderr.write(
+    `${JSON.stringify({ level: 'warn', event: 'hq.project_unavailable', projectId, reason })}\n`,
+  );
+}
+
 export function resolveHqProjectRoot(
   globalRoot: string,
   ids: { sessionId?: string | undefined; projectId?: string | undefined },
@@ -67,7 +81,15 @@ export function resolveHqProjectRoot(
       }
       if (typeof ids.projectId === 'string') {
         const { createHash } = await import('node:crypto');
-        const all = await registry.list().catch(() => []);
+        const probeFailures: string[] = [];
+        const all = await registry
+          .list({
+            onProjectFailure: (slug, phase, error) => {
+              const code = (error as NodeJS.ErrnoException | null)?.code ?? 'error';
+              probeFailures.push(`${slug}/${phase}/${code}`);
+            },
+          })
+          .catch(() => []);
         const projectIds = new Map<string, string>();
         const projectIdForRoot = (projectRoot: string): string => {
           const cached = projectIds.get(projectRoot);
@@ -86,6 +108,10 @@ export function resolveHqProjectRoot(
         // Only a slug-shaped id names a directory. A hashed id cannot be checked
         // this way, so it keeps the old, definitive answer rather than guessing.
         if (await projectDirectoryExists(globalRoot, ids.projectId)) {
+          warnProjectUnavailable(
+            ids.projectId,
+            probeFailures.length > 0 ? `probe-failed ${probeFailures.join(',')}` : 'no-live-lease',
+          );
           return { status: 'unavailable' };
         }
       }
@@ -93,6 +119,7 @@ export function resolveHqProjectRoot(
       // The registry itself failed — we did not learn that the project is
       // absent, only that we could not look. Saying "unknown" here would be the
       // same lie in a different place.
+      warnProjectUnavailable(String(ids.projectId ?? ids.sessionId ?? '?'), 'registry-error');
       return { status: 'unavailable' };
     }
     return { status: 'unknown' };

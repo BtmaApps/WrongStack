@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-26T22:44:04.279Z",
+  "generatedAt": "2026-09-26T22:51:15.319Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4240,
-    "testFiles": 3788,
-    "sourceLines": 1000974,
+    "testFiles": 3789,
+    "sourceLines": 1001025,
     "workspaceEdges": 130,
     "moduleEdges": 13825,
     "nonCommandSlashImports": 0,
@@ -241,7 +241,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 966,
-      "testFiles": 849,
+      "testFiles": 850,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -256,7 +256,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 849
+          "testFiles": 850
         }
       ]
     },
@@ -8857,6 +8857,12 @@
       },
       {
         "file": "packages/core/tests/session-catalog-project-server.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/session-catalog-registry-agent-flush.test.ts",
         "projects": [
           "root-node"
         ]

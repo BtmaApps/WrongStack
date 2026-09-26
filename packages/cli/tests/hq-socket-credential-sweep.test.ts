@@ -15,6 +15,7 @@
 
 import { DEFAULT_HQ_REDACTION_POLICY } from '@wrongstack/core/hq';
 import { describe, expect, it } from 'vitest';
+import type { WebSocket } from 'ws';
 import { HQ_SESSION_MAX_AGE_MS } from '../src/hq-server/auth.js';
 import {
   createHqSocketCredentialEnforcer,
@@ -28,12 +29,9 @@ import type { HqRouterMutableAuth, HqSessionEntry } from '../src/hq-server/types
 // need to spin up a real `ws` server.
 const OPEN = 1;
 const CLOSED = 3;
-const makeBrowser = (): {
-  readyState: number;
-  close: () => void;
-} => {
+const makeBrowser = (): WebSocket => {
   let readyState = OPEN;
-  return {
+  const socket = {
     get readyState() {
       return readyState;
     },
@@ -41,6 +39,7 @@ const makeBrowser = (): {
       readyState = CLOSED;
     },
   };
+  return socket as unknown as WebSocket;
 };
 
 const buildState = (): {

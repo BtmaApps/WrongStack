@@ -253,11 +253,22 @@ export class ProjectSessionRegistry {
     this.pendingAgents = undefined;
     this.lastAgentWriteAt = Date.now();
     const revision = ++this.agentRevision;
-    await current.binding.client.call('publish_agents', {
-      credential: current.credential,
-      revision,
-      agents,
-    });
+    try {
+      await current.binding.client.call('publish_agents', {
+        credential: current.credential,
+        revision,
+        agents,
+      });
+    } catch {
+      // Agents are full snapshots — the next updateAgents() republishes
+      // fresh state, so a failed batch needs no retry. The rejection MUST be
+      // contained: the throttle timer launches this fire-and-forget
+      // (`void this.flushAgents()`), so an escaping IPC rejection is an
+      // unhandled one — it killed whole vitest workers as the fatal
+      // `connect ENOENT ... session-catalog` hq-mailbox flake whose throwing
+      // site vitest.config.ts documents as unidentified (the audited probe
+      // sites in list() all swallow; this timer site did not).
+    }
   }
 
   async markClosing(): Promise<void> {
@@ -283,7 +294,17 @@ export class ProjectSessionRegistry {
     }
   }
 
-  async list(): Promise<SessionRegistryEntry[]> {
+  async list(
+    options: {
+      /**
+       * Diagnostic sink for per-project probe failures. Never changes the
+       * result — it exists so a caller facing a transient unavailability can
+       * name its mechanism (metadata-missing vs probe-failed vs live-but-
+       * empty), which the swallowing below deliberately erases.
+       */
+      onProjectFailure?: (slug: string, phase: 'metadata' | 'probe', error: unknown) => void;
+    } = {},
+  ): Promise<SessionRegistryEntry[]> {
     const projectsDir = path.join(this.globalRoot, 'projects');
     let directories: string[] = [];
     try {
@@ -298,6 +319,7 @@ export class ProjectSessionRegistry {
       directories.map(async (slug) => {
         const projectDir = path.join(projectsDir, slug);
         let client: SessionCatalogProjectClient | undefined;
+        let phase: 'metadata' | 'probe' = 'metadata';
         try {
           const metadata = JSON.parse(
             await fs.readFile(sessionCatalogProjectServerMetadataPath(projectDir), 'utf8'),
@@ -307,8 +329,10 @@ export class ProjectSessionRegistry {
             projectDir,
             projectRoot: metadata.projectRoot,
           });
+          phase = 'probe';
           return await client.callExisting('list_live', {});
-        } catch {
+        } catch (error) {
+          options.onProjectFailure?.(slug, phase, error);
           return [];
         } finally {
           await client?.close().catch(() => undefined);
