@@ -32,7 +32,13 @@ const stub = { open: false, systemOne: async () => ANSWERED };
 const ask = (state: unknown) => ({
   activityFeature: 'memoryRecall',
   state,
-  questions: { depth: { type: 'score' as const, instructions: 'How deep is the evidence?' } },
+  questions: {
+    depth: {
+      type: 'score' as const,
+      instructions: 'How deep is the evidence?',
+      criteria: ['Only a passing mention', 'Direct, detailed evidence'],
+    },
+  },
 });
 
 let dir = '';
@@ -49,7 +55,9 @@ afterAll(async () => {
 });
 
 /** Wait for the log to hold `count` records rather than sleeping a fixed span. */
-async function records(count: number): Promise<Record<string, any>[]> {
+type LogRecord = Record<string, any>;
+
+async function records(count: number): Promise<LogRecord[]> {
   for (let attempt = 0; attempt < 200; attempt++) {
     const lines = await readFile(logFile(), 'utf8').then(
       (text) => text.split('\n').filter(Boolean),
@@ -84,7 +92,7 @@ describe('Jev activity content records', () => {
       .systemOne(ask({ note: 'failed-state' }))
       .catch(() => undefined);
 
-    const [plain, verbose, failed] = await records(3);
+    const [plain, verbose, failed] = (await records(3)) as [LogRecord, LogRecord, LogRecord];
 
     expect(plain).toMatchObject({ feature: 'memoryRecall', outcome: 'answered' });
     expect(plain['request']).toBeUndefined();
@@ -117,7 +125,7 @@ describe('Jev activity content records', () => {
     await observeJevClient(stub, 'typesafe', 'jev', { logContent: true }).systemOne(
       ask({ blob: 'x'.repeat(300 * 1024) }),
     );
-    const [oversized] = (await records(4)).slice(3);
+    const [oversized] = (await records(4)).slice(3) as [LogRecord];
     expect(String(oversized['request'])).toMatch(/^\[truncated: \d+ chars, limit \d+\]$/);
   });
 });

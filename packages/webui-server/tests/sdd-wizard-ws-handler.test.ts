@@ -216,7 +216,7 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
   });
 
   it('starts a run from a graph id when startRunFromGraphId is wired', async () => {
-    const fromGraph: Array<{ graphId: string; sessionId?: string }> = [];
+    const fromGraph: Array<{ graphId: string; sessionId?: string | undefined }> = [];
     const handler = new SddWizardWebSocketHandler({
       makeDriver: () =>
         new SddInterviewDriver({
@@ -244,7 +244,7 @@ describe('SddWizardWebSocketHandler (end-to-end message flow)', () => {
   });
 
   it('starts a run from a spec id via resolveGraphIdForSpec', async () => {
-    const fromGraph: Array<{ graphId: string; sessionId?: string }> = [];
+    const fromGraph: Array<{ graphId: string; sessionId?: string | undefined }> = [];
     const handler = new SddWizardWebSocketHandler({
       makeDriver: () =>
         new SddInterviewDriver({
