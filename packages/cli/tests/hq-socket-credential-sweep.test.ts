@@ -13,14 +13,14 @@
  * @module tests/hq-socket-credential-sweep
  */
 
+import { DEFAULT_HQ_REDACTION_POLICY } from '@wrongstack/core/hq';
 import { describe, expect, it } from 'vitest';
 import { HQ_SESSION_MAX_AGE_MS } from '../src/hq-server/auth.js';
-import { createHqSocketCredentialEnforcer } from '../src/hq-server/socket-credentials.js';
-import type {
-  HqRouterMutableAuth,
-  HqSessionEntry,
-  HqSocketCredentialState,
-} from '../src/hq-server/types.js';
+import {
+  createHqSocketCredentialEnforcer,
+  type HqSocketCredentialState,
+} from '../src/hq-server/socket-credentials.js';
+import type { HqRouterMutableAuth, HqSessionEntry } from '../src/hq-server/types.js';
 
 // Mirror the production WebSocket readyState constants. socket-credentials.ts
 // only touches `readyState` and `close()` on the socket, so a plain object
@@ -48,7 +48,7 @@ const buildState = (): {
   enforcer: ReturnType<typeof createHqSocketCredentialEnforcer>;
 } => {
   const mutableAuth = {
-    operatorPolicy: undefined,
+    operatorPolicy: DEFAULT_HQ_REDACTION_POLICY,
     operatorPolicyOverride: undefined,
     browserTokens: new Set<string>(),
     clientTokens: new Set<string>(),

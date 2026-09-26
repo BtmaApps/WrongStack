@@ -64,9 +64,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/hq": {
-      "files": 147,
+      "files": 148,
       "typeOnly": 89,
-      "runtimeOrMixed": 91
+      "runtimeOrMixed": 92
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -5259,6 +5259,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/tests/hq-session-revoke-closes-browser-socket.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/hq-socket-credential-sweep.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
