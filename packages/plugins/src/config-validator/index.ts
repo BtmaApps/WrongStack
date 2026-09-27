@@ -389,7 +389,13 @@ export function validateToml(text: string): string[] {
       }
       continue;
     }
-    const keyMatch = /^([A-Za-z0-9_."'-]+)\s*=/.exec(line);
+    // Three TOML key shapes: a bare key (`A-Za-z0-9_.-`) or a quoted key
+    // (double or single), which may contain spaces, dots and colons. The
+    // quoted alternatives must match as a unit so `\s*=` is evaluated after the
+    // CLOSING quote: with one flat character class, `"my key" = 1` failed to
+    // match at all and the line was skipped, so a duplicated quoted key went
+    // unreported. The captured form keeps its quotes, as before.
+    const keyMatch = /^("(?:[^"]*)"|'(?:[^']*)'|[A-Za-z0-9_.-]+)\s*=/.exec(line);
     if (keyMatch?.[1]) {
       const key = keyMatch[1];
       const seen = keysInTable.get(currentTable) ?? new Set<string>();

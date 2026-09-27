@@ -94,7 +94,12 @@ export const DEFAULT_QUOTA_METER = 'default';
 
 /** True when a snapshot carries an actual reading rather than an empty shell. */
 export function hasQuotaData(snapshot: ProviderQuotaSnapshot): boolean {
-  return snapshot.windows.length > 0 || snapshot.credits !== undefined;
+  return (
+    snapshot.windows.length > 0 ||
+    snapshot.credits !== undefined ||
+    snapshot.note !== undefined ||
+    snapshot.reachedWindowId !== undefined
+  );
 }
 
 // ── Store ───────────────────────────────────────────────────────────────────
@@ -133,6 +138,22 @@ export function recordProviderQuota(
     const previous = byMeter.get(snapshot.meterId);
     byMeter.set(snapshot.meterId, {
       ...snapshot,
+      // A reading that omits a field restates nothing: the last known value
+      // survives. Windows/credits/reachedWindowId/note are carried forward so a
+      // note-only or reached-only snapshot stores its information WITHOUT
+      // erasing the quota reading it arrived alongside.
+      ...(snapshot.windows.length === 0 && previous?.windows !== undefined
+        ? { windows: previous.windows }
+        : {}),
+      ...(snapshot.credits === undefined && previous?.credits !== undefined
+        ? { credits: previous.credits }
+        : {}),
+      ...(snapshot.reachedWindowId === undefined && previous?.reachedWindowId !== undefined
+        ? { reachedWindowId: previous.reachedWindowId }
+        : {}),
+      ...(snapshot.note === undefined && previous?.note !== undefined
+        ? { note: previous.note }
+        : {}),
       ...(snapshot.planLabel === undefined && previous?.planLabel !== undefined
         ? { planLabel: previous.planLabel }
         : {}),

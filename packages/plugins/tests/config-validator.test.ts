@@ -185,6 +185,23 @@ describe('validateToml', () => {
   it('accepts valid TOML with array tables', () => {
     expect(validateToml('[a]\nx = 1\n[[items]]\nn = 1\n[[items]]\nn = 2')).toHaveLength(0);
   });
+
+  // The key regex used one flat character class with no whitespace member, so
+  // `"my key" = 1` matched nothing and the line was skipped — a duplicated
+  // quoted key went unreported, which is this validator's whole job.
+  it('flags a duplicate quoted key that contains a space', () => {
+    const problems = validateToml('[t]\n"my key" = 1\n"my key" = 2\n');
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('duplicate key');
+  });
+
+  it('flags a duplicate single-quoted key that contains a space', () => {
+    expect(validateToml("[t]\n'my key' = 1\n'my key' = 2\n")[0]).toContain('duplicate key');
+  });
+
+  it('does not flag a valid quoted key containing a space', () => {
+    expect(validateToml('[t]\n"my key" = 1\n"other key" = 2\n')).toHaveLength(0);
+  });
 });
 
 describe('config-validator plugin', () => {

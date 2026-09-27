@@ -73,6 +73,8 @@ function redactExcerpt(line: string): string {
  * into windows so a single call is bounded by the window, not the input.
  */
 export const EVIDENCE_MATCH_WINDOW = 1024;
+/** How far a later window reaches back so a boundary-straddling match is seen whole. */
+export const EVIDENCE_MATCH_OVERLAP = EVIDENCE_MATCH_WINDOW / 4;
 /**
  * Wall-clock budget for one analysis, checked between regex calls. A single
  * call cannot be interrupted, but it is bounded by the window above, so the
@@ -105,15 +107,26 @@ export function analyzeEvidence(
     for (let lineIndex = 0; lineIndex < starts.length; lineIndex++) {
       const next = starts[lineIndex + 1];
       const line = content.slice(starts[lineIndex], next === undefined ? content.length : next - 1);
+      // Absolute start offsets already reported for this line, so a match seen
+      // in two overlapping windows is reported exactly once.
+      const reported = new Set<number>();
       for (let offset = 0; offset === 0 || offset < line.length; offset += EVIDENCE_MATCH_WINDOW) {
         if (now() > deadline) return { findings, partial: true };
-        // A later window starts one character early and drops matches at its
-        // index 0: that position belongs to the previous window, and `^` (with
-        // the `m` flag some rules use) would otherwise match mid-line there.
-        const from = offset === 0 ? 0 : offset - 1;
-        const window = line.slice(from, offset + EVIDENCE_MATCH_WINDOW);
+        // The window reaches BACK by EVIDENCE_MATCH_OVERLAP (so a match that
+        // starts in the previous window's tail is still seen whole — a one-char
+        // overlap missed `ECONNRESET` split across offset 1024) and FORWARD by
+        // the same overlap (so a match that starts inside this window and runs
+        // past its right edge is contained here). With only the backward reach,
+        // a match that began more than the overlap before a boundary AND ended
+        // past it fit in no window at all and was silently dropped. Matching at
+        // slice index 0 is dropped for later windows, where `^` (with the `m`
+        // flag some rules use) would read a boundary as a line start.
+        const from = offset === 0 ? 0 : Math.max(0, offset - EVIDENCE_MATCH_OVERLAP - 1);
+        const window = line.slice(from, offset + EVIDENCE_MATCH_WINDOW + EVIDENCE_MATCH_OVERLAP);
         for (const match of window.matchAll(matcher)) {
           if (offset > 0 && match.index === 0) continue;
+          if (reported.has(from + match.index)) continue;
+          reported.add(from + match.index);
           findings.push({
             rule: rule.label,
             severity: rule.severity,

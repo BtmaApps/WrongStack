@@ -159,14 +159,18 @@ function isPrivateIPv4(hostname: string): boolean {
 
 function isBlockedHostname(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  // `fc`/`fd`/`fe80:` are IPv6 unique-local / link-local PREFIXES, and an
+  // IPv6 literal always contains a colon. A DNS name never does, so gating
+  // these three tests on a colon is what keeps an ordinary public host that
+  // merely begins with those two letters (fcbarcelona.com, fdroid.org) from
+  // being misread as a private address and refused.
+  const isV6 = h.includes(':');
   return (
     h === 'localhost' ||
     h.endsWith('.localhost') ||
     h === '::1' ||
     h === '0:0:0:0:0:0:0:1' ||
-    h.startsWith('fc') ||
-    h.startsWith('fd') ||
-    h.startsWith('fe80:') ||
+    (isV6 && (h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80:'))) ||
     isPrivateIPv4(h)
   );
 }

@@ -102,6 +102,44 @@ describe('recording', () => {
       hasQuotaData(snapshot({ windows: [], credits: { hasCredits: true, unlimited: false } })),
     ).toBe(true);
   });
+
+  it('stores a note-only snapshot (no windows, no credits)', () => {
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [], note: 'Upgrade to Pro for more quota' }),
+    ]);
+    const current = getProviderQuota('openai-codex');
+    expect(current).toHaveLength(1);
+    expect(current[0]?.note).toBe('Upgrade to Pro for more quota');
+  });
+
+  it('stores a reachedWindowId-only snapshot', () => {
+    recordProviderQuota('openai-codex', [snapshot({ windows: [], reachedWindowId: 'primary' })]);
+    const current = getProviderQuota('openai-codex');
+    expect(current).toHaveLength(1);
+    expect(current[0]?.reachedWindowId).toBe('primary');
+  });
+
+  it('stores a note-only snapshot without erasing the previous windows', () => {
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [{ id: 'primary', usedPercent: 10 }] }),
+    ]);
+    recordProviderQuota('openai-codex', [snapshot({ windows: [], note: 'Upgrade to Pro' })]);
+    const current = getProviderQuota('openai-codex');
+    expect(current).toHaveLength(1);
+    expect(current[0]?.note).toBe('Upgrade to Pro');
+    expect(current[0]?.windows[0]?.usedPercent).toBe(10);
+  });
+
+  it('stores a reachedWindowId-only snapshot without erasing the previous windows', () => {
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [{ id: 'primary', usedPercent: 10 }] }),
+    ]);
+    recordProviderQuota('openai-codex', [snapshot({ windows: [], reachedWindowId: 'primary' })]);
+    const current = getProviderQuota('openai-codex');
+    expect(current).toHaveLength(1);
+    expect(current[0]?.reachedWindowId).toBe('primary');
+    expect(current[0]?.windows[0]?.usedPercent).toBe(10);
+  });
 });
 
 describe('worstProviderQuotaWindow', () => {

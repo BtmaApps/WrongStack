@@ -135,6 +135,38 @@ describe('notify-hub plugin', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // `fc`/`fd`/`fe80:` are IPv6 unique-local / link-local prefixes, but the
+  // guard ran them against the raw hostname string, so any public DNS name
+  // beginning with those two letters (fcbarcelona.com, fdroid.org) was refused
+  // as "private" and the plugin idled. An IPv6 literal always contains a colon;
+  // a DNS name never does.
+  it('accepts a public DNS host that merely starts with "fc" or "fd"', async () => {
+    for (const webhookUrl of ['https://fcbarcelona.com/webhook', 'https://fdroid.org/webhook']) {
+      const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
+      await notifyHubPlugin.setup(api as never);
+      const status = await getTool(api, 'notify_hub_status').execute({});
+      expect(status['webhookConfigured']).toBe(true);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still refuses every IPv6 unique-local and link-local literal', async () => {
+    for (const webhookUrl of [
+      'http://[fc00::1]/hook',
+      'http://[fd00::1]/hook',
+      'http://[fe80::1]/hook',
+      'http://[fc00:1234::abcd]/hook',
+    ]) {
+      const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
+      await notifyHubPlugin.setup(api as never);
+      await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+        /webhookUrl was refused/,
+      );
+      expect(api.registerHook).not.toHaveBeenCalled();
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('notify_send requires a message', async () => {
     const api = makeApi({ extensions: URL_CFG });
     await notifyHubPlugin.setup(api as never);
