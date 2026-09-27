@@ -349,3 +349,99 @@ export async function bindProjectEndpoint(
     };
   }
 }
+
+/**
+ * Puts a daemon's own metadata file back when another writer replaced it.
+ *
+ * A project's metadata file (`server.json`: pid, endpoint, the auth token)
+ * has one path per project, but the endpoint name is versioned: when it
+ * changes between releases (1.0.27 mixed a per-user secret into every name),
+ * a process of the old release and one of the new elect DIFFERENT endpoints —
+ * two live daemons — and both write the same file. Whichever wrote last owns
+ * the token every client reads, so every client of the other daemon is
+ * refused, and stays refused after the writer exits: a daemon wrote its file
+ * once, at startup.
+ *
+ * A refused token is the signal. `reassert()` reads the file and rewrites it
+ * only when it no longer names this daemon (pid AND endpoint), so a rejection
+ * caused by a caller that simply guessed costs one read. Calls are coalesced;
+ * it never throws. Clients that re-read the file on a refusal then recover on
+ * their next attempt.
+ */
+export interface ProjectMetadataReasserter {
+  /** Start guarding. Call once the daemon's first metadata write has landed. */
+  enable(): void;
+  /** Stop guarding (the daemon is stopping and removes its file). */
+  disable(): void;
+  /** Rewrite the file when it names another daemon, is missing or unreadable. */
+  reassert(): Promise<void>;
+}
+
+export function createProjectMetadataReasserter(options: {
+  readonly metadataPath: string;
+  readonly endpoint: string;
+  readonly pid: number;
+  readonly write: () => Promise<void>;
+}): ProjectMetadataReasserter {
+  let enabled = false;
+  let inFlight: Promise<void> | null = null;
+  const namesThisDaemon = async (): Promise<boolean> => {
+    try {
+      const current = JSON.parse(await fsPromises.readFile(options.metadataPath, 'utf8')) as {
+        pid?: unknown;
+        endpoint?: unknown;
+      };
+      return current.pid === options.pid && current.endpoint === options.endpoint;
+    } catch {
+      return false;
+    }
+  };
+  return {
+    enable: () => {
+      enabled = true;
+    },
+    disable: () => {
+      enabled = false;
+    },
+    reassert: () => {
+      if (!enabled) return Promise.resolve();
+      inFlight ??= (async () => {
+        try {
+          if (!(await namesThisDaemon()) && enabled) await options.write();
+        } catch {
+          // Best effort: the next refused request tries again.
+        } finally {
+          inFlight = null;
+        }
+      })();
+      return inFlight;
+    },
+  };
+}
+
+/**
+ * Retries a project-daemon request the daemon refused for its auth token.
+ *
+ * The client must forget its cached token when a refusal arrives, so each
+ * attempt re-reads the metadata file: a daemon that just started has not
+ * written it yet, one of another release may have overwritten it, and the
+ * owner puts it back on the first refusal (`createProjectMetadataReasserter`).
+ * A refused request never ran, so resending it is safe. The budget (~2 s) is
+ * the one the SAGE and Mailbox clients already use.
+ */
+export async function retryWhileUnauthorized<T>(
+  attempt: () => Promise<T>,
+  isUnauthorized: (error: unknown) => boolean,
+  options: { readonly attempts?: number; readonly delayMs?: number } = {},
+): Promise<T> {
+  const retries = options.attempts ?? 13;
+  const delayMs = options.delayMs ?? 150;
+  for (let retry = 0; ; retry++) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (retry >= retries || !isUnauthorized(error)) throw error;
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}

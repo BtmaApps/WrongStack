@@ -17,8 +17,8 @@
  *     4 in 60s). Something is systematically wrong.
  *   - agent stall — a run is active (`agent.run.started` without its
  *     matching completion) but no tool call or iteration progress has been
- *     observed for `stallMs` (default 5 min). A wedged provider call or a
- *     dead-loop that produces no work.
+ *     observed for `stallMs` (default 5 min), with no tool still running.
+ *     A wedged provider call or a dead-loop that produces no work.
  *   - file churn — the same file edited ≥ N times (default 5) within a
  *     sliding window (default 10 min). Classic edit/revert oscillation:
  *     the agent keeps rewriting the same file without converging.
@@ -113,7 +113,8 @@ export interface BrainMonitorOptions {
   errorStormWindowMs?: number | undefined;
   /**
    * Active run with no observable progress (tool call / iteration) for this
-   * long → agent-stall signal. Default 300_000 (5 min). 0 disables.
+   * long, with no tool still running → agent-stall signal.
+   * Default 300_000 (5 min). 0 disables.
    */
   stallMs?: number | undefined;
   /** How often the stall watchdog checks (ms). Default 30_000. */
@@ -229,6 +230,7 @@ interface SessionSignalState {
   /** At most one in-flight engagement per session — an LLM call takes seconds. */
   engaging: boolean;
   activeRuns: number;
+  activeTools: Set<string>;
   lastProgressAt: number;
   /** Last time anything at all was recorded, for pruning idle sessions. */
   touchedAt: number;
@@ -299,6 +301,7 @@ export class BrainMonitor {
         lastEngagedAt: new Map(),
         engaging: false,
         activeRuns: 0,
+        activeTools: new Set(),
         lastProgressAt: 0,
         touchedAt: Date.now(),
       };
@@ -441,6 +444,7 @@ export class BrainMonitor {
         if (leaderSid && e.sessionId && e.sessionId !== leaderSid) return;
 
         const state = this.stateFor(e.sessionId);
+        if (e.id) state.activeTools.delete(e.id);
         state.lastProgressAt = Date.now();
         this.trackFileChurn(state, e.sessionId, e.name, e.ok, e.input, e.writeTargets);
         if (!this.signals.toolFailureStreak) return;
@@ -469,6 +473,13 @@ export class BrainMonitor {
     // ── Agent-stall watchdog ─────────────────────────────────────────────
     if (this.stallMs > 0 && this.signals.agentStall) {
       this.unsubscribers.push(
+        this.opts.events.on('tool.started', (e) => {
+          const lsid = this.resolveLeaderSessionId();
+          if (lsid && e.sessionId && e.sessionId !== lsid) return;
+          const state = this.stateFor(e.sessionId);
+          state.activeTools.add(e.id);
+          state.lastProgressAt = Date.now();
+        }),
         this.opts.events.on('agent.run.started', (e) => {
           // Ignore subagent run events — only track the leader's runs
           const lsid = this.resolveLeaderSessionId();
@@ -492,6 +503,7 @@ export class BrainMonitor {
           if (lsid && e.sessionId && e.sessionId !== lsid) return;
           const state = this.stateFor(e.sessionId);
           state.activeRuns = Math.max(0, state.activeRuns - 1);
+          if (state.activeRuns === 0) state.activeTools.clear();
         }),
         this.opts.events.on('iteration.started', (e) => {
           const lsid = this.resolveLeaderSessionId();
@@ -504,7 +516,10 @@ export class BrainMonitor {
         // stuck neighbour's watchdog re-armed, which is what one shared
         // `lastProgressAt` did.
         for (const [key, state] of this.bySession) {
-          if (state.activeRuns === 0 || state.lastProgressAt === 0) continue;
+          // Tool execution has its own timeout/cancellation policy. A silent,
+          // long-running command is not evidence that the agent has stalled.
+          if (state.activeRuns === 0 || state.activeTools.size > 0 || state.lastProgressAt === 0)
+            continue;
           const idleMs = Date.now() - state.lastProgressAt;
           if (idleMs < this.stallMs) continue;
           // Re-arm from now so a declined steer doesn't re-fire every tick
@@ -571,6 +586,7 @@ export class BrainMonitor {
       state.errorTimestamps = [];
       state.editTimestamps.clear();
       state.activeRuns = 0;
+      state.activeTools.clear();
       state.lastProgressAt = 0;
     }
     if (this.stallTimer) {
@@ -643,6 +659,7 @@ export class BrainMonitor {
     input: { question: string; context: string },
   ): Promise<void> {
     const state = this.stateFor(sessionId);
+    const progressAtEngagement = state.lastProgressAt;
     // Rate limits, PER SESSION: a per-kind cooldown plus never more than one
     // engagement in flight for that session (an LLM-backed brain call takes
     // seconds). Sharing either across sessions meant one busy tab could
@@ -711,7 +728,14 @@ export class BrainMonitor {
                 rationale: `Monitor policy "observe": signals are recorded but never acted on.`,
               }
             : await this.opts.brain.decide(request);
-      const intervened = await this.maybeIntervene(kind, request, decision);
+      // A council decision can arrive after work has resumed or the run ended.
+      const staleStall =
+        kind === 'agent_stall' &&
+        (!this.running ||
+          state.activeRuns === 0 ||
+          state.activeTools.size > 0 ||
+          state.lastProgressAt !== progressAtEngagement);
+      const intervened = !staleStall && (await this.maybeIntervene(kind, request, decision));
       this.opts.events.emit('brain.intervention', {
         sessionId: request.sessionId,
         kind,

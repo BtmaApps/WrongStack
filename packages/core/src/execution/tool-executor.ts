@@ -184,6 +184,11 @@ export class ToolExecutor {
       const guard = await validateToolInputAndHooks(tool, use, ctx, this.opts);
       if (!guard.ok) {
         const result = guard.errorResult!;
+        // A refusal AFTER PreToolUse (later hook deny, tool.validate, Kanban
+        // boundary) must still let claim-taking hooks undo their claim.
+        if (guard.preToolUseRan) {
+          await this.toolSkipped(tool, guard.use, ctx, String(result.content));
+        }
         budget = this.budgetForString(result.content, budget);
         return { result, tool, durationMs: Date.now() - start, settlement: guard.settlement };
       }

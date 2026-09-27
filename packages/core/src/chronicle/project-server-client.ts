@@ -3,7 +3,12 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
+import {
+  daemonSpawnArgs,
+  isStandaloneBinary,
+  retryWhileUnauthorized,
+  standaloneDaemonUrl,
+} from '@wrongstack/persistence';
 import type { ChronicleJournalStats } from './journal.js';
 import {
   chronicleProjectServerEndpoint,
@@ -175,6 +180,10 @@ export function isChronicleProjectServerAvailable(): boolean {
   return resolveChronicleProjectServerUrl() !== null;
 }
 
+function isUnauthorizedChronicleError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'UnauthorizedChronicleRequest';
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -205,9 +214,13 @@ export class ChronicleProjectServerClient {
     options: ChronicleProjectServerCallOptions = {},
   ): Promise<ChronicleServerOperations[O]['result']> {
     await this.ensureConnected(true);
-    return this.request<ChronicleServerOperations[O]['result']>(
-      { type: 'request', op, args },
-      options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS,
+    return retryWhileUnauthorized(
+      () =>
+        this.request<ChronicleServerOperations[O]['result']>(
+          { type: 'request', op, args },
+          options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS,
+        ),
+      isUnauthorizedChronicleError,
     );
   }
 
@@ -465,6 +478,8 @@ export class ChronicleProjectServerClient {
     else {
       const error = new Error(message.error);
       if (message.errorName) error.name = message.errorName;
+      // Re-read the token on the next attempt: the file may name another daemon.
+      if (isUnauthorizedChronicleError(error)) this.authToken = undefined;
       pending.reject(error);
     }
   }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-27T19:55:01.360Z",
+  "generatedAt": "2026-09-27T22:32:57.905Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4243,
-    "testFiles": 3791,
-    "sourceLines": 1003548,
+    "testFiles": 3792,
+    "sourceLines": 1003897,
     "workspaceEdges": 130,
-    "moduleEdges": 13836,
+    "moduleEdges": 13838,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -24,7 +24,9 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 966
   },
-  "errors": [],
+  "errors": [
+    "packages/vector-memory/src/store.ts: hotspot grew from 810 to 823 lines; review and update the ratchet in the same change"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -399,7 +401,7 @@
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
       "sourceFiles": 8,
-      "testFiles": 12,
+      "testFiles": 13,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -410,7 +412,7 @@
         {
           "path": "packages/persistence/tsconfig.test.json",
           "error": null,
-          "testFiles": 12
+          "testFiles": 13
         }
       ]
     },
@@ -11365,6 +11367,12 @@
       },
       {
         "file": "packages/persistence/tests/project-endpoint.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/persistence/tests/project-metadata-reassert.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24124,7 +24132,7 @@
     },
     {
       "file": "packages/core/src/chronicle/project-server.ts",
-      "lines": 838,
+      "lines": 852,
       "relativeImports": 19
     },
     {
@@ -24234,7 +24242,7 @@
     },
     {
       "file": "packages/kanban/src/server/project-server.ts",
-      "lines": 895,
+      "lines": 911,
       "relativeImports": 10
     },
     {
@@ -24314,7 +24322,7 @@
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 967,
+      "lines": 979,
       "relativeImports": 5
     },
     {
@@ -24369,7 +24377,7 @@
     },
     {
       "file": "packages/tools/src/codebase-index/project-server-client.ts",
-      "lines": 882,
+      "lines": 893,
       "relativeImports": 8
     },
     {
@@ -24424,7 +24432,7 @@
     },
     {
       "file": "packages/vector-memory/src/store.ts",
-      "lines": 810,
+      "lines": 823,
       "relativeImports": 3
     },
     {
@@ -24565,6 +24573,11 @@
       "relativeImports": 42
     },
     {
+      "file": "packages/sage/src/project-server.ts",
+      "lines": 979,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/core/src/coordination/director.ts",
       "lines": 974,
       "relativeImports": 45
@@ -24583,11 +24596,6 @@
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
       "lines": 972,
       "relativeImports": 56
-    },
-    {
-      "file": "packages/sage/src/project-server.ts",
-      "lines": 967,
-      "relativeImports": 5
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
@@ -24638,6 +24646,11 @@
       "file": "packages/tools/src/session-kanban.ts",
       "lines": 921,
       "relativeImports": 5
+    },
+    {
+      "file": "packages/kanban/src/server/project-server.ts",
+      "lines": 911,
+      "relativeImports": 10
     },
     {
       "file": "packages/sdd/src/sdd-parallel-run.ts",
@@ -24700,11 +24713,6 @@
       "relativeImports": 7
     },
     {
-      "file": "packages/kanban/src/server/project-server.ts",
-      "lines": 895,
-      "relativeImports": 10
-    },
-    {
       "file": "packages/webui-server/src/server/backend-services.ts",
       "lines": 895,
       "relativeImports": 15
@@ -24713,6 +24721,11 @@
       "file": "packages/tools/src/bash.ts",
       "lines": 894,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/tools/src/codebase-index/project-server-client.ts",
+      "lines": 893,
+      "relativeImports": 8
     },
     {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
@@ -24743,11 +24756,6 @@
       "file": "packages/tui/src/reducers/settings-values.ts",
       "lines": 885,
       "relativeImports": 6
-    },
-    {
-      "file": "packages/tools/src/codebase-index/project-server-client.ts",
-      "lines": 882,
-      "relativeImports": 8
     },
     {
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",

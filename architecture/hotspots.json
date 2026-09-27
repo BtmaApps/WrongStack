@@ -63,7 +63,7 @@
       "relativeImports": 8
     },
     "packages/core/src/chronicle/project-server.ts": {
-      "lines": 838,
+      "lines": 852,
       "relativeImports": 19
     },
     "packages/core/src/coordination/collab-debug.ts": {
@@ -151,7 +151,7 @@
       "relativeImports": 7
     },
     "packages/kanban/src/server/project-server.ts": {
-      "lines": 895,
+      "lines": 911,
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
@@ -215,7 +215,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 967,
+      "lines": 979,
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -259,7 +259,7 @@
       "relativeImports": 13
     },
     "packages/tools/src/codebase-index/project-server-client.ts": {
-      "lines": 882,
+      "lines": 893,
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/writer.ts": {

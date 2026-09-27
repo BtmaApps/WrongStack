@@ -106,6 +106,12 @@ export class Poller {
       this.standbyTimer.unref?.();
       return;
     }
+    // Another instance may have polled (and persisted a newer offset) while
+    // this one stood by. Its last batch is only confirmed server-side by a
+    // getUpdates with a higher offset, so polling with the offset read at
+    // construction would re-deliver that batch. loadOffset() is synchronous
+    // in practice (no await), so the offset is current before schedulePoll.
+    void this.loadOffset();
     if (this.standbyAnnounced) {
       this.standbyAnnounced = false;
       this.log.info('Telegram: poll lock acquired — taking over polling.');
@@ -215,7 +221,7 @@ export class Poller {
     if (!this.offsetStore) return;
     try {
       const saved = this.offsetStore.read();
-      if (saved !== null) {
+      if (saved !== null && saved > this.offset) {
         this.offset = saved;
         this.log.debug(`Telegram polling offset restored: ${this.offset}`);
       }

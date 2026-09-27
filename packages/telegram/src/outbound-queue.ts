@@ -300,9 +300,11 @@ export class OutboundQueue {
       // Prune an idle lane so the per-chat map doesn't grow for the whole
       // process lifetime in unrestricted mode (a bot reachable by many chats).
       // enqueue() lazily recreates it on the next send to this chat.
-      if (lane.pending.length === 0) {
-        this.#lanes.delete(key);
-      }
+      // A lane with backlog moves to the back of the Map: #nextReady scans
+      // in insertion order, so leaving it in place let it reclaim the freed
+      // slot every time and starve later chats until it fully drained.
+      this.#lanes.delete(key);
+      if (lane.pending.length > 0) this.#lanes.set(key, lane);
       this.#schedule();
     }
   }

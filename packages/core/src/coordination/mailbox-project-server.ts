@@ -11,7 +11,7 @@ import { randomBytes } from 'node:crypto';
 import * as fsPromises from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { EventBus } from '../kernel/events.js';
 import { restrictFilePermissions } from '../security/file-permissions.js';
@@ -359,6 +359,7 @@ function checkAuthToken(state: ClientState, message: MailboxProjectServerClientM
   // named four, and this one only surfaced when the wiring test below was
   // written, which is the argument for having the test at all.
   if (timingSafeTokenEqual(message.authToken, authToken)) return true;
+  void metadataGuard.reassert();
   send(state, {
     type: 'response',
     id: message.id,
@@ -470,6 +471,15 @@ function scheduleIdleStop(): void {
   idleTimer.unref?.();
 }
 
+// A daemon of another release can own a different endpoint for this project
+// and still write the same metadata file; a refused token puts ours back.
+const metadataGuard = createProjectMetadataReasserter({
+  metadataPath,
+  endpoint,
+  pid: process.pid,
+  write: writeMetadata,
+});
+
 async function writeMetadata(): Promise<void> {
   await fsPromises.mkdir(projectDir, { recursive: true });
   // The token lives ONLY in this owner-only file, never on the wire (WS-027).
@@ -540,6 +550,7 @@ async function removeOwnedMetadata(): Promise<void> {
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard.disable();
   // DIAGNOSTIC: the stop reason is otherwise unobservable — the client spawns
   // this daemon with stdio:'ignore', so anything not written to stderr is lost
   // when the daemon exits. Harmless in production precisely because stderr is
@@ -651,6 +662,7 @@ void (async () => {
   stopAutoCompact = mailbox.startAutoCompactTimer();
   try {
     await writeMetadata();
+    metadataGuard.enable();
     markMetadataWritten?.();
     scheduleIdleStop();
   } catch {

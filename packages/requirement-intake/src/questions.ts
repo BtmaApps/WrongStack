@@ -77,9 +77,7 @@ export function upsertQuestion(
   record: RequirementIntakeRecord,
   template: IntakeQuestionTemplate,
 ): boolean {
-  const existing = record.questions.find(
-    (question) => question.field === template.field && question.status !== 'skipped',
-  );
+  const existing = record.questions.find((question) => question.field === template.field);
   if (existing) return false;
   record.questions.push(makeQuestion(template, record.questions.length, false));
   return true;

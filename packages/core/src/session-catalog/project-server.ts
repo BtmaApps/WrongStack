@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
@@ -500,6 +500,7 @@ async function handleMessage(
   // surface in the repo already compares in constant time; these four IPC
   // daemons were the ones that did not.
   if (!timingSafeTokenEqual(message.authToken, authToken)) {
+    void metadataGuard.reassert();
     send(state, {
       type: 'response',
       id: message.id,
@@ -600,6 +601,15 @@ function scheduleIdleStop(emptyIdleMs = idleMs): void {
   idleTimer.unref?.();
 }
 
+// A daemon of another release can own a different endpoint for this project
+// and still write the same metadata file; a refused token puts ours back.
+const metadataGuard = createProjectMetadataReasserter({
+  metadataPath,
+  endpoint,
+  pid: process.pid,
+  write: writeMetadata,
+});
+
 async function writeMetadata(): Promise<void> {
   await fsp.mkdir(parsed.projectDir, { recursive: true, mode: 0o700 });
   const metadata: SessionCatalogMetadata = { ...serverInfo, authToken };
@@ -623,6 +633,7 @@ async function removeOwnedMetadata(): Promise<void> {
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard.disable();
   // DIAGNOSTIC: the stop reason is otherwise unobservable — the client spawns
   // this daemon with stdio:'ignore', so anything not written to stderr is lost
   // when the daemon exits. Harmless in production precisely because stderr is
@@ -765,7 +776,10 @@ void (async () => {
   try {
     store = new SessionCatalogStore(parsed.projectDir);
     void writeMetadata()
-      .then(() => metadataReadyResolve?.())
+      .then(() => {
+        metadataGuard.enable();
+        metadataReadyResolve?.();
+      })
       .catch(() => void stop('metadata write failed'));
   } catch {
     void stop('catalog open failed');

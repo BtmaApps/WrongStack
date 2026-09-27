@@ -8,6 +8,7 @@ import {
   estimateToolInputTokens,
   estimateToolResultTokens,
 } from '../utils/token-estimate.js';
+import { sliceUtf16Safe } from './compaction-scoring.js';
 
 const PATH_HINT_PATTERN =
   /(?:(?:[A-Za-z]:)?[./\\]?[\w@.-]+(?:[\\/][\w@(). -]+)+\.[A-Za-z0-9]{1,12})/g;
@@ -651,6 +652,7 @@ export function eliseOldToolResults(
       const elided: ToolResultBlock = {
         type: 'tool_result',
         tool_use_id: b.tool_use_id,
+        ...(b.name !== undefined && { name: b.name }),
         content: summarizeToolResultElision(b, tokens),
         is_error: b.is_error,
       };
@@ -718,7 +720,9 @@ function summarizeToolUseInputValue(value: unknown): unknown {
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     const oneLine = value.replace(/\s+/g, ' ').trim();
-    return oneLine.length <= 160 ? oneLine : `${oneLine.slice(0, 120)}...(${oneLine.length} chars)`;
+    return oneLine.length <= 160
+      ? oneLine
+      : `${sliceUtf16Safe(oneLine, 0, 120)}...(${oneLine.length} chars)`;
   }
   if (Array.isArray(value)) {
     return `[array:${value.length}]`;
@@ -749,7 +753,7 @@ function semanticToolResultExcerpt(content: unknown, maxChars = 480): string | u
   const separator = ' … ';
   const headChars = Math.ceil((maxChars - separator.length) * 0.65);
   const tailChars = maxChars - separator.length - headChars;
-  return `${text.slice(0, headChars)}${separator}${text.slice(-tailChars)}`;
+  return `${sliceUtf16Safe(text, 0, headChars)}${separator}${sliceUtf16Safe(text, text.length - tailChars)}`;
 }
 
 function safeToolResultString(content: unknown): string {
@@ -779,7 +783,7 @@ function firstErrorLine(content: unknown): string | undefined {
     for (const line of lines) {
       if (!pattern.test(line)) continue;
       const trimmed = line.replace(WHITESPACE_COLLAPSE_PATTERN, ' ').trim();
-      if (trimmed) return trimmed.slice(0, 180);
+      if (trimmed) return sliceUtf16Safe(trimmed, 0, 180);
     }
   }
   return undefined;

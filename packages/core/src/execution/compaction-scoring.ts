@@ -2,6 +2,38 @@ import type { ToolResultBlock } from '../types/blocks.js';
 import { isTextBlock } from '../types/blocks.js';
 import type { Message } from '../types/messages.js';
 
+const isHighSurrogate = (code: number): boolean => code >= 0xd800 && code <= 0xdbff;
+const isLowSurrogate = (code: number): boolean => code >= 0xdc00 && code <= 0xdfff;
+
+/**
+ * `text.slice(start, end)` that never cuts a surrogate pair in half: a cut
+ * inside a pair moves to the nearer-inside boundary (dropping the whole code
+ * point). A lone surrogate is ill-formed Unicode and reaches the provider as
+ * an unpaired `\ud83d` JSON escape. Bounds are clamped to the string (a
+ * negative start is 0, not "from the end" as in `slice`).
+ */
+export function sliceUtf16Safe(text: string, start: number, end: number = text.length): string {
+  let from = Math.max(0, start);
+  let to = Math.min(text.length, end);
+  if (
+    from > 0 &&
+    from < text.length &&
+    isLowSurrogate(text.charCodeAt(from)) &&
+    isHighSurrogate(text.charCodeAt(from - 1))
+  ) {
+    from++;
+  }
+  if (
+    to > from &&
+    to < text.length &&
+    isHighSurrogate(text.charCodeAt(to - 1)) &&
+    isLowSurrogate(text.charCodeAt(to))
+  ) {
+    to--;
+  }
+  return text.slice(from, to);
+}
+
 const FAILURE_PATTERN =
   /(error|fail|exception|timeout|enonet|eacces|eperm|enoent|abort|hata|başarısız|basarisiz)/i;
 const CORRECTION_PATTERN =
@@ -152,9 +184,9 @@ function firstSentence(text: string): string {
   const trimmed = text.trim();
   if (trimmed.length === 0) return '';
   const dot = trimmed.indexOf('. ');
-  if (dot === -1) return trimmed.length > 150 ? `${trimmed.slice(0, 147)}…` : trimmed;
+  if (dot === -1) return trimmed.length > 150 ? `${sliceUtf16Safe(trimmed, 0, 147)}…` : trimmed;
   const sentence = trimmed.slice(0, dot + 1);
-  return sentence.length > 150 ? `${sentence.slice(0, 147)}…` : sentence;
+  return sentence.length > 150 ? `${sliceUtf16Safe(sentence, 0, 147)}…` : sentence;
 }
 
 function oneLineSummary(m: Message, text: string): string {
@@ -169,5 +201,5 @@ function oneLineSummary(m: Message, text: string): string {
     return '[no text content]';
   }
   const firstLine = trimmed.split('\n')[0] ?? '';
-  return firstLine.length > 100 ? `${firstLine.slice(0, 97)}…` : firstLine;
+  return firstLine.length > 100 ? `${sliceUtf16Safe(firstLine, 0, 97)}…` : firstLine;
 }

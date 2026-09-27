@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-27T19:55:01.360Z
+**Generated:** 2026-09-27T22:32:57.905Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4243 |
-| Production source lines | 1003548 |
-| Test files | 3791 |
+| Production source lines | 1003897 |
+| Test files | 3792 |
 | Workspace dependency edges | 130 |
-| Relative module edges | 13836 |
+| Relative module edges | 13838 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- packages/vector-memory/src/store.ts: hotspot grew from 810 to 823 lines; review and update the ratchet in the same change
 
 ## Workspace packages
 
@@ -39,7 +39,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 47 | 49 | @wrongstack/core |
-| @wrongstack/persistence | 8 | 12 | — |
+| @wrongstack/persistence | 8 | 13 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
@@ -94,11 +94,11 @@ None.
 | 1008 | `packages/cli/src/execution.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
 | 981 | `packages/sage/src/sqlite-store.ts` |
+| 979 | `packages/sage/src/project-server.ts` |
 | 974 | `packages/core/src/coordination/director.ts` |
 | 974 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 973 | `packages/mcp/src/client.ts` |
 | 972 | `packages/webui-server/src/server/embedded-message-router.ts` |
-| 967 | `packages/sage/src/project-server.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
 | 957 | `packages/webui/src/types/client-message.ts` |
 | 939 | `packages/acp/src/client/acp-session.ts` |
@@ -109,6 +109,7 @@ None.
 | 923 | `packages/webui/src/hooks/ws-handlers.ts` |
 | 922 | `packages/mcp/src/registry.ts` |
 | 921 | `packages/tools/src/session-kanban.ts` |
+| 911 | `packages/kanban/src/server/project-server.ts` |
 | 911 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/providers/src/index.ts` |
@@ -121,16 +122,15 @@ None.
 | 899 | `packages/core/src/core/fallback-model.ts` |
 | 899 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 897 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
-| 895 | `packages/kanban/src/server/project-server.ts` |
 | 895 | `packages/webui-server/src/server/backend-services.ts` |
 | 894 | `packages/tools/src/bash.ts` |
+| 893 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 891 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
 | 887 | `packages/mcp/src/server.ts` |
 | 886 | `packages/core/src/coordination/collab-debug.ts` |
 | 886 | `packages/tools/src/codebase-index/dead-code-scan.ts` |
 | 885 | `packages/tui/src/reducers/settings-values.ts` |
-| 882 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 880 | `packages/plugins/src/duplicate-code-detector/index.ts` |
 | 878 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 878 | `packages/primitives/src/regex-guard.ts` |

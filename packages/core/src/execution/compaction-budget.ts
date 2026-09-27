@@ -17,6 +17,7 @@ import {
   summarizeToolResultElision,
   summarizeToolUseInputElision,
 } from './compaction-elision.js';
+import { sliceUtf16Safe } from './compaction-scoring.js';
 
 export interface HardBudgetResult {
   messages: Message[];
@@ -38,7 +39,7 @@ export function headTailTruncate(text: string, keepHead: number, keepTail: numbe
   if (text.length <= keepHead + keepTail + 60) return text;
   const removedChars = text.length - keepHead - keepTail;
   const approxTokens = Math.ceil(removedChars / 3.5);
-  return `${text.slice(0, keepHead)}\n… [truncated ~${approxTokens} tokens — see session log] …\n${text.slice(text.length - keepTail)}`;
+  return `${sliceUtf16Safe(text, 0, keepHead)}\n… [truncated ~${approxTokens} tokens — see session log] …\n${sliceUtf16Safe(text, text.length - keepTail)}`;
 }
 
 export function truncateMessageText(

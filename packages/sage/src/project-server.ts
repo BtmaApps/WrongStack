@@ -13,7 +13,7 @@ import {
   startSharedHeapWatchdog,
   useDaemonPerfDefaults,
 } from '@wrongstack/core/utils';
-import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { SqliteMemoryPort } from './memory-port.js';
 import { detectNinepStoreMount, ninepStoreRefusalMessage, readSelfMounts } from './mount-probe.js';
@@ -203,6 +203,15 @@ const serverInfo: SageProjectServerInfo = {
  * caller the credential was meant to refuse.
  */
 const serverMetadata: SageProjectServerMetadata = { ...serverInfo, authToken };
+
+// A daemon of another release can own a different endpoint for this project
+// and still write the same `server.json`; a refused token puts ours back.
+const metadataGuard = createProjectMetadataReasserter({
+  metadataPath,
+  endpoint,
+  pid: process.pid,
+  write: writeMetadata,
+});
 
 let resolveReady: (() => void) | undefined;
 let rejectReady: ((error: unknown) => void) | undefined;
@@ -586,6 +595,7 @@ function checkAuthToken(state: ClientState, message: SageProjectServerClientMess
     (message.type === 'request' || message.type === 'shutdown') &&
     !timingSafeTokenEqual(supplied, authToken)
   ) {
+    void metadataGuard.reassert();
     send(state, {
       type: 'response',
       id: message.id,
@@ -740,6 +750,7 @@ async function removeOwnedMetadata(): Promise<void> {
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard.disable();
   if (idleTimer) clearTimeout(idleTimer);
   if (silentClientSweep) clearInterval(silentClientSweep);
   silentClientSweep = undefined;
@@ -905,6 +916,7 @@ void (async () => {
   try {
     await store.initialize();
     await writeMetadata();
+    metadataGuard.enable();
     resolveReady?.();
     scheduleIdleStop();
   } catch (error) {

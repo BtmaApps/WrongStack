@@ -14,7 +14,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { startSharedHeapWatchdog, useDaemonPerfDefaults } from '@wrongstack/core/utils';
-import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { prewarmWiringSnapshot, wiringSnapshotLastUsedAt } from './graph-adjacency-cache.js';
 import { indexService } from './index-service.js';
@@ -435,6 +435,7 @@ async function handleMessage(
   // surface in the repo already compares in constant time; these four IPC
   // daemons were the ones that did not.
   if (!timingSafeTokenEqual(message.authToken, authToken)) {
+    void metadataGuard.reassert();
     send(state, {
       type: 'response',
       id: message.id,
@@ -589,9 +590,19 @@ const clientLeaseTimer = setInterval(() => {
 }, clientLeaseSweepMs);
 clientLeaseTimer.unref?.();
 
+// A daemon of another release can own a different endpoint for this project
+// and still write the same metadata file; a refused token puts ours back.
+const metadataGuard = createProjectMetadataReasserter({
+  metadataPath,
+  endpoint,
+  pid: process.pid,
+  write: () => writeProjectServerMetadata(metadataPath, { ...serverInfo, authToken }),
+});
+
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard.disable();
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
   clearInterval(clientLeaseTimer);
@@ -667,6 +678,7 @@ void (async () => {
   });
   const metadata: ProjectIndexServerMetadata = { ...serverInfo, authToken };
   await writeProjectServerMetadata(metadataPath, metadata);
+  metadataGuard.enable();
   markMetadataWritten?.();
   scheduleIdleStop();
 })();

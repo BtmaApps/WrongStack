@@ -13,7 +13,7 @@ import { randomBytes } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
@@ -521,6 +521,7 @@ async function handleMessage(
   // surface in the repo already compares in constant time; these four IPC
   // daemons were the ones that did not.
   if (!timingSafeTokenEqual(message.authToken, authToken)) {
+    void metadataGuard.reassert();
     send(state, {
       type: 'response',
       id: message.id,
@@ -610,6 +611,15 @@ function scheduleIdleStop(): void {
   idleTimer.unref?.();
 }
 
+// A daemon of another release can own a different endpoint for this project
+// and still write the same metadata file; a refused token puts ours back.
+const metadataGuard = createProjectMetadataReasserter({
+  metadataPath,
+  endpoint,
+  pid: process.pid,
+  write: writeMetadata,
+});
+
 async function writeMetadata(): Promise<void> {
   await fsp.mkdir(path.dirname(metadataPath), { recursive: true });
   // The token lives ONLY in this owner-only file, never on the wire (WS-027).
@@ -645,6 +655,7 @@ async function removeOwnedMetadata(): Promise<void> {
 async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard.disable();
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
   if (silentClientSweep) clearInterval(silentClientSweep);
@@ -766,7 +777,10 @@ void (async () => {
     process.stderr.write(`chronicle project server error: ${error.message}\n`);
     process.exitCode = 1;
   });
-  void writeMetadata().then(() => markMetadataWritten?.());
+  void writeMetadata().then(() => {
+    metadataGuard.enable();
+    markMetadataWritten?.();
+  });
   void startChronicleFileObserver({
     projectRoot: parsed.projectRoot,
     journal: watcherSink,

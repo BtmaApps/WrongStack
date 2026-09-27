@@ -255,6 +255,84 @@ describe('BrainMonitor — agent stall signal', () => {
     expect(emitted).toHaveLength(0);
   });
 
+  it.each([true, false])(
+    'waits for every parallel tool to settle (last tool ok=%s)',
+    async (ok) => {
+      const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+      monitor({ brain, stallMs: 300_000 });
+      runStarted();
+      events.emit('tool.started', { name: 'bash', id: 'slow' });
+      events.emit('tool.started', { name: 'bash', id: 'fast' });
+      events.emit('tool.executed', { name: 'bash', id: 'fast', durationMs: 1, ok: true });
+      // Duplicate completion must not consume the other in-flight call.
+      events.emit('tool.executed', { name: 'bash', id: 'fast', durationMs: 1, ok: true });
+      await vi.advanceTimersByTimeAsync(900_000);
+      expect(brain.decide).not.toHaveBeenCalled();
+
+      events.emit('tool.executed', { name: 'bash', id: 'slow', durationMs: 900_000, ok });
+      await vi.advanceTimersByTimeAsync(290_000);
+      expect(brain.decide).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(brain.decide).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('does not let another session or a filtered subagent suppress a stall', async () => {
+    const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+    monitor({ brain, leaderSessionId: 'leader' });
+    runStarted();
+    events.emit('tool.started', { sessionId: 'worker', name: 'bash', id: 'slow' });
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(brain.decide).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a busy session from suppressing a different session stall', async () => {
+    const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+    monitor({ brain });
+    runStarted();
+    events.emit('agent.run.started', {
+      sessionId: 'busy',
+      ctx: {} as never,
+      model: 'm',
+      at: new Date().toISOString(),
+    });
+    events.emit('tool.started', { sessionId: 'busy', name: 'bash', id: 'slow' });
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(brain.decide).toHaveBeenCalledOnce();
+  });
+
+  it('clears unfinished tool tracking when the run ends', async () => {
+    const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+    monitor({ brain });
+    runStarted();
+    events.emit('tool.started', { name: 'bash', id: 'aborted' });
+    runCompleted();
+    runStarted();
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(brain.decide).toHaveBeenCalledOnce();
+  });
+
+  it('discards a pending council steer when a tool starts during deliberation', async () => {
+    let resolveDecision!: (decision: BrainDecision) => void;
+    const brain: BrainArbiter = {
+      decide: vi.fn(
+        () =>
+          new Promise<BrainDecision>((resolve) => {
+            resolveDecision = resolve;
+          }),
+      ),
+    };
+    const intervene = vi.fn(async () => {});
+    monitor({ brain, intervene });
+    runStarted();
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(brain.decide).toHaveBeenCalledOnce();
+    events.emit('tool.started', { name: 'bash', id: 'resumed' });
+    resolveDecision(STEER);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(intervene).not.toHaveBeenCalled();
+  });
+
   it('stays quiet when no run is active', async () => {
     const emitted: EventMap['brain.intervention'][] = [];
     events.on('brain.intervention', (e) => emitted.push(e));

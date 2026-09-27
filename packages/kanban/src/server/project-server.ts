@@ -20,7 +20,9 @@ import { pathToFileURL } from 'node:url';
 import {
   atomicWrite,
   bindProjectEndpoint,
+  createProjectMetadataReasserter,
   isStandaloneBinary,
+  type ProjectMetadataReasserter,
   restrictFilePermissions,
 } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
@@ -163,6 +165,11 @@ const metadataWritten = new Promise<void>((resolve) => {
 function serverMetadataPath(root: string): string {
   return path.join(root, '.wrongstack', KANBAN_PROJECT_SERVER_METADATA_FILE);
 }
+
+// A daemon of another release can own a different endpoint for this project
+// and still write the same metadata file; a refused token puts ours back.
+// Created once the endpoint is known (after the bind).
+let metadataGuard: ProjectMetadataReasserter | undefined;
 
 async function writeServerMetadata(): Promise<void> {
   if (!serverInfo) return;
@@ -307,6 +314,7 @@ function scheduleIdleStop(): void {
 async function stop(_reason: string, gracefulSocket?: net.Socket): Promise<void> {
   if (stopping) return;
   stopping = true;
+  metadataGuard?.disable();
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
   if (livenessTimer) clearInterval(livenessTimer);
@@ -600,6 +608,7 @@ function processRequest(state: ClientState, req: KanbanRequest): void {
   // surface in the repo already compares in constant time; these four IPC
   // daemons were the ones that did not.
   if (!timingSafeTokenEqual(req.authToken, authToken)) {
+    void metadataGuard?.reassert();
     sendFrame(state.socket, {
       id: req.id,
       error: {
@@ -789,6 +798,13 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       startedAt: new Date().toISOString(),
     };
     await writeServerMetadata();
+    metadataGuard = createProjectMetadataReasserter({
+      metadataPath: serverMetadataPath(projectRoot),
+      endpoint,
+      pid: process.pid,
+      write: writeServerMetadata,
+    });
+    metadataGuard.enable();
     markMetadataWritten?.();
     readyResolve();
   } catch (error) {

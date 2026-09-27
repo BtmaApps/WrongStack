@@ -3,7 +3,12 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
+import {
+  daemonSpawnArgs,
+  isStandaloneBinary,
+  retryWhileUnauthorized,
+  standaloneDaemonUrl,
+} from '@wrongstack/persistence';
 import { isPidAlive } from '../utils/pid.js';
 import { canonicalProjectRoot } from '../utils/wstack-paths.js';
 import {
@@ -115,6 +120,10 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isUnauthorizedCatalogError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'UnauthorizedSessionCatalogRequest';
+}
+
 export class SessionCatalogProjectClient {
   readonly endpoint: string;
   private socket: net.Socket | null = null;
@@ -140,7 +149,10 @@ export class SessionCatalogProjectClient {
     options: { timeoutMs?: number } = {},
   ): Promise<SessionCatalogOperations[O]['result']> {
     await this.ensureConnected(true);
-    return this.request({ type: 'request', op, args }, options.timeoutMs ?? CALL_TIMEOUT_MS);
+    return retryWhileUnauthorized(
+      () => this.request({ type: 'request', op, args }, options.timeoutMs ?? CALL_TIMEOUT_MS),
+      isUnauthorizedCatalogError,
+    );
   }
 
   /**
@@ -155,7 +167,10 @@ export class SessionCatalogProjectClient {
     options: { timeoutMs?: number } = {},
   ): Promise<SessionCatalogOperations[O]['result']> {
     await this.ensureConnected(false);
-    return this.request({ type: 'request', op, args }, options.timeoutMs ?? CALL_TIMEOUT_MS);
+    return retryWhileUnauthorized(
+      () => this.request({ type: 'request', op, args }, options.timeoutMs ?? CALL_TIMEOUT_MS),
+      isUnauthorizedCatalogError,
+    );
   }
 
   ping(): Promise<SessionCatalogOperations['ping']['result']> {
@@ -487,6 +502,8 @@ export class SessionCatalogProjectClient {
     else {
       const error = new Error(message.error);
       if (message.errorName) error.name = message.errorName;
+      // Re-read the token on the next attempt: the file may name another daemon.
+      if (isUnauthorizedCatalogError(error)) this.authToken = undefined;
       pending.reject(error);
     }
   }

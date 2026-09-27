@@ -12,7 +12,12 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
+import {
+  daemonSpawnArgs,
+  isStandaloneBinary,
+  retryWhileUnauthorized,
+  standaloneDaemonUrl,
+} from '@wrongstack/persistence';
 import {
   decodeLifecycleIssues,
   KanbanLifecycleError,
@@ -261,6 +266,8 @@ class KanbanServerConnection {
                     ? new StaleWriteError(original)
                     : new Error(original);
               if (typeof code === 'string') (error as { code?: string }).code = code;
+              // Re-read the token on the next attempt: the file may name another daemon.
+              if (code === 'UNAUTHORIZED') this.authToken = undefined;
               pending.reject(error);
             }
           }
@@ -344,10 +351,21 @@ class KanbanServerConnection {
     return this.authToken;
   }
 
-  async request<M extends KanbanServerMethod>(
+  request<M extends KanbanServerMethod>(
     method: M,
     params: KanbanServerOperations[M]['args'],
     opts: { timeoutMs?: number } = {},
+  ): Promise<KanbanServerOperations[M]['result']> {
+    return retryWhileUnauthorized(
+      () => this.requestOnce(method, params, opts),
+      (error) => (error as { code?: unknown } | null)?.code === 'UNAUTHORIZED',
+    );
+  }
+
+  private async requestOnce<M extends KanbanServerMethod>(
+    method: M,
+    params: KanbanServerOperations[M]['args'],
+    opts: { timeoutMs?: number },
   ): Promise<KanbanServerOperations[M]['result']> {
     if (this.destroyed) throw new Error('Connection closed');
     await this.helloPromise;

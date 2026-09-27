@@ -54,7 +54,12 @@ export function parseCouncilResponse(
 ): { ok: true; value: ParsedCouncilResponse } | { ok: false; error: string } {
   const roleLabel = opts.role === 'judge' ? 'Judge' : 'Voter';
   const parsed = parseObject(text);
-  if (!parsed.ok && (!question.options || question.options.length === 0)) {
+  // An object with none of the envelope keys is a JSON snippet inside a prose
+  // answer (e.g. a config example), not the response envelope — treat it like
+  // any other non-JSON free-text answer instead of a missing stance/answer.
+  const notEnvelope =
+    !parsed.ok || !['optionId', 'stance', 'answer', 'rationale'].some((k) => k in parsed.value);
+  if (notEnvelope && (!question.options || question.options.length === 0)) {
     const fallback = text.trim();
     if (fallback) return { ok: true, value: { [opts.freeTextField]: fallback } };
     return { ok: false, error: `${roleLabel} returned an empty response.` };

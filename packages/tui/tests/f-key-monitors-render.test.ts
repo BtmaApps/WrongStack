@@ -77,12 +77,16 @@ describe('F1–F10 monitor presentation', () => {
     Object.defineProperty(view.stdout, 'columns', { configurable: true, value: 52 });
     Object.defineProperty(view.stdout, 'rows', { configurable: true, value: 16 });
     process.stdout.emit('resize');
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const frame = view.lastFrame() ?? '';
-    expect(frame).toContain('project-17');
-    expect(frame).toContain('hidden');
-    expect(Math.max(...frame.split('\n').map((line) => line.length))).toBeLessThanOrEqual(54);
+    // Wait for the resized frame rather than one timer tick: under a loaded
+    // full-suite run the re-render can land after it, and the 100-column
+    // initial frame was then measured instead.
+    await vi.waitFor(() => {
+      const frame = view.lastFrame() ?? '';
+      expect(frame).toContain('project-17');
+      expect(frame).toContain('hidden');
+      expect(Math.max(...frame.split('\n').map((line) => line.length))).toBeLessThanOrEqual(54);
+    });
     view.unmount();
   });
 

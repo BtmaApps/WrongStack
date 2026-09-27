@@ -69,6 +69,21 @@ describe('RequirementIntakeStore', () => {
     expect(await harness.store.exists('reqi_missing')).toBe(false);
   });
 
+  it('surfaces a malformed durable record instead of reporting it missing', async () => {
+    const harness = makeHarness();
+    const ctx = { id: 'user-alice', type: 'user' as const, projectId: 'proj_alpha' };
+    const { record } = await harness.service.createIntake(
+      { projectId: ctx.projectId, requestedBy: ctx.id, originalRequest: 'Add password reset' },
+      ctx,
+    );
+    expect((await harness.service.getIntake(record.id, ctx))?.id).toBe(record.id);
+    expect(await harness.service.getIntake('reqi_missing', ctx)).toBeNull();
+    expect(await harness.service.getIntake('../outside', ctx)).toBeNull();
+
+    await fsp.writeFile(path.join(harness.dir, `${record.id}.json`), '{ truncated', 'utf8');
+    await expect(harness.service.getIntake(record.id, ctx)).rejects.toThrow(SyntaxError);
+  });
+
   it('lists records for a project, newest first', async () => {
     const harness = makeHarness();
     const first = buildRecord();

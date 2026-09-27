@@ -439,6 +439,52 @@ describe('RequirementIntakeService — LLM suggestions', () => {
     expect(infoEvent?.status).toBe('collecting_information');
   });
 
+  it('does not re-ask supplied or project-known fields when accepting suggested questions', async () => {
+    const harness = makeHarness({
+      generator: stubGenerator({
+        suggested_questions: [
+          { field: 'security', question: 'Which security review?' },
+          { field: 'business_goal', question: 'What is the business goal?' },
+          { field: 'constraints', question: 'What constraints apply?' },
+        ],
+      }),
+    });
+    const { record } = await harness.service.createIntake(
+      { ...CREATE_INPUT, businessGoal: 'Reduce support tickets', knownFields: ['constraints'] },
+      ALICE,
+    );
+    expect(record.questions.find((question) => question.field === 'business_goal')?.status).toBe(
+      'skipped',
+    );
+    expect(record.questions.find((question) => question.field === 'constraints')?.status).toBe(
+      'skipped',
+    );
+
+    const proposals = await harness.service.generateSuggestions(record.id, ALICE);
+    for (const field of ['security', 'business_goal', 'constraints']) {
+      const proposal = proposals.find((candidate) => candidate.field === field);
+      expect(proposal).toBeDefined();
+      await harness.service.acceptSuggestion(record.id, proposal!.id, ALICE);
+    }
+
+    const updated = await harness.service.getIntake(record.id, ALICE);
+    for (const field of ['business_goal', 'constraints']) {
+      expect(updated?.questions.filter((question) => question.field === field)).toHaveLength(1);
+      expect(updated?.questions.find((question) => question.field === field)?.status).toBe(
+        'skipped',
+      );
+    }
+    expect(updated?.questions.find((question) => question.field === 'security')?.status).toBe(
+      'unanswered',
+    );
+    const pendingFields = (await harness.service.pendingQuestions(record.id, ALICE)).map(
+      (question) => question.field,
+    );
+    expect(pendingFields).toContain('security');
+    expect(pendingFields).not.toContain('business_goal');
+    expect(pendingFields).not.toContain('constraints');
+  });
+
   it('does not add suggestions after submission while the generator was pending', async () => {
     let started!: () => void;
     const generating = new Promise<void>((resolve) => {

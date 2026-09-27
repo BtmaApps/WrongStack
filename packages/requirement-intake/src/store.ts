@@ -142,8 +142,14 @@ export class RequirementIntakeStore {
     try {
       const raw = await fsp.readFile(this.recordPath(id), 'utf8');
       return JSON.parse(raw) as RequirementIntakeRecord;
-    } catch {
-      return null;
+    } catch (error) {
+      if (
+        error instanceof IntakeValidationError ||
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        return null;
+      }
+      throw error;
     }
   }
 

@@ -22,6 +22,12 @@ export interface PreExecutionValidationResult {
   settlement?: ToolSettlement | undefined;
   preToolContext?: { text: string; contextAs: 'inline' | 'separate' } | undefined;
   boundary?: KanbanBoundaryResult | undefined;
+  /**
+   * PreToolUse hooks ran before the call was refused. Claim-taking hooks
+   * (WrongTrace's file lock) may hold state only their skip-cleanup half
+   * releases, so the executor must run `toolSkipped` for such a refusal.
+   */
+  preToolUseRan?: boolean | undefined;
 }
 
 export async function validateToolInputAndHooks(
@@ -32,6 +38,7 @@ export async function validateToolInputAndHooks(
 ): Promise<PreExecutionValidationResult> {
   let use = use0;
   let preToolContext: { text: string; contextAs: 'inline' | 'separate' } | undefined;
+  let preToolUseRan = false;
 
   if (hasMalformedArguments(use.input)) {
     return {
@@ -78,12 +85,14 @@ export async function validateToolInputAndHooks(
       capabilities: tool.capabilities,
       mutating: tool.mutating,
     });
+    preToolUseRan = true;
     if (pre.block) {
       return {
         ok: false,
         use,
         errorResult: blockedByHookResult(use, pre.reason),
         settlement: 'blocked_by_hook',
+        preToolUseRan,
       };
     }
     if (pre.additionalContext) {
@@ -108,7 +117,7 @@ export async function validateToolInputAndHooks(
               toolInputCorrection(tool),
             is_error: true,
           };
-          return { ok: false, use, errorResult, settlement: 'blocked_by_hook' };
+          return { ok: false, use, errorResult, settlement: 'blocked_by_hook', preToolUseRan };
         }
         use = { ...use, input: pre.input };
       }
@@ -128,7 +137,7 @@ export async function validateToolInputAndHooks(
           toolInputCorrection(tool),
         is_error: true,
       };
-      return { ok: false, use, errorResult, settlement: 'invalid_input' };
+      return { ok: false, use, errorResult, settlement: 'invalid_input', preToolUseRan };
     }
   }
 
@@ -143,7 +152,14 @@ export async function validateToolInputAndHooks(
       is_error: true,
       _kanbanBoundary: boundary,
     };
-    return { ok: false, use, errorResult, boundary, settlement: 'denied_by_policy' };
+    return {
+      ok: false,
+      use,
+      errorResult,
+      boundary,
+      settlement: 'denied_by_policy',
+      preToolUseRan,
+    };
   }
 
   return { ok: true, use, preToolContext, boundary };

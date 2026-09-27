@@ -385,7 +385,7 @@ export class MultiAgentHost {
       this.adaptiveConcurrencyController = new AdaptiveConcurrencyController(
         this.director.fleet,
         (n: number) => coordinator.setMaxConcurrent(n),
-        adaptiveConfig,
+        { maxConcurrent: this.getMaxConcurrent(), ...adaptiveConfig },
         undefined,
         this.deps.container.safeResolve(TOKENS.Logger),
       );

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as net from 'node:net';
+import { retryWhileUnauthorized } from '@wrongstack/persistence';
 import {
   decodeBinaryFrame,
   encodeBinaryFrame,
@@ -219,7 +220,13 @@ class ProjectServerConnection {
     // spawning a server. Do not enqueue work after the caller cancelled during
     // that interval.
     if (options.signal?.aborted) throw cancellationError(options.signal);
-    return this.request<OpShapes[O]['result']>({ type: 'request', op, args }, options);
+    return retryWhileUnauthorized(
+      () => this.request<OpShapes[O]['result']>({ type: 'request', op, args }, options),
+      (error) =>
+        error instanceof Error &&
+        error.name === 'UnauthorizedIndexRequest' &&
+        !options.signal?.aborted,
+    );
   }
 
   async shutdownRemote(reason?: string): Promise<ProjectIndexServerShutdownResult> {
@@ -631,7 +638,11 @@ class ProjectServerConnection {
     this.pending.delete(message.id);
     this.cleanupPending(entry);
     if (message.ok) entry.resolve(message.result);
-    else entry.reject(remoteError(message.error, message.errorName));
+    else {
+      // Re-read the token on the next attempt: the file may name another daemon.
+      if (message.errorName === 'UnauthorizedIndexRequest') this.authToken = undefined;
+      entry.reject(remoteError(message.error, message.errorName));
+    }
   }
 
   /**

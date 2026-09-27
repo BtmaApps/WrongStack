@@ -1502,14 +1502,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 42,
-      "sourceLines": 11927
+      "sourceLines": 11956
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57835
+      "sourceLines": 57871
     },
     {
       "directory": "core",
@@ -1530,7 +1530,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20418
+      "sourceLines": 20481
     },
     {
       "directory": "extension",
@@ -1656,7 +1656,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5278
+      "sourceLines": 5309
     },
     {
       "directory": "skills",
