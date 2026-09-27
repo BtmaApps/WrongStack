@@ -51,34 +51,34 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.26
+### What's new in 1.0.27
 
-Highlights since 1.0.25:
+Highlights since 1.0.26:
 
-- **Work on a remote machine from your browser.**
-  `wstack remote user@host:/path --open` runs the agent and tools remotely,
-  with a local WebUI over SSH. Builds are checksum-verified; configure the
-  provider on the remote host. Linux and macOS hosts are supported.
-- **Chain tools in code.** `tool_script` runs JavaScript in a QuickJS sandbox
-  so the agent can combine, filter and parallelize tool calls. Every nested
-  call keeps its normal validation, permission and confirmation checks.
-- **See more of the work in the WebUI.** Watch the agent's live browser;
-  hidden terminals keep running with activity and previews above the composer.
-- **Continue across sessions and surfaces.** TUI and WebUI share saved prompt
-  queues, including attachments. Rewind or fork from a TUI message and recover
-  its prompt in the composer; reconnecting clients catch up on streamed events.
-- **Use PDFs and generate images.** Read PDF text or attach documents, and use
-  `image_generate` to create or edit images with a configured image provider.
-- **Bring your own workflow.** Workspace checkpoints support Jujutsu and
-  Mercurial, Windows ARM64 gets a native binary, and `--ascii` provides
-  terminal-friendly output. Project and directory instruction files guide
-  the agent as it works.
-- **Integrate and observe.** `@wrongstack/client` provides a typed WebUI client
-  with reconnect support; published JSON Schema and OpenAPI describe the
-  protocol. OTLP export connects traces and metrics to your collector.
-- **Control limits and connected tools.** Set optional limits in
-  `/settings limits` or WebUI settings. MCP URL requests ask for consent
-  before opening a browser, including when the browser is on another machine.
+- **YOLO asks before more kinds of damage.** Disk wipes, infrastructure
+  teardown (`terraform destroy`, `kubectl delete --all`), container volume and
+  database drops, `rsync --delete` outside the project, discarding local git
+  work, download-and-run cradles and publishes to PyPI, RubyGems, NuGet or
+  Maven now need your approval, including through Windows `.cmd` shims, full
+  command paths and the structured `git` tool. The approval banner warns about
+  the same commands.
+- **Secrets stay out of logs and memory.** Redaction and the pre-tool secret
+  gate catch PGP, encrypted PKCS#8 and JSON-embedded private keys, current
+  OpenAI/Anthropic key formats and multi-space `--password` flags; the gate now
+  also covers `pwsh`, `exec`, `replace` and `patch`.
+- **Keep output useful and cheaper.** `bash` and `exec` drop passing-test and
+  install-progress lines but keep failures and the summary; long outputs keep
+  their tail. dep-guard checks new packages against the registry and OSV
+  before an install.
+- **Providers recover on their own.** A model whose catalog output limit is
+  higher than the provider accepts learns the real limit from the provider's
+  error (#398), and reset times like "try again in 6h12m" fail over at once.
+- **Windows paths with non-ASCII characters work.** Deletes, session cleanup,
+  Kanban verification and `npm`/`pnpm` commands in hooks and verifiers behave
+  under folders such as `C:\Users\Çağrı`.
+- **See what is running.** Connections show each daemon's WrongStack version,
+  the quota chip forecasts when a plan runs out, and notify-hub can show
+  desktop notifications.
 
 See the complete [release notes](CHANGELOG.md).
 
