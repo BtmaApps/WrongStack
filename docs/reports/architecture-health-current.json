@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-27T19:39:52.088Z",
+  "generatedAt": "2026-09-27T19:55:01.360Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4243,
-    "testFiles": 3790,
-    "sourceLines": 1003546,
+    "testFiles": 3791,
+    "sourceLines": 1003548,
     "workspaceEdges": 130,
     "moduleEdges": 13836,
     "nonCommandSlashImports": 0,
@@ -486,7 +486,7 @@
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
       "sourceFiles": 9,
-      "testFiles": 7,
+      "testFiles": 8,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -497,7 +497,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 7
+          "testFiles": 8
         }
       ]
     },
@@ -12475,6 +12475,12 @@
       },
       {
         "file": "packages/primitives/tests/regex-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/primitives/tests/remove-path.test.ts",
         "projects": [
           "root-node"
         ]

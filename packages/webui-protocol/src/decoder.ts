@@ -18,7 +18,9 @@ const MAX_PAYLOAD_DEPTH = 32;
  * payload has tens of thousands of keys that would each build a path string
  * nobody reads.
  */
-function inspectValue(value: unknown, depth: number): ProtocolDecodeIssue | null {
+type PathedIssue = ProtocolDecodeIssue & { path: string };
+
+function inspectValue(value: unknown, depth: number): PathedIssue | null {
   if (depth > MAX_PAYLOAD_DEPTH) {
     return { code: 'too_deep', message: 'Protocol payload exceeds the nesting limit', path: '' };
   }
@@ -29,7 +31,7 @@ function inspectValue(value: unknown, depth: number): ProtocolDecodeIssue | null
       return { code: 'unsafe_key', message: `Unsafe protocol key: ${key}`, path: `.${key}` };
     }
     const issue = inspectValue((value as Record<string, unknown>)[key], depth + 1);
-    if (issue) return { ...issue, path: `.${key}${issue.path ?? ''}` };
+    if (issue) return { ...issue, path: `.${key}${issue.path}` };
   }
   return null;
 }
@@ -81,7 +83,7 @@ export function decodeProtocolMessage(
     }
 
     const issue = inspectValue(envelope, 0);
-    if (issue) return { ok: false, issue: { ...issue, path: `$${issue.path ?? ''}` } };
+    if (issue) return { ok: false, issue: { ...issue, path: `$${issue.path}` } };
     return { ok: true, message: input as ProtocolEnvelope };
   } catch {
     return {
