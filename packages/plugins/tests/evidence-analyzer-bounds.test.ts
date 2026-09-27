@@ -148,7 +148,7 @@ describe('ci-failure-triage rules under the windowing', () => {
   // '.' filler (non-word) so a token's first char sits on a real \b boundary;
   // an 'x' filler would butt 'x' against 'T' in TS1234 and defeat the match.
   const line = (tokens: Array<[number, string]>, total = 3000): string => {
-    const buf = Array.from<string>({ length: total }, () => '.');
+    const buf = Array.from({ length: total }, (): string => '.');
     for (const [at, text] of tokens) for (let i = 0; i < text.length; i++) buf[at + i] = text[i]!;
     return buf.join('');
   };
