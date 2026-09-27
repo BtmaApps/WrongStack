@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { removePathSync } from '@wrongstack/primitives';
 
 const AGENT_ROLE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,95}$/i;
 
@@ -39,7 +40,7 @@ export function writeTextAtomically(filePath: string, content: string): void {
     renameSync(temporaryPath, filePath);
   } finally {
     try {
-      rmSync(temporaryPath, { force: true });
+      removePathSync(temporaryPath, { force: true });
     } catch {
       // Best-effort cleanup after a failed rename.
     }

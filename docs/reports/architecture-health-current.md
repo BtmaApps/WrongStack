@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-27T17:28:07.775Z
+**Generated:** 2026-09-27T18:36:39.813Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4241 |
-| Production source lines | 1003270 |
+| Production source files | 4243 |
+| Production source lines | 1003527 |
 | Test files | 3790 |
 | Workspace dependency edges | 130 |
-| Relative module edges | 13833 |
+| Relative module edges | 13836 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 544 | 554 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 966 | 850 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 967 | 850 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 44 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 40 | 29 | @wrongstack/persistence |
 | @wrongstack/kanban | 95 | 75 | @wrongstack/persistence, @wrongstack/primitives |
@@ -43,7 +43,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
-| @wrongstack/primitives | 8 | 7 | — |
+| @wrongstack/primitives | 9 | 7 | — |
 | @wrongstack/providers | 93 | 82 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
@@ -104,11 +104,11 @@ None.
 | 939 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |
+| 926 | `packages/cli/src/auth-menu/panel-service.ts` |
 | 924 | `packages/core/src/types/provider.ts` |
 | 923 | `packages/webui/src/hooks/ws-handlers.ts` |
 | 922 | `packages/mcp/src/registry.ts` |
 | 921 | `packages/tools/src/session-kanban.ts` |
-| 915 | `packages/cli/src/auth-menu/panel-service.ts` |
 | 911 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/providers/src/index.ts` |

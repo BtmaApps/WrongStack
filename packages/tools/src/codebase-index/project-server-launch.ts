@@ -6,6 +6,8 @@ import * as path from 'node:path';
 
 import { daemonSpawnArgs } from '@wrongstack/persistence';
 
+import { removePathSync } from '@wrongstack/primitives';
+
 import { resolveProjectServerUrl } from './project-server-client-state.js';
 
 import {
@@ -93,7 +95,7 @@ export function forceKillServer(host: ProjectServerLaunchHost, pid: number): boo
     const metadataPath = projectIndexServerMetadataPath(host.projectRoot, host.indexDir);
     try {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8')) as { pid?: number };
-      if (metadata.pid === pid) fs.rmSync(metadataPath, { force: true });
+      if (metadata.pid === pid) removePathSync(metadataPath, { force: true });
     } catch {
       /* absent or already replaced */
     }

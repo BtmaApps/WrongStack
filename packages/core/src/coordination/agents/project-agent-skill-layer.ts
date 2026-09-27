@@ -19,8 +19,9 @@
  * (`packages/cli/src/fleet/host-context.ts`).
  */
 
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { removePathSync } from '@wrongstack/primitives';
 import { loadProjectAgentConfig } from './project-agent-config-io.js';
 import { tokenOverlap } from './project-agent-learning-entries.js';
 import { normalizeForComparison } from './project-agent-learning-normalize.js';
@@ -133,7 +134,7 @@ export function clearProjectSkillAugmentation(
     ? projectSkillAugmentationPath(role, skill, projectRoot)
     : projectSkillsDir(role, projectRoot);
   try {
-    rmSync(target, { force: true, recursive: !skill });
+    removePathSync(target, { force: true, recursive: !skill });
   } catch {
     // already absent
   }

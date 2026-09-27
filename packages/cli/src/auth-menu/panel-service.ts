@@ -151,6 +151,14 @@ export function plainMaskedKey(key: string): string {
   return `${key.slice(0, 4)}…${key.slice(-4)}`;
 }
 
+/** A model is editable when the provider lists it or defines it in `customModels`. */
+function hasEditableModel(provider: ProviderConfig, modelId: string): boolean {
+  return (
+    provider.models?.includes(modelId) === true ||
+    Object.hasOwn(provider.customModels ?? {}, modelId)
+  );
+}
+
 // ── Service factory ────────────────────────────────────────────────────────
 
 export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
@@ -390,7 +398,7 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
 
     async getModelEdit(providerId: string, modelId: string): Promise<AuthModelEdit | null> {
       const provider = (await loadProviders())[providerId];
-      if (!provider?.models?.includes(modelId)) return null;
+      if (!provider || !hasEditableModel(provider, modelId)) return null;
       const details = provider.customModels?.[modelId];
       const modelsDev = details?.modelsDev ?? {};
       const limit = modelsDev['limit'] as Record<string, unknown> | undefined;
@@ -427,7 +435,7 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         if (typeof value === 'string') return value;
       return mutate((all) => {
         const provider = all[edit.providerId];
-        if (!provider?.models?.includes(edit.modelId))
+        if (!provider || !hasEditableModel(provider, edit.modelId))
           return `Model "${edit.modelId}" no longer exists.`;
         const existing = provider.customModels?.[edit.modelId] ?? {};
         const modelsDev = { ...(existing.modelsDev ?? {}) } as Record<string, unknown>;
@@ -436,8 +444,9 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         const limit = { ...((modelsDev['limit'] as Record<string, unknown>) ?? {}) };
         if (context === undefined) delete limit['context'];
         else limit['context'] = context;
-        if (output === undefined) delete limit['output'];
-        else limit['output'] = output;
+        // Max output lives in `maxOutput`, the key the output-limit resolver
+        // reads; `modelsDev.limit.output` is catalog metadata it ignores.
+        delete limit['output'];
         if (Object.keys(limit).length) modelsDev['limit'] = limit;
         else delete modelsDev['limit'];
         const cost = { ...((modelsDev['cost'] as Record<string, unknown>) ?? {}) };
@@ -448,8 +457,10 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         if (Object.keys(cost).length) modelsDev['cost'] = cost;
         else delete modelsDev['cost'];
         if (!provider.customModels) provider.customModels = {};
+        const { modelsDev: _previousModelsDev, maxOutput: _previousMaxOutput, ...kept } = existing;
         provider.customModels[edit.modelId] = {
-          ...existing,
+          ...kept,
+          ...(typeof output === 'number' ? { maxOutput: output } : {}),
           ...(Object.keys(modelsDev).length ? { modelsDev } : {}),
         };
         return null;

@@ -33,7 +33,7 @@ import type {
   ProviderConfig,
   Request,
 } from '@wrongstack/core/types';
-import { activeLimits, positiveLimit } from '@wrongstack/core/types';
+import { activeLimits, positiveLimit, providerReportedMaxOutput } from '@wrongstack/core/types';
 import {
   CATALOG_ALIAS_BY_PROVIDER_TYPE,
   FAMILY_BY_PROVIDER_ID,
@@ -137,15 +137,24 @@ export function resolveMaxOutputTokens(
   req: Pick<Request, 'model' | 'maxTokens'>,
   ctx: BuildBodyContext,
 ): number | undefined {
+  // A cap the provider itself reported for this model (issue #398: the
+  // catalog can list more than a deployment accepts, and every request then
+  // 400s). It bounds every source, the caller's explicit value included —
+  // the provider rejects anything above it regardless of who chose it.
+  // Body builders are still called context-free with an explicit maxTokens;
+  // that path never needed the context and still does not.
+  const reported = ctx ? providerReportedMaxOutput(ctx.providerId, req.model) : undefined;
+  const withinReported = (value: number | undefined): number | undefined =>
+    value === undefined || reported === undefined ? value : Math.min(value, reported);
   const explicit = positive(req.maxTokens);
-  if (explicit !== undefined) return explicit;
+  if (explicit !== undefined) return withinReported(explicit);
   const known =
     resolveCatalogMaxOutput(ctx.providerId, req.model) ?? positive(ctx.capabilities.maxOutput);
   // The user's own `limits.responseOutputTokens`, when set, caps what the model
   // could otherwise produce. Unset = the model's ceiling; nothing invented.
   const userCap = positiveLimit(activeLimits().responseOutputTokens);
-  if (userCap === undefined) return known;
-  return known === undefined ? userCap : Math.min(known, userCap);
+  if (userCap === undefined) return withinReported(known);
+  return withinReported(known === undefined ? userCap : Math.min(known, userCap));
 }
 
 /**
@@ -157,7 +166,10 @@ export function resolveRequiredMaxOutputTokens(
   req: Pick<Request, 'model' | 'maxTokens'>,
   ctx: BuildBodyContext,
 ): number {
-  return resolveMaxOutputTokens(req, ctx) ?? REQUIRED_FIELD_LAST_RESORT_MAX_OUTPUT;
+  const value = resolveMaxOutputTokens(req, ctx) ?? REQUIRED_FIELD_LAST_RESORT_MAX_OUTPUT;
+  // The last resort, too, stays within a cap the provider itself reported.
+  const reported = ctx ? providerReportedMaxOutput(ctx.providerId, req.model) : undefined;
+  return reported === undefined ? value : Math.min(value, reported);
 }
 
 export interface InstallCatalogOutputLimitsOptions {

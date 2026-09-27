@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import process from 'node:process';
 import { restrictFilePermissions } from '@wrongstack/core/security';
 import { atomicWrite } from '@wrongstack/persistence';
+import { removePathSync } from '@wrongstack/primitives';
 import type { ProjectIndexServerMetadata } from './project-server-protocol.js';
 
 /** Synchronous pause between metadata-removal retries (bounded, shutdown-only). */
@@ -23,7 +24,7 @@ export function removeMetadataIfOwned(metadataPath: string, pid: number): void {
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      fs.rmSync(metadataPath, { force: true });
+      removePathSync(metadataPath, { force: true });
       return;
     } catch (error) {
       lastError = error;

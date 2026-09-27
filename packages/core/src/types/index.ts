@@ -467,6 +467,12 @@ export type {
   ProviderAuthStrategy,
   ProviderAuthStrategyMetadata,
 } from './provider-auth.js';
+export {
+  clearProviderReportedMaxOutputs,
+  parseProviderReportedMaxOutput,
+  providerReportedMaxOutput,
+  recordProviderReportedMaxOutput,
+} from './provider-output-caps.js';
 // ── provider-runner (2 symbols) ──
 export type { ProviderRunner, RunProviderOptions } from './provider-runner.js';
 // ── renderer (1 symbols) ──

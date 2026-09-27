@@ -11,7 +11,7 @@
       "relativeImports": 22
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
-      "lines": 915,
+      "lines": 926,
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
@@ -155,7 +155,7 @@
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 855,
+      "lines": 857,
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {

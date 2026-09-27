@@ -9,6 +9,10 @@ import type { Logger } from '../types/logger.js';
 import type { Tracer } from '../types/observability.js';
 import type { Provider, Request, Response } from '../types/provider.js';
 import { ProviderError } from '../types/provider.js';
+import {
+  parseProviderReportedMaxOutput,
+  recordProviderReportedMaxOutput,
+} from '../types/provider-output-caps.js';
 import type { RetryPolicy } from '../types/retry-policy.js';
 import { adaptDocumentsForModel } from '../utils/document-blocks.js';
 import {
@@ -131,6 +135,8 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
   ctx.activeLogicalRequestId = logicalRequestId;
   ctx.activePromptManifestId = promptManifest.manifestId;
   let attempt = 0;
+  // One self-correcting retry per call when the provider reports its output cap.
+  let outputCapRetried = false;
   for (;;) {
     const currentProvider =
       ctx.provider && ctx.provider.id === provider.id ? ctx.provider : provider;
@@ -274,16 +280,32 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
       }
       const isProviderErr = err instanceof ProviderError || ProviderError.isProviderError(err);
       const errAsErr = err instanceof Error ? err : new Error(String(err));
-      const canRetry = retry.shouldRetry(isProviderErr ? err : errAsErr, attempt);
+      // Issue #398: the catalog's output limit can exceed what this provider
+      // accepts for the model, and the 400 then states the real cap. Learn it
+      // and retry once — the output resolver clamps `max_tokens` to it on the
+      // next build — instead of failing every turn. Only when the cap is new
+      // or lower, so the same rejection can never loop.
+      const reportedCap =
+        !outputCapRetried && isProviderErr && (err as ProviderError).kind === 'invalid_request'
+          ? parseProviderReportedMaxOutput(
+              `${errAsErr.message}\n${(err as ProviderError).body?.message ?? ''}\n${(err as ProviderError).body?.raw ?? ''}`,
+            )
+          : undefined;
+      const capRetry =
+        reportedCap !== undefined &&
+        recordProviderReportedMaxOutput(currentProvider.id, request.model, reportedCap);
+      const canRetry = capRetry || retry.shouldRetry(isProviderErr ? err : errAsErr, attempt);
       const providerErrorBody = isProviderErr
         ? scrubProviderBody((err as ProviderError).body)
         : undefined;
       const description = scrubErrorText(
         isProviderErr ? (err as ProviderError).describe() : errAsErr.message,
       );
-      const delay = canRetry
-        ? Math.round(retry.delayMs(attempt, isProviderErr ? (err as ProviderError) : errAsErr))
-        : undefined;
+      const delay = capRetry
+        ? 0
+        : canRetry
+          ? Math.round(retry.delayMs(attempt, isProviderErr ? (err as ProviderError) : errAsErr))
+          : undefined;
       events.emit('provider.attempt.failed', {
         ...correlation,
         startedAt,
@@ -298,6 +320,14 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
         ...(providerErrorBody?.requestId ? { providerRequestId: providerErrorBody.requestId } : {}),
         ...(providerErrorBody ? { errorBody: providerErrorBody } : {}),
       });
+      if (capRetry) {
+        outputCapRetried = true;
+        logger.warn(
+          `${currentProvider.id}/${request.model} accepts at most ${reportedCap} output tokens (the provider's own limit; the catalog lists more) — retrying with that cap`,
+          providerLogCtx(currentProvider, request),
+        );
+        continue;
+      }
       if (!canRetry) {
         // ── Waiting-room gate (post-flight) ──────────────────────────────
         // Record the terminal failure here, at the single funnel every

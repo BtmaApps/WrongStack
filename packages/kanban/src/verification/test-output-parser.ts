@@ -15,26 +15,69 @@ export interface TestResult {
   failureOutput?: string | undefined;
 }
 
-/** Parse `git diff --name-status` into file-operation evidence. */
+const operationOf = (status: string): FileDiffEntry['operation'] =>
+  status.startsWith('A') ? 'create' : status.startsWith('D') ? 'delete' : 'modify';
+
+/**
+ * Parse `git diff --name-status` into file-operation evidence. Accepts the
+ * `-z` form too, whose paths are raw — the line form C-quotes any path with a
+ * non-ASCII byte (`src/ğ.ts` → `"src/\304\237.ts"`) under git's default
+ * `core.quotePath`, which no longer names the file.
+ */
 export function parseGitNameStatus(output: string): Map<string, FileDiffEntry['operation']> {
   const operations = new Map<string, FileDiffEntry['operation']>();
+  if (output.includes('\0')) {
+    const fields = output.split('\0');
+    for (let index = 0; index < fields.length; ) {
+      const status = fields[index] ?? '';
+      if (!status) {
+        index += 1;
+        continue;
+      }
+      // Renames/copies carry two paths (old, new); the new one is the change.
+      const pathCount = /^[RC]/.test(status) ? 2 : 1;
+      const filePath = fields[index + pathCount];
+      if (filePath) operations.set(filePath, operationOf(status));
+      index += pathCount + 1;
+    }
+    return operations;
+  }
   for (const line of output.split('\n').filter(Boolean)) {
     const [status = '', ...pathParts] = line.split('\t');
     const filePath = pathParts.at(-1);
     if (!filePath) continue;
-    operations.set(
-      filePath,
-      status.startsWith('A') ? 'create' : status.startsWith('D') ? 'delete' : 'modify',
-    );
+    operations.set(filePath, operationOf(status));
   }
   return operations;
 }
 
-/** Parse `git diff --numstat` output into structured entries. */
+/** Parse `git diff --numstat` output (line or `-z` form) into structured entries. */
 export function parseGitNumstat(
   output: string,
   operations: ReadonlyMap<string, FileDiffEntry['operation']> = new Map(),
 ): FileDiffEntry[] {
+  if (output.includes('\0')) {
+    const entries: FileDiffEntry[] = [];
+    const fields = output.split('\0');
+    for (let index = 0; index < fields.length; index += 1) {
+      const parts = (fields[index] ?? '').split('\t');
+      if (parts.length < 3) continue;
+      let filePath = parts.slice(2).join('\t');
+      // A rename/copy record has an empty path, then old and new paths.
+      if (!filePath) {
+        filePath = fields[index + 2] ?? '';
+        index += 2;
+      }
+      if (!filePath) continue;
+      entries.push({
+        path: filePath,
+        operation: operations.get(filePath) ?? 'modify',
+        linesAdded: parseInt(parts[0]!, 10) || 0,
+        linesRemoved: parseInt(parts[1]!, 10) || 0,
+      });
+    }
+    return entries;
+  }
   return output
     .split('\n')
     .filter((l) => l.trim())

@@ -254,7 +254,12 @@ export function retryAfterMsFromBody(body: ProviderErrorBody): number | undefine
     /(?:reset|renew|available)(?:s|ed|s)?\s*(?:at|on)\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})[T\s](\d{1,2}:\d{2}(?::\d{2})?)/i;
   const dateMatch = dateTimeRe.exec(text);
   if (dateMatch) {
-    const base = `${dateMatch[1]}T${dateMatch[2]}`;
+    // The matcher accepts 1-digit month/day/hour; Date.parse reads only the
+    // zero-padded ISO form, so pad before handing it over.
+    const pad = (part: string | undefined) => (part ?? '').padStart(2, '0');
+    const [year, month, day] = (dateMatch[1] ?? '').split(/[-/]/);
+    const [hour, minute, second] = (dateMatch[2] ?? '').split(':');
+    const base = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${minute}:${pad(second)}`;
     const delta = parseTzAwareDelta(base);
     if (delta !== undefined) return delta;
   }
@@ -288,6 +293,22 @@ export function retryAfterMsFromBody(body: ProviderErrorBody): number | undefine
         return Math.round(num * 1_000);
       }
     }
+  }
+
+  // 3b. Compound Go duration after a retry lead-in: "Please try again in
+  //     6h12m", "…in 1m30s", "…in 6h12m0.5s" (OpenAI and OpenAI-compatibles).
+  //     Pattern 3 reads one number + one unit, so these never match it.
+  const compoundRetryRe =
+    /(?:retry[_\s-]*(?:after|in)|try\s*again\s*in)\s*[:=]?\s*((?:\d+(?:\.\d+)?(?:ms|h|m|s))+)(?![a-z\d]|\.\d)/i;
+  const compoundRetryMatch = compoundRetryRe.exec(text);
+  if (compoundRetryMatch) {
+    let total = 0;
+    for (const part of (compoundRetryMatch[1] ?? '').matchAll(/(\d+(?:\.\d+)?)(ms|h|m|s)/gi)) {
+      const unit = (part[2] ?? '').toLowerCase();
+      const scale = unit === 'h' ? 3_600_000 : unit === 'm' ? 60_000 : unit === 's' ? 1_000 : 1;
+      total += Number.parseFloat(part[1] ?? '') * scale;
+    }
+    if (total > 0 && total <= 24 * 3_600_000) return Math.round(total);
   }
 
   // 4. Compound duration after a "reset" verb: "quota will reset after 2h7m23s",

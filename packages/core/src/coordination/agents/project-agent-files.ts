@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { removePathSync } from '@wrongstack/primitives';
 import { validateProjectAgentConfig } from './project-agent-config-validation.js';
 import type { ProjectAgentConfig, RoleKnowledgeManifest } from './project-agent-identity-types.js';
 import { splitLearnedEntries } from './project-agent-learning-entries.js';
@@ -145,14 +146,14 @@ export function resetProjectAgentIdentity(role?: string, projectRoot?: string): 
   if (!role || role === '*') {
     const dir = agentsDir(projectRoot);
     if (existsSync(dir)) {
-      rmSync(dir, { recursive: true, force: true });
+      removePathSync(dir, { recursive: true, force: true });
       removed.push(dir);
     }
     return removed;
   }
   const dir = roleDir(role, projectRoot);
   if (existsSync(dir)) {
-    rmSync(dir, { recursive: true, force: true });
+    removePathSync(dir, { recursive: true, force: true });
     removed.push(dir);
   }
   return removed;
@@ -173,7 +174,7 @@ export function refreshProjectAgentIdentity(role: string, projectRoot?: string):
   for (const file of ['learned.md', 'identity.md', 'consolidated.md', 'consolidation.json']) {
     const fp = path.join(dir, file);
     try {
-      rmSync(fp, { force: true });
+      removePathSync(fp, { force: true });
     } catch {
       // file didn't exist
     }

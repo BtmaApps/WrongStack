@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { removePathSync } from '@wrongstack/primitives';
 import { splitLearnedEntries } from './project-agent-learning-entries.js';
 import {
   directiveTrials,
@@ -186,7 +187,7 @@ export function clearProjectAgentConsolidated(role: string, projectRoot?: string
     consolidationMetaPath(normalizedRole, projectRoot),
   ]) {
     try {
-      rmSync(file, { force: true });
+      removePathSync(file, { force: true });
     } catch {
       // already absent
     }

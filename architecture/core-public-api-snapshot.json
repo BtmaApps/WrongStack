@@ -294,6 +294,7 @@
         "export { ToolErrorCategory } from './tool.js';",
         "export { activeLimits, BUILTIN_MODEL_TIER_IDS, clampLimit, clampLimits, DEFAULT_TUI_THINKING_WORD, FLEET_CHAT_VERBOSITY_VALUES, formatLimitRange, installLimitsSource, LIMIT_BOUNDS, LIMITS_BUDGET_KEYS, LIMITS_SCALAR_KEYS, limitValueError, MAX_TUI_THINKING_WORD_LENGTH, MAX_WRONGPROXY_URL_LENGTH, normalizeTokenSavingTier, normalizeTuiThinkingWord, positiveLimit, resolveFleetChatVerbosity, resolveTokenSavingTier, THEME_PRESET_IDS, THEME_PRESET_META, THEME_RANDOM_ID, TOOL_MEMORY_GUARD_BYTES, } from './config.js';",
         "export { classifyProviderError, effectiveInputTokens, freshInputTokens, isContextOverflowShaped, isFallbackWorthy, isReasoningEffort, isRetryableKind, ProviderError, promptCacheHitRatio, REASONING_EFFORT_LEVELS, StreamHangError, totalUsageTokens, } from './provider.js';",
+        "export { clearProviderReportedMaxOutputs, parseProviderReportedMaxOutput, providerReportedMaxOutput, recordProviderReportedMaxOutput, } from './provider-output-caps.js';",
         "export { defineMemoryCapability, MEMORY_TYPE_LABELS } from './memory.js';",
         "export { diffRegistry, validateRegistryManifest } from './prompt-registry.js';",
         "export { documentAsText, isImageBlock, isTextBlock, isToolResultBlock, isToolUseBlock, isVolatileSystemBlock, markVolatileSystemBlock, VOLATILE_SYSTEM_BLOCKS, } from './blocks.js';",
@@ -1508,14 +1509,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57831
+      "sourceLines": 57835
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 63,
-      "sourceLines": 14795
+      "sourceLines": 14825
     },
     {
       "directory": "design",
@@ -1696,8 +1697,8 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 81,
-      "sourceLines": 15427
+      "sourceFiles": 82,
+      "sourceLines": 15514
     },
     {
       "directory": "typesafe",

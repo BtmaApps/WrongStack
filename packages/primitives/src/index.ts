@@ -23,6 +23,7 @@ export {
   compileUserRegex,
   MAX_SUBJECT_LEN,
 } from './regex-guard.js';
+export { type RemovePathSyncOptions, removePathSync } from './remove-path.js';
 export {
   assertDaemonRuntimeVersion,
   WRONGSTACK_RUNTIME_VERSION,
