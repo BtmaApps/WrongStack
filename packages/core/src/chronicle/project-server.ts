@@ -14,7 +14,7 @@ import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
 import { startSharedHeapWatchdog } from '../utils/heap-watchdog.js';
@@ -110,6 +110,7 @@ const metadataWritten = new Promise<void>((resolve) => {
 });
 
 const serverInfo: ChronicleProjectServerInfo = {
+  runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
   protocolVersion: CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION,
   pid: process.pid,
   projectRoot: parsed.projectRoot,

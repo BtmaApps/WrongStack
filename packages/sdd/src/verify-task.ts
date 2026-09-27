@@ -14,7 +14,38 @@
 // injection through the verification command.
 
 import { spawn } from 'node:child_process';
+import { accessSync } from 'node:fs';
+import * as path from 'node:path';
 import type { TaskNode, TaskResult } from '@wrongstack/core/types';
+import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
+
+/**
+ * The `.cmd`/`.bat` a Windows executable resolves to, if any. `npm test`,
+ * `pnpm test`, `npx vitest run` are batch shims there, which `spawn` without a
+ * shell cannot run (ENOENT for a bare name, EINVAL for an absolute `.cmd`).
+ * Those — only those — go through core's cmd.exe shim builder, which keeps the
+ * no-shell-interpretation guarantee above: it quotes every token and refuses
+ * cmd.exe metacharacters outright. A real `.exe` keeps its direct spawn.
+ */
+function win32BatchTarget(executable: string): string | undefined {
+  if (/\.(?:cmd|bat)$/i.test(executable)) return executable;
+  if (/[\\/]/.test(executable) || path.extname(executable)) return undefined;
+  const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').toLowerCase().split(';');
+  for (const dir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      if (!ext) continue;
+      const full = path.join(dir, `${executable}${ext}`);
+      try {
+        accessSync(full);
+      } catch {
+        continue;
+      }
+      return ext === '.cmd' || ext === '.bat' ? full : undefined;
+    }
+  }
+  return undefined;
+}
 
 export interface CommandVerifierOptions {
   /** Metadata key holding the verification command. Default 'verificationCommand'. */
@@ -276,13 +307,23 @@ export function makeCommandVerifier(options: CommandVerifierOptions = {}) {
     }
 
     const [executable, ...args] = argv;
+    const batch = process.platform === 'win32' ? win32BatchTarget(executable!) : undefined;
+    let shim: ReturnType<typeof buildWin32CmdShimInvocation> | undefined;
+    if (batch) {
+      try {
+        shim = buildWin32CmdShimInvocation(batch, args);
+      } catch (err) {
+        return { ok: false, reason: `verification command refused: ${String(err)}` };
+      }
+    }
 
     return await new Promise((resolve) => {
-      const child = spawn(executable!, args, {
+      const child = spawn(shim?.command ?? executable!, shim?.args ?? args, {
         cwd: info.cwd,
         shell: false,
         windowsHide: true,
         stdio: 'ignore',
+        ...(shim ? { windowsVerbatimArguments: shim.windowsVerbatimArguments } : {}),
       });
       let timedOut = false;
       const timer = setTimeout(() => {

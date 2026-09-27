@@ -250,8 +250,10 @@ export function scanForInjection(text: string): string[] {
   // plain sight: zero-width characters INSIDE a word, and letters swapped for
   // identical-looking ones from another script. Both forms are scanned in
   // addition to the original, because `zero-width-flood` exists precisely to
-  // notice the invisible characters that stripping removes.
-  const cleaned = foldConfusables(stripInvisible(text));
+  // notice the invisible characters that stripping removes. NFKC first: it
+  // maps compatibility letters — fullwidth `ｉｇｎｏｒｅ`, mathematical bold
+  // `𝗶𝗴𝗻𝗼𝗿𝗲` — to ASCII, the same evasion the confusable fold undoes.
+  const cleaned = foldConfusables(stripInvisible(text.normalize('NFKC')));
   for (const p of PATTERNS) {
     // `p.re` carries no /g flag, so `test` is stateless and safe to reuse.
     if (p.re.test(text)) hits.add(p.name);

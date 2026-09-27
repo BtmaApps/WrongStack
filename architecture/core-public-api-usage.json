@@ -124,9 +124,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 139,
+      "files": 140,
       "typeOnly": 64,
-      "runtimeOrMixed": 78
+      "runtimeOrMixed": 79
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 667,
+      "files": 670,
       "typeOnly": 62,
-      "runtimeOrMixed": 635
+      "runtimeOrMixed": 640
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -9263,6 +9263,12 @@
       "file": "packages/tui/src/tui-host-capabilities.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/tui/tests/connections-slash.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -22064,6 +22070,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage-mcp/src/adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/sage-mcp/src/cli.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -22251,6 +22263,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sdd/src/task-visualizer.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sdd/src/verify-task.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -23026,13 +23044,13 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/tests/connection-actions.test.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/tests/connections-health.test.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -23595,6 +23613,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/requirement-intake-handlers.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/service-actions.gaps.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

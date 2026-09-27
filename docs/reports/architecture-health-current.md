@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-26T23:03:06.060Z
+**Generated:** 2026-09-27T17:28:07.775Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4240 |
-| Production source lines | 1001025 |
-| Test files | 3789 |
+| Production source files | 4241 |
+| Production source lines | 1003270 |
+| Test files | 3790 |
 | Workspace dependency edges | 130 |
-| Relative module edges | 13825 |
+| Relative module edges | 13833 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -43,7 +43,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
-| @wrongstack/primitives | 7 | 6 | — |
+| @wrongstack/primitives | 8 | 7 | — |
 | @wrongstack/providers | 93 | 82 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
@@ -86,20 +86,21 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1263 | `packages/core/src/security/yolo-risk.ts` |
-| 1161 | `packages/webui-server/src/server/goal-ws-handler.ts` |
+| 1681 | `packages/core/src/security/yolo-risk.ts` |
+| 1367 | `packages/tools/src/_danger-detect.ts` |
+| 1176 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 1064 | `packages/tools/src/codebase-index/writer.ts` |
+| 1024 | `packages/tools/src/json.ts` |
 | 1008 | `packages/cli/src/execution.ts` |
-| 999 | `packages/tools/src/_danger-detect.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
 | 981 | `packages/sage/src/sqlite-store.ts` |
 | 974 | `packages/core/src/coordination/director.ts` |
 | 974 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 973 | `packages/mcp/src/client.ts` |
 | 972 | `packages/webui-server/src/server/embedded-message-router.ts` |
-| 966 | `packages/sage/src/project-server.ts` |
+| 967 | `packages/sage/src/project-server.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
 | 957 | `packages/webui/src/types/client-message.ts` |
-| 956 | `packages/mcp/src/client.ts` |
 | 939 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |
@@ -115,21 +116,20 @@ None.
 | 904 | `packages/cli/src/cli-main.ts` |
 | 904 | `packages/providers/src/openai-codex.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |
+| 901 | `packages/cli/src/slash-commands/sdd.ts` |
 | 899 | `packages/cli/src/webui-server.ts` |
 | 899 | `packages/core/src/core/fallback-model.ts` |
 | 899 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 897 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
+| 895 | `packages/kanban/src/server/project-server.ts` |
 | 895 | `packages/webui-server/src/server/backend-services.ts` |
 | 894 | `packages/tools/src/bash.ts` |
 | 891 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
-| 888 | `packages/tools/src/json.ts` |
 | 887 | `packages/mcp/src/server.ts` |
-| 886 | `packages/cli/src/slash-commands/sdd.ts` |
 | 886 | `packages/core/src/coordination/collab-debug.ts` |
 | 886 | `packages/tools/src/codebase-index/dead-code-scan.ts` |
 | 885 | `packages/tui/src/reducers/settings-values.ts` |
-| 883 | `packages/kanban/src/server/project-server.ts` |
 | 882 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 880 | `packages/plugins/src/duplicate-code-detector/index.ts` |
 | 878 | `packages/plugins/src/test-runner-gate/index.ts` |
@@ -139,7 +139,7 @@ None.
 
 ## Exports only tests reference
 
-- 964 runtime exports are referenced by tests and by no other production file.
+- 966 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

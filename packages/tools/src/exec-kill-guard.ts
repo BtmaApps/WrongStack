@@ -19,6 +19,8 @@
 
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { compileUserRegex } from './_regex.js';
+import { wildcardNameMatches } from './bash-kill-guard.js';
 import { getPersistentProcessRegistry } from './process-registry-persistent.js';
 
 const isWin = os.platform() === 'win32';
@@ -138,7 +140,8 @@ export async function checkExecKillCommand(
     }
 
     // Direct Stop-Process / kill command (PowerShell alias)
-    if (cmdLower === 'stop-process' || cmdLower === 'kill') {
+    // `spps` is PowerShell's built-in Stop-Process alias.
+    if (cmdLower === 'stop-process' || cmdLower === 'kill' || cmdLower === 'spps') {
       for (let i = 0; i < args.length; i++) {
         const a = args[i]!;
         // PowerShell parameter names are case-insensitive (`-name`, `-ID`,
@@ -155,7 +158,8 @@ export async function checkExecKillCommand(
         const attachedValue = colon > 1 ? a.slice(colon + 1) : undefined;
         const flag = (attachedValue === undefined ? a : a.slice(0, colon)).toLowerCase();
         // -Name "node", -Name node, or -Name:node
-        if (flag === '-name' || flag === '-n') {
+        // `-na` / `-nam`: PowerShell binds any unambiguous parameter prefix.
+        if (flag === '-name' || flag === '-nam' || flag === '-na' || flag === '-n') {
           const nameArg = (attachedValue ?? args[i + 1])?.replace(/^['"]|['"]$/g, '');
           if (nameArg) {
             const result = await checkKillTarget({
@@ -249,6 +253,8 @@ export async function checkExecKillCommand(
       }
     }
     if (cmdLower === 'pkill' || cmdLower === 'killall') {
+      const selected = await checkPkillSelection(cmdLower, args, fullCommand);
+      if (selected.blocked) return selected;
       const firstNonFlag = args.find((a) => !a.startsWith('-'));
       if (firstNonFlag) {
         const result = await checkKillTarget({
@@ -339,6 +345,47 @@ interface KillTarget {
   cmd: string;
 }
 
+/** pkill options that pick processes by user / parent / session / group / terminal. */
+const PKILL_SELECTOR_RE =
+  /^(?:-[uUGgPst]|--(?:euid|uid|group|pgroup|parent|session|terminal|ns|cgroup))(?:=|$)|^-[uUGgPst]./;
+/** killall's pattern-free selector: every process of a user. */
+const KILLALL_SELECTOR_RE = /^(?:-u|--user)(?:=|$)|^-u./;
+
+/**
+ * pkill/killall do not take a literal name: the pattern is a REGEX (`pkill
+ * n.de`, `pkill .`, `killall -r 'wrong.*'`), and pkill also selects by user /
+ * parent / session with no pattern (`pkill -u me`, `pkill -P <pid>` — whose
+ * VALUE the first-non-flag rule below misread as the name). Whenever a
+ * WrongStack process could be hit (a protected PID exists, or this host runs
+ * on node), block a selector kill and test every non-option word as a
+ * case-insensitive regex against the protected names; a word the ReDoS guard
+ * refuses blocks too (fail closed).
+ */
+async function checkPkillSelection(
+  cmd: 'pkill' | 'killall',
+  args: readonly string[],
+  fullCommand: string,
+): Promise<ExecKillCheckResult> {
+  const currentImage = path
+    .basename(process.execPath)
+    .toLowerCase()
+    .replace(/\.exe$/, '');
+  const protectedPids = await getPersistentProcessRegistry().getAllProtectedPids();
+  if (protectedPids.length === 0 && currentImage !== 'node') return { blocked: false };
+  const reason = `Blocked: ${fullCommand.slice(0, 80)} can select protected WrongStack processes.`;
+  const selector = cmd === 'killall' ? KILLALL_SELECTOR_RE : PKILL_SELECTOR_RE;
+  if (args.some((a) => selector.test(a))) return { blocked: true, reason };
+  const targets = ['node', 'wrongstack', currentImage];
+  for (const word of args) {
+    if (word.startsWith('-')) continue;
+    const compiled = compileUserRegex(word, 'i');
+    if (!compiled.ok || targets.some((t) => compiled.regex.test(t))) {
+      return { blocked: true, reason };
+    }
+  }
+  return { blocked: false };
+}
+
 /**
  * Check if a kill target maps to a protected WrongStack process by
  * consulting the persistent process registry (cross-instance PID store).
@@ -375,8 +422,15 @@ async function checkKillTarget(target: KillTarget): Promise<ExecKillCheckResult>
   if (target.name) {
     const nameLower = target.name.toLowerCase().replace(/\.exe$/, '');
 
+    // `taskkill /IM` and `Stop-Process -Name` take WILDCARDS: `nod*` / `*`
+    // name node.exe without containing "node".
+    const wildcard = /[*?[]/.test(nameLower);
+
     // Hard-block on "wrongstack" references
-    if (nameLower.includes('wrongstack')) {
+    if (
+      nameLower.includes('wrongstack') ||
+      (wildcard && wildcardNameMatches(nameLower, 'wrongstack'))
+    ) {
       return {
         blocked: true,
         reason: `Blocked: kill ${target.signal} '${target.name}' targets a WrongStack process name.`,
@@ -391,7 +445,10 @@ async function checkKillTarget(target: KillTarget): Promise<ExecKillCheckResult>
       .basename(process.execPath)
       .toLowerCase()
       .replace(/\.exe$/, '');
-    const targetsNodeRuntime = nameLower === 'node' || nameLower.startsWith('node');
+    const targetsNodeRuntime =
+      nameLower === 'node' ||
+      nameLower.startsWith('node') ||
+      (wildcard && wildcardNameMatches(nameLower, 'node'));
     if (targetsNodeRuntime && currentImage === 'node') {
       return {
         blocked: true,

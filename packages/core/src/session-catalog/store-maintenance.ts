@@ -3,6 +3,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { DefaultSecretScrubber } from '../security/secret-scrubber.js';
+import {
+  resolveSessionId as resolveAmongCandidates,
+  sessionIdResolutionError,
+} from '../storage/session-id-resolver.js';
 import type { SessionSummary } from '../types/session.js';
 import { atomicWrite } from '../utils/atomic-write.js';
 import type {
@@ -85,13 +89,24 @@ export function resolveSessionId(
   const normalized = query.trim();
   if (!normalized) throw new Error('Session not found: (empty query)');
   if (hasSummary(normalized)) return normalized;
+  // SQL only PREFILTERS; the decision is the file-backed store's resolver, so
+  // `--resume <id>` answers the same with or without the catalog daemon. The
+  // old SQL decided itself: it had no leaf-prefix match (`sess_01JX…` was
+  // "not found"), and the unescaped LIKE treated `_`/`%` as wildcards and
+  // folded case. Escaped here; the resolver's exact comparisons drop the
+  // case-folded extras.
+  const literal = normalized.replace(/\\/g, '/').replaceAll('%', '\\%').replaceAll('_', '\\_');
   const rows = db
-    .prepare('SELECT session_id FROM sessions WHERE session_id LIKE ? OR session_id LIKE ? LIMIT 3')
-    .all(`%/${normalized}`, `${normalized}%`) as unknown as Array<{ session_id: string }>;
-  const ids = [...new Set(rows.map((row) => row.session_id))];
-  if (ids.length === 1) return ids[0]!;
-  if (ids.length === 0) throw new Error(`Session not found: ${query}`);
-  throw new Error(`Ambiguous session id "${query}": ${ids.join(', ')}`);
+    .prepare(
+      "SELECT session_id FROM sessions WHERE session_id LIKE ? ESCAPE '\\' OR session_id LIKE ? ESCAPE '\\'",
+    )
+    .all(`${literal}%`, `%/${literal}%`) as unknown as Array<{ session_id: string }>;
+  const resolution = resolveAmongCandidates(
+    normalized,
+    rows.map((row) => row.session_id),
+  );
+  if (resolution.status === 'resolved') return resolution.id;
+  throw sessionIdResolutionError(resolution);
 }
 
 export async function renameSessionSummary(

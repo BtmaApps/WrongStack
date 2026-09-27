@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * One detached mailbox owner per local WrongStack project state directory.
  *
@@ -11,7 +12,7 @@ import * as fsPromises from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { EventBus } from '../kernel/events.js';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
@@ -138,6 +139,7 @@ const metadataWritten = new Promise<void>((resolve) => {
 });
 
 const serverInfo: MailboxProjectServerInfo = {
+  runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
   protocolVersion: MAILBOX_PROJECT_SERVER_PROTOCOL_VERSION,
   pid: process.pid,
   projectDir,

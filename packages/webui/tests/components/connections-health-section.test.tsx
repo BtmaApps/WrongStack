@@ -83,6 +83,25 @@ describe('ConnectionsHealthSection', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
   });
+  it('renders release skew and keeps the manual restart action available', () => {
+    render(<ConnectionsHealthSection />);
+    const report = healthResult([{ id: 'session-catalog', status: 'degraded' }]);
+    report.overall = 'degraded';
+    report.services[0]!.label = 'Session Catalog';
+    report.services[0]!.detail =
+      'Daemon WrongStack 1.0.26; client 1.0.27. Version mismatch: restart the daemon from Connections.';
+    emit('connections.health_result', report);
+    expect(screen.getByText(/Daemon WrongStack 1.0.26; client 1.0.27/)).toBeTruthy();
+    expect(send).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'connections.service_action' }),
+    );
+    act(() => screen.getByTitle(/Session Catalog/).click());
+    expect(send).toHaveBeenCalledWith({
+      type: 'connections.service_action',
+      payload: { serviceId: 'session-catalog', action: 'restart' },
+    });
+  });
+
   it('requests and renders service ownership and health details', () => {
     render(<ConnectionsHealthSection />);
     expect(send).toHaveBeenCalledWith({ type: 'connections.health' });

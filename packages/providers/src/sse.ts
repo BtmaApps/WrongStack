@@ -35,13 +35,6 @@ const MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 const TEXT_DECODER = new TextDecoder('utf-8');
 const TEXT_ENCODER = new TextEncoder();
 
-function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const out = new Uint8Array(new ArrayBuffer(a.length + b.length));
-  out.set(a);
-  out.set(b, a.length);
-  return out;
-}
-
 function decodeLine(bytes: Uint8Array): string {
   return TEXT_DECODER.decode(bytes);
 }
@@ -345,7 +338,23 @@ export function createSseLineFoldingTransform(
   if (maxLineBytes <= 0) return source;
 
   const encoder = new TextEncoder();
-  let lineBuf = new Uint8Array(0);
+  // Unterminated line, kept as a chunk list and joined once at its newline —
+  // same scheme as parseSSE. Re-concatenating the whole buffer per chunk was
+  // O(n²) for one large event (a Codex `response.completed`).
+  const lineParts: Uint8Array[] = [];
+  let lineLength = 0;
+  const takeLine = (tail: Uint8Array): Uint8Array => {
+    const out = new Uint8Array(new ArrayBuffer(lineLength + tail.length));
+    let at = 0;
+    for (const part of lineParts) {
+      out.set(part, at);
+      at += part.length;
+    }
+    out.set(tail, at);
+    lineParts.length = 0;
+    lineLength = 0;
+    return out;
+  };
   let skipLeadingLf = false;
 
   const emitFoldedDataLine = (
@@ -400,12 +409,11 @@ export function createSseLineFoldingTransform(
       const { done, value } = await reader.read();
       if (cancelled) return;
       if (done) {
-        if (lineBuf.length > 0) {
-          let line = lineBuf;
+        if (lineLength > 0) {
+          let line = takeLine(new Uint8Array(0));
           if (line.length > 0 && line[line.length - 1] === 0x0d) {
             line = line.subarray(0, line.length - 1);
           }
-          lineBuf = new Uint8Array(0);
           emitLine(controller, line);
         }
         reader.releaseLock();
@@ -428,12 +436,10 @@ export function createSseLineFoldingTransform(
         if (byte !== 0x0a && byte !== 0x0d) continue;
         const lineEnd = i;
         const lineTail = value.subarray(chunkStart, lineEnd);
-        let line =
-          lineBuf.length === 0 ? Uint8Array.from(lineTail) : concatBytes(lineBuf, lineTail);
+        let line = takeLine(lineTail);
         if (line.length > 0 && line[line.length - 1] === 0x0d) {
           line = line.subarray(0, line.length - 1);
         }
-        lineBuf = new Uint8Array(0);
         emitLine(controller, line);
         emittedThisChunk = true;
         chunkStart = i + 1;
@@ -441,16 +447,9 @@ export function createSseLineFoldingTransform(
       }
 
       if (chunkStart < value.length) {
-        const tail = value.subarray(chunkStart);
-        if (lineBuf.length === 0) {
-          const copiedTail = new Uint8Array(new ArrayBuffer(tail.length));
-          copiedTail.set(tail);
-          lineBuf = copiedTail;
-        } else {
-          const merged = concatBytes(lineBuf, tail);
-          lineBuf = new Uint8Array(new ArrayBuffer(merged.length));
-          lineBuf.set(merged);
-        }
+        // Copy: the source chunk may be a reused/transferred buffer.
+        lineParts.push(new Uint8Array(value.subarray(chunkStart)));
+        lineLength += value.length - chunkStart;
       }
 
       // Made progress (at least one complete line was forwarded) — let the
@@ -473,7 +472,8 @@ export function createSseLineFoldingTransform(
     },
     cancel(reason) {
       cancelled = true;
-      lineBuf = new Uint8Array(0);
+      lineParts.length = 0;
+      lineLength = 0;
       const pending = reader.cancel(reason);
       reader.releaseLock();
       return pending;

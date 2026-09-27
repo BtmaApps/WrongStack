@@ -9,7 +9,11 @@ import {
   MailboxProjectServerConnection,
 } from '@wrongstack/core/coordination';
 import { SessionCatalogProjectClient } from '@wrongstack/core/session-catalog';
-import { resolveWstackPaths, toErrorMessage } from '@wrongstack/core/utils';
+import {
+  assertDaemonRuntimeVersion,
+  resolveWstackPaths,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import {
   closeKanbanServerConnections,
   getKanbanServerConnection,
@@ -80,6 +84,7 @@ export async function waitForShutdown(probe?: () => Promise<boolean> | boolean):
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
+  throw new Error('Daemon did not stop before the restart deadline; restart was not verified.');
 }
 
 export async function executeConnectionAction(
@@ -124,7 +129,16 @@ export async function restartAllConnectionServices(
 ): Promise<ConnectionActionResult[]> {
   const results: ConnectionActionResult[] = [];
   for (const id of RESTARTABLE_SERVICES) {
-    results.push(await executeConnectionAction(id, 'restart', projectRoot, indexDir));
+    try {
+      results.push(await executeConnectionAction(id, 'restart', projectRoot, indexDir));
+    } catch (error) {
+      results.push({
+        serviceId: id,
+        action: 'restart',
+        success: false,
+        message: toErrorMessage(error),
+      });
+    }
   }
   return results;
 }
@@ -199,6 +213,7 @@ async function restartSessionCatalogServer(
   });
   try {
     const health = await verify.ping();
+    assertDaemonRuntimeVersion(health.runtimeVersion);
     if (previousPid !== undefined && health.pid === previousPid) {
       return {
         serviceId: 'session-catalog',
@@ -300,7 +315,8 @@ async function restartKanbanServer(projectRoot: string): Promise<ConnectionActio
         message: 'Kanban IPC daemon failed to restart (no connection after re-init)',
       };
     }
-    await connection.request('ping', {}, { timeoutMs: 10_000 });
+    const health = await connection.request('ping', {}, { timeoutMs: 10_000 });
+    assertDaemonRuntimeVersion(health.runtimeVersion);
     return {
       serviceId: 'kanban',
       action: 'restart',
@@ -375,11 +391,12 @@ async function restartSageServer(projectRoot: string): Promise<ConnectionActionR
   });
   const verifyConn = new SageProjectServerConnection(projectRoot);
   try {
-    await verifyConn.call(
+    const health = await verifyConn.call(
       'ping',
       {},
       { timeoutMs: 10_000, meta: { clientId: `sage-restart-${process.pid}` } },
     );
+    assertDaemonRuntimeVersion(health.runtimeVersion);
     return {
       serviceId: 'sage',
       action: 'restart',
@@ -445,7 +462,7 @@ async function restartChronicleServer(projectRoot: string): Promise<ConnectionAc
   let access;
   try {
     access = createChronicleProjectAccess({ projectRoot });
-    await access.call('ping', {}, { timeoutMs: 10_000 });
+    const health = await access.call('ping', {}, { timeoutMs: 10_000 });
     if (access.mode !== 'server') {
       return {
         serviceId: 'chronicle',
@@ -454,6 +471,7 @@ async function restartChronicleServer(projectRoot: string): Promise<ConnectionAc
         message: `Chronicle telemetry server restarted but running in ${access.mode} mode (expected server)`,
       };
     }
+    assertDaemonRuntimeVersion(health.runtimeVersion);
     return {
       serviceId: 'chronicle',
       action: 'restart',
@@ -532,14 +550,15 @@ async function restartCodebaseIndexServer(
     const health = await checkCodebaseIndexServerHealth(projectRoot, indexDir, {
       timeoutMs: 10_000,
     });
-    if (health.status === 'unresponsive') {
+    if (health.status !== 'healthy') {
       return {
         serviceId: 'codebase-index',
         action: 'restart',
         success: false,
-        message: 'Codebase index server restarted but is unresponsive',
+        message: `Codebase index server restart verification failed: ${health.status}`,
       };
     }
+    assertDaemonRuntimeVersion(health.server?.runtimeVersion);
     return {
       serviceId: 'codebase-index',
       action: 'restart',
@@ -620,7 +639,8 @@ async function restartMailboxServer(projectRoot: string): Promise<ConnectionActi
     resolveWstackPaths({ projectRoot }).projectDir,
   );
   try {
-    await verifyConn.call('ping', {}, { timeoutMs: 10_000 });
+    const health = await verifyConn.call('ping', {}, { timeoutMs: 10_000 });
+    assertDaemonRuntimeVersion(health.runtimeVersion);
     return {
       serviceId: 'mailbox',
       action: 'restart',

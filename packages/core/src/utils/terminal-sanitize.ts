@@ -65,10 +65,12 @@ const ANSI_ESCAPE_RE = /\x1b[ -/]*[@-~]/g;
  * displayed text diverge from the real one, so they are dropped rather than
  * rendered.
  *
- * U+200B–U+200F zero-width + LTR/RTL marks, U+202A–U+202E embedding/override,
- * U+2066–U+2069 isolates, U+FEFF zero-width no-break space.
+ * Unicode's own Bidi_Control set (LRM/RLM, U+061C ARABIC LETTER MARK,
+ * U+202A–U+202E embedding/override, U+2066–U+2069 isolates) — a hand list
+ * missed ALM — plus the zero-width U+200B–U+200D, U+2060 WORD JOINER,
+ * U+2061–U+2064 invisible operators and U+FEFF.
  */
-const BIDI_AND_ZERO_WIDTH_RE = /[​-‏‪-‮⁦-⁩﻿]/g;
+const BIDI_AND_ZERO_WIDTH_RE = /[\p{Bidi_Control}​-‍⁠-⁤﻿]/gu;
 
 /**
  * Strip terminal escapes, bidi/zero-width controls and non-printable characters

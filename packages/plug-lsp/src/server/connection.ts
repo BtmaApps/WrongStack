@@ -149,18 +149,21 @@ export class Connection {
         this.dispatchBody(body);
         continue;
       }
-      // Header phase. The concat here is bounded by MAX_HEADER_BYTES — a
-      // stream that produces this much without a blank-line terminator is
-      // not speaking LSP, so it is closed rather than buffered.
-      if (this.headerBuffer.length + rest.length > MAX_HEADER_BYTES) {
-        this.close();
-        return;
-      }
+      // Header phase. MAX_HEADER_BYTES bounds the header BLOCK — a stream
+      // that produces this much without a blank-line terminator is not
+      // speaking LSP, so it is closed rather than buffered. It must not be
+      // checked against the whole chunk: that also counts the body bytes
+      // after the terminator, so a header straddling a read boundary followed
+      // by a full 64 KiB pipe read closed a healthy connection.
       this.headerBuffer =
         this.headerBuffer.length === 0 ? rest : Buffer.concat([this.headerBuffer, rest]);
       rest = EMPTY;
       for (;;) {
         const sep = this.headerBuffer.indexOf('\r\n\r\n');
+        if (sep > MAX_HEADER_BYTES || (sep === -1 && this.headerBuffer.length > MAX_HEADER_BYTES)) {
+          this.close();
+          return;
+        }
         if (sep === -1) break;
         const header = this.headerBuffer.subarray(0, sep).toString('ascii');
         const after = this.headerBuffer.subarray(sep + 4);

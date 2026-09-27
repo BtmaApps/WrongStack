@@ -122,9 +122,14 @@ const PATTERNS: Pattern[] = [
   },
   {
     type: 'private_key',
-    // Anchored: start must be BEGIN, end must be END with no extra dashes after END
+    // Any `-----BEGIN [TYPE ]PRIVATE KEY[ BLOCK]-----` … `-----END …-----`.
+    // Deliberately NOT line-anchored: a PEM inside a JSON string (a GCP
+    // service-account.json read by a tool) follows `"` and carries literal
+    // `\n` escapes, and a CRLF file ends its END line in `\r`. The type words
+    // cover ENCRYPTED (PKCS#8) and PGP, whose armor adds ` BLOCK`. All of
+    // those shapes used to pass through verbatim.
     regex:
-      /(?:^|\n)-----BEGIN (?:RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY-----[\s\S]*?-----END[^-]*-----(?:\n|$)/g,
+      /(?<!-)-----BEGIN (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END[^-\r\n]*-----/g,
     anchor: '-----BEGIN',
   },
   { type: 'mongodb_uri', regex: /mongodb(?:\+srv)?:\/\/[^\s"'`]+/g, anchor: 'mongodb' },
@@ -372,7 +377,7 @@ const SCRUB_OVERLAP_BYTES = 1024;
  * {@link extendChunkBoundaryPastPem} moves such a boundary past the block's
  * closing marker instead.
  */
-const PEM_PRIVATE_KEY_BEGIN_RE = /-----BEGIN (?:RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY-----/;
+const PEM_PRIVATE_KEY_BEGIN_RE = /-----BEGIN (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----/;
 const PEM_END_MARKER = '-----END';
 /**
  * Hard bound on how far a chunk boundary may extend to keep a PEM block

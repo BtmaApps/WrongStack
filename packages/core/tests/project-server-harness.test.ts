@@ -19,17 +19,21 @@
  *
  * The kanban daemon routes every stop path through `stopAndExit()` →
  * `process.exit(0)`, which would kill the worker; its case covers
- * bind/metadata/hello/ping/auth and leaves the temp root in place (its
- * liveness timer exits if the root vanishes). Kanban exit paths remain
- * covered by the existing child-process tests in packages/kanban/tests.
+ * bind/metadata/hello/ping/auth and tears down through `stopInProcess()`.
+ * Leaving it running was not an option: its 5-minute idle timer (and the
+ * root-liveness timer) outlive the test and exit the worker mid-file on a
+ * slow or suspended run. Kanban exit paths remain covered by the existing
+ * child-process tests in packages/kanban/tests.
  *
  * Governance is a class with a different wire protocol (a strict envelope
  * with a capability-grant credential and requestId-correlated responses) —
  * it gets its own describe block below.
  */
+
 import * as fs from 'node:fs/promises';
 import type * as net from 'node:net';
 import * as path from 'node:path';
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { afterEach, describe, expect, it } from 'vitest';
 import { governanceProjectServerEndpoint } from '../../governance/src/ipc-endpoint.js';
 import { GovernanceProjectServer } from '../../governance/src/project-server.js';
@@ -89,8 +93,6 @@ interface HarnessCase {
   supportsIdle: boolean;
   /** The daemon exits cleanly on a `shutdown` request in-process. */
   supportsShutdown: boolean;
-  /** Temp root must stay after the test (kanban liveness timer exits on rm). */
-  keepRoot: boolean;
   watch: 'configure' | 'health' | 'none';
   /** Start the daemon; returns an optional teardown (governance close). */
   start: (
@@ -139,7 +141,6 @@ const CASES: HarnessCase[] = [
     hasHello: true,
     supportsIdle: true,
     supportsShutdown: true,
-    keepRoot: false,
     watch: 'configure',
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
@@ -183,7 +184,6 @@ const CASES: HarnessCase[] = [
     hasHello: true,
     supportsIdle: true,
     supportsShutdown: true,
-    keepRoot: false,
     watch: 'none',
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
@@ -218,7 +218,6 @@ const CASES: HarnessCase[] = [
     hasHello: true,
     supportsIdle: false, // every stop path calls process.exit(0)
     supportsShutdown: false,
-    keepRoot: true, // liveness timer exits if the root is removed
     watch: 'none',
     start: async (root, nonce, shortIdle) => {
       const mod = await importDaemonInstance(
@@ -227,8 +226,12 @@ const CASES: HarnessCase[] = [
         nonce,
         shortIdle ? 'WRONGSTACK_KANBAN_SERVER_IDLE_MS' : null,
       );
-      await (mod as { main: (argv: string[]) => Promise<void> }).main(['--project-root', root]);
-      return {};
+      const daemon = mod as {
+        main: (argv: string[]) => Promise<void>;
+        stopInProcess: (reason?: string) => Promise<void>;
+      };
+      await daemon.main(['--project-root', root]);
+      return { teardown: () => daemon.stopInProcess('harness-teardown') };
     },
     pingFrame: (id, authToken) => ({ id, method: 'ping', params: {}, authToken }),
     shutdownFrame: (id, authToken, reason) => ({
@@ -253,7 +256,6 @@ const CASES: HarnessCase[] = [
     hasHello: true,
     supportsIdle: true,
     supportsShutdown: true,
-    keepRoot: false,
     watch: 'health', // file observer started at listen; exposed via health
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
@@ -302,7 +304,6 @@ const CASES: HarnessCase[] = [
     hasHello: true,
     supportsIdle: true,
     supportsShutdown: true,
-    keepRoot: false,
     watch: 'none',
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
@@ -388,6 +389,7 @@ async function connectAndGreet(c: HarnessCase, endpoint: string) {
   openSockets.push(client.socket);
   if (c.hasHello) {
     const hello = await client.nextFrame();
+    expect(hello.runtimeVersion).toBe(WRONGSTACK_RUNTIME_VERSION);
     expect(hello.type).toBe('hello');
     expect(hello.protocolVersion).toBe(c.expectedProtocolVersion);
     expect(hello.pid).toBe(process.pid);
@@ -411,7 +413,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
   const rootLabel = () => c.name.replace(/[^a-z0-9]/gi, '-');
 
   it('binds the deterministic endpoint and writes owner-only metadata', async () => {
-    const { root, release } = await makeTempRoot(rootLabel(), c.keepRoot);
+    const { root, release } = await makeTempRoot(rootLabel());
     releases.push(release);
     const started = await c.start(root, caseNonce, false);
     if (started.teardown) teardowns.push(started.teardown);
@@ -431,7 +433,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
   });
 
   it('greets a connecting client with hello and answers an authenticated ping', async () => {
-    const { root, release } = await makeTempRoot(rootLabel(), c.keepRoot);
+    const { root, release } = await makeTempRoot(rootLabel());
     releases.push(release);
     const started = await c.start(root, caseNonce + 1, false);
     if (started.teardown) teardowns.push(started.teardown);
@@ -445,6 +447,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
     // `hello` already proved pid identity; the ping payloads differ per
     // protocol (codebase-index's health has no `pid` field at all).
     if (health.pid !== undefined) expect(health.pid).toBe(process.pid);
+    expect(health.runtimeVersion).toBe(WRONGSTACK_RUNTIME_VERSION);
     expect(typeof health.clients).toBe('number');
     if (c.expectWatch) {
       await c.expectWatch(client, authToken);
@@ -452,7 +455,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
   });
 
   it('rejects unauthenticated requests', async () => {
-    const { root, release } = await makeTempRoot(rootLabel(), c.keepRoot);
+    const { root, release } = await makeTempRoot(rootLabel());
     releases.push(release);
     const started = await c.start(root, caseNonce + 2, false);
     if (started.teardown) teardowns.push(started.teardown);
@@ -472,7 +475,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
 
   it('shutdown stops the daemon and removes its metadata', async () => {
     if (!c.supportsShutdown) return;
-    const { root, release } = await makeTempRoot(rootLabel(), c.keepRoot);
+    const { root, release } = await makeTempRoot(rootLabel());
     releases.push(release);
     const started = await c.start(root, caseNonce + 3, false);
     if (started.teardown) teardowns.push(started.teardown);
@@ -494,7 +497,7 @@ describe.each(CASES)('project-server harness: $name', (c) => {
 
   it('exits on idle when no client ever connects', async () => {
     if (!c.supportsIdle) return;
-    const { root, release } = await makeTempRoot(`${rootLabel()}-idle`, c.keepRoot);
+    const { root, release } = await makeTempRoot(`${rootLabel()}-idle`);
     releases.push(release);
     const started = await c.start(root, caseNonce + 4, true);
     if (started.teardown) teardowns.push(started.teardown);

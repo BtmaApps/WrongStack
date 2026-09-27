@@ -161,6 +161,24 @@ export async function stashRewoundTail(opts: {
   return transcripts.map((t) => t.from);
 }
 
+/**
+ * Take back the stash `stashRewoundTail` just pushed, for a rewind whose
+ * journal rewrite then failed: the journal still links the moved transcripts,
+ * so they go back to where it points, and the entry is dropped so no redo is
+ * offered for a rewind that never happened.
+ */
+export async function unstashRewoundTail(journalPath: string): Promise<void> {
+  const dir = redoStashDir(journalPath);
+  const stack = await readStack(dir);
+  const top = stack.pop();
+  if (!top) return;
+  for (const { from, to } of top.transcripts) {
+    await fsp.rename(to, from).catch(() => undefined);
+  }
+  await fsp.rm(path.join(dir, top.tailFile), { force: true });
+  await writeStack(dir, stack);
+}
+
 /** The newest stash, if the journal still starts with exactly what it kept. */
 async function validTop(journalPath: string): Promise<RedoEntry | undefined> {
   const dir = redoStashDir(journalPath);

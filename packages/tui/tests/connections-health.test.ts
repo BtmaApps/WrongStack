@@ -1,3 +1,4 @@
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -78,6 +79,7 @@ import { collectConnectionsHealth } from '../src/connections-health.js';
 
 function healthyDefaults() {
   mocks.sessionCatalogCallExisting.mockResolvedValue({
+    runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
     damagedRows: 0,
     catalogRows: 5,
     liveLeases: 1,
@@ -108,6 +110,7 @@ function healthyDefaults() {
   mocks.createChronicleProjectAccess.mockReturnValue({
     mode: 'server',
     call: vi.fn().mockResolvedValue({
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       quarantinedFamilies: [],
       pid: 1,
       endpoint: 'chronicle-endpoint',
@@ -124,6 +127,7 @@ function healthyDefaults() {
     status: 'healthy',
     latencyMs: 5,
     server: {
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       activity: { indexing: false },
       uptimeMs: 100,
       clients: 1,
@@ -138,6 +142,7 @@ function healthyDefaults() {
   });
   mocks.isSageProjectServerAvailable.mockReturnValue(true);
   mocks.sageStatus.mockResolvedValue({
+    runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
     pid: 3,
     endpoint: 'sage-endpoint',
     storageRoot: 'C:/sage',
@@ -147,6 +152,7 @@ function healthyDefaults() {
   });
   mocks.getKanbanServerConnection.mockResolvedValue({
     request: vi.fn().mockResolvedValue({
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       protocolVersion: 3,
       pid: 4,
       endpoint: 'kanban-endpoint',
@@ -158,6 +164,7 @@ function healthyDefaults() {
   });
   mocks.isMailboxProjectServerAvailable.mockReturnValue(true);
   mocks.mailboxStatus.mockResolvedValue({
+    runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
     protocolVersion: 3,
     pid: 5,
     endpoint: 'mailbox-endpoint',
@@ -246,7 +253,7 @@ describe('collectConnectionsHealth', () => {
         detail: expect.stringContaining('2026-07-29'),
       }),
     );
-    expect(report.services[2]?.detail).toBe('Indexing 2/10.');
+    expect(report.services[2]?.detail).toContain('Indexing 2/10.');
     expect(report.services[3]?.status).toBe('degraded');
   });
 
@@ -329,4 +336,25 @@ describe('collectConnectionsHealth', () => {
       expect.objectContaining({ status: 'error', detail: 'kanban startup failed' }),
     );
   });
+});
+
+describe('daemon release skew', () => {
+  it.each(['0.0.1', '999.0.0', undefined])(
+    'surfaces optional SAGE skew (%s) in overall health',
+    async (runtimeVersion) => {
+      mocks.sageStatus.mockResolvedValue({
+        runtimeVersion,
+        pid: 3,
+        health: { status: 'ready', backend: 'sqlite' },
+      });
+      const report = await collectConnectionsHealth('/project');
+      expect(report.overall).toBe('degraded');
+      expect(report.services.find((service) => service.id === 'sage')).toMatchObject({
+        status: 'degraded',
+        versionMismatch: true,
+        detail: expect.stringMatching(/restart/i),
+      });
+      expect(mocks.sageClose).toHaveBeenCalledOnce();
+    },
+  );
 });

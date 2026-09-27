@@ -589,13 +589,17 @@ export class SageProjectServerConnection {
     // The buffered prefix was already scanned and holds no newline; search
     // only the new chunk. Rescanning the whole buffer — and re-slicing it per
     // line — was quadratic in frame size: a multi-megabyte frame arriving in
-    // 64KB chunks was scanned from its first byte on every chunk.
-    const scanFrom = this.buffer.length;
-    this.buffer += chunk;
+    // 64KB chunks was scanned from its first byte on every chunk. The search
+    // must run on `chunk` itself: `indexOf` on `buffer + chunk` (even from an
+    // offset) flattens the concatenation, an O(buffer) copy per chunk.
+    let newline = chunk.indexOf('\n');
+    if (newline < 0) {
+      this.buffer += chunk;
+    }
     let start = 0;
-    let newline = this.buffer.indexOf('\n', scanFrom);
     while (newline >= 0) {
-      const line = this.buffer.slice(start, newline);
+      const line =
+        start === 0 ? this.buffer + chunk.slice(0, newline) : chunk.slice(start, newline);
       start = newline + 1;
       if (line) {
         let message: SageProjectServerMessage;
@@ -609,9 +613,9 @@ export class SageProjectServerConnection {
         // A handler may have torn this socket down (protocol mismatch).
         if (socket !== this.socket || socket.destroyed) return;
       }
-      newline = this.buffer.indexOf('\n', start);
+      newline = chunk.indexOf('\n', start);
     }
-    if (start > 0) this.buffer = this.buffer.slice(start);
+    if (start > 0) this.buffer = chunk.slice(start);
     // Bound the one frame still being assembled, not the complete frames the
     // chunk happened to carry alongside it.
     if (this.buffer.length > MAX_FRAME_BUFFER_CHARS) {

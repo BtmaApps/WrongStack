@@ -9,6 +9,8 @@ export const PROJECT_INDEX_SERVER_MAX_FRAME_CHARS = 64 * 1024 * 1024;
  * see {@link ProjectIndexServerMetadata}.
  */
 export interface ProjectIndexServerInfo {
+  /** Application release; absent on legacy daemons. */
+  runtimeVersion?: string | undefined;
   protocolVersion: number;
   buildId: string;
   /** Artifact mtime (ms). Orders two differing builds; absent on legacy servers. */
@@ -32,6 +34,7 @@ export interface ProjectIndexServerActivity {
 }
 
 export interface ProjectIndexServerHealth {
+  runtimeVersion?: string | undefined;
   checkedAt: number;
   uptimeMs: number;
   memory: {

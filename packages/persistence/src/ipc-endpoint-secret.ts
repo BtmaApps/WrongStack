@@ -36,12 +36,19 @@ export const _ipcEndpointSecretOps = {
 
 let cached: { file: string; secret: string | null } | undefined;
 
-function readSecret(file: string): string | null {
+/**
+ * The secret in `file`; `null` when there is none (absent or not a secret);
+ * `undefined` when it could not be read right now (EMFILE, EBUSY from a
+ * scanner). Only the first two are answers worth remembering: caching a
+ * transient failure as "no secret" pinned this process to the public name
+ * while every other process used the private one.
+ */
+function readSecret(file: string): string | null | undefined {
   try {
     const text = fs.readFileSync(file, 'utf8').trim();
     return SECRET_RE.test(text) ? text : null;
-  } catch {
-    return null;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'ENOENT' ? null : undefined;
   }
 }
 
@@ -52,7 +59,7 @@ function readSecret(file: string): string | null {
  * could leave two processes holding different secrets for a moment, which is
  * exactly a split election.
  */
-function createSecret(file: string): string | null {
+function createSecret(file: string): string | null | undefined {
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
@@ -82,8 +89,8 @@ export function ipcEndpointSecret(): string | null {
   }
   if (cached?.file === file) return cached.secret;
   const secret = readSecret(file) ?? createSecret(file);
-  cached = { file, secret };
-  return secret;
+  if (secret !== undefined) cached = { file, secret };
+  return secret ?? null;
 }
 
 /**
@@ -105,7 +112,7 @@ export function privateEndpointKey(publicKey: string): string {
  * come back with the winner's secret — not overwrite it with its own.
  */
 export function __createIpcEndpointSecretForTests(file: string): string | null {
-  return createSecret(file);
+  return createSecret(file) ?? null;
 }
 
 /** Tests only: forget the cached secret. */

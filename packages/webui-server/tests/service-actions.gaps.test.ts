@@ -1,3 +1,4 @@
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 
@@ -228,7 +229,7 @@ describe('killSessionCatalogServer', () => {
       callExisting: vi.fn(async () => {
         throw new Error('offline');
       }),
-      ping: vi.fn(async () => ({})),
+      ping: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
 
     const shutdown = await killSessionCatalogServer('/proj', 'shutdown');
@@ -250,7 +251,7 @@ describe('killSessionCatalogServer', () => {
       callExisting: vi.fn(async () => {
         throw new Error('offline');
       }),
-      ping: vi.fn(async () => ({})),
+      ping: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
 
     const restart = await killSessionCatalogServer('/proj', 'restart');
@@ -281,7 +282,7 @@ describe('killSessionCatalogServer', () => {
     catalogClient({
       shutdown: vi.fn(async () => ({ stopped: true, pid: 42 })),
       callExisting,
-      ping: vi.fn(async () => ({ pid: 42 })),
+      ping: vi.fn(async () => ({ pid: 42, runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
 
     const restart = await killSessionCatalogServer('/proj', 'restart');
@@ -321,7 +322,7 @@ describe('killKanbanServer', () => {
 
   it('restarts after a confirmed shutdown', async () => {
     const request = vi.fn(async (method: string) =>
-      method === 'shutdown' ? { stopping: true } : {},
+      method === 'shutdown' ? { stopping: true } : { runtimeVersion: WRONGSTACK_RUNTIME_VERSION },
     );
     mockOf(kanbanMock, 'getKanbanServerConnection').mockResolvedValue({ request });
     const out = await killKanbanServer('/proj', 'restart');
@@ -358,10 +359,28 @@ describe('killKanbanServer', () => {
 
   it('restartKanbanServer succeeds when the ping answers', async () => {
     mockOf(kanbanMock, 'getKanbanServerConnection').mockResolvedValue({
-      request: vi.fn(async () => ({})),
+      request: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
     const out = await restartKanbanServer('/proj');
     expect(out.success).toBe(true);
+  });
+
+  it('refuses to report success when the old Kanban owner never stops', async () => {
+    vi.useFakeTimers();
+    try {
+      const request = vi.fn().mockResolvedValue({ stopping: true, pong: true });
+      mockOf(kanbanMock, 'getKanbanServerConnection').mockResolvedValue({ request });
+      mockOf(kanbanMock, 'isKanbanServerAvailable').mockResolvedValue(true);
+      const pending = killKanbanServer('/proj', 'restart');
+      await vi.advanceTimersByTimeAsync(3_000);
+      const result = await pending;
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('did not stop');
+      expect(request).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+      mockOf(kanbanMock, 'isKanbanServerAvailable').mockResolvedValue(false);
+    }
   });
 });
 
@@ -393,7 +412,7 @@ describe('killSageServer', () => {
     sageConnection({
       shutdown: vi.fn(async () => ({ stopped: true })),
       status: vi.fn(async () => null),
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
     const shutdown = await killSageServer('/proj', 'shutdown');
     expect(shutdown).toMatchObject({
@@ -412,7 +431,7 @@ describe('killSageServer', () => {
     sageConnection({
       shutdown: vi.fn(async () => ({ stopped: false, reason: 'not-running' })),
       status: vi.fn(async () => null),
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
     await expect(killSageServer('/proj', 'restart')).resolves.toMatchObject({ success: true });
   });
@@ -471,7 +490,7 @@ describe('killChronicleServer', () => {
     chronicleClient({ shutdown: vi.fn(async () => ({ stopped: true })) });
     mockOf(chronicleMock, 'createChronicleProjectAccess').mockReturnValue({
       mode: 'server',
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
       close: vi.fn(async () => {}),
     });
     const out = await killChronicleServer('/proj', 'restart');
@@ -485,7 +504,7 @@ describe('killChronicleServer', () => {
     chronicleClient({ shutdown: vi.fn(async () => ({ stopped: false, reason: 'offline' })) });
     mockOf(chronicleMock, 'createChronicleProjectAccess').mockReturnValue({
       mode: 'server',
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
       close: vi.fn(async () => {}),
     });
     await expect(killChronicleServer('/proj', 'restart')).resolves.toMatchObject({ success: true });
@@ -495,7 +514,7 @@ describe('killChronicleServer', () => {
     chronicleClient({ shutdown: vi.fn(async () => ({ stopped: true })) });
     mockOf(chronicleMock, 'createChronicleProjectAccess').mockReturnValue({
       mode: 'embedded',
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
       close: vi.fn(async () => {}),
     });
     const out = await killChronicleServer('/proj', 'restart');
@@ -545,7 +564,12 @@ describe('killCodebaseIndexServer', () => {
 
   it('restarts and verifies health', async () => {
     mockOf(toolsMock, 'shutdownCodebaseIndexServer').mockResolvedValue({ stopped: true });
-    mockOf(toolsMock, 'checkCodebaseIndexServerHealth').mockResolvedValue({ status: 'ok' });
+    mockOf(toolsMock, 'checkCodebaseIndexServerHealth')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({
+        status: 'healthy',
+        server: { runtimeVersion: WRONGSTACK_RUNTIME_VERSION },
+      });
     const out = await killCodebaseIndexServer('/proj', undefined, 'restart');
     expect(out).toMatchObject({
       success: true,
@@ -564,20 +588,23 @@ describe('killCodebaseIndexServer', () => {
     });
     mockOf(toolsMock, 'checkCodebaseIndexServerHealth')
       .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValue({ status: 'ok' });
+      .mockResolvedValue({
+        status: 'healthy',
+        server: { runtimeVersion: WRONGSTACK_RUNTIME_VERSION },
+      });
     await expect(killCodebaseIndexServer('/proj', undefined, 'restart')).resolves.toMatchObject({
       success: true,
     });
   });
 
-  it('rejects an unresponsive restart', async () => {
+  it.each(['degraded', 'unresponsive'])('rejects a %s restart verification', async (status) => {
     mockOf(toolsMock, 'shutdownCodebaseIndexServer').mockResolvedValue({ stopped: true });
-    mockOf(toolsMock, 'checkCodebaseIndexServerHealth').mockResolvedValue({
-      status: 'unresponsive',
-    });
+    mockOf(toolsMock, 'checkCodebaseIndexServerHealth')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ status });
     const out = await killCodebaseIndexServer('/proj', undefined, 'restart');
     expect(out.success).toBe(false);
-    expect(out.message).toBe('Codebase index server restarted but is unresponsive');
+    expect(out.message).toBe(`Codebase index server restart verification failed: ${status}`);
   });
 
   it('wraps executor errors', async () => {
@@ -615,7 +642,7 @@ describe('killMailboxServer', () => {
   it('shuts down and restarts the mailbox server', async () => {
     mailboxConnection({
       shutdown: vi.fn(async () => ({ stopped: true })),
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
     const shutdown = await killMailboxServer('/proj', 'shutdown');
     expect(shutdown).toMatchObject({
@@ -633,7 +660,7 @@ describe('killMailboxServer', () => {
   it('starts a sleeping mailbox server when restart is requested', async () => {
     mailboxConnection({
       shutdown: vi.fn(async () => ({ stopped: false, reason: 'offline' })),
-      call: vi.fn(async () => ({})),
+      call: vi.fn(async () => ({ runtimeVersion: WRONGSTACK_RUNTIME_VERSION })),
     });
     await expect(killMailboxServer('/proj', 'restart')).resolves.toMatchObject({ success: true });
   });

@@ -11,19 +11,25 @@ import type {
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const MAX_PAYLOAD_DEPTH = 32;
 
-function inspectValue(value: unknown, path: string, depth: number): ProtocolDecodeIssue | null {
+/**
+ * The first unsafe spot in `value`, as an issue whose `path` is relative to
+ * `value` (callers prefix their own segment). Paths are assembled only on the
+ * way out of a failure: every server frame passes through here, and a replay
+ * payload has tens of thousands of keys that would each build a path string
+ * nobody reads.
+ */
+function inspectValue(value: unknown, depth: number): ProtocolDecodeIssue | null {
   if (depth > MAX_PAYLOAD_DEPTH) {
-    return { code: 'too_deep', message: 'Protocol payload exceeds the nesting limit', path };
+    return { code: 'too_deep', message: 'Protocol payload exceeds the nesting limit', path: '' };
   }
   if (value === null || typeof value !== 'object') return null;
 
   for (const key of Object.keys(value)) {
-    const childPath = `${path}.${key}`;
     if (FORBIDDEN_KEYS.has(key)) {
-      return { code: 'unsafe_key', message: `Unsafe protocol key: ${key}`, path: childPath };
+      return { code: 'unsafe_key', message: `Unsafe protocol key: ${key}`, path: `.${key}` };
     }
-    const issue = inspectValue((value as Record<string, unknown>)[key], childPath, depth + 1);
-    if (issue) return issue;
+    const issue = inspectValue((value as Record<string, unknown>)[key], depth + 1);
+    if (issue) return { ...issue, path: `.${key}${issue.path ?? ''}` };
   }
   return null;
 }
@@ -74,8 +80,8 @@ export function decodeProtocolMessage(
       };
     }
 
-    const issue = inspectValue(envelope, '$', 0);
-    if (issue) return { ok: false, issue };
+    const issue = inspectValue(envelope, 0);
+    if (issue) return { ok: false, issue: { ...issue, path: `$${issue.path ?? ''}` } };
     return { ok: true, message: input as ProtocolEnvelope };
   } catch {
     return {

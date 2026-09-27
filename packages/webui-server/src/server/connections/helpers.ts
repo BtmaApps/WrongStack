@@ -51,6 +51,7 @@ export async function waitForShutdown(probe?: () => Promise<boolean>): Promise<v
     }
     await new Promise((resolve) => setTimeout(resolve, RESTART_POLL_INTERVAL_MS));
   }
+  throw new Error('Daemon did not stop before the restart deadline; restart was not verified.');
 }
 
 export function failureService(

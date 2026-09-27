@@ -164,6 +164,8 @@ const REPLAY_FIELDS = ['replayMessages', 'replayMarkers', 'replayToolMeta', 'rep
 export class FrameResume<T extends SequencedFrame & { type: string }> {
   readonly gate = new SessionFrameGate<T>();
   private timer: unknown = null;
+  /** Tabs the armed timer is waiting on (an earlier request's still count: its timer was replaced). */
+  private requested: readonly string[] = [];
 
   constructor(
     private readonly apply: (frames: T[]) => void,
@@ -177,10 +179,13 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
   request(sessionIds: readonly string[]): ReturnType<SessionFrameGate<T>['cursors']> {
     const request = this.gate.cursors(sessionIds);
     if (!request) return null;
-    this.gate.beginResume(Object.keys(request.cursors));
+    const ids = Object.keys(request.cursors);
+    this.requested = [...new Set([...this.requested, ...ids])];
+    this.gate.beginResume(ids);
     if (this.timer) timers.clearTimeout(this.timer);
     this.timer = timers.setTimeout(() => {
       this.timer = null;
+      this.requested = [];
       this.apply(this.gate.releaseAll());
     }, this.timeoutMs);
     return request;
@@ -207,5 +212,12 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
   onFramesResumed(msg: T): void {
     const sessionId = (msg.payload as { sessionId?: unknown }).sessionId;
     if (typeof sessionId === 'string') this.apply(this.gate.finishResume(sessionId));
+    // Every tab caught up: nothing left to give up on. A live timer would also
+    // keep a Node process up for the rest of its 5 s.
+    if (this.timer && !this.requested.some((id) => this.gate.isResuming(id))) {
+      timers.clearTimeout(this.timer);
+      this.timer = null;
+      this.requested = [];
+    }
   }
 }

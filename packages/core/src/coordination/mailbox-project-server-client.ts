@@ -478,34 +478,41 @@ export class MailboxProjectServerConnection {
 
   private onData(socket: net.Socket, chunk: string): void {
     if (socket !== this.socket) return;
-    this.buffer += chunk;
+    // Scan only the new chunk: the pending tail never holds a newline, and
+    // re-scanning it per chunk made a large response O(n²) to receive.
+    let newline = chunk.indexOf('\n');
+    let line = this.buffer + (newline < 0 ? chunk : chunk.slice(0, newline));
+    let start = newline + 1;
+    this.buffer = '';
     while (true) {
-      const newline = this.buffer.indexOf('\n');
       if (newline < 0) {
-        if (this.buffer.length > MAILBOX_PROJECT_SERVER_MAX_FRAME_CHARS) {
+        this.buffer = line;
+        if (line.length > MAILBOX_PROJECT_SERVER_MAX_FRAME_CHARS) {
           socket.destroy(new Error('Mailbox project server response exceeded frame limit'));
         }
         return;
       }
-      if (newline > MAILBOX_PROJECT_SERVER_MAX_FRAME_CHARS) {
+      if (line.length > MAILBOX_PROJECT_SERVER_MAX_FRAME_CHARS) {
         socket.destroy(new Error('Mailbox project server response exceeded frame limit'));
         return;
       }
-      const line = this.buffer.slice(0, newline);
-      this.buffer = this.buffer.slice(newline + 1);
-      if (!line) continue;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(line);
-      } catch {
-        socket.destroy(new Error('Invalid mailbox project server response'));
-        return;
+      if (line) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(line);
+        } catch {
+          socket.destroy(new Error('Invalid mailbox project server response'));
+          return;
+        }
+        if (!isMailboxProjectServerMessage(parsed)) {
+          socket.destroy(new Error('Invalid mailbox project server response'));
+          return;
+        }
+        this.onMessage(parsed);
       }
-      if (!isMailboxProjectServerMessage(parsed)) {
-        socket.destroy(new Error('Invalid mailbox project server response'));
-        return;
-      }
-      this.onMessage(parsed);
+      newline = chunk.indexOf('\n', start);
+      line = chunk.slice(start, newline < 0 ? undefined : newline);
+      start = newline + 1;
     }
   }
 

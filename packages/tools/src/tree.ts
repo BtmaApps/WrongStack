@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool, ToolProgressEvent, ToolStreamEvent } from '@wrongstack/core/types';
 import {
-  compileGlob,
+  compilePathGlob,
   DEFAULT_WALK_IGNORE_DIRS,
   expectDefined,
   toErrorMessage,
@@ -134,7 +134,7 @@ export const treeTool: Tool<TreeInput, TreeOutput> = {
         .map((s) => s.trim().replace(/\\/g, '/').replace(/\/+$/, '').replace(/^\.\//, ''))
         .filter(Boolean),
     ]);
-    const globRe = input.glob ? compileGlob(input.glob) : undefined;
+    const globRe = input.glob ? compilePathGlob(input.glob) : undefined;
     const maxEntries =
       typeof input.max_entries === 'number' &&
       Number.isFinite(input.max_entries) &&

@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
-import { compileGlob, DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
+import { compilePathGlob, DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
 import { assertRealInsideRoot, makeRootRelativizer, safeResolveReal } from './_util.js';
 import { loadGitignoreMatcher } from './codebase-index/gitignore.js';
@@ -109,7 +109,7 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
     // rooted at the walk base — a project whose build output isn't in the
     // static DEFAULT_IGNORE list would otherwise be walked in full.
     const isGitIgnored = await loadGitignoreMatcher(base);
-    const re = compileGlob(input.pattern);
+    const re = compilePathGlob(input.pattern);
 
     const results: { rel: string; mtime: number }[] = [];
     const visitedRealDirs = new Set<string>();

@@ -15,7 +15,7 @@ import {
   MailboxProjectServerConnection,
 } from '@wrongstack/core/coordination';
 import { SessionCatalogProjectClient } from '@wrongstack/core/session-catalog';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { resolveWstackPaths, withDaemonVersion } from '@wrongstack/core/utils';
 import { getKanbanServerConnection } from '@wrongstack/kanban';
 import { readGovernanceDaemonOperatorStatus } from '@wrongstack/runtime/governance-bootstrap';
 import { isSageProjectServerAvailable, SageProjectServerConnection } from '@wrongstack/sage';
@@ -43,6 +43,7 @@ export interface ConnectionHealthService {
   required: boolean;
   mode: string;
   detail: string;
+  versionMismatch?: boolean;
   ownerPid?: number | undefined;
   endpoint?: string | undefined;
   storage?: string | undefined;
@@ -84,7 +85,7 @@ export async function collectConnectionsHealth(
   const required = services.filter((s) => s.required);
   const overall = required.some((s) => s.status === 'error')
     ? 'error'
-    : required.some((s) => s.status !== 'healthy')
+    : services.some((s) => s.versionMismatch) || required.some((s) => s.status !== 'healthy')
       ? 'degraded'
       : 'healthy';
   return { checkedAt: Date.now(), overall, services };
@@ -102,25 +103,28 @@ async function sessionCatalogHealth(projectRoot: string): Promise<ConnectionHeal
     });
     try {
       const health = await client.callExisting('ping', {}, { timeoutMs: 3_000 });
-      return {
-        id: 'session-catalog',
-        label: 'Session Catalog',
-        status: health.damagedRows > 0 ? 'degraded' : 'healthy',
-        required: true,
-        mode: 'project-daemon',
-        detail:
-          health.damagedRows > 0
-            ? `${health.damagedRows} damaged catalog row(s); rebuild is required.`
-            : `${health.catalogRows} catalog session(s), ${health.liveLeases} live lease(s), ${health.reservations} reservation(s).`,
-        ownerPid: health.pid,
-        endpoint: health.endpoint,
-        storage: health.databasePath,
-        uptimeMs: health.uptimeMs,
-        latencyMs: Date.now() - startedAt,
-        clients: health.clients,
-        activeRequests: health.activeRequests,
-        queuedWork: health.reservations + health.maintenanceLeases,
-      };
+      return withDaemonVersion<ConnectionHealthService>(
+        {
+          id: 'session-catalog',
+          label: 'Session Catalog',
+          status: health.damagedRows > 0 ? 'degraded' : 'healthy',
+          required: true,
+          mode: 'project-daemon',
+          detail:
+            health.damagedRows > 0
+              ? `${health.damagedRows} damaged catalog row(s); rebuild is required.`
+              : `${health.catalogRows} catalog session(s), ${health.liveLeases} live lease(s), ${health.reservations} reservation(s).`,
+          ownerPid: health.pid,
+          endpoint: health.endpoint,
+          storage: health.databasePath,
+          uptimeMs: health.uptimeMs,
+          latencyMs: Date.now() - startedAt,
+          clients: health.clients,
+          activeRequests: health.activeRequests,
+          queuedWork: health.reservations + health.maintenanceLeases,
+        },
+        health?.runtimeVersion,
+      );
     } finally {
       await client.close().catch(() => undefined);
     }
@@ -148,36 +152,39 @@ async function chronicleHealth(projectRoot: string): Promise<ConnectionHealthSer
     access = createChronicleProjectAccess({ projectRoot });
     const health = await access.call('ping', {}, { timeoutMs: 5_000 });
     const quarantined = health.quarantinedFamilies ?? [];
-    return {
-      id: 'chronicle',
-      label: 'Chronicle telemetry',
-      status:
-        quarantined.length > 0 ? 'degraded' : access.mode === 'server' ? 'healthy' : 'degraded',
-      required: true,
-      mode: access.mode,
-      detail:
-        quarantined.length > 0
-          ? `Serving, but ${quarantined.length} day(s) were quarantined for a broken chain: ${quarantined
-              .map((family) => family.day)
-              .join(', ')}.`
-          : access.mode === 'server'
-            ? 'One project owner collects, processes, stores, and serves telemetry.'
-            : 'Inline fallback is active; ownership is not shared across clients.',
-      ownerPid: health.pid,
-      endpoint: health.endpoint,
-      storage: health.chronicleDirectory,
-      uptimeMs: health.uptimeMs,
-      latencyMs: Date.now() - startedAt,
-      clients: health.clients,
-      activeRequests: health.activeRequests,
-      queuedWork: health.journal.pendingEvents,
-      watcher: { active: health.watcher.active, watchedFiles: health.watcher.watchedFiles },
-      ...(quarantined[0]
-        ? { lastError: quarantined[0].reason }
-        : health.watcher.lastError
-          ? { lastError: health.watcher.lastError }
-          : {}),
-    };
+    return withDaemonVersion<ConnectionHealthService>(
+      {
+        id: 'chronicle',
+        label: 'Chronicle telemetry',
+        status:
+          quarantined.length > 0 ? 'degraded' : access.mode === 'server' ? 'healthy' : 'degraded',
+        required: true,
+        mode: access.mode,
+        detail:
+          quarantined.length > 0
+            ? `Serving, but ${quarantined.length} day(s) were quarantined for a broken chain: ${quarantined
+                .map((family) => family.day)
+                .join(', ')}.`
+            : access.mode === 'server'
+              ? 'One project owner collects, processes, stores, and serves telemetry.'
+              : 'Inline fallback is active; ownership is not shared across clients.',
+        ownerPid: health.pid,
+        endpoint: health.endpoint,
+        storage: health.chronicleDirectory,
+        uptimeMs: health.uptimeMs,
+        latencyMs: Date.now() - startedAt,
+        clients: health.clients,
+        activeRequests: health.activeRequests,
+        queuedWork: health.journal.pendingEvents,
+        watcher: { active: health.watcher.active, watchedFiles: health.watcher.watchedFiles },
+        ...(quarantined[0]
+          ? { lastError: quarantined[0].reason }
+          : health.watcher.lastError
+            ? { lastError: health.watcher.lastError }
+            : {}),
+      },
+      health?.runtimeVersion,
+    );
   } catch (error) {
     return failureService(
       'chronicle',
@@ -215,27 +222,30 @@ async function codebaseIndexHealth(projectRoot: string): Promise<ConnectionHealt
       timeoutMs: 2_000,
     });
     const connection = getIndexState().server;
-    return {
-      id: 'codebase-index',
-      label: 'Codebase index',
-      status: health.status === 'unresponsive' ? 'error' : health.status,
-      required: false,
-      mode: 'project-server',
-      detail: health.server?.activity.indexing
-        ? `Indexing ${health.server.activity.currentFile}/${health.server.activity.totalFiles}.`
-        : 'Shared symbol index is ready for project queries.',
-      ownerPid: connection.pid,
-      endpoint: connection.endpoint,
-      storage: connection.indexDir ?? resolveWstackPaths({ projectRoot }).projectCodebaseIndex,
-      uptimeMs: health.server?.uptimeMs,
-      latencyMs: health.latencyMs ?? Date.now() - startedAt,
-      clients: health.server?.clients,
-      activeRequests: health.server?.activeRequests,
-      queuedWork: health.server?.queuedWrites,
-      watcher: health.server
-        ? { active: health.server.watchingExternal, watchedFiles: health.server.watchingClients }
-        : undefined,
-    };
+    return withDaemonVersion<ConnectionHealthService>(
+      {
+        id: 'codebase-index',
+        label: 'Codebase index',
+        status: health.status === 'unresponsive' ? 'error' : health.status,
+        required: false,
+        mode: 'project-server',
+        detail: health.server?.activity.indexing
+          ? `Indexing ${health.server.activity.currentFile}/${health.server.activity.totalFiles}.`
+          : 'Shared symbol index is ready for project queries.',
+        ownerPid: connection.pid,
+        endpoint: connection.endpoint,
+        storage: connection.indexDir ?? resolveWstackPaths({ projectRoot }).projectCodebaseIndex,
+        uptimeMs: health.server?.uptimeMs,
+        latencyMs: health.latencyMs ?? Date.now() - startedAt,
+        clients: health.server?.clients,
+        activeRequests: health.server?.activeRequests,
+        queuedWork: health.server?.queuedWrites,
+        watcher: health.server
+          ? { active: health.server.watchingExternal, watchedFiles: health.server.watchingClients }
+          : undefined,
+      },
+      health.server?.runtimeVersion,
+    );
   } catch (error) {
     if (isOfflineConnectionError(error)) {
       return {
@@ -295,20 +305,23 @@ async function sageHealth(projectRoot: string): Promise<ConnectionHealthService>
         : status.health.status === 'degraded'
           ? 'degraded'
           : 'error';
-    return {
-      id: 'sage',
-      label: 'SAGE memory',
-      status: healthStatus,
-      required: false,
-      mode: 'project-server',
-      detail: `Persistent project memory backend: ${status.health.backend}.`,
-      ownerPid: status.pid,
-      endpoint: status.endpoint,
-      storage: status.storageRoot,
-      latencyMs: Date.now() - startedAt,
-      clients: status.clients,
-      activeRequests: status.pendingRequests,
-    };
+    return withDaemonVersion<ConnectionHealthService>(
+      {
+        id: 'sage',
+        label: 'SAGE memory',
+        status: healthStatus,
+        required: false,
+        mode: 'project-server',
+        detail: `Persistent project memory backend: ${status.health.backend}.`,
+        ownerPid: status.pid,
+        endpoint: status.endpoint,
+        storage: status.storageRoot,
+        latencyMs: Date.now() - startedAt,
+        clients: status.clients,
+        activeRequests: status.pendingRequests,
+      },
+      status?.runtimeVersion,
+    );
   } catch (error) {
     return failureService(
       'sage',
@@ -360,21 +373,24 @@ async function kanbanHealth(projectRoot: string): Promise<ConnectionHealthServic
   }
   try {
     const status = await connection.request('ping', {}, { timeoutMs: 5_000 });
-    return {
-      id: 'kanban',
-      label: 'Kanban IPC',
-      status: 'healthy',
-      required: true,
-      mode: 'project-server',
-      detail: `Single shared project-server owns kanban state (v${status.protocolVersion}).`,
-      ownerPid: status.pid,
-      endpoint: status.endpoint,
-      storage: status.databasePath,
-      latencyMs: Date.now() - startedAt,
-      clients: status.clients,
-      activeRequests: status.pendingRequests,
-      uptimeMs: Date.now() - new Date(status.startedAt).getTime(),
-    };
+    return withDaemonVersion<ConnectionHealthService>(
+      {
+        id: 'kanban',
+        label: 'Kanban IPC',
+        status: 'healthy',
+        required: true,
+        mode: 'project-server',
+        detail: `Single shared project-server owns kanban state (v${status.protocolVersion}).`,
+        ownerPid: status.pid,
+        endpoint: status.endpoint,
+        storage: status.databasePath,
+        latencyMs: Date.now() - startedAt,
+        clients: status.clients,
+        activeRequests: status.pendingRequests,
+        uptimeMs: Date.now() - new Date(status.startedAt).getTime(),
+      },
+      status?.runtimeVersion,
+    );
   } catch (error) {
     return failureService(
       'kanban',
@@ -417,21 +433,24 @@ async function mailboxHealth(projectRoot: string): Promise<ConnectionHealthServi
         latencyMs: Date.now() - startedAt,
       };
     }
-    return {
-      id: 'mailbox',
-      label: 'Mailbox IPC',
-      status: 'healthy',
-      required: true,
-      mode: 'project-server',
-      detail: `Single shared project-server owns inter-agent mailbox state (v${status.protocolVersion}).`,
-      ownerPid: status.pid,
-      endpoint: status.endpoint,
-      storage: status.databasePath,
-      latencyMs: Date.now() - startedAt,
-      clients: status.clients,
-      activeRequests: status.pendingRequests,
-      uptimeMs: Date.now() - new Date(status.startedAt).getTime(),
-    };
+    return withDaemonVersion<ConnectionHealthService>(
+      {
+        id: 'mailbox',
+        label: 'Mailbox IPC',
+        status: 'healthy',
+        required: true,
+        mode: 'project-server',
+        detail: `Single shared project-server owns inter-agent mailbox state (v${status.protocolVersion}).`,
+        ownerPid: status.pid,
+        endpoint: status.endpoint,
+        storage: status.databasePath,
+        latencyMs: Date.now() - startedAt,
+        clients: status.clients,
+        activeRequests: status.pendingRequests,
+        uptimeMs: Date.now() - new Date(status.startedAt).getTime(),
+      },
+      status?.runtimeVersion,
+    );
   } catch (error) {
     return failureService(
       'mailbox',

@@ -320,11 +320,32 @@ export class ReadlineInputReader implements InputReader {
         for (let i = 0; i < buf.length; i++) eraseChar();
       };
 
+      // Escape-sequence state: dropping only the ESC byte let the rest of
+      // every sequence in (arrow `\x1b[D` -> "[D", Delete "[3~", Home "OH",
+      // bracketed-paste markers "[200~"/"[201~") and corrupted the secret.
+      // 1 = after ESC, 2 = inside CSI (ends on a final byte @..~), 3 = SS3.
+      let escState: 0 | 1 | 2 | 3 = 0;
       const onData = (chunk: string) => {
         // Process the whole chunk at once — paste arrives as one event.
         // We walk char-by-char so embedded control bytes (e.g. a stray
         // CR inside a paste) terminate input cleanly.
         for (const ch of chunk) {
+          if (escState === 1) {
+            escState = ch === '[' ? 2 : ch === 'O' ? 3 : 0; // ESC+key (Alt) is dropped
+            continue;
+          }
+          if (escState === 2) {
+            if (ch >= '@' && ch <= '~') escState = 0;
+            continue;
+          }
+          if (escState === 3) {
+            escState = 0;
+            continue;
+          }
+          if (ch === '\x1b') {
+            escState = 1;
+            continue;
+          }
           if (ch === '\r' || ch === '\n') {
             cleanup();
             writeOut(`  ${dim(`[${buf.length} chars]`)}\n`);
@@ -366,6 +387,9 @@ export class ReadlineInputReader implements InputReader {
           buf += ch;
           writeOut('•');
         }
+        // A chunk ending in a bare ESC is the Escape key itself — sequences
+        // arrive whole — so the next keystroke is not swallowed as Alt+key.
+        if (escState === 1) escState = 0;
       };
       stdin.on('data', onData);
     });

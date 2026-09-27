@@ -94,10 +94,15 @@ function getSecretPatterns(stack: TechStack): SecurityPattern[] {
     description: 'Detects hardcoded API keys, tokens, passwords, and private keys',
     patterns: [
       /(?:api[_-]?key|apikey|secret|token|password|passwd|pwd)\s*[:=]\s*['"][a-zA-Z0-9_-]{8,}['"]/gi,
-      /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----/g,
+      // Any key-type words (OPENSSH, EC, DSA, ENCRYPTED, PGP … BLOCK), not
+      // just RSA: ssh-keygen has written OPENSSH keys by default since 7.8.
+      /-----BEGIN\s+(?:[A-Z0-9]+\s+){0,3}PRIVATE\s+KEY(?:\s+BLOCK)?-----/g,
       /ghp_[a-zA-Z0-9]{36}/g,
       /glpat-[a-zA-Z0-9_-]{20}/g,
       /sk-[a-zA-Z0-9]{32,}/g,
+      // Current OpenAI / Anthropic formats carry `-`/`_`, which the legacy
+      // rule above stops at; unquoted in `.env`, nothing else reports them.
+      /(?<![A-Za-z0-9_-])sk-(?:proj|svcacct|admin|ant-api\d+)-[A-Za-z0-9_-]{20,}/g,
       /xox[baprs]-[a-zA-Z0-9-]{10,}/g,
       /AIza[0-9A-Za-z\-_]{35}/g,
       /AKIA[0-9A-Z]{16}/g,

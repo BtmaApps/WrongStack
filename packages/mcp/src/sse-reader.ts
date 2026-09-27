@@ -65,28 +65,8 @@ export class SSEReader {
   }
 
   feed(chunk: string): void {
-    // Guard against a single chunk that exceeds the buffer cap.
-    if (chunk.length > SSE_READER_MAX_BUFFER) {
-      throw new ToolError({
-        message: `SSE: chunk size ${chunk.length} exceeds max buffer ${SSE_READER_MAX_BUFFER} — refusing to accumulate`,
-        code: 'TOOL_EXECUTION_FAILED',
-        toolName: 'mcp_transport_sse_reader',
-        context: { phase: 'feed', chunkLength: chunk.length, maxBuffer: SSE_READER_MAX_BUFFER },
-      });
-    }
+    const carried = this.buffer.length;
     this.buffer += chunk;
-    if (this.buffer.length > SSE_READER_MAX_BUFFER) {
-      throw new ToolError({
-        message: `SSE: pending line exceeds ${SSE_READER_MAX_BUFFER} bytes — upstream is not framing events`,
-        code: 'TOOL_EXECUTION_FAILED',
-        toolName: 'mcp_transport_sse_reader',
-        context: {
-          phase: 'feed',
-          bufferLength: this.buffer.length,
-          maxBuffer: SSE_READER_MAX_BUFFER,
-        },
-      });
-    }
     // Scan with a moving cursor and slice the retained tail ONCE at the end,
     // instead of `buffer = buffer.slice(idx+1)` per line (which re-copies the
     // whole remaining buffer for every newline — O(n²) for many small lines).
@@ -100,6 +80,30 @@ export class SSEReader {
       idx = this.buffer.indexOf('\n', start);
     }
     if (start > 0) this.buffer = this.buffer.slice(start);
+    // The cap bounds an UNTERMINATED line, so it is checked after complete
+    // lines are consumed. Checked before, one read carrying many small,
+    // complete events (> cap in total) threw, and the transport dropped the
+    // connection over events it could have delivered.
+    if (this.buffer.length <= SSE_READER_MAX_BUFFER) return;
+    if (start >= carried) {
+      // The unterminated tail lies wholly inside this chunk.
+      throw new ToolError({
+        message: `SSE: chunk size ${chunk.length} exceeds max buffer ${SSE_READER_MAX_BUFFER} — refusing to accumulate`,
+        code: 'TOOL_EXECUTION_FAILED',
+        toolName: 'mcp_transport_sse_reader',
+        context: { phase: 'feed', chunkLength: chunk.length, maxBuffer: SSE_READER_MAX_BUFFER },
+      });
+    }
+    throw new ToolError({
+      message: `SSE: pending line exceeds ${SSE_READER_MAX_BUFFER} bytes — upstream is not framing events`,
+      code: 'TOOL_EXECUTION_FAILED',
+      toolName: 'mcp_transport_sse_reader',
+      context: {
+        phase: 'feed',
+        bufferLength: this.buffer.length,
+        maxBuffer: SSE_READER_MAX_BUFFER,
+      },
+    });
   }
 
   private processLine(line: string): void {

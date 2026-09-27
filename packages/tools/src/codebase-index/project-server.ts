@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * One detached codebase-index server per local project index.
  *
@@ -14,7 +15,7 @@ import * as net from 'node:net';
 import * as path from 'node:path';
 import { startSharedHeapWatchdog, useDaemonPerfDefaults } from '@wrongstack/core/utils';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { prewarmWiringSnapshot, wiringSnapshotLastUsedAt } from './graph-adjacency-cache.js';
 import { indexService } from './index-service.js';
 import { recordWriteQueueWait } from './perf-metrics.js';
@@ -113,6 +114,7 @@ const metadataWritten = new Promise<void>((resolve) => {
 });
 
 const serverInfo: ProjectIndexServerInfo = {
+  runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
   protocolVersion: PROJECT_INDEX_SERVER_PROTOCOL_VERSION,
   buildId: projectIndexServerBuildId(import.meta.url),
   builtAt: projectIndexServerBuiltAt(import.meta.url),
@@ -315,6 +317,7 @@ function serverHealth(): ProjectIndexServerHealth {
     if (idle > oldestClientIdleMs) oldestClientIdleMs = idle;
   }
   return {
+    runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
     checkedAt: now,
     uptimeMs: Math.round(process.uptime() * 1000),
     memory: {

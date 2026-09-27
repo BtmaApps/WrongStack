@@ -16,7 +16,7 @@ const KIND_BLURBS: Record<DestructiveKind, string> = {
   'git-history': 'reset --hard, clean -f, push --force, filter-branch',
   publish: 'npm publish, docker push, kubectl delete namespace',
   'download-and-run': 'curl | sh, and inline payloads that fetch then execute',
-  'bulk-delete': 'find -exec rm, inline rmSync across many paths',
+  'bulk-delete': 'find -exec rm, inline rmSync, container volume deletes, database drops',
   'agent-state': "writes to WrongStack's own config.json / trust.json / auth.json",
   'credential-bind': 'attaching a well-known API key to a chosen provider endpoint',
 };

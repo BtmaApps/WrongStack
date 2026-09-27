@@ -39,7 +39,7 @@
       "relativeImports": 4
     },
     "packages/cli/src/slash-commands/sdd.ts": {
-      "lines": 886,
+      "lines": 901,
       "relativeImports": 13
     },
     "packages/cli/src/slash-commands/tool.ts": {
@@ -63,7 +63,7 @@
       "relativeImports": 8
     },
     "packages/core/src/chronicle/project-server.ts": {
-      "lines": 837,
+      "lines": 838,
       "relativeImports": 19
     },
     "packages/core/src/coordination/collab-debug.ts": {
@@ -123,7 +123,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1263,
+      "lines": 1681,
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
@@ -151,7 +151,7 @@
       "relativeImports": 7
     },
     "packages/kanban/src/server/project-server.ts": {
-      "lines": 883,
+      "lines": 895,
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
@@ -159,7 +159,7 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 956,
+      "lines": 973,
       "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
@@ -179,7 +179,7 @@
       "relativeImports": 0
     },
     "packages/plugins/src/secret-scanner/index.ts": {
-      "lines": 844,
+      "lines": 848,
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {
@@ -215,7 +215,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 966,
+      "lines": 967,
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -227,7 +227,7 @@
       "relativeImports": 42
     },
     "packages/sage/src/store-helpers.ts": {
-      "lines": 825,
+      "lines": 826,
       "relativeImports": 2
     },
     "packages/sdd/src/sdd-parallel-run.ts": {
@@ -241,6 +241,10 @@
     "packages/simpleui/src/lib/message-handler.ts": {
       "lines": 833,
       "relativeImports": 19
+    },
+    "packages/tools/src/bash-kill-guard.ts": {
+      "lines": 810,
+      "relativeImports": 2
     },
     "packages/tools/src/bash.ts": {
       "lines": 894,
@@ -263,7 +267,7 @@
       "relativeImports": 28
     },
     "packages/tools/src/json.ts": {
-      "lines": 888,
+      "lines": 1024,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
@@ -275,7 +279,7 @@
       "relativeImports": 5
     },
     "packages/tools/src/_danger-detect.ts": {
-      "lines": 999,
+      "lines": 1367,
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
@@ -363,7 +367,7 @@
       "relativeImports": 56
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
-      "lines": 1161,
+      "lines": 1176,
       "relativeImports": 4
     },
     "packages/webui-server/src/server/memory-handlers.ts": {

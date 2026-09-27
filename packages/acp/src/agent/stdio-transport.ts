@@ -22,6 +22,23 @@ interface QueuedMessage {
   chars: number;
 }
 
+/**
+ * Append `chunk` to the pending tail and return the complete lines it closes.
+ * Only the new chunk is searched for newlines: `(pending + chunk).split('\n')`
+ * re-scanned the whole unterminated frame on every stdin chunk — O(n²) while a
+ * multi-MiB frame (a session/load, a file read reply) was still arriving.
+ */
+function takeLines(pending: string, chunk: string): { lines: string[]; pending: string } {
+  const lines: string[] = [];
+  let start = 0;
+  for (let nl = chunk.indexOf('\n'); nl !== -1; nl = chunk.indexOf('\n', start)) {
+    lines.push(pending + chunk.slice(start, nl));
+    pending = '';
+    start = nl + 1;
+  }
+  return { lines, pending: pending + chunk.slice(start) };
+}
+
 function positiveLimit(value: number | undefined, fallback: number): number {
   return value !== undefined && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }
@@ -181,10 +198,8 @@ export class StdioTransport implements AgentServerTransport {
   }
 
   private onData(chunk: string): void {
-    this.buffer += chunk;
-    const lines = this.buffer.split('\n');
-    /* v8 ignore next -- split() always yields ≥1 element, so pop() is never undefined; the ?? '' is defensive. */
-    this.buffer = lines.pop() ?? '';
+    const { lines, pending } = takeLines(this.buffer, chunk);
+    this.buffer = pending;
     if (this.buffer.length > this.maxFrameChars) {
       this.stderr.write(
         `[wstack-acp frame error] pending frame exceeds ${this.maxFrameChars} characters\n`,
@@ -534,10 +549,8 @@ export class ClientTransport implements ACPClientTransport {
   }
 
   private onChildData(chunk: string): void {
-    this.buffer += chunk;
-    const lines = this.buffer.split('\n');
-    /* v8 ignore next -- split() always yields ≥1 element, so pop() is never undefined; the ?? '' is defensive. */
-    this.buffer = lines.pop() ?? '';
+    const { lines, pending } = takeLines(this.buffer, chunk);
+    this.buffer = pending;
     if (this.buffer.length > this.maxFrameChars) {
       writeErr(`[acp-child pending frame exceeds ${this.maxFrameChars} characters]\n`);
       this.stop();

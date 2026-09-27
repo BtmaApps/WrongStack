@@ -26,7 +26,12 @@ import {
 export type IgnoreMatcher = (relPath: string, isDir: boolean) => boolean;
 
 interface Rule {
-  matcher: CompiledGlobMatcher;
+  /**
+   * The body split at each `/**\/`, which must match zero or more whole
+   * directories. Handed to core's glob as one pattern, `**\/` compiles to
+   * `.*` — it swallows the slash — so `a/**\/b` also matched `a/xb`.
+   */
+  parts: CompiledGlobMatcher[];
   /** Where the rule body is allowed to begin in the path. */
   isStart: GlobBoundary;
   negated: boolean;
@@ -63,6 +68,28 @@ const END_EQ_OR_UNDER: GlobBoundary = (index, input) =>
 /** Right before a `/` only — strictly under the entry. */
 const END_UNDER: GlobBoundary = (index, input) => index < input.length && input[index] === '/';
 
+/**
+ * Match `parts` (a body split at `/**\/`) as consecutive spans: each part ends
+ * right before a `/`, and the next begins after that `/` or after any later
+ * one — the "zero or more directories" in between.
+ */
+function matchParts(
+  parts: readonly CompiledGlobMatcher[],
+  p: string,
+  isStart: GlobBoundary,
+  isEnd: GlobBoundary,
+): boolean {
+  const [first, ...rest] = parts;
+  if (!first) return false;
+  if (rest.length === 0) return first.testSpan(p, isStart, isEnd);
+  for (let k = p.indexOf('/'); k !== -1; k = p.indexOf('/', k + 1)) {
+    if (!first.testSpan(p, isStart, (index) => index === k)) continue;
+    const afterSlash: GlobBoundary = (index, input) => index > k && input[index - 1] === '/';
+    if (matchParts(rest, p, afterSlash, isEnd)) return true;
+  }
+  return false;
+}
+
 /** Compile a list of raw `.gitignore` lines into a matcher. */
 export function compileGitignore(lines: string[]): IgnoreMatcher {
   const rules: Rule[] = [];
@@ -76,6 +103,9 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
     if (line.startsWith('!')) {
       negated = true;
       line = line.slice(1);
+    } else if (line.startsWith('\\#') || line.startsWith('\\!')) {
+      // git's escapes for a name that really begins with `#` / `!`.
+      line = line.slice(1);
     }
 
     let dirOnly = false;
@@ -88,11 +118,23 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
     // A slash anywhere (after the trailing slash is stripped) anchors the
     // pattern to the gitignore's directory (the project root here). A bare name
     // matches at any depth.
-    const anchored = line.startsWith('/') || line.includes('/');
+    let anchored = line.startsWith('/') || line.includes('/');
     if (line.startsWith('/')) line = line.slice(1);
+    // A leading `**/` means "in any directory": the same start rule as a bare
+    // name, not an anchored `.*` prefix (which also matched `barfoo` for
+    // `**/foo`).
+    if (line.startsWith('**/')) {
+      while (line.startsWith('**/')) line = line.slice(3);
+      anchored = false;
+    }
+    if (!line) continue;
 
     rules.push({
-      matcher: compileGlobMatcher(line),
+      // `/**/**/` is one "zero or more directories", not two.
+      parts: line
+        .replace(/(?:\/\*\*)+\//g, '/**/')
+        .split('/**/')
+        .map((part) => compileGlobMatcher(part)),
       isStart: anchored ? START_ANCHORED : START_ANY_SEGMENT,
       negated,
       dirOnly,
@@ -108,7 +150,7 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
       // A directory-only rule never matches a file by its own name; it only
       // matches files that live strictly beneath the named directory.
       const isEnd = r.dirOnly && !isDir ? END_UNDER : END_EQ_OR_UNDER;
-      if (r.matcher.testSpan(p, r.isStart, isEnd)) {
+      if (matchParts(r.parts, p, r.isStart, isEnd)) {
         ignored = !r.negated;
         if (!hasNegation && ignored) return true;
       }

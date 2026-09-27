@@ -48,6 +48,7 @@ import {
   alwaysAllowUnavailableReason,
   classifyShellSurfaceInput,
   fsWriteTargetPaths,
+  gitToolCommandLine,
   hasShellSubject,
   isInsideAgentStateRoot,
   isSensitiveReadCall,
@@ -214,6 +215,15 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // below never saw it and YOLO auto-approved it. The `baseUrl` has no host
     // allowlist, and prompt injection can reach the tool.
     if (attachesWellKnownCredential(input)) return 'credential-bind';
+
+    // The structured git tool performs the same git-history damage as shell
+    // text (force push, `checkout -- .`) but is not a shell surface.
+    if (tool.name === 'git') {
+      const line = gitToolCommandLine(input);
+      return line === undefined
+        ? undefined
+        : classifyShellSurfaceInput({ command: line }, ctx.projectRoot);
+    }
 
     if (!isShellSurface(tool)) return undefined;
     // H-1 (security report VF-03): `getInputString(input, 'command') ?? …`

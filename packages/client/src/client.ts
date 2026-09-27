@@ -560,6 +560,8 @@ export class WrongStackClient {
     let delay = policy.initialDelayMs ?? 500;
     let last = cause;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      // close() during an attempt (not a wait) had no timer to cancel.
+      if (this.closing) return;
       if (!(await this.wait(delay))) return;
       delay = Math.min(delay * 2, policy.maxDelayMs ?? 10_000);
       try {

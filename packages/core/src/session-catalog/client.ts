@@ -410,24 +410,35 @@ export class SessionCatalogProjectClient {
 
   private onData(socket: net.Socket, chunk: string): void {
     if (socket !== this.socket) return;
-    this.buffer += chunk;
-    if (this.buffer.length > SESSION_CATALOG_MAX_FRAME_CHARS) {
+    if (this.buffer.length + chunk.length > SESSION_CATALOG_MAX_FRAME_CHARS) {
       socket.destroy(new Error('Session Catalog response exceeded frame limit'));
       return;
     }
-    while (true) {
-      const newline = this.buffer.indexOf('\n');
-      if (newline < 0) return;
-      const line = this.buffer.slice(0, newline);
-      this.buffer = this.buffer.slice(newline + 1);
-      if (!line) continue;
-      try {
-        this.onMessage(JSON.parse(line) as SessionCatalogServerMessage);
-      } catch {
-        socket.destroy(new Error('Invalid Session Catalog response'));
-        return;
-      }
+    // Scan only the new chunk: the pending tail never holds a newline, and
+    // re-scanning it per chunk made a large response O(n²) to receive.
+    let newline = chunk.indexOf('\n');
+    if (newline < 0) {
+      this.buffer += chunk;
+      return;
     }
+    let line = this.buffer + chunk.slice(0, newline);
+    let start = newline + 1;
+    this.buffer = '';
+    while (true) {
+      if (line) {
+        try {
+          this.onMessage(JSON.parse(line) as SessionCatalogServerMessage);
+        } catch {
+          socket.destroy(new Error('Invalid Session Catalog response'));
+          return;
+        }
+      }
+      newline = chunk.indexOf('\n', start);
+      if (newline < 0) break;
+      line = chunk.slice(start, newline);
+      start = newline + 1;
+    }
+    this.buffer = chunk.slice(start);
   }
 
   private onMessage(message: SessionCatalogServerMessage): void {

@@ -70,7 +70,19 @@ export class MCPClient {
     number,
     { resolve: (res: JsonRpcResponse) => void; reject: (err: Error) => void; timer: NodeJS.Timeout }
   >();
-  private rxBuffer = '';
+  /**
+   * The unterminated tail of stdout, as the chunks it arrived in; joined only
+   * when its newline arrives. Kept as one string (`+=` then `indexOf`), every
+   * chunk flattened and re-scanned everything buffered so far — O(n²) for a
+   * multi-MiB tools/call result.
+   */
+  private rxParts: string[] = [];
+  private get rxBuffer(): string {
+    return this.rxParts.join('');
+  }
+  private set rxBuffer(value: string) {
+    this.rxParts = value ? [value] : [];
+  }
   private rxBufferBytes = 0;
   /**
    * Incremental UTF-8 decoder for the stdio rx path. A pipe read boundary can
@@ -721,14 +733,13 @@ export class MCPClient {
   }
 
   private onData(s: string): void {
-    this.rxBuffer += s;
     this.rxBufferBytes += Buffer.byteLength(s, 'utf8');
 
     // Guard against a malicious or buggy server that never emits a newline —
     // without this cap the buffer grows without limit and OOMs the process.
     if (this.rxBufferBytes > MCPClient.MAX_RX_BUFFER_BYTES) {
       const truncated = this.rxBufferBytes;
-      this.rxBuffer = '';
+      this.rxParts = [];
       this.rxBufferBytes = 0;
       this.failPending(
         `MCP "${this.opts.name}" rx buffer overflow (${truncated} bytes without a newline) — closing connection`,
@@ -737,18 +748,24 @@ export class MCPClient {
       return;
     }
 
+    // The buffered tail never holds a newline, so only the new chunk is searched.
     let start = 0;
-    let idx = this.rxBuffer.indexOf('\n');
+    let idx = s.indexOf('\n');
+    if (idx === -1) {
+      this.rxParts.push(s);
+      return;
+    }
     while (idx !== -1) {
-      const line = this.rxBuffer.slice(start, idx).trim();
+      const head = this.rxParts.length > 0 ? this.rxParts.join('') : '';
+      this.rxParts = [];
+      const line = (head + s.slice(start, idx)).trim();
       start = idx + 1;
       if (line) this.onLine(line);
-      idx = this.rxBuffer.indexOf('\n', start);
+      idx = s.indexOf('\n', start);
     }
-    if (start > 0) {
-      this.rxBufferBytes -= Buffer.byteLength(this.rxBuffer.slice(0, start), 'utf8');
-      this.rxBuffer = this.rxBuffer.slice(start);
-    }
+    const tail = s.slice(start);
+    this.rxBufferBytes = Buffer.byteLength(tail, 'utf8');
+    if (tail) this.rxParts.push(tail);
   }
 
   private onLine(line: string): void {

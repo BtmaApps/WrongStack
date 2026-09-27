@@ -10,6 +10,43 @@ interface Edit {
   line: string;
 }
 
+/**
+ * RAM guard for the Myers trace, which keeps one `(2·(N+M)+1)`-entry snapshot
+ * per edit step: O(D·(N+M)) bytes. A mostly rewritten file has D ≈ N+M, and a
+ * 6000-line rewrite took ~1 GB to print "delete all, insert all". Past the
+ * guard the diff is still complete and valid — see {@link replaceMiddle}.
+ */
+const MAX_TRACE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Edit script that keeps the common prefix/suffix and replaces the middle
+ * wholesale. Every change is still in it; it is only not guaranteed minimal.
+ */
+function replaceMiddle(a: string[], b: string[]): Edit[] {
+  let pre = 0;
+  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (
+    suf < a.length - pre &&
+    suf < b.length - pre &&
+    a[a.length - 1 - suf] === b[b.length - 1 - suf]
+  ) {
+    suf++;
+  }
+  const edits: Edit[] = [];
+  for (let i = 0; i < pre; i++) edits.push({ op: 'equal', a: i, b: i, line: a[i] ?? '' });
+  for (let i = pre; i < a.length - suf; i++) {
+    edits.push({ op: 'delete', a: i, b: pre, line: a[i] ?? '' });
+  }
+  for (let j = pre; j < b.length - suf; j++) {
+    edits.push({ op: 'insert', a: a.length - suf, b: j, line: b[j] ?? '' });
+  }
+  for (let s = suf; s > 0; s--) {
+    edits.push({ op: 'equal', a: a.length - s, b: b.length - s, line: a[a.length - s] ?? '' });
+  }
+  return edits;
+}
+
 function myersDiff(a: string[], b: string[]): Edit[] {
   const N = a.length;
   const M = b.length;
@@ -20,8 +57,10 @@ function myersDiff(a: string[], b: string[]): Edit[] {
   const v = new Int32Array(2 * max + 1).fill(-1);
   v[1 + offset] = 0;
   const trace: Int32Array[] = [];
+  const snapshotBytes = v.byteLength;
 
   for (let d = 0; d <= max; d++) {
+    if ((d + 1) * snapshotBytes > MAX_TRACE_BYTES) return replaceMiddle(a, b);
     trace.push(new Int32Array(v));
     for (let k = -d; k <= d; k += 2) {
       const left = v[k - 1 + offset] ?? -1;

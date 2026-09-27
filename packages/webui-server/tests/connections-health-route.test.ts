@@ -1,4 +1,5 @@
 import type { TrustBoundary } from '@wrongstack/core/security';
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import {
@@ -101,6 +102,7 @@ describe('connections health kanban service', () => {
   it('reports a healthy kanban IPC row when ping returns the project-server status', async () => {
     vi.resetModules();
     const ping = vi.fn(async () => ({
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       protocolVersion: 2,
       pid: 9001,
       projectRoot: '/project',
@@ -258,6 +260,7 @@ describe('connections health mailbox service', () => {
 
   it('reports a healthy mailbox row when the owner answers with its status', async () => {
     const { mailbox } = await collectWithFakeMailbox({
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       protocolVersion: 3,
       pid: 105348,
       endpoint: '\\\\.\\pipe\\wrongstack-mailbox-v3-abc',

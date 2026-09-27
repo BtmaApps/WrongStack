@@ -26,6 +26,11 @@
 
 import { spawn } from 'node:child_process';
 import type { CascadeEvidenceCheckResult, CascadeEvidenceStatus } from '@wrongstack/core/plugin';
+import {
+  buildWin32CmdShimInvocation,
+  isWinCmdShim,
+  resolveWin32Command,
+} from '@wrongstack/tools/win32';
 
 // Re-exported so execution-chimera-cascade.ts and tests consume the shared
 // core shapes (produced here, persisted by the report store) — the element
@@ -212,8 +217,28 @@ const runCascadeVerificationCommand: RunCommandFn = (
     return Promise.resolve({ exitCode: CASCADE_EVIDENCE_UNSAFE_EXIT });
   }
   const tokens = command.trim().split(/\s+/);
-  const executable = tokens[0]!;
-  const args = tokens.slice(1);
+  let executable = tokens[0]!;
+  let args = tokens.slice(1);
+  let windowsVerbatimArguments = false;
+  // Every allowlisted runner but node/bun is a `.cmd` shim on Windows, which a
+  // shell-less spawn cannot run (ENOENT → 127), so an honest agent's passing
+  // `pnpm typecheck` was judged failed. The allowlist's token pattern already
+  // excludes every cmd.exe metacharacter the shim builder refuses.
+  if (process.platform === 'win32') {
+    const resolved = resolveWin32Command(executable);
+    if (isWinCmdShim(resolved)) {
+      let shim: ReturnType<typeof buildWin32CmdShimInvocation>;
+      try {
+        shim = buildWin32CmdShimInvocation(resolved, args);
+      } catch {
+        // e.g. a `%` in the resolved directory — never throw, per the contract.
+        return Promise.resolve({ exitCode: CASCADE_EVIDENCE_RUN_ERROR_EXIT });
+      }
+      executable = shim.command;
+      args = shim.args;
+      windowsVerbatimArguments = true;
+    }
+  }
   return new Promise((resolve) => {
     let child;
     try {
@@ -222,6 +247,7 @@ const runCascadeVerificationCommand: RunCommandFn = (
         stdio: 'ignore',
         windowsHide: true,
         signal: AbortSignal.timeout(timeoutMs),
+        ...(windowsVerbatimArguments ? { windowsVerbatimArguments } : {}),
       });
     } catch {
       resolve({ exitCode: CASCADE_EVIDENCE_RUN_ERROR_EXIT });

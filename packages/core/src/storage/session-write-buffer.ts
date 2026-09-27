@@ -60,7 +60,12 @@ export class SessionWriteBuffer {
    * prompt, so it only fires on pathological input.
    */
   private static readonly MAX_SINGLE_EVENT_BYTES = 64 * 1024 * 1024;
-  private writeBuffer: SessionEvent[] = [];
+  /**
+   * Buffered events, already serialized. `push` has to stringify an event to
+   * size it anyway; keeping that string means a flush joins lines instead of
+   * serializing every event a second time.
+   */
+  private writeBuffer: string[] = [];
   private writeBufferBytes = 0;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private bufferOverflowCount = 0;
@@ -89,17 +94,14 @@ export class SessionWriteBuffer {
     return this.writeBuffer.length;
   }
 
-  private eventBytes(event: SessionEvent): number {
-    try {
-      return Buffer.byteLength(JSON.stringify(event), 'utf8') + 1;
-    } catch {
-      return Number.NaN;
-    }
-  }
-
   push(event: SessionEvent): boolean {
-    const bytes = this.eventBytes(event);
-    if (!Number.isFinite(bytes)) {
+    let line: string;
+    try {
+      line = JSON.stringify(event);
+    } catch {
+      line = '';
+    }
+    if (!line) {
       // JSON.stringify threw (circular/self-referential payload): the event
       // cannot be journaled. Drop it, but never silently — a counter-only
       // drop made this failure invisible to operators. Rate-limited the same
@@ -121,6 +123,11 @@ export class SessionWriteBuffer {
       }
       return false;
     }
+    return this.pushLine(line, Buffer.byteLength(line, 'utf8') + 1);
+  }
+
+  /** Buffers one serialized event (`bytes` includes its newline) under the count/byte caps. */
+  private pushLine(line: string, bytes: number): boolean {
     const oversizedSingleEvent =
       bytes > SessionWriteBuffer.WRITE_BUFFER_MAX_BYTES &&
       bytes <= SessionWriteBuffer.MAX_SINGLE_EVENT_BYTES &&
@@ -150,7 +157,7 @@ export class SessionWriteBuffer {
       }
       return false;
     }
-    this.writeBuffer.push(event);
+    this.writeBuffer.push(line);
     this.writeBufferBytes += bytes;
     return true;
   }
@@ -251,7 +258,7 @@ export class SessionWriteBuffer {
     const events = this.writeBuffer;
     const eventCount = events.length;
     const eventBytes = this.writeBufferBytes;
-    const batch = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
+    const batch = events.join('\n') + '\n';
     this.writeBuffer = [];
     this.writeBufferBytes = 0;
     const flight: InFlightBatch = { data: batch, stolen: false, started: false, settled: false };
@@ -281,7 +288,9 @@ export class SessionWriteBuffer {
       const newer = this.writeBuffer;
       this.writeBuffer = events;
       this.writeBufferBytes = eventBytes;
-      for (const newerEvent of newer) this.push(newerEvent);
+      for (const newerLine of newer) {
+        this.pushLine(newerLine, Buffer.byteLength(newerLine, 'utf8') + 1);
+      }
       this.appendFailCount += eventCount;
       const now = Date.now();
       if (now - this.lastAppendWarnAt > 5000) {
@@ -381,7 +390,7 @@ export class SessionWriteBuffer {
     }
     const events = this.writeBuffer;
     if (events.length > 0) {
-      chunks.push(events.map((e) => JSON.stringify(e)).join('\n') + '\n');
+      chunks.push(events.join('\n') + '\n');
     }
     if (chunks.length === 0) return;
     let fd: number | undefined;

@@ -58,11 +58,15 @@ const MAX_DELIMITER_INTERIOR = 200;
  * model. The prose argument does not need the exclusion anyway: a match cannot
  * start unless the tag NAME appears immediately after the optional slash, so
  * ordinary text containing `<` and a later `>` is never a candidate. The
- * interior is bounded so a match cannot run away either.
+ * interior is bounded so a match cannot run away either — which is why the
+ * `>` is OPTIONAL: XML's end tag is `'</' Name S? '>'`, any whitespace before
+ * `>`, so `</project-supplied` + 201 spaces + `>` is still a closing tag. The
+ * bound only decides whether the `>` is rewritten too; the `<` of every
+ * delimiter start is always rewritten, and without it nothing reads as a tag.
  */
 function fenceDelimiter(tag: string): RegExp {
   return new RegExp(
-    `<[ \\t\\r\\n]*/?[ \\t\\r\\n]*${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^>]{0,${MAX_DELIMITER_INTERIOR}}>`,
+    `<([ \\t\\r\\n]*/?[ \\t\\r\\n]*${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b)([^>]{0,${MAX_DELIMITER_INTERIOR}}>)?`,
     'gi',
   );
 }
@@ -79,7 +83,9 @@ export function sanitizeProjectSuppliedBody(
   text: string,
   tag: string = PROJECT_SUPPLIED_TAG,
 ): string {
-  return text.replace(fenceDelimiter(tag), (match) => `(${match.slice(1, -1)})`);
+  return text.replace(fenceDelimiter(tag), (_match, head: string, tail: string | undefined) =>
+    tail === undefined ? `(${head}` : `(${head}${tail.slice(0, -1)})`,
+  );
 }
 
 /**

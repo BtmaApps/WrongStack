@@ -349,7 +349,9 @@ describe('Headless confirm fallback (P1 #4)', () => {
 
     const ctrl = new AbortController();
     const pending = agent.run('do the dangerous thing', { signal: ctrl.signal });
-    await expect.poll(() => sawConfirm).toBe(true);
+    // expect.poll defaults to 1s — a cold first run() under coverage load
+    // reaches the confirm later than that. Bounded by the 10s test timeout.
+    await expect.poll(() => sawConfirm, { timeout: 8_000 }).toBe(true);
     ctrl.abort('user interrupt (/interrupt)');
 
     const result = await pending;

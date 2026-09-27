@@ -65,6 +65,43 @@ export class IncomingImageError extends Error {
   }
 }
 
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * The allowed image type the payload's leading bytes actually are, or
+ * `undefined` when they match none of them.
+ *
+ * The declared type is only a label: both composers send the browser's
+ * `File.type` for images they pass through unchanged, and for a file from disk
+ * that comes from the EXTENSION — a JPEG saved as `.png` arrives as
+ * `image/png`. Providers that check (Anthropic) reject the mismatched block,
+ * and since it stays in history every later turn fails the same way. Only the
+ * first 16 base64 chars (12 bytes) are decoded, in plain JS so this module
+ * stays browser-safe.
+ */
+function sniffAllowedImageMediaType(base64: string): string | undefined {
+  const bytes: number[] = [];
+  let bits = 0;
+  let acc = 0;
+  for (const ch of base64.slice(0, 16)) {
+    const v = BASE64_ALPHABET.indexOf(ch);
+    if (v < 0) break;
+    acc = (acc << 6) | v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((acc >> bits) & 0xff);
+    }
+  }
+  const ascii = (start: number, text: string) =>
+    [...text].every((ch, i) => bytes[start + i] === ch.charCodeAt(0));
+  if (bytes[0] === 0x89 && ascii(1, 'PNG')) return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (ascii(0, 'GIF8')) return 'image/gif';
+  if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'image/webp';
+  return undefined;
+}
+
 const DATA_URL_RE = /^data:([a-z0-9.+-]+\/[a-z0-9.+-]+)?(?:;[a-z0-9-]+=[^;,]*)*(;base64)?,/i;
 
 function splitDataUrl(data: string): { base64: string; mediaType?: string | undefined } {
@@ -118,7 +155,13 @@ export function parseIncomingImages(
     }
     return {
       type: 'image',
-      source: { type: 'base64', media_type: mediaType, data: base64 },
+      // The bytes decide when they are a recognised allowed type; otherwise
+      // the (already allowlisted) declared type stands, as before.
+      source: {
+        type: 'base64',
+        media_type: sniffAllowedImageMediaType(base64) ?? mediaType,
+        data: base64,
+      },
     } satisfies ImageBlock;
   });
 }

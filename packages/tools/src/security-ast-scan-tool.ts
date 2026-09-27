@@ -57,7 +57,11 @@ const SECRET_PATTERNS: Array<{ name: string; regex: RegExp }> = [
   { name: 'GitHub Token', regex: /\b(gh[pousr]_[A-Za-z0-9_]{36,255})\b/ },
   { name: 'Stripe Secret Key', regex: /\b(sk_live_[0-9a-zA-Z]{24,})\b/ },
   { name: 'Slack Token', regex: /\b(xox[baprs]-[0-9a-zA-Z]{10,48})\b/ },
-  { name: 'Private Key Header', regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/ },
+  // Any type words (ENCRYPTED, PGP, …); PGP armor ends in ` BLOCK`.
+  {
+    name: 'Private Key Header',
+    regex: /-----BEGIN (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----/,
+  },
 ];
 
 // ─── ReDoS Vulnerable Regex Patterns ─────────────────────────────────────────
@@ -84,7 +88,10 @@ export function analyzeSecurityAndPerformance(
   const relPath = filePath.replace(/\\/g, '/');
 
   // Skip test fixtures and mock data from secret scans
-  const isTestFile = /(?:test|spec|mock|fixture)[s]?[/\\._]/i.test(relPath);
+  // The word must start a path segment or a `.`/`_`/`-` part: without that
+  // left boundary `latest.ts`, `src/api/latest/`, `contest.ts` or
+  // `hammock.tsx` counted as test files and skipped the secret scan.
+  const isTestFile = /(?:^|[/\\._-])(?:test|spec|mock|fixture)[s]?[/\\._]/i.test(relPath);
 
   // 1. Secret & Key Scanning
   if (!isTestFile) {

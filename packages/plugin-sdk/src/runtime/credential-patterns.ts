@@ -104,8 +104,11 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
   // Private keys
   {
     type: 'private_key',
+    // Same shape as core's secret-scrubber: not line-anchored (a PEM inside a
+    // JSON string — a service-account.json — follows `"` and carries literal
+    // `\n` escapes), and any type words, so PKCS#8 ENCRYPTED keys match too.
     regex:
-      /(?:^|\n)(?:-----BEGIN (?:RSA|EC|OPENSSH|DSA)? ?PRIVATE KEY-----[\s\S]*?-----END (?:RSA|EC|OPENSSH|DSA)? ?PRIVATE KEY-----|-----BEGIN PGP PRIVATE KEY BLOCK-----[\s\S]*?-----END PGP PRIVATE KEY BLOCK-----)(?!\S)/g,
+      /(?<!-)-----BEGIN (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END[^-\r\n]*-----/g,
   },
   // AI/ML provider tokens
   { type: 'huggingface_token', regex: /(?<![A-Za-z0-9])hf_[A-Za-z0-9]{34}(?![A-Za-z0-9])/g },

@@ -578,12 +578,60 @@ function jmespathSearch(data: unknown, query: string): unknown {
     }
   }
 
-  return null;
+  // No shape matched — a question about the query TEXT, never the data. A
+  // `null` here was reported as `query_result: null`, indistinguishable from a
+  // real null at that path, so standard JMESPath this subset does not parse
+  // (`items[?price > \`10\`]`, `length(items)`, `"a-b"`) read as an answer.
+  throw new Error(
+    `unsupported query syntax "${query}" — supported: a.b, a[0], [0], [*], a[*].b, ` +
+      '[?field==`value`] (no spaces), length|keys|values|type(@)',
+  );
 }
 
 // ---------------------------------------------------------------------------
 // JSON Schema validator (from json-path plugin)
 // ---------------------------------------------------------------------------
+
+/**
+ * Keywords `validateJsonSchema` does not evaluate. Present in a schema, each
+ * is reported as an error rather than skipped. (`format` stays an annotation,
+ * as JSON Schema 2020-12 defines it, except the `uri` check below.)
+ */
+const UNSUPPORTED_SCHEMA_KEYWORDS = [
+  '$ref',
+  '$dynamicRef',
+  'allOf',
+  'anyOf',
+  'oneOf',
+  'not',
+  'if',
+  'then',
+  'else',
+  'patternProperties',
+  'propertyNames',
+  'prefixItems',
+  'contains',
+  'dependentRequired',
+  'dependentSchemas',
+  'dependencies',
+  'unevaluatedProperties',
+  'unevaluatedItems',
+] as const;
+
+/** Key-order-independent JSON form, for enum/const/uniqueItems equality. */
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  return `{${Object.keys(obj)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(obj[key])}`)
+    .join(',')}}`;
+}
+
+function jsonEqual(a: unknown, b: unknown): boolean {
+  return canonicalJson(a) === canonicalJson(b);
+}
 
 function validateJsonSchema(
   data: unknown,
@@ -592,13 +640,84 @@ function validateJsonSchema(
   const errors: string[] = [];
 
   function check(value: unknown, s: Record<string, unknown>, path: string): void {
+    // A keyword this validator does not evaluate must not read as "satisfied":
+    // ignoring it answered `valid: true` for data the schema forbids.
+    for (const keyword of UNSUPPORTED_SCHEMA_KEYWORDS) {
+      if (s[keyword] !== undefined) {
+        errors.push(
+          `${path}: schema keyword "${keyword}" is not supported — cannot confirm validity`,
+        );
+      }
+    }
+
     if (s['type']) {
-      const expectedType = s['type'] as string;
+      // `type` may be a list (`["string", "null"]`): valid when any entry matches.
+      const expectedTypes = (Array.isArray(s['type']) ? s['type'] : [s['type']]) as string[];
       const actualType = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
-      if (expectedType === 'integer') {
-        if (!Number.isInteger(value)) errors.push(`${path}: expected integer, got ${actualType}`);
-      } else if (expectedType !== actualType) {
-        errors.push(`${path}: expected ${expectedType}, got ${actualType}`);
+      const matches = (expected: string): boolean =>
+        expected === 'integer' ? Number.isInteger(value) : expected === actualType;
+      if (!expectedTypes.some(matches)) {
+        errors.push(`${path}: expected ${expectedTypes.join(' | ')}, got ${actualType}`);
+      }
+    }
+
+    if (Array.isArray(s['enum']) && !s['enum'].some((allowed) => jsonEqual(allowed, value))) {
+      errors.push(`${path}: not one of the allowed values ${JSON.stringify(s['enum'])}`);
+    }
+    if (Object.hasOwn(s, 'const') && !jsonEqual(s['const'], value)) {
+      errors.push(`${path}: must equal ${JSON.stringify(s['const'])}`);
+    }
+
+    if (typeof value === 'number') {
+      if (typeof s['exclusiveMinimum'] === 'number' && value <= s['exclusiveMinimum']) {
+        errors.push(`${path}: must be greater than ${s['exclusiveMinimum']}`);
+      }
+      if (typeof s['exclusiveMaximum'] === 'number' && value >= s['exclusiveMaximum']) {
+        errors.push(`${path}: must be less than ${s['exclusiveMaximum']}`);
+      }
+      const step = s['multipleOf'];
+      if (typeof step === 'number' && step > 0) {
+        const quotient = value / step;
+        if (Math.abs(quotient - Math.round(quotient)) > 1e-9) {
+          errors.push(`${path}: not a multiple of ${step}`);
+        }
+      }
+    }
+
+    if (Array.isArray(value)) {
+      if (typeof s['minItems'] === 'number' && value.length < s['minItems']) {
+        errors.push(`${path}: too few items (min ${s['minItems']})`);
+      }
+      if (typeof s['maxItems'] === 'number' && value.length > s['maxItems']) {
+        errors.push(`${path}: too many items (max ${s['maxItems']})`);
+      }
+      if (s['uniqueItems'] === true) {
+        const seen = new Set(value.map((item) => canonicalJson(item)));
+        if (seen.size !== value.length) errors.push(`${path}: items are not unique`);
+      }
+    }
+
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const keys = Object.keys(value);
+      if (typeof s['minProperties'] === 'number' && keys.length < s['minProperties']) {
+        errors.push(`${path}: too few properties (min ${s['minProperties']})`);
+      }
+      if (typeof s['maxProperties'] === 'number' && keys.length > s['maxProperties']) {
+        errors.push(`${path}: too many properties (max ${s['maxProperties']})`);
+      }
+      const extra = s['additionalProperties'];
+      if (extra === false || (typeof extra === 'object' && extra !== null)) {
+        const declared = (s['properties'] ?? {}) as Record<string, unknown>;
+        for (const key of keys) {
+          if (Object.hasOwn(declared, key)) continue;
+          if (extra === false) errors.push(`${path}: unexpected property "${key}"`);
+          else
+            check(
+              (value as Record<string, unknown>)[key],
+              extra as Record<string, unknown>,
+              `${path}.${key}`,
+            );
+        }
       }
     }
 
@@ -806,6 +925,20 @@ const YAML_NON_STRING_SCALAR =
 /** Leading YAML indicator characters (or trimmable whitespace) force quoting. */
 const YAML_NEEDS_QUOTING = /^[-?:,[\]{}#&*!|>'"%@` \t]|[ \t]$/;
 
+/** C0 controls (other than tab) and DEL: a raw CR ends a YAML line too. */
+const YAML_CONTROL_CHAR = /[\u0000-\u0008\u000a-\u001f\u007f]/;
+
+/**
+ * A YAML double-quoted scalar. JSON string escaping is valid YAML 1.2
+ * double-quoted syntax and, unlike escaping only `\` and `"`, it escapes
+ * newlines and other control characters: a raw line break inside the quotes
+ * made the whole document unparseable ("Missing closing quote"), so any
+ * multi-line value (a script, a description, a PEM block) broke the output.
+ */
+function yamlQuote(value: string): string {
+  return JSON.stringify(value);
+}
+
 /**
  * Mapping keys meet the same quoting bar as string values: a key that would
  * re-parse as a non-string ("123", "yes"), that breaks the mapping on re-read
@@ -819,9 +952,10 @@ const YAML_NEEDS_QUOTING = /^[-?:,[\]{}#&*!|>'"%@` \t]|[ \t]$/;
 function safeYamlKey(key: string): string {
   return key === '' ||
     /[:#\s]/.test(key) ||
+    YAML_CONTROL_CHAR.test(key) ||
     YAML_NON_STRING_SCALAR.test(key) ||
     YAML_NEEDS_QUOTING.test(key)
-    ? `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+    ? yamlQuote(key)
     : key;
 }
 
@@ -835,12 +969,13 @@ function toYaml(data: unknown, indent = 0): string {
     if (
       data === '' ||
       data.includes('\n') ||
+      YAML_CONTROL_CHAR.test(data) ||
       data.includes(':') ||
       data.includes('#') ||
       YAML_NON_STRING_SCALAR.test(data) ||
       YAML_NEEDS_QUOTING.test(data)
     ) {
-      return `"${data.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
+      return `${yamlQuote(data)}\n`;
     }
     return data + '\n';
   }
@@ -850,17 +985,18 @@ function toYaml(data: unknown, indent = 0): string {
     return data
       .map((item) => {
         if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-          const itemEntries = Object.entries(item as Record<string, unknown>);
-          if (itemEntries.length === 0) return `${prefix}- {}\n`;
-          const [firstK, firstV] = itemEntries[0]!;
-          const rest = itemEntries.slice(1);
-          let itemYaml = `${prefix}- ${safeYamlKey(firstK)}: ${toYaml(firstV, indent + 2).trimStart()}`;
-          for (const [k, v] of rest) {
-            itemYaml += `${prefix}  ${safeYamlKey(k)}: ${toYaml(v, indent + 2)}`;
-          }
-          return itemYaml;
+          if (Object.keys(item).length === 0) return `${prefix}- {}\n`;
+          // Render the item as a mapping one level deeper and put the dash
+          // where its first line's indentation was, so a nested object/array
+          // value keeps the mapping branch's `key:` + indented-block layout.
+          // Building `- key: <value>` by hand put a nested block on the key's
+          // line (`- first: a: 1`, `second:       - 1`) — invalid YAML.
+          return `${prefix}- ${toYaml(item, indent + 1).slice(prefix.length + 2)}`;
         }
-        return `${prefix}- ${toYaml(item, indent + 1).trimStart()}`;
+        // Strip the nested block's own indentation only: `trimStart()` also
+        // removed leading Unicode spaces of the VALUE (NBSP, U+2028, U+3000),
+        // silently changing it — a lone U+2028 item became `null`.
+        return `${prefix}- ${toYaml(item, indent + 1).replace(/^ +/, '')}`;
       })
       .join('');
   }

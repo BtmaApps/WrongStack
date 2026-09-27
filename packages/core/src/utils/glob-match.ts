@@ -143,6 +143,15 @@ type GlobToken =
   | { kind: 'star' }
   /** `**` — zero or more of anything (minus separators in command mode). */
   | { kind: 'globstar' }
+  /**
+   * Consumes nothing; epsilon to the next token AND past the following
+   * `over` tokens. With `globstar` + `dirsep` it spells `**\/` in path-segment
+   * mode ({@link compilePathGlob}): zero or more WHOLE directories, regex
+   * `(?:.*\/)?` — the skip exists only before the group, never mid-name.
+   */
+  | { kind: 'skip'; over: number }
+  /** The `/` closing a path-mode `**\/`. Not a required literal: it is optional. */
+  | { kind: 'dirsep' }
   /** `[...]` — one character, tested against the compiled class. */
   | { kind: 'class'; re: RegExp };
 
@@ -161,6 +170,7 @@ type GlobToken =
 function parseGlob(
   pattern: string,
   commandSubject: boolean,
+  pathSegments = false,
 ): { source: string; tokens: GlobToken[] } {
   if (pattern.length > MAX_GLOB_PATTERN_LEN) {
     throw new Error(`Glob pattern exceeds ${MAX_GLOB_PATTERN_LEN} characters`);
@@ -173,7 +183,13 @@ function parseGlob(
   while (i < pattern.length) {
     const c = pattern[i];
     if (c === '*') {
-      if (pattern[i + 1] === '*') {
+      if (pathSegments && !commandSubject && pattern[i + 1] === '*' && pattern[i + 2] === '/') {
+        // `**/` spans whole directories only, so `**/index.ts` does not match
+        // `reindex.ts` (the legacy form below drops the `/` and does).
+        re += '(?:.*/)?';
+        tokens.push({ kind: 'skip', over: 2 }, { kind: 'globstar' }, { kind: 'dirsep' });
+        i += 3;
+      } else if (pattern[i + 1] === '*') {
         // ** matches any number of chars including /
         // For a command subject it still must not cross a separator: `**` is a
         // path idiom ("any depth"), and letting it mean "anything at all" here
@@ -286,8 +302,12 @@ export interface CompiledGlobMatcher {
  * Throws on the same inputs the old `compileGlob` threw on (over-long pattern,
  * invalid character class) — no new rejection paths, see {@link NEVER_MATCH}.
  */
-export function compileGlobMatcher(pattern: string, commandSubject = false): CompiledGlobMatcher {
-  const { source, tokens } = parseGlob(pattern, commandSubject);
+export function compileGlobMatcher(
+  pattern: string,
+  commandSubject = false,
+  pathSegments = false,
+): CompiledGlobMatcher {
+  const { source, tokens } = parseGlob(pattern, commandSubject, pathSegments);
   const tokenCount = tokens.length;
   // State `j` means "about to consume token j"; state `tokenCount` is accept.
   const stateCount = tokenCount + 1;
@@ -306,15 +326,16 @@ export function compileGlobMatcher(pattern: string, commandSubject = false): Com
       (c: string): boolean => !LINE_TERMINATOR.test(c);
 
   /**
-   * Epsilon closure: the only epsilon edges are "a star matched zero
-   * characters", which always step forward by exactly one state, so a single
-   * ascending pass reaches the fixed point.
+   * Epsilon closure: the epsilon edges are "a star matched zero characters"
+   * (one state forward) and a `skip` (one state, and past its group). Both
+   * only point FORWARD, so a single ascending pass reaches the fixed point.
    */
   const close = (set: Uint8Array): void => {
     for (let j = 0; j < tokenCount; j++) {
       if (!set[j]) continue;
-      const kind = tokens[j]?.kind;
-      if (kind === 'star' || kind === 'globstar') set[j + 1] = 1;
+      const t = tokens[j];
+      if (t?.kind === 'star' || t?.kind === 'globstar' || t?.kind === 'skip') set[j + 1] = 1;
+      if (t?.kind === 'skip') set[j + 1 + t.over] = 1;
     }
   };
 
@@ -382,6 +403,15 @@ export function compileGlobMatcher(pattern: string, commandSubject = false): Com
               next[j] = 1;
               live++;
             }
+            break;
+          case 'dirsep':
+            if (c === '/') {
+              next[j + 1] = 1;
+              live++;
+            }
+            break;
+          case 'skip':
+            // Consumes nothing; its epsilon edges live in close().
             break;
         }
       }
@@ -477,6 +507,21 @@ class GlobRegExp extends RegExp {
  */
 export function compileGlob(pattern: string, commandSubject = false): RegExp {
   return new GlobRegExp(compileGlobMatcher(pattern, commandSubject));
+}
+
+/**
+ * {@link compileGlob} for FILE SEARCH: `**\/` matches zero or more whole
+ * directories (`(?:.*\/)?`), as in gitignore and ripgrep, so `**\/index.ts`
+ * no longer matches `reindex.ts` and `src/**\/test.ts` no longer matches
+ * `src/latest.ts`. Every other construct compiles exactly as in
+ * {@link compileGlob}.
+ *
+ * Opt-in rather than a change to {@link compileGlob}: trust / directory
+ * permission patterns go through the same parser, and narrowing a DENY rule
+ * there would un-block paths — that is an owner decision, not a search fix.
+ */
+export function compilePathGlob(pattern: string): RegExp {
+  return new GlobRegExp(compileGlobMatcher(pattern, false, true));
 }
 
 export function matchGlob(pattern: string, input: string): boolean {

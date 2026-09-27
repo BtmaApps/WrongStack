@@ -1,3 +1,4 @@
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { callExisting, close, ping } = vi.hoisted(() => ({
@@ -23,6 +24,7 @@ describe('Session Catalog connections health', () => {
 
   it('probes an existing daemon without spawning one', async () => {
     callExisting.mockResolvedValue({
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       pid: 42,
       endpoint: 'catalog-pipe',
       databasePath: '/state/catalog.sqlite',
@@ -57,3 +59,15 @@ describe('Session Catalog connections health', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 });
+
+it.each(['0.0.1', '999.0.0', undefined])(
+  'reports daemon release skew (%s) without spawning',
+  async (runtimeVersion) => {
+    callExisting.mockResolvedValue({ runtimeVersion, pid: 42, damagedRows: 0 });
+    const result = await sessionCatalogHealth('/project');
+    expect(result).toMatchObject({ status: 'degraded', versionMismatch: true });
+    expect(result.detail).toContain('client ' + WRONGSTACK_RUNTIME_VERSION);
+    expect(result.detail.toLowerCase()).toContain('restart');
+    expect(ping).not.toHaveBeenCalled();
+  },
+);

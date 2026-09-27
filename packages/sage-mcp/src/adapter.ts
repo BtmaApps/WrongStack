@@ -22,6 +22,7 @@
 
 import type { Context } from '@wrongstack/core/agent';
 import type { JSONSchema, MemoryPort, Tool } from '@wrongstack/core/types';
+import { coerceAgainstSchema, validateAgainstSchema } from '@wrongstack/core/utils';
 import {
   MCPServer,
   type MCPServerCallResult,
@@ -139,9 +140,32 @@ export function createSageMcpToolHost(
         // For `remember`, force no_auto_audience=true. SAGE's auto-audience
         // detection reads `ctx.meta['agentRole']`/`ctx.meta['mode']`; MCP
         // callers do not supply a role/mode so we cannot infer one.
-        const callArgs: Record<string, unknown> = { ...args };
+        let callArgs: Record<string, unknown> = { ...args };
         if (name === 'remember' && callArgs['no_auto_audience'] === undefined) {
           callArgs['no_auto_audience'] = true;
+        }
+
+        // The agent loop holds every call to the tool's inputSchema
+        // (core tool-executor-guard: validate, then coerce-and-revalidate);
+        // MCPServer validates nothing, and the read tools define no
+        // `validate`, so without this an MCP caller skipped the schema's
+        // bounds — `memory_search` with `limit: 1e9` returned the whole
+        // matching store past the schema's `maximum: 100`.
+        const validation = validateAgainstSchema(callArgs, tool.inputSchema);
+        if (!validation.ok) {
+          const coercion = coerceAgainstSchema(callArgs, tool.inputSchema);
+          const revalidation = coercion.changed
+            ? validateAgainstSchema(coercion.value, tool.inputSchema)
+            : validation;
+          if (!(coercion.changed && revalidation.ok)) {
+            return {
+              content: revalidation.errors
+                .map((e) => `${e.path || 'input'}: ${e.message}`)
+                .join('\n'),
+              isError: true,
+            };
+          }
+          callArgs = coercion.value as Record<string, unknown>;
         }
 
         // Tool.validate is the canonical safety gate (e.g., the `force: true`

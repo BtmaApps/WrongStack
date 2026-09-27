@@ -40,6 +40,8 @@ export const SAGE_PROJECT_SERVER_PROTOCOL_VERSION = 1;
  * carries NO secret — see {@link SageProjectServerMetadata}.
  */
 export interface SageProjectServerInfo {
+  /** Application release; absent on legacy daemons. */
+  runtimeVersion?: string | undefined;
   protocolVersion: number;
   pid: number;
   projectRoot: string;

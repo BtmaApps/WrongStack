@@ -3,6 +3,7 @@ import type { AnyHookOutcome, HookInput, HookOutcome } from '../types/hooks.js';
 import type { Logger } from '../types/logger.js';
 import { buildChildEnv } from '../utils/child-env.js';
 import { toErrorMessage } from '../utils/error.js';
+import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
 
 const DEFAULT_TIMEOUT_MS = 5_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
@@ -84,6 +85,18 @@ const ALLOWED_SHELL_COMMANDS = new Set([
   'whoami',
   'date',
 ]);
+
+/** Allowlisted commands that are `.cmd` shims on Windows (npm, corepack). */
+const WIN32_CMD_SHIM_COMMANDS = new Set(['npm', 'npx', 'pnpm', 'yarn']);
+
+/**
+ * Whether a hook executable is a `.cmd`/`.bat` on Windows, which `spawn`
+ * without a shell cannot launch: bare shim names fail ENOENT, an absolute
+ * `.cmd` wrapper fails EINVAL (CVE-2024-27980 guard).
+ */
+function isWin32CmdShim(executable: string): boolean {
+  return /\.(?:cmd|bat)$/i.test(executable) || WIN32_CMD_SHIM_COMMANDS.has(executable);
+}
 
 /** Absolute path on either platform (POSIX `/...` or Windows `C:\...` / `C:/...`). */
 function isAbsoluteCommandPath(p: string): boolean {
@@ -299,14 +312,23 @@ export async function runShellHookDetailed(
       // become literal arguments. The executable + args are split by
       // isCommandAllowed above. Hooks that need pipes/redirects should
       // use `sh -c "..."` which is allowlisted through sh/bash.
-      const cmd = argv[0]!;
-      const args = argv.slice(1);
+      let cmd = argv[0]!;
+      let args = argv.slice(1);
+      let windowsVerbatimArguments = false;
+      if (process.platform === 'win32' && isWin32CmdShim(cmd)) {
+        // Throws on cmd.exe metacharacters; the catch below reports it.
+        const shim = buildWin32CmdShimInvocation(cmd, args);
+        cmd = shim.command;
+        args = shim.args;
+        windowsVerbatimArguments = true;
+      }
       child = spawn(cmd, args, {
         cwd: input.cwd,
         env: buildChildEnv(),
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
         detached: process.platform !== 'win32',
+        ...(windowsVerbatimArguments ? { windowsVerbatimArguments } : {}),
       });
     } catch (err) {
       logger?.warn?.(`hook spawn failed: ${toErrorMessage(err)}`);

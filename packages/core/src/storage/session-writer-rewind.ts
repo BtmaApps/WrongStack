@@ -5,7 +5,11 @@ import { toErrorMessage } from '../utils/index.js';
 import type { EventBus } from './event-bus-port.js';
 import type { SessionSummaryTracker } from './session-summary-tracker.js';
 import type { SessionWriteBuffer } from './session-write-buffer.js';
-import { keptBytesForCheckpoint, stashRewoundTail } from './session-writer-redo.js';
+import {
+  keptBytesForCheckpoint,
+  stashRewoundTail,
+  unstashRewoundTail,
+} from './session-writer-redo.js';
 import {
   findSessionCheckpointTruncatePlan,
   rewriteSessionToCheckpoint,
@@ -144,6 +148,7 @@ export async function executeSessionTruncate(ctx: SessionTruncateContext): Promi
     // Keep what is about to be cut so `/redo` can put it back. Best effort: a
     // failed stash only means this rewind cannot be redone.
     let stashedTranscripts: string[] = [];
+    let stashed = false;
     try {
       const contained = await containedTranscriptPaths(
         ctx.sessionId,
@@ -157,10 +162,18 @@ export async function executeSessionTruncate(ctx: SessionTruncateContext): Promi
         toPromptIndex: ctx.targetPromptIndex,
         transcriptPaths: contained.map((c) => c.resolved),
       });
+      stashed = true;
     } catch {
       /* redo unavailable for this rewind */
     }
-    await rewriteSessionToCheckpoint(ctx.filePath, plan.checkpointByteOffset);
+    try {
+      await rewriteSessionToCheckpoint(ctx.filePath, plan.checkpointByteOffset);
+    } catch (err) {
+      // The journal is unchanged, so the stash must not keep the transcripts
+      // it still links (the next checkpoint's clearRedoStash would delete them).
+      if (stashed) await unstashRewoundTail(ctx.filePath).catch(() => undefined);
+      throw err;
+    }
     await deleteRewoundSubagentTranscripts(
       ctx.sessionId,
       ctx.filePath,

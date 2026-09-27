@@ -60,6 +60,9 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
     string,
     {
       sessionId?: string | undefined;
+      traceId?: string | undefined;
+      agentId?: string | undefined;
+      agentName?: string | undefined;
       id: string;
       name: string;
       eventType: string;
@@ -144,6 +147,9 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
       type: 'tool.progress',
       payload: sessionPayload({
         sessionId: buffered.sessionId,
+        ...(buffered.traceId !== undefined ? { traceId: buffered.traceId } : {}),
+        ...(buffered.agentId !== undefined ? { agentId: buffered.agentId } : {}),
+        ...(buffered.agentName !== undefined ? { agentName: buffered.agentName } : {}),
         name: buffered.name,
         id: buffered.id,
         event: { type: buffered.eventType, text: buffered.text },
@@ -159,7 +165,16 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
 
   const queueToolProgress = (payload: ToolProgressPayload): void => {
     const text = payload.event.text;
-    if (!text) {
+    // Text is merged; an event that also carries a file target (Code Map
+    // activity) is sent whole. `data` alone still merges: write.ts streams a
+    // new file's preview one `{livePreview}` line per event.
+    const { event } = payload;
+    const structured =
+      event.path !== undefined ||
+      event.operation !== undefined ||
+      event.line !== undefined ||
+      event.endLine !== undefined;
+    if (!text || structured) {
       flushToolProgress(payload.id);
       broadcast({
         type: 'tool.progress',
@@ -172,8 +187,13 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
     const existing = toolProgressBuffers.get(payload.id);
     if (existing && existing.sessionId !== payload.sessionId) flushToolProgress(payload.id);
     if (existing && existing.eventType !== eventType) flushToolProgress(payload.id);
+    if (existing && (existing.agentId !== payload.agentId || existing.traceId !== payload.traceId))
+      flushToolProgress(payload.id);
     const buffered = toolProgressBuffers.get(payload.id) ?? {
       sessionId: payload.sessionId,
+      traceId: payload.traceId,
+      agentId: payload.agentId,
+      agentName: payload.agentName,
       id: payload.id,
       name: payload.name,
       eventType,
@@ -182,6 +202,7 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
     };
     buffered.sessionId = payload.sessionId;
     buffered.name = payload.name;
+    buffered.agentName = payload.agentName;
     buffered.text += buffered.text ? `\n${text}` : text;
     toolProgressBuffers.set(payload.id, buffered);
 

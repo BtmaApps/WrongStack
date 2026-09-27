@@ -8,7 +8,7 @@ import {
   TelegramNetworkError,
 } from './api-client.js';
 import type { TelegramBotResponse } from './bot-types.js';
-import { escapeHtml } from './text-format.js';
+import { escapeHtml, sliceUtf16Safe } from './text-format.js';
 
 /** Telegram rejects any message over 4096 chars — the Bot API hard limit. */
 const TELEGRAM_WIRE_LIMIT = 4096;
@@ -22,7 +22,7 @@ const TELEGRAM_WIRE_LIMIT = 4096;
  */
 function fitHtmlWireText(escaped: string): string {
   if (escaped.length <= TELEGRAM_WIRE_LIMIT) return escaped;
-  const cut = escaped.slice(0, TELEGRAM_WIRE_LIMIT);
+  const cut = sliceUtf16Safe(escaped, TELEGRAM_WIRE_LIMIT);
   const lastAmp = cut.lastIndexOf('&');
   const lastSemi = cut.lastIndexOf(';');
   // In escaped text every '&' opens '&amp;'/'&lt;'/'&gt;'; a trailing '&'

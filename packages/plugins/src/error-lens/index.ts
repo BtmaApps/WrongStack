@@ -195,6 +195,22 @@ function failureKey(errorLine: string | null, frames: string[]): string {
   return `${errorLine ?? ''}|${frames[0] ?? ''}`;
 }
 
+/**
+ * Whether a shell tool's serialized result reports a non-zero exit.
+ *
+ * A failing command does not throw: bash/pwsh/exec RETURN `{ output,
+ * exit_code }`, and the executor hands every returned result to PostToolUse
+ * as `isError: false` — so gating on `isError` alone skipped every ordinary
+ * failed command, the one case this plugin exists for. The executor renders
+ * the exit into the header's field group, `<tool>: <cmd> (exit_code=1 …)`,
+ * where `exit_code` is always the first field; only that shape counts, so a
+ * trace merely printed by a successful command stays data.
+ */
+export function exitedNonZero(content: string): boolean {
+  const match = / \(exit_code=(-?\d+)(?: [a-z_]+=[^\s()]*)*\)$/m.exec(content);
+  return match !== null && Number(match[1]) !== 0;
+}
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -280,7 +296,7 @@ const plugin: Plugin = {
 
       // Only digest failures. A non-error result that *contains* a
       // stack trace (e.g. `cat error.log`) is data, not a failure.
-      if (!result.isError) return;
+      if (!result.isError && !exitedNonZero(output)) return;
       if (output.length < cfg.minOutputChars) return;
 
       const errorLine = extractErrorLine(output);

@@ -229,6 +229,42 @@ function boundedLimit(args: Record<string, unknown>, key: string): number | unde
   return Math.min(Math.max(1, Math.floor(value)), MAILBOX_MAX_QUERY_LIMIT);
 }
 
+/**
+ * A string field restricted to the enum its schema advertises. Like `limit`,
+ * the enum is only a hint to the model — MCPServer does not validate it — so
+ * without this an out-of-contract value (`priority: "urgent"`, heartbeat
+ * `status: "anything"`) was persisted into the project's shared mailbox, which
+ * every other write boundary (HTTP bridge, WS validation, message codec)
+ * refuses. Throws instead of coercing: silently rewriting the value would
+ * report a send the caller did not ask for.
+ */
+function optionalEnum<const T extends string>(
+  args: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = optionalString(args, key);
+  if (value === undefined) return undefined;
+  if (!(allowed as readonly string[]).includes(value)) {
+    throw new Error(`${key} must be one of ${allowed.join(', ')}`);
+  }
+  return value as T;
+}
+
+const PRIORITIES = ['low', 'normal', 'high'] as const;
+const HEARTBEAT_STATUSES = ['idle', 'running', 'streaming', 'waiting_user', 'error'] as const;
+
+/**
+ * `ttlMs` of a send, held to the schema's `minimum: 1`: zero or a negative TTL
+ * stored a message that was already expired, and the send still reported
+ * success.
+ */
+function sendTtlMs(args: Record<string, unknown>): number | undefined {
+  const value = optionalNumber(args, 'ttlMs');
+  if (value !== undefined && value < 1) throw new Error('ttlMs must be at least 1');
+  return value;
+}
+
 function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {
   const value = args[key];
   return typeof value === 'boolean' ? value : undefined;
@@ -337,8 +373,8 @@ function queryFromArgs(args: Record<string, unknown>): MailboxQuery {
     ...(optionalString(args, 'type') !== undefined
       ? { type: optionalString(args, 'type') as MailboxMessageType }
       : {}),
-    ...(optionalString(args, 'minPriority') !== undefined
-      ? { minPriority: optionalString(args, 'minPriority') as 'low' | 'normal' | 'high' }
+    ...(optionalEnum(args, 'minPriority', PRIORITIES) !== undefined
+      ? { minPriority: optionalEnum(args, 'minPriority', PRIORITIES) }
       : {}),
     ...(boundedLimit(args, 'limit') !== undefined ? { limit: boundedLimit(args, 'limit') } : {}),
     ...(optionalString(args, 'since') !== undefined
@@ -449,18 +485,16 @@ async function executeManage(
           subject: requiredString(args, 'subject'),
           body: requiredString(args, 'body'),
           senderSessionId: identity.sessionId,
-          ...(optionalString(args, 'priority') !== undefined
-            ? { priority: optionalString(args, 'priority') as 'low' | 'normal' | 'high' }
+          ...(optionalEnum(args, 'priority', PRIORITIES) !== undefined
+            ? { priority: optionalEnum(args, 'priority', PRIORITIES) }
             : {}),
-          ...(optionalString(args, 'audience') !== undefined
-            ? { audience: optionalString(args, 'audience') as 'all' | 'leaders' }
+          ...(optionalEnum(args, 'audience', ['all', 'leaders']) !== undefined
+            ? { audience: optionalEnum(args, 'audience', ['all', 'leaders']) }
             : {}),
           ...(optionalString(args, 'replyTo') !== undefined
             ? { replyTo: optionalString(args, 'replyTo') }
             : {}),
-          ...(optionalNumber(args, 'ttlMs') !== undefined
-            ? { ttlMs: optionalNumber(args, 'ttlMs') }
-            : {}),
+          ...(sendTtlMs(args) !== undefined ? { ttlMs: sendTtlMs(args) } : {}),
         }),
       };
     }
@@ -533,15 +567,8 @@ async function executeManage(
     case 'heartbeat_self':
       await mailbox.heartbeat({
         agentId: identity.actor,
-        ...(optionalString(args, 'status') !== undefined
-          ? {
-              status: optionalString(args, 'status') as
-                | 'idle'
-                | 'running'
-                | 'streaming'
-                | 'waiting_user'
-                | 'error',
-            }
+        ...(optionalEnum(args, 'status', HEARTBEAT_STATUSES) !== undefined
+          ? { status: optionalEnum(args, 'status', HEARTBEAT_STATUSES) }
           : {}),
         ...(optionalString(args, 'currentTool') !== undefined
           ? { currentTool: optionalString(args, 'currentTool') }

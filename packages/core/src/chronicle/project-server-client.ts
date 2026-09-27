@@ -401,26 +401,37 @@ export class ChronicleProjectServerClient {
 
   private onData(socket: net.Socket, chunk: string): void {
     if (socket !== this.socket) return;
-    this.buffer += chunk;
-    if (this.buffer.length > CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS) {
+    if (this.buffer.length + chunk.length > CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS) {
       socket.destroy(new Error('Chronicle project server response exceeded frame limit'));
       return;
     }
-    while (true) {
-      const newline = this.buffer.indexOf('\n');
-      if (newline < 0) return;
-      const line = this.buffer.slice(0, newline);
-      this.buffer = this.buffer.slice(newline + 1);
-      if (!line) continue;
-      let message: ChronicleProjectServerMessage;
-      try {
-        message = JSON.parse(line) as ChronicleProjectServerMessage;
-      } catch {
-        socket.destroy(new Error('Invalid Chronicle project server response'));
-        return;
-      }
-      this.onMessage(message);
+    // Scan only the new chunk: the pending tail never holds a newline, and
+    // re-scanning it per chunk made a large response O(n²) to receive.
+    let newline = chunk.indexOf('\n');
+    if (newline < 0) {
+      this.buffer += chunk;
+      return;
     }
+    let line = this.buffer + chunk.slice(0, newline);
+    let start = newline + 1;
+    this.buffer = '';
+    while (true) {
+      if (line) {
+        let message: ChronicleProjectServerMessage;
+        try {
+          message = JSON.parse(line) as ChronicleProjectServerMessage;
+        } catch {
+          socket.destroy(new Error('Invalid Chronicle project server response'));
+          return;
+        }
+        this.onMessage(message);
+      }
+      newline = chunk.indexOf('\n', start);
+      if (newline < 0) break;
+      line = chunk.slice(start, newline);
+      start = newline + 1;
+    }
+    this.buffer = chunk.slice(start);
   }
 
   private onMessage(message: ChronicleProjectServerMessage): void {

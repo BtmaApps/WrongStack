@@ -14,12 +14,41 @@
  */
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { realpathSync } from 'node:fs';
+import { accessSync, realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { buildChildEnv } from '@wrongstack/core/utils';
 import { treeKill } from '@wrongstack/core/utils/tree-kill';
+import { buildWin32CmdShimInvocation } from '../win32-cmd.js';
 
 const EMPTY_BUFFER = Buffer.alloc(0);
+
+/**
+ * The `.cmd`/`.bat` a Windows command resolves to, if any. `spawn` without a
+ * shell cannot run one — a bare `npm` fails ENOENT (no PATHEXT lookup), an
+ * absolute `npm.cmd` fails EINVAL (CVE-2024-27980) — so those go through the
+ * canonical cmd.exe shim builder. Only batch files: routing a real `.exe`
+ * through cmd.exe would make the builder refuse `"`/`%` arguments it never
+ * needed to see. Mirrors the PATHEXT walk of tools' resolveWin32Command.
+ */
+function win32BatchTarget(command: string): string | undefined {
+  if (/\.(?:cmd|bat)$/i.test(command)) return command;
+  if (/[\\/]/.test(command) || path.extname(command)) return undefined;
+  const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').toLowerCase().split(';');
+  for (const dir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      if (!ext) continue;
+      const full = path.join(dir, `${command}${ext}`);
+      try {
+        accessSync(full);
+      } catch {
+        continue;
+      }
+      return ext === '.cmd' || ext === '.bat' ? full : undefined;
+    }
+  }
+  return undefined;
+}
 
 // Read once at module load — captures `WRONGSTACK_DEBUG=1` style env toggles.
 // Debug-only logging in dispose() is gated on this so production is silent.
@@ -137,11 +166,15 @@ export class TerminalServer {
       Math.max(1, this.clampFiniteInt(params.outputByteLimit, this.outputByteLimit)),
       this.maxOutputByteLimit,
     );
-    const proc = spawn(params.command, params.args ?? [], {
+    const batch = process.platform === 'win32' ? win32BatchTarget(params.command) : undefined;
+    // Throws on cmd.exe metacharacters; the terminal/create handler reports it.
+    const shim = batch ? buildWin32CmdShimInvocation(batch, params.args ?? []) : undefined;
+    const proc = spawn(shim?.command ?? params.command, shim?.args ?? params.args ?? [], {
       cwd,
       env: this.buildEnv(params.env),
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
+      ...(shim ? { windowsVerbatimArguments: shim.windowsVerbatimArguments } : {}),
       // shell: false on purpose. The terminal server is invoked with
       // the agent's explicit argv; turning on shell-mode would make
       // the command a single shell-parsed string, which breaks

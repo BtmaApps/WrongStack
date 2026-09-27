@@ -7,6 +7,22 @@ import {
   assertTaskGraphExecutionIntegrity,
 } from './requirement-coverage.js';
 
+/**
+ * The graph as `analyzeCriticalPath` reads it. That function (and its tests)
+ * take a `depends_on` edge as `from` DEPENDS ON `to`, while every edge this
+ * executor sees comes from TaskTracker.addDependency — `from` BLOCKS `to`, the
+ * convention `getReadyTasks` below also uses. Passed as is, the critical path
+ * came back reversed (dependents first).
+ */
+function asDependentFirstGraph(graph: TaskGraph): TaskGraph {
+  return {
+    ...graph,
+    edges: graph.edges.map((edge) =>
+      edge.type === 'depends_on' ? { ...edge, from: edge.to, to: edge.from } : edge,
+    ),
+  };
+}
+
 export interface AutoExecutorOptions {
   tracker: TaskTracker;
   events: EventBus;
@@ -82,7 +98,7 @@ export class AutoExecutor {
     this.retryMap.clear();
     const startTime = Date.now();
 
-    const critical = analyzeCriticalPath(graph);
+    const critical = analyzeCriticalPath(asDependentFirstGraph(graph));
     let completed = 0;
     let failed = 0;
     const skipped = 0;

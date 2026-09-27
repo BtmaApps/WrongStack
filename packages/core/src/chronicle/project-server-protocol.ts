@@ -32,6 +32,8 @@ export const CHRONICLE_MAX_APPEND_BATCH = 10_000;
  * see {@link ChronicleProjectServerMetadata}.
  */
 export interface ChronicleProjectServerInfo {
+  /** Application release; absent on legacy daemons. */
+  runtimeVersion?: string | undefined;
   protocolVersion: number;
   pid: number;
   projectRoot: string;

@@ -10,6 +10,9 @@ import {
 // 1×1 transparent PNG, valid base64.
 const PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+// Valid base64 whose bytes match no image signature, so only the labels can
+// decide its media type (recognisable bytes override a wrong label).
+const OPAQUE_B64 = 'AAAAAAAAAAAAAAAAAAAAAAAA';
 
 describe('parseIncomingImages', () => {
   it('returns [] for no images', () => {
@@ -25,14 +28,14 @@ describe('parseIncomingImages', () => {
   });
 
   it('strips a data-URL prefix and derives the media type from it', () => {
-    const blocks = parseIncomingImages([{ data: `data:image/jpeg;base64,${PNG_B64}` }]);
+    const blocks = parseIncomingImages([{ data: `data:image/jpeg;base64,${OPAQUE_B64}` }]);
     expect(blocks[0]?.source.media_type).toBe('image/jpeg');
-    expect(blocks[0]?.source.data).toBe(PNG_B64);
+    expect(blocks[0]?.source.data).toBe(OPAQUE_B64);
   });
 
   it('explicit mediaType wins over the data-URL prefix', () => {
     const blocks = parseIncomingImages([
-      { data: `data:image/png;base64,${PNG_B64}`, mediaType: 'image/webp' },
+      { data: `data:image/png;base64,${OPAQUE_B64}`, mediaType: 'image/webp' },
     ]);
     expect(blocks[0]?.source.media_type).toBe('image/webp');
   });

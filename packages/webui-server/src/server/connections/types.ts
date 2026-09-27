@@ -20,6 +20,7 @@ export interface ConnectionHealthService {
   required: boolean;
   mode: string;
   detail: string;
+  versionMismatch?: boolean;
   ownerPid?: number | undefined;
   endpoint?: string | undefined;
   storage?: string | undefined;

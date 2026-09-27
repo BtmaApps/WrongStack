@@ -250,10 +250,19 @@ function border(left: string, mid: string, right: string, widths: number[]): str
  * the visible text, not the markup characters.
  */
 function stripInlineMarkers(text: string): string {
+  // Code spans bind tighter than emphasis (CommonMark): their content is
+  // literal, so `src/*.ts` keeps its `*`. Emphasis is stripped between them.
   return text
-    .replace(/\*\*(.+?)\*\*/g, '$1') // **bold**
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '$1') // *italic*
-    .replace(/`(.+?)`/g, '$1') // `code`
+    .split(/(`.+?`)/)
+    .map((part, i) => (i % 2 === 1 ? part.slice(1, -1) : stripEmphasis(part)))
+    .join('');
+}
+
+/** A `*` run followed (or, closing, preceded) by whitespace is literal: `2 * 3 * 4`. */
+function stripEmphasis(text: string): string {
+  return text
+    .replace(/\*\*(?!\s)(.+?)(?<!\s)\*\*/g, '$1') // **bold**
+    .replace(/(?<!\*)\*(?![\s*])(.+?)(?<![\s*])\*(?!\*)/g, '$1') // *italic*
     .replace(/~~(.+?)~~/g, '$1'); // ~~strike~~
 }
 
@@ -277,6 +286,8 @@ function renderRow(cells: string[], widths: number[], aligns: Align[]): string[]
   return out;
 }
 
+// Lines are clipped but NOT padded: padCell pads (and aligns) them to the
+// column; the stacked path relies on the clip for a grapheme wider than it.
 function wrapCell(text: string, width: number): string[] {
   if (strWidth(text) <= width) return [text];
   const out: string[] = [];
@@ -293,7 +304,7 @@ function wrapCell(text: string, width: number): string[] {
       continue;
     }
     if (cur) {
-      out.push(padVisual(cur, width));
+      out.push(clipVisual(cur.trimEnd(), width));
       cur = '';
       curWidth = 0;
     }
@@ -305,7 +316,7 @@ function wrapCell(text: string, width: number): string[] {
         // Collect characters until we reach `width` visual columns.
         const [collected, remaining] = splitDisplay(rest, width);
         if (collected === '') break; // single grapheme wider than the column
-        out.push(padVisual(collected, width));
+        out.push(clipVisual(collected, width));
         rest = remaining;
         restWidth = strWidth(rest);
       }
@@ -316,15 +327,13 @@ function wrapCell(text: string, width: number): string[] {
       curWidth = wordWidth;
     }
   }
-  if (cur) out.push(padVisual(cur, width));
+  if (cur) out.push(clipVisual(cur.trimEnd(), width));
   return out.length === 0 ? [''] : out;
 }
 
-/** Pad a string to a target visual width using spaces. */
-function padVisual(text: string, targetWidth: number): string {
-  const w = strWidth(text);
-  if (w >= targetWidth) return truncateDisplay(text, targetWidth, '');
-  return text + ' '.repeat(targetWidth - w);
+/** Truncate a string to a target visual width (no padding). */
+function clipVisual(text: string, targetWidth: number): string {
+  return strWidth(text) > targetWidth ? truncateDisplay(text, targetWidth, '') : text;
 }
 
 function padCell(text: string, width: number, align: Align): string {

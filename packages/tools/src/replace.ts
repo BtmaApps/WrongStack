@@ -8,7 +8,7 @@ import { ToolValidationError } from '@wrongstack/core/types';
 import {
   atomicWrite,
   buildChildEnv,
-  compileGlob,
+  compilePathGlob,
   detectNewlineStyle,
   expectDefined,
   normalizeToLf,
@@ -125,7 +125,7 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
       });
     }
     const re = compiled.regex;
-    const globRe = input.glob ? compileGlob(input.glob) : null;
+    const globRe = input.glob ? compilePathGlob(input.glob) : null;
     const dryRun = input.dry_run ?? true;
 
     const fileList = await resolveFiles(input.files, ctx, globRe);
@@ -553,7 +553,7 @@ async function globNative(
   extraGlob?: RegExp | null | undefined,
 ): Promise<string[]> {
   const results: string[] = [];
-  const globRe = compileGlob(pattern);
+  const globRe = compilePathGlob(pattern);
 
   const walk = async (dir: string): Promise<void> => {
     let entries: import('node:fs').Dirent[];

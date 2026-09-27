@@ -105,7 +105,11 @@ async function readWindows(): Promise<ClipboardImage | null> {
     'Add-Type -AssemblyName System.Drawing',
     '$img = [System.Windows.Forms.Clipboard]::GetImage()',
     'if ($img -eq $null) { Write-Output "NO_IMAGE"; exit 0 }',
-    `$img.Save('${tmp.replace(/\\/g, '\\\\')}', [System.Drawing.Imaging.ImageFormat]::Png)`,
+    // Single-quoted PowerShell literal: backslashes are literal, and the only
+    // escape is doubling a quote — any of ' ‘ ’ ‚ ‛, all of which PowerShell
+    // reads as a single quote. A profile folder like C:\Users\O'Brien (which
+    // %TEMP% inherits) otherwise ends the string and the script never parses.
+    `$img.Save('${tmp.replace(/['‘’‚‛]/g, (quote) => quote + quote)}', [System.Drawing.Imaging.ImageFormat]::Png)`,
     'Write-Output "OK"',
   ].join('; ');
   try {

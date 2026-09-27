@@ -117,7 +117,9 @@ function isCredentialHeader(name: string): boolean {
   ) {
     return true;
   }
-  return /(^|[-_])(api[-_]?key|key|token|secret|auth(entication|enticate)?|credential|password|session)([-_]|$)/.test(
+  // `ori[sz]ation`: compound names (`cf-aig-authorization`, Cloudflare AI
+  // Gateway's auth header; `x-authorization`) are not the exact names above.
+  return /(^|[-_])(api[-_]?key|key|token|secret|auth(entication|enticate|ori[sz]ation)?|credential|password|session)([-_]|$)/.test(
     lower,
   );
 }

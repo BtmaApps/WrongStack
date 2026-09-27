@@ -14,7 +14,7 @@ import {
   useDaemonPerfDefaults,
 } from '@wrongstack/core/utils';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { SqliteMemoryPort } from './memory-port.js';
 import { detectNinepStoreMount, ninepStoreRefusalMessage, readSelfMounts } from './mount-probe.js';
 import {
@@ -187,6 +187,7 @@ const stopMemoryWatchdog = startSharedHeapWatchdog({
 });
 
 const serverInfo: SageProjectServerInfo = {
+  runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
   protocolVersion: SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
   pid: process.pid,
   projectRoot,

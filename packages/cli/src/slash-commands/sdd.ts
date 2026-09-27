@@ -1,5 +1,5 @@
 import * as fsp from 'node:fs/promises';
-import type { SlashCommand, SpecRequirement } from '@wrongstack/core/types';
+import type { SlashCommand, SpecRequirement, TaskGraph } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 import {
   AISpecBuilder,
@@ -78,6 +78,21 @@ export {
 export { renderProgress };
 export function getTaskTracker(): TaskTracker | null {
   return _getTaskTracker();
+}
+
+/**
+ * Tracker graphs store a `depends_on` edge as `{ from: blocker, to: dependent }`
+ * (TaskTracker.addDependency), but analyzeCriticalPath reads `from` DEPENDS ON
+ * `to`. Unflipped, `/sdd critical` reported the last task as ready and the
+ * critical path backwards. Same view AutoExecutor analyzes.
+ */
+function dependentFirstView(graph: TaskGraph): TaskGraph {
+  return {
+    ...graph,
+    edges: graph.edges.map((edge) =>
+      edge.type === 'depends_on' ? { ...edge, from: edge.to, to: edge.from } : edge,
+    ),
+  };
 }
 
 /**
@@ -868,7 +883,7 @@ export function buildSddCommand(opts: SlashCommandContext): SlashCommand {
               return { message: 'Could not load task graph.' };
             }
 
-            const analysis = analyzeCriticalPath(graph);
+            const analysis = analyzeCriticalPath(dependentFirstView(graph));
             return { message: formatCriticalPathAnalysis(graph, analysis) };
           } catch {
             return { message: 'Could not analyze critical path.' };

@@ -653,6 +653,7 @@
       "envString"
     ],
     "packages/core/src/utils/glob-match.ts": [
+      "compileGlob",
       "matchCommandGlob"
     ],
     "packages/core/src/utils/project-identity.ts": [
@@ -742,6 +743,9 @@
     ],
     "packages/kanban/src/server/kanban-store.ts": [
       "ServerKanbanStore"
+    ],
+    "packages/kanban/src/server/project-server.ts": [
+      "stopInProcess"
     ],
     "packages/kanban/src/server/sqlite-storage.ts": [
       "KANBAN_SQLITE_FILE"
@@ -901,6 +905,7 @@
     "packages/plugins/src/evidence-analyzer/index.ts": [
       "analyzeEvidence",
       "EVIDENCE_ANALYZE_BUDGET_MS",
+      "EVIDENCE_MATCH_OVERLAP",
       "EVIDENCE_MATCH_WINDOW"
     ],
     "packages/plugins/src/gitignore-guard/index.ts": [
@@ -1425,7 +1430,6 @@
       "isWorktreeMonitorCloseKey"
     ],
     "packages/tui/src/connection-actions.ts": [
-      "RESTARTABLE_SERVICES",
       "restartAllConnectionServices"
     ],
     "packages/tui/src/context-slash.ts": [

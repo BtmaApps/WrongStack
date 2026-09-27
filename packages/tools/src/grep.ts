@@ -6,7 +6,7 @@ import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import {
   buildChildEnv,
-  compileGlob,
+  compilePathGlob,
   DEFAULT_WALK_IGNORE_DIRS,
   expectDefined,
 } from '@wrongstack/core/utils';
@@ -269,9 +269,14 @@ async function* runRgStream(
   if (input.case_insensitive) args.push('-i');
   if (mode === 'files_with_matches') args.push('-l');
   if (mode === 'count') args.push('-c');
+  // With context, rg interleaves context lines and `--` group separators with
+  // the matches. `--null` puts a NUL after the path so a match (`\0N:`) is
+  // told apart from context (`\0N-`) — `path:N:` alone is ambiguous when the
+  // path itself holds `-N-`. Only match lines count toward `count`/`limit`.
+  const withContext = mode === 'content' && Boolean(input.context_lines);
   if (mode === 'content') {
     args.push('-n');
-    if (input.context_lines) args.push('-C', String(input.context_lines));
+    if (input.context_lines) args.push('-C', String(input.context_lines), '--null');
   }
   for (const ignored of DEFAULT_IGNORE) {
     args.push('--glob', `!**/${ignored}/**`);
@@ -375,6 +380,43 @@ async function* runRgStream(
   child.on('close', onClose);
 
   let pendingBatch: string[] = [];
+  // Context after the last kept match stays until its `--` group separator.
+  let contextOpen = true;
+  const lineNumberSep = /\d+([:-])/y;
+  const acceptLine = (raw: string): void => {
+    if (!raw) return;
+    let line = raw;
+    let keep: boolean;
+    if (!withContext) {
+      totalLines++;
+      if (mode === 'count') totalCount += parseRgCountLine(line);
+      keep = matches.length < limit;
+    } else {
+      const nul = raw.indexOf('\0');
+      let isMatch = false;
+      if (nul !== -1) {
+        lineNumberSep.lastIndex = nul + 1;
+        isMatch = lineNumberSep.exec(raw)?.[1] === ':';
+        line = `${raw.slice(0, nul)}${isMatch ? ':' : '-'}${raw.slice(nul + 1)}`;
+      }
+      if (isMatch) {
+        totalLines++;
+        keep = totalLines <= limit;
+        if (!keep) contextOpen = false;
+      } else {
+        if (nul === -1 && totalLines >= limit) contextOpen = false;
+        keep = contextOpen;
+      }
+    }
+    if (!keep) return;
+    // rg prints `<base><sep>rest`, so the root prefix sits at the start
+    // of the line and can be stripped without parsing the line's shape
+    // (content / count / files-only all share it).
+    const shortened = relativize(line);
+    matches.push(shortened);
+    pendingBatch.push(shortened);
+    batchSinceFlush++;
+  };
   let errored = false;
   let closed = false;
   try {
@@ -412,20 +454,7 @@ async function* runRgStream(
       if (idx === -1) continue;
       const ready = buf.slice(0, idx);
       buf = buf.slice(idx + 1);
-      for (const line of ready.split('\n')) {
-        if (!line) continue;
-        totalLines++;
-        if (mode === 'count') totalCount += parseRgCountLine(line);
-        if (matches.length < limit) {
-          // rg prints `<base><sep>rest`, so the root prefix sits at the start
-          // of the line and can be stripped without parsing the line's shape
-          // (content / count / files-only all share it).
-          const shortened = relativize(line);
-          matches.push(shortened);
-          pendingBatch.push(shortened);
-          batchSinceFlush++;
-        }
-      }
+      for (const line of ready.split('\n')) acceptLine(line);
       if (batchSinceFlush >= FLUSH_AT) {
         yield {
           type: 'partial_output',
@@ -438,16 +467,7 @@ async function* runRgStream(
     }
 
     if (buf.trim()) {
-      for (const line of buf.split('\n')) {
-        if (!line) continue;
-        totalLines++;
-        if (mode === 'count') totalCount += parseRgCountLine(line);
-        if (matches.length < limit) {
-          const shortened = relativize(line);
-          matches.push(shortened);
-          pendingBatch.push(shortened);
-        }
-      }
+      for (const line of buf.split('\n')) acceptLine(line);
     }
     if (pendingBatch.length > 0) {
       yield {
@@ -531,7 +551,7 @@ async function runNative(
     });
   }
   const re = compiled.regex;
-  const globRe = input.glob ? compileGlob(input.glob) : null;
+  const globRe = input.glob ? compilePathGlob(input.glob) : null;
   // rg honors .gitignore natively; give the fallback the same pruning so a
   // project whose artifacts aren't in DEFAULT_IGNORE isn't scanned in full.
   const isGitIgnored = await loadGitignoreMatcher(base);
@@ -619,7 +639,9 @@ async function runNative(
         // Flush the decoder's tail into the final line before it is tested.
         leftover += decoder.end();
 
-        if (!stopped && !signal.aborted && leftover.length > 0) {
+        // files_with_matches already recorded this file on its first hit.
+        const fileListed = mode === 'files_with_matches' && fileHits > 0;
+        if (!stopped && !signal.aborted && !fileListed && leftover.length > 0) {
           lineNumber++;
           const ln = leftover.length > 4096 ? capSubject(leftover) : leftover;
           if (re.global || re.sticky) re.lastIndex = 0;

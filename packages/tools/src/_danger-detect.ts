@@ -71,6 +71,40 @@ const flagLetters = (args: readonly string[]): Set<string> => {
 
 const isPowerShellCmd = (cmd: string): boolean => /^(?:powershell|pwsh)(?:\.exe)?$/i.test(cmd);
 
+/**
+ * First positional after `kubectl delete` (the resource), skipping the values
+ * of value-taking flags — kubectl accepts its flags anywhere.
+ */
+function kubectlDeleteResource(after: readonly string[]): string | undefined {
+  const KUBECTL_VALUE_FLAGS = new Set([
+    '-n',
+    '--namespace',
+    '-f',
+    '--filename',
+    '-l',
+    '--selector',
+    '-o',
+    '--output',
+    '--context',
+    '--cluster',
+    '--user',
+    '--kubeconfig',
+    '--grace-period',
+    '--timeout',
+    '-k',
+    '--kustomize',
+  ]);
+  for (let i = 0; i < after.length; i += 1) {
+    const a = after[i] ?? '';
+    if (a.startsWith('-')) {
+      if (KUBECTL_VALUE_FLAGS.has(a) && !a.includes('=')) i += 1;
+      continue;
+    }
+    return a;
+  }
+  return undefined;
+}
+
 const RULES: readonly DangerRule[] = [
   // ----- rm / rmdir: recursive force delete (any path) -----
   // Note: BLOCKED_ARG_PATTERNS already hard-denies root/home/glob paths,
@@ -113,6 +147,19 @@ const RULES: readonly DangerRule[] = [
     },
     reason: 'recursive force-delete',
   },
+  // ----- rsync --delete*: recursive, prompt-less delete of the DESTINATION -----
+  // Every destination file the source lacks is removed — the same operation
+  // class as `rm -rf <dir>`, which is destructive for any path. A dry run
+  // (`-n` / `--dry-run`, also inside a short cluster) only lists and is exempt.
+  {
+    id: 'rsync-delete',
+    level: 'destructive',
+    test: (cmd, args) =>
+      /^rsync(?:\.exe)?$/i.test(cmd) &&
+      args.some((a) => /^--del(?:ete(?:-[a-z]+)?)?$/.test(a)) &&
+      !args.some((a) => a === '--dry-run' || /^-[a-zA-Z]*n[a-zA-Z]*$/.test(a)),
+    reason: 'rsync --delete (removes destination files missing from the source)',
+  },
   // ----- Windows PowerShell Remove-Item: -Recurse -Force -----
   {
     id: 'powershell-remove-item-recursive-force',
@@ -132,8 +179,10 @@ const RULES: readonly DangerRule[] = [
       // sibling PowerShell rules below. Case-sensitive matching here let
       // `Remove-Item -recurse -force` classify as safe and bypass the
       // confirm gate its canonical spelling triggers.
-      const hasRecurse = argMatches(args, /^-(?:r|recurse)(?::\$true)?$/i);
-      const hasForce = argMatches(args, /^-(?:f|force)(?::\$true)?$/i);
+      // PowerShell also binds any unambiguous parameter-name PREFIX: `-rec`,
+      // `-recu` … are -Recurse and `-fo`, `-forc` are -Force.
+      const hasRecurse = argMatches(args, /^-(?:r|re(?:c(?:u(?:r(?:s(?:e)?)?)?)?)?)(?::\$true)?$/i);
+      const hasForce = argMatches(args, /^-(?:f|fo(?:r(?:c(?:e)?)?)?)(?::\$true)?$/i);
       // Allow `-WhatIf` (dry-run, any casing) without confirmation. The
       // explicit `-WhatIf:$true` spelling is the same dry run; `-WhatIf:$false`
       // re-enables execution and must NOT be exempt.
@@ -270,6 +319,30 @@ const RULES: readonly DangerRule[] = [
     test: (cmd) => cmd === 'wipefs' || cmd === 'wipefs.exe',
     reason: 'wipefs (signature wipe — destroys filesystem headers)',
   },
+  // Whole-disk destroyers the YOLO gate's disk-wipe kind also covers:
+  // `sgdisk` only with a zap/clear option (`-Z` --zap-all, `-z` --zap, `-o`
+  // --clear; `-p`/`-v`/`-O` are read-only prints), and `blkdiscard`, which
+  // TRIMs every block of the device.
+  {
+    id: 'sgdisk-zap',
+    level: 'destructive',
+    test: (cmd, args) =>
+      /^sgdisk(?:\.exe)?$/i.test(cmd) &&
+      args.some(
+        (a) =>
+          a === '--zap-all' ||
+          a === '--zap' ||
+          a === '--clear' ||
+          /^-[a-zA-Z]*[zZo][a-zA-Z]*$/.test(a),
+      ),
+    reason: 'sgdisk --zap-all / --clear (destroys the partition tables)',
+  },
+  {
+    id: 'blkdiscard',
+    level: 'destructive',
+    test: (cmd) => /^blkdiscard(?:\.exe)?$/i.test(cmd),
+    reason: 'blkdiscard (discards every block of the device)',
+  },
   {
     id: 'sdelete',
     level: 'destructive',
@@ -288,6 +361,32 @@ const RULES: readonly DangerRule[] = [
   // exempt, like the PowerShell -WhatIf carve-out above (combined short
   // clusters like `-nf` count as dry-run too — git push's short flags are
   // only -q -v -f -n -u -o, so an 'n' in a cluster means dry-run).
+  {
+    id: 'git-push-delete',
+    level: 'destructive',
+    // `--mirror` force-updates every remote ref and deletes the ones missing
+    // locally (git-push(1)); `--delete` / `-d`, `--prune` and a `:ref`
+    // deletion refspec remove remote branches. None carries a force flag, so
+    // the force rule below never saw them.
+    test: (cmd, args) => {
+      if (cmd !== 'git') return false;
+      const pushIdx = args.indexOf('push');
+      if (pushIdx < 0) return false;
+      const pushArgs = args.slice(pushIdx + 1);
+      if (pushArgs.some((a) => a === '--dry-run' || a === '-n' || /^-[a-z]*n[a-z]*$/i.test(a))) {
+        return false;
+      }
+      return pushArgs.some(
+        (a) =>
+          a === '--mirror' ||
+          a === '--delete' ||
+          a === '--prune' ||
+          /^-[a-z]*d[a-z]*$/i.test(a) ||
+          (a.startsWith(':') && a.length > 1),
+      );
+    },
+    reason: 'git push --mirror / --delete / :ref (overwrites or deletes remote branches)',
+  },
   {
     id: 'git-push-force',
     level: 'destructive',
@@ -355,6 +454,61 @@ const RULES: readonly DangerRule[] = [
     },
     reason: 'git clean -f (deletes untracked files)',
   },
+  // ----- git: other irreversible discards of local work (destructive) -----
+  // The same set the YOLO gate treats like `reset --hard` / `clean -f`, keyed
+  // on the real subcommand (git's global options skipped): worktree discard
+  // (`checkout -- <paths>` / `checkout .` / `checkout -f`, `switch -f|
+  // --discard-changes`, `restore <paths>` unless it only unstages), `stash
+  // drop|clear`, and recovery-data destruction (`reflog expire|delete`,
+  // `gc --prune=now|all`, `prune`) after which not even the reflog can bring
+  // discarded commits back. Branch switches, `restore --staged`, `stash`
+  // push/pop/list and plain `gc` stay safe.
+  {
+    id: 'git-discard-local-work',
+    level: 'destructive',
+    test: (cmd, args) => {
+      if (cmd !== 'git') return false;
+      let i = 0;
+      while (i < args.length && args[i]!.startsWith('-')) {
+        const a = args[i]!;
+        i += ['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env'].includes(a)
+          ? 2
+          : 1;
+      }
+      const sub = args[i];
+      const rest = args.slice(i + 1);
+      const forceFlag = (a: string) => a === '--force' || /^-[a-zA-Z]*f[a-zA-Z]*$/.test(a);
+      const pathspec = (a: string) => !a.startsWith('-') || a.startsWith('--pathspec-from-file');
+      switch (sub) {
+        case 'checkout': {
+          const dashDash = rest.indexOf('--');
+          if (dashDash >= 0 && rest.slice(dashDash + 1).some(pathspec)) return true;
+          return rest.some(forceFlag) || rest.includes('.') || rest.includes(':/');
+        }
+        case 'switch':
+          return rest.includes('--discard-changes') || rest.some(forceFlag);
+        case 'restore': {
+          const staged = rest.some((a) => a === '--staged' || /^-[a-zA-Z]*S[a-zA-Z]*$/.test(a));
+          const worktree = rest.some((a) => a === '--worktree' || /^-[a-zA-Z]*W[a-zA-Z]*$/.test(a));
+          if (staged && !worktree) return false;
+          return rest.some(pathspec);
+        }
+        case 'stash': {
+          const verb = rest.find((a) => !a.startsWith('-'));
+          return verb === 'drop' || verb === 'clear';
+        }
+        case 'reflog':
+          return rest.includes('expire') || rest.includes('delete');
+        case 'gc':
+          return rest.some((a) => a === '--prune=now' || a === '--prune=all');
+        case 'prune':
+          return true;
+        default:
+          return false;
+      }
+    },
+    reason: 'git checkout/restore/stash/reflog/gc discarding local work (not recoverable)',
+  },
   // ----- package publish (destructive — public, irreversible) -----
   {
     id: 'npm-publish',
@@ -365,40 +519,68 @@ const RULES: readonly DangerRule[] = [
       // For cargo: subcommand is "publish" OR "yank" (both touch the
       // public registry; yank is reversible, publish is not, but yank
       // is rare enough we treat it the same).
-      // Find the first positional subcommand (skip option flags — and the VALUE
-      // of a flag that takes one: npm accepts its global options before the
-      // subcommand, so `npm --access public publish` put `public` in the
-      // subcommand slot and the same publish classified as safe
-      // (probe-verified 2026-09-22).
-      const VALUE_FLAGS = new Set([
-        '--access',
-        '--tag',
-        '--otp',
-        '--registry',
-        '--workspace',
-        '-w',
-        '--userconfig',
-        '--prefix',
-        '--cache',
-        '--loglevel',
-        '--index',
-        '--token',
-      ]);
-      let firstPositional: string | undefined;
-      for (let i = 0; i < args.length; i += 1) {
-        const a = args[i] ?? '';
+      // The subcommand may sit after global options, and a bare option may
+      // take the next argv entry as its VALUE (`npm --access public publish`,
+      // `pnpm --filter app publish`, `yarn --cwd dir publish`). A hand-kept
+      // table of npm value flags missed pnpm/yarn/bun ones, so those
+      // publishes were classified safe. Consider every positional up to and
+      // including the first that does NOT directly follow a bare option —
+      // that one is certainly the subcommand (same rule as exec's gate).
+      const candidates: string[] = [];
+      let previousWasBareOption = false;
+      for (const a of args) {
+        if (a === '--') break;
         if (a.startsWith('-')) {
-          if (VALUE_FLAGS.has(a) && !a.includes('=')) i += 1;
+          previousWasBareOption = !a.includes('=');
           continue;
         }
-        firstPositional = a;
-        break;
+        candidates.push(a);
+        if (!previousWasBareOption) break;
+        previousWasBareOption = false;
       }
-      if (!firstPositional) return false;
-      if (cmd === 'cargo') {
-        return firstPositional === 'publish' || firstPositional === 'yank';
+      const verbs = cmd === 'cargo' ? ['publish', 'yank'] : ['publish'];
+      return candidates.some((c) => verbs.includes(c));
+    },
+    reason: 'publishing to a public package registry (hard to reverse)',
+  },
+  // ----- other ecosystems' public registry publishes (destructive) -----
+  {
+    id: 'registry-publish',
+    level: 'destructive',
+    // The one-command publishes of the Python / Ruby / .NET / JVM / Dart
+    // tooling the exec allowlist ships. Only the npm family and cargo were
+    // recognised, so `twine upload` or `poetry publish` drew no banner.
+    test: (cmd, args) => {
+      const name = cmd
+        .toLowerCase()
+        .replace(/^.*[\\/]/, '')
+        .replace(/\.(?:bat|cmd|exe)$/, '');
+      const pos = args.filter((a) => !a.startsWith('-')).map((a) => a.toLowerCase());
+      switch (name) {
+        case 'twine':
+          return pos[0] === 'upload';
+        case 'poetry':
+        case 'uv':
+        case 'pdm':
+        case 'hatch':
+        case 'flit':
+          return pos[0] === 'publish';
+        case 'gem':
+        case 'nuget':
+          return pos[0] === 'push';
+        case 'dotnet':
+          return pos[0] === 'nuget' && pos[1] === 'push';
+        case 'mvn':
+          return pos.includes('deploy');
+        case 'gradle':
+        case 'gradlew':
+          return pos.some((a) => a.startsWith('publish') && a !== 'publishtomavenlocal');
+        case 'dart':
+        case 'flutter':
+          return pos[0] === 'pub' && pos[1] === 'publish';
+        default:
+          return false;
       }
-      return firstPositional === 'publish';
     },
     reason: 'publishing to a public package registry (hard to reverse)',
   },
@@ -422,36 +604,9 @@ const RULES: readonly DangerRule[] = [
       // A flag's VALUE is not a positional: without skipping it, `-n x` put `x`
       // in the resource slot. Only the value-taking flags are skipped, so a
       // boolean flag (`--force`) does not swallow the resource that follows it.
-      const KUBECTL_VALUE_FLAGS = new Set([
-        '-n',
-        '--namespace',
-        '-f',
-        '--filename',
-        '-l',
-        '--selector',
-        '-o',
-        '--output',
-        '--context',
-        '--cluster',
-        '--user',
-        '--kubeconfig',
-        '--grace-period',
-        '--timeout',
-        '-k',
-        '--kustomize',
-      ]);
-      const after = args.slice(delIdx + 1);
-      let resource: string | undefined;
-      for (let i = 0; i < after.length; i += 1) {
-        const a = after[i] ?? '';
-        if (a.startsWith('-')) {
-          if (KUBECTL_VALUE_FLAGS.has(a) && !a.includes('=')) i += 1;
-          continue;
-        }
-        resource = a;
-        break;
-      }
-      return resource === 'namespace' || resource === 'namespaces' || resource === 'ns';
+      const resource = kubectlDeleteResource(args.slice(delIdx + 1));
+      // The TYPE/NAME form (`ns/prod`) names the same resource.
+      return /^(?:namespaces?|ns)(?:\/|$)/i.test(resource ?? '');
     },
     reason: 'kubectl delete namespace (deletes all resources in the namespace)',
   },
@@ -460,6 +615,179 @@ const RULES: readonly DangerRule[] = [
     level: 'destructive',
     test: (cmd, args) => cmd === 'kubectl' && args.includes('drain'),
     reason: 'kubectl drain (evicts pods, marks node unschedulable)',
+  },
+  // ----- remote infrastructure / storage teardown (destructive) -----
+  // As irreversible as a namespace delete and the same set the YOLO gate
+  // treats as hard to retract: terraform/tofu destroy (the subcommand is the
+  // first non-flag, so `-chdir=` works and `plan -destroy` stays a plan),
+  // pulumi destroy, cluster-wide or persistent-volume kubectl deletes, and
+  // recursive cloud-storage deletes. Single-object deletes stay safe.
+  {
+    id: 'infra-teardown',
+    level: 'destructive',
+    test: (cmd, args) => {
+      if (cmd === 'kubectl') {
+        const delIdx = args.indexOf('delete');
+        if (delIdx < 0) return false;
+        if (args.some((a) => a === '--all' || a === '-A' || a === '--all-namespaces')) return true;
+        const resource = kubectlDeleteResource(args.slice(delIdx + 1)) ?? '';
+        return /^(?:pvc|pv|persistentvolumeclaims?|persistentvolumes?)(?:\/|$)/i.test(resource);
+      }
+      if (cmd === 'terraform' || cmd === 'tofu') {
+        const sub = args.find((a) => !a.startsWith('-'));
+        return sub === 'destroy' || (sub === 'apply' && args.includes('-destroy'));
+      }
+      if (cmd === 'pulumi') return args.includes('destroy');
+      if (cmd === 'aws' && args.includes('s3')) {
+        return (
+          (args.includes('rm') && args.includes('--recursive')) ||
+          (args.includes('rb') && args.includes('--force')) ||
+          (args.includes('sync') && args.includes('--delete'))
+        );
+      }
+      const recursive = args.some((a) => a === '-r' || a === '-R' || a === '--recursive');
+      if (cmd === 'gsutil') return args.includes('rm') && recursive;
+      if (cmd === 'gcloud') return args.includes('storage') && args.includes('rm') && recursive;
+      if (cmd === 'rclone') return args.includes('purge');
+      return false;
+    },
+    reason: 'remote infrastructure / storage teardown (terraform destroy, recursive bucket delete)',
+  },
+  // ----- container volume deletion (destructive) -----
+  // Volumes hold the persistent data of local databases and services:
+  // `volume rm|remove|prune`, `system prune --volumes`, `compose down -v`.
+  // Keyed on the leading subcommand positionals (docker/compose global options
+  // and their values skipped), so `docker run --rm … rm x`, plain
+  // `compose down` and `system prune` stay safe.
+  {
+    id: 'container-volume-destroy',
+    level: 'destructive',
+    test: (cmd, args) => {
+      const m = /^(?:docker|podman|nerdctl)(-compose)?(?:\.exe)?$/i.exec(cmd);
+      if (!m) return false;
+      const valueFlags = new Set([
+        '-H',
+        '--host',
+        '-c',
+        '--context',
+        '--config',
+        '-l',
+        '--log-level',
+        '--tlscacert',
+        '--tlscert',
+        '--tlskey',
+        '-f',
+        '--file',
+        '-p',
+        '--project-name',
+        '--profile',
+        '--env-file',
+        '--project-directory',
+        '--ansi',
+        '--progress',
+        '--parallel',
+      ]);
+      const words: string[] = m[1] ? ['compose'] : [];
+      for (let i = 0; i < args.length && words.length < 2; i += 1) {
+        const a = args[i]!;
+        if (a.startsWith('-')) {
+          if (valueFlags.has(a)) i += 1;
+          continue;
+        }
+        words.push(a);
+      }
+      const [group, action] = words;
+      if (group === 'volume') return action === 'rm' || action === 'remove' || action === 'prune';
+      if (group === 'system') return action === 'prune' && args.includes('--volumes');
+      return (
+        group === 'compose' &&
+        action === 'down' &&
+        args.some((a) => a === '--volumes' || /^-[a-zA-Z]*v[a-zA-Z]*$/.test(a))
+      );
+    },
+    reason: 'container volume deletion (volume rm/prune, compose down -v — persistent data)',
+  },
+  // ----- database drop / wipe (destructive) -----
+  // Client CLIs (dropdb, mysqladmin drop, redis FLUSHALL/FLUSHDB, mongosh
+  // dropDatabase(), SQL DROP DATABASE|SCHEMA|TABLE / TRUNCATE passed to a SQL
+  // client) and framework wipes (prisma migrate reset / db push --force-reset,
+  // rails|rake db:drop|reset|purge, artisan migrate:fresh|reset|refresh /
+  // db:wipe, manage.py flush). Up to two runner prefixes are peeled (`npx`,
+  // `bundle exec`, `php`, `python`, `uv run`…) because that is how exec
+  // receives the framework commands.
+  {
+    id: 'database-destroy',
+    level: 'destructive',
+    test: (cmd, args) => {
+      const base = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/^.*[\\/]/, '')
+          .replace(/\.(?:exe|cmd|bat)$/, '');
+      const runners = new Set([
+        'npx',
+        'pnpx',
+        'bunx',
+        'pnpm',
+        'yarn',
+        'bun',
+        'bundle',
+        'php',
+        'python',
+        'python3',
+        'py',
+        'uv',
+        'poetry',
+        'pipenv',
+      ]);
+      let tool = base(cmd);
+      let rest = args.map((a) => a.toLowerCase());
+      for (let hop = 0; hop < 2 && runners.has(tool); hop += 1) {
+        const idx = rest.findIndex(
+          (a) => !a.startsWith('-') && !['exec', 'run', 'dlx', 'x'].includes(a),
+        );
+        if (idx < 0) return false;
+        tool = base(rest[idx]!);
+        rest = rest.slice(idx + 1);
+      }
+      if (tool === 'dropdb') return true;
+      if (tool === 'mysqladmin') return rest.includes('drop');
+      if (['redis-cli', 'valkey-cli', 'keydb-cli'].includes(tool)) {
+        return rest.some((a) => a === 'flushall' || a === 'flushdb');
+      }
+      if (tool === 'mongosh' || tool === 'mongo') {
+        return rest.some((a) => a.includes('dropdatabase('));
+      }
+      if (
+        [
+          'psql',
+          'mysql',
+          'mariadb',
+          'sqlite3',
+          'sqlcmd',
+          'clickhouse-client',
+          'cockroach',
+          'duckdb',
+        ].includes(tool)
+      ) {
+        return /\b(?:drop\s+(?:database|schema|table)|truncate)\b/.test(rest.join(' '));
+      }
+      if (tool === 'prisma') {
+        return (
+          (rest.includes('migrate') && rest.includes('reset')) ||
+          (rest.includes('push') && rest.includes('--force-reset'))
+        );
+      }
+      if (tool === 'rails' || tool === 'rake') {
+        return rest.some((a) => /^db:(?:drop|reset|purge|migrate:reset)(?::all)?$/.test(a));
+      }
+      if (tool === 'artisan') {
+        return rest.some((a) => /^(?:migrate:(?:fresh|reset|refresh)|db:wipe)$/.test(a));
+      }
+      if (tool === 'manage.py') return rest.some((a) => a === 'flush' || a === 'reset_db');
+      return false;
+    },
+    reason: 'database drop / wipe (dropdb, DROP DATABASE, FLUSHALL, migrate reset)',
   },
   // ----- inline code evaluation (caution — high false-positive) -----
   // Common in scripts: `python -c "..."`, `node -e "..."`, `bash -c "..."`.
@@ -510,6 +838,29 @@ const RULES: readonly DangerRule[] = [
         [cmd, ...args].join(' '),
       ),
     reason: 'network fetch piped to a shell (download-and-run pattern)',
+  },
+  // ----- download-and-run, the other canonical forms (destructive) -----
+  // Mirrors core yolo-risk's download-and-run patterns, which `pipe-to-shell`
+  // alone missed: the PowerShell cradle with `iex` FIRST
+  // (`iex (New-Object Net.WebClient).DownloadString(…)`), a downloaded script
+  // piped into an interpreter reading it from stdin (`curl … | python3 -`, but
+  // not `| python3 -m json.tool`), and `deno run <url>`.
+  {
+    id: 'download-and-run',
+    level: 'destructive',
+    test: (cmd, args) => {
+      const line = [cmd, ...args].join(' ');
+      return (
+        /\b(?:iex|Invoke-Expression)\b[^;&\n]{0,300}\b(?:DownloadString|DownloadFile|Net\.WebClient|Invoke-WebRequest|Invoke-RestMethod|iwr|irm)\b/i.test(
+          line,
+        ) ||
+        /\b(?:curl|wget|fetch|httpie|http|irm|iwr|Invoke-WebRequest|Invoke-RestMethod)\b[\s\S]{0,300}\|\s*(?:sudo\s+)?(?:python[0-9.]*|node|perl|ruby|php)(?:\.exe)?(?=\s*(?:$|[;&|)]|-(?:\s|$)))/i.test(
+          line,
+        ) ||
+        /\bdeno(?:\.exe)?\s+run\b[^;&|\n]{0,300}\bhttps?:\/\//i.test(line)
+      );
+    },
+    reason: 'network-fetched code executed (download-and-run pattern)',
   },
   // ----- privilege escalation (caution) -----
   {
@@ -891,17 +1242,32 @@ const INLINE_PAYLOAD_HOSTS = new Set([
   'ruby',
 ]);
 
-/** Split a command line into argv, keeping a quoted run as one token. */
-function splitPayload(payload: string): string[] {
-  return (
-    payload
-      .match(/"[^"]*"|'[^']*'|\S+/g)
-      ?.map((token) => token.replace(/^(['"])([\s\S]*)\1$/, '$2')) ?? []
-  );
+/** Shell/PowerShell operators that end one command in a line and start the next. */
+const PAYLOAD_SEPARATORS = new Set([';', '&&', '||', '|', '&', '\n']);
+
+/**
+ * Split a command line into the argv of each command it chains, keeping a
+ * quoted run as one token. `cd /tmp && rm -rf x` is two commands; read as one,
+ * `rm` was only an argument of `cd` and no cmd-keyed rule saw it.
+ */
+function splitPayload(payload: string): string[][] {
+  const commands: string[][] = [];
+  let current: string[] = [];
+  for (const token of payload.match(/"[^"]*"|'[^']*'|&&|\|\||[;|&\n]|[^\s;|&]+/g) ?? []) {
+    if (PAYLOAD_SEPARATORS.has(token)) {
+      if (current.length > 0) commands.push(current);
+      current = [];
+      continue;
+    }
+    current.push(token.replace(/^(['"])([\s\S]*)\1$/, '$2'));
+  }
+  if (current.length > 0) commands.push(current);
+  return commands;
 }
 
 /**
- * The (cmd, args) pair hiding inside an inline interpreter payload.
+ * The (cmd, args) pairs hiding inside an inline interpreter payload, one per
+ * chained command.
  *
  * A real invocation ships the payload as ONE argv string —
  * `powershell -Command "Remove-Item -Recurse -Force C:\Users\x"` arrives as
@@ -916,28 +1282,25 @@ function splitPayload(payload: string): string[] {
  * mechanism the launcher unwrapping already uses — so a rule keyed on the
  * interpreter itself (`inline-eval`, `pipe-to-shell`) keeps firing too.
  */
-function inlinePayloadPair(
+function inlinePayloadPairs(
   cmd: string,
   args: readonly string[],
-): { cmd: string; args: readonly string[] } | undefined {
+): Array<{ cmd: string; args: readonly string[] }> {
   const base = cmd
     .toLowerCase()
     .replace(/^.*[\\/]/, '')
     .replace(/\.(?:exe|cmd|bat|com)$/, '');
-  if (!INLINE_PAYLOAD_HOSTS.has(base)) return undefined;
+  if (!INLINE_PAYLOAD_HOSTS.has(base)) return [];
   for (let i = 0; i < args.length; i += 1) {
     const flag = args[i]?.toLowerCase();
     if (flag === undefined || !INLINE_PAYLOAD_FLAGS.has(flag)) continue;
     const payload = args[i + 1];
     // Only a payload that actually looks like a command LINE is worth
     // re-reading: a single bare token is already visible to every rule.
-    if (payload === undefined || !/\s/.test(payload.trim())) return undefined;
-    const tokens = splitPayload(payload);
-    const head = tokens[0];
-    if (head === undefined) return undefined;
-    return { cmd: head, args: tokens.slice(1) };
+    if (payload === undefined || !/\s/.test(payload.trim())) return [];
+    return splitPayload(payload).map(([head = '', ...rest]) => ({ cmd: head, args: rest }));
   }
-  return undefined;
+  return [];
 }
 
 export function detectDanger(
@@ -961,9 +1324,14 @@ export function detectDanger(
   // …and against the command LINE an interpreter was handed inline. A real
   // `powershell -Command "Remove-Item -Recurse -Force x"` arrives with the whole
   // payload as ONE argv string, which no per-arg anchored flag test can see.
+  // Each chained command is unwrapped too: `sudo rm -rf x` inside the line
+  // hides `rm` behind a launcher exactly as it does at the top level.
   for (const pair of [...pairs]) {
-    const inline = inlinePayloadPair(pair.cmd, pair.args);
-    if (inline) pairs.push(inline);
+    for (const inline of inlinePayloadPairs(pair.cmd, pair.args)) {
+      pairs.push(inline);
+      const inner = unwrapArgvLaunchers(inline.cmd, inline.args);
+      if (inner.cmd !== inline.cmd) pairs.push(inner);
+    }
   }
 
   for (const rule of RULES) {

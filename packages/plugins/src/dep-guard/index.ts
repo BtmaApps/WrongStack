@@ -203,12 +203,24 @@ const ARGS = String.raw`([^;&|\n\r)}]+)`;
 
 const START = `${CMD_BOUNDARY}${LAUNCHER_PREFIX}${MANAGER_PREFIX}`;
 
+/**
+ * Global options between a JS package manager and its verb, each with an
+ * optional value: `pnpm --filter app add x`, `npm -w pkg i x`, `pnpm -C dir
+ * add x`, `yarn --cwd dir add x`. Requiring the verb right after the manager
+ * name made every monorepo spelling invisible to dep-guard. The value may not
+ * start with `-` nor be a verb, so option/value/verb never compete (no
+ * backtracking fork).
+ */
+const PM_WORD = String.raw`[^\s;&|(){}]`;
+const PM_OPTIONS = String.raw`(?:\s+-${PM_WORD}*(?:\s+(?!-)(?!(?:install|i|add|global|workspace)\b)${PM_WORD}+)?)*`;
+
 // `global` covers `yarn global add` / `npm install global`-style invocations,
 // which the previous pattern could not reach because it required the
-// subcommand to sit immediately after the manager name.
+// subcommand to sit immediately after the manager name. `workspace <name>`
+// is yarn's per-package form (`yarn workspace app add x`).
 const INSTALL_RE = new RegExp(
   [
-    String.raw`${START}(npm|pnpm|yarn|bun)\s+(?:global\s+)?(?:install|i|add)\s+${ARGS}`,
+    String.raw`${START}(npm|pnpm|yarn|bun)${PM_OPTIONS}\s+(?:global\s+|workspace\s+${PM_WORD}+\s+)?(?:install|i|add)\s+${ARGS}`,
     String.raw`${START}(pip3?|uv)\s+(?:pip\s+)?install\s+${ARGS}`,
     String.raw`${START}(uv)\s+add\s+${ARGS}`,
     String.raw`${START}(cargo)\s+add\s+${ARGS}`,

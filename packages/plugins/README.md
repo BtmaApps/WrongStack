@@ -149,7 +149,7 @@ between two refs.
 
 **Tools**: `secret_scanner_status`, `secret_scanner_test`
 **Hooks**:
-- `PreToolUse` with matcher `bash|write|edit` (configurable via `matcher`)
+- `PreToolUse` with matcher `bash|pwsh|exec|write|edit|replace|patch` (configurable via `matcher`)
 - `PostToolUse` with matcher `*` (configurable via `postToolUseMatcher`)
 
 **PreToolUse** (prevention — before the tool runs):
@@ -177,7 +177,7 @@ Three modes (`config.extensions['secret-scanner'].mode`) for [`secret-scanner`](
   "extensions": {
     "secret-scanner": {
       "mode": "block",
-      "matcher": "bash|write|edit",
+      "matcher": "bash|pwsh|exec|write|edit|replace|patch",
       "postToolUseMatcher": "*"
     }
   }
@@ -984,7 +984,7 @@ There are two surfaces for plugin configuration:
   ],
   "extensions": {
     "git-autocommit": { "conventionalCommits": true },
-    "secret-scanner": { "mode": "block", "matcher": "bash|write|edit" }
+    "secret-scanner": { "mode": "block", "matcher": "bash|pwsh|exec|write|edit|replace|patch" }
   }
 }
 ```

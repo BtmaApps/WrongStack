@@ -49,11 +49,26 @@ function isValidSemver(version: string): boolean {
 }
 
 /**
+ * Drop what is not part of a version's precedence: a leading `v` (Go's proxy
+ * answers `v1.2.3` while the Go adapter stores `1.2.3`) and SemVer build
+ * metadata (`+build.5`). Left in, `v1` parsed as NaN — every comparison with
+ * NaN is false, so the MAJOR component was silently skipped.
+ */
+function normalizeVersion(version: string): string {
+  return version
+    .trim()
+    .replace(/^v(?=\d)/i, '')
+    .replace(/\+.*$/, '');
+}
+
+/**
  * Compare two semver-like version strings.
  * Returns -1 if a < b, 0 if a == b, 1 if a > b.
  * Handles prerelease tags per semver: `1.0.0-alpha < 1.0.0`.
  */
 export function compareVersions(a: string, b: string): number {
+  a = normalizeVersion(a);
+  b = normalizeVersion(b);
   // Split off prerelease segment(s) from each version
   // Match: numeric segment | alphanumeric prerelease segment
   const aMatch = a.match(/^([^-]+)(?:-(.+))?$/);
@@ -78,24 +93,25 @@ export function compareVersions(a: string, b: string): number {
   if (aPre === undefined && bPre === undefined) return 0;
   if (aPre === undefined) return 1; // no prerelease > has prerelease
   if (bPre === undefined) return -1; // has prerelease < no prerelease
-  // Both have prerelease — compare dot-separated identifiers
-  // Numeric identifiers compare numerically; non-numeric compare lexically.
+  // Both have prerelease — compare dot-separated identifiers (SemVer §11.4):
+  // digits-only identifiers compare numerically and rank below alphanumeric
+  // ones, which compare in ASCII order; when every shared identifier is equal,
+  // the longer list ranks higher. `Number()` is not a digits-only test —
+  // Number('') is 0 (a missing identifier), Number('0x1') is 1, Number('1e1')
+  // is 10 — which is how `alpha.0` compared below `alpha` both ways.
   const aPreParts = aPre.split('.');
   const bPreParts = bPre.split('.');
   for (let i = 0; i < Math.max(aPreParts.length, bPreParts.length); i++) {
-    const aId = aPreParts[i] ?? '';
-    const bId = bPreParts[i] ?? '';
+    const aId = aPreParts[i];
+    const bId = bPreParts[i];
+    if (aId === undefined || bId === undefined) return aId === undefined ? -1 : 1;
     if (aId === bId) continue;
-    const aNum = Number(aId);
-    const bNum = Number(bId);
-    if (
-      !Number.isNaN(aNum) &&
-      !Number.isNaN(bNum) &&
-      Number.isFinite(aNum) &&
-      Number.isFinite(bNum)
-    ) {
-      return aNum > bNum ? 1 : -1;
+    const aNumeric = /^\d+$/.test(aId);
+    const bNumeric = /^\d+$/.test(bId);
+    if (aNumeric && bNumeric && Number(aId) !== Number(bId)) {
+      return Number(aId) > Number(bId) ? 1 : -1;
     }
+    if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
     return aId > bId ? 1 : -1;
   }
   return 0;
@@ -128,6 +144,8 @@ function isSimpleConstraint(constraint: string): boolean {
  */
 function isBreakingUpgrade(locked: string, latestStable: string, constraint?: string): boolean {
   const constraintNorm = constraint?.trim() ?? '';
+  locked = normalizeVersion(locked);
+  latestStable = normalizeVersion(latestStable);
 
   // Get major versions
   const lockedMajor = locked.split('.')[0];

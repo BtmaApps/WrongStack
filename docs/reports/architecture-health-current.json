@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-26T23:03:06.060Z",
+  "generatedAt": "2026-09-27T17:28:07.775Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4240,
-    "testFiles": 3789,
-    "sourceLines": 1001025,
+    "sourceFiles": 4241,
+    "testFiles": 3790,
+    "sourceLines": 1003270,
     "workspaceEdges": 130,
-    "moduleEdges": 13825,
+    "moduleEdges": 13833,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 964
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -485,8 +485,8 @@
     {
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
-      "sourceFiles": 7,
-      "testFiles": 6,
+      "sourceFiles": 8,
+      "testFiles": 7,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -497,7 +497,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 6
+          "testFiles": 7
         }
       ]
     },
@@ -12480,6 +12480,12 @@
         ]
       },
       {
+        "file": "packages/primitives/tests/runtime-version.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/primitives/tests/session-id.test.ts",
         "projects": [
           "root-node"
@@ -23907,6 +23913,11 @@
       "syntax": "export"
     },
     {
+      "from": "packages/primitives/src/runtime-version.ts",
+      "specifier": "../package.json",
+      "syntax": "import"
+    },
+    {
       "from": "packages/simpleui/src/main.tsx",
       "specifier": "./styles.css",
       "syntax": "import"
@@ -24077,7 +24088,7 @@
     },
     {
       "file": "packages/cli/src/slash-commands/sdd.ts",
-      "lines": 886,
+      "lines": 901,
       "relativeImports": 13
     },
     {
@@ -24107,7 +24118,7 @@
     },
     {
       "file": "packages/core/src/chronicle/project-server.ts",
-      "lines": 837,
+      "lines": 838,
       "relativeImports": 19
     },
     {
@@ -24182,7 +24193,7 @@
     },
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1263,
+      "lines": 1681,
       "relativeImports": 2
     },
     {
@@ -24217,7 +24228,7 @@
     },
     {
       "file": "packages/kanban/src/server/project-server.ts",
-      "lines": 883,
+      "lines": 895,
       "relativeImports": 10
     },
     {
@@ -24227,7 +24238,7 @@
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 956,
+      "lines": 973,
       "relativeImports": 15
     },
     {
@@ -24252,7 +24263,7 @@
     },
     {
       "file": "packages/plugins/src/secret-scanner/index.ts",
-      "lines": 844,
+      "lines": 848,
       "relativeImports": 2
     },
     {
@@ -24297,7 +24308,7 @@
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 966,
+      "lines": 967,
       "relativeImports": 5
     },
     {
@@ -24312,7 +24323,7 @@
     },
     {
       "file": "packages/sage/src/store-helpers.ts",
-      "lines": 825,
+      "lines": 826,
       "relativeImports": 2
     },
     {
@@ -24329,6 +24340,11 @@
       "file": "packages/simpleui/src/lib/message-handler.ts",
       "lines": 833,
       "relativeImports": 19
+    },
+    {
+      "file": "packages/tools/src/bash-kill-guard.ts",
+      "lines": 810,
+      "relativeImports": 2
     },
     {
       "file": "packages/tools/src/bash.ts",
@@ -24357,7 +24373,7 @@
     },
     {
       "file": "packages/tools/src/json.ts",
-      "lines": 888,
+      "lines": 1024,
       "relativeImports": 2
     },
     {
@@ -24372,7 +24388,7 @@
     },
     {
       "file": "packages/tools/src/_danger-detect.ts",
-      "lines": 999,
+      "lines": 1367,
       "relativeImports": 0
     },
     {
@@ -24482,7 +24498,7 @@
     },
     {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 1161,
+      "lines": 1176,
       "relativeImports": 4
     },
     {
@@ -24504,12 +24520,17 @@
   "hotspots": [
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1263,
+      "lines": 1681,
       "relativeImports": 2
     },
     {
+      "file": "packages/tools/src/_danger-detect.ts",
+      "lines": 1367,
+      "relativeImports": 0
+    },
+    {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 1161,
+      "lines": 1176,
       "relativeImports": 4
     },
     {
@@ -24518,14 +24539,14 @@
       "relativeImports": 28
     },
     {
+      "file": "packages/tools/src/json.ts",
+      "lines": 1024,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/cli/src/execution.ts",
       "lines": 1008,
       "relativeImports": 47
-    },
-    {
-      "file": "packages/tools/src/_danger-detect.ts",
-      "lines": 999,
-      "relativeImports": 0
     },
     {
       "file": "packages/tui/src/use-app-controller.tsx",
@@ -24548,13 +24569,18 @@
       "relativeImports": 18
     },
     {
+      "file": "packages/mcp/src/client.ts",
+      "lines": 973,
+      "relativeImports": 15
+    },
+    {
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
       "lines": 972,
       "relativeImports": 56
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 966,
+      "lines": 967,
       "relativeImports": 5
     },
     {
@@ -24566,11 +24592,6 @@
       "file": "packages/webui/src/types/client-message.ts",
       "lines": 957,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 956,
-      "relativeImports": 15
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -24648,6 +24669,11 @@
       "relativeImports": 9
     },
     {
+      "file": "packages/cli/src/slash-commands/sdd.ts",
+      "lines": 901,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/cli/src/webui-server.ts",
       "lines": 899,
       "relativeImports": 22
@@ -24666,6 +24692,11 @@
       "file": "packages/webui/src/components/SettingsPanel/BrainSection.tsx",
       "lines": 897,
       "relativeImports": 7
+    },
+    {
+      "file": "packages/kanban/src/server/project-server.ts",
+      "lines": 895,
+      "relativeImports": 10
     },
     {
       "file": "packages/webui-server/src/server/backend-services.ts",
@@ -24688,19 +24719,9 @@
       "relativeImports": 9
     },
     {
-      "file": "packages/tools/src/json.ts",
-      "lines": 888,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/mcp/src/server.ts",
       "lines": 887,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/cli/src/slash-commands/sdd.ts",
-      "lines": 886,
-      "relativeImports": 13
     },
     {
       "file": "packages/core/src/coordination/collab-debug.ts",
@@ -24716,11 +24737,6 @@
       "file": "packages/tui/src/reducers/settings-values.ts",
       "lines": 885,
       "relativeImports": 6
-    },
-    {
-      "file": "packages/kanban/src/server/project-server.ts",
-      "lines": 883,
-      "relativeImports": 10
     },
     {
       "file": "packages/tools/src/codebase-index/project-server-client.ts",
@@ -26072,6 +26088,10 @@
     },
     {
       "file": "packages/core/src/utils/glob-match.ts",
+      "name": "compileGlob"
+    },
+    {
+      "file": "packages/core/src/utils/glob-match.ts",
       "name": "matchCommandGlob"
     },
     {
@@ -26241,6 +26261,10 @@
     {
       "file": "packages/kanban/src/server/kanban-store.ts",
       "name": "ServerKanbanStore"
+    },
+    {
+      "file": "packages/kanban/src/server/project-server.ts",
+      "name": "stopInProcess"
     },
     {
       "file": "packages/kanban/src/server/sqlite-storage.ts",
@@ -26533,6 +26557,10 @@
     {
       "file": "packages/plugins/src/evidence-analyzer/index.ts",
       "name": "EVIDENCE_ANALYZE_BUDGET_MS"
+    },
+    {
+      "file": "packages/plugins/src/evidence-analyzer/index.ts",
+      "name": "EVIDENCE_MATCH_OVERLAP"
     },
     {
       "file": "packages/plugins/src/evidence-analyzer/index.ts",
@@ -27485,10 +27513,6 @@
     {
       "file": "packages/tui/src/components/worktree-monitor.tsx",
       "name": "isWorktreeMonitorCloseKey"
-    },
-    {
-      "file": "packages/tui/src/connection-actions.ts",
-      "name": "RESTARTABLE_SERVICES"
     },
     {
       "file": "packages/tui/src/connection-actions.ts",

@@ -41,6 +41,8 @@ export interface MaintenanceLease {
 }
 
 export interface SessionCatalogServerInfo {
+  /** Application release; absent on legacy daemons. */
+  runtimeVersion?: string | undefined;
   protocolVersion: number;
   pid: number;
   projectDir: string;

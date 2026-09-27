@@ -322,6 +322,50 @@ export function shellCommandLinesFromInput(input: unknown): {
 }
 
 /**
+ * The `git …` command line the structured `git` tool runs for `input`, for the
+ * destructive classifier. The tool is not a shell surface (it declares
+ * `shell.restricted`), so YOLO never classified it — `{command:'push',
+ * force:true}` and `{command:'checkout', files:['.']}` ran unprompted while the
+ * same `git push --force` / `git checkout -- .` typed into bash is gated.
+ * Mirrors the tool's argv for the commands that can destroy work (push,
+ * checkout, worktree remove); the rest render as `git <command>`. Core cannot
+ * import the tool, so this reads its documented input shape.
+ */
+export function gitToolCommandLine(input: unknown): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const i = input as Record<string, unknown>;
+  const command = typeof i['command'] === 'string' ? i['command'] : undefined;
+  if (!command) return undefined;
+  const arg = (value: string) => (/[\s'"]/.test(value) ? `'${value.replace(/'/g, '')}'` : value);
+  const branch = typeof i['branch'] === 'string' && i['branch'] ? arg(i['branch']) : undefined;
+  const rawFiles = i['files'];
+  const files = (
+    Array.isArray(rawFiles) ? rawFiles : typeof rawFiles === 'string' ? rawFiles.split(',') : []
+  )
+    .filter((f): f is string => typeof f === 'string' && f.trim().length > 0)
+    .map((f) => arg(f.trim()));
+  switch (command) {
+    case 'push':
+      return ['git push', i['force'] === true ? '--force' : '', branch ? `origin ${branch}` : '']
+        .filter(Boolean)
+        .join(' ');
+    case 'checkout':
+      if (files.length > 0) return `git checkout -- ${files.join(' ')}`;
+      return branch ? `git checkout ${branch} --` : 'git checkout';
+    case 'worktree':
+      if (i['worktreeAction'] === 'remove') {
+        const target = typeof i['worktreePath'] === 'string' ? arg(i['worktreePath']) : '';
+        return ['git worktree remove', i['force'] === true ? '--force' : '', target]
+          .filter(Boolean)
+          .join(' ');
+      }
+      return 'git worktree';
+    default:
+      return files.length > 0 ? `git ${command} -- ${files.join(' ')}` : `git ${command}`;
+  }
+}
+
+/**
  * The destructive kind of a shell-surface call: the first command line that
  * classifies. A walk that hit its bounds is `download-and-run` — the unread
  * part is a command whose damage cannot be known in advance.

@@ -91,6 +91,9 @@ function baseDir(pat: string): string {
   const cut = Math.max(pat.lastIndexOf(SEP, firstGlob - 1), pat.lastIndexOf('/', firstGlob - 1));
   if (cut < 0) return '.';
   if (cut === 0) return pat[0] ?? '/';
+  // A bare `D:` is drive-RELATIVE (the cwd on that drive), not the root the
+  // pattern `D:\*` names: keep the root separator.
+  if (cut === 2 && /^[A-Za-z]:$/.test(pat.slice(0, 2))) return pat.slice(0, 3);
   return pat.slice(0, cut);
 }
 

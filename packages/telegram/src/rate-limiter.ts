@@ -60,7 +60,6 @@ export interface TokenBucket {
 export function createTokenBucket(opts?: RateLimiterOptions): TokenBucket {
   const tokensPerSecond = opts?.tokensPerSecond ?? 0.33;
   const burst = opts?.burst ?? 4;
-  const refillIntervalMs = 1000 / tokensPerSecond;
 
   let tokens = burst;
   let lastRefill = Date.now();
@@ -83,10 +82,13 @@ export function createTokenBucket(opts?: RateLimiterOptions): TokenBucket {
         return; // Timeout — caller should proceed or skip
       }
 
-      // Wait until the next refill tick or the deadline, whichever is sooner.
-      const nextRefill = lastRefill + refillIntervalMs;
+      // Wait until the missing fraction of a token has refilled, or the
+      // deadline. refill() just moved `lastRefill` to now, so waiting a whole
+      // refill interval from it ignored the fraction already accumulated —
+      // at 0.9 tokens a group chat slept 3 s instead of 0.3 s.
+      const untilToken = Math.ceil(((1 - tokens) / tokensPerSecond) * 1000);
       const delay = Math.min(
-        Math.max(nextRefill - now, 0),
+        Math.max(untilToken, 1),
         deadline - now,
         5000, // safety cap: never sleep longer than 5s
       );

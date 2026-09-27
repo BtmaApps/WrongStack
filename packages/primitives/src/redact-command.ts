@@ -109,7 +109,7 @@ const OUTBOUND_SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,]+/g;
 const OUTBOUND_SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,]+/gi;
 /** Shared: high-entropy value behind a secret-looking flag name. */
 const HIGH_ENTROPY_FLAG_PATTERN =
-  /--[\w-]*(?:token|key|secret|password|passwd|auth|credential)[\w-]*[=\s,][A-Za-z0-9+/=]{32,}/g;
+  /--[\w-]*(?:token|key|secret|password|passwd|auth|credential)[\w-]*[=\s,]\s*[A-Za-z0-9+/=]{32,}/g;
 
 /**
  * Secret keywords are matched as the FINAL hyphen-separated segment of a
@@ -128,8 +128,10 @@ const KEYWORDS =
 
 /** Shared by `tools` (`/ps` output, crash dumps) and `core` telemetry. */
 const COMMAND_PATTERNS: readonly RegExp[] = [
-  // --flag=value, --flag "value", --flag,value (value captured up to the next space)
-  new RegExp(`--(?:[\\w-]+-)?(?:${KEYWORDS})(?:[=\\s,][^\\s]*)?`, 'gi'),
+  // --flag=value, --flag "value", --flag,value (value captured up to the next space).
+  // `\s*` after the separator: `--password   hunter2` must not match only the
+  // first space and leave the value to be printed.
+  new RegExp(`--(?:[\\w-]+-)?(?:${KEYWORDS})(?:[=\\s,]\\s*[^\\s]*)?`, 'gi'),
   SHORT_FLAG_TOKEN_PATTERN,
   SHORT_FLAG_SECRET_PATTERN,
   // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, …
@@ -141,7 +143,7 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
 const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // Same named long flags plus DATABASE_URL / CONNECTION_STRING spellings.
   new RegExp(
-    `--(?:[\\w-]+-)?(?:${KEYWORDS}|database[-_]?url|connection[-_]?string)(?:[=\\s,][^\\s]*)?`,
+    `--(?:[\\w-]+-)?(?:${KEYWORDS}|database[-_]?url|connection[-_]?string)(?:[=\\s,]\\s*[^\\s]*)?`,
     'gi',
   ),
   // Glued short forms match here too, closing the `curl -tSECRET` /

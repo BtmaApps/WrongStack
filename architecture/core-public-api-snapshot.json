@@ -420,6 +420,7 @@
         "export { addFatalSalvageHook, type CrashShieldOptions, installCrashShield, runFatalSalvageSync, } from './crash-shield.js';",
         "export { applyToolDescriptionModes, applyToolDescriptionModeToTool, DEFAULT_TOOL_DESCRIPTION_MODE, getToolDescriptionMode, normalizeToolDescriptionMode, resolveToolDescriptionMode, setToolDescriptionMode, simplifyToolDescription, type ToolDescriptionRegistryLike, } from './tool-description-mode.js';",
         "export { applyToolResultRenderModes, DEFAULT_TOOL_RESULT_RENDER_MODE, getToolResultRenderMode, normalizeToolResultRenderMode, resolveToolResultRenderMode, setToolResultRenderMode, type ToolResultRenderModeRegistryLike, } from './tool-result-render-mode.js';",
+        "export { assertDaemonRuntimeVersion, WRONGSTACK_RUNTIME_VERSION, withDaemonVersion, } from '@wrongstack/primitives';",
         "export { assertNotPrivateHost, embeddedIPv4, expandIPv6, isPrivateIPv4, isPrivateIPv6, } from './ip-guard.js';",
         "export { bindProviderCatalogId, configuredProviderIdentities, providerIdentities, } from './provider-catalog-binding.js';",
         "export { buildCompletedWorkLedgerBlock, buildContextEvidenceDigest, COMPLETED_WORK_LEDGER_MARKER, createContextEvidenceState, formatCompletedWorkLedger, markAssistantReferencedEvidence, type RecordCompletedWorkInput, type RecordToolOutputEvidenceInput, recordCompletedWorkEvidence, recordToolOutputEvidence, recordUserIntentEvidence, repeatedReadPressure, syncCompletedWorkLedgerBlock, } from './context-evidence.js';",
@@ -1500,14 +1501,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 42,
-      "sourceLines": 11913
+      "sourceLines": 11927
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57820
+      "sourceLines": 57831
     },
     {
       "directory": "core",
@@ -1549,7 +1550,7 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner",
       "sourceFiles": 7,
-      "sourceLines": 1699
+      "sourceLines": 1721
     },
     {
       "directory": "hq",
@@ -1626,7 +1627,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 1,
-      "sourceLines": 364
+      "sourceLines": 385
     },
     {
       "directory": "registry",
@@ -1647,14 +1648,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 26,
-      "sourceLines": 9425
+      "sourceLines": 9902
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5248
+      "sourceLines": 5277
     },
     {
       "directory": "skills",
@@ -1675,7 +1676,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 24709
+      "sourceLines": 24792
     },
     {
       "directory": "tasking",
@@ -1710,7 +1711,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 77,
-      "sourceLines": 13319
+      "sourceLines": 13526
     },
     {
       "directory": "vcs",

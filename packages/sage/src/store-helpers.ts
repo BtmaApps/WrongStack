@@ -685,7 +685,8 @@ function normalizeSelectorValue(value: string): string {
 // the shared instance carries no lastIndex state between calls.
 const SECRET_PATTERN = new RegExp(
   [
-    '-----BEGIN [A-Z ]*PRIVATE KEY-----',
+    // ` BLOCK`: PGP armor is `-----BEGIN PGP PRIVATE KEY BLOCK-----`.
+    '-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----',
     '\\b(?:api[_-]?key|secret|token|password)\\b\\s*[:=]\\s*[\'"]?[A-Za-z0-9_\\-./+=]{16,}',
     '\\b[A-Za-z0-9_]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\b',
     '\\b(?:sk-(?:ant-)?|gh[pousr]_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]{16,}\\b',

@@ -16,6 +16,16 @@
 const MAX_TELEGRAM_MESSAGE_LENGTH = 4096;
 
 /**
+ * `text.slice(0, end)` that never ends on the high half of a surrogate pair.
+ * A cut through an emoji leaves a lone surrogate — ill-formed text that goes
+ * out on the wire as a bare `\ud83d`.
+ */
+export function sliceUtf16Safe(text: string, end: number): string {
+  const code = text.charCodeAt(end - 1);
+  return text.slice(0, code >= 0xd800 && code <= 0xdbff ? end - 1 : end);
+}
+
+/**
  * Truncate text to fit Telegram's 4096-char message limit.
  * Preserves semantic boundaries in this priority order:
  *   1. Paragraph break (double newline)
@@ -39,7 +49,7 @@ export function truncateForTelegram(text: string, maxLen = 4000): string {
   // minimum is not actually enforced, see the module contract above) still
   // yields the 1-char "…" marker instead of passing the input through
   // unbounded, which Telegram would reject as over the 4096-char limit.
-  if (cutoff <= 0) return `${text.slice(0, Math.max(0, effectiveMaxLen - 1))}…`;
+  if (cutoff <= 0) return `${sliceUtf16Safe(text, Math.max(0, effectiveMaxLen - 1))}…`;
 
   // 1. Paragraph boundary (double newline, suffix "\n\n…" is 3 chars)
   const paraSearchEnd = effectiveMaxLen - 3;
@@ -78,10 +88,10 @@ export function truncateForTelegram(text: string, maxLen = 4000): string {
   }
 
   // 5. Hard cut bounded strictly
-  const hardSlice = text.slice(0, effectiveMaxLen - 20);
+  const hardSlice = sliceUtf16Safe(text, effectiveMaxLen - 20);
   const hardResult = `${hardSlice}…[+${text.length - hardSlice.length} chars]`;
   if (hardResult.length <= effectiveMaxLen) return hardResult;
-  return `${text.slice(0, effectiveMaxLen - 1)}…`;
+  return `${sliceUtf16Safe(text, effectiveMaxLen - 1)}…`;
 }
 
 /**

@@ -9,7 +9,7 @@
  *                            string and report which patterns matched.
  *
  * Hooks registered:
- * - PreToolUse with matcher `bash|write|edit` (configurable). Default
+ * - PreToolUse with matcher `bash|pwsh|exec|write|edit|replace|patch` (configurable). Default
  *   action is to BLOCK; the plugin can also auto-redact the offending
  *   fields via `HookOutcome.modifiedInput`.
  * - PostToolUse with matcher `*` (configurable via `postToolUseMatcher`).
@@ -364,7 +364,11 @@ interface SecretScannerConfig {
 }
 
 const DEFAULTS: SecretScannerConfig = {
-  matcher: 'bash|write|edit',
+  // Every built-in tool that runs a command or puts content on disk. Matching
+  // is by exact name, so a tool missing here bypasses the gate entirely:
+  // `pwsh` (the Windows shell), `exec`, `replace` and `patch` carried the same
+  // credential that `bash`/`write`/`edit` blocked.
+  matcher: 'bash|pwsh|exec|write|edit|replace|patch',
   postToolUseMatcher: '*',
   mode: 'block',
   enabled: true,

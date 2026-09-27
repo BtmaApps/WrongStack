@@ -44,12 +44,90 @@
  */
 
 import * as os from 'node:os';
+import { compileUserRegex } from './_regex.js';
 import {
   getPersistentProcessRegistry,
   type PersistentProcessEntry,
 } from './process-registry-persistent.js';
 
 const isWin = os.platform() === 'win32';
+
+/**
+ * Case-insensitive Windows wildcard match (`*`, `?`) of a whole process name,
+ * linear two-pointer scan (no regex, so no backtracking on hostile input).
+ * A `[...]` class is not interpreted: it may match anything (fail closed).
+ */
+export function wildcardNameMatches(pattern: string, name: string): boolean {
+  const p = pattern.toLowerCase();
+  const t = name.toLowerCase();
+  if (p.includes('[')) return true;
+  let pi = 0;
+  let ti = 0;
+  let star = -1;
+  let mark = 0;
+  while (ti < t.length) {
+    if (pi < p.length && (p[pi] === '?' || p[pi] === t[ti])) {
+      pi++;
+      ti++;
+    } else if (pi < p.length && p[pi] === '*') {
+      star = pi++;
+      mark = ti;
+    } else if (star !== -1) {
+      pi = star + 1;
+      ti = ++mark;
+    } else {
+      return false;
+    }
+  }
+  while (pi < p.length && p[pi] === '*') pi++;
+  return pi === p.length;
+}
+
+/** pkill options that pick processes by user / parent / session / group / terminal. */
+const PKILL_SELECTOR_RE =
+  /^(?:-[uUGgPst]|--(?:euid|uid|group|pgroup|parent|session|terminal|ns|cgroup))(?:=|$)|^-[uUGgPst]./;
+/** killall's pattern-free selector: every process of a user. */
+const KILLALL_SELECTOR_RE = /^(?:-u|--user)(?:=|$)|^-u./;
+
+/**
+ * The literal substring checks miss how pkill/killall actually select: the
+ * pattern is a REGEX (`pkill 'n.de'`, `pkill .`, `killall -r 'wrong.*'`), and
+ * pkill also kills by user / parent / session with no pattern at all
+ * (`pkill -u "$USER"`, `pkill -P <wrongstack pid>`). With protected processes
+ * alive, a selector kill is blocked outright and every non-option word is
+ * tried as a case-insensitive regex against the protected names. A word the
+ * ReDoS guard refuses to compile blocks too (fail closed).
+ */
+function namePatternMayHitProtected(kill: KillCommand, entries: PersistentProcessEntry[]): boolean {
+  // Words after the pkill/killall head, read from the command itself: the
+  // parser files the first option under `signal` (`pkill -u me` → name "me"),
+  // which would hide exactly the selector this check is for.
+  const tokens = kill.originalCommand
+    .split(/\s+/)
+    .map((w) => w.replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
+  let head = -1;
+  for (let i = 0; i < tokens.length; i++) {
+    if (/(?:^|\/)(?:pkill|killall)$/.test(tokens[i] ?? '')) head = i;
+  }
+  const words: string[] = [];
+  for (const token of head >= 0 ? tokens.slice(head + 1) : (kill.name ?? '').split(/\s+/)) {
+    if (/[;&|]/.test(token)) break;
+    if (token) words.push(token);
+  }
+  const selector = /\bkillall\b/.test(kill.originalCommand)
+    ? KILLALL_SELECTOR_RE
+    : PKILL_SELECTOR_RE;
+  if (words.some((w) => selector.test(w))) return true;
+  const targets = ['node', 'wrongstack', ...entries.map((e) => e.name ?? '').filter(Boolean)];
+  for (const word of words) {
+    if (word.startsWith('-')) continue;
+    const compiled = compileUserRegex(word, 'i');
+    if (!compiled.ok) return true;
+    if (targets.some((t) => compiled.regex.test(t))) return true;
+  }
+  return false;
+}
 
 /** Shared regex: scripts named kill/terminate/stop*.ps1|bat|cmd|sh. */
 const SCRIPT_KILL_RE = /^(?:\.\\|\.\/)?(?:kill|terminate|stop)\S*\.(?:ps1|bat|cmd|sh)(?:\s|$)/i;
@@ -184,8 +262,9 @@ function isKillRelatedCommand(cmd: string): boolean {
     if (/^taskkill\s/i.test(normalized)) return true;
     // Windows tskill
     if (/^tskill\s/i.test(normalized)) return true;
-    // PowerShell Stop-Process and its aliases (kill, stop)
-    if (/^(stop-process|kill|stop)\s/i.test(normalized)) return true;
+    // PowerShell Stop-Process and its aliases (kill, stop, spps — the
+    // built-in alias; missing it let `spps -Id <pid>` through)
+    if (/^(stop-process|kill|stop|spps)\s/i.test(normalized)) return true;
     // WMIC process termination: wmic process where ... delete
     if (/^wmic\s+process\s/i.test(normalized) && /\bdelete\b/i.test(normalized)) return true;
     // Scripts named kill*, terminate*, stop* .ps1, .bat, .cmd, .sh (with or without args)
@@ -200,7 +279,7 @@ function isKillRelatedCommand(cmd: string): boolean {
     if (strippedLauncher !== null) {
       if (/^taskkill\s/i.test(strippedLauncher)) return true;
       if (/^tskill\s/i.test(strippedLauncher)) return true;
-      if (/^(stop-process|kill|stop)\s/i.test(strippedLauncher)) return true;
+      if (/^(stop-process|kill|stop|spps)\s/i.test(strippedLauncher)) return true;
       if (/^wmic\s+process\s/i.test(strippedLauncher) && /\bdelete\b/i.test(strippedLauncher)) {
         return true;
       }
@@ -353,7 +432,7 @@ export function parseKillCommand(command: string): KillCommand | null {
     // r-20260922-exec-killguard-colon-attached), so both the shape and the
     // value extraction accept `:<digits>` as well as the space form.
     const isStopProcIdCommand =
-      /^(?:stop-process|kill)(?:\s+-(?:id|pid)(?:\s+\d+|:\d+)|\s+-[a-zA-Z]+(?::[^\s]+)?)+$/i.test(
+      /^(?:stop-process|kill|spps)(?:\s+-(?:id|pid)(?:\s+\d+|:\d+)|\s+-[a-zA-Z]+(?::[^\s]+)?)+$/i.test(
         normalized,
       );
     const stopProcIdMatch = normalized.match(/(?:^|\s)-(?:id|pid)(?::(\d+)|\s+(\d+))(?=\s|$)/i);
@@ -377,8 +456,10 @@ export function parseKillCommand(command: string): KillCommand | null {
     // Uses greedier capture with end anchor to grab the full name. Also
     // accepts the colon-attached form `-Name:node`, which PowerShell binds
     // identically to the space form.
+    // `*`, `?`, `[`/`]` are PowerShell wildcards (`-Name nod*`); excluding
+    // them left a wildcard kill unparsed and therefore unblocked.
     const stopProcNameMatch = normalized.match(
-      /^(?:stop-process|kill)\s+-(?:name|n)(?::([a-zA-Z0-9_.-]+)|\s+(?:['"]([a-zA-Z0-9_.-]+)['"]|([a-zA-Z0-9_.-]+)))(?:\s|$)/i,
+      /^(?:stop-process|kill|spps)\s+-(?:name|nam|na|n)(?::([a-zA-Z0-9_.*?[\]-]+)|\s+(?:['"]([a-zA-Z0-9_.*?[\]-]+)['"]|([a-zA-Z0-9_.*?[\]-]+)))(?:\s|$)/i,
     );
     const stopProcName = stopProcNameMatch?.[1] ?? stopProcNameMatch?.[2] ?? stopProcNameMatch?.[3];
     if (stopProcName) {
@@ -393,7 +474,7 @@ export function parseKillCommand(command: string): KillCommand | null {
 
     // ── Bare name via PowerShell alias: kill node, stop-process node ──
     const stopProcStandalone = normalized.match(
-      /^(?:stop-process|kill)\s+['"]?([a-zA-Z][a-zA-Z0-9_.-]+)['"]?$/i,
+      /^(?:stop-process|kill|spps)\s+['"]?([a-zA-Z][a-zA-Z0-9_.*?[\]-]+|[*?[][a-zA-Z0-9_.*?[\]-]*)['"]?$/i,
     );
     if (stopProcStandalone?.[1]) {
       return {
@@ -561,6 +642,16 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
     if (killNameLower.includes('node') && entries.length > 0) {
       // Conservative: block pkill node if we have protected node processes
       return true;
+    }
+    if (entries.length > 0 && namePatternMayHitProtected(kill, entries)) return true;
+    // Windows names are WILDCARDS (`Stop-Process -Name nod*`, `taskkill /IM
+    // *`), which the literal checks above cannot see.
+    if (/[*?[]/.test(kill.name)) {
+      if (wildcardNameMatches(kill.name, 'wrongstack')) return true;
+      const targets = ['node', 'node.exe', ...entries.map((e) => e.name ?? '').filter(Boolean)];
+      if (entries.length > 0 && targets.some((t) => wildcardNameMatches(kill.name ?? '', t))) {
+        return true;
+      }
     }
     return false;
   }

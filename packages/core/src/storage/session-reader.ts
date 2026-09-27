@@ -298,8 +298,42 @@ function buildMatcher(
   return (text) => {
     const hay = ci ? text.toLowerCase() : text;
     const idx = hay.indexOf(needle);
-    return idx === -1 ? null : { start: idx, end: idx + needle.length };
+    if (idx === -1) return null;
+    // Offsets into `hay` index `text` only while lowercasing kept the length
+    // ('İ' becomes two UTF-16 units); the snippet is cut from `text`.
+    if (hay.length === text.length) return { start: idx, end: idx + needle.length };
+    return rawRangeOfLowered(text, idx, idx + needle.length);
   };
+}
+
+/** The `raw` range whose lowercase form covers `[lowStart, lowEnd)` of `raw.toLowerCase()`. */
+function rawRangeOfLowered(
+  raw: string,
+  lowStart: number,
+  lowEnd: number,
+): { start: number; end: number } {
+  let start = 0;
+  let low = 0;
+  let i = 0;
+  while (i < raw.length) {
+    if (low <= lowStart) start = i;
+    if (low >= lowEnd) return { start, end: i };
+    const ch = String.fromCodePoint(raw.codePointAt(i) ?? 0);
+    low += ch.toLowerCase().length;
+    i += ch.length;
+  }
+  return { start, end: raw.length };
+}
+
+/**
+ * A code fence longer than any backtick run in `body`. A fixed ``` closed early
+ * on a body that contains one (any README a tool read), rendering the rest of
+ * the tool output as live markdown in the export.
+ */
+function fenceFor(body: string): string {
+  let longest = 0;
+  for (const run of body.match(/`+/g) ?? []) longest = Math.max(longest, run.length);
+  return '`'.repeat(Math.max(3, longest + 1));
 }
 
 function eventText(e: SessionEvent): string | null {
@@ -392,21 +426,24 @@ function renderMarkdown(meta: SessionMetadata, events: SessionEvent[]): string {
       }
       case 'tool_use':
       case 'tool_call_start': {
+        const input = JSON.stringify(e.input, null, 2);
+        const fence = fenceFor(input);
         lines.push(`### Tool call: \`${e.name}\``);
         lines.push('');
-        lines.push('```json');
-        lines.push(JSON.stringify(e.input, null, 2));
-        lines.push('```');
+        lines.push(`${fence}json`);
+        lines.push(input);
+        lines.push(fence);
         lines.push('');
         break;
       }
       case 'tool_result': {
         const body = typeof e.content === 'string' ? e.content : JSON.stringify(e.content, null, 2);
+        const fence = fenceFor(body);
         lines.push(`### Tool result${e.isError ? ' (error)' : ''}`);
         lines.push('');
-        lines.push('```');
+        lines.push(fence);
         lines.push(body);
-        lines.push('```');
+        lines.push(fence);
         lines.push('');
         break;
       }

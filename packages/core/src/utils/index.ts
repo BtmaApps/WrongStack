@@ -7,6 +7,11 @@ export {
   standalonePackageDir,
   wrongstackPackageJsonPath,
 } from '@wrongstack/persistence';
+export {
+  assertDaemonRuntimeVersion,
+  WRONGSTACK_RUNTIME_VERSION,
+  withDaemonVersion,
+} from '@wrongstack/primitives';
 export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';
 export * from './assert-never.js';
 export * from './atomic-write.js';

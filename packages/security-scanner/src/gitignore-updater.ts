@@ -37,7 +37,13 @@ export class GitignoreUpdater {
       }
 
       if (added.length > 0) {
-        const newContent = [...lines].filter(Boolean).join('\n') + '\n';
+        // Append only: rebuilding from the de-duplicated set dropped blank
+        // lines, repeated comments and CRLF, and — .gitignore being
+        // last-match-wins — a pattern repeated after a negation, which
+        // un-ignored files the user had ignored.
+        const eol = content.includes('\r\n') ? '\r\n' : '\n';
+        const separator = content === '' || content.endsWith('\n') ? '' : eol;
+        const newContent = content + separator + added.join(eol) + eol;
         // atomicWrite: .gitignore is a user-tracked source file — a torn
         // write here would commit a corrupt file to the user's repo.
         await atomicWrite(this.options.gitignorePath, newContent);

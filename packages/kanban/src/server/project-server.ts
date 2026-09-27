@@ -11,6 +11,7 @@
  *     with zero connected clients → exits cleanly
  *   - Hard stop on `shutdown` request or SIGTERM
  */
+
 import { randomBytes } from 'node:crypto';
 import * as fsPromises from 'node:fs/promises';
 import * as net from 'node:net';
@@ -22,7 +23,7 @@ import {
   isStandaloneBinary,
   restrictFilePermissions,
 } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { KANBAN_DOMAIN_OPERATIONS } from '../domain-operations.js';
 import { StaleWriteError } from '../manager/lifecycle-error.js';
 import * as kanban from '../manager.js';
@@ -778,6 +779,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     });
     uninstallStorageBackend = installKanbanStorageBackend(projectRoot, sqliteStorage);
     serverInfo = {
+      runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
       protocolVersion: KANBAN_PROJECT_SERVER_PROTOCOL_VERSION,
       pid: process.pid,
       projectRoot,
@@ -876,6 +878,16 @@ if (isMain) {
     process.stderr.write(`kanban project server fatal: ${err?.message ?? err}\n`);
     process.exit(1);
   });
+}
+
+/**
+ * Stop WITHOUT exiting — for a host that runs `main()` inside its own process
+ * (the in-process lifecycle harness). A daemon left running there keeps its
+ * 5-minute idle timer armed, and when that fires `stopAndExit()` kills the
+ * host. Every daemon-owned stop path still goes through `stopAndExit()`.
+ */
+export function stopInProcess(reason = 'in-process-stop'): Promise<void> {
+  return stop(reason);
 }
 
 // Exported for testing

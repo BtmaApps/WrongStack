@@ -202,8 +202,11 @@ function walk(
 
   if (isPlainObject(value) && hasObjectKeywords(schema)) {
     const obj = value as Record<string, unknown>;
+    // Own properties only: `in` sees Object.prototype, so `required:
+    // ["toString"]` passed for `{}` and an omitted optional `constructor`
+    // was validated against the inherited `Object` function.
     for (const req of schema.required ?? []) {
-      if (!(req in obj)) {
+      if (!Object.hasOwn(obj, req)) {
         const expected = schema.properties?.[req]?.type;
         errors.push({
           path: joinPath(path, req),
@@ -227,6 +230,15 @@ function walk(
     const known = new Set(Object.keys(schema.properties ?? {}));
     const patternSchemas: Array<{ re: RegExp; sub: JSONSchema }> = [];
     for (const [pattern, sub] of Object.entries(schema.patternProperties ?? {})) {
+      // Same gate as `pattern`: these author regexes run over model-supplied
+      // property NAMES, so a catastrophic shape would wedge the process.
+      if (patternIsLikelyCatastrophic(pattern)) {
+        errors.push({
+          path: path || '<root>',
+          message: `patternProperties ${JSON.stringify(pattern)} unsafe: quantified group with a nested quantifier or alternation can cause catastrophic backtracking — restructure the pattern`,
+        });
+        continue;
+      }
       try {
         patternSchemas.push({ re: new RegExp(pattern), sub: sub as JSONSchema });
       } catch {
@@ -235,7 +247,14 @@ function walk(
       }
     }
     for (const key of Object.keys(obj)) {
-      const matches = patternSchemas.filter((p) => p.re.test(key));
+      const nameTooLong = patternSchemas.length > 0 && key.length > MAX_PATTERN_CHECK_LENGTH;
+      if (nameTooLong) {
+        errors.push({
+          path: path || '<root>',
+          message: `patternProperties not checked: property name exceeds safe pattern-check length (${MAX_PATTERN_CHECK_LENGTH}), got ${key.length}`,
+        });
+      }
+      const matches = nameTooLong ? [] : patternSchemas.filter((p) => p.re.test(key));
       if (!known.has(key) && matches.length === 0) {
         if (schema.additionalProperties === false) {
           errors.push({
@@ -258,7 +277,7 @@ function walk(
     }
     if (schema.properties) {
       for (const [key, subSchema] of Object.entries(schema.properties)) {
-        if (key in obj) {
+        if (Object.hasOwn(obj, key)) {
           walk(obj[key], subSchema, joinPath(path, key), errors, depth + 1);
         }
       }

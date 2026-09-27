@@ -433,6 +433,9 @@ export class GoalWebSocketHandler {
       return;
     }
     this.startInFlight = true;
+    // Cleared here, before the first await, not in startRun: a stop that lands
+    // while the lease is being acquired must still be seen by startRun.
+    this.stopping = false;
     this.runStatus = 'running';
     try {
       this.releaseRunLease = await this.store.acquireRunLease(
@@ -510,6 +513,9 @@ export class GoalWebSocketHandler {
     } finally {
       this.startInFlight = false;
       await releaseRunLease?.();
+      // startRun returned without launching (stopped mid-setup): the lease
+      // handed to this.releaseRunLease above is not the run's to keep.
+      if (!this.orchestrator) await this.releaseActiveRunLease();
     }
   }
 
@@ -543,7 +549,6 @@ export class GoalWebSocketHandler {
     // run launched anyway.
     const runAbort = new AbortController();
     this.abort = runAbort;
-    this.stopping = false;
 
     // Phase plan resolution:
     //   1. explicit phases in the payload win (caller override);
@@ -634,6 +639,16 @@ export class GoalWebSocketHandler {
       this.runBase = graph.runBase ?? (await this.worktrees.currentBase());
       graph.runBase = this.runBase ?? undefined;
       await this.persistence.save(graph);
+    }
+
+    // Last await before launch. A stop during the graph build, worktree setup
+    // or saves above has already released the run lease and told clients the
+    // run stopped; launching now would run it unleased.
+    if (this.stopping || runAbort.signal.aborted) {
+      // A resume sets 'running' after its own awaits, possibly after the stop.
+      this.runStatus = 'stopped';
+      this.broadcast({ type: 'goal.stopped', payload: { title } });
+      return;
     }
 
     // Verification hooks — conditionally wired when verifyTasks is enabled.

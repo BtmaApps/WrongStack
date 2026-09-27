@@ -178,6 +178,21 @@ export function buildBm25Index(docs: IndexableDoc[]): Bm25Index {
   return new Bm25Index(documents, N, avgLen);
 }
 
+/** The `raw` range whose lowercase form covers `[lowStart, lowEnd)` of `raw.toLowerCase()`. */
+function rawRangeOfLowered(raw: string, lowStart: number, lowEnd: number): [number, number] {
+  let start = 0;
+  let low = 0;
+  let i = 0;
+  while (i < raw.length) {
+    if (low <= lowStart) start = i;
+    if (low >= lowEnd) return [start, i];
+    const ch = String.fromCodePoint(raw.codePointAt(i) ?? 0);
+    low += ch.toLowerCase().length;
+    i += ch.length;
+  }
+  return [start, raw.length];
+}
+
 export class Bm25Index {
   private readonly safeAvgLen: number;
   /** Lazily-built id→doc index so getDoc is O(1) instead of an O(D) linear find. */
@@ -250,11 +265,18 @@ export class Bm25Index {
     const doc = this.getDoc(docId);
     if (!doc) return '';
 
+    const lower = doc.raw.toLowerCase();
     for (const tok of queryTokens) {
-      const idx = doc.raw.toLowerCase().indexOf(tok);
-      if (idx !== -1) {
+      const lowIdx = lower.indexOf(tok);
+      if (lowIdx !== -1) {
+        // Offsets found in `lower` index `raw` only when lowercasing kept the
+        // length ('İ' becomes two UTF-16 units); otherwise map them back.
+        const [idx, matchEnd] =
+          lower.length === doc.raw.length
+            ? [lowIdx, lowIdx + tok.length]
+            : rawRangeOfLowered(doc.raw, lowIdx, lowIdx + tok.length);
         const start = Math.max(0, idx - radius);
-        const end = Math.min(doc.raw.length, idx + tok.length + radius);
+        const end = Math.min(doc.raw.length, matchEnd + radius);
         const excerpt = doc.raw.slice(start, end);
         const ellipsis = '\u2026';
         return (start > 0 ? ellipsis : '') + excerpt + (end < doc.raw.length ? ellipsis : '');

@@ -7,14 +7,6 @@
  */
 
 export {
-  type CompileFail,
-  type CompileResult,
-  type CompileUserRegexResult,
-  capSubject,
-  compileUserRegex,
-  MAX_SUBJECT_LEN,
-} from './regex-guard.js';
-export {
   COMMAND_REDACTION_PROFILE,
   OUTBOUND_REDACTION_PROFILE,
   type RedactionProfile,
@@ -23,6 +15,19 @@ export {
   redactCommandArgs,
   redactSecrets,
 } from './redact-command.js';
+export {
+  type CompileFail,
+  type CompileResult,
+  type CompileUserRegexResult,
+  capSubject,
+  compileUserRegex,
+  MAX_SUBJECT_LEN,
+} from './regex-guard.js';
+export {
+  assertDaemonRuntimeVersion,
+  WRONGSTACK_RUNTIME_VERSION,
+  withDaemonVersion,
+} from './runtime-version.js';
 export {
   isSystemSessionId,
   requireSessionId,

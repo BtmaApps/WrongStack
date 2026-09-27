@@ -4,7 +4,7 @@ import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
-import { timingSafeTokenEqual } from '@wrongstack/primitives';
+import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { restrictFilePermissions } from '../security/file-permissions.js';
 import { atomicWrite } from '../utils/atomic-write.js';
 import { useDaemonPerfDefaults } from '../utils/perf-profile.js';
@@ -95,6 +95,7 @@ const silentClientMs =
   Number.isFinite(silentInput) && silentInput >= 1_000 ? silentInput : DEFAULT_SILENT_CLIENT_MS;
 const silentSweepMs = Math.min(30_000, Math.max(1_000, Math.floor(silentClientMs / 4)));
 const serverInfo: SessionCatalogServerInfo = {
+  runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
   protocolVersion: SESSION_CATALOG_PROTOCOL_VERSION,
   pid: process.pid,
   projectDir: parsed.projectDir,

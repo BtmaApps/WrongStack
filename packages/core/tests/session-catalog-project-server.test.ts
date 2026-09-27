@@ -1,3 +1,4 @@
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { describe, expect, it } from 'vitest';
 import {
   sessionCatalogProjectServerEndpoint,
@@ -25,7 +26,10 @@ describe('Session Catalog project server IPC', () => {
       );
       const metadata = await waitForMetadataFile<{ authToken: string; pid: number }>(metadataPath);
       const client = await connectFrame(endpoint);
-      expect((await client.nextFrame()).type).toBe('hello');
+      expect(await client.nextFrame()).toMatchObject({
+        type: 'hello',
+        runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
+      });
 
       client.socket.write(`${JSON.stringify({ type: 'request', id: 1, op: 'ping', args: {} })}\n`);
       expect(await client.nextFrame()).toMatchObject({
@@ -40,7 +44,11 @@ describe('Session Catalog project server IPC', () => {
       );
       const ping = await client.nextFrame();
       expect(ping).toMatchObject({ type: 'response', id: 2, ok: true });
-      expect(ping.result).toMatchObject({ catalogRows: 0, liveLeases: 0 });
+      expect(ping.result).toMatchObject({
+        catalogRows: 0,
+        liveLeases: 0,
+        runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
+      });
 
       client.socket.write(
         `${JSON.stringify({
@@ -157,7 +165,10 @@ describe('Session Catalog project server IPC', () => {
       );
       await waitForMetadataFile<{ authToken: string }>(metadataPath);
       const client = await connectFrame(endpoint);
-      expect((await client.nextFrame()).type).toBe('hello');
+      expect(await client.nextFrame()).toMatchObject({
+        type: 'hello',
+        runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
+      });
       // Deliberately send nothing: the daemon must still reach its idle stop.
       await waitForMetadataRemoval(metadataPath, 15_000);
       await waitForEndpointClosed(endpoint, 5_000);
@@ -188,7 +199,10 @@ describe('Session Catalog project server IPC', () => {
       );
       const metadata = await waitForMetadataFile<{ authToken: string }>(metadataPath);
       const client = await connectFrame(endpoint);
-      expect((await client.nextFrame()).type).toBe('hello');
+      expect(await client.nextFrame()).toMatchObject({
+        type: 'hello',
+        runtimeVersion: WRONGSTACK_RUNTIME_VERSION,
+      });
 
       const now = new Date().toISOString();
       client.socket.write(

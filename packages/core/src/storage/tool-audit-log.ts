@@ -486,6 +486,12 @@ function stableStringify(value: unknown): string {
 }
 
 function sortKeys(value: unknown): unknown {
+  // Hash what the line on disk will say. JSON.stringify writes a Date/Buffer/
+  // URL through its toJSON; walking its own keys instead (`{}` for a Date)
+  // made verify() report an untouched entry as modified.
+  if (value && typeof (value as { toJSON?: unknown }).toJSON === 'function') {
+    value = (value as { toJSON(): unknown }).toJSON();
+  }
   if (Array.isArray(value)) return value.map(sortKeys);
   if (value && typeof value === 'object') {
     const obj = value as Record<string, unknown>;

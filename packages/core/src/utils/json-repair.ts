@@ -118,6 +118,8 @@ function repairTruncated(s: string): string {
     // A trailing comma (e.g. `{"a": 1,` or `[1, 2,`) — strip it so closing
     // braces/brackets produce valid JSON.
     result = result.slice(0, -1).trimEnd();
+  } else {
+    result = completeTrailingScalar(result);
   }
 
   // Close any still-open containers in reverse order.
@@ -136,6 +138,26 @@ function repairTruncated(s: string): string {
   }
 
   return result;
+}
+
+/**
+ * Finish a bare scalar the truncation cut through: a literal prefix (`tr`,
+ * `fals`, `nul`) becomes the literal, a number loses its dangling `.`/exponent
+ * (`2.` → `2`, `1e-` → `1`) and a lone `-` becomes `null`. Left as is, the
+ * whole object failed to parse and every complete field before it was lost.
+ * A complete scalar is returned unchanged.
+ */
+function completeTrailingScalar(result: string): string {
+  const match = /[A-Za-z0-9.+-]+$/.exec(result);
+  if (!match) return result;
+  const token = match[0];
+  const head = result.slice(0, match.index);
+  for (const literal of ['true', 'false', 'null']) {
+    if (literal.startsWith(token)) return head + literal;
+  }
+  if (!/^-?\d/.test(token) && token !== '-') return result;
+  const number = token.replace(/[.eE+-]+$/, '');
+  return head + (number === '' || number === '-' ? 'null' : number);
 }
 
 const VALID_ESCAPE = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);

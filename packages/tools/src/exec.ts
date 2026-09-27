@@ -232,35 +232,60 @@ const BLOCKED_SUBCOMMAND_SEQUENCES: Record<string, readonly (readonly string[])[
   yarn: [['npm', 'publish']],
 };
 
-function firstSubcommand(args: string[]): string | null {
-  for (const arg of args) {
-    if (arg === '--') return null;
-    if (!arg.startsWith('-')) return arg;
-  }
-  return null;
+/**
+ * Positional args that may be the subcommand. A bare option (`--filter`, `-w`)
+ * may take the NEXT argv entry as its value, so a positional right after one
+ * could be that value and the real subcommand may follow: `pnpm --filter app
+ * publish`, `npm -w pkg publish`, `docker --context prod push`. Taking only the
+ * first positional let every such spelling past the gate. Without a per-tool
+ * table of value-taking options, keep every positional up to and including
+ * the first one that does NOT follow a bare option — that one is certainly the
+ * subcommand. Fails closed: `pnpm --silent test publish` is also refused.
+ */
+function candidateSubcommandCount(positionalFollowsBareOption: boolean[]): number {
+  const firstCertain = positionalFollowsBareOption.indexOf(false);
+  return firstCertain === -1 ? positionalFollowsBareOption.length : firstCertain + 1;
 }
 
-function subcommandArgs(args: string[]): string[] {
-  const out: string[] = [];
+/** Positional args before `--`, each flagged when it directly follows a bare option. */
+function positionalArgs(args: string[]): { values: string[]; followsBareOption: boolean[] } {
+  const values: string[] = [];
+  const followsBareOption: boolean[] = [];
+  let previousWasBareOption = false;
   for (const arg of args) {
     if (arg === '--') break;
-    if (!arg.startsWith('-')) out.push(arg);
+    if (arg.startsWith('-')) {
+      previousWasBareOption = !arg.includes('=');
+      continue;
+    }
+    values.push(arg);
+    followsBareOption.push(previousWasBareOption);
+    previousWasBareOption = false;
   }
-  return out;
+  return { values, followsBareOption };
 }
 
 function validateArgs(cmd: string, args: string[]): string | null {
+  const positional = positionalArgs(args);
+  const candidates = candidateSubcommandCount(positional.followsBareOption);
+
   const blockedSubcommands = BLOCKED_SUBCOMMANDS[cmd];
-  const subcommand = firstSubcommand(args);
-  if (blockedSubcommands && subcommand && blockedSubcommands.has(subcommand)) {
-    return `Blocked subcommand "${subcommand}" for command "${cmd}"`;
+  if (blockedSubcommands) {
+    const subcommand = positional.values
+      .slice(0, candidates)
+      .find((value) => blockedSubcommands.has(value));
+    if (subcommand) return `Blocked subcommand "${subcommand}" for command "${cmd}"`;
   }
 
   const blockedSequences = BLOCKED_SUBCOMMAND_SEQUENCES[cmd];
   if (blockedSequences) {
-    const actual = subcommandArgs(args);
-    const blocked = blockedSequences.find((seq) => seq.every((part, idx) => actual[idx] === part));
-    if (blocked) return `Blocked subcommand "${blocked.join(' ')}" for command "${cmd}"`;
+    const actual = positional.values;
+    for (let start = 0; start < candidates; start++) {
+      const blocked = blockedSequences.find((seq) =>
+        seq.every((part, idx) => actual[start + idx] === part),
+      );
+      if (blocked) return `Blocked subcommand "${blocked.join(' ')}" for command "${cmd}"`;
+    }
   }
 
   // Name-based check first: it covers `--opt=value` and `--opt value` alike,
@@ -280,8 +305,12 @@ function validateArgs(cmd: string, args: string[]): string | null {
 
   for (const arg of args) {
     if (arg === '--') break;
+    // The rm path patterns are written with `/`; Windows also separates with
+    // `\`, so `..\outside`, `\\host\share` and `\Windows` walked past every
+    // one of them. Test the slash-normalized spelling as well.
+    const probe = cmd === 'rm' ? arg.replace(/\\/g, '/') : arg;
     for (const pattern of blocked) {
-      if (pattern.test(arg)) {
+      if (pattern.test(arg) || pattern.test(probe)) {
         return `Blocked argument "${arg}" for command "${cmd}" (matches security pattern ${pattern})`;
       }
     }

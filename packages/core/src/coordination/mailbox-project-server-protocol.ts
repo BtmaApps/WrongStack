@@ -41,6 +41,8 @@ export const MAILBOX_PROJECT_SERVER_MAX_FRAME_CHARS = 16 * 1024 * 1024;
  * see {@link MailboxProjectServerMetadata}.
  */
 export interface MailboxProjectServerInfo {
+  /** Application release; absent on legacy daemons. */
+  runtimeVersion?: string | undefined;
   protocolVersion: number;
   pid: number;
   projectDir: string;
