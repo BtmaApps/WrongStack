@@ -107,9 +107,13 @@ export function analyzeEvidence(
     for (let lineIndex = 0; lineIndex < starts.length; lineIndex++) {
       const next = starts[lineIndex + 1];
       const line = content.slice(starts[lineIndex], next === undefined ? content.length : next - 1);
-      // Absolute start offsets already reported for this line, so a match seen
-      // in two overlapping windows is reported exactly once.
-      const reported = new Set<number>();
+      // End offset (exclusive) of the last reported match on this line. A single
+      // global matchAll never begins a match before the previous one ended, so
+      // tracking this end reproduces single-pass semantics across overlapping
+      // windows: it collapses a match re-found in the next window AND a
+      // straddling match whose two alternation branches — one matched from each
+      // window — would otherwise each be reported for one logical finding.
+      let reportedEnd = 0;
       for (let offset = 0; offset === 0 || offset < line.length; offset += EVIDENCE_MATCH_WINDOW) {
         if (now() > deadline) return { findings, partial: true };
         // The window reaches BACK by EVIDENCE_MATCH_OVERLAP (so a match that
@@ -125,8 +129,12 @@ export function analyzeEvidence(
         const window = line.slice(from, offset + EVIDENCE_MATCH_WINDOW + EVIDENCE_MATCH_OVERLAP);
         for (const match of window.matchAll(matcher)) {
           if (offset > 0 && match.index === 0) continue;
-          if (reported.has(from + match.index)) continue;
-          reported.add(from + match.index);
+          const absStart = from + match.index;
+          // Skip a match that begins inside an already-reported span: a single
+          // global matchAll would never start there, so reporting it would
+          // double-count one logical finding.
+          if (absStart < reportedEnd) continue;
+          reportedEnd = absStart + match[0].length;
           findings.push({
             rule: rule.label,
             severity: rule.severity,

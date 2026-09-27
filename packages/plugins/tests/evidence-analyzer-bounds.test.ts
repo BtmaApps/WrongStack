@@ -82,6 +82,21 @@ describe('analyzeEvidence bounds', () => {
     expect(analyzeEvidence(line, profile(rule), 50).findings).toHaveLength(1);
   });
 
+  // A rule whose alternation has two branches ("...release gate...failed" OR
+  // "\bFAILED\b") describes ONE logical finding, but per-window matchAll restarts
+  // matching at each window: when the match straddles a boundary the `.*` branch
+  // reported it (window 0) and the bare `\bFAILED\b` branch matched the same
+  // "failed" token again (window 1024). A start-offset dedup cannot collapse them
+  // (different starts); the end-offset dedup reproduces single-pass matchAll
+  // semantics and reports one finding.
+  it('reports a straddling match with two alternation branches exactly once', () => {
+    const releaseRule = /(?:release:check|release gate|prepublish).*(?:failed|error)|\bFAILED\b/i;
+    // release gate@400 ... failed@1200 (preceded by a space so \b holds),
+    // straddling the 1024 window boundary.
+    const line = 'x'.repeat(400) + 'release gate' + 'y'.repeat(787) + ' failed' + 'z'.repeat(1000);
+    expect(analyzeEvidence(line, profile(releaseRule), 50).findings).toHaveLength(1);
+  });
+
   it('does not read a window boundary as a line start for ^ rules', () => {
     const rule = /^export\s+const\s+/m;
     const midLine = `${'y'.repeat(EVIDENCE_MATCH_WINDOW - 1)}export const x = 1`;
