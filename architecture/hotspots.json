@@ -155,7 +155,7 @@
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 857,
+      "lines": 875,
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {

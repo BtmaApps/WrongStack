@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-27T18:36:39.813Z
+**Generated:** 2026-09-27T19:28:42.218Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4243 |
-| Production source lines | 1003527 |
+| Production source lines | 1003546 |
 | Test files | 3790 |
 | Workspace dependency edges | 130 |
 | Relative module edges | 13836 |
@@ -135,7 +135,7 @@ None.
 | 878 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 878 | `packages/primitives/src/regex-guard.ts` |
 | 875 | `packages/cli/src/fleet/host.ts` |
-| 873 | `packages/sage/src/domain-term-extractor.ts` |
+| 875 | `packages/kanban/src/verification/verification-context.ts` |
 
 ## Exports only tests reference
 

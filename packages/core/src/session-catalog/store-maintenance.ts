@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { removePathSync } from '@wrongstack/primitives';
 import type { DefaultSecretScrubber } from '../security/secret-scrubber.js';
 import {
   resolveSessionId as resolveAmongCandidates,
@@ -282,7 +283,7 @@ export function executeDeleteSession(
     throw error;
   }
   try {
-    fs.rmSync(trashRoot, { recursive: true, force: true });
+    removePathSync(trashRoot, { recursive: true, force: true });
     const trashParent = path.dirname(trashRoot);
     if (fs.readdirSync(trashParent).length === 0) fs.rmdirSync(trashParent);
   } catch {

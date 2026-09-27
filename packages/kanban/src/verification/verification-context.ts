@@ -242,12 +242,30 @@ export class VerificationContext {
   /** Get the working tree status. */
   async gitStatus(): Promise<GitStatusResult> {
     try {
-      const { stdout } = await this.runGitCommand(['status', '--porcelain']);
-      const lines = stdout.split('\n').filter((l) => l.trim());
+      // -z: raw paths (the line form C-quotes non-ASCII ones and prints a
+      // rename as "old -> new"); a rename/copy record is followed by its
+      // original path. Output without NULs is still read line by line.
+      const { stdout } = await this.runGitCommand(['status', '--porcelain', '-z']);
+      let lines: string[];
+      let files: string[];
+      if (stdout.includes('\0')) {
+        lines = [];
+        files = [];
+        const fields = stdout.split('\0');
+        for (let index = 0; index < fields.length; index += 1) {
+          const record = fields[index] ?? '';
+          if (record.length < 4) continue;
+          lines.push(record);
+          files.push(record.slice(3));
+          if (/^(?:[RC]|.[RC])/.test(record)) index += 1;
+        }
+      } else {
+        lines = stdout.split('\n').filter((l) => l.trim());
+        files = lines.map((l) => l.slice(3).trim()).filter(Boolean);
+      }
       const untracked = lines.filter((l) => l.startsWith('??')).length;
       const unstaged = lines.filter((l) => /^.[^ ]/.test(l) && !l.startsWith('??')).length;
       const staged = lines.filter((l) => /^[^ ]/.test(l) && !l.startsWith('??')).length;
-      const files = lines.map((l) => l.slice(3).trim()).filter(Boolean);
       return {
         clean: lines.length === 0,
         untracked,
