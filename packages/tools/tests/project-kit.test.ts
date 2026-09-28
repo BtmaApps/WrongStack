@@ -155,6 +155,41 @@ export function run(input, ctx) {
     expect(await pending).toMatchObject({ status: 'failed', error: 'Cancelled' });
   }, 15000);
 
+  it('records exitCode and a bounded redacted stderr tail for timed-out and cancelled runs', async () => {
+    const f = await fixture();
+    f.manifest.timeoutMs = 500;
+    await writeFile(path.join(f.kitDir, 'kit.json'), JSON.stringify(f.manifest));
+    await writeFile(
+      path.join(f.kitDir, 'main.mjs'),
+      `export function run() {
+        process.stderr.write('stalled with GITHUB_TOKEN=ghp_timeoutsecret123\\n');
+        return new Promise(() => {});
+      }`,
+    );
+    const rev = (await loadKit(f.root, 'strings.unique')).revision;
+
+    const timedOut = await f.run('verify', {}, rev);
+    expect(timedOut.error).toBe('Timed out');
+    expect(timedOut.stderrTail).toContain('GITHUB_TOKEN=[REDACTED]');
+    expect(timedOut.stderrTail ?? '').not.toContain('ghp_timeoutsecret123');
+    expect((timedOut.stderrTail ?? '').length).toBeLessThanOrEqual(4096);
+    // A killed child's code is platform-dependent, so the field is asserted as
+    // recorded (a number) or genuinely absent, never as a specific value.
+    expect(timedOut.exitCode === undefined || typeof timedOut.exitCode === 'number').toBe(true);
+    const [timedOutRecord] = await kitHistory(f.root, 'strings.unique');
+    expect(timedOutRecord?.stderrTail).toBe(timedOut.stderrTail);
+    expect(timedOutRecord?.exitCode).toBe(timedOut.exitCode);
+
+    const controller = new AbortController();
+    const pending = f.run('verify', {}, rev, controller.signal);
+    setTimeout(() => controller.abort(), 200);
+    const cancelled = await pending;
+    expect(cancelled.error).toBe('Cancelled');
+    expect(cancelled.stderrTail).toContain('GITHUB_TOKEN=[REDACTED]');
+    expect((cancelled.stderrTail ?? '').length).toBeLessThanOrEqual(4096);
+    expect(cancelled.exitCode === undefined || typeof cancelled.exitCode === 'number').toBe(true);
+  }, 15000);
+
   it('persists the exit code and a bounded redacted stderr tail when the child dies without a result', async () => {
     const f = await fixture();
     await writeFile(
