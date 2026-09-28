@@ -1,20 +1,15 @@
-## Symbol and importer probes
+## Fixtures and hidden indexed surfaces
 
-- Avoid `codebase-impact-analysis` for generic names (`Action`, `State`, `create`); use exact-specifier grep (e.g. `rg "app-action-type"`) and check re-exporting barrels such as `packages/tui/src/app-reducer.ts`.
-- For common-English `hint.symbol` values (`The`, `Failed`, `Cannot`), grep the distinctive error phrase from `context` before pursuing symbol-search near-misses; investigate runtime/dependency origins when absent.
-- Scope webui importer greps to `packages/webui/src` and `packages/webui/tests`; exclude `dist/` and `packages/simpleui` namesakes before validating `codebase-incoming-calls`. Check feature `index.tsx` for leaf sub-tabs, not just `view-registry.ts`.
-- Verify each `packages/webui-server/src/server/` module’s exports rather than assuming `server/index.ts` exposes it; `backend-services.ts` uses deep-relative imports. If incoming-call files outnumber specifier hits, inspect binding re-exports (`import {x} from './module.js'; export {x};`) and grep exported symbols.
+- Inventory `.wrongstack/project-kit/<kit>/fixtures/**` with unlimited or depth ≥ 6 `tree`; depth 3 reported `truncated=false` yet undercounted `temp-file-sweeper/fixtures/git-messy` (18 vs 20). Confirm suspected omissions with `read` or a deep tree.
+- Do not assume `.wrongstack/` is invisible: the index covers `.wrongstack/project-kit/**` (`codebase-search` resolves `ageFixtureFiles` in `.wrongstack/project-kit/temp-file-sweeper/main.mjs`), while `grep`/`glob` can skip it. Use `read` for known paths and `codebase-search`/`codebase-incoming-calls` for symbols; zero `grep`/`glob` hits are non-evidence.
+- Classify each fixture data file as a name-existence contract (collision seeds, `.staged`/`.aged`, occupancy pre-seeds) or a content contract (`bytes` in `kit.json` `tests[].expected`). Only content contracts make byte edits risky; for name-existence files, test whether deletion, rename, or top-level additions shift `scanned`. In `temp-file-sweeper`, grep `\.aged` and `\.staged`, never bare `aged`; combine `kit.json` `tests[]` roots such as `@git/fixtures/aged` with `main.mjs` `initializeWorkTree()`/`ageFixtureFiles()` and sibling marker arrays to determine blast radius, not through a call graph.
+- Treat `kit.json` `tests[]` and the guide’s “Known limits” as the coverage contract; classify unreferenced `temp-file-sweeper/fixtures/git-messy` as ad-hoc-only, unlike consumed `fixtures/messy`. Before comparing `git rev-parse --show-toplevel` with `mkdtemp(os.tmpdir())`, apply `fs.realpath` to both, following `packages/tools/tests/codebase-index-git-blob-trust.test.ts`.
 
-## Scratch scripts and disk evidence
+## Importers, docs, and scratch
 
-- For `.temp_files/**/*.mjs` bare imports, directly `read` each walk-up `node_modules/<pkg>/package.json`; empty `glob` results are unreliable under `.temp_files/` and `node_modules`. Check `page.screenshot` artifacts for evidence of earlier execution, not current dependency availability; missing artifacts alone do not prove execution never completed.
-- Before assessing scratch-codemod reruns, inspect generated artifacts and extraction markers in write targets. Distinguish marker-check failures before writes from clobber risks: `writeFileSync` without `'wx'` can overwrite hand-edits if markers are restored.
-- Verify external snapshots by directly reading `packages/<pkg>/tests/__snapshots__/<test>.snap`, not trusting empty `glob` or `grep` results.
-- When another agent edits a file, compare successive `total_lines`; re-read changed regions and cite only current on-disk anchors.
-
-## Non-import test coupling
-
-- Before moving or deleting leak-pin `describe` blocks, check `UNSWEPT` in `packages/tui/tests/leaked-mouse-input-sweep.test.tsx`, including ownership of `packages/tui/tests/kanban-panel-mount.test.tsx`; comment/string coupling escapes `codebase-incoming-calls`.
-- Treat `packages/webui/tests/lib/session-scoped-send-stamping.test.ts` as textual lint over `packages/webui/src`; inspect `session-stamping: stamped-at-helper` and `session-stamping: deliberately-unstamped`, not incoming calls.
-- Resolve `packages/webui/tests/*.mjs` smoke entry points through `packages/webui/package.json`; run `cd packages/webui && pnpm run <script>` and inspect `harnessPlugin` source strings.
-- Before declaring `packages/*/tests/helpers/` dead, read header-documented consumers and validate zero-hit searches against a known positive such as `create-test-state`.
+- For `packages/tools/src/project-kit/schema.ts`, scope `\./schema(\.js)?['"]` to its directory before repo-wide `project-kit/schema`; broad `packages/tools` hits are dominated by unrelated `codebase-index/schema.ts`.
+- For Markdown, skip `codebase-skeleton`; `read` section structure and map dependents by exact basename/stem text, separating doc paths from identifiers such as `project-kit`. `codebase-incoming-calls` does not model Markdown imports.
+- Treat `.temp_files/` A/B string-replacement harnesses as drift-sensitive: verify exact source anchors such as `respond({ type: 'result' ... })` in `packages/tools/src/project-kit/runner.ts`; edits breaking those anchors or mutual-exclusion guards invalidate the experiment. `codebase-search`/`codebase-incoming-calls` return 0 because the index excludes `.temp_files/`.
+- Scope Web UI importers to `packages/webui/src` and `packages/webui/tests`, excluding `dist/` and `packages/simpleui`; inspect feature `index.tsx` files for leaf sub-tabs, not only `view-registry.ts`. Verify actual `packages/webui-server/src/server/` exports and deep-relative/re-export barrels rather than assuming `server/index.ts` exposes every module.
+- For `.temp_files/**/*.mjs` bare imports, directly `read` each walk-up `node_modules/<pkg>/package.json`; empty `glob`/`grep` results do not prove absence. Treat `page.screenshot` artifacts as prior-run evidence, never current dependency availability.
+- Before deleting `packages/*/tests/helpers/` or moving leak pins, inspect textual contracts: `UNSWEPT` in `packages/tui/tests/leaked-mouse-input-sweep.test.tsx` names `packages/tui/tests/kanban-panel-mount.test.tsx`; `packages/webui/tests/lib/session-scoped-send-stamping.test.ts` keys off `session-stamping: stamped-at-helper` and `session-stamping: deliberately-unstamped`. Validate zero-hit helper searches with known positive `create-test-state`.

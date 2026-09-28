@@ -1,15 +1,14 @@
 {
-  "consolidatedAt": "2026-09-28T13:46:08.783Z",
+  "consolidatedAt": "2026-09-28T21:48:14.886Z",
   "sourceEntryCount": 0,
   "sourceBytes": 405,
-  "consolidatedBytes": 14182,
+  "consolidatedBytes": 16764,
   "trigger": "automatic",
-  "model": "gpt-6-astra",
+  "model": "MiniMax-M3.1-Flash-Preview",
   "pruned": true,
-  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-09-28T13-46-08-783Z.md",
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-09-28T21-48-14-886Z.md",
   "skills": [
     "codebase-navigation",
-    "node-modern",
     "typescript-strict"
   ]
 }

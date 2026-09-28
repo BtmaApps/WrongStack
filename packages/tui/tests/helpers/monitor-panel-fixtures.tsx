@@ -22,6 +22,7 @@ import type { CronListResult } from '../../src/components/cron-jobs.js';
 import { MonitorViewportProvider, PanelInputProvider } from '../../src/components/monitor-shell.js';
 import type { WorktreeRow } from '../../src/components/worktree-panel.js';
 import { emptyMemoryContextMonitor } from '../../src/memory-context-monitor.js';
+import type { ContextBreakdown } from '@wrongstack/core/utils';
 import { createTestState } from './create-test-state.js';
 
 /** Terminal the panels measure against; wide enough that no column is dropped. */
@@ -157,7 +158,7 @@ export function contextPanelData(): ContextPanelData {
     mode: 'default',
     uptime: '5m',
     breakdown: {
-      system: { total: 10_000, bySource: {} },
+      system: { total: 10_000, bySource: {} as ContextBreakdown['system']['bySource'] },
       tools: { total: 5_000, builtin: 5_000, mcp: 0, count: 3, mcpByServer: {} },
       history: {
         total: 15_000,
@@ -168,11 +169,16 @@ export function contextPanelData(): ContextPanelData {
         other: 0,
         messageCount: 6,
       },
+      volatile: { ledger: 0, nextsteps: 0, total: 0 },
+      total: 30_000,
+      effectiveMaxContext: 200_000,
+      usedPct: 0.15,
+      warnings: [],
     },
     fleetEntries: [],
     leaderIterations: 4,
     leaderToolCalls: 9,
     leaderStatus: 'idle',
     memoryContext: emptyMemoryContextMonitor(),
-  } as ContextPanelData;
+  };
 }

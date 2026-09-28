@@ -219,8 +219,8 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 676,
-      "typeOnly": 65,
+      "files": 677,
+      "typeOnly": 66,
       "runtimeOrMixed": 643
     },
     "@wrongstack/core/utils/child-env": {
@@ -23307,6 +23307,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/tests/context-panel.test.tsx",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/tests/helpers/monitor-panel-fixtures.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

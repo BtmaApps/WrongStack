@@ -32,6 +32,11 @@
       "fingerprint": "6ec5e9ce19834641"
     },
     {
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "62244c8ae05186a8"
+    },
+    {
       "file": "packages/cli/tests/hq-mobile-visual-smoke.test.ts",
       "kind": "skipIf",
       "fingerprint": "a2e2879eb3e716ce"
