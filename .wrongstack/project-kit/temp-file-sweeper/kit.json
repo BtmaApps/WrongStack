@@ -1,0 +1,385 @@
+{
+  "formatVersion": 1,
+  "name": "temp-file-sweeper",
+  "description": "Report, relocate under .temp_files/, or delete stray top-level temporary files (.log, .txt, .tmp, .out, .err, .bak, .old) in a directory. Reporting is the default and changes nothing; move and delete act only on files git proves untracked in that exact work tree, are bounded by maxActions, and never touch a protected name.",
+  "entry": "main.mjs",
+  "guide": "# temp-file-sweeper\n\nFinds stray temporary files accidentally created at the TOP LEVEL of a directory — build logs, `.txt` scratch notes, `.out`/`.err` dumps left behind by a command or by a post-commit step — and, on request, relocates them under `.temp_files/` or deletes them.\n\n## Modes\n\n- `report` (default): changes NOTHING; lists every matched file together with the git evidence for it. Safe to run anywhere, including the repository root.\n- `move`: relocates matched files to `<quarantineDir>/<name>`, by default `.temp_files/swept/<name>`. A name collision inside the destination gains a `-1`, `-2` suffix.\n- `delete`: unlinks matched files.\n\n## Safety model\n\n1. Only the top level of `root` is scanned. Subdirectories are never entered, so `.temp_files/` contents can never be re-swept.\n2. `report` is the default, so omitting `mode` cannot destroy anything.\n3. `move` and `delete` act only on files git proves untracked in that exact work tree (the work-tree root must be the swept root itself). Anything else lands in `skipped` with a reason, unless `includeTracked: true` accepts it explicitly.\n4. Protected names (package.json, pnpm-lock.yaml, tsconfig.json, README.md, AGENTS.md, LICENSE, CHANGELOG.md, .gitignore, kit.json, ...) are never swept.\n5. `maxActions` bounds how many files a single call may touch (default 50).\n6. `sinceMinutes` can narrow the sweep to recently written leftovers (0 disables the age filter).\n\n## Parameters\n\n| Name | Default | Meaning |\n| --- | --- | --- |\n| mode | report | report, move or delete |\n| root | . | project-relative directory to sweep; a `@kit/...` value sweeps a disposable copy of a bundled fixture, while `@git/...` also makes that copy a throwaway git work tree and stages the names listed in the fixture `.staged` JSON array; either form also backdates the files named in an `.aged` JSON array to a fixed 2001 timestamp (all of this exists to serve the verification cases) |\n| extensions | .log .txt .tmp .out .err .bak .old | extensions treated as temporary |\n| sinceMinutes | 0 | only files modified within the last N minutes |\n| maxActions | 50 | maximum files acted on in one call |\n| includeTracked | false | act on files that lack untracked evidence |\n| quarantineDir | .temp_files/swept | move destination, relative to the swept root |\n\n## Result\n\n`candidates` lists matched files that passed every filter, each with a `reason` of `untracked`, `tracked` or `tracked-state-unknown`. In `report` mode every match appears there. In `move`/`delete` mode only the files that will actually be acted on stay in `candidates`; the rest move to `skipped` (`tracked`, `tracked-state-unknown`, `protected-name`, `outside-time-window`, `max-actions-reached`). `gitWorkTree` is true only when the swept root itself resolved as a git work-tree root. All paths are relative to the swept root, and every list is sorted by path.\n\n## Typical uses\n\n- See what is lying around before committing: `{ \"mode\": \"report\", \"root\": \".\", \"sinceMinutes\": 60 }`.\n- Quarantine instead of losing it: run a report first, then `{ \"mode\": \"move\", \"root\": \".\", \"includeTracked\": true }`.\n- Clear it out for real: `{ \"mode\": \"delete\", \"root\": \".\" }`, relying on git to prove the files are untracked.\n\n## Known limits\n\n- Top level only: `node_modules/x.log` or `packages/a/tmp.txt` are out of scope by design.\n- The verification cases cover all three evidence states: `@kit/...` yields `tracked-state-unknown`, `@git/...` on a fixture without `.staged` yields `untracked` (mutation allowed on real evidence), and `@git/...` with a `.staged` list yields `tracked` for exactly the staged names. The `@git/` cases need `git` on PATH, and the fixture pins `core.excludesFile` inside its own scratch so a developer global gitignore cannot change their outcome.\n- `sinceMinutes` is covered in both directions: a fixture may name files in an `.aged` JSON array, which backdates them to a fixed 2001-01-01 timestamp before the sweep, so the `outside-time-window` branch has a deterministic case. Collision suffixes are individually cased up to `-3`; later ones follow the same suffix loop and have no case of their own.\n- Deletion is irreversible; there is no undo. Prefer `move` when unsure.",
+  "effects": "write",
+  "timeoutMs": 120000,
+  "inputSchema": {
+    "type": "object",
+    "description": "Sweep parameters. Every field has a default, so an empty object is a safe report.",
+    "additionalProperties": false,
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["report", "move", "delete"],
+        "default": "report",
+        "description": "report changes nothing, move relocates files under quarantineDir, delete unlinks them."
+      },
+      "root": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024,
+        "default": ".",
+        "description": "Project-relative directory to sweep. A @kit/<path> value sweeps a disposable copy of that bundled fixture instead; an @git/<path> value also makes that copy a throwaway git work tree and stages the names listed in the fixture .staged file."
+      },
+      "extensions": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "minItems": 1,
+        "maxItems": 32,
+        "default": [".log", ".txt", ".tmp", ".out", ".err", ".bak", ".old"],
+        "description": "File extensions treated as temporary. A leading dot is optional."
+      },
+      "sinceMinutes": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000,
+        "default": 0,
+        "description": "Only sweep files modified within the last N minutes; 0 disables the age filter."
+      },
+      "maxActions": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "default": 50,
+        "description": "Maximum number of files one call may move or delete."
+      },
+      "includeTracked": {
+        "type": "boolean",
+        "default": false,
+        "description": "Act on files that are not proven untracked (tracked, or no git work tree). Required for a mutation inside a directory that is not its own git work-tree root."
+      },
+      "quarantineDir": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512,
+        "default": ".temp_files/swept",
+        "description": "Move destination, relative to the swept root. Must be a plain relative path."
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "description": "Sweep result. Every path is relative to the swept root.",
+    "additionalProperties": false,
+    "required": [
+      "mode",
+      "root",
+      "gitWorkTree",
+      "scanned",
+      "candidates",
+      "moved",
+      "deleted",
+      "skipped"
+    ],
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["report", "move", "delete"],
+        "description": "The effective mode."
+      },
+      "root": {
+        "type": "string",
+        "maxLength": 1024,
+        "description": "The root exactly as it was requested."
+      },
+      "gitWorkTree": {
+        "type": "boolean",
+        "description": "True only when the swept root itself is a git work-tree root, so untracked evidence is real."
+      },
+      "scanned": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Top-level regular files examined, before the extension filter."
+      },
+      "candidates": {
+        "type": "array",
+        "maxItems": 500,
+        "description": "Matched files that passed every filter, sorted by path.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "bytes", "reason"],
+          "properties": {
+            "path": { "type": "string", "maxLength": 512 },
+            "bytes": { "type": "integer", "minimum": 0 },
+            "reason": {
+              "type": "string",
+              "enum": ["untracked", "tracked", "tracked-state-unknown"]
+            }
+          }
+        }
+      },
+      "moved": {
+        "type": "array",
+        "maxItems": 500,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "maxLength": 512 },
+            "to": { "type": "string", "maxLength": 512 }
+          }
+        }
+      },
+      "deleted": {
+        "type": "array",
+        "maxItems": 500,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "bytes"],
+          "properties": {
+            "path": { "type": "string", "maxLength": 512 },
+            "bytes": { "type": "integer", "minimum": 0 }
+          }
+        }
+      },
+      "skipped": {
+        "type": "array",
+        "maxItems": 500,
+        "description": "Matched files that were not acted on, sorted by path.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "reason"],
+          "properties": {
+            "path": { "type": "string", "maxLength": 512 },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "tracked",
+                "tracked-state-unknown",
+                "protected-name",
+                "outside-time-window",
+                "max-actions-reached"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "tests": [
+    {
+      "name": "report is the default and changes nothing",
+      "input": { "root": "@kit/fixtures/messy" },
+      "expected": {
+        "mode": "report",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [
+          { "path": "build.log", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "debug.out", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "notes.txt", "bytes": 14, "reason": "tracked-state-unknown" }
+        ],
+        "moved": [],
+        "deleted": [],
+        "skipped": []
+      }
+    },
+    {
+      "name": "move refuses files without untracked evidence",
+      "input": { "root": "@kit/fixtures/messy", "mode": "move" },
+      "expected": {
+        "mode": "move",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [],
+        "moved": [],
+        "deleted": [],
+        "skipped": [
+          { "path": "build.log", "reason": "tracked-state-unknown" },
+          { "path": "debug.out", "reason": "tracked-state-unknown" },
+          { "path": "notes.txt", "reason": "tracked-state-unknown" }
+        ]
+      }
+    },
+    {
+      "name": "move relocates matched files under the quarantine directory",
+      "input": { "root": "@kit/fixtures/messy", "mode": "move", "includeTracked": true },
+      "expected": {
+        "mode": "move",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [
+          { "path": "build.log", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "debug.out", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "notes.txt", "bytes": 14, "reason": "tracked-state-unknown" }
+        ],
+        "moved": [
+          { "from": "build.log", "to": ".temp_files/swept/build.log" },
+          { "from": "debug.out", "to": ".temp_files/swept/debug.out" },
+          { "from": "notes.txt", "to": ".temp_files/swept/notes.txt" }
+        ],
+        "deleted": [],
+        "skipped": []
+      }
+    },
+    {
+      "name": "delete honours the protected-name list under a narrowed extension filter",
+      "input": {
+        "root": "@kit/fixtures/messy",
+        "mode": "delete",
+        "includeTracked": true,
+        "extensions": [".md", ".txt"]
+      },
+      "expected": {
+        "mode": "delete",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [{ "path": "notes.txt", "bytes": 14, "reason": "tracked-state-unknown" }],
+        "moved": [],
+        "deleted": [{ "path": "notes.txt", "bytes": 14 }],
+        "skipped": [{ "path": "README.md", "reason": "protected-name" }]
+      }
+    },
+    {
+      "name": "a positive time window still accepts freshly written files",
+      "input": { "root": "@kit/fixtures/messy", "sinceMinutes": 1 },
+      "expected": {
+        "mode": "report",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [
+          { "path": "build.log", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "debug.out", "bytes": 13, "reason": "tracked-state-unknown" },
+          { "path": "notes.txt", "bytes": 14, "reason": "tracked-state-unknown" }
+        ],
+        "moved": [],
+        "deleted": [],
+        "skipped": []
+      }
+    },
+    {
+      "name": "maxActions bounds how many files one call may act on",
+      "input": {
+        "root": "@kit/fixtures/messy",
+        "mode": "delete",
+        "includeTracked": true,
+        "maxActions": 1
+      },
+      "expected": {
+        "mode": "delete",
+        "root": "@kit/fixtures/messy",
+        "gitWorkTree": false,
+        "scanned": 5,
+        "candidates": [{ "path": "build.log", "bytes": 13, "reason": "tracked-state-unknown" }],
+        "moved": [],
+        "deleted": [{ "path": "build.log", "bytes": 13 }],
+        "skipped": [
+          { "path": "debug.out", "reason": "max-actions-reached" },
+          { "path": "notes.txt", "reason": "max-actions-reached" }
+        ]
+      }
+    },
+    {
+      "name": "git work tree: a staged file is tracked and skipped while an untracked one still moves",
+      "input": { "root": "@git/fixtures/git-messy", "mode": "move", "quarantineDir": "quarantine" },
+      "expected": {
+        "mode": "move",
+        "root": "@git/fixtures/git-messy",
+        "gitWorkTree": true,
+        "scanned": 2,
+        "candidates": [{ "path": "stray.log", "bytes": 12, "reason": "untracked" }],
+        "moved": [{ "from": "stray.log", "to": "quarantine/stray.log" }],
+        "deleted": [],
+        "skipped": [{ "path": "committed.log", "reason": "tracked" }]
+      }
+    },
+    {
+      "name": "git work tree: genuinely untracked files need no includeTracked override",
+      "input": { "root": "@git/fixtures/messy", "mode": "delete" },
+      "expected": {
+        "mode": "delete",
+        "root": "@git/fixtures/messy",
+        "gitWorkTree": true,
+        "scanned": 5,
+        "candidates": [
+          { "path": "build.log", "bytes": 13, "reason": "untracked" },
+          { "path": "debug.out", "bytes": 13, "reason": "untracked" },
+          { "path": "notes.txt", "bytes": 14, "reason": "untracked" }
+        ],
+        "moved": [],
+        "deleted": [
+          { "path": "build.log", "bytes": 13 },
+          { "path": "debug.out", "bytes": 13 },
+          { "path": "notes.txt", "bytes": 14 }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "name": "quarantine name collision gains a -1 suffix instead of overwriting",
+      "input": {
+        "root": "@git/fixtures/git-messy",
+        "mode": "move",
+        "quarantineDir": "quarantine-one"
+      },
+      "expected": {
+        "mode": "move",
+        "root": "@git/fixtures/git-messy",
+        "gitWorkTree": true,
+        "scanned": 2,
+        "candidates": [{ "path": "stray.log", "bytes": 12, "reason": "untracked" }],
+        "moved": [{ "from": "stray.log", "to": "quarantine-one/stray-1.log" }],
+        "deleted": [],
+        "skipped": [{ "path": "committed.log", "reason": "tracked" }]
+      }
+    },
+    {
+      "name": "a second name collision in the same destination gains a -2 suffix",
+      "input": { "root": "@git/fixtures/git-messy", "mode": "move" },
+      "expected": {
+        "mode": "move",
+        "root": "@git/fixtures/git-messy",
+        "gitWorkTree": true,
+        "scanned": 2,
+        "candidates": [{ "path": "stray.log", "bytes": 12, "reason": "untracked" }],
+        "moved": [{ "from": "stray.log", "to": ".temp_files/swept/stray-2.log" }],
+        "deleted": [],
+        "skipped": [{ "path": "committed.log", "reason": "tracked" }]
+      }
+    },
+    {
+      "name": "sinceMinutes excludes an older file from the sweep but keeps the fresh one",
+      "input": { "root": "@git/fixtures/aged", "mode": "move", "sinceMinutes": 60 },
+      "expected": {
+        "mode": "move",
+        "root": "@git/fixtures/aged",
+        "gitWorkTree": true,
+        "scanned": 2,
+        "candidates": [{ "path": "fresh.log", "bytes": 12, "reason": "untracked" }],
+        "moved": [{ "from": "fresh.log", "to": ".temp_files/swept/fresh.log" }],
+        "deleted": [],
+        "skipped": [{ "path": "old.log", "reason": "outside-time-window" }]
+      }
+    },
+    {
+      "name": "a third name collision in the same destination gains a -3 suffix",
+      "input": {
+        "root": "@git/fixtures/git-messy",
+        "mode": "move",
+        "quarantineDir": "quarantine-three"
+      },
+      "expected": {
+        "mode": "move",
+        "root": "@git/fixtures/git-messy",
+        "gitWorkTree": true,
+        "scanned": 2,
+        "candidates": [{ "path": "stray.log", "bytes": 12, "reason": "untracked" }],
+        "moved": [{ "from": "stray.log", "to": "quarantine-three/stray-3.log" }],
+        "deleted": [],
+        "skipped": [{ "path": "committed.log", "reason": "tracked" }]
+      }
+    }
+  ]
+}
