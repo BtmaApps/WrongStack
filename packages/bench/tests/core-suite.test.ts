@@ -73,7 +73,10 @@ describe('createCoreSuite', () => {
       await fs.writeFile(path.join(dir, 'test.mjs'), 'console.log("ok")\n', 'utf8');
       const grade = await gradeLocalManifest({ workdir: dir, task, timeoutMs: 5_000 });
       expect(grade.passed).toBe(false);
-      expect(grade.detail).toMatch(/CORE_SENTINEL_merge-intervals/);
+      // test.mjs is a protected file: the shipped checker is restored and the
+      // unimplemented solution fails its real assertions. (This used to rely on
+      // the sentinel assertion, which a rewrite keeping the sentinel defeats.)
+      expect(grade.detail).toMatch(/^restored modified protected file\(s\): test\.mjs/);
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

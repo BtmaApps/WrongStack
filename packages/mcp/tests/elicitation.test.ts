@@ -263,6 +263,62 @@ describe('ServerRequestResponder', () => {
     expect(await r.answer(elicitRequest(4))).toMatchObject({ result: { action: 'cancel' } });
   });
 
+  it('treats an empty string as an answer, not as an unanswered field', async () => {
+    // `checkValue` owns the bounds contract and admits '' for a declared
+    // `{ type: 'string' }` — with no `minLength`, or with `minLength: 0`, which
+    // `optionalCount` accepts. So '' must reach it. Classifying '' as omitted
+    // first made a required plain string field unsatisfiable (every answer came
+    // back "is required") and dropped the key on an optional one, so the server
+    // got `{}` where the user had given `{ note: '' }`.
+    const answer = vi.fn();
+    const r = new ServerRequestResponder(async () => answer());
+    const noteSchema = (required: string[], note: Record<string, unknown>) => ({
+      type: 'object',
+      properties: { note: { type: 'string', title: 'Note', ...note } },
+      required,
+    });
+
+    // Required plain string field: '' is a valid answer and is forwarded.
+    answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
+    expect(await r.answer(elicitRequest(1, { requestedSchema: noteSchema(['note'], {}) }))).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      result: { action: 'accept', content: { note: '' } },
+    });
+
+    // Optional field: the key must reach the server rather than vanish.
+    answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
+    expect(await r.answer(elicitRequest(2, { requestedSchema: noteSchema([], {}) }))).toEqual({
+      jsonrpc: '2.0',
+      id: 2,
+      result: { action: 'accept', content: { note: '' } },
+    });
+
+    // minLength: 0 says the empty string is in bounds.
+    answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
+    expect(
+      await r.answer(elicitRequest(3, { requestedSchema: noteSchema(['note'], { minLength: 0 }) })),
+    ).toMatchObject({ result: { content: { note: '' } } });
+
+    // A real bound still rejects '', and now names the bound that rejected it.
+    answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
+    expect(
+      await r.answer(elicitRequest(4, { requestedSchema: noteSchema(['note'], { minLength: 3 }) })),
+    ).toMatchObject({ error: { code: -32603, message: expect.stringMatching(/at least 3/) } });
+
+    // A genuine omission is still "required" — only the empty string changed.
+    answer.mockReturnValueOnce({ action: 'accept', content: {} });
+    expect(
+      await r.answer(elicitRequest(5, { requestedSchema: noteSchema(['note'], {}) })),
+    ).toMatchObject({ error: { code: -32603, message: expect.stringMatching(/required/) } });
+
+    // The other valid falsy answers were already handled and stay that way.
+    answer.mockReturnValueOnce({ action: 'accept', content: { note: 'x' } });
+    expect(
+      await r.answer(elicitRequest(6, { requestedSchema: noteSchema(['note'], {}) })),
+    ).toMatchObject({ result: { content: { note: 'x' } } });
+  });
+
   it('holds one form at a time, and stops waiting on server cancel or dispose', async () => {
     let seen: AbortSignal | undefined;
     const r = new ServerRequestResponder(
@@ -400,6 +456,74 @@ describe('elicitViaUserInput', () => {
     expect(result).toEqual({ action: 'accept', content: { env: 'staging', replicas: 2 } });
     expect(user.requests).toHaveLength(2);
     expect(user.requests[1]?.description).toContain('not accepted: replicas must be a number');
+  });
+
+  it('carries a blank answer to a required string field through to the server', async () => {
+    // A blank box answered for a REQUIRED field is a real answer, not a
+    // skipped one — the field's own bounds decide whether '' is acceptable.
+    // Folding it into `undefined` invented an omission the user never made, so
+    // the form was re-asked until it cancelled even when '' was valid, and
+    // every re-ask blamed "is required" instead of naming the real bound.
+    const REQUIRED_NOTE: ElicitationField = {
+      name: 'note',
+      title: 'Note',
+      required: true,
+      kind: 'string',
+    };
+    const MIN_ZERO: ElicitationField = { ...REQUIRED_NOTE, minLength: 0 };
+    const MIN_THREE: ElicitationField = { ...REQUIRED_NOTE, minLength: 3 };
+    const OPTIONAL_NOTE: ElicitationField = { ...REQUIRED_NOTE, required: false };
+
+    const blank =
+      (req: UserInputRequest): UserInputResponse => ({
+        requestId: req.id,
+        status: 'submitted',
+        answers: [
+          { questionId: 'f0', selectedOptionIds: [], text: '', usedRecommendation: false },
+        ],
+      });
+
+    // No lower bound: '' is in bounds, so it is accepted on the first prompt.
+    const plain = answering(blank);
+    expect(await elicitViaUserInput(formRequest([REQUIRED_NOTE], plain))).toEqual({
+      action: 'accept',
+      content: { note: '' },
+    });
+    expect(plain.requests).toHaveLength(1);
+
+    // minLength: 0 states outright that the empty string is in bounds.
+    const zero = answering(blank);
+    expect(await elicitViaUserInput(formRequest([MIN_ZERO], zero))).toEqual({
+      action: 'accept',
+      content: { note: '' },
+    });
+
+    // A real lower bound still rejects the blank, and the re-ask names THAT
+    // bound rather than claiming the field was never answered.
+    const bounded = answering(blank, blank);
+    await elicitViaUserInput(formRequest([MIN_THREE], bounded));
+    expect(bounded.requests[1]?.description).toContain('not accepted: Note needs at least 3');
+
+    // An OPTIONAL field the user skipped is a genuine omission, still omitted.
+    const optional = answering(blank);
+    expect(await elicitViaUserInput(formRequest([OPTIONAL_NOTE], optional))).toEqual({
+      action: 'accept',
+      content: {},
+    });
+    expect(optional.requests).toHaveLength(1);
+
+    // And a typed answer is still forwarded exactly as entered.
+    const typed = answering((req: UserInputRequest): UserInputResponse => ({
+      requestId: req.id,
+      status: 'submitted',
+      answers: [
+        { questionId: 'f0', selectedOptionIds: [], text: '  hello  ', usedRecommendation: false },
+      ],
+    }));
+    expect(await elicitViaUserInput(formRequest([REQUIRED_NOTE], typed))).toEqual({
+      action: 'accept',
+      content: { note: '  hello  ' },
+    });
   });
 
   it('declines when the user dismisses it, and cancels when no one can be asked', async () => {

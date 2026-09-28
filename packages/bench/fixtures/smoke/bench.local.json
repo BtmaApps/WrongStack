@@ -21,6 +21,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "src/greet.js", "text": "export function hello" },
         { "type": "file_not_contains", "path": "src/greet.js", "text": "export function greet" }

@@ -36,6 +36,10 @@ async function runGit(
     }
     let stdout = '';
     let stderr = '';
+    // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+    // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', (d: Buffer | string) => {
       stdout += d;
     });

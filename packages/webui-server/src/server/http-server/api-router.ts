@@ -10,6 +10,7 @@ import {
 } from '../codemap-handlers.js';
 import { handleDeadCodeActionPlan, handleDeadCodeScan } from '../deadcode-handlers.js';
 import { readRecentProcessMemoryDiagnostics } from '../memory-diagnostics.js';
+import { handleProjectKitRead } from '../project-kit-handlers.js';
 import {
   handleRequirementIntakeAnswers,
   handleRequirementIntakeArchive,
@@ -28,11 +29,11 @@ import {
   handleTechStackDependencyResearch,
   handleTechStackInventory,
   handleTechStackJobStatus,
+  handleTechStackModels,
   handleTechStackRemediationApply,
   handleTechStackRemediationPlan,
   handleTechStackReport,
   handleTechStackSnapshot,
-  handleTechStackModels,
   handleTechStackTrends,
   type TechStackEvent,
 } from '../techstack-handlers.js';
@@ -121,6 +122,16 @@ export async function handleApiRoutes(
     runningJobs: Map<string, AbortController>;
   }>,
 ): Promise<boolean> {
+  if (url.pathname === '/api/project-kit') {
+    if (requireAccessToken && !accessTokenOk) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+    } else if (req.method !== 'GET') {
+      res.writeHead(405, { 'Content-Type': 'application/json', Allow: 'GET' });
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+    } else await handleProjectKitRead(res, url, deps);
+    return true;
+  }
   if (url.pathname === '/api/fleet/ping' && req.method === 'POST') {
     if (requireAccessToken && !accessTokenOk) {
       res.writeHead(401, { 'Content-Type': 'application/json' });

@@ -5,6 +5,64 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart1: Record<string, ToolDetail> = {
+  project_kit: {
+    longDescription:
+      'Discover reusable project-specific tools before writing ad hoc scripts. Inspect contracts and guides, retrieve authoring templates, or read execution history without running project code.',
+    params: [
+      {
+        name: 'action',
+        type: "'list' | 'inspect' | 'history' | 'template'",
+        required: true,
+        description:
+          'List/search, inspect one tool, read its history, or obtain a working authoring template.',
+      },
+      {
+        name: 'name',
+        type: 'string',
+        description: 'Project Kit tool name; required except for list.',
+      },
+      {
+        name: 'query',
+        type: 'string',
+        description: 'Optional case-insensitive name/description substring for list.',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'History length, default 20.',
+      },
+    ],
+  },
+  project_kit_run: {
+    longDescription:
+      'Verify or run a revision-pinned Project Kit tool with schema-checked parameters in a tracked Node process. Executes arbitrary project code; verification also executes code and may have side effects.',
+    params: [
+      {
+        name: 'action',
+        type: "'verify' | 'run'",
+        required: true,
+        description: 'Verify declared cases, or execute a previously verified revision.',
+      },
+      {
+        name: 'name',
+        type: 'string',
+        required: true,
+        description: 'Exact Project Kit tool name returned by discovery.',
+      },
+      {
+        name: 'revision',
+        type: 'string',
+        required: true,
+        description: 'SHA-256 revision from inspect; any source change invalidates it.',
+      },
+      {
+        name: 'input',
+        type: 'object',
+        description:
+          'Parameters matching the inspected inputSchema; used for run, omitted for verify.',
+      },
+    ],
+  },
   tool_script: {
     longDescription:
       'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
@@ -308,18 +366,6 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
         type: 'string[]',
         required: true,
         description: 'Project-local file paths to upload through the selected file input.',
-      },
-    ],
-  },
-  browser_close: {
-    longDescription:
-      'Close an owned browser session and reclaim its resources, returning trace-artifact metadata when tracing was enabled.',
-    params: [
-      {
-        name: 'sessionId',
-        type: 'string',
-        required: true,
-        description: 'Browser session id returned by browser_open.',
       },
     ],
   },

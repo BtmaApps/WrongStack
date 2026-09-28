@@ -27,6 +27,10 @@ export interface KitRunRecord {
   exitCode?: number | undefined;
   /** Redacted stderr tail (last 4096 characters) of the last executed child process. */
   stderrTail?: string | undefined;
+  /** Whether the last child process delivered its terminal IPC message. */
+  resultReceived?: boolean | undefined;
+  /** Parent-side milliseconds from spawn to that message; undefined when none arrived. */
+  receiveMs?: number | undefined;
   cases?: Array<{ name: string; passed: boolean }> | undefined;
 }
 
@@ -120,6 +124,8 @@ export async function executeKit(options: {
   let output: unknown;
   let exitCode: number | undefined;
   let stderrTail: string | undefined;
+  let resultReceived: boolean | undefined;
+  let receiveMs: number | undefined;
   try {
     const inputs =
       options.action === 'verify' ? m.tests : [{ name: 'run', input, expected: undefined }];
@@ -141,6 +147,8 @@ export async function executeKit(options: {
       logs.push(...result.logs);
       exitCode = result.exitCode;
       stderrTail = result.stderrTail;
+      resultReceived = result.resultReceived;
+      receiveMs = result.receiveMs;
       if (!result.ok) throw new Error(result.error ?? 'Execution failed');
       assertValue(result.output, m.outputSchema, 'output');
       output = result.output;
@@ -159,6 +167,8 @@ export async function executeKit(options: {
   record.durationMs = Date.now() - started;
   record.exitCode = exitCode;
   record.stderrTail = stderrTail;
+  record.resultReceived = resultReceived;
+  record.receiveMs = receiveMs;
   if (options.action === 'verify') record.cases = cases;
   // Persist metadata only: raw inputs, outputs, error text and logs may contain
   // arbitrary private data that pattern-based redaction cannot recognize.

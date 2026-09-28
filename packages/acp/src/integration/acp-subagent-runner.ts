@@ -162,7 +162,11 @@ export async function makeACPSubagentRunnerWithStop(
 
   // In persistent mode we keep a single session alive across runner calls
   // so the external agent retains its conversation context (multi-turn).
-  let shared: ACPSession | null = null;
+  // Memoized start: concurrent first calls used to each spawn an agent and
+  // overwrite the shared one, leaking every process but the last.
+  let shared: Promise<ACPSession> | null = null;
+  // Turns on the shared session run one at a time (it takes one prompt).
+  let turns: Promise<unknown> = Promise.resolve();
 
   const startSession = async (): Promise<ACPSession> => {
     return ACPSession.start({
@@ -185,10 +189,17 @@ export async function makeACPSubagentRunnerWithStop(
     ctx: SubagentRunContext,
   ): Promise<SubagentRunOutcome> => {
     let session: ACPSession;
-    const reuse = persistent && shared !== null;
     try {
-      session = reuse ? (shared as ACPSession) : await startSession();
-      if (persistent) shared = session;
+      if (persistent) {
+        shared ??= startSession();
+        const starting = shared;
+        session = await starting.catch((err: unknown) => {
+          if (shared === starting) shared = null;
+          throw err;
+        });
+      } else {
+        session = await startSession();
+      }
     } catch (err) {
       // init / spawn failure. Throw a structured error so the host can
       // classify it (SubagentErrorKind).
@@ -214,7 +225,10 @@ export async function makeACPSubagentRunnerWithStop(
 
     let result: ACPSessionRunResult;
     try {
-      result = await session.prompt([textContent(task.description)], ctx.signal, onProgress);
+      const turn = () => session.prompt([textContent(task.description)], ctx.signal, onProgress);
+      const run = persistent ? turns.then(turn, turn) : turn();
+      if (persistent) turns = run;
+      result = await run;
     } catch (err) {
       throw acpErrorToSubagentError(err, options.role ?? 'acp-subagent');
     } finally {
@@ -250,12 +264,12 @@ export async function makeACPSubagentRunnerWithStop(
   // mode it's a no-op (each session is closed in the runner's finally).
   const stop = async (): Promise<void> => {
     if (shared) {
-      const s = shared;
+      const starting = shared;
       shared = null;
       try {
-        await s.close();
+        await (await starting).close();
       } catch {
-        // best-effort
+        // best-effort (a failed start has nothing to close)
       }
     }
   };

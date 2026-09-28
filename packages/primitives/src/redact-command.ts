@@ -88,7 +88,10 @@ const SEPARATOR = /^[=:,\s]$/;
  * `lastIndex` state can leak between the profiles that use them.
  */
 const SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,-]{8,}/g;
-const SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,-]+/gi;
+// A quoted password is taken whole (`-p "hunter two"`), like the long flags'
+// QUOTED_VALUE below; the bare class alone printed the tail after the space.
+const SHORT_FLAG_SECRET_PATTERN =
+  /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?(?:"[^"\n]*"|'[^'\n]*'|[^\s,-]+)/gi;
 /**
  * Short-flag patterns for the OUTBOUND profile (`telegram` notifications).
  *
@@ -106,7 +109,8 @@ const SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,-]
  * accepted cost here; see the outbound tests.
  */
 const OUTBOUND_SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,]+/g;
-const OUTBOUND_SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,]+/gi;
+const OUTBOUND_SHORT_FLAG_SECRET_PATTERN =
+  /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi;
 /** Shared: high-entropy value behind a secret-looking flag name. */
 const HIGH_ENTROPY_FLAG_PATTERN =
   /--[\w-]*(?:token|key|secret|password|passwd|auth|credential)[\w-]*[=\s,]\s*[A-Za-z0-9+/=]{32,}/g;
@@ -126,16 +130,25 @@ const HIGH_ENTROPY_FLAG_PATTERN =
 const KEYWORDS =
   'token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token';
 
+/**
+ * A quoted value, tried before the bare one. Without it a quoted secret that
+ * contains a space (`--password="hunter two"`) was cut at the space and its
+ * tail printed verbatim (`--password=[REDACTED] two"`). The env-style literals
+ * below spell the same alternation inline.
+ */
+const QUOTED_VALUE = `"[^"\\n]*"|'[^'\\n]*'`;
+
 /** Shared by `tools` (`/ps` output, crash dumps) and `core` telemetry. */
 const COMMAND_PATTERNS: readonly RegExp[] = [
-  // --flag=value, --flag "value", --flag,value (value captured up to the next space).
+  // --flag=value, --flag "value", --flag,value (value captured up to the next
+  // space, or the whole quoted value).
   // `\s*` after the separator: `--password   hunter2` must not match only the
   // first space and leave the value to be printed.
-  new RegExp(`--(?:[\\w-]+-)?(?:${KEYWORDS})(?:[=\\s,]\\s*[^\\s]*)?`, 'gi'),
+  new RegExp(`--(?:[\\w-]+-)?(?:${KEYWORDS})(?:[=\\s,]\\s*(?:${QUOTED_VALUE}|[^\\s]*))?`, 'gi'),
   SHORT_FLAG_TOKEN_PATTERN,
   SHORT_FLAG_SECRET_PATTERN,
-  // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, …
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*[^\s,]+/gi,
+  // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, PASSWORD="x y", …
+  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
 ];
 
@@ -143,7 +156,7 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
 const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // Same named long flags plus DATABASE_URL / CONNECTION_STRING spellings.
   new RegExp(
-    `--(?:[\\w-]+-)?(?:${KEYWORDS}|database[-_]?url|connection[-_]?string)(?:[=\\s,]\\s*[^\\s]*)?`,
+    `--(?:[\\w-]+-)?(?:${KEYWORDS}|database[-_]?url|connection[-_]?string)(?:[=\\s,]\\s*(?:${QUOTED_VALUE}|[^\\s]*))?`,
     'gi',
   ),
   // Glued short forms match here too, closing the `curl -tSECRET` /
@@ -155,8 +168,11 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   OUTBOUND_SHORT_FLAG_SECRET_PATTERN,
   // env-var style, including DATABASE_URL / CONNECTION_STRING. PASSPHRASE is
   // part of the set because a short (<20-char) value is not caught by the
-  // core scrubber's high_entropy_env pattern, so this is its only guard.
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:][^\s,]+/gi,
+  // core scrubber's high_entropy_env pattern, so this is its only guard. That
+  // is also why the separator admits surrounding whitespace, as the command
+  // profile's does: `PASSWORD: hunter2` and `PASSWORD = hunter2` used to reach
+  // the phone verbatim while `/ps` redacted them.
+  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
 ];
 

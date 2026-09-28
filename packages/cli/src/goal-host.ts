@@ -718,11 +718,24 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           if (!target) return 'Usage: /worktree merge <branch>';
           if (target.startsWith('-')) return `Refusing unsafe branch name: ${target}`;
           const base = (await gitText(['rev-parse', '--abbrev-ref', 'HEAD'], root)).out || 'HEAD';
-          await gitText(['merge', '--squash', target], root);
-          const commit = await gitText(['commit', '-m', `merge ${target} (squash)`], root);
-          if (commit.code !== 0 && !/nothing to commit/i.test(commit.out)) {
+          // The rollback is `reset --hard`: with uncommitted tracked changes it
+          // would wipe them — including the very edits git refused to overwrite.
+          const dirty = await gitText(['status', '--porcelain', '--untracked-files=no'], root);
+          if (dirty.code !== 0 || dirty.out) {
+            return `⚠ Working tree has uncommitted changes — commit or stash them before merging "${target}".`;
+          }
+          const merge = await gitText(['merge', '--squash', target], root);
+          if (merge.code !== 0) {
+            const unmerged = await gitText(['diff', '--name-only', '--diff-filter=U'], root);
             await gitText(['reset', '--hard', 'HEAD'], root);
-            return `⚠ Merge of "${target}" into ${base} hit conflicts and was rolled back.\n${commit.out}`;
+            const what = unmerged.out ? 'hit conflicts' : 'failed';
+            return `⚠ Merge of "${target}" into ${base} ${what} and was rolled back.\n${merge.out}`;
+          }
+          const commit = await gitText(['commit', '-m', `merge ${target} (squash)`], root);
+          // "nothing added to commit" is the same no-op when untracked files exist.
+          if (commit.code !== 0 && !/nothing (?:added )?to commit/i.test(commit.out)) {
+            await gitText(['reset', '--hard', 'HEAD'], root);
+            return `⚠ Merge of "${target}" into ${base} could not be committed and was rolled back.\n${commit.out}`;
           }
           return `✓ Merged "${target}" into ${base} (squash).`;
         }

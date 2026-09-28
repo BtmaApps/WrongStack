@@ -966,6 +966,71 @@ describe('CollaborationWebSocketHandler', () => {
   });
 });
 
+// The chat bridge runs tool inputs/outputs through the SecretScrubber; the
+// mirror used to only JSON-clone them, so observers received raw tokens.
+describe('CollaborationWebSocketHandler — mirrored payload scrubbing', () => {
+  // Built at runtime so no token literal sits in the repo.
+  const token = `ghp_${'A1b2C3d4E5'.repeat(4).slice(0, 36)}`;
+
+  function joinedObserver(
+    options?: ConstructorParameters<typeof CollaborationWebSocketHandler>[5],
+  ) {
+    const events = new EventBus();
+    const h = new CollaborationWebSocketHandler(
+      events,
+      noopLogger,
+      undefined,
+      undefined,
+      undefined,
+      options,
+    );
+    const ws = fakeWs();
+    h.addClient(ws);
+    h.handleMessage(ws, { type: 'collab.join', payload: { sessionId: 's-scrub' } });
+    return { events, h, ws };
+  }
+
+  it('redacts secrets in tool inputs and outputs with the default scrubber', () => {
+    const { events, h, ws } = joinedObserver();
+    events.emit('tool.started', {
+      name: 'bash',
+      id: 'tu-s',
+      input: { command: `curl -H "Authorization: token ${token}" x` },
+    } as never);
+    events.emit('tool.executed', { name: 'bash', id: 'tu-s', output: `echo ${token}` } as never);
+
+    const mirrored = ws.sent.filter((m: any) => m.type === 'collab.event');
+    expect(mirrored.map((m: any) => m.payload.kind)).toEqual(['tool.started', 'tool.executed']);
+    for (const m of mirrored) expect(JSON.stringify(m)).not.toContain(token);
+    expect(mirrored[0].payload.payload).toMatchObject({ name: 'bash', id: 'tu-s' });
+    h.dispose();
+  });
+
+  it("uses the host's scrubber when one is supplied", () => {
+    const { events, h, ws } = joinedObserver({
+      scrubPayload: (value) => ({ ...(value as object), scrubbedBy: 'host' }),
+    });
+    events.emit('tool.started', { name: 'read', id: 'tu-h' } as never);
+    expect(lastOfType(ws, 'collab.event').payload.payload).toEqual({
+      name: 'read',
+      id: 'tu-h',
+      scrubbedBy: 'host',
+    });
+    h.dispose();
+  });
+
+  it('drops the event instead of sending it unredacted when scrubbing throws', () => {
+    const { events, h, ws } = joinedObserver({
+      scrubPayload: () => {
+        throw new Error('scrubber failed');
+      },
+    });
+    events.emit('tool.started', { name: 'bash', id: 'tu-t', input: { command: token } } as never);
+    expect(lastOfType(ws, 'collab.event')).toBeUndefined();
+    h.dispose();
+  });
+});
+
 // Minimal wiring helper: a fresh handler with a real bus (no
 // annotations store) — used by the controller-flow tests above.
 function makeWithBus() {

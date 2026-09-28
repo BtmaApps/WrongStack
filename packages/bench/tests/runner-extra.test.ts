@@ -149,6 +149,30 @@ describe('mapWithConcurrency edge cases', () => {
     expect(visited).toEqual([1, 2, 3]);
     expect(result).toEqual([2, 4, 6]);
   });
+
+  // The `Number.isFinite(concurrency) ? … : 1` fallback above must cover EVERY
+  // non-finite/sub-1 limit, not just NaN. Without it the worker count would be
+  // `Math.min(NaN, items.length)` = NaN, and `Array.from({ length: NaN })`
+  // yields ZERO workers — `Promise.all([])` resolves with the mapper never
+  // called, so the caller silently gets an array of holes. These cases pin the
+  // Infinity and sub-1 branches of the same floor.
+  it.each([
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['-Infinity', Number.NEGATIVE_INFINITY],
+    ['zero', 0],
+    ['negative', -3],
+  ])('still maps every item for a non-finite or sub-1 limit (%s)', async (_label, concurrency) => {
+    const { mapWithConcurrency } = await import('../src/runner.js');
+    const visited: number[] = [];
+    const result = await mapWithConcurrency([1, 2, 3], concurrency, async (value) => {
+      visited.push(value);
+      return value * 2;
+    });
+
+    expect(visited).toEqual([1, 2, 3]);
+    expect(result).toEqual([2, 4, 6]);
+    expect(result.every((v) => v !== undefined)).toBe(true);
+  });
 });
 
 describe('treeKill (POSIX branch)', () => {

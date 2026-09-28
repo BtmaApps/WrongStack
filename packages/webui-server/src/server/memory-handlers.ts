@@ -721,10 +721,14 @@ export async function handleSageCandidateResolve(
       // Hygiene and triage file `memory_review` proposals. Accepting one is a
       // decision about its TARGET, not a request to store the proposal text as
       // a new memory — the store refuses that — so route it through resolve.
-      // The queue's accept button reads "Accept deletion"; an archive proposal
-      // archives, everything else deletes.
+      // Advisory investigations/updates are not authorization to delete.
       const review = await findReviewCandidate(Sage, candidateId);
       if (review) {
+        if (review.suggestedAction !== 'archive' && review.suggestedAction !== 'delete') {
+          throw new Error(
+            'This review requires investigation. Open the target memory to verify/correct it, or keep it; accepting this proposal cannot delete or archive the memory.',
+          );
+        }
         const decision = review.suggestedAction === 'archive' ? 'archive' : 'delete';
         const resolution = await Sage.resolveCandidate(candidateId, decision, reason);
         if (resolution?.error) throw new Error(resolution.error);

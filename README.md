@@ -655,6 +655,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 |-----|----------------|
 | [CLI reference](docs/cli-reference.md) | Launch flags, subcommands, and `wstack update` |
 | [Reference](docs/reference.md) | Tools, providers, slash commands, modes, skills at a glance |
+| [Project Kit](docs/project-kit.md) | Reusable project tools with schemas, verification, revisions, and execution history |
 | [Slash commands](docs/slash/) | Every built-in slash command |
 | [Subcommands](docs/subcommands/) | Every `wstack <subcommand>` |
 | [Configuration](docs/configuration.md) | Config files, env vars, project conventions |

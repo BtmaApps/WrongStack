@@ -19,8 +19,9 @@ vi.mock('../../src/i18n', () => ({
   }),
 }));
 
+const gitInfo = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock('../../src/hooks/useGitInfo', () => ({
-  useGitInfo: () => null,
+  useGitInfo: () => gitInfo.current,
 }));
 
 function agent(id: string, sessionId: string, status: SubagentView['status']): SubagentView {
@@ -48,6 +49,7 @@ beforeEach(() => {
   useUIStore.setState({ dockSection: null, hiddenChips: [], dockCustomizeOpen: false });
   useSessionStore.setState({ todos: [] });
   useFleetStore.setState({ agents: new Map() } as never);
+  gitInfo.current = null;
 });
 
 describe('WorkspaceDock', () => {
@@ -77,5 +79,20 @@ describe('WorkspaceDock', () => {
     render(<WorkspaceDock />);
 
     expect(screen.queryByRole('button', { name: /fleet/i })).toBeNull();
+  });
+
+  it('shows the git chip for a repository and hides it when there is no branch', () => {
+    const counts = { added: 3, deleted: 1, untracked: 0, ahead: 0, behind: 0, fetchedAt: 0 };
+    gitInfo.current = { branch: 'main', ...counts };
+    const { unmount } = render(<WorkspaceDock />);
+    expect(screen.getByText('main')).toBeTruthy();
+    expect(screen.getByText('+3')).toBeTruthy();
+    unmount();
+
+    // Not a git repository: the server sends an empty branch; no chip (it
+    // used to read "(detached)" with counters).
+    gitInfo.current = { branch: '', ...counts };
+    render(<WorkspaceDock />);
+    expect(screen.queryByText('+3')).toBeNull();
   });
 });

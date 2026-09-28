@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import { rejectIfUnsafeInput } from './shared/candidate-lifecycle.js';
+import { appendModelFeedback } from './shared/model-feedback.js';
 import { VALID_MEMORY_STATUSES } from './shared/pagination.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { cleanReferencingMemories, memoryNodeId } from './sqlite-store-graph-helpers.js';
@@ -11,12 +12,14 @@ import {
   MAX_MEMORY_TEXT_CHARS,
   normalizeAnchors,
   normalizeAudience,
+  normalizeSources,
   normalizeTags,
   normalizeText,
   STRUCTURAL_KINDS,
   VALID_KINDS,
   validateMemoryAnchors,
   validateMemoryTags,
+  validateRememberInput,
 } from './store-helpers.js';
 import type { Sage, SageStatus, UpdateSageInput } from './types.js';
 import { DEFAULT_PERSISTENCE, VALID_PERSISTENCE } from './types.js';
@@ -84,6 +87,35 @@ export function updateSqliteSage(
   const existing = readSqliteSageRow(ctx.stmt, id);
   if (!existing) throw new Error(`SAGE ${id} not found.`);
   if (
+    input.expectedRevision !== undefined &&
+    (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision !== existing.revision)
+  ) {
+    throw new Error('SAGE revision changed; read the current memory before updating it.');
+  }
+  if (input.feedback !== undefined) {
+    if (
+      Object.entries(input).some(
+        ([key, value]) => key !== 'feedback' && key !== 'expectedRevision' && value !== undefined,
+      )
+    ) {
+      throw new Error('Submit SAGE feedback separately from content or lifecycle updates.');
+    }
+    const reviewed = appendModelFeedback(existing, input.feedback, ctx.nowIso());
+    if (reviewed !== existing) {
+      ctx.upsertMemory(reviewed);
+      ctx.audit('memory.feedback', { memoryId: id, details: reviewed.feedback?.at(-1) });
+    }
+    return reviewed;
+  }
+  if (input.sources !== undefined) {
+    validateRememberInput({
+      text: input.text ?? existing.text,
+      scope: existing.scope,
+      ownerSessionId: existing.ownerSessionId,
+      sources: input.sources,
+    });
+  }
+  if (
     input.text !== undefined &&
     existing.scope !== 'session' &&
     isEphemeralMemoryText(normalizeText(input.text))
@@ -148,6 +180,7 @@ export function updateSqliteSage(
   }
   const updated: Sage = {
     ...existing,
+    ...(input.sources !== undefined && { sources: normalizeSources(input.sources) }),
     ...(input.text !== undefined && { text: normalizeText(input.text) }),
     ...(input.persistence !== undefined && { persistence: input.persistence }),
     ...(input.kind !== undefined && { kind: input.kind }),

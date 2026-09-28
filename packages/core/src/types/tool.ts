@@ -1,3 +1,4 @@
+import type { ToolResultBlock, ToolUseBlock } from './blocks.js';
 import type { AgentContext } from './context.js';
 
 export type Permission = 'auto' | 'confirm' | 'deny';
@@ -114,6 +115,28 @@ export interface Tool<I = unknown, O = unknown> {
    */
   _estDefTokens?: number | undefined;
   usageHint?: string | undefined;
+  /**
+   * Optional host-side, read-only contextual guidance. This is NOT execution:
+   * it must not import project executable code, call tools or mutate files.
+   * Tool Coach invokes it once per user turn, only for enabled auto/read tools
+   * whose declared metadata input is also auto-allowed by the current policy.
+   * The host bounds its deadline and note size; failures omit the advice.
+   */
+  turnGuidance?:
+    | {
+        /** Enabled executable routes needed to make this advice actionable. */
+        requiredTools?: readonly string[] | undefined;
+        permissionInput: unknown;
+        create(options: { task: string; projectRoot: string; signal: AbortSignal }): Promise<{
+          initialNote: string | null;
+          afterTools(
+            uses: readonly ToolUseBlock[],
+            results: readonly ToolResultBlock[],
+            settlements?: ReadonlyMap<string, ToolSettlement>,
+          ): string | null;
+        }>;
+      }
+    | undefined;
   /** Structured guidance for choosing between similar tools. */
   selection?:
     | {

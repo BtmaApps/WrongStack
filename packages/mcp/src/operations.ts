@@ -174,51 +174,78 @@ export function evaluateHealthThresholds(
 ): MCPHealthCheckResult[] {
   if (!thresholds) return [];
   const checks: MCPHealthCheckResult[] = [];
-  if (thresholds.connectionLatencyP95Ms !== undefined && operations.connectionSamples.length > 0) {
+  const connectionP95 = thresholds.connectionLatencyP95Ms;
+  if (isUsableThreshold(connectionP95) && operations.connectionSamples.length > 0) {
     const value = percentile(
       [...operations.connectionSamples].sort((a, b) => a - b),
       0.95,
     );
     checks.push({
       name: 'connection-latency-p95',
-      passed: value <= thresholds.connectionLatencyP95Ms,
+      passed: value <= connectionP95,
       value,
-      threshold: thresholds.connectionLatencyP95Ms,
+      threshold: connectionP95,
     });
   }
-  if (thresholds.discoveryLatencyP95Ms !== undefined && operations.discoverySamples.length > 0) {
+  const discoveryP95 = thresholds.discoveryLatencyP95Ms;
+  if (isUsableThreshold(discoveryP95) && operations.discoverySamples.length > 0) {
     const value = percentile(
       [...operations.discoverySamples].sort((a, b) => a - b),
       0.95,
     );
     checks.push({
       name: 'discovery-latency-p95',
-      passed: value <= thresholds.discoveryLatencyP95Ms,
+      passed: value <= discoveryP95,
       value,
-      threshold: thresholds.discoveryLatencyP95Ms,
+      threshold: discoveryP95,
     });
   }
-  if (thresholds.callLatencyP95Ms !== undefined && operations.callSamples.length > 0) {
+  const callP95 = thresholds.callLatencyP95Ms;
+  if (isUsableThreshold(callP95) && operations.callSamples.length > 0) {
     const value = percentile(
       [...operations.callSamples].sort((a, b) => a - b),
       0.95,
     );
     checks.push({
       name: 'call-latency-p95',
-      passed: value <= thresholds.callLatencyP95Ms,
+      passed: value <= callP95,
       value,
-      threshold: thresholds.callLatencyP95Ms,
+      threshold: callP95,
     });
   }
-  if (thresholds.inFlightCalls !== undefined) {
+  const inFlight = thresholds.inFlightCalls;
+  if (isUsableThreshold(inFlight)) {
     checks.push({
       name: 'in-flight-calls',
-      passed: operations.peakInFlightCalls <= thresholds.inFlightCalls,
+      passed: operations.peakInFlightCalls <= inFlight,
       value: operations.peakInFlightCalls,
-      threshold: thresholds.inFlightCalls,
+      threshold: inFlight,
     });
   }
   return checks;
+}
+
+/**
+ * A threshold counts as configured only when it is a finite number.
+ *
+ * `!== undefined` was not enough. These values are read straight off
+ * `config.json` (`registry-health.ts` / `registry-operations.ts` pass
+ * `slot.cfg.health?.thresholds`), and `null` or a hand-edited string passes every
+ * `!== undefined` guard while being useless as a bound. Every threshold is
+ * compared with `<=`, which is false for a non-number on every sample — so a
+ * typo pinned an otherwise-healthy server to `degraded` permanently, recomputed
+ * from the same config on every read and across restarts, with nothing in the
+ * config to change. The WebSocket validator rejects these on its own surface,
+ * but the REPL/TUI path in `manage.ts` copies `health` verbatim, and a config
+ * can predate that check or be edited by hand.
+ *
+ * Ignoring an unusable value is the right direction for a health signal: it
+ * means "this threshold is not configured", and per the contract above an
+ * unconfigured threshold cannot mark a server degraded. The loud rejection still
+ * lives at the validator, where the operator actually types the value.
+ */
+function isUsableThreshold(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 /**

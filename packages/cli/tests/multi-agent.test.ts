@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBoard } from '@wrongstack/kanban';
@@ -917,6 +917,109 @@ describe('MultiAgentHost', () => {
 });
 
 describe('MultiAgentHost.makeSubagentFactory', () => {
+  it('keeps Memory Companion read-only after a project role widens tools and capabilities', async () => {
+    const deps = depsWithTools();
+    const root = await mkdtemp(join(tmpdir(), 'memory-companion-boundary-'));
+    writerRoots.push(root);
+    deps.projectRoot = root;
+    deps.cwd = root;
+    const role = join(root, '.wrongstack', 'agents', 'memory-curator');
+    await mkdir(role, { recursive: true });
+    await writeFile(
+      join(role, 'config.json'),
+      JSON.stringify({
+        tools: ['writer', 'bash', 'session_note'],
+        allowedCapabilities: ['fs.write', 'shell.arbitrary', 'session.note'],
+        budget: { maxToolCalls: 5000, maxTokens: 1000000, timeoutMs: 300000 },
+      }),
+    );
+    await writeFile(join(role, 'learned.md'), 'UNVERIFIED-ROLE-MEMORY-SENTINEL');
+    const writer = writerTool();
+    deps.toolRegistry.register(writer);
+    const built = await new MultiAgentHost(deps).makeSubagentFactory(config)({
+      id: 'memory-companion-overrides',
+      name: 'Memory Companion',
+      role: 'memory-curator',
+      tools: ['read', 'grep'],
+      allowedCapabilities: ['fs.read'],
+      systemPromptOverride: 'Inspect only supplied evidence.',
+    });
+    try {
+      expect(built.agent.ctx.tools.map((tool) => tool.name).sort()).toEqual([
+        'grep',
+        'read',
+        'submit_result',
+      ]);
+      expect(built.agent.tools.list().map((tool) => tool.name)).not.toContain('writer');
+      expect(built.agent.ctx.systemPrompt.map((block) => block.text).join('\n')).not.toContain(
+        'UNVERIFIED-ROLE-MEMORY-SENTINEL',
+      );
+      const result = await built.agent.toolExecutor.executeBatch(
+        [{ type: 'tool_use', id: 'write-attempt', name: 'writer', input: {} }],
+        built.agent.ctx,
+        'sequential',
+      );
+      expect(result.outputs[0]?.result).toMatchObject({ is_error: true });
+      expect(writer.execute).not.toHaveBeenCalled();
+    } finally {
+      await built.dispose?.();
+    }
+  });
+
+  it('builds a Memory Companion from the available read tools without exposing direct notes', async () => {
+    const deps = depsWithTools();
+    const host = new MultiAgentHost(deps);
+    const built = await host.makeSubagentFactory(config)({
+      id: 'memory-companion-real-factory',
+      name: 'Memory Companion',
+      role: 'memory-curator',
+      tools: ['read', 'grep', 'glob', 'codebase-search', 'codebase-skeleton', 'submit_result'],
+      allowedCapabilities: ['fs.read'],
+    });
+    try {
+      expect(built.agent.ctx.tools.map((tool) => tool.name).sort()).toEqual([
+        'grep',
+        'read',
+        'submit_result',
+      ]);
+      expect(
+        built.agent.tools
+          .list()
+          .map((tool) => tool.name)
+          .sort(),
+      ).toEqual(['grep', 'read', 'submit_result']);
+      expect(built.agent.ctx.catalogTools.map((tool) => tool.name).sort()).toEqual([
+        'grep',
+        'read',
+        'submit_result',
+      ]);
+      expect(built.agent.ctx.allowOutsideProjectRoot).toBe(false);
+      const submitted = await built.agent.toolExecutor.executeBatch(
+        [
+          {
+            type: 'tool_use',
+            id: 'report',
+            name: 'submit_result',
+            input: {
+              summary: '{"verdict":"unverifiable","summary":"No evidence.","evidence":[]}',
+              findings: [],
+              files_examined: [],
+              confidence: 0.2,
+              suggested_next_steps: [],
+            },
+          },
+        ],
+        built.agent.ctx,
+        'sequential',
+      );
+      expect(submitted.outputs[0]?.result).toMatchObject({ type: 'tool_result' });
+      expect(submitted.outputs[0]?.result).not.toHaveProperty('is_error', true);
+      expect(built.agent.ctx.meta['subagentStructuredReport']).toBeDefined();
+    } finally {
+      await built.dispose?.();
+    }
+  });
+
   function fakeTool(name: string): Tool {
     return {
       name,

@@ -81,11 +81,16 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
       treeKill(child);
     }, opts.timeoutMs);
 
-    child.stdout?.on('data', (d: Buffer) => {
-      stdout += d.toString('utf8');
+    // Decode across chunks: `d.toString()` per Buffer turned a multibyte
+    // character split between two pipe reads into U+FFFD pairs inside the
+    // graded finalText.
+    child.stdout?.setEncoding('utf8');
+    child.stdout?.on('data', (d: string) => {
+      stdout += d;
     });
-    child.stderr?.on('data', (d: Buffer) => {
-      stderr += d.toString('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (d: string) => {
+      stderr += d;
     });
 
     const finish = (run: RawRun) => {

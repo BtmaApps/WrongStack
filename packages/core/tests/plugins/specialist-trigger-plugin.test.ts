@@ -257,6 +257,33 @@ describe('specialist trigger plugin', () => {
     expect(needs(emitCustom)).toEqual([]);
   });
 
+  // Line porcelain folds a new directory into one `?? dir/` entry and
+  // octal-escapes non-ASCII names: a Prisma migration (always a new dir) and a
+  // new package's package.json never reached the globs, and `türkçe.json`
+  // arrived as `t/303/274rk...`.
+  it('sees files inside new directories and non-ASCII names', async () => {
+    execFileSync('git', ['config', 'core.quotePath', 'true'], { cwd: tmp });
+    const { api, handlers, emitCustom } = makeApi({ maxConcurrent: 8 });
+    createSpecialistTriggerPlugin().setup?.(api);
+    await fs.mkdir(path.join(tmp, 'db', 'migrations', '20260928_users'));
+    await fs.writeFile(path.join(tmp, 'db', 'migrations', '20260928_users', 'up.sql'), 'x');
+    await fs.mkdir(path.join(tmp, 'packages', 'app'), { recursive: true });
+    await fs.writeFile(path.join(tmp, 'packages', 'app', 'package.json'), '{}');
+    await fs.mkdir(path.join(tmp, 'locales'));
+    await fs.writeFile(path.join(tmp, 'locales', 'türkçe.json'), '{}');
+
+    await settle(handlers, emitCustom, 3);
+    expect(
+      needs(emitCustom)
+        .map((n) => `${n.role}:${n.paths.join(',')}`)
+        .sort(),
+    ).toEqual([
+      'database:db/migrations/20260928_users/up.sql',
+      'dependency:packages/app/package.json',
+      'i18n:locales/türkçe.json',
+    ]);
+  });
+
   it('survives a directory that is not a git repository', async () => {
     const plain = await fs.mkdtemp(path.join(os.tmpdir(), 'specialist-trigger-plain-'));
     try {

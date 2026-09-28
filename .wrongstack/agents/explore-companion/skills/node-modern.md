@@ -1,17 +1,16 @@
-## Module ownership probes
+## Scratch harnesses
 
-- Treat `packages/webui/src/components/ChatInput.tsx` as the sole owner of the `ChatInput/` feature directory: only it imports runtime pieces from `./ChatInput/*` (e.g. `file-mention-picker.js`); siblings like `session-draft.ts` and `use-chat-keydown.ts` share only types (e.g. `FileMentionState`) via `import type`. These leaves have no `view-registry.ts` lazy registration — build importer maps from greps scoped to `packages/webui/src` and `packages/webui/tests`.
+- For browser checks under `.temp_files/` (e.g. `at-mention-browser-check/check.mjs`), trace reverse blast radius from fixture source strings, `[data-chat-textarea]`, FilePicker button-name regex, and stubbed `getWSClient` methods: `listFiles`, `files.list`, `send`, and `isConnected` via `defineProperty`. Webui component/store edits can change harness verdicts and exit codes while repo tests stay green.
+- Resolve harness dependencies `vite` and `@playwright/test` through `createRequire` against `packages/webui/package.json`. Check invocation separately from dependency coupling: no textual references outside grep-excluded `.temp_files/` supports “manual-run only,” but does not rule out dynamic invocation.
+- Inspect `.temp_files/*.cjs` for external mutations before running. `plant-probe.cjs` targets `DIR = 'C:/Users/<user>/.wrongstack/projects/<id>'` and user-owned `review-reports.jsonl`, `review-findings.jsonl`, `.review-store-maintenance.json`. Avoid repeating non-idempotent `fs.appendFileSync` probes; dedupe cleanup by namespaced id prefix.
 
-## Consumers and blast radius
+## Ownership and consumers
 
-- Treat root `CHANGELOG.md` as filename-coupled, never import-coupled. Consumers: `changelog-writer` (`packages/plugins/src/changelog-writer/index.ts`, `filePath`, merges under `## [Unreleased]`), `semver-bump` (`changelogFile`), `doc-sync-guard` (`docNames`), git-autocommit release bumps, and the hand mirror in `website/src/lib/utils.ts`. Inspect path and structure before judging edit risk; `CHANGELOG.md` hits in tests are node_modules mocks or config defaults, not root-file reads.
-- Assess `.temp_files/*.cjs` by hardcoded external targets, not repo grep: `plant-probe.cjs` (`DIR = 'C:/Users/<user>/.wrongstack/projects/<id>'`) mutates user-owned `review-reports.jsonl`, `review-findings.jsonl`, and `.review-store-maintenance.json`; zero filename-grep callers does not mean safe. Flag additive `fs.appendFileSync` probes without idempotency — repeated `node <script>.cjs` runs stack rows; dedupe cleanup by namespaced id prefix.
-- Treat `package.json` and `pnpm-workspace.yaml` probes as index-blind: expect `codebase-skeleton` `symbolCount: 0` and no `codebase-incoming-calls` graph. Read the manifest (`exports`, `main`, `private`), check `packages:` and `link:` in `pnpm-workspace.yaml`, then count-mode grep `package\.json` under `scripts/` to separate root-manifest readers from per-package matches.
-- The todo store is runtime-only: an empty `glob .wrongstack/**/*todo*` proves nothing. Use mtime-ordered `glob` over `packages/*/src` plus `git diff HEAD`; ignore `.wrongstack/domain-terms.md` boilerplate.
+- Map `ChatInput/` importers within `packages/webui/src` and `packages/webui/tests`: `packages/webui/src/components/ChatInput.tsx` owns runtime imports such as `./ChatInput/file-mention-picker.js`; `session-draft.ts` and `use-chat-keydown.ts` share types through `import type`. Do not infer `view-registry.ts` lazy registration.
+- Treat root `CHANGELOG.md` as filename-coupled. Inspect `changelog-writer` at `packages/plugins/src/changelog-writer/index.ts` (`filePath`, `## [Unreleased]`), `semver-bump` (`changelogFile`), `doc-sync-guard` (`docNames`), git-autocommit release bumps, and `website/src/lib/utils.ts`; distinguish test mocks/defaults from root-file reads.
+- Read `package.json` (`exports`, `main`, `private`) and `pnpm-workspace.yaml` (`packages:`, `link:`) directly; `codebase-skeleton` returning `symbolCount: 0` and absent `codebase-incoming-calls` graphs do not establish non-use. Count-mode grep `package\.json` under `scripts/` to distinguish root from per-package readers.
 
-## Verification and reporting
+## Verification
 
-- Before claiming verification, read `exclude` in root `vitest.config.ts` and the touched package's `package.json` scripts; only a command that executes the target counts.
-- Root `vitest run` excludes `packages/webui/**` — use `cd packages/webui && npx vitest run <file>`. In `packages/webui/vitest.config.ts`, `tests/server/**` uses node; other `tests/**/*.test.{ts,tsx}` use `browser-jsdom`, even when DOM-free.
-- Run `packages/cli/tests/hq-dashboard.test.ts` via `pnpm --filter @wrongstack/cli test:hqdash` (config: `packages/cli/vitest.hqdash.config.ts`); derive the narrowest script-supported filter and save proof under `.reports/release-check-matrix/*.log`.
-- Keep `submit_result` ASCII-only, ≤7 short `findings`, ≤3 `files_examined`; if the required-field error fires on a complete payload, trim size and retry.
+- Read root `vitest.config.ts` `exclude` and package scripts before claiming coverage. Root `vitest run` excludes `packages/webui/**`; use `cd packages/webui && npx vitest run <file>`. In `packages/webui/vitest.config.ts`, `tests/server/**` uses node; other `tests/**/*.test.{ts,tsx}` use `browser-jsdom`.
+- Run `packages/cli/tests/hq-dashboard.test.ts` with `pnpm --filter @wrongstack/cli test:hqdash`, using `packages/cli/vitest.hqdash.config.ts`; save proof under `.reports/release-check-matrix/*.log`.

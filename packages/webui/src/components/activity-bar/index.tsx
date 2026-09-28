@@ -18,6 +18,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Network,
+  PackageOpen,
   Palette,
   Pencil,
   Rocket,
@@ -104,6 +105,7 @@ const VIEWS: ViewDef[] = [
   // Agent Roster is a primary surface — it must stay visible on typical
   // viewports instead of silently falling into the "…" overflow menu.
   { id: 'roster', icon: <Bot size={16} />, label: 'Agent Roster' },
+  { id: 'project-kit', icon: <PackageOpen size={16} />, label: 'Project Kit' },
   { id: 'codemap', icon: <Network size={16} />, label: 'CodeMap' },
   { id: 'techstack', icon: <Boxes size={16} />, label: 'TechStack' },
   { id: 'provider-test', icon: <FlaskConical size={16} />, label: 'Provider Test' },

@@ -238,26 +238,21 @@ function normPath(p: string): string {
 // ── git plumbing ────────────────────────────────────────────────────
 
 async function gitDirtyFiles(cwd: string, signal?: AbortSignal): Promise<string[]> {
-  const out = await runGit(['status', '--porcelain'], cwd, signal);
+  // -z: raw path bytes; line output octal-escapes non-ASCII names, which then
+  // match no author-log entry. -uall: a new directory is otherwise one `dir/`
+  // entry, so its files were never attributed (ours read as someone else's).
+  const out = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd, signal);
   const files: string[] = [];
-  for (const line of out.split('\n')) {
-    if (line.length < 4) continue;
-    // Format: "XY <path>" or "XY <orig> -> <path>" for renames/copies.
-    let p = line.slice(3);
-    const arrow = p.indexOf(' -> ');
-    if (arrow !== -1) p = p.slice(arrow + 4);
-    p = unquoteGitPath(p.trim());
-    if (p) files.push(p);
+  const records = out.split('\0');
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i] ?? '';
+    if (record.length < 4) continue;
+    // "XY <path>"; a rename/copy record is followed by its source path.
+    const status = record.slice(0, 2);
+    if (status.includes('R') || status.includes('C')) i++;
+    files.push(record.slice(3));
   }
   return files;
-}
-
-/** git quotes paths with special chars in double quotes — strip them. */
-function unquoteGitPath(p: string): string {
-  if (p.startsWith('"') && p.endsWith('"') && p.length >= 2) {
-    return p.slice(1, -1);
-  }
-  return p;
 }
 
 async function gitTopLevel(cwd: string, signal?: AbortSignal): Promise<string> {
@@ -293,11 +288,15 @@ function runGit(args: string[], cwd: string, signal?: AbortSignal): Promise<stri
       windowsHide: true,
       timeout: GIT_TIMEOUT_MS,
     });
-    child.stdout?.on('data', (c: Buffer) => {
-      stdout += c.toString();
+    // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+    // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stdout?.on('data', (c: string) => {
+      stdout += c;
     });
-    child.stderr?.on('data', (c: Buffer) => {
-      stderr += c.toString();
+    child.stderr?.on('data', (c: string) => {
+      stderr += c;
     });
     child.on('error', (err) => reject(err));
     child.on('close', (code) => {

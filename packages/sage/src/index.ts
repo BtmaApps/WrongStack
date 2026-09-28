@@ -20,8 +20,15 @@ export {
   HashingEmbeddingProvider,
   type HashingEmbeddingProviderOptions,
 } from './embeddings/hashing.js';
-export { cosineSimilarity } from './embeddings/provider.js';
 export type { EmbeddingProvider } from './embeddings/provider.js';
+export { cosineSimilarity } from './embeddings/provider.js';
+export {
+  _resetAutoHygieneThrottleForTesting,
+  AUTO_HYGIENE_INTERVAL_MS,
+  type SageHostWiringDeps,
+  sageHygieneOptionsFromConfig,
+  setupSage,
+} from './host-wiring.js';
 export {
   createProjectSageMemoryPort,
   createSqliteMemoryPort,
@@ -57,6 +64,14 @@ export {
   type MemoryInjectorPlanInput,
 } from './middleware/memory-injector-agent.js';
 export {
+  createSageOutcomeCaptureMiddleware,
+  type SageOutcomeCaptureOptions,
+} from './middleware/outcome-capture.js';
+export {
+  createSagePathRemapMiddleware,
+  type SagePathRemapOptions,
+} from './middleware/path-remap.js';
+export {
   type SubscribeSessionEndCommitExtractorOptions,
   subscribeSessionEndCommitExtractor,
 } from './middleware/session-end-commit-extractor.js';
@@ -73,36 +88,6 @@ export {
   type SageRetrieverLike,
   type SageToolCallMiddlewareOptions,
 } from './middleware/tool-call-memory.js';
-export {
-  createSageOutcomeCaptureMiddleware,
-  type SageOutcomeCaptureOptions,
-} from './middleware/outcome-capture.js';
-export {
-  createSagePathRemapMiddleware,
-  type SagePathRemapOptions,
-} from './middleware/path-remap.js';
-export {
-  memoryNeedsPathRemap,
-  memoryNeedsSymbolRemap,
-  normalizeRelPath,
-  parseRenameCommand,
-  readIdentifierAt,
-  remapAnchors,
-  remapSymbolAnchors,
-  toProjectRelative,
-} from './shared/path-remap.js';
-export {
-  fileTriageProposals,
-  type ProposalFileResult,
-} from './shared/file-proposals.js';
-export { hybridRerankMemories } from './retrieval/hybrid-rerank.js';
-export { isSageVisibleForSearch } from './retrieval/visibility.js';
-export {
-  augmentLexicalWithVectorRecall,
-  type VectorAugmentHit,
-  type VectorAugmentOptions,
-  type VectorRecallProvider,
-} from './retrieval/vector-augment.js';
 export {
   createSageTurnMiddleware,
   overlapCoefficient,
@@ -133,11 +118,25 @@ export {
   formatMemoryHints,
   formatMemoryHintsDetailed,
 } from './retrieval/format.js';
+export { hybridRerankMemories } from './retrieval/hybrid-rerank.js';
 export {
   type MemoryQueryRelevance,
   memoryQueryRelevance,
   memoryStructuralRelevance,
 } from './retrieval/relevance.js';
+export { memoryReviewReason } from './retrieval/review-freshness.js';
+export {
+  createSystemOneRecallFilter,
+  type SystemOneRecallFilter,
+  type SystemOneRecallFilterOptions,
+} from './retrieval/system-one-recall.js';
+export {
+  augmentLexicalWithVectorRecall,
+  type VectorAugmentHit,
+  type VectorAugmentOptions,
+  type VectorRecallProvider,
+} from './retrieval/vector-augment.js';
+export { isSageVisibleForSearch } from './retrieval/visibility.js';
 export type {
   SageServiceLike,
   SageSurface,
@@ -150,19 +149,26 @@ export type {
   SearchSuggestionMode,
 } from './service-contract.js';
 export { isSageService } from './service-guard.js';
-export { isSqliteAvailable, SqliteSageStore } from './sqlite-store.js';
-export { normalizeTextKey, tokenize } from './store-helpers.js';
-export {
-  AUTO_HYGIENE_INTERVAL_MS,
-  _resetAutoHygieneThrottleForTesting,
-  sageHygieneOptionsFromConfig,
-  setupSage,
-  type SageHostWiringDeps,
-} from './host-wiring.js';
 export {
   filterProposalsAgainstPendingTargets,
   type PendingCandidateTarget,
 } from './shared/candidate-dedupe.js';
+export {
+  fileTriageProposals,
+  type ProposalFileResult,
+} from './shared/file-proposals.js';
+export {
+  memoryNeedsPathRemap,
+  memoryNeedsSymbolRemap,
+  normalizeRelPath,
+  parseRenameCommand,
+  readIdentifierAt,
+  remapAnchors,
+  remapSymbolAnchors,
+  toProjectRelative,
+} from './shared/path-remap.js';
+export { isSqliteAvailable, SqliteSageStore } from './sqlite-store.js';
+export { normalizeTextKey, tokenize } from './store-helpers.js';
 export { createSageTools } from './tools/memory-tools.js';
 export {
   type AutoApplyAction,
@@ -196,10 +202,11 @@ export {
 } from './triage/index.js';
 export type { LlmCallFn } from './triage/llm-evaluator.js';
 export {
-  createSystemOneRecallFilter,
-  type SystemOneRecallFilter,
-  type SystemOneRecallFilterOptions,
-} from './retrieval/system-one-recall.js';
+  formatTriageReport,
+  type RunTriageOptions,
+  runTriage,
+  type TriageReport,
+} from './triage/orchestrator.js';
 export {
   createSystemOneTriage,
   type MemoryValueProbe,
@@ -208,11 +215,5 @@ export {
   type SystemOneTriage,
   type SystemOneTriageOptions,
 } from './triage/system-one.js';
-export {
-  formatTriageReport,
-  type RunTriageOptions,
-  runTriage,
-  type TriageReport,
-} from './triage/orchestrator.js';
 export type { UpdateSageInput } from './types.js';
 export * from './types.js';

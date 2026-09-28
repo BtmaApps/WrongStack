@@ -376,7 +376,18 @@ async function lintConventions(
   }
 
   const base = typeof flags['base'] === 'string' ? flags['base'] : undefined;
-  const diffArgs = ['diff', '--no-color', '--no-ext-diff', '-U24'];
+  // Prefixes pinned: findSemanticLintCandidates strips only `b/`, so the user's
+  // diff.mnemonicPrefix (`w/src/x.ts`) mis-named every file and an anchored
+  // rule `files` pattern (`^src/`) never matched; no textconv for the same reason.
+  const diffArgs = [
+    'diff',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-textconv',
+    '--src-prefix=a/',
+    '--dst-prefix=b/',
+    '-U24',
+  ];
   if (flags['staged'] === true) diffArgs.push('--cached');
   else if (base) diffArgs.push(`${base}...HEAD`);
   let diff: string;

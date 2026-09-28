@@ -18,6 +18,7 @@ import {
   HARD_MAX_SPAWN_DEPTH,
   makeDirectorSessionFactory,
   makeFleetEmitTool,
+  postSessionNote,
   resolveProjectDir,
   type TaskResultNotification,
 } from '@wrongstack/core/coordination';
@@ -31,8 +32,8 @@ import {
   type TaskResult,
   type Tool,
 } from '@wrongstack/core/types';
-
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
+import { formatMemoryEvidenceBlock, wstackGlobalRoot } from '@wrongstack/core/utils';
+import { getSageSurface } from '@wrongstack/sage';
 import { publishAcpLiveProgress } from './acp-live-progress.js';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
 import { HostAcpRunnerCache } from './host-acp-runner-cache.js';
@@ -58,6 +59,7 @@ import { makeFleetWorktreeConflictResolver, selectSubagentTools } from './host-h
 import { HostLearningScheduler } from './host-learning-scheduler.js';
 import { HostLearningRoleTracker } from './host-learning-tracker.js';
 import { emitHostLifecycleCompleted } from './host-lifecycle-events.js';
+import { HostMemoryCompanion } from './host-memory-companion.js';
 import { applyFleetRootDefaults } from './host-paths.js';
 import { HostShadowManager } from './host-shadow-manager.js';
 import type { HostSpawnAndWaitOptions, HostSpawnOptions } from './host-spawn-types.js';
@@ -130,6 +132,7 @@ export class MultiAgentHost {
    *  fleet.exploreCompanion.enabled=false. Probes are assigned to a
    *  lazily-spawned resident `explore-companion` subagent per session. */
   private exploreCompanions: ExploreCompanionRegistry | null = null;
+  private memoryCompanion: HostMemoryCompanion | null = null;
   /** `agent.run.started` subscription that opens a companion for a new tab. */
   private exploreCompanionOff: (() => void) | null = null;
   /** Built-ins plus lazily-resolved project-created roles. */
@@ -336,11 +339,44 @@ export class MultiAgentHost {
           : null,
     });
     this.exploreCompanions.ensure(this.deps.session.id);
+    this.memoryCompanion = new HostMemoryCompanion({
+      director: this.director,
+      events: this.deps.events,
+      projectRoot: this.deps.projectRoot,
+      roster: this.roster,
+      memory: () => {
+        const port = this.deps.container.safeResolve(TOKENS.MemoryStore);
+        return port ? getSageSurface(port) : undefined;
+      },
+      enabled: (sessionId) => {
+        const current = this.deps.configStore.get();
+        return (
+          current.features.memory !== false &&
+          current.features.memoryCurator !== false &&
+          current.Sage?.enabled !== false &&
+          areSubagentsAllowedForSession(sessionId)
+        );
+      },
+      scrub: (text) => this.deps.secretScrubber.scrub(text),
+      note: (sessionId, subject, body) =>
+        postSessionNote({
+          sessionId,
+          from: 'memory-companion',
+          to: 'leader',
+          kind: 'result',
+          subject,
+          body: formatMemoryEvidenceBlock('memory-companion', body),
+          events: this.deps.events,
+        }),
+    });
+    this.memoryCompanion.ensure(this.deps.session.id);
     this.exploreCompanionOff = this.deps.events.on('agent.run.started', (e) => {
       // Unstamped runs exist (thin embedders); `ensure` ignores an empty id,
       // but keep the narrowing explicit rather than relying on that.
       if (e.sessionId && areSubagentsAllowedForSession(e.sessionId)) {
         this.exploreCompanions?.ensure(e.sessionId);
+        // Workers have agentRole metadata and must never open their own verifier.
+        if (!e.ctx.meta?.['agentRole']) this.memoryCompanion?.ensure(e.sessionId);
       }
     });
 
@@ -707,6 +743,9 @@ export class MultiAgentHost {
   }
 
   private captureCompletedTaskLearning(result: TaskResult): void {
+    // A verifier's provisional judgment must not train the role as a new fact
+    // before the source/revision gate has accepted its report.
+    if (result.subagentId.startsWith('memory-companion-')) return;
     this.learningRoles.capture(result, this.deps, (role) =>
       this.learningScheduler.notifyCaptured(role),
     );
@@ -837,6 +876,7 @@ export class MultiAgentHost {
   releaseSession(sessionId: string): void {
     if (!sessionId) return;
     this.exploreCompanions?.release(sessionId);
+    this.memoryCompanion?.release(sessionId);
     this.shadowManager.releaseSession(sessionId);
   }
 
@@ -858,6 +898,8 @@ export class MultiAgentHost {
     this.exploreCompanionOff = null;
     this.exploreCompanions?.disposeAll();
     this.exploreCompanions = null;
+    this.memoryCompanion?.stop();
+    this.memoryCompanion = null;
     this.adaptiveConcurrencyController?.dispose();
     this.adaptiveConcurrencyController = undefined;
     if (this.director) {

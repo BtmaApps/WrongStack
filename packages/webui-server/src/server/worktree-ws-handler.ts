@@ -21,6 +21,15 @@ const ACTIVE_STATUSES = new Set(['allocating', 'active', 'committing', 'merging'
  */
 const MANAGED_BRANCH_RE = /^wstack\/ap\/[A-Za-z0-9._/-]+$/;
 
+/**
+ * Case-folded where the filesystem is case-insensitive (win32, darwin): there
+ * `wstack/ap/LV` deletes the loose ref of `wstack/ap/lv` and `.../LIVE-RUN`
+ * names the same checkout, so live-run guards must compare folded.
+ */
+function foldCase(s: string): string {
+  return process.platform === 'win32' || process.platform === 'darwin' ? s.toLowerCase() : s;
+}
+
 interface WorktreeManagementDeps {
   projectRoot: string;
   /** Board snapshot dir — powers the cross-process liveness guard on cleanup. */
@@ -141,6 +150,22 @@ export class WorktreeWebSocketHandler {
       if (ACTIVE_STATUSES.has(h.status) && h.branch) live.add(h.branch);
     }
     return live;
+  }
+
+  /** True iff a live in-session run owns `branch` (any spelling git resolves to it). */
+  private isLiveBranch(branch: string): boolean {
+    const key = foldCase(branch);
+    for (const b of this.liveActiveBranches()) if (foldCase(b) === key) return true;
+    return false;
+  }
+
+  /** True iff `dir` is the checkout of a worktree a live in-session run owns. */
+  private isLiveDir(dir: string): boolean {
+    const abs = foldCase(resolve(dir));
+    for (const h of this.handles.values()) {
+      if (ACTIVE_STATUSES.has(h.status) && h.dir && foldCase(resolve(h.dir)) === abs) return true;
+    }
+    return false;
   }
 
   /**
@@ -303,7 +328,8 @@ export class WorktreeWebSocketHandler {
       });
       return;
     }
-    if (branch && this.liveActiveBranches().has(branch)) {
+    // Guard by dir too: a request naming only the checkout must not bypass it.
+    if ((branch && this.isLiveBranch(branch)) || (dir && this.isLiveDir(dir))) {
       this.broadcast({
         type: 'worktree.cleanup_result',
         payload: {
@@ -314,11 +340,9 @@ export class WorktreeWebSocketHandler {
       });
       return;
     }
-    let removed = false;
-    if (dir) {
-      const wt = new WorktreeManager({ projectRoot: this.management.projectRoot });
-      ({ removed } = await wt.removeOne(dir, branch));
-    }
+    const wt = new WorktreeManager({ projectRoot: this.management.projectRoot });
+    // A branch-only orphan (no checkout) arrives with just its branch.
+    const { removed } = dir ? await wt.removeOne(dir, branch) : await wt.removeBranch(branch ?? '');
     // Drop our handle for this branch/dir.
     let removedMatching = 0;
     for (const [id, h] of [...this.handles]) {
@@ -356,7 +380,7 @@ export class WorktreeWebSocketHandler {
       });
       return;
     }
-    if (this.liveActiveBranches().has(branch)) {
+    if (this.isLiveBranch(branch)) {
       this.broadcast({
         type: 'worktree.merge_result',
         payload: { ok: false, branch, reason: 'a run is live on this worktree — stop it first' },

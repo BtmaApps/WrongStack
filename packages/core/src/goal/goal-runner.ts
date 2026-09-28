@@ -271,13 +271,23 @@ export async function createGoalRunnerFromTaskGraph(
     tasksPerPhase: options.tasksPerPhase,
   });
 
-  // Extract phase templates from the PhaseGraph.
+  // Extract phase templates from the PhaseGraph. The tasks must travel with
+  // them: start() rebuilds the graph from these templates, and a phase without
+  // tasks fails with "Phase has no executable tasks".
   const phases: PhaseTemplate[] = Array.from(graph.phases.values()).map((p) => ({
     name: p.name,
     description: p.description,
     priority: p.priority,
     estimateHours: p.estimateHours,
     parallelizable: p.parallelizable,
+    taskTemplates: Array.from(p.taskGraph.nodes.values()).map((t) => ({
+      title: t.title,
+      description: t.description,
+      type: t.type,
+      priority: t.priority,
+      estimateHours: t.estimateHours ?? 2,
+      tags: t.tags ?? [],
+    })),
   }));
 
   return new GoalRunner({

@@ -397,6 +397,112 @@ describe('TerminalWebSocketHandler', () => {
     expect(ws.sent).toContainEqual({ type: 'terminal.exit', payload: { id: 't8', exitCode: -1 } });
   });
 
+  // The dispatcher does not await handleMessage, and a WebUI reconnect replays
+  // close/create from the offline queue and again from the effect re-run.
+  // Both creates used to pass the pre-await check: two shells under one id,
+  // one of them unreachable by close and disconnect.
+  it('spawns one shell for a create/close/create burst and kills it on disconnect', async () => {
+    const h = new TerminalWebSocketHandler(
+      () => '/c',
+      logger as never,
+      loadFakeNodePty as never,
+      undefined,
+      allowBoundary,
+    );
+    const ws = makeWs();
+    h.addClient(ws);
+    await Promise.all([
+      h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } }),
+      h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } }),
+      h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } }),
+      h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } }),
+    ]);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    ws.fire('close');
+    expect(spawned[0]?.kill).toHaveBeenCalled();
+  });
+
+  it('a close while authorization is pending cancels the create', async () => {
+    const h = new TerminalWebSocketHandler(
+      () => '/c',
+      logger as never,
+      loadFakeNodePty as never,
+      undefined,
+      allowBoundary,
+    );
+    const ws = makeWs();
+    h.addClient(ws);
+    await Promise.all([
+      h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } }),
+      h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } }),
+    ]);
+    expect(spawnMock).not.toHaveBeenCalled();
+    await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts creates still awaiting authorization against the session cap', async () => {
+    const h = new TerminalWebSocketHandler(
+      () => '/c',
+      logger as never,
+      loadFakeNodePty as never,
+      undefined,
+      allowBoundary,
+    );
+    const ws = makeWs();
+    h.addClient(ws);
+    await Promise.all(
+      Array.from({ length: 9 }, (_, i) =>
+        h.handleMessage(ws, { type: 'terminal.create', payload: { id: `t${i}` } }),
+      ),
+    );
+    expect(spawnMock).toHaveBeenCalledTimes(8);
+    expect(ws.sent).toContainEqual({ type: 'terminal.exit', payload: { id: 't8', exitCode: -1 } });
+  });
+
+  it("a closed shell's late exit leaves a new shell under the same id alone", async () => {
+    const h = new TerminalWebSocketHandler(
+      () => '/c',
+      logger as never,
+      loadFakeNodePty as never,
+      undefined,
+      allowBoundary,
+    );
+    const ws = makeWs();
+    h.addClient(ws);
+    await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
+    await h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } });
+    await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
+    spawned[0]?.emitExit(1);
+
+    await h.handleMessage(ws, { type: 'terminal.input', payload: { id: 't1', data: 'ls\r' } });
+    expect(spawned[1]?.write).toHaveBeenCalledWith('ls\r');
+    expect(ws.sent.filter((m: { type: string }) => m.type === 'terminal.exit')).toEqual([]);
+    ws.fire('close');
+    expect(spawned[1]?.kill).toHaveBeenCalled();
+  });
+
+  it('releases the pending slot when authorization throws', async () => {
+    const evaluate = vi
+      .fn<TrustBoundary['evaluate']>()
+      .mockRejectedValueOnce(new Error('policy offline'))
+      .mockResolvedValue({ kind: 'allow', reason: 'ok' } as never);
+    const h = new TerminalWebSocketHandler(
+      () => '/c',
+      logger as never,
+      loadFakeNodePty as never,
+      undefined,
+      { evaluate },
+    );
+    const ws = makeWs();
+    h.addClient(ws);
+    await expect(
+      h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } }),
+    ).rejects.toThrow('policy offline');
+    await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reports terminal unavailability when node-pty is absent', async () => {
     const h = new TerminalWebSocketHandler(
       () => '/c',

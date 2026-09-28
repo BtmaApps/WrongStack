@@ -120,4 +120,20 @@ describe('parseSemanticLintRules', () => {
     expect(rules.map((r) => r.id)).toEqual(['ok']);
     expect(errors).toHaveLength(2);
   });
+
+  // The rules file is repo-committed. It used to be compiled with a bare
+  // `new RegExp`; the 2000-char line cap does not stop `(a+)+$`, which took
+  // ~0.4 s on a 27-char added line and doubled per character.
+  it('refuses catastrophic-backtracking patterns from the repo file', () => {
+    const { rules, errors } = parseSemanticLintRules([
+      { id: 'nested', pattern: '(a+)+$', question: 'x?' },
+      { id: 'files-nested', pattern: 'TODO', files: '(.*a)+$', question: 'x?' },
+      { id: 'fine', pattern: 'TODO', files: '\\.ts$', question: 'x?' },
+    ]);
+    expect(rules.map((r) => r.id)).toEqual(['fine']);
+    expect(errors).toEqual([
+      expect.stringMatching(/^rule nested: .*backtracking/),
+      expect.stringMatching(/^rule files-nested: /),
+    ]);
+  });
 });

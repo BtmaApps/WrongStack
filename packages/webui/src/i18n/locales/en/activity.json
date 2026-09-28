@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Reusable tools, built for this project.",
+    "refresh": "Refresh",
+    "create": "Create in chat",
+    "loadFailed": "Could not load Project Kit",
+    "loading": "Loading kits…",
+    "catalog": "Project tools",
+    "search": "Search kits…",
+    "effects": {
+      "read": "Reads project data",
+      "write": "Changes files",
+      "external": "External actions"
+    },
+    "noMatches": "No kits match your search.",
+    "emptyList": "No project tools yet.",
+    "invalid": "Invalid kit manifest",
+    "selectTitle": "Choose a project tool",
+    "emptyTitle": "Build once. Use it again.",
+    "emptyHint": "Keep project checks and repeatable tasks together with their parameters, guides and verification cases. Create a kit in chat to get started.",
+    "verified": "Verified revision",
+    "unverified": "Needs verification",
+    "cases": "verification cases",
+    "guide": "Usage guide",
+    "parameters": "Parameters",
+    "required": "Required",
+    "default": "Default",
+    "schemas": "Input and output schemas",
+    "input": "Parameters (JSON)",
+    "inputError": "Enter a valid JSON object.",
+    "use": "Use in chat",
+    "verify": "Prepare verification",
+    "draftHint": "Opens a chat draft for review; nothing runs until you send it. Execution uses your existing permissions.",
+    "history": "Recent runs",
+    "noHistory": "No recorded runs yet.",
+    "historyHint": "Latest 100 local records. “Started” can also indicate an interrupted run; refresh to check its final status.",
+    "actions": {
+      "run": "Execution",
+      "verify": "Verification"
+    },
+    "status": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "running": "Started"
+    },
+    "files": "Source files",
+    "examples": "Verification examples"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Session",
     "agents": "Agents",
     "history": "History",

@@ -33,23 +33,29 @@ export async function handleGitInfo(ws: WebSocket, projectRoot: string): Promise
   const cwd = projectRoot || undefined;
   try {
     const { execFile: ef } = await import('node:child_process');
-    const git = (args: string[]): Promise<string> =>
+    // null = git failed (not a repo, no git); '' = succeeded with no output.
+    const gitOrNull = (args: string[]): Promise<string | null> =>
       new Promise((resolve) => {
         ef('git', args, { cwd, timeout: 3000 }, (err: Error | null, stdout: string) => {
-          resolve(err ? '' : stdout.trim());
+          resolve(err ? null : stdout.trim());
         });
       });
+    const git = async (args: string[]): Promise<string> => (await gitOrNull(args)) ?? '';
 
     const [branchRaw, diffRaw, statusRaw, upstreamRaw] = await Promise.all([
-      git(['branch', '--show-current']),
-      git(['diff', '--stat']),
+      gitOrNull(['branch', '--show-current']),
+      // vs HEAD, like the TUI chip this mirrors: a bare `diff` sees only
+      // unstaged changes, so `git add` dropped the counts to +0/-0.
+      git(['diff', 'HEAD', '--shortstat']),
       git(['status', '--porcelain']),
       git(['rev-list', '--left-right', '--count', '@{upstream}...HEAD']),
     ]);
 
-    const branch = branchRaw || '(detached)';
+    // Only a SUCCESSFUL empty `--show-current` is a detached HEAD; a failure
+    // means no repository, which the chip must not label '(detached)'.
+    const branch = branchRaw === null ? '' : branchRaw || '(detached)';
 
-    // `git diff --stat` summary line: "N files changed, X insertions(+), Y deletions(-)".
+    // `git diff --shortstat` line: "N files changed, X insertions(+), Y deletions(-)".
     // Deletions are formatted "Y deletions(-)" — the `+` only ever precedes
     // INSERTIONS, so a `\+`-anchored deletion regex never matches.
     const addMatch = /(\d+)\s+insertion/i.exec(diffRaw);

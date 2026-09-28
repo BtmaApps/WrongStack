@@ -624,9 +624,10 @@ export const WS_HANDLERS: Partial<Record<WSServerMessage['type'], (msg: WSServer
       useSpecsStore.getState().setSpecs(p.specs ?? []);
     },
     'specs.detail': (msg: WSServerMessage) => {
-      useSpecsStore
-        .getState()
-        .setDetail(msg.payload as unknown as import('@/stores/specs-store').SpecDetail);
+      const detail = msg.payload as unknown as import('@/stores/specs-store').SpecDetail;
+      // Broadcast to every client: keep only the spec this view has expanded.
+      if (detail?.specId !== useSpecsStore.getState().expandedSpecId) return;
+      useSpecsStore.getState().setDetail(detail);
     },
     'sdd.board.snapshot': (msg: WSServerMessage) => {
       useSddBoardStore

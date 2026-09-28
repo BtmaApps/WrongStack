@@ -186,6 +186,14 @@ function compile(target, { version, apiVersion, packId }) {
     // `name` the code reports (error kinds, tool names in diagnostics).
     '--minify-whitespace',
     '--minify-syntax',
+    // Bun's standalone default is to load `.env` and `bunfig.toml` from the
+    // CURRENT directory at startup — i.e. from whatever repo `wstack` is run
+    // in. A cloned repo's `bunfig.toml` `preload` then executed repo code
+    // before any trust check (even for `wstack --version`, and again in every
+    // daemon the binary respawns there), and its `.env` rewrote proxy /
+    // provider / WRONGSTACK_* settings. The Node build loads neither.
+    '--no-compile-autoload-dotenv',
+    '--no-compile-autoload-bunfig',
     `--define=WRONGSTACK_BINARY_VERSION=${JSON.stringify(version)}`,
     `--define=WRONGSTACK_BINARY_API_VERSION=${JSON.stringify(apiVersion)}`,
     `--define=WRONGSTACK_BINARY_PACK_ID=${JSON.stringify(packId)}`,

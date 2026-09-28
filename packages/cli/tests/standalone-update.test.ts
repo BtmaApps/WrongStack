@@ -35,6 +35,19 @@ describe('standaloneAssetName', () => {
       skipBuild: true,
     });
   });
+
+  // Bun's standalone default loads `.env` and `bunfig.toml` from the current
+  // directory: `wstack` run inside a cloned repo executed the repo's
+  // `bunfig.toml` preload and took its `.env`. scripts/smoke-binary.mjs checks
+  // the built artifact; this keeps the flags from being dropped unnoticed.
+  it('builds the binary with cwd .env / bunfig.toml autoload disabled', () => {
+    const src = fs.readFileSync(
+      new URL('../../../scripts/build-binaries.mjs', import.meta.url),
+      'utf8',
+    );
+    expect(src).toContain("'--no-compile-autoload-dotenv'");
+    expect(src).toContain("'--no-compile-autoload-bunfig'");
+  });
 });
 
 describe('parseSha256Sums', () => {
@@ -80,6 +93,24 @@ describe('parseSha256Sums', () => {
     expect(powershell).toContain('must contain exactly one entry for $Asset');
     expect(rootShell).toBe(shell);
     expect(rootPowershell).toBe(powershell);
+  });
+
+  // [Environment]::GetEnvironmentVariable('Path','User') expands %VAR% and
+  // SetEnvironmentVariable stores REG_SZ: the round trip froze every
+  // %JAVA_HOME%\bin-style user PATH entry (measured on PS 5.1 and 7). The
+  // registry value is read raw and written back as REG_EXPAND_SZ instead.
+  it('updates the user PATH without expanding it or dropping REG_EXPAND_SZ', () => {
+    const powershell = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../scripts/install/install.ps1'),
+      'utf8',
+    );
+    expect(powershell).not.toMatch(/\[Environment\]::(?:Get|Set)EnvironmentVariable\('Path'/);
+    expect(powershell).toContain(
+      '[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames',
+    );
+    expect(powershell).toContain('[Microsoft.Win32.RegistryValueKind]::ExpandString');
+    // PowerShell 5.1 and `irm | iex` read the script as ANSI: keep it ASCII.
+    expect(/^[\x00-\x7f]*$/.test(powershell)).toBe(true);
   });
 });
 

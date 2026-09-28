@@ -125,8 +125,25 @@ async function writeConfig(path: string, cfg: Record<string, unknown>): Promise<
   // REPL editing MCP config at once) don't clobber a shared `${path}.tmp` and
   // corrupt the config. Clean up the temp file if the rename fails.
   const tmp = `${path}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
-  await fs.writeFile(tmp, raw, 'utf8');
+  // This config holds MCP server credentials (`env`, `bearerTokenEnv`), so it is
+  // owner-only. A temp file written with no `mode` takes the process umask
+  // default — 0644 on a typical POSIX host — and the rename then publishes THOSE
+  // bits over the target's 0600, widening a credential file to every local user
+  // on each add/update/remove/enable/disable. Carry the target's own bits across
+  // the swap, defaulting to 0600 when there is no target yet. Same rule as
+  // `commitTemp` in @wrongstack/persistence, which this package cannot reuse
+  // without adding a workspace dependency edge.
+  let mode = 0o600;
   try {
+    mode = (await fs.stat(path)).mode & 0o777;
+  } catch {
+    // No target yet — a first write creating config.json. Keep it owner-only.
+  }
+  try {
+    await fs.writeFile(tmp, raw, { encoding: 'utf8', mode });
+    // The `mode` above is still masked by this process's umask, so set the bits
+    // exactly instead of inheriting whatever WrongStack was launched with.
+    await fs.chmod(tmp, mode);
     await fs.rename(tmp, path);
   } catch (err) {
     await fs.rm(tmp, { force: true });

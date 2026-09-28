@@ -464,8 +464,8 @@ function truncate(text: string, maxLen: number): string {
  *
  * Returns a positive number; larger is better.
  *
- * Tiebreaker (when scores are equal): the older memory wins, on the
- * principle that established claims are more stable.
+ * Tiebreaker (when scores are equal): the NEWER memory wins — see
+ * `buildResult`: the latest statement of the same fact is the authoritative one.
  */
 function memoryQualityScore(memory: Sage): number {
   // Text length: log-scaled, capped at 200 chars to avoid favoring

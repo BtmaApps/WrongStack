@@ -287,7 +287,8 @@ export function WorkspaceDock() {
         )}
         {/* Git info chip — shows branch, changes, and sync status.
          * Mirrors the TUI's git-info bar in the status line. */}
-        {gitInfo && (
+        {/* No branch = not a git repository: no chip. */}
+        {gitInfo?.branch && (
           <button
             type="button"
             onClick={() => {

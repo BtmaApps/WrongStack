@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Herramientas reutilizables para este proyecto.",
+    "refresh": "Actualizar",
+    "create": "Crear en el chat",
+    "loadFailed": "No se pudo cargar Project Kit",
+    "loading": "Cargando kits…",
+    "catalog": "Herramientas del proyecto",
+    "search": "Buscar kits…",
+    "effects": {
+      "read": "Lee datos del proyecto",
+      "write": "Modifica archivos",
+      "external": "Acciones externas"
+    },
+    "noMatches": "Ningún kit coincide con la búsqueda.",
+    "emptyList": "Aún no hay herramientas de proyecto.",
+    "invalid": "Definición de kit no válida",
+    "selectTitle": "Elige una herramienta del proyecto",
+    "emptyTitle": "Desarrolla una vez. Reutiliza.",
+    "emptyHint": "Guarda comprobaciones y tareas repetibles con sus parámetros, guías y casos de verificación. Crea un kit en el chat para empezar.",
+    "verified": "Revisión verificada",
+    "unverified": "Requiere verificación",
+    "cases": "casos de verificación",
+    "guide": "Guía de uso",
+    "parameters": "Parámetros",
+    "required": "Obligatorio",
+    "default": "Predeterminado",
+    "schemas": "Esquemas de entrada y salida",
+    "input": "Parámetros (JSON)",
+    "inputError": "Introduce un objeto JSON válido.",
+    "use": "Usar en el chat",
+    "verify": "Preparar verificación",
+    "draftHint": "Abre un borrador para revisar en el chat. No se ejecuta nada hasta que lo envíes. Se aplican tus permisos habituales.",
+    "history": "Ejecuciones recientes",
+    "noHistory": "Aún no hay ejecuciones registradas.",
+    "historyHint": "Los últimos 100 registros locales. «Iniciada» también puede indicar una ejecución interrumpida. Actualiza para comprobar su estado final.",
+    "actions": {
+      "run": "Ejecución",
+      "verify": "Verificación"
+    },
+    "status": {
+      "passed": "Correcta",
+      "failed": "Fallida",
+      "running": "Iniciada"
+    },
+    "files": "Archivos fuente",
+    "examples": "Ejemplos de verificación"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Sesión",
     "agents": "Agentes",
     "history": "Historial",

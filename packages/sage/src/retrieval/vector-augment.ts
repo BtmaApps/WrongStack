@@ -60,8 +60,15 @@ export interface VectorAugmentOptions {
   rrfK?: number | undefined;
   /** Cosine threshold forwarded to the vector backend. */
   threshold?: number | undefined;
-  /** Cap on the final result list. */
+  /** Cap on the ranked result list, before any explicit extra candidate budget. */
   limit?: number | undefined;
+  /**
+   * Additional vector-only candidates beyond the RRF top `limit`, for callers
+   * that apply their own relevance and context-budget gates. Default 0 keeps
+   * ordinary search unchanged. Clamped to 12; never displaces an existing hit
+   * or bypasses materialization/visibility checks. Ignored at vectorWeight 0.
+   */
+  vectorCandidateLimit?: number | undefined;
   /**
    * Cosine threshold below which a vector-only hit is dropped. Defaults to
    * `DEFAULT_VECTOR_ONLY_THRESHOLD` (0.62) — the deliberate MiniLM-class
@@ -282,5 +289,22 @@ export async function augmentLexicalWithVectorRecall(
 
   const out = Array.from(fused.values());
   out.sort((a, b) => b.finalScore - a.finalScore);
-  return out.slice(0, limit);
+  const selected = out.slice(0, limit);
+  const requestedCandidates = options.vectorCandidateLimit ?? 0;
+  const candidateLimit =
+    weight > 0 && Number.isFinite(requestedCandidates)
+      ? Math.max(0, Math.min(DEFAULT_MAX_MATERIALIZATIONS, Math.floor(requestedCandidates)))
+      : 0;
+  // RRF with unequal channel weights can put every vector-only hit below a
+  // full lexical window. Retain a bounded tail for the injector's existing
+  // relation/quality gates instead of replacing lexical hits or raising scores.
+  if (candidateLimit > 0) {
+    selected.push(
+      ...out
+        .slice(limit)
+        .filter((hit) => hit.source === 'vector')
+        .slice(0, candidateLimit),
+    );
+  }
+  return selected;
 }

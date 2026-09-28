@@ -30,6 +30,14 @@ interface ReviewQueueProps {
   active: boolean;
 }
 
+function canAccept(candidate: MemoryCandidateEntry): boolean {
+  return (
+    candidate.kind !== 'memory_review' ||
+    candidate.suggestedAction === 'delete' ||
+    candidate.suggestedAction === 'archive'
+  );
+}
+
 export function ReviewQueue({
   listCandidates,
   resolveCandidate,
@@ -125,7 +133,11 @@ export function ReviewQueue({
 
   const bulkAct = useCallback(
     async (action: 'accept' | 'reject') => {
-      const ids = [...selected];
+      const ids = [...selected].filter(
+        (id) =>
+          action !== 'accept' ||
+          candidates.some((candidate) => candidate.id === id && canAccept(candidate)),
+      );
       if (ids.length === 0) return;
       setBulkBusy(true);
       for (const id of ids) {
@@ -135,7 +147,7 @@ export function ReviewQueue({
       setSelected(new Set());
       load();
     },
-    [load, resolveOne, selected],
+    [load, resolveOne, selected, candidates],
   );
 
   const toggle = (id: string) => {
@@ -190,6 +202,9 @@ export function ReviewQueue({
   }
 
   const selectedCount = selected.size;
+  const acceptableSelectedCount = candidates.filter(
+    (candidate) => selected.has(candidate.id) && canAccept(candidate),
+  ).length;
   const allSelected = selectedCount === candidates.length && candidates.length > 0;
 
   return (
@@ -212,12 +227,12 @@ export function ReviewQueue({
           <Button
             size="sm"
             className="h-7"
-            disabled={selectedCount === 0 || bulkBusy}
+            disabled={acceptableSelectedCount === 0 || bulkBusy}
             onClick={() => void bulkAct('accept')}
           >
             {bulkBusy ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
             {t('activity:memoryManager.reviewBulkAccept')}
-            {selectedCount > 0 ? ` (${selectedCount})` : ''}
+            {acceptableSelectedCount > 0 ? ` (${acceptableSelectedCount})` : ''}
           </Button>
           <Button
             size="sm"
@@ -292,19 +307,32 @@ export function ReviewQueue({
                     </button>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button
-                      size="sm"
-                      className="h-7"
-                      disabled={busy}
-                      onClick={() => void act(c.id, 'accept')}
-                    >
-                      {busyId === c.id ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        <Check className="size-3" />
-                      )}
-                      {t('activity:memoryManager.actionAcceptDeletion')}
-                    </Button>
+                    {canAccept(c) ? (
+                      <Button
+                        size="sm"
+                        className="h-7"
+                        disabled={busy}
+                        onClick={() => void act(c.id, 'accept')}
+                      >
+                        {busyId === c.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Check className="size-3" />
+                        )}
+                        {c.suggestedAction === 'delete'
+                          ? t('activity:memoryManager.actionAcceptDeletion')
+                          : t('common:action.apply')}
+                      </Button>
+                    ) : target && onOpenMemory ? (
+                      <Button
+                        size="sm"
+                        className="h-7"
+                        disabled={busy}
+                        onClick={() => onOpenMemory(target)}
+                      >
+                        {t('common:action.open')}
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="outline"

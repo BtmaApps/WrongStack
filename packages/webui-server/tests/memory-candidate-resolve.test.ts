@@ -23,10 +23,32 @@ function portWith(surface: Record<string, unknown>) {
 }
 
 describe('memory.sage.candidateResolve', () => {
+  it.each(['investigate', 'update', 'keep', undefined])(
+    'never turns advisory %s into deletion',
+    async (suggestedAction) => {
+      const resolveCandidate = vi.fn();
+      const acceptCandidate = vi.fn();
+      const { ws, sent } = fakeWs();
+      await handleSageCandidateResolve(
+        ws,
+        { payload: { candidateId: 'review', action: 'accept' } },
+        portWith({
+          listCandidates: async () => [
+            { id: 'review', kind: 'memory_review', status: 'pending', suggestedAction },
+          ],
+          resolveCandidate,
+          acceptCandidate,
+        }),
+      );
+      expect(resolveCandidate).not.toHaveBeenCalled();
+      expect(acceptCandidate).not.toHaveBeenCalled();
+      expect(sent[0]?.payload.error).toContain('requires investigation');
+    },
+  );
+
   it.each([
     ['archive', 'archive'],
     ['delete', 'delete'],
-    ['investigate', 'delete'],
   ])('accept on a %s review proposal resolves with %s', async (suggested, decision) => {
     const resolveCandidate = vi.fn(async () => ({
       candidateId: 'c1',

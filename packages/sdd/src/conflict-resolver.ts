@@ -33,52 +33,63 @@ const defaultFileIO: ConflictFileIO = {
   },
 };
 
-const START = '<<<<<<<';
-const BASE = '|||||||';
-const SEP = '=======';
-const END = '>>>>>>>';
+// Git's marker grammar: a run of exactly `merge.conflictMarkerSize` (default 7)
+// marker chars, then a space + label or end of line — and the `=======`
+// divider takes no label. A 7-char PREFIX match is not enough: a markdown or
+// reST setext underline (`==========`) would read as a divider, flipping the
+// parser to the other side mid-hunk (the result mixed both sides and still
+// passed the marker check), and flagging a clean resolution as unresolved.
+const START_LINE = /^(<{7,})(?: |\r?$)/;
+const LABELLED_MARKER_LINE = /^(?:<{7,}|\|{7,}|>{7,})(?: |\r?$)/;
+const ANY_MARKER_LINE = /^(?:<{7,}|\|{7,}|>{7,})(?: |\r?$)|^={7,}\r?$/;
+
+/** True when `line` is a `char` marker of exactly `size` chars. */
+function isMarker(line: string, char: string, size: number): boolean {
+  for (let i = 0; i < size; i++) if (line[i] !== char) return false;
+  const rest = line.slice(size).replace(/\r$/, '');
+  return char === '=' ? rest === '' : rest === '' || rest.startsWith(' ');
+}
 
 /**
  * Resolve every standard git conflict hunk in `text` by keeping `side`. Handles
  * both 2-way (`<<<<<<< / ======= / >>>>>>>`) and diff3 (`||||||| base`) markers.
- * Returns the rewritten text (markers removed).
+ * Returns the rewritten text (markers removed). A hunk that never closes is not
+ * guessed at: the input comes back unchanged, so the marker check refuses it.
  */
 export function resolveConflictText(text: string, side: ConflictSide): string {
   const out: string[] = [];
-  // 'normal' | 'ours' | 'base' | 'theirs'
   let state: 'normal' | 'ours' | 'base' | 'theirs' = 'normal';
+  // Marker length of the open hunk; every marker of one hunk shares it.
+  let size = 0;
   for (const line of text.split('\n')) {
-    const marker = line.slice(0, 7);
-    if (state === 'normal' && marker === START) {
-      state = 'ours';
+    if (state === 'normal') {
+      const start = START_LINE.exec(line);
+      if (start) {
+        size = start[1]!.length;
+        state = 'ours';
+      } else {
+        out.push(line);
+      }
       continue;
     }
-    if (state !== 'normal' && marker === BASE) {
-      state = 'base';
-      continue;
-    }
-    if (state !== 'normal' && marker === SEP) {
-      state = 'theirs';
-      continue;
-    }
-    if (state !== 'normal' && marker === END) {
-      state = 'normal';
-      continue;
-    }
-    if (state === 'normal') out.push(line);
+    if (isMarker(line, '|', size)) state = 'base';
+    else if (isMarker(line, '=', size)) state = 'theirs';
+    else if (isMarker(line, '>', size)) state = 'normal';
     else if (state === 'ours' && side === 'base') out.push(line);
     else if (state === 'theirs' && side === 'incoming') out.push(line);
     // 'base' section + the non-selected side are dropped.
   }
+  if (state !== 'normal') return text;
   return out.join('\n');
 }
 
-/** True when `text` still contains a git conflict marker line. */
+/**
+ * True when `text` still contains a git conflict marker line. A bare `=======`
+ * is not counted: without a `<<<<<<<` it cannot be told apart from a setext
+ * heading underline (core's WorktreeManager check draws the same line).
+ */
 export function hasConflictMarkers(text: string): boolean {
-  return text.split('\n').some((l) => {
-    const m = l.slice(0, 7);
-    return m === START || m === SEP || m === END || m === BASE;
-  });
+  return text.split('\n').some((l) => LABELLED_MARKER_LINE.test(l));
 }
 
 /**
@@ -137,10 +148,7 @@ function unfence(text: string): string {
 
 /** Original line count ignoring conflict-marker lines (the resolution baseline). */
 function nonMarkerLineCount(text: string): number {
-  return text.split('\n').filter((l) => {
-    const m = l.slice(0, 7);
-    return m !== START && m !== SEP && m !== END && m !== BASE;
-  }).length;
+  return text.split('\n').filter((l) => !ANY_MARKER_LINE.test(l)).length;
 }
 
 /**

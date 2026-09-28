@@ -27,6 +27,27 @@ function ctx(
 }
 
 describe('renderInstructionLayer — block conditionals', () => {
+  it('exposes the feedback lifecycle only when the memory update tool is available', async () => {
+    const source = await fs.readFile(
+      new URL('../../instructions/shared/system/memory.md', import.meta.url),
+      'utf8',
+    );
+    const writable = renderInstructionLayer(
+      source,
+      ctx(['remember', 'memory_search', 'memory_update']),
+    );
+    expect(writable).toContain('feedback: { verdict, observedRevision, evidence }');
+    expect(writable).toContain('not after every tool call');
+    expect(writable).toContain('expectedRevision');
+    const readOnly = renderInstructionLayer(source, ctx(['memory_search']));
+    expect(readOnly).not.toContain('observedRevision');
+    expect(readOnly).not.toContain('expectedRevision');
+    expect(readOnly).not.toContain('Agent observations belong to the session');
+    const disabled = renderInstructionLayer(source, ctx([]));
+    expect(disabled).not.toContain('feedback');
+    expect(disabled).toContain('final summary');
+  });
+
   it('keeps a block whose tool is registered and drops one whose tool is not', () => {
     const text = [
       'intro',

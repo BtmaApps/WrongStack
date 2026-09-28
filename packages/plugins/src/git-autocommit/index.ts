@@ -413,7 +413,18 @@ const plugin: Plugin = {
           // index for whoever owns it instead of riding along silently.
           let scopeWarning: string | null = null;
           if (commitScope) {
-            const scopedSet = new Set(commitScope);
+            // Compare against the index paths the scope COVERS: a directory in
+            // `files` stages (and `commit --only` commits) everything under
+            // it, so its literal entry never equals `src/a.ts` and the
+            // caller's own files were reported as foreign and "left
+            // uncommitted".
+            let covered: string[] = [];
+            try {
+              covered = await getScopedStagedFiles(commitScope, cwd, signal);
+            } catch {
+              covered = [];
+            }
+            const scopedSet = new Set([...commitScope, ...covered]);
             const foreign = staged.filter((f) => !scopedSet.has(f));
             if (foreign.length > 0) {
               const preview = foreign.slice(0, 10).join(', ');

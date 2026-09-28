@@ -13,7 +13,7 @@ import {
   recordCompletedReview,
   recordStartedReview,
 } from './review-claim-registry.js';
-import { buildReviewContext } from './review-context-builder.js';
+import { buildReviewContext, parsePorcelainStatusZ } from './review-context-builder.js';
 import { executeFindingCommand } from './review-finding-commands.js';
 import type {
   ResolvedChimeraConfig,
@@ -151,6 +151,10 @@ async function runGit(
     }
     let stdout = '';
     let stderr = '';
+    // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+    // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', (d) => {
       stdout += d;
     });
@@ -174,13 +178,13 @@ interface ChangedFile {
 }
 
 async function getChangedFiles(cwd: string): Promise<ChangedFile[]> {
-  const r = await runGit(['status', '--porcelain'], cwd);
+  // -z: line output C-quotes names with spaces/non-ASCII (`"my notes.ts"`), which
+  // then fail fs.access and drop out of review. -uall: a new directory is one
+  // `?? dir/` entry otherwise, and the files inside it were never reviewed.
+  const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd);
   if (r.code !== 0) return [];
   const files: ChangedFile[] = [];
-  for (const line of r.stdout.split('\n')) {
-    if (!line.trim()) continue;
-    const statusCode = line.slice(0, 2).trim();
-    const filePath = line.slice(3).trim();
+  for (const { path: filePath, status: statusCode } of parsePorcelainStatusZ(r.stdout)) {
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
     } else if (statusCode.includes('M')) {

@@ -551,6 +551,34 @@ describe('WrongStackClient', () => {
     expect(subscribes()).toBe(before);
   });
 
+  // The reply waiter used to be armed before the post: when the post threw
+  // (closed / reconnecting) the caller got that error, and the orphaned waiter
+  // rejected again at its timeout with nobody listening — an unhandled
+  // rejection, fatal to a default Node process.
+  it('leaves no unobserved rejection when a request cannot be sent', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      server = await FakeServer.start();
+      client = await WrongStackClient.connect({
+        url: server.url,
+        timeoutMs: 100,
+        reconnect: false,
+      });
+      const closed = new Promise<void>((resolve) => client?.onClose(() => resolve()));
+      server.drop();
+      await closed;
+      await expect(client.listSessions()).rejects.toMatchObject({ kind: 'connection' });
+      await expect(client.newSession()).rejects.toMatchObject({ kind: 'connection' });
+      await expect(client.resumeSession('sess_0')).rejects.toMatchObject({ kind: 'connection' });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('times out a request the server never answers', async () => {
     server = await FakeServer.start();
     client = await WrongStackClient.connect({ url: server.url, timeoutMs: 150 });

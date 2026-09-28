@@ -9,6 +9,97 @@ import {
   nextStepSweepParts,
 } from '../src/components/history/entry.js';
 import type { HistoryEntry } from '../src/components/history.js';
+import type { KeyEvent } from '../src/components/input.js';
+import type { MouseEventInfo } from '../src/mouse.js';
+
+const KEY: KeyEvent = {
+  upArrow: false,
+  downArrow: false,
+  leftArrow: false,
+  rightArrow: false,
+  return: false,
+  escape: false,
+  ctrl: false,
+  meta: false,
+  shift: false,
+  tab: false,
+  backspace: false,
+  delete: false,
+  pageUp: false,
+  pageDown: false,
+  home: false,
+  end: false,
+};
+
+/** Every report shape the input layer emits (components/input.tsx parse path). */
+const POINTER_REPORTS: MouseEventInfo[] = [
+  {
+    kind: 'press',
+    button: 'left',
+    x: 12,
+    y: 4,
+    wheel: 0,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: false,
+  },
+  {
+    kind: 'release',
+    button: 'left',
+    x: 12,
+    y: 4,
+    wheel: 0,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: false,
+  },
+  {
+    kind: 'press',
+    button: 'right',
+    x: 3,
+    y: 9,
+    wheel: 0,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: false,
+  },
+  {
+    kind: 'move',
+    button: 'left',
+    x: 40,
+    y: 7,
+    wheel: 0,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: true,
+  },
+  {
+    kind: 'wheel',
+    button: 'none',
+    x: 20,
+    y: 6,
+    wheel: 1,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: false,
+  },
+  {
+    kind: 'wheel',
+    button: 'none',
+    x: 20,
+    y: 6,
+    wheel: -1,
+    shift: false,
+    meta: false,
+    ctrl: false,
+    motion: false,
+  },
+];
 
 const ENTRY: HistoryEntry = {
   id: 42,
@@ -77,10 +168,65 @@ describe('next-step auto-submit text sweep', () => {
     ).toBe(42);
   });
 
-  it('cancels the armed sweep and submit on the first user key', () => {
+  it('cancels the armed sweep and submit on the first user keystroke', () => {
     const cancel = vi.fn();
 
-    stopNextStepsAutoSubmitOnKey(cancel);
+    stopNextStepsAutoSubmitOnKey(cancel, { input: '', key: { ...KEY, return: true }, draft: '' });
+
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it.each(POINTER_REPORTS.map((report) => [`${report.kind}/${report.button}`, report] as const))(
+    'leaves the armed sweep running through a %s pointer report',
+    (_name, report) => {
+      const cancel = vi.fn();
+
+      stopNextStepsAutoSubmitOnKey(cancel, {
+        input: '',
+        key: { ...KEY, mouse: report, wheelDeltaY: report.wheel },
+        draft: '',
+      });
+
+      expect(cancel).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['PageUp', { pageUp: true }, ''],
+    ['PageDown', { pageDown: true }, ''],
+    ['left arrow', { leftArrow: true }, ''],
+    ['right arrow', { rightArrow: true }, ''],
+    ['Home', { home: true }, ''],
+    ['End', { end: true }, ''],
+    ['Ctrl+U paging', { ctrl: true }, 'u'],
+    ['Ctrl+D paging', { ctrl: true }, 'd'],
+  ] as const)(
+    'leaves the armed sweep running through %s over an empty composer',
+    (_name, overrides, input) => {
+      const cancel = vi.fn();
+
+      stopNextStepsAutoSubmitOnKey(cancel, { input, key: { ...KEY, ...overrides }, draft: '' });
+
+      expect(cancel).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['a pointer report', { ...KEY, mouse: POINTER_REPORTS[0]! }],
+    ['PageUp', { ...KEY, pageUp: true }],
+    ['a left-arrow caret move', { ...KEY, leftArrow: true }],
+  ] as const)('cancels on %s once the composer holds text', (_name, key) => {
+    const cancel = vi.fn();
+
+    stopNextStepsAutoSubmitOnKey(cancel, { input: '', key, draft: 'half typed' });
+
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('cancels on a typing key that carries no pointer report', () => {
+    const cancel = vi.fn();
+
+    stopNextStepsAutoSubmitOnKey(cancel, { input: '', key: { ...KEY, escape: true }, draft: '' });
 
     expect(cancel).toHaveBeenCalledOnce();
   });

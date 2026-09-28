@@ -39,9 +39,10 @@ import { logsTool } from './logs.js';
 import { outdatedTool } from './outdated.js';
 import { patchTool } from './patch.js';
 import { planTool } from './plan.js';
+import { projectKitRunTool, projectKitTool } from './project-kit.js';
 import { pwshTool } from './pwsh.js';
-import { readUrlContentTool } from './read-url-content.js';
 import { readTool } from './read.js';
+import { readUrlContentTool } from './read-url-content.js';
 import { replaceTool } from './replace.js';
 import { searchTool } from './search.js';
 import { securityAstScanTool } from './security-ast-scan-tool.js';
@@ -64,6 +65,8 @@ import { writeTool } from './write.js';
  * guidance as directly exposed tools.
  */
 export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  project_kit: projectKitTool.description,
+  project_kit_run: projectKitRunTool.description,
   browser_open:
     'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
   browser_list:
@@ -233,6 +236,7 @@ export const OFF_ONLY_TOOLS: Tool[] = [...browserTools, e2ePlanTool];
  *   tool_search, tool_use                      — reach the withheld catalog
  */
 export const TIER1_TOOLS: Tool[] = [
+  projectKitTool,
   readTool,
   writeTool,
   editTool,
@@ -274,6 +278,7 @@ export const TIER1_TOOLS: Tool[] = [
  * every turn. Omitting them in minimal/light tier saves ~900 tokens per prompt.
  */
 export const TIER2_TOOLS: Tool[] = [
+  projectKitRunTool,
   replaceTool,
   toolScriptTool,
   execTool,
@@ -310,6 +315,8 @@ export const TIER2_TOOLS: Tool[] = [
 export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool];
 
 const rawBuiltinTools: Tool[] = [
+  projectKitTool,
+  projectKitRunTool,
   toolScriptTool,
   ...browserTools,
   e2ePlanTool,

@@ -616,22 +616,25 @@ export class RequirementIntakeService {
     const record = await this.requireRecord(id, ctx, 'cancel');
     assertTransition(record.status, 'cancelled');
 
-    const updated = await this.store.update(
-      id,
-      {
-        actorId: ctx.id,
-        actorType: ctx.type,
-        action: 'cancelled',
-        from: record.status,
-        to: 'cancelled',
-        expectedVersion,
-      },
-      (next) => {
-        next.status = 'cancelled';
-        next.cancelledAt = Date.now();
-        next.cancelledReason = reason?.trim() || undefined;
-      },
-    );
+    // The check above ran on a record read before the lock. Repeat it on the
+    // locked copy, or a submit landing in between is overwritten: submitted ->
+    // cancelled is not a transition. History and event name the real status.
+    let previousStatus = record.status;
+    const meta = {
+      actorId: ctx.id,
+      actorType: ctx.type,
+      action: 'cancelled',
+      from: record.status,
+      to: 'cancelled' as const,
+      expectedVersion,
+    };
+    const updated = await this.store.update(id, meta, (next) => {
+      assertTransition(next.status, 'cancelled');
+      previousStatus = meta.from = next.status;
+      next.status = 'cancelled';
+      next.cancelledAt = Date.now();
+      next.cancelledReason = reason?.trim() || undefined;
+    });
 
     this.metrics.increment('intake.cancelled');
     this.logger.info('intake', 'intake.cancelled', {
@@ -644,7 +647,7 @@ export class RequirementIntakeService {
       projectId: updated.projectId,
       actorId: ctx.id,
       actorType: ctx.type,
-      previousStatus: record.status,
+      previousStatus,
       status: 'cancelled',
     });
     return updated;
@@ -658,21 +661,22 @@ export class RequirementIntakeService {
     const record = await this.requireRecord(id, ctx, 'archive');
     assertTransition(record.status, 'archived');
 
-    const updated = await this.store.update(
-      id,
-      {
-        actorId: ctx.id,
-        actorType: ctx.type,
-        action: 'archived',
-        from: record.status,
-        to: 'archived',
-        expectedVersion,
-      },
-      (next) => {
-        next.status = 'archived';
-        next.archivedAt = Date.now();
-      },
-    );
+    // Re-checked under the lock for the same reason as cancelIntake.
+    let previousStatus = record.status;
+    const meta = {
+      actorId: ctx.id,
+      actorType: ctx.type,
+      action: 'archived',
+      from: record.status,
+      to: 'archived' as const,
+      expectedVersion,
+    };
+    const updated = await this.store.update(id, meta, (next) => {
+      assertTransition(next.status, 'archived');
+      previousStatus = meta.from = next.status;
+      next.status = 'archived';
+      next.archivedAt = Date.now();
+    });
 
     this.metrics.increment('intake.archived');
     this.logger.info('intake', 'intake.archived', {
@@ -685,7 +689,7 @@ export class RequirementIntakeService {
       projectId: updated.projectId,
       actorId: ctx.id,
       actorType: ctx.type,
-      previousStatus: record.status,
+      previousStatus,
       status: 'archived',
     });
     return updated;

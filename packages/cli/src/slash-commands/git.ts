@@ -1,3 +1,6 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { assessCommitSafety } from '@wrongstack/core/coordination';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
@@ -237,11 +240,38 @@ function detectCommitType(stats: string): string {
   return 'feat';
 }
 
-async function generateCommitMessageHeuristics(cwd: string): Promise<string> {
-  const statsResult = await runGit(['diff', '--stat'], cwd);
+/** `git` bound to a cwd and to the index the commit will be made from. */
+type GitRunner = (args: string[]) => ReturnType<typeof runGit>;
+
+/**
+ * Run `fn` against a scratch copy of the index with `git add .` applied —
+ * exactly what `/commit` would record — without touching the real index.
+ * Used by `--dry-run` so its preview and message match the real commit.
+ */
+async function withPreviewIndex<T>(cwd: string, fn: (git: GitRunner) => Promise<T>): Promise<T> {
+  const indexPath = (await runGit(['rev-parse', '--git-path', 'index'], cwd)).stdout.trim();
+  const scratch = path.join(os.tmpdir(), `wstack-commit-preview-${process.pid}-${Date.now()}`);
+  try {
+    // A repo with nothing staged yet has no index file; git then starts empty.
+    await fs.copyFile(path.resolve(cwd, indexPath), scratch).catch(() => undefined);
+    const git: GitRunner = (args) => runGit(args, cwd, { GIT_INDEX_FILE: scratch });
+    await git(['add', '.']);
+    return await fn(git);
+  } finally {
+    await fs.rm(scratch, { force: true }).catch(() => undefined);
+  }
+}
+
+/**
+ * Heuristic message from the STAGED change set. It used to read `git diff`
+ * (unstaged, tracked only) before `/commit` staged anything, so new files
+ * and already-staged changes never reached it.
+ */
+async function generateCommitMessageHeuristics(git: GitRunner): Promise<string> {
+  const statsResult = await git(['diff', '--cached', '--stat']);
   if (statsResult.code !== 0) return 'chore: update';
 
-  const nameResult = await runGit(['diff', '--name-only'], cwd);
+  const nameResult = await git(['diff', '--cached', '--name-only']);
   const files = nameResult.stdout.split('\n').filter(Boolean);
   const commitType = detectCommitType(statsResult.stdout);
 
@@ -280,8 +310,11 @@ export function buildCommitCommand(opts: SlashCommandContext): SlashCommand {
         return { message: 'Nothing to commit (working tree clean).' };
       }
 
-      const dryRun = args.includes('--dry-run') || args.includes('-n');
-      const noLlm = args.includes('--no-llm');
+      // Whole tokens: `args.includes('-n')` also matched "--no-llm", so
+      // `/commit --no-llm` was always a dry run and never committed.
+      const flags = new Set(args.trim().split(/\s+/).filter(Boolean));
+      const dryRun = flags.has('--dry-run') || flags.has('-n');
+      const noLlm = flags.has('--no-llm');
 
       // ═══ Shared-worktree / foreign-change detection ═══
       // `/commit` stages the whole working tree (`git add .`). When another
@@ -303,17 +336,23 @@ export function buildCommitCommand(opts: SlashCommandContext): SlashCommand {
       }
 
       // Draft message — LLM from the session provider first, heuristics on any
-      // failure (no provider, timeout, empty result).
-      let message: string | null = null;
-      const provider = noLlm ? null : asLLMProvider(opts.llmProvider);
-      if (provider && opts.llmModel) {
-        const diff = (await runGit(['diff'], cwd)).stdout;
-        message = await generateCommitMessageWithLLM(diff, provider, opts.llmModel);
-      }
-      if (!message) message = await generateCommitMessageHeuristics(cwd);
+      // failure (no provider, timeout, empty result) — from the index the
+      // commit records (after `git add .`), not from `git diff`.
+      const draftMessage = async (git: GitRunner): Promise<string> => {
+        const provider = noLlm ? null : asLLMProvider(opts.llmProvider);
+        if (provider && opts.llmModel) {
+          const diff = (await git(['diff', '--cached'])).stdout;
+          const drafted = await generateCommitMessageWithLLM(diff, provider, opts.llmModel);
+          if (drafted) return drafted;
+        }
+        return generateCommitMessageHeuristics(git);
+      };
 
       if (dryRun) {
-        const diffStat = (await runGit(['diff', '--stat'], cwd)).stdout || '(no changes)';
+        const { message, diffStat } = await withPreviewIndex(cwd, async (git) => ({
+          message: await draftMessage(git),
+          diffStat: (await git(['diff', '--cached', '--stat'])).stdout || '(no changes)',
+        }));
         return {
           message: [
             worktreeWarning,
@@ -330,6 +369,7 @@ export function buildCommitCommand(opts: SlashCommandContext): SlashCommand {
 
       const stageResult = await runGit(['add', '.'], cwd);
       if (stageResult.code !== 0) return { message: `Stage failed: ${stageResult.stderr}` };
+      const message = await draftMessage((gitArgs) => runGit(gitArgs, cwd));
 
       // Show staged diff before committing
       const diffStat = (await runGit(['diff', '--cached', '--stat'], cwd)).stdout || '';
@@ -393,30 +433,45 @@ export function buildPushCommand(opts: SlashCommandContext): SlashCommand {
       const cwd = opts.cwd;
       if (!(await isGitRepo(cwd))) return { message: 'Not a git repository.' };
 
-      const dryRun = args.includes('--dry-run') || args.includes('-n');
-      const force = args.includes('--force') || args.includes('-f');
+      // Whole tokens: substring checks turned `--follow-tags` into --force and
+      // `--no-verify` into a dry run.
+      const flags = new Set(args.trim().split(/\s+/).filter(Boolean));
+      const dryRun = flags.has('--dry-run') || flags.has('-n');
+      const force = flags.has('--force') || flags.has('-f');
 
       const remotes = (await runGit(['remote'], cwd)).stdout.split('\n').filter(Boolean);
       if (remotes.length === 0) {
         return { message: 'No remote configured. Add one with: git remote add origin <url>' };
       }
 
+      const branch =
+        (await runGit(['rev-parse', '--abbrev-ref', 'HEAD'], cwd)).stdout.trim() || 'main';
+      // `git push` takes ONE repository: passing every remote made the second
+      // one a refspec ("src refspec upstream does not match any"), so any repo
+      // with two remotes could not push. Use the branch's remote, else origin.
+      const tracked = (
+        await runGit(['config', '--get', `branch.${branch}.remote`], cwd)
+      ).stdout.trim();
+      const remote = remotes.includes(tracked)
+        ? tracked
+        : remotes.includes('origin')
+          ? 'origin'
+          : (remotes[0] as string);
+
       if (dryRun) {
         return {
-          message: `Would push to ${remotes.join(', ')}${force ? ' (force)' : ''}\n${color.dim('(dry-run)')}`,
+          message: `Would push to ${remote}${force ? ' (force)' : ''}\n${color.dim('(dry-run)')}`,
         };
       }
 
-      const branch =
-        (await runGit(['rev-parse', '--abbrev-ref', 'HEAD'], cwd)).stdout.trim() || 'main';
       const pushArgs = ['push'];
       if (force) pushArgs.push('--force');
-      pushArgs.push(...remotes, branch);
+      pushArgs.push(remote, branch);
 
       const pushResult = await runGit(pushArgs, cwd);
       if (pushResult.code !== 0) return { message: `Push failed: ${pushResult.stderr}` };
 
-      return { message: `${color.green('✓')} Pushed to ${remotes.join(', ')} (${branch})` };
+      return { message: `${color.green('✓')} Pushed to ${remote} (${branch})` };
     },
   };
 }

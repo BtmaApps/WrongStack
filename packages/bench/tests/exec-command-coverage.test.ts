@@ -9,14 +9,22 @@ describe('execCommand — edge branches', () => {
     // stdout: 100 bytes, remaining=100 → fits exact → bufferedBytes=maxBufferBytes
     // stderr: 1 byte, remaining=0, chunk.length > remaining, remaining > 0 is false
     //   → skip partial append, truncated=true, treeKill called
+    //
+    // The child idles 60s and the timeout is 30s: the truncation kill fires in
+    // milliseconds, but `treeKill` spawns `taskkill /T /F` WITHOUT awaiting it
+    // and `execCommand` settles on the child's 'close'. Under a loaded machine
+    // that reap can be slow enough to lose a 10s race, so the `timedOut === false`
+    // assertion below used to flake. The 30s timeout is headroom over the real
+    // reap; the 60s idle keeps natural exit (the treeKill-failed backstop) from
+    // ever tying the timer.
     const res = await execCommand({
       command: NODE,
       args: [
         '-e',
-        "process.stdout.write(Buffer.alloc(100, 'x')); process.stderr.write('y'); setTimeout(() => {}, 30000);",
+        "process.stdout.write(Buffer.alloc(100, 'x')); process.stderr.write('y'); setTimeout(() => {}, 60000);",
       ],
       cwd: process.cwd(),
-      timeoutMs: 10_000,
+      timeoutMs: 30_000,
       shell: false,
       maxBufferBytes: 100,
     });
@@ -32,14 +40,15 @@ describe('execCommand — edge branches', () => {
     // Child writes to stdout first (200 bytes overflows maxBufferBytes=100)
     // then stderr (1 byte). If stdout data fires first, it sets truncated=true.
     // Then stderr data event fires appendCapped with truncated=true → line 111.
+    // Same reap-headroom rationale as the truncation case above.
     const res = await execCommand({
       command: NODE,
       args: [
         '-e',
-        "process.stdout.write(Buffer.alloc(200, 'x')); process.stderr.write('y'); setTimeout(() => {}, 30000);",
+        "process.stdout.write(Buffer.alloc(200, 'x')); process.stderr.write('y'); setTimeout(() => {}, 60000);",
       ],
       cwd: process.cwd(),
-      timeoutMs: 10_000,
+      timeoutMs: 30_000,
       shell: false,
       maxBufferBytes: 100,
     });

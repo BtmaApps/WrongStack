@@ -70,6 +70,11 @@ EventBus for distress signals and engages the Brain proactively:
 - **Tool-failure streak** — the same tool failing 3× consecutively
   (streak resets on success).
 - **Error storm** — 4+ `error` events within a 60-second window.
+- **File churn** — 20 successful edits to the same file within 10 minutes.
+  Edit count alone does not prove an edit/revert loop; the Brain is asked
+  to let the agent continue unless independent evidence warrants steering.
+  `brain.monitor.fileChurnThreshold` and `fileChurnWindowMs` override these
+  defaults; existing explicit settings are preserved.
 
 When the Brain decides to intervene, a high-priority `steer` mail is sent
 from `brain@<sessionTag>` to this session's leader

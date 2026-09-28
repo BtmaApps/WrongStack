@@ -88,6 +88,17 @@ const RESTRICTIVE_LICENSES = new Set([
   'commons-clause',
 ]);
 
+/** Categories an AND operand imposes on the whole expression; 0 = none. */
+const STRICT_CATEGORY_RANK: Readonly<Record<LicenseCategory, number>> = {
+  permissive: 0,
+  weak_copyleft: 0,
+  unknown: 0,
+  unlicensed: 1,
+  restrictive: 2,
+  strong_copyleft: 3,
+  network_copyleft: 4,
+};
+
 /** Normalize raw license identifier string for SPDX lookup. */
 export function normalizeLicenseId(rawLicense: string | undefined): string {
   if (!rawLicense) return '';
@@ -148,6 +159,22 @@ export function assessLicense(rawLicense: string | undefined): LicenseRiskAssess
         license: rawLicense,
         rationale: `${rawLicense} combines licenses of the same category (${first.category}). ${first.rationale}`,
       };
+    }
+    // AND (`+`): every operand's terms apply, so a strict operand decides.
+    // Otherwise the `lgpl` substring shortcut below reported
+    // `LGPL-2.1 AND AGPL-3.0` as weak copyleft — commercial-safe, no finding.
+    // OR keeps the conservative fallbacks: the project may use either branch.
+    if (normalized.includes('+')) {
+      const strictest = branchAssessments.reduce((left, right) =>
+        STRICT_CATEGORY_RANK[right.category] > STRICT_CATEGORY_RANK[left.category] ? right : left,
+      );
+      if (STRICT_CATEGORY_RANK[strictest.category] > 0) {
+        return {
+          ...strictest,
+          license: rawLicense,
+          rationale: `${rawLicense} requires every listed license; the strictest is ${strictest.category}. ${strictest.rationale}`,
+        };
+      }
     }
   }
 

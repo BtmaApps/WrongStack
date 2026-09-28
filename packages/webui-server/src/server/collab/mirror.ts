@@ -1,4 +1,5 @@
 import type { EventBus } from '@wrongstack/core/kernel';
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import type { WSServerMessage } from '../types.js';
 import type { CollabContext } from './collab-context.js';
 
@@ -17,6 +18,9 @@ export function subscribeCollabMirror(
   events: EventBus,
   offs: Array<() => void>,
 ): void {
+  // Observers see what the chat stream shows: without a host scrubber the
+  // default patterns still keep tokens in tool inputs/outputs off the wire.
+  const scrub = ctx.options.scrubPayload ?? defaultScrub();
   // Same trick as WorktreeWebSocketHandler: bind a single typed-on helper
   // to a string-keyed signature so we can register many handlers.
   const on = events.on.bind(events) as never as (
@@ -53,15 +57,21 @@ export function subscribeCollabMirror(
         let payload: unknown = raw;
         try {
           payload = JSON.parse(JSON.stringify(raw));
+          payload = scrub(payload);
         } catch {
-          // Skip unserializable payloads — better to drop than to crash
-          // the broadcast loop.
+          // Skip unserializable (or unscrubbable) payloads — better to
+          // drop than to crash the broadcast loop or send it unredacted.
           return;
         }
         broadcastEvent(ctx, kind, payload);
       }),
     );
   }
+}
+
+function defaultScrub(): (value: unknown) => unknown {
+  const scrubber = new DefaultSecretScrubber();
+  return (value) => scrubber.scrubObject(value);
 }
 
 function broadcastEvent(ctx: CollabContext, kind: string, payload: unknown): void {

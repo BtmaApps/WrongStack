@@ -305,9 +305,42 @@ describe('semver_bump', () => {
     expect(res.tag).toBeNull();
     expect(res.tagged).toBe(false);
     expect(res.committed).toBe(false);
+    // With the commit failed, HEAD is still the previous commit — the tag is
+    // not attempted (it would mark the old version as the new release).
     expect(res.warnings as string[]).toEqual([
       expect.stringMatching(/commit failed: .*pre-commit hook failed/),
+      expect.stringMatching(/tag failed: skipped because the version commit failed/),
+    ]);
+  });
+
+  it('reports a tag failure after a successful version commit', async () => {
+    fsm.existsSync.mockImplementation((p: string) => {
+      const s = String(p);
+      return s.endsWith('package.json') || s.endsWith('bump-version.mjs');
+    });
+    const commits: string[][] = [];
+    gitHandler = (args) => {
+      if (args[0] === 'commit') {
+        commits.push(args.slice());
+        return '';
+      }
+      if (args[0] === 'tag') throw new Error('tag v1.2.4 already exists');
+      return '';
+    };
+    const { tools } = setup();
+    const res = await tools.semver_bump!.execute({ part: 'patch' });
+    expect(res.committed).toBe(true);
+    expect(res.tagged).toBe(false);
+    expect(res.warnings as string[]).toEqual([
       expect.stringMatching(/tag failed: .*already exists/),
+    ]);
+    // The version commit is fenced to the files the bump wrote.
+    expect(commits[0]?.slice(0, 5)).toEqual([
+      'commit',
+      '-m',
+      'chore: bump version to 1.2.4',
+      '--only',
+      '--',
     ]);
   });
 

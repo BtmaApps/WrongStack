@@ -141,6 +141,80 @@ describe('augmentLexicalWithVectorRecall', () => {
 });
 
 describe('augmentLexicalWithVectorRecall — vector-only materialization', () => {
+  it('caps extra candidates without duplicates or bypassing materialization', async () => {
+    const hits = Array.from({ length: 20 }, (_, i) => ({
+      id: `v${i}`,
+      sageId: `s${i}`,
+      score: 0.99,
+      text: 'semantic',
+    }));
+    const options = {
+      limit: 1,
+      vectorRecall: fakeProvider(hits),
+      maxMaterializations: 20,
+      materializeVectorOnly: (id: string) => (id === 's0' ? undefined : fakeSage(id, 'semantic')),
+    };
+    const capped = await augmentLexicalWithVectorRecall('query', [fakeSage('a', 'lexical')], {
+      ...options,
+      vectorCandidateLimit: 100,
+    });
+    expect(capped).toHaveLength(13);
+    expect(new Set(capped.map((hit) => hit.memory.id)).size).toBe(13);
+    expect(capped.some((hit) => hit.memory.id === 's0')).toBe(false);
+    const small = await augmentLexicalWithVectorRecall('query', [fakeSage('a', 'lexical')], {
+      ...options,
+      vectorCandidateLimit: 2,
+    });
+    expect(small.map((hit) => hit.memory.id)).toEqual(['a', 's1', 's2']);
+  });
+
+  it.each([8, 25, 64])(
+    'preserves the original top %i plus bounded semantic candidates for downstream gates',
+    async (limit) => {
+      const lexical = Array.from({ length: limit }, (_, i) =>
+        fakeSage(`lex-${i}`, 'lexical noise'),
+      );
+      const semantic = fakeSage('semantic', 'retry budgets');
+      const options = {
+        limit,
+        vectorRecall: fakeProvider([{ id: 'v', score: 0.99, text: 'retry', sageId: semantic.id }]),
+        materializeVectorOnly: () => semantic,
+      };
+      const baseline = await augmentLexicalWithVectorRecall('quarantine', lexical, options);
+      const candidates = await augmentLexicalWithVectorRecall('quarantine', lexical, {
+        ...options,
+        vectorCandidateLimit: 2,
+      });
+      expect(baseline.map((hit) => hit.memory.id)).toEqual(lexical.map((memory) => memory.id));
+      expect(candidates.slice(0, limit)).toEqual(baseline);
+      expect(candidates.slice(limit).map((hit) => hit.memory.id)).toEqual(['semantic']);
+    },
+  );
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'keeps strict limits for invalid/disabled candidate budget %s',
+    async (vectorCandidateLimit) => {
+      const result = await augmentLexicalWithVectorRecall('query', [fakeSage('a', 'lexical')], {
+        limit: 1,
+        vectorCandidateLimit,
+        vectorRecall: fakeProvider([{ id: 'v', score: 0.99, text: 'semantic', sageId: 'b' }]),
+        materializeVectorOnly: () => fakeSage('b', 'semantic'),
+      });
+      expect(result.map((hit) => hit.memory.id)).toEqual(['a']);
+    },
+  );
+
+  it('does not expand a pure lexical request even with a candidate budget', async () => {
+    const result = await augmentLexicalWithVectorRecall('query', [fakeSage('a', 'lexical')], {
+      limit: 1,
+      vectorWeight: 0,
+      vectorCandidateLimit: 2,
+      vectorRecall: fakeProvider([{ id: 'v', score: 0.99, text: 'semantic', sageId: 'b' }]),
+      materializeVectorOnly: () => fakeSage('b', 'semantic'),
+    });
+    expect(result.map((hit) => hit.memory.id)).toEqual(['a']);
+  });
+
   it('materializes a high-threshold vector-only hit when a materializer is supplied', async () => {
     const lexical = [fakeSage('a', 'apple')];
     const hidden = fakeSage('z', 'zurek soup recipe from the family archive');

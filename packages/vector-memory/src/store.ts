@@ -32,6 +32,7 @@ import {
   encodeVector,
   initVectorSchema,
   lookupEmbeddingCache,
+  sageKeyedContentHash,
   upsertEmbeddingCache,
   VECTOR_DIMENSIONS_KEY,
   VECTOR_PROVIDER_KEY,
@@ -295,12 +296,19 @@ export class VectorMemoryStore {
 
   private async rememberUnlocked(input: VectorEntryInput): Promise<VectorEntryWithVector> {
     const now = new Date().toISOString();
-    const contentHash = VectorMemoryStore.contentHash(input.text);
+    let contentHash = VectorMemoryStore.contentHash(input.text);
     const scope: VectorScope = input.scope ?? 'project';
 
     // Idempotent within each scope; the composite UNIQUE index is the
     // second line of defense across processes.
-    const existing = this.findByContentHash(contentHash, scope);
+    let existing = this.findByContentHash(contentHash, scope);
+    const sageId = input.metadata?.['sageId'];
+    // Same text owned by ANOTHER SAGE memory (SAGE dedups per scope/audience) is not
+    // this one's mirror: returning it left this memory row-less, so key its own row.
+    if (existing && typeof sageId === 'string' && existing.metadata?.['sageId'] !== sageId) {
+      contentHash = sageKeyedContentHash(input.text, sageId);
+      existing = this.findByContentHash(contentHash, scope);
+    }
     if (existing) return existing;
 
     const metadata = input.metadata ?? {};
@@ -555,14 +563,22 @@ export class VectorMemoryStore {
     return rows.map((r) => this.rowToEntry(r) as VectorEntry);
   }
 
-  async reindexAll(): Promise<{ processed: number; errors: number }> {
+  async reindexAll(
+    opts: { onlyMissing?: boolean } = {},
+  ): Promise<{ processed: number; errors: number }> {
     this.assertOpen();
     return withFileLock(
       this.lockPath,
       async () => {
-        const rows = this.db.prepare('SELECT id, text FROM entries').all() as Array<
-          Record<string, unknown>
-        >;
+        const rows = (
+          opts.onlyMissing
+            ? this.db
+                .prepare(`SELECT e.id, e.text FROM entries e
+              WHERE NOT EXISTS (SELECT 1 FROM vectors v WHERE v.entry_id = e.id
+                AND v.provider_id = ? AND v.dimensions = ?)`)
+                .all(this.provider.id, this.provider.dimensions)
+            : this.db.prepare('SELECT id, text FROM entries').all()
+        ) as Array<Record<string, unknown>>;
         let processed = 0;
         let errors = 0;
         for (const row of rows) {
@@ -619,6 +635,18 @@ export class VectorMemoryStore {
       modelId: this.provider.id,
       dimensions: this.provider.dimensions,
     };
+  }
+
+  /** Coverage usable by this store's search, excluding old providers/dimensions. */
+  embeddingCoverage(): { entries: number; covered: number; missing: number } {
+    this.assertOpen();
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS entries,
+      COALESCE(SUM(EXISTS(SELECT 1 FROM vectors v WHERE v.entry_id = e.id
+        AND v.provider_id = ? AND v.dimensions = ?)), 0) AS covered
+      FROM entries e`)
+      .get(this.provider.id, this.provider.dimensions) as { entries: number; covered: number };
+    return { ...row, missing: row.entries - row.covered };
   }
 
   /**
@@ -743,8 +771,9 @@ export class VectorMemoryStore {
     for (const memory of memories) {
       try {
         const hash = VectorMemoryStore.contentHash(memory.text);
-        const existing = this.findByContentHash(hash, 'project');
-        if (existing) {
+        // By SAGE id: a text match owned by another memory is not this mirror.
+        const existing = this.findBySageId(memory.id);
+        if (existing && VectorMemoryStore.contentHash(existing.text) === hash) {
           skipped++;
           continue;
         }

@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Wiederverwendbare Werkzeuge für dieses Projekt.",
+    "refresh": "Aktualisieren",
+    "create": "Im Chat erstellen",
+    "loadFailed": "Project Kit konnte nicht geladen werden",
+    "loading": "Kits werden geladen…",
+    "catalog": "Projektwerkzeuge",
+    "search": "Kits suchen…",
+    "effects": {
+      "read": "Liest Projektdaten",
+      "write": "Ändert Dateien",
+      "external": "Externe Aktionen"
+    },
+    "noMatches": "Keine passenden Kits gefunden.",
+    "emptyList": "Noch keine Projektwerkzeuge.",
+    "invalid": "Ungültige Kit-Definition",
+    "selectTitle": "Projektwerkzeug auswählen",
+    "emptyTitle": "Einmal entwickeln. Wiederverwenden.",
+    "emptyHint": "Speichern Sie Projektprüfungen und wiederkehrende Aufgaben mit Parametern, Anleitungen und Prüffällen. Erstellen Sie zum Einstieg ein Kit im Chat.",
+    "verified": "Revision geprüft",
+    "unverified": "Prüfung erforderlich",
+    "cases": "Prüffälle",
+    "guide": "Anleitung",
+    "parameters": "Parameter",
+    "required": "Erforderlich",
+    "default": "Standard",
+    "schemas": "Eingabe- und Ausgabeschemas",
+    "input": "Parameter (JSON)",
+    "inputError": "Geben Sie ein gültiges JSON-Objekt ein.",
+    "use": "Im Chat verwenden",
+    "verify": "Prüfung vorbereiten",
+    "draftHint": "Öffnet einen Chatentwurf zur Prüfung. Erst nach dem Senden wird etwas ausgeführt. Es gelten Ihre bestehenden Berechtigungen.",
+    "history": "Letzte Ausführungen",
+    "noHistory": "Noch keine Ausführungen aufgezeichnet.",
+    "historyHint": "Die letzten 100 lokalen Einträge. „Gestartet“ kann auch eine unterbrochene Ausführung bedeuten. Aktualisieren Sie den Status.",
+    "actions": {
+      "run": "Ausführung",
+      "verify": "Prüfung"
+    },
+    "status": {
+      "passed": "Erfolgreich",
+      "failed": "Fehlgeschlagen",
+      "running": "Gestartet"
+    },
+    "files": "Quelldateien",
+    "examples": "Prüfbeispiele"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Sitzung",
     "agents": "Agents",
     "history": "Verlauf",

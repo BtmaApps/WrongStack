@@ -82,6 +82,10 @@ export interface KitProcessResult {
   exitCode?: number | undefined;
   /** Redacted tail of the child's stderr, capped at the last 4096 characters. */
   stderrTail?: string | undefined;
+  /** Whether the child delivered its terminal IPC message before the run settled. */
+  resultReceived?: boolean | undefined;
+  /** Milliseconds from spawn to that terminal message; undefined when none arrived. */
+  receiveMs?: number | undefined;
 }
 
 /** Maximum characters of child stderr retained for post-mortem diagnosis. */
@@ -132,6 +136,7 @@ export async function runKitProcess(request: {
     let failure: string | undefined;
     let output: unknown;
     let received = false;
+    let receiveMs: number | undefined;
     let settled = false;
     let stopping = false;
     let backstop: ReturnType<typeof setTimeout> | undefined;
@@ -162,6 +167,8 @@ export async function runKitProcess(request: {
         logs,
         exitCode: code ?? undefined,
         stderrTail: stderrTail ? redactSecrets(stderrTail).slice(-STDERR_TAIL_LIMIT) : undefined,
+        resultReceived: received,
+        receiveMs,
       });
     }
     function stop(reason: string) {
@@ -210,12 +217,17 @@ export async function runKitProcess(request: {
       if (!message || typeof message !== 'object') return;
       const m = message as { type?: string; text?: unknown; output?: unknown };
       if (m.type === 'log') log(String(m.text));
-      else if (m.type === 'failure') failure ??= redactSecrets(String(m.text));
-      else if (m.type === 'result') {
+      else if (m.type === 'failure') {
+        // Parent-side arrival time of the terminal message: a lost result shows
+        // here as undefined, a slow channel as an unusually large value.
+        receiveMs ??= Date.now() - startedAt;
+        failure ??= redactSecrets(String(m.text));
+      } else if (m.type === 'result') {
         if (received || Buffer.byteLength(JSON.stringify(m.output) ?? '') > 262144) {
           stop('Invalid or oversized result');
           return;
         }
+        receiveMs ??= Date.now() - startedAt;
         received = true;
         output = m.output;
       }

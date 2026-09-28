@@ -110,6 +110,7 @@ export interface SageRetrieverLike {
       includeAllSessions?: boolean | undefined;
       vectorRecall?: import('../types.js').VectorRecallProvider | undefined;
       vectorRecallWeight?: number | undefined;
+      vectorCandidateLimit?: number | undefined;
       vectorRecallThreshold?: number | undefined;
       vectorRecallMinScore?: number | undefined;
     },
@@ -131,6 +132,7 @@ export interface SageRetrieverLike {
       includeAllSessions?: boolean | undefined;
       vectorRecall?: import('../types.js').VectorRecallProvider | undefined;
       vectorRecallWeight?: number | undefined;
+      vectorCandidateLimit?: number | undefined;
       vectorRecallThreshold?: number | undefined;
       vectorRecallMinScore?: number | undefined;
     },

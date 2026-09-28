@@ -198,8 +198,20 @@ function toUserInputRequest(request: FormRequest, problem?: string): UserInputRe
 function answerValue(field: ElicitationField, answer: UserInputAnswer | undefined): unknown {
   if (!answer || answer.delegated) return undefined;
   switch (field.kind) {
-    case 'string':
-      return answer.text?.trim() ? answer.text : undefined;
+    case 'string': {
+      const text = answer.text;
+      if (text === undefined) return undefined;
+      // A blank box answered for a REQUIRED field is a real answer, not a
+      // skipped one: the field's own bounds decide whether '' is acceptable
+      // (no `minLength`, or `minLength: 0`, admits it) and only `checkValue`
+      // can say so. Folding it into `undefined` invented an omission the user
+      // never made, and the validator could then only answer "X is required" —
+      // the form was re-asked until it cancelled even when '' was valid, and
+      // every re-ask named the wrong reason. An OPTIONAL field the user skipped
+      // is a genuine omission, so that path is unchanged.
+      if (!text.trim() && !field.required) return undefined;
+      return text;
+    }
     case 'number':
     case 'integer':
       return answer.text?.trim() || undefined;

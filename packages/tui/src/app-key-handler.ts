@@ -23,9 +23,71 @@ import { overlayPointerKey } from './overlay-key-router.js';
 
 export type { AppKeyHandlerOptions } from './key-handler-context.js';
 
-/** Keyboard activity means the user has taken control of an armed automatic turn. */
-export function stopNextStepsAutoSubmitOnKey(cancel: () => void): void {
-  cancel();
+/** One delivered input event, as the host passes it to `handleKey`. */
+export interface NextStepsTakeoverEvent {
+  /** Text payload of the event — empty for special keys and pointer reports. */
+  input: string;
+  key: KeyEvent;
+  /**
+   * Current composer buffer. The armed submit clears the composer when it
+   * fires, so text sitting here is what makes ANY event a takeover.
+   */
+  draft: string;
+}
+
+/**
+ * Keys that only move through the transcript viewport or the caret. On an
+ * EMPTY composer these cannot change what the armed submit would do, so they
+ * must not cancel it.
+ */
+function isComposerEmptyNavigation(input: string, key: KeyEvent): boolean {
+  // PgUp/PgDn page the managed history viewport (routePointerEvents); Home/End
+  // and ←/→ move the caret, which sits at 0/len already on an empty buffer.
+  if (key.pageUp || key.pageDown || key.home || key.end) return true;
+  if (key.leftArrow || key.rightArrow) return true;
+  // Ctrl+U / Ctrl+D page the transcript ONLY while the composer is empty
+  // (routePointerEvents). With text they delete it — and the draft check below
+  // has already classified such an event as a takeover.
+  return key.ctrl && (input === 'u' || input === 'd');
+}
+
+/**
+ * True when this event means the user has taken control of an armed automatic
+ * turn, i.e. the armed next-steps submit must be cancelled.
+ *
+ * Pointer reports are NOT keyboard activity: the input layer emits mouse
+ * press/release/wheel/move as `KeyEvent`s carrying `mouse` (see
+ * `components/input.tsx`, which builds them as `EMPTY_KEY` + `mouse`). Treating
+ * them as input made a plain click, a wheel scroll, or a drag through the
+ * transcript look like typing and silently killed the armed countdown, so the
+ * automatic turn never advanced.
+ *
+ * The same reasoning covers keyboard navigation: `PgUp`/`PgDn`, the caret
+ * keys, and the Ctrl+U/Ctrl+D paging chord move through the transcript exactly
+ * like the wheel does, so on an empty composer they leave the countdown armed
+ * too. Everything that can put text in the composer — typing, editing, pasting,
+ * ↑/↓ history recall, Tab accepting the suggestion, Enter — still cancels, and
+ * so does any event at all once the composer holds text, because the armed
+ * submit calls `clearDraft()` when it fires.
+ */
+export function shouldStopNextStepsAutoSubmit(event: NextStepsTakeoverEvent): boolean {
+  const { input, key, draft } = event;
+  // Text in the composer is the safety line, and it is checked FIRST: the
+  // armed submit calls `clearDraft()` when it fires, so once a draft exists
+  // every event — pointer report included — is a takeover.
+  if (draft !== '') return true;
+  // Pointer reports (components/input.tsx emits them as EMPTY_KEY + `mouse`)
+  // are navigation, not typing.
+  if (key.mouse) return false;
+  return !isComposerEmptyNavigation(input, key);
+}
+
+/** Cancel an armed automatic turn when this event is a real user takeover. */
+export function stopNextStepsAutoSubmitOnKey(
+  cancel: () => void,
+  event: NextStepsTakeoverEvent,
+): void {
+  if (shouldStopNextStepsAutoSubmit(event)) cancel();
 }
 
 /** Creates the terminal key host around focused overlay/input routers. */
@@ -43,6 +105,7 @@ export function createAppKeyHandler(
     terminalRows,
     mainColumnWidth,
     cancelNextStepsCountdown,
+    draftRef,
   } = options;
   const stdout = { columns: terminalColumns, rows: terminalRows };
   /** Effective width of the history area (terminal minus sidebar).
@@ -87,8 +150,15 @@ export function createAppKeyHandler(
     // Any key is an explicit user takeover. Stop both the final-ten-second
     // sweep and its armed submit before routing the key, including keys owned
     // by overlays/navigation and Ctrl+C. The cancel callback is a no-op when
-    // no next-step countdown exists.
-    stopNextStepsAutoSubmitOnKey(cancelNextStepsCountdown);
+    // no next-step countdown exists. Pointer reports and transcript/caret
+    // navigation over an empty composer are filtered out inside the helper:
+    // clicking or scrolling is navigation, not typing, and must leave the
+    // automatic turn armed.
+    stopNextStepsAutoSubmitOnKey(cancelNextStepsCountdown, {
+      input,
+      key,
+      draft: draftRef.current.buffer,
+    });
 
     // ── Ctrl+C: THE unconditional escape hatch ────────────────────────
     // Moved verbatim to routeCtrlCEscalation (key-routes/key-route-busy.ts,

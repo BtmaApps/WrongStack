@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { execCommand } from '../exec-command.js';
 import type { LocalAssertion, LocalTaskMeta } from '../suites/local-manifest.js';
 import type { BenchTask, GradeResult } from '../types.js';
+import { restoredNote, restoreFromTemplate } from './restore-files.js';
 
 export async function gradeLocalManifest(opts: {
   workdir: string;
@@ -10,6 +11,24 @@ export async function gradeLocalManifest(opts: {
   timeoutMs: number;
 }): Promise<GradeResult> {
   const meta = opts.task.meta as never as LocalTaskMeta;
+  // The agent works in this same directory: grade with the checker it was
+  // given, not one it rewrote (the sentinel assertion alone survives a rewrite
+  // that keeps the sentinel string in a comment).
+  const restored = await restoreFromTemplate(
+    opts.task.templateDir,
+    opts.workdir,
+    meta.protectedFiles ?? [],
+  );
+  const note = restoredNote(restored, 'protected file(s)');
+  const graded = await gradeWorkdir(opts, meta);
+  if (!note) return graded;
+  return { ...graded, detail: graded.detail ? `${note}\n${graded.detail}` : note };
+}
+
+async function gradeWorkdir(
+  opts: { workdir: string; task: BenchTask; timeoutMs: number },
+  meta: LocalTaskMeta,
+): Promise<GradeResult> {
   const failures: string[] = [];
 
   if (meta.grader) {

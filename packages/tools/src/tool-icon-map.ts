@@ -154,6 +154,8 @@ export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
   'tool-help': 'meta',
   tool_use: 'meta',
   tool_script: 'meta',
+  project_kit: 'package',
+  project_kit_run: 'terminal',
   batch_tool_use: 'meta',
   tool_search: 'meta',
   tool_help: 'meta',

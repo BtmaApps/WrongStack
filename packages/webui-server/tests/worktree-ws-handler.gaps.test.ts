@@ -453,6 +453,84 @@ describe('WorktreeWebSocketHandler — per-row operations', () => {
     h.dispose();
   });
 
+  // The panel's Remove on a branch-only orphan sends just { branch }; it used
+  // to do nothing and report "remove failed".
+  it('removes a branch-only orphan by its branch', async () => {
+    const removeOne = vi.fn(async () => ({ removed: true }));
+    const removeBranch = vi.fn(async () => ({ removed: true }));
+    const { h, ws } = handlerWith({ removeOne, removeBranch });
+    await h.handleMessage({ type: 'worktree.remove', payload: { branch: 'wstack/ap/ghost' } });
+    expect(removeBranch).toHaveBeenCalledWith('wstack/ap/ghost');
+    expect(removeOne).not.toHaveBeenCalled();
+    expect(
+      ws.sent.filter((m) => m.type === 'worktree.cleanup_result').at(-1)?.payload,
+    ).toMatchObject({ ok: true, removed: 1 });
+    h.dispose();
+  });
+
+  // The live guard checked only the branch, so naming just the checkout dir
+  // force-removed a live run's worktree.
+  it("refuses removing a live run's checkout named only by its dir", async () => {
+    const removeOne = vi.fn(async () => ({ removed: true }));
+    const { h, ws } = handlerWith({ removeOne });
+    const dir = resolve('/proj/.wrongstack/worktrees/live');
+    (events as unknown as { emit: (e: string, p: unknown) => void }).emit('worktree.allocated', {
+      handleId: 'live',
+      ownerId: 'o',
+      ownerLabel: 'l',
+      dir,
+      branch: 'wstack/ap/live',
+      baseBranch: 'main',
+    });
+    await h.handleMessage({ type: 'worktree.remove', payload: { dir: `${dir}/` } });
+    expect(removeOne).not.toHaveBeenCalled();
+    expect(
+      ws.sent.filter((m) => m.type === 'worktree.cleanup_result').at(-1)?.payload,
+    ).toMatchObject({ ok: false, reason: 'a run is live on this worktree — stop it first' });
+    h.dispose();
+  });
+
+  // On a case-insensitive filesystem `wstack/ap/LIVE` deletes the loose ref of
+  // `wstack/ap/live` and `.../LIVE` names the same checkout.
+  it.each([
+    ['win32', true],
+    ['darwin', true],
+    ['linux', false],
+  ])('live guards fold case on %s: %s', async (platform, folded) => {
+    const original = Object.getOwnPropertyDescriptor(process, 'platform');
+    Object.defineProperty(process, 'platform', { value: platform });
+    try {
+      const removeOne = vi.fn(async () => ({ removed: true }));
+      const removeBranch = vi.fn(async () => ({ removed: true }));
+      const mergeBranch = vi.fn(async () => ({ ok: true }));
+      const { h, ws } = handlerWith({ removeOne, removeBranch, mergeBranch });
+      const dir = resolve('/proj/.wrongstack/worktrees/live');
+      (events as unknown as { emit: (e: string, p: unknown) => void }).emit('worktree.allocated', {
+        handleId: 'live',
+        ownerId: 'o',
+        ownerLabel: 'l',
+        dir,
+        branch: 'wstack/ap/live',
+        baseBranch: 'main',
+      });
+      await h.handleMessage({ type: 'worktree.remove', payload: { branch: 'wstack/ap/LIVE' } });
+      await h.handleMessage({ type: 'worktree.merge', payload: { branch: 'wstack/ap/Live' } });
+      await h.handleMessage({
+        type: 'worktree.remove',
+        payload: { dir: resolve('/proj/.wrongstack/worktrees/LIVE') },
+      });
+      expect(removeBranch).toHaveBeenCalledTimes(folded ? 0 : 1);
+      expect(mergeBranch).toHaveBeenCalledTimes(folded ? 0 : 1);
+      expect(removeOne).toHaveBeenCalledTimes(folded ? 0 : 1);
+      expect(
+        ws.sent.filter((m) => m.type === 'worktree.merge_result').at(-1)?.payload,
+      ).toMatchObject({ ok: !folded });
+      h.dispose();
+    } finally {
+      if (original) Object.defineProperty(process, 'platform', original);
+    }
+  });
+
   it('refuses merges without a branch, on unsafe branches, or on live runs', async () => {
     const mergeBranch = vi.fn(async () => ({ ok: true }));
     const { h, ws } = handlerWith({ mergeBranch });

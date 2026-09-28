@@ -11,6 +11,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_merge-intervals" }
       ]
@@ -25,6 +26,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_broken-pager" }
       ]
@@ -39,6 +41,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_cross-file-rename" },
         { "type": "file_not_contains", "path": "src/index.js", "text": "UserRepo" }
@@ -54,6 +57,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_frozen-contract" },
         {
@@ -74,6 +78,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_query-parser" }
       ]
@@ -88,6 +93,7 @@
         "args": ["test.mjs"],
         "shell": false
       },
+      "protectedFiles": ["test.mjs", "package.json"],
       "assertions": [
         { "type": "file_contains", "path": "test.mjs", "text": "CORE_SENTINEL_rate-limiter" }
       ]

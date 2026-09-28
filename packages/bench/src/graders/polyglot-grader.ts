@@ -1,6 +1,7 @@
 import { execCommand } from '../exec-command.js';
 import type { PolyglotMeta } from '../suites/polyglot.js';
 import type { BenchTask, GradeResult } from '../types.js';
+import { restoredNote, restoreFromTemplate } from './restore-files.js';
 
 /**
  * Deterministic polyglot grader: run the exercise's own test command in the
@@ -20,6 +21,12 @@ export async function gradePolyglot(opts: {
 }): Promise<GradeResult> {
   const meta = opts.task.meta as never as PolyglotMeta;
 
+  // The agent works in this same directory, so its test files are whatever the
+  // agent left there: rewriting a test to `assert True` scored as a pass.
+  // Grade against the exercise's OWN tests, as Aider's harness does.
+  const restored = await restoreFromTemplate(opts.task.templateDir, opts.workdir, meta.testFiles);
+  const note = restoredNote(restored, 'test file(s)');
+
   if (meta.setupCommand) {
     const setup = await execCommand({
       command: meta.setupCommand.command,
@@ -30,7 +37,10 @@ export async function gradePolyglot(opts: {
     if (setup.exitCode !== 0) {
       return {
         passed: false,
-        detail: `setup failed (${meta.setupCommand.command}): ${tail(setup.stderr || setup.stdout)}`,
+        detail: withNote(
+          `setup failed (${meta.setupCommand.command}): ${tail(setup.stderr || setup.stdout)}`,
+          note,
+        ),
       };
     }
   }
@@ -43,12 +53,16 @@ export async function gradePolyglot(opts: {
   });
 
   if (test.timedOut) {
-    return { passed: false, detail: 'test command timed out' };
+    return { passed: false, detail: withNote('test command timed out', note) };
   }
   if (test.exitCode === 0) {
-    return { passed: true };
+    return note ? { passed: true, detail: note } : { passed: true };
   }
-  return { passed: false, detail: tail(test.stdout + '\n' + test.stderr) };
+  return { passed: false, detail: withNote(tail(test.stdout + '\n' + test.stderr), note) };
+}
+
+function withNote(detail: string, note: string): string {
+  return note ? `${note}\n${detail}` : detail;
 }
 
 /** Last ~500 chars of output — enough to see the failing assertion. */

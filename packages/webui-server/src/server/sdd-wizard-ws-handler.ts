@@ -210,19 +210,22 @@ export class SddWizardWebSocketHandler {
         }
       }
       switch (msg.type) {
-        case 'sdd.spec.start':
-          await this.onStart(String(msg.payload?.goal ?? '').trim(), {
-            force: msg.payload?.force === true,
-          });
+        case 'sdd.spec.start': {
+          const goal = String(msg.payload?.goal ?? '').trim();
+          const force = msg.payload?.force === true;
+          await this.exclusive(() => this.onStart(goal, { force }));
           break;
+        }
         case 'sdd.spec.message':
-          await this.onMessage(String(msg.payload?.text ?? ''));
+          await this.exclusive(() => this.onMessage(String(msg.payload?.text ?? '')));
           break;
         case 'sdd.spec.approve':
-          await this.onApprove();
+          await this.exclusive(() => this.onApprove());
           break;
         case 'sdd.spec.rewind':
-          await this.onRewind(msg.payload?.targetPhase as AISpecPhase | undefined);
+          await this.exclusive(() =>
+            this.onRewind(msg.payload?.targetPhase as AISpecPhase | undefined),
+          );
           break;
         case 'sdd.spec.get':
           if (this.driver) {
@@ -236,7 +239,7 @@ export class SddWizardWebSocketHandler {
           }
           break;
         case 'sdd.spec.discard':
-          await this.onDiscard();
+          await this.exclusive(() => this.onDiscard());
           break;
         case 'sdd.run.start':
           await this.onRunStart(this.parseRunOpts(msg.payload));
@@ -255,7 +258,8 @@ export class SddWizardWebSocketHandler {
           break;
       }
     } catch (err) {
-      this.busy = false;
+      // No `busy` reset here: the failing message may never have held the slot
+      // (e.g. a rejected sdd.run.from_graph) while an interview turn still runs.
       this.broadcast({
         type: 'sdd.spec.error',
         payload: { message: errMessage(err) },
@@ -264,6 +268,22 @@ export class SddWizardWebSocketHandler {
   }
 
   // ── message handlers ──────────────────────────────────────────────────────
+
+  /**
+   * Hold the one-turn-at-a-time slot for a whole interview operation. Frames
+   * are not serialized, so checking `busy` and then awaiting (discard, approve,
+   * rewind) let a second frame slip in before runTurn claimed it — two drivers
+   * or two model turns. A frame arriving while held is dropped, as before.
+   */
+  private async exclusive(op: () => Promise<void>): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      await op();
+    } finally {
+      this.busy = false;
+    }
+  }
 
   private parseRunOpts(payload?: Record<string, unknown>): SddRunStartOpts {
     return {
@@ -291,7 +311,6 @@ export class SddWizardWebSocketHandler {
       this.broadcast({ type: 'sdd.spec.error', payload: { message: 'A goal is required.' } });
       return;
     }
-    if (this.busy) return;
 
     // Resume-friendly: an in-progress interview is kept unless the operator
     // explicitly forces a new start (discard-then-start, or force: true).
@@ -339,7 +358,6 @@ export class SddWizardWebSocketHandler {
   }
 
   private async onDiscard(): Promise<void> {
-    if (this.busy) return;
     if (this.driver) {
       await this.driver.discard();
     } else {
@@ -356,7 +374,7 @@ export class SddWizardWebSocketHandler {
   }
 
   private async onMessage(text: string): Promise<void> {
-    if (!this.driver || this.busy) return;
+    if (!this.driver) return;
     // In the questioning phase, the user's message answers the agent's last
     // question. In review phases a free-form message is fed back as context.
     if (this.driver.phase() === 'questioning' && this.lastAgentText) {
@@ -368,7 +386,7 @@ export class SddWizardWebSocketHandler {
   }
 
   private async onApprove(): Promise<void> {
-    if (!this.driver || this.busy) return;
+    if (!this.driver) return;
     const { phase, prompt } = await this.driver.approve();
     // Executing phase needs no further AI turn — the graph is ready to run.
     if (phase === 'executing') {
@@ -379,7 +397,7 @@ export class SddWizardWebSocketHandler {
   }
 
   private async onRewind(targetPhase?: AISpecPhase): Promise<void> {
-    if (!this.driver || this.busy) return;
+    if (!this.driver) return;
     const { phase, prompt } = await this.driver.rewind(targetPhase);
     this.broadcast(this.snapshotMsg());
     if (phase === 'questioning' || phase === 'implementation') {

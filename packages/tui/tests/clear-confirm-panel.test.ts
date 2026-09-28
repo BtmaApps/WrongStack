@@ -2,8 +2,8 @@ import { render } from 'ink-testing-library';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import {
-  clearConfirmationKeyResult,
   ClearConfirmPanel,
+  clearConfirmationKeyResult,
   isClearConfirmation,
 } from '../src/components/clear-confirm-panel.js';
 
@@ -58,5 +58,39 @@ describe('clear confirmation token', () => {
       decision: false,
       value: 'YE',
     });
+  });
+
+  it('ignores a leaked SGR mouse report instead of typing it into the token', () => {
+    // With mouse tracking on, Ink hands the ESC-stripped report to useInput as
+    // TEXT, and the App input router forwards that text here. Appending it
+    // pushed the token past the exact `YES` match, so a stray click made the
+    // confirmation unfinishable. Both the stripped and the raw form are listed
+    // because only the caller knows which one its channel produced.
+    for (const leak of ['[<0;12;4M', '\x1b[<0;12;4M', '[<65;20;6M']) {
+      expect(clearConfirmationKeyResult('', leak, {})).toEqual({ decision: null, value: '' });
+    }
+
+    // The panel keeps working with real keys afterwards.
+    expect(clearConfirmationKeyResult('', 'Y', {}).value).toBe('Y');
+  });
+
+  it('renders no leaked mouse text into the mounted confirmation', () => {
+    let value = '';
+    for (const leak of ['[<0;12;4M', '[<65;20;6M']) {
+      value = clearConfirmationKeyResult(value, leak, {}).value;
+    }
+    value = clearConfirmationKeyResult(value, 'YES', {}).value;
+
+    const view = render(
+      React.createElement(ClearConfirmPanel, {
+        leaderActive: false,
+        subagentCount: 1,
+        value,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toContain('Confirmation: YES');
+    expect(frame).not.toContain('[<0');
+    view.unmount();
   });
 });

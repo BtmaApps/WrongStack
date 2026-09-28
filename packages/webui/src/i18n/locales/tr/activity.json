@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Bu projeye özel, tekrar kullanılabilir araçlar.",
+    "refresh": "Yenile",
+    "create": "Sohbette oluştur",
+    "loadFailed": "Project Kit yüklenemedi",
+    "loading": "Kitler yükleniyor…",
+    "catalog": "Proje araçları",
+    "search": "Kit ara…",
+    "effects": {
+      "read": "Proje verilerini okur",
+      "write": "Dosyaları değiştirir",
+      "external": "Dış sistem işlemleri"
+    },
+    "noMatches": "Aramanızla eşleşen kit yok.",
+    "emptyList": "Henüz proje aracı yok.",
+    "invalid": "Geçersiz kit tanımı",
+    "selectTitle": "Bir proje aracı seçin",
+    "emptyTitle": "Bir kez geliştir. Tekrar kullan.",
+    "emptyHint": "Proje kontrollerini ve tekrarlanan işleri parametreleri, rehberleri ve doğrulama örnekleriyle birlikte saklayın. Başlamak için sohbetten bir kit oluşturun.",
+    "verified": "Sürüm doğrulandı",
+    "unverified": "Doğrulama gerekiyor",
+    "cases": "doğrulama örneği",
+    "guide": "Kullanım rehberi",
+    "parameters": "Parametreler",
+    "required": "Zorunlu",
+    "default": "Varsayılan",
+    "schemas": "Girdi ve çıktı şemaları",
+    "input": "Parametreler (JSON)",
+    "inputError": "Geçerli bir JSON nesnesi girin.",
+    "use": "Sohbette kullan",
+    "verify": "Doğrulama hazırla",
+    "draftHint": "İncelemeniz için bir sohbet taslağı açar; siz gönderene kadar hiçbir şey çalışmaz. Çalıştırma mevcut izinlerinizi kullanır.",
+    "history": "Son çalıştırmalar",
+    "noHistory": "Henüz çalıştırma kaydı yok.",
+    "historyHint": "Son 100 yerel kayıt. “Başladı” kesintiye uğramış bir çalıştırma da olabilir; son durumu kontrol etmek için yenileyin.",
+    "actions": {
+      "run": "Çalıştırma",
+      "verify": "Doğrulama"
+    },
+    "status": {
+      "passed": "Başarılı",
+      "failed": "Başarısız",
+      "running": "Başladı"
+    },
+    "files": "Kaynak dosyalar",
+    "examples": "Doğrulama örnekleri"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Oturum",
     "agents": "Vekiller",
     "history": "Geçmiş",

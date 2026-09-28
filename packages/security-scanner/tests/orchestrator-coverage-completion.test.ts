@@ -94,7 +94,8 @@ describe('orchestrator branch completion', () => {
       name: 'security-scanner-python',
       description: 'Use when scanning python projects for security issues.',
       patterns: [],
-      metadata: { targetFiles: [] },
+      // The stack's own targets are the floor under the model's (empty) list.
+      metadata: { targetFiles: expect.arrayContaining(['**/*.py', '**/requirements*.txt']) },
     });
 
     expect(validateSkillDocument(generated.content.content, generated.name)).toEqual([]);

@@ -50,6 +50,19 @@ describe('GitignoreUpdater', () => {
     expect(content).toContain('security-reports/');
   });
 
+  it('keeps CRLF line endings and separates from a last line without a newline', async () => {
+    await fs.writeFile(gitignorePath, 'node_modules\r\n.env');
+    const result = await new GitignoreUpdater({ gitignorePath, entries: ['out/'] }).update();
+    expect(result.added).toEqual(['out/']);
+    expect(await fs.readFile(gitignorePath, 'utf8')).toBe('node_modules\r\n.env\r\nout/\r\n');
+  });
+
+  it('separates an LF file whose last line has no newline', async () => {
+    await fs.writeFile(gitignorePath, 'node_modules');
+    await new GitignoreUpdater({ gitignorePath, entries: ['out/'] }).update();
+    expect(await fs.readFile(gitignorePath, 'utf8')).toBe('node_modules\nout/\n');
+  });
+
   it('does not rewrite the file when every entry is already present', async () => {
     await fs.writeFile(gitignorePath, 'foo\nbar\n');
     const u = new GitignoreUpdater({

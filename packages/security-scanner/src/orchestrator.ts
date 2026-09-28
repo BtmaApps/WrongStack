@@ -10,6 +10,7 @@ import { defaultGitignoreUpdater, GitignoreUpdater } from './gitignore-updater.j
 import { retryProviderComplete } from './llm-client.js';
 import type { ReportOptions } from './report-generator.js';
 import { ReportWriter } from './report-writer.js';
+import { getTargetFilesForStack } from './scan-targets.js';
 import type { ScanResult } from './scanner.js';
 import { SkillGenerator } from './skill-generator.js';
 import type {
@@ -147,6 +148,15 @@ export class SecurityScannerOrchestrator {
         techStack,
         abortController,
       );
+      // The skill is written for the first stack, but a project with several
+      // (a Node toolchain next to a Python service) must have all of its code
+      // read: the other stacks' files were never gathered at all.
+      const otherTargets = detectionResult.detectedStacks.slice(1).flatMap(getTargetFilesForStack);
+      if (otherTargets.length > 0) {
+        generatedSkill.metadata.targetFiles = [
+          ...new Set([...generatedSkill.metadata.targetFiles, ...otherTargets]),
+        ];
+      }
 
       // Phase 3: batch scan (LLM-per-batch with severity summary).
       const scanResult = await this.batchScanner.runBatchScan({

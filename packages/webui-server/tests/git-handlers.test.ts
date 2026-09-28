@@ -10,6 +10,7 @@ import {
   handleGitDiff,
   handleGitDiscard,
   handleGitHistory,
+  handleGitInfo,
   handleGitStage,
   handleGitUnstage,
   repoRelativePrefix,
@@ -56,6 +57,41 @@ describe('git change-set handlers', () => {
     } catch {
       /* ignore */
     }
+  });
+
+  describe('handleGitInfo', () => {
+    // The dock chip mirrors the TUI's git bar, which counts lines vs HEAD
+    // (staged + unstaged). A bare `git diff --stat` saw only unstaged lines,
+    // so `git add` dropped the chip to +0/-0.
+    it('counts staged and unstaged lines against HEAD', async () => {
+      fsSync.writeFileSync(path.join(repo, 'keep.txt'), 'line1\nline3\nx\ny\n');
+      git(repo, ['add', 'keep.txt']);
+      fsSync.appendFileSync(path.join(repo, 'keep.txt'), 'unstaged\n');
+
+      const ws = createMockWs();
+      await handleGitInfo(ws, repo);
+      expect(ws.sent[0]).toMatchObject({ type: 'git.info', payload: { added: 3, deleted: 1 } });
+    });
+
+    it('labels a real detached HEAD, but sends no branch outside a repository', async () => {
+      git(repo, ['checkout', '-q', '--detach']);
+      const detached = createMockWs();
+      await handleGitInfo(detached, repo);
+      expect(detached.sent[0]?.payload.branch).toBe('(detached)');
+
+      const plain = path.join(
+        process.env.TEMP || '/tmp',
+        `nogit-${randomBytes(4).toString('hex')}`,
+      );
+      fsSync.mkdirSync(plain, { recursive: true });
+      try {
+        const ws = createMockWs();
+        await handleGitInfo(ws, plain);
+        expect(ws.sent[0]?.payload).toMatchObject({ branch: '', added: 0, deleted: 0 });
+      } finally {
+        fsSync.rmSync(plain, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('handleGitChanges', () => {

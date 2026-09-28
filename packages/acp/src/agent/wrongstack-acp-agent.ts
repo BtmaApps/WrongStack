@@ -240,16 +240,24 @@ export class WrongStackACPServer {
 
       // Reject oversized request bodies (CWE-400).
       const MAX_HTTP_BODY = 10 * 1024 * 1024;
-      let body = '';
+      // Collect the raw bytes and decode once: `body += chunk` decoded each
+      // Buffer alone, so a multibyte character split across two socket reads
+      // reached runTurn as U+FFFD pairs.
+      const chunks: Buffer[] = [];
       let bodyBytes = 0;
       let tooLarge = false;
-      for await (const chunk of req) {
+      for await (const chunk of req as AsyncIterable<Buffer>) {
         bodyBytes += chunk.length;
         if (bodyBytes > MAX_HTTP_BODY) {
+          // Keep reading, but discard: stopping here left the rest of the
+          // body on a kept-alive socket, and the client's next request on
+          // it was reset. The drain is bounded so a huge upload is still cut
+          // off (CWE-400).
           tooLarge = true;
-          break;
+          chunks.length = 0;
+          if (bodyBytes > 2 * MAX_HTTP_BODY) break;
         }
-        body += chunk;
+        if (!tooLarge) chunks.push(chunk);
       }
       if (tooLarge) {
         res.writeHead(413, { 'Content-Type': 'application/json' });
@@ -259,7 +267,7 @@ export class WrongStackACPServer {
 
       let msg: unknown;
       try {
-        msg = JSON.parse(body);
+        msg = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       } catch {
         res.writeHead(400);
         res.end(JSON.stringify({ error: { code: -32700, message: 'Parse error' } }));

@@ -52,6 +52,36 @@ describe('BrainMonitor — file churn signal', () => {
 
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+  it('allows incremental edits and only consults at the default 20-edit threshold', async () => {
+    const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+    monitor({ brain });
+    for (let i = 0; i < 19; i++) events.emit('tool.executed', okEdit('src/a.ts'));
+    await settle();
+    expect(brain.decide).not.toHaveBeenCalled();
+
+    events.emit('tool.executed', okEdit('src/a.ts'));
+    await settle();
+    expect(brain.decide).toHaveBeenCalledOnce();
+    expect(brain.decide).toHaveBeenCalledWith(
+      expect.objectContaining({
+        question: expect.stringContaining(
+          'Edit frequency alone does not establish an edit/revert loop',
+        ),
+      }),
+    );
+  });
+
+  it('does not accumulate edits outside the default ten-minute window', async () => {
+    vi.useFakeTimers();
+    const brain: BrainArbiter = { decide: vi.fn(async () => STEER) };
+    monitor({ brain });
+    for (let i = 0; i < 19; i++) events.emit('tool.executed', okEdit('src/a.ts'));
+    await vi.advanceTimersByTimeAsync(600_001);
+    events.emit('tool.executed', okEdit('src/a.ts'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(brain.decide).not.toHaveBeenCalled();
+  });
+
   it('engages when the same file is edited threshold times within the window', async () => {
     const emitted: EventMap['brain.intervention'][] = [];
     events.on('brain.intervention', (e) => emitted.push(e));

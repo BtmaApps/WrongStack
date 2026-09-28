@@ -72,6 +72,7 @@ export const VIEWS = [
   'analytics',
   'codemap',
   'techstack',
+  'project-kit',
   'chronicle',
   'intake',
   'deadcode',

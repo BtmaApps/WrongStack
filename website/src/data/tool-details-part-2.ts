@@ -5,6 +5,18 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart2: Record<string, ToolDetail> = {
+  browser_close: {
+    longDescription:
+      'Close an owned browser session and reclaim its resources, returning trace-artifact metadata when tracing was enabled.',
+    params: [
+      {
+        name: 'sessionId',
+        type: 'string',
+        required: true,
+        description: 'Browser session id returned by browser_open.',
+      },
+    ],
+  },
   e2e_plan: {
     longDescription:
       'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',

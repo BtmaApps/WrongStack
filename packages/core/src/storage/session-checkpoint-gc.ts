@@ -45,13 +45,27 @@ export interface CheckpointGcResult {
  * hundreds of megabytes, and reading one whole into a string is enough to end
  * the process — the naive version of this scan died with a heap OOM before it
  * finished the first directory.
+ *
+ * Throws when any transcript (or directory of them) exists but cannot be read
+ * to the end. The age floor only protects checkpoints younger than it, so a
+ * skipped transcript used to hand every OLDER checkpoint it names to the sweep
+ * — silently. A transcript deleted mid-scan is not a failure: its references
+ * are gone with it.
  */
 export async function collectReachableManifestHashes(storeDir: string): Promise<Set<string>> {
   const reachable = new Set<string>();
-  for (const file of await listTranscripts(storeDir)) {
+  const { files, unreadable } = await listTranscripts(storeDir);
+  for (const file of files) {
     try {
       const raw = createReadStream(file);
-      const input = file.endsWith('.gz') ? raw.pipe(createGunzip()) : raw;
+      let input: NodeJS.ReadableStream = raw;
+      if (file.endsWith('.gz')) {
+        const gunzip = createGunzip();
+        // `pipe` does not forward source errors: an open/read failure left the
+        // gunzip waiting forever and surfaced as an uncaught 'error' event.
+        raw.once('error', (err) => gunzip.destroy(err));
+        input = raw.pipe(gunzip);
+      }
       const lines = readline.createInterface({ input, crlfDelay: Number.POSITIVE_INFINITY });
       try {
         for await (const line of lines) {
@@ -66,10 +80,18 @@ export async function collectReachableManifestHashes(storeDir: string): Promise<
         lines.close();
         raw.destroy();
       }
-    } catch {
-      // A transcript that cannot be read is treated as reachable-unknown: the
-      // sweep's age floor is what keeps that from deleting live data.
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        unreadable.push(`${path.relative(storeDir, file)}: ${toErrorMessage(err)}`);
+      }
     }
+  }
+  if (unreadable.length > 0) {
+    throw new Error(
+      `Checkpoint GC refused: ${unreadable.length} transcript path(s) could not be read, so the ` +
+        `checkpoints they reference cannot be told apart from garbage. Fix or move them, then ` +
+        `retry: ${unreadable.slice(0, 5).join('; ')}${unreadable.length > 5 ? '; …' : ''}`,
+    );
   }
   return reachable;
 }
@@ -151,8 +173,11 @@ export async function sweepCheckpointCas(opts: {
   return result;
 }
 
-async function listTranscripts(storeDir: string): Promise<string[]> {
+async function listTranscripts(
+  storeDir: string,
+): Promise<{ files: string[]; unreadable: string[] }> {
   const found: string[] = [];
+  const unreadable: string[] = [];
   const pending = [storeDir];
   while (pending.length > 0) {
     const dir = pending.pop();
@@ -160,7 +185,11 @@ async function listTranscripts(storeDir: string): Promise<string[]> {
     let entries: DirEntry[];
     try {
       entries = await fsp.readdir(dir, { withFileTypes: true });
-    } catch {
+    } catch (err) {
+      // An unlistable directory hides every transcript under it.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        unreadable.push(`${path.relative(storeDir, dir) || '.'}: ${toErrorMessage(err)}`);
+      }
       continue;
     }
     for (const entry of entries) {
@@ -173,7 +202,7 @@ async function listTranscripts(storeDir: string): Promise<string[]> {
       }
     }
   }
-  return found;
+  return { files: found, unreadable };
 }
 
 async function readManifestBlobHashes(file: string, result: CheckpointGcResult): Promise<string[]> {

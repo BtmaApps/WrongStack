@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Strumenti riutilizzabili per questo progetto.",
+    "refresh": "Aggiorna",
+    "create": "Crea nella chat",
+    "loadFailed": "Impossibile caricare Project Kit",
+    "loading": "Caricamento dei kit…",
+    "catalog": "Strumenti del progetto",
+    "search": "Cerca kit…",
+    "effects": {
+      "read": "Legge i dati del progetto",
+      "write": "Modifica file",
+      "external": "Azioni esterne"
+    },
+    "noMatches": "Nessun kit corrisponde alla ricerca.",
+    "emptyList": "Nessuno strumento di progetto disponibile.",
+    "invalid": "Definizione del kit non valida",
+    "selectTitle": "Scegli uno strumento del progetto",
+    "emptyTitle": "Sviluppa una volta. Riutilizza.",
+    "emptyHint": "Conserva controlli e attività ripetibili insieme a parametri, guide e casi di verifica. Crea un kit nella chat per iniziare.",
+    "verified": "Revisione verificata",
+    "unverified": "Verifica necessaria",
+    "cases": "casi di verifica",
+    "guide": "Guida all’uso",
+    "parameters": "Parametri",
+    "required": "Obbligatorio",
+    "default": "Predefinito",
+    "schemas": "Schemi di input e output",
+    "input": "Parametri (JSON)",
+    "inputError": "Inserisci un oggetto JSON valido.",
+    "use": "Usa nella chat",
+    "verify": "Prepara la verifica",
+    "draftHint": "Apre una bozza da rivedere nella chat. Nulla viene eseguito prima dell’invio. Si applicano le autorizzazioni esistenti.",
+    "history": "Esecuzioni recenti",
+    "noHistory": "Nessuna esecuzione registrata.",
+    "historyHint": "Gli ultimi 100 record locali. «Avviata» può anche indicare un’esecuzione interrotta. Aggiorna per controllarne lo stato finale.",
+    "actions": {
+      "run": "Esecuzione",
+      "verify": "Verifica"
+    },
+    "status": {
+      "passed": "Riuscita",
+      "failed": "Non riuscita",
+      "running": "Avviata"
+    },
+    "files": "File sorgente",
+    "examples": "Esempi di verifica"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Sessione",
     "agents": "Agenti",
     "history": "Cronologia",

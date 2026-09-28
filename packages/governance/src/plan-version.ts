@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { posix } from 'node:path';
 import {
   decideOperationAutonomy,
   type GovernedOperation,
@@ -152,8 +153,27 @@ function isMutatingStep(step: PlanStepV1): boolean {
   return step.operations.some((operation) => !READ_ONLY_OPERATIONS.has(operation));
 }
 
+/**
+ * Resolves `.`/`..` segments: prefix matching on the raw text let
+ * `allowed/../denied/x` match `allowed/**` and miss `denied/**`.
+ */
 function normalizePath(value: string): string {
-  return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
+  return posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '').replace(/\/+$/, '');
+}
+
+/**
+ * Outside the repository that scopes are relative to: still climbs above the
+ * root after normalization, or is absolute (`/x`, `C:\x`, `\\server\share`) —
+ * `**` matched those too.
+ */
+function escapesRoot(value: string): boolean {
+  const normalized = normalizePath(value);
+  return (
+    normalized === '..' ||
+    normalized.startsWith('../') ||
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:/.test(normalized)
+  );
 }
 
 function pathMatchesPattern(value: string, pattern: string): boolean {
@@ -174,6 +194,7 @@ function pathMatchesPattern(value: string, pattern: string): boolean {
 }
 
 function pathIsAllowed(contract: TaskContractV1, value: string): boolean {
+  if (escapesRoot(value)) return false;
   if (contract.autonomy.deniedPaths.some((pattern) => pathMatchesPattern(value, pattern))) {
     return false;
   }

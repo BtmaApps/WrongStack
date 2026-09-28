@@ -158,6 +158,9 @@
       "DEFAULT_SUBAGENT_HIDDEN_TOOLS",
       "NEVER_SUBAGENT_TOOLS"
     ],
+    "packages/cli/src/goal-commands.ts": [
+      "createTailBuffer"
+    ],
     "packages/cli/src/governance-hq-telemetry.ts": [
       "projectGovernanceHqSnapshot"
     ],
@@ -545,9 +548,6 @@
       "buildPerfRunText",
       "parsePerfArgs"
     ],
-    "packages/core/src/plugins/review-context-builder.ts": [
-      "parsePorcelainStatusZ"
-    ],
     "packages/core/src/plugins/review-finding-parser.ts": [
       "extractStructuredFindingsBlock"
     ],
@@ -615,10 +615,6 @@
     ],
     "packages/core/src/statusline/index.ts": [
       "DEFAULT_HIDDEN_ITEMS"
-    ],
-    "packages/core/src/storage/config-loader/validation.ts": [
-      "validateConfigBehavior",
-      "validateConfigIdentity"
     ],
     "packages/core/src/storage/director-state.ts": [
       "acquireDirectorStateLock",
@@ -781,9 +777,6 @@
     "packages/mcp/src/transport-security.ts": [
       "assertTransportAddressAllowed",
       "classifyTransportAddress"
-    ],
-    "packages/persistence/src/file-permissions.ts": [
-      "_filePermOps"
     ],
     "packages/persistence/src/ipc-endpoint-secret.ts": [
       "__createIpcEndpointSecretForTests",
@@ -1189,7 +1182,6 @@
       "collapseCarriageReturns",
       "collapseConsecutiveDuplicates",
       "COMMAND_OUTPUT_MAX_BYTES",
-      "resolvePath",
       "truncateHeadTail"
     ],
     "packages/tools/src/bash-kill-guard.ts": [
@@ -1282,6 +1274,10 @@
     "packages/tools/src/process-registry.ts": [
       "killWin32Tree"
     ],
+    "packages/tools/src/project-kit/advisor.ts": [
+      "isAdHocScriptCall",
+      "rankKitCandidates"
+    ],
     "packages/tools/src/ps-slash.ts": [
       "getGlobalProcessStatus"
     ],
@@ -1305,6 +1301,7 @@
       "BUILTIN_TIER_COUNTS"
     ],
     "packages/tui/src/app-key-handler.ts": [
+      "shouldStopNextStepsAutoSubmit",
       "stopNextStepsAutoSubmitOnKey"
     ],
     "packages/tui/src/app-ui-state.ts": [

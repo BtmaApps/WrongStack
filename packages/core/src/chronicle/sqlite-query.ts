@@ -30,6 +30,7 @@ import {
   type ChronicleFacetValue,
   type ChronicleGraphEdge,
   type ChronicleGraphResult,
+  type ChronicleOrderKey,
   type ChronicleQuery,
   type ChronicleQueryResult,
   compareEvents,
@@ -40,34 +41,34 @@ import {
   relationKeys,
   updateSummary,
 } from './query.js';
+import { compareEventToKey, findInsertionIndex, orderKey } from './query-matching.js';
 import type { ChronicleEvent } from './types.js';
 
 /** Hard ceiling mirroring `ChronicleQueryEngine.query`. */
 const MAX_LIMIT = 10_000;
 
 /**
- * Keyset position in the `(day, sequence)` total order.
+ * Position in the `compareEvents` order: the last event of the previous page.
  *
- * Deliberately not interchangeable with the JSONL engine's cursor, which
- * encodes a snapshot of partition files. A cursor is opaque and belongs to the
- * engine that issued it; carrying one across would be meaningless.
+ * Not the storage keyset `(day, sequence)`: that is persistence order, and an
+ * event persisted late with an early `occurredAt` (a process stamped with its
+ * start time) sorts differently there. Deliberately not interchangeable with
+ * the JSONL engine's cursor, which also encodes a snapshot of partition files.
  */
-interface SqliteCursor {
-  day: string;
-  sequence: number;
+function encodeCursor(key: ChronicleOrderKey): string {
+  return Buffer.from(JSON.stringify(key), 'utf8').toString('base64url');
 }
 
-function encodeCursor(cursor: SqliteCursor): string {
-  return Buffer.from(`${cursor.day}:${cursor.sequence}`, 'utf8').toString('base64url');
-}
-
-function decodeCursor(raw: string | undefined): SqliteCursor | undefined {
+function decodeCursor(raw: string | undefined): ChronicleOrderKey | undefined {
   if (!raw) return undefined;
   try {
-    const [day, sequence] = Buffer.from(raw, 'base64url').toString('utf8').split(':');
-    if (!day || sequence === undefined) return undefined;
-    const parsed = Number(sequence);
-    return Number.isSafeInteger(parsed) ? { day, sequence: parsed } : undefined;
+    const key = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as ChronicleOrderKey;
+    return typeof key?.occurredAt === 'string' &&
+      typeof key.persistedAt === 'string' &&
+      Number.isSafeInteger(key.sequence) &&
+      typeof key.eventId === 'string'
+      ? key
+      : undefined;
   } catch {
     return undefined;
   }
@@ -151,29 +152,26 @@ export class ChronicleSqliteQueryEngine {
     const pushed = pushDown(query);
 
     const direction = order === 'asc' ? 'ASC' : 'DESC';
-    const comparison = order === 'asc' ? '>' : '<';
-    const keyset = cursor ? ` AND (day, sequence) ${comparison} (?, ?)` : '';
     const sql =
-      `SELECT day, sequence, payload FROM events WHERE ${pushed.clause}${keyset}` +
+      `SELECT payload FROM events WHERE ${pushed.clause}` +
       ` ORDER BY day ${direction}, sequence ${direction} LIMIT ? OFFSET ?`;
+    const pageOrder = (left: ChronicleEvent, right: ChronicleEvent) =>
+      compareEvents(left, right) * (order === 'asc' ? 1 : -1);
 
     const summary = createSummaryAccumulator();
     const page: ChronicleEvent[] = [];
     let total = 0;
+    let remaining = 0;
     let scannedEvents = 0;
-    let last: SqliteCursor | undefined;
     let offset = 0;
 
-    // Every matching event feeds the summary, which is defined over the whole
-    // result set rather than the page (see `ChronicleSummary`). Candidates are
-    // streamed in batches so a wide query does not materialise the table.
+    // Every matching event feeds the summary and `total`, which are defined
+    // over the whole result set on every page (see `ChronicleSummary`). The page
+    // is the top `limit` in `compareEvents` order — the JSONL engine's rule —
+    // not the first rows in storage order. Candidates are streamed in batches
+    // so a wide query does not materialise the table.
     for (;;) {
-      const params = [...pushed.params];
-      if (cursor) params.push(cursor.day, cursor.sequence);
-      params.push(this.batchSize, offset);
-      const rows = this.db.prepare(sql).all(...params) as Array<{
-        day: string;
-        sequence: number;
+      const rows = this.db.prepare(sql).all(...pushed.params, this.batchSize, offset) as Array<{
         payload: StoredChroniclePayload;
       }>;
       if (rows.length === 0) break;
@@ -191,19 +189,18 @@ export class ChronicleSqliteQueryEngine {
         if (!matches(event, query)) continue;
         total++;
         updateSummary(summary, event);
-        if (page.length < limit) {
-          page.push(event);
-          last = { day: row.day, sequence: row.sequence };
+        if (cursor && compareEventToKey(event, cursor) * (order === 'asc' ? 1 : -1) <= 0) continue;
+        remaining++;
+        const index = findInsertionIndex(page, event, pageOrder);
+        if (index < limit) {
+          page.splice(index, 0, event);
+          if (page.length > limit) page.pop();
         }
       }
       if (rows.length < this.batchSize) break;
     }
 
-    // The JSONL engine returns the page in `compareEvents` order; keyset order
-    // is `(day, sequence)`, which can differ when events share a timestamp.
-    // Sorting here keeps both engines' pages identical.
-    page.sort((left, right) => compareEvents(left, right) * (order === 'asc' ? 1 : -1));
-
+    const last = page.at(-1);
     const result: ChronicleQueryResult = {
       events: page,
       total,
@@ -212,8 +209,8 @@ export class ChronicleSqliteQueryEngine {
       invalidLines: this.diagnostics.invalidLines,
       summary: finalizeSummary(summary),
     };
-    if (total > page.length && last) {
-      return { ...result, nextCursor: encodeCursor(last) };
+    if (remaining > page.length && last) {
+      return { ...result, nextCursor: encodeCursor(orderKey(last)) };
     }
     return result;
   }

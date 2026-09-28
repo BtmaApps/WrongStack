@@ -50,4 +50,26 @@ describe('mapWithConcurrency', () => {
       }),
     ).rejects.toThrow('boom');
   });
+
+  // A non-finite limit must never defeat the worker count: `Array.from({length: NaN})`
+  // yields ZERO workers, `Promise.all([])` resolves, and the mapper is never
+  // called — the caller silently gets an array of holes. `parsedLimit` above
+  // substitutes `items.length` for a non-finite limit, so every item is still
+  // mapped. This pins that guard against removal.
+  it.each([
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['-Infinity', Number.NEGATIVE_INFINITY],
+    ['zero', 0],
+    ['negative', -3],
+  ])('still maps every item for a non-finite or sub-1 limit (%s)', async (_label, limit) => {
+    const seen: number[] = [];
+    const result = await mapWithConcurrency([1, 2, 3], limit, async (x: number) => {
+      seen.push(x);
+      return x * 2;
+    });
+    expect(seen).toEqual([1, 2, 3]);
+    expect(result).toEqual([2, 4, 6]);
+    expect(result.every((v) => v !== undefined)).toBe(true);
+  });
 });

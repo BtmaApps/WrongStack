@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { PassThrough } from 'node:stream';
 import type { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlashCommandContext } from '../src/slash-commands/index.js';
@@ -47,24 +48,27 @@ afterEach(async () => {
 });
 
 /**
- * Create a fake child process that emits the given chunks then closes.
+ * Create a fake child process that writes the given chunks then closes.
+ * Real streams (not bare emitters), so the command's decoding runs as it does
+ * against git: a Buffer chunk may end mid-character.
  */
 function fakeChild(
-  stdoutChunks: string[],
+  stdoutChunks: Array<string | Buffer>,
   exitCode = 0,
-): EventEmitter & { stdout: EventEmitter; stderr: EventEmitter } {
+): EventEmitter & { stdout: PassThrough; stderr: PassThrough } {
   const child = new EventEmitter() as EventEmitter & {
-    stdout: EventEmitter;
-    stderr: EventEmitter;
+    stdout: PassThrough;
+    stderr: PassThrough;
   };
-  child.stdout = new EventEmitter();
-  child.stderr = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
   // Schedule async emission
   setImmediate(() => {
+    child.stdout.on('end', () => child.emit('close', exitCode));
     for (const chunk of stdoutChunks) {
-      child.stdout.emit('data', Buffer.from(chunk));
+      child.stdout.write(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
     }
-    child.emit('close', exitCode);
+    child.stdout.end();
   });
   return child;
 }
@@ -88,14 +92,14 @@ describe('buildReviewCommand', () => {
   });
 
   it('returns no-changed-files when git status has only .wrongstack/', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  .wrongstack/config.json\n'], 0));
+    mockSpawn.mockReturnValue(fakeChild(['M  .wrongstack/config.json\0'], 0));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
     expect(res?.message).toMatch(/No changed files/);
   });
 
   it('returns no-matching-files when file filter yields nothing', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\n'], 0));
+    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\0'], 0));
     mockAccess.mockRejectedValue(new Error('not found'));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('--files nonexistent', { cwd } as never);
@@ -103,7 +107,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('triggers chimera review for changed files', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\n'], 0));
+    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\0'], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content of foo.ts');
 
@@ -133,7 +137,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('filters files by --files substring', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/bar.ts\nM  src/foo.ts\n'], 0));
+    mockSpawn.mockReturnValue(fakeChild(['M  src/bar.ts\0M  src/foo.ts\0'], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content');
 
@@ -155,7 +159,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('respects --limit flag', async () => {
-    const files = Array.from({ length: 5 }, (_, i) => `M  src/file${i}.ts\n`).join('');
+    const files = Array.from({ length: 5 }, (_, i) => `M  src/file${i}.ts\0`).join('');
     mockSpawn.mockReturnValue(fakeChild([files], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content');
@@ -187,16 +191,71 @@ describe('buildReviewCommand', () => {
 
   it('handles spawn error gracefully', async () => {
     const child = new EventEmitter() as EventEmitter & {
-      stdout: EventEmitter;
-      stderr: EventEmitter;
+      stdout: PassThrough;
+      stderr: PassThrough;
     };
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
     setImmediate(() => child.emit('error', new Error('ENOENT')));
     mockSpawn.mockReturnValue(child);
 
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
     expect(res?.message).toMatch(/No changed files/);
+  });
+});
+
+// Line porcelain C-quotes names with spaces/non-ASCII bytes and folds a new
+// directory into one `?? dir/` entry; those files failed fs.access and were
+// silently left out of the review.
+describe('buildReviewCommand changed-file listing', () => {
+  // `stdout += chunk` decoded each Buffer on its own: a 2-byte character split
+  // at a pipe-chunk boundary became U+FFFD U+FFFD and the file was skipped.
+  it('keeps a multibyte name intact when a chunk boundary splits it', async () => {
+    const record = Buffer.from(' M şema.ts\0');
+    const cut = record.indexOf(0xc5) + 1; // between the two bytes of `ş`
+    mockSpawn.mockReturnValue(fakeChild([record.subarray(0, cut), record.subarray(cut)], 0));
+    mockAccess.mockResolvedValue(undefined);
+    mockReadFile.mockResolvedValue('content');
+
+    const emitCustom = vi.fn();
+    const cmd = buildReviewCommand(makeOpts({ events: { emitCustom } as never }));
+    await cmd.run('', { cwd, provider: { id: 'test' }, model: 'm1' } as never);
+
+    expect(mockAccess).toHaveBeenCalledWith(path.join(cwd, 'şema.ts'));
+  });
+
+  it('asks git for NUL records with every untracked file and skips rename sources', async () => {
+    mockSpawn.mockReturnValue(
+      fakeChild(
+        [
+          ' M my notes.ts\u0000 M şema.ts\u0000?? feature/impl.ts\u0000' +
+            'RM new name.ts\u0000old name.ts\u0000 D gone.ts\u0000',
+        ],
+        0,
+      ),
+    );
+    mockAccess.mockResolvedValue(undefined);
+    mockReadFile.mockResolvedValue('content');
+
+    const emitCustom = vi.fn();
+    const cmd = buildReviewCommand(makeOpts({ events: { emitCustom } as never }));
+    await cmd.run('', { cwd, provider: { id: 'test' }, model: 'm1' } as never);
+
+    expect(mockSpawn.mock.calls[0]?.[1]).toEqual([
+      'status',
+      '--porcelain',
+      '-z',
+      '--untracked-files=all',
+    ]);
+    const payload = emitCustom.mock.calls.find(([e]) => e === 'chimera.review_needed')?.[1] as {
+      files: Array<{ path: string; status: string }>;
+    };
+    expect(payload.files.map((f) => `${f.status}:${f.path}`)).toEqual([
+      'modified:my notes.ts',
+      'modified:şema.ts',
+      'added:feature/impl.ts',
+      'modified:new name.ts',
+    ]);
   });
 });

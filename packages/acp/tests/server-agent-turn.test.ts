@@ -1097,7 +1097,8 @@ describe('serverAgentTurn deterministic helpers', () => {
     ]);
     expect(multimodal).toEqual(
       expect.arrayContaining([
-        { type: 'text', text: 'embedded' },
+        // Same rendering as the text-only path: the model is told which file.
+        { type: 'text', text: '[embedded resource: file:///a]\nembedded' },
         { type: 'text', text: '[embedded resource: file:///b]' },
         { type: 'text', text: '[resource link: https://a]' },
       ]),

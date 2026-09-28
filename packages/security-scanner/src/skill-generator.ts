@@ -27,6 +27,7 @@ import {
 import { readFileHead } from './file-gathering.js';
 import { extractJsonBlock } from './json-extractor.js';
 import { retryProviderComplete } from './llm-client.js';
+import { getTargetFilesForStack } from './scan-targets.js';
 import type {
   GeneratedSkill,
   GeneratedSkillContent,
@@ -86,6 +87,9 @@ const SEVERITY_LEVELS: Record<string, number> = {
   all: 0,
 };
 
+/** Every JS/TS source form: `.ts`/`.js` alone left .tsx/.jsx/.mjs/.cjs unmatched. */
+const JS_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
+
 function getSecretPatterns(stack: TechStack): SecurityPattern[] {
   const commonSecrets: SecurityPattern = {
     id: 'hardcoded-secrets',
@@ -108,8 +112,7 @@ function getSecretPatterns(stack: TechStack): SecurityPattern[] {
       /AKIA[0-9A-Z]{16}/g,
     ],
     fileExtensions: [
-      '.ts',
-      '.js',
+      ...JS_EXTENSIONS,
       '.py',
       '.go',
       '.rs',
@@ -139,7 +142,7 @@ function getSecretPatterns(stack: TechStack): SecurityPattern[] {
           /jwt\.sign\s*\([^,]+,\s*['"][^'"]+['"]/g,
           /jwt\.verify\s*\([^,]+,\s*['"][^'"]+['"]/g,
         ],
-        fileExtensions: ['.ts', '.js'],
+        fileExtensions: [...JS_EXTENSIONS],
         falsePositiveMarkers: ['process.env'],
         remediation: 'Use environment variables for JWT secret keys.',
         category: 'secrets',
@@ -257,7 +260,7 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
       /system\s*\([^)]*\+/g,
       /popen\s*\([^)]*\+/g,
     ],
-    fileExtensions: ['.ts', '.js', '.php', '.py', '.rb'],
+    fileExtensions: [...JS_EXTENSIONS, '.php', '.py', '.rb'],
     falsePositiveMarkers: ['escapeshellarg', 'escapeshellcmd', 'sanitize'],
     remediation: 'Use parameterized commands with argument arrays instead of string interpolation.',
     category: 'injection',
@@ -272,7 +275,7 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
         severity: 'critical',
         description: 'Detects eval() or Function() constructor with variables',
         patterns: [/eval\s*\([^'"][^)]*\)/g, /new\s+Function\s*\([^'"][^)]*\)/g],
-        fileExtensions: ['.ts', '.js'],
+        fileExtensions: [...JS_EXTENSIONS],
         falsePositiveMarkers: ['JSON.parse'],
         remediation: 'Never eval user input. Use JSON.parse for data, or proper sandboxing.',
         category: 'injection',
@@ -287,7 +290,7 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
           /(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)\s+.*?\$\{/gi,
           /query\s*\(\s*`[^`]*\$\{[^}]+\}[^`]*`/g,
         ],
-        fileExtensions: ['.ts', '.js'],
+        fileExtensions: [...JS_EXTENSIONS],
         falsePositiveMarkers: ['sql`', 'Prisma.sql`'],
         remediation: 'Use parameterized queries: query("SELECT * FROM users WHERE id = $1", [id])',
         category: 'injection',
@@ -299,7 +302,7 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
         severity: 'high',
         description: 'Detects NoSQL query injection via user input',
         patterns: [/find\s*\(\s*\{.*\$where/g, /collection\.(?:find|aggregate)\s*\([^)]*\$/g],
-        fileExtensions: ['.ts', '.js'],
+        fileExtensions: [...JS_EXTENSIONS],
         falsePositiveMarkers: [],
         remediation: 'Sanitize and validate all user input before NoSQL queries.',
         category: 'injection',
@@ -426,7 +429,7 @@ function getConfigPatterns(_stack: TechStack): SecurityPattern[] {
         /TLS\s*\[\s*['"]?1\.0['"]?\]/gi,
         /InsecureRequestWarning\.disable/g,
       ],
-      fileExtensions: ['.ts', '.js', '.py', '.go', '.java'],
+      fileExtensions: [...JS_EXTENSIONS, '.py', '.go', '.java'],
       falsePositiveMarkers: ['NODE_TLS_REJECT_UNAUTHORIZED'],
       remediation: 'Always verify TLS certificates in production. Use proper certificate stores.',
       category: 'config',
@@ -438,7 +441,7 @@ function getConfigPatterns(_stack: TechStack): SecurityPattern[] {
       severity: 'medium',
       description: 'Detects debug flags that may expose sensitive information',
       patterns: [/debug\s*[:=]\s*true/g, /DEBUG\s*[:=]\s*true/g, /development\s*mode/g],
-      fileExtensions: ['.ts', '.js', '.py', '.env', '.json'],
+      fileExtensions: [...JS_EXTENSIONS, '.py', '.env', '.json'],
       falsePositiveMarkers: ['process.env.NODE_ENV !== "production"', 'if (process.env.DEBUG)'],
       remediation: 'Disable debug mode in production. Use proper log levels.',
       category: 'config',
@@ -447,26 +450,6 @@ function getConfigPatterns(_stack: TechStack): SecurityPattern[] {
   ];
 
   return commonConfig;
-}
-
-function getTargetFilesForStack(techStack: TechStackInfo): string[] {
-  const filesByStack: Record<TechStack, string[]> = {
-    nodejs: ['**/*.ts', '**/*.js', '**/*.json', '**/.env*', '**/package.json', '**/tsconfig.json'],
-    python: ['**/*.py', '**/requirements*.txt', '**/setup.py', '**/pyproject.toml', '**/.env*'],
-    rust: ['**/*.rs', '**/Cargo.toml', '**/Cargo.lock'],
-    go: ['**/*.go', '**/go.mod', '**/go.sum'],
-    java: ['**/*.java', '**/pom.xml', '**/build.gradle', '**/*.properties'],
-    dotnet: ['**/*.cs', '**/*.csproj', '**/*.config', '**/appsettings.json'],
-    php: ['**/*.php', '**/.env*', '**/composer.json'],
-    ruby: ['**/*.rb', '**/Gemfile', '**/.env*'],
-    cpp: ['**/*.cpp', '**/*.hpp', '**/CMakeLists.txt'],
-    c: ['**/*.c', '**/*.h'],
-    kotlin: ['**/*.kt', '**/*.kts', '**/build.gradle.kts'],
-    swift: ['**/*.swift', '**/Package.swift'],
-    unknown: ['**/*'],
-  };
-
-  return filesByStack[techStack.stack] || filesByStack.unknown;
 }
 
 function buildSkillContent(
@@ -640,7 +623,18 @@ export async function generateSkillLLM(
         metadata: {
           generatedAt: new Date().toISOString(),
           confidence: 0.85,
-          targetFiles: skillData.targetFiles || [],
+          // The stack's own list is the floor: the model's list decides what
+          // gets read, and one that forgot `.tsx` left every component unscanned.
+          targetFiles: [
+            ...new Set([
+              ...(Array.isArray(skillData.targetFiles)
+                ? (skillData.targetFiles as unknown[]).filter(
+                    (p): p is string => typeof p === 'string',
+                  )
+                : []),
+              ...getTargetFilesForStack(techStack),
+            ]),
+          ],
         },
       };
     }

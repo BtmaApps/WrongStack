@@ -13,6 +13,22 @@ export type ToolCategory = (typeof toolCategories)[number];
 
 export const toolCatalog = [
   {
+    name: 'project_kit',
+    summary:
+      'Discover reusable project-specific tools before writing ad hoc scripts. Inspect contracts and guides, retrieve authoring templates, or read execution history without running project code.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Dependencies & operations',
+  },
+  {
+    name: 'project_kit_run',
+    summary:
+      'Verify or run a revision-pinned Project Kit tool with schema-checked parameters in a tracked Node process. Executes arbitrary project code; verification also executes code and may have side effects.',
+    permission: 'confirm',
+    mutating: true,
+    category: 'Dependencies & operations',
+  },
+  {
     name: 'tool_script',
     summary:
       'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
@@ -1376,9 +1392,9 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 68,
-  minimal: 26,
-  light: 26,
-  medium: 48,
-  aggressive: 26,
+  off: 70,
+  minimal: 27,
+  light: 27,
+  medium: 50,
+  aggressive: 27,
 } as const;

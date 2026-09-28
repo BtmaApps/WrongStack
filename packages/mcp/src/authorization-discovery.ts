@@ -102,7 +102,17 @@ export function parseMcpBearerChallenge(
   const resourceMetadata = challengeParameter(parameters, 'resource_metadata');
   if (resourceMetadata) {
     const metadataUrl = validateMetadataUrl(resourceMetadata);
-    if (metadataUrl) challenge.resourceMetadataUrl = metadataUrl;
+    // The metadata document must be co-located with the resource it describes.
+    // Every candidate in `protectedResourceMetadataUrls` is derived from the
+    // resource's own origin, so a challenge naming some other host relocates
+    // the whole OAuth flow off-origin — and the `resource` equality check in
+    // `parseProtectedResourceMetadata` is satisfiable by whoever serves that
+    // host, so it cannot say where the document came from. A foreign host is
+    // ignored rather than trusted, and discovery falls through to the
+    // origin-derived candidates.
+    if (metadataUrl && isSameHost(metadataUrl, resource)) {
+      challenge.resourceMetadataUrl = metadataUrl;
+    }
   }
   const scope = challengeParameter(parameters, 'scope');
   if (scope) {
@@ -286,6 +296,23 @@ export function validateMetadataUrl(value: string): string | undefined {
     return url.toString();
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Whether `candidate` names the same host as the protected resource. Host
+ * rather than origin: metadata served from another port of the resource's own
+ * host is still that resource's metadata, and a hostname is compared after
+ * unbracketing because `URL.hostname` keeps the brackets on an IPv6 literal.
+ */
+function isSameHost(candidate: string, resource: string): boolean {
+  try {
+    return (
+      unbracket(new URL(candidate).hostname).toLowerCase() ===
+      unbracket(new URL(resource).hostname).toLowerCase()
+    );
+  } catch {
+    return false;
   }
 }
 

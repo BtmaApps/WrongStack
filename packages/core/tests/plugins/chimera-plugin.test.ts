@@ -329,9 +329,10 @@ describe('session.ended review handler', () => {
     gitInit(tmp);
     await fs.writeFile(path.join(tmp, 'seed.ts'), 'x');
     commit(tmp, 'init');
-    // an untracked directory shows as a single porcelain entry whose path is a dir → readFile fails
-    await fs.mkdir(path.join(tmp, 'newdir'), { recursive: true });
-    await fs.writeFile(path.join(tmp, 'newdir', 'inner.ts'), 'y');
+    // An embedded repo stays one `?? nested/` entry even under -uall → readFile
+    // fails. (A plain new directory is expanded to its files and reviewed.)
+    await fs.mkdir(path.join(tmp, 'nested'), { recursive: true });
+    gitInit(path.join(tmp, 'nested'));
     const { api, events, emitCustom, log } = makeApi();
     createChimeraPlugin().setup!(api);
     await events['session.ended']!();

@@ -19,6 +19,21 @@ import { filterToolsByMaxCount } from './tool-priority.js';
 
 const STREAM_DEBUG_TEXT_ENCODER = new TextEncoder();
 
+/** A `\udXXX` escape not preceded by an escaping backslash (`\\ud83d` is literal text). */
+const UNPAIRED_SURROGATE_ESCAPE = /(?<!\\)((?:\\\\)*)\\ud[89a-f][0-9a-f]{2}/g;
+
+/**
+ * The request body as JSON with no lone surrogates. Text cut at a UTF-16 unit
+ * count inside an emoji (error excerpts, hook reasons, output caps) leaves one
+ * half, which JSON.stringify emits as an unpaired `\udXXX` escape: ill-formed
+ * Unicode in the request. Valid pairs are emitted raw, so every such escape is
+ * a lone half; it becomes U+FFFD.
+ */
+function stringifyRequestBody(body: unknown): string {
+  const json = JSON.stringify(body);
+  return json.includes('\\ud') ? json.replace(UNPAIRED_SURROGATE_ESCAPE, '$1\\ufffd') : json;
+}
+
 type Response2 = {
   ok: boolean;
   status: number;
@@ -258,7 +273,7 @@ export abstract class WireAdapter implements Provider {
       const raw = await redirectSafeFetch(this.fetchImpl, url, {
         method: 'POST',
         headers: { ...headers, 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify(body),
+        body: stringifyRequestBody(body),
         signal,
       });
       validateResponse(raw);
@@ -334,7 +349,7 @@ export abstract class WireAdapter implements Provider {
         const raw = await redirectSafeFetch(this.fetchImpl, url, {
           method: 'POST',
           headers,
-          body: JSON.stringify(body),
+          body: stringifyRequestBody(body),
           signal: linked.signal,
         });
         validateResponse(raw);

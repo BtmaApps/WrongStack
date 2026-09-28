@@ -178,6 +178,47 @@ describe('RefineCountdownPanel', () => {
   });
 
   // ── Backspace/Delete → cancel (text goes back to the composer) ──
+  // Leaked pointer reports: with mouse tracking on, Ink strips the leading ESC
+  // and hands the rest of every SGR report to this handler as TEXT
+  // (`[<0;12;4M`). That text used to fall into the any-key branch and resolve
+  // the countdown as 'skip', so a stray click during the grace window silently
+  // sent the message unrefined.
+
+  it.each([
+    ['left press', '\x1b[<0;12;4M'],
+    ['left release', '\x1b[<0;12;4m'],
+    ['drag motion', '\x1b[<32;40;7M'],
+    ['wheel down', '\x1b[<65;20;6M'],
+  ])('ignores a leaked %s pointer report', (_name, chunk) => {
+    const onDecision = vi.fn();
+    const { stdin, unmount } = render(
+      React.createElement(RefineCountdownPanel, {
+        original: 'test',
+        seconds: 30,
+        onDecision,
+      }),
+    );
+    stdin.write(chunk);
+    expect(onDecision).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('still resolves on a real key after a leaked pointer report', () => {
+    const onDecision = vi.fn();
+    const { stdin, unmount } = render(
+      React.createElement(RefineCountdownPanel, {
+        original: 'test',
+        seconds: 30,
+        onDecision,
+      }),
+    );
+    stdin.write('\x1b[<0;12;4M');
+    expect(onDecision).not.toHaveBeenCalled();
+    stdin.write('x');
+    expect(onDecision).toHaveBeenCalledExactlyOnceWith('skip');
+    unmount();
+  });
+
   // Backspace means "let me edit that", so it must NOT fall into the
   // any-key branch and send the message as-is; cancel is the decision
   // that restores the submitted text as the composer draft.

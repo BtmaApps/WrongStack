@@ -52,7 +52,9 @@ export function markdownRehypePlugins(theme: 'dark' | 'light'): RehypePlugins {
 }
 
 export const markdownComponents = {
-  a: ({ children, ...props }: ComponentPropsWithoutRef<'a'>) => (
+  // react-markdown also passes its hast `node`; spreading it onto the DOM
+  // element rendered `node="[object Object]"` on every link.
+  a: ({ children, node: _node, ...props }: ComponentPropsWithoutRef<'a'> & { node?: unknown }) => (
     <a {...props} target="_blank" rel="noreferrer">
       {children}
     </a>

@@ -181,6 +181,22 @@ export async function removeOne(
   return { removed };
 }
 
+/**
+ * Delete ONE managed branch that has no checkout — the panel's Remove on a
+ * branch-only orphan. Only `wstack/ap/*` refs; git itself refuses a branch a
+ * worktree still has checked out. Best-effort; never throws.
+ */
+export async function removeBranch(
+  ctx: ManagedOpsContext,
+  branch: string,
+): Promise<{ removed: boolean }> {
+  if (!branch.startsWith('wstack/ap/')) return { removed: false };
+  const rm = await ctx
+    .runGit(['branch', '-D', '--', branch], ctx.projectRoot)
+    .catch(() => undefined);
+  return { removed: rm?.code === 0 };
+}
+
 export async function cleanupStale(
   ctx: ManagedOpsContext,
 ): Promise<{ removed: number; detected: number }> {

@@ -234,4 +234,35 @@ describe('git-autocommit regressions', () => {
     expect(res.ok).toBe(true);
     expect(res.warning).toBeUndefined();
   });
+
+  // A directory in `files` stages and commits everything under it, but the
+  // scope guard compared full index paths against the literal scope entry,
+  // reporting the caller's own files as foreign and "left uncommitted".
+  it('treats files under a directory scope as in scope, still flagging foreign ones', async () => {
+    const commits: string[][] = [];
+    gitHandler = (args) => {
+      const k = key(args);
+      if (k === 'add -- src') return '';
+      if (k === 'diff --cached --name-only') return 'src/a.ts\nsrc/b.ts\nother.ts';
+      if (k === 'diff --cached --name-only -- src') return 'src/a.ts\nsrc/b.ts';
+      if (k === 'diff --cached --stat -- src') return 'stat';
+      if (k === 'diff --cached -- src') return '+x';
+      if (k === 'diff --name-only -- src') return '';
+      if (k.startsWith('commit -m')) {
+        commits.push(args.slice());
+        return 'h ok';
+      }
+      return '';
+    };
+    const tools = setup();
+    const res = await tools.git_autocommit!.execute({
+      type: 'feat',
+      message: 'src',
+      files: ['src'],
+    });
+    expect(res.ok).toBe(true);
+    expect(commits[0]).toEqual(['commit', '-m', 'feat: src', '--only', '--', 'src']);
+    expect(res.warning).toMatch(/1 staged file\(s\) outside the requested scope \(other\.ts\)/);
+    expect(res.warning).not.toMatch(/src\/a\.ts/);
+  });
 });

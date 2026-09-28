@@ -367,6 +367,14 @@ describe('SAGE outcome and anchor capture', () => {
         kind: 'tool_outcome',
         text: expect.stringContaining('42 tests passed'),
         anchors: [{ type: 'command', command: 'pnpm test --filter sage' }],
+        sources: [
+          {
+            type: 'tool_result',
+            sessionId: undefined,
+            toolUseId: 'tool-exec',
+            command: 'pnpm test --filter sage',
+          },
+        ],
       }),
     );
   });

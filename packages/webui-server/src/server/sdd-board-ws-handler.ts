@@ -259,10 +259,23 @@ export class SddBoardWebSocketHandler {
       return;
     }
     // Refuse while live — these force-remove worktrees / rewrite the base branch.
-    if (this.latest && (this.latest.status === 'running' || this.latest.status === 'paused')) {
+    // `latest` is only a cache (null until the first event/poll, blind to a run
+    // another process drives), so the durable board index is consulted too; an
+    // unreadable index cannot prove nothing is live.
+    const live = (s: { status: string } | null | undefined) =>
+      s?.status === 'running' || s?.status === 'paused';
+    const entries = await this.listBoardEntries().catch(() => null);
+    if (live(this.latest) || entries === null || entries.some(live)) {
       this.broadcast({
         type: 'sdd.board.lifecycle_result',
-        payload: { op, ok: false, reason: 'Stop the run first, then retry.' },
+        payload: {
+          op,
+          ok: false,
+          reason:
+            entries === null
+              ? 'SDD run state is unavailable; retry shortly.'
+              : 'Stop the run first, then retry.',
+        },
       });
       return;
     }

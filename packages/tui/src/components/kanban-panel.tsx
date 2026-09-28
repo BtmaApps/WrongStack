@@ -20,6 +20,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Box, Text } from '../ink.js';
 import { auditKanbanBoard, type KanbanAuditSummary } from '../kanban-audit.js';
+import { isLeakedMouseInput } from '../mouse.js';
 import { theme } from '../theme.js';
 import type { PromptMode } from './kanban-panel-presentation.js';
 import {
@@ -288,7 +289,7 @@ export function KanbanPanel({
         setPrompt({ ...prompt, buffer: prompt.buffer.slice(0, -1) });
         return;
       }
-      if (input && !key.ctrl && !key.meta && input >= ' ') {
+      if (input && !key.ctrl && !key.meta && input >= ' ' && !isLeakedMouseInput(input)) {
         setPrompt({ ...prompt, buffer: `${prompt.buffer}${input}` });
       }
       return;

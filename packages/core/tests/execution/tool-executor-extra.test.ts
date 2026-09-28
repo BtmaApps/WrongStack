@@ -817,4 +817,47 @@ describe('ToolExecutor — additional coverage', () => {
       ).toBeLessThanOrEqual(1_000);
     });
   });
+
+  describe('parallel dispatch with a non-finite maxParallelTools', () => {
+    // The private `mapWithConcurrency` floors its limit with
+    // `Number.isFinite(limit) ? … : 1`. Without that guard a non-finite limit
+    // reaches `Array.from({ length: Math.min(NaN, n) })` — ZERO workers — so
+    // `Promise.all([])` resolves without running a single tool and the batch
+    // silently reports zero outputs. This pins the observable contract at the
+    // public surface: whatever `maxParallelTools` is configured, every requested
+    // tool use still produces exactly one output. The ToolExecutor constructor
+    // is the first line of defense (it clamps maxParallelTools); this case pins
+    // that a non-finite value cannot reduce the batch below its full width.
+    it.each([
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['-Infinity', Number.NEGATIVE_INFINITY],
+      ['zero', 0],
+    ])(
+      'still runs every tool use when maxParallelTools is %s',
+      async (_label, maxParallelTools) => {
+        const executed: string[] = [];
+        const tool = makeTool({
+          name: 'counted',
+          execute: vi.fn(async (input: Record<string, unknown>) => {
+            executed.push(String(input['id']));
+            return input;
+          }),
+        });
+        const executor = makeExecutor([tool], { maxParallelTools });
+        const uses = Array.from({ length: 6 }, (_, i) => ({
+          type: 'tool_use' as const,
+          id: `use-${i}`,
+          name: 'counted',
+          input: { id: i },
+        }));
+
+        const result = await executor.executeBatch(uses, makeCtx(), 'parallel');
+
+        // Every tool use ran — no zero-worker collapse, no holes in the outputs.
+        expect(executed).toEqual(['0', '1', '2', '3', '4', '5']);
+        expect(result.outputs).toHaveLength(6);
+      },
+    );
+  });
 });

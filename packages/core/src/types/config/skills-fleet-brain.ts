@@ -679,7 +679,7 @@ export interface BrainConfig {
         stallMs?: number | undefined;
         /** How often the stall watchdog ticks (ms). Default 30000. */
         stallCheckIntervalMs?: number | undefined;
-        /** Edits to the same file within the churn window before engaging. Default 5. */
+        /** Edits to the same file within the churn window before engaging. Default 20. */
         fileChurnThreshold?: number | undefined;
         /** Sliding window for the file-churn signal (ms). Default 600000. */
         fileChurnWindowMs?: number | undefined;

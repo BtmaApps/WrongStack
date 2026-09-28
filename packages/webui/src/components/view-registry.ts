@@ -83,6 +83,9 @@ const SkillDetailView = lazy(() =>
 const TechStackView = lazy(() =>
   import('./TechStackView').then((m) => ({ default: m.TechStackView })),
 );
+const ProjectKitView = lazy(() =>
+  import('./ProjectKitView').then((m) => ({ default: m.ProjectKitView })),
+);
 const DeadCodeScanPanel = lazy(() =>
   import('./DeadCodeScanPanel/DeadCodeScanPanel').then((m) => ({ default: m.DeadCodeScanPanel })),
 );
@@ -228,6 +231,12 @@ const VIEW_REGISTRY_STRICT = {
     wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
     boundaryNameKey: 'activity:panels.chronicle',
     loadingLabelKey: null,
+  },
+  'project-kit': {
+    Component: ProjectKitView,
+    wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
+    boundaryNameKey: 'activity:nav.project-kit',
+    loadingLabelKey: 'activity:nav.project-kit',
   },
   intake: {
     Component: RequirementIntakeView,

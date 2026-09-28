@@ -9,6 +9,20 @@ vi.mock('node:child_process', () => ({
   execFile: (...args: unknown[]) => childProcess.execFile(...args),
 }));
 
+const shim = vi.hoisted(() => ({ refuse: false }));
+vi.mock('@wrongstack/core/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/core/utils')>();
+  return {
+    ...actual,
+    buildWin32CmdShimInvocation: (
+      ...args: Parameters<typeof actual.buildWin32CmdShimInvocation>
+    ) => {
+      if (shim.refuse) throw new Error('shim refused the arguments');
+      return actual.buildWin32CmdShimInvocation(...args);
+    },
+  };
+});
+
 import { PackageAuditRunner } from '../src/package-audit.js';
 
 let root: string;
@@ -19,6 +33,7 @@ beforeEach(async () => {
   await fs.writeFile(path.join(root, 'package-lock.json'), '');
   originalPlatform = process.platform;
   childProcess.execFile.mockReset();
+  shim.refuse = false;
 });
 
 afterEach(async () => {
@@ -65,6 +80,39 @@ describe('default package audit executor', () => {
     expect(options.shell).toBeUndefined();
     expect(result.exitCode).toBe(1);
     expect(result.success).toBe(true);
+  });
+
+  it('reports a refused Windows shim without spawning anything', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    shim.refuse = true;
+    const result = await new PackageAuditRunner().run(root);
+    expect(childProcess.execFile).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      exitCode: null,
+      success: false,
+      error: 'shim refused the arguments',
+    });
+  });
+
+  it('reports execFile throwing synchronously', async () => {
+    Object.defineProperty(process, 'platform', { value: 'linux' });
+    childProcess.execFile.mockImplementation(() => {
+      throw new Error('EAGAIN');
+    });
+    const result = await new PackageAuditRunner().run(root);
+    expect(result).toMatchObject({ exitCode: null, success: false, error: 'EAGAIN' });
+  });
+
+  it('reports an executor that rejects', async () => {
+    const result = await new PackageAuditRunner(async () => {
+      throw new Error('executor exploded');
+    }).run(root);
+    expect(result).toMatchObject({
+      packageManager: 'npm',
+      exitCode: null,
+      success: false,
+      skipped: false,
+    });
   });
 
   it('maps non-numeric process failures to a null exit code', async () => {

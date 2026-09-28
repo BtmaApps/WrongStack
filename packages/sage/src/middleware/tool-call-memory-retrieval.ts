@@ -224,6 +224,9 @@ export async function retrieveTriggeredMemories(
   if (trigger.queryText.trim()) {
     const searchOptions = {
       limit: Math.max(candidateLimit * 4, 64),
+      // Preserve semantic-only candidates until the SAME relation and budget
+      // gates as path/lexical hits can judge them. Ordinary search stays capped.
+      vectorCandidateLimit: Math.min(candidateLimit, 12),
       includeAudienceScoped: false,
       // Deliberately NOT `requireAllTerms`. The query handed to this
       // channel is `enrichPathQuery`'s output — the full path plus its

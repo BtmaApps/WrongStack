@@ -94,7 +94,8 @@ export class SkillInstaller {
    */
   async install(
     refInput: string,
-    opts?: { global?: boolean | undefined },
+    /** `only`: restrict to these skill names (update keeps the user's selection). */
+    opts?: { global?: boolean | undefined; only?: readonly string[] | undefined },
   ): Promise<InstallResult[]> {
     const resolved = this.resolveRef(refInput);
     const parsed = parseSkillRef(resolved.installRef);
@@ -113,9 +114,11 @@ export class SkillInstaller {
     try {
       // Detect skill structure
       const detected = await this.detectSkills(tempDir, parsed.skillName);
-      const skills = parsed.skillName
-        ? detected.filter((skill) => skill.name === parsed.skillName)
-        : detected;
+      const skills = detected.filter(
+        (skill) =>
+          (!parsed.skillName || skill.name === parsed.skillName) &&
+          (!opts?.only || opts.only.includes(skill.name)),
+      );
 
       if (skills.length === 0) {
         throw new WrongStackError({
@@ -329,7 +332,9 @@ export class SkillInstaller {
           nameOrRef && entries.some((entry) => entry.name === nameOrRef) ? nameOrRef : undefined;
         const results = await this.install(
           `${sourceRepo}@${refToInstall}${selectedName ? `#${selectedName}` : ''}`,
-          { global: isGlobal },
+          // Only the skills installed from this source: a repo reinstall without
+          // a selector would add every sibling the user never chose.
+          { global: isGlobal, only: entries.map((entry) => entry.name) },
         );
 
         for (const r of results) {

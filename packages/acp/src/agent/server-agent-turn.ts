@@ -49,6 +49,7 @@
  * disposed, and a notice failure never reaches the event bus.
  */
 import type { Agent, AgentInput } from '@wrongstack/core/agent';
+import { parseIncomingImages } from '@wrongstack/core/utils';
 import type {
   ContentBlock,
   McpServer,
@@ -171,6 +172,9 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
   const maxHistoryBytes = finitePositiveLimit(opts.maxHistoryBytes, 8 * 1024 * 1024);
   const deliveryNoticeDebounceMs = finiteNonNegativeLimit(opts.deliveryNoticeDebounceMs, 1_500);
   const notifiers = new Map<string, DeliveryNotifier>();
+  // The turn in flight per session. dispose() drops it, so a turn can tell
+  // its session was closed or deleted while it awaited the agent or the run.
+  const liveTurns = new Map<string, symbol>();
 
   const stillPending = (sessionId: string): boolean => {
     if (!opts.pendingDeliveries) return true;
@@ -260,6 +264,9 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
     emit: Parameters<RunTurn>[1],
     api?: Parameters<RunTurn>[2],
   ): Promise<RunTurnResult> => {
+    const token = Symbol(input.sessionId);
+    liveTurns.set(input.sessionId, token);
+    const alive = (): boolean => liveTurns.get(input.sessionId) === token;
     // Lazily create an agent for this session on the first turn.
     let agent = agents.get(input.sessionId);
     if (!agent) {
@@ -269,6 +276,14 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
         api,
         input.mcpServers,
       );
+      if (!alive()) {
+        // Disposed while the agent was being built: nothing else owns it.
+        const stale = agent;
+        void Promise.resolve()
+          .then(() => stale.teardown?.())
+          .catch(() => {});
+        return { stopReason: 'cancelled' };
+      }
       agents.set(input.sessionId, agent);
       // Cold-load priming: re-feed the restored conversation into the new
       // agent's context so the MODEL resumes (not just the client UI).
@@ -358,11 +373,13 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
         });
       }
 
-      // Record the turn so `session/load` can replay the conversation.
+      // Record the turn so `session/load` can replay the conversation (not
+      // for a session disposed mid-turn: that would outlive the session).
+      const record = alive();
       const userText = promptToText(input.prompt);
       const hist = history.get(input.sessionId) ?? [];
       let retainedHistoryBytes = historyBytes.get(input.sessionId) ?? 0;
-      if (userText) {
+      if (record && userText) {
         const update: SessionReplayUpdate = {
           sessionUpdate: 'user_message_chunk',
           content: { type: 'text', text: userText },
@@ -370,7 +387,7 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
         hist.push(update);
         retainedHistoryBytes += replayEntryBytes(update);
       }
-      if (text) {
+      if (record && text) {
         const update: SessionReplayUpdate = {
           sessionUpdate: 'agent_message_chunk',
           content: { type: 'text', text },
@@ -423,6 +440,7 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
       if (usage) result_out.usage = usage;
       return result_out;
     } finally {
+      if (alive()) liveTurns.delete(input.sessionId);
       clearTimeout(timer);
       timeouts.delete(input.sessionId);
       input.signal.removeEventListener('abort', onParentAbort);
@@ -459,6 +477,7 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
   };
 
   const dispose = (sessionId: string): void => {
+    liveTurns.delete(sessionId);
     const timer = timeouts.get(sessionId);
     if (timer) clearTimeout(timer);
     timeouts.delete(sessionId);
@@ -622,33 +641,32 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  * When the prompt is all text we return a plain string (the common,
  * cheapest path). When it carries images we build a multimodal
  * `ContentBlock[]` the provider can pass to a vision-capable model.
- * Audio and resource blocks have no core representation yet, so they're
- * recorded as bracketed text placeholders alongside the other content.
+ * Images go through core's shared ingest (allowlist, base64, size and count
+ * caps, the bytes decide the media type): the client's label used to reach
+ * the provider unchecked. Every other block renders as in the text path, so
+ * an embedded resource keeps its `[embedded resource: <uri>]` header.
  */
 function promptToAgentInput(blocks: readonly ContentBlock[]): AgentInput {
-  const hasImage = blocks.some((b) => b.type === 'image');
-  if (!hasImage) {
+  const images = blocks.filter((b) => b.type === 'image');
+  if (images.length === 0) {
     return promptToText(blocks);
   }
+  let parsed: ReturnType<typeof parseIncomingImages>;
+  try {
+    parsed = parseIncomingImages(images.map((b) => ({ data: b.data, mediaType: b.mimeType })));
+  } catch (err) {
+    // IncomingImageError: its message is safe to echo; a bad block is the
+    // client's invalid params, not an internal error.
+    throw Object.assign(new Error((err as Error).message), { code: -32602 });
+  }
   const out: AgentInput = [];
+  let next = 0;
   for (const b of blocks) {
-    if (b.type === 'text') {
-      out.push({ type: 'text', text: b.text });
-    } else if (b.type === 'image') {
-      out.push({
-        type: 'image',
-        source: { type: 'base64', media_type: b.mimeType, data: b.data },
-      });
-    } else if (b.type === 'audio') {
-      out.push({ type: 'text', text: `[audio: ${b.mimeType}]` });
-    } else if (b.type === 'resource') {
-      const text =
-        'text' in b.resource && typeof b.resource.text === 'string'
-          ? b.resource.text
-          : `[embedded resource: ${b.resource.uri}]`;
-      out.push({ type: 'text', text });
-    } else if (b.type === 'resource_link') {
-      out.push({ type: 'text', text: `[resource link: ${b.uri}]` });
+    if (b.type === 'image') out.push(parsed[next++]!);
+    else if (b.type === 'text') out.push({ type: 'text', text: b.text });
+    else {
+      const text = promptToText([b]);
+      if (text) out.push({ type: 'text', text });
     }
   }
   return out;

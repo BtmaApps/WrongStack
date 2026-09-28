@@ -25,6 +25,38 @@ export async function pathExists(p: string): Promise<boolean> {
  */
 export const MAX_CMD_OUTPUT = 200_000;
 
+/**
+ * The last `cap` characters of a stream, trimmed WHILE it grows (at 2x the
+ * cap, so amortized linear). Collecting every chunk and slicing once at the
+ * end held the whole transcript: +146 MB retained for 150 MB of output.
+ */
+export function createTailBuffer(cap: number): {
+  push(chunk: string): void;
+  value(): string;
+  retained(): number;
+} {
+  let chunks: string[] = [];
+  let total = 0;
+  return {
+    push(chunk) {
+      chunks.push(chunk);
+      total += chunk.length;
+      if (total > 2 * cap) {
+        const tail = chunks.join('').slice(-cap);
+        chunks = [tail];
+        total = tail.length;
+      }
+    },
+    value() {
+      const joined = chunks.join('');
+      const out = joined.length > cap ? joined.slice(-cap) : joined;
+      // A cut inside a surrogate pair (emoji) leaves a lone low surrogate.
+      return /^[\uDC00-\uDFFF]/.test(out) ? out.slice(1) : out;
+    },
+    retained: () => total,
+  };
+}
+
 /** Run a git command, returning trimmed stdout (empty string on failure). */
 export function gitText(args: string[], cwd: string): Promise<{ code: number; out: string }> {
   return new Promise((resolve, reject) => {
@@ -115,7 +147,18 @@ export const DESTRUCTIVE_PATTERNS: readonly RegExp[] = [
   /([;&|]\s*)(?!\s*$)/, // command chaining (; && || |)
   /`[^`]+`/, // backtick subshell
   /\$\(/, // $(...) subshell
+  /[\r\n]/, // a line break separates commands in a shell, like `;`
 ];
+
+/**
+ * The executable of a shell command line (`go test ./...` -> `go`): the first
+ * token, surrounding quotes removed. The allowlist names executables, so a
+ * command line is gated on this, not on the whole string.
+ */
+function commandLineExecutable(commandLine: string): string {
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(commandLine);
+  return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
+}
 
 /** Run an arbitrary command, capturing combined stdout+stderr. */
 export function runCmd(
@@ -125,7 +168,11 @@ export function runCmd(
   shell = false,
 ): Promise<{ code: number; out: string }> {
   // ── allowlist gate ──────────────────────────────────────────────────
-  if (!isGoalCommandAllowed(cmd)) {
+  // A shell command line (WRONGSTACK_GOAL_VERIFY_CMD) is gated on its
+  // executable, the documented contract (`go` in tools.exec.allow runs
+  // `go test ./...`); an exact allowlisted line is still accepted.
+  const executable = shell && args.length === 0 ? commandLineExecutable(cmd) : cmd;
+  if (!isGoalCommandAllowed(cmd) && !isGoalCommandAllowed(executable)) {
     return Promise.resolve({
       code: 1,
       out:
@@ -148,7 +195,7 @@ export function runCmd(
   }
 
   return new Promise((resolve, reject) => {
-    const chunks: string[] = [];
+    const tail = createTailBuffer(MAX_CMD_OUTPUT);
     let child;
     try {
       child = spawn(cmd, args, {
@@ -167,16 +214,18 @@ export function runCmd(
     }
     // Tail-keep: a failing `pnpm test` prints its summary at the end, which
     // is what the verify failure message feeds back to the agent.
-    const append = (c: Buffer) => {
-      chunks.push(c.toString());
+    const append = (c: string) => {
+      tail.push(c);
     };
+    // Per stream, so a character split at a pipe-chunk boundary is carried
+    // over instead of becoming U+FFFD.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', append);
     child.stderr?.on('data', append);
-    child.on('error', (e) => resolve({ code: 1, out: `${chunks.join('')}${String(e)}` }));
+    child.on('error', (e) => resolve({ code: 1, out: `${tail.value()}${String(e)}` }));
     child.on('close', (code) => {
-      let out = chunks.join('');
-      if (out.length > MAX_CMD_OUTPUT) out = out.slice(-MAX_CMD_OUTPUT);
-      resolve({ code: code ?? 1, out: out.trim() });
+      resolve({ code: code ?? 1, out: tail.value().trim() });
     });
   });
 }

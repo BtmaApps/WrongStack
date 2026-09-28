@@ -341,8 +341,8 @@ export class DefaultSessionStore implements SessionStore {
    * reachability scan on a real store took 101 seconds.
    *
    * `maxAgeDays` is an age floor for the sweep, not a filter for what counts as
-   * garbage — anything younger survives regardless, so a checkpoint captured
-   * mid-sweep or referenced from a transcript the scan could not read is safe.
+   * garbage — anything younger survives, so a mid-sweep capture is safe; an
+   * unreadable transcript makes the sweep throw instead of guessing its refs.
    */
   async collectCheckpointGarbage(maxAgeDays = 30): Promise<CheckpointGcResult> {
     const casRoot = path.join(this.dir, '_cas');

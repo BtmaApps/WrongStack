@@ -31,7 +31,7 @@ import {
 } from '@wrongstack/core/execution';
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
 import { EventBus } from '@wrongstack/core/kernel';
-import type { ToolRegistry } from '@wrongstack/core/registry';
+import { ToolRegistry } from '@wrongstack/core/registry';
 import { AutoApprovePermissionPolicy } from '@wrongstack/core/security';
 import { createSessionEventBridge, resolveSessionLoggingConfig } from '@wrongstack/core/storage';
 import type {
@@ -61,6 +61,11 @@ import {
 } from './host-session-writer.js';
 import { installSubagentSessionAudit } from './host-subagent-session-audit.js';
 import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';
+import {
+  constrainMemoryCompanion,
+  isMemoryCompanion,
+  memoryCompanionTools,
+} from './memory-companion-policy.js';
 
 interface HostSubagentFactoryContext {
   deps: MultiAgentDeps;
@@ -84,11 +89,13 @@ export function createHostSubagentFactory(
     const projectRoot = host.deps.projectRoot;
     const projectCfg = subCfg.role ? loadProjectAgentConfig(subCfg.role, projectRoot) : undefined;
     const isSystemRole = Boolean(subCfg.role && Object.hasOwn(FLEET_ROSTER, subCfg.role));
-    const effectiveCfg: SubagentConfig = projectCfg
+    const companion = isMemoryCompanion(subCfg);
+    const mergedCfg: SubagentConfig = projectCfg
       ? applyProjectAgentConfig(subCfg, projectCfg, {
           protectSystemRole: isSystemRole,
         })
       : subCfg;
+    const effectiveCfg = companion ? constrainMemoryCompanion(mergedCfg) : mergedCfg;
 
     // Fixed for this worker's lifetime. `originSessionId` is the spawning
     // tool's stamp — the run-pinned session of the agent that asked — and the
@@ -157,10 +164,12 @@ export function createHostSubagentFactory(
     }
 
     const assignedCheckout =
-      subCfg.cwd && path.isAbsolute(subCfg.cwd) ? subCfg.cwd : host.deps.projectRoot;
-    let subCwd = projectCfg?.cwd
-      ? path.resolve(assignedCheckout, projectCfg.cwd)
-      : (effectiveCfg.cwd ?? host.deps.cwd);
+      !companion && subCfg.cwd && path.isAbsolute(subCfg.cwd) ? subCfg.cwd : host.deps.projectRoot;
+    let subCwd = companion
+      ? host.deps.projectRoot
+      : projectCfg?.cwd
+        ? path.resolve(assignedCheckout, projectCfg.cwd)
+        : (effectiveCfg.cwd ?? host.deps.cwd);
     if (projectCfg?.cwd && !isInsideDirectory(assignedCheckout, subCwd)) {
       throw new Error(
         `Agent "${effectiveCfg.role ?? effectiveCfg.name}" cwd escapes its assigned checkout.`,
@@ -186,7 +195,9 @@ export function createHostSubagentFactory(
       // Non-fatal: mailbox errors should not block subagent creation.
     }
 
-    const subagentTools = host.filterTools(effectiveCfg.tools);
+    const subagentTools = companion
+      ? memoryCompanionTools(host.deps.toolRegistry.list())
+      : host.filterTools(effectiveCfg.tools);
     const baseSystem: TextBlock[] = await host.deps.systemPromptBuilder.build({
       cwd: subCwd,
       projectRoot: host.deps.projectRoot,
@@ -209,13 +220,15 @@ export function createHostSubagentFactory(
     });
     if (availabilityNotice) baseSystem.push({ type: 'text', text: availabilityNotice });
 
-    const audienceMemory = await retrieveHostSubagentMemory(
-      host.deps,
-      host.opts.getLeaderMode,
-      effectiveCfg,
-      task?.context,
-      owningSessionId,
-    );
+    const audienceMemory = companion
+      ? undefined
+      : await retrieveHostSubagentMemory(
+          host.deps,
+          host.opts.getLeaderMode,
+          effectiveCfg,
+          task?.context,
+          owningSessionId,
+        );
     if (audienceMemory) baseSystem.push({ type: 'text', text: audienceMemory });
 
     const skillResolution = await resolveHostSubagentSkillResolution(
@@ -249,7 +262,7 @@ export function createHostSubagentFactory(
       effectiveCfg.prompt ??
       (effectiveCfg.role ? host.roster[effectiveCfg.role]?.prompt : undefined);
     const rolePrompt =
-      rawRolePrompt && effectiveCfg.role
+      rawRolePrompt && effectiveCfg.role && !companion
         ? buildProjectContextualizedPrompt(rawRolePrompt, effectiveCfg.role, projectRoot, {
             identityOverride: effectiveCfg.projectIdentity?.identityOverride,
           })
@@ -326,8 +339,10 @@ export function createHostSubagentFactory(
       tokenCounter: subTokenCounter,
       cwd: subCwd,
       projectRoot: host.deps.projectRoot,
-      allowOutsideProjectRoot:
-        config.features?.allowOutsideProjectRoot ?? !(config.tools?.restrictToProjectRoot ?? false),
+      allowOutsideProjectRoot: companion
+        ? false
+        : (config.features?.allowOutsideProjectRoot ??
+          !(config.tools?.restrictToProjectRoot ?? false)),
       model: effModel,
       tools: subagentTools,
       catalogTools: subagentTools,
@@ -356,7 +371,8 @@ export function createHostSubagentFactory(
     if (leaderMode) ctx.meta['mode'] = leaderMode;
     if (effectiveCfg.spawnLineage) ctx.meta['spawnLineage'] = effectiveCfg.spawnLineage;
 
-    const baseRegistry = host.subagentToolRegistry(tools);
+    const baseRegistry = companion ? new ToolRegistry() : host.subagentToolRegistry(tools);
+    if (companion) for (const tool of subagentTools) baseRegistry.register(tool);
     const subAllowedCaps = resolveSubagentCapabilities(effectiveCfg, (allow) =>
       host.filterTools([...allow]),
     );

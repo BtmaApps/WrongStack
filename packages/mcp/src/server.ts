@@ -473,6 +473,13 @@ export function serveStdio(server: MCPServer, opts: ServeStdioOptions = {}): Ser
   let bufferBytes = 0;
   let closed = false;
   let bufferTooLarge = false;
+  // Chunks arrive at arbitrary BYTE boundaries, so one multi-byte character can
+  // straddle two `data` events. Decoding each chunk on its own turned the split
+  // bytes into U+FFFD, and U+FFFD is a legal character inside a JSON string —
+  // so the request still parsed and the tool ran with silently corrupted
+  // arguments instead of failing loudly. A streaming decoder holds the partial
+  // sequence until its continuation bytes arrive.
+  const decoder = new TextDecoder();
   // Serialize writes so concurrent async handlers don't interleave lines.
   let writeChain: Promise<void> = Promise.resolve();
   const inFlightHandlers = new Set<Promise<void>>();
@@ -504,7 +511,7 @@ export function serveStdio(server: MCPServer, opts: ServeStdioOptions = {}): Ser
     // (`HTTP_BODY_CAP` below) — once exceeded, abandon the line, drop the
     // unread tail, and shut down so the caller can react.
     if (bufferTooLarge) return;
-    const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    const text = typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
     buffer += text;
     bufferBytes += Buffer.byteLength(text, 'utf8');
     if (bufferBytes > HTTP_BODY_CAP) {

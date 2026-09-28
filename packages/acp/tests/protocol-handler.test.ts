@@ -1053,6 +1053,105 @@ describe('ACPProtocolHandler', () => {
       });
     });
 
+    it('persists a mode switch so a restarted server reloads it', async () => {
+      // set_config_option always persisted; set_mode did not, so a restart
+      // (new handler, same store) reloaded the previous mode.
+      const saved = new Map<string, { modeId?: string; cwd?: string }>();
+      const store = {
+        save: vi.fn(async (state: { id: string; modeId: string; cwd: string }) => {
+          saved.set(state.id, { modeId: state.modeId, cwd: state.cwd });
+        }),
+        load: vi.fn(async (id: string) => saved.get(id) ?? null),
+      };
+      const modes = [
+        { id: 'code', name: 'Code' },
+        { id: 'plan', name: 'Plan' },
+      ];
+      const serve = () => {
+        const transport = fakeTransport();
+        const handler = new ACPProtocolHandler({
+          transport: transport as never,
+          defaultCwd: CWD_TEST,
+          runTurn: PASSON_RUN_TURN,
+          modes,
+          store: store as never,
+        });
+        return { handler, transport };
+      };
+      const first = serve();
+      await first.handler.handleMessage({ id: 1, method: 'initialize' });
+      await first.handler.handleMessage({ id: 2, method: 'session/new', params: {} });
+      const sessionId = (first.transport.sent.at(-1) as { result: { sessionId: string } }).result
+        .sessionId;
+      await first.handler.handleMessage({
+        id: 3,
+        method: 'session/set_mode',
+        params: { sessionId, modeId: 'plan' },
+      });
+
+      const second = serve();
+      await second.handler.handleMessage({ id: 1, method: 'initialize' });
+      await second.handler.handleMessage({ id: 2, method: 'session/load', params: { sessionId } });
+      expect(second.transport.sent.at(-1)).toMatchObject({
+        id: 2,
+        result: { modes: { currentModeId: 'plan' } },
+      });
+    });
+
+    it('does not write back a session deleted while a mode or config change was in flight', async () => {
+      // Both ops persist after awaiting their notification; a delete landing
+      // in that await removed the file, and the late persist wrote it back.
+      const files = new Set<string>();
+      const store = {
+        save: vi.fn(async (state: { id: string }) => {
+          files.add(state.id);
+        }),
+        load: vi.fn(async () => null),
+        delete: vi.fn(async (id: string) => {
+          files.delete(id);
+        }),
+      };
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+        modes: [
+          { id: 'code', name: 'Code' },
+          { id: 'plan', name: 'Plan' },
+        ],
+        configOptions: [
+          {
+            id: 'model',
+            name: 'Model',
+            type: 'select',
+            currentValue: 'a',
+            options: [
+              { value: 'a', name: 'A' },
+              { value: 'b', name: 'B' },
+            ],
+          },
+        ] as never,
+        store: store as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      const change = [
+        { method: 'session/set_mode', params: { modeId: 'plan' } },
+        { method: 'session/set_config_option', params: { configId: 'model', value: 'b' } },
+      ];
+      let nextId = 2;
+      for (const { method, params } of change) {
+        await handler.handleMessage({ id: nextId++, method: 'session/new', params: {} });
+        const { sessionId } = (transport.sent.at(-1) as { result: { sessionId: string } }).result;
+        expect(files.has(sessionId)).toBe(true);
+        await Promise.all([
+          handler.handleMessage({ id: nextId++, method, params: { sessionId, ...params } }),
+          handler.handleMessage({ id: nextId++, method: 'session/delete', params: { sessionId } }),
+        ]);
+        expect(files.has(sessionId), method).toBe(false);
+      }
+    });
+
     it('enforces the cap while cold-loading persisted sessions', async () => {
       const transport = fakeTransport();
       const handler = new ACPProtocolHandler({

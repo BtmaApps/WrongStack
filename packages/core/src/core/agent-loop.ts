@@ -34,6 +34,7 @@ import { buildQueuedMessagesBlock, consumeQueuedMessagesUpdate } from './queued-
 import { providerBoundToRequest } from './request-provider-binding.js';
 import { buildSessionNoteBlock, consumeSessionNotes } from './session-notes.js';
 import { createToolCoach, isToolCoachEnabled } from './tool-coach.js';
+import { createTurnToolGuidance } from './turn-tool-guidance.js';
 
 function toError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
@@ -309,6 +310,18 @@ export function createAgentLoopHandler(
       inputOrigin === 'user_input' && toolCoachEnabled()
         ? toolCoach.initialNote(inputPayload.text)
         : null;
+    const turnToolGuidance =
+      inputOrigin === 'user_input' && toolCoachEnabled()
+        ? await createTurnToolGuidance({
+            task: inputPayload.text,
+            projectRoot: a.ctx.projectRoot,
+            signal: controller.signal,
+            tools: a.ctx.catalogTools.length > 0 ? a.ctx.catalogTools : a.ctx.tools,
+            getTool: (name) => a.tools.get(name),
+            autoAllowed: async (tool, input) =>
+              (await a.permission.evaluate(tool, input, a.ctx)).permission === 'auto',
+          })
+        : null;
     let pendingLoopSteer: string | null = null;
     let todoReconcileSteers = 0;
 
@@ -424,6 +437,9 @@ export function createAgentLoopHandler(
         injectQueueAwareness();
         if (i === 0 && initialToolAdvice) {
           foldBlockIntoConversation({ type: 'text', text: initialToolAdvice });
+        }
+        if (i === 0 && toolCoachEnabled() && turnToolGuidance?.initialNote) {
+          foldBlockIntoConversation({ type: 'text', text: turnToolGuidance.initialNote });
         }
 
         if (pendingLoopSteer) {
@@ -688,6 +704,14 @@ export function createAgentLoopHandler(
             ? toolCoach.afterTools(toolUses, toolExecution.results, toolExecution.settlements)
             : null;
           if (advice) queueLoopSteer(advice);
+          if (toolCoachEnabled() && turnToolGuidance) {
+            const kitAdvice = await turnToolGuidance.afterTools(
+              toolUses,
+              toolExecution.results,
+              toolExecution.settlements,
+            );
+            if (kitAdvice) queueLoopSteer(kitAdvice);
+          }
         } catch (toolErr) {
           if (controller.signal.aborted) {
             a.events.emit('error', {

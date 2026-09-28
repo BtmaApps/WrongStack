@@ -141,6 +141,34 @@ describe('assessCommitSafety', () => {
     expect(report.warning).toBe('');
   });
 
+  // Line porcelain octal-escaped non-ASCII names and folded a new directory into
+  // one `dir/` entry; neither matched the author log, so another session's work
+  // read as "unverified" and this session's own new directory as not ours.
+  it('attributes non-ASCII names and files inside new directories', async () => {
+    execFileSync('git', ['config', 'core.quotePath', 'true'], { cwd: repo });
+    await fs.writeFile(path.join(repo, 'şema.ts'), 'b');
+    await fs.mkdir(path.join(repo, 'feature'));
+    await fs.writeFile(path.join(repo, 'feature', 'impl.ts'), 'b');
+    await fs.mkdir(path.join(repo, 'mine'));
+    await fs.writeFile(path.join(repo, 'mine', 'new.ts'), 'a');
+    await writeTracker([
+      { filePath: 'mine/new.ts', sessionId: 'sessA', agentName: 'Leader' },
+      { filePath: 'şema.ts', sessionId: 'sessB', agentName: 'Worker' },
+      { filePath: 'feature/impl.ts', sessionId: 'sessB', agentName: 'Worker' },
+    ]);
+
+    const report = await assessCommitSafety({
+      cwd: repo,
+      projectRoot: repo,
+      sessionId: 'sessA',
+      storageDir,
+    });
+
+    expect(report.dirtyCount).toBe(3);
+    expect(report.foreignFiles.map((f) => f.path).sort()).toEqual(['feature/impl.ts', 'şema.ts']);
+    expect(report.unverifiedFiles).toEqual([]);
+  });
+
   it('never throws when the directory is not a git repo', async () => {
     const notRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'commit-safety-norepo-'));
     try {

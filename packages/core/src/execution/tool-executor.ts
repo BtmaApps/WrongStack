@@ -69,7 +69,16 @@ async function mapWithConcurrency<T, R>(
       results[index] = await run(items[index]!);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  // `Math.min` PROPAGATES NaN, so a non-finite `limit` would yield
+  // `Array.from({ length: NaN })` — ZERO workers, `Promise.all([])` resolves
+  // immediately, and NO tool ever runs: every entry of `results` is left a hole
+  // and the iteration silently reports zero tool calls. The constructor
+  // normalizes `maxParallelTools` before it reaches here, so this is
+  // defense-in-depth for any future caller — matching the identical guard in
+  // `storage/storage-concurrency.ts`, `tools/_concurrency.ts` and
+  // `bench/src/runner.ts`.
+  const effectiveLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
+  await Promise.all(Array.from({ length: Math.min(effectiveLimit, items.length) }, () => worker()));
   return results;
 }
 

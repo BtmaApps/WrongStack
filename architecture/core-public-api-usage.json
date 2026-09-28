@@ -4,14 +4,14 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 351,
-      "typeOnly": 277,
-      "runtimeOrMixed": 95
+      "files": 353,
+      "typeOnly": 278,
+      "runtimeOrMixed": 96
     },
     "@wrongstack/core/agent-catalog": {
-      "files": 17,
+      "files": 18,
       "typeOnly": 2,
-      "runtimeOrMixed": 18
+      "runtimeOrMixed": 19
     },
     "@wrongstack/core/chronicle": {
       "files": 14,
@@ -19,9 +19,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 240,
-      "typeOnly": 89,
-      "runtimeOrMixed": 209
+      "files": 244,
+      "typeOnly": 91,
+      "runtimeOrMixed": 211
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/execution": {
-      "files": 71,
+      "files": 73,
       "typeOnly": 19,
-      "runtimeOrMixed": 68
+      "runtimeOrMixed": 70
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -74,14 +74,14 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 49,
+      "files": 51,
       "typeOnly": 6,
-      "runtimeOrMixed": 48
+      "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 307,
-      "typeOnly": 148,
-      "runtimeOrMixed": 173
+      "files": 311,
+      "typeOnly": 149,
+      "runtimeOrMixed": 176
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -99,9 +99,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/observability": {
-      "files": 10,
+      "files": 11,
       "typeOnly": 0,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/performance": {
       "files": 1,
@@ -124,9 +124,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 140,
-      "typeOnly": 64,
-      "runtimeOrMixed": 79
+      "files": 142,
+      "typeOnly": 63,
+      "runtimeOrMixed": 82
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 174,
+      "files": 178,
       "typeOnly": 27,
-      "runtimeOrMixed": 150
+      "runtimeOrMixed": 154
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -154,8 +154,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 23,
-      "typeOnly": 2,
+      "files": 24,
+      "typeOnly": 3,
       "runtimeOrMixed": 22
     },
     "@wrongstack/core/statusline": {
@@ -164,9 +164,9 @@
       "runtimeOrMixed": 28
     },
     "@wrongstack/core/storage": {
-      "files": 135,
+      "files": 137,
       "typeOnly": 35,
-      "runtimeOrMixed": 132
+      "runtimeOrMixed": 133
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1224,
-      "typeOnly": 1082,
+      "files": 1235,
+      "typeOnly": 1093,
       "runtimeOrMixed": 363
     },
     "@wrongstack/core/types/limits": {
@@ -214,14 +214,14 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 23,
-      "typeOnly": 6,
+      "files": 24,
+      "typeOnly": 7,
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 670,
-      "typeOnly": 62,
-      "runtimeOrMixed": 640
+      "files": 676,
+      "typeOnly": 65,
+      "runtimeOrMixed": 643
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -821,6 +821,12 @@
       "file": "packages/cli/tests/fallback-model.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 3
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -2018,6 +2024,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/vector-memory/tests/sage-port-wrapper.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -2456,6 +2468,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent-catalog",
+      "file": "packages/cli/tests/fleet/memory-companion-policy.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent-catalog",
       "file": "packages/cli/tests/slash-agent-improve.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -2750,6 +2768,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/host-memory-companion.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/fleet/host-shadow-manager.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -2783,6 +2807,12 @@
       "file": "packages/cli/src/fleet/host.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/memory-companion-policy.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3219,6 +3249,18 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/fleet/explore-companion-registry.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/memory-companion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4251,6 +4293,18 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/tests/fleet-shadow-pass.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5828,6 +5882,18 @@
     },
     {
       "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/cli/tests/fleet/subagent-session-audit.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6207,6 +6273,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/fleet/host-lifecycle-events.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/fleet/host-memory-companion.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -6615,6 +6687,24 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet-statusline.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/memory-companion.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8204,6 +8294,12 @@
     },
     {
       "specifier": "@wrongstack/core/observability",
+      "file": "packages/tools/src/project-kit/runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/observability",
       "file": "packages/tools/src/pwsh.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8631,8 +8727,8 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/src/fleet/host-subagent-factory.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -8835,6 +8931,18 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/fleet-shadow-pass.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9878,7 +9986,19 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/fleet/host-helpers-capabilities.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10226,6 +10346,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/collab/mirror.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/src/server/config-doctor.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10299,6 +10425,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/src/server/process-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/project-kit-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10655,6 +10787,12 @@
       "file": "packages/security-scanner/tests/orchestrator-coverage-completion.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/security-scanner/tests/skill-generator-llm-branches.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/skills",
@@ -11074,7 +11212,7 @@
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/src/wiring/provider-runtime-setup.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/storage",
@@ -11115,6 +11253,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/codex-prompt-prefix-stability.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11553,6 +11697,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/src/server/project-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-server/src/server/project-kit-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12428,6 +12578,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/host-memory-companion.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/fleet/host-provider.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -12485,6 +12641,12 @@
       "file": "packages/cli/src/fleet/host.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 3
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/memory-companion-policy.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13923,6 +14085,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-learning.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/memory-companion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16448,6 +16622,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/sage/tests/model-feedback-ipc.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sage/tests/model-feedback.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/sdd/src/auto-executor.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17252,6 +17438,30 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/project-kit.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/project-kit/advisor.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/project-kit/catalog.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/project-kit/schema.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/pwsh.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -17451,6 +17661,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/tests/pdf-attach-and-image-generate.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/project-kit-advisor.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -19568,6 +19784,12 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/tests/typesafe-lint-conventions-diff.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/runtime/src/container.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19659,6 +19881,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "apps/desktop/src/main/runtime-project-manifest.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/acp/src/agent/server-agent-turn.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -22328,6 +22556,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/security-scanner/tests/json-extractor-branches.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/security-scanner/tests/package-audit-default-executor.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/techstack/src/store/sqlite.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -22641,6 +22881,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/process-registry-persistent.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/project-kit/runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/project-kit/schema.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -23609,6 +23861,12 @@
       "file": "packages/webui-server/tests/http-server.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/request-body-utf8-chunks.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

@@ -15,6 +15,7 @@ import type { EventMap } from '../kernel/events.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SlashCommand } from '../types/slash-command.js';
 import { isGitRepo, runGit } from './auto-review-git.js';
+import { parsePorcelainStatusZ } from './review-context-builder.js';
 import {
   matchSpecialistTriggers,
   type ResolvedSpecialistTriggerConfig,
@@ -53,20 +54,13 @@ const PLUGIN_CONFIG_KEY = 'wstack-specialist-triggers';
  * not drag in `node_modules` or build output.
  */
 async function changedPathsIncludingNew(cwd: string): Promise<string[]> {
-  const result = await runGit(['status', '--porcelain'], cwd);
+  // -uall: a new directory is otherwise one `?? dir/` entry, and the files the
+  // rules match (a Prisma migration dir, a new package's package.json, the first
+  // workflow under a new .github/) never reached the globs. -z: raw path bytes
+  // instead of octal-escaped names; the parser keeps a rename's destination only.
+  const result = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd);
   if (result.code !== 0) return [];
-  const paths: string[] = [];
-  for (const line of result.stdout.split('\n')) {
-    if (line.length < 4) continue;
-    let raw = line.slice(3).trim();
-    // A rename reads `R  old -> new`; only the destination exists to inspect.
-    const arrow = raw.lastIndexOf(' -> ');
-    if (arrow !== -1) raw = raw.slice(arrow + 4);
-    // Git quotes paths containing spaces or non-ASCII bytes.
-    if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
-    if (raw.length > 0) paths.push(raw);
-  }
-  return paths;
+  return parsePorcelainStatusZ(result.stdout).map((entry) => entry.path);
 }
 /** An in-flight entry is released after this long even if nothing reports back. */
 const IN_FLIGHT_TTL_MS = 10 * 60 * 1000;

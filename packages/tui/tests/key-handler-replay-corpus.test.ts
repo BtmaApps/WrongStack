@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { createAppKeyHandler } from '../src/app-key-handler.js';
 import type { State } from '../src/app-state.js';
 import type { KeyEvent } from '../src/components/input.js';
+import type { MouseEventInfo } from '../src/mouse.js';
 import { createRunningState, createTestState } from './helpers/create-test-state.js';
+import { key, makeHandler } from './helpers/key-handler-fixture.js';
 
 /**
  * TUI decomposition Phase 0.3 (docs/decomposition-plan.md, decision D3):
@@ -13,35 +14,11 @@ import { createRunningState, createTestState } from './helpers/create-test-state
  * host-callback flags. Phase 3's route extraction is accepted only when
  * every trace is identical.
  *
- * Options are stubbed with one deliberate cast: the corpus pins the handler's
- * ROUTING behavior, not its option plumbing (which app.tsx owns). The stubs
- * return inert values so every route branch is reachable and deterministic.
+ * The handler host (option plumbing + event helper) lives in
+ * `tests/helpers/key-handler-fixture.ts`, shared with the raw-byte-path suite
+ * so both halves of the input chain drive one identical host. The stubs return
+ * inert values so every route branch is reachable and deterministic.
  */
-
-type KeyOverrides = Partial<KeyEvent>;
-
-const NO_KEY: KeyEvent = {
-  upArrow: false,
-  downArrow: false,
-  leftArrow: false,
-  rightArrow: false,
-  return: false,
-  escape: false,
-  ctrl: false,
-  meta: false,
-  shift: false,
-  tab: false,
-  backspace: false,
-  delete: false,
-  pageUp: false,
-  pageDown: false,
-  home: false,
-  end: false,
-};
-
-function key(overrides: KeyOverrides = {}): KeyEvent {
-  return { ...NO_KEY, ...overrides };
-}
 
 interface Step {
   input: string;
@@ -60,98 +37,6 @@ interface CorpusCase {
   }) => void;
   draft?: { buffer: string; cursor: number };
   steps: Step[];
-}
-
-function makeHandler(
-  state: State,
-  draft: { buffer: string; cursor: number } = { buffer: '', cursor: 0 },
-  overrides: Partial<Parameters<typeof createAppKeyHandler>[0]> = {},
-) {
-  const dispatch = vi.fn();
-  const runInterruptLadder = vi.fn();
-  const submit = vi.fn();
-  const commitPaste = vi.fn(async () => {});
-  const openProjectPicker = vi.fn(async () => {});
-  const loadLiveSessions = vi.fn(async () => {});
-  const openStatuslinePicker = vi.fn();
-  const setDraft = vi.fn();
-  const lastEscAtRef = { current: 0 };
-  const draftRef = { current: { ...draft } };
-  const pasteAccumRef = { current: null as unknown };
-
-  const options = {
-    state,
-    dispatch,
-    historyScrollRef: { current: null },
-    onHistoryScrollActivity: vi.fn(),
-    runInterruptLadder,
-    enhanceCancelledRef: { current: false },
-    enhanceAbortRef: { current: null },
-    inputGateRef: { current: false },
-    lastEscAtRef,
-    pasteAccumRef,
-    pasteFlushTimerRef: { current: null },
-    commitPaste,
-    tryPickerKey: vi.fn(() => false),
-    dismissedEscAtRef: { current: 0 },
-    streamingTextRef: { current: '' },
-    confirmExitRef: { current: false },
-    activeCtrlRef: { current: null },
-    clearPendingConfirms: vi.fn(),
-    liveDirector: vi.fn(() => null),
-    openProjectPicker,
-    loadLiveSessions,
-    openStatuslinePicker,
-    statuslineHiddenItems: [],
-    getSddRun: vi.fn(() => undefined),
-    onSddLifecycle: undefined,
-    getSettings: vi.fn(() => undefined),
-    saveSettings: vi.fn(async () => null),
-    lastEnterAtRef: { current: 0 },
-    draftRef,
-    setDraft,
-    submit,
-    mouseMode: false,
-    termRows: 40,
-    terminalColumns: 120,
-    terminalRows: 40,
-    mainColumnWidth: 0,
-    overlayOpen: false,
-    effectiveSwarmOnSidebar: false,
-    sidebarTwinRowCount: 0,
-    statusBarWrapRef: { current: null },
-    belowStatusBarRef: { current: null },
-    statusBarClickMapRef: { current: null },
-    openModelPicker: vi.fn(async () => {}),
-    nextStepsAutoSubmitTimerRef: { current: undefined },
-    nextStepsAutoSubmitSuggestionRef: { current: null },
-    nextStepsAutoSubmitLabel: null,
-    setNextStepsAutoSubmitCountdown: vi.fn(),
-    setNextStepsAutoSubmitLabel: vi.fn(),
-    cancelNextStepsCountdown: vi.fn(),
-    pasteClipboardText: vi.fn(async () => {}),
-    pasteClipboardImage: vi.fn(async () => {}),
-    slashRegistry: {} as never,
-    agent: { ctx: {} } as never,
-    onHistoryCopy: undefined,
-  };
-
-  // One deliberate cast: the corpus pins routing, not option plumbing.
-  const handler = createAppKeyHandler({ ...options, ...overrides } as never as Parameters<
-    typeof createAppKeyHandler
-  >[0]);
-  return {
-    handler,
-    dispatch,
-    runInterruptLadder,
-    submit,
-    commitPaste,
-    openProjectPicker,
-    loadLiveSessions,
-    openStatuslinePicker,
-    setDraft,
-    refs: { lastEscAtRef, draftRef, pasteAccumRef },
-  };
 }
 
 it('navigates wrapped input at the main-column width when the sidebar is open', async () => {
@@ -455,5 +340,110 @@ describe('operational panel composer ownership', () => {
     await fixture.handler('', key({ return: true }));
     expect(fixture.setDraft).not.toHaveBeenCalled();
     expect(fixture.submit).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The input layer delivers SGR mouse reports as `KeyEvent`s carrying `mouse`
+ * (components/input.tsx builds them as EMPTY_KEY + mouse). The handler used to
+ * treat every event as a user takeover, so a click, a wheel scroll, or a drag
+ * through the transcript silently killed the armed next-steps countdown and the
+ * automatic turn never advanced. Pointer reports are navigation, not typing.
+ *
+ * Transcript/caret navigation on the keyboard is the same case: PgUp/PgDn
+ * page the managed history viewport and Home/End/←/→ move a caret that has
+ * nothing to move. On an EMPTY composer none of them can change what the armed
+ * submit would do, so they must not cancel either. Text in the composer is the
+ * line: the armed submit calls `clearDraft()` when it fires, so any event at
+ * all — including a pointer report — is a takeover once a draft exists.
+ */
+describe('next-steps countdown ownership', () => {
+  function mouse(
+    report: Pick<MouseEventInfo, 'kind' | 'button'> & Partial<MouseEventInfo>,
+  ): MouseEventInfo {
+    return {
+      x: 10,
+      y: 5,
+      wheel: 0,
+      shift: false,
+      meta: false,
+      ctrl: false,
+      motion: false,
+      ...report,
+    };
+  }
+
+  /** Keys that only move through the transcript or the caret. */
+  const NAVIGATION: [name: string, overrides: Partial<KeyEvent>, input: string][] = [
+    ['PageUp', { pageUp: true }, ''],
+    ['PageDown', { pageDown: true }, ''],
+    ['left arrow', { leftArrow: true }, ''],
+    ['right arrow', { rightArrow: true }, ''],
+    ['Home', { home: true }, ''],
+    ['End', { end: true }, ''],
+    ['Ctrl+U paging', { ctrl: true }, 'u'],
+    ['Ctrl+D paging', { ctrl: true }, 'd'],
+  ];
+
+  it.each([
+    ['left press', mouse({ kind: 'press', button: 'left' })],
+    ['left release', mouse({ kind: 'release', button: 'left' })],
+    ['right press', mouse({ kind: 'press', button: 'right' })],
+    ['drag motion', mouse({ kind: 'move', button: 'left', motion: true })],
+    ['wheel up', mouse({ kind: 'wheel', button: 'none', wheel: 1 })],
+    ['wheel down', mouse({ kind: 'wheel', button: 'none', wheel: -1 })],
+  ])('%s does not cancel the armed automatic turn', async (_name, report) => {
+    const fixture = makeHandler(createTestState());
+
+    await fixture.handler('', key({ mouse: report, wheelDeltaY: report.wheel }));
+
+    expect(fixture.cancelNextStepsCountdown).not.toHaveBeenCalled();
+  });
+
+  it.each(NAVIGATION)(
+    '%s over an empty composer leaves the armed automatic turn running',
+    async (_name, overrides, input) => {
+      const fixture = makeHandler(createTestState());
+
+      await fixture.handler(input, key(overrides));
+
+      expect(fixture.cancelNextStepsCountdown).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(NAVIGATION)(
+    '%s over a non-empty composer still cancels: the armed submit clears the draft',
+    async (_name, overrides, input) => {
+      const draft = { buffer: 'half typed', cursor: 10 };
+      const fixture = makeHandler(createTestState(draft), draft);
+
+      await fixture.handler(input, key(overrides));
+
+      expect(fixture.cancelNextStepsCountdown).toHaveBeenCalled();
+    },
+  );
+
+  // ↑/↓ are NOT navigation here: with an empty composer they recall input
+  // history into the draft (input-key-router historyUp/historyDown), which is
+  // exactly the text the armed submit would destroy.
+  it.each([
+    ['Up arrow', { upArrow: true }],
+    ['Down arrow', { downArrow: true }],
+  ] as const)('%s still cancels an empty-composer countdown', async (_name, overrides) => {
+    const fixture = makeHandler(createTestState());
+
+    await fixture.handler('', key(overrides));
+
+    expect(fixture.cancelNextStepsCountdown).toHaveBeenCalled();
+  });
+
+  it('a typed character still cancels the armed automatic turn', async () => {
+    const fixture = makeHandler(createTestState());
+
+    await fixture.handler('x', key());
+
+    // Twice by design: this handler's takeover guard plus the composer's own
+    // text-insertion cancel in input-key-router (routeInputKey).
+    expect(fixture.cancelNextStepsCountdown).toHaveBeenCalled();
   });
 });

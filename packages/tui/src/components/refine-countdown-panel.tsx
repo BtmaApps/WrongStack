@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from '../ink.js';
+import { isLeakedMouseInput } from '../mouse.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import { wrapRefinementPreview } from './enhance-panel.js';
@@ -75,6 +76,14 @@ export function RefineCountdownPanel({
 
   useInput((input, key) => {
     if (resolvedRef.current) return;
+    // With mouse tracking on, Ink strips the leading ESC and hands the rest of
+    // every SGR report to this handler as TEXT (`[<0;12;4M`), which would fall
+    // into the any-key branch below and resolve the countdown as 'skip' — a
+    // stray click silently sending the message unrefined. The leak is not a
+    // keystroke: drop it BEFORE the resolved flag is set so the grace window
+    // survives and the user still decides with a real key. (Same guard the
+    // composer input applies — see `isLeakedMouseInput`.)
+    if (input && isLeakedMouseInput(input)) return;
     resolvedRef.current = true;
     // Backspace/Delete is the "oops, let me edit that" key: like Esc it
     // cancels the turn, which puts the submitted text back in the composer.

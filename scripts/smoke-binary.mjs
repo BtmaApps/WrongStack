@@ -13,7 +13,7 @@
  * module that auto-starts because every module shares the executable's URL.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,6 +70,46 @@ async function main() {
     'version',
     version.code === 0 && /^WrongStack \d+\.\d+\.\d+/m.test(version.out),
     version.out.trim(),
+  );
+
+  // A repo's `.env` / `bunfig.toml` must not reach the binary: Bun autoloads
+  // both from the working directory unless the build disables it, and a
+  // `bunfig.toml` `preload` runs repo code before WrongStack starts.
+  const repo = mkdtempSync(path.join(tmpdir(), 'wstack-smoke-repo-'));
+  writeFileSync(path.join(repo, 'bunfig.toml'), 'preload = ["./preload.js"]\n');
+  writeFileSync(
+    path.join(repo, 'preload.js'),
+    'console.log("WSTACK_SMOKE_PRELOAD_RAN", process.env.WSTACK_SMOKE_DOTENV ?? "");\n',
+  );
+  // Observable without any CLI code: the entry extracts its assets under
+  // WRONGSTACK_HOME, which the repo's `.env` points INTO the repo. Dotenv never
+  // overrides a set variable, so this run leaves WRONGSTACK_HOME unset and
+  // aims the home-dir fallback at a scratch dir instead of the real profile.
+  const dotenvHome = path.join(repo, 'dotenv-home');
+  writeFileSync(
+    path.join(repo, '.env'),
+    `WSTACK_SMOKE_DOTENV=leaked\nWRONGSTACK_HOME=${dotenvHome.replaceAll('\\', '/')}\n`,
+  );
+  const { WRONGSTACK_HOME: _unset, ...repoEnv } = env;
+  const inRepo = spawnSync(binary, ['version'], {
+    cwd: repo,
+    env: { ...repoEnv, HOME: home, USERPROFILE: home },
+    encoding: 'utf8',
+    timeout: 60_000,
+    windowsHide: true,
+  });
+  const repoOut = `${inRepo.stdout ?? ''}${inRepo.stderr ?? ''}`;
+  const dotenvLoaded = existsSync(dotenvHome);
+  rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  check(
+    'repo bunfig.toml preload not run',
+    inRepo.status === 0 && !repoOut.includes('WSTACK_SMOKE_PRELOAD_RAN'),
+    `exit ${inRepo.status}`,
+  );
+  check(
+    'repo .env not loaded',
+    !dotenvLoaded,
+    dotenvLoaded ? 'WRONGSTACK_HOME taken from repo .env' : '',
   );
 
   const skills = run(['skills']);

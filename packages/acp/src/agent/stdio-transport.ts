@@ -99,6 +99,13 @@ export interface ACPClientTransport {
    * message stream via onMessage, so claim semantics are not needed.
    */
   onMessageClaim?(handler: (msg: ACPMessage) => boolean): () => void;
+  /**
+   * Called once when the connection ends for any reason (the agent exited,
+   * the socket closed, a frame limit tripped, stop()). Optional for custom
+   * transports; without it a client learns of a dead agent only when each
+   * in-flight request times out.
+   */
+  onClose?(handler: (reason: string) => void): () => void;
   stop(): void;
 }
 
@@ -341,6 +348,7 @@ export class ClientTransport implements ACPClientTransport {
   private buffer = '';
   private readonly handlers = new Set<(msg: ACPMessage) => void>();
   private readonly claimHandlers = new Set<(msg: ACPMessage) => boolean>();
+  private readonly closeHandlers = new Set<(reason: string) => void>();
   private closed = false;
   private resolveRead: ((msg: ACPMessage | null) => void) | null = null;
   private messageQueue: QueuedMessage[] = [];
@@ -490,6 +498,7 @@ export class ClientTransport implements ACPClientTransport {
 
   send(msg: ACPMessage): Promise<void> {
     if (!this.child) return Promise.reject(new Error('ClientTransport not started'));
+    if (this.closed) return Promise.reject(new Error('ClientTransport is closed'));
     return new Promise((resolve, reject) => {
       const line = JSON.stringify(msg) + '\n';
       this.child?.stdin.write(line, 'utf8', (err) => {
@@ -531,7 +540,25 @@ export class ClientTransport implements ACPClientTransport {
     return () => this.claimHandlers.delete(handler);
   }
 
-  stop(): void {
+  onClose(handler: (reason: string) => void): () => void {
+    this.closeHandlers.add(handler);
+    return () => this.closeHandlers.delete(handler);
+  }
+
+  /** Tell close listeners once; the handlers are dropped with the connection. */
+  private notifyClosed(reason: string): void {
+    const handlers = [...this.closeHandlers];
+    this.closeHandlers.clear();
+    for (const handler of handlers) {
+      try {
+        handler(reason);
+      } catch {
+        // a faulty listener must not stop the teardown
+      }
+    }
+  }
+
+  stop(reason = 'transport stopped'): void {
     this.closed = true;
     this.resolveRead?.(null);
     this.resolveRead = null;
@@ -540,6 +567,7 @@ export class ClientTransport implements ACPClientTransport {
     this.queuedChars = 0;
     this.handlers.clear();
     this.claimHandlers.clear();
+    this.notifyClosed(reason);
     const child = this.child;
     if (!child) return;
     // On Windows `child` is the cmd.exe shim wrapper; a bare kill() orphans the
@@ -553,7 +581,7 @@ export class ClientTransport implements ACPClientTransport {
     this.buffer = pending;
     if (this.buffer.length > this.maxFrameChars) {
       writeErr(`[acp-child pending frame exceeds ${this.maxFrameChars} characters]\n`);
-      this.stop();
+      this.stop(`agent frame exceeds ${this.maxFrameChars} characters`);
       return;
     }
 
@@ -561,7 +589,7 @@ export class ClientTransport implements ACPClientTransport {
       if (!raw.trim()) continue;
       if (raw.length > this.maxFrameChars) {
         writeErr(`[acp-child frame exceeds ${this.maxFrameChars} characters]\n`);
-        this.stop();
+        this.stop(`agent frame exceeds ${this.maxFrameChars} characters`);
         return;
       }
       try {
@@ -589,6 +617,7 @@ export class ClientTransport implements ACPClientTransport {
     if (code !== 0 && code !== null) {
       writeErr(`[acp-child exited with code ${code}]\n`);
     }
+    this.notifyClosed(`agent process exited with code ${code}`);
   }
 
   private dispatch(msg: ACPMessage, chars = JSON.stringify(msg).length): void {

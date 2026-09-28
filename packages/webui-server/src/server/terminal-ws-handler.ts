@@ -68,6 +68,12 @@ export function resolveTerminalShell(
 export class TerminalWebSocketHandler {
   /** ws → (terminalId → pty). */
   private readonly sessions = new Map<WebSocket, Map<string, PtyProcess>>();
+  /**
+   * ws → (terminalId → token of the create still awaiting authorization).
+   * The dispatcher does not await handleMessage, so a create/close/create burst
+   * (reconnect replay, StrictMode remount) interleaves across that await.
+   */
+  private readonly starting = new Map<WebSocket, Map<string, symbol>>();
 
   constructor(
     /** Resolves the cwd new terminals open in — tracks the live working dir. */
@@ -124,8 +130,15 @@ export class TerminalWebSocketHandler {
     const map = this.sessions.get(ws) ?? new Map<string, PtyProcess>();
     this.sessions.set(ws, map);
 
-    if (map.has(payload.id)) return; // idempotent — already running
-    if (map.size >= MAX_SESSIONS_PER_CLIENT) {
+    let starting = this.starting.get(ws);
+    if (!starting) {
+      starting = new Map();
+      this.starting.set(ws, starting);
+    }
+
+    // idempotent — already running or already starting
+    if (map.has(payload.id) || starting.has(payload.id)) return;
+    if (map.size + starting.size >= MAX_SESSIONS_PER_CLIENT) {
       this.send(ws, {
         type: 'terminal.exit',
         payload: { id: payload.id, exitCode: -1 },
@@ -135,21 +148,33 @@ export class TerminalWebSocketHandler {
 
     const shell = resolveTerminalShell();
     const cwd = this.getCwd();
-    const authorization = await authorizeWebUIAction(
-      this.trustBoundary,
-      {
-        capability: 'process.spawn',
-        subject: {
-          kind: 'command',
-          id: shell,
-          attributes: { terminalId: payload.id },
+    const token = Symbol(payload.id);
+    starting.set(payload.id, token);
+    let cancelled = false;
+    let authorization: Awaited<ReturnType<typeof authorizeWebUIAction>>;
+    try {
+      authorization = await authorizeWebUIAction(
+        this.trustBoundary,
+        {
+          capability: 'process.spawn',
+          subject: {
+            kind: 'command',
+            id: shell,
+            attributes: { terminalId: payload.id },
+          },
+          risk: 'high',
+          cwd,
+          metadata: { transport: 'websocket' },
         },
-        risk: 'high',
-        cwd,
-        metadata: { transport: 'websocket' },
-      },
-      this.logger,
-    );
+        this.logger,
+      );
+    } finally {
+      // A close, or a disconnect, while authorization was pending cancels this
+      // create; the create that follows a close holds its own token.
+      cancelled = starting.get(payload.id) !== token || this.starting.get(ws) !== starting;
+      if (!cancelled) starting.delete(payload.id);
+    }
+    if (cancelled) return;
     if (!authorization.allowed) {
       this.logger.warn?.(`terminal.create denied (id=${payload.id}): ${authorization.reason}`);
       const msg = `Integrated terminal denied: ${authorization.reason}`;
@@ -211,6 +236,9 @@ export class TerminalWebSocketHandler {
       this.send(ws, { type: 'terminal.output', payload: { id: payload.id, data } });
     });
     pty.onExit(({ exitCode, signal }) => {
+      // A closed shell's exit can land after a new shell took over this id;
+      // it must neither evict that shell nor report it as exited.
+      if (map.get(payload.id) !== pty) return;
       map.delete(payload.id);
       this.send(ws, {
         type: 'terminal.exit',
@@ -235,6 +263,7 @@ export class TerminalWebSocketHandler {
   }
 
   private close(ws: WebSocket, id: string): void {
+    this.starting.get(ws)?.delete(id);
     const map = this.sessions.get(ws);
     const pty = map?.get(id);
     if (!pty) return;
@@ -243,6 +272,7 @@ export class TerminalWebSocketHandler {
   }
 
   private disposeClient(ws: WebSocket): void {
+    this.starting.delete(ws);
     const map = this.sessions.get(ws);
     if (!map) return;
     for (const pty of map.values()) {

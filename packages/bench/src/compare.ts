@@ -76,10 +76,13 @@ export function outcomeFromResult(result: TaskResult): TaskOutcome {
  */
 function mergeOutcomes(a: TaskOutcome, b: TaskOutcome): TaskOutcome {
   return {
+    // A graded failure is a verdict even when another attempt went ungraded
+    // (SWE-bench: an empty patch is graded, an exported one is not) — the
+    // leaderboard's pass@k counts it as a failure, so the matrix must too.
     passed:
       a.passed === true || b.passed === true
         ? true
-        : a.passed === false && b.passed === false
+        : a.passed === false || b.passed === false
           ? false
           : null,
     graded: a.graded || b.graded,

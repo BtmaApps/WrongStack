@@ -1,4 +1,6 @@
+import { currentModelChallenge } from '../shared/model-feedback.js';
 import { DEFAULT_PERSISTENCE, type Sage } from '../types.js';
+import { memoryReviewReason } from './review-freshness.js';
 
 export interface FormatMemoryHintsOptions {
   heading?: string | undefined;
@@ -37,6 +39,13 @@ export function formatMemoryHintsDetailed(
     const anchor = formatPrimaryAnchor(memory);
     const tags = memory.tags.slice(0, 3);
     const metadata = [
+      memoryReviewReason(memory)
+        ? 'historicalHint=check current sources before relying'
+        : undefined,
+      `revision=${memory.revision}`,
+      `updated=${dateLabel(memory.updatedAt)}`,
+      `anchorVerified=${dateLabel(memory.lastVerifiedAt)}`,
+      currentFeedbackLabel(memory),
       anchor ? `relation=${formatPrimaryRelation(memory)}` : undefined,
       tags.length > 0 ? `tags=${tags.join(',')}` : undefined,
     ].filter(Boolean);
@@ -63,6 +72,24 @@ export function formatMemoryHintsDetailed(
 
   if (memoryIds.length === 0) return { text: '', memoryIds: [] };
   return { text: lines.join('\n'), memoryIds };
+}
+
+function dateLabel(value: string | undefined): string {
+  return value && Number.isFinite(Date.parse(value))
+    ? new Date(value).toISOString().slice(0, 10)
+    : 'unknown';
+}
+
+function currentFeedbackLabel(memory: Sage): string | undefined {
+  const feedback = memory.feedback
+    ?.filter((item) => item.observedRevision === memory.revision)
+    .at(-1);
+  const challenge = currentModelChallenge(memory);
+  if (feedback && challenge && challenge !== feedback)
+    return `modelReview=${escapeFenceText(feedback.verdict)}; modelChallenge=${escapeFenceText(challenge.verdict)} (judgments, not verification)`;
+  return feedback
+    ? `modelReview=${escapeFenceText(feedback.verdict)} (judgment, not verification)`
+    : undefined;
 }
 
 function formatPrimaryAnchor(memory: Sage): string {

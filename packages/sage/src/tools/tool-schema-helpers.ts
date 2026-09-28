@@ -110,3 +110,34 @@ export function anchorsSchema() {
     },
   };
 }
+
+export function sourcesSchema() {
+  return {
+    type: 'array',
+    maxItems: 16,
+    description:
+      'Evidence actually inspected. Use session for agent observations; user only for explicit user statements.',
+    items: objectSchema(
+      {
+        type: enumSchema(
+          [
+            'user',
+            'session',
+            'tool_result',
+            'project_instruction',
+            'file',
+            'test',
+            'command',
+            'legacy_memory',
+          ],
+          'Evidence origin.',
+        ),
+        path: stringSchema('Source file or test path.'),
+        command: stringSchema('Command actually run.'),
+        toolUseId: stringSchema('Observed tool call id.'),
+        excerptHash: stringSchema('Hash of inspected evidence, if available.'),
+      },
+      ['type'],
+    ),
+  };
+}

@@ -497,7 +497,12 @@ const plugin: Plugin = {
       let commitError: string | undefined;
       try {
         await runGit(['add', '--', ...changed], cwd);
-        await runGit(['commit', '-m', `chore: bump version to ${newVersion}`], cwd);
+        // `--only`: a bare commit takes the WHOLE index, so anything someone
+        // else had staged rode along in the version commit.
+        await runGit(
+          ['commit', '-m', `chore: bump version to ${newVersion}`, '--only', '--', ...changed],
+          cwd,
+        );
       } catch (err: unknown) {
         // Manifests are already written, so report rather than throw.
         commitError = toErrorMessage(err);
@@ -505,7 +510,11 @@ const plugin: Plugin = {
 
       // 3. Create git tag
       let tagError: string | undefined;
-      if (autoTag) {
+      if (autoTag && commitError !== undefined) {
+        // HEAD is still the previous commit: tagging it would mark a commit
+        // whose manifests carry the OLD version as the new release.
+        tagError = 'skipped because the version commit failed';
+      } else if (autoTag) {
         try {
           const msg = tagMessage.replace('{{version}}', newVersion);
           await runGit(['tag', '-a', `${tagPrefix}${newVersion}`, '-m', msg], cwd);

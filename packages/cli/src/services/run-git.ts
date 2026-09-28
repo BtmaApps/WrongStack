@@ -16,17 +16,24 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 export async function runGit(
   args: string[],
   cwd: string,
+  /** Extra environment (e.g. `GIT_INDEX_FILE`), merged over this process's. */
+  env?: NodeJS.ProcessEnv,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
   try {
     return await new Promise((resolve, reject) => {
       const child = spawn('git', args, {
         cwd,
+        ...(env ? { env: { ...process.env, ...env } } : {}),
         stdio: ['ignore', 'pipe', 'pipe'],
         signal: AbortSignal.timeout(30_000),
         windowsHide: true,
       });
       let stdout = '';
       let stderr = '';
+      // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+      // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+      child.stdout?.setEncoding('utf8');
+      child.stderr?.setEncoding('utf8');
       child.stdout?.on('data', (d) => {
         stdout += d;
       });

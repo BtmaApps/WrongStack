@@ -407,6 +407,10 @@ export async function handleSetModeOp(
       modeId,
     },
   });
+  // Identity check, as session/prompt does: a session/delete that landed
+  // during the notification await removed the file, and persisting now
+  // would write the deleted session back.
+  if (ctx.sessions.get(session.id) === session) await ctx.persist(session);
   await ctx.sendResult(id, {});
 
   return false;
@@ -438,7 +442,7 @@ export async function handleSetConfigOptionOp(
       configOptions: options,
     },
   });
-  await ctx.persist(session);
+  if (ctx.sessions.get(session.id) === session) await ctx.persist(session);
   await ctx.sendResult(id, { configOptions: options });
   return false;
 }

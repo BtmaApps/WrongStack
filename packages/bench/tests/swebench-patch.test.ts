@@ -69,6 +69,37 @@ describe('extractModelPatch', () => {
     expect(patch).not.toContain('.gitignore');
     expect(patch).not.toContain('.wrongstack');
   });
+
+  // The user's git config used to choose the diff format: mnemonicPrefix /
+  // noprefix changed the `a/` `b/` headers the test-file filter parses (the
+  // held-out test edit leaked into the prediction) and an external diff
+  // replaced the patch text entirely.
+  it('pins the diff format against the user git config and GIT_EXTERNAL_DIFF', async () => {
+    const cfgDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bench-swe-gitcfg-'));
+    const cfg = path.join(cfgDir, 'global.gitconfig');
+    await fs.writeFile(cfg, '[diff]\n\tmnemonicPrefix = true\n\tnoprefix = true\n', 'utf8');
+    const saved = {
+      GIT_CONFIG_GLOBAL: process.env['GIT_CONFIG_GLOBAL'],
+      GIT_EXTERNAL_DIFF: process.env['GIT_EXTERNAL_DIFF'],
+    };
+    process.env['GIT_CONFIG_GLOBAL'] = cfg;
+    process.env['GIT_EXTERNAL_DIFF'] = 'echo';
+    try {
+      const testPatch =
+        'diff --git a/test_src.py b/test_src.py\n--- a/test_src.py\n+++ b/test_src.py\n';
+      const patch = await extractModelPatch({ workdir: repo, testPatch, timeoutMs: 30_000 });
+      expect(patch).toContain('diff --git a/src.py b/src.py');
+      expect(patch).toContain('+    return 2');
+      expect(patch).not.toContain('test_src.py');
+      expect(patch.endsWith('\n')).toBe(true);
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      await fs.rm(cfgDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('extractPatchPaths', () => {
@@ -97,6 +128,19 @@ describe('filterPatchExcludingPaths', () => {
     expect(out).not.toContain('drop.py');
     expect(out).toContain('+b');
     expect(out).not.toContain('+d');
+  });
+
+  // A held-out test file usually sorts last. Dropping the LAST section used to
+  // take the patch's final newline with it, and `git apply` / `patch` reject a
+  // patch cut mid-line — the whole prediction then failed to apply.
+  it('keeps the final newline when the last section is dropped', () => {
+    const patch =
+      'diff --git a/src.py b/src.py\n--- a/src.py\n+++ b/src.py\n@@ -1 +1 @@\n-a\n+b\n' +
+      'diff --git a/tests/t.py b/tests/t.py\n--- a/tests/t.py\n+++ b/tests/t.py\n@@ -1 +1 @@\n-x\n+y\n';
+    expect(filterPatchExcludingPaths(patch, new Set(['tests/t.py']))).toBe(
+      'diff --git a/src.py b/src.py\n--- a/src.py\n+++ b/src.py\n@@ -1 +1 @@\n-a\n+b\n',
+    );
+    expect(filterPatchExcludingPaths(patch, new Set(['src.py', 'tests/t.py']))).toBe('');
   });
 
   it('returns the patch unchanged when nothing is excluded', () => {

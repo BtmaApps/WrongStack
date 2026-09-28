@@ -228,8 +228,10 @@ export class WrongStackClient {
 
   /** Recent sessions, newest first. */
   async listSessions(limit = 50): Promise<SessionSummary[]> {
-    const answer = this.next((frame) => frame.type === 'sessions.list');
+    // Post first: when post throws (reconnecting, closed) no waiter is left
+    // to reject unobserved at its timeout. The answer is a later event.
     this.post({ type: 'sessions.list', payload: { limit, sessionId: this.current.sessionId } });
+    const answer = this.next((frame) => frame.type === 'sessions.list');
     const payload = (await answer).payload as WSSessionsList['payload'];
     if (payload.error)
       throw new WrongStackError({ kind: 'server', code: 'sessions.list', detail: payload.error });
@@ -239,23 +241,23 @@ export class WrongStackClient {
   /** Open a new session and make it current. */
   async newSession(): Promise<SessionInfo> {
     const before = new Set(this.sessions.keys());
+    this.post({ type: 'session.new', payload: { sessionId: this.current.sessionId } });
     const answer = this.next(
       (frame) =>
         frame.type === 'session.start' &&
         !before.has((frame.payload as SessionInfo | undefined)?.sessionId ?? ''),
     );
-    this.post({ type: 'session.new', payload: { sessionId: this.current.sessionId } });
     return this.adopt((await answer).payload as SessionInfo);
   }
 
   /** Open an earlier session, with its transcript, and make it current. */
   async resumeSession(id: string): Promise<SessionInfo> {
+    this.post({ type: 'session.resume', payload: { id, sessionId: this.current.sessionId } });
     const answer = this.next(
       (frame) =>
         frame.type === 'session.start' &&
         (frame.payload as SessionInfo | undefined)?.sessionId === id,
     );
-    this.post({ type: 'session.resume', payload: { id, sessionId: this.current.sessionId } });
     return this.adopt((await answer).payload as SessionInfo);
   }
 

@@ -148,4 +148,39 @@ describe('createLocalManifestSuite', () => {
     const tasks = await suite.loadTasks({ limit: 1 });
     expect(tasks.map((task) => task.id)).toEqual(['local/one']);
   });
+  it('parses protectedFiles, refuses escaping entries, and hashes them only when set', async () => {
+    const dir = await makeTmp();
+    await fs.mkdir(path.join(dir, 'fx'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'fx', 'a.txt'), 'x', 'utf8');
+    const write = (extra: Record<string, unknown>) =>
+      fs.writeFile(
+        path.join(dir, 'bench.local.json'),
+        JSON.stringify({
+          tasks: [
+            {
+              id: 't',
+              prompt: 'p',
+              templateDir: './fx',
+              assertions: [{ type: 'file_exists', path: 'a.txt' }],
+              ...extra,
+            },
+          ],
+        }),
+        'utf8',
+      );
+    const suite = createLocalManifestSuite({ suiteDir: dir });
+
+    await write({});
+    const plainId = suite.subsetId(await suite.loadTasks({}));
+    await write({ protectedFiles: ['a.txt'] });
+    const tasks = await suite.loadTasks({});
+    const meta = tasks[0]?.meta as { protectedFiles?: string[] } | undefined;
+    expect(meta?.protectedFiles).toEqual(['a.txt']);
+    expect(suite.subsetId(tasks)).not.toBe(plainId);
+
+    for (const bad of ['../outside.txt', path.join(dir, 'abs.txt')]) {
+      await write({ protectedFiles: [bad] });
+      await expect(suite.loadTasks({})).rejects.toThrow(/must stay inside templateDir/);
+    }
+  });
 });

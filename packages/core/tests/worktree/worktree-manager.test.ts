@@ -350,6 +350,32 @@ describe('WorktreeManager (stubbed git)', () => {
     expect(calls.some((c) => c.args[1] === 'remove')).toBe(false);
   });
 
+  it('removeBranch() deletes one managed branch and refuses anything else', async () => {
+    const { calls, run } = stubRunner((args) =>
+      args[3] === 'wstack/ap/busy'
+        ? { code: 1, stdout: '', stderr: "error: cannot delete branch 'wstack/ap/busy'" }
+        : { code: 0, stdout: '', stderr: '' },
+    );
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+
+    expect(await wm.removeBranch('wstack/ap/ghost-1')).toEqual({ removed: true });
+    expect(calls.at(-1)?.args).toEqual(['branch', '-D', '--', 'wstack/ap/ghost-1']);
+    expect(await wm.removeBranch('wstack/ap/busy')).toEqual({ removed: false });
+
+    calls.length = 0;
+    expect(await wm.removeBranch('main')).toEqual({ removed: false });
+    expect(await wm.removeBranch('--force')).toEqual({ removed: false });
+    expect(calls).toEqual([]);
+
+    const throwing = new WorktreeManager({
+      projectRoot: PROJ,
+      run: async () => {
+        throw new Error('spawn git ENOENT');
+      },
+    });
+    expect(await throwing.removeBranch('wstack/ap/x')).toEqual({ removed: false });
+  });
+
   it('mergeBranch() squash-merges + commits on success', async () => {
     const { calls, run } = stubRunner((args) =>
       args[0] === 'rev-parse'
@@ -701,6 +727,27 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       expect(wm.get('free')).toBeUndefined();
 
       spawnSync('git', ['-C', base, 'worktree', 'unlock', locked.dir], { stdio: 'ignore' });
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('removeBranch deletes a branch-only orphan but not a checked-out branch', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      spawnSync('git', ['-C', base, 'branch', 'wstack/ap/leftover'], { stdio: 'ignore' });
+      const held = await wm.allocate('held', { slugHint: 'held-br' });
+      const hasRef = (b: string) =>
+        spawnSync('git', ['-C', base, 'rev-parse', '--verify', '--quiet', `${b}^{commit}`], {
+          stdio: 'ignore',
+        }).status === 0;
+
+      expect(await wm.removeBranch('wstack/ap/leftover')).toEqual({ removed: true });
+      expect(hasRef('wstack/ap/leftover')).toBe(false);
+      // git refuses a branch a worktree still has checked out.
+      expect(await wm.removeBranch(held.branch)).toEqual({ removed: false });
+      expect(hasRef(held.branch)).toBe(true);
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -1089,6 +1136,91 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       expect(m.ok).toBe(true);
       expect(m.conflict).toBeFalsy();
       expect(h.status).toBe('merged');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  // With an untracked file in the base tree (the worktrees' own `.wrongstack/`
+  // unless the project ignores it) git reports an empty commit as "nothing
+  // ADDED to commit but untracked files present". Only "nothing to commit"
+  // was accepted, so an already-landed change failed the handle and a
+  // keep-base resolution was parked needs-review.
+  it('an empty squash with untracked files present still merges', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'already-landed' });
+      await fs.writeFile(path.join(h.dir, 'seed.txt'), 'changed\n');
+      await wm.commitAll(h, 'worker change');
+      await fs.writeFile(path.join(base, 'seed.txt'), 'changed\n');
+      spawnSync('git', ['-C', base, 'commit', '-q', '-am', 'same change on base'], {
+        env: GIT_ENV,
+      });
+      await fs.writeFile(path.join(base, 'scratch.log'), 'untracked\n');
+
+      const m = await wm.merge(h, { squash: true });
+      expect(m.ok).toBe(true);
+      expect(h.status).toBe('merged');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  // `git diff --name-only` without -z C-quotes non-ASCII names, so the
+  // resolver was ALSO handed `"\305\237ema.ts"` as a path: unwritable on
+  // Windows (merge refused), a junk file staged and committed on POSIX.
+  it('hands the resolver real non-ASCII conflict paths', async () => {
+    const base = await makeRepo();
+    try {
+      const name = 'şema.ts';
+      await fs.writeFile(path.join(base, name), 'base\n');
+      spawnSync('git', ['-C', base, 'add', '-A'], { env: GIT_ENV });
+      spawnSync('git', ['-C', base, 'commit', '-q', '-m', 'add'], { env: GIT_ENV });
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'non-ascii' });
+      await fs.writeFile(path.join(h.dir, name), 'theirs\n');
+      await wm.commitAll(h, 'worker change');
+      await fs.writeFile(path.join(base, name), 'ours\n');
+      spawnSync('git', ['-C', base, 'commit', '-q', '-am', 'base change'], { env: GIT_ENV });
+
+      let seen: string[] = [];
+      const m = await wm.merge(h, {
+        squash: true,
+        resolve: async ({ conflictFiles, cwd }) => {
+          seen = conflictFiles;
+          for (const f of conflictFiles) await fs.writeFile(path.join(cwd, f), 'resolved\n');
+          return true;
+        },
+      });
+      expect(seen).toEqual([name]);
+      expect(m.ok).toBe(true);
+      expect(await fs.readFile(path.join(base, name), 'utf8')).toBe('resolved\n');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('a resolution that keeps the base side verbatim still merges', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'keep-base' });
+      await fs.writeFile(path.join(h.dir, 'seed.txt'), 'theirs\n');
+      await wm.commitAll(h, 'worker change');
+      await fs.writeFile(path.join(base, 'seed.txt'), 'ours\n');
+      spawnSync('git', ['-C', base, 'commit', '-q', '-am', 'base change'], { env: GIT_ENV });
+
+      const m = await wm.merge(h, {
+        squash: true,
+        resolve: async ({ cwd }) => {
+          await fs.writeFile(path.join(cwd, 'seed.txt'), 'ours\n');
+          return true;
+        },
+      });
+      expect(m.ok).toBe(true);
+      expect(h.status).toBe('merged');
+      expect(await fs.readFile(path.join(base, 'seed.txt'), 'utf8')).toBe('ours\n');
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }

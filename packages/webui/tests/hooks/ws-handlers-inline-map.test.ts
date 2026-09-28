@@ -50,9 +50,23 @@ describe('specs', () => {
     expect(useSpecsStore.getState().specs).toEqual([]);
   });
 
-  it('stores the spec detail verbatim', () => {
-    fire('specs.detail', { id: 's1', body: 'text' });
-    expect(useSpecsStore.getState().detail).toMatchObject({ id: 's1' });
+  it('stores the detail of the expanded spec verbatim', () => {
+    useSpecsStore.getState().setExpanded('s1');
+    fire('specs.detail', { specId: 's1', body: 'text' });
+    expect(useSpecsStore.getState().detail).toMatchObject({ specId: 's1', body: 'text' });
+  });
+
+  // specs.get is answered with a broadcast: another window opening spec s2
+  // used to replace this view's s1 detail, leaving its row on "Loading tasks…".
+  it("ignores a detail broadcast for a spec this view hasn't expanded", () => {
+    useSpecsStore.getState().setExpanded('s1');
+    fire('specs.detail', { specId: 's1', columns: [] });
+    fire('specs.detail', { specId: 's2', columns: [] });
+    expect(useSpecsStore.getState().detail).toMatchObject({ specId: 's1' });
+
+    useSpecsStore.getState().setExpanded(null);
+    fire('specs.detail', { specId: 's1', columns: [] });
+    expect(useSpecsStore.getState().detail).toBeNull();
   });
 });
 

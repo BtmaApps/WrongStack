@@ -187,6 +187,89 @@ describe('SddBoardWebSocketHandler — lifecycle', () => {
     handler.dispose();
   });
 
+  // The guard read only the in-memory cache, which a run driven by another
+  // process never fills (and standalone fills only on the first poll): the
+  // Destroy flow's deadline then wiped a live run's artifacts.
+  it('refuses while a durably-recorded run is live even with nothing cached', async () => {
+    const root = await tmpDir();
+    const boardsDir = path.join(root, 'sdd-boards');
+    const specsDir = lifecyclePaths(root, boardsDir).paths.projectSpecs;
+    await fs.mkdir(specsDir, { recursive: true });
+    const { SddBoardStore } = await import('@wrongstack/sdd');
+    await new SddBoardStore({ baseDir: boardsDir }).saveSnapshot(
+      snapshot({ runId: 'other-process', status: 'running', updatedAt: Date.now() }),
+    );
+    const handler = new SddBoardWebSocketHandler(
+      boardsDir,
+      new EventBus(),
+      lifecyclePaths(root, boardsDir),
+    );
+    const ws = fakeWs();
+    handler.addClient(ws);
+
+    await handler.handleMessage({ type: 'sdd.board.destroy', payload: {} });
+
+    const sent = (ws as unknown as { sent: Array<{ type: string; payload: unknown }> }).sent;
+    expect(sent.find((m) => m.type === 'sdd.board.lifecycle_result')?.payload).toMatchObject({
+      op: 'destroy',
+      ok: false,
+      reason: expect.stringMatching(/stop the run first/i),
+    });
+    await expect(fs.stat(specsDir)).resolves.toBeTruthy();
+    handler.dispose();
+  });
+
+  it('is not blocked by finished runs on disk', async () => {
+    const root = await tmpDir();
+    const boardsDir = path.join(root, 'sdd-boards');
+    const { SddBoardStore } = await import('@wrongstack/sdd');
+    const store = new SddBoardStore({ baseDir: boardsDir });
+    await store.saveSnapshot(snapshot({ runId: 'done', status: 'completed', updatedAt: 1 }));
+    await store.saveSnapshot(snapshot({ runId: 'halted', status: 'stopped', updatedAt: 2 }));
+    const handler = new SddBoardWebSocketHandler(
+      boardsDir,
+      undefined,
+      lifecyclePaths(root, boardsDir),
+    );
+    const ws = fakeWs();
+    handler.addClient(ws);
+
+    await handler.handleMessage({ type: 'sdd.board.cleanup_worktrees' });
+
+    const sent = (ws as unknown as { sent: Array<{ type: string; payload: unknown }> }).sent;
+    expect(sent.find((m) => m.type === 'sdd.board.lifecycle_result')?.payload).toMatchObject({
+      op: 'cleanup_worktrees',
+      ok: true,
+    });
+    handler.dispose();
+  });
+
+  it('fails closed when the run state cannot be read', async () => {
+    const root = await tmpDir();
+    const boardsDir = path.join(root, 'sdd-boards');
+    const handler = new SddBoardWebSocketHandler(
+      boardsDir,
+      undefined,
+      lifecyclePaths(root, boardsDir),
+    );
+    (handler as unknown as { listBoardEntries: () => Promise<never> }).listBoardEntries =
+      async () => {
+        throw new Error('daemon unavailable');
+      };
+    const ws = fakeWs();
+    handler.addClient(ws);
+
+    await handler.handleMessage({ type: 'sdd.board.rollback' });
+
+    const sent = (ws as unknown as { sent: Array<{ type: string; payload: unknown }> }).sent;
+    expect(sent.find((m) => m.type === 'sdd.board.lifecycle_result')?.payload).toMatchObject({
+      op: 'rollback',
+      ok: false,
+      reason: expect.stringMatching(/unavailable/i),
+    });
+    handler.dispose();
+  });
+
   it('authorizes non-empty verification commands before appending control', async () => {
     const root = await tmpDir();
     const boardsDir = path.join(root, 'sdd-boards');

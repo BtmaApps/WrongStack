@@ -150,6 +150,7 @@ export function wrapMemoryPortWithVectorRecall(
     const vectorOnlyThreshold = searchOpts?.vectorRecallThreshold ?? options.vectorOnlyThreshold;
     return {
       vectorRecall: recall,
+      vectorCandidateLimit: searchOpts?.vectorCandidateLimit,
       materializeVectorOnly: materializeFor(searchOpts),
       ...(vectorWeight !== undefined ? { vectorWeight } : {}),
       ...(threshold !== undefined ? { threshold } : {}),

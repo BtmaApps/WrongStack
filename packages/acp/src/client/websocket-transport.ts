@@ -34,6 +34,7 @@ export interface WebSocketClientTransportOptions {
 /** Narrow view of the global WebSocket we rely on (avoids lib.dom typings). */
 interface WSLike {
   readonly bufferedAmount?: number;
+  binaryType?: string;
   send(data: string): void;
   close(): void;
   addEventListener(type: 'open', cb: () => void): void;
@@ -47,6 +48,7 @@ type WSConstructor = new (url: string, protocols?: string | string[]) => WSLike;
 export class WebSocketClientTransport implements ACPClientTransport {
   private ws: WSLike | null = null;
   private readonly handlers = new Set<(msg: ACPMessage) => void>();
+  private readonly closeHandlers = new Set<(reason: string) => void>();
   private closed = false;
   private readonly opts: WebSocketClientTransportOptions;
   private readonly maxBufferedBytes: number;
@@ -80,6 +82,10 @@ export class WebSocketClientTransport implements ACPClientTransport {
     const timeoutMs = this.opts.handshakeTimeoutMs ?? 30_000;
     return new Promise<void>((resolve, reject) => {
       const ws = new WS(this.opts.url, this.opts.protocols);
+      // WHATWG sockets (Node's undici included) default to 'blob', which
+      // onData cannot decode synchronously: a JSON-RPC message sent in a
+      // binary frame would become "[object Blob]" and be dropped.
+      ws.binaryType = 'arraybuffer';
       this.ws = ws;
       /* v8 ignore start - defensive timeout race */
       const timer = setTimeout(() => {
@@ -110,7 +116,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
         const pending = this.pendingStart;
         if (pending === null) {
           // Post-open errors just tear the connection down.
-          this.stop();
+          this.stop('WebSocket error');
           return;
         }
         this.pendingStart = null;
@@ -134,6 +140,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
           clearTimeout(pending.timer);
           pending.reject(new Error('WebSocket closed before the connection opened'));
         }
+        this.notifyClosed('WebSocket closed');
       });
       ws.addEventListener('message', (ev: { data: unknown }) => {
         this.onData(ev.data);
@@ -166,9 +173,28 @@ export class WebSocketClientTransport implements ACPClientTransport {
     return () => this.handlers.delete(handler);
   }
 
-  stop(): void {
+  onClose(handler: (reason: string) => void): () => void {
+    this.closeHandlers.add(handler);
+    return () => this.closeHandlers.delete(handler);
+  }
+
+  /** Tell close listeners once; the handlers are dropped with the connection. */
+  private notifyClosed(reason: string): void {
+    const handlers = [...this.closeHandlers];
+    this.closeHandlers.clear();
+    for (const handler of handlers) {
+      try {
+        handler(reason);
+      } catch {
+        // a faulty listener must not stop the teardown
+      }
+    }
+  }
+
+  stop(reason = 'transport stopped'): void {
     this.closed = true;
     this.handlers.clear();
+    this.notifyClosed(reason);
     // If start() is still pending, reject it now so the caller's await unblocks
     // instead of waiting up to `handshakeTimeoutMs` for the timer.
     if (this.pendingStart !== null) {
@@ -201,7 +227,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
             ? data.toString('utf8')
             : String(data);
     if (text.length > this.maxMessageChars) {
-      this.stop();
+      this.stop(`agent message exceeds ${this.maxMessageChars} characters`);
       return;
     }
     if (!text.trim()) return;

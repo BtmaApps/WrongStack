@@ -31,14 +31,25 @@ export interface ToolOutputSerializeContext {
   tool?: { serialize?: (output: unknown, input: unknown) => string } | undefined;
 }
 
+/** A high surrogate without its low half, or a low one without its high half. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
 export function createToolOutputSerializer(opts: ToolOutputSerializerOptions = {}) {
   const capBytes = opts.perIterationOutputCapBytes ?? 100_000;
 
+  // Tools cap output at UTF-16 unit counts (capture caps, head+tail windows,
+  // inline clips); a cut inside a surrogate pair leaves a lone surrogate, which
+  // reaches the provider as an unpaired `\udXXX` escape. Every tool result
+  // passes here, so it leaves well-formed (a lone half becomes U+FFFD).
   function serialize(value: unknown, context: ToolOutputSerializeContext = {}): string {
+    return serializeValue(value, context).replace(LONE_SURROGATE, '�');
+  }
+
+  function serializeValue(value: unknown, context: ToolOutputSerializeContext = {}): string {
     if (typeof value === 'string') return value;
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') {
-      if (Array.isArray(value)) return value.map((item) => serialize(item)).join('\n');
+      if (Array.isArray(value)) return value.map((item) => serializeValue(item)).join('\n');
       // P3 #21 (before-release.md): prefer the tool's own serialize() method
       // when it defines one — lets tools own their output formatting without
       // adding a branch to the central renderToolObject() god function.

@@ -183,6 +183,26 @@ describe('adoptManagedLifecycle', () => {
     expect(adopted?.lifecycle?.adoptedAt).toBe(adopted?.updatedAt);
   });
 
+  it('raises an off gate to strict without discarding maxVerificationAttempts', async () => {
+    // Adoption must force `off` → `strict` (a managed board cannot keep the gate
+    // off) but must preserve the operator's independent refusal budget. The
+    // rewrite used to replace the whole object, silently reverting this board's
+    // configured budget to the default of 2 and parking cards sooner than asked.
+    const board = await createBoard(tmpDir, {
+      title: 'Off gate with budget',
+      columns: COLS,
+      completionGate: { enforcement: 'off', maxVerificationAttempts: 5 },
+    });
+
+    const adopted = await adoptManagedLifecycle(tmpDir, board.id, {
+      columns: policy.columns,
+      actor: 'migration-agent',
+      comment: 'Adopt an off-gate board that configured a refusal budget.',
+    });
+
+    expect(adopted?.completionGate).toEqual({ enforcement: 'strict', maxVerificationAttempts: 5 });
+  });
+
   it('skips tasks that already have lifecycle metadata during first adoption — same mapping', async () => {
     const at = nowIso();
     const board = await createBoard(tmpDir, {

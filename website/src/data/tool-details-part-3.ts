@@ -774,4 +774,40 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       'Flow: `design {action:"use", kit:"minimal-clarity", stack:"web"}` → optionally `design {action:"set", set:{primary:"oklch(62% 0.2 25)"}}` → `design {action:"materialize"}` to write tokens to disk → implement against them → `design {action:"verify"}`.',
     ],
   },
+  tool_search: {
+    longDescription:
+      'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
+    params: [
+      {
+        name: 'query',
+        type: 'string',
+        description: 'Search query for tool name or description',
+      },
+      {
+        name: 'tags',
+        type: 'string[]',
+        description: 'Filter by tags (e.g. "filesystem", "network", "dev")',
+      },
+      {
+        name: 'permission',
+        type: "'auto' | 'confirm' | 'deny'",
+        description: 'Filter by required permission level',
+      },
+      {
+        name: 'mutating',
+        type: 'boolean',
+        description: 'Filter by mutating flag (true=filters that modify, false=read-only)',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'Maximum results to return (default: 20)',
+      },
+    ],
+    notes: [
+      'Use when you need to find the right tool for a job.',
+      '`query` searches names and descriptions.',
+      'You can filter by `tags` (category), `permission`, or `mutating`.',
+    ],
+  },
 };

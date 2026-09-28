@@ -1,5 +1,9 @@
 # Skill Writing Guide
 
+For reusable executable project capabilities with parameter schemas, verification
+and execution history, use [Project Kit](./project-kit.md). Skills can explain
+when to use a kit; its manifest owns the executable contract.
+
 Skills are Markdown files that inject domain-specific knowledge into the agent's system prompt. The model selects relevant skills from their descriptions and loads instructions with the skill tool. Use `/skill use <name> <task>` for explicit selection.
 
 ---

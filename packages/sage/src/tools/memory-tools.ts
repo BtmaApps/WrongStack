@@ -3,6 +3,7 @@ import type { SageServiceLike } from '../service-contract.js';
 import type {
   MemoryAnchor,
   MemoryAudienceSelector,
+  MemorySourceRef,
   MemoryVerificationResult,
   PersistenceClass,
   Sage,
@@ -34,6 +35,7 @@ import {
   objectSchema,
   SCOPE_VALUES,
   STATUS_VALUES,
+  sourcesSchema,
   stringArraySchema,
   stringSchema,
 } from './tool-schema-helpers.js';
@@ -60,6 +62,7 @@ export function createSageTools(memory: SageServiceLike): Tool[] {
 
 interface RememberToolInput {
   text: string;
+  sources?: MemorySourceRef[] | undefined;
   kind?: SageKind | undefined;
   scope?: SageScope | undefined;
   tags?: string[] | undefined;
@@ -104,6 +107,8 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
       '4. Add 1-3 stable tags (package name, domain: auth, build, testing).\n' +
       '5. Write WHAT + WHERE + WHY/consequence in 1-4 tight sentences.\n' +
       '6. Update with `memory_update` instead of near-duplicate `remember` calls.\n\n' +
+      '7. Attach sources actually inspected; distinguish explicit user statements from agent observations.\n' +
+      '8. After materially relying on memory, use memory_update feedback with the observed revision and concrete evidence.\n\n' +
       'WHEN TO USE:\n' +
       '- Project conventions discovered during a task (build tool, lint rules, code style)\n' +
       '- Architecture decisions made (chose X over Y, decided to use pattern Z)\n' +
@@ -154,6 +159,7 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         },
         tags: stringArraySchema('Hashtag-style tags for grouping and search (omit the #).'),
         anchors: anchorsSchema(),
+        sources: sourcesSchema(),
         audience: audienceSchema(),
         no_auto_audience: {
           type: 'boolean',
@@ -207,6 +213,10 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         ownerSessionId: input.ownerSessionId ?? callerSessionId(ctx),
         tags: input.tags,
         anchors: input.anchors,
+        sources: (input.sources ?? [{ type: 'session' as const }]).map((source) => ({
+          ...source,
+          sessionId: callerSessionId(ctx),
+        })),
         audience: autoAudience,
         importance: input.importance,
         confidence: input.confidence,
@@ -312,6 +322,11 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
     usageHint:
       'Refine or re-scope an existing memory instead of creating a near-duplicate.\n' +
       '- Find the id via `memory_search` or `memory_for_file`.\n' +
+      '- After materially using a memory, submit feedback alone: { verdict, observedRevision, evidence }.\n' +
+      '- useful means it helped this task; outdated/incorrect require current evidence; irrelevant is task-specific; uncertain means insufficient evidence. No verdict proves truth.\n' +
+      '- Feedback does not alter confidence, freshness, relations or lifecycle. Outdated/incorrect feedback also files a non-destructive review proposal.\n' +
+      '- Check current files/tests before trusting old or unverified claims. Correct text with sources and expectedRevision; do not refresh a timestamp just because you read it.\n' +
+      '- If a correction changes the decision, preserve supersedes/contradicts relationships. Never delete merely because a memory was unused.\n' +
       '- Set `status` to "stale"/"archived" to retire a memory without deleting it.',
     permission: 'confirm',
     mutating: true,
@@ -322,6 +337,33 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
     inputSchema: objectSchema(
       {
         id: { type: 'string', minLength: 1, description: 'The memory id to update.' },
+        expectedRevision: {
+          type: 'integer',
+          minimum: 1,
+          description: 'Revision read before correcting the memory; rejects concurrent changes.',
+        },
+        sources: sourcesSchema(),
+        feedback: objectSchema(
+          {
+            verdict: enumSchema(
+              ['useful', 'outdated', 'incorrect', 'irrelevant', 'uncertain'],
+              'Your evidence-based judgment after using/checking this memory.',
+            ),
+            observedRevision: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Revision you actually read.',
+            },
+            evidence: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 2000,
+              description:
+                'Concrete outcome or current source/test evidence. Do not include secrets or raw logs.',
+            },
+          },
+          ['verdict', 'observedRevision', 'evidence'],
+        ),
         text: { type: 'string', minLength: 1, description: 'Replacement text.' },
         tags: stringArraySchema('Replacement tags (omit the #).'),
         kind: enumSchema(KIND_VALUES, 'New kind.'),
@@ -346,7 +388,7 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
       ['id'],
     ),
     validate(input) {
-      const { id, ...patch } = input;
+      const { id, expectedRevision: _expectedRevision, ...patch } = input;
       if (!id) return ['id is required'];
       if (Object.values(patch).every((v) => v === undefined)) {
         return ['at least one field to update is required'];
@@ -358,7 +400,45 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
       signal?.throwIfAborted();
       const { id, ...patch } = input;
       await assertSessionMayMutate(memory, id, ctx);
-      return memory.updateSage(id, patch);
+      const updated = await memory.updateSage(id, {
+        ...patch,
+        ...(patch.sources && {
+          sources: patch.sources.map((source) => ({ ...source, sessionId: callerSessionId(ctx) })),
+        }),
+        ...(patch.feedback && { feedback: { ...patch.feedback, sessionId: callerSessionId(ctx) } }),
+      });
+      if (
+        patch.feedback &&
+        !updated.feedback?.some(
+          (item) =>
+            item.observedRevision === patch.feedback!.observedRevision &&
+            item.verdict === patch.feedback!.verdict &&
+            item.evidence === patch.feedback!.evidence.trim() &&
+            item.sessionId === callerSessionId(ctx),
+        )
+      ) {
+        throw new Error(
+          'SAGE did not persist memory feedback. The running daemon may be older than this client. Update/rebuild SAGE and use /connections restart, then retry; no review proposal was filed.',
+        );
+      }
+      if (
+        patch.feedback &&
+        (patch.feedback.verdict === 'outdated' || patch.feedback.verdict === 'incorrect')
+      ) {
+        await memory.createCandidate({
+          text: `Review memory ${id} revision ${patch.feedback.observedRevision}: ${patch.feedback.verdict}. Evidence: ${patch.feedback.evidence}`,
+          kind: 'memory_review',
+          scope: updated.scope,
+          ownerSessionId: updated.ownerSessionId,
+          audience: updated.audience,
+          targetMemoryId: id,
+          targetRevision: patch.feedback.observedRevision,
+          reviewReason: `model_feedback:${patch.feedback.verdict}`,
+          suggestedAction: 'investigate',
+          sources: [{ type: 'session', sessionId: callerSessionId(ctx) }],
+        });
+      }
+      return updated;
     },
   };
 }

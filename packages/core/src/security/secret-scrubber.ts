@@ -136,6 +136,35 @@ const PATTERNS: Pattern[] = [
   { type: 'postgres_uri', regex: /postgres(?:ql)?:\/\/[^\s"'`]+/g, anchor: 'postgres' },
   { type: 'mysql_uri', regex: /mysql:\/\/[^\s"'`]+/g, anchor: 'mysql://' },
   { type: 'redis_uri', regex: /redis:\/\/[^\s"'`]+/g, anchor: 'redis://' },
+  {
+    type: 'url_credentials',
+    // The password of any other `scheme://user:password@host` — a git remote
+    // carrying a token, a proxy URL. Runs in its own pass AFTER the combined
+    // one, so the URIs above still take their whole match first. Forward
+    // match from the `://` literal: lookbehind forms of this and the two
+    // patterns below took scrub time on 60 MB of real journals from 324 to
+    // 571 ms (this form: 353 ms). Placeholders (`${TOKEN}`, `<pass>`,
+    // `{{secret}}`, an already-masked `***`, the literal word `password`) are
+    // not credentials and are left intact. Groups: 1=user, 2=password.
+    regex:
+      /(?<=[A-Za-z0-9+.-]):\/\/([^\s/:@"'`]{0,256}):(?!(?:[Pp]ass(?:word|wd)?|PASSWORD|[Pp]wd|[Ss]ecret|[Tt]oken)@)([^\s/@"'`$<{*][^\s/@"'`]{0,255})(?=@)/g,
+    anchor: '://',
+  },
+  {
+    type: 'aws_secret_key',
+    // `~/.aws/credentials` spells the key in lowercase; `high_entropy_env`
+    // only accepts UPPERCASE key names, so `aws_secret_access_key = …` leaked.
+    // Forward match from the literal key (a lookbehind alternative is
+    // re-tried at every position of the combined regex).
+    regex: /aws_secret_access_key[ \t]*[=:][ \t]*['"]?[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g,
+    anchor: 'aws_secret_access_key',
+  },
+  {
+    type: 'azure_storage_key',
+    // Azure Storage / Service Bus connection strings.
+    regex: /(?:AccountKey|SharedAccessKey)=[A-Za-z0-9+/]{40,512}={0,2}/g,
+    anchor: ['AccountKey=', 'SharedAccessKey='],
+  },
   // AI/ML provider keys — modern LLM services with well-known prefixes
   {
     type: 'huggingface_token',
@@ -190,7 +219,8 @@ const PATTERNS: Pattern[] = [
     // rather than collapsed. Capture groups are therefore: 1=leading
     // delimiter, 2=key name, 3=value.
     regex:
-      /(^|\s)([A-Z_]{4,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE))\s*[:=]\s*['"]?([A-Za-z0-9_/+=-]{20,512})['"]?(?=\s|$)/g,
+      // `.` is in the value class: dotted tokens (Discord `a.b.c`) leaked whole.
+      /(^|\s)([A-Z_]{4,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE))\s*[:=]\s*['"]?([A-Za-z0-9_/+=.-]{20,512})['"]?(?=\s|$)/g,
     anchor: ['KEY', 'TOKEN', 'SECRET', 'PASSWORD', 'PWD', 'PASSPHRASE'],
   },
   {
@@ -317,7 +347,10 @@ const PATTERNS: Pattern[] = [
  * by hard-coded indices so adding/removing a pattern can't silently drop one.
  */
 const SIMPLE_PATTERNS = PATTERNS.filter(
-  (p) => p.type !== 'high_entropy_env' && p.type !== 'json_credential_key',
+  (p) =>
+    p.type !== 'high_entropy_env' &&
+    p.type !== 'json_credential_key' &&
+    p.type !== 'url_credentials',
 );
 
 /**
@@ -337,6 +370,9 @@ const HIGH_ENTROPY_REGEX = PATTERNS.find((p) => p.type === 'high_entropy_env')!.
  * the key so the redacted output stays valid, readable JSON.
  */
 const JSON_CREDENTIAL_REGEX = PATTERNS.find((p) => p.type === 'json_credential_key')!.regex;
+
+/** Separate pattern for url_credentials — preserves scheme and user. */
+const URL_CREDENTIALS_REGEX = PATTERNS.find((p) => p.type === 'url_credentials')!.regex;
 
 /**
  * Replacements for the combined patterns, parallel to SIMPLE_PATTERNS. The
@@ -604,6 +640,13 @@ export class DefaultSecretScrubber implements SecretScrubber {
     out = out.replace(JSON_CREDENTIAL_REGEX, (_match, keyPrefix, _value, closingQuote) => {
       return `${keyPrefix}[REDACTED:json_credential_key]${closingQuote}`;
     });
+
+    // Pass 4: url_credentials — only the password between `user:` and `@`.
+    if (out.includes('://')) {
+      out = out.replace(URL_CREDENTIALS_REGEX, (_match, user) => {
+        return `://${user}:[REDACTED:url_credentials]`;
+      });
+    }
 
     return out;
   }

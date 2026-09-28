@@ -93,6 +93,16 @@ export function createSqliteCandidate(
 ): Promise<MemoryCandidate> {
   rejectIfUnsafeInput(input);
   validateRememberInput(input);
+  if (
+    input.targetRevision !== undefined &&
+    (!input.targetMemoryId ||
+      !Number.isSafeInteger(input.targetRevision) ||
+      input.targetRevision < 1)
+  ) {
+    throw new Error(
+      'SAGE targetRevision requires a targetMemoryId and a positive integer revision.',
+    );
+  }
   const text = normalizeText(input.text);
   if (!text) throw new Error('SAGE candidate text must not be empty.');
   const scope = input.scope ?? 'project';
@@ -108,7 +118,11 @@ export function createSqliteCandidate(
     for (const row of rows) {
       try {
         const existing = sqliteRowToCandidate(row);
-        if (existing.scope === scope && existing.targetMemoryId === input.targetMemoryId) {
+        if (
+          existing.scope === scope &&
+          existing.targetMemoryId === input.targetMemoryId &&
+          existing.targetRevision === input.targetRevision
+        ) {
           return existing;
         }
       } catch {
@@ -133,6 +147,7 @@ export function createSqliteCandidate(
       createdAt: now,
       updatedAt: now,
       ...(input.targetMemoryId ? { targetMemoryId: input.targetMemoryId } : {}),
+      ...(input.targetRevision !== undefined ? { targetRevision: input.targetRevision } : {}),
       ...(input.reviewReason ? { reviewReason: input.reviewReason } : {}),
       ...(input.suggestedAction ? { suggestedAction: input.suggestedAction } : {}),
     };
@@ -348,6 +363,9 @@ export async function resolveSqliteCandidate(
         await ctx.updateSage(policy.mutation.targetId, {
           status: 'deleted',
           deleteAuthorized: true,
+          ...(snapshot.targetRevision !== undefined
+            ? { expectedRevision: snapshot.targetRevision }
+            : {}),
         });
         applied = true;
       } catch (err) {
@@ -356,7 +374,12 @@ export async function resolveSqliteCandidate(
       }
     } else if (policy.mutation.kind === 'archive_memory' && policy.mutation.targetId) {
       try {
-        await ctx.updateSage(policy.mutation.targetId, { status: 'archived' });
+        await ctx.updateSage(policy.mutation.targetId, {
+          status: 'archived',
+          ...(snapshot.targetRevision !== undefined
+            ? { expectedRevision: snapshot.targetRevision }
+            : {}),
+        });
         applied = true;
       } catch (err) {
         mutationError = err instanceof Error ? err.message : String(err);

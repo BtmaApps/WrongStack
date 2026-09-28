@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Des outils réutilisables pour ce projet.",
+    "refresh": "Actualiser",
+    "create": "Créer dans le chat",
+    "loadFailed": "Impossible de charger Project Kit",
+    "loading": "Chargement des kits…",
+    "catalog": "Outils du projet",
+    "search": "Rechercher un kit…",
+    "effects": {
+      "read": "Lit les données du projet",
+      "write": "Modifie des fichiers",
+      "external": "Actions externes"
+    },
+    "noMatches": "Aucun kit ne correspond à la recherche.",
+    "emptyList": "Aucun outil de projet pour le moment.",
+    "invalid": "Définition de kit invalide",
+    "selectTitle": "Choisissez un outil du projet",
+    "emptyTitle": "Développer une fois. Réutiliser.",
+    "emptyHint": "Regroupez les contrôles et les tâches répétitives avec leurs paramètres, guides et cas de vérification. Créez un kit dans le chat pour commencer.",
+    "verified": "Révision vérifiée",
+    "unverified": "Vérification requise",
+    "cases": "cas de vérification",
+    "guide": "Guide d’utilisation",
+    "parameters": "Paramètres",
+    "required": "Obligatoire",
+    "default": "Par défaut",
+    "schemas": "Schémas d’entrée et de sortie",
+    "input": "Paramètres (JSON)",
+    "inputError": "Saisissez un objet JSON valide.",
+    "use": "Utiliser dans le chat",
+    "verify": "Préparer la vérification",
+    "draftHint": "Ouvre un brouillon à relire dans le chat. Rien ne s’exécute avant son envoi. Vos autorisations habituelles s’appliquent.",
+    "history": "Exécutions récentes",
+    "noHistory": "Aucune exécution enregistrée.",
+    "historyHint": "Les 100 derniers enregistrements locaux. « Démarrée » peut aussi indiquer une exécution interrompue. Actualisez pour connaître son état final.",
+    "actions": {
+      "run": "Exécution",
+      "verify": "Vérification"
+    },
+    "status": {
+      "passed": "Réussie",
+      "failed": "Échouée",
+      "running": "Démarrée"
+    },
+    "files": "Fichiers sources",
+    "examples": "Exemples de vérification"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Session",
     "agents": "Agents",
     "history": "Historique",

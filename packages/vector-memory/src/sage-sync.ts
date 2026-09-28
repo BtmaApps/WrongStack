@@ -11,7 +11,8 @@
  *  - Fire-and-forget: the CLI never waits on the sync (first run pays the
  *    ONNX model download; boot must not block on it).
  *  - Marker-based: `sage-sync.complete.json` in `store.directory`. A
- *    `complete` marker means "corpus fully mirrored — don't rescan". A
+ *    `complete` marker skips the corpus walk only while the provider matches
+ *    and all local entries have vectors of the current provider/dimensions. A
  *    `running` marker owned by a LIVE pid means another CLI process owns the
  *    sync; takeover happens when the marker is >10 minutes old AND the owning
  *    pid is confirmed dead (`process.kill(pid, 0)`), or when the pid is our
@@ -42,6 +43,8 @@ export const SAGE_SYNC_MARKER_FILENAME = 'sage-sync.complete.json';
 
 /** A `running` marker older than this is considered dead and taken over. */
 const RUNNING_STALE_MS = 10 * 60 * 1000;
+/** Reconcile missed mirror events on a later boot, at most once per day. */
+const RECONCILE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export interface SageSyncMarker {
   phase: 'running' | 'complete';
@@ -102,23 +105,23 @@ export async function startFirstBootSageSync(
     // the single source of truth — the run-time checks below still
     // defend against taking over a live `running` marker from another
     // process.
-    if (opts.force) {
-      try {
-        fs.unlinkSync(markerPath(store));
-      } catch {
-        // No marker to remove is the common case (first-ever force run
-        // or after a crash); treat as success.
-      }
-    }
     const decision = decideWhetherToSync(
       store,
       opts.staleAfterMs ?? RUNNING_STALE_MS,
       undefined,
       opts.pidAlive,
     );
-    if (!decision.run) {
+    if (!decision.run && !(opts.force && decision.reason === 'already-complete')) {
       log?.debug?.(`vector-memory sage sync skipped: ${decision.reason}`);
       return { synced: false, reason: decision.reason };
+    }
+    // Force bypasses completion, never a live/unknown foreign owner.
+    if (opts.force) {
+      try {
+        fs.unlinkSync(markerPath(store));
+      } catch {
+        // Missing/unwritable advisory marker must not break the sync.
+      }
     }
 
     const provider = storeProvider(store);
@@ -174,17 +177,17 @@ export async function startFirstBootSageSync(
     // provider. A provider that died mid-sync leaves vector-less entries
     // (remember() fails open) which syncFromSage's content-hash dedup would
     // then skip forever — reindexAll() is the only existing backfill path.
-    let stats = store.stats();
-    if (stats.vectors !== stats.entries) {
+    let coverage = store.embeddingCoverage();
+    if (coverage.missing > 0) {
       log?.warn?.(
-        `vector-memory sage sync healed ${stats.entries - stats.vectors} vector-less entr(ies) via reindexAll()`,
+        `vector-memory sage sync repairing ${coverage.missing} missing current-provider embedding(s)`,
       );
-      await store.reindexAll();
-      stats = store.stats();
+      await store.reindexAll({ onlyMissing: true });
+      coverage = store.embeddingCoverage();
     }
-    if (stats.vectors !== stats.entries) {
+    if (coverage.missing > 0) {
       log?.warn?.(
-        `vector-memory sage sync incomplete: ${stats.entries - stats.vectors} entr(ies) still vector-less — will retry on next boot`,
+        `vector-memory sage sync incomplete: ${coverage.missing} current-provider embedding(s) still missing — will retry on next boot`,
       );
       return {
         synced: false,
@@ -226,7 +229,20 @@ export function decideWhetherToSync(
 ): SyncDecision {
   const existing = readMarker(store);
   if (!existing) return { run: true, reason: 'no-marker' };
-  if (existing.phase === 'complete') return { run: false, reason: 'already-complete' };
+  if (existing.phase === 'complete') {
+    const provider = storeProvider(store);
+    if (existing.providerId && provider && existing.providerId !== provider.id) {
+      return { run: true, reason: 'provider-changed' };
+    }
+    if (store.embeddingCoverage().missing > 0) {
+      return { run: true, reason: 'vector-incomplete' };
+    }
+    const completedAt = Date.parse(existing.completedAt ?? '');
+    if (!Number.isFinite(completedAt) || now.getTime() - completedAt >= RECONCILE_INTERVAL_MS) {
+      return { run: true, reason: 'reconciliation-due' };
+    }
+    return { run: false, reason: 'already-complete' };
+  }
   if (existing.pid === process.pid) {
     // Our own marker — e.g. a second call in the same process. Safe to take
     // over: the pid is trivially alive and nobody else owns the sync.

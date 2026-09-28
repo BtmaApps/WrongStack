@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
+import { isLeakedMouseInput } from '../mouse.js';
 import { SlashModalFrame } from './slash-modal-frame.js';
 
 interface ClearConfirmPanelProps {
@@ -36,6 +37,11 @@ export function clearConfirmationKeyResult(
   input: string,
   key: ClearConfirmationKey,
 ): ClearConfirmationKeyResult {
+  // A leaked SGR mouse report is not typed text (see `isLeakedMouseInput`): a
+  // stray click must not append `[<0;12;4M` to the confirmation token, which
+  // would make the exact `YES` match unreachable. Checked before every branch
+  // so a pointer report can neither type nor resolve/abort the confirmation.
+  if (input && isLeakedMouseInput(input)) return { decision: null, value };
   if (key.escape) return { decision: false, value };
   if (key.ctrl || key.meta) return { decision: null, value };
   if (key.return) {

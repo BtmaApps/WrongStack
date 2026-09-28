@@ -18,6 +18,30 @@ describe('createToolOutputSerializer', () => {
       expect(serializer.serialize('')).toBe('');
     });
 
+    // Tools cap output at UTF-16 unit counts (the git tool's 100_000-unit
+    // capture, bash/exec head+tail windows, inline clips). A cut inside an
+    // emoji left a lone surrogate that reached the provider as `\ud83d`.
+    it('never returns a lone surrogate', () => {
+      const cut = `ok 🚀 done`.slice(0, 4); // 'ok ' + high surrogate
+      expect(serializer.serialize(cut)).toBe('ok �');
+      expect(
+        serializer.serialize(
+          { stdout: `${'x'.repeat(300)}🚀`.slice(0, 301), exitCode: 0 },
+          { toolName: 'git' },
+        ),
+      ).not.toMatch(/[\uD800-\uDFFF]/);
+      expect(serializer.serialize(['a\uDC00b'])).toBe('a�b');
+      // Paired surrogates are untouched.
+      expect(serializer.serialize('🚀 ok')).toBe('🚀 ok');
+    });
+
+    it('keeps an over-long clipped nested value well-formed', () => {
+      // renderGenericToolObject clips nested JSON at 225 units.
+      const title = `${'t'.repeat(214)}🚀🚀${'t'.repeat(30)}`; // '{"title":"' + 214 = unit 224: the clip's cut
+      const text = serializer.serialize({ results: { title } }, { toolName: 'nosuchrenderer' });
+      expect(text.isWellFormed()).toBe(true);
+    });
+
     it('returns empty string for null', () => {
       expect(serializer.serialize(null)).toBe('');
     });

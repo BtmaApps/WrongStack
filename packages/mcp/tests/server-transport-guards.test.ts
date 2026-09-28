@@ -25,6 +25,7 @@
  * pins explicitly rather than leaving to assumption.
  */
 import * as http from 'node:http';
+import { PassThrough, Writable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   MCPServer,
@@ -32,6 +33,7 @@ import {
   type MCPServerTool,
   type ServeHttpHandle,
   serveHttp,
+  serveStdio,
 } from '../src/server.js';
 
 const TOOL: MCPServerTool = {
@@ -553,5 +555,128 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
     const body = (await res.json()) as { error?: { code: number; message: string } };
     expect(body.error?.code).toBe(-32602);
     expect(body.error?.message).toMatch(/\(\+2 more\)$/);
+  });
+});
+
+/**
+ * WS-028: `serveStdio` decoded each stdin chunk on its own
+ * (`chunk.toString('utf8')`). Chunks split at arbitrary BYTE offsets, so a
+ * multi-byte character straddling two `data` events was turned into U+FFFD.
+ * U+FFFD is a legal character inside a JSON string, so the request still
+ * parsed and the tool ran with silently corrupted arguments — no parse error
+ * to notice. A streaming decoder now holds the partial sequence until its
+ * continuation bytes arrive, matching the upstream SSE reader.
+ */
+describe('MCP stdio framing — multi-byte UTF-8 across chunk boundaries', () => {
+  /** Echoes its `text` argument, so the delivered value is directly observable. */
+  function echoServer(): MCPServer {
+    return new MCPServer({
+      host: {
+        listTools: () => [
+          {
+            name: 'echo',
+            description: 'echoes text',
+            inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+          },
+        ],
+        callTool: (_name, args): Promise<MCPServerCallResult> =>
+          Promise.resolve({ content: String(args['text'] ?? ''), isError: false }),
+      },
+    });
+  }
+
+  function requestLine(text: string): string {
+    return `${JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'echo', arguments: { text } },
+    })}\n`;
+  }
+
+  async function runStdio(chunks: readonly Buffer[]): Promise<string> {
+    const stdin = new PassThrough();
+    const written: string[] = [];
+    const stdout = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        written.push(chunk.toString('utf8'));
+        callback();
+      },
+    });
+    const handle = serveStdio(echoServer(), { stdin, stdout });
+    for (const chunk of chunks) stdin.write(chunk);
+    stdin.end();
+    await handle.done;
+    return written.join('');
+  }
+
+  // 2-byte 'é', 3-byte '→', 3-byte '✓': any split is a real corruption.
+  const PAYLOAD = 'héllo → ✓';
+
+  it('delivers arguments intact when a chunk boundary splits a character', async () => {
+    const bytes = Buffer.from(requestLine(PAYLOAD), 'utf8');
+    // The split point MUST be computed over bytes: `String.indexOf(0xE2)`
+    // would search for the UTF-16 code unit U+00E2, miss, and quietly deliver
+    // the whole line in one chunk — a test that passes for the wrong reason.
+    const leadByte = Buffer.from('→', 'utf8')[0]!;
+    const lead = bytes.indexOf(leadByte);
+    expect(lead, 'split point must land inside the payload').toBeGreaterThan(0);
+
+    const response = await runStdio([
+      bytes.subarray(0, lead + 1),
+      bytes.subarray(lead + 1),
+    ]);
+
+    expect(response).toContain(PAYLOAD);
+    // A split that mangled the argument would still return ok:true — assert
+    // the corruption mode directly so the failure is unmistakable.
+    expect(response).not.toContain('�');
+  });
+
+  it('delivers arguments intact when several characters are split', async () => {
+    const bytes = Buffer.from(requestLine(PAYLOAD), 'utf8');
+    // Split at every byte offset in turn: each one that lands mid-character
+    // must still round-trip.
+    for (let cut = 1; cut < bytes.length; cut++) {
+      const response = await runStdio([bytes.subarray(0, cut), bytes.subarray(cut)]);
+      expect(response, `split at byte ${cut}`).toContain(PAYLOAD);
+    }
+  });
+
+  it('CONTROL: the same bytes in a single chunk are unaffected', async () => {
+    const response = await runStdio([Buffer.from(requestLine(PAYLOAD), 'utf8')]);
+    expect(response).toContain(PAYLOAD);
+  });
+
+  it('CONTROL: an ASCII payload split across chunks is unaffected', async () => {
+    const ascii = 'plain-ascii-argument';
+    const bytes = Buffer.from(requestLine(ascii), 'utf8');
+    const mid = Math.floor(bytes.length / 2);
+    const response = await runStdio([bytes.subarray(0, mid), bytes.subarray(mid)]);
+    expect(response).toContain(ascii);
+  });
+
+  it('CONTROL: multiple lines across chunk boundaries all dispatch', async () => {
+    const stdin = new PassThrough();
+    const written: string[] = [];
+    const stdout = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        written.push(chunk.toString('utf8'));
+        callback();
+      },
+    });
+    const handle = serveStdio(echoServer(), { stdin, stdout });
+    const first = Buffer.from(requestLine(PAYLOAD), 'utf8');
+    const second = Buffer.from(requestLine('second-line ✓'), 'utf8');
+    // One line split mid-character, then a second whole line in the same chunk.
+    const lead = first.indexOf(Buffer.from('→', 'utf8')[0]!);
+    stdin.write(first.subarray(0, lead + 1));
+    stdin.write(Buffer.concat([first.subarray(lead + 1), second]));
+    stdin.end();
+    await handle.done;
+
+    const out = written.join('');
+    expect(out).toContain(PAYLOAD);
+    expect(out).toContain('second-line ✓');
   });
 });

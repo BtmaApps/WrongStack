@@ -259,6 +259,23 @@ describe('WebSocketClientTransport', () => {
     expect(received).toHaveLength(3);
   });
 
+  it('asks for binary frames as ArrayBuffers, not the WHATWG default Blob', async () => {
+    // A WHATWG socket hands a binary frame over as a Blob unless binaryType is
+    // 'arraybuffer'; String(blob) is "[object Blob]", which was dropped.
+    const t = new WebSocketClientTransport({ url: 'ws://agent.test' });
+    const start = t.start();
+    const ws = last() as FakeWS & { binaryType?: string };
+    ws.fire('open');
+    await start;
+    const received: ACPMessage[] = [];
+    t.onMessage((message) => received.push(message));
+    const bytes = Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: 7, result: {} }));
+    ws.fire('message', {
+      data: ws.binaryType === 'arraybuffer' ? Uint8Array.from(bytes).buffer : new Blob([bytes]),
+    });
+    expect(received).toEqual([{ jsonrpc: '2.0', id: 7, result: {} }]);
+  });
+
   it('normalizes send failures and missing or invalid buffered amounts', async () => {
     const t = new WebSocketClientTransport({ url: 'ws://agent.test' });
     const start = t.start();

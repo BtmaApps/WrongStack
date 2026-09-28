@@ -232,7 +232,9 @@ describe('tool error and edge paths', () => {
       { fileWritten: vi.fn(async () => undefined) } as never,
       root,
     );
-    expect(await fs.readFile(file, 'utf8')).toBe('!const a = 1;');
+    // A line past the end is the end of the document (LSP Position), not the
+    // start of the last line.
+    expect(await fs.readFile(file, 'utf8')).toBe('const a = 1;!');
   });
 
   it('safely executes tools without opts and falls back to ctx.signal', async () => {

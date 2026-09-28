@@ -87,8 +87,14 @@ export async function adoptManagedLifecycle(
     }
 
     board.lifecycle = lifecycle;
+    // Raising `off` to `strict` must not reset the operator's other gate policy.
+    // A board that configured `maxVerificationAttempts` (its refusal budget
+    // before a card parks) would otherwise silently fall back to the default of
+    // 2, parking cards sooner than the operator asked. Spreading keeps every
+    // sibling field and only rewrites `enforcement`; the no-gate case still
+    // yields exactly `{ enforcement: 'strict' }`.
     if (!board.completionGate || board.completionGate.enforcement === 'off') {
-      board.completionGate = { enforcement: 'strict' };
+      board.completionGate = { ...board.completionGate, enforcement: 'strict' };
     }
     board.updatedAt = at;
     for (const task of board.tasks) {

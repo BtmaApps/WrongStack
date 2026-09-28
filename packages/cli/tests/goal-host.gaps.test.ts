@@ -539,6 +539,47 @@ describe('createGoalHost — worktree actions', () => {
     expect(conflict).toContain('rolled back');
   });
 
+  // The rollback is `reset --hard HEAD`. It used to run on ANY commit failure
+  // with no clean-tree check: an uncommitted edit to a file the branch also
+  // changes made git REFUSE the merge (to protect the edit), the commit then
+  // failed, and the reset wiped the edit git had just protected.
+  it('refuses to merge over uncommitted changes instead of wiping them', async () => {
+    await execFileAsync('git', ['checkout', '-q', '-b', 'feature'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'a.txt'), 'feature\n', 'utf8');
+    await execFileAsync('git', ['commit', '-q', '-am', 'feature'], { cwd: projectRoot });
+    await execFileAsync('git', ['checkout', '-q', '-'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'a.txt'), 'unsaved work\n', 'utf8');
+
+    const reply = await makeHost().onWorktree('merge', 'feature');
+    expect(reply).toContain('uncommitted changes');
+    expect(await fs.readFile(path.join(projectRoot, 'a.txt'), 'utf8')).toBe('unsaved work\n');
+  });
+
+  it('reports an empty squash as merged even with untracked files present', async () => {
+    await execFileAsync('git', ['checkout', '-q', '-b', 'feature'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'a.txt'), 'same\n', 'utf8');
+    await execFileAsync('git', ['commit', '-q', '-am', 'feature'], { cwd: projectRoot });
+    await execFileAsync('git', ['checkout', '-q', '-'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'a.txt'), 'same\n', 'utf8');
+    await execFileAsync('git', ['commit', '-q', '-am', 'same change'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'notes.log'), 'untracked\n', 'utf8');
+
+    expect(await makeHost().onWorktree('merge', 'feature')).toContain('Merged "feature"');
+    expect(await fs.readFile(path.join(projectRoot, 'notes.log'), 'utf8')).toBe('untracked\n');
+  });
+
+  it('reports a merge git refuses as failed, keeping the untracked file', async () => {
+    await execFileAsync('git', ['checkout', '-q', '-b', 'feature'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'u.txt'), 'from branch\n', 'utf8');
+    await execFileAsync('git', ['add', '.'], { cwd: projectRoot });
+    await execFileAsync('git', ['commit', '-q', '-m', 'feature'], { cwd: projectRoot });
+    await execFileAsync('git', ['checkout', '-q', '-'], { cwd: projectRoot });
+    await fs.writeFile(path.join(projectRoot, 'u.txt'), 'mine\n', 'utf8');
+
+    expect(await makeHost().onWorktree('merge', 'feature')).toContain('failed and was rolled back');
+    expect(await fs.readFile(path.join(projectRoot, 'u.txt'), 'utf8')).toBe('mine\n');
+  });
+
   it('cleans managed worktrees and branches', async () => {
     const host = makeHost();
     const cleaned = await host.onWorktree('clean');

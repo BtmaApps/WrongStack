@@ -15,7 +15,7 @@
     "build:binary": "node scripts/build-binaries.mjs --current",
     "desktop": "pnpm --filter @wrongstack/desktop dev",
     "desktop:start": "pnpm --filter @wrongstack/desktop start",
-    "test": "vitest run && pnpm --filter webui test",
+    "test": "pnpm --filter @wrongstack/core... build && vitest run && pnpm --filter webui test",
     "test:watch": "vitest",
     "test:affected": "node scripts/test-affected.mjs",
     "test:affected:all": "node scripts/test-affected.mjs --all",

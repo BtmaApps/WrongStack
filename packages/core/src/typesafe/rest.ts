@@ -76,6 +76,12 @@ export interface TypeSafeRestGate {
 /** Weight a failure contributes toward resting, 0 for "not the host's fault". */
 export function typeSafeFailureWeight(err: unknown): number {
   if (err instanceof TypeSafeRestingError) return 0;
+  // The client wraps every fetch rejection — the caller's own abort included —
+  // in FetchError(status 0); judge by the wrapped cause, as activity.ts does.
+  const cause = err instanceof FetchError && err.cause instanceof Error ? err.cause : undefined;
+  if (cause && (cause.name === 'AbortError' || cause.name === 'TimeoutError')) {
+    return cause.name === 'TimeoutError' ? 1 : 0;
+  }
   if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
     // `AbortSignal.timeout` surfaces as TimeoutError when a caller's own
     // deadline fires before the client wrapped it; a plain AbortError is the
@@ -99,6 +105,10 @@ export function createTypeSafeRestGate(opts: TypeSafeRestGateOptions = {}): Type
   let until = 0;
   let nextCooldown = baseCooldownMs;
   let lastReason: string | undefined;
+  // Set by a rest, cleared by a success: the first calls after the cooldown are
+  // probes, and ANY host failure then reopens the gate (the weight reset at
+  // rest would otherwise let a timed-out probe leave it closed).
+  let probing = false;
 
   return {
     isResting: () => now() < until,
@@ -107,12 +117,16 @@ export function createTypeSafeRestGate(opts: TypeSafeRestGateOptions = {}): Type
     recordSuccess() {
       weight = 0;
       nextCooldown = baseCooldownMs;
+      probing = false;
     },
     recordFailure(err) {
       const w = typeSafeFailureWeight(err);
       if (w === 0) return false;
+      // Still resting: a call that was already in flight — same outage signal.
+      if (now() < until) return false;
       weight += w;
-      if (weight < failureLimit) return false;
+      if (weight < failureLimit && !probing) return false;
+      probing = true;
       until = now() + nextCooldown;
       const status = err instanceof FetchError ? err.status : 0;
       lastReason =

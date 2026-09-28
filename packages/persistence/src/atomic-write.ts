@@ -3,7 +3,20 @@ import type { FSWatcher } from 'node:fs';
 import { watch as watchDir } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { restrictFilePermissions } from './file-permissions.js';
+import {
+  _filePermOps,
+  restrictDirPermissions,
+  restrictFilePermissions,
+} from './file-permissions.js';
+
+/**
+ * A `.wrongstack` leaf directory with at most this many entries may be given
+ * an inheritable owner-only ACL once instead of `icacls` on every write.
+ * icacls re-applies a directory ACL to every existing child (recursively
+ * through subdirectories) at O(files) cost on each call, so large or nested
+ * trees keep the per-file path.
+ */
+const OWNER_ONLY_DIR_MAX_ENTRIES = 200;
 
 export interface AtomicWriteOptions {
   mode?: number | undefined;
@@ -83,7 +96,64 @@ export function createPersistencePrimitives(
    * rename. Split out so `atomicWrite` (whole-buffer) and
    * `atomicReplaceWithWriter` (streaming) cannot drift apart.
    */
-  async function commitTemp(tmp: string, targetPath: string, opts: AtomicWriteOptions) {
+  /** Directory identity -> whether new files there already inherit owner-only ACLs. */
+  const ownerOnlyDirs = new Map<string, Promise<boolean>>();
+
+  /**
+   * Windows only: make an eligible directory hand owner-only ACLs to the files
+   * created in it, once per directory identity (a recreated directory is a new
+   * identity). Must run BEFORE the temp file is created so it inherits the ACL.
+   * False means "not eligible or not done" — the caller keeps per-file icacls.
+   */
+  async function prepareOwnerOnlyDir(dir: string): Promise<boolean> {
+    if (_filePermOps.platform !== 'win32') return false;
+    const resolved = path.resolve(dir);
+    if (!resolved.split(/[\\/]/).some((segment) => segment.toLowerCase() === '.wrongstack')) {
+      return false;
+    }
+    let key: string;
+    try {
+      const stat = await fs.stat(resolved);
+      key = `${resolved.toLowerCase()}|${stat.ino}|${stat.birthtimeMs}`;
+    } catch {
+      return false;
+    }
+    let pending = ownerOnlyDirs.get(key);
+    if (!pending) {
+      pending = hardenLeafDir(resolved);
+      ownerOnlyDirs.set(key, pending);
+    }
+    return pending;
+  }
+
+  async function hardenLeafDir(dir: string): Promise<boolean> {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      if (
+        entries.length > OWNER_ONLY_DIR_MAX_ENTRIES ||
+        entries.some((entry) => entry.isDirectory())
+      ) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+    // restrictDirPermissions never throws; it reports failure through `warn`.
+    let failed = false;
+    await restrictDirPermissions(dir, {
+      warn: () => {
+        failed = true;
+      },
+    });
+    return !failed;
+  }
+
+  async function commitTemp(
+    tmp: string,
+    targetPath: string,
+    opts: AtomicWriteOptions,
+    dirIsOwnerOnly = false,
+  ) {
     try {
       const fileHandle = await fs.open(tmp, 'r+');
       try {
@@ -152,9 +222,14 @@ export function createPersistencePrimitives(
     // an owner-only secret mode (group and other have no permissions) — it shells out
     // to `icacls` on Windows and re-applies the owning-user-only ACE. The helper is
     // idempotent and a no-op on POSIX (the `chmod` above already narrowed the mode).
-    if (mode !== undefined && (mode & 0o077) === 0) {
+    // A hardened directory already gave the temp file an owner-only ACL.
+    if (mode !== undefined && (mode & 0o077) === 0 && !dirIsOwnerOnly) {
       await restrictFilePermissions(targetPath, { warn: () => undefined }).catch(() => undefined);
     }
+  }
+
+  function isOwnerOnlyMode(mode: number | undefined): boolean {
+    return mode !== undefined && (mode & 0o077) === 0;
   }
 
   function tempPathFor(targetPath: string): string {
@@ -170,6 +245,8 @@ export function createPersistencePrimitives(
     opts: AtomicWriteOptions = {},
   ): Promise<void> {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    const dirIsOwnerOnly =
+      isOwnerOnlyMode(opts.mode) && (await prepareOwnerOnlyDir(path.dirname(targetPath)));
     const tmp = tempPathFor(targetPath);
 
     try {
@@ -193,7 +270,7 @@ export function createPersistencePrimitives(
           ...(createMode !== undefined ? { mode: createMode } : {}),
         });
       }
-      await commitTemp(tmp, targetPath, opts);
+      await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
     } catch (error) {
       // `wx` reports EEXIST when a different writer already owns this random
       // temp path. Never remove that file: this invocation did not create it.
@@ -221,6 +298,8 @@ export function createPersistencePrimitives(
     opts: AtomicWriteOptions = {},
   ): Promise<T> {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    const dirIsOwnerOnly =
+      isOwnerOnlyMode(opts.mode) && (await prepareOwnerOnlyDir(path.dirname(targetPath)));
     const tmp = tempPathFor(targetPath);
 
     try {
@@ -243,7 +322,7 @@ export function createPersistencePrimitives(
       // is the one thing this primitive exists to prevent. commitTemp's fsync
       // cannot stand in for it: that block is deliberately best-effort.
       await handle.close();
-      await commitTemp(tmp, targetPath, opts);
+      await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
       return result;
     } catch (error) {
       // As above, EEXIST means exclusive creation never transferred ownership

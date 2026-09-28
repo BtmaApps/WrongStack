@@ -14,6 +14,7 @@
  * The vectors table is keyed by (entry_id, provider_id) so a model swap
  * invalidates only the old provider rows on insert — no mixed-vector search.
  */
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
 export const VECTOR_SCHEMA_VERSION = 2;
@@ -211,6 +212,16 @@ export function lookupEmbeddingCache(
     /* ignore — cache is advisory */
   }
   return decodeVector(row.vector);
+}
+
+/**
+ * `entries.content_hash` for a SAGE mirror whose text collides with another
+ * row in the same scope (the plain-hash slot belongs to a different memory).
+ */
+export function sageKeyedContentHash(text: string, sageId: string): string {
+  return createHash('sha256')
+    .update(`sage:${sageId}\0${text.normalize('NFKC').trim()}`)
+    .digest('hex');
 }
 
 /** Encode a Float32Array to a SQLite BLOB (Buffer). */

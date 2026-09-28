@@ -17,6 +17,9 @@ async function runGit(args: string[], cwd: string): Promise<{ stdout: string; co
       windowsHide: true,
     });
     let stdout = '';
+    // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+    // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+    child.stdout?.setEncoding('utf8');
     child.stdout?.on('data', (d) => {
       stdout += d;
     });
@@ -29,13 +32,20 @@ async function runGit(args: string[], cwd: string): Promise<{ stdout: string; co
 async function getChangedFiles(
   cwd: string,
 ): Promise<Array<{ path: string; status: 'added' | 'modified' }>> {
-  const r = await runGit(['status', '--porcelain'], cwd);
+  // -z: line output C-quotes names with spaces/non-ASCII (`"my notes.ts"`), which
+  // then fail fs.access and drop out of review. -uall: a new directory is one
+  // `?? dir/` entry otherwise, and the files inside it were never reviewed.
+  const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd);
   if (r.code !== 0) return [];
   const files: Array<{ path: string; status: 'added' | 'modified' }> = [];
-  for (const line of r.stdout.split('\n')) {
-    if (!line.trim()) continue;
-    const statusCode = line.slice(0, 2).trim();
-    const filePath = line.slice(3).trim();
+  const records = r.stdout.split('\0');
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i] ?? '';
+    if (record.length < 4) continue;
+    const statusCode = record.slice(0, 2).trim();
+    const filePath = record.slice(3);
+    // A rename/copy record is followed by its source path.
+    if (statusCode.includes('R') || statusCode.includes('C')) i++;
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
     } else if (statusCode.includes('M')) {

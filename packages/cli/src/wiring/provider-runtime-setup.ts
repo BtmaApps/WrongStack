@@ -6,7 +6,6 @@ import {
   type ProviderConfigSnapshot,
   readProviderSnapshot,
   SessionMemoryConsolidator,
-  SessionMemoryCurator,
   watchProviderConfig,
 } from '@wrongstack/core/storage';
 import type {
@@ -229,17 +228,8 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
         ...(consSage ? { Sage: consSage } : {}),
       }),
     );
-    if (cfg.features.memoryCurator !== false) {
-      const curatorSage = getSageService(memoryStore) as
-        | import('@wrongstack/core/storage').CuratorSage
-        | undefined;
-      agent.extensions.register(
-        new SessionMemoryCurator({
-          memoryStore,
-          ...(curatorSage ? { Sage: curatorSage } : {}),
-        }),
-      );
-    }
+    // Memory curation is now an evidence-bound, read-only background companion
+    // on the fleet host. Do not also run the legacy blind afterRun writer.
   }
 
   // ── Provider/model switch callback ─────────────────────────────────────

@@ -124,6 +124,14 @@ export function CommandPalette() {
         run: () => ws.listTools(),
       },
       {
+        id: 'project-kit',
+        category: 'Command',
+        label: t('activity:nav.project-kit'),
+        icon: Wrench,
+        keywords: ['kit', 'project', 'scripts', 'reusable', 'tools'],
+        run: () => openMainView('project-kit'),
+      },
+      {
         id: 'memory',
         category: 'Command',
         label: t('commandPalette:cmd.memory'),

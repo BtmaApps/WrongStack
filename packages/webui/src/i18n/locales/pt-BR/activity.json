@@ -1,5 +1,53 @@
 {
+  "projectKit": {
+    "subtitle": "Ferramentas reutilizáveis para este projeto.",
+    "refresh": "Atualizar",
+    "create": "Criar no chat",
+    "loadFailed": "Não foi possível carregar o Project Kit",
+    "loading": "Carregando kits…",
+    "catalog": "Ferramentas do projeto",
+    "search": "Buscar kits…",
+    "effects": {
+      "read": "Lê dados do projeto",
+      "write": "Altera arquivos",
+      "external": "Ações externas"
+    },
+    "noMatches": "Nenhum kit corresponde à busca.",
+    "emptyList": "Ainda não há ferramentas de projeto.",
+    "invalid": "Definição de kit inválida",
+    "selectTitle": "Escolha uma ferramenta do projeto",
+    "emptyTitle": "Desenvolva uma vez. Reutilize.",
+    "emptyHint": "Mantenha verificações e tarefas repetíveis com seus parâmetros, guias e casos de verificação. Crie um kit no chat para começar.",
+    "verified": "Revisão verificada",
+    "unverified": "Verificação necessária",
+    "cases": "casos de verificação",
+    "guide": "Guia de uso",
+    "parameters": "Parâmetros",
+    "required": "Obrigatório",
+    "default": "Padrão",
+    "schemas": "Esquemas de entrada e saída",
+    "input": "Parâmetros (JSON)",
+    "inputError": "Insira um objeto JSON válido.",
+    "use": "Usar no chat",
+    "verify": "Preparar verificação",
+    "draftHint": "Abre um rascunho para revisão no chat. Nada é executado até você enviá-lo. Suas permissões existentes são mantidas.",
+    "history": "Execuções recentes",
+    "noHistory": "Nenhuma execução registrada.",
+    "historyHint": "Os últimos 100 registros locais. «Iniciada» também pode indicar uma execução interrompida. Atualize para verificar o estado final.",
+    "actions": {
+      "run": "Execução",
+      "verify": "Verificação"
+    },
+    "status": {
+      "passed": "Bem-sucedida",
+      "failed": "Falhou",
+      "running": "Iniciada"
+    },
+    "files": "Arquivos-fonte",
+    "examples": "Exemplos de verificação"
+  },
   "nav": {
+    "project-kit": "Project Kit",
     "chat": "Sessão",
     "agents": "Agentes",
     "history": "Histórico",

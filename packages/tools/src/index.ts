@@ -406,6 +406,14 @@ export {
   type PersistentRegistryData,
   resetPersistentProcessRegistry,
 } from './process-registry-persistent.js';
+export { listKits as listProjectKits } from './project-kit/catalog.js';
+export { inspectProjectKit } from './project-kit/inspect.js';
+export {
+  type ProjectKitContext,
+  type ProjectKitModule,
+  projectKitRunTool,
+  projectKitTool,
+} from './project-kit.js';
 export {
   createGlobalPsSlashCommand,
   formatGlobalStatus,

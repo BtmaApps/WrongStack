@@ -78,11 +78,13 @@ export function toTrustBoundaryRequest(
   request: PermissionRequest,
   options: Omit<ACPTrustBoundaryAdapterOptions, 'boundary'>,
 ): TrustBoundaryRequest {
+  // The host's session wins: `rawInput` is written by the external agent, so
+  // preferring it let an agent scope its request to another session. The
+  // agent's value is only a fallback when the host names none.
   const rawSessionId = request.toolCall.rawInput?.sessionId;
   const sessionId =
-    typeof rawSessionId === 'string' && rawSessionId.length > 0
-      ? rawSessionId
-      : options.actor?.sessionId;
+    options.actor?.sessionId ??
+    (typeof rawSessionId === 'string' && rawSessionId.length > 0 ? rawSessionId : undefined);
   return {
     version: 1,
     requestId: String(request.toolCall.toolCallId),

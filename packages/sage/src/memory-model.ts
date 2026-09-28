@@ -127,9 +127,24 @@ export interface MemorySourceRef {
   excerptHash?: string | undefined;
 }
 
+export interface MemoryFeedbackInput {
+  verdict: 'useful' | 'outdated' | 'incorrect' | 'irrelevant' | 'uncertain';
+  /** Revision actually read by the model, not a fresh revision guessed at write time. */
+  observedRevision: number;
+  /** Concrete observation, test result or source reference supporting the judgment. */
+  evidence: string;
+  sessionId?: string | undefined;
+}
+
+export interface MemoryFeedback extends MemoryFeedbackInput {
+  at: string;
+}
+
 export interface Sage {
   id: string;
   revision: number;
+  /** Bounded model judgments; these are not verification or permission signals. */
+  feedback?: MemoryFeedback[] | undefined;
   scope: SageScope;
   legacyScope?: MemoryScope | undefined;
   kind: SageKind;

@@ -137,6 +137,8 @@ export interface MemoryCandidate {
   reason?: string | undefined;
   /** First-class linkage to the memory this proposal reviews (proposal metadata — never overwritten by resolution). */
   targetMemoryId?: string | undefined;
+  /** When set, destructive review resolution must still target this revision. */
+  targetRevision?: number | undefined;
   /** Why the review was proposed (proposal metadata — never overwritten by resolution). */
   reviewReason?: string | undefined;
   /** Advisory suggested action (typed successor of the legacy `suggested:` tag prefix). */
@@ -371,6 +373,8 @@ export type CreateCandidateInput = Omit<
 > & {
   /** Id of the memory this proposal reviews (e.g. a suggested delete/archive target). */
   targetMemoryId?: string | undefined;
+  /** Revision reviewed; omitted for legacy proposals without a snapshot guard. */
+  targetRevision?: number | undefined;
   /** Review reason (e.g. 'noise', 'contradiction', 'expires_at_passed'). */
   reviewReason?: string | undefined;
   /** Advisory suggested action (typed successor of the legacy `suggested:` tag prefix). */
@@ -401,6 +405,12 @@ export interface MemoryCandidateResolution {
 }
 
 export interface UpdateSageInput {
+  /** Optimistic concurrency guard for corrections based on a previously read revision. */
+  expectedRevision?: number | undefined;
+  /** Evidence sources for corrected knowledge (replaces the old source list). */
+  sources?: import('./memory-model.js').MemorySourceRef[] | undefined;
+  /** Feedback-only update: never changes lifecycle, confidence or content revision. */
+  feedback?: import('./memory-model.js').MemoryFeedbackInput | undefined;
   text?: string | undefined;
   tags?: string[] | undefined;
   /** Promote/demote persistence class. Forward-compatible: any future value is rejected. */
@@ -519,6 +529,12 @@ export interface SageSearchOptions {
    * `hybridRerankMemories`).
    */
   vectorRecallWeight?: number | undefined;
+  /**
+   * Extra vector-only candidates beyond `limit` for downstream relevance
+   * filtering. Default 0 preserves strict search limits; clamped to 12.
+   * Automatic tool retrieval opts in, then applies its normal injection gates.
+   */
+  vectorCandidateLimit?: number | undefined;
   /**
    * Cosine threshold for the vector-only channel. Vector-only hits below
    * this floor are dropped. Default 0.
@@ -657,6 +673,8 @@ export type {
   MemoryAnchor,
   MemoryAudienceContext,
   MemoryAudienceSelector,
+  MemoryFeedback,
+  MemoryFeedbackInput,
   MemorySourceRef,
   PersistenceClass,
   Sage,

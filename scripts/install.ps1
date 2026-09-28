@@ -30,6 +30,36 @@ $Base = if ($env:WSTACK_DOWNLOAD_BASE) {
   "https://github.com/$Repo/releases/latest/download"
 }
 
+# Move $Dir to the front of the user environment variable $Name; true if it
+# changed. Reads and writes the registry value itself: the
+# [Environment]::Get/SetEnvironmentVariable pair expands %VAR% on read and
+# stores REG_SZ on write, which froze every %JAVA_HOME%\bin-style entry of the
+# user PATH to its current value (or left it a literal never expanded again).
+function Update-UserPath([string]$Name, [string]$Dir) {
+  $Key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment')
+  try {
+    $Raw = [string]$Key.GetValue($Name, '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+    $Want = $Dir.TrimEnd('\')
+    $Entries = @($Raw -split ';' | Where-Object { $_ })
+    $IsDir = { param($Entry) [Environment]::ExpandEnvironmentVariables($Entry).TrimEnd('\') -eq $Want }
+    if ($Entries.Count -gt 0 -and (& $IsDir $Entries[0])) { return $false }
+    $Others = @($Entries | Where-Object { -not (& $IsDir $_) })
+    $Key.SetValue($Name, ((@($Dir) + $Others) -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString)
+  } finally {
+    $Key.Close()
+  }
+  # Tell Explorer (and so every new terminal) that the environment changed.
+  if (-not ('WStackInstall.Native' -as [type])) {
+    Add-Type -Namespace WStackInstall -Name Native -MemberDefinition @'
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);
+'@
+  }
+  $Result = [UIntPtr]::Zero
+  [void][WStackInstall.Native]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$Result)
+  return $true
+}
+
 $Tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("wstack-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $Tmp | Out-Null
 try {
@@ -75,11 +105,7 @@ try {
   # Put the install dir FIRST on the user PATH (moving it there if an earlier
   # run appended it): an older npm/pnpm/bun global `wstack` earlier on PATH
   # would otherwise keep winning and the new binary would never run.
-  $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-  $Entries = @(if ($UserPath) { $UserPath -split ';' | Where-Object { $_ } })
-  $Others = @($Entries | Where-Object { $_.TrimEnd('\') -ne $InstallDir.TrimEnd('\') })
-  if (-not $env:WSTACK_NO_MODIFY_PATH -and ($Entries.Count -eq 0 -or $Entries[0].TrimEnd('\') -ne $InstallDir.TrimEnd('\'))) {
-    [Environment]::SetEnvironmentVariable('Path', ((@($InstallDir) + $Others) -join ';'), 'User')
+  if (-not $env:WSTACK_NO_MODIFY_PATH -and (Update-UserPath -Name 'Path' -Dir $InstallDir)) {
     $SessionOthers = @($env:Path -split ';' | Where-Object { $_ -and $_.TrimEnd('\') -ne $InstallDir.TrimEnd('\') })
     $env:Path = (@($InstallDir) + $SessionOthers) -join ';'
     Write-Host "Put $InstallDir first on your user PATH (open a new terminal to pick it up)."

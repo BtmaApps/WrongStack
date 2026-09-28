@@ -115,6 +115,86 @@ describe('MCP authorization primitives', () => {
     ).toBeUndefined();
   });
 
+  // Built from separate tokens so the literal never sits in this source.
+  const challengeFor = (metadataUrl: string): string =>
+    ['Bearer', 'resource_metadata', '=', JSON.stringify(metadataUrl)].join(' ');
+
+  it('refuses a challenge-supplied resource_metadata served from a foreign host', () => {
+    // The metadata document must be co-located with the resource it describes:
+    // every fallback candidate in `protectedResourceMetadataUrls` is derived
+    // from the resource's own origin, and `parseProtectedResourceMetadata`
+    // only checks that the document self-declares the expected resource —
+    // which whoever serves that document controls.
+    expect(
+      parseMcpBearerChallenge(
+        challengeFor('https://attacker.example/.well-known/oauth-protected-resource'),
+        'https://mcp.example.com/mcp',
+      ).resourceMetadataUrl,
+    ).toBeUndefined();
+    // Boundary: the same host on another port is still this resource's metadata.
+    expect(
+      parseMcpBearerChallenge(
+        challengeFor('https://mcp.example.com:8443/.well-known/oauth-protected-resource'),
+        'https://mcp.example.com/mcp',
+      ).resourceMetadataUrl,
+    ).toBe('https://mcp.example.com:8443/.well-known/oauth-protected-resource');
+    // Secondary branch: IPv6 hosts compare after unbracketing.
+    expect(
+      parseMcpBearerChallenge(
+        challengeFor('http://[::1]:9999/.well-known/oauth-protected-resource'),
+        'http://[::1]:8080/mcp',
+      ).resourceMetadataUrl,
+    ).toBe('http://[::1]:9999/.well-known/oauth-protected-resource');
+    // Control: the ordinary same-host case is untouched.
+    expect(
+      parseMcpBearerChallenge(
+        challengeFor('https://mcp.example.com/.well-known/oauth-protected-resource'),
+        'https://mcp.example.com/mcp',
+      ).resourceMetadataUrl,
+    ).toBe('https://mcp.example.com/.well-known/oauth-protected-resource');
+  });
+
+  it('keeps discovery on the resource origin when a 401 challenge names a foreign host', async () => {
+    const requested: string[] = [];
+    const documents: Record<string, unknown> = {
+      // What the attacker host answers: a valid document self-declaring the
+      // victim resource, plus a well-formed authorization server.
+      'https://attacker.example/.well-known/oauth-protected-resource': {
+        resource: 'https://mcp.example.com/mcp',
+        authorization_servers: ['https://attacker.example'],
+      },
+      'https://attacker.example/.well-known/oauth-authorization-server': {
+        issuer: 'https://attacker.example',
+        authorization_endpoint: 'https://attacker.example/authorize',
+        token_endpoint: 'https://attacker.example/token',
+        code_challenge_methods_supported: ['S256'],
+      },
+      // What the resource's own origin answers.
+      'https://mcp.example.com/.well-known/oauth-protected-resource': {
+        resource: 'https://mcp.example.com/mcp',
+        authorization_servers: ['https://auth.example.com'],
+      },
+      'https://auth.example.com/.well-known/oauth-authorization-server': {
+        issuer: 'https://auth.example.com',
+        authorization_endpoint: 'https://auth.example.com/authorize',
+        token_endpoint: 'https://auth.example.com/token',
+        code_challenge_methods_supported: ['S256'],
+      },
+    };
+    const result = await discoverMcpAuthorization('https://mcp.example.com/mcp', {
+      challengeHeader:
+        challengeFor('https://attacker.example/.well-known/oauth-protected-resource'),
+      fetchJson: async (url: string) => {
+        requested.push(url);
+        return documents[url];
+      },
+    });
+    expect(requested).not.toContain('https://attacker.example/.well-known/oauth-protected-resource');
+    // Discovery falls through to the origin-derived candidate, so a
+    // cross-host AUTHORIZATION SERVER is still resolved.
+    expect(new URL(result.authorizationServer.issuer).origin).toBe('https://auth.example.com');
+  });
+
   it('constructs protected-resource and authorization-server discovery order', () => {
     expect(protectedResourceMetadataUrls('https://mcp.example.com/team/mcp')).toEqual([
       'https://mcp.example.com/.well-known/oauth-protected-resource/team/mcp',

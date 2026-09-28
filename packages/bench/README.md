@@ -163,7 +163,14 @@ wstack bench run --suite local --manifest ./evals/bench.local.json --models benc
 
 Supported assertions: `file_exists`, `file_not_exists`, `file_contains`,
 `file_not_contains`. The local subset fingerprint includes task ids, prompts,
-grader/assertion definitions, excludes, and a hash of the copied fixture content.
+grader/assertion definitions, excludes, protected files, and a hash of the
+copied fixture content.
+
+The grader runs in the agent's own workdir, so list the files it must see as
+shipped — the checker script, its test fixtures — under `protectedFiles`
+(e.g. `"protectedFiles": ["test.mjs", "package.json"]`). They are copied back
+from `templateDir` before grading, and the grade detail names any the agent had
+changed. Without it, an agent can rewrite the checker to pass.
 
 Artifacts per run (`bench-results/<timestamp>/`):
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { parsePorcelainStatusZ } from './review-context-builder.js';
 
 export interface ChangedFile {
   path: string;
@@ -35,6 +36,10 @@ export async function runGit(
     }
     let stdout = '';
     let stderr = '';
+    // Decode across chunks: `+= chunk` decodes each Buffer alone and turns a
+    // multibyte UTF-8 character split at a pipe-chunk boundary into U+FFFD.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', (d) => {
       stdout += d;
     });
@@ -53,19 +58,15 @@ export async function isGitRepo(cwd: string): Promise<boolean> {
 }
 
 export async function getChangedFiles(cwd: string): Promise<ChangedFile[]> {
-  const r = await runGit(['status', '--porcelain', '--untracked-files=no'], cwd);
+  // -z: line output C-quotes names with spaces/non-ASCII (`"my notes.ts"`), and a
+  // quoted path fails every later read, so the file silently left the review.
+  const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=no'], cwd);
   if (r.code !== 0) return [];
   const files: ChangedFile[] = [];
-  for (const line of r.stdout.split('\n')) {
-    if (!line.trim()) continue;
-    const x = line[0] ?? ' ';
-    const y = line[1] ?? ' ';
-    const rawPath = line.slice(3).trim();
-    const filePath =
-      x === 'R' || x === 'C' ? (rawPath.split(' -> ').pop()?.trim() ?? rawPath) : rawPath;
-    if (x === 'A' || y === 'A') {
+  for (const { path: filePath, status } of parsePorcelainStatusZ(r.stdout)) {
+    if (status.includes('A')) {
       files.push({ path: filePath, status: 'added' });
-    } else if (x === 'M' || y === 'M' || x === 'R' || x === 'C') {
+    } else if (status.includes('M') || status.startsWith('R') || status.startsWith('C')) {
       files.push({ path: filePath, status: 'modified' });
     }
   }

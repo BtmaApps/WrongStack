@@ -41,6 +41,18 @@ const PLAYWRIGHT_ALIASES = {
 
 export const RUNTIME_CAPABILITY_MANIFEST = [
   {
+    id: 'project-kit.discover',
+    pack: 'core',
+    exposure: 'direct',
+    tools: ['project_kit'],
+  },
+  {
+    id: 'project-kit.execute',
+    pack: 'development',
+    exposure: 'on-demand',
+    tools: ['project_kit_run'],
+  },
+  {
     id: 'filesystem.read',
     pack: 'core',
     exposure: 'direct',

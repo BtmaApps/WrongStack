@@ -191,6 +191,18 @@ export async function finalizeTaskCompletion(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    // Fencing: the caller (`completeKanbanDispatch`, `mark_assignment`) hands
+    // us the lease it believes it holds, so a stale owner whose lease was
+    // recovered and REASSIGNED cannot finalize the successor's card. Checked
+    // inside the board mutation lock — the same guard `updateTaskAssignment`
+    // and `heartbeatTaskAssignment` apply — because verification is async and
+    // runs BEFORE this mutation, so the ownership can change underneath us.
+    if (
+      options.eventContext.expectedLeaseId !== undefined &&
+      task.assignment?.leaseId !== options.eventContext.expectedLeaseId
+    ) {
+      return null;
+    }
     // Managed cards advance only through transitionTask. Completion callers may
     // persist assignment results, but cannot project lifecycle stages here.
     if (board.lifecycle?.mode === 'managed') return null;

@@ -12,8 +12,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { SageSearchOptions, VectorRecallProvider } from '../../src/types.js';
 import { SqliteSageStore } from '../../src/sqlite-store.js';
+import type { SageSearchOptions, VectorRecallProvider } from '../../src/types.js';
 
 let tempDir: string;
 let store: SqliteSageStore;
@@ -64,6 +64,28 @@ function rememberProject(text: string, extra: Record<string, unknown> = {}) {
 }
 
 describe('searchSage vector-only materialization (store wiring)', () => {
+  it('forwards the candidate budget through both SQLite recall entrypoints', async () => {
+    const lexical = await rememberProject('Quarantine admission requires explicit approval.');
+    const semantic = await rememberProject(
+      'Retry budgets drain in the waiting room before the wire gate opens.',
+    );
+    const options: SageSearchOptions = {
+      limit: 1,
+      vectorRecall: scriptedProvider([{ sageId: semantic.id, score: 0.99 }]),
+    };
+    expect((await store.searchSage('quarantine', options)).map((memory) => memory.id)).toEqual([
+      lexical.id,
+    ]);
+    const expanded = { ...options, vectorCandidateLimit: 2 };
+    expect((await store.searchSage('quarantine', expanded)).map((memory) => memory.id)).toEqual([
+      lexical.id,
+      semantic.id,
+    ]);
+    expect(
+      (await store.searchSageWithBreakdown('quarantine', expanded)).map((hit) => hit.memory.id),
+    ).toEqual([lexical.id, semantic.id]);
+  });
+
   it('admits a lexically-missed memory via a high-score vector-only hit', async () => {
     // The paraphrase shares NO token with the query ('apple', 'crumble',
     // 'oven'), so the FTS channel cannot reach it — only the scripted

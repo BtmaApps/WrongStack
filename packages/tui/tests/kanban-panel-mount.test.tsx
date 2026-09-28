@@ -440,3 +440,43 @@ describe('Kanban selection windows', () => {
     }
   });
 });
+
+/**
+ * Leaked pointer reports: Ink strips the leading ESC and hands the rest of every
+ * SGR report to each mounted `useInput` as TEXT. The kanban prompt editors are
+ * the one surface that *types* any non-empty input into a buffer, so before the
+ * `isLeakedMouseInput` guard a stray click inserted `[<0;12;4M` into the board /
+ * task editor the user was filling in.
+ */
+describe('Kanban prompt editors ignore leaked pointer reports', () => {
+  it('does not type a leaked SGR mouse report into the open editor buffer', async () => {
+    const board = populatedBoard();
+    const view = renderPanel({ board, terminalWidth: 200 });
+    try {
+      await settle();
+      await act(async () => {
+        view.stdin.write('c'); // opens the createBoard prompt with an empty buffer
+      });
+      await settle();
+      const opened = view.lastFrame() ?? '';
+
+      await act(async () => {
+        view.stdin.write('\x1b[<0;12;4M');
+      });
+      await settle();
+
+      expect(view.lastFrame() ?? '').not.toContain('[<0');
+      expect(view.lastFrame() ?? '').toBe(opened);
+
+      // Positive control: a real key still edits the same buffer, so the
+      // assertion above is not passing because the editor never opened.
+      await act(async () => {
+        view.stdin.write('z');
+      });
+      await settle();
+      expect(view.lastFrame() ?? '').not.toBe(opened);
+    } finally {
+      act(() => view.unmount());
+    }
+  });
+});

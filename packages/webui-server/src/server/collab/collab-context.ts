@@ -23,6 +23,13 @@ export interface CollaborationHandlerOptions {
         requestedRole: Exclude<Participant['role'], 'observer'>;
       }) => boolean)
     | undefined;
+  /**
+   * Redacts secrets from mirrored kernel event payloads before they reach an
+   * observer. The host passes the same SecretScrubber the chat bridge runs
+   * tool inputs and outputs through, so the mirror never carries what the
+   * chat stream redacts.
+   */
+  scrubPayload?: ((value: unknown) => unknown) | undefined;
 }
 
 /**

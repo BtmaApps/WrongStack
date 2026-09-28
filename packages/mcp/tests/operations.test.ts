@@ -101,6 +101,59 @@ describe('MCP operational health primitives', () => {
     expect(applyHealthThresholds('healthy', checks)).toBe('healthy');
   });
 
+  it('ignores a threshold that is not a usable number instead of failing the check', () => {
+    // `!== undefined` is not enough. These values are read straight off
+    // config.json (registry-health.ts / registry-operations.ts pass
+    // `slot.cfg.health?.thresholds`), where `null` and a hand-edited string both
+    // pass it while being useless as a bound. Every threshold is compared with
+    // `<=`, false for a non-number on every sample, so one typo pinned an
+    // otherwise-healthy server to `degraded` permanently — recomputed from the
+    // same config on every read and across restarts.
+    const operations = createMCPServerOperationState();
+    operations.connectionSamples.push(10, 20, 30, 40, 50);
+    operations.callSamples.push(10, 20, 30, 40, 50);
+
+    for (const unusable of [
+      { connectionLatencyP95Ms: 'soon' },
+      { connectionLatencyP95Ms: null },
+      { callLatencyP95Ms: 'soon' },
+    ]) {
+      // A value that is not a number is not a configured threshold at all, so it
+      // produces no check — and per the contract it cannot mark a server degraded.
+      const checks = evaluateHealthThresholds(operations, unusable as never);
+      expect(checks).toEqual([]);
+      expect(applyHealthThresholds('healthy', checks)).toBe('healthy');
+    }
+
+    // NaN and Infinity are not usable bounds either, so they must not pin
+    // `degraded` either.
+    for (const unusable of [
+      { connectionLatencyP95Ms: Number.NaN },
+      { connectionLatencyP95Ms: Number.POSITIVE_INFINITY },
+    ]) {
+      expect(applyHealthThresholds('healthy', evaluateHealthThresholds(operations, unusable as never))).toBe(
+        'healthy',
+      );
+    }
+
+    // A malformed in-flight threshold fires with no latency samples at all.
+    const noSamples = createMCPServerOperationState();
+    const inFlight = evaluateHealthThresholds(noSamples, { inFlightCalls: 'lots' } as never);
+    expect(inFlight).toEqual([]);
+    expect(applyHealthThresholds('healthy', inFlight)).toBe('healthy');
+  });
+
+  it('still enforces a legitimate 0 threshold', () => {
+    // Guards the fix above: a guard written as truthiness (`if (!threshold)`)
+    // would drop this check and report a busy server as healthy.
+    const operations = createMCPServerOperationState();
+    operations.peakInFlightCalls = 1;
+    const checks = evaluateHealthThresholds(operations, { inFlightCalls: 0 });
+    expect(checks).toHaveLength(1);
+    expect(checks[0]).toMatchObject({ name: 'in-flight-calls', passed: false, threshold: 0 });
+    expect(applyHealthThresholds('healthy', checks)).toBe('degraded');
+  });
+
   it('does not downgrade already-failed or degraded lifecycle states', () => {
     const operations = createMCPServerOperationState();
     operations.callSamples.push(10000);

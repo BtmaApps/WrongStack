@@ -14,7 +14,7 @@
  * reported. Pattern matching, line numbers and thresholds stay in code.
  */
 
-import { toErrorMessage } from '../utils/error.js';
+import { compileUserRegex } from '../utils/regex-guard.js';
 import type { TypeSafeQuestion } from './client.js';
 import type { TypeSafeJudge } from './judgments.js';
 
@@ -252,16 +252,22 @@ export function parseSemanticLintRules(raw: unknown): {
       errors.push(`rule ${e['id']}: needs a "question" (yes = violation)`);
       return;
     }
-    try {
-      rules.push({
-        id: e['id'],
-        pattern: new RegExp(e['pattern']),
-        files: typeof e['files'] === 'string' ? new RegExp(e['files']) : undefined,
-        question: e['question'],
-      });
-    } catch (err) {
-      errors.push(`rule ${e['id']}: ${toErrorMessage(err)}`);
+    // The file is repo-committed: bounding the line length does not stop
+    // catastrophic backtracking (a nested quantifier needs ~30 chars), so both patterns
+    // go through the same ReDoS guard as every other untrusted regex.
+    const pattern = compileUserRegex(e['pattern']);
+    const files = typeof e['files'] === 'string' ? compileUserRegex(e['files']) : undefined;
+    if (!pattern.ok || files?.ok === false) {
+      const reason = !pattern.ok ? pattern.reason : files?.ok === false ? files.reason : '';
+      errors.push(`rule ${e['id']}: ${reason}`);
+      return;
     }
+    rules.push({
+      id: e['id'],
+      pattern: pattern.regex,
+      files: files?.regex,
+      question: e['question'],
+    });
   });
   return { rules, errors };
 }

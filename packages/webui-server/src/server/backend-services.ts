@@ -806,6 +806,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     collabBus,
     {
       getActiveSessionId: () => context.session.id,
+      scrubPayload: (value) => secretScrubber.scrubObject(value),
     },
   );
   let realtimeHandlersDisposed = false;

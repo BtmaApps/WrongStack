@@ -197,6 +197,11 @@
       "fingerprint": "5760e7fd5b745740"
     },
     {
+      "file": "packages/mcp/tests/manage-config-permissions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "1f3997378070cb3c"
+    },
+    {
       "file": "packages/persistence/tests/adapter-conformance.test.ts",
       "kind": "skipIf",
       "fingerprint": "7eabc7f78d8712ee"

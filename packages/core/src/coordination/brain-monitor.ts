@@ -19,9 +19,9 @@
  *     matching completion) but no tool call or iteration progress has been
  *     observed for `stallMs` (default 5 min), with no tool still running.
  *     A wedged provider call or a dead-loop that produces no work.
- *   - file churn — the same file edited ≥ N times (default 5) within a
- *     sliding window (default 10 min). Classic edit/revert oscillation:
- *     the agent keeps rewriting the same file without converging.
+ *   - file churn — the same file edited ≥ N times (default 20) within a
+ *     sliding window (default 10 min). High edit frequency warrants review,
+ *     but does not by itself prove edit/revert oscillation.
  *
  * Decision contract: every consultation offers [steer | continue] with
  * fallback `continue`, at `medium` risk. Degradation is safe by design:
@@ -119,7 +119,7 @@ export interface BrainMonitorOptions {
   stallMs?: number | undefined;
   /** How often the stall watchdog checks (ms). Default 30_000. */
   stallCheckIntervalMs?: number | undefined;
-  /** Edits to the SAME file within the churn window before engaging. Default 5. */
+  /** Edits to the SAME file within the churn window before engaging. Default 20. */
   fileChurnThreshold?: number | undefined;
   /** Sliding window for the file-churn signal (ms). Default 600_000 (10 min). */
   fileChurnWindowMs?: number | undefined;
@@ -360,7 +360,7 @@ export class BrainMonitor {
     this.errorStormWindowMs = next.errorStormWindowMs ?? 60_000;
     this.stallMs = next.stallMs ?? 300_000;
     this.stallCheckIntervalMs = next.stallCheckIntervalMs ?? 30_000;
-    this.fileChurnThreshold = next.fileChurnThreshold ?? 5;
+    this.fileChurnThreshold = next.fileChurnThreshold ?? 20;
     this.fileChurnWindowMs = next.fileChurnWindowMs ?? 600_000;
     this.cooldownMs = next.cooldownMs ?? 120_000;
     this.enabled = next.enabled ?? true;
@@ -629,7 +629,7 @@ export class BrainMonitor {
     if (stamps.length >= this.fileChurnThreshold) {
       state.editTimestamps.delete(key);
       void this.engage('file_churn', sessionId, {
-        question: `The file "${path}" has been edited ${stamps.length} times within ${Math.round(this.fileChurnWindowMs / 60_000)} minutes — the agent may be oscillating (edit/revert loop) instead of converging. Should it be steered?`,
+        question: `The file "${path}" has been edited ${stamps.length} times within ${Math.round(this.fileChurnWindowMs / 60_000)} minutes. Edit frequency alone does not establish an edit/revert loop; incremental implementation can legitimately require many edits. Is there independent evidence of repeated reversals or lack of progress that warrants steering? Otherwise, let the agent continue.`,
         context: [
           `File: ${path}`,
           `Edits in window: ${stamps.length}`,

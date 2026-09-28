@@ -1,14 +1,6 @@
 import * as fs from 'node:fs/promises';
-import type { EventBus } from './event-bus-port.js';
 import { decryptConfigSecrets } from '../security/config-secrets.js';
 import type { Config, ConfigLoader, SyncConfig } from '../types/config.js';
-import {
-  DEFAULT_CONTEXT_WINDOW_MODE_ID,
-  isContextWindowModeSelectionId,
-  listContextWindowModes,
-  normalizeContextWindowModeId,
-} from '../types/context-window.js';
-import { ConfigError, ERROR_CODES } from '../types/errors.js';
 import type { Logger } from '../types/logger.js';
 import type { SecretVault } from '../types/secret-vault.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
@@ -35,7 +27,13 @@ import type {
   ConfigSource,
   MemoizedConfigSource,
 } from './config-loader/types.js';
+import { validateConfigBehavior, validateConfigIdentity } from './config-loader/validation.js';
+import type { EventBus } from './event-bus-port.js';
 
+export type {
+  ConfigDefaultRepair,
+  ConfigDefaultRepairReport,
+} from './config-loader/default-repair.js';
 export { fillMissingDefaults, repairConfigDefaults } from './config-loader/default-repair.js';
 export { CONFIG_BEHAVIOR_DEFAULTS } from './config-loader/defaults.js';
 export {
@@ -43,10 +41,6 @@ export {
   stripUnsafeInProjectFields,
 } from './config-loader/in-project-policy.js';
 export type { ConfigLoaderOptions, ConfigSource } from './config-loader/types.js';
-export type {
-  ConfigDefaultRepair,
-  ConfigDefaultRepairReport,
-} from './config-loader/default-repair.js';
 
 /**
  * Config-layer deep merge — delegates to the shared utility with
@@ -276,9 +270,9 @@ export class DefaultConfigLoader implements ConfigLoader {
     // `Sage.storage.engine` used to select JSONL. SQLite is now the
     // sole backend, so ignore the retired key from every config layer.
     removeLegacySageEngine(cfg as Record<string, unknown>);
-    this.validateBehavior(cfg);
+    validateConfigBehavior(cfg, (message, context) => this.logWarn(message, context));
     if (this.strict && !opts.skipIdentityValidation) {
-      this.validateIdentity(cfg);
+      validateConfigIdentity(cfg);
     }
     // In strict mode, validateIdentity has confirmed provider/model are set;
     // it's safe to assert the full Config contract. In non-strict mode the
@@ -682,84 +676,5 @@ export class DefaultConfigLoader implements ConfigLoader {
     migrateLegacySuperMemoryKey(parsed.value as Record<string, unknown>);
     this.jsonCache.set(file, { mtimeMs, value: structuredClone(parsed.value) });
     return parsed.value;
-  }
-
-  private validateBehavior(cfg: PartialConfig): void {
-    /* v8 ignore start -- defensive: config defaults always seed version:1 before validation */
-    if (cfg.version === undefined)
-      throw new ConfigError({
-        message: 'Config: missing version field',
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { field: 'version' },
-      });
-    /* v8 ignore stop */
-    if (cfg.version !== 1)
-      throw new ConfigError({
-        message: `Config: unsupported version ${cfg.version}`,
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { field: 'version', actual: cfg.version },
-      });
-    const c = cfg.context;
-    if (!c)
-      throw new ConfigError({
-        message: 'Config: missing context section',
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { field: 'context' },
-      });
-    // A user-edited config.json can land strings here ("0.6") and slip past
-    // truthiness checks; the `>=` comparison then coerces silently and the
-    // threshold ordering check passes for nonsense values. Validate types
-    // explicitly so misconfigs surface here, not as confusing failures deep
-    // in the auto-compaction logic.
-    const fields: Array<keyof typeof c> = ['warnThreshold', 'softThreshold', 'hardThreshold'];
-    for (const f of fields) {
-      const v = c[f];
-      if (typeof v !== 'number' || !Number.isFinite(v)) {
-        throw new ConfigError({
-          message: `Config: context.${String(f)} must be a finite number (got ${typeof v})`,
-          code: ERROR_CODES.CONFIG_INVALID,
-          context: { field: `context.${String(f)}`, actualType: typeof v },
-        });
-      }
-    }
-    if (c.warnThreshold >= c.softThreshold || c.softThreshold >= c.hardThreshold) {
-      throw new ConfigError({
-        message: 'Config: context thresholds must satisfy warn < soft < hard',
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { warn: c.warnThreshold, soft: c.softThreshold, hard: c.hardThreshold },
-      });
-    }
-    if (c.mode !== undefined && !isContextWindowModeSelectionId(c.mode)) {
-      // An unknown mode (typo or value from an older/renamed scheme) should not
-      // brick the CLI — unlike the numeric thresholds above there is a safe
-      // default. Warn and fall back rather than throwing.
-      const known = listContextWindowModes()
-        .map((m) => m.id)
-        .join(', ');
-      this.logWarn(
-        `Ignoring unknown context.mode "${c.mode}" — falling back to "${DEFAULT_CONTEXT_WINDOW_MODE_ID}"`,
-        { event: 'config.unknown_context_mode', mode: c.mode, known },
-      );
-      c.mode = DEFAULT_CONTEXT_WINDOW_MODE_ID;
-    } else if (c.mode !== undefined) {
-      c.mode = normalizeContextWindowModeId(c.mode) ?? DEFAULT_CONTEXT_WINDOW_MODE_ID;
-    }
-  }
-
-  private validateIdentity(cfg: PartialConfig): void {
-    if (!cfg.provider) {
-      throw new ConfigError({
-        message: 'Config: no provider configured. Run `wstack init` or set WRONGSTACK_PROVIDER.',
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { field: 'provider' },
-      });
-    }
-    if (!cfg.model) {
-      throw new ConfigError({
-        message: 'Config: no model configured. Run `wstack init` or set WRONGSTACK_MODEL.',
-        code: ERROR_CODES.CONFIG_INVALID,
-        context: { field: 'model' },
-      });
-    }
   }
 }

@@ -284,7 +284,11 @@ describe('renderMarkdownReport edge outcomes', () => {
     ];
     const insights = buildIntraRunInsights(results);
     expect(insights.matrix['task-repeat']!['opus']!.status).toBe('completed');
-    expect(insights.matrix['task-repeat']!['opus']!.passed).toBeNull();
+    // The completed attempt was GRADED and failed: that is a verdict, and the
+    // leaderboard's pass@k counts this task as a failure. This used to expect
+    // null ("no verdict"), which hid the failure from the matrix and made a
+    // run whose other model passed read as a unanimous pass.
+    expect(insights.matrix['task-repeat']!['opus']!.passed).toBe(false);
 
     // False then true -> true
     const resultsPass = [result('task-repeat2', opus, false), result('task-repeat2', opus, true)];
@@ -295,5 +299,31 @@ describe('renderMarkdownReport edge outcomes', () => {
     const resultsFail = [result('task-repeat3', opus, false), result('task-repeat3', opus, false)];
     const insightsFail = buildIntraRunInsights(resultsFail);
     expect(insightsFail.matrix['task-repeat3']!['opus']!.passed).toBe(false);
+  });
+
+  // SWE-bench without inline grading: an empty patch is a graded failure, an
+  // exported patch is ungraded. Mixed in one cell, the graded failure must
+  // stay a failure — as it is on the leaderboard.
+  it('keeps a graded failure when another attempt of the cell went ungraded', () => {
+    const exported = (taskId: string) => ({
+      ...result(taskId, opus, false),
+      grade: { passed: false, graded: false },
+    });
+    const mixed = [result('t1', opus, false), exported('t1'), result('t1', haiku, true)];
+    const insights = buildIntraRunInsights(mixed);
+    expect(insights.disagreements.map((d) => d.taskId)).toEqual(['t1']);
+    expect(insights.unanimousPass).toEqual([]);
+    // Attempt order must not matter: ungraded first, graded failure second.
+    const reversed = buildIntraRunInsights([exported('t2'), result('t2', opus, false)]);
+    expect(reversed.matrix['t2']!['opus']!.passed).toBe(false);
+    // No attempt graded at all: still no verdict.
+    const none = buildIntraRunInsights([exported('t3'), exported('t3')]);
+    expect(none.matrix['t3']!['opus']!.passed).toBeNull();
+
+    const cmp = compareReports(
+      report([result('t1', opus, false), exported('t1')]),
+      report([result('t1', opus, false)]),
+    );
+    expect(cmp.flipped).toEqual([]);
   });
 });

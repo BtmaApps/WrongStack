@@ -29,7 +29,7 @@
 
 import { execFile } from 'node:child_process';
 import type { Plugin } from '@wrongstack/core/types';
-import { releaseHandle, BoundedMap } from '../runtime/index.js';
+import { releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
 
@@ -137,17 +137,10 @@ function hasDisabledPluginEntry(raw: unknown): boolean {
  * Get the current git branch name. Returns null if not a git repo
  * or git is unavailable.
  *
- * Performance: caches the branch name per cwd+signal combination to
- * avoid redundant git subprocess spawns on repeated hook invocations.
- * The cache is invalidated on setup() reload.
+ * Not cached: a 2 s per-cwd cache let `commit on feat -> git checkout main ->
+ * commit` inside the window be judged against the stale branch and land on
+ * the protected one. The lookup only runs for a guarded commit/push/merge.
  */
-/**
- * Branch lookups keyed by cwd. Bounded: a session that walks many
- * worktrees would otherwise retain one entry per directory forever.
- * The TTL also means a branch switch is picked up without a reload.
- */
-const branchCache = new BoundedMap<string, string | null>({ max: 64, ttlMs: 2_000 });
-
 function runGit(args: string[], cwd: string | undefined, signal: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
@@ -166,19 +159,11 @@ async function getCurrentBranch(
   cwd: string | undefined,
   signal: AbortSignal,
 ): Promise<string | null> {
-  // Check cache first — avoids redundant git subprocess spawns.
-  const cacheKey = `${cwd ?? 'undefined'}`;
-  const cached = branchCache.get(cacheKey);
-  if (cached !== undefined) return cached;
-
   try {
     const branch = (await runGit(['branch', '--show-current'], cwd, signal)).trim();
-    const result = branch || null;
-    branchCache.set(cacheKey, result);
-    return result;
+    return branch || null;
   } catch (err) {
     if (signal.aborted) throw err;
-    branchCache.set(cacheKey, null);
     return null;
   }
 }
@@ -209,25 +194,43 @@ interface GitCommandMatch {
   type: 'commit' | 'push' | 'merge';
   /** The matched substring (for display). */
   snippet: string;
+  /**
+   * Branch an earlier `git checkout|switch` in the SAME command moved to, so
+   * the op runs there — not on the branch current when the hook fires.
+   */
+  onBranch?: string | undefined;
 }
 
-function detectGitCommand(command: string): GitCommandMatch | null {
-  // Normalize whitespace for matching.
+/**
+ * Every commit/push/merge in a shell command, each tagged with the branch a
+ * preceding in-command `git checkout <b>` / `git switch <b>` moved to.
+ * Judging the whole command against the branch current before it ran let
+ * `git checkout main && git merge feat` land on main from a feature branch.
+ * Path restores (`git checkout main -- file`) do not switch; for -b/-c the
+ * new branch name is the target; `git switch -` (unknown target) is ignored.
+ */
+function detectGitOpsInCommand(command: string): GitCommandMatch[] {
   const cmd = command.trim();
-
-  // git commit (but NOT git commit-tree, git commit-graph, or similar)
-  if (/\bgit\s+commit(?![a-zA-Z0-9_-])/.test(cmd)) {
-    return { type: 'commit', snippet: cmd.slice(0, 120) };
+  const snippet = cmd.slice(0, 120);
+  const events: Array<{ at: number; op?: GitCommandMatch['type']; to?: string }> = [];
+  for (const m of cmd.matchAll(/\bgit\s+(commit|push|merge)(?![a-zA-Z0-9_-])/g)) {
+    events.push({ at: m.index ?? 0, op: m[1] as GitCommandMatch['type'] });
   }
-  // git push (but NOT git push-to-checkout or similar)
-  if (/\bgit\s+push(?![a-zA-Z0-9_-])/.test(cmd)) {
-    return { type: 'push', snippet: cmd.slice(0, 120) };
+  for (const m of cmd.matchAll(/\bgit\s+(?:checkout|switch)\s+([^;&|\n]*)/g)) {
+    const args = (m[1] ?? '').trim().split(/\s+/).filter(Boolean);
+    if (args.includes('--')) continue;
+    const create = args.findIndex((a) => /^(?:-[bBcC]|--orphan)$/.test(a));
+    const target = create >= 0 ? args[create + 1] : args.find((a) => !a.startsWith('-'));
+    if (target) events.push({ at: m.index ?? 0, to: target.replace(/^['"]|['"]$/g, '') });
   }
-  // git merge (but NOT git merge-base, git merge-file, git merge-tree)
-  if (/\bgit\s+merge(?![a-zA-Z0-9_-])/.test(cmd)) {
-    return { type: 'merge', snippet: cmd.slice(0, 120) };
+  events.sort((a, b) => a.at - b.at);
+  const ops: GitCommandMatch[] = [];
+  let onBranch: string | undefined;
+  for (const e of events) {
+    if (e.to !== undefined) onBranch = e.to;
+    else if (e.op) ops.push({ type: e.op, snippet, onBranch });
   }
-  return null;
+  return ops;
 }
 
 function detectStructuredGitCommand(input: Record<string, unknown>): GitCommandMatch | null {
@@ -305,9 +308,6 @@ const plugin: Plugin = {
     state.configUnregister = releaseHandle(state.configUnregister);
     state.lastBlock = null;
 
-    // Clear branch cache to ensure fresh detection after config changes.
-    branchCache.clear();
-
     let cfg = readHostConfig(api.config);
     state.configUnregister = api.onConfigChange((next) => {
       cfg = readHostConfig(next);
@@ -328,8 +328,8 @@ const plugin: Plugin = {
 
       if (!cfg.enabled || cfg.mode === 'off') return;
 
-      // Determine the git operation from the tool call.
-      let gitOp: GitCommandMatch | null = null;
+      // Determine the git operation(s) from the tool call.
+      let gitOps: GitCommandMatch[] = [];
 
       if (toolName === 'git_autocommit') {
         // Dry-run is a preview and does not mutate git history, so it should
@@ -337,25 +337,39 @@ const plugin: Plugin = {
         // exactly what would be committed before switching branches.
         if (inp['dry_run'] === true) return;
         // The git-autocommit plugin's tool is a direct commit.
-        gitOp = { type: 'commit', snippet: 'git_autocommit' };
+        gitOps = [{ type: 'commit', snippet: 'git_autocommit' }];
       } else if (toolName === 'git') {
-        gitOp = detectStructuredGitCommand(inp);
+        const op = detectStructuredGitCommand(inp);
+        gitOps = op ? [op] : [];
       } else {
         const rawCmd =
           inp['command'] ?? inp['CommandLine'] ?? inp['cmd'] ?? inp['script'] ?? inp['input'];
         const command = typeof rawCmd === 'string' ? rawCmd : undefined;
         if (typeof command !== 'string') return;
-        gitOp = detectGitCommand(command);
+        gitOps = detectGitOpsInCommand(command);
       }
 
-      if (!gitOp) return; // not a git commit/push/merge — let it through
-      if (!shouldBlock(gitOp.type, cfg)) return; // config says don't block this op type
+      // Ops the config does not block — or none at all — let it through.
+      const blockable = gitOps.filter((op) => shouldBlock(op.type, cfg));
+      if (blockable.length === 0) return;
 
-      // Check current branch.
-      const branch = await getCurrentBranch(cwd, runtime.signal);
-      if (!branch) return; // can't determine branch — don't block
+      // Each op runs on the branch an earlier in-command switch moved to, else
+      // on the current branch (unknown current branch — don't block on it).
+      const current = blockable.some((op) => op.onBranch === undefined)
+        ? await getCurrentBranch(cwd, runtime.signal)
+        : null;
       const protectedSet = new Set(cfg.branches);
-      if (!protectedSet.has(branch)) return; // not protected — let it through
+      let gitOp: GitCommandMatch | undefined;
+      let branch = '';
+      for (const op of blockable) {
+        const on = op.onBranch ?? current;
+        if (on && protectedSet.has(on)) {
+          gitOp = op;
+          branch = on;
+          break;
+        }
+      }
+      if (!gitOp) return; // not on a protected branch — let it through
 
       // Protected branch + blocked operation → act.
       const when = new Date().toISOString();

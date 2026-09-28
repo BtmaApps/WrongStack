@@ -109,9 +109,12 @@ async function readJsonBody(
       sendJson(res, 400, { error: { code: 'INVALID_BODY', message } });
       resolve(null);
     };
-    req.on('data', (chunk: Buffer) => {
+    // Decode across chunks: TCP may split a multibyte character between two
+    // 'data' events, and a per-chunk decode turns it into U+FFFD.
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => {
       if (failed) return;
-      data += chunk.toString('utf8');
+      data += chunk;
       if (data.length > MAX_INTAKE_BODY_BYTES) {
         req.destroy();
         fail('Request body too large');

@@ -15,8 +15,10 @@
  * two tests below pin that the forwarded options stay serializable.
  */
 
+import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import type { MemoryPort } from '@wrongstack/core/types';
 import {
+  createSageToolCallMiddleware,
   SAGE_RETRIEVAL_CAPABILITY,
   SAGE_SERVICE_CAPABILITY,
   SAGE_SURFACE_CAPABILITY,
@@ -98,6 +100,119 @@ function makeSage(id: string, text: string, overrides: Partial<Sage> = {}): Sage
 }
 
 describe('wrapMemoryPortWithVectorRecall', () => {
+  it.each([
+    { label: 'strong semantic recall', score: 0.99, patch: {}, admitted: true, maxHints: 8 },
+    { label: 'weak relation', score: 0.7, patch: {}, admitted: false, maxHints: 8 },
+    { label: 'stale', score: 0.99, patch: { status: 'stale' }, admitted: false, maxHints: 8 },
+    {
+      label: 'context ban',
+      score: 0.99,
+      patch: { contextPolicy: 'never' },
+      admitted: false,
+      maxHints: 8,
+    },
+    {
+      label: 'audience isolation',
+      score: 0.99,
+      patch: { audience: { roles: ['reviewer'] } },
+      admitted: false,
+      maxHints: 8,
+    },
+    {
+      label: 'session isolation',
+      score: 0.99,
+      patch: { scope: 'session', ownerSessionId: 'other' },
+      admitted: false,
+      maxHints: 8,
+    },
+    {
+      label: 'anchor wins the one-hint budget',
+      score: 0.99,
+      patch: {},
+      admitted: false,
+      maxHints: 1,
+    },
+  ])(
+    'retains full lexical search and injection gates: $label',
+    async ({ score, patch, admitted, maxHints }) => {
+      const lexical = Array.from({ length: 64 }, (_, i) =>
+        makeSage(`noise-${i}`, `unrelated orchard ${i}`),
+      );
+      const semantic = makeSage(
+        'semantic',
+        'Retry budgets drain in the waiting room before the wire gate opens.',
+        patch as Partial<Sage>,
+      );
+      const anchor = makeSage(
+        'anchor',
+        'Preserve quarantine admission invariants before changing this file.',
+        {
+          anchors: [{ type: 'file', path: 'src/quarantine.ts' }],
+        },
+      );
+      const port = makeFakePort({
+        retrieval: {
+          searchSage: async () => lexical,
+          searchSageWithBreakdown: async () =>
+            lexical.map((memory) => ({
+              memory,
+              source: 'lexical',
+              vectorScore: null,
+              lexicalScore: 1,
+              finalScore: 1,
+            })),
+          retrieveForPath: async () => [anchor],
+          recordInjection: async () => {},
+        } as unknown as SageRetrievalCapability,
+        surface: { getSage: async () => semantic } as unknown as SageSurface,
+      });
+      const wrapped = wrapMemoryPortWithVectorRecall(port, {
+        store: undefined as unknown as VectorMemoryStore,
+        vectorRecall: {
+          search: async () => [
+            { id: 'v', score, text: semantic.text, tags: [], metadata: { sageId: semantic.id } },
+          ],
+        },
+      });
+      const memory = wrapped.getCapability<SageRetrievalCapability>(SAGE_RETRIEVAL_CAPABILITY)!;
+      // Ordinary operator searches keep their original limit/order.
+      expect(await memory.searchSage('quarantine', { limit: 64 })).toEqual(lexical);
+      const middleware = createSageToolCallMiddleware({
+        memory,
+        taskAware: false,
+        minScore: 0.65,
+        relationFloor: 0.9,
+        maxHintsPerTool: maxHints,
+        maxCharsPerTool: 2800,
+        getSessionId: () => 'own',
+      });
+      const payload = {
+        toolUse: { type: 'tool_use', id: 't', name: 'read', input: { path: 'src/quarantine.ts' } },
+        result: {
+          type: 'tool_result',
+          tool_use_id: 't',
+          name: 'read',
+          content: 'export const quarantine = true;',
+        },
+        ctx: {
+          projectRoot: process.cwd(),
+          cwd: process.cwd(),
+          session: { id: 'own' },
+          signal: new AbortController().signal,
+        },
+      } as unknown as ToolCallPipelinePayload;
+      const result = await middleware.handler(payload, async (value) => value);
+      const evidence =
+        (result.ctx as unknown as { memoryEvidence?: Array<{ text: string }> }).memoryEvidence
+          ?.map((entry) => entry.text)
+          .join('\n') ?? '';
+      expect(evidence).toContain(anchor.text);
+      expect(evidence.includes(semantic.text)).toBe(admitted);
+      expect(evidence).not.toContain('unrelated orchard');
+      expect(evidence.length).toBeLessThanOrEqual(2800);
+    },
+  );
+
   it('passes through capabilities that are not retrieval/surface', () => {
     const port = makeFakePort();
     const customCap = { id: 'custom-cap' };

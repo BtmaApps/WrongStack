@@ -16,6 +16,7 @@ export async function searchSqliteSageWithRecall(
   // (any backend error falls through to the lexical list).
   const fused = await augmentLexicalWithVectorRecall(query, lexical, {
     vectorRecall: opts.vectorRecall,
+    vectorCandidateLimit: opts.vectorCandidateLimit,
     // Vector-only hits (semantically close but lexically missed) are
     // materialized by id under the SAME visibility rules as the lexical
     // channel — see materializeSageByIdFactory.
@@ -63,6 +64,7 @@ export async function explainSqliteSageRecall(
   }
   return augmentLexicalWithVectorRecall(query, lexical, {
     vectorRecall: opts.vectorRecall,
+    vectorCandidateLimit: opts.vectorCandidateLimit,
     // Same vector-only materialization contract as searchSage —
     // visibility-respecting, fail-open on unknown ids.
     materializeVectorOnly: materializeSageByIdFactory({ stmt: (sql) => stmt(sql) }, opts),

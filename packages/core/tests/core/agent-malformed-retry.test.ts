@@ -101,6 +101,83 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     for (const d of cleanupDirs) await fs.rm(d, { recursive: true, force: true });
   });
 
+  it('delivers contextual Kit advice before the first request and after an ad hoc call', async () => {
+    const create = vi.fn(async () => ({
+      initialNote: '[PROJECT KIT — task candidates]\nsettings.parity',
+      afterTools: () =>
+        '[PROJECT KIT — possible ad hoc duplication]\nInspect settings.parity before another copy.',
+    }));
+    const metadataExecute = vi.fn(async () => 'metadata');
+    const kitTool: Tool = {
+      name: 'project_kit',
+      description: 'Project Kit discovery',
+      permission: 'auto',
+      mutating: false,
+      inputSchema: { type: 'object' },
+      execute: metadataExecute,
+      turnGuidance: { permissionInput: { action: 'list' }, create },
+    };
+    const write = vi.fn(async () => 'written');
+    const writer: Tool = {
+      name: 'write',
+      description: 'Write files',
+      permission: 'auto',
+      mutating: true,
+      inputSchema: { type: 'object' },
+      execute: write,
+    };
+    const provider = new MockProvider([
+      {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'kit-write',
+            name: 'write',
+            input: { path: '.temp_files/settings.mjs', content: '// settings parity' },
+          },
+        ],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, [kitTool, writer]);
+    cleanupDirs.push(tmp);
+    expect((await agent.run('Check settings parity')).status).toBe('done');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ task: 'Check settings parity', projectRoot: tmp }),
+    );
+    expect(JSON.stringify(provider.receivedRequests[0]?.messages)).toContain(
+      '[PROJECT KIT — task candidates]',
+    );
+    expect(JSON.stringify(provider.receivedRequests[1]?.messages)).toContain(
+      '[PROJECT KIT — possible ad hoc duplication]',
+    );
+    expect(metadataExecute).not.toHaveBeenCalled();
+    expect(write).toHaveBeenCalledOnce();
+  });
+
+  it('does not load Kit metadata when the shared Tool Coach switch is off', async () => {
+    const create = vi.fn(async () => ({ initialNote: 'must not appear', afterTools: () => null }));
+    const kitTool: Tool = {
+      name: 'project_kit',
+      description: 'Project Kit discovery',
+      permission: 'auto',
+      mutating: false,
+      inputSchema: { type: 'object' },
+      execute: async () => 'ok',
+      turnGuidance: { permissionInput: { action: 'list' }, create },
+    };
+    const provider = new MockProvider([
+      { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider, [kitTool]);
+    cleanupDirs.push(tmp);
+    ctx.meta.featureToolCoach = false;
+    await agent.run('Check settings parity');
+    expect(create).not.toHaveBeenCalled();
+    expect(JSON.stringify(provider.receivedRequests)).not.toContain('must not appear');
+  });
+
   it('recovers across three turns: sentinel garbage → wrong fields → coerced success', async () => {
     const execute = vi.fn().mockResolvedValue({ ok: true, data: 'file contents' });
     const readTool: Tool = {

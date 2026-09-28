@@ -91,18 +91,27 @@ function isWithin(root: string, target: string): boolean {
   );
 }
 
+/**
+ * One ascending pass over the original text. The stable sort keeps
+ * same-position edits in array order, which LSP says is the order their text
+ * appears in; applying from the end backwards reversed them.
+ */
 export function applyTextEdits(original: string, edits: TextEdit[]): string {
   const lineStarts = buildLineStarts(original);
-  const sorted = [...edits].sort(
-    (a, b) => offsetOf(b.range.start, lineStarts) - offsetOf(a.range.start, lineStarts),
-  );
-  let out = original;
-  for (const edit of sorted) {
-    const start = offsetOf(edit.range.start, lineStarts);
-    const end = offsetOf(edit.range.end, lineStarts);
-    out = out.slice(0, start) + edit.newText + out.slice(end);
+  const ordered = edits
+    .map((edit) => ({
+      newText: edit.newText,
+      start: offsetOf(edit.range.start, original, lineStarts),
+      end: offsetOf(edit.range.end, original, lineStarts),
+    }))
+    .sort((a, b) => a.start - b.start);
+  let out = '';
+  let cursor = 0;
+  for (const edit of ordered) {
+    out += original.slice(cursor, edit.start) + edit.newText;
+    cursor = Math.max(cursor, edit.end);
   }
-  return out;
+  return out + original.slice(cursor);
 }
 
 function buildLineStarts(text: string): number[] {
@@ -114,6 +123,20 @@ function buildLineStarts(text: string): number[] {
   return starts;
 }
 
-function offsetOf(pos: { line: number; character: number }, lineStarts: number[]): number {
-  return (lineStarts[pos.line] ?? lineStarts[lineStarts.length - 1]!) + pos.character;
+/**
+ * LSP: a character past the line length "defaults back to the line length",
+ * and a line past the end means the end of the document. Unclamped, an
+ * over-long end ran through the newline and deleted the rest of the file.
+ */
+function offsetOf(
+  pos: { line: number; character: number },
+  text: string,
+  lineStarts: number[],
+): number {
+  if (pos.line >= lineStarts.length) return text.length;
+  const line = Math.max(0, pos.line);
+  const lineStart = lineStarts[line]!;
+  let lineEnd = line + 1 < lineStarts.length ? lineStarts[line + 1]! - 1 : text.length;
+  if (line + 1 < lineStarts.length && text.charCodeAt(lineEnd - 1) === 13) lineEnd -= 1;
+  return Math.min(lineStart + Math.max(0, pos.character), Math.max(lineStart, lineEnd));
 }

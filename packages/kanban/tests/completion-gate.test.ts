@@ -180,6 +180,71 @@ describe('finalizeTaskCompletion', () => {
     expect(await finalizeTaskCompletion(tmpDir, board.id, 'missing')).toBeNull();
   });
 
+  // A card reclaimed by a successor after the original worker's lease lapsed.
+  // Both cases below see this identical state; only the fencing token differs.
+  async function reclaimedCard() {
+    const board = await createBoard(tmpDir, {
+      title: 'Fenced',
+      completionGate: { enforcement: 'soft' },
+    });
+    const added = await addTask(tmpDir, board.id, { title: 'Reclaimed card' });
+    const taskId = added!.task.id;
+    await addCheckToTask(tmpDir, board.id, taskId, {
+      description: 'Manually confirmed by reviewer',
+      type: 'manual',
+      status: 'passed',
+    });
+    await assignTask(tmpDir, board.id, taskId, { agentId: 'stale-worker' });
+    await updateTaskAssignment(tmpDir, board.id, taskId, {
+      status: 'completed',
+      leaseId: 'STALE-LEASE',
+    });
+    // Lease lapses; recovery reclaims the card and a successor picks it up.
+    await updateTaskAssignment(tmpDir, board.id, taskId, {
+      status: 'queued',
+      leaseId: 'SUCCESSOR-LEASE',
+      agentId: 'successor-worker',
+    });
+    return { boardId: board.id, taskId };
+  }
+
+  it('refuses to finalize when the fencing token does not own the lease', async () => {
+    const { boardId, taskId } = await reclaimedCard();
+    const before = await getBoard(tmpDir, boardId);
+    const task = before!.tasks.find((t) => t.id === taskId)!;
+    expect(task.assignment?.leaseId).toBe('SUCCESSOR-LEASE');
+    expect(task.status).toBe('ready');
+
+    // The zombie worker finishes late and finalizes with its dead lease.
+    const result = await finalizeTaskCompletion(tmpDir, boardId, taskId, {
+      eventContext: { sessionId: 'stale', expectedLeaseId: 'STALE-LEASE' },
+    });
+
+    const after = (await getBoard(tmpDir, boardId))!.tasks.find((t) => t.id === taskId)!;
+    expect(result).toBeNull();
+    // The successor's card is untouched by the stale owner's write.
+    expect(after.status).toBe('ready');
+    expect(after.completedAt).toBeUndefined();
+    expect(after.verificationReport).toBeUndefined();
+    expect(after.assignment?.leaseId).toBe('SUCCESSOR-LEASE');
+  });
+
+  it('finalizes when the fencing token owns the lease', async () => {
+    const { boardId, taskId } = await reclaimedCard();
+    const result = await finalizeTaskCompletion(tmpDir, boardId, taskId, {
+      eventContext: { sessionId: 'successor', expectedLeaseId: 'SUCCESSOR-LEASE' },
+    });
+    expect(result?.gate.allowed).toBe(true);
+    expect(result?.task.status).toBe('completed');
+  });
+
+  it('stays unfenced when no token is supplied (operator / supervisor path)', async () => {
+    const { boardId, taskId } = await reclaimedCard();
+    const result = await finalizeTaskCompletion(tmpDir, boardId, taskId);
+    expect(result?.gate.allowed).toBe(true);
+    expect(result?.task.status).toBe('completed');
+  });
+
   it('supports unique task id prefix in enforceCompletionGate', async () => {
     const { boardId, taskId } = await boardWithTask({ gate: 'soft', checkStatus: 'passed' });
     const prefix = taskId.slice(0, 8);

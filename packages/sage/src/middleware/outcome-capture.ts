@@ -71,6 +71,14 @@ export function createSageOutcomeCaptureMiddleware(
           asString(input?.['command']) ||
           asString(input?.['CommandLine']) ||
           asString(input?.['cmd']);
+        const sources = [
+          {
+            type: 'tool_result' as const,
+            sessionId: nextPayload.ctx.session?.id,
+            toolUseId: nextPayload.toolUse.id,
+            ...(command ? { command: command.slice(0, 200) } : {}),
+          },
+        ];
 
         if (opts.errorPatterns && isError && output.trim()) {
           const signature = output.replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -84,7 +92,7 @@ export function createSageOutcomeCaptureMiddleware(
               confidence: 0.6,
               tags: ['auto-capture', 'error_pattern', name],
               anchors: command ? [{ type: 'command', command: command.slice(0, 200) }] : [],
-              sources: [{ type: 'tool_result' }],
+              sources,
             });
           }
         }
@@ -110,7 +118,7 @@ export function createSageOutcomeCaptureMiddleware(
               confidence: 0.7,
               tags: ['auto-capture', 'tool_outcome', name],
               anchors: [{ type: 'command', command: command.slice(0, 200) }],
-              sources: [{ type: 'tool_result' }],
+              sources,
             });
           }
         }

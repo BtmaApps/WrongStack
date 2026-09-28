@@ -20,7 +20,7 @@ import * as path from 'node:path';
 import type { MemoryPort } from '@wrongstack/core/types';
 import type { EmbeddingProvider, SageSurface } from '@wrongstack/sage';
 import { SAGE_SURFACE_CAPABILITY } from '@wrongstack/sage';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   decideWhetherToSync,
   SAGE_SYNC_MARKER_FILENAME,
@@ -122,6 +122,127 @@ describe('first-boot sage sync', () => {
   });
 
   const markerFile = () => path.join(store.directory, SAGE_SYNC_MARKER_FILENAME);
+
+  it('reconciles missed SAGE events after a day without duplicating existing entries', async () => {
+    const rows = [{ id: 'a', text: 'Original shared project knowledge.' }];
+    const port = fakeSagePort(rows);
+    await startFirstBootSageSync({ store, memoryStore: port });
+    rows.push({ id: 'b', text: 'New independent fact missed while the mirror was offline.' });
+    expect((await startFirstBootSageSync({ store, memoryStore: port })).reason).toBe(
+      'already-complete',
+    );
+    const marker = JSON.parse(fs.readFileSync(markerFile(), 'utf8'));
+    marker.completedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    fs.writeFileSync(markerFile(), JSON.stringify(marker));
+    const result = await startFirstBootSageSync({ store, memoryStore: port });
+    expect(result.synced).toBe(true);
+    expect(result.marker).toMatchObject({ indexed: 1, skipped: 1 });
+    expect(store.embeddingCoverage()).toEqual({ entries: 2, covered: 2, missing: 0 });
+    expect((await startFirstBootSageSync({ store, memoryStore: port })).reason).toBe(
+      'already-complete',
+    );
+  });
+
+  it('detects changed dimensions even when the provider id is unchanged', async () => {
+    const id = store.stats().modelId;
+    const port = fakeSagePort([
+      { id: 'sage-1', text: 'dimension changes require compatible vectors' },
+    ]);
+    await startFirstBootSageSync({ store, memoryStore: port });
+    store.close();
+    store = new VectorMemoryStore({
+      provider: new FakeEmbeddingProvider({ dimensions: 16, id }),
+      projectRoot,
+    });
+    expect(store.embeddingCoverage()).toEqual({ entries: 1, covered: 0, missing: 1 });
+    expect((await startFirstBootSageSync({ store, memoryStore: port })).synced).toBe(true);
+    expect(store.embeddingCoverage()).toEqual({ entries: 1, covered: 1, missing: 0 });
+    expect(await store.search('dimension changes')).toHaveLength(1);
+  });
+
+  it('does not mark old-provider vectors complete when the new provider cannot backfill', async () => {
+    const port = fakeSagePort([
+      { id: 'sage-1', text: 'poison record with a healthy historical vector' },
+    ]);
+    await startFirstBootSageSync({ store, memoryStore: port });
+    store.close();
+    store = new VectorMemoryStore({ provider: new FlakyEmbeddingProvider([2]), projectRoot });
+    const result = await startFirstBootSageSync({ store, memoryStore: port });
+    expect(store.stats().vectors).toBe(store.stats().entries);
+    expect(result.reason).toBe('vector-incomplete');
+    expect(result.synced).toBe(false);
+    expect(store.embeddingCoverage().missing).toBe(1);
+    expect(JSON.parse(fs.readFileSync(markerFile(), 'utf8')).phase).toBe('running');
+  });
+
+  it('force still rescans a completed corpus for newly available records', async () => {
+    await startFirstBootSageSync({
+      store,
+      memoryStore: fakeSagePort([{ id: 'a', text: 'original knowledge' }]),
+    });
+    const result = await startFirstBootSageSync({
+      store,
+      force: true,
+      memoryStore: fakeSagePort([{ id: 'b', text: 'new knowledge' }]),
+    });
+    expect(result.synced).toBe(true);
+    expect(store.embeddingCoverage()).toEqual({ entries: 2, covered: 2, missing: 0 });
+  });
+
+  it('rebuilds coverage for the current provider without counting old-model vectors', async () => {
+    const port = fakeSagePort([
+      { id: 'sage-1', text: 'model migration must retain project knowledge' },
+    ]);
+    await startFirstBootSageSync({ store, memoryStore: port });
+    store.close();
+    store = new VectorMemoryStore({
+      provider: new FakeEmbeddingProvider({ dimensions: 16, id: 'new-model' }),
+      projectRoot,
+    });
+    const migrated = await startFirstBootSageSync({ store, memoryStore: port });
+    expect(migrated.synced).toBe(true);
+    expect(migrated.marker?.providerId).toBe('new-model');
+    expect(await store.search('model migration')).toHaveLength(1);
+    // Historical vectors remain; a healthy second boot must not confuse two
+    // providers' rows with incomplete coverage and rebuild forever.
+    expect(store.stats().vectors).toBe(2);
+    expect((await startFirstBootSageSync({ store, memoryStore: port })).reason).toBe(
+      'already-complete',
+    );
+  });
+
+  it('heals only missing vectors after a completed sync', async () => {
+    const provider = new FlakyEmbeddingProvider([3]);
+    store.close();
+    store = new VectorMemoryStore({ provider, projectRoot });
+    const port = fakeSagePort([{ id: 'sage-1', text: 'healthy existing memory' }]);
+    await startFirstBootSageSync({ store, memoryStore: port }); // probe + first entry
+    await store.remember({ text: 'later memory lost its embedding' }); // call 3 fails open
+    const embed = vi.spyOn(provider, 'embed');
+    const healed = await startFirstBootSageSync({ store, memoryStore: port });
+    expect(healed.synced).toBe(true);
+    expect(await store.search('later memory', { limit: 10 })).toHaveLength(2);
+    expect(embed.mock.calls.flatMap(([texts]) => texts)).not.toContain('healthy existing memory');
+  });
+
+  it('force respects a live foreign sync owner and preserves its marker', async () => {
+    const marker = JSON.stringify({
+      phase: 'running',
+      pid: 4242,
+      startedAt: new Date().toISOString(),
+    });
+    fs.writeFileSync(markerFile(), marker);
+    const result = await startFirstBootSageSync({
+      store,
+      memoryStore: fakeSagePort([{ id: 'sage-1', text: 'must not run' }]),
+      force: true,
+      pidAlive: () => true,
+    });
+    expect(result.synced).toBe(false);
+    expect(result.reason).toBe('running-pid-4242');
+    expect(fs.readFileSync(markerFile(), 'utf8')).toBe(marker);
+    expect(store.stats().entries).toBe(0);
+  });
 
   describe('decideWhetherToSync', () => {
     it('no marker → run; complete → skip', () => {

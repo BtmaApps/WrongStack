@@ -319,6 +319,37 @@ describe('batch evaluation', () => {
 // ── Prompt content ──────────────────────────────────────────────────────
 
 describe('prompt content', () => {
+  it('includes bounded current-revision judgments as evidence and omits obsolete ones', async () => {
+    const m = makeMemory({
+      revision: 2,
+      feedback: [
+        {
+          verdict: 'incorrect',
+          observedRevision: 1,
+          evidence: 'obsolete observation',
+          at: '2026-01-01T00:00:00Z',
+        },
+        {
+          verdict: 'irrelevant',
+          observedRevision: 2,
+          evidence: 'styling-only task',
+          at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    let prompt = '';
+    let system = '';
+    await evaluateMemory(m, computeValueScore(m), async (sys, user) => {
+      system = sys;
+      prompt = user;
+      return '3 | Needs current evidence';
+    });
+    expect(prompt).toContain('MODEL_JUDGMENT (unverified)');
+    expect(prompt).toContain('styling-only task');
+    expect(prompt).not.toContain('obsolete observation');
+    expect(system).toContain('Task-specific irrelevance is not global uselessness');
+  });
+
   it('includes memory text (truncated), anchors, kind, and stats', async () => {
     const m = makeMemory({
       text: 'Very long text '.repeat(50),

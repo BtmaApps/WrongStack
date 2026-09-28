@@ -353,7 +353,10 @@ function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown
       return;
     }
     let data = '';
-    req.on('data', (chunk) => {
+    // Decode across chunks: TCP may split a multibyte character between two
+    // 'data' events, and a per-chunk decode turns it into U+FFFD.
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => {
       data += chunk;
       if (data.length > 64_000) {
         reject(new Error('Request body too large'));

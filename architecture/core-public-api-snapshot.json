@@ -1502,21 +1502,21 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 42,
-      "sourceLines": 11956
+      "sourceLines": 11953
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57871
+      "sourceLines": 57870
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 63,
-      "sourceLines": 14825
+      "sourceFiles": 64,
+      "sourceLines": 14956
     },
     {
       "directory": "design",
@@ -1530,7 +1530,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20481
+      "sourceLines": 20490
     },
     {
       "directory": "extension",
@@ -1544,7 +1544,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 18,
-      "sourceLines": 4192
+      "sourceLines": 4202
     },
     {
       "directory": "hooks",
@@ -1614,7 +1614,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9517
+      "sourceLines": 9520
     },
     {
       "directory": "prompts",
@@ -1649,7 +1649,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 26,
-      "sourceLines": 9902
+      "sourceLines": 9945
     },
     {
       "directory": "session-catalog",
@@ -1663,7 +1663,7 @@
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 20,
-      "sourceLines": 3887
+      "sourceLines": 3892
     },
     {
       "directory": "statusline",
@@ -1677,7 +1677,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 24792
+      "sourceLines": 24747
     },
     {
       "directory": "tasking",
@@ -1698,21 +1698,21 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 82,
-      "sourceLines": 15514
+      "sourceLines": 15549
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 13,
-      "sourceLines": 2236
+      "sourceLines": 2256
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 77,
-      "sourceLines": 13526
+      "sourceLines": 13537
     },
     {
       "directory": "vcs",
@@ -1733,7 +1733,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 6,
-      "sourceLines": 1367
+      "sourceLines": 1388
     }
   ]
 }

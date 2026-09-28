@@ -23,7 +23,7 @@ import {
 import { ACP_PACKAGE_VERSION } from '../version.js';
 import { cancelLateAcpSession } from './acp-late-session.js';
 import { isBestEffortAckMethod } from './acp-message-routing.js';
-import type { PendingRequest, State } from './acp-request-state.js';
+import { type PendingRequest, rejectPendingRequests, type State } from './acp-request-state.js';
 import {
   type AcpSessionAuthHost,
   authenticate as delegateAuthenticate,
@@ -252,6 +252,10 @@ export class ACPSession {
 
     const session = new ACPSession(opts, transport);
     session.transportOff = transport.onMessage((msg) => session.handleMessage(msg));
+    transport.onClose?.((reason) => {
+      if (!session.closed) rejectPendingRequests(session.pending, reason);
+      void session.close();
+    });
 
     try {
       await session.initialize();
@@ -422,6 +426,11 @@ export class ACPSession {
     if (this.state !== 'ready' && this.state !== 'authenticated' && this.state !== 'done') {
       throw new ACPSessionError('protocol_error', `prompt called in state=${this.state}`);
     }
+    // The state turns 'prompting' only after session creation; the live
+    // controller covers that window (else a 2nd session/new goes out).
+    if (this.promptCallbackAbort) {
+      throw new ACPSessionError('protocol_error', 'prompt called while another prompt is running');
+    }
 
     if (signal.aborted) {
       return emptyRunResult('cancelled');
@@ -558,6 +567,7 @@ export class ACPSession {
     // id is unassigned). Either way the turn is over — the adopted id stays
     // for the next prompt() to reuse, and close() ends the session.
     if (signal.aborted) {
+      this.promptCallbackAbort = null;
       return emptyRunResult('cancelled');
     }
 
@@ -697,11 +707,7 @@ export class ACPSession {
       }
     }
 
-    for (const [, p] of this.pending) {
-      clearTimeout(p.timeoutHandle);
-      p.reject(new ACPSessionError('closed', 'session was closed'));
-    }
-    this.pending.clear();
+    rejectPendingRequests(this.pending);
     this.transportOff?.();
     this.transportOff = null;
     try {

@@ -22,6 +22,7 @@ export type MainView =
   | 'roster'
   | 'codemap'
   | 'techstack'
+  | 'project-kit'
   | 'chronicle'
   | 'prompts'
   | 'chimera'

@@ -44,6 +44,13 @@ export interface LocalTaskMeta {
   templateHash: string;
   grader?: LocalCommandGrader | undefined;
   assertions?: LocalAssertion[] | undefined;
+  /**
+   * Template files the grader must see as shipped (checker scripts, test
+   * fixtures): restored over the agent's workdir before grading. The agent
+   * works in that same directory, so a rewritten checker would otherwise
+   * grade its own work.
+   */
+  protectedFiles?: string[] | undefined;
   /** Present for curated cases mined from a real session transcript. */
   traceEval?: TranscriptEvalSpec | undefined;
 }
@@ -60,6 +67,7 @@ interface LocalManifestTask {
   templateExclude?: string[] | undefined;
   grader?: LocalCommandGrader | undefined;
   assertions?: LocalAssertion[] | undefined;
+  protectedFiles?: string[] | undefined;
   traceEval?: TranscriptEvalSpec | undefined;
 }
 
@@ -89,6 +97,7 @@ export function createLocalManifestSuite(opts: LocalSuiteOptions): BenchSuite {
         };
         if (item.grader) meta.grader = item.grader;
         if (item.assertions) meta.assertions = item.assertions;
+        if (item.protectedFiles) meta.protectedFiles = item.protectedFiles;
         const traceEval = item.traceEval
           ? await resolveAndValidateTraceEval(item.traceEval, manifestFile)
           : undefined;
@@ -116,6 +125,8 @@ export function createLocalManifestSuite(opts: LocalSuiteOptions): BenchSuite {
             assertions: meta.assertions ?? [],
             grader: meta.grader ?? null,
             id: task.id,
+            // Only when set: an unprotected suite keeps its existing subset id.
+            ...(meta.protectedFiles?.length ? { protectedFiles: meta.protectedFiles } : {}),
             prompt: task.prompt,
             templateExclude: task.templateExclude ?? [],
             templateHash: meta.templateHash,
@@ -182,6 +193,19 @@ function parseTask(value: unknown, field: string, manifestFile: string): LocalMa
     manifestFile,
   );
   const traceEval = parseOptionalTraceEval(value['traceEval'], `${field}.traceEval`, manifestFile);
+  const protectedFiles = optionalStringArray(
+    value['protectedFiles'],
+    `${field}.protectedFiles`,
+    manifestFile,
+  );
+  for (const rel of protectedFiles ?? []) {
+    const normalized = path.normalize(rel);
+    if (path.isAbsolute(rel) || normalized === '..' || normalized.startsWith(`..${path.sep}`)) {
+      throw new Error(
+        `${manifestFile}: ${field}.protectedFiles entries must stay inside templateDir: ${rel}`,
+      );
+    }
+  }
 
   if (!grader && (!assertions || assertions.length === 0)) {
     throw new Error(`${manifestFile}: ${field} must define a grader or at least one assertion`);
@@ -191,6 +215,7 @@ function parseTask(value: unknown, field: string, manifestFile: string): LocalMa
   if (templateExclude) task.templateExclude = templateExclude;
   if (grader) task.grader = grader;
   if (assertions) task.assertions = assertions;
+  if (protectedFiles) task.protectedFiles = protectedFiles;
   if (traceEval) task.traceEval = traceEval;
   return task;
 }

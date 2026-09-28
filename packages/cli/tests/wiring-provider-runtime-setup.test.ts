@@ -295,14 +295,14 @@ describe('setupProviderRuntime — extensions and consolidation', () => {
     expect(typeof ext['getConfig']).toBe('function');
   });
 
-  it('registers the session memory consolidator and curator when memory is enabled', () => {
+  it('registers consolidation without the legacy automatic curator writer', () => {
     const deps = makeDeps({
       config: fakeConfig({
         features: { mcp: true, plugins: true, memory: true, modelsRegistry: false, skills: true },
       }),
     });
     setupProviderRuntime(deps);
-    expect(deps.agent.extensions.register).toHaveBeenCalledTimes(3);
+    expect(deps.agent.extensions.register).toHaveBeenCalledTimes(2);
   });
 
   it('skips consolidation when memoryConsolidation is explicitly disabled', () => {

@@ -39,9 +39,22 @@ export async function extractModelPatch(opts: {
     timeoutMs: opts.timeoutMs,
     shell: false,
   });
+  // Pin the output format: the user's git config otherwise chooses it —
+  // diff.mnemonicPrefix / diff.noprefix change the `a/` `b/` headers the
+  // test-file filter below parses (held-out test edits then LEAKED into the
+  // prediction), an external diff driver or a .gitattributes textconv replaces
+  // the patch text with something `git apply` cannot use.
   const diff = await exec({
     command: 'git',
-    args: ['diff', '--cached', '--no-color'],
+    args: [
+      'diff',
+      '--cached',
+      '--no-color',
+      '--no-ext-diff',
+      '--no-textconv',
+      '--src-prefix=a/',
+      '--dst-prefix=b/',
+    ],
     cwd: opts.workdir,
     timeoutMs: opts.timeoutMs,
     shell: false,
@@ -107,7 +120,12 @@ export function filterPatchSections(
   patch: string,
   shouldDrop: (aPath: string, bPath: string) => boolean,
 ): string {
-  const lines = patch.split('\n');
+  // The final newline is split off and re-added: left in, it became an empty
+  // last "line" of the LAST section, so dropping that section (a held-out test
+  // file usually sorts last) cut the kept patch mid-line — `git apply` and
+  // `patch` both reject that, failing the whole prediction.
+  const trailingNewline = patch.endsWith('\n');
+  const lines = (trailingNewline ? patch.slice(0, -1) : patch).split('\n');
   const out: string[] = [];
   let skipping = false;
   let gitFormat = false;
@@ -162,7 +180,8 @@ export function filterPatchSections(
     if (!skipping) out.push(line);
   }
   flushPending();
-  return out.join('\n');
+  if (out.length === 0) return '';
+  return trailingNewline ? `${out.join('\n')}\n` : out.join('\n');
 }
 
 /** Strip a trailing tab+timestamp some diff tools append to `+++`/`---` paths. */

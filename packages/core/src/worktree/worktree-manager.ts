@@ -14,6 +14,7 @@ import {
   cleanupStale,
   listManaged,
   type ManagedOpsContext,
+  removeBranch,
   removeOne,
 } from './worktree-managed-ops.js';
 import type {
@@ -38,6 +39,7 @@ export type {
   WorktreeStatus,
 } from './worktree-types.js';
 
+const NOTHING_TO_COMMIT = /nothing (?:added )?to commit/i; // no-op commit; "added": untracked exist
 /**
  * Owns the git-worktree lifecycle for isolated, parallel work units. Shells out
  * to `git` directly (never via the `git` *tool*) so it can target arbitrary
@@ -299,8 +301,7 @@ export class WorktreeManager {
       const msg = opts.message ?? `merge ${handle.branch} (squash)`;
       const idArgs = await this.identityArgs(this.projectRoot);
       const commit = await this.runGit([...idArgs, 'commit', '-m', msg], this.projectRoot);
-      // A no-op squash (empty diff) returns nonzero "nothing to commit" — fine.
-      if (commit.code !== 0 && !/nothing to commit/i.test(commit.stdout + commit.stderr)) {
+      if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
         this.fail(handle, commit.stderr || 'squash commit failed');
         return { ok: false, stderr: commit.stderr };
       }
@@ -407,6 +408,11 @@ export class WorktreeManager {
     return removeOne(this.managedOpsContext(), dir, branch);
   }
 
+  /** Delete ONE managed branch with no checkout (a branch-only orphan). Never throws. */
+  async removeBranch(branch: string): Promise<{ removed: boolean }> {
+    return removeBranch(this.managedOpsContext(), branch);
+  }
+
   /**
    * Squash-merge an arbitrary `wstack/ap/*` branch into the base branch from the
    * main checkout — the handle-free counterpart to {@link merge}, used by the
@@ -454,7 +460,7 @@ export class WorktreeManager {
       [...idArgs, 'commit', '-m', `merge ${branch} (squash)`],
       this.projectRoot,
     );
-    if (commit.code !== 0 && !/nothing to commit/i.test(commit.stdout + commit.stderr)) {
+    if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
       return { ok: false, reason: commit.stderr || 'squash commit failed' };
     }
     return { ok: true };
@@ -601,7 +607,7 @@ export class WorktreeManager {
     const idArgs = await this.identityArgs(this.projectRoot);
     const msg = opts.message ?? `merge ${handle.branch} (squash, conflict resolved)`;
     const commit = await this.runGit([...idArgs, 'commit', '-m', msg], this.projectRoot);
-    if (commit.code !== 0 && !/nothing to commit/i.test(commit.stdout + commit.stderr)) {
+    if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
       return null;
     }
 
@@ -764,11 +770,10 @@ export class WorktreeManager {
   }
 
   private async unmergedFiles(): Promise<string[]> {
-    const res = await this.runGit(['diff', '--name-only', '--diff-filter=U'], this.projectRoot);
-    return res.stdout
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    // -z: core.quotePath would C-quote non-ASCII names (`şema.ts` -> `"\305\237ema.ts"`).
+    const args = ['diff', '--name-only', '-z', '--diff-filter=U'];
+    const res = await this.runGit(args, this.projectRoot);
+    return res.stdout.split('\0').filter(Boolean);
   }
 
   private emitCommitted(handle: WorktreeHandle, committed: boolean): void {

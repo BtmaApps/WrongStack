@@ -229,6 +229,10 @@ AGENTS.md
 !.wrongstack/instructions/**
 !.wrongstack/design-kits/
 !.wrongstack/design-kits/**
+# Project Kit source is a shared project asset; execution snapshots stay local.
+!.wrongstack/project-kit/
+!.wrongstack/project-kit/**
+.wrongstack/project-kit-runs/
 # Roster agents' project-developed skills and learning. Committed on purpose:
 # what the `verifier` agent learned about testing *this* codebase is a project
 # asset, not a per-clone scratch file — otherwise every checkout and every CI

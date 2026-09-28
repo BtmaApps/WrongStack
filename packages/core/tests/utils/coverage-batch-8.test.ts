@@ -1,15 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
-import { sanitizeModel, generateSessionId } from '../../src/storage/session-id.js';
+import { describe, expect, it, vi } from 'vitest';
+import { HARD_MAX_SPAWN_DEPTH, resolveMaxSpawnDepth } from '../../src/coordination/spawn-budget.js';
+import { NETWORK_ERR_RE } from '../../src/execution/regex-patterns.js';
 import { sessionContentText, userInputTitle } from '../../src/storage/session-helpers.js';
-import { mapWithConcurrency } from '../../src/storage/storage-concurrency.js';
+import { generateSessionId, sanitizeModel } from '../../src/storage/session-id.js';
 import {
   compareSessionSummaries,
   matchesSessionFilter,
 } from '../../src/storage/session-summary.js';
-import { resolveMaxSpawnDepth, HARD_MAX_SPAWN_DEPTH } from '../../src/coordination/spawn-budget.js';
-import { NETWORK_ERR_RE } from '../../src/execution/regex-patterns.js';
-import type { SessionSummary } from '../../src/types/session.js';
+import { mapWithConcurrency } from '../../src/storage/storage-concurrency.js';
 import type { ContentBlock } from '../../src/types/blocks.js';
+import type { SessionSummary } from '../../src/types/session.js';
 
 // ── session-id ──────────────────────────────────────────────────────────
 
@@ -109,6 +109,30 @@ describe('mapWithConcurrency', () => {
     const result = await mapWithConcurrency([1, 2], 0, async (n) => n);
     expect(result).toEqual([1, 2]);
   });
+  it.each([
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['-Infinity', Number.NEGATIVE_INFINITY],
+    ['zero', 0],
+    ['negative', -5],
+  ])(
+    'still runs the mapper and returns real results for a non-finite or sub-1 limit (%s)',
+    async (_label, concurrency) => {
+      // `Math.max` propagates NaN, and `Array.from({ length: NaN })` yields
+      // ZERO workers — `Promise.all([])` would resolve without ever calling the
+      // mapper, handing back an array of holes. A non-finite limit must be
+      // rejected and replaced with the one-worker floor, never propagated.
+      const seen: number[] = [];
+      const result = await mapWithConcurrency([1, 2, 3], concurrency, async (n) => {
+        seen.push(n);
+        return n * 2;
+      });
+      expect(seen).toEqual([1, 2, 3]);
+      expect(result).toEqual([2, 4, 6]);
+      // No hole: every slot is a real mapped value, not `undefined`.
+      expect(result.every((v) => v !== undefined)).toBe(true);
+    },
+  );
 });
 
 // ── session-summary ─────────────────────────────────────────────────────
