@@ -173,9 +173,14 @@ export function run(input, ctx) {
     expect(timedOut.stderrTail).toContain('GITHUB_TOKEN=[REDACTED]');
     expect(timedOut.stderrTail ?? '').not.toContain('ghp_timeoutsecret123');
     expect((timedOut.stderrTail ?? '').length).toBeLessThanOrEqual(4096);
-    // A killed child's code is platform-dependent, so the field is asserted as
-    // recorded (a number) or genuinely absent, never as a specific value.
-    expect(timedOut.exitCode === undefined || typeof timedOut.exitCode === 'number').toBe(true);
+    // Measured on this platform: a force-killed child reports exit code 1 on both
+    // the timeout and the cancellation path, so it is asserted exactly here. Other
+    // platforms report no code for a killed child, so they keep the portable check.
+    if (process.platform === 'win32') {
+      expect(timedOut.exitCode).toBe(1);
+    } else {
+      expect(timedOut.exitCode === undefined || typeof timedOut.exitCode === 'number').toBe(true);
+    }
     const [timedOutRecord] = await kitHistory(f.root, 'strings.unique');
     expect(timedOutRecord?.stderrTail).toBe(timedOut.stderrTail);
     expect(timedOutRecord?.exitCode).toBe(timedOut.exitCode);
@@ -187,7 +192,11 @@ export function run(input, ctx) {
     expect(cancelled.error).toBe('Cancelled');
     expect(cancelled.stderrTail).toContain('GITHUB_TOKEN=[REDACTED]');
     expect((cancelled.stderrTail ?? '').length).toBeLessThanOrEqual(4096);
-    expect(cancelled.exitCode === undefined || typeof cancelled.exitCode === 'number').toBe(true);
+    if (process.platform === 'win32') {
+      expect(cancelled.exitCode).toBe(1);
+    } else {
+      expect(cancelled.exitCode === undefined || typeof cancelled.exitCode === 'number').toBe(true);
+    }
   }, 15000);
 
   it('persists the exit code and a bounded redacted stderr tail when the child dies without a result', async () => {
