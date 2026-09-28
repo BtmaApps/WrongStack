@@ -1,14 +1,15 @@
 {
-  "consolidatedAt": "2026-09-22T11:03:49.884Z",
+  "consolidatedAt": "2026-09-28T22:10:58.107Z",
   "sourceEntryCount": 0,
   "sourceBytes": 379,
-  "consolidatedBytes": 1790,
+  "consolidatedBytes": 6109,
   "trigger": "automatic",
-  "model": "MiniMax-M3",
+  "model": "MiniMax-M3.1-Flash-Preview",
   "pruned": true,
-  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\i18n\\archive\\learned-2026-09-22T11-03-49-884Z.md",
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\i18n\\archive\\learned-2026-09-28T22-10-58-107Z.md",
   "skills": [
     "react-modern",
+    "output-standards",
     "testing"
   ]
 }

@@ -2179,6 +2179,9 @@
     "anchorCursorHint": "El rango de líneas del cursor coincide con el ancla de esta memoria",
     "statusDeleted": "eliminada",
     "statusSuperseded": "reemplazada",
+    "staleReasonVerification": "Obsoleta · verificación de anclas fallida",
+    "staleReasonManual": "Obsoleta · retirada manualmente",
+    "staleReasonUnknown": "Obsoleta · motivo no registrado",
     "restoreTitle": "Restaurar esta memoria al estado activo",
     "supersededJumpTitle": "Esta versión está reemplazada — saltar a la versión activa",
     "acceptSuggestionTitle": "Aceptar la sugerencia de eliminación de higiene — la memoria será olvidada",
@@ -2199,6 +2202,10 @@
     "editorImportance": "Importancia",
     "editorConfidence": "Confianza",
     "editorFreshness": "Frescura",
+    "usefulnessLabel": "Utilidad",
+    "usefulnessInjected": "Inyectada",
+    "usefulnessUsed": "Usada",
+    "usefulnessNeverInjected": "Nunca inyectada",
     "editorAnchors": "Anclas",
     "editorSymbolPlaceholder": "Nombre del símbolo",
     "editorRelationships": "Relaciones",
@@ -3784,7 +3791,9 @@
     "completionChecks": "Comprobaciones de finalización"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE marcará el registro como eliminado, quitará las aristas del grafo y limpiará las referencias de las memorias relacionadas. El registro permanece en la traza de auditoría pero no puede restaurarse desde esta página."
+    "sageWillMarkTheRecordDeleted": "SAGE marcará el registro como eliminado, quitará las aristas del grafo y limpiará las referencias de las memorias relacionadas. El registro permanece en la traza de auditoría pero no puede restaurarse desde esta página.",
+    "neverInjectLabel": "Bloquear también de la inyección en el contexto",
+    "neverInjectHint": "Marca esta memoria como fácticamente incorrecta para que SAGE no vuelva a inyectarla nunca en el contexto, aunque coincida con una tarea futura. Esto es más fuerte que una eliminación simple."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navegar · Enter seleccionar · Esc cerrar"

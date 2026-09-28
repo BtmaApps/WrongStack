@@ -180,6 +180,7 @@ export function MemoryManager() {
               listCandidates={state.listMemoryCandidates}
               resolveCandidate={state.resolveMemoryCandidate}
               onOpenMemory={state.openMemory}
+              resolveMemory={state.resolveMemory}
             />
           ) : (
             <>
@@ -375,7 +376,7 @@ export function MemoryManager() {
                 onClose={() => state.setSelectedId(null)}
                 onOpenMemory={state.openMemory}
                 onEdit={state.openEdit}
-                onDelete={() => state.setDeletingId(state.selectedMemory!.id)}
+                onDelete={() => state.openDeleteDialog(state.selectedMemory!.id)}
                 onTagSelect={(tag) => {
                   state.setTagFilter(tag);
                   state.setSelectedId(null);
@@ -393,10 +394,12 @@ export function MemoryManager() {
         busyAction={state.busyAction}
         deletingId={state.deletingId}
         memory={state.selectedMemory}
-        onCancel={() => state.setDeletingId(null)}
+        neverInject={state.neverInject}
+        onNeverInjectChange={state.setNeverInject}
+        onCancel={state.cancelDelete}
         onConfirm={state.confirmDelete}
         onOpenChange={(open) => {
-          if (!open && state.busyAction !== 'delete') state.setDeletingId(null);
+          if (!open) state.cancelDelete();
         }}
       />
     </div>

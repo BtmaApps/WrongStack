@@ -20,10 +20,7 @@
  * only presentation; the parent (file editor / MemoryManager) wires the
  * real tool calls.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { usePagination } from '@/hooks/usePagination';
-import { Pagination } from '@/components/ui/pagination';
+
 import {
   AlertTriangle,
   Check,
@@ -38,9 +35,12 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { useMemoryForFile } from '@/hooks/useMemoryForFile';
+import { usePagination } from '@/hooks/usePagination';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { MemoryForFileMatch, MemoryForFileResponse, MemoryMatchVia } from '@/types';
 

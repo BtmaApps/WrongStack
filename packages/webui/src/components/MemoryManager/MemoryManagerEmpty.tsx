@@ -1,6 +1,6 @@
-import { useAppTranslation } from '@/i18n';
 import { BrainCircuit, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAppTranslation } from '@/i18n';
 
 export function MemoryManagerEmpty({ onCapture }: { onCapture: () => void }) {
   const { t } = useAppTranslation();

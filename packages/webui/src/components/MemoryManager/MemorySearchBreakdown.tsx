@@ -13,11 +13,12 @@
  * CLI's `/memory race` command renders, just in a panel instead of a
  * text block.
  */
-import { useAppTranslation } from '@/i18n';
+
 import { Brain, Hash, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { WSSearchBreakdownHit } from '@/types/sage';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import type { WSSearchBreakdownHit } from '@/types/sage';
 
 interface MemorySearchBreakdownProps {
   query: string;

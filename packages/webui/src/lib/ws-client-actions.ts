@@ -37,7 +37,19 @@ export interface WsClientActionMethods {
     options?: WSSendOptions,
   ): void;
   updateSage(id: string, patch: Record<string, unknown>, options?: WSSendOptions): void;
-  deleteSage(id: string, reason?: string): void;
+  /**
+   * Soft-delete a memory.
+   *
+   * `force: true` is always sent (see the implementation) — the permanent-memory
+   * guard in the store is honoured regardless, but without it the handler
+   * refuses the write outright.
+   *
+   * `neverInject` marks the record so context injection never loads it again.
+   * Use it when a memory is factually WRONG, which is a stronger statement than
+   * "superseded": a superseded record is still eligible if a later retrieval
+   * surfaces it, a `neverInject` one is excluded at the injection gate.
+   */
+  deleteSage(id: string, reason?: string, options?: { neverInject?: boolean }): void;
   rememberSage(
     opts: Extract<WSClientMessage, { type: 'memory.sage.remember' }>['payload'],
     options?: WSSendOptions,
@@ -218,10 +230,20 @@ const actionMethods = {
     this.send({ type: 'memory.sage.update', payload: { id, ...patch } }, options);
   },
 
-  deleteSage(this: WsClientActionHost, id: string, reason?: string) {
+  deleteSage(
+    this: WsClientActionHost,
+    id: string,
+    reason?: string,
+    options?: { neverInject?: boolean },
+  ) {
     this.send({
       type: 'memory.sage.delete',
-      payload: { id, force: true, ...(reason !== undefined ? { reason } : {}) },
+      payload: {
+        id,
+        force: true,
+        ...(reason !== undefined ? { reason } : {}),
+        ...(options?.neverInject !== undefined ? { neverInject: options.neverInject } : {}),
+      },
     });
   },
 

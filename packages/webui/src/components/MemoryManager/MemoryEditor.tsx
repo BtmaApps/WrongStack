@@ -1,4 +1,3 @@
-import { useAppTranslation } from '@/i18n';
 import {
   AlertTriangle,
   Link2,
@@ -13,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAppTranslation } from '@/i18n';
 import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
 import type { SageAnchor, SageScope, SageStatus } from '@/types';

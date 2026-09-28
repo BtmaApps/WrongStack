@@ -1,3 +1,26 @@
+/**
+ * WebUI mirror of the canonical SAGE memory model.
+ *
+ * WHY THIS IS A MIRROR AND NOT AN IMPORT: `@wrongstack/sage` is a Node-side
+ * package and is deliberately absent from `packages/webui/package.json`. Pulling
+ * it in (or into a browser bundle) to share one type would couple the frontend
+ * to a backend the frontend never executes. The mirror is therefore kept honest
+ * by a CONTRACT TEST, not by a type import:
+ *
+ *   `tests/types/sage-type-contract.test.ts` parses BOTH this file and
+ *   `packages/sage/src/memory-model.ts` and fails when the canonical shape
+ *   gains or loses a field. Add a field to one side and it goes red.
+ *
+ * When you add a field to the canonical `Sage` / `MemoryAnchor`, add it here in
+ * the same commit or the contract test fails.
+ *
+ * Two deliberate divergences from canonical, both safe:
+ *  - `kind` stays `string` rather than the closed `SageKind` union: this UI must
+ *    render kinds sent by older/newer servers without a type error. The contract
+ *    test compares field NAMES, not their types, so this is unaffected.
+ *  - Fields optional in canonical are optional here too, so existing test
+ *    fixtures that build partial entries keep compiling.
+ */
 export type SageScope = 'project' | 'user' | 'session' | 'file' | 'symbol';
 export type SageStatus =
   | 'active'
@@ -7,12 +30,58 @@ export type SageStatus =
   | 'archived'
   | 'deleted';
 
+/** Mirrors `MemoryScope` from `@wrongstack/core/types` (legacy back-compat field). */
+export type SageLegacyScope = 'project-agents' | 'project-memory' | 'user-memory';
+
+/** Mirrors `PersistenceClass` — controls how hygiene treats a memory. */
+export type SagePersistence = 'permanent' | 'long_lived' | 'short_lived';
+
+/**
+ * Why a `stale` memory is stale.
+ *  - `verification` — anchor verification demoted it, so a later passing
+ *    verification may restore it.
+ *  - `manual` — someone set the status (retirement); automatic passes leave it
+ *    alone.
+ * Absent on records written before the field existed.
+ */
+export type SageStaleReason = 'verification' | 'manual';
+
+/** Mirrors `MemoryFeedbackInput` / `MemoryFeedback` — model judgments. */
+export interface SageFeedback {
+  verdict: 'useful' | 'outdated' | 'incorrect' | 'irrelevant' | 'uncertain';
+  /** Revision actually read by the model, not a fresh revision guessed at write time. */
+  observedRevision: number;
+  evidence: string;
+  sessionId?: string | undefined;
+  at: string;
+}
+
+/** Mirrors `MemorySourceRef` — provenance for a memory or a candidate. */
+export interface SageSourceRef {
+  type:
+    | 'user'
+    | 'session'
+    | 'tool_result'
+    | 'project_instruction'
+    | 'file'
+    | 'test'
+    | 'command'
+    | 'legacy_memory';
+  sessionId?: string | undefined;
+  toolUseId?: string | undefined;
+  path?: string | undefined;
+  command?: string | undefined;
+  excerptHash?: string | undefined;
+}
+
 export interface SageAnchor {
   type: 'file' | 'directory' | 'symbol' | 'package' | 'command' | 'test' | 'git' | 'agent';
   path?: string | undefined;
   symbol?: string | undefined;
   command?: string | undefined;
   role?: string | undefined;
+  contentHash?: string | undefined;
+  gitBlobHash?: string | undefined;
   lineStart?: number | undefined;
   lineEnd?: number | undefined;
 }
@@ -20,10 +89,15 @@ export interface SageAnchor {
 export interface SageEntry {
   id: string;
   revision: number;
+  /** Bounded model judgments; not verification or permission signals. */
+  feedback?: SageFeedback[] | undefined;
   scope: SageScope;
+  legacyScope?: SageLegacyScope | undefined;
   kind: string;
   status: SageStatus;
+  /** Orthogonal to lifecycle: only `never` is an absolute LLM-context ban. */
   contextPolicy?: 'eligible' | 'never' | undefined;
+  persistence?: SagePersistence | undefined;
   text: string;
   summary?: string | undefined;
   importance: number;
@@ -31,7 +105,9 @@ export interface SageEntry {
   freshness: number;
   tags: string[];
   anchors: SageAnchor[];
+  /** Optional project-local audience. Omitted memories remain general knowledge. */
   audience?: { roles?: string[]; taskTypes?: string[]; modes?: string[] } | undefined;
+  sources?: SageSourceRef[] | undefined;
   supersedes?: string[] | undefined;
   supersededBy?: string | undefined;
   contradicts?: string[] | undefined;
@@ -39,7 +115,16 @@ export interface SageEntry {
   updatedAt: string;
   lastAccessedAt?: string | undefined;
   lastVerifiedAt?: string | undefined;
+  staleReason?: SageStaleReason | undefined;
+  /** Last time the assistant referenced an injected memory (usefulness signal). */
+  lastUsedAt?: string | undefined;
   expiresAt?: string | undefined;
+  /** How often this memory was injected into context. */
+  injectionCount?: number | undefined;
+  /** How often an injected memory was referenced by the assistant afterwards. */
+  useCount?: number | undefined;
+  /** The session that owns a `scope: 'session'` memory. */
+  ownerSessionId?: string | undefined;
 }
 
 export interface SageStats {

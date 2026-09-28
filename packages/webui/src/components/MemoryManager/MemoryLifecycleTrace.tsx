@@ -1,6 +1,6 @@
-import { useAppTranslation } from '@/i18n';
 import { Activity, GitBranch, LogIn, LogOut, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import {
   type MemoryLifecycleAction,

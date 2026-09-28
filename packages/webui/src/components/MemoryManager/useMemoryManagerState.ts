@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { useConfigStore } from '@/stores';
-import { confirmModal } from '../ConfirmModal';
 import type { SageEntry, SageGraphEdge, SageStats, SageStatus } from '@/types';
+import { confirmModal } from '../ConfirmModal';
 import { collectMemoryTags, filterMemories, selectRelatedMemories } from './selectors';
 import type { MemoryDraft } from './shared';
 import { draftFromMemory, emptyDraft, normalizeAnchors, splitList } from './shared';
@@ -44,6 +44,13 @@ export function useMemoryManagerState() {
   const [baselineDraft, setBaselineDraft] = useState<MemoryDraft>(emptyDraft);
   const [busyAction, setBusyAction] = useState<'create' | 'update' | 'delete' | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  /**
+   * When true, the pending delete also marks the record `neverInject`, so
+   * context injection never loads it again. Off by default: a normal delete is
+   * already recoverable, and this is a strictly stronger, one-way claim that
+   * the memory is factually WRONG rather than merely out of date.
+   */
+  const [neverInject, setNeverInject] = useState(false);
   /**
    * Per-channel score breakdown for the active search query. Populated
    * by `searchSageBreakdown` whenever the user types a query into the
@@ -564,6 +571,26 @@ export function useMemoryManagerState() {
     );
   }, [draft, runMutation, selectedMemory, updateSage]);
 
+  /**
+   * Open the delete confirmation for `id`. Resets `neverInject` on the way in
+   * so a previous "factually wrong" choice can never leak into a later,
+   * unrelated delete of a merely-outdated memory.
+   */
+  const openDeleteDialog = useCallback((id: string) => {
+    setNeverInject(false);
+    setDeletingId(id);
+  }, []);
+
+  /**
+   * Dismiss the delete confirmation. Ignored mid-flight so an in-progress
+   * delete cannot be orphaned by the dialog closing underneath it.
+   */
+  const cancelDelete = useCallback(() => {
+    if (busyAction === 'delete') return;
+    setNeverInject(false);
+    setDeletingId(null);
+  }, [busyAction]);
+
   const confirmDelete = useCallback(() => {
     if (!deletingId) return;
     const generation = ++mutationGenerationRef.current;
@@ -606,8 +633,8 @@ export function useMemoryManagerState() {
       setMutationError('Delete timed out. The memory may still exist; refresh to confirm.');
     }, 20_000);
     mutationCleanupRef.current = cleanup;
-    deleteSage(deletingId, 'Deleted from the WebUI Memory Manager.');
-  }, [client, deleteSage, deletingId, loadMemories]);
+    deleteSage(deletingId, 'Deleted from the WebUI Memory Manager.', { neverInject });
+  }, [client, deleteSage, deletingId, loadMemories, neverInject]);
 
   const sendWithAck = useCallback(
     (
@@ -697,6 +724,7 @@ export function useMemoryManagerState() {
     selectedId,
     setSelectedId,
     selectedMemory,
+    resolveMemory,
     graphEdges,
     graphMemories,
     graphError,
@@ -708,6 +736,10 @@ export function useMemoryManagerState() {
     busyAction,
     deletingId,
     setDeletingId,
+    openDeleteDialog,
+    cancelDelete,
+    neverInject,
+    setNeverInject,
     searchQuery,
     setSearchQuery,
     searchBreakdown,

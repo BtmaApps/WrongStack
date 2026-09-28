@@ -2179,6 +2179,9 @@
     "anchorCursorHint": "La plage de lignes du curseur correspond à l'ancre de cette mémoire",
     "statusDeleted": "supprimée",
     "statusSuperseded": "remplacée",
+    "staleReasonVerification": "Obsolète · échec de la vérification des ancres",
+    "staleReasonManual": "Obsolète · retirée manuellement",
+    "staleReasonUnknown": "Obsolète · raison non consignée",
     "restoreTitle": "Restaurer cette mémoire à l'état actif",
     "supersededJumpTitle": "Cette version est remplacée — passer à la version active",
     "acceptSuggestionTitle": "Accepter la suggestion de suppression de l'hygiène — la mémoire sera oubliée",
@@ -2199,6 +2202,10 @@
     "editorImportance": "Importance",
     "editorConfidence": "Confiance",
     "editorFreshness": "Fraîcheur",
+    "usefulnessLabel": "Utilité",
+    "usefulnessInjected": "Injectée",
+    "usefulnessUsed": "Utilisée",
+    "usefulnessNeverInjected": "Jamais injectée",
     "editorAnchors": "Ancres",
     "editorSymbolPlaceholder": "Nom du symbole",
     "editorRelationships": "Relations",
@@ -3784,7 +3791,9 @@
     "completionChecks": "Vérifications d'achèvement"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE marquera l'enregistrement comme supprimé, retirera les arêtes du graphe et nettoiera les références des mémoires liées. L'enregistrement reste dans la piste d'audit mais ne peut pas être restauré depuis cette page."
+    "sageWillMarkTheRecordDeleted": "SAGE marquera l'enregistrement comme supprimé, retirera les arêtes du graphe et nettoiera les références des mémoires liées. L'enregistrement reste dans la piste d'audit mais ne peut pas être restauré depuis cette page.",
+    "neverInjectLabel": "Empêcher aussi l'injection dans le contexte",
+    "neverInjectHint": "Marque cette mémoire comme factuellement erronée afin que SAGE ne l'injecte plus jamais dans le contexte, même si elle correspond à une tâche future. C'est plus fort qu'une simple suppression."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ naviguer · Entrée sélectionner · Échap fermer"

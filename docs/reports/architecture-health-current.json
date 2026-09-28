@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-28T21:53:37.469Z",
+  "generatedAt": "2026-09-28T22:26:24.900Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4262,
-    "testFiles": 3852,
-    "sourceLines": 1008081,
+    "testFiles": 3855,
+    "sourceLines": 1008437,
     "workspaceEdges": 130,
     "moduleEdges": 13889,
     "nonCommandSlashImports": 0,
@@ -839,7 +839,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 603,
-      "testFiles": 423,
+      "testFiles": 426,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -862,7 +862,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 423
+          "testFiles": 426
         }
       ]
     },
@@ -22254,6 +22254,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/memory-detail-usefulness.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/memory-filters.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -22285,6 +22291,12 @@
       },
       {
         "file": "packages/webui/tests/components/memory-review-advisory.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/memory-review-target-evidence.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -24187,6 +24199,12 @@
       },
       {
         "file": "packages/webui/tests/stores/worktree-store.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/types/sage-type-contract.test.ts",
         "projects": [
           "webui-jsdom"
         ]

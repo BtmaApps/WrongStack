@@ -1,8 +1,8 @@
-import { useAppTranslation } from '@/i18n';
 import { BrainCircuit, ChevronDown, FilterX, Search, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SageStats, SageStatus } from '@/types';
 import { KIND_LABELS, MEMORY_KINDS, MEMORY_STATUSES } from './shared';

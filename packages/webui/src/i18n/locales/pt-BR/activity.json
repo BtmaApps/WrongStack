@@ -2179,6 +2179,9 @@
     "anchorCursorHint": "O intervalo de linhas do cursor corresponde à âncora desta memória",
     "statusDeleted": "excluída",
     "statusSuperseded": "substituída",
+    "staleReasonVerification": "Obsoleta · falha na verificação de âncoras",
+    "staleReasonManual": "Obsoleta · desativada manualmente",
+    "staleReasonUnknown": "Obsoleta · motivo não registrado",
     "restoreTitle": "Restaurar esta memória ao status ativo",
     "supersededJumpTitle": "Esta versão foi substituída — ir para a versão ativa",
     "acceptSuggestionTitle": "Aceitar a sugestão de exclusão da higiene — a memória será esquecida",
@@ -2199,6 +2202,10 @@
     "editorImportance": "Importância",
     "editorConfidence": "Confiança",
     "editorFreshness": "Frescor",
+    "usefulnessLabel": "Utilidade",
+    "usefulnessInjected": "Injetada",
+    "usefulnessUsed": "Usada",
+    "usefulnessNeverInjected": "Nunca injetada",
     "editorAnchors": "Âncoras",
     "editorSymbolPlaceholder": "Nome do símbolo",
     "editorRelationships": "Relacionamentos",
@@ -3784,7 +3791,9 @@
     "completionChecks": "Verificações de conclusão"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "O SAGE marcará o registro como excluído, removerá as arestas do grafo e limpará as referências das memórias relacionadas. O registro permanece na trilha de auditoria, mas não pode ser restaurado nesta página."
+    "sageWillMarkTheRecordDeleted": "O SAGE marcará o registro como excluído, removerá as arestas do grafo e limpará as referências das memórias relacionadas. O registro permanece na trilha de auditoria, mas não pode ser restaurado nesta página.",
+    "neverInjectLabel": "Bloquear também da injeção no contexto",
+    "neverInjectHint": "Marca esta memória como factualmente errada para que o SAGE nunca mais a injete no contexto, mesmo que ela corresponda a uma tarefa futura. Isso é mais forte do que uma simples exclusão."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navegar · Enter selecionar · Esc fechar"

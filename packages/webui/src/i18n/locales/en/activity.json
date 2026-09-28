@@ -2240,6 +2240,9 @@
     "anchorCursorHint": "Cursor line range matches this memory's anchor",
     "statusDeleted": "deleted",
     "statusSuperseded": "superseded",
+    "staleReasonVerification": "Stale · anchor check failed",
+    "staleReasonManual": "Stale · retired manually",
+    "staleReasonUnknown": "Stale · reason not recorded",
     "restoreTitle": "Restore this memory to active status",
     "supersededJumpTitle": "This version is superseded — jump to the active version",
     "acceptSuggestionTitle": "Accept hygiene's deletion suggestion — memory will be forgotten",
@@ -2260,6 +2263,10 @@
     "editorImportance": "Importance",
     "editorConfidence": "Confidence",
     "editorFreshness": "Freshness",
+    "usefulnessLabel": "Usefulness",
+    "usefulnessInjected": "Injected",
+    "usefulnessUsed": "Used",
+    "usefulnessNeverInjected": "Never injected",
     "editorAnchors": "Anchors",
     "editorSymbolPlaceholder": "Symbol name",
     "editorRelationships": "Relationships",
@@ -3845,7 +3852,9 @@
     "completionChecks": "Completion checks"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE will mark the record deleted, remove graph edges, and clean references from related memories. The record remains in the audit trail but cannot be restored from this page."
+    "sageWillMarkTheRecordDeleted": "SAGE will mark the record deleted, remove graph edges, and clean references from related memories. The record remains in the audit trail but cannot be restored from this page.",
+    "neverInjectLabel": "Also block from context injection",
+    "neverInjectHint": "Marks this memory as factually wrong so SAGE never injects it into context again, even if it matches a future task. This is stronger than a plain delete."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navigate · Enter select · Esc close"

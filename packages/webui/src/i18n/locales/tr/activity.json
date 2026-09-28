@@ -2240,6 +2240,9 @@
     "anchorCursorHint": "İmleç satır aralığı bu belleğin bağlayıcısıyla eşleşiyor",
     "statusDeleted": "silinmiş",
     "statusSuperseded": "üzerine yazılmış",
+    "staleReasonVerification": "Bayat · bağlayıcı denetimi başarısız",
+    "staleReasonManual": "Bayat · elle devre dışı bırakıldı",
+    "staleReasonUnknown": "Bayat · neden kaydedilmedi",
     "restoreTitle": "Bu belleği etkin duruma geri yükle",
     "supersededJumpTitle": "Bu sürüm üzerine yazıldı — etkin sürüme atla",
     "acceptSuggestionTitle": "Hijyenin silme önerisini kabul et — bellek unutulacak",
@@ -2260,6 +2263,10 @@
     "editorImportance": "Önem",
     "editorConfidence": "Güven",
     "editorFreshness": "Tazelik",
+    "usefulnessLabel": "Kullanışlılık",
+    "usefulnessInjected": "Eklendi",
+    "usefulnessUsed": "Kullanıldı",
+    "usefulnessNeverInjected": "Hiç eklenmedi",
     "editorAnchors": "Bağlayıcılar",
     "editorSymbolPlaceholder": "Sembol adı",
     "editorRelationships": "İlişkiler",
@@ -3845,7 +3852,9 @@
     "completionChecks": "Tamamlama kontrolleri"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE kaydı silinmiş olarak işaretler, graf kenarlarını kaldırır ve ilgili belleklerdeki referansları temizler. Kayıt denetim izinde kalır ancak bu sayfadan geri yüklenemez."
+    "sageWillMarkTheRecordDeleted": "SAGE kaydı silinmiş olarak işaretler, graf kenarlarını kaldırır ve ilgili belleklerdeki referansları temizler. Kayıt denetim izinde kalır ancak bu sayfadan geri yüklenemez.",
+    "neverInjectLabel": "Ayrıca bağlam enjeksiyonundan engelle",
+    "neverInjectHint": "Bu belleği olgusal olarak hatalı işaretler; böylece SAGE, ileride bir görevle eşleşse bile onu bir daha asla bağlama enjekte etmez. Bu, düz bir silmeden daha güçlüdür."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ gezin · Enter seç · Esc kapat"

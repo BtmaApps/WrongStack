@@ -2179,6 +2179,9 @@
     "anchorCursorHint": "Der Zeilenbereich des Cursors entspricht dem Anker dieses Speichers",
     "statusDeleted": "gelöscht",
     "statusSuperseded": "überschrieben",
+    "staleReasonVerification": "Veraltet · Ankerprüfung fehlgeschlagen",
+    "staleReasonManual": "Veraltet · manuell zurückgezogen",
+    "staleReasonUnknown": "Veraltet · Grund nicht erfasst",
     "restoreTitle": "Diesen Speicher in den aktiven Status zurückversetzen",
     "supersededJumpTitle": "Diese Version ist überschrieben — zur aktiven Version springen",
     "acceptSuggestionTitle": "Löschvorschlag der Hygiene annehmen — Speicher wird vergessen",
@@ -2199,6 +2202,10 @@
     "editorImportance": "Wichtigkeit",
     "editorConfidence": "Konfidenz",
     "editorFreshness": "Aktualität",
+    "usefulnessLabel": "Nützlichkeit",
+    "usefulnessInjected": "Eingefügt",
+    "usefulnessUsed": "Verwendet",
+    "usefulnessNeverInjected": "Nie eingefügt",
     "editorAnchors": "Anker",
     "editorSymbolPlaceholder": "Symbolname",
     "editorRelationships": "Beziehungen",
@@ -3784,7 +3791,9 @@
     "completionChecks": "Abschlussprüfungen"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE markiert den Datensatz als gelöscht, entfernt Graph-Kanten und bereinigt Verweise aus verwandten Einträgen. Der Datensatz bleibt im Audit-Trail, kann aber von dieser Seite aus nicht wiederhergestellt werden."
+    "sageWillMarkTheRecordDeleted": "SAGE markiert den Datensatz als gelöscht, entfernt Graph-Kanten und bereinigt Verweise aus verwandten Einträgen. Der Datensatz bleibt im Audit-Trail, kann aber von dieser Seite aus nicht wiederhergestellt werden.",
+    "neverInjectLabel": "Zusätzlich von der Kontextinjektion ausschließen",
+    "neverInjectHint": "Markiert diesen Speicher als faktisch falsch, damit SAGE ihn nie wieder in den Kontext einfügt, selbst wenn er zu einer künftigen Aufgabe passt. Dies geht über eine einfache Löschung hinaus."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navigieren · Enter auswählen · Esc schließen"

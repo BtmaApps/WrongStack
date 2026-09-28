@@ -2179,6 +2179,9 @@
     "anchorCursorHint": "L'intervallo di righe del cursore corrisponde all'ancora di questa memoria",
     "statusDeleted": "eliminata",
     "statusSuperseded": "sostituita",
+    "staleReasonVerification": "Obsoleta · verifica delle ancore non riuscita",
+    "staleReasonManual": "Obsoleta · ritirata manualmente",
+    "staleReasonUnknown": "Obsoleta · motivo non registrato",
     "restoreTitle": "Ripristina questa memoria allo stato attivo",
     "supersededJumpTitle": "Questa versione è sostituita — passa alla versione attiva",
     "acceptSuggestionTitle": "Accetta il suggerimento di eliminazione dell'igiene — la memoria sarà dimenticata",
@@ -2199,6 +2202,10 @@
     "editorImportance": "Importanza",
     "editorConfidence": "Confidenza",
     "editorFreshness": "Freschezza",
+    "usefulnessLabel": "Utilità",
+    "usefulnessInjected": "Iniettata",
+    "usefulnessUsed": "Utilizzata",
+    "usefulnessNeverInjected": "Mai iniettata",
     "editorAnchors": "Ancore",
     "editorSymbolPlaceholder": "Nome simbolo",
     "editorRelationships": "Relazioni",
@@ -3784,7 +3791,9 @@
     "completionChecks": "Controlli di completamento"
   },
   "deleteMemoryDialog": {
-    "sageWillMarkTheRecordDeleted": "SAGE contrassegnerà il record come eliminato, rimuoverà gli archi del grafo e ripulirà i riferimenti dalle memorie correlate. Il record resta nell'audit trail ma non può essere ripristinato da questa pagina."
+    "sageWillMarkTheRecordDeleted": "SAGE contrassegnerà il record come eliminato, rimuoverà gli archi del grafo e ripulirà i riferimenti dalle memorie correlate. Il record resta nell'audit trail ma non può essere ripristinato da questa pagina.",
+    "neverInjectLabel": "Blocca anche dall'iniezione nel contesto",
+    "neverInjectHint": "Contrassegna questa memoria come errata nei fatti, così SAGE non la inietterà mai più nel contesto, anche se corrisponde a un'attività futura. Questo è più forte di una semplice eliminazione."
   },
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ naviga · Invio seleziona · Esc chiudi"

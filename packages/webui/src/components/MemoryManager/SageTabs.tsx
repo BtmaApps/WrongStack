@@ -25,10 +25,11 @@
  * All three panels keep their own data fetching, list state, and modal flows.
  * Nothing in this file reaches into their internals.
  */
-import { useAppTranslation } from '@/i18n';
+
 import { type BrainCircuit, ListFilter, Network, Users2 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 
 const MemoryManager = lazy(() =>

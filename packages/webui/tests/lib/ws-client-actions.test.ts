@@ -175,6 +175,32 @@ describe('SAGE actions', () => {
     });
   });
 
+  it('deleteSage carries neverInject so injection never reloads the record', () => {
+    // The flag is the WebUI's only way to express "this memory is factually
+    // wrong" as opposed to "this memory is out of date" — the handler maps it
+    // onto a record the injector will skip, and a superseded one is still
+    // eligible. Both a set and an explicit clear must reach the wire.
+    client.deleteSage('m1', 'wrong', { neverInject: true });
+    expect(frame()).toEqual({
+      type: 'memory.sage.delete',
+      payload: { id: 'm1', force: true, reason: 'wrong', neverInject: true },
+    });
+
+    client = new Host() as Client;
+    client.deleteSage('m1', undefined, { neverInject: false });
+    expect(frame()).toEqual({
+      type: 'memory.sage.delete',
+      payload: { id: 'm1', force: true, neverInject: false },
+    });
+  });
+
+  it('deleteSage omits neverInject entirely when the caller does not pass it', () => {
+    // Absent, not `false`: the handler treats an absent value as "leave the
+    // record's existing policy alone", which is not the same as clearing it.
+    client.deleteSage('m1', 'superseded');
+    expect(frame()).not.toHaveProperty('payload.neverInject');
+  });
+
   it.each([
     ['rememberSage', 'memory.sage.remember'],
     ['findMemoriesForFile', 'memory.sage.forFile'],

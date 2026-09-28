@@ -1,8 +1,8 @@
-import { useAppTranslation } from '@/i18n';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { BrainCircuit, ChevronRight, Database, FilterX, Plus } from 'lucide-react';
 import type { RefObject } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SageEntry } from '@/types';
 import { KIND_LABELS, kindClasses, memoryPreview, relativeDate, StatusBadge } from './shared';

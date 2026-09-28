@@ -280,7 +280,8 @@ export function useWebSocket() {
     [client],
   );
   const deleteSage = useCallback(
-    (id: string, reason?: string) => client.deleteSage(id, reason),
+    (id: string, reason?: string, options?: { neverInject?: boolean }) =>
+      client.deleteSage(id, reason, options),
     [client],
   );
   const rememberSage = useCallback(

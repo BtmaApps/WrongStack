@@ -1,6 +1,6 @@
-import { useAppTranslation } from '@/i18n';
 import type { LucideIcon } from 'lucide-react';
 import {
+  Activity,
   Archive,
   ArrowLeft,
   BookMarked,
@@ -17,8 +17,10 @@ import {
   Tag,
   TerminalSquare,
   Trash2,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SageEntry, SageGraphEdge } from '@/types';
 import { MemoryGraph } from './MemoryGraph';
@@ -82,6 +84,7 @@ export function MemoryDetail({
           {KIND_LABELS[memory.kind] ?? memory.kind}
         </span>
         <StatusBadge status={memory.status} />
+        <StaleReasonBadge status={memory.status} staleReason={memory.staleReason} />
         <span className="border border-border/70 px-2 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">
           {memory.scope}
         </span>
@@ -130,6 +133,7 @@ export function MemoryDetail({
         <div className="mx-auto max-w-5xl space-y-5">
           <MemoryBody memory={memory} />
           <MemoryScoreRow memory={memory} />
+          <MemoryUsefulness memory={memory} />
           {memory.tags.length > 0 && <MemoryTags tags={memory.tags} onTagSelect={onTagSelect} />}
           {memory.anchors.length > 0 && <MemoryAnchors anchors={memory.anchors} />}
           {relatedMemories.length > 0 && (
@@ -213,6 +217,122 @@ function MemoryScoreRow({ memory }: { memory: SageEntry }) {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Explain WHY a memory is stale.
+ *
+ * The distinction is load-bearing, not cosmetic: `verification` means anchor
+ * verification demoted it, so a later passing check can restore it, whereas
+ * `manual` means a person retired it and automatic passes leave it alone. An
+ * operator triaging a stale memory needs that difference to know whether
+ * "restore" is even on the table.
+ */
+function StaleReasonBadge({
+  status,
+  staleReason,
+}: {
+  status: SageEntry['status'];
+  staleReason: SageEntry['staleReason'];
+}) {
+  const { t } = useAppTranslation();
+  if (status !== 'stale') return null;
+  const config = (() => {
+    if (staleReason === 'verification') {
+      return {
+        label: t('activity:memoryManager.staleReasonVerification'),
+        Icon: ShieldCheck,
+        className: 'border-warning/40 bg-warning/10 text-warning',
+      };
+    }
+    if (staleReason === 'manual') {
+      return {
+        label: t('activity:memoryManager.staleReasonManual'),
+        Icon: Archive,
+        className: 'border-muted-foreground/40 bg-muted/40 text-muted-foreground',
+      };
+    }
+    // Records written before `staleReason` existed carry no value. Say so
+    // rather than guessing — the whole point of the field is the distinction.
+    return {
+      label: t('activity:memoryManager.staleReasonUnknown'),
+      Icon: CircleDot,
+      className: 'border-border/70 bg-background/45 text-muted-foreground',
+    };
+  })();
+  const ReasonIcon = config.Icon;
+  return (
+    <span
+      className={cn(
+        'flex items-center gap-1 border px-2 py-0.5 font-mono text-[9px]',
+        config.className,
+      )}
+      title={config.label}
+      data-testid="memory-stale-reason"
+      data-stale-reason={staleReason ?? 'unknown'}
+    >
+      <ReasonIcon className="size-3" />
+      {config.label}
+    </span>
+  );
+}
+
+/**
+ * The corpus's only quality signal: how often this memory reached the context
+ * window, and how often the assistant then actually used it. A memory that is
+ * injected repeatedly and never referenced is a strong retirement candidate,
+ * which is why hygiene surfaces review candidates keyed on exactly these.
+ */
+function MemoryUsefulness({ memory }: { memory: SageEntry }) {
+  const { t } = useAppTranslation();
+  const hasSignal =
+    memory.injectionCount !== undefined ||
+    memory.useCount !== undefined ||
+    memory.lastUsedAt !== undefined;
+  if (!hasSignal) return null;
+  const injections = memory.injectionCount ?? 0;
+  const uses = memory.useCount ?? 0;
+  return (
+    <section
+      className="border border-border/75 bg-card/40"
+      data-testid="memory-usefulness"
+      data-injection-count={injections}
+      data-use-count={uses}
+    >
+      <div className="flex items-center justify-between border-b border-border/65 px-3 py-2.5">
+        <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          <Activity className="size-3.5 text-info" /> {t('activity:memoryManager.usefulnessLabel')}
+        </h3>
+        {memory.lastUsedAt && (
+          <span className="font-mono text-[9px] text-muted-foreground">
+            {formatDate(memory.lastUsedAt)}
+          </span>
+        )}
+      </div>
+      <div className="grid gap-px bg-border/60 sm:grid-cols-2">
+        <div className="bg-card/50 p-3">
+          <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            <Activity className="size-3" /> {t('activity:memoryManager.usefulnessInjected')}
+          </p>
+          <p className="mt-1.5 font-mono text-sm font-bold tabular-nums">
+            {injections === 0
+              ? t('activity:memoryManager.usefulnessNeverInjected')
+              : String(injections)}
+          </p>
+        </div>
+        <div className="bg-card/50 p-3">
+          <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            <Zap className="size-3" /> {t('activity:memoryManager.usefulnessUsed')}
+          </p>
+          <p className="mt-1.5 font-mono text-sm font-bold tabular-nums">
+            {injections === 0
+              ? '—'
+              : `${uses} / ${injections} (${injections === 0 ? 0 : Math.round((uses / injections) * 100)}%)`}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

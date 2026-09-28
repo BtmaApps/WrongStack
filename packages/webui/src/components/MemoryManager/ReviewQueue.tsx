@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { WrongStackWebSocketClient } from '@/lib/ws-client';
-import type { MemoryCandidateEntry } from '@/types';
+import type { MemoryCandidateEntry, SageEntry } from '@/types';
 import { memoryPreview, relativeDate } from './shared';
 
 interface ReviewQueueProps {
@@ -21,6 +21,17 @@ interface ReviewQueueProps {
     options?: { echoToChat?: boolean },
   ) => void;
   onOpenMemory?: (id: string) => void;
+  /**
+   * Resolve a candidate's target memory so the row can show WHY the target is
+   * under review. A candidate is a proposal ABOUT a memory; the decision hinges
+   * on evidence that lives on that memory (is it stale because verification
+   * failed, or because a person retired it? was it ever actually used?), and a
+   * bare "review this" line makes an accept/reject choice uninformed.
+   *
+   * Optional: candidates whose target is not in the loaded page still render,
+   * just without the evidence strip.
+   */
+  resolveMemory?: (id: string) => SageEntry | null;
   /**
    * Only the subscription surface is used. Picking `on` off the real client keeps
    * the per-message-type overloads, so handlers get narrowed payloads for free.
@@ -38,10 +49,59 @@ function canAccept(candidate: MemoryCandidateEntry): boolean {
   );
 }
 
+/**
+ * Evidence about the memory a candidate targets: why it is stale, and how
+ * useful it has actually been.
+ *
+ * This is the context that makes Accept/Keep a real decision. A candidate
+ * reading "archive" is a different ask depending on whether the target was
+ * demoted by a failed anchor check (a passing re-check may restore it) or was
+ * deliberately retired by a person. Likewise a memory injected 40 times and
+ * never referenced is a much stronger retire case than one used twice.
+ *
+ * Renders nothing when the target is not resolvable (e.g. it is not on the
+ * loaded page) or carries no signals at all.
+ */
+function CandidateEvidence({ memory }: { memory: SageEntry | null }) {
+  const { t } = useAppTranslation();
+  if (!memory) return null;
+  const isStale = memory.status === 'stale';
+  const injections = memory.injectionCount ?? 0;
+  const uses = memory.useCount ?? 0;
+  const hasUsefulness = memory.injectionCount !== undefined || memory.useCount !== undefined;
+  if (!isStale && !hasUsefulness) return null;
+  return (
+    <div
+      className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-l-2 border-border pl-2 text-[10px] text-muted-foreground"
+      data-testid="candidate-evidence"
+    >
+      {isStale && (
+        <span
+          data-testid="candidate-stale-reason"
+          data-stale-reason={memory.staleReason ?? 'unknown'}
+        >
+          {memory.staleReason === 'verification'
+            ? t('activity:memoryManager.staleReasonVerification')
+            : memory.staleReason === 'manual'
+              ? t('activity:memoryManager.staleReasonManual')
+              : t('activity:memoryManager.staleReasonUnknown')}
+        </span>
+      )}
+      {hasUsefulness && (
+        <span data-testid="candidate-usefulness" className="font-mono tabular-nums">
+          {t('activity:memoryManager.usefulnessInjected')} {injections} ·{' '}
+          {t('activity:memoryManager.usefulnessUsed')} {uses}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ReviewQueue({
   listCandidates,
   resolveCandidate,
   onOpenMemory,
+  resolveMemory,
   client,
   active,
 }: ReviewQueueProps) {
@@ -291,6 +351,9 @@ export function ReviewQueue({
                       </>
                     )}
                   </div>
+                  {target && resolveMemory ? (
+                    <CandidateEvidence memory={resolveMemory(target)} />
+                  ) : null}
                   <p className="mt-1.5 text-[13px] leading-snug text-foreground">
                     {memoryPreview(c.text, 220)}
                   </p>
