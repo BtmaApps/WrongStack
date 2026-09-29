@@ -40,6 +40,7 @@ export function formatMemoryHintsDetailed(
     ].filter(Boolean);
     const anchor = formatPrimaryAnchor(memory);
     const tags = memory.tags.slice(0, 3);
+    const validityReview = opts.validityReviews?.get(memory.id);
     const metadata = [
       memoryReviewReason(memory)
         ? 'historicalHint=check current sources before relying'
@@ -48,8 +49,10 @@ export function formatMemoryHintsDetailed(
       `updated=${dateLabel(memory.updatedAt)}`,
       `anchorVerified=${dateLabel(memory.lastVerifiedAt)}`,
       currentFeedbackLabel(memory),
-      opts.validityReviews?.get(memory.id)?.observedRevision === memory.revision
-        ? `sourceChecks=${escapeFenceText(JSON.stringify(opts.validityReviews.get(memory.id)))}`
+      // A memory with no review must not match on `undefined === undefined`
+      // (revision-less memory): JSON.stringify(undefined) crashes the fence.
+      validityReview && validityReview.observedRevision === memory.revision
+        ? `sourceChecks=${escapeFenceText(JSON.stringify(validityReview))}`
         : undefined,
       memory.validity
         ? `validWhen=${escapeFenceText(JSON.stringify(memory.validity))}; applicability=unknown (check current task assumptions)`
