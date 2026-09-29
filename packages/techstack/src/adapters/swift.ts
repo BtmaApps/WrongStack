@@ -26,6 +26,7 @@ function parsePackageSwift(content: string): SwiftManifestDependency[] {
   //   .upToNextMajor(from: "1.0.0")  Swift 5.2+ static members — also
   //   .upToNextMinor(from:), .exact("1.0.0"), .branch("main"), .revision("abc")
   //   "1.0.0"..<"2.0.0"              Swift 5.5+ half-open RANGE string
+  //   "1.0.0"..."2.0.0"              closed RANGE string — same lower bound
   // The older pattern accepted only the labelled form AND required the closing
   // paren straight after it, so a static-member requirement made the whole
   // declaration unmatchable and the dependency vanished from the inventory.
@@ -35,7 +36,7 @@ function parsePackageSwift(content: string): SwiftManifestDependency[] {
   // `"1.0.0"..<"2.0.0"` and the closed form `"1.0.0"..."2.0.0"` both record
   // their LOWER bound, the version the manifest actually asks for.
   const packageRegex =
-    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)|["']([^"']+)["']\s*\.\.<?\s*["'][^"']*["']))?\s*\)/g;
+    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)|["']([^"']+)["']\s*\.\.(?:\.|<?)?\s*["'][^"']*["']))?\s*\)/g;
   for (const match of content.matchAll(packageRegex)) {
     const location = match[2];
     if (!location) continue;

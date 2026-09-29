@@ -183,6 +183,61 @@ describe('SwiftAdapter', () => {
     });
   });
 
+  // The closed form spells the same bounded requirement with Swift's inclusive
+  // range operator (`...`). The half-open alternative's `<?` cannot match the
+  // third dot, so the declaration used to fall through every requirement
+  // alternative: the manifest row vanished and the dependency degraded to a
+  // transitive-only lockfile row without a requested bound.
+  it('parses closed range requirements ("1.0.0"..."2.0.0") as direct dependencies', async () => {
+    const { root, workspace } = fixture(
+      'swift',
+      {
+        'Package.swift': [
+          '// swift-tools-version:5.9',
+          'let package = Package(',
+          '    name: "proof",',
+          '    dependencies: [',
+          '        .package(url: "https://github.com/apple/swift-log.git", "1.0.0"..."2.0.0"),',
+          '        .package(url: "https://github.com/apple/swift-collections.git", "1.0.0"..<"2.0.0"),',
+          '    ],',
+          ')',
+        ].join('\n'),
+        'Package.resolved': JSON.stringify({
+          version: 2,
+          pins: [
+            {
+              identity: 'swift-log',
+              location: 'https://github.com/apple/swift-log.git',
+              state: { version: '1.5.4', revision: 'lll' },
+            },
+            {
+              identity: 'swift-collections',
+              location: 'https://github.com/apple/swift-collections.git',
+              state: { version: '1.1.0', revision: 'eee' },
+            },
+          ],
+        }),
+      },
+      ['Package.swift'],
+      ['Package.resolved'],
+    );
+    const deps = await swiftAdapter.inventory(workspace, {
+      projectRoot: root,
+      includeTransitive: true,
+    });
+    // Closed range is a direct row whose requested bound is the lower bound.
+    expect(deps.find((dep) => dep.name === 'swift-log')).toMatchObject({
+      direct: true,
+      requested: '1.0.0',
+      locked: '1.5.4',
+    });
+    // The half-open spelling keeps working alongside the closed form.
+    expect(deps.find((dep) => dep.name === 'swift-collections')).toMatchObject({
+      direct: true,
+      requested: '1.0.0',
+    });
+  });
+
   it('parses static-member requirements (.upToNextMajor/.exact) as direct dependencies', async () => {
     const { root, workspace } = fixture(
       'swift',
