@@ -51,34 +51,35 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.27
+### What's new in 1.0.29
 
-Highlights since 1.0.26:
+Highlights since 1.0.27:
 
-- **YOLO asks before more kinds of damage.** Disk wipes, infrastructure
-  teardown (`terraform destroy`, `kubectl delete --all`), container volume and
-  database drops, `rsync --delete` outside the project, discarding local git
-  work, download-and-run cradles and publishes to PyPI, RubyGems, NuGet or
-  Maven now need your approval, including through Windows `.cmd` shims, full
-  command paths and the structured `git` tool. The approval banner warns about
-  the same commands.
-- **Secrets stay out of logs and memory.** Redaction and the pre-tool secret
-  gate catch PGP, encrypted PKCS#8 and JSON-embedded private keys, current
-  OpenAI/Anthropic key formats and multi-space `--password` flags; the gate now
-  also covers `pwsh`, `exec`, `replace` and `patch`.
-- **Keep output useful and cheaper.** `bash` and `exec` drop passing-test and
-  install-progress lines but keep failures and the summary; long outputs keep
-  their tail. dep-guard checks new packages against the registry and OSV
-  before an install.
-- **Providers recover on their own.** A model whose catalog output limit is
-  higher than the provider accepts learns the real limit from the provider's
-  error (#398), and reset times like "try again in 6h12m" fail over at once.
-- **Windows paths with non-ASCII characters work.** Deletes, session cleanup,
-  Kanban verification and `npm`/`pnpm` commands in hooks and verifiers behave
-  under folders such as `C:\Users\Çağrı`.
-- **See what is running.** Connections show each daemon's WrongStack version,
-  the quota chip forecasts when a plan runs out, and notify-hub can show
-  desktop notifications.
+- **Project memory travels with the project.** With HQ enabled, SAGE's
+  project, file and symbol memories — updates and deletions included — sync to
+  every machine that shares the committed project identity, with offline edits
+  resolved by revision instead of clock time. `wstack sage sync` runs the same
+  bridge without a chat session.
+- **Other coding agents can use SAGE.** `wstack sage connect claude-code`
+  (or `codex`, `cursor`, `antigravity`, `all`) wires the project's memory into
+  that agent as an MCP server with a matching skill: it can recall, and it can
+  propose memories that land in WrongStack's review queue.
+- **Project Kit.** Reusable, schema-checked project scripts with verification
+  cases, source revisions and run history, a WebUI page to browse them, and a
+  Tool Coach that points the agent at a matching kit before it writes another
+  one-off script. See [Project Kit](docs/project-kit.md).
+- **Memories that check themselves.** A read-only Memory Companion verifies
+  injected memories against current source with exact quotes, agents leave
+  evidence-backed feedback after real use, and a memory can state the
+  conditions under which it applies. See
+  [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md).
+- **One ranked Memory search in the WebUI** across SAGE and the vector index,
+  with stable paging and links from vector mirrors back to their memories.
+- **Fewer rough edges.** OpenAI-compatible endpoints learn which reasoning
+  echo field they accept (DeepSeek, Kimi, Cerebras), project daemons recover
+  when two releases fight over one metadata file, `/commit` and `/push` handle
+  their flags and multiple remotes correctly, and TechStack reads Elixir,
+  Python, Swift, Maven and NuGet manifests accurately.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -439,11 +440,18 @@ project-owned service is available to external MCP clients through
 `wstack-sage-mcp`; it is read-only by default, while `--writable` enables the
 confirm-class mutation tools.
 
+Claude Code, Codex, Cursor and Antigravity connect with one command —
+`wstack sage connect <client>` — and get read access plus the ability to
+propose memories for review. With HQ enabled, project-level memories sync to
+every machine carrying the same committed project identity (`wstack sage sync`
+runs that bridge headless).
+
 - **Typed knowledge** — facts, decisions, conventions, preferences, anti-patterns, bug root causes, and file/symbol/command notes, each with importance + confidence.
 - **Rich anchors** — a memory can bind to almost anything concrete: a **file**, a **directory**, a **symbol** (function/class/method), a **command**, a **git commit or blob**, a **test**, or a **package**. Anchored memories are re-verified as those targets change (file existence, content hash, git blob, symbol presence) and auto-surface when you touch that location — so knowledge stays pinned to the code it describes instead of drifting.
 - **Knowledge graph** — typed edges + BFS traversal relate memories, files, symbols, and commands.
 - **Audience-scoped** — memories can target specific roles/modes so role-specific guidance never clutters general recall.
 - **Curated, not chaotic** — a review queue and hygiene pipeline keep memory trustworthy; deletions are guarded.
+- **Checked, not trusted blindly** — a read-only Memory Companion verifies injected memories against current source, agents record evidence-backed feedback after real use, and a memory can state when it applies.
 
 See [`docs/sage/ARCHITECTURE.md`](docs/sage/ARCHITECTURE.md).
 
@@ -640,7 +648,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.19** — current release; semver from 1.0.0 onward
+- **v1.0.29** — current release; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` (18 gates) before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`
@@ -661,6 +669,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 | [Configuration](docs/configuration.md) | Config files, env vars, project conventions |
 | [Architecture](docs/architecture.md) | Kernel primitives, pipelines, agent lifecycle |
 | [SAGE memory](docs/sage/ARCHITECTURE.md) | Long-term memory: storage, anchors, knowledge graph, retrieval |
+| [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md) | Memory Companion, validity conditions, evidence-based feedback |
 | [OAuth sign-in](docs/oauth-signin.md) | Subscription authentication |
 | [HQ service](docs/hq-service.md) | Always-on HQ under systemd |
 | [Plugin author guide](docs/plugin-author-guide.md) | Building a plugin |

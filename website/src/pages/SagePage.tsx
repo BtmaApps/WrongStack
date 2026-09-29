@@ -10,8 +10,8 @@ import {
   Telescope,
   Zap,
 } from 'lucide-react';
-import { Link } from '@/lib/router';
 import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
+import { Link } from '@/lib/router';
 
 export function SagePage() {
   return (
@@ -374,10 +374,59 @@ export function SagePage() {
         </div>
       </section>
 
-      {/* ── Tool integration ───────────────────────────────────────────── */}
+      {/* ── Shared & verified ──────────────────────────────────────────── */}
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
         <SectionIntro
           index="07"
+          eyebrow="Shared and verified"
+          title="Memory that travels with the project — and checks itself."
+          description="Project knowledge follows the committed project identity across machines, other coding agents can read it, and every injected claim can be checked against the code it describes."
+        />
+        <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2">
+          {[
+            {
+              icon: GitGraph,
+              title: 'HQ sync',
+              body: 'With HQ enabled, project, file and symbol memories — updates and deletions included — replicate to every client that shares the committed project identity. Offline edits resolve by logical revision, never by clock time. User and session memories stay local.',
+              detail: 'wstack sage sync  ·  headless bridge, no chat session',
+            },
+            {
+              icon: Telescope,
+              title: 'External agents',
+              body: 'Claude Code, Codex, Cursor and Antigravity attach to the running project memory as an MCP server with a matching skill. They recall lexically and propose new memories, which enter WrongStack’s review queue instead of the store.',
+              detail: 'wstack sage connect claude-code | codex | cursor | antigravity | all',
+            },
+            {
+              icon: ScanSearch,
+              title: 'Memory Companion',
+              body: 'A read-only companion checks injected memories against at most four current project files and reports supported, outdated, contradicted, unverifiable or irrelevant — with exact source quotes. It cannot edit code or change memory.',
+              detail: 'features.memoryCurator (default on)',
+            },
+            {
+              icon: Check,
+              title: 'Feedback and conditions',
+              body: 'After real use, agents record useful, outdated, incorrect, irrelevant or uncertain with evidence. Outdated or incorrect opens a review candidate, never a silent deletion. A memory can state when it applies, with literal source checks.',
+              detail: 'memory_update feedback  ·  remember validity',
+            },
+          ].map(({ icon: Icon, title, body, detail }) => (
+            <article key={title} className="bg-card p-7">
+              <Icon className="size-5 text-brand" />
+              <h2 className="mt-6 text-xl font-black text-fg">{title}</h2>
+              <p className="mt-3 text-sm leading-7 text-muted">{body}</p>
+              <code className="mt-5 block font-mono text-xs text-faint break-all">{detail}</code>
+            </article>
+          ))}
+        </div>
+        <div className="mt-8 flex flex-wrap gap-5">
+          <ExternalDoc path="docs/sage-feedback-lifecycle.md">SAGE feedback lifecycle</ExternalDoc>
+          <ExternalDoc path="packages/sage-mcp/README.md">Connecting coding agents</ExternalDoc>
+        </div>
+      </section>
+
+      {/* ── Tool integration ───────────────────────────────────────────── */}
+      <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
+        <SectionIntro
+          index="08"
           eyebrow="Operator surface"
           title="Commands and tools for memory work."
           description="You do not edit markdown files by hand. The agent and its tools manage memory automatically — but you can inspect and control it."
@@ -443,7 +492,7 @@ export function SagePage() {
       {/* ── Configuration ──────────────────────────────────────────────── */}
       <section className="border-t border-line bg-ink text-white">
         <div className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 lg:px-10">
-          <SectionIntro index="08" eyebrow="Configuration" title="Tune memory to your workflow." />
+          <SectionIntro index="09" eyebrow="Configuration" title="Tune memory to your workflow." />
           <div className="mt-12 overflow-hidden rounded-2xl border border-white/10">
             <div className="border-b border-white/10 px-6 py-4">
               <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">

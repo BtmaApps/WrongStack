@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.29] — 2026-09-29
+
+A SAGE release. Project memories now travel with the project: an enabled HQ
+connection replicates project, file and symbol memories to every client that
+carries the same project identity, and `wstack sage sync` does it without a chat
+session. Claude Code, Codex, Cursor and Antigravity can read that memory and
+propose to it through `wstack sage connect`. The WebUI Memory view searches SAGE
+and the vector index through one ranked, paged backend. OpenAI-compatible
+endpoints learn which reasoning echo field they accept, and a round of parser and
+tool fixes closes the release.
+
+### Added
+
+- **SAGE memories sync across machines through HQ.** With HQ enabled, `project`, `file` and `symbol` memories (including updates and deletions) replicate to HQ and to every connected client with the same HQ project ID; the committed `.wrongstack/project.json` is the identity to share. User and session memories, review candidates, audit logs and local retrieval counters stay local. The CLI bridge polls a constant-size change clock on the project's SAGE owner every three seconds, so an unchanged store is not scanned again, and writes from MCP and other local hosts advance the same clock. SQLite tracks logical revisions and durable tombstones: concurrent offline edits resolve by revision, then deletion precedence, then a stable nonce — never wall-clock time — and a partial snapshot is never read as a deletion. Frames are chunked below 512 KiB, records are capped at 256 KiB, an invalid record warns without stopping the rest, and a receiver stalled for 10 seconds is dropped and reconciles on reconnect.
+- **`wstack sage sync` runs that bridge without a chat session.** It uses the configured `Sage.storage.directory`, custom paths included. `--restart-service` restarts only the project's SAGE owner first (useful right after an upgrade); plain `sage sync` never restarts a running owner, and open CLI sessions are left alone.
+- **External coding agents can use SAGE: `wstack sage connect`.** `wstack sage connect claude-code | codex | cursor | antigravity | all` writes the client's project MCP entry (`.mcp.json`, `.codex/config.toml`, `.cursor/mcp.json`, `.agents/mcp_config.json`) plus a skill or rule that tells the agent when to recall and how to propose. `connect print` emits the JSON/TOML for any other MCP client, and `wstack sage disconnect` removes only the entries it wrote. The server behind it, `wstack sage mcp --origin <client>`, is attach-only (it never starts a SAGE daemon and answers "No running WrongStack SAGE daemon" until WrongStack is open in the project), releases its socket after 30 s idle, serves the read tools plus `memory_candidates` narrowed to `list`/`propose` — proposals are stamped with the caller and become memory only through WrongStack review — and searches lexically, because semantic fusion lives in a WrongStack host. MCP servers can now send `InitializeResult.instructions`, and the SAGE server uses it to put a usage guide in front of the model.
+- **One ranked search across SAGE and the vector index in the WebUI Memory view.** Both corpora are ranked score-descending with the entry id as a deterministic tiebreak and page through opaque cursors bound to the query, corpus, filters and ranking version; an invalid or mismatched cursor is refused instead of silently ending the list. A SAGE hit shows its ranking source and channel scores, a vector hit its cosine score and, when it mirrors a SAGE memory, a validated link to it. The WebUI search excludes session-scoped records (its access token carries no agent-session identity), a failed query embedding is an explicit "provider unavailable" error rather than zero results, and existing `searchSage`, `listSagePage` and raw vector-tool callers keep their behavior.
+- **GPT-6.1 Sol** joins the ChatGPT (Codex) sign-in model list.
+
+### Changed
+
+- **Solo sessions can keep their read-only companions.** The session subagent policy has three states instead of two: `all`, `companions` (solo, except the resident Memory and Explore companions, which cannot change anything) and `none` (strict solo). The browser's session-scoped preferences carry the new setting the same way the server does.
+
+### Fixed
+
+- **Reasoning echo on OpenAI-compatible endpoints.** There is no shared field for sending a previous turn's reasoning back: DeepSeek and Kimi require `reasoning_content` in thinking mode, Cerebras rejects that name and takes `reasoning`, and a strict endpoint may accept neither. Known hosts now get their field up front, and any other endpoint that refuses the field it was sent teaches the adapter the next one (`reasoning_content` → `reasoning` → omit) for the session, at the cost of one failed request. `reasoning_effort` is sent as chosen and dropped only when the endpoint names it in a 400/422.
+- **`replace` with a brace glob in a comma list failed.** `files: "*.{ts,md}"` was split on the comma inside the braces and failed with `file not found "md}"`; the list now keeps brace groups whole. The ripgrep fast path also skips `node_modules`, `dist` and `build` like the native walker does, so an un-gitignored build folder is no longer rewritten only on machines that have ripgrep, and a filter the matcher cannot express fails up front instead of reporting zero changes as success.
+- **`edit` corrupted non-text files.** It rewrote the target from a UTF-8 decode, turning invalid sequences into U+FFFD; it now refuses binary files and PDFs the way `read` and `replace` already did.
+- **Session references resolve the same way everywhere.** Delete, search and fork accept the same unique leaf or prefix as resume (and the `.jsonl` / `.jsonl.gz` suffix), an ambiguous reference throws instead of picking a session, a forked child records its parent's canonical id, overlapping idle-archive passes no longer clear each other, and a non-finite checkpoint age throws instead of deleting a checkpoint written moments ago.
+- **TechStack read several ecosystems wrong.** `mix.lock` (colon map syntax) lost every locked Hex version; a PEP 508 extras bracket ended the TOML array early and dropped later Python dependencies; Swift `"1.0.0"..<"2.0.0"` and `"1.0.0"..."2.0.0"` requirements dropped the whole declaration; nested Maven `${property}` references stayed in the purl; NuGet floating (`13.*`) and range declarations became purl versions; and the snapshot diff collapsed several installed versions of one package into a single entry, hiding all but the last from OSV.
+- **Smaller fixes:** the `taskkill` guard missed `/PID:1234` and `/IM:node.exe`; `file-watcher` doubled the file name on a single-file watch; the LLM context selector crashed on a non-array `kept`/`collapsed`; the vector mirror of a SAGE memory could attach to another memory with the same text; MCP clients sanitize non-finite timeouts and body caps; ACP session updates are checked against the session they name.
+
+## [1.0.28] — 2026-09-29
+
+Project Kit arrives: reusable, verified project scripts with schemas, revisions
+and run history, and a Tool Coach that points the agent at a matching kit before
+it writes another one-off script. SAGE gains an evidence-based feedback loop, a
+read-only Memory Companion that checks injected memories against current source,
+and conditions that say when a memory applies. Project daemons recover when two
+releases fight over one metadata file, and a round of audit fixes covers ACP,
+`/commit`, the git plugins and the WebUI server.
+
+### Added
+
+- **Project Kit — reusable executable capabilities per project.** A kit under `.wrongstack/project-kit/<name>/` pairs a guide, input and output schemas, a `.mjs` entry and 1–32 verification cases. `project_kit` lists, inspects and templates kits and shows their history; `project_kit_run` verifies and runs them. A revision hashes the whole bundle, a new or changed revision must pass verification before ordinary use, and each run snapshots its source under `.wrongstack/project-kit-runs/`. Runs go through the confirmation-gated execution path with inputs on stdin (never argv); a kit is arbitrary Node code, not a sandbox, and its declared effects grant nothing. Records keep the child's exit code and a bounded, redacted stderr tail. The WebUI has a **Project Kit** page (activity bar and command palette) listing kits, guides, schemas, verification state and the latest 100 runs; its actions prepare a chat draft rather than running anything. See [Project Kit](docs/project-kit.md).
+- **Tool Coach suggests a matching kit.** At the start of each user turn a local matcher (no extra model call) ranks kit names and descriptions against the task and offers at most three. After a tool batch that looks like a one-off script in a temp or scripts directory, or a long inline analysis script, it adds one reminder per turn when a relevant kit has not been inspected. It never blocks, undoes or runs anything. `features.toolCoach` controls it.
+- **SAGE feedback after real use.** `memory_update` takes a feedback-only payload (`useful`, `outdated`, `incorrect`, `irrelevant`, `uncertain`) with the observed revision and evidence. Feedback leaves content, confidence, freshness and ranking unchanged; the last eight distinct judgments are kept. `outdated` and `incorrect` open a non-destructive investigation candidate in the review queue, and resolving an old proposal can no longer archive a record corrected since. See [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md).
+- **Memory Companion.** The fleet host runs a lazy, read-only companion on the `memory-curator` role that checks injected memories and stale path matches against at most four bounded, scrubbed project files and returns `supported / outdated / contradicted / unverifiable / irrelevant` with exact source quotes. The host re-checks the memory revision and source hashes before posting a same-session note; the companion cannot edit code, change memory, delegate or run commands, and it pauses at 82% context pressure. It replaces the old after-run `SessionMemoryCurator` writer; `features.memoryCurator: false` turns it off.
+- **Memories can say when they apply.** `remember` takes an optional `validity` statement with up to four literal `source_contains` checks, evaluated against bounded project files as `satisfied`, `not_satisfied` or `unknown` — no commands, expressions or regexes. The WebUI editor, detail and injection panels show the conditions, their latest results and companion reviews for the matching revision.
+- **Stale reasons, usefulness and "never inject" in the WebUI.** Memory detail shows why a record went stale and its use and injection counts; the delete dialog can also mark a memory never to be injected again. All seven locales carry the new strings.
+- **The Claude sign-in explains what it is for.** The TUI and WebUI OAuth panels now say the Claude login adds an `anthropic-oauth` provider for extra usage, and that spending a Claude subscription goes through OmniRoute; localized in every language.
+
+### Changed
+
+- **The Brain's file-churn signal waits for 20 edits** to one file within 10 minutes (was 5), and edit count alone is no longer treated as proof of an edit/revert loop. The stall signal no longer fires while a tool is still running. Explicit `brain.monitor.fileChurnThreshold` and `fileChurnWindowMs` settings are kept.
+- **Council answers that are not JSON are parsed instead of discarded.**
+
+### Fixed
+
+- **Two project daemons could lock every client out after an upgrade.** 1.0.27 changed the endpoint name, so an old and a new daemon could both run and write the same `server.json`; whichever wrote last owned the token and the other's clients were refused for good. A daemon now rewrites its metadata when a refused token shows it was replaced, and the Session Catalog, Kanban and codebase index clients retry once after re-reading it.
+- **Project Kit runs lost their result about a quarter of the time.** The kit child exited from inside the IPC send callback, which fires when the message is queued, not read; it now closes the channel first and exits on a later turn.
+- **ACP:** pending requests are rejected when the agent connection closes, concurrent prompts are serialized, binary WebSocket frames and UTF-8 split across HTTP chunks are handled, mode/config changes persist, and image prompts are validated.
+- **`/commit` and `/push`.** `--dry-run` previews the index `/commit` would actually record (after `git add .`) and the heuristic message reads the staged change set; `--no-llm` no longer counted as `-n`, `--follow-tags` as `--force`, or `--no-verify` as a dry run; and `/push` passes one remote instead of every remote, so repositories with two remotes can push.
+- **Git plugins.** branch-guard judges an operation on the branch it lands on; semver-bump commits only its own files and skips the tag when the commit fails; git-autocommit warns about its scope.
+- **WebUI server:** the collab mirror scrubs secrets; terminal create/close races; worktree removal guards branch-only orphans, a live directory and case-folded paths; the SDD wizard runs one operation at a time and the SDD board reads durable run state; git info survives a detached or failed git.
+- **Smaller fixes:** child output is decoded UTF-8-safely across chunks in bench, CLI and core; a pre-tool hook that skips a tool is honored by the executor; the requirement-intake store tolerates malformed records and unreadable files; the secret scrubber catches passwords in any `scheme://user:password@host`, lowercase `aws_secret_access_key` and Azure connection strings; on Windows, small `.wrongstack` directories get an inheritable owner-only ACL once instead of `icacls` on every write.
+
 ## [1.0.27] — 2026-09-27
 
 A hardening release. Commands the YOLO gate and the approval banner should stop

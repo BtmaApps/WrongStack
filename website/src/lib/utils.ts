@@ -353,9 +353,50 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.29',
+    date: '2026-09-29',
+    latest: true,
+    tagline: 'SAGE memory that syncs across machines and reaches other coding agents',
+    highlights: [
+      'Project, file and symbol memories sync through HQ to every client sharing the committed project identity',
+      'wstack sage sync runs the SAGE HQ bridge headless, without a chat session',
+      'wstack sage connect wires Claude Code, Codex, Cursor or Antigravity to project memory with recall and review-gated proposals',
+      'The WebUI Memory view ranks SAGE and vector results through one paged search with validated mirror links',
+      'OpenAI-compatible endpoints learn their reasoning echo field (DeepSeek, Kimi, Cerebras) after one refusal',
+      'Solo sessions can keep the read-only Memory and Explore companions; GPT-6.1 Sol joins the ChatGPT sign-in models',
+      'replace handles brace globs in file lists, edit refuses binary files, and TechStack reads Elixir, Python, Swift, Maven and NuGet manifests accurately',
+    ],
+  },
+  {
+    version: '1.0.28',
+    date: '2026-09-29',
+    tagline: 'Project Kit, evidence-based SAGE feedback, and a read-only Memory Companion',
+    highlights: [
+      'Project Kit adds reusable, schema-checked project scripts with verification cases, source revisions and run history',
+      'Tool Coach points the agent at a matching kit before it writes another one-off script; the WebUI gains a Project Kit page',
+      'A read-only Memory Companion checks injected memories against current source with exact quotes',
+      'Agents record useful, outdated, incorrect, irrelevant or uncertain feedback; memories can state the conditions they apply under',
+      'Project daemons recover when two releases write the same metadata file after an upgrade',
+      '/commit previews the real index and /push works with multiple remotes; ACP, git plugins and the WebUI server get audit fixes',
+    ],
+  },
+  {
+    version: '1.0.27',
+    date: '2026-09-27',
+    tagline: 'Harder YOLO gate, tighter secret redaction, and leaner tool output',
+    highlights: [
+      'YOLO asks before disk wipes, infrastructure teardown, database drops, download-and-run and package publishes, in many more spellings',
+      'Redaction and the pre-tool secret gate catch PGP, encrypted PKCS#8, JSON-embedded keys and current API key formats',
+      'bash and exec drop passing-test and install-progress lines but keep failures, summaries and the output tail',
+      'dep-guard checks new packages against the registry and OSV before an install',
+      'Models learn a provider’s real output limit from its error (#398); stated reset times fail over at once',
+      'Windows paths with non-ASCII characters no longer lose deletes, cleanup or Kanban verification',
+      'Connections show each daemon’s WrongStack version and the quota chip forecasts when a plan runs out',
+    ],
+  },
+  {
     version: '1.0.26',
     date: '2026-09-25',
-    latest: true,
     tagline: 'Remote workspaces, scripted tools, and sessions that carry on',
     highlights: [
       'Run the agent on Linux or macOS over SSH and use its WebUI locally with wstack remote',
