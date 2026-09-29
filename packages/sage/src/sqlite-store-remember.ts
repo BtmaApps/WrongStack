@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { ulid } from '@wrongstack/core/utils';
 import { rejectIfUnsafeInput } from './shared/candidate-lifecycle.js';
+import { normalizeValidity, validityKey } from './shared/memory-validity.js';
 import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { importanceFromPriority } from './sqlite-store-legacy.js';
@@ -37,6 +38,7 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
   const { input } = ctx;
   rejectIfUnsafeInput(input);
   validateRememberInput(input);
+  const validity = normalizeValidity(input.validity);
   const normalizedText = normalizeText(input.text);
   if (!normalizedText) throw new Error('SAGE text must not be empty.');
   await ctx.initialize();
@@ -82,15 +84,18 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
       scope === 'session' && input.ownerSessionId
         ? ([input.ownerSessionId] as const)
         : ([] as const);
-    const exactRow = ctx
+    const exactRows = ctx
       .stmt(
         `SELECT data FROM memories
            WHERE status IN ('active','stale') AND scope = ? AND canonical_text = ?
              AND audience IS ?
              ${sessionMatchClause}
-           LIMIT 1`,
+           `,
       )
-      .get(scope, canonical, audienceKey, ...sessionMatchParams) as { data: string } | undefined;
+      .all(scope, canonical, audienceKey, ...sessionMatchParams) as Array<{ data: string }>;
+    const exactRow = exactRows.find(
+      (row) => validityKey(sqliteRowToMemory(row).validity) === validityKey(validity),
+    );
 
     const existing =
       (exactRow ? sqliteRowToMemory(exactRow) : undefined) ??
@@ -100,6 +105,7 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
         kind,
         text: normalizedText,
         anchors,
+        validity,
         ...(scope === 'session' && input.ownerSessionId
           ? { ownerSessionId: input.ownerSessionId }
           : {}),
@@ -196,6 +202,7 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
       tags,
       anchors,
       sources,
+      ...(validity ? { validity } : {}),
       audience,
       importance,
       confidence,
@@ -233,6 +240,7 @@ function findNearDuplicate(
     kind: Sage['kind'];
     text: string;
     anchors: MemoryAnchor[];
+    validity?: Sage['validity'];
     ownerSessionId?: string | undefined;
   },
 ): Sage | undefined {
@@ -296,6 +304,7 @@ function findNearDuplicate(
   let best: { memory: Sage; score: number } | undefined;
   for (const row of rows.values()) {
     const candidate = sqliteRowToMemory(row);
+    if (validityKey(candidate.validity) !== validityKey(opts.validity)) continue;
     if (
       !isNearDuplicateMemory(
         { text: opts.text, kind: opts.kind, anchors: opts.anchors },

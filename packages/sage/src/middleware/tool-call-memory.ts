@@ -2,6 +2,7 @@ import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import type { EventBus, Middleware } from '@wrongstack/core/kernel';
 import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
+import { checkInjectionValidity } from '../retrieval/validity-checks.js';
 import type { Sage } from '../types.js';
 import type { InjectionTracker } from './injection-tracker.js';
 import { MemoryInjectorAgent } from './memory-injector-agent.js';
@@ -442,7 +443,9 @@ export function createSageToolCallMiddleware(
             at: nowIso(),
           });
         }
+        const validityReviews = await checkInjectionValidity(selected, nextPayload.ctx.projectRoot);
         const rendered = formatMemoryHintsDetailed(selected, {
+          validityReviews,
           maxChars,
           heading:
             plan.taskSignals.length > 0
@@ -544,10 +547,10 @@ export function createSageToolCallMiddleware(
           rejectedDetail,
           rejectedDetailTotal,
           activated: selected.flatMap((memory) => {
-            return [toTraceMemory(selectedById.get(memory.id)!, plan)];
+            return [{ ...toTraceMemory(selectedById.get(memory.id)!, plan), validityReview: validityReviews.get(memory.id) }];
           }),
           injected: rendered.memoryIds.flatMap((id) => {
-            return [toTraceMemory(selectedById.get(id)!, plan)];
+            return [{ ...toTraceMemory(selectedById.get(id)!, plan), validityReview: validityReviews.get(id) }];
           }),
           injectedChars: rendered.text.length,
           thresholds,

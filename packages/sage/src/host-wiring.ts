@@ -150,6 +150,8 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
   if (cfg?.inject?.turnContext === true) {
     deps.pipelines.request.use(
       createSageTurnMiddleware({
+        events: deps.events,
+        projectRoot: deps.projectRoot,
         memory: retrieval,
         maxMemories: cfg?.inject?.maxTurnMemories,
         maxChars: cfg?.inject?.maxCharsPerTurn,

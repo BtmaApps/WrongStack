@@ -1,10 +1,12 @@
 import { currentModelChallenge } from '../shared/model-feedback.js';
 import { DEFAULT_PERSISTENCE, type Sage } from '../types.js';
 import { memoryReviewReason } from './review-freshness.js';
+import type { ValidityReview } from './validity-checks.js';
 
 export interface FormatMemoryHintsOptions {
   heading?: string | undefined;
   maxChars?: number | undefined;
+  validityReviews?: Map<string, ValidityReview> | undefined;
 }
 
 export interface FormattedMemoryHints {
@@ -46,6 +48,11 @@ export function formatMemoryHintsDetailed(
       `updated=${dateLabel(memory.updatedAt)}`,
       `anchorVerified=${dateLabel(memory.lastVerifiedAt)}`,
       currentFeedbackLabel(memory),
+      opts.validityReviews?.get(memory.id)?.observedRevision === memory.revision
+        ? `sourceChecks=${escapeFenceText(JSON.stringify(opts.validityReviews.get(memory.id)))}` : undefined,
+      memory.validity
+        ? `validWhen=${escapeFenceText(JSON.stringify(memory.validity))}; applicability=unknown (check current task assumptions)`
+        : undefined,
       anchor ? `relation=${formatPrimaryRelation(memory)}` : undefined,
       tags.length > 0 ? `tags=${tags.join(',')}` : undefined,
     ].filter(Boolean);

@@ -4084,5 +4084,19 @@
     "network": "Network",
     "noConsole": "No console messages yet.",
     "noNetwork": "No requests yet."
+  },
+  "memoryValidity": {
+    "title": "Valid when",
+    "unknown": "Current task applicability is unknown; a source match does not prove all assumptions.",
+    "observed": "Last observed: {{at}} · memory revision {{revision}}. Source files may have changed since.",
+    "unchecked": "No source observation for this memory revision.",
+    "satisfied": "Expected text found at observation time",
+    "not_satisfied": "Expected text absent at observation time",
+    "unknownCheck": "Not checked",
+    "placeholder": "For example: default retry policy, with no session override.",
+    "path": "Relative project file path",
+    "literal": "Exact text expected in the file",
+    "remove": "Remove check",
+    "add": "Add source check"
   }
 }

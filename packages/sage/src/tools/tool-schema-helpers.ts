@@ -1,6 +1,43 @@
 import type { MemoryScope } from '@wrongstack/core/types';
 import type { MemoryAnchor, SageKind, SageScope, SageStatus } from '../types.js';
 
+export function validitySchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['statement'],
+    description:
+      'When this claim applies. Assumptions are unverified until checked in the current task. Literal source checks are evidence signals, not proof that all assumptions hold. Never include secrets or executable commands.',
+    properties: {
+      statement: { type: 'string', minLength: 1, maxLength: 1000 },
+      checks: {
+        type: 'array',
+        maxItems: 4,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['type', 'path', 'text'],
+          properties: {
+            type: { type: 'string', enum: ['source_contains'] },
+            path: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 500,
+              description: 'Relative project file path.',
+            },
+            text: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 400,
+              description: 'Exact source literal expected while the claim applies; not a regex.',
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 export const KIND_VALUES: SageKind[] = [
   'fact',
   'decision',

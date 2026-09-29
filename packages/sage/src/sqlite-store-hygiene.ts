@@ -352,6 +352,7 @@ export async function runSqliteSageHygiene(
   const allActive = await ctx.listMemories({ status: 'active', limit: 0 });
   const groups = new Map<string, Sage[]>();
   for (const m of allActive) {
+    if (m.validity) continue; // Conditional claims require an explicit reviewed merge.
     const audienceKey = JSON.stringify(normalizeAudience(m.audience) ?? null);
     const key = `${hygieneScopeKey(m)}\0${normalizeTextKey(m.text)}\0${audienceKey}`;
     const group = groups.get(key);
@@ -367,7 +368,7 @@ export async function runSqliteSageHygiene(
       const currentGroup = group
         .map((observed) => readSqliteSageRow(ctx.stmt, observed.id))
         .filter((current): current is Sage => {
-          if (current?.status !== 'active') return false;
+          if (current?.status !== 'active' || current.validity) return false;
           const audienceKey = JSON.stringify(normalizeAudience(current.audience) ?? null);
           const currentKey = `${hygieneScopeKey(current)}\0${normalizeTextKey(current.text)}\0${audienceKey}`;
           return currentKey === key;
@@ -441,6 +442,7 @@ export async function runSqliteSageHygiene(
     const nearActive = await ctx.listMemories({ status: 'active', limit: 0 });
     const nearBuckets = new Map<string, Sage[]>();
     for (const m of nearActive) {
+      if (m.validity) continue;
       const audienceKey = JSON.stringify(normalizeAudience(m.audience) ?? null);
       const key = `${hygieneScopeKey(m)}\0${m.kind}\0${audienceKey}`;
       const bucket = nearBuckets.get(key);
@@ -587,6 +589,8 @@ export async function runSqliteSageHygiene(
     const activeNow = await ctx.listMemories({ status: 'active', limit: 0 });
     const buckets = new Map<string, Sage[]>();
     for (const memory of activeNow) {
+      // Opposite claims may both hold under different applicability conditions.
+      if (memory.validity) continue;
       const audienceKey = JSON.stringify(normalizeAudience(memory.audience) ?? null);
       const key = `${hygieneScopeKey(memory)}\u0000${audienceKey}`;
       const bucket = buckets.get(key);

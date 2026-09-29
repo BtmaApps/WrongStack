@@ -98,6 +98,9 @@ function buildUserPrompt(memory: Sage, vs: ValueScoreBreakdown): string {
 
   return [
     `TEXT: "${truncate(memory.text, 300)}"`,
+    memory.validity
+      ? `VALID_WHEN (unverified assumptions): ${JSON.stringify(memory.validity)}`
+      : '',
     `ANCHORS: ${anchorSummary} | KIND: ${memory.kind}`,
     `INJECTED: ${memory.injectionCount ?? 0}x | USED: ${memory.useCount ?? 0}x`,
     `AGE: ${age}d | SCORE: ${vs.total}/100 | IMPORTANCE: ${memory.importance.toFixed(1)}`,

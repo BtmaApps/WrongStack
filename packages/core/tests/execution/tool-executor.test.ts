@@ -3,8 +3,9 @@ import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { EventBus } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
 import { DEFAULT_ALWAYS_TRUST_TTL_MS } from '../../src/security/scoped-approval.js';
+import type { ToolUseBlock } from '../../src/types/blocks.js';
 import { ToolValidationError } from '../../src/types/errors.js';
-import type { Tool, ToolUseBlock } from '../../src/types/tool.js';
+import type { Tool } from '../../src/types/tool.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
 function makeToolUse(name: string, id: string, input: Record<string, unknown> = {}): ToolUseBlock {

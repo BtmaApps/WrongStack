@@ -1,5 +1,5 @@
-import type { MemoryScope } from '@wrongstack/core/types';
 import type { DatabaseSync } from 'node:sqlite';
+import type { MemoryScope } from '@wrongstack/core/types';
 
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { legacyScopeFilterClause, normalizeTextKey } from './store-helpers.js';
@@ -33,7 +33,8 @@ export function consolidateLegacySqliteMemory(
     } catch {
       continue;
     }
-    if ((memory.legacyScope ?? sageToLegacyScope(memory.scope)) !== scope) continue;
+    if (memory.validity || (memory.legacyScope ?? sageToLegacyScope(memory.scope)) !== scope)
+      continue;
     const key = normalizeTextKey(memory.text);
     const group = groups.get(key);
     if (group) group.push(memory);

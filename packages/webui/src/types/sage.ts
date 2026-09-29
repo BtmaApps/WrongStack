@@ -89,6 +89,13 @@ export interface SageAnchor {
 export interface SageEntry {
   id: string;
   revision: number;
+  /** Applicability assumptions; source matches alone do not establish applicability. */
+  validity?:
+    | {
+        statement: string;
+        checks?: Array<{ type: 'source_contains'; path: string; text: string }> | undefined;
+      }
+    | undefined;
   /** Bounded model judgments; not verification or permission signals. */
   feedback?: SageFeedback[] | undefined;
   scope: SageScope;

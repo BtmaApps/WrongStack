@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import { rejectIfUnsafeInput } from './shared/candidate-lifecycle.js';
+import { normalizeValidity } from './shared/memory-validity.js';
 import { appendModelFeedback } from './shared/model-feedback.js';
 import { VALID_MEMORY_STATUSES } from './shared/pagination.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
@@ -180,6 +181,9 @@ export function updateSqliteSage(
   }
   const updated: Sage = {
     ...existing,
+    ...(input.validity !== undefined && {
+      validity: input.validity === null ? undefined : normalizeValidity(input.validity),
+    }),
     ...(input.sources !== undefined && { sources: normalizeSources(input.sources) }),
     ...(input.text !== undefined && { text: normalizeText(input.text) }),
     ...(input.persistence !== undefined && { persistence: input.persistence }),

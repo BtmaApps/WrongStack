@@ -119,6 +119,7 @@ export interface LegacyImportResult {
 type MemoryCandidateStatus = 'pending' | 'accepted' | 'rejected' | 'merged';
 
 export interface MemoryCandidate {
+  validity?: import('./memory-model.js').MemoryValidity | undefined;
   schemaVersion: 1;
   id: string;
   status: MemoryCandidateStatus;
@@ -321,6 +322,7 @@ export interface GatherBatchResult {
 
 export interface RememberSageInput {
   text: string;
+  validity?: import('./memory-model.js').MemoryValidity | undefined;
   scope?: SageScope | undefined;
   legacyScope?: MemoryScope | undefined;
   /**
@@ -405,6 +407,8 @@ export interface MemoryCandidateResolution {
 }
 
 export interface UpdateSageInput {
+  /** Replace applicability conditions; null explicitly removes them. */
+  validity?: import('./memory-model.js').MemoryValidity | null | undefined;
   /** Optimistic concurrency guard for corrections based on a previously read revision. */
   expectedRevision?: number | undefined;
   /** Evidence sources for corrected knowledge (replaces the old source list). */
@@ -676,6 +680,7 @@ export type {
   MemoryFeedback,
   MemoryFeedbackInput,
   MemorySourceRef,
+  MemoryValidity,
   PersistenceClass,
   Sage,
   SageKind,

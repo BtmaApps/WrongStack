@@ -5,6 +5,7 @@
 
 import type { MemoryScope } from '@wrongstack/core/types';
 import { normalizeProjectPath, normalizeSlashes } from './paths.js';
+import { normalizeValidity } from './shared/memory-validity.js';
 import {
   DEFAULT_PERSISTENCE,
   legacyToSageScope,
@@ -486,6 +487,7 @@ export function assessRememberQuality(input: {
 }
 
 export function validateRememberInput(input: RememberSageInput): void {
+  normalizeValidity(input.validity);
   if (typeof input.text !== 'string') throw new Error('SAGE text must be a string.');
   if (input.text.length > MAX_MEMORY_TEXT_CHARS) {
     throw new Error(`SAGE text exceeds ${MAX_MEMORY_TEXT_CHARS} characters.`);

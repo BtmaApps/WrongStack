@@ -14,6 +14,8 @@ import type { ExtractedTriggerContext } from './tool-call-memory-triggers.js';
 export type { RetrievedMemory } from './tool-call-memory-retrieval.js';
 
 interface InjectorTraceMemory {
+  revision?: number | undefined;
+  validity?: Sage['validity'];
   id: string;
   kind: string;
   text: string;
@@ -114,6 +116,8 @@ export function toTraceMemory(
   const proof = computeInjectionProof(item.memory, item.relationStrength);
   return {
     id: item.memory.id,
+    revision: item.memory.revision,
+    validity: item.memory.validity,
     kind: item.memory.kind,
     text: boundedText(item.memory.text, 180),
     score: Number(proof.score.toFixed(3)),

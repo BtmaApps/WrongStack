@@ -476,6 +476,7 @@ export async function handleSageRemember(
   try {
     const memory = await Sage.rememberSage({
       text: text.trim(),
+      validity: payload['validity'],
       kind: payload['kind'] as string | undefined,
       scope: payload['scope'] as string | undefined,
       tags: payload['tags'] as string[] | undefined,

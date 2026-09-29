@@ -78,7 +78,12 @@ describe('model feedback through the production IPC boundary', () => {
       text: 'Transport retries share a single quota.',
       anchors: [{ type: 'file', path: 'transport.ts' }],
       persistence: 'permanent',
+      validity: {
+        statement: 'Only for the default transport policy.',
+        checks: [{ type: 'source_contains', path: 'transport.ts', text: 'retryQuota = 3' }],
+      },
     });
+    expect(original.validity?.statement).toBe('Only for the default transport policy.');
     const update = createSageTools(remote).find((tool) => tool.name === 'memory_update')!;
     await update.execute(
       {
@@ -100,6 +105,7 @@ describe('model feedback through the production IPC boundary', () => {
       revision: original.revision,
       text: original.text,
       anchors: original.anchors,
+      validity: original.validity,
       status: original.status,
       confidence: original.confidence,
       freshness: original.freshness,

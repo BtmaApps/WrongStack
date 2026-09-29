@@ -219,7 +219,7 @@
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 899,
+      "lines": 903,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -227,8 +227,8 @@
       "relativeImports": 42
     },
     "packages/sage/src/store-helpers.ts": {
-      "lines": 826,
-      "relativeImports": 2
+      "lines": 828,
+      "relativeImports": 3
     },
     "packages/sdd/src/sdd-parallel-run.ts": {
       "lines": 911,
@@ -355,8 +355,8 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 957,
-      "relativeImports": 8
+      "lines": 958,
+      "relativeImports": 9
     },
     "packages/webui-server/src/server/backend-services.ts": {
       "lines": 896,
@@ -371,7 +371,7 @@
       "relativeImports": 4
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
-      "lines": 895,
+      "lines": 896,
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {

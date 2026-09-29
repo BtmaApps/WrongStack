@@ -17,6 +17,7 @@ import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
 import type { SageAnchor, SageScope, SageStatus } from '@/types';
 import type { MemoryDraft } from './shared';
+import { MemoryValidityEditor } from './MemoryValidityEditor';
 import {
   ANCHOR_TYPES,
   anchorValue,
@@ -161,6 +162,7 @@ export function MemoryEditor({
             />
           </section>
 
+          <MemoryValidityEditor draft={draft} onChange={onChange} />
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="min-w-0">
               <label

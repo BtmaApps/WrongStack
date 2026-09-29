@@ -1,5 +1,6 @@
 import { Activity, Brain, Clock, PanelRightClose, Tag } from 'lucide-react';
 import { memo, useEffect } from 'react';
+import { MemoryValidity } from './MemoryValidity';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
@@ -257,6 +258,7 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
                         memory.text
                       )}
                     </p>
+                    <MemoryValidity validity={memory.validity} revision={memory.revision} review={memory.validityReview} />
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground/70">
                       <span className="font-mono">{memory.id.slice(0, 16)}…</span>
                       <span className="flex items-center gap-0.5">

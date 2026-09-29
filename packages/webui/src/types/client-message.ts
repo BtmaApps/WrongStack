@@ -516,6 +516,7 @@ export type WSClientMessageCore =
   | {
       type: 'memory.sage.remember';
       payload: {
+        validity?: import('./sage').SageEntry['validity'];
         text: string;
         kind?: string | undefined;
         scope?: SageScope | undefined;

@@ -51,7 +51,8 @@ function response(body: unknown, status = 200) {
   });
 }
 beforeEach(() => {
-  useSessionLanes.setState({ activeSessionId: null });
+  // Keeps this test's original null reset; the store types the field as string.
+  useSessionLanes.setState({ activeSessionId: null as unknown as string });
   useConfigStore.setState({ wsConnected: true });
   useUIStore.setState({ currentView: 'project-kit', promptInsertRequest: null });
 });
@@ -124,7 +125,7 @@ describe('Project Kit view', () => {
     render(<ProjectKitView />);
     fireEvent.click(await screen.findByRole('button', { name: /settings.parity/ }));
     await screen.findByText('Verified revision');
-    fireEvent.click(screen.getByRole('button', { name: 'Project tools', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Project tools' }));
     fetcher.mockImplementationOnce(
       () =>
         new Promise<Response>((resolve) => {

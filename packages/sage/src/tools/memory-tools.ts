@@ -1,5 +1,6 @@
 import type { MemoryScope, Tool } from '@wrongstack/core/types';
 import type { SageServiceLike } from '../service-contract.js';
+import { validityKey } from '../shared/memory-validity.js';
 import type {
   MemoryAnchor,
   MemoryAudienceSelector,
@@ -38,6 +39,7 @@ import {
   sourcesSchema,
   stringArraySchema,
   stringSchema,
+  validitySchema,
 } from './tool-schema-helpers.js';
 
 export function createSageTools(memory: SageServiceLike): Tool[] {
@@ -62,6 +64,7 @@ export function createSageTools(memory: SageServiceLike): Tool[] {
 
 interface RememberToolInput {
   text: string;
+  validity?: Sage['validity'];
   sources?: MemorySourceRef[] | undefined;
   kind?: SageKind | undefined;
   scope?: SageScope | undefined;
@@ -109,6 +112,7 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
       '6. Update with `memory_update` instead of near-duplicate `remember` calls.\n\n' +
       '7. Attach sources actually inspected; distinguish explicit user statements from agent observations.\n' +
       '8. After materially relying on memory, use memory_update feedback with the observed revision and concrete evidence.\n\n' +
+      '9. For context-dependent claims, supply validity.statement describing when the claim applies. Optional source_contains checks must use literals actually inspected; they do not establish every assumption. Do not invent conditions for unconditional preferences.\n\n' +
       'WHEN TO USE:\n' +
       '- Project conventions discovered during a task (build tool, lint rules, code style)\n' +
       '- Architecture decisions made (chose X over Y, decided to use pattern Z)\n' +
@@ -160,6 +164,7 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         tags: stringArraySchema('Hashtag-style tags for grouping and search (omit the #).'),
         anchors: anchorsSchema(),
         sources: sourcesSchema(),
+        validity: validitySchema(),
         audience: audienceSchema(),
         no_auto_audience: {
           type: 'boolean',
@@ -203,8 +208,9 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
               ...(detectedMode ? { modes: [detectedMode] } : {}),
             }
           : input.audience;
-      return memory.rememberSage({
+      const saved = await memory.rememberSage({
         text: input.text,
+        validity: input.validity,
         kind: input.kind,
         scope: input.scope,
         // Ambient session identity wins over nothing, but an explicit
@@ -226,6 +232,11 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         type: input.type,
         priority: input.priority,
       });
+      if (input.validity && validityKey(saved.validity) !== validityKey(input.validity))
+        throw new Error(
+          'SAGE backend did not preserve validity conditions. The claim may have been saved without them; inspect it before relying on it and rebuild/restart the backend.',
+        );
+      return saved;
     },
   };
 }
@@ -343,6 +354,11 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
           description: 'Revision read before correcting the memory; rejects concurrent changes.',
         },
         sources: sourcesSchema(),
+        validity: {
+          anyOf: [validitySchema(), { type: 'null' }],
+          description:
+            'Replace applicability assumptions; null clears them. Use expectedRevision after checking current evidence.',
+        },
         feedback: objectSchema(
           {
             verdict: enumSchema(
@@ -407,6 +423,13 @@ function memoryUpdateTool(memory: SageServiceLike): Tool<{ id: string } & Update
         }),
         ...(patch.feedback && { feedback: { ...patch.feedback, sessionId: callerSessionId(ctx) } }),
       });
+      if (
+        patch.validity !== undefined &&
+        validityKey(updated.validity) !== validityKey(patch.validity ?? undefined)
+      )
+        throw new Error(
+          'SAGE backend did not preserve validity conditions. Re-read the record and rebuild/restart the backend before relying on this update.',
+        );
       if (
         patch.feedback &&
         !updated.feedback?.some(

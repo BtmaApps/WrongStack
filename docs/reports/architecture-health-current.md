@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-28T22:26:24.900Z
+**Generated:** 2026-09-29T05:42:37.228Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4262 |
-| Production source lines | 1008437 |
-| Test files | 3855 |
+| Production source files | 4267 |
+| Production source lines | 1008778 |
+| Test files | 3856 |
 | Workspace dependency edges | 130 |
-| Relative module edges | 13889 |
+| Relative module edges | 13910 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -48,7 +48,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 15 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
-| @wrongstack/sage | 119 | 119 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 122 | 120 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 245 | 286 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 448 | 402 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 21 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 603 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 605 | 426 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 49 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 21 | 10 | @wrongstack/core |
 | @wrongstack/webui-server | 255 | 243 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -100,7 +100,7 @@ None.
 | 973 | `packages/mcp/src/client.ts` |
 | 972 | `packages/webui-server/src/server/embedded-message-router.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
-| 957 | `packages/webui/src/types/client-message.ts` |
+| 958 | `packages/webui/src/types/client-message.ts` |
 | 945 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |
@@ -117,14 +117,14 @@ None.
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 904 | `packages/cli/src/cli-main.ts` |
 | 904 | `packages/providers/src/openai-codex.ts` |
+| 903 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |
 | 901 | `packages/cli/src/slash-commands/sdd.ts` |
 | 899 | `packages/cli/src/webui-server.ts` |
 | 899 | `packages/core/src/core/fallback-model.ts` |
-| 899 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 897 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
 | 896 | `packages/webui-server/src/server/backend-services.ts` |
-| 895 | `packages/webui-server/src/server/memory-handlers.ts` |
+| 896 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 894 | `packages/mcp/src/server.ts` |
 | 894 | `packages/tools/src/bash.ts` |
 | 893 | `packages/tools/src/codebase-index/project-server-client.ts` |

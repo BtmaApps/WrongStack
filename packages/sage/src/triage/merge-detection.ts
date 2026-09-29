@@ -255,6 +255,7 @@ function generatePairs(clusters: MemoryCluster[]): MergeCandidate[] {
       for (let j = i + 1; j < members.length; j++) {
         const a = members[i]!;
         const b = members[j]!;
+        if (a.validity || b.validity) continue;
         // Canonical ordering to deduplicate across clusters
         const pairKey = [a.id, b.id].sort().join('|');
         if (seen.has(pairKey)) continue;
@@ -365,6 +366,8 @@ function buildResult(
     }
 
     const { memoryA, memoryB } = result.candidate;
+    // Applicability cannot be discarded by a text-only automatic merge verdict.
+    if (memoryA.validity || memoryB.validity) continue;
 
     switch (result.verdict) {
       case 'YES': {

@@ -5,6 +5,7 @@ import type { Sage } from '../types.js';
 export function memoryReviewReason(memory: Sage, now = Date.now()): string | undefined {
   if (memory.contextPolicy === 'never' || !['active', 'stale'].includes(memory.status)) return;
   if (currentModelChallenge(memory)) return 'model_challenged';
+  if (memory.validity) return 'conditional_applicability';
   if (memory.status === 'stale') return 'stale_anchor';
   // A user preference without code evidence cannot be checked by reading files.
   if (

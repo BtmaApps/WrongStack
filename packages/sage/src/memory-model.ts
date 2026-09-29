@@ -127,6 +127,13 @@ export interface MemorySourceRef {
   excerptHash?: string | undefined;
 }
 
+export interface MemoryValidity {
+  /** Applicability assumptions, not instructions or proof of correctness. */
+  statement: string;
+  /** Literal source evidence only; no commands, expressions or regular expressions. */
+  checks?: Array<{ type: 'source_contains'; path: string; text: string }> | undefined;
+}
+
 export interface MemoryFeedbackInput {
   verdict: 'useful' | 'outdated' | 'incorrect' | 'irrelevant' | 'uncertain';
   /** Revision actually read by the model, not a fresh revision guessed at write time. */
@@ -145,6 +152,7 @@ export interface Sage {
   revision: number;
   /** Bounded model judgments; these are not verification or permission signals. */
   feedback?: MemoryFeedback[] | undefined;
+  validity?: MemoryValidity | undefined;
   scope: SageScope;
   legacyScope?: MemoryScope | undefined;
   kind: SageKind;

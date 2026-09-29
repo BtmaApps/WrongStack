@@ -142,7 +142,9 @@ describe('memory and sage delegation', () => {
       options,
     );
     (ws.updateSage as (a: string, p: unknown, o?: unknown) => void)('m1', { tags: [] }, options);
-    (ws.deleteSage as (a: string, r?: string) => void)('m1', 'obsolete');
+    (ws.deleteSage as (a: string, r?: string, o?: unknown) => void)('m1', 'obsolete', {
+      neverInject: true,
+    });
     (ws.rememberSage as (o: unknown, x?: unknown) => void)({ text: 'x' }, options);
     (ws.findMemoriesForFile as (o: unknown, x?: unknown) => void)({ path: 'a.ts' }, options);
     (ws.recoverSage as (o: unknown, x?: unknown) => void)({ id: 'm1' }, options);
@@ -152,7 +154,7 @@ describe('memory and sage delegation', () => {
     expect(called('listSageMemoriesPage')?.args).toEqual([{ limit: 10 }, options]);
     expect(called('getSageGraph')?.args).toEqual(['auth', { limit: 5 }, options]);
     expect(called('updateSage')?.args).toEqual(['m1', { tags: [] }, options]);
-    expect(called('deleteSage')?.args).toEqual(['m1', 'obsolete']);
+    expect(called('deleteSage')?.args).toEqual(['m1', 'obsolete', { neverInject: true }]);
     for (const method of [
       'listMemory',
       'listSageMemories',

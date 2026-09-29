@@ -1,4 +1,4 @@
-import type { Middleware } from '@wrongstack/core/kernel';
+import type { Middleware, EventBus } from '@wrongstack/core/kernel';
 import {
   activeLimits,
   type Message,
@@ -9,6 +9,7 @@ import {
 } from '@wrongstack/core/types';
 import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
+import { checkInjectionValidity } from '../retrieval/validity-checks.js';
 import { memoryQueryRelevance, memorySemanticRelevance } from '../retrieval/relevance.js';
 import type { SystemOneRecallFilter } from '../retrieval/system-one-recall.js';
 import { normalizeTextKey, tokenize } from '../store-helpers.js';
@@ -19,6 +20,8 @@ import type { SageSearchLike } from './tool-call-memory.js';
 export { normalizeTextKey, tokenize };
 
 export interface SageTurnMiddlewareOptions {
+  events?: EventBus | undefined;
+  projectRoot?: string | undefined;
   memory: SageSearchLike;
   maxMemories?: number | undefined;
   maxChars?: number | undefined;
@@ -198,7 +201,9 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
               : undefined;
           const kept =
             dropped && dropped.size > 0 ? eligible.filter((m) => !dropped.has(m.id)) : eligible;
+          const validityReviews = await checkInjectionValidity(kept, opts.projectRoot);
           const rendered = formatMemoryHintsDetailed(kept, {
+            validityReviews,
             maxChars: opts.maxChars ?? positiveLimit(activeLimits().memoryInjectChars) ?? 2_400,
           });
           const renderedIds = new Set(rendered.text ? rendered.memoryIds : []);
@@ -209,6 +214,24 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
             if (entered.length > 0) {
               await opts.memory.recordInjection?.(entered, 'turn_context', sessionId);
             }
+            const injected = kept.filter((m) => renderedIds.has(m.id)).map((m) => ({
+              id: m.id, revision: m.revision, kind: m.kind, text: m.text,
+              validity: m.validity, validityReview: validityReviews.get(m.id),
+              score: 0, relationStrength: 0, anchors: m.anchors.map((a) => a.path).filter(Boolean),
+              tags: m.tags, activationReasons: ['turn_context'], importance: m.importance,
+              confidence: m.confidence, freshness: m.freshness, persistence: m.persistence ?? 'long_lived',
+            }));
+            // Same observable recall surface; turn ranking has no tool-relation score.
+            const emit = opts.events?.emit as ((event: string, payload: unknown) => void) | undefined;
+            emit?.call(opts.events, 'memory.injector_run', {
+              runId: `turn-memory-${Date.now()}-${sessionId ?? ''}`, at: new Date().toISOString(),
+              sessionId, outcome: 'injected', trigger: 'turn_context', toolName: '', queryPreview: '',
+              paths: [], taskSignals: [], contextPressure: 0,
+              budget: { maxHints: opts.maxMemories ?? 4, maxChars: opts.maxChars ?? 2400 },
+              candidates: kept.length, eligible: kept.length,
+              rejected: { duplicate: 0, belowScore: 0, alreadyVisible: 0, cooldown: 0, budget: kept.length - injected.length },
+              activated: injected, injected, injectedChars: rendered.text.length,
+            });
             for (const memory of kept) {
               if (renderedIds.has(memory.id)) {
                 tracker.record(memory.id, memory.text, Date.now(), sessionId, rendered.text);

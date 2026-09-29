@@ -5,6 +5,7 @@ import {
   rejectIfUnsafeInput,
   resolveTargetId,
 } from './shared/candidate-lifecycle.js';
+import { normalizeValidity, validityKey } from './shared/memory-validity.js';
 import { readSqliteSageRow, sqliteRowToCandidate } from './sqlite-store-codec.js';
 import {
   clamp01,
@@ -59,6 +60,7 @@ interface SqliteAcceptCandidateContext extends SqliteRejectCandidateContext {
     anchors: MemoryCandidate['anchors'];
     audience?: MemoryCandidate['audience'];
     sources: MemoryCandidate['sources'];
+    validity?: MemoryCandidate['validity'];
   }) => Promise<Sage>;
 }
 
@@ -121,7 +123,8 @@ export function createSqliteCandidate(
         if (
           existing.scope === scope &&
           existing.targetMemoryId === input.targetMemoryId &&
-          existing.targetRevision === input.targetRevision
+          existing.targetRevision === input.targetRevision &&
+          validityKey(existing.validity) === validityKey(input.validity)
         ) {
           return existing;
         }
@@ -144,6 +147,7 @@ export function createSqliteCandidate(
       anchors: normalizeAnchors(ctx.projectRoot, input.anchors ?? []),
       ...(audience ? { audience } : {}),
       sources: normalizeSources(input.sources ?? [{ type: 'session' }]),
+      ...(input.validity ? { validity: normalizeValidity(input.validity) } : {}),
       createdAt: now,
       updatedAt: now,
       ...(input.targetMemoryId ? { targetMemoryId: input.targetMemoryId } : {}),
@@ -219,6 +223,7 @@ export function acceptSqliteCandidate(
           anchors: candidate.anchors,
           audience: candidate.audience,
           sources: candidate.sources,
+          validity: candidate.validity,
         });
       } catch (error) {
         // The write failed (validation, secret guard, store error): release

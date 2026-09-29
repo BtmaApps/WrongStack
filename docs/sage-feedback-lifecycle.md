@@ -62,6 +62,43 @@ selection still honors the existing memory-curator role configuration.
 
 ## Collect durable knowledge
 
+### Applicability conditions
+
+`remember` accepts optional `validity`, preserved in SQLite and IPC:
+
+```json
+{
+  "text": "The default retry quota is three attempts.",
+  "anchors": [{ "type": "file", "path": "src/retry.ts" }],
+  "validity": {
+    "statement": "Applies when the default retry policy is used and no session override is configured.",
+    "checks": [{ "type": "source_contains", "path": "src/retry.ts", "text": "retryQuota = 3" }]
+  }
+}
+```
+
+The statement describes assumptions, not instructions. Optional checks (maximum
+four) look for exact literals in bounded project files. They execute no commands,
+expressions or regexes. Results are `satisfied`, `not_satisfied` or `unknown`;
+missing/unreadable/oversized/outside-project sources are unknown, never a claimed
+disproof. A literal match is only source evidence, not proof that the current
+session has no override or that the claim is true. Checks use the complete bounded
+file even when the model excerpt is truncated.
+
+Hints expose the conditions with applicability unknown. Companion receives the
+conditions and structural results and forwards them with its advisory judgment;
+the leader still checks the current task's assumptions. Non-applicability does
+not imply global incorrectness. Conditions do not alter ranking/confidence or
+automatically change memory lifecycle or relations.
+
+Use revision-guarded `memory_update` to replace `validity`; explicit `null` clears
+it. Changing conditions advances the content revision. Older memories remain
+unchanged. Remember-time dedup requires matching conditions; automatic hygiene,
+legacy consolidation and LLM merges skip conditional records, as does automatic
+contradiction linking. Explicit reviewed relations remain supported. Tool
+acknowledgments reject a backend that silently drops this field; inspect any
+partially saved claim and restart the backend through the normal operator flow.
+
 Use `remember` for one reusable finding, with concrete anchors and sources that
 were actually inspected. The tool attaches the calling session to the sources.
 Without explicit sources, agent-created knowledge is attributed to the session,

@@ -64,6 +64,10 @@ it.skipIf(process.env.WRONGSTACK_MEMORY_LIVE !== '1')(
     await store.initialize();
     const memory = await store.rememberSage({
       text: 'Transport retries are unlimited; there is no retry quota.',
+      validity: {
+        statement: 'Applies only to the default retry module; session overrides are not covered.',
+        checks: [{ type: 'source_contains', path: 'src/retry.ts', text: 'retryQuota = 3' }],
+      },
       anchors: [{ type: 'file', path: 'src/retry.ts' }],
     });
     const before = await store.getSage(memory.id);
@@ -159,6 +163,8 @@ it.skipIf(process.env.WRONGSTACK_MEMORY_LIVE !== '1')(
       expect(review).toBeDefined();
       expect(review!.body).toMatch(/"verdict":"(contradicted|outdated)"/);
       expect(review!.body).toContain('retryQuota');
+      expect(review!.body).toContain('"status":"satisfied"');
+      expect(review!.body).toContain('"applicability":"unknown:');
       expect(unchanged).toBe(true);
     } finally {
       unregister();

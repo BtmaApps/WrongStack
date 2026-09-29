@@ -1,7 +1,14 @@
 import type { StateCreator } from 'zustand/vanilla';
+import type { SageEntry } from '@/types';
 import { createSessionScopedStore } from './session-scoped-store';
 
 export interface MemoryInjectorTraceMemory {
+  revision?: number | undefined;
+  validity?: SageEntry['validity'];
+  validityReview?: {
+    observedRevision: number; checkedAt: string; applicability: 'unknown';
+    checks: Array<{ path: string; text: string; status: 'satisfied' | 'not_satisfied' | 'unknown'; sourceHash?: string | undefined }>;
+  } | undefined;
   id: string;
   kind: string;
   text: string;

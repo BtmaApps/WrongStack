@@ -217,3 +217,4 @@ export {
 } from './triage/system-one.js';
 export type { UpdateSageInput } from './types.js';
 export * from './types.js';
+export { snapshotMemoryEvidence, type MemoryEvidenceSnapshot } from './retrieval/source-evidence.js';

@@ -22,6 +22,29 @@ function memory(paths: string[]): Sage {
   } as unknown as Sage;
 }
 describe('Memory Companion source evidence', () => {
+  it('checks literals against the complete bounded source and distinguishes missing evidence', async () => {
+    await fs.writeFile(
+      path.join(root, 'retry.ts'),
+      `${'// padding\n'.repeat(700)}export const retryQuota = 3;`,
+    );
+    const m = memory([]);
+    m.validity = {
+      statement: 'Only for the default policy.',
+      checks: [
+        { type: 'source_contains', path: 'retry.ts', text: 'retryQuota = 3' },
+        { type: 'source_contains', path: 'retry.ts', text: 'retryQuota = 8' },
+        { type: 'source_contains', path: 'missing.ts', text: 'override = false' },
+      ],
+    };
+    const snapshot = await snapshotMemoryEvidence(root, m);
+    expect(snapshot.validityChecks?.map((c) => c.status)).toEqual([
+      'satisfied',
+      'not_satisfied',
+      'unknown',
+    ]);
+    expect(snapshot.files[0]?.text).not.toContain('retryQuota');
+    expect(m.validity.statement).toBe('Only for the default policy.');
+  });
   it('binds evidence to contents and detects a changed anchor hash', async () => {
     await fs.writeFile(path.join(root, 'retry.ts'), 'export const retryQuota = 3;');
     const original = memory(['retry.ts']);

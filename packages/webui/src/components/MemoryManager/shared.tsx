@@ -70,6 +70,9 @@ export function formatAudienceText(audience: NonNullable<SageEntry['audience']>)
 }
 
 export interface MemoryDraft {
+  validityStatement?: string | undefined;
+  validityChecks?: NonNullable<SageEntry['validity']>['checks'];
+  observedRevision?: number | undefined;
   text: string;
   kind: string;
   status: SageStatus;
@@ -107,6 +110,9 @@ export function emptyDraft(): MemoryDraft {
 
 export function draftFromMemory(memory: SageEntry): MemoryDraft {
   return {
+    validityStatement: memory.validity?.statement ?? '',
+    validityChecks: memory.validity?.checks?.map((c) => ({ ...c })) ?? [],
+    observedRevision: memory.revision,
     text: memory.text,
     kind: memory.kind,
     status: memory.status,

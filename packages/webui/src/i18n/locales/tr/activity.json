@@ -4084,5 +4084,19 @@
     "network": "Ağ",
     "noConsole": "Henüz konsol mesajı yok.",
     "noNetwork": "Henüz istek yok."
+  },
+  "memoryValidity": {
+    "title": "Geçerlilik şartı",
+    "unknown": "Bu görevde geçerliliği bilinmiyor; kaynak eşleşmesi tüm varsayımları doğrulamaz.",
+    "observed": "Son gözlem: {{at}} · memory sürümü {{revision}}. Kaynak dosyalar sonradan değişmiş olabilir.",
+    "unchecked": "Bu memory sürümü için kaynak gözlemi yok.",
+    "satisfied": "Gözlem sırasında beklenen ifade bulundu",
+    "not_satisfied": "Gözlem sırasında beklenen ifade bulunamadı",
+    "unknownCheck": "Kontrol edilmedi",
+    "placeholder": "Örnek: varsayılan retry politikası ve oturum override’ı yok.",
+    "path": "Projeye göre dosya yolu",
+    "literal": "Dosyada beklenen birebir ifade",
+    "remove": "Kontrolü kaldır",
+    "add": "Kaynak kontrolü ekle"
   }
 }

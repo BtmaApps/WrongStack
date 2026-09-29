@@ -119,6 +119,29 @@ function harness(timeoutMs?: number, ioTimeoutMs?: number) {
 }
 
 describe('Memory Companion', () => {
+  it('carries conditional applicability to the worker and leader without treating source matches as proof', async () => {
+    const h = harness();
+    const m = record();
+    m.lastVerifiedAt = new Date().toISOString();
+    m.validity = {
+      statement: 'Only when no session override is configured.',
+      checks: [{ type: 'source_contains', path: 'src/retry.ts', text: quote }],
+    };
+    h.setRecord(m);
+    const validityChecks = [{ path: 'src/retry.ts', text: quote, status: 'satisfied' as const }];
+    h.snapshot.mockResolvedValue({ ...evidence, validityChecks });
+    h.emit();
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(h.assignInternal.mock.calls[0]![0].description).toContain(m.validity.statement);
+    h.finish();
+    await vi.waitFor(() =>
+      expect(h.note.mock.calls.some((call) => call[1] === '[memory:review]')).toBe(true),
+    );
+    const review = JSON.parse(h.note.mock.calls.find((call) => call[1] === '[memory:review]')![2]);
+    expect(review.validityChecks).toEqual(validityChecks);
+    expect(review.applicability).toContain('unknown');
+    expect(review.validity).toEqual(m.validity);
+  });
   it('reviews an unchanged challenged memory even after a useful judgment', async () => {
     const h = harness();
     const m = record();
