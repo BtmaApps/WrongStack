@@ -16,6 +16,7 @@ export type { LocalPrefs } from './local-prefs-defaults.js';
  */
 export const SESSION_SCOPED_PREFS = [
   'subagentsAllowed',
+  'subagentCompanionsAllowed',
   'subagentsPolicyLocked',
   'subagentModelPlan',
   'autonomy',

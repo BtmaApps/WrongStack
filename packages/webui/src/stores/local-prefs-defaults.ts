@@ -11,6 +11,11 @@ import { detectLocale } from '@/i18n/languages';
 export interface LocalPrefs {
   /** Allow delegated and autonomous subagents in this session. */
   subagentsAllowed: boolean;
+  /**
+   * With `subagentsAllowed` off, still let the Director's companions run
+   * (solo policy `companions`). Only meaningful alongside a solo session.
+   */
+  subagentCompanionsAllowed: boolean;
   /** Server-derived lock: true after the first user message. */
   subagentsPolicyLocked: boolean;
   /** Autonomy mode */
@@ -366,6 +371,7 @@ export type LocalPrefsData = Omit<
 
 export const DEFAULTS: LocalPrefsData = {
   subagentsAllowed: true,
+  subagentCompanionsAllowed: false,
   subagentsPolicyLocked: false,
   // Default to self-driving + auto-approve, matching the core config defaults
   // (config.autonomy.defaultMode='auto', config.yolo=true). Existing browsers
