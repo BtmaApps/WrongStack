@@ -238,10 +238,11 @@ export function constructPurl(ecosystem: EcosystemId, name: string, version?: st
     const versionSuffix = version !== undefined ? `@${encodePurlSegment(version)}` : '';
     return `pkg:${type}/${name}${versionSuffix}`;
   }
-  // PyPI names reach the purl in their canonical PEP 503 form (lowercase,
-  // `_` → `-`; mirrors python.ts#normalizePkgName). Raw manifest spellings
-  // (`Django`, `Flask_Admin`) produced purls OSV can never match to the
-  // canonical lowercased component.
+  // PyPI names reach the purl in their canonical PEP 503 form (lowercase, with
+  // every run of `-`/`_`/`.` collapsed to a single `-`; see
+  // `normalizePypiName`, which the Python adapter also keys identity with).
+  // Raw manifest spellings (`Django`, `Flask_Admin`, `zope.interface`) produced
+  // purls OSV can never match to the canonical component.
   if (ecosystem === 'python') {
     name = normalizePypiName(name);
   }
@@ -327,12 +328,19 @@ export function parsePurlEcosystem(purl: string): ParsedEcosystemPurl | undefine
 }
 
 /**
- * Canonical PyPI name per PEP 503 as used across this package
- * (python.ts#normalizePkgName): lowercase, `_` → `-`. Raw manifest spellings
- * must never leak into purl identities — OSV matches the canonical form.
+ * Canonical PyPI name per PEP 503: every run of `-`, `_` or `.` collapses to a
+ * single `-`, then lowercased. `.` IS a separator and runs DO collapse — the
+ * earlier `_` → `-` mapping alone left `zope.interface` distinct from
+ * `zope-interface`, so the two spellings of one package produced a second
+ * inventory row, a lost lockfile resolution, and a non-canonical purl OSV can
+ * never match. Raw manifest spellings must never leak into purl identities.
+ *
+ * This is the single source of truth for the package's PyPI name identity: the
+ * Python adapter keys its dedupe and lockfile lookups with it too, so the
+ * canonical form used for identity and the one embedded in a purl cannot drift.
  */
-function normalizePypiName(name: string): string {
-  return name.replace(/_/g, '-').toLowerCase();
+export function normalizePypiName(name: string): string {
+  return name.replace(/[-_.]+/g, '-').toLowerCase();
 }
 
 /**

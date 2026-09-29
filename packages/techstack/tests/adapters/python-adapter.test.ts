@@ -105,6 +105,69 @@ describe('PythonAdapter', () => {
     }
   });
 
+  // A PEP 508 requirement may carry extras — `requests[socks]>=2.32` — and the
+  // `]` there belongs to the requirement string, not to the TOML array. Taking
+  // the first `]` on the line as the terminator closed the array on that entry
+  // and silently dropped every dependency after it from the inventory.
+  it('keeps deps that follow one with PEP 508 extras', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "extras-py"
+dependencies = [
+    "requests[socks]>=2.32",
+    "flask>=3.0",
+]
+`,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const names = deps.map((d) => d.name);
+      expect(names).toContain('requests');
+      // The entry AFTER the extras one is the one that was lost.
+      expect(names).toContain('flask');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('parses an array of extras specs without dropping the closing entry', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "extras-py2"
+dependencies = [
+    "celery[redis,auth]>=5.4",
+    "uvloop>=0.20",
+]
+`,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const names = deps.map((d) => d.name);
+      expect(names).toContain('celery');
+      expect(names).toContain('uvloop');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Single-line arrays share the same terminator scan and must stay intact.
+  it('parses a single-line array containing an extras spec', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "inline-py"
+dependencies = ["requests[socks]>=2.32", "flask>=3.0"]
+`,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const names = deps.map((d) => d.name);
+      expect(names).toContain('requests');
+      expect(names).toContain('flask');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('has manifest evidence on every dep', async () => {
     const { dir, ws } = mkWorkspace({ 'pyproject.toml': PYPROJECT });
     try {
@@ -243,6 +306,49 @@ serve = "python app.py"
         name: 'django',
         version: '5.2.1',
       });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // PEP 503 treats `.` as a separator and collapses any run of `-`/`_`/`.` to a
+  // single `-`, so `zope.interface`, `zope-interface` and `zope__interface` are
+  // ONE package. The old `_` → `-` mapping left the dotted spelling distinct, so
+  // the same package was inventoried twice, the duplicate lost its lockfile
+  // resolution, and the surviving row carried a versionless non-canonical purl.
+  it('treats a dotted manifest name as the same package as its hyphenated lock entry', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "dotted"
+dependencies = ["zope.interface>=5.4"]
+`,
+      'requirements.txt': 'zope-interface==5.4.0\n',
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      // One package, one row — not a second row for the other spelling.
+      expect(deps).toHaveLength(1);
+      // The lock resolution is found across the spelling difference, and the
+      // purl carries the canonical name OSV indexes by.
+      expect(deps[0]!.locked).toBe('5.4.0');
+      expect(deps[0]!.purl).toBe('pkg:pypi/zope-interface@5.4.0');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('collapses a run of separators when matching a package across manifests', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': `[project]
+name = "runs"
+dependencies = ["Flask__Admin>=1.6"]
+`,
+      'requirements.txt': 'flask-admin==1.6.1\n',
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      expect(deps).toHaveLength(1);
+      expect(deps[0]!.purl).toBe('pkg:pypi/flask-admin@1.6.1');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -679,11 +679,14 @@ describe('ElixirAdapter', () => {
     '  ]',
     'end',
   ].join('\n');
-  // mix.lock format: {"name", hex: ":uuid", "version"}
+  // mix.lock is an Elixir map literal written in COLON form, and the tuple
+  // carries the version THIRD: {:hex, :name, "version", "outer_checksum", …}.
+  // The old fixture put a hash before the version, so even a working parser
+  // would have read the hash as the version.
   const MIX_LOCK = [
     '%{',
-    '  "phoenix": {:hex, :phoenix, "abc123", "1.7.14", [], [:phoenix_pubsub]},',
-    '  "ecto": {:hex, :ecto, "def456", "3.11.0", []},',
+    '  "phoenix": {:hex, :phoenix, "1.7.14", "abc123", [:mix], [{:jason, "~> 1.0"}], "hexpm", "def456"},',
+    '  "ecto": {:hex, :ecto, "3.11.0", "def456", [:mix], [], "hexpm", "aaa111"},',
     '}',
   ].join('\n');
 
@@ -702,12 +705,56 @@ describe('ElixirAdapter', () => {
     const { dir, ws } = mkWorkspace('elixir', { 'mix.exs': MIX_EXS, 'mix.lock': MIX_LOCK });
     await withCleanup(async () => {
       const deps = await new ElixirAdapter().inventory(ws, {});
-      // The lock parser expects {"name", hex: ":uuid", "version"} format.
-      // Our fixture uses that format for the value tuples.
       const phoenix = deps.find((d) => d.name === 'phoenix');
-      if (phoenix?.locked) {
-        expect(phoenix.locked).toBe('1.7.14');
-      }
+      // Unguarded: this assertion used to sit behind `if (phoenix?.locked)`,
+      // which passed vacuously whenever the lock parse failed — that is how a
+      // mix.lock reading nothing at all could stay green.
+      expect(phoenix?.locked).toBe('1.7.14');
+    }, dir);
+  });
+
+  // The locked version is what advisory matching consumes, so it must reach
+  // the purl. When the lock parse failed the purl fell back to the mix.exs
+  // CONSTRAINT and emitted `pkg:hex/phoenix@~> 1.7.0` — a requirement operator
+  // where a version belongs, which no registry can match.
+  it('emits a versioned purl from the resolved mix.lock version', async () => {
+    const { dir, ws } = mkWorkspace('elixir', { 'mix.exs': MIX_EXS, 'mix.lock': MIX_LOCK });
+    await withCleanup(async () => {
+      const deps = await new ElixirAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'phoenix')?.purl).toBe('pkg:hex/phoenix@1.7.14');
+      expect(deps.find((d) => d.name === 'ecto')?.purl).toBe('pkg:hex/ecto@3.11.0');
+    }, dir);
+  });
+
+  // The whole lock, not just the first entry.
+  it('resolves every entry in the mix.lock', async () => {
+    const { dir, ws } = mkWorkspace('elixir', { 'mix.exs': MIX_EXS, 'mix.lock': MIX_LOCK });
+    await withCleanup(async () => {
+      const deps = await new ElixirAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'ecto')?.locked).toBe('3.11.0');
+    }, dir);
+  });
+
+  // Git/path sources carry no Hex release, so they must not be reported as a
+  // resolved registry version.
+  it('ignores non-hex mix.lock sources when resolving versions', async () => {
+    const { dir, ws } = mkWorkspace('elixir', {
+      'mix.exs': MIX_EXS,
+      'mix.lock': [
+        '%{',
+        '  "phoenix": {:hex, :phoenix, "1.7.14", "abc123", [:mix], [], "hexpm", "def456"},',
+        '  "local_dep": {:path, "deps/local_dep"},',
+        '  "git_dep": {:git, "https://github.com/acme/git_dep", "ff00", []},',
+        '}',
+      ].join('\n'),
+    });
+    await withCleanup(async () => {
+      const deps = await new ElixirAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'phoenix')?.locked).toBe('1.7.14');
+      // A git/path source has no version to report, so it stays unresolved
+      // rather than borrowing a registry version it never had.
+      expect(deps.find((d) => d.name === 'git_dep')?.locked).toBeUndefined();
+      expect(deps.find((d) => d.name === 'local_dep')?.locked).toBeUndefined();
     }, dir);
   });
 

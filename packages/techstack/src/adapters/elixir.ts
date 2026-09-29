@@ -47,11 +47,26 @@ function parseMixExsDeps(content: string): Array<{
 
 /**
  * Parse mix.lock for resolved hex versions.
- * Format: `{"name", hex: ":uuid", "1.2.3"}`
+ *
+ * `mix.lock` is an Elixir MAP LITERAL, and Mix writes it in colon form:
+ *   "phoenix": {:hex, :phoenix, "1.7.14", "hash", [:mix], [...], "hexpm", "hash2"}
+ * The previous pattern required `=>` as the key/value separator, which Mix
+ * never emits, so the regex never matched a real lockfile: every Hex package
+ * came back with `locked === undefined`, no lockfile evidence, and a purl that
+ * fell back to the `mix.exs` CONSTRAINT — `pkg:hex/phoenix@~> 1.7.0`, an
+ * identifier with a requirement operator where a version belongs.
+ *
+ * Both map separators are accepted: Mix emits `key: value`, but a map literal
+ * may equally be written `key => value`, and a lockfile using that form is
+ * still valid Elixir. Narrowing to the colon alone would silently stop
+ * resolving versions for those lockfiles.
+ *
+ * Only `:hex` entries carry a registry version; git/path sources in the lock
+ * are skipped so they cannot masquerade as a resolved Hex release.
  */
 function parseMixLock(content: string): Map<string, string> {
   const versions = new Map<string, string>();
-  const lockRegex = /["']([\w-]+)["']\s*=>\s*\{:hex,\s*:[\w-]+,\s*["']([^"']+)["']/g;
+  const lockRegex = /["']([\w-]+)["']\s*(?::|=>)\s*\{:hex,\s*:[\w-]+,\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(lockRegex)) {
     versions.set(match[1]!, match[2]!);
   }

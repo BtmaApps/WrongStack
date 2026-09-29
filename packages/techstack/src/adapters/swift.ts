@@ -21,22 +21,29 @@ function identityFromLocation(location: string): string {
 
 function parsePackageSwift(content: string): SwiftManifestDependency[] {
   const deps: SwiftManifestDependency[] = [];
-  // Two requirement spellings follow the location:
+  // Three requirement spellings follow the location:
   //   from: "1.0.0"                  legacy labelled form
   //   .upToNextMajor(from: "1.0.0")  Swift 5.2+ static members — also
   //   .upToNextMinor(from:), .exact("1.0.0"), .branch("main"), .revision("abc")
+  //   "1.0.0"..<"2.0.0"              Swift 5.5+ half-open RANGE string
   // The older pattern accepted only the labelled form AND required the closing
   // paren straight after it, so a static-member requirement made the whole
   // declaration unmatchable and the dependency vanished from the inventory.
+  // The range spelling then had no alternative at all: the group matched
+  // nothing, the following comma was not the mandatory `)`, and the whole
+  // declaration was dropped — the dependency never appeared as a direct row.
+  // `"1.0.0"..<"2.0.0"` and the closed form `"1.0.0"..."2.0.0"` both record
+  // their LOWER bound, the version the manifest actually asks for.
   const packageRegex =
-    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)))?\s*\)/g;
+    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)|["']([^"']+)["']\s*\.\.<?\s*["'][^"']*["']))?\s*\)/g;
   for (const match of content.matchAll(packageRegex)) {
     const location = match[2];
     if (!location) continue;
     deps.push({
       identity: identityFromLocation(location),
-      // match[3] = labelled form, match[4] = static-member form.
-      requested: match[3] ?? match[4],
+      // match[3] = labelled form, match[4] = static-member form,
+      // match[5] = range form (lower bound).
+      requested: match[3] ?? match[4] ?? match[5],
       sourceType: match[1] === 'path' ? 'path' : 'git',
     });
   }

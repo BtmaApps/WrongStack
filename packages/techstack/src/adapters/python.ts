@@ -9,7 +9,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { constructPurl } from '../registry/purl.js';
+import { constructPurl, normalizePypiName } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -51,6 +51,32 @@ function parseTomlSections(content: string): TomlSection[] {
   return sections;
 }
 
+/**
+ * Index of the first `]` that closes the TOML array, or -1.
+ *
+ * A PEP 508 requirement may carry extras — `"requests[socks]>=2.32"` — so the
+ * first `]` on the line is usually part of the requirement string, not the
+ * array terminator. Taking it anyway closed the array on the extras entry and
+ * dropped every later dependency from the inventory. Quoted spans are skipped
+ * so only an unquoted `]` terminates.
+ */
+function arrayCloseIndex(text: string): number {
+  let quote: '"' | "'" | undefined;
+  for (let i = 0; i < text.length; i++) {
+    const character = text[i];
+    if (quote !== undefined) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === ']') return i;
+  }
+  return -1;
+}
+
 function extractTomlArray(sectionLines: string[], key: string): string[] {
   const result: string[] = [];
   let inArray = false;
@@ -61,8 +87,9 @@ function extractTomlArray(sectionLines: string[], key: string): string[] {
       if (match) {
         inArray = true;
         const rest = trimmed.slice(match[0].length);
-        if (rest.includes(']')) {
-          const items = rest.replace(/\]\s*,?\s*$/, '').trim();
+        const closeIdx = arrayCloseIndex(rest);
+        if (closeIdx >= 0) {
+          const items = rest.slice(0, closeIdx).trim();
           for (const item of items.split(',')) {
             const cleaned = item.trim().replace(/^"|"$/g, '').trim();
             if (cleaned) result.push(cleaned);
@@ -71,7 +98,7 @@ function extractTomlArray(sectionLines: string[], key: string): string[] {
         }
       }
     } else {
-      const closeIdx = trimmed.indexOf(']');
+      const closeIdx = arrayCloseIndex(trimmed);
       if (closeIdx >= 0) {
         const items = trimmed.slice(0, closeIdx).trim();
         for (const item of items.split(',')) {
@@ -243,11 +270,17 @@ export function parsePoetryLock(content: string): Map<string, string> {
 }
 
 /**
- * Normalize Python package names per PEP 503:
- * underscores and hyphens are equivalent, all lowercase.
+ * Canonical Python package identity, per PEP 503.
+ *
+ * Delegates to the package's single PyPI canonicalizer so the key used for
+ * dedupe and lockfile resolution is byte-identical to the name embedded in the
+ * purl. The previous local copy lowercased and mapped `_` → `-` but left `.`
+ * untouched and never collapsed a run, so `zope.interface` and `zope-interface`
+ * — one package — were treated as two: a duplicate inventory row, a lost
+ * lockfile version, and a non-canonical purl OSV can never match.
  */
 function normalizePkgName(name: string): string {
-  return name.toLowerCase().replace(/_/g, '-');
+  return normalizePypiName(name);
 }
 
 // ── Adapter ────────────────────────────────────────────────────────────────

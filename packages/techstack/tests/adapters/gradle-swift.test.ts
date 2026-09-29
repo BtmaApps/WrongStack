@@ -123,6 +123,66 @@ describe('SwiftAdapter', () => {
   // Swift 5.2+ expresses requirements with static members; requiring only the
   // labelled form made the whole declaration unmatchable, so the dependency
   // disappeared from the inventory.
+  // Swift 5.5+ spells a bounded requirement as a half-open range string,
+  // `.package(url: "…", "1.0.0"..<"2.0.0")`. The requirement group had no
+  // alternative for it, so the following comma was not the mandatory `)` and
+  // the whole declaration was dropped — the dependency never appeared as a
+  // direct row (round r7 fixed the static-member form; the range form is this
+  // follow-up). The lower bound is the version the manifest asks for.
+  it('parses half-open range requirements ("1.0.0"..<"2.0.0") as direct dependencies', async () => {
+    const { root, workspace } = fixture(
+      'swift',
+      {
+        'Package.swift': [
+          '// swift-tools-version:5.9',
+          'let package = Package(',
+          '    name: "proof",',
+          '    dependencies: [',
+          '        .package(url: "https://github.com/apple/swift-log.git", "1.0.0"..<"2.0.0"),',
+          '        .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),',
+          '        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.2.0")),',
+          '    ],',
+          ')',
+        ].join('\n'),
+        'Package.resolved': JSON.stringify({
+          version: 2,
+          pins: [
+            {
+              identity: 'swift-log',
+              location: 'https://github.com/apple/swift-log.git',
+              state: { version: '1.5.3', revision: 'bbb' },
+            },
+            {
+              identity: 'swift-collections',
+              location: 'https://github.com/apple/swift-collections.git',
+              state: { version: '1.1.0', revision: 'eee' },
+            },
+            {
+              identity: 'swift-argument-parser',
+              location: 'https://github.com/apple/swift-argument-parser.git',
+              state: { version: '1.3.0', revision: 'aaa' },
+            },
+          ],
+        }),
+      },
+      ['Package.swift'],
+      ['Package.resolved'],
+    );
+    const deps = await swiftAdapter.inventory(workspace, { projectRoot: root });
+    // The range declaration is inventoried at all, alongside both other forms.
+    expect(deps.map((dep) => dep.name).sort()).toEqual([
+      'swift-argument-parser',
+      'swift-collections',
+      'swift-log',
+    ]);
+    expect(deps.find((dep) => dep.name === 'swift-log')).toMatchObject({
+      direct: true,
+      // Lower bound is the requested version bound; the pin supplies `locked`.
+      requested: '1.0.0',
+      locked: '1.5.3',
+    });
+  });
+
   it('parses static-member requirements (.upToNextMajor/.exact) as direct dependencies', async () => {
     const { root, workspace } = fixture(
       'swift',
