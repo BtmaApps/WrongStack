@@ -1,5 +1,6 @@
 import type { MemoryEvidenceSnapshot } from '@wrongstack/sage';
-export { snapshotMemoryEvidence, type MemoryEvidenceSnapshot } from '@wrongstack/sage';
+
+export { type MemoryEvidenceSnapshot, snapshotMemoryEvidence } from '@wrongstack/sage';
 
 export interface MemoryCompanionVerdict {
   verdict: 'supported' | 'outdated' | 'contradicted' | 'unverifiable' | 'irrelevant';

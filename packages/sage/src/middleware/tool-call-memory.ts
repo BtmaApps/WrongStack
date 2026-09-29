@@ -547,10 +547,20 @@ export function createSageToolCallMiddleware(
           rejectedDetail,
           rejectedDetailTotal,
           activated: selected.flatMap((memory) => {
-            return [{ ...toTraceMemory(selectedById.get(memory.id)!, plan), validityReview: validityReviews.get(memory.id) }];
+            return [
+              {
+                ...toTraceMemory(selectedById.get(memory.id)!, plan),
+                validityReview: validityReviews.get(memory.id),
+              },
+            ];
           }),
           injected: rendered.memoryIds.flatMap((id) => {
-            return [{ ...toTraceMemory(selectedById.get(id)!, plan), validityReview: validityReviews.get(id) }];
+            return [
+              {
+                ...toTraceMemory(selectedById.get(id)!, plan),
+                validityReview: validityReviews.get(id),
+              },
+            ];
           }),
           injectedChars: rendered.text.length,
           thresholds,

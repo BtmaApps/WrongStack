@@ -4084,5 +4084,25 @@
     "network": "Rete",
     "noConsole": "Ancora nessun messaggio in console.",
     "noNetwork": "Ancora nessuna richiesta."
+  },
+  "memoryValidity": {
+    "title": "Condizioni di validità",
+    "unknown": "L’applicabilità a questa attività è sconosciuta; una corrispondenza nel sorgente non conferma tutte le ipotesi.",
+    "observed": "Ultima osservazione: {{at}} · versione della memoria {{revision}}. I file sorgente potrebbero essere cambiati.",
+    "unchecked": "Nessuna osservazione del sorgente per questa versione della memoria.",
+    "satisfied": "Testo previsto trovato al momento dell’osservazione",
+    "not_satisfied": "Testo previsto assente al momento dell’osservazione",
+    "unknownCheck": "Non verificato",
+    "placeholder": "Esempio: politica predefinita dei tentativi, senza override di sessione.",
+    "path": "Percorso del file relativo al progetto",
+    "literal": "Testo esatto previsto nel file",
+    "remove": "Rimuovi controllo",
+    "add": "Aggiungi controllo del sorgente",
+    "supported": "Supportato dalla fonte",
+    "outdated": "Obsoleto",
+    "contradicted": "Contraddetto dalla fonte",
+    "unverifiable": "Non verificabile",
+    "irrelevant": "Non pertinente",
+    "advisory": "Valutazione indicativa del modello; esamina le prove prima di applicarla."
   }
 }

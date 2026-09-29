@@ -508,7 +508,14 @@ export function useMemoryManagerState() {
         rememberSage(
           {
             text: draft.text.trim(),
-            ...(draft.validityStatement?.trim() ? { validity: { statement: draft.validityStatement.trim(), checks: draft.validityChecks ?? [] } } : {}),
+            ...(draft.validityStatement?.trim()
+              ? {
+                  validity: {
+                    statement: draft.validityStatement.trim(),
+                    checks: draft.validityChecks ?? [],
+                  },
+                }
+              : {}),
             kind: draft.kind,
             scope: draft.scope,
             tags: splitList(draft.tags),
@@ -545,7 +552,9 @@ export function useMemoryManagerState() {
           selectedMemory.id,
           {
             expectedRevision: draft.observedRevision,
-            validity: draft.validityStatement?.trim() ? { statement: draft.validityStatement.trim(), checks: draft.validityChecks ?? [] } : null,
+            validity: draft.validityStatement?.trim()
+              ? { statement: draft.validityStatement.trim(), checks: draft.validityChecks ?? [] }
+              : null,
             text: draft.text.trim(),
             kind: draft.kind,
             status: draft.status,

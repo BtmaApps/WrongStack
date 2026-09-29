@@ -16,8 +16,8 @@ import { useAppTranslation } from '@/i18n';
 import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
 import type { SageAnchor, SageScope, SageStatus } from '@/types';
-import type { MemoryDraft } from './shared';
 import { MemoryValidityEditor } from './MemoryValidityEditor';
+import type { MemoryDraft } from './shared';
 import {
   ANCHOR_TYPES,
   anchorValue,

@@ -195,6 +195,9 @@ export class HostMemoryCompanion {
           applicability: 'unknown',
           validityChecks: snapshot.validityChecks,
           reason: 'No bounded project source available; do not treat this as validated.',
+          observedRevision: record.revision,
+          verdict: 'unverifiable',
+          summary: 'No bounded project source is available to check this claim.',
         }),
       );
       return;
@@ -346,7 +349,24 @@ export class HostMemoryCompanion {
   }
 
   private send(sessionId: string, subject: string, body: string): void {
-    if (this.allowed(sessionId)) this.input.note(sessionId, subject, this.input.scrub(body));
+    if (!this.allowed(sessionId)) return;
+    const scrubbed = this.input.scrub(body);
+    this.input.note(sessionId, subject, scrubbed);
+    if (subject === '[memory:review]' || subject === '[memory:unverifiable]') {
+      try {
+        const review = JSON.parse(scrubbed);
+        if (typeof review.memoryId !== 'string' || !Number.isInteger(review.observedRevision))
+          return;
+        const emit = this.input.events.emit as unknown as (event: string, payload: unknown) => void;
+        emit.call(this.input.events, 'memory.companion_review', {
+          ...review,
+          sessionId,
+          at: new Date().toISOString(),
+        });
+      } catch {
+        /* Non-structured uncertainty notes still reach the leader. */
+      }
+    }
   }
 
   private async withinIoBudget<T>(work: Promise<T>): Promise<T> {

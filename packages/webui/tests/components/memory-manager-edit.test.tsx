@@ -61,6 +61,10 @@ import { useConfigStore } from '../../src/stores/config-store.js';
 const memory: SageEntry = {
   id: 'mem_architecture',
   revision: 3,
+  validity: {
+    statement: 'Only for the default WebUI transport.',
+    checks: [{ type: 'source_contains', path: 'src/ws-client.ts', text: 'singleton' }],
+  },
   scope: 'project',
   kind: 'decision',
   status: 'active',
@@ -130,8 +134,24 @@ describe('MemoryManager — Edit button', () => {
     });
     const editor = screen.getByRole('textbox', { name: 'Memory content' }) as HTMLTextAreaElement;
     expect(editor.value).toBe(memory.text);
-
-    // Save Changes button should be visible (edit mode).
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
+    expect((screen.getByLabelText('Valid when') as HTMLTextAreaElement).value).toBe(
+      memory.validity?.statement,
+    );
+    fireEvent.change(screen.getByLabelText('Valid when'), {
+      target: { value: 'Only for the current transport.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(sends).toContainEqual(
+      expect.objectContaining({
+        type: 'memory.sage.update',
+        payload: expect.objectContaining({
+          expectedRevision: 3,
+          validity: {
+            statement: 'Only for the current transport.',
+            checks: memory.validity?.checks,
+          },
+        }),
+      }),
+    );
   });
 });

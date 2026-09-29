@@ -4084,5 +4084,25 @@
     "network": "Netzwerk",
     "noConsole": "Noch keine Konsolenmeldungen.",
     "noNetwork": "Noch keine Anfragen."
+  },
+  "memoryValidity": {
+    "title": "Gültigkeitsbedingungen",
+    "unknown": "Die Anwendbarkeit auf diese Aufgabe ist unbekannt; ein Quelltexttreffer bestätigt nicht alle Annahmen.",
+    "observed": "Letzte Beobachtung: {{at}} · Speicherversion {{revision}}. Quelldateien können sich seitdem geändert haben.",
+    "unchecked": "Keine Quelltextbeobachtung für diese Speicherversion.",
+    "satisfied": "Erwarteter Text zum Beobachtungszeitpunkt gefunden",
+    "not_satisfied": "Erwarteter Text zum Beobachtungszeitpunkt nicht gefunden",
+    "unknownCheck": "Nicht geprüft",
+    "placeholder": "Beispiel: Standard-Wiederholungsrichtlinie ohne Sitzungsüberschreibung.",
+    "path": "Relativer Projektdateipfad",
+    "literal": "Exakt erwarteter Text in der Datei",
+    "remove": "Prüfung entfernen",
+    "add": "Quelltextprüfung hinzufügen",
+    "supported": "Durch Quelle gestützt",
+    "outdated": "Veraltet",
+    "contradicted": "Widerspricht der Quelle",
+    "unverifiable": "Nicht überprüfbar",
+    "irrelevant": "Nicht relevant",
+    "advisory": "Unverbindliche Modellbewertung; vor der Anwendung die Belege prüfen."
   }
 }

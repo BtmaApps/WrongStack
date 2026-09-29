@@ -64,6 +64,23 @@ selection still honors the existing memory-curator role configuration.
 
 ### Applicability conditions
 
+Both turn-context and tool-triggered injection now run the shared bounded source
+snapshot checks before rendering conditional memories. Each memory's check wait
+is capped at 250ms; missing project context or timeout yields unknown. These are
+ephemeral observations tagged with memory revision, check time and source hashes,
+not persisted truth or a cache of correctness. Both recall paths publish injector
+events to the Companion; turn events do not reset a known high-pressure pause.
+
+WebUI creation forwards validity; the editor supports the statement and up to
+four literal checks, and edits carry the revision originally opened. Detail and
+injection panels show assumptions and historical check results. A result for an
+older memory revision is hidden. Companion reports additionally publish a scrubbed
+`memory.companion_review` event over the existing memory event channel; the UI
+keeps up to 128 reports per session and shows matching-revision judgments and
+quotes. Source files may change after observation, so neither panel labels a
+historical observation as current verification. Refreshing the browser may lose
+these transient reports; absence is displayed as no observation, not success.
+
 `remember` accepts optional `validity`, preserved in SQLite and IPC:
 
 ```json
@@ -205,14 +222,16 @@ An opt-in live smoke test is available in
 (PowerShell: set `$env:WRONGSTACK_MEMORY_LIVE='1'` first). It consumes the active
 profile's model quota and decrypts credentials through the existing local vault.
 It creates a temporary project/SQLite store, pins the temporary curator role to
-the active model, emits a controlled injector event, and checks the real host,
+the active model, runs a fixture query through the actual turn recall middleware,
+and checks pre-injection source observations, the real host,
 Director, provider, evidence validator and session-note delivery to a registered
 leader inbox. The fixture claims unlimited retries while the source defines a
 quota. The assertion requires a contradicted/outdated report with source evidence
-and an unchanged stored memory. A JSON report and worker transcripts remain in
+and unchanged memory content/revision (normal injection counters may increase).
+A JSON report and worker transcripts remain in
 the printed temporary project directory. Ordinary test runs skip this probe.
-This checks a synthetic trigger and leader inbox delivery, not automatic recall
-selection or whether a live leader model subsequently uses the advice correctly.
+This checks a controlled query through recall and leader inbox delivery, not
+whether a live leader model subsequently uses the advice correctly in a real task.
 
 Tests use temporary SQLite stores and deterministic fake embeddings. They prove
 the contracts, not real-model judgment accuracy or end-to-end task improvement.

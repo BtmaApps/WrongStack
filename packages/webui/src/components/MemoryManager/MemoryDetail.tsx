@@ -22,10 +22,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 import type { SageEntry, SageGraphEdge } from '@/types';
 import { MemoryGraph } from './MemoryGraph';
 import { MemoryValidity } from './MemoryValidity';
-import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 import {
   formatAudienceText,
   formatDate,
@@ -65,7 +65,9 @@ export function MemoryDetail({
   onNotice,
 }: MemoryDetailProps) {
   const { t } = useAppTranslation();
-  const observation = useMemoryInjectorTraceStore((state) => state.contextMemories[memory.id]?.validityReview);
+  const observation = useMemoryInjectorTraceStore(
+    (state) => state.contextMemories[memory.id]?.validityReview,
+  );
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-card/65 px-4 py-3 backdrop-blur-xl">
@@ -135,7 +137,12 @@ export function MemoryDetail({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5">
         <div className="mx-auto max-w-5xl space-y-5">
           <MemoryBody memory={memory} />
-          <MemoryValidity validity={memory.validity} revision={memory.revision} review={observation} />
+          <MemoryValidity
+            memoryId={memory.id}
+            validity={memory.validity}
+            revision={memory.revision}
+            review={observation}
+          />
           <MemoryScoreRow memory={memory} />
           <MemoryUsefulness memory={memory} />
           {memory.tags.length > 0 && <MemoryTags tags={memory.tags} onTagSelect={onTagSelect} />}

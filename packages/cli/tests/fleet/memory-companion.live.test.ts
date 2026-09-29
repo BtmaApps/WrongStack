@@ -14,7 +14,7 @@ import {
 } from '@wrongstack/core/security';
 import { CONFIG_BEHAVIOR_DEFAULTS, DefaultConfigStore } from '@wrongstack/core/storage';
 import type { Config, SessionWriter } from '@wrongstack/core/types';
-import { SqliteMemoryPort } from '@wrongstack/sage';
+import { createSageTurnMiddleware, SqliteMemoryPort } from '@wrongstack/sage';
 import { expect, it } from 'vitest';
 import { type MultiAgentDeps, MultiAgentHost } from '../../src/multi-agent.js';
 
@@ -134,12 +134,27 @@ it.skipIf(process.env.WRONGSTACK_MEMORY_LIVE !== '1')(
       director!.on('task.completed', ({ result }) =>
         console.log('PROBE_TASK', deps.secretScrubber.scrub(JSON.stringify(result))),
       );
-      events.emit('memory.injector_run', {
-        sessionId,
-        contextPressure: 0,
-        injected: [{ id: memory.id }],
-        paths: ['src/retry.ts'],
-      } as never);
+      const turn = createSageTurnMiddleware({
+        memory: store,
+        projectRoot: root,
+        events,
+        getSessionId: () => sessionId,
+      });
+      const request = await turn.handler(
+        {
+          model: config.model,
+          messages: [
+            {
+              role: 'user',
+              content:
+                'Transport retries are unlimited; there is no retry quota. Check transport retries.',
+            },
+          ],
+          system: [],
+        } as never,
+        async (next) => next,
+      );
+      expect(JSON.stringify(request.system)).toContain('sourceChecks=');
       await expect
         .poll(
           () =>
@@ -150,7 +165,13 @@ it.skipIf(process.env.WRONGSTACK_MEMORY_LIVE !== '1')(
         )
         .toBe(true);
       const review = notes.find((n) => n.subject === '[memory:review]');
-      const unchanged = JSON.stringify(await store.getSage(memory.id)) === JSON.stringify(before);
+      const after = await store.getSage(memory.id);
+      // Recall legitimately increments injection counters; the knowledge itself stays unchanged.
+      const unchanged =
+        after?.revision === before?.revision &&
+        after?.text === before?.text &&
+        JSON.stringify(after?.validity) === JSON.stringify(before?.validity) &&
+        after?.status === before?.status;
       const report = {
         root,
         provider: config.provider,

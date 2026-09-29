@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T05:42:37.228Z",
+  "generatedAt": "2026-09-29T06:14:39.184Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4267,
-    "testFiles": 3856,
-    "sourceLines": 1008778,
+    "testFiles": 3858,
+    "sourceLines": 1009071,
     "workspaceEdges": 130,
     "moduleEdges": 13910,
     "nonCommandSlashImports": 0,
@@ -596,7 +596,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 122,
-      "testFiles": 120,
+      "testFiles": 121,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -611,7 +611,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 120
+          "testFiles": 121
         }
       ]
     },
@@ -839,7 +839,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 605,
-      "testFiles": 426,
+      "testFiles": 427,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -862,7 +862,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 426
+          "testFiles": 427
         }
       ]
     },
@@ -13596,6 +13596,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/injection-validity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/memory-candidates-coverage.test.ts",
         "projects": [
           "root-node"
@@ -22308,6 +22314,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/memory-validity.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/message-bubble-code-copy.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -24836,6 +24848,11 @@
       "file": "packages/webui/src/components/FileExplorer.tsx",
       "lines": 851,
       "relativeImports": 7
+    },
+    {
+      "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
+      "lines": 806,
+      "relativeImports": 4
     },
     {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",

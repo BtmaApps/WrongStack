@@ -126,6 +126,10 @@ export {
 } from './retrieval/relevance.js';
 export { memoryReviewReason } from './retrieval/review-freshness.js';
 export {
+  type MemoryEvidenceSnapshot,
+  snapshotMemoryEvidence,
+} from './retrieval/source-evidence.js';
+export {
   createSystemOneRecallFilter,
   type SystemOneRecallFilter,
   type SystemOneRecallFilterOptions,
@@ -217,4 +221,3 @@ export {
 } from './triage/system-one.js';
 export type { UpdateSageInput } from './types.js';
 export * from './types.js';
-export { snapshotMemoryEvidence, type MemoryEvidenceSnapshot } from './retrieval/source-evidence.js';

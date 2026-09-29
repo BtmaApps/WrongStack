@@ -4097,6 +4097,12 @@
     "path": "Relative project file path",
     "literal": "Exact text expected in the file",
     "remove": "Remove check",
-    "add": "Add source check"
+    "add": "Add source check",
+    "supported": "Supported",
+    "outdated": "Outdated",
+    "contradicted": "Contradicted",
+    "unverifiable": "Unverifiable",
+    "irrelevant": "Not relevant",
+    "advisory": "Advisory model judgment; review the evidence before applying it."
   }
 }

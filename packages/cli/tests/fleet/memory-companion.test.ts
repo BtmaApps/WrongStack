@@ -99,6 +99,7 @@ function harness(timeoutMs?: number, ioTimeoutMs?: number) {
     });
   };
   return {
+    events,
     companion,
     emit,
     finish,
@@ -130,6 +131,8 @@ describe('Memory Companion', () => {
     h.setRecord(m);
     const validityChecks = [{ path: 'src/retry.ts', text: quote, status: 'satisfied' as const }];
     h.snapshot.mockResolvedValue({ ...evidence, validityChecks });
+    const published: unknown[] = [];
+    h.events.onPattern('memory.companion_review', (_name, payload) => published.push(payload));
     h.emit();
     await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
     expect(h.assignInternal.mock.calls[0]![0].description).toContain(m.validity.statement);
@@ -141,6 +144,12 @@ describe('Memory Companion', () => {
     expect(review.validityChecks).toEqual(validityChecks);
     expect(review.applicability).toContain('unknown');
     expect(review.validity).toEqual(m.validity);
+    expect(published[0]).toMatchObject({
+      memoryId: 'm1',
+      observedRevision: 1,
+      sessionId: 'leader',
+      verdict: 'contradicted',
+    });
   });
   it('reviews an unchanged challenged memory even after a useful judgment', async () => {
     const h = harness();

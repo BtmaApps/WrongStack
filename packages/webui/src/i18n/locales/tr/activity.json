@@ -4097,6 +4097,12 @@
     "path": "Projeye göre dosya yolu",
     "literal": "Dosyada beklenen birebir ifade",
     "remove": "Kontrolü kaldır",
-    "add": "Kaynak kontrolü ekle"
+    "add": "Kaynak kontrolü ekle",
+    "supported": "Kaynak destekliyor",
+    "outdated": "Güncelliğini yitirmiş",
+    "contradicted": "Kaynakla çelişiyor",
+    "unverifiable": "Doğrulanamadı",
+    "irrelevant": "İlgili değil",
+    "advisory": "Model değerlendirmesidir; uygulamadan önce kanıtları inceleyin."
   }
 }

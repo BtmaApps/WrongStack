@@ -93,6 +93,13 @@ export function handleMemoryEvent(msg: WSServerMessage) {
         payload as unknown as import('@/stores/memory-injector-store').MemoryInjectorTrace,
       );
   }
+  if (payload.event === 'memory.companion_review') {
+    memoryTrace
+      .getState()
+      .pushCompanionReview(
+        payload as unknown as import('@/stores/memory-injector-store').CompanionReview,
+      );
+  }
   if (payload.event === 'memory.context_snapshot') {
     memoryTrace
       .getState()

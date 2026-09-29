@@ -4084,5 +4084,25 @@
     "network": "Rede",
     "noConsole": "Ainda não há mensagens no console.",
     "noNetwork": "Ainda não há requisições."
+  },
+  "memoryValidity": {
+    "title": "Condições de validade",
+    "unknown": "A aplicabilidade a esta tarefa é desconhecida; uma correspondência no código não confirma todas as suposições.",
+    "observed": "Última observação: {{at}} · versão da memória {{revision}}. Os arquivos-fonte podem ter mudado.",
+    "unchecked": "Nenhuma observação do código para esta versão da memória.",
+    "satisfied": "Texto esperado encontrado durante a observação",
+    "not_satisfied": "Texto esperado ausente durante a observação",
+    "unknownCheck": "Não verificado",
+    "placeholder": "Exemplo: política padrão de tentativas sem substituição por sessão.",
+    "path": "Caminho do arquivo relativo ao projeto",
+    "literal": "Texto exato esperado no arquivo",
+    "remove": "Remover verificação",
+    "add": "Adicionar verificação do código",
+    "supported": "Sustentado pela fonte",
+    "outdated": "Desatualizado",
+    "contradicted": "Contradito pela fonte",
+    "unverifiable": "Não verificável",
+    "irrelevant": "Não relevante",
+    "advisory": "Avaliação consultiva do modelo; examine as evidências antes de aplicá-la."
   }
 }

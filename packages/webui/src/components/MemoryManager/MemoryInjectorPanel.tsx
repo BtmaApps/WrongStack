@@ -1,9 +1,9 @@
 import { Activity, Brain, Clock, PanelRightClose, Tag } from 'lucide-react';
 import { memo, useEffect } from 'react';
-import { MemoryValidity } from './MemoryValidity';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
+import { MemoryValidity } from './MemoryValidity';
 
 interface MemoryInjectorPanelProps {
   open: boolean;
@@ -213,7 +213,12 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
                   </>
                 )}
                 <span className="opacity-40">·</span>
-                <span>ctx {Math.round(latest.contextPressure * 100)}%</span>
+                <span>
+                  ctx{' '}
+                  {latest.trigger === 'turn_context'
+                    ? '—'
+                    : `${Math.round(latest.contextPressure * 100)}%`}
+                </span>
               </div>
             </div>
           )}
@@ -258,13 +263,18 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
                         memory.text
                       )}
                     </p>
-                    <MemoryValidity validity={memory.validity} revision={memory.revision} review={memory.validityReview} />
+                    <MemoryValidity
+                      memoryId={memory.id}
+                      validity={memory.validity}
+                      revision={memory.revision}
+                      review={memory.validityReview}
+                    />
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground/70">
                       <span className="font-mono">{memory.id.slice(0, 16)}…</span>
                       <span className="flex items-center gap-0.5">
                         <span className="opacity-60">{t('activity:memoryManager.traceScore')}</span>
                         <span className="font-mono text-foreground/60">
-                          {memory.score.toFixed(2)}
+                          {memory.trigger === 'turn_context' ? '—' : memory.score.toFixed(2)}
                         </span>
                       </span>
                       {memory.trigger && <span className="font-mono">{memory.trigger}</span>}
@@ -330,7 +340,12 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
                         <span className="text-success">{trace.injected.length} injected</span>
                         <span className="text-warning">{traceFiltered} filtered</span>
                         <span>{trace.candidates} candidates</span>
-                        <span>ctx {Math.round(trace.contextPressure * 100)}%</span>
+                        <span>
+                          ctx{' '}
+                          {trace.trigger === 'turn_context'
+                            ? '—'
+                            : `${Math.round(trace.contextPressure * 100)}%`}
+                        </span>
                         {trace.outcome === 'error' && (
                           <span className="text-destructive">
                             {t('activity:memoryManager.traceError')}

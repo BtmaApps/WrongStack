@@ -4084,5 +4084,25 @@
     "network": "Réseau",
     "noConsole": "Aucun message de console pour l'instant.",
     "noNetwork": "Aucune requête pour l'instant."
+  },
+  "memoryValidity": {
+    "title": "Conditions de validité",
+    "unknown": "L’applicabilité à cette tâche est inconnue ; une correspondance dans la source ne confirme pas toutes les hypothèses.",
+    "observed": "Dernière observation : {{at}} · version du souvenir {{revision}}. Les fichiers sources peuvent avoir changé depuis.",
+    "unchecked": "Aucune observation de source pour cette version du souvenir.",
+    "satisfied": "Texte attendu trouvé lors de l’observation",
+    "not_satisfied": "Texte attendu absent lors de l’observation",
+    "unknownCheck": "Non vérifié",
+    "placeholder": "Exemple : politique de nouvelles tentatives par défaut, sans surcharge de session.",
+    "path": "Chemin relatif du fichier dans le projet",
+    "literal": "Texte exact attendu dans le fichier",
+    "remove": "Supprimer la vérification",
+    "add": "Ajouter une vérification de source",
+    "supported": "Confirmé par la source",
+    "outdated": "Obsolète",
+    "contradicted": "Contredit par la source",
+    "unverifiable": "Invérifiable",
+    "irrelevant": "Non pertinent",
+    "advisory": "Avis du modèle ; examinez les preuves avant de l’appliquer."
   }
 }

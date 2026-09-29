@@ -79,9 +79,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 311,
+      "files": 312,
       "typeOnly": 149,
-      "runtimeOrMixed": 176
+      "runtimeOrMixed": 177
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7335,6 +7335,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/sage/tests/host-wiring-daily-triage-injector-evidence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/sage/tests/injection-validity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

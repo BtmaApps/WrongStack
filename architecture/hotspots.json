@@ -322,6 +322,10 @@
       "lines": 851,
       "relativeImports": 7
     },
+    "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts": {
+      "lines": 806,
+      "relativeImports": 4
+    },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {
       "lines": 824,
       "relativeImports": 2

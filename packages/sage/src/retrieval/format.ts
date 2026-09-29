@@ -49,7 +49,8 @@ export function formatMemoryHintsDetailed(
       `anchorVerified=${dateLabel(memory.lastVerifiedAt)}`,
       currentFeedbackLabel(memory),
       opts.validityReviews?.get(memory.id)?.observedRevision === memory.revision
-        ? `sourceChecks=${escapeFenceText(JSON.stringify(opts.validityReviews.get(memory.id)))}` : undefined,
+        ? `sourceChecks=${escapeFenceText(JSON.stringify(opts.validityReviews.get(memory.id)))}`
+        : undefined,
       memory.validity
         ? `validWhen=${escapeFenceText(JSON.stringify(memory.validity))}; applicability=unknown (check current task assumptions)`
         : undefined,

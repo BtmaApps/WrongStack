@@ -5,10 +5,19 @@ import { createSessionScopedStore } from './session-scoped-store';
 export interface MemoryInjectorTraceMemory {
   revision?: number | undefined;
   validity?: SageEntry['validity'];
-  validityReview?: {
-    observedRevision: number; checkedAt: string; applicability: 'unknown';
-    checks: Array<{ path: string; text: string; status: 'satisfied' | 'not_satisfied' | 'unknown'; sourceHash?: string | undefined }>;
-  } | undefined;
+  validityReview?:
+    | {
+        observedRevision: number;
+        checkedAt: string;
+        applicability: 'unknown';
+        checks: Array<{
+          path: string;
+          text: string;
+          status: 'satisfied' | 'not_satisfied' | 'unknown';
+          sourceHash?: string | undefined;
+        }>;
+      }
+    | undefined;
   id: string;
   kind: string;
   text: string;
@@ -59,6 +68,15 @@ export interface MemoryContextSnapshot {
   sessionId?: string | undefined;
 }
 
+export interface CompanionReview {
+  memoryId: string;
+  observedRevision: number;
+  at: string;
+  verdict: string;
+  summary: string;
+  evidence?: Array<{ path: string; quote: string }> | undefined;
+}
+
 interface ContextMemoryRecord extends MemoryInjectorTraceMemory {
   state: 'injected' | 'active' | 'exited';
   trigger: string;
@@ -80,6 +98,8 @@ export interface MemoryContextTransition {
 interface MemoryInjectorTraceState {
   traces: MemoryInjectorTrace[];
   contextMemories: Record<string, ContextMemoryRecord>;
+  companionReviews: Record<string, CompanionReview>;
+  pushCompanionReview: (review: CompanionReview) => void;
   transitions: MemoryContextTransition[];
   pushTrace: (trace: MemoryInjectorTrace) => void;
   applyContextSnapshot: (snapshot: MemoryContextSnapshot) => void;
@@ -136,6 +156,22 @@ function pruneExitedMemories(
  * tab's trace instead.
  */
 const injectorTraceState: StateCreator<MemoryInjectorTraceState> = (set) => ({
+  companionReviews: {},
+  pushCompanionReview: (review) =>
+    set((state) => {
+      if (
+        !review ||
+        typeof review.memoryId !== 'string' ||
+        !Number.isInteger(review.observedRevision) ||
+        typeof review.summary !== 'string'
+      )
+        return state;
+      const entries = Object.entries(state.companionReviews).filter(
+        ([id]) => id !== review.memoryId,
+      );
+      entries.push([review.memoryId, review]);
+      return { companionReviews: Object.fromEntries(entries.slice(-128)) };
+    }),
   traces: [],
   contextMemories: {},
   transitions: [],
@@ -245,7 +281,7 @@ const injectorTraceState: StateCreator<MemoryInjectorTraceState> = (set) => ({
       };
     }),
   resetContext: () => set({ contextMemories: {}, transitions: [] }),
-  clear: () => set({ traces: [], contextMemories: {}, transitions: [] }),
+  clear: () => set({ traces: [], contextMemories: {}, transitions: [], companionReviews: {} }),
 });
 
 export const useMemoryInjectorTraceStore = createSessionScopedStore(injectorTraceState);

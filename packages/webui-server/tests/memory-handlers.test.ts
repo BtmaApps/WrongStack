@@ -374,6 +374,20 @@ describe('memory-handlers', () => {
   });
 
   describe('handleSageRemember', () => {
+    it('forwards applicability conditions without dropping them', async () => {
+      const sage = makeSage();
+      mockGetSageSurface.mockReturnValue(sage);
+      const validity = {
+        statement: 'Default policy only.',
+        checks: [{ type: 'source_contains', path: 'retry.ts', text: 'quota = 3' }],
+      };
+      await handleSageRemember(
+        mockWs(),
+        msg({ text: 'Retry quota is three.', validity }),
+        {} as any,
+      );
+      expect(sage.rememberSage).toHaveBeenCalledWith(expect.objectContaining({ validity }));
+    });
     it('sends error when text is missing', async () => {
       const ws = mockWs();
       mockGetSageSurface.mockReturnValue(makeSage());
