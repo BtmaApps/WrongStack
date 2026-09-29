@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-29T06:14:39.184Z
+**Generated:** 2026-09-29T07:53:40.659Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4267 |
-| Production source lines | 1009071 |
-| Test files | 3858 |
+| Production source lines | 1009185 |
+| Test files | 3859 |
 | Workspace dependency edges | 130 |
 | Relative module edges | 13910 |
 | Non-command slash imports | 0 |
@@ -44,7 +44,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 9 | 9 | — |
-| @wrongstack/providers | 93 | 83 | @wrongstack/core |
+| @wrongstack/providers | 93 | 84 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 15 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |

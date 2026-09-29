@@ -44,6 +44,8 @@ interface ProviderMeta {
   providerId: string;
   label: string;
   description?: string | undefined;
+  /** Extended guidance from the strategy registry, one entry per paragraph. */
+  notes?: readonly string[] | undefined;
 }
 
 function providerIcon(id: string) {
@@ -96,11 +98,12 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
     const offProviders = ws.on('auth.oauth.providers', (msg: WSServerMessage) => {
       if (msg.type !== 'auth.oauth.providers') return;
       setProviders(
-        msg.payload.providers.map(({ id, providerId, label, description }) => ({
+        msg.payload.providers.map(({ id, providerId, label, description, notes }) => ({
           id,
           providerId,
           label,
           ...(description ? { description } : {}),
+          ...(notes?.length ? { notes } : {}),
         })),
       );
     });
@@ -224,6 +227,16 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
           const accountCount = kindProfiles?.length ?? 0;
           const expanded = expandedKind === meta.id;
 
+          // Localized copy wins when present; the registry `notes` remain the
+          // English fallback (untranslated locales, and every non-WebUI host).
+          // An unresolved key echoes itself back, so treat that as "missing".
+          const guidanceKey = `settings:oauth.guidance.${meta.id}`;
+          const localized = t(guidanceKey, { default: '' });
+          const guidance = localized && localized !== guidanceKey ? localized.split(/\n{2,}/) : [];
+          const guidanceParagraphs = (guidance.length > 0 ? guidance : (meta.notes ?? [])).filter(
+            Boolean,
+          );
+
           return (
             <div key={meta.id} className="rounded-lg border border-border bg-background/70 p-3">
               <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-stretch">
@@ -251,6 +264,18 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
                   </Button>
                 )}
               </div>
+
+              {/* Per-provider guidance — localized copy when translated, the
+                  strategy registry's English `notes` otherwise. Wrapped, so it
+                  may be several sentences. Shown above the flow detail so it is
+                  read before the user starts a sign-in, not after. */}
+              {guidanceParagraphs.length > 0 && (
+                <div className="mt-3 space-y-1.5 border-t pt-3 text-xs leading-5 text-muted-foreground">
+                  {guidanceParagraphs.map((note) => (
+                    <p key={note}>{note}</p>
+                  ))}
+                </div>
+              )}
 
               {/* Flow detail — same as before */}
               {st.phase === 'awaiting_browser' && (

@@ -64,6 +64,12 @@ export const BUILTIN_PROVIDER_AUTH_STRATEGIES: readonly ProviderAuthStrategy[] =
     providerId: 'anthropic-oauth',
     label: 'Claude',
     description: 'Pro / Max → anthropic-oauth',
+    notes: [
+      'This login is for extra usage: it signs in with your Claude account and saves the ' +
+        'credential as its own anthropic-oauth provider, alongside the providers you already use.',
+      'To spend your Claude subscription instead, run OmniRoute as a proxy, sign in with your ' +
+        'Claude account on OmniRoute, then add OmniRoute as a provider here.',
+    ],
     aliases: ['anthropic', 'claude-pro', 'claude-max', 'anthropic-oauth', 'max'],
     interactionTypes: ['browser'],
     async begin(deps, signal) {

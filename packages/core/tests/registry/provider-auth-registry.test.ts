@@ -6,12 +6,14 @@ function strategy(
   id: string,
   aliases: readonly string[] = [],
   begin = vi.fn(),
+  notes?: readonly string[],
 ): ProviderAuthStrategy {
   return {
     id,
     providerId: `${id}-provider`,
     label: `Login with ${id}`,
     aliases,
+    ...(notes?.length ? { notes } : {}),
     interactionTypes: ['browser'],
     begin,
   };
@@ -40,6 +42,26 @@ describe('ProviderAuthRegistry', () => {
       },
     ]);
     expect(registry.list()[0]).not.toHaveProperty('begin');
+  });
+
+  it('projects extended notes into list() output for hosts to render', () => {
+    const registry = new ProviderAuthRegistry();
+    registry.register(strategy('claude', [], vi.fn(), ['para one', 'para two']));
+
+    expect(registry.list()).toEqual([
+      {
+        id: 'claude',
+        providerId: 'claude-provider',
+        label: 'Login with claude',
+        notes: ['para one', 'para two'],
+        aliases: [],
+        interactionTypes: ['browser'],
+      },
+    ]);
+
+    // A strategy without notes must stay note-free — hosts render nothing.
+    registry.register(strategy('chatgpt'));
+    expect(registry.list()[1]).not.toHaveProperty('notes');
   });
 
   it('dispatches begin through the resolved strategy', async () => {

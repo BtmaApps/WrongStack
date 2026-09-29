@@ -9,8 +9,14 @@ export interface ProviderAuthStrategyMetadata {
   providerId: string;
   /** Human-readable name shown in authentication pickers. */
   label: string;
-  /** Optional short explanation shown below the label. */
+  /** Optional short explanation shown below the label. Keep it to one line — it renders inline. */
   description?: string | undefined;
+  /**
+   * Optional extended guidance, one entry per paragraph. Unlike `description`
+   * this may be several sentences, so hosts render it wrapped below the card
+   * rather than inline. Empty/absent when the strategy needs no explanation.
+   */
+  notes?: readonly string[] | undefined;
   /** Alternate CLI spellings accepted by the registry. */
   aliases?: readonly string[] | undefined;
   /** Interaction shapes this strategy may present. */

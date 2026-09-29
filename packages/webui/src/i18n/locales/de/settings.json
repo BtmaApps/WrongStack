@@ -351,7 +351,10 @@
     "retry": "Erneut",
     "retryLogin": "Dieses Konto erneut authentifizieren",
     "newAccount": "Neues Konto",
-    "aliasPlaceholder": "z.B. {{default}}"
+    "aliasPlaceholder": "z.B. {{default}}",
+    "guidance": {
+      "claude": "Diese Anmeldung ist für die Zusatznutzung: Sie meldet sich mit Ihrem Claude-Konto an und speichert die Anmeldedaten als eigenen anthropic-oauth-Anbieter – zusätzlich zu den Anbietern, die Sie bereits nutzen.\n\nWenn Sie stattdessen Ihr Claude-Abonnement verwenden möchten, starten Sie OmniRoute als Proxy, melden Sie sich dort mit Ihrem Claude-Konto an und fügen OmniRoute hier als Anbieter hinzu."
+    }
   },
   "general": {
     "showThinkingLabel": "Thinking-Protokolle anzeigen",

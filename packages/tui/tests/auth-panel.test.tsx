@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { AuthPanel, isAuthFlowUrlLine, latestAuthFlowUrl } from '../src/components/auth-panel.js';
-import { AUTH_PANEL_INITIAL, type AuthPanelState } from '../src/components/auth-panel-model.js';
+import {
+  AUTH_PANEL_INITIAL,
+  type AuthOAuthStrategyRow,
+  type AuthPanelState,
+} from '../src/components/auth-panel-model.js';
 import { renderRealTty, settle } from './helpers/real-tty.js';
 
 function panel(overrides: Partial<AuthPanelState> = {}): AuthPanelState {
@@ -76,6 +80,61 @@ describe('AuthPanel feedback rendering', () => {
   it('shows an empty state instead of a bare action list when nothing is configured', () => {
     expect(frameOf(panel({ view: 'list', providers: [] }))).toContain('No providers configured');
     expect(frameOf(panel({ view: 'list', providers: [], busy: true }))).toContain('Loading');
+  });
+});
+
+describe('AuthPanel oauth strategy notes', () => {
+  // Mirrors the registry metadata the CLI host returns (claude carries notes,
+  // chatgpt does not) — the panel must surface the focused strategy only.
+  const strategies: AuthOAuthStrategyRow[] = [
+    {
+      id: 'chatgpt',
+      providerId: 'openai-codex',
+      label: 'ChatGPT',
+      description: 'Plus / Pro / Team → openai-codex',
+    },
+    {
+      id: 'claude',
+      providerId: 'anthropic-oauth',
+      label: 'Claude',
+      description: 'Pro / Max → anthropic-oauth',
+      notes: [
+        'This login is for extra usage: it signs in with your Claude account and saves the credential as its own anthropic-oauth provider.',
+        'To spend your Claude subscription instead, run OmniRoute as a proxy, then add OmniRoute as a provider here.',
+      ],
+    },
+  ];
+
+  /** Paragraph text wraps across lines — compare whitespace-normalized. */
+  const flat = (frame: string): string => frame.replace(/\s+/g, ' ');
+
+  it('renders the focused strategy notes below the ToS warning', () => {
+    const frame = frameOf(panel({ view: 'oauth', oauthStrategies: strategies, selected: 1 }));
+    expect(flat(frame)).toContain('This login is for extra usage');
+    expect(flat(frame)).toContain('To spend your Claude subscription instead');
+  });
+
+  it('shows only the focused strategy guidance — unfocused notes stay hidden', () => {
+    const frame = frameOf(panel({ view: 'oauth', oauthStrategies: strategies, selected: 0 }));
+    expect(frame).toContain('ChatGPT');
+    expect(flat(frame)).not.toContain('This login is for extra usage');
+  });
+
+  it('keeps the panel within its row budget while the notes are visible', {
+    timeout: 5_000,
+  }, async () => {
+    const view = renderRealTty(
+      React.createElement(AuthPanel, {
+        panel: panel({ view: 'oauth', oauthStrategies: strategies, selected: 1 }),
+        maxRows: 14,
+      }),
+      { columns: 80, rows: 16 },
+    );
+    await settle();
+    expect(flat(view.lastFrame())).toContain('This login is for extra usage');
+    // Budget (14) bounds the whole bordered panel, not just the option list.
+    expect(view.lines().length).toBeLessThanOrEqual(14);
+    view.unmount();
   });
 });
 

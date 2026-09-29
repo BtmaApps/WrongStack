@@ -71,6 +71,36 @@ function keySummary(keyRow: AuthKeyRow): string {
   return `${keyRow.masked}${method}${created}`;
 }
 
+/** Hard ceiling on focused-strategy note lines so guidance can never crowd
+ *  the option list out of the panel budget (the budget bound below trims
+ *  further on short terminals). */
+const MAX_OAUTH_NOTE_LINES = 8;
+
+/**
+ * Word-wrap one strategy `notes` paragraph to the panel's inner width.
+ * Notes are trusted registry copy (builtin-strategies.ts) — plain printable
+ * text, so character counting suffices; every rendered line is additionally
+ * hard-truncated by `wrap="truncate-end"` as a safety net.
+ */
+function wrapNoteText(text: string, width: number): string[] {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0) return [];
+  const lines: string[] = [];
+  let cur = words[0] ?? '';
+  for (const word of words.slice(1)) {
+    if (cur.length + 1 + word.length <= width) {
+      cur += ` ${word}`;
+      continue;
+    }
+    lines.push(cur);
+    // A word wider than the panel (pathological for trusted copy) is clipped;
+    // the per-line truncate-end render is the second safety net.
+    cur = word.length > width ? word.slice(0, width) : word;
+  }
+  lines.push(cur);
+  return lines;
+}
+
 function renderRow(row: AuthPanelRow, focused: boolean, i: number): React.ReactElement {
   const marker = focused ? '›' : ' ';
   const rowColor = focused ? UI_COLORS.focused : undefined;
@@ -318,13 +348,33 @@ export function AuthPanel({ panel, maxRows, columns }: AuthPanelProps): React.Re
   const size = useTerminalSize();
   const budget = maxRows ?? Math.max(8, size.rows - 7);
   const compact = budget < 14;
+  // Border (2) + paddingX (1 each side) shrink the usable text width.
+  const noteWidth = Math.max(20, (columns ?? size.columns) - 4);
+  // Oauth rows map 1:1 onto `oauthStrategies`, so the cursor index selects
+  // the strategy whose guidance renders below the ToS warning.
+  const oauthFocus = panel.view === 'oauth' ? panel.oauthStrategies?.[panel.selected] : undefined;
+  const oauthNoteLines =
+    !compact && oauthFocus?.notes
+      ? oauthFocus.notes
+          .flatMap((note, i) =>
+            // Blank separator between paragraphs; a space (not '') so Ink
+            // emits the row and the reserve below matches the render.
+            (i > 0 ? [' '] : []).concat(wrapNoteText(note, noteWidth)),
+          )
+          .slice(
+            0,
+            // 8 keeps at least one list row visible on any non-compact
+            // budget: total = 8 border/title/legend/warning + N + 1 list.
+            Math.min(MAX_OAUTH_NOTE_LINES, Math.max(0, budget - 8)),
+          )
+      : [];
   const extraRows =
     (panel.hint ? 1 : 0) +
     (panel.confirm ? (compact ? 1 : 2) : 0) +
     (panel.input ? (compact ? 1 : 2) : 0) +
     (panel.view === 'catalog' ? (compact ? 1 : 2) : 0) +
     (!compact && panel.view === 'provider' ? 2 : 0) +
-    (!compact && panel.view === 'oauth' ? 3 : 0) +
+    (!compact && panel.view === 'oauth' ? 3 + oauthNoteLines.length : 0) +
     (!compact && panel.view === 'list' && panel.providers.length === 0 ? 2 : 0) +
     (!compact && panel.view === 'catalog' && panel.busy ? 2 : 0);
   const maxVisible = Math.max(
@@ -423,6 +473,20 @@ export function AuthPanel({ panel, maxRows, columns }: AuthPanelProps): React.Re
           <Text color={UI_COLORS.warning} wrap="truncate-end">
             your account could be rate-limited or banned. An API key is the sanctioned path.
           </Text>
+        </Box>
+      ) : null}
+
+      {/* Focused-strategy guidance from the strategy registry `notes` —
+          wrapped, so it may be several sentences. Rendered before the option
+          list so it is read before the user presses Enter to sign in. The
+          row budget above reserves exactly these lines. */}
+      {oauthNoteLines.length > 0 ? (
+        <Box flexDirection="column">
+          {oauthNoteLines.map((line, ni) => (
+            <Text key={`on-${ni}`} dimColor wrap="truncate-end">
+              {line}
+            </Text>
+          ))}
         </Box>
       ) : null}
 

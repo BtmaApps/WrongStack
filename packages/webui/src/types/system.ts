@@ -326,6 +326,8 @@ export interface OAuthProviderMetadata {
   providerId: string;
   label: string;
   description?: string | undefined;
+  /** Extended guidance, one entry per paragraph, rendered wrapped below the label. */
+  notes?: readonly string[] | undefined;
   aliases?: readonly string[] | undefined;
   interactionTypes: readonly ('browser' | 'device_code')[];
 }

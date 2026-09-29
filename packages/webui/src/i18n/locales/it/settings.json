@@ -351,7 +351,10 @@
     "retry": "Riprova",
     "retryLogin": "Ri-autentica questo account",
     "newAccount": "Nuovo account",
-    "aliasPlaceholder": "es. {{default}}"
+    "aliasPlaceholder": "es. {{default}}",
+    "guidance": {
+      "claude": "Questo accesso serve per un utilizzo aggiuntivo: accede con il tuo account Claude e salva la credenziale come provider anthropic-oauth separato, insieme ai provider che già usi.\n\nPer utilizzare invece il tuo abbonamento Claude, avvia OmniRoute come proxy, accedi con il tuo account Claude su OmniRoute e poi aggiungi OmniRoute come provider qui."
+    }
   },
   "general": {
     "showThinkingLabel": "Mostra i registri di ragionamento",

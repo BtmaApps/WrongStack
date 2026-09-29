@@ -405,7 +405,10 @@
     "retry": "Retry",
     "retryLogin": "Re-authenticate this account",
     "newAccount": "New account",
-    "aliasPlaceholder": "e.g. {{default}}"
+    "aliasPlaceholder": "e.g. {{default}}",
+    "guidance": {
+      "claude": "This login is for extra usage: it signs in with your Claude account and saves the credential as its own anthropic-oauth provider, alongside the providers you already use.\n\nTo spend your Claude subscription instead, run OmniRoute as a proxy, sign in with your Claude account on OmniRoute, then add OmniRoute as a provider here."
+    }
   },
   "agent": {
     "autonomyHeading": "Autonomy & Behavior",

@@ -351,7 +351,10 @@
     "retry": "Yeniden dene",
     "retryLogin": "Bu hesabı yeniden doğrula",
     "newAccount": "Yeni hesap",
-    "aliasPlaceholder": "örn. {{default}}"
+    "aliasPlaceholder": "örn. {{default}}",
+    "guidance": {
+      "claude": "Bu oturum açma ek kullanım içindir: Claude hesabınızla giriş yapar ve kimlik bilgisini, hâlihazırda kullandığınız sağlayıcıların yanına ayrı bir anthropic-oauth sağlayıcısı olarak kaydeder.\n\nBunun yerine Claude aboneliğinizi kullanmak istiyorsanız OmniRoute'u bir vekil olarak çalıştırın, OmniRoute'da Claude hesabınızla giriş yapın ve ardından buraya OmniRoute'u sağlayıcı olarak ekleyin."
+    }
   },
   "general": {
     "themeHeading": "Tema",

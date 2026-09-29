@@ -59,6 +59,13 @@ export interface AuthOAuthStrategyRow {
   providerId: string;
   label: string;
   description?: string | undefined;
+  /**
+   * Extended guidance, one entry per paragraph (mirrors
+   * `ProviderAuthStrategyMetadata.notes`). Unlike `description` this may be
+   * several sentences, so the oauth view renders it wrapped in the
+   * focused-strategy detail area, not inline on the row.
+   */
+  notes?: readonly string[] | undefined;
 }
 
 /** Strategy ids are runtime-extensible. */

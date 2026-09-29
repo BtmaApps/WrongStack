@@ -25,6 +25,10 @@ function metadata(strategy: ProviderAuthStrategy): ProviderAuthStrategyMetadata 
     providerId: strategy.providerId,
     label: strategy.label,
     ...(strategy.description ? { description: strategy.description } : {}),
+    // Whitelisted projection: every UI-visible metadata field must be copied
+    // explicitly, so a new ProviderAuthStrategyMetadata field is invisible to
+    // hosts until it is added here.
+    ...(strategy.notes?.length ? { notes: [...strategy.notes] } : {}),
     aliases: [...(strategy.aliases ?? [])],
     interactionTypes: [...strategy.interactionTypes],
   };

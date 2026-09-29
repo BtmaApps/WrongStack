@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.27",
+  "packageVersion": "1.0.28",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1635,7 +1635,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
       "sourceFiles": 5,
-      "sourceLines": 1288
+      "sourceLines": 1292
     },
     {
       "directory": "replay",
@@ -1698,7 +1698,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 82,
-      "sourceLines": 15549
+      "sourceLines": 15555
     },
     {
       "directory": "typesafe",
