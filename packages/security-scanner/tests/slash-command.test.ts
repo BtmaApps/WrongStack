@@ -428,5 +428,19 @@ describe('createSecuritySlashCommand', () => {
       const res = await cmd.run('report 9999-99-99', fakeCtx());
       expect(res?.message).toContain('not found');
     });
+
+    it('matches filenames starting with numbers instead of treating them as indices', async () => {
+      const dir = path.join(tmp, 'security-reports');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, 'security-report-2026-05-22.md'), '# Index 1 Report');
+      await fs.writeFile(path.join(dir, 'security-report-2026-01-01.md'), '# Index 2 Report');
+      await fs.writeFile(path.join(dir, 'security-report-2-critical.md'), '# Named 2-critical');
+      const cmd = createSecuritySlashCommand();
+      const res = await cmd.run('report 2-critical', fakeCtx());
+      expect(res?.message).toContain('# Named 2-critical');
+
+      const zeroRes = await cmd.run('report 0', fakeCtx());
+      expect(zeroRes?.message).toContain('not found');
+    });
   });
 });

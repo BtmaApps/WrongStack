@@ -426,6 +426,51 @@ describe('DotNetAdapter', () => {
     }, dir);
   });
 
+  // The test above resolves the float via the restore graph. This is the other
+  // half: with NO graph (a fresh clone, or CI analysing a source tree before
+  // `dotnet restore`) the `|| ref.version` fallback fired and reported the
+  // CONSTRAINT as the resolved version — `pkg:nuget/Newtonsoft.Json@13.*`, a
+  // glob where an identity belongs, unmatchable by any advisory lookup.
+  it('does not report a floating declaration as locked when no restore graph exists', async () => {
+    const CSProj_FLOATING = CSPROJ.replace('Version="13.0.3"', 'Version="13.*"');
+    const { dir, ws } = mkWorkspace('dotnet', { 'App.csproj': CSProj_FLOATING });
+    await withCleanup(async () => {
+      const deps = await new DotNetAdapter().inventory(ws, {});
+      const dep = deps.find((d) => d.name === 'Newtonsoft.Json');
+      // Nothing resolved it, so there is no locked version — and no glob in the
+      // purl. The declaration is still available as `requested`.
+      expect(dep?.locked).toBeUndefined();
+      expect(dep?.purl).toBe('pkg:nuget/Newtonsoft.Json');
+      expect(dep?.requested).toBe('13.*');
+    }, dir);
+  });
+
+  it('does not report a range declaration as locked when no restore graph exists', async () => {
+    const { dir, ws } = mkWorkspace('dotnet', {
+      'App.csproj': CSPROJ.replace('Version="13.0.3"', 'Version="[5.0.0,6.0.0)"'),
+    });
+    await withCleanup(async () => {
+      const deps = await new DotNetAdapter().inventory(ws, {});
+      const dep = deps.find((d) => d.name === 'Newtonsoft.Json');
+      expect(dep?.locked).toBeUndefined();
+      expect(dep?.purl).not.toContain('[');
+      expect(dep?.requested).toBe('[5.0.0,6.0.0)');
+    }, dir);
+  });
+
+  // A CONCRETE declaration is still a usable stand-in with no graph, so the
+  // fix must not empty out every versionless-restore inventory.
+  it('still reports a concrete declaration as locked when no restore graph exists', async () => {
+    const { dir, ws } = mkWorkspace('dotnet', { 'App.csproj': CSPROJ });
+    await withCleanup(async () => {
+      const deps = await new DotNetAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'Newtonsoft.Json')).toMatchObject({
+        locked: '13.0.3',
+        purl: 'pkg:nuget/Newtonsoft.Json@13.0.3',
+      });
+    }, dir);
+  });
+
   it('returns [] when no .csproj is found', async () => {
     const { dir, ws } = mkWorkspace('dotnet', {});
     await withCleanup(async () => {
@@ -794,6 +839,101 @@ describe('MavenAdapter', () => {
       const names = deps.map((d) => d.name);
       expect(names).toContain('org.springframework:spring-core');
       expect(names).toContain('junit:junit');
+    }, dir);
+  });
+
+  // Maven properties may reference OTHER properties, and the parser stores each
+  // property's RAW value. One substitution pass therefore replaced `${a}` with
+  // the literal text `${b}` and stopped, leaving the placeholder in the version
+  // and so in the purl (`pkg:maven/g/a@${b}`) — an identity no registry can
+  // resolve, so the advisory lookup always failed. Chained properties are
+  // ordinary practice (one base version, derived artifacts).
+  const POM_CHAINED_PROPERTIES = [
+    '<project>',
+    '  <properties>',
+    '    <junit.version>5.10.2</junit.version>',
+    '    <junit.jupiter.version>${junit.version}</junit.jupiter.version>',
+    '  </properties>',
+    '  <dependencies>',
+    '    <dependency>',
+    '      <groupId>org.junit.jupiter</groupId>',
+    '      <artifactId>junit-jupiter</artifactId>',
+    '      <version>${junit.jupiter.version}</version>',
+    '    </dependency>',
+    '  </dependencies>',
+    '</project>',
+  ].join('\n');
+
+  it('resolves a property that references another property', async () => {
+    const { dir, ws } = mkWorkspace('maven', { 'pom.xml': POM_CHAINED_PROPERTIES });
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'org.junit.jupiter:junit-jupiter')).toMatchObject({
+        requested: '5.10.2',
+        purl: 'pkg:maven/org.junit.jupiter/junit-jupiter@5.10.2',
+      });
+    }, dir);
+  });
+
+  it('never emits a placeholder inside a purl for a deep property chain', async () => {
+    const { dir, ws } = mkWorkspace('maven', {
+      'pom.xml': [
+        '<project><properties>',
+        '  <base.version>2.0.0</base.version>',
+        '  <mid.version>${base.version}</mid.version>',
+        '  <top.version>${mid.version}</top.version>',
+        '</properties><dependencies><dependency>',
+        '  <groupId>org.example</groupId>',
+        '  <artifactId>demo</artifactId>',
+        '  <version>${top.version}</version>',
+        '</dependency></dependencies></project>',
+      ].join('\n'),
+    });
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(ws, {});
+      const purl = deps.find((d) => d.name === 'org.example:demo')?.purl;
+      expect(purl).not.toContain('${');
+      expect(purl).toBe('pkg:maven/org.example/demo@2.0.0');
+    }, dir);
+  });
+
+  // An unknown key is left verbatim on purpose: it is not a resolvable version.
+  it('leaves an unknown property reference unresolved', async () => {
+    const { dir, ws } = mkWorkspace('maven', {
+      'pom.xml': [
+        '<project><properties><other.version>1.0</other.version></properties>',
+        '<dependencies><dependency>',
+        '  <groupId>org.example</groupId>',
+        '  <artifactId>demo</artifactId>',
+        '  <version>${nope.version}</version>',
+        '</dependency></dependencies></project>',
+      ].join('\n'),
+    });
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'org.example:demo')?.purl).toBe(
+        'pkg:maven/org.example/demo@${nope.version}',
+      );
+    }, dir);
+  });
+
+  // Boundary: a mutually recursive pair must terminate, not hang.
+  it('terminates on mutually recursive property references', async () => {
+    const { dir, ws } = mkWorkspace('maven', {
+      'pom.xml': [
+        '<project><properties>',
+        '  <a.version>${b.version}</a.version>',
+        '  <b.version>${a.version}</b.version>',
+        '</properties><dependencies><dependency>',
+        '  <groupId>org.example</groupId>',
+        '  <artifactId>demo</artifactId>',
+        '  <version>${a.version}</version>',
+        '</dependency></dependencies></project>',
+      ].join('\n'),
+    });
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'org.example:demo')?.purl).toBeDefined();
     }, dir);
   });
 

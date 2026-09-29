@@ -1,10 +1,13 @@
 import type { CreateHqPublisherOptions, HqPublisher, HqSocketLike } from '@wrongstack/core/hq';
 import { createHqPublisherFromEnv, resolveHqConfig } from '@wrongstack/core/hq';
+import type { Config } from '@wrongstack/core/types';
 import { WebSocket } from 'ws';
 import { createKanbanHqSync, type KanbanHqSyncStats } from './kanban-hq-sync.js';
+import { createSageHqSync } from './sage-hq-sync.js';
 import { CLI_VERSION } from './version.js';
 
-type CliHqPublisherOptions = Omit<CreateHqPublisherOptions, 'socketFactory'> & {
+type CliHqPublisherOptions = Omit<CreateHqPublisherOptions, 'socketFactory' | 'appConfig'> & {
+  appConfig?: Pick<Config, 'hq' | 'Sage'> | undefined;
   socketFactory?: CreateHqPublisherOptions['socketFactory'];
 };
 
@@ -35,6 +38,7 @@ interface CliHqConnectionOptions extends CliHqPublisherOptions {
    * two writers applying the same remote snapshots to the same board files.
    */
   ownKanbanSync?: boolean | undefined;
+  ownSageSync?: boolean | undefined;
 }
 
 /** Sentinel connection key for same-machine auto-discovery (see below). */
@@ -86,19 +90,25 @@ function resolvedHqConnectionKey(options: CliHqPublisherOptions): string | undef
   // The redaction policy is fixed when a publisher is built, so a `/hq raw`
   // toggle only takes effect through a rebuild. It comes from config/env, not
   // from the discovery marker, so it cannot cause discovery churn.
-  return `${endpoint}\nraw=${String(config.rawContent)}`;
+  return `${endpoint}\nraw=${String(config.rawContent)}\nsage=${options.appConfig?.Sage?.storage?.directory ?? ''}`;
 }
 
 export function startCliHqConnection(options: CliHqConnectionOptions): CliHqConnection {
   const shouldOwnKanbanSync =
     options.ownKanbanSync !== false && options.onKanbanSnapshot === undefined;
   let kanbanSync: ReturnType<typeof createKanbanHqSync> | undefined;
+  let sageSync: ReturnType<typeof createSageHqSync> | undefined;
+  const shouldOwnSageSync =
+    (options.ownSageSync ?? options.ownKanbanSync !== false) &&
+    options.onSageSnapshot === undefined;
   const publisherOptions: CliHqConnectionOptions = shouldOwnKanbanSync
     ? {
         ...options,
         onKanbanSnapshot: (snapshot) => kanbanSync?.handleRemote(snapshot),
       }
-    : options;
+    : { ...options };
+  if (shouldOwnSageSync)
+    publisherOptions.onSageSnapshot = (snapshot) => sageSync?.handleRemote(snapshot);
   let publisher: HqPublisher | undefined;
   let publisherKey: string | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -112,6 +122,8 @@ export function startCliHqConnection(options: CliHqConnectionOptions): CliHqConn
     if (publisher === undefined) return;
     kanbanSync?.stop();
     kanbanSync = undefined;
+    sageSync?.stop();
+    sageSync = undefined;
     publisher.close();
     publisher = undefined;
     publisherKey = undefined;
@@ -138,6 +150,8 @@ export function startCliHqConnection(options: CliHqConnectionOptions): CliHqConn
       return;
     }
 
+    sageSync?.stop();
+    sageSync = undefined;
     publisher?.close();
     publisher = undefined;
     publisherKey = undefined;
@@ -150,6 +164,12 @@ export function startCliHqConnection(options: CliHqConnectionOptions): CliHqConn
       kanbanSync?.stop();
       kanbanSync = createKanbanHqSync(options.projectRoot, next.project.projectId);
     }
+    if (shouldOwnSageSync)
+      sageSync = createSageHqSync(
+        options.projectRoot,
+        next,
+        current.appConfig?.Sage?.storage?.directory,
+      );
     next.connect();
     if (kanbanSync !== undefined) {
       kanbanSync.attachPublisher(next).catch((error: unknown) => {
@@ -181,6 +201,7 @@ export function startCliHqConnection(options: CliHqConnectionOptions): CliHqConn
         timer = undefined;
       }
       kanbanSync?.stop();
+      sageSync?.stop();
       publisher?.close();
       publisher = undefined;
       publisherKey = undefined;

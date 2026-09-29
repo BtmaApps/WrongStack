@@ -25,6 +25,20 @@ export interface SqliteStoreGraphHost {
     opts?: { maxDepth?: number; limit?: number },
   ) => Promise<MemoryGraphEdge[]>;
 }
+/**
+ * Cascade-delete graph edges for forget, clear, delete, and HQ imports.
+ * Shared structural related_to edges (symbol→file, file→directory, ancestors)
+ * survive removal of one memory because other memories use them for traversal.
+ */
+export function cascadeDeleteEdges(
+  stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>,
+  nodeId: string,
+): void {
+  stmt("DELETE FROM edges WHERE (from_node = ? OR to_node = ?) AND relation != 'related_to'").run(
+    nodeId,
+    nodeId,
+  );
+}
 export function syncAnchorEdges(host: SqliteStoreGraphHost, memory: Sage): void {
   const deps = { stmt: (sql: string) => host.stmt(sql), nowIso: () => host.nowIso() };
   syncSqliteAnchorEdges(deps, memory);

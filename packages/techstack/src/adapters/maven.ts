@@ -23,6 +23,34 @@ interface MavenDependency {
 }
 
 /**
+ * Resolve `${key}` property references in a version string.
+ *
+ * Maven properties may reference OTHER properties, and this parser stores each
+ * property's RAW value, so a single substitution pass replaced `${a}` with the
+ * literal text `${b}` and stopped — leaving the placeholder in the version and
+ * therefore in the purl (`pkg:maven/g/a@${b}`), an identity no registry can
+ * resolve. Resolve to a fixed point instead, bounded so mutually recursive
+ * properties terminate rather than hang.
+ *
+ * An unknown key is left verbatim, preserving the existing deliberate
+ * behaviour: it is not a resolvable version.
+ */
+function resolveProperties(value: string, properties: ReadonlyMap<string, string>): string {
+  let current = value;
+  // Each productive pass consumes one property, so |properties| passes is a
+  // bound well above any acyclic chain; the cap is what makes cycles terminate.
+  for (let pass = 0; pass <= properties.size; pass++) {
+    const next = current.replace(
+      /\$\{([^}]+)\}/g,
+      (whole, key: string) => properties.get(key) ?? whole,
+    );
+    if (next === current) return current;
+    current = next;
+  }
+  return current;
+}
+
+/**
  * Minimal XML parser for `<dependency>` blocks inside pom.xml.
  * Does not handle inheritance/dependencyManagement — this is Tier B partial.
  */
@@ -72,10 +100,8 @@ function parsePomDependencies(xml: string): MavenDependency[] {
     const rawVersion =
       xmlTagValue(block, 'version') ??
       (groupId && artifactId ? managed.get(`${groupId}:${artifactId}`) : undefined);
-    const version = rawVersion?.replace(
-      /\$\{([^}]+)\}/g,
-      (_whole, key: string) => properties.get(key) ?? `\${${key}}`,
-    );
+    const version =
+      rawVersion === undefined ? undefined : resolveProperties(rawVersion, properties);
     const scope = xmlTagValue(block, 'scope');
     if (groupId && artifactId) {
       deps.push({ groupId, artifactId, version, scope });

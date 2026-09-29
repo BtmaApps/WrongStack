@@ -55,7 +55,7 @@ interface HostExploreCompanionInput {
   mailboxProjectDir: string;
   roster: Record<string, SubagentConfig>;
   config?: HostExploreCompanionConfig | undefined;
-  subagentsAllowed?: (() => boolean) | undefined;
+  companionsAllowed?: (() => boolean) | undefined;
 }
 
 export function createHostExploreCompanion(
@@ -72,8 +72,8 @@ export function createHostExploreCompanion(
 
   /** Spawn (or reuse) the resident companion and return its subagent id. */
   const ensureResident = async (): Promise<string> => {
-    if (input.subagentsAllowed?.() === false) {
-      throw new Error('Subagents are disabled for this session.');
+    if (input.companionsAllowed?.() === false) {
+      throw new Error('Subagent companions are disabled for this session.');
     }
     if (residentId) {
       const alive = director.status().subagents.some((s) => s.id === residentId);
@@ -81,7 +81,7 @@ export function createHostExploreCompanion(
       residentId = undefined;
     }
     if (!template) throw new Error('explore-companion role missing from roster');
-    const subagentId = await director.spawn({
+    const subagentId = await director.spawnCompanion({
       ...template,
       id: `explore-companion-${sessionTag}`,
       name: 'Explore Companion',

@@ -59,6 +59,8 @@ export {
 };
 
 export interface CreateHttpServerOptions {
+  /** Read-only lookup of an existing local session; must never create an agent. */
+  getSessionProjectRoot?: ((sessionId: string) => string | undefined) | undefined;
   /** Port to listen on. Defaults to 3456 (or the `PORT` env var). */
   port?: number | undefined;
   /** Host/interface to bind. Typically the loopback for the WebUI. */

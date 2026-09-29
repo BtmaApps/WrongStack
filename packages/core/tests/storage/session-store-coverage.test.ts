@@ -50,6 +50,19 @@ describe('DefaultSessionStore — observability + edge coverage', () => {
     expect(events.emit.mock.calls.some((c) => c[0] === 'storage.cache_hit')).toBe(true);
   });
 
+  it('auto-compacts the index once deletes cross the same threshold', async () => {
+    const writer = await store.create({ id: 'del-compact', model: 'm', provider: 'p' });
+    await writer.close();
+    (store as never as { indexAppendCount: number }).indexAppendCount = 29;
+    await store.delete('del-compact');
+    const lines = (await fs.readFile(path.join(tmp, '_index.jsonl'), 'utf8'))
+      .split('\n')
+      .filter((line) => line.trim().length > 0);
+    expect(lines).toEqual([expect.stringContaining('"action":"delete"')]);
+    expect(lines[0]).toContain('del-compact');
+    expect(lines.some((line) => line.includes('"title"'))).toBe(false);
+  });
+
   it('auto-compacts the index once the append threshold is crossed', async () => {
     (store as never as { indexAppendCount: number }).indexAppendCount = 29;
     const w = await store.create({ id: 'compact-trigger', model: 'm', provider: 'p' });

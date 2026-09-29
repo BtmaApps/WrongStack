@@ -104,6 +104,8 @@ export function WelcomeScreen() {
       client,
       slug: BUG_HUNTER_SLUG,
       requireSoloSession: true,
+      // Solo, but memory + explore companions stay: they are read-only.
+      keepCompanions: true,
       subagentsAllowed,
       sessionId,
       setPrefs,

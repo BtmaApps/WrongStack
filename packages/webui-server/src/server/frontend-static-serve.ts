@@ -71,6 +71,7 @@ export function findInstalledPackageJson(
 }
 
 export interface StaticServeOptions {
+  getSessionProjectRoot?: CreateHttpServerOptions['getSessionProjectRoot'];
   host: string;
   httpPort: number;
   globalRoot: string;
@@ -355,6 +356,7 @@ export async function startStaticServe(
       : undefined);
 
   const server = create({
+    getSessionProjectRoot: opts.getSessionProjectRoot,
     host: opts.host,
     port: opts.httpPort,
     distDir,

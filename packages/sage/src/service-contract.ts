@@ -53,12 +53,21 @@ export interface SearchQuery {
     | undefined;
   audience?: MemoryAudienceSelector | undefined;
   anchor?: MemoryAnchor | undefined;
-  cursor?:
-    | {
-        memoryId: string;
-        direction: 'before' | 'after';
-      }
-    | undefined;
+  /**
+   * Opaque pagination cursor from a previous call's `SearchResult.nextCursor`.
+   *
+   * Deterministic keyset pagination: the token encodes the ranking tuple
+   * (per-ranking sort keys plus the trailing `id` tiebreaker) of the last
+   * emitted hit, bound to the exact query + filters + ranking + session
+   * context that minted it. A token replayed under a different request —
+   * or a malformed token — throws {@link InvalidSearchCursorError} (map to
+   * HTTP 400 at the boundary); pagination never silently restarts. `limit`
+   * is deliberately not bound: page size may change mid-walk.
+   *
+   * No snapshot guarantee: bm25 depends on corpus statistics, so concurrent
+   * writes can reorder or rescore subsequent pages relative to the walk.
+   */
+  cursor?: string | undefined;
 }
 
 export interface SearchOptions {
@@ -76,6 +85,17 @@ export interface SearchOptions {
   sessionId?: string | undefined;
   /** Admin opt-out: include all sessions' session-scoped memories. */
   includeAllSessions?: boolean | undefined;
+  /**
+   * WebUI discovery policy (docs/plans/unified-sage-search-backend-contract.md):
+   * exclude ALL `scope: 'session'` memories — including legacy unowned
+   * ones — from result rows AND match counts, regardless of `sessionId` /
+   * `includeAllSessions`. The WebUI access token carries no authenticated
+   * agent-session identity, so no client-provided session id may ever
+   * surface a session-scoped record through this surface. Opt-in: existing
+   * consumers keep the shared per-session visibility rule. Bound into the
+   * cursor token.
+   */
+  excludeSessionScoped?: boolean | undefined;
 }
 
 export interface SearchHit {
@@ -92,7 +112,15 @@ export interface SearchHit {
   createdAt: string;
   updatedAt: string;
   verifiedAt?: string | undefined;
+  /** Absolute quality score in [0, 1], comparable across result sets. */
   score: number;
+  /**
+   * Raw FTS5 bm25 source score from the lexical channel (lower = better;
+   * typically negative). `null` when the hit ranked without a text query —
+   * the plain channel orders by metadata only. Advisory: NOT comparable
+   * across the two channels, and `score` above already folds it in.
+   */
+  bm25?: number | null;
   matchReason: SearchMatchReason;
 }
 
@@ -102,6 +130,34 @@ export interface SearchResult {
   totalCandidates: number;
   rankingApplied: SearchRanking;
   queryEcho: Partial<SearchQuery>;
+  /**
+   * Opaque cursor to fetch the next page under the SAME query + filters +
+   * ranking + session context, or `null` when this is the last page.
+   * Optional so pre-pagination result shapes stay valid; treat absent as
+   * `null`.
+   */
+  nextCursor?: string | null;
+  /**
+   * Which channel produced `hits`: `'fts'` (text query ranked by bm25 —
+   * `SearchHit.bm25` is populated) or `'plain'` (filters-only query ranked
+   * by metadata — `bm25` is `null`). Pages of one walk always share it.
+   */
+  matchChannel?: 'fts' | 'plain';
+}
+
+/**
+ * A `SearchQuery.cursor` token was malformed, of an unsupported version, or
+ * was minted under a different query/filter/ranking/session context.
+ *
+ * Boundary handlers should map this to HTTP 400 (client error), not 500: the
+ * caller must re-run the search from the first page under one consistent
+ * request shape. Pagination never silently restarts on a bad token.
+ */
+export class InvalidSearchCursorError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidSearchCursorError';
+  }
 }
 
 /** Capability used by CLI/TUI/WebUI presentation adapters. */

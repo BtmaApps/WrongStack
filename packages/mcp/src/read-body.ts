@@ -24,6 +24,10 @@ export async function readBodyCapped(
   res: ReadableResponse,
   maxBytes: number = MAX_MCP_HTTP_BODY_BYTES,
 ): Promise<string> {
+  const safeCap =
+    typeof maxBytes === 'number' && Number.isFinite(maxBytes) && maxBytes >= 0
+      ? maxBytes
+      : MAX_MCP_HTTP_BODY_BYTES;
   const body = res.body;
   if (!body || typeof body.getReader !== 'function') {
     return await res.text();
@@ -37,13 +41,13 @@ export async function readBodyCapped(
       if (done) break;
       if (!value) continue;
       total += value.byteLength;
-      if (total > maxBytes) {
+      if (total > safeCap) {
         await reader.cancel().catch(() => undefined);
         throw new ToolError({
-          message: `MCP response body exceeded ${maxBytes} bytes — refusing to buffer`,
+          message: `MCP response body exceeded ${safeCap} bytes — refusing to buffer`,
           code: 'TOOL_EXECUTION_FAILED',
           toolName: 'mcp_transport',
-          context: { maxBytes, received: total },
+          context: { maxBytes: safeCap, received: total },
         });
       }
       chunks.push(value);

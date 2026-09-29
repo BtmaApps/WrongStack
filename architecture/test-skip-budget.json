@@ -489,6 +489,11 @@
     {
       "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
       "kind": "runIf",
+      "fingerprint": "96d8af19fef2af8d"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
       "fingerprint": "b0d90c7551488b82"
     },
     {
@@ -515,6 +520,11 @@
       "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
       "kind": "runIf",
       "fingerprint": "f424c01029b3ff82"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "f9b71c2e6b1b0001"
     },
     {
       "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",

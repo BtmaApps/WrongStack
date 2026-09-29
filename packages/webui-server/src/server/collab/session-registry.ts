@@ -134,13 +134,15 @@ export class CollabSessionRegistry {
 
   /**
    * Cheap participant-set identity: participant ids are unique per join and
-   * `joinedAt` distinguishes a rejoin, so the fingerprint changes exactly on
-   * join/leave — the only events that alter `collab.state`.
+   * `joinedAt` distinguishes a rejoin. The fingerprint changes on join/leave
+   * and on in-place role transitions — `grant_control` flips `target.role`
+   * without touching `joinedAt` — i.e. on every event that alters the
+   * `collab.state` payload.
    */
   stateFingerprint(sessionId: string): string {
     const bucket = this.bySession.get(sessionId);
     if (!bucket || bucket.size === 0) return '';
-    return [...bucket].map((p) => `${p.participantId}:${p.joinedAt}`).join('|');
+    return [...bucket].map((p) => `${p.participantId}:${p.role}:${p.joinedAt}`).join('|');
   }
 
   /** Resolve the session a participant id currently lives in, if any. */

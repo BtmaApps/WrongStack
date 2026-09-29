@@ -250,7 +250,7 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
       llmSelector: config.context?.llmSelector,
       getSystemOneJudge: () =>
         resolveTypeSafeJudge({
-          config,
+          config: container.safeResolve(TOKENS.ConfigStore)?.get() ?? config,
           feature: 'compaction',
           logger: container.safeResolve(TOKENS.Logger),
         }),

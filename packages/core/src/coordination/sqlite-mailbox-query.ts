@@ -36,6 +36,10 @@ export async function query(
   // An explicit empty id set matches nothing — and `IN ()` is not valid
   // SQL, so this has to short-circuit before the statement is built.
   if (query.ids !== undefined && query.ids.length === 0) return [];
+  const limit =
+    typeof query.limit === 'number' && Number.isFinite(query.limit) && query.limit >= 1
+      ? Math.floor(query.limit)
+      : 50;
   const statuses = query.unreadBy === undefined ? await host.getAgentStatuses() : undefined;
   const where: string[] = [];
   const params: Array<string | number> = [];
@@ -129,7 +133,7 @@ export async function query(
   sql += ' ORDER BY timestamp DESC, rowid DESC';
   if (canPreLimit) {
     sql += ' LIMIT ?';
-    params.push(query.limit ?? 50);
+    params.push(limit);
   }
   const rows = host.stmt(sql).all(...params) as unknown as MessageRow[];
   const idFilter = query.ids === undefined ? undefined : new Set(query.ids);
@@ -181,7 +185,7 @@ export async function query(
     messages = kept;
   }
   messages.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
-  return messages.slice(0, query.limit ?? 50).map((message) => {
+  return messages.slice(0, limit).map((message) => {
     const copy = {
       ...projectMailboxCompletion(message, query.unreadBy, statuses),
       readBy: { ...message.readBy },

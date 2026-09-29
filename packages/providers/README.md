@@ -198,7 +198,7 @@ Extended thinking (chain-of-thought) is managed through the `Request.reasoning` 
 
 - **Anthropic**: `reasoning.enabled` → `thinking: { type: "enabled", budget_tokens }`. The budget is derived automatically from `maxTokens` and `reasoning.effort`. Thinking is streamed as `thinking_start`, `thinking_delta`, `thinking_signature`, and `thinking_stop` events. The signature must be echoed back on the next request — the stream parser handles this automatically.
 
-- **OpenAI** (o-series models): `reasoning.effort` → `reasoning_effort: "low"|"medium"|"high"`. Values `minimal`, `xhigh`, and `max` are filtered to avoid provider 400s. Reasoning content from the response (`delta.reasoning_content`) is echoed back as `message.reasoning_content` on subsequent turns.
+- **OpenAI** (o-series models): `reasoning.effort` → `reasoning_effort: "low"|"medium"|"high"`. Values `minimal`, `xhigh`, and `max` are filtered to avoid provider 400s. Reasoning content from the response (`delta.reasoning_content`) is echoed back as `message.reasoning_content` on subsequent turns. Cerebras rejects that field and takes `message.reasoning` instead: `*.cerebras.ai` gets `reasoning` automatically, any other endpoint that 400s on the field is retried with `reasoning` and then without an echo (learned per model for the session), and the `reasoningEchoField` quirk (`reasoning_content` | `reasoning` | `omit`) pins it up front.
 
 - **Gemini**: `reasoning.enabled` → `generationConfig.thinkingConfig: { type: "enabled"|"disabled" }`.
 

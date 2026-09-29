@@ -92,7 +92,7 @@ import {
   readSummaryManifestFile,
   type SummaryManifestHost,
 } from './session-store/summary-manifest.js';
-import { locateTranscript } from './session-store/transcript-location.js';
+import { locateTranscript, type TranscriptLocation } from './session-store/transcript-location.js';
 import type {
   IndexCacheEntry,
   SessionFileRef,
@@ -115,7 +115,16 @@ export class DefaultSessionStore implements SessionStore {
   private readonly maintenanceHolderId = randomUUID();
   private readonly storagePolicy: SessionStoragePolicy;
   private readonly autoArchive: boolean;
-  private archiveIdleInFlight: Promise<SessionArchiveIdleResult> | null = null;
+  /**
+   * One idle-archive pass at a time. A second caller with the same policy
+   * shares it; a different policy waits, then runs on its own. The promise
+   * here is the inner pass, not the async wrapper, so a later policy cannot
+   * be cleared by the earlier pass's `finally`.
+   */
+  private archiveIdleInFlight: {
+    key: string;
+    promise: Promise<SessionArchiveIdleResult>;
+  } | null = null;
 
   private readonly _loadCache = new Map<
     string,
@@ -316,7 +325,9 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async fork(id: string, opts: SessionForkOptions = {}): Promise<ForkedSession> {
-    return forkSession(this, id, opts);
+    // The child records this string as its parent. A leaf or prefix must be
+    // the canonical id, or the fork tree cannot find the parent session.
+    return forkSession(this, await this.resolveId(id), opts);
   }
 
   async readRawEvents(id: string): Promise<SessionEvent[]> {
@@ -343,35 +354,60 @@ export class DefaultSessionStore implements SessionStore {
    * `maxAgeDays` is an age floor for the sweep, not a filter for what counts as
    * garbage — anything younger survives, so a mid-sweep capture is safe; an
    * unreadable transcript makes the sweep throw instead of guessing its refs.
+   * A non-finite or negative age throws too: `mtime >= NaN` is never true, so
+   * the floor would otherwise delete a checkpoint written moments ago.
    */
   async collectCheckpointGarbage(maxAgeDays = 30): Promise<CheckpointGcResult> {
+    const ageDays = assertRetentionDays(maxAgeDays);
     const casRoot = path.join(this.dir, '_cas');
     const reachableManifestHashes = await collectReachableManifestHashes(this.dir);
     return sweepCheckpointCas({
       casRoot,
       reachableManifestHashes,
-      keepNewerThanMs: Date.now() - Math.max(0, maxAgeDays) * 86_400_000,
+      keepNewerThanMs: Date.now() - ageDays * 86_400_000,
     });
   }
 
   async resolveId(query: string): Promise<string> {
+    return this.resolveQuery(query, 'throw');
+  }
+
+  /**
+   * Canonical id for a user-facing reference.
+   *
+   * `passthrough` keeps delete() idempotent for an unknown id: a missing
+   * query is returned unchanged so the tombstone path can no-op, while an
+   * ambiguous query still throws instead of picking a session.
+   */
+  private async resolveQuery(query: string, onMissing: 'throw' | 'passthrough'): Promise<string> {
     if (this.catalogClient) {
-      return this.catalogClient.call('resolve_id', { query });
+      try {
+        return await this.catalogClient.call('resolve_id', { query });
+      } catch (error) {
+        if (onMissing === 'passthrough' && isMissingSessionError(error)) return query;
+        throw error;
+      }
     }
     const normalized = query.trim();
-    if (!normalized) throw new Error('Session not found: (empty query)');
-    if (normalized) {
-      try {
-        const located = await locateTranscript(this.dir, normalized);
-        if (located) return normalized;
-      } catch {
-        // Fall through to exact-leaf / unique-prefix resolution.
-      }
+    if (!normalized) {
+      if (onMissing === 'passthrough') return query;
+      throw new Error('Session not found: (empty query)');
+    }
+    try {
+      const located = await locateTranscript(this.dir, normalized);
+      if (located) return normalized;
+    } catch {
+      // Fall through to exact-leaf / unique-prefix resolution.
     }
     const ids = await this.collectSessionIds(this.dir);
     const resolution = resolveSessionId(normalized, ids);
     if (resolution.status === 'resolved') return resolution.id;
-    throw sessionIdResolutionError(resolution);
+    if (resolution.status === 'ambiguous' || onMissing === 'throw') {
+      throw sessionIdResolutionError(
+        resolution.status === 'ambiguous' ? resolution : { status: 'missing', query: normalized },
+      );
+    }
+    return query;
   }
 
   async resume(
@@ -416,9 +452,12 @@ export class DefaultSessionStore implements SessionStore {
     mode: { full: true } | { full: false },
     onLoadProgress?: (progress: SessionLoadProgress) => void,
   ): Promise<SessionData> {
-    const located = await this.requireTranscript(id);
+    // Same reference rules as resume: a unique leaf or prefix names the
+    // canonical transcript. An ambiguous or unknown reference throws.
+    const canonical = await this.resolveId(id);
+    const located = await this.requireTranscript(canonical);
     return executeLoadSession({
-      id,
+      id: canonical,
       file: located.filePath,
       full: mode.full,
       loadCache: this.loadCache,
@@ -433,15 +472,46 @@ export class DefaultSessionStore implements SessionStore {
     predicate: (event: SessionEvent, eventIndex: number, ts: string) => boolean,
     opts?: { limit?: number | undefined; signal?: AbortSignal | undefined },
   ): Promise<Array<{ event: SessionEvent; eventIndex: number; ts: string }>> {
-    const located = await locateTranscript(this.dir, id);
+    // Missing stays an empty result. A unique leaf or prefix searches the
+    // canonical transcript; an ambiguous reference still throws. The public
+    // contract also accepts the id with a `.jsonl` / `.jsonl.gz` suffix.
+    // Resolve before the limit cap: a non-positive limit is an empty hit
+    // list, not a reason to hide an ambiguous id. The walker checks the cap
+    // only after a push, so 0 and -1 used to return the first hit.
+    const located = await this.locateSearchTranscript(id);
     if (!located) return [];
+    const limit = opts?.limit;
+    if (limit !== undefined && Number.isFinite(limit) && limit <= 0) return [];
     return searchSessionEvents({
       file: located.filePath,
       secretScrubber: this.secretScrubber,
       predicate,
-      limit: opts?.limit,
+      limit,
       signal: opts?.signal,
     });
+  }
+
+  /**
+   * Resolve a search id, then the same id with one transcript suffix removed
+   * when that file is not itself a session. An id that already ends in
+   * `.jsonl` keeps the exact file.
+   */
+  private async locateSearchTranscript(id: string): Promise<TranscriptLocation | null> {
+    const direct = await this.resolveQuery(id, 'passthrough');
+    const located = await this.locateIfPossible(direct);
+    if (located) return located;
+    const stripped = stripSessionTranscriptQuery(id.trim());
+    if (stripped === id.trim()) return null;
+    const canonical = await this.resolveQuery(stripped, 'passthrough');
+    return this.locateIfPossible(canonical);
+  }
+
+  private async locateIfPossible(id: string): Promise<TranscriptLocation | null> {
+    try {
+      return await locateTranscript(this.dir, id);
+    } catch {
+      return null;
+    }
   }
 
   private asListSessionsHost(): ListSessionsHost {
@@ -514,6 +584,7 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   private async writeTombstone(id: string): Promise<void> {
+    let shouldCompact = false;
     await writeTombstone(
       this.dir,
       this.indexFile,
@@ -529,8 +600,16 @@ export class DefaultSessionStore implements SessionStore {
         this._indexDeletedIds.add(id);
         this._indexCache = null;
         this.indexAppendCount++;
+        // Deletes share the append counter. Compaction runs after this
+        // callback returns: writeTombstone still holds the index lock, and
+        // that lock is not reentrant.
+        if (this.indexAppendCount >= COMPACT_EVERY) {
+          this.indexAppendCount = 0;
+          shouldCompact = true;
+        }
       },
     );
+    if (shouldCompact) await this.compactIndex();
   }
 
   private async compactIndex(): Promise<void> {
@@ -696,10 +775,16 @@ export class DefaultSessionStore implements SessionStore {
         throw error;
       }
       this.clearLoadCache(canonical);
+      if (id !== canonical) this.clearLoadCache(id);
       return;
     }
-    await assertSessionCanBeDeleted(id, this.isSessionInUse);
-    await this.deleteSession(id);
+    // Unknown ids stay idempotent. A unique leaf or prefix must delete the
+    // canonical transcript — tombstoning the query itself leaves the session
+    // on disk and still listed.
+    const canonical = await this.resolveQuery(id, 'passthrough');
+    await assertSessionCanBeDeleted(canonical, this.isSessionInUse);
+    await this.deleteSession(canonical);
+    if (id !== canonical) this.clearLoadCache(id);
   }
 
   get sessionsDir(): string {
@@ -723,20 +808,21 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async rename(id: string, name: string): Promise<SessionSummary> {
+    const canonical = await this.resolveId(id);
     if (this.catalogClient) {
-      const canonical = await this.resolveId(id);
       const summary = await this.catalogClient.call('rename', {
         sessionId: canonical,
         name: sessionContentText(this.secretScrubber.scrub(name)),
       });
       this.clearLoadCache(canonical);
+      if (id !== canonical) this.clearLoadCache(id);
       return summary;
     }
-    const manifest = this.sessionPath(id, '.summary.json');
-    const located = await locateTranscript(this.dir, id);
-    const jsonlPath = located?.filePath ?? this.sessionPath(id, '.jsonl');
+    const manifest = this.sessionPath(canonical, '.summary.json');
+    const located = await locateTranscript(this.dir, canonical);
+    const jsonlPath = located?.filePath ?? this.sessionPath(canonical, '.jsonl');
     const updated = await executeRenameSession({
-      id,
+      id: canonical,
       name,
       manifest,
       jsonlPath,
@@ -747,20 +833,24 @@ export class DefaultSessionStore implements SessionStore {
       appendToIndexStrict: (sum) => this.appendToIndexStrict(sum),
       isSessionInUse: this.isSessionInUse,
     });
-    this.clearLoadCache(id);
+    this.clearLoadCache(canonical);
+    if (id !== canonical) this.clearLoadCache(id);
     return updated;
   }
 
   async prune(maxAgeDays = 30): Promise<number> {
+    // Same rejection as the catalog prune. A NaN or negative cutoff compares
+    // false against every mtime and deletes the young sessions it should keep.
+    const ageDays = assertRetentionDays(maxAgeDays);
     if (this.catalogClient) {
       return this.catalogClient.call('prune', {
-        maxAgeDays,
+        maxAgeDays: ageDays,
         holderId: this.maintenanceHolderId,
       });
     }
     const deleted = await pruneSessionFiles(
       this.dir,
-      maxAgeDays,
+      ageDays,
       (id) => this.deleteSession(id),
       this.isSessionInUse,
     );
@@ -771,7 +861,10 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async clearHistory(id: string): Promise<void> {
-    const canonical = this.catalogClient ? await this.resolveId(id) : id;
+    // Leaf and prefix references resolve with or without the catalog daemon.
+    // Skipping that step wrote a new transcript under the query and left the
+    // real session's history in place.
+    const canonical = await this.resolveId(id);
     await executeClearSessionHistory({
       id,
       canonical,
@@ -802,14 +895,27 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async archiveIdle(policy?: Partial<SessionStoragePolicy>): Promise<SessionArchiveIdleResult> {
-    if (this.archiveIdleInFlight) return this.archiveIdleInFlight;
-    this.archiveIdleInFlight = executeArchiveIdle(this.asArchiveHost(), {
-      ...this.storagePolicy,
-      ...policy,
-    }).finally(() => {
-      this.archiveIdleInFlight = null;
+    const requested: SessionStoragePolicy = { ...this.storagePolicy, ...policy };
+    const key = archivePolicyKey(requested);
+    const current = this.archiveIdleInFlight;
+    if (current?.key === key) return current.promise;
+    // A backfill (or any other policy) that arrives while a narrower pass is
+    // running must not adopt that pass's result. Wait it out, then run.
+    if (current) {
+      await current.promise.catch(() => undefined);
+      return this.archiveIdle(policy);
+    }
+    // Companion journals are chosen from the host policy. Without this
+    // override, includeSubagents on the call is ignored and the store
+    // default gzips them anyway.
+    const promise = executeArchiveIdle(
+      { ...this.asArchiveHost(), storagePolicy: requested },
+      requested,
+    ).finally(() => {
+      if (this.archiveIdleInFlight?.promise === promise) this.archiveIdleInFlight = null;
     });
-    return this.archiveIdleInFlight;
+    this.archiveIdleInFlight = { key, promise };
+    return promise;
   }
 
   private async summarize(id: string, mtime: string): Promise<SessionSummary> {
@@ -821,4 +927,36 @@ export class DefaultSessionStore implements SessionStore {
       secretScrubber: this.secretScrubber,
     });
   }
+}
+
+/**
+ * Finite ages only. `NaN` and negatives must not reach a cutoff: every
+ * comparison with `NaN` is false, and a negative cutoff sits in the future.
+ */
+function assertRetentionDays(maxAgeDays: number): number {
+  if (typeof maxAgeDays !== 'number' || !Number.isFinite(maxAgeDays) || maxAgeDays < 0) {
+    throw new TypeError('Invalid prune age');
+  }
+  return maxAgeDays;
+}
+
+function stripSessionTranscriptQuery(query: string): string {
+  const lower = query.toLowerCase();
+  if (lower.endsWith('.jsonl.gz')) return query.slice(0, -'.jsonl.gz'.length);
+  if (lower.endsWith('.jsonl')) return query.slice(0, -'.jsonl'.length);
+  return query;
+}
+
+function isMissingSessionError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('Session not found:');
+}
+
+/** Equal policies share one in-flight pass. `backfill` is the opt-in flag. */
+function archivePolicyKey(policy: SessionStoragePolicy): string {
+  return [
+    policy.hotKeepSessions,
+    policy.archiveAfterDays,
+    policy.includeSubagents ? 1 : 0,
+    policy.backfill === true ? 1 : 0,
+  ].join(':');
 }

@@ -47,6 +47,7 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
 
 import { _resetProcessRegistry } from '../src/process-registry.js';
 import {
+  acquireLock,
   getPersistentProcessRegistry,
   PersistentProcessRegistry,
   resetPersistentProcessRegistry,
@@ -333,5 +334,48 @@ describe('PersistentProcessRegistry — lock and error paths', () => {
 
     const r = new PersistentProcessRegistry();
     await expect(r.getAllProtectedPids()).rejects.toThrow();
+  });
+
+  it('fails closed on an unreadable live lock instead of unlinking it', async () => {
+    // Regression: acquireLock's EEXIST catch-branch used to unlink the
+    // lockfile whenever the stale-check read failed ("assume stale, try to
+    // steal"). A transient EACCES/EBUSY on a LIVE lock (AV scan, indexer)
+    // deleted it and admitted a second writer into the registry
+    // read-modify-write beside the real holder. Contract: an unreadable lock
+    // is NOT stealable — the age check is the only stale signal on Windows
+    // — so acquisition must fail closed on timeout without unlinking.
+    const lockPath = path.join(
+      os.tmpdir(),
+      'wstack-persist-test-' + process.pid,
+      '.process-registry.lock',
+    );
+    mockStore.set(lockPath, `${process.pid}:${os.hostname()}:${Date.now()}`);
+    const writeMock = vi.mocked(fs.writeFile);
+    const readMock = vi.mocked(fs.readFile);
+    const unlinkMock = vi.mocked(fs.unlink);
+    const unlinkCallsBefore = unlinkMock.mock.calls.length;
+    const origWrite = writeMock.getMockImplementation();
+    const origRead = readMock.getMockImplementation();
+    try {
+      writeMock.mockImplementation(async (filePath: Parameters<typeof fs.writeFile>[0]) => {
+        if (typeof filePath === 'string' && filePath === lockPath) {
+          throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
+        }
+        return origWrite?.(filePath, '');
+      });
+      readMock.mockImplementation(async (filePath: Parameters<typeof fs.readFile>[0]) => {
+        if (typeof filePath === 'string' && filePath === lockPath) {
+          throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+        }
+        if (!origRead) throw new Error('Missing original readFile mock');
+        return origRead(filePath, 'utf8');
+      });
+      await expect(acquireLock(lockPath, 350)).rejects.toThrow(/Failed to acquire lock/);
+      expect(unlinkMock.mock.calls.length).toBe(unlinkCallsBefore);
+    } finally {
+      if (origWrite) writeMock.mockImplementation(origWrite);
+      if (origRead) readMock.mockImplementation(origRead);
+      mockStore.delete(lockPath);
+    }
   });
 });

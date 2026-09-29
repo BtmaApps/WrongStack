@@ -367,6 +367,82 @@ describe('FileServer', () => {
     }
   });
 
+  // `line`/`limit` arrive straight from the agent on `fs/read_text_file`, so
+  // this validation is an input boundary. `line` is 1-based (ACP spec) and
+  // `limit` is a line count, so 0/-1/fractional values must be rejected rather
+  // than silently coerced into a surprising slice.
+  describe('line/limit validation', () => {
+    const file = () => path.join(projectRoot, 'lines.txt');
+    const withContent = (text: string) =>
+      new FileServer({
+        projectRoot,
+        operations: fakeOperations({
+          realpath: async (f) => f,
+          readFile: async () => text,
+        }),
+      });
+
+    for (const [label, line, limit] of [
+      ['line 0', 0, undefined],
+      ['negative line', -1, undefined],
+      ['fractional line', 1.5, undefined],
+      ['NaN line', Number.NaN, undefined],
+      ['negative limit', undefined, -1],
+      ['fractional limit', undefined, 2.5],
+    ] as const) {
+      it(`rejects ${label}`, async () => {
+        await expect(
+          withContent('a\nb\nc\n').readTextFile({
+            sessionId: 's1',
+            path: file(),
+            ...(line !== undefined ? { line } : {}),
+            ...(limit !== undefined ? { limit } : {}),
+          }),
+        ).rejects.toMatchObject({ code: 'INVALID_PATH' });
+      });
+    }
+
+    // Boundaries that must keep working. `line` is a 1-based START offset and
+    // `limit` bounds how many lines from there — so `line` alone returns the
+    // remainder, and only `line` + `limit` narrows to a single line.
+    it('treats line 1 with no limit as the whole file', async () => {
+      const result = await withContent('a\nb\nc\n').readTextFile({
+        sessionId: 's1',
+        path: file(),
+        line: 1,
+      });
+      expect(result.content).toBe('a\nb\nc\n');
+    });
+
+    it('reads a single line with line 1 and limit 1', async () => {
+      const result = await withContent('a\nb\nc\n').readTextFile({
+        sessionId: 's1',
+        path: file(),
+        line: 1,
+        limit: 1,
+      });
+      expect(result.content).toBe('a\n');
+    });
+
+    it('starts at the requested line', async () => {
+      const result = await withContent('a\nb\nc\n').readTextFile({
+        sessionId: 's1',
+        path: file(),
+        line: 2,
+      });
+      expect(result.content).toBe('b\nc\n');
+    });
+
+    it('treats limit 0 as an empty window rather than an error', async () => {
+      const result = await withContent('a\nb\nc\n').readTextFile({
+        sessionId: 's1',
+        path: file(),
+        limit: 0,
+      });
+      expect(result.content).toBe('');
+    });
+  });
+
   it('correctly handles root directories ending with a path separator', async () => {
     const isWin = process.platform === 'win32';
     const rootPath = isWin ? 'C:\\' : '/';

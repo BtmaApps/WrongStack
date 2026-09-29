@@ -28,6 +28,8 @@ interface ParsedTtl {
   error?: string | undefined;
 }
 
+const MAX_SAFE_TTL_MS = 8_640_000_000_000_000; // ±100,000,000 days, max ECMAScript Date range
+
 export function parseTokenTtlValue(raw: string): ParsedTtl {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
@@ -38,6 +40,9 @@ export function parseTokenTtlValue(raw: string): ParsedTtl {
     const ms = Number.parseInt(trimmed, 10);
     if (!Number.isFinite(ms) || ms <= 0) {
       return { error: `TTL value must be positive (got ${raw})` };
+    }
+    if (!Number.isSafeInteger(ms) || ms > MAX_SAFE_TTL_MS) {
+      return { error: `TTL value exceeds maximum safe duration (got ${raw})` };
     }
     return { value: ms };
   }
@@ -50,7 +55,15 @@ export function parseTokenTtlValue(raw: string): ParsedTtl {
     if (!Number.isFinite(value) || value <= 0 || multiplier === undefined) {
       return { error: `TTL value must be positive with a valid unit (got ${raw})` };
     }
-    return { value: value * multiplier };
+    const totalMs = value * multiplier;
+    if (
+      !Number.isSafeInteger(value) ||
+      !Number.isSafeInteger(totalMs) ||
+      totalMs > MAX_SAFE_TTL_MS
+    ) {
+      return { error: `TTL value exceeds maximum safe duration (got ${raw})` };
+    }
+    return { value: totalMs };
   }
   return {
     error:

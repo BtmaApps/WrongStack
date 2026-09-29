@@ -22,7 +22,12 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function request(query = '', method = 'GET', authorized = true) {
+async function request(
+  query = '',
+  method = 'GET',
+  authorized = true,
+  getSessionProjectRoot?: (sessionId: string) => string | undefined,
+) {
   let status = 0;
   let body: Record<string, unknown> = {};
   const res = {
@@ -37,7 +42,7 @@ async function request(query = '', method = 'GET', authorized = true) {
     { method } as IncomingMessage,
     res,
     new URL(`http://localhost/api/project-kit${query}`),
-    { projectRoot: root, globalRoot: '/global' },
+    { projectRoot: root, globalRoot: '/global', getSessionProjectRoot },
     true,
     authorized,
     vi.fn(),
@@ -62,6 +67,30 @@ async function seed() {
 }
 
 describe('Project Kit HTTP browser', () => {
+  it('resolves local WebUI tabs without a cross-process live entry for catalog and detail', async () => {
+    await seed();
+    const lookup = vi.fn((id: string) => (id === 'local-tab' ? root : undefined));
+    expect(await request('?sessionId=local-tab', 'GET', true, lookup)).toMatchObject({
+      status: 200,
+      body: { projectRoot: root, tools: [{ name: 'strings.unique' }] },
+    });
+    expect(
+      await request('?sessionId=local-tab&name=strings.unique', 'GET', true, lookup),
+    ).toMatchObject({
+      status: 200,
+      body: { kit: { name: 'strings.unique' } },
+    });
+    expect(getSession).not.toHaveBeenCalled();
+    expect(await request('?sessionId=unknown', 'GET', true, lookup)).toMatchObject({ status: 404 });
+    lookup.mockClear();
+    expect(await request('?sessionId=..%2Foutside', 'GET', true, lookup)).toMatchObject({
+      status: 400,
+    });
+    expect(await request('?sessionId=local-tab', 'GET', false, lookup)).toMatchObject({
+      status: 401,
+    });
+    expect(lookup).not.toHaveBeenCalled();
+  });
   it('lists and inspects through the real read-only service without importing kit code', async () => {
     await seed();
     const list = await request();

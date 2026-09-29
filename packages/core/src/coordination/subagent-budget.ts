@@ -1,5 +1,5 @@
-import type { Usage } from '../types/provider.js';
 import type { EventBus } from '../kernel/events.js';
+import type { Usage } from '../types/provider.js';
 import {
   buildSubagentFinishNotice,
   DEFAULT_SUBAGENT_FINISH_GRACE_MS,
@@ -754,8 +754,11 @@ export class SubagentBudget {
       if (decision === 'stop') return 'stop';
 
       // 'extend' — patch in-place limits BEFORE resolving (single write path).
-      this.patchLimits(decision.extend);
-      return decision;
+      if (decision && typeof decision === 'object' && 'extend' in decision && decision.extend) {
+        this.patchLimits(decision.extend);
+        return decision;
+      }
+      return 'stop';
     } finally {
       this._pendingNegotiations.delete(entry.kind);
     }

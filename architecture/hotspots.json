@@ -7,7 +7,7 @@
       "relativeImports": 2
     },
     "packages/acp/src/client/acp-session.ts": {
-      "lines": 945,
+      "lines": 946,
       "relativeImports": 22
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
@@ -15,7 +15,7 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 850,
+      "lines": 855,
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
@@ -27,7 +27,7 @@
       "relativeImports": 47
     },
     "packages/cli/src/fleet/host.ts": {
-      "lines": 917,
+      "lines": 920,
       "relativeImports": 26
     },
     "packages/cli/src/picker.ts": {
@@ -51,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 899,
+      "lines": 902,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
@@ -75,15 +75,15 @@
       "relativeImports": 11
     },
     "packages/core/src/coordination/director.ts": {
-      "lines": 974,
+      "lines": 1002,
       "relativeImports": 45
     },
     "packages/core/src/coordination/index.ts": {
-      "lines": 847,
+      "lines": 854,
       "relativeImports": 101
     },
     "packages/core/src/coordination/subagent-budget.ts": {
-      "lines": 855,
+      "lines": 858,
       "relativeImports": 3
     },
     "packages/core/src/core/fallback-model.ts": {
@@ -127,7 +127,7 @@
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
-      "lines": 825,
+      "lines": 963,
       "relativeImports": 41
     },
     "packages/core/src/types/provider.ts": {
@@ -159,7 +159,7 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 973,
+      "lines": 992,
       "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
@@ -167,7 +167,7 @@
       "relativeImports": 21
     },
     "packages/mcp/src/server.ts": {
-      "lines": 894,
+      "lines": 902,
       "relativeImports": 2
     },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
@@ -215,15 +215,19 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 979,
+      "lines": 980,
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
       "lines": 903,
       "relativeImports": 10
     },
+    "packages/sage/src/sqlite-store-search.ts": {
+      "lines": 930,
+      "relativeImports": 7
+    },
     "packages/sage/src/sqlite-store.ts": {
-      "lines": 981,
+      "lines": 992,
       "relativeImports": 42
     },
     "packages/sage/src/store-helpers.ts": {
@@ -243,7 +247,7 @@
       "relativeImports": 19
     },
     "packages/tools/src/bash-kill-guard.ts": {
-      "lines": 810,
+      "lines": 817,
       "relativeImports": 2
     },
     "packages/tools/src/bash.ts": {
@@ -303,7 +307,7 @@
       "relativeImports": 52
     },
     "packages/vector-memory/src/store.ts": {
-      "lines": 839,
+      "lines": 898,
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -323,8 +327,8 @@
       "relativeImports": 7
     },
     "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts": {
-      "lines": 806,
-      "relativeImports": 4
+      "lines": 847,
+      "relativeImports": 6
     },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {
       "lines": 824,
@@ -379,7 +383,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 845,
+      "lines": 848,
       "relativeImports": 36
     },
     "apps/desktop/src/main/runtime-manager.ts": {

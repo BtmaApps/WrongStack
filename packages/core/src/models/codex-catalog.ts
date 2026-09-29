@@ -39,10 +39,15 @@ export interface CodexModelMeta {
  */
 export const CODEX_MODELS: ReadonlyArray<CodexModelMeta> = [
   {
+    id: 'gpt-6.1-sol',
+    name: 'GPT-6.1 Sol',
+    description: 'Latest workhorse model for coding and everyday work.',
+    current: true,
+  },
+  {
     id: 'gpt-6-astra',
     name: 'GPT-6 Astra',
     description: 'Most capable model for complex work across code, apps, and research.',
-    current: true,
   },
   {
     id: 'gpt-6-sol',

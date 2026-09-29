@@ -27,7 +27,8 @@ import {
   normalizeSubagentModelPlan,
   seedSessionSubagentPolicy,
   setSessionSubagentModelPlan,
-  setSessionSubagentsAllowed,
+  setSessionSubagentPolicy,
+  subagentPolicyModeFrom,
 } from '@wrongstack/core/coordination';
 import { type DestructiveKind, resolveYoloConfirmKinds } from '@wrongstack/core/security';
 import { type ProviderConfig, resolveTokenSavingTier } from '@wrongstack/core/types';
@@ -479,8 +480,11 @@ export function buildRoutes(
       seedSessionSubagentPolicy(target);
       return sessionId ? prefSnapshotImpl(target.meta) : cb.prefSnapshot();
     },
-    setSubagentsAllowed: (allowed, sessionId) =>
-      setSessionSubagentsAllowed(sessionContext(sessionId), allowed),
+    setSubagentsAllowed: (allowed, sessionId, companions) =>
+      setSessionSubagentPolicy(
+        sessionContext(sessionId),
+        subagentPolicyModeFrom(allowed, companions),
+      ),
     setSubagentModelPlan: (plan, sessionId) =>
       setSessionSubagentModelPlan(sessionContext(sessionId), normalizeSubagentModelPlan(plan)),
     persist: cb.persistPrefsToConfig,

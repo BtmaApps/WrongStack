@@ -18,6 +18,12 @@ vi.mock('../src/server/http-server/analytics-handler.js', () => ({
   handleApiAnalyticsPost: vi.fn(),
   handleApiAnalyticsSummary: vi.fn(),
 }));
+vi.mock('../src/server/http-server/memory-search-page.js', () => ({
+  handleMemorySearchPage: vi.fn(),
+}));
+vi.mock('../src/server/http-server/memory-search-resolve.js', () => ({
+  handleMemorySearchResolve: vi.fn(),
+}));
 vi.mock('../src/server/http-server/vector-memory-handlers.js', () => ({
   handleVectorMemoryForget: vi.fn(),
   handleVectorMemorySearch: vi.fn(),
@@ -70,6 +76,8 @@ import * as deadcodeHandlers from '../src/server/deadcode-handlers.js';
 import * as analyticsHandlers from '../src/server/http-server/analytics-handler.js';
 import * as apiHandlers from '../src/server/http-server/api-handlers.js';
 import { handleApiRoutes } from '../src/server/http-server/api-router.js';
+import { handleMemorySearchPage } from '../src/server/http-server/memory-search-page.js';
+import { handleMemorySearchResolve } from '../src/server/http-server/memory-search-resolve.js';
 import * as vectorHandlers from '../src/server/http-server/vector-memory-handlers.js';
 import * as intakeHandlers from '../src/server/requirement-intake-handlers.js';
 import * as techstackHandlers from '../src/server/techstack-handlers.js';
@@ -243,6 +251,8 @@ describe('handleApiRoutes — session and fleet routes', () => {
       ['GET', '/api/analytics/summary'],
       ['GET', '/api/vector-memory/status'],
       ['GET', '/api/memory/search'],
+      ['GET', '/api/memory/search-page'],
+      ['GET', '/api/memory/resolve/01M00000000000000000000000'],
       ['GET', '/api/techstack/snapshot'],
     ] as const) {
       const out = await route(method, path, {}, { accessTokenOk: false });
@@ -559,6 +569,53 @@ describe('handleApiRoutes — debug and deadcode routes', () => {
 });
 
 describe('handleApiRoutes — memory routes', () => {
+  it('dispatches ranked search pages only after the access-token gate', async () => {
+    const getMemoryStore = vi.fn(() => ({ marker: 'sage' }));
+    const denied = await route(
+      'GET',
+      '/api/memory/search-page',
+      { getMemoryStore },
+      { accessTokenOk: false },
+    );
+    expect(denied.res.statusCode).toBe(401);
+    expect(handleMemorySearchPage).not.toHaveBeenCalled();
+    expect(getMemoryStore).not.toHaveBeenCalled();
+
+    const allowed = await route('GET', '/api/memory/search-page', { getMemoryStore });
+    expect(allowed.handled).toBe(true);
+    expect(handleMemorySearchPage).toHaveBeenCalledWith(
+      allowed.res,
+      allowed.url,
+      expect.any(Function),
+    );
+    expect(vi.mocked(handleMemorySearchPage).mock.calls[0]![2]()).toEqual({ marker: 'sage' });
+  });
+
+  it('dispatches exact-ID resolution only after the access-token gate', async () => {
+    const getMemoryStore = vi.fn(() => ({ marker: 'sage' }));
+    const denied = await route(
+      'GET',
+      '/api/memory/resolve/01M00000000000000000000000',
+      { getMemoryStore },
+      { accessTokenOk: false },
+    );
+    expect(denied.res.statusCode).toBe(401);
+    expect(handleMemorySearchResolve).not.toHaveBeenCalled();
+    expect(getMemoryStore).not.toHaveBeenCalled();
+
+    const allowed = await route('GET', '/api/memory/resolve/01M00000000000000000000000', {
+      getMemoryStore,
+    });
+    expect(allowed.handled).toBe(true);
+    expect(handleMemorySearchResolve).toHaveBeenCalledWith(
+      allowed.res,
+      '01M00000000000000000000000',
+      expect.any(Function),
+    );
+    const getStore = vi.mocked(handleMemorySearchResolve).mock.calls[0]![2];
+    expect(getStore()).toEqual({ marker: 'sage' });
+  });
+
   it('dispatches the four vector-memory routes plus SAGE search', async () => {
     await route('DELETE', '/api/vector-memory/store/mem%201');
     expect(vector['handleVectorMemoryForget']).toHaveBeenCalledWith(

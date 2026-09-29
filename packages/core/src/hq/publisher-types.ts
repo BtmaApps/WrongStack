@@ -7,6 +7,7 @@ import type {
   HqProjectIdentity,
   HqQueuedCommand,
   HqRedactionPolicy,
+  HqSageSnapshotPayload,
 } from './protocol.js';
 
 export interface HqSocketLike {
@@ -58,6 +59,7 @@ export interface HqPublisherOptions {
   commandPollLimit?: number;
   onCommand?: HqPublisherCommandHandler;
   onKanbanSnapshot?: (snapshot: HqKanbanSnapshotPayload) => void | Promise<void>;
+  onSageSnapshot?: (snapshot: HqSageSnapshotPayload) => void | Promise<void>;
   resolveEndpoint?: () => { url: string; token?: string | undefined } | undefined;
   discoveryPollMs?: number;
   heartbeatIntervalMs?: number;

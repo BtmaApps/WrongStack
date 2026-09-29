@@ -1,6 +1,7 @@
 import type * as http from 'node:http';
 import * as v8 from 'node:v8';
 import { sanitizeApiError } from '@wrongstack/core/security';
+import { getSageSurface } from '@wrongstack/sage';
 import { getIndexState } from '@wrongstack/tools';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import {
@@ -51,6 +52,8 @@ import {
   handleApiSessionMessage,
   handleApiSessions,
 } from './api-handlers.js';
+import { handleMemorySearchPage } from './memory-search-page.js';
+import { handleMemorySearchResolve, isWebuiSearchVisible } from './memory-search-resolve.js';
 import { decodeSessionId, strictDecodeParam } from './security-helpers.js';
 import {
   handleMemorySearch,
@@ -61,6 +64,7 @@ import {
 } from './vector-memory-handlers.js';
 
 export interface ApiRouterDeps {
+  getSessionProjectRoot?: ((sessionId: string) => string | undefined) | undefined;
   globalRoot?: string | undefined;
   projectRoot?: string | undefined;
   indexDir?: string | undefined;
@@ -618,7 +622,14 @@ export async function handleApiRoutes(
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return true;
     }
-    await handleVectorMemorySearch(res, url, () => deps.getVectorMemoryStore?.());
+    await handleVectorMemorySearch(res, url, () => deps.getVectorMemoryStore?.(), {
+      resolveSageMirror: async (id) => {
+        const store = deps.getMemoryStore?.();
+        const sage = store && getSageSurface(store);
+        const memory = await sage?.getSage(id);
+        return memory && isWebuiSearchVisible(memory) ? memory : undefined;
+      },
+    });
     return true;
   }
 
@@ -629,6 +640,31 @@ export async function handleApiRoutes(
       return true;
     }
     await handleVectorMemoryStore(res, req, () => deps.getVectorMemoryStore?.());
+    return true;
+  }
+
+  // Exact-ID links from vector search use the restricted WebUI discovery
+  // policy, not the raw memory.sage.get management operation.
+  const memoryResolveMatch = /^\/api\/memory\/resolve\/([^/]+)$/.exec(url.pathname);
+  if (memoryResolveMatch && req.method === 'GET') {
+    if (requireAccessToken && !accessTokenOk) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return true;
+    }
+    await handleMemorySearchResolve(res, memoryResolveMatch[1]!, () => deps.getMemoryStore?.());
+    return true;
+  }
+
+  // Ranked, cursor-paged SAGE search. The legacy /api/memory/search route
+  // remains a bounded explanation endpoint for existing clients.
+  if (url.pathname === '/api/memory/search-page' && req.method === 'GET') {
+    if (requireAccessToken && !accessTokenOk) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return true;
+    }
+    await handleMemorySearchPage(res, url, () => deps.getMemoryStore?.());
     return true;
   }
 

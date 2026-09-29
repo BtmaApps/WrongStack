@@ -4,6 +4,28 @@
     "name": "OpenAI Codex (ChatGPT sign-in)",
     "doc": "https://developers.openai.com/codex/models",
     "models": {
+      "gpt-6.1-sol": {
+        "id": "gpt-6.1-sol",
+        "name": "GPT-6.1 Sol",
+        "description": "Latest workhorse model for coding and everyday work.",
+        "reasoning": true,
+        "reasoningConfig": {
+          "default": "enabled",
+          "disableSupported": false,
+          "effortSupported": true,
+          "effortLevels": ["low", "medium", "high", "xhigh", "max"],
+          "preserveThinking": "unsupported"
+        },
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
       "gpt-6-astra": {
         "id": "gpt-6-astra",
         "name": "GPT-6 Astra",

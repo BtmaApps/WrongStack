@@ -225,6 +225,7 @@ export interface CreateHqPublisherOptions {
   onCommand?: HqPublisherCommandHandler;
   /** Receives the latest merged Kanban snapshot from HQ. */
   onKanbanSnapshot?: HqPublisherOptions['onKanbanSnapshot'];
+  onSageSnapshot?: HqPublisherOptions['onSageSnapshot'];
   /** Dormant discovery re-check interval override (tests / tight loops). */
   discoveryPollMs?: number;
   /** Logger for structured connect-failure diagnostics. */
@@ -287,6 +288,7 @@ export function createHqPublisherFromEnv(
     ...(options.onKanbanSnapshot !== undefined
       ? { onKanbanSnapshot: options.onKanbanSnapshot }
       : {}),
+    ...(options.onSageSnapshot !== undefined ? { onSageSnapshot: options.onSageSnapshot } : {}),
     // Auto-discovery: re-read the local HQ runtime marker + client token on
     // every connect attempt so late-started/restarted HQs are picked up.
     ...(config.discover

@@ -142,8 +142,25 @@ describe('canonical preference handlers', () => {
 
     await handlePrefsUpdate(state.context, ws, { subagentsAllowed: false }, 'solo-session');
 
-    expect(setSubagentsAllowed).toHaveBeenCalledWith(false, 'solo-session');
+    // A plain solo toggle is strict: the companions stop too.
+    expect(setSubagentsAllowed).toHaveBeenCalledWith(false, 'solo-session', false);
     expect(state.meta['subagentsAllowed']).toBe(false);
+    expect(state.persist).not.toHaveBeenCalled();
+  });
+
+  it('passes the companion half of a solo request through, still session-only', async () => {
+    const state = makeContext();
+    const setSubagentsAllowed = vi.fn(async () => undefined);
+    state.context.setSubagentsAllowed = setSubagentsAllowed;
+
+    await handlePrefsUpdate(
+      state.context,
+      ws,
+      { subagentsAllowed: false, subagentCompanionsAllowed: true },
+      'bughunt-session',
+    );
+
+    expect(setSubagentsAllowed).toHaveBeenCalledWith(false, 'bughunt-session', true);
     expect(state.persist).not.toHaveBeenCalled();
   });
 

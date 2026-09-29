@@ -1,18 +1,31 @@
+import { type HqServerSageSnapshotMessage, isHqSageSnapshotPayload } from './protocol/sage.js';
 import type { HqServerCommandBatchMessage, HqServerKanbanSnapshotMessage } from './protocol.js';
 import { extractSocketMessageData } from './publisher-socket.js';
 
 export function parseHqServerMessage(
   event: unknown,
   projectId: string,
-): HqServerCommandBatchMessage | HqServerKanbanSnapshotMessage | null {
+):
+  | HqServerCommandBatchMessage
+  | HqServerKanbanSnapshotMessage
+  | HqServerSageSnapshotMessage
+  | null {
   const data = extractSocketMessageData(event);
   if (data === null) return null;
   try {
     const parsed = JSON.parse(data) as
       | Partial<HqServerCommandBatchMessage>
+      | Partial<HqServerSageSnapshotMessage>
       | Partial<HqServerKanbanSnapshotMessage>;
     if (parsed.type === 'hq.command_batch' && Array.isArray(parsed.commands)) {
       return parsed as HqServerCommandBatchMessage;
+    }
+    if (
+      parsed.type === 'hq.sage_snapshot' &&
+      isHqSageSnapshotPayload(parsed.payload) &&
+      parsed.payload.projectId === projectId
+    ) {
+      return parsed as HqServerSageSnapshotMessage;
     }
     if (parsed.type === 'hq.kanban_snapshot') {
       const payload = (parsed as Partial<HqServerKanbanSnapshotMessage>).payload;

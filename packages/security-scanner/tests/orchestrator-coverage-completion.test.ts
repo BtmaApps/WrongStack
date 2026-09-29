@@ -197,6 +197,36 @@ describe('orchestrator branch completion', () => {
         abortController: new AbortController(),
       }),
     ).resolves.toEqual([]);
+
+    // F1 regression: LLM finding missing file property or containing null items
+    const robustFindings = await scanBatch({
+      provider: provider(
+        JSON.stringify([
+          null,
+          {
+            // 'file' omitted
+            severity: 'CRITICAL',
+            category: 'secrets',
+            title: 'Hardcoded Secret',
+            description: 'Token found in source code',
+            remediation: 'Use environment variables',
+          },
+        ]),
+      ),
+      model: undefined,
+      projectRoot: root,
+      files: [absolute],
+      skill,
+      techStack: stack('python'),
+      fileConcurrency: 1,
+      abortController: new AbortController(),
+    });
+    expect(robustFindings).toHaveLength(1);
+    expect(robustFindings[0]).toMatchObject({
+      file: 'source.ts',
+      severity: 'critical',
+      title: 'Hardcoded Secret',
+    });
   });
 
   it('uses report defaults and fallback extensions for Python and other stacks', async () => {

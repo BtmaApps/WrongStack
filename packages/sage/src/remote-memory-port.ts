@@ -77,6 +77,8 @@ export interface ProjectSageMemoryPortOptions
    */
   workspaceRoot?: string | undefined;
   clientId?: string | undefined;
+  /** `false` = attach to a running daemon only, never spawn one. Default `true`. */
+  spawnIfMissing?: boolean | undefined;
 }
 
 export class ProjectSageMemoryPort implements MemoryPort {
@@ -221,7 +223,9 @@ export class ProjectSageMemoryPort implements MemoryPort {
     this.clientId = options.clientId ?? `sage-client-${process.pid}-${randomUUID()}`;
     this.events = options.events;
     this.getSessionId = options.getSessionId;
-    this.connection = new SageProjectServerConnection(options.projectRoot, options.directory);
+    this.connection = new SageProjectServerConnection(options.projectRoot, options.directory, {
+      spawnIfMissing: options.spawnIfMissing,
+    });
     this.unsubscribeEvent = this.connection.onEvent((event, payload, meta) => {
       if (!this.events) return;
       const enriched =
@@ -357,6 +361,15 @@ export class ProjectSageMemoryPort implements MemoryPort {
 
   async dispose(): Promise<void> {
     this.unsubscribeEvent();
+    this.connection.close();
+  }
+
+  /**
+   * Drop the daemon socket but stay usable: the next call reconnects. An
+   * attach-only client releases it when idle, so its open socket does not
+   * keep a daemon alive after every WrongStack host left the project.
+   */
+  releaseConnection(): void {
     this.connection.close();
   }
 

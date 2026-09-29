@@ -151,15 +151,19 @@ function createTimeoutSignal(
   } else {
     parent?.addEventListener('abort', onAbort, { once: true });
   }
+  const safeTimeout =
+    typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? timeoutMs
+      : 60_000;
   const onTimeout = () => {
     if (hold?.()) {
-      timer = setTimeout(onTimeout, timeoutMs);
+      timer = setTimeout(onTimeout, safeTimeout);
       timer.unref?.();
       return;
     }
-    ctrl.abort(new Error(`MCP HTTP request timed out after ${timeoutMs}ms`));
+    ctrl.abort(new Error(`MCP HTTP request timed out after ${safeTimeout}ms`));
   };
-  let timer = setTimeout(onTimeout, timeoutMs);
+  let timer = setTimeout(onTimeout, safeTimeout);
   timer.unref?.();
   return {
     signal: ctrl.signal,
@@ -214,8 +218,18 @@ export abstract class BaseHTTPTransport {
     this.headers = { ...opts.headers };
     this.authorizationProvider = opts.authorizationProvider;
     this.authorizationResource = canonicalMcpResource(opts.url);
-    this.timeout = opts.startupTimeoutMs ?? 10_000;
-    this.requestTimeout = opts.requestTimeoutMs ?? 60_000;
+    this.timeout =
+      typeof opts.startupTimeoutMs === 'number' &&
+      Number.isFinite(opts.startupTimeoutMs) &&
+      opts.startupTimeoutMs > 0
+        ? opts.startupTimeoutMs
+        : 10_000;
+    this.requestTimeout =
+      typeof opts.requestTimeoutMs === 'number' &&
+      Number.isFinite(opts.requestTimeoutMs) &&
+      opts.requestTimeoutMs > 0
+        ? opts.requestTimeoutMs
+        : 60_000;
     if (opts.tls) {
       if (opts.tls.rejectUnauthorized === false) {
         // Origin only: after config-env expansion the URL can carry a

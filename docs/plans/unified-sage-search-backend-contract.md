@@ -1,0 +1,17 @@
+# Unified SAGE search — backend contract (B0)
+
+This contract governs the WebUI Memory view's SAGE and vector search adapters. It does not change agent-context retrieval. The two corpora are distinct: a SAGE result is an authoritative memory; a vector result is an entry in the semantic index, which may be a SAGE mirror or an independent entry. `lexical`/`vector`/`both` describe the channels within **SAGE** search, not the source store of a vector-panel hit. Scores are channel-specific and must not be presented as interchangeable percentages.
+
+## Visibility
+
+The WebUI search endpoints authenticate via the existing WebUI access-token boundary. That token has no authenticated *agent session identity*. Consequently, unified WebUI discovery and exact-ID resolution exclude **all** `scope: 'session'` SAGE memories, including legacy unowned ones; vector search excludes session-scoped vector entries. A client-provided session ID or vector metadata never grants access to a SAGE record. SAGE search includes `active` and `stale` records by default; records with other statuses require an explicit future management mode. Audience selectors are metadata for management display, not a claim that the current WebUI session matches a role. `contextPolicy: 'never'` bars automatic LLM injection, not operator inspection.
+
+An exact-ID navigation lookup must fetch by ID and then apply the same WebUI status/session policy **before returning any record or distinction between an absent and hidden ID**. The old `memory.sage.get` is a raw management operation and is not suitable for cross-tab navigation. Link provenance is established only from a well-formed vector `metadata.source === 'sage'` plus `metadata.sageId`, then validated with that exact-ID lookup. An unvalidated mirror is `unknown`, never an actionable link. Vector-only results retain their own vector scope/kind; mirror scope/kind are not interchangeable with SAGE scope/kind (`project`/`note` are used for mirrored entries).
+
+## Results, filters, and paging
+
+A unified presentation hit has an ID and corpus (`sage` or `vector`), text, and corpus-specific provenance: SAGE ranking source and nullable channel scores, or vector cosine/provider and a validated optional SAGE ID. Return `nextCursor` separately for each corpus; a `count` equal to the number of returned hits is **not** a matching total. Do not claim a global total without computing it across the full filtered corpus. Library recency `listSagePage` is distinct from relevance-ranked search.
+
+Only expose filters enforced before the backend top-k/page selection. Initial shared filters are SAGE status, kind, scope, tag, and audience only where the backend implements them; unsupported vector filters must be reported as unavailable rather than applied to one page. Rank by score descending with ID as deterministic tiebreak. Cursors are opaque and bound to normalized query, corpus, filters and ranking version; reject invalid/mismatched cursors. Traversal is deterministic for an unchanged corpus. Concurrent writes do not have snapshot consistency: a new query starts from page one. Bound page size and avoid retaining an unbounded per-request snapshot.
+
+A query embedding failure on an interactive vector search is an explicit provider-unavailable error, not an empty hit set. Missing store and zero results are separate states. Existing consumers of `searchSage`, `listSagePage`, and raw vector tool searches remain backward compatible; new behavior is opt-in via the WebUI search contract.

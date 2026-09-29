@@ -506,14 +506,11 @@ export class ACPSession {
           createPromise,
           new Promise<never>((_, reject) => {
             rejectCreate = reject;
-            // Defensive: a listener registered on an already-aborted signal
-            // never fires, so an abort that landed inside the synchronous
-            // prefix above must reject here explicitly — otherwise the race
-            // would hang on createPromise, ignoring the cancellation.
-            if (signal.aborted) {
-              reject(new ACPSessionError('aborted', 'prompt was aborted by the parent'));
-              return;
-            }
+            // No already-aborted re-check here: prompt() returns early on an
+            // aborted signal, and everything between that check and this
+            // executor is synchronous (createSessionWithAuth only runs its own
+            // synchronous prefix before returning a pending promise), so the
+            // signal cannot flip to aborted before the listener is attached.
             signal.addEventListener('abort', onCreateAbort, { once: true });
           }),
         ]);
@@ -546,18 +543,10 @@ export class ACPSession {
       // Per the ACP spec the session id is an opaque, non-empty string. This
       // is the wire trust boundary — validate before branding instead of
       // blindly casting whatever session/new returned.
-      if (typeof sessionId !== 'string' || sessionId.length === 0) {
-        // This throw sits between the two cleanup owners (the create-phase
-        // catch above and the turn-phase finally below), and neither runs
-        // for it: detach onAbort (it never fired on this path) and release
-        // the controller here, or every prompt() against a misbehaving
-        // agent leaks the listener — and the eventual abort fires it
-        // against whatever prompt is live at that time.
-        signal.removeEventListener('abort', onAbort);
-        this.promptCallbackAbort?.abort();
-        this.promptCallbackAbort = null;
-        throw new ACPSessionError('protocol_error', 'session/new returned no session id');
-      }
+      // No re-validation of sessionId here: executeCreateSession (see
+      // acp-session-ops.ts) already rejects a non-string or empty id, so a
+      // value that reaches this point is a non-empty string by construction.
+      // This guard duplicated that check and could never fire.
       this.sessionId = sessionId as SessionId;
     }
 
@@ -836,6 +825,18 @@ export class ACPSession {
     }
 
     if (msg.method === 'session/update') {
+      // Defense in depth. A `session/update` names the session it belongs to.
+      // Our own server already drops updates for a session it closed, deleted
+      // or replaced (the `emit` guard in handleSessionPromptOp), but this
+      // client also speaks to third-party ACP agents that need not do the
+      // same. Folding a foreign session's chunk into `scratch` splices another
+      // conversation into this run's transcript — and `scratch` is what
+      // prompt() returns and what the replay history is built from. Only drop
+      // when the update explicitly names a DIFFERENT session, so a
+      // non-conformant update that omits sessionId is still handled as before.
+      const updateSessionId = (msg.params as { sessionId?: unknown } | null | undefined)
+        ?.sessionId;
+      if (typeof updateSessionId === 'string' && updateSessionId !== this.sessionId) return;
       handleAcpSessionUpdate(msg, this.scratch, (event) => this.emitProgress(event));
       return;
     }

@@ -132,11 +132,16 @@ export function retrieveContext(
   relativeOf: (file: string) => string,
 ): ContextResult {
   const query = options.query.trim();
-  const limit = Math.max(1, Math.min(options.limit ?? DEFAULT_LIMIT, 50));
-  const symbolsPerFile = Math.max(
-    1,
-    Math.min(options.symbolsPerFile ?? DEFAULT_SYMBOLS_PER_FILE, 20),
-  );
+  const rawLimit =
+    typeof options.limit === 'number' && Number.isFinite(options.limit)
+      ? options.limit
+      : DEFAULT_LIMIT;
+  const limit = Math.max(1, Math.min(Math.trunc(rawLimit), 50));
+  const rawSymbols =
+    typeof options.symbolsPerFile === 'number' && Number.isFinite(options.symbolsPerFile)
+      ? options.symbolsPerFile
+      : DEFAULT_SYMBOLS_PER_FILE;
+  const symbolsPerFile = Math.max(1, Math.min(Math.trunc(rawSymbols), 20));
   const prefix = normalisePrefix(options.pathPrefix);
   const vectorFiles = options.vectorFiles ?? [];
   const empty = (indexStatus: ContextResult['indexStatus']): ContextResult => ({

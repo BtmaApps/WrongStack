@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/cli",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "license": "MIT",
   "description": "WrongStack CLI — terminal AI coding agent with provider catalog from models.dev. Provides `wrongstack` and `wstack` binaries.",
   "keywords": [
@@ -61,6 +61,7 @@
     "@wrongstack/requirement-intake": "workspace:*",
     "@wrongstack/runtime": "workspace:*",
     "@wrongstack/sage": "workspace:*",
+    "@wrongstack/sage-mcp": "workspace:*",
     "@wrongstack/sdd": "workspace:*",
     "@wrongstack/security-scanner": "workspace:*",
     "@wrongstack/simpleui": "workspace:*",

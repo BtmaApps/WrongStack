@@ -5,11 +5,16 @@
  * `getVectorMemoryStore` defaults to undefined so non-CLI webui-server
  * hosts (e.g. a headless fleet dashboard) are unaffected.
  */
+import { createHash } from 'node:crypto';
 import type * as http from 'node:http';
 import { sanitizeApiError } from '@wrongstack/core/security';
 import type { MemoryPort } from '@wrongstack/core/types';
 import { cosineSimilarity, getSageSurface, type Sage } from '@wrongstack/sage';
-import type { VectorMemoryStore, VectorSearchHit } from '@wrongstack/vector-memory';
+import {
+  VectorMemoryProviderUnavailableError,
+  type VectorMemoryStore,
+  type VectorSearchHit,
+} from '@wrongstack/vector-memory';
 import { decodeSessionId } from './security-helpers.js';
 
 interface VectorMemoryStatusResponse {
@@ -38,11 +43,26 @@ interface VectorMemorySearchHit {
   text: string;
   summary?: string | undefined;
   tags: string[];
+  /** Scope of the matched vector entry (this route only serves `project`). */
+  scope?: string | undefined;
+  /** Kind of the matched vector entry (`note`/`fact`/`summary`/…). */
+  kind?: string | undefined;
+  /** Present only when SAGE visibility, ID and text match this mirror. */
+  sage?: { id: string; status: 'verified' } | undefined;
 }
 
 export interface VectorMemorySearchResponse {
   hits: VectorMemorySearchHit[];
   count: number;
+  /**
+   * Opaque rank cursor to pass back as `?cursor=` for the next page.
+   * Emitted only when the store returned a full page (there may be more);
+   * `null` when the page was short (the ranked result set is exhausted
+   * for these filters). This is a rank-position token over
+   * score DESC / id ASC — NOT a snapshot: entries written between calls
+   * can appear on later pages.
+   */
+  nextCursor: string | null;
   /**
    * Pairwise cosine similarity matrix between returned hits, in hit order.
    * Cell [i][j] is the similarity between hits[i] and hits[j]. Optional —
@@ -51,6 +71,32 @@ export interface VectorMemorySearchResponse {
    * whether the top-K results form coherent clusters.
    */
   similarity?: number[][] | undefined;
+}
+
+/**
+ * Optional extensions for `handleVectorMemorySearch`. Appended after the
+ * legacy `(res, url, getStore)` parameters so existing call sites keep
+ * working unchanged.
+ */
+export interface HandleVectorMemorySearchOptions {
+  /**
+   * Visibility-checked SAGE resolver used to validate mirror provenance.
+   * Given a `metadata.sageId`, returns the SAGE memory when it exists AND
+   * passes the caller's visibility rules (e.g. `isSageVisibleForSearch`
+   * over a `getSage` lookup), and `undefined` when it does not.
+   *
+   * Contract per hit: resolved memory → hit carries
+   * `sage.status: 'verified'`; `undefined` → the mirror is stale/hidden
+   * and the hit is DROPPED (the raw vector route must not bypass SAGE
+   * visibility); thrown → `'unknown'` and the hit is DROPPED as well
+   * (fail-closed: unverified mirror text never crosses this route).
+   *
+   * When omitted, every mirrored hit is DROPPED — unverified linkage
+   * is never served by the raw vector route.
+   */
+  resolveSageMirror?:
+    | ((sageId: string) => Promise<Sage | undefined> | Sage | undefined)
+    | undefined;
 }
 
 /** Shape the store exposes. Kept narrow so we don't leak the full class. */
@@ -133,13 +179,100 @@ export async function handleVectorMemoryStatus(
   }
 }
 
-/** Parse the search params from a URL into the shape the store expects. */
-function parseSearchParams(url: URL): {
+/** Query params `handleVectorMemorySearch` accepts. Anything else is rejected. */
+const VECTOR_SEARCH_SUPPORTED_PARAMS = [
+  'q',
+  'limit',
+  'threshold',
+  'similarity',
+  'scope',
+  'kind',
+  'cursor',
+] as const;
+
+/** Kinds the vector store can filter on server-side (whole corpus). */
+const VECTOR_SEARCH_KINDS = ['note', 'fact', 'summary', 'snippet', 'link'] as const;
+
+/** Bind a cursor to the query and all filters that affect ranking. */
+function rankQueryKey(
+  query: string,
+  threshold: number | undefined,
+  kind: string | undefined,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        query.trim().normalize('NFKC'),
+        threshold ?? null,
+        'project',
+        kind ?? null,
+        1,
+      ]),
+    )
+    .digest('hex');
+}
+
+/** Encode the rank position and query fingerprint; this is not a snapshot. */
+function encodeRankCursor(cursor: { score: number; id: string }, key: string): string {
+  return Buffer.from(JSON.stringify({ v: 1, k: key, s: cursor.score, i: cursor.id })).toString(
+    'base64url',
+  );
+}
+
+/** Invalid or mismatched cursors fail rather than restarting at page one. */
+function decodeRankCursor(raw: string, key: string): { score: number; id: string } | null {
+  if (raw.length > 2048) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+    if (
+      parsed.v !== 1 ||
+      parsed.k !== key ||
+      typeof parsed.s !== 'number' ||
+      !Number.isFinite(parsed.s) ||
+      parsed.s < 0 ||
+      parsed.s > 1 ||
+      typeof parsed.i !== 'string' ||
+      parsed.i.length === 0 ||
+      parsed.i.length > 256
+    )
+      return null;
+    return { score: parsed.s, id: parsed.i };
+  } catch {
+    return null;
+  }
+}
+
+interface VectorSearchParams {
   query: string;
   limit: number;
   threshold: number | undefined;
   similarity: boolean;
-} {
+  /** Always `project` today — user/session are excluded until a policy exists. */
+  scope: 'project';
+  kind: (typeof VECTOR_SEARCH_KINDS)[number] | undefined;
+  cursor: { score: number; id: string } | undefined;
+  cursorKey: string;
+}
+
+/**
+ * Parse and validate the search params from a URL into the shape the
+ * store expects. The parameter set is bounded: unknown parameters (e.g.
+ * SAGE `status`/`audience`, which the vector store cannot enforce
+ * server-side) are rejected with 400 instead of silently ignored or
+ * post-filtered — an ignored filter looks identical to an empty corpus.
+ */
+function parseSearchParams(url: URL): VectorSearchParams | { error: string; param: string } {
+  for (const key of url.searchParams.keys()) {
+    if (!(VECTOR_SEARCH_SUPPORTED_PARAMS as readonly string[]).includes(key)) {
+      return {
+        error: `Unsupported filter parameter \`${key}\` (supported: ${VECTOR_SEARCH_SUPPORTED_PARAMS.join(', ')})`,
+        param: key,
+      };
+    }
+  }
   const query = url.searchParams.get('q') ?? '';
   const rawLimit = Number.parseInt(url.searchParams.get('limit') ?? '10', 10);
   const limit = Math.min(50, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 10));
@@ -149,11 +282,55 @@ function parseSearchParams(url: URL): {
       ? Math.max(0, Math.min(1, Number.parseFloat(rawThreshold)))
       : undefined;
   const similarity = url.searchParams.get('similarity') === '1';
+
+  // Scope policy (B0): the raw vector route serves the shared,
+  // project-scoped store only. `user` and `session` entries are excluded
+  // until a caller-specific scope policy exists — this route has no
+  // session identity, so serving those scopes would leak other contexts'
+  // private text. The default AND the only accepted value is `project`.
+  const rawScope = url.searchParams.get('scope');
+  if (rawScope !== null && rawScope !== 'project') {
+    return {
+      error: `Scope \`${rawScope}\` is not available on this route (default and only supported scope is \`project\`; user/session entries are excluded until a caller-specific scope policy is defined)`,
+      param: 'scope',
+    };
+  }
+
+  const rawKind = url.searchParams.get('kind');
+  if (rawKind !== null && !(VECTOR_SEARCH_KINDS as readonly string[]).includes(rawKind)) {
+    return {
+      error: `Invalid \`kind\` (supported: ${VECTOR_SEARCH_KINDS.join(', ')})`,
+      param: 'kind',
+    };
+  }
+
+  const key = rankQueryKey(
+    query,
+    Number.isFinite(threshold) ? threshold : undefined,
+    rawKind ?? undefined,
+  );
+  const rawCursor = url.searchParams.get('cursor');
+  let cursor: { score: number; id: string } | undefined;
+  if (rawCursor !== null && rawCursor !== '') {
+    const decoded = decodeRankCursor(rawCursor, key);
+    if (!decoded) {
+      return {
+        error: 'Malformed `cursor` (expected the opaque token from a prior `nextCursor`)',
+        param: 'cursor',
+      };
+    }
+    cursor = decoded;
+  }
+
   return {
     query,
     limit,
     threshold: Number.isFinite(threshold) ? threshold : undefined,
     similarity,
+    scope: 'project',
+    kind: rawKind === null ? undefined : (rawKind as VectorSearchParams['kind']),
+    cursor,
+    cursorKey: key,
   };
 }
 
@@ -185,11 +362,35 @@ function cosineMatrix(vectors: ReadonlyArray<Float32Array>): number[][] {
   return out;
 }
 
-/** Handle `GET /api/vector-memory/search?q=…&limit=…&threshold=…`. */
+/**
+ * Resolve a batch of SAGE mirror ids through the visibility-checked
+ * resolver. Never throws: a resolver failure degrades that one id to
+ * `'unknown'` (which the search guard drops — fail-closed) rather than
+ * failing the whole route.
+ */
+async function resolveSageMirrors(
+  resolver: NonNullable<HandleVectorMemorySearchOptions['resolveSageMirror']>,
+  sageIds: readonly string[],
+): Promise<Map<string, Sage | undefined>> {
+  const outcomes = new Map<string, Sage | undefined>();
+  await Promise.all(
+    [...new Set(sageIds)].map(async (id) => {
+      try {
+        outcomes.set(id, await resolver(id));
+      } catch {
+        outcomes.set(id, undefined);
+      }
+    }),
+  );
+  return outcomes;
+}
+
+/** Handle `GET /api/vector-memory/search?q=…&limit=…&threshold=…&scope=…&kind=…&cursor=…`. */
 export async function handleVectorMemorySearch(
   res: http.ServerResponse,
   url: URL,
   getStore: () => VectorMemoryStore | undefined,
+  opts: HandleVectorMemorySearchOptions = {},
 ): Promise<void> {
   const store = getStore();
   if (!store) {
@@ -197,7 +398,13 @@ export async function handleVectorMemorySearch(
     res.end(JSON.stringify({ error: 'Vector memory not enabled in this host' }));
     return;
   }
-  const { query, limit, threshold, similarity } = parseSearchParams(url);
+  const parsed = parseSearchParams(url);
+  if ('error' in parsed) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: parsed.error, param: parsed.param }));
+    return;
+  }
+  const { query, limit, threshold, similarity, scope, kind, cursor, cursorKey } = parsed;
   if (query.trim().length === 0) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Missing required query parameter `q`' }));
@@ -208,31 +415,100 @@ export async function handleVectorMemorySearch(
       limit,
       ...(threshold !== undefined ? { threshold } : {}),
       includeVectors: similarity,
+      // Server-side whole-corpus filters — never post-filtered.
+      scope,
+      ...(kind !== undefined ? { kind } : {}),
+      ...(cursor !== undefined ? { cursor } : {}),
+      // Typed embedding failure: a provider outage must surface as 503,
+      // not as an empty result page indistinguishable from "no matches".
+      failOnEmbeddingError: true,
     });
+
+    // A mirrored SAGE entry must be visibility-checked before disclosing
+    // its text; vector metadata alone cannot authorize this response.
+    const resolver = opts.resolveSageMirror;
+    const sageIdOf = (h: VectorSearchHit): string | undefined => {
+      const raw = h.entry.metadata?.sageId;
+      return h.entry.metadata?.source === 'sage' && typeof raw === 'string' && raw.length > 0
+        ? raw
+        : undefined;
+    };
+    const allSageIds = hits.map(sageIdOf).filter((id): id is string => id !== undefined);
+    const outcomes =
+      resolver && allSageIds.length > 0
+        ? await resolveSageMirrors(resolver, allSageIds)
+        : undefined;
+
     const body: VectorMemorySearchResponse = {
-      hits: hits.map((h: VectorSearchHit) => ({
+      hits: [],
+      count: 0,
+      nextCursor: null,
+    };
+    const emittedVectors: Array<Float32Array | undefined> = [];
+    for (const h of hits) {
+      const sageId = sageIdOf(h);
+      const sageMemory = sageId ? outcomes?.get(sageId) : undefined;
+      // Metadata is writable by vector callers. Verify identity and current
+      // content as well as visibility before claiming or disclosing a mirror.
+      if (
+        h.entry.metadata?.source === 'sage' &&
+        (!sageMemory || sageMemory.id !== sageId || sageMemory.text !== h.entry.text)
+      )
+        continue;
+      body.hits.push({
         id: h.entry.id,
         score: h.score,
         text: h.entry.text,
         ...(h.entry.summary ? { summary: h.entry.summary } : {}),
         tags: h.entry.tags,
-      })),
-      count: hits.length,
-    };
+        scope: h.entry.scope,
+        kind: h.entry.kind,
+        ...(sageId
+          ? {
+              sage: {
+                id: sageId,
+                status: 'verified',
+              },
+            }
+          : {}),
+      });
+      emittedVectors.push(h.vector);
+    }
+    body.count = body.hits.length;
+
+    // Rank cursor for the next page. Computed from the LAST STORE HIT
+    // (even when it was dropped above) whenever the store returned a full
+    // page — the token is a rank position, so resuming after a dropped
+    // hit is correct and always advances. A short store page means the
+    // ranked result set is exhausted for these filters → null.
+    if (hits.length >= limit && hits.length > 0) {
+      const tail = hits[hits.length - 1]!;
+      body.nextCursor = encodeRankCursor({ score: tail.score, id: tail.entry.id }, cursorKey);
+    }
+
     // Optional pairwise-similarity matrix for the WebUI heatmap. Only
     // computed when the client opts in via `?similarity=1`. O(n·d) cost
     // is small (n ≤ 50) but skipped by default to keep the route lean.
-    if (similarity && hits.length > 1) {
-      const vecs = hits
-        .map((h: VectorSearchHit) => h.vector)
-        .filter((v): v is Float32Array => v !== undefined);
-      if (vecs.length === hits.length) {
+    if (similarity && body.hits.length > 1) {
+      const vecs = emittedVectors.filter((v): v is Float32Array => v !== undefined);
+      if (vecs.length === body.hits.length) {
         body.similarity = cosineMatrix(vecs);
       }
     }
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(body));
   } catch (error) {
+    if (error instanceof VectorMemoryProviderUnavailableError) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: 'Vector memory embedding provider unavailable',
+          code: 'EMBEDDING_PROVIDER_UNAVAILABLE',
+          detail: sanitizeApiError(error),
+        }),
+      );
+      return;
+    }
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({

@@ -453,6 +453,9 @@ export async function startWebUI(
   // locking browsers out of the WS upgrade when requireToken is active.
   const accessToken = resolveAuthToken(opts.accessToken);
   const httpServer = startHttpServer({
+    getSessionProjectRoot: (sessionId) =>
+      peekAgent?.(sessionId)?.ctx.projectRoot ??
+      (session.id === sessionId ? context.projectRoot : undefined),
     wsHost,
     httpPort,
     wsToken: accessToken,

@@ -50,7 +50,7 @@ function harness(timeoutMs?: number, ioTimeoutMs?: number) {
   );
   const terminate = vi.fn(async () => {});
   const director = {
-    spawn,
+    spawnCompanion: spawn,
     assignInternal,
     terminate,
     status: () => ({ subagents: [{ id: 'worker' }] }),

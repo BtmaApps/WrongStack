@@ -1,14 +1,27 @@
-## Interface and store contracts
+## Diff verification
 
-- Before flagging an added return field on a store interface as a break — e.g. `removedNonTerminal` on `ReportStore.compact` in `packages/core/src/plugins/review-report-store.ts` — grep `implements <Interface>`: when the store class is the sole implementer and consumers destructure named fields, the change is purely additive; only exact `toEqual` assertions on the returned object can break. [applied 11×, 11 ok]
-- Ground every store-method claim in the store definition file, not handler types or search results. Verify `useXStore.getState().<method>` calls against the definition — e.g. `setDeepDivePartial` exists and `jobStarted` takes 3 args in `packages/webui/src/stores/techstack-store.ts`; a typechecking handler can still throw a runtime `TypeError`. Zero `codebase-search` hits do not prove a zustand action is missing from `create((set) => ({...}))`; grep the store file before reporting a missing method.
+- Treat `read` as potentially stale when provenance contains `file.external.edit`. If a session-changed file still shows the pre-diff baseline, do not report it missing until a live `grep` confirms a distinctive new token, such as `--no-ext-diff` in `packages/bench/src/suites/swebench-patch.ts`.
+- If the review bundle lists changed files but omits diff hunks, do not substitute a full-file `read` for a large file: `[artifact middle omitted]` and the read cache can permanently hide the region. Use `grep` with `context_lines` around relevant function names instead; it bypasses that cache.
 
-## Import and dependency checks [applied 2×, 2 ok]
+## Architecture ratchet
 
-- Before accepting removal of `import * as X` or a named import, grep the whole file for residual uses (`grep 'X\.|removedName' <file>`); any hit means likely `TS2304` or runtime breakage — confirm no `isTokenExpired` or `HqServerAuth` refs remain in `packages/cli/src/hq-server.ts` after removing `import * as HqServerAuth`.
-- For new helper modules (`createHqSocketCredentialEnforcer`, `MailboxSnapshotMemory`), read the module and every callsite: verify each passed state field and callback signature, and that newly depended-on identifiers (e.g. `OPEN_STATE`) are already imported in the consuming file.
-- Before reporting a missing-file break for a module absent from the changed-file list (e.g. `required-skill-gate.js` consumed by `packages/core/src/execution/tool-executor.ts` and `packages/core/src/skills/index.ts`), confirm it exists on disk; review bundles may truncate sibling changes.
+- Treat every edit to `architecture/hotspots.json` as requiring same-change regeneration. Validate it against `validateHotspotBaseline` in `scripts/lib/architecture-health.mjs`: reject any `lines` or `relativeImports` drift for files at or above `thresholdLines` (800), any ≥800-line file absent from the baseline, and any baseline entry now below 800.
+- When reviewing `docs/reports/architecture-health-current.md`, do not infer missing tail data from vanished rows in “Largest production files”; its 50-row cap can reflow.
 
-## Pitfalls
+## Store contracts
 
-- Do not flag `optionalFn?.(arg).catch(cb)` as a `TypeError: undefined.catch` risk: optional chaining short-circuits the entire trailing chain, so `.catch` is not evaluated when the callee is absent. Before claiming an async-failure gap in `packages/tui/src/use-app-controller.tsx`, verify the callee's declared return type in the `AppProps`-style contract.
+- Ground claims in definitions and implementers, not handler types or zero-hit searches. Before flagging an added `ReportStore.compact` field such as `removedNonTerminal`, run `grep 'implements ReportStore'`; if `packages/core/src/plugins/review-report-store.ts` is the sole implementer and consumers use named destructuring, treat the field as additive unless an exact `toEqual` rejects it.
+- Compare `useXStore.getState().<method>` with `create((set) => ({...}))`. In `packages/webui/src/stores/techstack-store.ts`, verify `setDeepDivePartial` exists and `jobStarted` takes 3 args; zero `codebase-search` hits do not prove an action is missing.
+
+## Imports and runtime
+
+- Before accepting removal of `import * as X` or a named import, run `grep 'X\.|removedName' <file>` and inspect residual references. For `packages/cli/src/hq-server.ts`, confirm removal leaves no `isTokenExpired` or `HqServerAuth` references.
+- For `createHqSocketCredentialEnforcer`, `MailboxSnapshotMemory`, or `required-skill-gate.js`, inspect the module, every callsite, and the on-disk file before reporting missing fields, callback-arity errors, unresolved imports, or missing files; bundles may omit sibling changes consumed by `packages/core/src/execution/tool-executor.ts` or `packages/core/src/skills/index.ts`.
+- Do not flag `optionalFn?.(arg).catch(cb)` as an `undefined.catch` risk without first checking the callee’s declared return type in its `AppProps`-style contract.
+
+- When a `read` of a session-changed file returns the pre-diff baseline but the review bundle's provenance shows `file.external.edit`, do not report the change as missing — verify with a live `grep` for a distinctive new token (e.g. a newly added flag like `--no-ext-diff` in `packages/bench/src/suites/swebench-patch.ts`) before concluding; reads can serve stale snapshots after concurrent external edits. (anchors: `read`, `file.external.edit`, `grep`, `--no-ext-diff`, `packages/bench/src/suites/swebench-patch.ts`) [applied 3×, 3 ok]
+- When a review bundle lists changed files but omits the diff hunks, do not substitute a full-file `read` for the missing diff in large files — `read` returns `[artifact middle omitted]` and the read cache then refuses range re-reads as "unchanged since previous read," permanently hiding the changed region. Use `grep` with `context_lines` over function names in the file instead; `grep` is not subject to the read cache, so it is the reliable fallback for reaching a specific region of an already-read file. (anchors: `read`, `[artifact middle omitted]`, `grep`, `context_lines`) [applied 1×, 1 ok]
+- Treat any edit to `architecture/hotspots.json` as a ratchet that must be regenerated in the same change: `validateHotspotBaseline` in `scripts/lib/architecture-health.mjs` errors on *every* `lines` and `relativeImports` drift for files at or above `thresholdLines` (800), on any ≥800-line file missing from the baseline, and on baseline entries whose file dropped below the threshold. When reviewing the paired `docs/reports/architecture-health-current.md`, remember its "Largest production files" table is a fixed 50-row cap, so tail rows disappearing from a diff is cap reflow, not missing data. Files examined: `architecture/hotspots.json`, `docs/reports/architecture-health-current.md`, `scripts/lib/architecture-health.mjs` (anchors: `architecture/hotspots.json`, `validateHotspotBaseline`, `scripts/lib/architecture-health.mjs`, `lines`, `relativeImports`, `thresholdLines`, `docs/reports/architecture-health-current.md`)
+
+---
+*Distilled 2026-09-29T19:07:29.563Z · 3 new directives*

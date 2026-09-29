@@ -594,6 +594,32 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
     ],
     seeAlso: 'wstack mcp list; --mcp-config (one-off servers without importing)',
   },
+  sage: {
+    name: 'sage',
+    title: "wstack sage — this project's SAGE memory in other coding agents",
+    description:
+      'Wire SAGE memory into Claude Code, Codex, Cursor or Antigravity over MCP: ' +
+      'writes the MCP server entry plus a skill/rule telling the agent when to recall ' +
+      'and how to propose. The server attaches to the SAGE daemon while wstack is open ' +
+      'in this project and never starts one. Tools are read-only plus memory_candidates ' +
+      '(list/propose); a proposal becomes memory only through WrongStack review. ' +
+      'Search is lexical: semantic recall runs inside a WrongStack host.',
+    usage: 'wstack sage connect <claude-code|codex|cursor|antigravity|all|print> [--dry-run]',
+    subcommands: [
+      { name: 'connect <client|all>', description: 'Write the MCP entry and skill for a client.' },
+      { name: 'connect print', description: 'Print JSON/TOML config for any other MCP client.' },
+      { name: 'disconnect <client|all>', description: 'Remove what connect wrote.' },
+      { name: 'mcp [--origin <name>]', description: 'The stdio MCP server clients run.' },
+      {
+        name: 'sync [--restart-service]',
+        description:
+          'Run project memory sync with HQ; optionally restart this project’s SAGE owner.',
+      },
+      { name: '--dry-run', description: 'Show the file changes without writing.' },
+      { name: '--command <path>', description: 'Executable to launch instead of wstack.' },
+    ],
+    seeAlso: 'wstack mcp serve (all WrongStack tools over MCP)',
+  },
   // -- Chronicle ──────────────────────────────────────────────────────
   chronicle: {
     name: 'chronicle',

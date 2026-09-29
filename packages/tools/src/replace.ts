@@ -19,6 +19,7 @@ import { mapWithConcurrency } from './_concurrency.js';
 import { compileUserRegex } from './_regex.js';
 import { isBinaryBuffer, safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
+import { loadGitignoreMatcher } from './codebase-index/gitignore.js';
 
 /** Byte budget for the combined per-file diff payload — matches `maxOutputBytes`. */
 const MAX_DIFF_BYTES = 262_144;
@@ -109,6 +110,10 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
         field: 'files',
       });
     }
+    // Fail fast: the filter is compiled by core's matcher before any file is
+    // read, and a filter it cannot express would otherwise narrow every entry
+    // away and report zero modifications as a success.
+    if (input.glob) assertUsableGlobFilter(input.glob);
 
     const signal = opts?.signal ?? ctx.signal;
     signal?.throwIfAborted();
@@ -372,6 +377,51 @@ function passesExtraGlob(extraGlob: RegExp, name: string, full: string, base?: s
   return extraGlob.test(full);
 }
 
+/**
+ * True when a path under `base` has a path segment the walker never descends
+ * into (`DEFAULT_IGNORE`). `globNative` drops such entries as it walks; the rg
+ * fast path has no notion of them — ripgrep only knows `.gitignore` — so its
+ * list has to pass the same rule or an un-gitignored `node_modules`/`dist`/
+ * `build` is rewritten on machines that have ripgrep and skipped on machines
+ * that do not. A path outside `base` is left to the callers' containment
+ * checks (this function only reports, it does not reject).
+ */
+function hasIgnoredSegment(absPath: string, base: string): boolean {
+  const rel = path.relative(base, absPath);
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return false;
+  return rel.split(path.sep).some((segment) => DEFAULT_IGNORE.has(segment));
+}
+
+/**
+ * Split a `files` string into entries on commas that are NOT inside a `{…}`
+ * brace group.
+ *
+ * The list is comma-separated and each entry may be a glob, but a
+ * brace-alternation glob (`*.{ts,md}`) contains the list separator itself. A
+ * naive split tore it into `*.{ts` and `md}`; the second half has no glob
+ * character, so it took the literal-path branch and the whole call failed with
+ * `replace: file not found "md}"` — while the very same pattern passed as a
+ * one-element array worked. Entries cannot express a literal comma (the list
+ * syntax has no escape); a brace group keeps its commas.
+ */
+function splitFileList(input: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of input) {
+    if (ch === '{') depth++;
+    else if (ch === '}' && depth > 0) depth--;
+    if (ch === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current);
+  return parts.map((s) => s.trim()).filter(Boolean);
+}
+
 async function resolveFiles(
   filesInput: string | string[],
   ctx: Context,
@@ -391,11 +441,7 @@ async function resolveFiles(
         .filter((s): s is string => typeof s === 'string')
         .map((s) => s.trim())
         .filter(Boolean)
-    : filesInput
-        .trim()
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+    : splitFileList(filesInput.trim());
   const resolved: string[] = [];
 
   for (const p of parts) {
@@ -430,16 +476,99 @@ async function resolveFiles(
   return [...new Set(resolved)];
 }
 
+/** True when a `{` in the pattern is never closed — invalid in every dialect. */
+function hasUnclosedBrace(pattern: string): boolean {
+  let depth = 0;
+  for (const ch of pattern) {
+    if (ch === '{') depth++;
+    else if (ch === '}' && depth > 0) depth--;
+  }
+  return depth > 0;
+}
+
+/** Brace ALTERNATION (`*.{ts,md}`) or a leading `!` exclude — ripgrep dialect. */
+const RIPGREP_ONLY_GLOB = /\{[^}]*,[^}]*\}|^!/;
+
+/**
+ * Refuse a `files` glob that would silently enumerate nothing instead of
+ * running. Two shapes did, both reported as a successful `files_modified: 0`:
+ *
+ * - An unclosed `{`: invalid in every dialect (ripgrep reports "unclosed
+ *   alternate group" and exits 2, which the caller swallows and answers with a
+ *   native walk), so it is refused whatever the enumerator is.
+ * - Brace ALTERNATION and a leading `!`: constructs only ripgrep's dialect
+ *   expresses. core's `compilePathGlob` treats both as literal characters, so
+ *   they are refused only when ripgrep is unavailable — i.e. when the pattern
+ *   would fall to the walker that cannot expand it.
+ *
+ * A `{`/`}` group without a comma, with no leading `!`, stays legal: both
+ * characters are valid in file names (the same care the glob router takes with
+ * `[`/`]` and Windows names).
+ */
+function assertUsableFilesGlob(pattern: string, ripgrepAvailable: boolean): void {
+  if (hasUnclosedBrace(pattern)) {
+    throw new ToolValidationError({
+      message: `replace: files "${pattern}" is not a valid glob — a "{" is never closed.`,
+      field: 'files',
+      context: { reason: 'unclosed-brace' },
+    });
+  }
+  if (ripgrepAvailable || !RIPGREP_ONLY_GLOB.test(pattern)) return;
+  throw new ToolValidationError({
+    message:
+      `replace: files "${pattern}" uses ${
+        pattern.includes('{') ? 'brace alternation ({a,b})' : 'a leading "!" exclude'
+      }, which only ripgrep can expand and the built-in walker cannot. ` +
+      'Pass one pattern per entry instead (e.g. files: "*.ts,*.tsx"), or install ripgrep.',
+    field: 'files',
+    context: { reason: 'unsupported-glob' },
+  });
+}
+
+/**
+ * Same check for the extra `glob` filter (`passesExtraGlob`). That filter is
+ * ALWAYS compiled by core's matcher — ripgrep never sees it — so its
+ * ripgrep-only constructs are unexpressible on every machine: they matched no
+ * file, narrowing every entry away, and the call reported `files_modified: 0`
+ * as success. Unlike `files`, no amount of installing ripgrep helps here, so
+ * the refusal is unconditional and says so.
+ */
+function assertUsableGlobFilter(pattern: string): void {
+  if (hasUnclosedBrace(pattern)) {
+    throw new ToolValidationError({
+      message: `replace: glob "${pattern}" is not a valid glob — a "{" is never closed.`,
+      field: 'glob',
+      context: { reason: 'unclosed-brace' },
+    });
+  }
+  if (!RIPGREP_ONLY_GLOB.test(pattern)) return;
+  throw new ToolValidationError({
+    message:
+      `replace: glob "${pattern}" uses ${
+        pattern.includes('{') ? 'brace alternation ({a,b})' : 'a leading "!" exclude'
+      }, which the built-in matcher cannot expand (this filter is never evaluated by ` +
+      'ripgrep). Narrow with a pattern it can express instead, e.g. one extension per call.',
+    field: 'glob',
+    context: { reason: 'unsupported-glob' },
+  });
+}
+
 async function globFiles(
   pattern: string,
   base: string,
   extraGlob?: RegExp | null | undefined,
 ): Promise<string[]> {
   const rgAvailable = await checkRg();
+  assertUsableFilesGlob(pattern, rgAvailable);
   if (rgAvailable) {
     try {
       const { promise } = spawnRgFind(pattern, base);
-      const files = await promise;
+      // Ripgrep knows `.gitignore` but nothing about the walker's static
+      // DEFAULT_IGNORE list, so an un-gitignored node_modules/dist/build came
+      // back from here and was rewritten, while the fallback walker skips it —
+      // the same call touching different files depending on the environment,
+      // in the destructive direction. Same segment rule as `globNative`.
+      const files = (await promise).filter((f) => !hasIgnoredSegment(f, base));
       // The extra `glob` filter was previously dropped on this path — only the
       // native fallback walker honored it. Apply it here as an intersection
       // (rg's own multi-`--glob` semantics are a union, so the narrowing must
@@ -483,6 +612,23 @@ function checkRg(): Promise<boolean> {
     }
   });
   return rgAvailabilityCache;
+}
+
+/**
+ * True when ripgrep can be expected to evaluate `pattern` at all.
+ *
+ * rg matches globs against '/'-separated paths relative to its cwd, so a
+ * pattern that is absolute, carries a backslash, or starts with `./` can never
+ * match. Measured (`rg --files --glob <shape>`): all three exit 1 with no
+ * output, while the native walker is the one that answers them on the platforms
+ * where they are meaningful — so for those shapes an empty rg answer carries no
+ * information and the caller must keep its fallback. For every other shape, an
+ * exit-1 answer means "no files matched" and no second walk is needed.
+ */
+function rgCanEvaluateGlob(pattern: string): boolean {
+  if (path.isAbsolute(pattern)) return false;
+  if (pattern.includes('\\')) return false;
+  return !pattern.startsWith('./');
 }
 
 function spawnRgFind(pattern: string, base: string): { promise: Promise<string[]> } {
@@ -529,7 +675,14 @@ function spawnRgFind(pattern: string, base: string): { promise: Promise<string[]
     promise: new Promise((resolve, reject) => {
       child.on('error', reject);
       child.on('close', (code) => {
-        if (code !== 0 && code !== null) {
+        // `rg --files` exits 1 when the glob matched no files — a successful
+        // enumeration of an empty set, not a failure. Rejecting it threw that
+        // answer away and re-walked the whole tree with the native walker
+        // (measured: ~80 ms of pure waste per zero-match glob on an 8k-file
+        // tree, on top of the rg walk that already answered). Patterns rg
+        // cannot evaluate keep the fallback — see rgCanEvaluateGlob.
+        const emptyResult = code === 1 && rgCanEvaluateGlob(pattern);
+        if (code !== 0 && code !== null && !emptyResult) {
           reject(new Error(`rg exited with code ${code}`));
           return;
         }
@@ -554,6 +707,12 @@ async function globNative(
 ): Promise<string[]> {
   const results: string[] = [];
   const globRe = compilePathGlob(pattern);
+  // The rg fast path enumerates with ripgrep, which never lists `.gitignore`d
+  // files. The fallback walker must apply the same filter or the file set of a
+  // single `files` glob changes with whether ripgrep happens to be installed —
+  // and, on the fallback side, deliberately ignored paths get rewritten. Same
+  // reasoning (and the same matcher) as glob.ts.
+  const isGitIgnored = await loadGitignoreMatcher(base);
 
   const walk = async (dir: string): Promise<void> => {
     let entries: import('node:fs').Dirent[];
@@ -579,17 +738,19 @@ async function globNative(
         /* v8 ignore next -- lstat failing on a readdir entry is a rare NFS/race case; defensive. */
         continue;
       }
+      const rel = path.relative(base, full).split(path.sep).join('/');
       if (e.isDirectory()) {
+        if (isGitIgnored(rel, true)) continue;
         subdirs.push(full);
       } else if (e.isFile()) {
         const name = e.name;
+        if (isGitIgnored(rel, false)) continue;
         // The walker compares compiled globs (anchored at the walk base, e.g.
         // `^src/[^/]*\.ts$`) against the basename and the ABSOLUTE `full`
         // path — a relative-anchored glob can never match an absolute path,
         // so `src/*.ts` silently matched nothing even when routed here. Test
         // the path relative to `base` as well (forward-slashed so the pattern
         // separators line up on Windows too).
-        const rel = path.relative(base, full).split(path.sep).join('/');
         if (globRe.test(name) || globRe.test(rel) || globRe.test(full)) {
           if (extraGlob && !passesExtraGlob(extraGlob, name, full, base)) {
             continue;

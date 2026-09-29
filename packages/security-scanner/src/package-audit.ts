@@ -236,13 +236,15 @@ export function parsePackageAuditOutput(output: string): {
 
   const summarizedTotal =
     summary.critical + summary.high + summary.moderate + summary.low + summary.info;
-  if (summary.total === 0 && summarizedTotal > 0) {
-    summary.total = summarizedTotal;
-  } else if (summary.total === 0 && vulnerabilities.length > 0) {
+  if (summarizedTotal === 0 && vulnerabilities.length > 0) {
     for (const vulnerability of vulnerabilities) {
       if (vulnerability.severity !== 'unknown') summary[vulnerability.severity]++;
     }
-    summary.total = vulnerabilities.length;
+    if (summary.total === 0) {
+      summary.total = vulnerabilities.length;
+    }
+  } else if (summary.total === 0 && summarizedTotal > 0) {
+    summary.total = summarizedTotal;
   }
   return { vulnerabilities, summary };
 }

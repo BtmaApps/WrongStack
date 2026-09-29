@@ -27,6 +27,21 @@ async function call(server: MCPServer, msg: unknown): Promise<Record<string, unk
 }
 
 describe('MCPServer.handleMessage', () => {
+  it('advertises instructions in initialize only when given', async () => {
+    const init = { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} };
+    const withText = await call(
+      new MCPServer({ host: makeHost(), instructions: '  Use memory_search first.  ' }),
+      init,
+    );
+    expect((withText!.result as Record<string, unknown>)['instructions']).toBe(
+      'Use memory_search first.',
+    );
+    for (const instructions of [undefined, '   ']) {
+      const without = await call(new MCPServer({ host: makeHost(), instructions }), init);
+      expect(without!.result as Record<string, unknown>).not.toHaveProperty('instructions');
+    }
+  });
+
   it('returns INVALID_REQUEST for malformed JSON-RPC envelopes', async () => {
     const server = new MCPServer({ host: makeHost() });
     for (const message of [null, 42, 'text', {}, { id: 8 }, { id: 'request-id' }]) {

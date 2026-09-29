@@ -132,7 +132,15 @@ export async function handleSessionLoadOp(
         await ctx.sendError(id, -32602, `cwd must be an absolute path to an existing directory`);
         return false;
       }
-      const candidateCwd = persisted.cwd ?? loadCwd ?? ctx.defaultCwd;
+      // A client-supplied `cwd` wins. It was just validated above (an invalid
+      // one rejects the whole load with -32602), so ignoring it here made the
+      // validation pure overhead: every load with a `cwd` restored the
+      // directory recorded at save time instead of the one the caller asked
+      // for, and a turn then ran its tools against that stale project. This
+      // matches handleSessionNewOp / handleSessionForkOp, which both let the
+      // client's `cwd` win over the inherited one. Only when the client sends
+      // none does the persisted (or default) cwd apply.
+      const candidateCwd = loadCwd ?? persisted.cwd ?? ctx.defaultCwd;
       const restoredCwd = (await resolveSessionCwd(candidateCwd)) ?? ctx.defaultCwd;
       const restored: SessionState = {
         id: sessionId,
@@ -342,6 +350,16 @@ export async function handleSessionPromptOp(
   let result: RunTurnResult;
   const pendingNotifications: Array<Promise<void>> = [];
   const emit = (update: unknown): void => {
+    // Same identity guard as the unprompted updater above, and for the same
+    // reason: a turn keeps draining after `session/close` / `session/delete`
+    // aborts it, or after a cold `session/load` replaces the state under this
+    // id. The `cwd` is not the only thing that outlives the session — without
+    // this check the final `agent_message_chunk` (and any slow tool's
+    // `tool_call_update`) reached a client for a session it had already closed
+    // or replaced, and the client folds `session/update` into its scratch with
+    // no sessionId check of its own. Silently drop the update instead; the
+    // turn still settles normally through the `sendResult` below.
+    if (ctx.sessions.get(sessionId) !== session) return;
     const notifPromise = ctx.sendNotification({ sessionId, update });
     pendingNotifications.push(notifPromise.catch(() => {}));
   };

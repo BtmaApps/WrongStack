@@ -32,6 +32,11 @@ export interface LaunchBuiltinRoundOptions {
    * outcome to one change cannot be fanned out across subagents.
    */
   requireSoloSession: boolean;
+  /**
+   * With `requireSoloSession`: keep the resident read-only companions (memory,
+   * explore) running. They cannot change code, so attribution survives.
+   */
+  keepCompanions?: boolean | undefined;
   subagentsAllowed: boolean;
   sessionId?: string | undefined;
   setPrefs(patch: { subagentsAllowed: boolean }): void;
@@ -104,6 +109,7 @@ export function launchBuiltinRound(options: LaunchBuiltinRoundOptions): void {
     type: 'prefs.update',
     payload: {
       subagentsAllowed: false,
+      ...(options.keepCompanions ? { subagentCompanionsAllowed: true } : {}),
       ...(options.sessionId ? { sessionId: options.sessionId } : {}),
     },
   });

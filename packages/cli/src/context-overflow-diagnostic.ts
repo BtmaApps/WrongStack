@@ -3,10 +3,14 @@ import { ERROR_CODES, type WrongStackError } from '@wrongstack/core/types';
 const CONTEXT_OVERFLOW_RE = /context window|exceeds the context|too many tokens|context.*tokens/i;
 
 export function contextOverflowHint(err: WrongStackError): string | null {
+  if (!err || typeof err !== 'object') return null;
+
   const structured =
     err.code === ERROR_CODES.PROVIDER_CONTEXT_OVERFLOW ||
     err.code === ERROR_CODES.AGENT_CONTEXT_OVERFLOW;
-  const textual = CONTEXT_OVERFLOW_RE.test(`${err.message}\n${err.describe()}`);
+  const desc = typeof err.describe === 'function' ? err.describe() : '';
+  const message = typeof err.message === 'string' ? err.message : '';
+  const textual = CONTEXT_OVERFLOW_RE.test(`${message}\n${desc}`);
   if (!structured && !textual) return null;
 
   return [

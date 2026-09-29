@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { editTool } from '../src/edit.js';
 import { readTool } from '../src/read.js';
 import { mkSandbox, newSignal, type Sandbox } from './fixtures.js';
+import { makePdf } from './pdf-fixture.js';
 
 describe('edit tool', () => {
   let sb: Sandbox;
@@ -558,6 +559,61 @@ describe('edit tool', () => {
         { signal: newSignal() },
       );
       expect(out.syntax_errors).toBeUndefined();
+    });
+  });
+
+  describe('non-text targets', () => {
+    it('refuses a binary file instead of rewriting it through a lossy utf8 round-trip', async () => {
+      // `read` refuses binary files and `replace` skips them; `edit` used to
+      // decode the bytes as utf8, match, and write the re-encoded result back —
+      // turning every invalid sequence into U+FFFD and changing the byte length.
+      const file = path.join(sb.dir, 'blob.bin');
+      const bytes = Buffer.concat([
+        Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x02]),
+        Buffer.from('TARGET\n', 'utf8'),
+      ]);
+      await fs.writeFile(file, bytes);
+      await expect(
+        editTool.execute({ path: 'blob.bin', old_string: 'TARGET', new_string: 'DONE' }, sb.ctx, {
+          signal: newSignal(),
+        }),
+      ).rejects.toThrow(/not editable text/);
+      expect((await fs.readFile(file)).equals(bytes)).toBe(true);
+    });
+
+    it('refuses a NUL-bearing file (the binary heuristic boundary)', async () => {
+      // Documented behavior: a NUL byte anywhere in the first 8 KiB already
+      // marks a file binary for `read`/`replace`, so `edit` follows them rather
+      // than rewriting it. Use `write` for such a file.
+      const file = path.join(sb.dir, 'nul.txt');
+      const bytes = Buffer.from('before\0TARGET\nafter\n', 'utf8');
+      await fs.writeFile(file, bytes);
+      await expect(
+        editTool.execute({ path: 'nul.txt', old_string: 'TARGET', new_string: 'DONE' }, sb.ctx, {
+          signal: newSignal(),
+        }),
+      ).rejects.toThrow(/not editable text/);
+      expect((await fs.readFile(file)).equals(bytes)).toBe(true);
+    });
+
+    it('refuses a PDF target that was just read (read serves PDFs as pages)', async () => {
+      // `read` has a first-class PDF path, so a PDF is a natural edit target.
+      // Rewriting one byte-wise corrupts it; the guard says so instead of
+      // failing later with a misleading stale-read error.
+      const file = path.join(sb.dir, 'doc.pdf');
+      const bytes = makePdf(['Alpha page']);
+      await fs.writeFile(file, bytes);
+      const read = await readTool.execute({ path: 'doc.pdf' }, sb.ctx, { signal: newSignal() });
+      expect(read.encoding).toBe('pdf-text');
+
+      await expect(
+        editTool.execute(
+          { path: 'doc.pdf', old_string: 'Alpha page', new_string: 'Beta page' },
+          sb.ctx,
+          { signal: newSignal() },
+        ),
+      ).rejects.toThrow(/not editable text \(PDF\)/);
+      expect((await fs.readFile(file)).equals(bytes)).toBe(true);
     });
   });
 });

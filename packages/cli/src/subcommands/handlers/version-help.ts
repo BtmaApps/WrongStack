@@ -62,6 +62,11 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['wstack config-export | config-import', 'Move behaviour settings via ./wstack-config.json'],
       ['wstack mcp', 'MCP servers: list, add, remove, serve'],
       ['wstack import-claude-code', 'Import MCP servers from Claude Code (preview; --apply)'],
+      [
+        'wstack sage connect',
+        'SAGE memory in Claude Code, Codex, Cursor, Antigravity (MCP + skill)',
+      ],
+      ['wstack sage sync', 'Keep project SAGE memory synchronized through HQ'],
       ['wstack plugin', 'Plugins: list, install, enable, disable, remove'],
       ['wstack tools | skills', 'List registered tools / discovered skills'],
       ['wstack typesafe', 'TypeSafe account: status, login, test'],

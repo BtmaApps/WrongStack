@@ -44,6 +44,26 @@ function runImmediateTransaction<T>(
 }
 
 export class SqliteMutationQueue {
+  /**
+   * Lease bracket for composite operations — several chained mutations
+   * separated by off-chain awaits (consolidation between facts, hygiene
+   * between batches, an accept between claim and insert). While parked
+   * between mutations the chains look settled, so drain() must be told the
+   * operation is still in flight; this lease is that declaration, and
+   * dispose() waits for it before close().
+   */
+  runCompositeOperation<T>(work: () => Promise<T>): Promise<T> {
+    this.beginOperation();
+    let running: Promise<T>;
+    try {
+      running = work();
+    } catch (error) {
+      this.endOperation();
+      throw error;
+    }
+    return running.finally(() => this.endOperation());
+  }
+
   private mutationChain: Promise<unknown> = Promise.resolve();
   private counterChain: Promise<unknown> = Promise.resolve();
   /**

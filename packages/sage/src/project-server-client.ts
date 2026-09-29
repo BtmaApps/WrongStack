@@ -116,6 +116,33 @@ function resolveProjectServerUrl(): URL | null {
   return null;
 }
 
+/**
+ * Thrown by an attach-only connection (`spawnIfMissing: false`) when no daemon
+ * is serving the project. Named so a caller can tell "WrongStack is not open
+ * here" apart from a daemon that is running but failing.
+ */
+export class SageProjectServerNotRunningError extends Error {
+  override readonly name = 'SageProjectServerNotRunning';
+  constructor(
+    readonly projectRoot: string,
+    cause?: unknown,
+  ) {
+    super(
+      `No running WrongStack SAGE daemon for ${projectRoot}. Open wstack (CLI, TUI or WebUI) in this project, then retry.`,
+      cause === undefined ? undefined : { cause },
+    );
+  }
+}
+
+export interface SageProjectServerConnectionOptions {
+  /**
+   * `false` = attach-only: connect to a daemon a WrongStack host already
+   * started, never spawn one. For external clients (the SAGE MCP bridge) that
+   * must not stand memory up on their own. Default `true`.
+   */
+  spawnIfMissing?: boolean | undefined;
+}
+
 export function isSageProjectServerAvailable(): boolean {
   return resolveProjectServerUrl() !== null;
 }
@@ -195,10 +222,14 @@ export class SageProjectServerConnection {
   /** Error reported by the live socket before it closed, if any. */
   private closeCause: Error | null = null;
 
+  private readonly spawnIfMissing: boolean;
+
   constructor(
     readonly projectRoot: string,
     readonly directory?: string | undefined,
+    options: SageProjectServerConnectionOptions = {},
   ) {
+    this.spawnIfMissing = options.spawnIfMissing !== false;
     this.state = {
       status: isSageProjectServerAvailable() ? 'offline' : 'unavailable',
       connected: false,
@@ -225,7 +256,7 @@ export class SageProjectServerConnection {
   }
 
   async connect(): Promise<void> {
-    await this.ensureConnected(true);
+    await this.ensureConnected(this.spawnIfMissing);
   }
 
   /** Inspect an existing project server without starting one. */
@@ -253,7 +284,7 @@ export class SageProjectServerConnection {
     options: SageProjectServerCallOptions,
   ): Promise<SageServerOperations[O]['result']> {
     if (options.signal?.aborted) throw cancellationError(options.signal);
-    await this.ensureConnected(true);
+    await this.ensureConnected(this.spawnIfMissing);
     if (options.signal?.aborted) throw cancellationError(options.signal);
     let lastError: unknown;
     // Cold-spawn / daemon-restart race: the daemon accepts connections (and
@@ -384,7 +415,13 @@ export class SageProjectServerConnection {
       } catch (error) {
         lastError = error;
       }
-      if (!spawnIfMissing) break;
+      if (!spawnIfMissing) {
+        // Only the attach-only mode names the absence; `status()` and
+        // `shutdown()` probe with `false` too and keep their own handling.
+        if (!this.spawnIfMissing)
+          throw new SageProjectServerNotRunningError(this.projectRoot, lastError);
+        break;
+      }
       // Re-arm the spawn on SPAWN_RETRY_CADENCE_MS. A single spawn attempt made
       // a silently dead daemon (crash before bind, spawn-level error) fatal for
       // the whole window: every remaining retry hit `connect ENOENT` against a

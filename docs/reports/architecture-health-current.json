@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T09:55:10.474Z",
+  "generatedAt": "2026-09-29T19:18:03.891Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4267,
-    "testFiles": 3859,
-    "sourceLines": 1009251,
-    "workspaceEdges": 130,
-    "moduleEdges": 13910,
+    "sourceFiles": 4283,
+    "testFiles": 3881,
+    "sourceLines": 1013718,
+    "workspaceEdges": 131,
+    "moduleEdges": 13954,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 965
+    "testOnlyExports": 971
   },
   "errors": [],
   "packageCycles": [],
@@ -107,7 +107,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 45,
-      "testFiles": 48,
+      "testFiles": 51,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -121,7 +121,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 48
+          "testFiles": 51
         }
       ]
     },
@@ -149,8 +149,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 547,
-      "testFiles": 562,
+      "sourceFiles": 552,
+      "testFiles": 568,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -166,6 +166,7 @@
         "@wrongstack/requirement-intake",
         "@wrongstack/runtime",
         "@wrongstack/sage",
+        "@wrongstack/sage-mcp",
         "@wrongstack/sdd",
         "@wrongstack/security-scanner",
         "@wrongstack/simpleui",
@@ -189,7 +190,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 562
+          "testFiles": 568
         }
       ]
     },
@@ -240,8 +241,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 968,
-      "testFiles": 865,
+      "sourceFiles": 970,
+      "testFiles": 868,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -256,7 +257,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 865
+          "testFiles": 868
         }
       ]
     },
@@ -504,8 +505,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 93,
-      "testFiles": 84,
+      "sourceFiles": 94,
+      "testFiles": 85,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -518,7 +519,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 84
+          "testFiles": 85
         }
       ]
     },
@@ -595,8 +596,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 122,
-      "testFiles": 121,
+      "sourceFiles": 123,
+      "testFiles": 123,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -611,15 +612,15 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 121
+          "testFiles": 123
         }
       ]
     },
     {
       "name": "@wrongstack/sage-mcp",
       "dir": "packages/sage-mcp",
-      "sourceFiles": 5,
-      "testFiles": 5,
+      "sourceFiles": 7,
+      "testFiles": 6,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/mcp",
@@ -634,7 +635,7 @@
         {
           "path": "packages/sage-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 5
+          "testFiles": 6
         }
       ]
     },
@@ -816,7 +817,7 @@
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
       "sourceFiles": 14,
-      "testFiles": 21,
+      "testFiles": 22,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -831,15 +832,15 @@
         {
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
-          "testFiles": 21
+          "testFiles": 22
         }
       ]
     },
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 605,
-      "testFiles": 427,
+      "sourceFiles": 608,
+      "testFiles": 430,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -862,7 +863,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 427
+          "testFiles": 430
         }
       ]
     },
@@ -914,8 +915,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 255,
-      "testFiles": 243,
+      "sourceFiles": 257,
+      "testFiles": 245,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -941,7 +942,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 243
+          "testFiles": 245
         }
       ]
     },
@@ -1338,6 +1339,12 @@
         ]
       },
       {
+        "file": "packages/acp/tests/acp-late-session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/acp/tests/acp-loopback.test.ts",
         "projects": [
           "root-node"
@@ -1345,6 +1352,12 @@
       },
       {
         "file": "packages/acp/tests/acp-registry-fetch.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/acp-session-auth.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1387,6 +1400,12 @@
       },
       {
         "file": "packages/acp/tests/client-transport-close.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/coverage-failure-injection.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3936,6 +3955,42 @@
         ]
       },
       {
+        "file": "packages/cli/tests/sage-connect.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/sage-hq-sync-polling.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/sage-hq-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/sage-subcommand.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/sage-sync-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/sage-sync-send.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/sage-throttle.test.ts",
         "projects": [
           "root-node"
@@ -6162,6 +6217,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/director-companion-spawn.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/director-extra.test.ts",
         "projects": [
           "root-node"
@@ -8083,6 +8144,18 @@
       },
       {
         "file": "packages/core/tests/hq/redaction.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/sage-protocol.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/sage-store.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13134,6 +13207,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/reasoning-echo-field.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/redirect-safe-fetch.test.ts",
         "projects": [
           "root-node"
@@ -13452,6 +13531,12 @@
         ]
       },
       {
+        "file": "packages/sage-mcp/tests/attached-server.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage-mcp/tests/cli-lifecycle.test.ts",
         "projects": [
           "root-node"
@@ -13585,6 +13670,12 @@
       },
       {
         "file": "packages/sage/tests/host-wiring-daily-triage-session-scope.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/hq-sync.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14149,6 +14240,12 @@
       },
       {
         "file": "packages/sage/tests/types.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/unified-search-cursor.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19806,6 +19903,12 @@
         ]
       },
       {
+        "file": "packages/vector-memory/tests/search-cursor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vector-memory/tests/search-race.test.ts",
         "projects": [
           "root-node"
@@ -20809,6 +20912,18 @@
       },
       {
         "file": "packages/webui-server/tests/memory-routes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/memory-search-page.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/memory-search-resolve.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22530,6 +22645,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/ranked-search-results.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/refine-panel-countdown.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -22849,6 +22970,12 @@
       },
       {
         "file": "packages/webui/tests/components/tool-stats-modal.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/unified-sage-search.integration.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -23539,6 +23666,12 @@
       },
       {
         "file": "packages/webui/tests/lib/kanban-verification.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/launch-builtin-round.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -24462,7 +24595,7 @@
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 945,
+      "lines": 946,
       "relativeImports": 22
     },
     {
@@ -24472,7 +24605,7 @@
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "lines": 850,
+      "lines": 855,
       "relativeImports": 1
     },
     {
@@ -24487,7 +24620,7 @@
     },
     {
       "file": "packages/cli/src/fleet/host.ts",
-      "lines": 917,
+      "lines": 920,
       "relativeImports": 26
     },
     {
@@ -24517,7 +24650,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 899,
+      "lines": 902,
       "relativeImports": 22
     },
     {
@@ -24547,17 +24680,17 @@
     },
     {
       "file": "packages/core/src/coordination/director.ts",
-      "lines": 974,
+      "lines": 1002,
       "relativeImports": 45
     },
     {
       "file": "packages/core/src/coordination/index.ts",
-      "lines": 847,
+      "lines": 854,
       "relativeImports": 101
     },
     {
       "file": "packages/core/src/coordination/subagent-budget.ts",
-      "lines": 855,
+      "lines": 858,
       "relativeImports": 3
     },
     {
@@ -24612,7 +24745,7 @@
     },
     {
       "file": "packages/core/src/storage/session-store.ts",
-      "lines": 825,
+      "lines": 963,
       "relativeImports": 41
     },
     {
@@ -24652,7 +24785,7 @@
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 973,
+      "lines": 992,
       "relativeImports": 15
     },
     {
@@ -24662,7 +24795,7 @@
     },
     {
       "file": "packages/mcp/src/server.ts",
-      "lines": 894,
+      "lines": 902,
       "relativeImports": 2
     },
     {
@@ -24722,7 +24855,7 @@
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 979,
+      "lines": 980,
       "relativeImports": 5
     },
     {
@@ -24731,8 +24864,13 @@
       "relativeImports": 10
     },
     {
+      "file": "packages/sage/src/sqlite-store-search.ts",
+      "lines": 930,
+      "relativeImports": 7
+    },
+    {
       "file": "packages/sage/src/sqlite-store.ts",
-      "lines": 981,
+      "lines": 992,
       "relativeImports": 42
     },
     {
@@ -24757,7 +24895,7 @@
     },
     {
       "file": "packages/tools/src/bash-kill-guard.ts",
-      "lines": 810,
+      "lines": 817,
       "relativeImports": 2
     },
     {
@@ -24832,7 +24970,7 @@
     },
     {
       "file": "packages/vector-memory/src/store.ts",
-      "lines": 839,
+      "lines": 898,
       "relativeImports": 3
     },
     {
@@ -24857,8 +24995,8 @@
     },
     {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
-      "lines": 806,
-      "relativeImports": 4
+      "lines": 847,
+      "relativeImports": 6
     },
     {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
@@ -24927,7 +25065,7 @@
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 845,
+      "lines": 848,
       "relativeImports": 36
     },
     {
@@ -24968,24 +25106,29 @@
       "relativeImports": 47
     },
     {
+      "file": "packages/core/src/coordination/director.ts",
+      "lines": 1002,
+      "relativeImports": 45
+    },
+    {
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 997,
       "relativeImports": 52
     },
     {
+      "file": "packages/mcp/src/client.ts",
+      "lines": 992,
+      "relativeImports": 15
+    },
+    {
       "file": "packages/sage/src/sqlite-store.ts",
-      "lines": 981,
+      "lines": 992,
       "relativeImports": 42
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 979,
+      "lines": 980,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/core/src/coordination/director.ts",
-      "lines": 974,
-      "relativeImports": 45
     },
     {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
@@ -24993,14 +25136,14 @@
       "relativeImports": 18
     },
     {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 973,
-      "relativeImports": 15
-    },
-    {
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
       "lines": 972,
       "relativeImports": 56
+    },
+    {
+      "file": "packages/core/src/storage/session-store.ts",
+      "lines": 963,
+      "relativeImports": 41
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
@@ -25014,7 +25157,7 @@
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 945,
+      "lines": 946,
       "relativeImports": 22
     },
     {
@@ -25026,6 +25169,11 @@
       "file": "packages/webui/src/stores/fleet-store.ts",
       "lines": 939,
       "relativeImports": 3
+    },
+    {
+      "file": "packages/sage/src/sqlite-store-search.ts",
+      "lines": 930,
+      "relativeImports": 7
     },
     {
       "file": "packages/cli/src/auth-menu/panel-service.ts",
@@ -25054,7 +25202,7 @@
     },
     {
       "file": "packages/cli/src/fleet/host.ts",
-      "lines": 917,
+      "lines": 920,
       "relativeImports": 26
     },
     {
@@ -25098,9 +25246,19 @@
       "relativeImports": 10
     },
     {
+      "file": "packages/cli/src/webui-server.ts",
+      "lines": 902,
+      "relativeImports": 22
+    },
+    {
       "file": "packages/core/src/security/secret-vault.ts",
       "lines": 902,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/mcp/src/server.ts",
+      "lines": 902,
+      "relativeImports": 2
     },
     {
       "file": "packages/cli/src/slash-commands/sdd.ts",
@@ -25108,14 +25266,14 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/cli/src/webui-server.ts",
-      "lines": 899,
-      "relativeImports": 22
-    },
-    {
       "file": "packages/core/src/core/fallback-model.ts",
       "lines": 899,
       "relativeImports": 16
+    },
+    {
+      "file": "packages/vector-memory/src/store.ts",
+      "lines": 898,
+      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/BrainSection.tsx",
@@ -25130,11 +25288,6 @@
     {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
       "lines": 896,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/mcp/src/server.ts",
-      "lines": 894,
       "relativeImports": 2
     },
     {
@@ -25171,21 +25324,6 @@
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",
       "lines": 880,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/plugins/src/test-runner-gate/index.ts",
-      "lines": 878,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/primitives/src/regex-guard.ts",
-      "lines": 878,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/kanban/src/verification/verification-context.ts",
-      "lines": 875,
-      "relativeImports": 3
     }
   ],
   "testOnlyExports": [
@@ -25626,6 +25764,10 @@
       "name": "resolveProviderAlias"
     },
     {
+      "file": "packages/cli/src/sage-connect.ts",
+      "name": "setTomlMcpServer"
+    },
+    {
       "file": "packages/cli/src/services/dispatch-classifier.ts",
       "name": "makeProviderClassifier"
     },
@@ -25788,6 +25930,10 @@
     {
       "file": "packages/cli/src/subcommands/handlers/per-subcommand-help.ts",
       "name": "subcommandsWithFocusedHelp"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/sage.ts",
+      "name": "findExecutableOnPath"
     },
     {
       "file": "packages/cli/src/terminal-format.ts",
@@ -27106,6 +27252,14 @@
       "name": "mistralToolCallId"
     },
     {
+      "file": "packages/providers/src/reasoning-echo-support.ts",
+      "name": "refusedReasoningEchoField"
+    },
+    {
+      "file": "packages/providers/src/reasoning-echo-support.ts",
+      "name": "resetReasoningEchoSupport"
+    },
+    {
       "file": "packages/requirement-intake/src/service-helpers.ts",
       "name": "ANSWER_FIELD_MAPPING"
     },
@@ -27204,6 +27358,14 @@
     {
       "file": "packages/sage/src/project-server-protocol.ts",
       "name": "SAGE_DISPATCH_FIELD_SPECS"
+    },
+    {
+      "file": "packages/sage/src/project-server-protocol.ts",
+      "name": "SageInvalidArgsError"
+    },
+    {
+      "file": "packages/sage/src/project-server-protocol.ts",
+      "name": "validateDispatchArgs"
     },
     {
       "file": "packages/sage/src/retrieval/format.ts",

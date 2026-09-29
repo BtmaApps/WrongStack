@@ -7,7 +7,7 @@
  * - watch_list: List all active watches
  */
 
-import { watch as fsWatch } from 'node:fs';
+import { watch as fsWatch, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { createHostStates } from '../runtime/host-state.js';
@@ -174,6 +174,18 @@ const plugin: Plugin = {
       safeIndexRoot: string | null,
     ): boolean {
       try {
+        // A single-file watch reports the file's BASE NAME as `filename`
+        // (platform behavior on win32/linux/macOS), so join() below would
+        // emit a doubled "<file>/<basename>" path. Every event on a
+        // file-watch handle is about the watched file itself. The stat is
+        // advisory only — a failure falls through to the join semantics and
+        // leaves fs.watch below as the authoritative existence check.
+        let watchedIsFile = false;
+        try {
+          watchedIsFile = statSync(dirPath).isFile();
+        } catch {
+          /* fall through to directory semantics */
+        }
         const watcher = fsWatch(dirPath, { recursive }, (eventType, filename) => {
           if (state.abort.signal.aborted || watches.get(handle.id) !== handle || !filename) return;
           // Filter to the event types the caller requested.  fs.watch
@@ -188,7 +200,11 @@ const plugin: Plugin = {
           ) {
             return;
           }
-          const rawPath = filename.startsWith(dirPath) ? filename : join(dirPath, filename);
+          const rawPath = watchedIsFile
+            ? dirPath
+            : filename.startsWith(dirPath)
+              ? filename
+              : join(dirPath, filename);
           // Normalize to forward slashes for cross-platform consistency in
           // emitted events, logs, and reindex file lists.
           //

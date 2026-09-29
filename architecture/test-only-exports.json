@@ -226,6 +226,9 @@
     "packages/cli/src/provider-helpers.ts": [
       "resolveProviderAlias"
     ],
+    "packages/cli/src/sage-connect.ts": [
+      "setTomlMcpServer"
+    ],
     "packages/cli/src/services/dispatch-classifier.ts": [
       "makeProviderClassifier"
     ],
@@ -308,6 +311,9 @@
       "renderBlockToString",
       "renderGenericHelp",
       "subcommandsWithFocusedHelp"
+    ],
+    "packages/cli/src/subcommands/handlers/sage.ts": [
+      "findExecutableOnPath"
     ],
     "packages/cli/src/terminal-format.ts": [
       "terminalFormattingEnabled"
@@ -974,6 +980,10 @@
     "packages/providers/src/presets/mistral.ts": [
       "mistralToolCallId"
     ],
+    "packages/providers/src/reasoning-echo-support.ts": [
+      "refusedReasoningEchoField",
+      "resetReasoningEchoSupport"
+    ],
     "packages/requirement-intake/src/service-helpers.ts": [
       "ANSWER_FIELD_MAPPING",
       "appendItems"
@@ -1031,7 +1041,9 @@
       "SAGE_PROJECT_SERVER_METADATA_FILE"
     ],
     "packages/sage/src/project-server-protocol.ts": [
-      "SAGE_DISPATCH_FIELD_SPECS"
+      "SAGE_DISPATCH_FIELD_SPECS",
+      "SageInvalidArgsError",
+      "validateDispatchArgs"
     ],
     "packages/sage/src/retrieval/format.ts": [
       "memoryFormatCoverage"

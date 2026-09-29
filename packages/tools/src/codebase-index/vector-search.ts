@@ -166,6 +166,7 @@ export function reciprocalRankFusion(
   vectorRanks: RankMap,
   k: number = RRF_K,
 ): Array<[number, number]> {
+  const safeK = typeof k === 'number' && Number.isFinite(k) && k > 0 ? k : RRF_K;
   const allIds = new Set<number>([...bm25Ranks.keys(), ...vectorRanks.keys()]);
   const scored: Array<[number, number]> = [];
 
@@ -174,8 +175,8 @@ export function reciprocalRankFusion(
     const vecRank = vectorRanks.get(id);
 
     let score = 0;
-    if (bm25Rank !== undefined) score += 1 / (k + bm25Rank);
-    if (vecRank !== undefined) score += 1 / (k + vecRank);
+    if (bm25Rank !== undefined) score += 1 / (safeK + bm25Rank);
+    if (vecRank !== undefined) score += 1 / (safeK + vecRank);
 
     scored.push([id, score]);
   }

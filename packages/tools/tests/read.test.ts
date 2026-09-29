@@ -89,6 +89,68 @@ describe('read tool', () => {
     expect(out.text).toContain('11→line11');
   });
 
+  it('does not suppress a content read after a summary read', async () => {
+    const file = path.join(sb.dir, 'summary-then-read.ts');
+    await fs.writeFile(
+      file,
+      [
+        'const hidden = 1;',
+        '  plain body line that no summary rule matches;',
+        'export const shown = 2;',
+      ].join('\n'),
+    );
+    const summary = await readTool.execute(
+      { path: 'summary-then-read.ts', mode: 'summary' },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+    // Control: the summary really hid the body line.
+    expect(summary.text).toContain('summary: summary-then-read.ts');
+    expect(summary.text).not.toContain('plain body line');
+
+    const content = await readTool.execute(
+      { path: 'summary-then-read.ts', offset: 1, limit: 3 },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+    // A summary shows structure, not content: the range was never displayed,
+    // so a later content read of it must not return the "already shown" stub.
+    expect(content.cached).toBeUndefined();
+    expect(content.text).toContain('plain body line');
+  });
+
+  it('does not suppress a subrange content read after a summary read', async () => {
+    const file = path.join(sb.dir, 'summary-subrange.ts');
+    await fs.writeFile(
+      file,
+      Array.from({ length: 30 }, (_, i) => `  body text line ${i + 1}`).join('\n'),
+    );
+    await readTool.execute({ path: 'summary-subrange.ts', mode: 'summary' }, sb.ctx, {
+      signal: newSignal(),
+    });
+    const tail = await readTool.execute(
+      { path: 'summary-subrange.ts', offset: 25, limit: 6 },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+    expect(tail.cached).toBeUndefined();
+    expect(tail.text).toContain('body text line 25');
+  });
+
+  it('repeated summary reads are not suppressed', async () => {
+    const file = path.join(sb.dir, 'summary-repeat.ts');
+    await fs.writeFile(file, "import { a } from './a';\nconst x = 1;\n");
+    const first = await readTool.execute({ path: 'summary-repeat.ts', mode: 'summary' }, sb.ctx, {
+      signal: newSignal(),
+    });
+    const second = await readTool.execute({ path: 'summary-repeat.ts', mode: 'summary' }, sb.ctx, {
+      signal: newSignal(),
+    });
+    expect(first.cached).toBeUndefined();
+    expect(second.cached).toBeUndefined();
+    expect(second.text).toContain('summary: summary-repeat.ts');
+  });
+
   it('supports compact summary mode', async () => {
     const file = path.join(sb.dir, 'summary.ts');
     await fs.writeFile(

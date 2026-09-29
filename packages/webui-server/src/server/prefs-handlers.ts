@@ -44,8 +44,16 @@ export interface PrefsHandlerContext {
    */
   snapshot: (sessionId?: string) => Record<string, unknown>;
   persist: (payload: Record<string, unknown>) => Promise<void>;
+  /**
+   * `companions` only matters with `allowed: false`: solo, but the resident
+   * read-only companions (memory, explore) still run.
+   */
   setSubagentsAllowed?:
-    | ((allowed: boolean, sessionId?: string | undefined) => Promise<void>)
+    | ((
+        allowed: boolean,
+        sessionId?: string | undefined,
+        companions?: boolean | undefined,
+      ) => Promise<void>)
     | undefined;
   /**
    * Apply one tab's subagent model plan (lanes + role overlay). Session-scoped
@@ -358,7 +366,11 @@ export async function handlePrefsUpdate(
       return;
     }
     try {
-      await ctx.setSubagentsAllowed(payload['subagentsAllowed'], sessionId);
+      await ctx.setSubagentsAllowed(
+        payload['subagentsAllowed'],
+        sessionId,
+        payload['subagentCompanionsAllowed'] === true,
+      );
     } catch (err) {
       sendResult(ctx, ws, false, toErrorMessage(err));
       handlePrefsGet(ctx, ws, sessionId);
@@ -385,6 +397,7 @@ export async function handlePrefsUpdate(
   const sessionMeta = ctx.metaFor?.(sessionId) ?? ctx.meta;
   const {
     subagentsAllowed: _sessionPolicy,
+    subagentCompanionsAllowed: _companions,
     subagentsPolicyLocked: _locked,
     // The plan belongs to one conversation and is journaled with its session;
     // writing it to config.json would leak one tab's lanes into every new one.

@@ -10,7 +10,8 @@ import {
   normalizeSubagentModelPlan,
   seedSessionSubagentPolicy,
   setSessionSubagentModelPlan,
-  setSessionSubagentsAllowed,
+  setSessionSubagentPolicy,
+  subagentPolicyModeFrom,
 } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { SkillInstaller } from '@wrongstack/core/skills';
@@ -250,10 +251,10 @@ export function createWebuiRouteContexts({
       seedSessionSubagentPolicy(target);
       return prefSnapshot(target.meta);
     },
-    setSubagentsAllowed: (allowed, sessionId) =>
-      setSessionSubagentsAllowed(
+    setSubagentsAllowed: (allowed, sessionId, companions) =>
+      setSessionSubagentPolicy(
         sessionId ? getSessionAgent(sessionId).ctx : opts.agent.ctx,
-        allowed,
+        subagentPolicyModeFrom(allowed, companions),
       ),
     setSubagentModelPlan: (plan, sessionId) =>
       setSessionSubagentModelPlan(

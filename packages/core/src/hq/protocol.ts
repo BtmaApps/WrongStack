@@ -10,5 +10,6 @@ export * from './protocol/mcp.js';
 export * from './protocol/peer.js';
 export * from './protocol/project.js';
 export * from './protocol/resume.js';
+export * from './protocol/sage.js';
 export * from './protocol/session.js';
 export * from './protocol/tool.js';

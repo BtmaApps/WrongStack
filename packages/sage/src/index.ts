@@ -103,7 +103,9 @@ export {
 export {
   isSageProjectServerAvailable,
   SageProjectServerConnection,
+  type SageProjectServerConnectionOptions,
   type SageProjectServerConnectionState,
+  SageProjectServerNotRunningError,
 } from './project-server-client.js';
 export {
   resolveProjectSageStorageRoot,
@@ -152,6 +154,7 @@ export type {
   SearchResult,
   SearchSuggestionMode,
 } from './service-contract.js';
+export { InvalidSearchCursorError } from './service-contract.js';
 export { isSageService } from './service-guard.js';
 export {
   filterProposalsAgainstPendingTargets,

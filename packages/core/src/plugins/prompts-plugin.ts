@@ -1,6 +1,9 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { setSessionSubagentsAllowed } from '../coordination/session-subagent-policy.js';
+import {
+  areSubagentsAllowed,
+  setSessionSubagentPolicy,
+} from '../coordination/session-subagent-policy.js';
 import { DefaultPromptLoader, renderPrompt } from '../execution/prompt-loader.js';
 import type { Context, SlashCommand } from '../index.js';
 import { DefaultPromptStore, migratePromptEntry } from '../storage/prompt-store.js';
@@ -141,8 +144,11 @@ function buildBugHuntCommand(
       }
       const parsed = parseBugHuntArgs(args);
       if (parsed.error) return { message: parsed.error };
+      // Solo, but the read-only companions (memory, explore) keep running:
+      // they cannot change code, so one fix still maps to one outcome. A
+      // session already solo — strict or not — is left as the user set it.
       try {
-        await setSessionSubagentsAllowed(ctx, false);
+        if (areSubagentsAllowed(ctx)) await setSessionSubagentPolicy(ctx, 'companions');
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         return { message: `Proof-Driven Bug Hunter could not start: ${reason}` };

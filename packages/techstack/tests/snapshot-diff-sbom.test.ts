@@ -130,6 +130,104 @@ describe('diffSnapshots', () => {
     expect(diff.changed).toHaveLength(0);
   });
 
+  // A lockfile resolves one package to as many versions as its dependents need
+  // (this repo's own lock holds fs-extra at 12 versions, minimatch at 8), and
+  // the adapters emit one row per instance because OSV is queried per purl. The
+  // diff must account for every one of them.
+  const instance = (
+    name: string,
+    locked: string,
+    extra: Partial<Snapshot['dependencies'][0]> = {},
+  ): Snapshot['dependencies'][number] => ({
+    id: `dep-${name}-${locked}`,
+    workspaceId: 'ws-1',
+    ecosystem: 'npm' as const,
+    name,
+    sourceType: 'registry' as const,
+    direct: false,
+    scope: 'transitive' as const,
+    locked,
+    status: 'current',
+    evidence: [],
+    ...extra,
+  });
+  const snapshotOf = (id: string, dependencies: Snapshot['dependencies']): Snapshot => ({
+    ...BASE_SNAPSHOT,
+    id,
+    dependencies,
+  });
+
+  it('reports a new instance of an already-present package as added', () => {
+    const diff = diffSnapshots(
+      snapshotOf('old', [instance('fs-extra', '10.0.0')]),
+      snapshotOf('new', [instance('fs-extra', '10.0.0'), instance('fs-extra', '11.2.0')]),
+    );
+
+    expect(diff.added.map((d) => `${d.name}@${d.locked}`)).toContain('fs-extra@11.2.0');
+    expect(diff.removed).toHaveLength(0);
+  });
+
+  it('reports a removed instance of a still-present package as removed', () => {
+    const diff = diffSnapshots(
+      snapshotOf('old', [instance('fs-extra', '9.0.0'), instance('fs-extra', '10.0.0')]),
+      snapshotOf('new', [instance('fs-extra', '10.0.0')]),
+    );
+
+    expect(diff.removed.map((d) => `${d.name}@${d.locked}`)).toContain('fs-extra@9.0.0');
+    expect(diff.added).toHaveLength(0);
+  });
+
+  it('diffs the instance that changed status rather than an arbitrary sibling', () => {
+    const diff = diffSnapshots(
+      snapshotOf('old', [instance('minimatch', '3.0.0'), instance('minimatch', '5.0.0')]),
+      snapshotOf('new', [
+        instance('minimatch', '3.0.0', { status: 'vulnerable' }),
+        instance('minimatch', '5.0.0'),
+      ]),
+    );
+
+    expect(diff.changed).toEqual([
+      {
+        name: 'minimatch',
+        ecosystem: 'npm',
+        workspaceId: 'ws-1',
+        field: 'status',
+        from: 'current',
+        to: 'vulnerable',
+      },
+    ]);
+  });
+
+  it('accounts for every instance across a multi-instance swap', () => {
+    const diff = diffSnapshots(
+      snapshotOf('old', [instance('fs-extra', '9.0.0'), instance('fs-extra', '10.0.0')]),
+      snapshotOf('new', [instance('fs-extra', '10.0.0'), instance('fs-extra', '11.2.0')]),
+    );
+
+    expect(diff.added.map((d) => `${d.name}@${d.locked}`)).toContain('fs-extra@11.2.0');
+    expect(diff.removed.map((d) => `${d.name}@${d.locked}`)).toContain('fs-extra@9.0.0');
+  });
+
+  it('keeps a single-instance version bump a change, not an add and a remove', () => {
+    const diff = diffSnapshots(
+      snapshotOf('old', [instance('express', '4.18.2')]),
+      snapshotOf('new', [instance('express', '4.19.0')]),
+    );
+
+    expect(diff.added).toHaveLength(0);
+    expect(diff.removed).toHaveLength(0);
+    expect(diff.changed).toEqual([
+      {
+        name: 'express',
+        ecosystem: 'npm',
+        workspaceId: 'ws-1',
+        field: 'locked',
+        from: '4.18.2',
+        to: '4.19.0',
+      },
+    ]);
+  });
+
   it('does not report changes when optional fields are both undefined or null', () => {
     const snapA: Snapshot = {
       ...BASE_SNAPSHOT,

@@ -98,6 +98,22 @@ describe('template_expand', () => {
     });
     expect(singleRes.result).toBe('[solo]');
 
+    // The documented block syntax binds the {{item}} iteration variable —
+    // for a one-element list too, matching the comma-list branch.
+    const singleItemRes = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'solo' },
+      raw: true,
+    });
+    expect(singleItemRes.result).toBe('- solo');
+
+    const listItemRes = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'a,b' },
+      raw: true,
+    });
+    expect(listItemRes.result).toBe('- a\n- b');
+
     const emptyRes = await tools.template_expand!.execute({
       template: 'before{{#each items}}x{{/each}}after',
       variables: { items: '' },

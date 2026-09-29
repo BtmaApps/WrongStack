@@ -341,10 +341,15 @@ async function handleReport(
     }
 
     // Show specific report
-    const index = Number.parseInt(reportId, 10) - 1;
-    if (!Number.isNaN(index) && reports[index]) {
-      const content = await readFile(join(reportsDir, reports[index]), 'utf-8');
-      return { message: `# Security Report\n\n${content}` };
+    if (/^\d+$/.test(reportId)) {
+      const index = Number.parseInt(reportId, 10) - 1;
+      if (index >= 0 && reports[index]) {
+        const content = await readFile(join(reportsDir, reports[index]), 'utf-8');
+        return { message: `# Security Report\n\n${content}` };
+      }
+      return {
+        message: `❌ Report "${reportId}" not found. Use \`/security report\` to see available reports.`,
+      };
     }
 
     // Try to find by ID/date

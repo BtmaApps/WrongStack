@@ -1,7 +1,7 @@
 import {
-  areSubagentsAllowed,
   isSubagentPolicyLocked,
-  setSessionSubagentsAllowed,
+  setSessionSubagentPolicy,
+  subagentPolicyMode,
 } from '@wrongstack/core/coordination';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
@@ -53,25 +53,33 @@ export function useSessionSlashCommands(
     if (part !== 'head') return;
     const cmd = {
       name: 'solo',
-      description: 'Control session-only subagents before the first message: /solo on|off|status.',
+      description:
+        'Control session-only subagents before the first message: /solo on|companions|off|status.',
       async run(args: string) {
         const action = (args ?? '').trim().toLowerCase() || 'status';
-        const allowed = areSubagentsAllowed(agent.ctx);
+        const mode = subagentPolicyMode(agent.ctx);
         if (action === 'status') {
+          const state =
+            mode === 'all' ? 'off' : mode === 'companions' ? 'on (companions allowed)' : 'on';
           return {
-            message: `Solo session is ${allowed ? 'off' : 'on'}${isSubagentPolicyLocked(agent.ctx) ? ' (locked)' : ''}.`,
+            message: `Solo session is ${state}${isSubagentPolicyLocked(agent.ctx) ? ' (locked)' : ''}.`,
           };
         }
-        if (action !== 'on' && action !== 'off') {
-          return { message: 'Usage: /solo on|off|status' };
+        if (action !== 'on' && action !== 'off' && action !== 'companions') {
+          return { message: 'Usage: /solo on|companions|off|status' };
         }
         try {
-          await setSessionSubagentsAllowed(agent.ctx, action === 'off');
+          await setSessionSubagentPolicy(
+            agent.ctx,
+            action === 'off' ? 'all' : action === 'companions' ? 'companions' : 'none',
+          );
           return {
             message:
               action === 'on'
-                ? 'Solo session enabled. Chimera, delegation, and background subagents are blocked.'
-                : 'Solo session disabled. Subagents are allowed for this session.',
+                ? 'Solo session enabled. Chimera, delegation, background subagents, and companions are blocked.'
+                : action === 'companions'
+                  ? 'Solo session enabled with companions. Chimera, delegation, and background subagents are blocked; the read-only memory and explore companions still run.'
+                  : 'Solo session disabled. Subagents are allowed for this session.',
           };
         } catch (err) {
           return { message: toErrorMessage(err) };

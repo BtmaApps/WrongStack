@@ -24,7 +24,9 @@ import {
   tightenHqRedactionPolicy,
   tokenHasCapability,
 } from '@wrongstack/core/hq';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { WebSocket } from 'ws';
+import { sendSageSnapshot } from './sage-sync-send.js';
 import { broadcastCommandStatus, broadcastEvent, sendGuarded } from './snapshot.js';
 import type { ConnectedClient, HqSnapshotBroadcaster, TranscriptRing } from './types.js';
 import { recordTimeseriesSignal } from './utils.js';
@@ -60,7 +62,7 @@ export function handleBrowser(
       JSON.stringify({
         level: 'warn',
         event: 'hq.browser_socket_error',
-        message: err instanceof Error ? err.message : String(err),
+        message: toErrorMessage(err),
         timestamp: new Date().toISOString(),
       }),
     );
@@ -217,7 +219,7 @@ export function handleClient(
       JSON.stringify({
         level: 'warn',
         event: 'hq.client_socket_error',
-        message: err instanceof Error ? err.message : String(err),
+        message: toErrorMessage(err),
         timestamp: new Date().toISOString(),
       }),
     );
@@ -376,6 +378,17 @@ export function handleClient(
             sendGuarded(ws, JSON.stringify({ type: 'hq.kanban_snapshot', payload: p }));
           })
           .catch(() => undefined);
+      }
+
+      if (persistence?.sage !== undefined) {
+        void persistence.sage
+          .load(client.projectId)
+          .then((snapshot) => sendSageSnapshot(ws, snapshot))
+          .catch((error: unknown) =>
+            process.stderr.write(
+              `${JSON.stringify({ level: 'warn', event: 'hq.sage_restore_failed', projectId: client.projectId, message: toErrorMessage(error) })}\n`,
+            ),
+          );
       }
 
       // Redacted like every other event. `handleIncomingClientEvent` routes

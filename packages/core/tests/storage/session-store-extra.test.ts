@@ -923,6 +923,31 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
     await expect(store.prune(30)).resolves.toBe(0);
     await expect(fs.stat(livePath)).resolves.toBeDefined();
   });
+
+  it('rejects a non-finite or negative prune age and keeps a young session', async () => {
+    const writer = await store.create({ id: 'young-prune', model: 'm', provider: 'p' });
+    await writer.append({ type: 'user_input', ts: now(), content: 'KEEP_ME' });
+    await writer.close();
+    const file = path.join(tmp, 'young-prune.jsonl');
+
+    await expect(store.prune(Number.NaN)).rejects.toThrow('Invalid prune age');
+    await expect(store.prune(-1)).rejects.toThrow(TypeError);
+    await expect(fs.readFile(file, 'utf8')).resolves.toContain('KEEP_ME');
+  });
+
+  it('rejects a non-finite checkpoint age and keeps a young manifest', async () => {
+    const manifests = path.join(tmp, '_cas', 'manifests');
+    await fs.mkdir(manifests, { recursive: true });
+    const manifest = path.join(manifests, `${'ab'.repeat(32)}.json`);
+    await fs.writeFile(manifest, '{"entries":[]}\n');
+
+    await expect(store.collectCheckpointGarbage(30)).resolves.toMatchObject({
+      manifestsDeleted: 0,
+    });
+    await expect(store.collectCheckpointGarbage(Number.NaN)).rejects.toThrow('Invalid prune age');
+    await expect(store.collectCheckpointGarbage(-1)).rejects.toThrow(TypeError);
+    await expect(fs.stat(manifest)).resolves.toBeDefined();
+  });
 });
 
 describe('DefaultSessionStore — error paths', () => {
@@ -1827,5 +1852,141 @@ describe('DefaultSessionStore.delete — in-use protection', () => {
     await w.close();
     await guardedStore.delete('2026-07-04/gn1');
     await expect(fs.access(path.join(tmp, '2026-07-04', 'gn1.jsonl'))).rejects.toThrow();
+  });
+});
+
+describe('DefaultSessionStore — leaf id mutations', () => {
+  it('clears, renames, and deletes a date-sharded session by its unique leaf', async () => {
+    const clearWriter = await store.create({
+      id: '2026-07-04/sess_clear',
+      model: 'm',
+      provider: 'p',
+    });
+    await clearWriter.append({ type: 'user_input', ts: now(), content: 'CLEAR_ME' });
+    await clearWriter.close();
+
+    await store.clearHistory('sess_clear');
+
+    const cleared = await fs.readFile(path.join(tmp, '2026-07-04', 'sess_clear.jsonl'), 'utf8');
+    expect(cleared).not.toContain('CLEAR_ME');
+    await expect(fs.access(path.join(tmp, 'sess_clear.jsonl'))).rejects.toThrow();
+
+    const renameWriter = await store.create({
+      id: '2026-07-04/sess_rename',
+      model: 'm',
+      provider: 'p',
+    });
+    await renameWriter.close();
+    const renamed = await store.rename('sess_rename', 'Leaf Name');
+    expect(renamed).toMatchObject({ id: '2026-07-04/sess_rename', name: 'Leaf Name' });
+
+    const deleteWriter = await store.create({
+      id: '2026-07-04/sess_delete',
+      model: 'm',
+      provider: 'p',
+    });
+    await deleteWriter.close();
+    await store.delete('sess_delete');
+    await expect(fs.access(path.join(tmp, '2026-07-04', 'sess_delete.jsonl'))).rejects.toThrow();
+  });
+
+  it('refuses an ambiguous leaf instead of deleting either session', async () => {
+    for (const id of ['2026-07-05/shared-leaf', '2026-07-06/shared-leaf']) {
+      const writer = await store.create({ id, model: 'm', provider: 'p' });
+      await writer.close();
+    }
+
+    await expect(store.delete('shared-leaf')).rejects.toThrow(/Ambiguous session id/);
+    await expect(
+      fs.access(path.join(tmp, '2026-07-05', 'shared-leaf.jsonl')),
+    ).resolves.toBeUndefined();
+    await expect(
+      fs.access(path.join(tmp, '2026-07-06', 'shared-leaf.jsonl')),
+    ).resolves.toBeUndefined();
+  });
+
+  it('still treats delete of an unknown id as a no-op', async () => {
+    await expect(store.delete('missing-leaf')).resolves.toBeUndefined();
+  });
+
+  it('throws when clearHistory is given an unknown id', async () => {
+    await expect(store.clearHistory('missing-session')).rejects.toThrow(
+      'Session not found: missing-session',
+    );
+    await expect(fs.access(path.join(tmp, 'missing-session.jsonl'))).rejects.toThrow();
+  });
+
+  it('refuses to delete a live session addressed by its leaf', async () => {
+    let reportInUse = false;
+    const guarded = new DefaultSessionStore({
+      dir: tmp,
+      isSessionInUse: async (id) =>
+        reportInUse && id === '2026-07-04/live_leaf' ? 'active in WrongStack (PID 12345)' : null,
+    });
+    try {
+      const writer = await guarded.create({
+        id: '2026-07-04/live_leaf',
+        model: 'm',
+        provider: 'p',
+      });
+      await writer.close();
+      reportInUse = true;
+      await expect(guarded.delete('live_leaf')).rejects.toThrow(/in use/);
+      await expect(
+        fs.access(path.join(tmp, '2026-07-04', 'live_leaf.jsonl')),
+      ).resolves.toBeUndefined();
+    } finally {
+      await guarded.dispose();
+    }
+  });
+
+  it('loads and searches a date-sharded session by its unique leaf', async () => {
+    const writer = await store.create({ id: '2026-07-04/sess_read', model: 'm', provider: 'p' });
+    await writer.append({ type: 'user_input', ts: now(), content: 'READ_ME' });
+    await writer.close();
+
+    const loaded = await store.load('sess_read');
+    expect(loaded.events.some((event) => JSON.stringify(event).includes('READ_ME'))).toBe(true);
+
+    const eventsOnly = await store.loadEventsOnly('sess_read');
+    expect(eventsOnly.events.some((event) => JSON.stringify(event).includes('READ_ME'))).toBe(true);
+
+    const hits = await store.searchEvents('sess_read', () => true);
+    expect(hits.some((hit) => JSON.stringify(hit.event).includes('READ_ME'))).toBe(true);
+  });
+
+  it('rejects an ambiguous leaf for load and search without reading either session', async () => {
+    for (const id of ['2026-07-07/shared-read', '2026-07-08/shared-read']) {
+      const writer = await store.create({ id, model: 'm', provider: 'p' });
+      await writer.append({ type: 'user_input', ts: now(), content: id });
+      await writer.close();
+    }
+
+    await expect(store.load('shared-read')).rejects.toThrow(/Ambiguous session id/);
+    await expect(store.searchEvents('shared-read', () => true)).rejects.toThrow(
+      /Ambiguous session id/,
+    );
+  });
+
+  it('records the canonical parent when a date-sharded session is forked by its leaf', async () => {
+    const parentId = '2026-07-04/sess_fork';
+    const writer = await store.create({ id: parentId, model: 'm', provider: 'p' });
+    await writer.append({ type: 'user_input', ts: now(), content: 'FORK_ME' });
+    await writer.close();
+
+    const forked = await store.fork('sess_fork');
+    expect(forked.parentSessionId).toBe(parentId);
+    expect((await store.list(20)).find((row) => row.id === forked.id)?.forkedFrom).toBe(parentId);
+    const child = await store.load(forked.id);
+    expect(JSON.stringify(child.events)).toContain('FORK_ME');
+  });
+
+  it('refuses to fork an unknown or ambiguous leaf', async () => {
+    await expect(store.fork('missing-fork')).rejects.toThrow('Session not found: missing-fork');
+    for (const id of ['2026-07-09/shared-fork', '2026-07-10/shared-fork']) {
+      const writer = await store.create({ id, model: 'm', provider: 'p' });
+      await writer.close();
+    }
+    await expect(store.fork('shared-fork')).rejects.toThrow(/Ambiguous session id/);
   });
 });

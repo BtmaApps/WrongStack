@@ -32,6 +32,16 @@ interface CsprojPackageRef {
  *   <PackageReference Include="Microsoft.AspNetCore.App" />
  *   Condition attributes are ignored.
  */
+/**
+ * A NuGet declaration is only usable as a version when it names ONE concrete
+ * release. `13.*` (floating) and `[5.0.0,6.0.0)` / `(1.0,)` (ranges) are
+ * constraints: they resolve to whatever the restore graph picks, so using one
+ * as a version produced the unmatchable `pkg:nuget/Newtonsoft.Json@13.*`.
+ */
+function isConcreteVersion(declaration: string): boolean {
+  return !declaration.includes('*') && !declaration.startsWith('[') && !declaration.startsWith('(');
+}
+
 function parseCsproj(content: string): CsprojPackageRef[] {
   const refs: CsprojPackageRef[] = [];
   const regex = /<PackageReference\b([^>]*?)(?:\/>|>([\s\S]*?)<\/PackageReference>)/gi;
@@ -146,7 +156,19 @@ export class DotNetAdapter implements EcosystemAdapter {
       if (seen.has(ref.name)) continue;
       seen.add(ref.name);
 
-      const locked = lockVersions.get(ref.name) || ref.version;
+      // `locked` is the version the RESTORE GRAPH resolved. A declaration is not
+      // a resolved version: falling back to it let a floating/range constraint
+      // (`13.*`, `[5.0.0,6.0.0)`) become both `locked` and the purl version,
+      // emitting `pkg:nuget/Newtonsoft.Json@13.*` — a glob, not an identity, so
+      // the SBOM carried a malformed component and every advisory lookup for it
+      // failed. A concrete declaration is still a usable stand-in when no graph
+      // is present (the pre-existing obj/-path fix only made the graph
+      // reachable; this keeps the fallback from reporting a constraint). The
+      // declaration itself is always surfaced as `requested` below.
+      const declared = ref.version;
+      const locked =
+        lockVersions.get(ref.name) ??
+        (declared && isConcreteVersion(declared) ? declared : undefined);
 
       // .NET PackageReferences are always registry (NuGet)
       // constructPurl maps the ecosystem id to the canonical PURL type

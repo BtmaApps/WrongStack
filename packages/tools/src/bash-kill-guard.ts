@@ -370,12 +370,14 @@ export function parseKillCommand(command: string): KillCommand | null {
     // Locate the target independently of flag order/arguments (`/T`, `/FI ...`).
     // Shell control operators stay unparsed so the conservative pipeline path runs.
     const isSimpleTaskkill = /^taskkill\s+/i.test(normalized) && !/[|&<>]/.test(normalized);
+    // `/PID:1234` (colon-attached) binds identically to `/PID 1234`.
     const taskkillPidMatch = isSimpleTaskkill
-      ? normalized.match(/(?:^|\s)\/PID\s+(\d+)(?=\s|$)/i)
+      ? normalized.match(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/i)
       : null;
-    if (taskkillPidMatch?.[1]) {
+    const taskkillPidValue = taskkillPidMatch?.[1] ?? taskkillPidMatch?.[2];
+    if (taskkillPidValue) {
       return {
-        pid: parseInt(taskkillPidMatch[1], 10),
+        pid: parseInt(taskkillPidValue, 10),
         signal: hasTaskkillForce ? 'FORCE' : 'TERM',
         isGroupKill: false,
         isAllKill: false,
@@ -384,12 +386,17 @@ export function parseKillCommand(command: string): KillCommand | null {
     }
 
     // ── taskkill /F /IM node.exe (image-name-based broad kill) ──────
+    // taskkill also binds the colon-attached value form `/IM:node.exe`
+    // (live-verified: exit 128 "process not found" — syntax accepted, image
+    // lookup performed), so both spellings are extracted, mirroring the
+    // Stop-Process -Id:<pid> handling below.
     const taskkillImMatch = isSimpleTaskkill
-      ? normalized.match(/(?:^|\s)\/IM\s+([^\s/]+)(?=\s|$)/i)
+      ? normalized.match(/(?:^|\s)\/IM(?::([^\s/]+)|\s+([^\s/]+))(?=\s|$)/i)
       : null;
-    if (taskkillImMatch?.[1]) {
+    const taskkillImName = taskkillImMatch?.[1] ?? taskkillImMatch?.[2];
+    if (taskkillImName) {
       return {
-        name: taskkillImMatch[1],
+        name: taskkillImName,
         signal: hasTaskkillForce ? 'FORCE' : 'TERM',
         isGroupKill: false,
         isAllKill: false,

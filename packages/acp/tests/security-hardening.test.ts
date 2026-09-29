@@ -221,24 +221,14 @@ interface FakeTransport {
   respond: (id: number | string, method: string, result: unknown) => void;
 }
 
-vi.mock('../src/agent/stdio-transport.js', () => {
-  class ClientTransport {
-    sent: ACPMessage[] = [];
-    handlers: Array<(m: ACPMessage) => void> = [];
-    start = vi.fn(async () => {});
-    stop = vi.fn();
-    send = vi.fn(async (m: ACPMessage) => {
-      this.sent.push(m);
-    });
+vi.mock('../src/agent/stdio-transport.js', async () => {
+  // Dynamic, not a static import: vi.mock is hoisted above the imports, so the
+  // shared helper would not be initialised when this factory body runs.
+  const { FakeClientTransport } = await import('./helpers/fake-client-transport.js');
+  class ClientTransport extends FakeClientTransport {
     constructor() {
+      super();
       (hoisted as unknown as { instances: unknown[] }).instances.push(this);
-    }
-    onMessage(h: (m: ACPMessage) => void): () => void {
-      this.handlers.push(h);
-      return () => {};
-    }
-    emit(m: ACPMessage): void {
-      for (const h of [...this.handlers]) h(m);
     }
     respond(id: number | string, _method: string, result: unknown): void {
       this.emit({ jsonrpc: '2.0', id, result } as never as ACPMessage);

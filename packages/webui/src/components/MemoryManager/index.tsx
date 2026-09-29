@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowLeft, Check, RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useAppTranslation } from '@/i18n';
@@ -15,14 +16,30 @@ import { MemoryManagerEmpty } from './MemoryManagerEmpty';
 import { MemoryManagerHeader } from './MemoryManagerHeader';
 import { MemoryManagerStatsBar } from './MemoryManagerStatsBar';
 import { MemorySearchBreakdown } from './MemorySearchBreakdown';
+import { RankedSearchResults } from './RankedSearchResults';
 import { ReviewQueue } from './ReviewQueue';
+import type { SharedMemorySearch } from './sharedSearch.js';
 import { useMemoryManagerState } from './useMemoryManagerState';
 
-export function MemoryManager() {
+export function MemoryManager({
+  sharedSearch,
+  linkedId,
+  onLinkedIdHandled,
+  onReturnToVector,
+}: {
+  sharedSearch?: SharedMemorySearch;
+  linkedId?: string | null;
+  onLinkedIdHandled?: () => void;
+  onReturnToVector?: () => void;
+} = {}) {
   const { t } = useAppTranslation();
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const memoryListRef = useScrollPosition<HTMLDivElement>('memory');
-  const state = useMemoryManagerState();
+  const state = useMemoryManagerState(sharedSearch);
+  useEffect(() => {
+    if (!linkedId) return;
+    void state.openSearchMemory(linkedId).finally(() => onLinkedIdHandled?.());
+  }, [linkedId, state.openSearchMemory, onLinkedIdHandled]);
 
   if (state.initialLoading && state.memories.length === 0) {
     return (
@@ -86,7 +103,7 @@ export function MemoryManager() {
         allTagsCount={state.allTags.length}
       />
 
-      {(state.notice || state.loadError || state.mutationError) && (
+      {(state.notice || state.loadError || state.mutationError || state.resolveError) && (
         <div className="shrink-0 border-b border-border/70 px-4 py-2" aria-live="polite">
           {state.notice && (
             <div role="status" className="flex items-center gap-2 text-xs text-success">
@@ -102,6 +119,11 @@ export function MemoryManager() {
           {state.mutationError && !state.editing && !state.creating && (
             <div role="alert" className="flex items-center gap-2 text-xs text-destructive">
               <AlertTriangle className="size-3.5" /> {state.mutationError}
+            </div>
+          )}
+          {state.resolveError && (
+            <div role="alert" className="flex items-center gap-2 text-xs text-destructive">
+              <AlertTriangle className="size-3.5" /> {state.resolveError}
             </div>
           )}
         </div>
@@ -209,7 +231,14 @@ export function MemoryManager() {
                 onOpenCreate={state.openCreate}
                 onClearFilters={state.clearFilters}
               />
-              {state.searchQuery.trim().length > 0 && (
+              {sharedSearch ? (
+                <RankedSearchResults
+                  search={sharedSearch}
+                  tagFilter={state.tagFilter}
+                  audienceOnly={state.audienceOnly}
+                  onOpen={(id) => void state.openSearchMemory(id)}
+                />
+              ) : state.searchQuery.trim().length > 0 ? (
                 <MemorySearchBreakdown
                   query={state.searchQuery.trim()}
                   channel={state.searchBreakdown.channel}
@@ -219,7 +248,7 @@ export function MemoryManager() {
                   onOpenMemory={state.openMemory}
                   onClear={state.clearSearchBreakdown}
                 />
-              )}
+              ) : null}
               {state.hasMore ? (
                 <div className="shrink-0 border-t border-border/60 p-2">
                   <Button
@@ -366,23 +395,36 @@ export function MemoryManager() {
                 }}
               />
             ) : (
-              <MemoryDetail
-                memory={state.selectedMemory}
-                allMemories={[...state.memories, ...state.graphMemories]}
-                relatedMemories={state.relatedMemories}
-                graphEdges={state.graphEdges}
-                graphLoading={state.graphLoading}
-                graphError={state.graphError}
-                onClose={() => state.setSelectedId(null)}
-                onOpenMemory={state.openMemory}
-                onEdit={state.openEdit}
-                onDelete={() => state.openDeleteDialog(state.selectedMemory!.id)}
-                onTagSelect={(tag) => {
-                  state.setTagFilter(tag);
-                  state.setSelectedId(null);
-                }}
-                onNotice={state.setNotice}
-              />
+              <>
+                {onReturnToVector && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
+                    onClick={onReturnToVector}
+                  >
+                    <ArrowLeft className="size-4" /> Back to vector results
+                  </Button>
+                )}
+                <MemoryDetail
+                  memory={state.selectedMemory}
+                  allMemories={[...state.memories, ...state.graphMemories]}
+                  relatedMemories={state.relatedMemories}
+                  graphEdges={state.graphEdges}
+                  graphLoading={state.graphLoading}
+                  graphError={state.graphError}
+                  onClose={() => state.setSelectedId(null)}
+                  onOpenMemory={state.openMemory}
+                  onEdit={state.openEdit}
+                  onDelete={() => state.openDeleteDialog(state.selectedMemory!.id)}
+                  onTagSelect={(tag) => {
+                    state.setTagFilter(tag);
+                    state.setSelectedId(null);
+                  }}
+                  onNotice={state.setNotice}
+                />
+              </>
             )
           ) : (
             <MemoryManagerEmpty onCapture={state.openCreate} />

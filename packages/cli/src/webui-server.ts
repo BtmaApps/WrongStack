@@ -248,6 +248,9 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
 
   let fleetBroadcastCli: (() => Promise<void>) | null = null;
   const httpServer = await startStaticServe({
+    getSessionProjectRoot: (sessionId) =>
+      sessionAgentsRef?.peek(sessionId)?.ctx.projectRoot ??
+      (opts.agent.ctx.session?.id === sessionId ? opts.agent.ctx.projectRoot : undefined),
     host,
     httpPort,
     globalRoot,

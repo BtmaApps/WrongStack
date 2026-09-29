@@ -68,9 +68,9 @@ export const scannerPatterns = { patterns: [...BASE_PATTERNS], groupIndexes: [] 
  * whole pattern optional, so `exec('')` always matches and its result
  * length reveals the group count without needing to parse the source.
  */
-export function countCaptureGroups(source: string): number {
+export function countCaptureGroups(source: string, flags = ''): number {
   try {
-    return new RegExp(`${source}|`).exec('')!.length - 1;
+    return new RegExp(`${source}|`, flags).exec('')!.length - 1;
   } catch {
     return 0;
   }
@@ -92,10 +92,20 @@ export function buildCombinedRegex(patterns: Pattern[]): RegExp {
   // Record each pattern's outer-group offset before its own inner groups.
   const offsets: number[] = [];
   let cursor = 0;
+  // One combined regex carries ONE flag set, so per-pattern flags must be
+  // unioned in. Dropping them silently changed matching: `json_credential_key`
+  // is authored with `i`, and the 'g'-only combined regex missed every
+  // case-variant JSON key ("API_KEY", "Password") that prompt-firewall's
+  // per-pattern loop and core's scrubber both catch on the same text.
+  // Union is also the safe direction for a redaction gate — it can only
+  // widen what is matched, never narrow it. Sticky (`y`) is excluded: it
+  // would break the exec-loop advancement the scan depends on.
+  const flags = new Set<string>(['g']);
   for (const p of patterns) {
     offsets.push(cursor);
-    cursor += 1 + countCaptureGroups(p.regex.source);
+    cursor += 1 + countCaptureGroups(p.regex.source, p.regex.flags);
+    for (const f of p.regex.flags) if (f !== 'y') flags.add(f);
   }
   scannerPatterns.groupIndexes = offsets;
-  return new RegExp(patterns.map((p) => `(${p.regex.source})`).join('|'), 'g');
+  return new RegExp(patterns.map((p) => `(${p.regex.source})`).join('|'), [...flags].join(''));
 }

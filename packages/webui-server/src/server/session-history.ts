@@ -105,7 +105,7 @@ function labelForEvent(e: SessionEvent): string {
     case 'session_start':
       return 'Session started';
     case 'subagent_policy':
-      return `Subagents ${e.allowed ? 'allowed' : 'blocked'}`;
+      return `Subagents ${e.allowed ? 'allowed' : e.companions ? 'blocked (companions allowed)' : 'blocked'}`;
     case 'permission_overrides':
       return 'Session permission rules changed';
     case 'subagent_model_plan':
@@ -228,7 +228,7 @@ function detailForEvent(e: SessionEvent): string {
     case 'session_start':
       return `${e.model} @ ${e.provider}`;
     case 'subagent_policy':
-      return e.allowed ? 'allowed' : 'blocked';
+      return e.allowed ? 'allowed' : e.companions ? 'companions only' : 'blocked';
     case 'permission_overrides':
       return e.overrides.length === 0
         ? 'none'

@@ -4,13 +4,15 @@ import { useAppTranslation } from '@/i18n';
 import { useConfigStore } from '@/stores';
 import type { SageEntry, SageGraphEdge, SageStats, SageStatus } from '@/types';
 import { confirmModal } from '../ConfirmModal';
+import { resolveSearchMemory } from './rankedSearch.js';
 import { collectMemoryTags, filterMemories, selectRelatedMemories } from './selectors';
 import type { MemoryDraft } from './shared';
 import { draftFromMemory, emptyDraft, normalizeAnchors, splitList } from './shared';
+import type { SharedMemorySearch } from './sharedSearch.js';
 
 const PAGE_SIZE = 100;
 
-export function useMemoryManagerState() {
+export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
   const { t } = useAppTranslation();
   const {
     client,
@@ -64,9 +66,19 @@ export function useMemoryManagerState() {
     loading: boolean;
     error: string | null;
   }>({ hits: [], channel: undefined, loading: false, error: null });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | SageStatus>('all');
-  const [kindFilter, setKindFilter] = useState('all');
+  const [localQuery, setLocalQuery] = useState('');
+  const [localStatus, setLocalStatus] = useState<'all' | SageStatus>('all');
+  const [localKind, setLocalKind] = useState('all');
+  const searchQuery = sharedSearch?.query ?? localQuery;
+  const setSearchQuery = sharedSearch?.setQuery ?? setLocalQuery;
+  const statusFilter = sharedSearch?.statusFilter ?? localStatus;
+  const setStatusFilter = sharedSearch?.setStatusFilter ?? setLocalStatus;
+  const kindFilter = sharedSearch?.kindFilter ?? localKind;
+  const setKindFilter = sharedSearch?.setKindFilter ?? setLocalKind;
+  const [resolvedMemory, setResolvedMemory] = useState<SageEntry | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const resolveController = useRef<AbortController | null>(null);
+  const resolvedMemoryRef = useRef<SageEntry | null>(null);
   const [audienceOnly, setAudienceOnly] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [libraryView, setLibraryView] = useState<'active' | 'deleted' | 'review'>('active');
@@ -118,8 +130,8 @@ export function useMemoryManagerState() {
       memories.find((memory) => memory.id === id) ??
       searchBreakdown.hits.find((hit) => hit.memory.id === id)?.memory ??
       graphMemories.find((memory) => memory.id === id) ??
-      null,
-    [graphMemories, memories, searchBreakdown.hits],
+      (resolvedMemory?.id === id ? resolvedMemory : null),
+    [graphMemories, memories, searchBreakdown.hits, resolvedMemory],
   );
 
   const selectedMemory = useMemo(
@@ -189,6 +201,7 @@ export function useMemoryManagerState() {
               if (searchBreakdownHitsRef.current.some((hit) => hit.memory.id === current)) {
                 return current;
               }
+              if (resolvedMemoryRef.current?.id === current) return current;
               return null;
             });
           }
@@ -245,6 +258,7 @@ export function useMemoryManagerState() {
       listCleanupRef.current?.();
       mutationCleanupRef.current?.();
       searchBreakdownCleanupRef.current?.();
+      resolveController.current?.abort();
     };
   }, [loadMemories]);
 
@@ -253,6 +267,7 @@ export function useMemoryManagerState() {
   // so an in-flight request from a previous query never clobbers a
   // newer one. Empty query → reset to the empty state.
   useEffect(() => {
+    if (sharedSearch) return;
     const query = searchQuery.trim();
     searchBreakdownCleanupRef.current?.();
     if (query.length === 0) {
@@ -301,7 +316,7 @@ export function useMemoryManagerState() {
       },
     );
     searchSageBreakdown({ query, limit: 20 });
-  }, [searchQuery, client, searchSageBreakdown]);
+  }, [searchQuery, client, searchSageBreakdown, Boolean(sharedSearch)]);
 
   // Async handlers (e.g. the listPage response) need the latest search
   // hits without `loadPage` depending on them — a state dep would
@@ -397,6 +412,30 @@ export function useMemoryManagerState() {
       });
     },
     [confirmDiscard, creating, dirty, editing],
+  );
+
+  /** Ranked results and vector links may point outside the loaded library page. */
+  const openSearchMemory = useCallback(
+    async (id: string): Promise<boolean> => {
+      resolveController.current?.abort();
+      const controller = new AbortController();
+      resolveController.current = controller;
+      setResolveError(null);
+      try {
+        const { memory } = await resolveSearchMemory(id, controller.signal);
+        if (controller.signal.aborted) return false;
+        resolvedMemoryRef.current = memory;
+        setResolvedMemory(memory);
+        openMemory(id);
+        return true;
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setResolveError(error instanceof Error ? error.message : String(error));
+        }
+        return false;
+      }
+    },
+    [openMemory],
   );
 
   const openEdit = useCallback(
@@ -737,6 +776,8 @@ export function useMemoryManagerState() {
     setSelectedId,
     selectedMemory,
     resolveMemory,
+    openSearchMemory,
+    resolveError,
     graphEdges,
     graphMemories,
     graphError,

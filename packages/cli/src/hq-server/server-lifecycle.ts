@@ -5,8 +5,8 @@
  */
 
 import type { Server as HttpServer } from 'node:http';
-import type { WebSocket, WebSocketServer } from 'ws';
 import type { HqPersistence } from '@wrongstack/core/hq';
+import type { WebSocket, WebSocketServer } from 'ws';
 import type { LoginAttemptStore } from './login-attempt-store.js';
 import type { MailboxGatewayManager } from './mailbox-gateway-manager.js';
 import { clearHqRuntimeMarker } from './startup.js';
@@ -82,6 +82,7 @@ export function createHqServerShutdown(params: HqServerShutdownParams): () => Pr
           params.persistence.snapshotStore.drain(),
           params.persistence.timeseries.drain(),
           params.persistence.kanban.drain(),
+          params.persistence.sage?.drain(),
         ])
           .then(() => clearHqRuntimeMarker(params.dataDir, params.hqUrl))
           .catch(() => undefined)

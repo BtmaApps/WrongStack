@@ -111,28 +111,34 @@ export function capAnthropicCacheBreakpoints(
   body: WireBody,
   limit: number = ANTHROPIC_MAX_BREAKPOINTS,
 ): void {
+  if (!body || typeof body !== 'object') return;
+  const effectiveLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit >= 0
+      ? Math.floor(limit)
+      : ANTHROPIC_MAX_BREAKPOINTS;
   const markers = collectMarkers(body);
-  if (markers.length <= limit) return;
+  if (markers.length <= effectiveLimit) return;
 
   const pinned = markers.reduce<number[]>((indices, marker, index) => {
     if (marker.pinned) indices.push(index);
     return indices;
   }, []);
-  const keep = new Set(pinned.length > limit ? pinned.slice(-limit) : pinned);
+  const keep = new Set(pinned.length > effectiveLimit ? pinned.slice(-effectiveLimit) : pinned);
 
-  if (keep.size < limit) keep.add(0);
-  if (keep.size < limit) keep.add(markers.length - 1);
+  if (keep.size < effectiveLimit) keep.add(0);
+  if (keep.size < effectiveLimit) keep.add(markers.length - 1);
 
   const messageMarkers = markers.reduce<number[]>((acc, marker, i) => {
     if (marker.inMessages) acc.push(i);
     return acc;
   }, []);
   const secondNewestMessage = messageMarkers[messageMarkers.length - 2];
-  if (secondNewestMessage !== undefined && keep.size < limit) keep.add(secondNewestMessage);
+  if (secondNewestMessage !== undefined && keep.size < effectiveLimit)
+    keep.add(secondNewestMessage);
 
   // Fill remaining slots: repeatedly take the not-yet-kept marker that is
   // farthest (in prefix tokens) from its nearest already-kept neighbor.
-  while (keep.size < limit) {
+  while (keep.size < effectiveLimit) {
     let bestIdx = -1;
     let bestDist = -1;
     for (let i = 0; i < markers.length; i++) {

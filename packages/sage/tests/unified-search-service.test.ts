@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SqliteSageStore } from '../src/sqlite-store.js';
+import { InvalidSearchCursorError } from '../src/service-contract.js';
 
 let tempDir: string;
 let activeStores: SqliteSageStore[] = [];
@@ -148,16 +149,22 @@ describe('executeUnifiedSearch (commit 1.5, MVP)', () => {
 });
 
 describe('executeUnifiedSearch — declared-field contract (2026-08-02)', () => {
-  it('rejects cursor pagination explicitly instead of ignoring it', async () => {
+  it('rejects non-string cursor values with InvalidSearchCursorError', async () => {
     const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
     await store.initialize();
     await seedCorpus(store);
-    await expect(
-      store.unifiedSearchService({
+    // The legacy {memoryId, direction} shape never paginated (it always
+    // threw). Under the B3/B4 contract a cursor must be an opaque string
+    // token; anything else is a strict client error — never a silent first
+    // page. `as never` mirrors an untyped IPC caller.
+    const err: unknown = await store
+      .unifiedSearchService({
         text: 'cursor',
-        cursor: { memoryId: 'mem-x', direction: 'before' },
-      }),
-    ).rejects.toThrow(/cursor pagination/);
+        cursor: { memoryId: 'mem-x', direction: 'before' } as never,
+      })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InvalidSearchCursorError);
+    expect((err as Error).name).toBe('InvalidSearchCursorError');
   });
 
   it('honors freshness.createdAfter', async () => {

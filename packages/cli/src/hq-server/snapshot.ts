@@ -58,7 +58,11 @@ export const HQ_BROWSER_MAX_BUFFERED_BYTES = 32 * 1024 * 1024;
  * always-loaded graph, and a static import would drag that whole package into
  * boot, which the CLI keeps behind a lazy import on purpose.
  */
-export function sendGuarded(ws: WebSocket, data: string): boolean {
+export function sendGuarded(
+  ws: WebSocket,
+  data: string,
+  callback?: (error?: Error) => void,
+): boolean {
   if (ws.readyState !== WebSocket.OPEN) return false;
   const buffered = Number.isFinite(ws.bufferedAmount) ? ws.bufferedAmount : 0;
   if (buffered + Buffer.byteLength(data, 'utf8') > HQ_BROWSER_MAX_BUFFERED_BYTES) {
@@ -74,7 +78,8 @@ export function sendGuarded(ws: WebSocket, data: string): boolean {
     return false;
   }
   try {
-    ws.send(data);
+    if (callback) ws.send(data, callback);
+    else ws.send(data);
     return true;
   } catch {
     return false;

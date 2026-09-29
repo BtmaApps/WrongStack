@@ -374,9 +374,14 @@ describe('/prompt, /prompt-gen, and /bughunt', () => {
     const wholeProject = await runCmd(bughunt, '', commandContext);
     expect(wholeProject.runText).toBe('Hunt exactly one proven bug.');
     expect(wholeProject.message).toContain('current project');
+    // Solo, but the read-only companions keep running.
     expect(session.append).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'subagent_policy', allowed: false }),
+      expect.objectContaining({ type: 'subagent_policy', allowed: false, companions: true }),
     );
+    expect(commandContext.meta).toMatchObject({
+      subagentsAllowed: false,
+      subagentCompanionsAllowed: true,
+    });
 
     const targeted = await runCmd(bughunt, 'packages/core/storage', commandContext);
     expect(targeted.runText).toContain('Hunt exactly one proven bug.');
@@ -404,6 +409,30 @@ describe('/prompt, /prompt-gen, and /bughunt', () => {
     const invalid = await runCmd(bughunt, '--rounds 26', ctx({ messages: [], meta: {}, session }));
     expect(invalid.message).toContain('1..25');
     expect(invalid.runText).toBeUndefined();
+  });
+
+  it('/bughunt leaves a strict solo session strict, even once it is locked', async () => {
+    await store.save(
+      store.createNew('Proof-Driven Bug Hunter', 'Hunt exactly one proven bug.', ['bug'], {
+        category: 'debugging',
+      }),
+    );
+    const { bughunt } = await withLoaderCommands();
+    const session = { id: 'bughunt-strict', append: vi.fn(async () => undefined) };
+    const meta: Record<string, unknown> = {
+      subagentsAllowed: false,
+      subagentCompanionsAllowed: false,
+    };
+
+    const out = await runCmd(
+      bughunt,
+      '',
+      ctx({ messages: [{ role: 'user', content: 'already started' }], meta, session }),
+    );
+
+    expect(out.runText).toBe('Hunt exactly one proven bug.');
+    expect(session.append).not.toHaveBeenCalled();
+    expect(meta['subagentCompanionsAllowed']).toBe(false);
   });
 
   it('/bughunt refuses to start after a non-solo session is locked', async () => {

@@ -686,11 +686,19 @@ describe('runtime 100 coverage completion', () => {
       } as never);
       emitter.emit('tool.executed', { ok: true, mutating: true, sessionId: 's1', id: 't5' });
       for (let i = 0; i < 5; i++) await Promise.resolve();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'governance: post-mutation workspace snapshot was not recorded',
+        { code: 'workspace_snapshot_invalid', message: 'invalid recorded' },
+      );
 
       // 5. recordWorkspaceSnapshot throws
       sink.recordWorkspaceSnapshot.mockRejectedValueOnce(new Error('sink exploded'));
       emitter.emit('tool.executed', { ok: true, mutating: true, sessionId: 's1', id: 't6' });
-      for (let i = 0; i < 5; i++) await Promise.resolve();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'governance: post-mutation workspace snapshot failed open',
+        { message: 'sink exploded' },
+      );
 
       // 6. Queue capacity cap and close
       await bridge.close();

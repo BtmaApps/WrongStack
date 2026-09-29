@@ -384,3 +384,107 @@ describe('ACP delivery notice helpers', () => {
     expect(finiteNonNegativeLimit(Number.NaN, 1500)).toBe(1500);
   });
 });
+
+/**
+ * Edge paths of the delivery notifier that the behavioural suite above cannot
+ * reach through the protocol handler: an api without sendSessionUpdate, a
+ * pending-deliveries probe that throws, an event with no id array, a withdrawn
+ * delivery, and a turn that begins while a notice timer is still armed.
+ */
+describe('ACP delivery notifier edge paths', () => {
+  function makeTurn(opts: { pendingDeliveries?: (sessionId: string) => number } = {}) {
+    const bus = makeBus();
+    const turn = makeACPServerAgentTurn({
+      deliveryNoticeDebounceMs: DEBOUNCE_MS,
+      ...(opts.pendingDeliveries ? { pendingDeliveries: opts.pendingDeliveries } : {}),
+      agentFor: async (sessionId) =>
+        ({
+          events: bus,
+          ctx: { session: { id: sessionId } },
+          run: async () => ({ text: 'ok', stopReason: 'end_turn' }),
+          teardown: async () => {},
+        }) as never as Agent,
+    });
+    return { bus, turn };
+  }
+
+  function turnInput(sessionId: string) {
+    return {
+      sessionId,
+      prompt: [{ type: 'text' as const, text: 'hi' }],
+      signal: new AbortController().signal,
+    };
+  }
+
+  /** A minimal api; `withNotifier: false` omits sendSessionUpdate entirely. */
+  function makeApi(updates: unknown[], withNotifier = true): RunTurnApi {
+    return {
+      clientCapabilities: {},
+      requestPermission: async () => ({ outcome: 'cancelled' }),
+      readTextFile: async () => '',
+      writeTextFile: async () => {},
+      ...(withNotifier
+        ? {
+            sendSessionUpdate: async (u: unknown) => {
+              updates.push(u);
+              return true;
+            },
+          }
+        : {}),
+    } as unknown as RunTurnApi;
+  }
+
+  it('sends no notice when the pending-deliveries probe throws', async () => {
+    const updates: unknown[] = [];
+    const { bus, turn } = makeTurn({
+      pendingDeliveries: () => {
+        throw new Error('probe failed');
+      },
+    });
+    await turn(turnInput('s-throw'), () => {}, makeApi(updates));
+    bus.emit('leader.delivery_pending', pending('s-throw', 'delegation:d-1'));
+    await sleep(SETTLE_MS);
+    expect(updates).toHaveLength(0);
+  });
+
+  it('sends no notice when the turn ran without a sendSessionUpdate api', async () => {
+    const updates: unknown[] = [];
+    const { bus, turn } = makeTurn();
+    await turn(turnInput('s-noapi'), () => {}, makeApi(updates, false));
+    bus.emit('leader.delivery_pending', pending('s-noapi', 'delegation:d-1'));
+    await sleep(SETTLE_MS);
+    expect(updates).toHaveLength(0);
+  });
+
+  it('ignores a delivery_pending event that carries no delivery ids', async () => {
+    const updates: unknown[] = [];
+    const { bus, turn } = makeTurn();
+    await turn(turnInput('s-noids'), () => {}, makeApi(updates));
+    bus.emit('leader.delivery_pending', { sessionId: 's-noids', count: 0, wake: true });
+    await sleep(SETTLE_MS);
+    expect(updates).toHaveLength(0);
+  });
+
+  it('withdraws a delivery that is marked delivered before the notice fires', async () => {
+    const updates: unknown[] = [];
+    const { bus, turn } = makeTurn();
+    await turn(turnInput('s-delivered'), () => {}, makeApi(updates));
+    bus.emit('leader.delivery_pending', pending('s-delivered', 'delegation:d-1'));
+    bus.emit('delegation.delivered', { sessionId: 's-delivered', delegationId: 'd-1' });
+    await sleep(SETTLE_MS);
+    expect(updates).toHaveLength(0);
+  });
+
+  it('cancels an armed notice timer when a new turn starts', async () => {
+    const updates: unknown[] = [];
+    const { bus, turn } = makeTurn();
+    await turn(turnInput('s-rearm'), () => {}, makeApi(updates));
+    // Arms the debounce timer...
+    bus.emit('leader.delivery_pending', pending('s-rearm', 'delegation:d-1'));
+    // ...then a new turn begins before it elapses; that turn's loop owns the
+    // results, so the armed timer is cleared rather than firing a notice.
+    await turn(turnInput('s-rearm'), () => {}, makeApi(updates));
+    await sleep(SETTLE_MS);
+    expect(updates).toHaveLength(0);
+  });
+});

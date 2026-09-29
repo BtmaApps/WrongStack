@@ -1,3 +1,4 @@
+import type { HqSageRecord } from '@wrongstack/core/hq';
 import type {
   MemoryEntry,
   MemoryHealth,
@@ -105,6 +106,9 @@ export interface SageRequestMetadata {
 }
 
 export interface SageServerOperations {
+  getHqSyncVersion: { args: Record<string, never>; result: string };
+  listHqSync: { args: { after: string }; result: HqSageRecord[] };
+  applyHqSync: { args: { records: HqSageRecord[] }; result: void };
   ping: { args: Record<string, never>; result: SageProjectServerStatus };
   readAll: { args: Record<string, never>; result: string };
   read: { args: { scope: MemoryScope }; result: string };
@@ -302,6 +306,9 @@ export type SageFieldSpec = readonly [field: string, kind: SageFieldKind];
  * here would duplicate that logic and drift against it.
  */
 export const SAGE_DISPATCH_FIELD_SPECS = {
+  getHqSyncVersion: [],
+  listHqSync: [['after', 'string']],
+  applyHqSync: [['records', 'any']],
   ping: [],
   readAll: [],
   read: [['scope', 'string']],
@@ -409,6 +416,12 @@ export function validateDispatchArgs(op: SageServerOperationName, rawArgs: unkno
     if (!sageFieldMatchesKind(value, kind)) return `arg "${field}" must be of type ${kind}`;
   }
   return null;
+}
+
+/** Reject malformed args before store access, preserving the IPC error name. */
+export function assertDispatchArgs(op: SageServerOperationName, rawArgs: unknown): void {
+  const error = validateDispatchArgs(op, rawArgs);
+  if (error) throw new SageInvalidArgsError(error);
 }
 
 export type SageProjectServerClientMessage =

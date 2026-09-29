@@ -21,15 +21,15 @@ export function createGovernanceMutationSnapshotBridge(input: {
   readonly logger: { warn(message: string, context?: unknown): void };
 }): GovernanceMutationSnapshotBridge {
   let closed = false;
-  let warned = false;
+  const warned = new Set<string>();
   let pending = 0;
   let tail: Promise<void> = Promise.resolve();
   const installedPipelines = new WeakSet<AgentPipelines>();
   const awaitedCompletions = new Set<string>();
 
   const warnOnce = (message: string, context?: unknown): void => {
-    if (warned) return;
-    warned = true;
+    if (warned.has(message)) return;
+    warned.add(message);
     if (context === undefined) input.logger.warn(message);
     else input.logger.warn(message, context);
   };

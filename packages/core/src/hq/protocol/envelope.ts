@@ -33,6 +33,7 @@ export type HqEventType =
   | 'mailbox.snapshot'
   | 'mailbox.event'
   | 'kanban.snapshot'
+  | 'sage.snapshot'
   | 'worklist.snapshot'
   | 'git.snapshot'
   | 'agent.message'

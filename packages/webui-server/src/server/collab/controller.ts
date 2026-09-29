@@ -120,7 +120,7 @@ export class GrantControlFeature implements CollabFeature {
     ctx.logger.debug?.(
       `collab: control granted from ${participant.participantId} to ${target.participantId} in ${payload.sessionId}`,
     );
-    ctx.broadcast(payload.sessionId, ctx.stateMessage(payload.sessionId));
+    ctx.broadcastState(payload.sessionId);
   }
 }
 

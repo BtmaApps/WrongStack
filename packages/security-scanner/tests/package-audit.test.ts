@@ -139,6 +139,28 @@ describe('parsePackageAuditOutput', () => {
     );
   });
 
+  it('derives severity breakdown when metadata only specifies total count', () => {
+    const parsed = parsePackageAuditOutput(
+      JSON.stringify({
+        vulnerabilities: {
+          one: { severity: 'critical', via: ['advisory'], fixAvailable: false },
+          two: { severity: 'critical', via: [], fixAvailable: false },
+        },
+        metadata: {
+          vulnerabilities: { total: 2 },
+        },
+      }),
+    );
+    expect(parsed.summary).toEqual({
+      critical: 2,
+      high: 0,
+      moderate: 0,
+      low: 0,
+      info: 0,
+      total: 2,
+    });
+  });
+
   it('surfaces structured audit errors', () => {
     expect(() =>
       parsePackageAuditOutput(JSON.stringify({ error: { summary: 'registry unavailable' } })),

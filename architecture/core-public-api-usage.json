@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 353,
-      "typeOnly": 278,
+      "files": 354,
+      "typeOnly": 279,
       "runtimeOrMixed": 96
     },
     "@wrongstack/core/agent-catalog": {
@@ -64,9 +64,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/hq": {
-      "files": 148,
-      "typeOnly": 89,
-      "runtimeOrMixed": 92
+      "files": 157,
+      "typeOnly": 93,
+      "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1235,
-      "typeOnly": 1093,
+      "files": 1240,
+      "typeOnly": 1098,
       "runtimeOrMixed": 363
     },
     "@wrongstack/core/types/limits": {
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 677,
+      "files": 683,
       "typeOnly": 66,
-      "runtimeOrMixed": 643
+      "runtimeOrMixed": 649
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -273,6 +273,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/acp/src/agent/server-agent-turn.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/acp/tests/coverage-failure-injection.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4988,6 +4994,12 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/src/hq-server/sage-sync-send.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/hq-server/server-lifecycle.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -5072,6 +5084,12 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/src/sage-hq-sync.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/slash-commands/hq.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -5097,6 +5115,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/src/subcommands/handlers/sage-sync.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5390,6 +5414,24 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/sage-hq-sync-polling.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/sage-hq-sync.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/sage-sync-send.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
       "file": "packages/core/tests/hq/auth-audit.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5411,6 +5453,24 @@
       "file": "packages/core/tests/hq/token-ttl.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/sage/src/project-server-protocol.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/sage/src/sqlite-store-hq-sync.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/sage/src/sqlite-store.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/hq",
@@ -12692,6 +12752,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/hq-publisher.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/input-reader.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16208,6 +16274,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/reasoning-echo-field.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/setup-provider.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16383,6 +16455,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/sage-mcp/src/adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sage-mcp/src/attached-server.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18698,6 +18776,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/http-server/memory-search-page.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/http-server/memory-search-resolve.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/http-server/vector-memory-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -20360,6 +20450,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/hq-server/ws-client-events.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/hq-server/ws.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/hq-service.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20523,6 +20625,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/repl.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/sage-connect.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/sage-hq-sync.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -21291,6 +21405,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/rewind.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/sage.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -22305,6 +22425,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage-mcp/src/adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage-mcp/src/attached-server.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -164,6 +164,63 @@ describe('DefaultSessionStore.searchEvents — streaming walker', () => {
     expect(out.map((m) => m.eventIndex)).toEqual([0, 1, 2, 3, 4]);
   });
 
+  it('returns nothing when the limit is not positive', async () => {
+    const file = path.join(tmp, 's.jsonl');
+    await fs.writeFile(
+      file,
+      `${JSON.stringify({
+        type: 'user_input',
+        ts: '2026-06-26T10:00:01.000Z',
+        content: 'one',
+      })}\n`,
+      'utf8',
+    );
+
+    await expect(store.searchEvents('s', () => true, { limit: 0 })).resolves.toEqual([]);
+    await expect(store.searchEvents('s', () => true, { limit: -1 })).resolves.toEqual([]);
+  });
+
+  it('rejects an ambiguous id even when the limit is not positive', async () => {
+    for (const id of ['2026-07-05/shared', '2026-07-06/shared']) {
+      const writer = await store.create({ id, model: 'm', provider: 'p' });
+      await writer.append({
+        type: 'user_input',
+        ts: '2026-07-05T00:00:00.000Z',
+        content: id,
+      });
+      await writer.close();
+    }
+
+    await expect(store.searchEvents('shared', () => true, { limit: 0 })).rejects.toThrow(
+      /Ambiguous session id/,
+    );
+    await expect(store.searchEvents('missing', () => true, { limit: 0 })).resolves.toEqual([]);
+  });
+
+  it('accepts a .jsonl suffix and still prefers an id that already has one', async () => {
+    const plain = `${JSON.stringify({
+      type: 'user_input',
+      ts: '2026-06-26T10:00:01.000Z',
+      content: 'plain',
+    })}\n`;
+    await fs.writeFile(path.join(tmp, 's.jsonl'), plain, 'utf8');
+
+    const bySuffix = await store.searchEvents('s.jsonl', () => true);
+    expect(bySuffix.map((hit) => (hit.event as { content: string }).content)).toEqual(['plain']);
+
+    await fs.writeFile(
+      path.join(tmp, 's.jsonl.jsonl'),
+      `${JSON.stringify({
+        type: 'user_input',
+        ts: '2026-06-26T10:00:02.000Z',
+        content: 'exact',
+      })}\n`,
+      'utf8',
+    );
+    const exact = await store.searchEvents('s.jsonl', () => true);
+    expect(exact.map((hit) => (hit.event as { content: string }).content)).toEqual(['exact']);
+  });
+
   it('handles a trailing line without a final newline', async () => {
     const file = path.join(tmp, 's.jsonl');
     // session_start with newline, then a single user_input WITHOUT newline.

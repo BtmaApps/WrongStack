@@ -407,7 +407,12 @@ export async function resumeSession(
       // Go through the observable state wrapper so subscribers fire and
       // tool-use adjacency is re-checked on the next request.
       agent.ctx.state.replaceMessages(resumed.data.messages);
-      restoreSessionSubagentPolicy(agent.ctx, resumed.data.events, resumed.data.subagentsAllowed);
+      restoreSessionSubagentPolicy(
+        agent.ctx,
+        resumed.data.events,
+        resumed.data.subagentsAllowed,
+        resumed.data.subagentCompanionsAllowed,
+      );
       restoreSessionSubagentModelPlan(agent.ctx, resumed.data.events);
       restoreSessionPermissionOverrides(agent.ctx.meta, resumed.data);
       restoreRequiredSkillsFromEvents(agent.ctx, resumed.data.events);

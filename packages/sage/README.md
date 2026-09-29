@@ -19,6 +19,43 @@ concrete store.
   `getSageRetrieval(...)`, `getSageService(...)`, or
   `getSageSurface(...)`.
 
+## HQ project memory synchronization
+
+An enabled HQ connection automatically replicates `project`, `file`, and `symbol`
+memories to HQ and every connected client with the same HQ project ID. The committed
+`.wrongstack/project.json` is the preferred identity across machines; inspect it with
+`wstack project id`. User/session memories, review candidates, audit logs, and local
+retrieval counters are not replicated.
+
+The CLI bridge polls a constant-size change clock on the project's SAGE owner through
+authenticated IPC every three seconds. Acknowledged, unchanged stores are not scanned
+again; writes from MCP and other local hosts advance the clock. HQ persists memory
+records before fanout and restores them on client connection. Unacknowledged changes
+are retried; reconnect re-announces local state. Disabling HQ stops the bridge.
+
+For headless synchronization without a chat session, run `wstack sage sync` in the
+project. It shares the configured `Sage.storage.directory`, including custom paths.
+After upgrading, `wstack sage sync --restart-service` explicitly restarts only that
+project's SAGE owner before starting the bridge; open CLI sessions are left running.
+Stop the bridge with Ctrl+C. Ordinary `sage sync` never restarts an existing owner.
+
+SQLite tracks logical revisions and durable tombstones, including physical removals.
+Concurrent offline edits resolve by logical revision, deletion precedence, then a
+stable change nonce; wall-clock time does not choose the winner. Imports preserve IDs
+and revision state and rebuild the memory's derived graph edges. Missing records in
+a partial snapshot are never interpreted as deletions. Tombstones are retained to
+prevent old offline clients from resurrecting removed records.
+
+As with Kanban project state, text survives the telemetry summary policy; HQ secret
+scrubbing and path redaction still apply. Frames are chunked below 512 KiB and individual
+records are capped at 256 KiB. An invalid/oversized record emits a warning while other
+records continue syncing. Initial transfers wait for each chunk to flush before sending
+the next, so large corpora do not exceed the socket queue limit. A receiver stalled for
+10 seconds is disconnected and can reconnect to reconcile again.
+All participants need the updated HQ/client/SAGE builds;
+restart older SAGE owners explicitly after upgrading. Running sessions are not restarted
+automatically.
+
 ## Internal boundaries
 
 - `memory-port.ts`: host-facing lifecycle, adapters, and typed capabilities

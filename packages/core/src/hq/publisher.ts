@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as v8 from 'node:v8';
 import type { Mailbox, MailboxAgentStatus, MailboxMessage } from '../coordination/mailbox-types.js';
 import type { Logger } from '../types/logger.js';
+import { isLoopbackHost } from './exposure.js';
 import {
   createMailboxEventPayload,
   createMailboxSnapshotPayloadFromMailbox,
@@ -25,7 +26,6 @@ import {
   type HqProjectIdentity,
   type HqRedactionPolicy,
   type HqServerCommandBatchMessage,
-  type HqServerKanbanSnapshotMessage,
   type HqSessionEndedPayload,
   type HqSessionSnapshotPayload,
   type HqTranscriptAppendPayload,
@@ -56,7 +56,6 @@ import {
   resetHqPublisherWarningStateForTests,
   warnedEndpoints,
 } from './publisher-warnings.js';
-import { isLoopbackHost } from './exposure.js';
 import { redactHqEvent, resolveHqRedactionPolicy } from './redaction.js';
 
 export {
@@ -688,11 +687,12 @@ export class HqPublisher {
     if (message?.type === 'hq.kanban_snapshot') {
       await this.options.onKanbanSnapshot?.(message.payload);
     }
+    if (message?.type === 'hq.sage_snapshot') {
+      await this.options.onSageSnapshot?.(message.payload);
+    }
   }
 
-  private parseServerMessage(
-    event: unknown,
-  ): HqServerCommandBatchMessage | HqServerKanbanSnapshotMessage | null {
+  private parseServerMessage(event: unknown): ReturnType<typeof parseHqServerMessage> {
     return parseHqServerMessage(event, this.options.project.projectId);
   }
 

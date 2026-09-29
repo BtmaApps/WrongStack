@@ -5,10 +5,11 @@
  * host doesn't wire a vector store — see `fetchVectorMemoryStatus()` which
  * returns `{ enabled: false }` in that case.
  */
-import { useEffect, useRef, useState } from 'react';
-import type { ReactElement } from 'react';
-import { ChevronRight } from 'lucide-react';
 
+import { ChevronRight } from 'lucide-react';
+import type { ReactElement } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { SharedMemorySearch } from '../MemoryManager/sharedSearch.js';
 import { ForgetVectorMemoryDialog } from './ForgetVectorMemoryDialog.js';
 import {
   fetchVectorMemoryStatus,
@@ -22,18 +23,46 @@ import {
 export interface VectorMemoryPanelProps {
   /** Base URL prefix for the webui-server. Default: same-origin. */
   baseUrl?: string;
+  /**
+   * Search state shared with the MemoryManager's SAGE list (query,
+   * status/kind filters, sage navigation). Type-only coupling: the parent
+   * owns the state; this panel reads the query, delegates edits through
+   * `setQuery`, and navigates verified mirrors via `navigateToSage`.
+   * While a SAGE status/kind filter is active the vector search is
+   * disabled with an explicit notice — the raw vector route cannot apply
+   * those filters, and silently ignoring them would look like an empty
+   * corpus. When omitted the panel is fully standalone.
+   */
+  sharedSearch?: SharedMemorySearch | undefined;
 }
 
-export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {}): ReactElement {
+export function VectorMemoryPanel({
+  baseUrl = '',
+  sharedSearch,
+}: VectorMemoryPanelProps = {}): ReactElement {
   const [status, setStatus] = useState<VectorMemoryStatus | undefined>();
   const [statusError, setStatusError] = useState<string | undefined>();
   const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState(10);
-  const [threshold, setThreshold] = useState<number | undefined>(undefined);
-  const [hits, setHits] = useState<readonly VectorMemoryHit[]>([]);
-  const [similarity, setSimilarity] = useState<readonly (readonly number[])[] | undefined>();
+  const snapshot =
+    sharedSearch && sharedSearch.vectorSnapshot?.query === sharedSearch.query
+      ? sharedSearch.vectorSnapshot
+      : null;
+  const [limit, setLimit] = useState(snapshot?.limit ?? 10);
+  const [threshold, setThreshold] = useState<number | undefined>(snapshot?.threshold);
+  const [hits, setHits] = useState<readonly VectorMemoryHit[]>(snapshot?.hits ?? []);
+  const [similarity, setSimilarity] = useState<readonly (readonly number[])[] | undefined>(
+    snapshot?.similarity,
+  );
   const [searchError, setSearchError] = useState<string | undefined>();
   const [searching, setSearching] = useState(false);
+  // Cursor pagination: `nextCursor` from the last committed page; non-null
+  // means the ranked result set may have more pages (Load more appends).
+  const [nextCursor, setNextCursor] = useState<string | null>(snapshot?.nextCursor ?? null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // True once a search response committed — gates the "No results." row so
+  // it only appears for an actually-executed (possibly empty) search, not
+  // for a cleared list while the user is editing inputs.
+  const [searchRan, setSearchRan] = useState(snapshot?.searchRan ?? false);
   // Inline-expand (master-detail) + Forget state for the hit list.
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [forgetTarget, setForgetTarget] = useState<VectorMemoryHit | null>(null);
@@ -46,6 +75,16 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
   // version it started against so it never patches a similarity matrix that
   // belongs to a newer result set (index-aligned data + stale closure race).
   const resultVersionRef = useRef(0);
+  // Monotonic id of the latest issued search request. Only the latest
+  // request may commit its response — an older response resolving late
+  // (or after an input change reset) is dropped instead of clobbering
+  // newer state. Same counter guards both fresh searches and Load more.
+  const searchSeqRef = useRef(0);
+  // Ranking inputs the currently displayed results belong to. Any change
+  // (typed locally or swapped in by a shared-search parent) invalidates
+  // the page: the backend cursor is fingerprinted to the query, and stale
+  // hits would misrepresent what the box now asks for.
+  const paramsRef = useRef({ query: sharedSearch?.query ?? '', threshold, limit });
   // True once any status fetch has succeeded. A later failed refetch (e.g.
   // after a forget bumped statusNonce) keeps the last good status instead of
   // unmounting an enabled panel — counts just stay stale until next poll.
@@ -54,6 +93,68 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
   // from a clean slate: keeping the previous host's status would render its
   // provider/paths/counts as if they belonged to the new host.
   const statusBaseUrlRef = useRef(baseUrl);
+
+  // The query the search UI reads/writes: shared with the MemoryManager
+  // when the prop is present, local otherwise.
+  const effectiveQuery = sharedSearch?.query ?? query;
+  const setEffectiveQuery = sharedSearch?.setQuery ?? setQuery;
+  const saveVectorSnapshot = sharedSearch?.setVectorSnapshot;
+  useEffect(() => {
+    saveVectorSnapshot?.({
+      query: effectiveQuery,
+      hits,
+      nextCursor,
+      similarity,
+      limit,
+      threshold,
+      searchRan,
+    });
+  }, [
+    saveVectorSnapshot,
+    effectiveQuery,
+    hits,
+    nextCursor,
+    similarity,
+    limit,
+    threshold,
+    searchRan,
+  ]);
+
+  // The raw vector route cannot apply SAGE status/kind filters server-side
+  // (it would need to reject them with a 400). Surface that explicitly and
+  // block the search instead of silently ignoring the active filters.
+  const unsupportedFilters =
+    sharedSearch !== undefined &&
+    (sharedSearch.statusFilter !== 'all' || sharedSearch.kindFilter !== 'all');
+  const unsupportedReasons = sharedSearch
+    ? [
+        ...(sharedSearch.statusFilter !== 'all' ? [`status "${sharedSearch.statusFilter}"`] : []),
+        ...(sharedSearch.kindFilter !== 'all' ? [`kind "${sharedSearch.kindFilter}"`] : []),
+      ]
+    : [];
+
+  /** Drop the current result page + cursor and invalidate in-flight work. */
+  const resetResults = () => {
+    searchSeqRef.current += 1;
+    resultVersionRef.current += 1;
+    setSearching(false);
+    setLoadingMore(false);
+    setHits([]);
+    setSimilarity(undefined);
+    setNextCursor(null);
+    setSearchRan(false);
+    setExpandedId(null);
+  };
+
+  // Only setState setters (stable) and refs are touched — deps are complete.
+  useEffect(() => {
+    const prev = paramsRef.current;
+    if (prev.query === effectiveQuery && prev.threshold === threshold && prev.limit === limit) {
+      return;
+    }
+    paramsRef.current = { query: effectiveQuery, threshold, limit };
+    resetResults();
+  }, [effectiveQuery, threshold, limit]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,34 +185,60 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
     };
   }, [baseUrl, statusNonce]);
 
-  const onSearch = async () => {
-    const q = query.trim();
-    if (q.length === 0) return;
-    setSearching(true);
+  const runSearch = async (mode: 'fresh' | 'more') => {
+    const q = effectiveQuery.trim();
+    if (mode === 'fresh' && q.length === 0) return;
+    if (unsupportedFilters) return; // defensive: the controls are disabled
+    const cursor = mode === 'more' ? nextCursor : null;
+    if (mode === 'more' && cursor === null) return;
+    const seq = ++searchSeqRef.current;
+    if (mode === 'fresh') {
+      setSearching(true);
+      // New result set invalidates any expanded hit and stale confirm state.
+      setExpandedId(null);
+      setForgetTarget(null);
+      setForgetError(undefined);
+    } else {
+      setLoadingMore(true);
+    }
     setSearchError(undefined);
-    // New result set invalidates any expanded hit and stale confirm state.
-    setExpandedId(null);
-    setForgetTarget(null);
-    setForgetError(undefined);
     try {
       const result = await searchVectorMemory(q, {
         limit,
         ...(threshold !== undefined ? { threshold } : {}),
-        similarity: true,
+        // Similarity is only requested for a fresh top page — an appended
+        // page's matrix would not align with the grown hit list, so the
+        // heatmap is dropped when loading more.
+        similarity: mode === 'fresh',
         baseUrl,
+        ...(cursor !== null ? { cursor } : {}),
       });
-      setHits(result.hits);
+      // Stale response guard: only the latest issued request may commit.
+      if (seq !== searchSeqRef.current) return;
+      setHits((prev) => (mode === 'fresh' ? result.hits : [...prev, ...result.hits]));
       setSimilarity(result.similarity);
+      setNextCursor(result.nextCursor);
+      setSearchRan(true);
     } catch (err: unknown) {
-      setHits([]);
-      setSimilarity(undefined);
+      if (seq !== searchSeqRef.current) return;
+      if (mode === 'fresh') {
+        setHits([]);
+        setSimilarity(undefined);
+        setNextCursor(null);
+      }
       setSearchError(err instanceof Error ? err.message : String(err));
+      setSearchRan(true);
     } finally {
       // Any search *completion* — success or failure — invalidates an
       // in-flight forget's patch: success replaces the list, failure clears
       // it, and patching either with pre-search indices would corrupt state.
-      resultVersionRef.current += 1;
-      setSearching(false);
+      // A stale completion skips this: a newer request (or an input-change
+      // reset, which clears the flags itself) owns the busy state now.
+      if (seq === searchSeqRef.current) {
+        resultVersionRef.current += 1;
+        if (mode === 'fresh') setSearching(false);
+        else setLoadingMore(false);
+      }
     }
   };
 
@@ -160,6 +287,11 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
       setForgetBusy(false);
     }
   };
+
+  // Shown only for an actually-executed search (searchRan) that returned
+  // nothing — not for a list cleared because the user is editing inputs.
+  const noHits =
+    hits.length === 0 && searching === false && searchRan && effectiveQuery.trim().length > 0;
 
   if (statusError !== undefined) {
     return (
@@ -230,10 +362,10 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
         <input
           id="vm-query"
           type="text"
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
+          value={effectiveQuery}
+          onChange={(e) => setEffectiveQuery(e.currentTarget.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') void onSearch();
+            if (e.key === 'Enter' && !unsupportedFilters) void runSearch('fresh');
           }}
           placeholder="apple banana"
         />
@@ -264,10 +396,25 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
               }}
             />
           </label>
-          <button type="button" onClick={() => void onSearch()} disabled={searching}>
+          <button
+            type="button"
+            onClick={() => void runSearch('fresh')}
+            disabled={searching || loadingMore || unsupportedFilters}
+          >
             {searching ? 'Searching…' : 'Search'}
           </button>
         </div>
+        {unsupportedFilters ? (
+          <p
+            className="vector-memory-panel__error"
+            role="note"
+            data-testid="vm-unsupported-filters"
+          >
+            Vector search cannot apply the active SAGE filter
+            {unsupportedReasons.length === 1 ? '' : 's'} ({unsupportedReasons.join(', ')}). Clear
+            the filter in the memory list to enable vector search.
+          </p>
+        ) : null}
       </div>
 
       {searchError !== undefined ? (
@@ -275,8 +422,10 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
       ) : null}
 
       <ol className="vector-memory-panel__hits">
-        {hits.map((h) => {
+        {hits.map((h, rankIndex) => {
           const expanded = expandedId === h.id;
+          const rank = rankIndex + 1;
+          const sage = h.sage;
           return (
             <li
               key={h.id}
@@ -308,15 +457,43 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
               <p className="vector-memory-panel__hit-text">
                 {expanded ? h.text : previewText(h.text)}
               </p>
-              {h.tags.length > 0 ? (
-                <p className="vector-memory-panel__hit-tags">
-                  {h.tags.map((t) => (
-                    <span key={t} className="vector-memory-panel__hit-tag">
-                      {t}
-                    </span>
-                  ))}
-                </p>
-              ) : null}
+              <p className="vector-memory-panel__hit-tags">
+                {/* Ranked provenance badges: position in the accumulated
+                      ranked list, then entry kind/scope, then SAGE linkage. */}
+                <span
+                  role="img"
+                  className="vector-memory-panel__hit-tag"
+                  aria-label={`rank ${rank}`}
+                >
+                  #{rank}
+                </span>
+                {h.kind !== undefined ? (
+                  <span className="vector-memory-panel__hit-tag">kind {h.kind}</span>
+                ) : null}
+                {h.scope !== undefined ? (
+                  <span className="vector-memory-panel__hit-tag">scope {h.scope}</span>
+                ) : null}
+                {h.tags.map((t) => (
+                  <span key={t} className="vector-memory-panel__hit-tag">
+                    {t}
+                  </span>
+                ))}
+                {sage !== undefined ? (
+                  <>
+                    <span className="vector-memory-panel__hit-tag">sage verified</span>
+                    {sharedSearch !== undefined ? (
+                      <button
+                        type="button"
+                        className="vector-memory-panel__hit-tag"
+                        style={{ background: 'transparent', cursor: 'pointer' }}
+                        onClick={() => sharedSearch.navigateToSage(sage.id)}
+                      >
+                        Open in SAGE
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </p>
               {expanded ? (
                 <div className="vector-memory-panel__hit-detail">
                   <dl className="vector-memory-panel__hit-fields">
@@ -324,8 +501,30 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
                     <dd>
                       <code>{h.id}</code>
                     </dd>
+                    <dt>rank</dt>
+                    <dd>#{rank}</dd>
                     <dt>score</dt>
                     <dd>{h.score.toFixed(3)}</dd>
+                    {h.kind !== undefined ? (
+                      <>
+                        <dt>kind</dt>
+                        <dd>{h.kind}</dd>
+                      </>
+                    ) : null}
+                    {h.scope !== undefined ? (
+                      <>
+                        <dt>scope</dt>
+                        <dd>{h.scope}</dd>
+                      </>
+                    ) : null}
+                    {sage !== undefined ? (
+                      <>
+                        <dt>sage</dt>
+                        <dd>
+                          <code>{sage.id}</code> (verified)
+                        </dd>
+                      </>
+                    ) : null}
                     {h.summary ? (
                       <>
                         <dt>summary</dt>
@@ -350,10 +549,23 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps = {})
             </li>
           );
         })}
-        {hits.length === 0 && searching === false && query.trim().length > 0 ? (
-          <li className="vector-memory-panel__no-hits">No results.</li>
-        ) : null}
+        {noHits ? <li className="vector-memory-panel__no-hits">No results.</li> : null}
       </ol>
+
+      {nextCursor !== null ? (
+        <div className="vector-memory-panel__controls">
+          {/* Reuses the search-controls button styling: CSS additions are out
+              of scope for this change and the class keeps Load more visually
+              consistent with the panel's only other button. */}
+          <button
+            type="button"
+            onClick={() => void runSearch('more')}
+            disabled={searching || loadingMore || unsupportedFilters}
+          >
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      ) : null}
 
       {similarity !== undefined && similarity.length > 1 ? (
         <div className="vector-memory-panel__heatmap" data-testid="vector-memory-heatmap">

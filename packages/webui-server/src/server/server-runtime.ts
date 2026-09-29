@@ -470,6 +470,7 @@ function resolveWebuiDistDir(fromUrl: string, explicitDistDir?: string | undefin
 }
 
 export function startHttpServer(opts: {
+  getSessionProjectRoot?: ((sessionId: string) => string | undefined) | undefined;
   wsHost: string;
   httpPort: number;
   wsToken: string;
@@ -517,6 +518,7 @@ export function startHttpServer(opts: {
     opts.intakeService ??
     createProjectIntakeService({ projectRoot: opts.projectRoot, globalRoot: opts.globalRoot });
   const httpServer = createHttpServer({
+    getSessionProjectRoot: opts.getSessionProjectRoot,
     host: opts.wsHost,
     port: opts.httpPort,
     distDir: resolveWebuiDistDir(import.meta.url, opts.distDir),

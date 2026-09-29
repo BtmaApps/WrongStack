@@ -25,7 +25,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { withFileLock } from '@wrongstack/core/utils';
 import { loadRuntimeDatabaseSync } from '@wrongstack/persistence';
 import { cosineSimilarity, HashingEmbeddingProvider } from '@wrongstack/sage';
-import { VectorMemoryProviderUnavailableError } from './errors.js';
+import { VectorMemoryError, VectorMemoryProviderUnavailableError } from './errors.js';
 
 import {
   decodeVector,
@@ -54,10 +54,49 @@ import type {
 const DEFAULT_SEARCH_LIMIT = 10;
 
 /** Clamp a caller-supplied `limit` to a usable positive integer. */
-function normalizeLimit(limit: number | undefined): number {
-  if (limit === undefined || !Number.isFinite(limit)) return DEFAULT_SEARCH_LIMIT;
+function normalizeLimit(
+  limit: number | undefined,
+  defaultLimit: number = DEFAULT_SEARCH_LIMIT,
+): number {
+  if (limit === undefined || !Number.isFinite(limit)) return defaultLimit;
   const floored = Math.floor(limit);
-  return floored < 1 ? DEFAULT_SEARCH_LIMIT : floored;
+  return floored < 1 ? defaultLimit : floored;
+}
+
+/**
+ * Rank order for search results: score DESC, then entry id ASC. Cosine
+ * scores tie whenever two entries embed identically (duplicate texts
+ * across scopes, or a provider collapse), and without the tiebreak the
+ * emitted order is SQLite scan order — not a contract. The id tiebreak
+ * makes ranking a deterministic total order, which is what makes a
+ * `(score, id)` cursor stable across pages.
+ */
+function ranksBefore(a: { id: string; score: number }, b: { id: string; score: number }): boolean {
+  return a.score > b.score || (a.score === b.score && a.id < b.id);
+}
+
+/**
+ * Validate a caller-supplied search cursor. Malformed cursors throw
+ * `VectorMemoryError` instead of being ignored — a silently-dropped
+ * cursor makes a paging caller believe it reached the end of the corpus.
+ */
+function normalizeSearchCursor(cursor: { score: number; id: string }): {
+  score: number;
+  id: string;
+} {
+  if (
+    typeof cursor.score !== 'number' ||
+    !Number.isFinite(cursor.score) ||
+    cursor.score < 0 ||
+    cursor.score > 1 ||
+    typeof cursor.id !== 'string' ||
+    cursor.id.length === 0
+  ) {
+    throw new VectorMemoryError(
+      'Invalid search cursor: expected { score: number in [0, 1], id: non-empty string }.',
+    );
+  }
+  return cursor;
 }
 
 const DEFAULT_DIRECTORY = '.wrongstack/vector-memory';
@@ -392,24 +431,25 @@ export class VectorMemoryStore {
     return this.rowToEntry(row, vectorRow);
   }
 
+  /** Hard-delete an entry by id without acquiring the lock (caller must hold lock if needed). */
+  private forgetUnlocked(id: string): boolean {
+    this.db.exec('BEGIN');
+    try {
+      const info = this.db.prepare('DELETE FROM entries WHERE id = ?').run(id);
+      this.db.exec('COMMIT');
+      return info.changes > 0;
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+  }
+
   /** Hard-delete an entry by id. Wrapped in `withFileLock` for cross-process safety. */
   async forget(id: string): Promise<boolean> {
     this.assertOpen();
-    return withFileLock(
-      this.lockPath,
-      async () => {
-        this.db.exec('BEGIN');
-        try {
-          const info = this.db.prepare('DELETE FROM entries WHERE id = ?').run(id);
-          this.db.exec('COMMIT');
-          return info.changes > 0;
-        } catch (e) {
-          this.db.exec('ROLLBACK');
-          throw e;
-        }
-      },
-      { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
-    );
+    return withFileLock(this.lockPath, async () => this.forgetUnlocked(id), {
+      timeoutMs: DEFAULT_LOCK_TIMEOUT_MS,
+    });
   }
 
   async search(query: string, opts: VectorSearchOptions = {}): Promise<VectorSearchHit[]> {
@@ -424,6 +464,7 @@ export class VectorMemoryStore {
     const limit = normalizeLimit(opts.limit);
     const threshold = opts.threshold ?? 0;
     const includeVectors = opts.includeVectors === true;
+    const cursor = opts.cursor === undefined ? undefined : normalizeSearchCursor(opts.cursor);
     if (typeof query !== 'string' || query.trim().length === 0) return [];
 
     // Embed the query through the same provider-level cache as writes —
@@ -473,18 +514,28 @@ export class VectorMemoryStore {
       )
       .all(...params) as Array<{ id: string; vec_blob: Buffer | Uint8Array }>;
 
-    // Bounded top-k by insertion into a small array kept in score order.
-    // Sorting the full candidate list would be O(n log n) on a list that is
-    // discarded except for its head; `limit` is single-digit in every caller.
+    // Bounded top-k by insertion into a small array kept in rank order
+    // (score DESC, id ASC — `ranksBefore`). Sorting the full candidate
+    // list would be O(n log n) on a list that is discarded except for its
+    // head; `limit` is single-digit in every caller.
     const top: Array<{ id: string; score: number; vector: Float32Array }> = [];
     for (const row of scanRows) {
       const vec = decodeVector(row.vec_blob);
       const raw = cosineSimilarity(queryVec, vec);
       const score = Math.max(0, Math.min(1, raw));
       if (!Number.isFinite(score) || score < threshold) continue;
-      if (top.length >= limit && score <= (top[top.length - 1]?.score ?? 0)) continue;
+      // Ranked-cursor resume: skip everything the previous page already
+      // returned — strictly better score, or the same score with an id at
+      // or before the cursor id (rank order is score DESC, id ASC).
+      if (cursor) {
+        if (score > cursor.score) continue;
+        if (score === cursor.score && row.id <= cursor.id) continue;
+      }
+      const candidate = { id: row.id, score };
+      const last = top.length > 0 ? top[top.length - 1] : undefined;
+      if (top.length >= limit && last && !ranksBefore(candidate, last)) continue;
       let at = top.length;
-      while (at > 0 && (top[at - 1]?.score ?? 0) < score) at--;
+      while (at > 0 && ranksBefore(candidate, top[at - 1]!)) at--;
       top.splice(at, 0, { id: row.id, score, vector: vec });
       if (top.length > limit) top.length = limit;
     }
@@ -558,7 +609,7 @@ export class VectorMemoryStore {
     }
     const sql = `SELECT * FROM entries ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
                  ORDER BY updated_at DESC, id DESC LIMIT ?`;
-    params.push(opts.limit ?? 100);
+    params.push(normalizeLimit(opts.limit, 100));
     const rows = this.db.prepare(sql).all(...params) as Array<Record<string, unknown>>;
     return rows.map((r) => this.rowToEntry(r) as VectorEntry);
   }
@@ -785,17 +836,25 @@ export class VectorMemoryStore {
         // spurious partial-failure that keeps the first-boot sync marker
         // from ever completing. Per-entry (not whole-walk) locking keeps
         // live mirror writes responsive during a long corpus walk.
+        //
+        // If an entry for this sageId already existed with different text,
+        // delete the stale entry before inserting to prevent leaking orphaned
+        // ghosts (matching sage-event-mirror's update path).
         await withFileLock(
           this.lockPath,
-          () =>
-            this.rememberUnlocked({
+          () => {
+            if (existing) {
+              this.forgetUnlocked(existing.id);
+            }
+            return this.rememberUnlocked({
               text: memory.text,
               summary: memory.summary ?? undefined,
               metadata: { source: 'sage', sageId: memory.id, ...(memory.metadata ?? {}) },
               tags: memory.tags ?? [],
               scope: 'project',
               kind: 'note',
-            }),
+            });
+          },
           { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
         );
         indexed++;

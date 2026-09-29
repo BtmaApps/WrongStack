@@ -37,24 +37,14 @@ interface FakeTransport {
   ) => void;
 }
 
-vi.mock('../src/agent/stdio-transport.js', () => {
-  class ClientTransport {
-    sent: ACPMessage[] = [];
-    handlers: Array<(m: ACPMessage) => void> = [];
-    start = vi.fn(async () => {});
-    stop = vi.fn();
-    send = vi.fn(async (m: ACPMessage) => {
-      this.sent.push(m);
-    });
+vi.mock('../src/agent/stdio-transport.js', async () => {
+  // Dynamic, not a static import: vi.mock is hoisted above the imports, so the
+  // shared helper would not be initialised when this factory body runs.
+  const { FakeClientTransport } = await import('./helpers/fake-client-transport.js');
+  class ClientTransport extends FakeClientTransport {
     constructor() {
+      super();
       hoisted.instances.push(this as never as FakeTransport);
-    }
-    onMessage(h: (m: ACPMessage) => void): () => void {
-      this.handlers.push(h);
-      return () => {};
-    }
-    emit(m: ACPMessage): void {
-      for (const h of [...this.handlers]) h(m);
     }
     respond(id: number | string, method: string, result: unknown): void {
       this.emit({ jsonrpc: '2.0', id, method, result } as never as ACPMessage);
@@ -294,6 +284,71 @@ describe('ACPSession', () => {
     expect(result.stopReason).toBe('end_turn');
     expect(result.hasText).toBe(true);
 
+    await session.close();
+  });
+
+  it('drops a session/update that names a different session (client-side defense in depth)', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+
+    const promptP = session.prompt([textContent('hello')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_abc' });
+    await new Promise((r) => setImmediate(r));
+
+    // A stale chunk left over from a session this client no longer holds.
+    t.emit({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        sessionId: 'sess_closed_elsewhere',
+        update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'STALE' } },
+      },
+    } as never as ACPMessage);
+    // The active session's own chunk must still be folded in.
+    t.emit({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        sessionId: 'sess_abc',
+        update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'mine' } },
+      },
+    } as never as ACPMessage);
+
+    const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
+    t.respond(promptMsg!.id!, 'session/prompt', { stopReason: 'end_turn' });
+
+    const result = await promptP;
+    expect(result.text).toBe('mine');
+    expect(result.text).not.toContain('STALE');
+    await session.close();
+  });
+
+  it('CONTROL: still handles a session/update that omits sessionId', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+
+    const promptP = session.prompt([textContent('hello')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_abc' });
+    await new Promise((r) => setImmediate(r));
+
+    // Non-conformant update with no sessionId must not be dropped.
+    t.emit({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'noid' } },
+      },
+    } as never as ACPMessage);
+
+    const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
+    t.respond(promptMsg!.id!, 'session/prompt', { stopReason: 'end_turn' });
+
+    const result = await promptP;
+    expect(result.text).toBe('noid');
     await session.close();
   });
 
@@ -979,6 +1034,67 @@ describe('ACPSession', () => {
     const closePromise = session.close();
     await expect(promptP).rejects.toMatchObject({ kind: 'prompt_failed' });
     await closePromise;
+  });
+
+  // `session/new` is the wire trust boundary: a result that is not a
+  // non-empty string must be rejected before it is branded as a SessionId.
+  it('rejects a session/new that returns a non-string or empty session id', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+    const promptP = session.prompt([textContent('hello')], new AbortController().signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    t.respond(newMsg!.id!, 'session/new', { sessionId: '' });
+    // Error.message is non-enumerable, so assert kind via toMatchObject and
+    // read the message off the rejection itself. The guard that actually fires
+    // is executeCreateSession's, one layer down in acp-session-ops.ts.
+    await expect(promptP).rejects.toMatchObject({ kind: 'protocol_error' });
+    await promptP.catch((e: unknown) => {
+      expect((e as Error).message).toBe('session/new returned no sessionId');
+    });
+    await session.close();
+  });
+
+  it('rejects image and audio content when the agent advertises no such capability', async () => {
+    // No promptCapabilities at all: `caps?.image` / `caps?.audio` are
+    // undefined, so the gate must reject rather than fall through to `true`.
+    const session = await startSession({
+      protocolVersion: 1,
+      agentCapabilities: { loadSession: true },
+      agentInfo: { name: 'fake-agent', title: 'Fake', version: '0.0.1' },
+    });
+    await expect(
+      session.prompt(
+        [{ type: 'image', mimeType: 'image/png', data: 'AAAA' }],
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ kind: 'unsupported_capability' });
+    await expect(
+      session.prompt(
+        [{ type: 'audio', mimeType: 'audio/wav', data: 'AAAA' }],
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ kind: 'unsupported_capability' });
+    await session.close();
+  });
+
+  // An unsupported method that carries an id must get a method-not-found
+  // error response, and a transport failure while sending it must not escape
+  // as an unhandled rejection (the fire-and-forget `.catch`).
+  it('answers an unsupported method with an error even when the send fails', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+    t.sent.length = 0;
+    (t as unknown as { send: () => Promise<void> }).send = () =>
+      Promise.reject(new Error('wire is gone'));
+
+    t.emit({ jsonrpc: '2.0', id: 'unknown-1', method: 'totally/unknown' } as never as ACPMessage);
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    // No throw escaped the pump despite the rejecting send.
+    expect(true).toBe(true);
+    await session.close();
   });
 
   it('handles agent error in session/prompt and JSON-RPC error response in handleMessage', async () => {

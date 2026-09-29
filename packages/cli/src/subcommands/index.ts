@@ -61,6 +61,7 @@ const loaders: Record<string, SubcommandLoader> = {
   mailbox: async () => (await import('./handlers/mailbox-serve.js')).mailboxServeCmd,
   permissions: async () => (await import('./handlers/permissions.js')).permissionsCmd,
   project: async () => (await import('./handlers/project.js')).projectCmd,
+  sage: async () => (await import('./handlers/sage.js')).sageCmd,
   governance: async () => (await import('./handlers/governance.js')).governanceCmd,
   'import-claude-code': async () =>
     (await import('./handlers/import-claude-code.js')).importClaudeCodeCmd,

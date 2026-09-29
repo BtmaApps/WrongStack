@@ -98,11 +98,18 @@ export class TaskDAG {
     }
     /* v8 ignore stop */
 
+    const allDepsSatisfied =
+      deps.length === 0 ||
+      deps.every((depId) => {
+        const dep = this.nodes.get(depId);
+        return dep && (dep.status === 'done' || dep.status === 'skipped');
+      });
+
     const node: DAGNode = {
       id,
       description,
       deps: [...deps],
-      status: deps.length === 0 ? 'ready' : 'pending',
+      status: allDepsSatisfied ? 'ready' : 'pending',
       role: opts.role,
       priority: opts.priority ?? 5,
       dependents: [],

@@ -338,8 +338,13 @@ function stringifyToolResult(value: unknown): string {
       })
       .join('\n');
   }
-  if (value && typeof value === 'object' && 'text' in value) {
-    return String((value as { text?: unknown | undefined }).text ?? '');
+  if (value && typeof value === 'object') {
+    if ('text' in value) {
+      return String((value as { text?: unknown | undefined }).text ?? '');
+    }
+    if ('content' in value) {
+      return stringifyToolResult((value as { content?: unknown }).content);
+    }
   }
   return JSON.stringify(value);
 }

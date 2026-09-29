@@ -18,8 +18,9 @@ import {
   TIER_LABEL,
 } from './_edit-match.js';
 import { checkSyntax } from './_syntax-check.js';
-import { safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
+import { isBinaryBuffer, safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
+import { isPdf } from './pdf-text.js';
 
 /** Byte budget for the returned unified diff — matches `maxOutputBytes`. */
 const MAX_DIFF_BYTES = 262_144;
@@ -161,7 +162,24 @@ export const editTool: Tool<EditInput, EditOutput> = {
     // The sequence must be: read content → check mtime → apply edit.
     // If we check mtime first, a concurrent modification between the
     // stat call and the read gives us stale content to search/replace.
-    const original = await fs.readFile(absPath, 'utf8');
+    const buf = await fs.readFile(absPath);
+    // `edit` rewrites the file from a utf8 decode, so a target that is not text
+    // comes back mangled: every invalid utf8 sequence becomes U+FFFD and the
+    // byte length changes. `read` refuses such files and `replace` skips them;
+    // `edit` used to write them. A PDF counts as non-text here even when its
+    // bytes happen to decode — `read` serves PDFs as pages, not as source text.
+    const pdfTarget = isPdf(absPath, buf);
+    if (pdfTarget || isBinaryBuffer(buf)) {
+      throw new ToolValidationError({
+        message:
+          `edit: "${input.path}" is not editable text (${pdfTarget ? 'PDF' : 'binary content'}). ` +
+          'Rewriting it would corrupt the file byte-wise — use `write` to replace it, and ' +
+          '`read` with `pages` to inspect a PDF.',
+        field: 'path',
+        context: { reason: pdfTarget ? 'pdf' : 'binary' },
+      });
+    }
+    const original = buf.toString('utf8');
     const updated = await fs.stat(absPath);
     const mtimeTolerance = process.platform === 'win32' ? 2000 : 1;
     const originalHash = sha256hex(original);

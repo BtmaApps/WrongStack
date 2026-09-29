@@ -84,7 +84,13 @@ type SessionEventVariant =
       provider: string;
       checkout?: string | undefined;
     }
-  | { type: 'subagent_policy'; ts: string; allowed: boolean }
+  | {
+      type: 'subagent_policy';
+      ts: string;
+      allowed: boolean;
+      /** With `allowed: false`: the resident read-only companions still run. */
+      companions?: boolean | undefined;
+    }
   /**
    * The session's whole `/permissions allow|deny` list; the last event wins on
    * resume. Untrusted journal payload, normalized when read

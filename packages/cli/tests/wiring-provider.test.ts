@@ -181,6 +181,7 @@ describe('setupProvider', () => {
     });
 
     expect(out.resolvedProvider?.models.map((m) => m.id)).toEqual([
+      'gpt-6.1-sol',
       'gpt-6-astra',
       'gpt-6-sol',
       'gpt-6-luna',

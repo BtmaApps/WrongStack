@@ -176,6 +176,93 @@ describe('session transcript archive', () => {
     await delayed.dispose?.();
   });
 
+  it('runs a backfill that starts while a narrower archiveIdle is in flight', async () => {
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let markStarted = (): void => {};
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    let arm = false;
+    let blocked = false;
+    const delayed = new DefaultSessionStore({
+      dir: tmp,
+      storage: {
+        hotKeepSessions: 1,
+        archiveAfterDays: 7,
+        autoArchive: false,
+        includeSubagents: false,
+      },
+      isSessionInUse: async (id) => {
+        if (arm && id === 'old-a' && !blocked) {
+          blocked = true;
+          markStarted();
+          await gate;
+        }
+        return null;
+      },
+    });
+    try {
+      await writeClosedSession('old-a', '2020-01-01T00:00:00.000Z', 'old');
+      await writeClosedSession('drop-new', '2026-09-01T00:00:00.000Z', 'drop');
+      await writeClosedSession('keep-new', '2026-09-02T00:00:00.000Z', 'keep');
+      const old = new Date('2020-01-01T00:00:00.000Z');
+      const keep = new Date();
+      const drop = new Date(keep.getTime() - 86_400_000);
+      await fs.utimes(path.join(tmp, 'old-a.jsonl'), old, old);
+      await fs.utimes(path.join(tmp, 'drop-new.jsonl'), drop, drop);
+      await fs.utimes(path.join(tmp, 'keep-new.jsonl'), keep, keep);
+
+      arm = true;
+      const normal = delayed.archiveIdle();
+      await started;
+      const backfill = delayed.archiveIdle({ backfill: true });
+      release();
+      const [normalResult, backfillResult] = await Promise.all([normal, backfill]);
+
+      expect(normalResult.archived).toBe(1);
+      expect(backfillResult.archived).toBe(1);
+      await expect(fs.stat(path.join(tmp, 'drop-new.jsonl.gz'))).resolves.toBeDefined();
+      await expect(fs.stat(path.join(tmp, 'drop-new.jsonl'))).rejects.toBeDefined();
+      await expect(fs.stat(path.join(tmp, 'keep-new.jsonl'))).resolves.toBeDefined();
+    } finally {
+      release();
+      await delayed.dispose?.();
+    }
+  });
+
+  it('honors an includeSubagents override while archiving the parent', async () => {
+    await writeClosedSession('old-parent', '2020-01-01T00:00:00.000Z', 'parent');
+    await writeClosedSession('keep-a', '2026-09-02T00:00:00.000Z', 'keep a');
+    await writeClosedSession('keep-b', '2026-09-02T00:00:00.000Z', 'keep b');
+    const companionDir = path.join(tmp, 'old-parent');
+    await fs.mkdir(companionDir, { recursive: true });
+    const companion = path.join(companionDir, 'child.jsonl');
+    await fs.writeFile(
+      companion,
+      `${JSON.stringify(startEvent('old-parent/child', '2026-09-02T00:00:00.000Z'))}\n`,
+    );
+    const now = new Date();
+    const old = new Date('2020-01-01T00:00:00.000Z');
+    await fs.utimes(path.join(tmp, 'old-parent.jsonl'), old, old);
+    await fs.utimes(path.join(tmp, 'keep-a.jsonl'), now, now);
+    await fs.utimes(path.join(tmp, 'keep-b.jsonl'), now, now);
+    await fs.utimes(companion, now, now);
+
+    const result = await store.archiveIdle({
+      includeSubagents: false,
+      hotKeepSessions: 3,
+      archiveAfterDays: 0,
+    });
+
+    expect(result.archived).toBe(1);
+    await expect(fs.stat(path.join(tmp, 'old-parent.jsonl.gz'))).resolves.toBeDefined();
+    await expect(fs.stat(companion)).resolves.toBeDefined();
+    await expect(fs.stat(`${companion}.gz`)).rejects.toBeDefined();
+  });
+
   it('skips live sessions', async () => {
     await writeClosedSession('live-old', '2020-01-01T00:00:00.000Z', 'live');
     const guarded = new DefaultSessionStore({

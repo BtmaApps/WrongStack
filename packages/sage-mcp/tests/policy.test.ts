@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import type { Tool } from '@wrongstack/core/types';
-import { selectAllowedTools } from '../src/policy.js';
+import { describe, expect, it, vi } from 'vitest';
+import { proposalOnlyCandidatesTool, selectAllowedTools } from '../src/policy.js';
 
 function makeTool(overrides: Partial<Tool>): Tool {
   return {
@@ -74,5 +74,60 @@ describe('selectAllowedTools', () => {
     ];
     const allowed = selectAllowedTools(tools, { writable: true });
     expect(allowed).toEqual([]);
+  });
+
+  it('proposals: exposes memory_candidates narrowed to list/propose, not with writable', () => {
+    const tools: Tool[] = [
+      makeTool({ name: 'memory_search' }),
+      makeTool({ name: 'memory_candidates', permission: 'confirm', riskTier: 'standard' }),
+    ];
+    const proposals = selectAllowedTools(tools, { proposals: true });
+    expect(proposals.map((entry) => entry.name)).toEqual(['memory_search', 'memory_candidates']);
+    expect(proposals[1]!.tool).not.toBe(tools[1]);
+
+    const writable = selectAllowedTools(tools, { proposals: true, writable: true });
+    expect(writable[1]!.tool).toBe(tools[1]);
+    expect(selectAllowedTools(tools).map((entry) => entry.name)).toEqual(['memory_search']);
+  });
+});
+
+describe('proposalOnlyCandidatesTool', () => {
+  const execute = vi.fn(async (input: Record<string, unknown>) => input);
+  const inner = makeTool({
+    name: 'memory_candidates',
+    inputSchema: {
+      type: 'object',
+      properties: { action: { type: 'string', enum: ['list', 'accept', 'propose', 'resolve'] } },
+    },
+    validate: () => [],
+    execute: execute as never,
+  });
+
+  it('refuses review actions even when the schema is bypassed', async () => {
+    const tool = proposalOnlyCandidatesTool(inner, 'claude-code');
+    expect(await tool.validate!({ action: 'resolve' } as never)).toEqual([
+      'action "resolve" is not available over MCP; use list or propose.',
+    ]);
+    expect(await tool.validate!({ action: 'propose', text: 't' } as never)).toEqual([]);
+    expect(
+      (tool.inputSchema as { properties: Record<string, { enum: string[] }> }).properties['action']!
+        .enum,
+    ).toEqual(['list', 'propose']);
+  });
+
+  it('stamps the origin on a proposal and passes list through untouched', async () => {
+    const tool = proposalOnlyCandidatesTool(inner, 'codex');
+    await tool.execute(
+      { action: 'propose', text: 't', reason: 'saw it twice' } as never,
+      {} as never,
+      undefined as never,
+    );
+    expect(execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ reason: 'Proposed by codex over MCP: saw it twice' }),
+      {},
+      undefined,
+    );
+    await tool.execute({ action: 'list' } as never, {} as never, undefined as never);
+    expect(execute).toHaveBeenLastCalledWith({ action: 'list' }, {}, undefined);
   });
 });

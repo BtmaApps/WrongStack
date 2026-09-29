@@ -27,10 +27,12 @@
  */
 
 import { type BrainCircuit, ListFilter, Network, Users2 } from 'lucide-react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import type { SageStatus } from '@/types';
+import type { SharedMemorySearch, VectorSearchSnapshot } from './sharedSearch.js';
 
 const MemoryManager = lazy(() =>
   import('./index.js').then((module) => ({ default: module.MemoryManager })),
@@ -87,8 +89,40 @@ const SAGE_TABS: ReadonlyArray<{
 
 export function SageTabs({ defaultValue = 'all' }: { defaultValue?: SageTabValue } = {}) {
   const { t } = useAppTranslation();
+  const [tab, setTab] = useState<SageTabValue>(defaultValue);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | SageStatus>('all');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [linkedId, setLinkedId] = useState<string | null>(null);
+  const [fromVector, setFromVector] = useState(false);
+  const [vectorSnapshot, setVectorSnapshot] = useState<VectorSearchSnapshot | null>(null);
+  const navigateToSage = useCallback((id: string) => {
+    setLinkedId(id);
+    setFromVector(true);
+    setTab('all');
+  }, []);
+  const onLinkedIdHandled = useCallback(() => setLinkedId(null), []);
+  const onReturnToVector = useCallback(() => {
+    setTab('vector');
+    setFromVector(false);
+  }, []);
+  const sharedSearch: SharedMemorySearch = {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+    kindFilter,
+    setKindFilter,
+    navigateToSage,
+    vectorSnapshot,
+    setVectorSnapshot,
+  };
   return (
-    <Tabs defaultValue={defaultValue} className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as SageTabValue)}
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col"
+    >
       <div
         className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-card/55 px-4 py-2 sm:px-5"
         role="presentation"
@@ -122,7 +156,12 @@ export function SageTabs({ defaultValue = 'all' }: { defaultValue?: SageTabValue
         className="mt-0 flex-1 overflow-hidden ring-offset-0 focus-visible:ring-0"
       >
         <Suspense fallback={<TabFallback label={t('activity:memoryManager.loadingSage')} />}>
-          <MemoryManager />
+          <MemoryManager
+            sharedSearch={sharedSearch}
+            linkedId={linkedId}
+            onLinkedIdHandled={onLinkedIdHandled}
+            onReturnToVector={fromVector ? onReturnToVector : undefined}
+          />
         </Suspense>
       </TabsContent>
 
@@ -144,7 +183,7 @@ export function SageTabs({ defaultValue = 'all' }: { defaultValue?: SageTabValue
         <Suspense
           fallback={<TabFallback label={t('activity:memoryManager.loadingVectorMemory')} />}
         >
-          <VectorMemoryPanel />
+          <VectorMemoryPanel sharedSearch={sharedSearch} />
         </Suspense>
       </TabsContent>
     </Tabs>

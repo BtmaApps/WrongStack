@@ -332,7 +332,11 @@ export class MCPClient {
         capabilities: this.serverRequests.capabilities(),
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       },
-      this.opts.startupTimeoutMs ?? 10_000,
+      typeof this.opts.startupTimeoutMs === 'number' &&
+        Number.isFinite(this.opts.startupTimeoutMs) &&
+        this.opts.startupTimeoutMs > 0
+        ? this.opts.startupTimeoutMs
+        : 10_000,
     );
     if (initialize.error) {
       this.state = 'failed';
@@ -525,14 +529,27 @@ export class MCPClient {
   private request(
     method: string,
     params: unknown,
-    timeoutMs = this.opts.requestTimeoutMs ?? 60_000,
+    timeoutMs?: number | undefined,
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResponse> {
+    const defaultTimeoutMs =
+      typeof this.opts.requestTimeoutMs === 'number' &&
+      Number.isFinite(this.opts.requestTimeoutMs) &&
+      this.opts.requestTimeoutMs > 0
+        ? this.opts.requestTimeoutMs
+        : 60_000;
+    const effectiveTimeoutMs =
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? timeoutMs
+        : defaultTimeoutMs;
+
     // For HTTP transports, delegate to the transport's request method.
     // SSE and streamable-http both use postRaw which handles the full
     // round-trip including timeout signal.
-    if (this.sseTransport) return this.sseTransport.request(method, params, timeoutMs, opts);
-    if (this.httpTransport) return this.httpTransport.request(method, params, timeoutMs, opts);
+    if (this.sseTransport)
+      return this.sseTransport.request(method, params, effectiveTimeoutMs, opts);
+    if (this.httpTransport)
+      return this.httpTransport.request(method, params, effectiveTimeoutMs, opts);
 
     // stdio path
     const signal = opts?.signal;
@@ -572,13 +589,15 @@ export class MCPClient {
       const onTimeout = () => {
         // A server waiting on the user's elicitation answer is not stalled.
         if (this.serverRequests.awaitingUser) {
-          entry.timer = setTimeout(onTimeout, timeoutMs);
+          entry.timer = setTimeout(onTimeout, effectiveTimeoutMs);
           return;
         }
         this.pending.delete(id);
         detach();
         reject(
-          new Error(`MCP "${this.opts.name}" request "${method}" timed out after ${timeoutMs}ms`),
+          new Error(
+            `MCP "${this.opts.name}" request "${method}" timed out after ${effectiveTimeoutMs}ms`,
+          ),
         );
       };
       const entry = {
@@ -592,7 +611,7 @@ export class MCPClient {
           detach();
           reject(err);
         },
-        timer: setTimeout(onTimeout, timeoutMs),
+        timer: setTimeout(onTimeout, effectiveTimeoutMs),
       };
       this.pending.set(id, entry);
       const stdin = this.child?.stdin;

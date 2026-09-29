@@ -18,8 +18,22 @@ export {
   type SageMcpToolHostOptions,
 } from './adapter.js';
 export {
-  selectAllowedTools,
+  type AttachedSageMcpOptions,
+  createAttachedSageMcp,
+  DEFAULT_IDLE_RELEASE_MS,
+  serveAttachedSageMcpStdio,
+} from './attached-server.js';
+export {
+  proposalOnlyCandidatesTool,
   type SageMcpAllowedTool,
   type SageMcpPolicyOptions,
+  selectAllowedTools,
 } from './policy.js';
+export {
+  SAGE_MCP_INSTRUCTIONS,
+  SAGE_MCP_SERVER_NAME,
+  SAGE_SKILL_BODY,
+  SAGE_SKILL_DESCRIPTION,
+  SAGE_SKILL_NAME,
+} from './usage-guide.js';
 export { SERVER_INFO } from './version.js';

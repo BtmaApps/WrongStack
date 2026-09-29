@@ -272,9 +272,11 @@ export function findIncomingCallsByName(
   // (to_id IS NULL) are mutually exclusive, so no dedup is needed.
   rows.sort(compareCallSiteRows);
 
+  const safeLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
   const allCalls = rows.map(mapCallSiteRow);
   return {
-    calls: allCalls.slice(0, limit),
+    calls: allCalls.slice(0, safeLimit),
     symbolFound: true,
     ambiguous,
     totalMatches: allCalls.length,
@@ -334,7 +336,9 @@ export function findOutgoingCallsByName(
   // array is not globally ordered. Sort by ref_line then sym_id for determinism.
   rows.sort(compareCallSiteRows);
 
-  const calls = rows.map(mapCallSiteRow).slice(0, limit);
+  const safeLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
+  const calls = rows.map(mapCallSiteRow).slice(0, safeLimit);
   return { calls, symbolFound: true, unresolvedCount, totalMatches: rows.length };
 }
 
@@ -535,9 +539,11 @@ export function findTransitiveIncomingCallsByName(
   }
 
   rows.sort(compareCallSiteRows);
+  const safeLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
   const allCalls = rows.map(mapCallSiteRow);
   return {
-    calls: allCalls.slice(0, limit),
+    calls: allCalls.slice(0, safeLimit),
     symbolFound: true,
     ambiguous,
     totalMatches: allCalls.length,
@@ -598,7 +604,9 @@ export function findTransitiveOutgoingCallsByName(
   const rows = runCteWithSeeds(stmt, sourceIds, cteSql) as CallSiteRow[];
   annotateDirectEdges(stmt, rows, sourceIds, 'from_id', 'to_id');
 
-  const calls = rows.map(mapCallSiteRow).slice(0, limit);
+  const safeOutgoingLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
+  const calls = rows.map(mapCallSiteRow).slice(0, safeOutgoingLimit);
   return { calls, symbolFound: true, unresolvedCount, totalMatches: rows.length };
 }
 

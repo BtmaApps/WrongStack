@@ -21,6 +21,13 @@ import {
 
 type MockRes = { writeHead: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
 
+/** Partial persisted entries exercise legacy records and optional vector payloads. */
+type SearchHitFixture = {
+  entry: Record<string, unknown> & { id: string; text: string; tags: string[] };
+  score: number;
+  vector?: Float32Array | undefined;
+};
+
 function makeRes(): MockRes {
   return { writeHead: vi.fn(), end: vi.fn() };
 }
@@ -53,13 +60,15 @@ function makeStore() {
       totalUseCount: 12,
       oldestLastUsedAt: '2026-08-15T20:00:00.000Z',
     })),
-    search: vi.fn(async () => [
-      {
-        entry: { id: 'e1', text: 'hello', summary: 'sum', tags: ['a'] },
-        score: 0.9,
-        vector: undefined as Float32Array | undefined,
-      },
-    ]),
+    search: vi.fn(
+      async (): Promise<SearchHitFixture[]> => [
+        {
+          entry: { id: 'e1', text: 'hello', summary: 'sum', tags: ['a'] },
+          score: 0.9,
+          vector: undefined as Float32Array | undefined,
+        },
+      ],
+    ),
     remember: vi.fn(async () => ({ id: 'new-1', vector: new Float32Array([1]), dimensions: 8 })),
     forget: vi.fn(async () => true),
   };
@@ -153,6 +162,8 @@ describe('handleVectorMemorySearch', () => {
       limit: 50,
       threshold: 0.5,
       includeVectors: false,
+      scope: 'project',
+      failOnEmbeddingError: true,
     });
     expect(lastBody(res)).toMatchObject({
       count: 1,
@@ -184,6 +195,8 @@ describe('handleVectorMemorySearch', () => {
     expect(store.search).toHaveBeenCalledWith('hello', {
       limit: 10,
       includeVectors: true,
+      scope: 'project',
+      failOnEmbeddingError: true,
     });
   });
 
@@ -227,6 +240,396 @@ describe('handleVectorMemorySearch', () => {
     );
     const body = lastBody(res) as { similarity?: number[][] };
     expect(body.similarity).toBeUndefined();
+  });
+});
+
+describe('handleVectorMemorySearch — bounded filters (B0/B3)', () => {
+  it('defaults to project scope and never requests user/session entries', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+    );
+    expect(store.search).toHaveBeenCalledWith(
+      'a',
+      expect.objectContaining({ scope: 'project', failOnEmbeddingError: true }),
+    );
+  });
+
+  it('rejects scope=user with 400 and never calls the store', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&scope=user'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(400);
+    expect(lastBody(res)).toMatchObject({ param: 'scope' });
+    expect(store.search).not.toHaveBeenCalled();
+  });
+
+  it('rejects scope=session with 400 and never calls the store', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&scope=session'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(400);
+    expect(store.search).not.toHaveBeenCalled();
+  });
+
+  it('accepts an explicit scope=project', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&scope=project'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(200);
+    expect(store.search).toHaveBeenCalledWith('a', expect.objectContaining({ scope: 'project' }));
+  });
+
+  it('forwards a valid kind filter to the store server-side', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&kind=fact'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(200);
+    expect(store.search).toHaveBeenCalledWith('a', expect.objectContaining({ kind: 'fact' }));
+  });
+
+  it('rejects an invalid kind with 400 and never calls the store', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&kind=rumor'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(400);
+    expect(lastBody(res)).toMatchObject({ param: 'kind' });
+    expect(store.search).not.toHaveBeenCalled();
+  });
+
+  it.each(['status', 'audience', 'sessionId', 'randomJunk'])(
+    'rejects the unsupported `%s` param with 400 instead of ignoring or post-filtering it',
+    async (param) => {
+      const res = makeRes();
+      const store = makeStore();
+      await handleVectorMemorySearch(
+        resAsServer(res),
+        new URL(`http://x/search?q=a&${param}=x`),
+        () => store as never,
+      );
+      expect(statusCode(res)).toBe(400);
+      expect(lastBody(res)).toMatchObject({
+        error: expect.stringContaining('Unsupported filter'),
+        param,
+      });
+      expect(store.search).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('handleVectorMemorySearch — ranked cursor (B2)', () => {
+  it('emits nextCursor from the last store hit when the page is full', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue([
+      { entry: { id: 'aaa', text: 'one', summary: '', tags: [] }, score: 0.9 },
+      { entry: { id: 'bbb', text: 'two', summary: '', tags: [] }, score: 0.8 },
+    ]);
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&limit=2'),
+      () => store as never,
+    );
+    const body = lastBody(res) as { nextCursor: string | null };
+    expect(body.nextCursor).toEqual(expect.any(String));
+    const decoded = JSON.parse(Buffer.from(body.nextCursor!, 'base64url').toString('utf8'));
+    expect(decoded).toMatchObject({ v: 1, s: 0.8, i: 'bbb' });
+  });
+
+  it('emits nextCursor null when the store page is short', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue([
+      { entry: { id: 'aaa', text: 'one', summary: '', tags: [] }, score: 0.9 },
+    ]);
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&limit=10'),
+      () => store as never,
+    );
+    const body = lastBody(res) as { nextCursor: string | null };
+    expect(body.nextCursor).toBeNull();
+  });
+
+  it('forwards a matching opaque cursor and rejects a cursor used with another query', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search
+      .mockResolvedValueOnce([{ entry: { id: 'entry-42', text: 'one', tags: [] }, score: 0.75 }])
+      .mockResolvedValue([]);
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&limit=1'),
+      () => store as never,
+    );
+    const cursor = (lastBody(res) as { nextCursor: string }).nextCursor;
+    const next = makeRes();
+    await handleVectorMemorySearch(
+      resAsServer(next),
+      new URL(`http://x/search?q=a&cursor=${encodeURIComponent(cursor)}`),
+      () => store as never,
+    );
+    expect(store.search).toHaveBeenLastCalledWith(
+      'a',
+      expect.objectContaining({ cursor: { score: 0.75, id: 'entry-42' } }),
+    );
+    const mismatched = makeRes();
+    await handleVectorMemorySearch(
+      resAsServer(mismatched),
+      new URL(`http://x/search?q=b&cursor=${encodeURIComponent(cursor)}`),
+      () => store as never,
+    );
+    expect(statusCode(mismatched)).toBe(400);
+    expect(store.search).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a malformed cursor with 400 and never calls the store', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&cursor=bogus'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(400);
+    expect(lastBody(res)).toMatchObject({ param: 'cursor' });
+    expect(store.search).not.toHaveBeenCalled();
+  });
+
+  it('rejects an out-of-range cursor score with 400', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a&cursor=1.5%3Aabc'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(400);
+    expect(store.search).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleVectorMemorySearch — SAGE mirror provenance (B0)', () => {
+  function mirroredHits() {
+    return [
+      {
+        entry: {
+          id: 'e1',
+          text: 'mirrored',
+          summary: '',
+          tags: [],
+          scope: 'project',
+          kind: 'fact',
+          metadata: { source: 'sage', sageId: 'sage-1' },
+        },
+        score: 0.9,
+      },
+      {
+        entry: {
+          id: 'e2',
+          text: 'native',
+          summary: '',
+          tags: [],
+          scope: 'project',
+          kind: 'note',
+          metadata: {},
+        },
+        score: 0.8,
+      },
+    ];
+  }
+
+  it('drops mirrors when no visibility resolver is wired', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue(mirroredHits());
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+    );
+    const body = lastBody(res) as {
+      hits: Array<{ id: string; sage?: { id: string; status: string } }>;
+    };
+    expect(body.hits.map((hit) => hit.id)).toEqual(['e2']);
+    expect(body.hits[0]!.sage).toBeUndefined();
+  });
+
+  it('labels verified when the resolver confirms the memory is visible', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue(mirroredHits());
+    const resolver = vi.fn(async () => ({ id: 'sage-1', text: 'mirrored' }) as never);
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+      {
+        resolveSageMirror: resolver,
+      },
+    );
+    expect(resolver).toHaveBeenCalledWith('sage-1');
+    const body = lastBody(res) as { hits: Array<{ sage?: { status: string } }> };
+    expect(body.hits[0]!.sage).toEqual({ id: 'sage-1', status: 'verified' });
+  });
+
+  it('rejects a forged or stale SAGE mirror whose content differs from the resolved record', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue(mirroredHits());
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+      {
+        resolveSageMirror: async () =>
+          ({ id: 'sage-1', text: 'different authoritative text' }) as never,
+      },
+    );
+    const body = lastBody(res) as { hits: Array<{ id: string }> };
+    expect(body.hits.map((hit) => hit.id)).toEqual(['e2']);
+  });
+
+  it('drops the hit when the resolver resolves the id as not visible', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue(mirroredHits());
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+      { resolveSageMirror: async () => undefined },
+    );
+    const body = lastBody(res) as { hits: Array<{ id: string }>; count: number };
+    expect(body.hits.map((h) => h.id)).toEqual(['e2']);
+    expect(body.count).toBe(1);
+  });
+
+  it('drops mirrored hits if the visibility resolver throws', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue(mirroredHits());
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+      {
+        resolveSageMirror: async () => {
+          throw new Error('sage down');
+        },
+      },
+    );
+    const body = lastBody(res) as {
+      hits: Array<{ id: string; sage?: { id: string; status: string } }>;
+    };
+    expect(body.hits.map((h) => h.id)).toEqual(['e2']);
+    expect(body.hits[0]!.sage).toBeUndefined();
+  });
+
+  it('never serializes raw metadata, vectors, or content hashes', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockResolvedValue([
+      {
+        entry: {
+          id: 'e1',
+          text: 'secret-ish',
+          summary: '',
+          tags: [],
+          scope: 'project',
+          kind: 'fact',
+          contentHash: 'deadbeef',
+          metadata: { source: 'sage', sageId: 'sage-1', privateJunk: 'nope' },
+        },
+        score: 0.9,
+        vector: new Float32Array([0.1, 0.2]),
+      },
+    ]);
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+      {
+        resolveSageMirror: async () => ({ id: 'sage-1', text: 'secret-ish' }) as never,
+      },
+    );
+    // Assert the parsed hit object exactly: only curated fields survive —
+    // no metadata, no vector, no contentHash; provenance is the curated
+    // `sage` object only. (Empty-string summary is omitted, as before.)
+    const body = lastBody(res) as { hits: Array<Record<string, unknown>> };
+    expect(body.hits).toEqual([
+      {
+        id: 'e1',
+        score: 0.9,
+        text: 'secret-ish',
+        tags: [],
+        scope: 'project',
+        kind: 'fact',
+        sage: { id: 'sage-1', status: 'verified' },
+      },
+    ]);
+    // Belt-and-suspenders on the wire form for anything toEqual would
+    // normalize away.
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain('privateJunk');
+    expect(raw).not.toContain('deadbeef');
+    expect(raw).not.toContain('"vector"');
+    expect(raw).not.toContain('"metadata"');
+  });
+});
+
+describe('handleVectorMemorySearch — typed embedding failure (B4)', () => {
+  it('maps VectorMemoryProviderUnavailableError to a typed 503', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    const { VectorMemoryProviderUnavailableError } = await import('@wrongstack/vector-memory');
+    store.search.mockRejectedValue(new VectorMemoryProviderUnavailableError('provider down'));
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(503);
+    expect(lastBody(res)).toMatchObject({
+      error: 'Vector memory embedding provider unavailable',
+      code: 'EMBEDDING_PROVIDER_UNAVAILABLE',
+    });
+  });
+
+  it('still maps unrelated errors to 500', async () => {
+    const res = makeRes();
+    const store = makeStore();
+    store.search.mockRejectedValue(new Error('db locked'));
+    await handleVectorMemorySearch(
+      resAsServer(res),
+      new URL('http://x/search?q=a'),
+      () => store as never,
+    );
+    expect(statusCode(res)).toBe(500);
+    expect(lastBody(res)).toMatchObject({ error: 'Vector memory search failed' });
   });
 });
 

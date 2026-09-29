@@ -194,10 +194,13 @@ export type { IncomingCallsResult, OutgoingCallsResult };
 export function incomingCallsService(args: CallRefsOpArgs): IncomingCallsResult {
   const store = indexStorePool.acquire(args.projectRoot, { indexDir: args.indexDir });
   try {
+    const rawLimit =
+      typeof args.limit === 'number' && Number.isFinite(args.limit) ? args.limit : 100;
+    const limit = Math.max(1, Math.trunc(rawLimit));
     if (args.transitive) {
-      return store.findTransitiveIncomingCallsByName(args.symbol, args.file, args.limit ?? 100);
+      return store.findTransitiveIncomingCallsByName(args.symbol, args.file, limit);
     }
-    return store.findIncomingCallsByName(args.symbol, args.file, args.limit ?? 100);
+    return store.findIncomingCallsByName(args.symbol, args.file, limit);
   } finally {
     indexStorePool.release(store);
   }
@@ -207,10 +210,13 @@ export function incomingCallsService(args: CallRefsOpArgs): IncomingCallsResult 
 export function outgoingCallsService(args: CallRefsOpArgs): OutgoingCallsResult {
   const store = indexStorePool.acquire(args.projectRoot, { indexDir: args.indexDir });
   try {
+    const rawLimit =
+      typeof args.limit === 'number' && Number.isFinite(args.limit) ? args.limit : 100;
+    const limit = Math.max(1, Math.trunc(rawLimit));
     if (args.transitive) {
-      return store.findTransitiveOutgoingCallsByName(args.symbol, args.file, args.limit ?? 100);
+      return store.findTransitiveOutgoingCallsByName(args.symbol, args.file, limit);
     }
-    return store.findOutgoingCallsByName(args.symbol, args.file, args.limit ?? 100);
+    return store.findOutgoingCallsByName(args.symbol, args.file, limit);
   } finally {
     indexStorePool.release(store);
   }

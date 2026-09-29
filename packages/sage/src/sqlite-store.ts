@@ -1,5 +1,6 @@
 import {
   addGraphEdge as delegateAddGraphEdge,
+  cascadeDeleteEdges as delegateCascadeDeleteEdges,
   graphFor as delegateGraphFor,
   syncAnchorEdges as delegateSyncAnchorEdges,
   type SqliteStoreGraphHost,
@@ -22,6 +23,7 @@ import {
 
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import type { HqSageRecord } from '@wrongstack/core/hq';
 import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/types';
 import { resolveSagePaths } from './paths.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
@@ -58,12 +60,16 @@ export { isSqliteAvailable } from './sqlite-store-loader.js';
 
 import { SqliteMutationQueue } from './sqlite-store-mutation-queue.js';
 import {
+  applySageHqSync,
   backfillAdminSage,
   closeSqliteStore,
   drainSqliteStoreMutations,
   findAdminMemoriesForFile,
+  initSageHqSync,
+  listSageHqSync,
   recoverAdminSage,
   type SqliteAdminHost,
+  sageHqSyncVersion,
 } from './sqlite-store-operations.js';
 import {
   explainSqliteSageRecall,
@@ -202,6 +208,7 @@ export class SqliteSageStore implements MemoryStore {
       syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
       migrateFromJsonl: () => this.migrateFromJsonl(),
     });
+    initSageHqSync(this.db);
     // H2 (docs/sage-phase4-design.md): reconcile candidates whose memoryId
     // annotation was lost to a crash between rememberSage and the annotation
     // write. Recovery failure is audited, never fatal — the store must open.
@@ -245,18 +252,8 @@ export class SqliteSageStore implements MemoryStore {
     return this.operationContext?.()?.traceId ?? this.traceId;
   }
 
-  /**
-   * Cascade-delete all graph edges referencing a given node id.
-   * Called from forget(), clear(), and deleteSage() so the edge
-   * cleanup logic is maintained in one place.
-   */
   private cascadeDeleteEdges(nodeId: string): void {
-    // Preserve structural related_to edges (symbol→file, file→dir, dir→dir ancestors)
-    // that are shared across memories — they must not be destroyed when one memory
-    // is deleted because other memories depend on them for graph traversal.
-    this.stmt(
-      "DELETE FROM edges WHERE (from_node = ? OR to_node = ?) AND relation != 'related_to'",
-    ).run(nodeId, nodeId);
+    delegateCascadeDeleteEdges((sql) => this.stmt(sql), nodeId);
   }
 
   /**
@@ -290,24 +287,8 @@ export class SqliteSageStore implements MemoryStore {
     return this.mutationQueue.runCounter(this.db, work);
   }
 
-  /**
-   * Lease bracket for composite operations — several chained mutations
-   * separated by off-chain awaits (consolidation between facts, hygiene
-   * between batches, an accept between claim and insert). While parked
-   * between mutations the chains look settled, so drain() must be told the
-   * operation is still in flight; this lease is that declaration, and
-   * dispose() waits for it before close().
-   */
   protected runCompositeOperation<T>(work: () => Promise<T>): Promise<T> {
-    this.mutationQueue.beginOperation();
-    let running: Promise<T>;
-    try {
-      running = work();
-    } catch (error) {
-      this.mutationQueue.endOperation();
-      throw error;
-    }
-    return running.finally(() => this.mutationQueue.endOperation());
+    return this.mutationQueue.runCompositeOperation(work);
   }
 
   // ─── Public API ─────────────────────────────────────────────────────
@@ -434,6 +415,36 @@ export class SqliteSageStore implements MemoryStore {
       | { data: string }
       | undefined;
     upsertSqliteMemory((sql) => this.stmt(sql), mergeLiveCounterFields(previous?.data, m));
+  }
+
+  async listHqSync(after = ''): Promise<HqSageRecord[]> {
+    await this.initialize();
+    return listSageHqSync(this.db, after);
+  }
+
+  async getHqSyncVersion(): Promise<string> {
+    await this.initialize();
+    return sageHqSyncVersion(this.db);
+  }
+
+  async applyHqSync(records: HqSageRecord[]): Promise<void> {
+    await this.initialize();
+    const changed = await this.runMutation(() =>
+      applySageHqSync(
+        {
+          db: this.db,
+          upsert: (memory) => this.upsertMemory(memory),
+          anchors: (memory) => this.syncAnchorEdges(memory),
+          deleteEdges: (node) => this.cascadeDeleteEdges(node),
+        },
+        records,
+      ),
+    );
+    for (const id of changed) {
+      this.audit('memory.hq_synced', { memoryId: id });
+    }
+    if (changed.length)
+      this.events?.emit('memory.consolidated', { scope: 'project-memory', removed: 0 });
   }
 
   private upsertCandidate(candidate: MemoryCandidate, canonicalText?: string): void {

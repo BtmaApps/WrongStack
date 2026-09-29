@@ -1,18 +1,9 @@
-# Testing Addendum — Reviewer Agent
+## Web UI Collaboration and Costs
 
-## Data-Retention Changes
-- Whenever a retention or eviction default flips from retain-forever to bounded, grep test files for the new option/constant identifiers (e.g. `nonTerminalMaxAgeMs`, `REVIEW_STORE_NON_TERMINAL_RETENTION_MS` in `packages/core/src/plugins/review-store-maintenance.ts`). Require tests pinning all three behaviors before approving — kept under cap, evicted over cap, and the disable sentinel `Number.POSITIVE_INFINITY`. Data-deletion regressions produce no failing signal otherwise.
+- For a `stateFingerprint` change in `packages/webui-server/src/server/collab/session-registry.ts`, review the entire `packages/webui-server/src/server/collab/` package in the same pass, especially `broadcast-scheduler.ts` and `annotations.ts`. Trace the `stateFingerprint` comparison and `record()` path to confirm meaningful state changes still trigger while unchanged state does not over-trigger.
+- For numeric normalization in `packages/webui-server/src/server/usage-cost.ts`, require the cache-price fallback to use `!= null`, not `||` or `??`, so an explicit `0` survives. Reconcile `CostRates` and `TokenUsage` with the four-key `toEqual` assertions in `packages/webui-server/tests/usage-cost.test.ts` and the four-key mock in `packages/webui-server/tests/server-runtime.test.ts`.
 
-## Diff Verification
-- Treat the diff as untrusted: re-resolve imports, types, and call sites against live files with `read`/`grep` before reporting defects. Identifiers may have been renamed (`fuseRanked` → `reciprocalRankFusion`; `VectorResult` may now be the return type of `cosineSimilarity` or `reciprocalRankFusion`).
-- Anchor every confirmed finding at `file:line` using the exact identifier.
+## CLI Process Output
 
-## Import Resolution
-- Verify `@wrongstack/<pkg>` imports resolve through the package barrel `packages/<pkg>/src/index.ts`, not just the defining module — e.g. confirm `packages/persistence/src/index.ts` re-exports `./sqlite-runtime.js`, exposing `loadRuntimeDatabaseSync` from `packages/persistence/src/sqlite-runtime.ts` — and confirm the consuming package declares the dependency in its `package.json`. Repository-relative path resolution does not excuse an undeclared dependency.
-
-## Concurrency
-- In `packages/tools/src/codebase-index/indexer.ts`, flag any mutation of shared arrays, maps, or strings inside callbacks passed to `Promise.allSettled(batchFiles.map(async ...))`: interleaved awaits can race writers, duplicating or dropping data. Expect parallel reads, a single merged batched embedding/index delegation, and reconciliation by file id. Report each shared-mutation pattern once.
-
-## Test Fixtures and Invariants
-- Require hand-built legacy-schema SQLite fixtures to match the production migration source exactly — especially `techstack_schema_version` and the `jobs` table and column definitions.
-- In transition-based "no repeats" invariants (`for (let i = 1; ...)`), require the `seen` set to be seeded with the first element — e.g. `seen` initialized with `THEME_OPTIONS[0].family` in `packages/tui/tests/theme-presets.test.ts` — otherwise the first family group is unguarded.
+- Before treating `expect(res.out).toBe(...)` in `packages/cli/tests/goal-commands-runcmd.test.ts` as decode coverage, compare the expected emitted size with `runCmd`’s `createTailBuffer` in `packages/cli/src/goal-commands.ts`. Only the last `MAX_CMD_OUTPUT` (`200_000`) characters are retained; treat an assertion beyond that cap as truncation coverage rather than a meaningful decode check.
+- Return `json { "findings": [] }` only after these project-specific checks leave no defect.

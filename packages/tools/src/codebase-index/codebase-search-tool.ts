@@ -148,7 +148,9 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
       throw new Error(`Index build failed: ${state.lastError}. ${retryHint}`);
     }
 
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit ?? 20), 100));
+    const rawLimit =
+      typeof input.limit === 'number' && Number.isFinite(input.limit) ? input.limit : 20;
+    const limit = Math.max(1, Math.min(Math.trunc(rawLimit), 100));
     // Infrastructure failures (daemon down, invalid endpoint, index read
     // timeout, never-built index) THROW so the executor marks the call failed;
     // an empty `results` payload read as "nothing matched". A refresh in

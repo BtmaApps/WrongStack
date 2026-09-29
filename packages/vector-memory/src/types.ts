@@ -51,6 +51,19 @@ export interface VectorSearchOptions {
   threshold?: number | undefined;
   scope?: VectorScope | undefined;
   kind?: VectorKind | undefined;
+  /**
+   * Resume the ranked result set strictly after this rank position —
+   * pass `{ score, id }` of the last hit of the previous page. Ranking
+   * order is score DESC, then entry id ASC — a deterministic total order
+   * — so the pair is a stable resume token even when scores tie.
+   *
+   * The cursor is a rank-position token, NOT a snapshot: entries written
+   * between calls can appear on later pages, and entries forgotten
+   * mid-walk simply drop out. Callers should keep the query and all
+   * other filters identical across pages. Malformed cursors throw
+   * `VectorMemoryError` rather than being silently ignored.
+   */
+  cursor?: { score: number; id: string } | undefined;
   /** Provider id override for the query embedding. Defaults to the store's provider. */
   providerId?: string | undefined;
   /**

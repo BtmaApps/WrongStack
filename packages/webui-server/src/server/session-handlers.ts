@@ -494,6 +494,7 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
             resumedContext,
             resumed.data.events,
             resumed.data.subagentsAllowed,
+            resumed.data.subagentCompanionsAllowed,
           );
           restoreSessionPermissionOverrides(resumedContext.meta, resumed.data);
           restoreRequiredSkillsFromEvents(resumedContext, resumed.data.events);

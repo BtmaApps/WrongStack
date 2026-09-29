@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fsm = vi.hoisted(() => ({ watch: vi.fn() }));
@@ -183,6 +185,33 @@ describe('watch_start', () => {
       }),
     );
     expect(metrics.counter).toHaveBeenCalledWith('file_change', 1, { event: 'change' });
+  });
+
+  it('emits the watched file path for a single-file watch, not <file>/<basename>', async () => {
+    vi.useFakeTimers();
+    const tools = setup({ debounceMs: 50 });
+    const tmp = mkdtempSync(join(tmpdir(), 'fw-file-watch-'));
+    try {
+      const victim = join(tmp, 'watched.txt');
+      writeFileSync(victim, 'v1\n');
+      const start = tools.watch_start as unknown as {
+        execute: (
+          input: Record<string, unknown>,
+          ctx?: unknown,
+        ) => Promise<Record<string, unknown>>;
+      };
+      await start.execute({ paths: ['watched.txt'] }, { projectRoot: tmp });
+      // fs.watch on a FILE reports the file's base name (platform-verified on
+      // win32/linux/macOS); joining it onto the watched file path doubles it.
+      lastCb!('change', 'watched.txt');
+      await vi.advanceTimersByTimeAsync(50);
+      expect(emitCustom).toHaveBeenCalledWith(
+        'file-watcher:changed',
+        expect.objectContaining({ path: victim.replaceAll('\\', '/') }),
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('labels an undefined event type as "unknown"', async () => {

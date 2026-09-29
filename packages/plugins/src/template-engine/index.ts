@@ -98,7 +98,13 @@ function expandLoops(template: string, variables: Record<string, string>): strin
           .map((item) => expandTemplate(content, { ...variables, [key]: item, item }))
           .join('\n');
       }
-      return expandTemplate(content, variables);
+      // A one-element list iterates once: bind the iteration variable the
+      // same way the comma branch does, so the documented block syntax
+      // `{{#each items}}...{{item}}...{{/each}}` (see the comment above)
+      // resolves for a single value too. `{{items}}` keeps resolving to the
+      // whole value — `variables[key]` already is `val`, so nothing pinned
+      // changes.
+      return expandTemplate(content, { ...variables, [key]: val, item: val });
     },
   );
 }

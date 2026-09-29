@@ -32,6 +32,7 @@ import { HqEventLog } from './persistence/event-log.js';
 import { HqSimpleLog } from './persistence/simple-log.js';
 import { HqSnapshotStore } from './persistence/snapshot-store.js';
 import { HqTimeseriesStore } from './persistence/timeseries-store.js';
+import { HqSageStore } from './sage-store.js';
 
 export { HqKanbanStore } from './kanban-store.js';
 export {
@@ -54,6 +55,7 @@ export interface HqPersistence {
   snapshotStore: HqSnapshotStore;
   timeseries: HqTimeseriesStore;
   kanban: HqKanbanStore;
+  sage: HqSageStore;
   commandLog: HqSimpleLog<unknown>;
   alertLog: HqSimpleLog<unknown>;
 }
@@ -64,6 +66,7 @@ export function createHqPersistence(dataDir: string): HqPersistence {
     snapshotStore: new HqSnapshotStore({ dataDir }),
     timeseries: new HqTimeseriesStore({ dataDir }),
     kanban: new HqKanbanStore(dataDir),
+    sage: new HqSageStore(dataDir),
     commandLog: new HqSimpleLog({
       dataDir,
       filename: 'commands.jsonl',

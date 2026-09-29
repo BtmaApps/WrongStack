@@ -30,6 +30,56 @@ import type { Tool } from '@wrongstack/core/types';
 
 export interface SageMcpPolicyOptions {
   writable?: boolean;
+  /**
+   * Read-only plus proposals: expose `memory_candidates` narrowed to `list` and
+   * `propose`. The external agent can SUGGEST a memory; only WrongStack's
+   * review path (accept/reject/resolve) turns it into one. Ignored with
+   * `writable`, which already exposes the full tool.
+   */
+  proposals?: boolean;
+  /**
+   * Who is calling (`claude-code`, `codex`, ...). Stamped on every proposal's
+   * review reason so the reviewer sees where a suggestion came from.
+   */
+  origin?: string | undefined;
+}
+
+const PROPOSAL_ACTIONS = ['list', 'propose'] as const;
+
+/**
+ * `memory_candidates` with only `list` and `propose`. The schema enum is
+ * narrowed so the client never offers the other actions, and `validate`
+ * refuses them anyway — a schema is advice to the caller, not enforcement.
+ */
+export function proposalOnlyCandidatesTool(tool: Tool, origin?: string | undefined): Tool {
+  const schema = tool.inputSchema as { properties?: Record<string, Record<string, unknown>> };
+  const properties = { ...(schema.properties ?? {}) };
+  properties['action'] = {
+    ...(properties['action'] ?? {}),
+    type: 'string',
+    enum: [...PROPOSAL_ACTIONS],
+  };
+  const inner = tool as Tool<Record<string, unknown>, unknown>;
+  const narrowed: Tool<Record<string, unknown>, unknown> = {
+    ...inner,
+    description:
+      'List pending memory candidates, or propose a new one for WrongStack review. A proposal is not a memory until a reviewer accepts it in WrongStack.',
+    inputSchema: { ...tool.inputSchema, properties } as Tool['inputSchema'],
+    validate(input) {
+      const action = input['action'];
+      if (action !== undefined && !(PROPOSAL_ACTIONS as readonly unknown[]).includes(action)) {
+        return [`action "${String(action)}" is not available over MCP; use list or propose.`];
+      }
+      return inner.validate ? inner.validate(input) : [];
+    },
+    execute(input, ctx, opts) {
+      if (input['action'] !== 'propose' || !origin) return inner.execute(input, ctx, opts);
+      const reason = typeof input['reason'] === 'string' ? input['reason'].trim() : '';
+      const stamp = `Proposed by ${origin} over MCP`;
+      return inner.execute({ ...input, reason: reason ? `${stamp}: ${reason}` : stamp }, ctx, opts);
+    },
+  };
+  return narrowed as Tool;
 }
 
 export interface SageMcpAllowedTool {
@@ -44,6 +94,10 @@ export function selectAllowedTools(
   const allowed: SageMcpAllowedTool[] = [];
   for (const tool of tools) {
     if (tool.permission === 'deny') continue;
+    if (tool.name === 'memory_candidates' && opts.proposals === true && opts.writable !== true) {
+      allowed.push({ name: tool.name, tool: proposalOnlyCandidatesTool(tool, opts.origin) });
+      continue;
+    }
     if (tool.riskTier === 'destructive') continue;
     if (tool.permission === 'auto') {
       if (tool.riskTier === 'safe' || opts.writable === true) {

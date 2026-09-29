@@ -188,8 +188,15 @@ export async function acquireLock(
             continue;
           }
         } catch {
-          // Can't read lock file - assume stale, try to steal
-          await fs.unlink(lockfilePath).catch(() => {});
+          // The lock EXISTS (EEXIST above) but cannot be read right now. An
+          // unreadable lock is more plausibly a LIVE one under a transient
+          // sharing violation (AV scan, indexer) than a stale one — and the
+          // age check above is, per this file's own contract, the ONLY stale
+          // signal on Windows. Unlinking here admitted a second writer into
+          // the section beside the real holder. Fail closed instead: wait and
+          // retry; a genuinely stale lock becomes stealable once readable,
+          // and the acquisition timeout fails closed otherwise.
+          await new Promise((r) => setTimeout(r, 100));
           continue;
         }
 

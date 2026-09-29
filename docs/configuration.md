@@ -2094,7 +2094,7 @@ The config-file equivalent is:
 }
 ```
 
-WrongStack initializes a committed `.wrongstack/project.json` containing a stable `proj_<ULID>`. Commit that file once; every clone, worktree, and fork that retains it joins the same HQ project and synchronizes the same Kanban records. `hq.projectAlias` controls the display name when the committed identity exists.
+WrongStack initializes a committed `.wrongstack/project.json` containing a stable `proj_<ULID>`. Commit that file once; every clone, worktree, and fork that retains it joins the same HQ project and synchronizes the same Kanban records and project SAGE memories. SAGE shares project/file/symbol records (including updates and deletions); user/session memories stay local. Connected clients reconcile through the SAGE owner every three seconds and recover missing state after reconnect. `hq.projectAlias` controls the display name when the committed identity exists.
 
 Use `wstack project id` to inspect the identity, `wstack project init` to create a missing file, and `wstack project rekey --yes` only when a fork should become an independent HQ project. When the committed file is absent, WrongStack retains the legacy fallback: `hq.projectAlias` when configured, otherwise a hash of the absolute project path.
 

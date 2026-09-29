@@ -154,6 +154,8 @@ describe('bash-kill-guard — Windows (Git Bash / PowerShell) targets', () => {
     `Get-Date; kill -Id ${P}`,
     `Get-Date; Stop-Process -Id ${P} -Force`,
     `dir && taskkill /PID ${P} /F`,
+    `taskkill /PID:${P}`,
+    `taskkill /F /IM:wrongstack-daemon`,
     `echo x & tskill ${P}`,
   ])('blocks %j', async (command) => {
     const { checkAndBlockKillCommand } = await loadGuard('win32');

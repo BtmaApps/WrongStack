@@ -223,27 +223,50 @@ export class BatchScanner {
           remediation: string;
         }>;
 
-        return parsed.map((item, idx) => {
-          const normalizedFile = (
-            path.isAbsolute(item.file) ? path.relative(opts.projectRoot, item.file) : item.file
-          ).replace(/\\/g, '/');
-          const category = validCategories.includes(item.category as Finding['category'])
-            ? (item.category as Finding['category'])
-            : 'injection';
-          return {
-            id: `llm-analysis-${normalizedFile}-${item.line ?? 0}-${idx}`,
-            severity: item.severity,
-            category,
-            title: item.title,
-            description: item.description,
-            file: normalizedFile,
-            line: item.line,
-            snippet: item.snippet,
-            remediation: item.remediation,
-            patternId: 'llm-analysis',
-            confidence: 'high' as const,
-          };
-        });
+        const defaultFile = opts.files[0]
+          ? path.relative(opts.projectRoot, opts.files[0]).replace(/\\/g, '/')
+          : 'unknown';
+        const validSeverities = ['critical', 'high', 'medium', 'low'] as const;
+
+        return (Array.isArray(parsed) ? parsed : [])
+          .filter(
+            (item): item is NonNullable<typeof item> => typeof item === 'object' && item !== null,
+          )
+          .map((item, idx) => {
+            const rawFile =
+              typeof item.file === 'string' && item.file.trim().length > 0
+                ? item.file
+                : defaultFile;
+            const normalizedFile = (
+              path.isAbsolute(rawFile) ? path.relative(opts.projectRoot, rawFile) : rawFile
+            ).replace(/\\/g, '/');
+            const category = validCategories.includes(item.category as Finding['category'])
+              ? (item.category as Finding['category'])
+              : 'injection';
+            const rawSeverity = typeof item.severity === 'string' ? item.severity.toLowerCase() : '';
+            const severity: Finding['severity'] = validSeverities.includes(
+              rawSeverity as Finding['severity'],
+            )
+              ? (rawSeverity as Finding['severity'])
+              : 'medium';
+            return {
+              id: `llm-analysis-${normalizedFile}-${item.line ?? 0}-${idx}`,
+              severity,
+              category,
+              title: typeof item.title === 'string' ? item.title : 'Security Finding',
+              description: typeof item.description === 'string' ? item.description : '',
+              file: normalizedFile,
+              line:
+                typeof item.line === 'number' && Number.isFinite(item.line) ? item.line : undefined,
+              snippet: typeof item.snippet === 'string' ? item.snippet : undefined,
+              remediation:
+                typeof item.remediation === 'string'
+                  ? item.remediation
+                  : 'Review and remediate this finding.',
+              patternId: 'llm-analysis',
+              confidence: 'high' as const,
+            };
+          });
       }
       return [];
     } catch (err) {

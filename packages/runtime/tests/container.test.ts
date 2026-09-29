@@ -226,6 +226,18 @@ describe('createDefaultContainer', () => {
     expect(compactor).toBeDefined();
   });
 
+  it('wires compactor factory to query active config dynamically via ConfigStore', () => {
+    const c = createDefaultContainer({
+      config: mockConfig,
+      wpaths: mockWpaths,
+      logger: mockLogger,
+      modelsRegistry: mockModels,
+    });
+    const entry = (c as any).entries.get(TOKENS.Compactor);
+    expect(entry).toBeDefined();
+    expect(entry.factory.toString()).toContain('ConfigStore');
+  });
+
   it('passes permission yolo option through the directory-policy wrapper', () => {
     const c = createDefaultContainer({
       config: mockConfig,

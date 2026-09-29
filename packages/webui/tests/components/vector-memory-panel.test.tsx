@@ -57,6 +57,11 @@ const hitsPayload = {
 let forgetStatus = 200;
 let forgetBody: unknown = { removed: true };
 
+// Scripted search bodies: when non-empty, the next search consumes the
+// front of the queue; when empty, the default hitsPayload is served.
+// Used to drive cursor pages and provenance payloads per test.
+let searchBodies: Array<unknown> = [];
+
 // Deferred-promise gates for the interleaving test: when a hold flag is set,
 // the NEXT matching fetch returns a promise the test resolves manually.
 let holdSearchResponse = false;
@@ -77,6 +82,9 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respo
         searchGate = (body) => resolve(jsonResponse(200, body));
       });
     }
+    if (searchBodies.length > 0) {
+      return Promise.resolve(jsonResponse(200, searchBodies.shift()));
+    }
     return Promise.resolve(jsonResponse(200, hitsPayload));
   }
   if (url.includes('/api/vector-memory/store/vm_alpha')) {
@@ -96,6 +104,7 @@ vi.stubGlobal(
   vi.fn((input: RequestInfo | URL, init?: RequestInit) => routeFetch(input, init)),
 );
 
+import type { SharedMemorySearch } from '../../src/components/MemoryManager/sharedSearch.js';
 import { VectorMemoryPanel } from '../../src/components/vector-memory-panel/index.js';
 import { previewText } from '../../src/components/vector-memory-panel/model.js';
 
@@ -113,6 +122,7 @@ beforeEach(() => {
   fetchCalls.length = 0;
   forgetStatus = 200;
   forgetBody = { removed: true };
+  searchBodies = [];
   holdSearchResponse = false;
   holdDeleteResponse = false;
   searchGate = null;
@@ -245,9 +255,9 @@ describe('VectorMemoryPanel forget/search interleaving', () => {
     };
     await loadAndSearch(); // search 1: alpha + beta (version 1)
 
-    // Fire search 2 and hold its response — the list still shows alpha/beta.
+    // Fire search 2 (same query — changing the query now clears the page)
+    // and hold its response — the list still shows alpha/beta.
     holdSearchResponse = true;
-    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'gamma' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     // Confirm a forget of alpha while search 2 is in flight; hold the DELETE.
@@ -276,6 +286,267 @@ describe('VectorMemoryPanel forget/search interleaving', () => {
     // The successful forget still bumps statusNonce → one extra status fetch.
     const statusCalls = fetchCalls.filter((c) => c.endsWith('/api/vector-memory/status'));
     expect(statusCalls.length).toBe(2);
+  });
+});
+
+describe('VectorMemoryPanel cursor pagination', () => {
+  const pageOne = {
+    hits: [hitsPayload.hits[0], hitsPayload.hits[1]],
+    count: 2,
+    nextCursor: 'rank_tok_1',
+    similarity: [
+      [1.0, 0.2],
+      [0.2, 1.0],
+    ],
+  };
+  const pageTwo = {
+    hits: [
+      {
+        id: 'vm_gamma',
+        score: 0.555,
+        text: 'Gamma entry — page two.',
+        summary: 'gamma summary',
+        tags: [],
+      },
+    ],
+    count: 1,
+    nextCursor: null,
+  };
+
+  it('appends the next page via the cursor token and stops at exhaustion', async () => {
+    searchBodies.push(pageOne, pageTwo);
+    render(<VectorMemoryPanel />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'alpha beta' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('alpha summary');
+
+    // Full page → the server emitted a rank cursor → Load more is offered.
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
+    expect((loadMore as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(loadMore);
+
+    await screen.findByText('gamma summary');
+    // The page-two request carried the opaque cursor from page one.
+    const secondSearch = fetchCalls.filter((c) => c.includes('/api/vector-memory/search')).at(-1);
+    expect(secondSearch).toContain('cursor=rank_tok_1');
+    // Appended, not replaced: page-one hits remain ranked above the new one.
+    expect(screen.getByText('alpha summary')).toBeTruthy();
+    expect(screen.getByText('#3')).toBeTruthy();
+    // Exhausted result set (nextCursor null) → no further page offered.
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    // The similarity heatmap only covers the top page — appending drops it
+    // instead of showing a matrix misaligned with the grown hit list.
+    expect(screen.queryByTestId('vector-memory-heatmap')).toBeNull();
+  });
+
+  it('clears hits and cursor when a ranking input changes after a search', async () => {
+    searchBodies.push(pageOne);
+    render(<VectorMemoryPanel />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'alpha beta' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('alpha summary');
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+
+    // limit change → the page (hits + cursor) is invalidated…
+    fireEvent.change(screen.getByLabelText('limit'), { target: { value: '20' } });
+    expect(screen.queryByText('alpha summary')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    // …and the empty list is NOT reported as "No results." before a search ran.
+    expect(screen.queryByText('No results.')).toBeNull();
+
+    // threshold change clears a committed page as well.
+    searchBodies.push(pageOne);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('alpha summary');
+    fireEvent.change(screen.getByLabelText('threshold'), { target: { value: '0.5' } });
+    expect(screen.queryByText('alpha summary')).toBeNull();
+
+    // query change clears too (typed locally or swapped in by a parent).
+    searchBodies.push(pageOne);
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('alpha summary');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'zzz' } });
+    expect(screen.queryByText('alpha summary')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+});
+
+describe('VectorMemoryPanel stale response guard', () => {
+  it('a late-landing older response never overwrites a newer one', async () => {
+    const gammaOnly = {
+      hits: [
+        {
+          id: 'vm_gamma',
+          score: 0.555,
+          text: 'Gamma entry — newer response.',
+          summary: 'gamma summary',
+          tags: [],
+        },
+      ],
+      count: 1,
+      nextCursor: null,
+    };
+    render(<VectorMemoryPanel />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'alpha beta' } });
+
+    // Search 1 fires and its response is held (slow network).
+    holdSearchResponse = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    // Search 2 fires while 1 is in flight (Enter still works while the
+    // button shows Searching…) and resolves first with a different set.
+    searchBodies.push(gammaOnly);
+    fireEvent.keyDown(screen.getByLabelText('Query'), { key: 'Enter' });
+    expect(await screen.findByText('gamma summary')).toBeTruthy();
+
+    // Search 1 lands LAST — the guard must discard it, not clobber search 2.
+    await act(async () => {
+      searchGate?.(hitsPayload);
+    });
+    expect(screen.getByText('gamma summary')).toBeTruthy();
+    expect(screen.queryByText('alpha summary')).toBeNull();
+  });
+});
+
+describe('VectorMemoryPanel shared search (MemoryManager lens)', () => {
+  function makeShared(overrides: Partial<SharedMemorySearch> = {}): SharedMemorySearch {
+    return {
+      query: 'shared term',
+      setQuery: vi.fn(),
+      statusFilter: 'all',
+      setStatusFilter: vi.fn(),
+      kindFilter: 'all',
+      setKindFilter: vi.fn(),
+      navigateToSage: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it('searches with the shared query and forwards edits through setQuery', async () => {
+    const shared = makeShared();
+    render(<VectorMemoryPanel sharedSearch={shared} />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+
+    // The input is driven by the shared query — no local echo state.
+    expect((screen.getByLabelText('Query') as HTMLInputElement).value).toBe('shared term');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'edited' } });
+    expect(shared.setQuery).toHaveBeenCalledWith('edited');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('alpha summary');
+    const searchCall = fetchCalls.find((c) => c.includes('/api/vector-memory/search'));
+    expect(searchCall).toContain('q=shared+term');
+  });
+
+  it('renders provenance badges and navigates verified sage hits', async () => {
+    searchBodies.push({
+      hits: [
+        {
+          id: 'vm_prov1',
+          score: 0.81,
+          text: 'Provenance one.',
+          summary: 'prov one',
+          tags: ['alpha'],
+          kind: 'fact',
+          scope: 'project',
+          sage: { id: 'sage_1', status: 'verified' },
+        },
+        {
+          id: 'vm_prov2',
+          score: 0.62,
+          text: 'Provenance two.',
+          kind: 'note',
+          scope: 'project',
+          tags: [],
+        },
+      ],
+      count: 2,
+      nextCursor: null,
+    });
+    const shared = makeShared();
+    render(<VectorMemoryPanel sharedSearch={shared} />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('prov one');
+
+    // Ranked provenance badges: rank, kind, scope per hit.
+    expect(screen.getByText('#1')).toBeTruthy();
+    expect(screen.getByText('#2')).toBeTruthy();
+    expect(screen.getByText('kind fact')).toBeTruthy();
+    expect(screen.getByText('kind note')).toBeTruthy();
+    expect(screen.getAllByText('scope project').length).toBe(2);
+    // Verified mirror: badge + navigation for exactly the linked hit.
+    expect(screen.getAllByText('sage verified').length).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Open in SAGE' }));
+    expect(shared.navigateToSage).toHaveBeenCalledWith('sage_1');
+    // Unlinked hit exposes no SAGE navigation.
+    expect(screen.getAllByRole('button', { name: 'Open in SAGE' }).length).toBe(1);
+  });
+
+  it('shows a verified badge without navigation when running standalone', async () => {
+    searchBodies.push({
+      hits: [
+        {
+          id: 'vm_prov1',
+          score: 0.81,
+          text: 'Provenance one.',
+          tags: [],
+          sage: { id: 'sage_1', status: 'verified' },
+        },
+      ],
+      count: 1,
+      nextCursor: null,
+    });
+    render(<VectorMemoryPanel />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+    fireEvent.change(screen.getByLabelText('Query'), { target: { value: 'prov' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('sage verified');
+    // No shared lens → provenance is still shown, but not clickable.
+    expect(screen.queryByRole('button', { name: 'Open in SAGE' })).toBeNull();
+  });
+
+  it('disables search with an explicit notice while the shared status filter is active', async () => {
+    const shared = makeShared({ statusFilter: 'active' });
+    render(<VectorMemoryPanel sharedSearch={shared} />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+
+    const notice = screen.getByTestId('vm-unsupported-filters');
+    expect(notice.textContent).toContain('status "active"');
+    expect(notice.textContent).toContain('cannot apply the active SAGE filter');
+
+    const searchButton = screen.getByRole('button', { name: 'Search' }) as HTMLButtonElement;
+    expect(searchButton.disabled).toBe(true);
+    // Enter in the query box must not bypass the block — no silent filter.
+    fireEvent.keyDown(screen.getByLabelText('Query'), { key: 'Enter' });
+    expect(fetchCalls.some((c) => c.includes('/api/vector-memory/search'))).toBe(false);
+  });
+
+  it('disables search with an explicit notice while the shared kind filter is active', async () => {
+    const shared = makeShared({ kindFilter: 'decision' });
+    render(<VectorMemoryPanel sharedSearch={shared} />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+
+    const notice = screen.getByTestId('vm-unsupported-filters');
+    expect(notice.textContent).toContain('kind "decision"');
+    expect((screen.getByRole('button', { name: 'Search' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  it('names both filters when status and kind are active together', async () => {
+    const shared = makeShared({ statusFilter: 'stale', kindFilter: 'fact' });
+    render(<VectorMemoryPanel sharedSearch={shared} />);
+    await screen.findByText('Xenova/all-MiniLM-L6-v2');
+
+    const notice = screen.getByTestId('vm-unsupported-filters');
+    expect(notice.textContent).toContain('status "stale"');
+    expect(notice.textContent).toContain('kind "fact"');
+    expect(notice.textContent).toContain('filters');
   });
 });
 

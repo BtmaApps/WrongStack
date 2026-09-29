@@ -418,6 +418,45 @@ describe('secret_scanner_test tool', () => {
     expect(result.count).toBeGreaterThanOrEqual(1);
   });
 
+  it('detects JSON credentials under case-variant keys through the combined regex', async () => {
+    // json_credential_key is authored with the `i` flag; the combined
+    // scanner regex must union per-pattern flags, or UPPER_SNAKE and
+    // Capitalized spellings slip past a gate that prompt-firewall's
+    // per-pattern loop catches on the same text. Fixtures are assembled
+    // from parts (see the synthetic-credentials note above).
+    const api = makeApi();
+    secretScannerPlugin.setup(api as any);
+    const tool = getRegisteredTool(api, 'secret_scanner_test');
+    const VALUE = 'synthetic' + 'v'.repeat(30);
+
+    const upper = (await tool.execute({
+      text: '{' + '"API_' + 'KEY"' + ':' + `"${VALUE}"` + '}',
+    })) as { matched: string[] };
+    expect(upper.matched).toContain('json_credential_key');
+
+    const capitalized = (await tool.execute({
+      text: '{' + '"Pass' + 'word"' + ':' + `"${VALUE}"` + '}',
+    })) as { matched: string[] };
+    expect(capitalized.matched).toContain('json_credential_key');
+
+    // Control: the case-exact lowercase shape stays detected.
+    const lower = (await tool.execute({
+      text: '{' + '"api_' + 'key"' + ':' + `"${VALUE}"` + '}',
+    })) as { matched: string[] };
+    expect(lower.matched).toContain('json_credential_key');
+  });
+
+  it('keeps non-credential keys negative while honoring per-pattern flags', async () => {
+    const api = makeApi();
+    secretScannerPlugin.setup(api as any);
+    const tool = getRegisteredTool(api, 'secret_scanner_test');
+
+    const result = (await tool.execute({
+      text: '{"TokenCount": 1234, "max_tokens": 8000}',
+    })) as { matched: string[] };
+    expect(result.matched).not.toContain('json_credential_key');
+  });
+
   it('throws when text is missing instead of reporting a clean scan', async () => {
     const api = makeApi();
     secretScannerPlugin.setup(api as any);

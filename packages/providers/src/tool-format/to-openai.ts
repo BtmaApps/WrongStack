@@ -10,6 +10,7 @@ import type {
 } from '@wrongstack/core/types';
 import { documentAsText } from '@wrongstack/core/types';
 import { compactToolDefinitionForWire } from '@wrongstack/core/utils';
+import type { ReasoningEchoField } from '../reasoning-echo-support.js';
 
 export interface OpenAIToolSchema {
   type: 'function';
@@ -86,10 +87,11 @@ export interface OpenAIMessage {
    * request as a top-level `reasoning_content` field on the assistant
    * message — NOT inside individual tool_calls. Without it DeepSeek
    * returns 400 "reasoning_content in the thinking mode must be passed
-   * back to the API". Vanilla OpenAI ignores this field, so emitting it
-   * unconditionally is safe.
+   * back to the API". Not universal: see `ConvertOptions.reasoningEchoField`.
    */
   reasoning_content?: string | undefined;
+  /** Cerebras' name for the same echo (it rejects `reasoning_content`). */
+  reasoning?: string | undefined;
 }
 
 export interface OpenAIContent {
@@ -131,6 +133,13 @@ export interface ConvertOptions {
    * old behaviour can opt in with `emptyToolCallContent: 'null'`.
    */
   emptyToolCallContent?: 'null' | 'empty_string' | undefined;
+  /**
+   * The assistant-message field that echoes prior reasoning back. Defaults to
+   * `reasoning_content` (DeepSeek/Kimi require it); Cerebras rejects that name
+   * and takes `reasoning`; `omit` drops the echo for endpoints that take
+   * neither. See `reasoning-echo-support.ts`.
+   */
+  reasoningEchoField?: ReasoningEchoField | undefined;
 }
 
 export function messagesToOpenAI(
@@ -143,6 +152,7 @@ export function messagesToOpenAI(
   // for the rationale. Callers can opt back into the pre-2024
   // behaviour with `emptyToolCallContent: 'null'`.
   const emptyContentMode: 'null' | 'empty_string' = opts.emptyToolCallContent ?? 'empty_string';
+  const echoField: ReasoningEchoField = opts.reasoningEchoField ?? 'reasoning_content';
   const out: OpenAIMessage[] = [];
 
   if (system && system.length > 0) {
@@ -215,10 +225,11 @@ export function messagesToOpenAI(
       }
       // DeepSeek thinking mode requires the prior assistant's reasoning
       // blob to round-trip on the next request. Vanilla OpenAI silently
-      // accepts and ignores the field, so emitting it unconditionally is
-      // safe across the OpenAI-compatible ecosystem.
+      // ignores the field, but strict endpoints (Cerebras) 400 on an
+      // unknown property, so the field name is per endpoint.
       if (reasoning.length > 0) {
-        message.reasoning_content = reasoning;
+        if (echoField === 'reasoning') message.reasoning = reasoning;
+        else if (echoField === 'reasoning_content') message.reasoning_content = reasoning;
       }
       out.push(message);
     } else if (msg.role === 'system') {

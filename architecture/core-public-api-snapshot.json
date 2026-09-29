@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.28",
+  "packageVersion": "1.0.29",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -678,7 +678,7 @@
         "export { actionToAckInput } from './mailbox-actions.js';",
         "export { activeTierConfig, applyTierToSubagentConfig, classifyTier, DEFAULT_TIER_ID, isConfiguredTier, listTierIds, type ModelTierBudget, type ModelTierDecision, type ModelTierSource, type ResolvedTierTarget, resolveTier, tierBudget, tierLevel, tierModelTarget, } from './model-tier.js';",
         "export { applyMailboxSendPolicy, type MailboxResolver, type MailboxToolOptions, mailboxSessionTag, makeMailboxTool, resolveMailboxIdentity, } from './mailbox-tool.js';",
-        "export { areSubagentsAllowed, areSubagentsAllowedForSession, isSubagentPolicyLocked, lockSessionSubagentPolicy, lockSessionSubagentPolicyForSession, resetSessionSubagentPolicy, restoreSessionSubagentPolicy, SUBAGENTS_ALLOWED_META_KEY, SUBAGENTS_POLICY_LOCKED_META_KEY, seedSessionSubagentPolicy, setSessionSubagentsAllowed, } from './session-subagent-policy.js';",
+        "export { areSubagentCompanionsAllowed, areSubagentCompanionsAllowedForSession, areSubagentsAllowed, areSubagentsAllowedForSession, isSubagentPolicyLocked, lockSessionSubagentPolicy, lockSessionSubagentPolicyForSession, resetSessionSubagentPolicy, restoreSessionSubagentPolicy, SUBAGENT_COMPANIONS_ALLOWED_META_KEY, SUBAGENTS_ALLOWED_META_KEY, SUBAGENTS_POLICY_LOCKED_META_KEY, type SubagentPolicyMode, seedSessionSubagentPolicy, setSessionSubagentPolicy, setSessionSubagentsAllowed, subagentPolicyMode, subagentPolicyModeFrom, } from './session-subagent-policy.js';",
         "export { assessCommitSafety, type CommitSafetyOptions, type CommitSafetyReport, } from './commit-safety.js';",
         "export { assignNickname } from './subagent-nicknames.js';",
         "export { attachDepWatcherBridge, type DepWatcherBridgeOptions, } from './dep-watcher-bridge.js';",
@@ -1193,6 +1193,7 @@
         "export * from './protocol/peer.js';",
         "export * from './protocol/project.js';",
         "export * from './protocol/resume.js';",
+        "export * from './protocol/sage.js';",
         "export * from './protocol/session.js';",
         "export * from './protocol/tool.js';"
       ]
@@ -1509,7 +1510,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 208,
-      "sourceLines": 57870
+      "sourceLines": 57965
     },
     {
       "directory": "core",
@@ -1557,8 +1558,8 @@
       "directory": "hq",
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
-      "sourceFiles": 58,
-      "sourceLines": 11966
+      "sourceFiles": 60,
+      "sourceLines": 12232
     },
     {
       "directory": "infrastructure",
@@ -1579,7 +1580,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 13,
-      "sourceLines": 3060
+      "sourceLines": 3071
     },
     {
       "directory": "notifications",
@@ -1614,7 +1615,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9520
+      "sourceLines": 9526
     },
     {
       "directory": "prompts",
@@ -1677,7 +1678,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 24747
+      "sourceLines": 24888
     },
     {
       "directory": "tasking",
@@ -1698,7 +1699,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 82,
-      "sourceLines": 15555
+      "sourceLines": 15563
     },
     {
       "directory": "typesafe",

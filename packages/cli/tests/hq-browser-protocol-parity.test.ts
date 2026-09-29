@@ -100,6 +100,8 @@ const BROWSER_IGNORED: Record<string, string> = {
   // because nothing consumed it (see fanoutKanbanDelta). Sent at client hello
   // and after each merge, to publishing CLI/TUI peers.
   'hq.kanban_snapshot': 'client-plane only — no browser consumer, fan-out removed',
+  'hq.sage_snapshot':
+    'client-plane only — durable project memory is delivered only to matching publishers',
 };
 
 describe('HQ browser protocol parity', () => {

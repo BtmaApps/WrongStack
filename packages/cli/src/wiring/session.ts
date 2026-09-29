@@ -220,6 +220,7 @@ export async function setupSession(params: {
   let restoredToolCalls: SessionResult['restoredToolCalls'] = [];
   let restoredEvents: SessionResult['restoredEvents'] = [];
   let restoredSubagentsAllowed: boolean | undefined;
+  let restoredSubagentCompanionsAllowed: boolean | undefined;
   let restoredPermissionOverrides: SessionPermissionOverride[] | undefined;
   let resumedModel: string | undefined;
   let resumedProvider: string | undefined;
@@ -252,6 +253,7 @@ export async function setupSession(params: {
       restoredToolCalls = resumed.data.toolCallEnds ?? [];
       restoredEvents = resumed.data.events ?? [];
       restoredSubagentsAllowed = resumed.data.subagentsAllowed;
+      restoredSubagentCompanionsAllowed = resumed.data.subagentCompanionsAllowed;
       restoredPermissionOverrides = resumed.data.permissionOverrides;
       // Prefer the resumed session's own model/provider on boot (applied later,
       // once the provider runtime + switch callback exist).
@@ -340,7 +342,12 @@ export async function setupSession(params: {
     await context.flushConversationJournal();
   }
   if (restoredEvents.length > 0 || restoredSubagentsAllowed !== undefined) {
-    restoreSessionSubagentPolicy(context, restoredEvents, restoredSubagentsAllowed);
+    restoreSessionSubagentPolicy(
+      context,
+      restoredEvents,
+      restoredSubagentsAllowed,
+      restoredSubagentCompanionsAllowed,
+    );
     restoreSessionSubagentModelPlan(context, restoredEvents);
   } else seedSessionSubagentPolicy(context);
   restoreRequiredSkillsFromEvents(context, restoredEvents);

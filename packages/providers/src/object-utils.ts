@@ -19,7 +19,9 @@ export function isNodeReadable(b: unknown): boolean {
 /** Strips `cache_control` from message blocks in a system prompt. */
 export function stripCacheControl(system: Request['system']): Request['system'] {
   if (!system) return undefined;
+  if (!Array.isArray(system)) return system;
   return system.map((b) => {
+    if (!b || typeof b !== 'object') return b;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { cache_control: _cc, ...rest } = b;
     return rest;

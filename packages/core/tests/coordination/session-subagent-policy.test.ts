@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  areSubagentCompanionsAllowed,
+  areSubagentCompanionsAllowedForSession,
   areSubagentsAllowed,
   areSubagentsAllowedForSession,
   isSubagentPolicyLocked,
   lockSessionSubagentPolicyForSession,
   resetSessionSubagentPolicy,
   restoreSessionSubagentPolicy,
+  setSessionSubagentPolicy,
   setSessionSubagentsAllowed,
+  subagentPolicyMode,
 } from '../../src/coordination/session-subagent-policy.js';
 
 function policyContext(id: string) {
@@ -74,5 +78,62 @@ describe('session subagent policy', () => {
 
     expect(areSubagentsAllowed(ctx as never)).toBe(true);
     expect(isSubagentPolicyLocked(ctx as never)).toBe(false);
+  });
+
+  it('companions mode blocks general subagents but admits the resident companions', async () => {
+    const ctx = policyContext('policy-companions');
+
+    await setSessionSubagentPolicy(ctx as never, 'companions');
+
+    expect(subagentPolicyMode(ctx as never)).toBe('companions');
+    expect(areSubagentsAllowed(ctx as never)).toBe(false);
+    expect(areSubagentCompanionsAllowed(ctx as never)).toBe(true);
+    expect(areSubagentsAllowedForSession('policy-companions')).toBe(false);
+    expect(areSubagentCompanionsAllowedForSession('policy-companions')).toBe(true);
+    expect(ctx.session.append).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'subagent_policy', allowed: false, companions: true }),
+    );
+  });
+
+  it('strict solo blocks the companions too', async () => {
+    const ctx = policyContext('policy-strict');
+
+    await setSessionSubagentsAllowed(ctx as never, false);
+
+    expect(subagentPolicyMode(ctx as never)).toBe('none');
+    expect(areSubagentCompanionsAllowed(ctx as never)).toBe(false);
+    expect(areSubagentCompanionsAllowedForSession('policy-strict')).toBe(false);
+    const event = (
+      ctx.session.append.mock.calls as unknown as Array<[Record<string, unknown>]>
+    )[0]![0];
+    expect(event).not.toHaveProperty('companions');
+  });
+
+  it('restores companions mode from the journal and from the persisted fallback', () => {
+    const journaled = policyContext('policy-restore-companions');
+    restoreSessionSubagentPolicy(journaled as never, [
+      { type: 'subagent_policy', ts: '2026-01-01T00:00:00.000Z', allowed: false, companions: true },
+    ]);
+    expect(subagentPolicyMode(journaled as never)).toBe('companions');
+    expect(areSubagentCompanionsAllowedForSession('policy-restore-companions')).toBe(true);
+
+    // Events evicted: the load-time summary carries both halves.
+    const evicted = policyContext('policy-restore-evicted');
+    restoreSessionSubagentPolicy(evicted as never, [], false, true);
+    expect(subagentPolicyMode(evicted as never)).toBe('companions');
+
+    // A pre-companions journal (allowed:false, no field) stays strict.
+    const legacy = policyContext('policy-restore-legacy');
+    restoreSessionSubagentPolicy(legacy as never, [
+      { type: 'subagent_policy', ts: '2026-01-01T00:00:00.000Z', allowed: false },
+    ]);
+    expect(subagentPolicyMode(legacy as never)).toBe('none');
+    expect(areSubagentCompanionsAllowedForSession('policy-restore-legacy')).toBe(false);
+  });
+
+  it('unknown sessions default to allowing both', () => {
+    expect(areSubagentsAllowedForSession('policy-never-seen')).toBe(true);
+    expect(areSubagentCompanionsAllowedForSession('policy-never-seen')).toBe(true);
+    expect(areSubagentCompanionsAllowedForSession(undefined)).toBe(true);
   });
 });

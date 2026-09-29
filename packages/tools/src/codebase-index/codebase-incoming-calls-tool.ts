@@ -86,7 +86,9 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
       throw new Error(`Index build failed: ${state.lastError}. ${retryHint}`);
     }
 
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit ?? 50), 200));
+    const rawLimit =
+      typeof input.limit === 'number' && Number.isFinite(input.limit) ? input.limit : 50;
+    const limit = Math.max(1, Math.min(Math.trunc(rawLimit), 200));
     const transitive = input.transitive === true;
     // Infrastructure failures (daemon down, invalid endpoint, index read
     // timeout, never-built index) THROW: an empty `calls` payload read as

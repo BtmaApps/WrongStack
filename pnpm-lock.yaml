@@ -313,6 +313,9 @@ importers:
       '@wrongstack/sage':
         specifier: workspace:*
         version: link:../sage
+      '@wrongstack/sage-mcp':
+        specifier: workspace:*
+        version: link:../sage-mcp
       '@wrongstack/sdd':
         specifier: workspace:*
         version: link:../sdd

@@ -238,7 +238,7 @@ export function addProvider(
 
 /** Remove an entire provider and all its keys. */
 export function removeProvider(providers: ProvidersRecord, providerId: string): KeyOpResult {
-  if (!providers[providerId]) {
+  if (!Object.hasOwn(providers, providerId)) {
     return { ok: false, message: `Provider "${providerId}" not found` };
   }
   delete providers[providerId];

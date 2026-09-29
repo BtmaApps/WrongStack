@@ -78,6 +78,7 @@ export async function loadSessionDataFromFile(params: {
   let sessionProvider: string | undefined;
   let sessionPendingToolUses: string[] | undefined;
   let subagentsAllowed: boolean | undefined;
+  let subagentCompanionsAllowed: boolean | undefined;
   let permissionOverrides: SessionPermissionOverride[] | undefined;
   let sessionForkedEvent: Extract<SessionEvent, { type: 'session_forked' }> | undefined;
   const messages: Message[] | undefined = params.full ? [] : undefined;
@@ -193,6 +194,7 @@ export async function loadSessionDataFromFile(params: {
         }
         if (ev.type === 'subagent_policy') {
           subagentsAllowed = ev.allowed;
+          subagentCompanionsAllowed = ev.companions === true;
         }
         if (ev.type === 'permission_overrides') {
           permissionOverrides = normalizeSessionPermissionOverrides(ev.overrides);
@@ -290,6 +292,7 @@ export async function loadSessionDataFromFile(params: {
     messages: finalMessages,
     usage,
     ...(subagentsAllowed !== undefined ? { subagentsAllowed } : {}),
+    ...(subagentCompanionsAllowed !== undefined ? { subagentCompanionsAllowed } : {}),
     ...(permissionOverrides !== undefined ? { permissionOverrides } : {}),
     toolCallEnds,
     ...(pendingToolUseCount !== undefined ? { pendingToolUseCount } : {}),

@@ -274,6 +274,27 @@ describe('vision routing', () => {
     ).resolves.toBe('visible UI');
   });
 
+  it('unwraps structured MCP content results with text blocks in vision adapters', async () => {
+    const registry = new ToolRegistry();
+    const tool: Tool<Record<string, unknown>, unknown> = {
+      name: 'mcp__vision__structured_describe',
+      description: 'Analyze an image and return an MCP structured content result.',
+      inputSchema: { type: 'object', properties: { image: { type: 'object' } } },
+      permission: 'auto',
+      mutating: false,
+      async execute() {
+        return {
+          content: [{ type: 'text', text: 'Diagnostic error dialog: 404 Not Found' }],
+        };
+      },
+    };
+    registry.register(tool);
+    const adapters = createToolVisionAdapters(registry);
+    await expect(
+      adapters[0]!.describe({ image, ctx, signal: new AbortController().signal }),
+    ).resolves.toBe('Diagnostic error dialog: 404 Not Found');
+  });
+
   it('re-resolves adapter tools from the registry before execution', async () => {
     const registry = new ToolRegistry();
     const original: Tool<Record<string, unknown>, string> = {

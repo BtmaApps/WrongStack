@@ -24,6 +24,11 @@ import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-li
 import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from './openai-chat-usage.js';
 import { shouldEmitReasoningEffort } from './openai-shared.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
+import {
+  learnReasoningEchoRefusal,
+  type ReasoningEchoField,
+  resolveReasoningEchoField,
+} from './reasoning-echo-support.js';
 import { parseSSE } from './sse.js';
 import { normalizeOpenAI } from './stop-reason.js';
 import { type ConvertOptions, messagesToOpenAI, toolsToOpenAI } from './tool-format/to-openai.js';
@@ -68,6 +73,9 @@ export interface OpenAIProviderOptions {
 
 const DEFAULT_BASE = 'https://api.openai.com/v1';
 
+/** Effort refusal + two echo-field steps (`reasoning_content` → `reasoning` → omit). */
+const MAX_LEARNED_RETRIES = 3;
+
 export class OpenAIProvider extends WireAdapter {
   override readonly id: string;
   override readonly capabilities: Capabilities;
@@ -104,40 +112,72 @@ export class OpenAIProvider extends WireAdapter {
   }
 
   /**
-   * Send the user's `reasoning_effort`, and learn from a refusal.
+   * Send the user's `reasoning_effort` and the reasoning echo, and learn from
+   * a refusal of either.
    *
-   * The level a model accepts is model-specific (`minimal` on gpt-5, `xhigh`
-   * on the gpt-5.2 tier, neither on o3) and a compatible gateway may reject
-   * the field entirely. Guessing conservatively dropped the setting silently;
-   * this sends it, and on a 400/422 that names the field retries once without
-   * it and remembers the pair for the session. Only before any output: a
-   * request-shaped rejection always arrives before the body.
+   * The effort level a model accepts is model-specific (`minimal` on gpt-5,
+   * `xhigh` on the gpt-5.2 tier, neither on o3) and a compatible gateway may
+   * reject the field entirely. Guessing conservatively dropped the setting
+   * silently; this sends it, and on a 400/422 that names the field retries
+   * without it and remembers the pair for the session. The reasoning echo field
+   * name is learned the same way (`reasoning-echo-support.ts`). Only before any
+   * output: a request-shaped rejection always arrives before the body. Each
+   * lesson is a distinct refusal, so the retries are bounded by the lessons.
    */
   override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
-    let emitted = false;
-    try {
-      for await (const ev of super.stream(req, opts)) {
-        emitted = true;
-        yield ev;
+    for (let attempt = 0; ; attempt++) {
+      let emitted = false;
+      try {
+        for await (const ev of super.stream(req, opts)) {
+          emitted = true;
+          yield ev;
+        }
+        return;
+      } catch (err) {
+        if (
+          emitted ||
+          opts.signal.aborted ||
+          attempt >= MAX_LEARNED_RETRIES ||
+          !this.learnFromRefusal(req, err)
+        ) {
+          throw err;
+        }
       }
-      return;
-    } catch (err) {
-      if (
-        emitted ||
-        opts.signal.aborted ||
-        isEffortRejected(this.id, req.model) ||
-        !isEffortRejection(err)
-      ) {
-        throw err;
-      }
+    }
+  }
+
+  /** Record a learnable request refusal; true when a retry can succeed. */
+  private learnFromRefusal(req: Request, err: unknown): boolean {
+    if (!isEffortRejected(this.id, req.model) && isEffortRejection(err)) {
       rememberEffortRejected(this.id, req.model);
       process.emitWarning(
         `"${this.id}/${req.model}" rejected reasoning_effort; retrying without it and ` +
           'omitting it for this model for the rest of the session.',
         'ReasoningEffortWarning',
       );
+      return true;
     }
-    yield* super.stream(req, opts);
+    const sent = this.reasoningEchoField(req);
+    const next = learnReasoningEchoRefusal(this.id, req.model, sent, err);
+    if (next === undefined) return false;
+    process.emitWarning(
+      `"${this.id}/${req.model}" rejected the ${sent ?? 'reasoning_content'} field; ` +
+        (next === 'omit'
+          ? 'retrying without echoing prior reasoning'
+          : `retrying with ${next} instead`) +
+        ' for the rest of the session.',
+      'ReasoningEchoWarning',
+    );
+    return true;
+  }
+
+  private reasoningEchoField(req: Request): ReasoningEchoField | undefined {
+    return resolveReasoningEchoField(
+      this.id,
+      req.model,
+      this.opts.quirks?.reasoningEchoField,
+      this.baseUrl,
+    );
   }
 
   protected override buildUrl(_req: Request): string {
@@ -174,6 +214,7 @@ export class OpenAIProvider extends WireAdapter {
       model: req.model,
       messages: messagesToOpenAI(this.stripCacheControl(req), req.messages, {
         ...this.opts.quirks,
+        reasoningEchoField: this.reasoningEchoField(req),
       }),
       stream: true,
       stream_options: { include_usage: true },

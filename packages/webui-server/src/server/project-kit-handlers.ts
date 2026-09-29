@@ -8,7 +8,11 @@ import { decodeSessionId } from './http-server/security-helpers.js';
 export async function handleProjectKitRead(
   res: ServerResponse,
   url: URL,
-  deps: { projectRoot?: string | undefined; globalRoot?: string | undefined },
+  deps: {
+    projectRoot?: string | undefined;
+    globalRoot?: string | undefined;
+    getSessionProjectRoot?: ((sessionId: string) => string | undefined) | undefined;
+  },
 ): Promise<void> {
   const reply = (status: number, body: unknown) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -19,18 +23,24 @@ export async function handleProjectKitRead(
     const sessionId = url.searchParams.get('sessionId');
     if (sessionId !== null) {
       const decodedSessionId = decodeSessionId(sessionId);
-      if (!decodedSessionId || sessionId.length > 200 || !deps.globalRoot) {
+      if (!decodedSessionId || sessionId.length > 200) {
         reply(400, { error: 'Session context is unavailable' });
         return;
       }
-      const session = await getSessionRegistry(deps.globalRoot).get(decodedSessionId);
-      if (!session?.projectRoot) {
+      // WebUI tabs have local session agents without a cross-process live entry.
+      const localRoot = deps.getSessionProjectRoot?.(decodedSessionId);
+      const sessionRoot =
+        localRoot ??
+        (deps.globalRoot
+          ? (await getSessionRegistry(deps.globalRoot).get(decodedSessionId))?.projectRoot
+          : undefined);
+      if (!sessionRoot) {
         reply(404, { error: 'Session project not found' });
         return;
       }
       // Never accept a client-supplied filesystem path or fall back to a
       // different project's kits when a selected session cannot be resolved.
-      projectRoot = session.projectRoot;
+      projectRoot = sessionRoot;
     }
     if (!projectRoot) {
       reply(400, { error: 'Project root not configured' });

@@ -77,6 +77,11 @@ export interface MCPServerOptions {
   resources?: MCPServerResource[] | undefined;
   /** Explicit allowlist only; omitted means this server exposes no prompts. */
   prompts?: MCPServerPrompt[] | undefined;
+  /**
+   * `InitializeResult.instructions`: how and when to use this server. Clients
+   * that honour it (Claude Code does) put it in front of the model.
+   */
+  instructions?: string | undefined;
 }
 
 interface JsonRpcRequest {
@@ -99,6 +104,7 @@ export class MCPServer {
   private readonly logger?: MCPServerLogger | undefined;
   private readonly resources: MCPServerResource[];
   private readonly prompts: MCPServerPrompt[];
+  private readonly instructions: string | undefined;
   private readonly inFlightRequests = new Map<number | string, AbortController>();
 
   constructor(opts: MCPServerOptions) {
@@ -108,6 +114,7 @@ export class MCPServer {
       version: MCP_CONSTANTS.CLIENT_INFO.version,
     };
     this.logger = opts.logger;
+    this.instructions = opts.instructions?.trim() || undefined;
     this.resources = structuredClone(opts.resources ?? []);
     this.prompts = structuredClone(opts.prompts ?? []);
   }
@@ -205,6 +212,7 @@ export class MCPServer {
             ...(this.prompts.length > 0 ? { prompts: { listChanged: false } } : {}),
           },
           serverInfo: this.serverInfo,
+          ...(this.instructions ? { instructions: this.instructions } : {}),
         };
       case 'ping':
         return {};
@@ -261,7 +269,7 @@ export class MCPServer {
         const input = paramsRecord(params);
         const args = stringRecord(input['arguments'], 'prompts/get arguments');
         for (const argument of prompt.arguments ?? []) {
-          if (argument.required && args[argument.name] === undefined) {
+          if (argument.required && !Object.hasOwn(args, argument.name)) {
             throw new Error(`Prompt "${name}" requires argument "${argument.name}"`);
           }
         }
@@ -390,11 +398,11 @@ function requiredParamString(params: unknown, field: string, method: string): st
 }
 
 function stringRecord(value: unknown, label: string): Record<string, string> {
-  if (value === undefined) return {};
+  if (value === undefined) return Object.create(null) as Record<string, string>;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be an object`);
   }
-  const result: Record<string, string> = {};
+  const result: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (typeof item !== 'string') throw new Error(`${label}.${key} must be a string`);
     result[key] = item;
@@ -404,7 +412,7 @@ function stringRecord(value: unknown, label: string): Record<string, string> {
 
 function renderPromptTemplate(template: string, args: Record<string, string>): string {
   return template.replace(/\{\{([A-Za-z_][A-Za-z0-9_.-]*)\}\}/g, (_match, name: string) => {
-    const value = args[name];
+    const value = Object.hasOwn(args, name) ? args[name] : undefined;
     if (value === undefined) throw new Error(`Missing prompt template argument "${name}"`);
     return value;
   });

@@ -11,11 +11,17 @@ const cfg: {
   versionCode: number;
   files: string[];
   findErrors: boolean;
+  /** exit code of `rg --files` (1 = "no files matched", 2 = usage/parse error). */
+  findCode: number;
+  /** args of the last `rg --files` spawn, so a test can assert what rg received. */
+  lastFindArgs: string[];
 } = {
   versionThrows: false,
   versionCode: 0,
   files: [],
   findErrors: false,
+  findCode: 0,
+  lastFindArgs: [],
 };
 
 vi.mock('node:child_process', async (orig) => {
@@ -27,6 +33,7 @@ vi.mock('node:child_process', async (orig) => {
       child.stdout = new EventEmitter();
       const isVersion = args.includes('--version');
       if (isVersion && cfg.versionThrows) throw new Error('spawn rg ENOENT (sync)');
+      if (!isVersion) cfg.lastFindArgs = args;
       process.nextTick(() => {
         if (isVersion) {
           child.emit('close', cfg.versionCode); // checkRg: 0 = available
@@ -38,7 +45,7 @@ vi.mock('node:child_process', async (orig) => {
           return;
         }
         if (cfg.files.length) child.stdout.emit('data', Buffer.from(`${cfg.files.join('\n')}\n`));
-        child.emit('close', 0);
+        child.emit('close', cfg.findCode);
       });
       return child;
     },
@@ -54,6 +61,8 @@ beforeEach(async () => {
   cfg.versionCode = 0;
   cfg.files = [];
   cfg.findErrors = false;
+  cfg.findCode = 0;
+  cfg.lastFindArgs = [];
   // rg availability is memoized per process; each test varies it via cfg.
   __resetRgDetectionForTests();
 });
@@ -273,5 +282,326 @@ describe('replaceTool ripgrep glob path (faked rg)', () => {
     expect(result.files_modified).toBe(2);
     expect(await fs.readFile(a, 'utf8')).toBe('DONE');
     expect(await fs.readFile(b, 'utf8')).toBe('DONE');
+  });
+
+  it('native walker honours .gitignore (same file set as the rg path)', async () => {
+    // Regression: the fallback walker applied only the static DEFAULT_IGNORE
+    // list, so a `files` glob rewrote .gitignore'd paths — everything under
+    // `generated/` included — while the rg path skipped them. The set of files
+    // one call rewrites must not depend on whether ripgrep is installed.
+    await fs.mkdir(path.join(dir, 'generated'), { recursive: true });
+    const kept = path.join(dir, 'keep.ts');
+    const ignored = path.join(dir, 'generated', 'gen.ts');
+    await fs.writeFile(kept, 'TARGET');
+    await fs.writeFile(ignored, 'TARGET');
+    await fs.writeFile(path.join(dir, '.gitignore'), 'generated/\n');
+    cfg.versionCode = 1; // rg unavailable → native walker
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(kept, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(ignored, 'utf8')).toBe('TARGET');
+  });
+
+  it('native walker honours file-level and negated .gitignore rules', async () => {
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    const ignored = path.join(dir, 'src', 'other.gen.ts');
+    const unignored = path.join(dir, 'src', 'keep.gen.ts');
+    await fs.writeFile(ignored, 'TARGET');
+    await fs.writeFile(unignored, 'TARGET');
+    await fs.writeFile(path.join(dir, '.gitignore'), '*.gen.ts\n!keep.gen.ts\n');
+    cfg.versionCode = 1; // native walker
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(ignored, 'utf8')).toBe('TARGET');
+    expect(await fs.readFile(unignored, 'utf8')).toBe('DONE');
+  });
+
+  it('refuses brace alternation instead of silently matching nothing without rg', async () => {
+    // Regression: compilePathGlob treats `{ts,md}` as literal characters, so the
+    // fallback walker enumerated zero files and the call reported
+    // files_modified: 0 as success — indistinguishable from "already applied".
+    const ts = path.join(dir, 'a.ts');
+    const md = path.join(dir, 'b.md');
+    await fs.writeFile(ts, 'TARGET');
+    await fs.writeFile(md, 'TARGET');
+    cfg.versionCode = 1; // rg unavailable → native walker
+
+    await expect(
+      replaceTool.execute(
+        { pattern: 'TARGET', replacement: 'DONE', files: '*.{ts,md}', dry_run: false },
+        ctx(),
+        opts(),
+      ),
+    ).rejects.toThrow(/brace alternation/);
+    expect(await fs.readFile(ts, 'utf8')).toBe('TARGET');
+    expect(await fs.readFile(md, 'utf8')).toBe('TARGET');
+  });
+
+  it('refuses a leading "!" exclude without rg', async () => {
+    const ts = path.join(dir, 'c.ts');
+    await fs.writeFile(ts, 'TARGET');
+    cfg.versionCode = 1; // native walker
+
+    await expect(
+      replaceTool.execute(
+        { pattern: 'TARGET', replacement: 'DONE', files: '!*.json', dry_run: false },
+        ctx(),
+        opts(),
+      ),
+    ).rejects.toThrow(/leading "!" exclude/);
+    expect(await fs.readFile(ts, 'utf8')).toBe('TARGET');
+  });
+
+  it('the comma-separated form the error suggests works without rg', async () => {
+    const ts = path.join(dir, 'd.ts');
+    const md = path.join(dir, 'd.md');
+    await fs.writeFile(ts, 'TARGET');
+    await fs.writeFile(md, 'TARGET');
+    cfg.versionCode = 1; // native walker
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '*.ts,*.md', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(2);
+    expect(await fs.readFile(ts, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(md, 'utf8')).toBe('DONE');
+  });
+
+  it('brace alternation works on the rg path (guard is fallback-only)', async () => {
+    // Regression: the comma-separated-list splitter ran BEFORE glob routing, so
+    // the string form of `*.{ts,md}` became `*.{ts` + `md}`; the second entry
+    // has no glob character, took the literal-path branch and killed the call
+    // with `file not found "md}"` — even with rg available.
+    const ts = path.join(dir, 'e.ts');
+    const md = path.join(dir, 'e.md');
+    await fs.writeFile(ts, 'TARGET');
+    await fs.writeFile(md, 'TARGET');
+    cfg.versionCode = 0; // rg available
+    cfg.files = [ts, md]; // rg expands the braces itself
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '*.{ts,md}', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(2);
+    expect(await fs.readFile(ts, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(md, 'utf8')).toBe('DONE');
+    // The brace group reached rg intact — that is what made the split matter.
+    expect(cfg.lastFindArgs).toContain('*.{ts,md}');
+  });
+
+  it('refuses an unclosed brace glob whatever the enumerator is', async () => {
+    // rg reports "unclosed alternate group" and exits 2; the caller swallows
+    // that and the native walk (which reads the brace literally) matched
+    // nothing — a typo'd pattern reported files_modified: 0 as success.
+    const ts = path.join(dir, 'f.ts');
+    await fs.writeFile(ts, 'TARGET');
+    cfg.versionCode = 0; // rg "available" — the guard must fire anyway
+
+    await expect(
+      replaceTool.execute(
+        { pattern: 'TARGET', replacement: 'DONE', files: '*.{ts,tsx', dry_run: false },
+        ctx(),
+        opts(),
+      ),
+    ).rejects.toThrow(/never closed/);
+    expect(await fs.readFile(ts, 'utf8')).toBe('TARGET');
+  });
+
+  it('keeps splitting a comma-separated list of mixed paths and globs', async () => {
+    // Control for the splitter change: only commas INSIDE braces are protected.
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    const literal = path.join(dir, 'keep.txt');
+    const globbed = path.join(dir, 'src', 'x.md');
+    await fs.writeFile(literal, 'TARGET');
+    await fs.writeFile(globbed, 'TARGET');
+    cfg.versionCode = 0; // rg available
+    cfg.files = [globbed]; // rg enumerates the glob entry
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: `${literal},src/*.md`, dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(2);
+    expect(await fs.readFile(literal, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(globbed, 'utf8')).toBe('DONE');
+    expect(cfg.lastFindArgs).toContain('src/*.md');
+  });
+
+  it('refuses a glob FILTER it cannot expand, on every enumerator', async () => {
+    // `passesExtraGlob` compiles the filter with core's matcher — ripgrep never
+    // sees it — so `*.{ts,md}` matched no file, narrowed every entry away and
+    // the call reported files_modified: 0 as success. Being enumerator-
+    // independent, this is refused with rg "available" too.
+    const ts = path.join(dir, 'g.ts');
+    await fs.writeFile(ts, 'TARGET');
+    cfg.versionCode = 0; // rg available; the filter is still not expressible
+
+    await expect(
+      replaceTool.execute(
+        {
+          pattern: 'TARGET',
+          replacement: 'DONE',
+          files: '**/*',
+          glob: '*.{ts,md}',
+          dry_run: false,
+        },
+        ctx(),
+        opts(),
+      ),
+    ).rejects.toThrow(/glob "\*\.\{ts,md\}" uses brace alternation/);
+    expect(await fs.readFile(ts, 'utf8')).toBe('TARGET');
+  });
+
+  it('refuses an unclosed brace in the glob filter', async () => {
+    const ts = path.join(dir, 'h.ts');
+    await fs.writeFile(ts, 'TARGET');
+
+    await expect(
+      replaceTool.execute(
+        { pattern: 'TARGET', replacement: 'DONE', files: '**/*', glob: '*.{ts', dry_run: false },
+        ctx(),
+        opts(),
+      ),
+    ).rejects.toThrow(/glob "\*\.\{ts" is not a valid glob/);
+    expect(await fs.readFile(ts, 'utf8')).toBe('TARGET');
+  });
+
+  it('still applies a plain glob filter', async () => {
+    const ts = path.join(dir, 'i.ts');
+    const md = path.join(dir, 'i.md');
+    await fs.writeFile(ts, 'TARGET');
+    await fs.writeFile(md, 'TARGET');
+    cfg.versionCode = 0;
+    cfg.files = [ts, md];
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*', glob: '*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(ts, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(md, 'utf8')).toBe('TARGET');
+  });
+
+  it('rg path skips the walker DEFAULT_IGNORE directories', async () => {
+    // Regression: ripgrep only knows `.gitignore`, so an un-gitignored
+    // node_modules/dist/build was enumerated by the rg path and rewritten,
+    // while the fallback walker skips those segments — one call touching a
+    // different file set depending on the environment, up to vendored deps.
+    await fs.mkdir(path.join(dir, 'node_modules', 'dep'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'dist'), { recursive: true });
+    const plain = path.join(dir, 'j.ts');
+    const vendored = path.join(dir, 'node_modules', 'dep', 'x.ts');
+    const built = path.join(dir, 'dist', 'y.ts');
+    await fs.writeFile(plain, 'TARGET');
+    await fs.writeFile(vendored, 'TARGET');
+    await fs.writeFile(built, 'TARGET');
+    cfg.versionCode = 0; // rg available
+    cfg.files = [plain, vendored, built]; // rg would list all three
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(plain, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(vendored, 'utf8')).toBe('TARGET');
+    expect(await fs.readFile(built, 'utf8')).toBe('TARGET');
+  });
+
+  it('an explicitly named path inside an ignored directory is still replaced', async () => {
+    // The rule narrows GLOB enumeration only — naming the file is an explicit
+    // instruction, exactly as the walker treats it.
+    await fs.mkdir(path.join(dir, 'dist'), { recursive: true });
+    const built = path.join(dir, 'dist', 'y.ts');
+    await fs.writeFile(built, 'TARGET');
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: built, dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(built, 'utf8')).toBe('DONE');
+  });
+
+  it('accepts files as an array, where entries are never comma-split', async () => {
+    // Coverage gap: only the string form was ever exercised. The array form is
+    // the shape that keeps a brace group intact by construction (F4 fixed the
+    // string form's comma splitting), and it may still mix literals and globs.
+    const ts = path.join(dir, 'm.ts');
+    const md = path.join(dir, 'm.md');
+    const keep = path.join(dir, 'm.txt');
+    await fs.writeFile(ts, 'TARGET');
+    await fs.writeFile(md, 'TARGET');
+    await fs.writeFile(keep, 'TARGET');
+    cfg.versionCode = 0; // rg available
+    cfg.files = [ts, md]; // what rg returns for the brace glob entry
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: [keep, '*.{ts,md}'], dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(3);
+    expect(await fs.readFile(ts, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(md, 'utf8')).toBe('DONE');
+    expect(await fs.readFile(keep, 'utf8')).toBe('DONE');
+    // The brace group reached rg whole, from the array entry.
+    expect(cfg.lastFindArgs).toContain('*.{ts,md}');
+  });
+
+  it('rg exit 1 (no files matched) is an empty result, not a fallback', async () => {
+    // Regression: exit 1 was treated as a failure, so a zero-match glob threw
+    // away rg's answer and re-walked the tree with the native walker — a second
+    // full enumeration per call, and a result from the wrong dialect. The
+    // pattern here is one the walker CAN match, so pre-fix the file was
+    // rewritten; post-fix rg's empty answer stands.
+    const file = path.join(dir, 'k.ts');
+    await fs.writeFile(file, 'TARGET');
+    cfg.versionCode = 0; // rg available
+    cfg.files = []; // rg matched nothing
+    cfg.findCode = 1; // ... and said so
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(0);
+    expect(await fs.readFile(file, 'utf8')).toBe('TARGET');
+  });
+
+  it('rg exit 2 is still a failure and still falls back', async () => {
+    const file = path.join(dir, 'l.ts');
+    await fs.writeFile(file, 'TARGET');
+    cfg.versionCode = 0;
+    cfg.files = [];
+    cfg.findCode = 2; // usage/parse error
+
+    const result = await replaceTool.execute(
+      { pattern: 'TARGET', replacement: 'DONE', files: '**/*.ts', dry_run: false },
+      ctx(),
+      opts(),
+    );
+    expect(result.files_modified).toBe(1);
+    expect(await fs.readFile(file, 'utf8')).toBe('DONE');
   });
 });

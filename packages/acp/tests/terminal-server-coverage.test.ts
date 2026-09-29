@@ -1,4 +1,6 @@
 import { EventEmitter } from 'node:events';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -109,6 +111,98 @@ describe('TerminalServer deterministic edge coverage', () => {
     proc.emit('close', null, 'SIGTERM');
     const status = await server.waitForExit(terminalId);
     expect(status).toEqual({ exitCode: null, signal: 'SIGTERM' });
+  });
+
+  // win32BatchTarget is only consulted on win32 and is reached through
+  // create(). PATH/PATHEXT are read from process.env at call time, so a
+  // stubbed platform + env + a real command file drive the PATHEXT walk
+  // (empty-dir skip, empty-ext skip) without depending on a real agent being
+  // installed. The spawn shim is mocked, so nothing actually executes.
+  describe('win32BatchTarget PATHEXT walk', () => {
+    const realPlatform = process.platform;
+    function asWin32(): void {
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    }
+    function restore(): void {
+      Object.defineProperty(process, 'platform', { value: realPlatform, configurable: true });
+    }
+
+    it('returns a bare .cmd/.bat command without walking PATH', () => {
+      asWin32();
+      try {
+        const server = new TerminalServer({ projectRoot: process.cwd() });
+        // A command that already ends in .cmd short-circuits the whole walk.
+        server.create({ sessionId: 's', command: 'agent.cmd' });
+        const spawnCmd = (mocks.spawn.mock.calls[0]?.[0] ?? '') as string;
+        expect(String(spawnCmd).toLowerCase()).toContain('cmd');
+      } finally {
+        restore();
+      }
+    });
+
+    it('skips empty PATH entries and empty PATHEXT entries when walking', () => {
+      asWin32();
+      const dir = mkdtempSync(path.join(tmpdir(), 'acp-bat-'));
+      // A .cmd shim file the walk should find; empty PATH segments and an
+      // empty PATHEXT extension force both `continue` guards.
+      const bat = path.join(dir, 'walkme.cmd');
+      writeFileSync(bat, '@echo off\r\n');
+      const origPath = process.env.PATH;
+      const origExt = process.env.PATHEXT;
+      process.env.PATH = ['', dir, ''].join(path.delimiter);
+      process.env.PATHEXT = ['.NOPE', '', '.CMD'].join(';');
+      try {
+        const server = new TerminalServer({ projectRoot: process.cwd() });
+        server.create({ sessionId: 's', command: 'walkme', args: [] });
+        const spawnCmd = (mocks.spawn.mock.calls[0]?.[0] ?? '') as string;
+        // Found the .cmd on PATH -> routed through the cmd.exe shim.
+        expect(String(spawnCmd).toLowerCase()).toContain('cmd');
+      } finally {
+        process.env.PATH = origPath;
+        process.env.PATHEXT = origExt;
+        rmSync(dir, { recursive: true, force: true });
+        restore();
+      }
+    });
+
+    it('falls back to built-in defaults when PATHEXT and PATH are unset', () => {
+      asWin32();
+      const origPath = process.env.PATH;
+      const origExt = process.env.PATHEXT;
+      // `process.env.X = undefined` would store the STRING "undefined"; the
+      // `??` fallbacks only fire on a genuinely absent key, so delete them.
+      delete process.env.PATH;
+      delete process.env.PATHEXT;
+      try {
+        const server = new TerminalServer({ projectRoot: process.cwd() });
+        // Nothing on an empty PATH -> no batch shim -> the command is spawned
+        // verbatim, which is what the built-in defaults must produce.
+        server.create({ sessionId: 's', command: 'walkme', args: [] });
+        const spawnCmd = mocks.spawn.mock.calls[0]?.[0];
+        expect(spawnCmd).toBe('walkme');
+        server.dispose();
+      } finally {
+        if (origPath !== undefined) process.env.PATH = origPath;
+        if (origExt !== undefined) process.env.PATHEXT = origExt;
+        restore();
+      }
+    });
+
+    it('skips the batch-shim probe entirely off win32', () => {
+      // This host IS win32, so the probe must be switched off explicitly to
+      // reach the non-win32 arm of `create()`'s platform check.
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      try {
+        const server = new TerminalServer({ projectRoot: process.cwd() });
+        // A .cmd-looking command is spawned verbatim, with no cmd.exe shim.
+        server.create({ sessionId: 's', command: 'agent.cmd' });
+        const spawnCmd = mocks.spawn.mock.calls[0]?.[0];
+        expect(spawnCmd).toBe('agent.cmd');
+        server.dispose();
+      } finally {
+        restore();
+      }
+    });
   });
 
   it('resolves filesystem roots and falls back from missing working directories', () => {

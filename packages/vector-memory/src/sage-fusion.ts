@@ -108,8 +108,14 @@ export async function fuseWithVectorMemory(
   options: SageFusionOptions = {},
 ): Promise<SageFusionHit[]> {
   const weight = clamp01(options.vectorWeight ?? DEFAULT_VECTOR_WEIGHT);
-  const k = options.rrfK ?? DEFAULT_RRF_K;
-  const limit = options.limit ?? 25;
+  const k =
+    typeof options.rrfK === 'number' && Number.isFinite(options.rrfK) && options.rrfK > 0
+      ? options.rrfK
+      : DEFAULT_RRF_K;
+  const limit =
+    typeof options.limit === 'number' && Number.isFinite(options.limit) && options.limit >= 1
+      ? Math.floor(options.limit)
+      : 25;
 
   // Resolve the vector channel.
   let vectorHits: VectorSearchHit[] = [];

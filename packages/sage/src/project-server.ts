@@ -24,9 +24,9 @@ import {
 } from './project-server-endpoint.js';
 import { type ClientState, type CompleteSageStore, parseArgs } from './project-server-options.js';
 import {
+  assertDispatchArgs,
   encodeSageProjectServerMessage,
   SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
-  SageInvalidArgsError,
   type SageProjectServerClientMessage,
   type SageProjectServerInfo,
   type SageProjectServerMessage,
@@ -34,7 +34,6 @@ import {
   type SageRequestMetadata,
   type SageServerOperationName,
   type SageServerOperations,
-  validateDispatchArgs,
 } from './project-server-protocol.js';
 
 const DEFAULT_IDLE_MS = 5 * 60_000;
@@ -362,13 +361,15 @@ async function dispatch(
   rawArgs: unknown,
   signal: AbortSignal,
 ): Promise<unknown> {
-  // H9 (docs/sage-phase4-design.md): reject malformed args with a named
-  // protocol error BEFORE any store call — the transport catch maps
-  // `error.name` onto the response frame's `errorName`.
-  const argsError = validateDispatchArgs(op, rawArgs);
-  if (argsError) throw new SageInvalidArgsError(argsError);
+  assertDispatchArgs(op, rawArgs);
   await ready;
   switch (op) {
+    case 'getHqSyncVersion':
+      return store.getHqSyncVersion();
+    case 'listHqSync':
+      return store.listHqSync((rawArgs as SageServerOperations['listHqSync']['args']).after);
+    case 'applyHqSync':
+      return store.applyHqSync((rawArgs as SageServerOperations['applyHqSync']['args']).records);
     case 'ping':
       return serverStatus();
     case 'readAll':

@@ -390,7 +390,7 @@ export class HostMemoryCompanion {
   private async spawnBounded(config: SubagentConfig): Promise<string | undefined> {
     let expired = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const pending = this.input.director.spawn(config).then((id) => {
+    const pending = this.input.director.spawnCompanion(config).then((id) => {
       if (!expired) return id;
       void this.input.director.terminate(id).catch(() => {});
       return undefined;

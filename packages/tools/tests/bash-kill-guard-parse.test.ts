@@ -26,6 +26,23 @@ describe('parseKillCommand', () => {
     expect(result!.name).toBe('node.exe');
   });
 
+  // taskkill binds the colon-attached value form identically (live-verified
+  // 2026-09-29: `/IM:<missing>.exe` → exit 128 "process not found" — the
+  // syntax is accepted and the lookup performed), mirroring the Stop-Process
+  // colon-attached family below.
+  it.runIf(isWin)('parses taskkill /PID:<pid> colon-attached', () => {
+    const result = parseKillCommand('taskkill /PID:4242');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(4242);
+  });
+
+  // taskkill is Windows-only
+  it.runIf(isWin)('parses taskkill /F /IM:<image> colon-attached', () => {
+    const result = parseKillCommand('taskkill /F /IM:node.exe');
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('node.exe');
+  });
+
   // ── tskill ─────────────────────────────────────────────────────────────
 
   // tskill is Windows-only

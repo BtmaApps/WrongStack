@@ -154,6 +154,8 @@ export interface SessionData {
   usage: Usage;
   /** Latest persisted session subagent policy, retained even when old events are evicted. */
   subagentsAllowed?: boolean | undefined;
+  /** Companion half of the same policy event (`subagent_policy.companions`). */
+  subagentCompanionsAllowed?: boolean | undefined;
   /** Latest `/permissions allow|deny` list, retained even when old events are evicted. */
   permissionOverrides?: SessionPermissionOverride[] | undefined;
   /** Tool execution records extracted from `tool_call_end` events — used for TUI tool entry rendering on resume. */

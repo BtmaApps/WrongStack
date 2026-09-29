@@ -21,12 +21,16 @@ import type {
   HqTranscriptEntry,
 } from '@wrongstack/core/hq';
 import {
+  chunkHqSageRecords,
   HQ_TRANSCRIPT_TEXT_CAP,
+  isHqSageSnapshotPayload,
+  MAX_HQ_SAGE_RECORD_BYTES,
   parseHqEventPayload,
   redactHqEvent,
   tightenHqRedactionPolicy,
   tokenHasCapability,
 } from '@wrongstack/core/hq';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import { broadcastEvent, sendGuarded } from './snapshot.js';
 import type { ConnectedClient, HqSnapshotBroadcaster, TranscriptRing } from './types.js';
@@ -120,13 +124,43 @@ export function handleIncomingClientEvent(
       // Chat-transcript events carry full turns — the generic 500-char
       // summary cap would truncate them a second time after the
       // publisher already applied the transcript cap.
-      ...(incomingEvent.type === 'session.transcript' || incomingEvent.type === 'agent.message'
-        ? { maxSummaryLength: HQ_TRANSCRIPT_TEXT_CAP }
-        : {}),
+      ...(incomingEvent.type === 'sage.snapshot'
+        ? { maxSummaryLength: MAX_HQ_SAGE_RECORD_BYTES }
+        : incomingEvent.type === 'session.transcript' || incomingEvent.type === 'agent.message'
+          ? { maxSummaryLength: HQ_TRANSCRIPT_TEXT_CAP }
+          : {}),
     },
   ).value;
 
   if (event.type === 'client.heartbeat') {
+    return;
+  }
+
+  if (event.type === 'sage.snapshot') {
+    const payload = event.payload;
+    if (
+      !isHqSageSnapshotPayload(payload) ||
+      payload.projectId !== client.projectId ||
+      !persistence?.sage
+    )
+      return;
+    void persistence.sage
+      .merge(payload)
+      .then((merged) => {
+        for (const part of chunkHqSageRecords(client.projectId, merged.records)) {
+          fanoutKanbanDelta(
+            JSON.stringify({ type: 'hq.sage_snapshot', payload: part }),
+            clients,
+            browsers,
+            client.projectId,
+          );
+        }
+      })
+      .catch((error: unknown) =>
+        process.stderr.write(
+          `${JSON.stringify({ level: 'warn', event: 'hq.sage_sync_failed', projectId: client.projectId, message: toErrorMessage(error) })}\n`,
+        ),
+      );
     return;
   }
 
@@ -153,7 +187,7 @@ export function handleIncomingClientEvent(
           JSON.stringify({
             level: 'warn',
             event: 'hq.kanban_merge_failed',
-            message: error instanceof Error ? error.message : String(error),
+            message: toErrorMessage(error),
             timestamp: new Date().toISOString(),
           }),
         );

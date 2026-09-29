@@ -1,0 +1,13 @@
+{
+  "consolidatedAt": "2026-09-29T12:06:36.427Z",
+  "sourceEntryCount": 0,
+  "sourceBytes": 391,
+  "consolidatedBytes": 2209,
+  "trigger": "automatic",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "pruned": true,
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\dependency\\archive\\learned-2026-09-29T12-06-36-427Z.md",
+  "skills": [
+    "tech-stack"
+  ]
+}

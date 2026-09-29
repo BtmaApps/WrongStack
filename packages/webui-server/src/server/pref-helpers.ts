@@ -147,6 +147,7 @@ export const PREF_KEYS = [
   'enhanceCountdownMs',
   'keyboardShortcuts',
   'subagentsAllowed',
+  'subagentCompanionsAllowed',
   'subagentsPolicyLocked',
   // Session-scoped subagent model lanes. Never persisted to config.json: the
   // plan belongs to one conversation and is journaled with its session.

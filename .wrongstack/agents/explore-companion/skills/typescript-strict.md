@@ -1,12 +1,15 @@
-## WrongStack evidence and run results
+## TS config blast radius
 
-- Treat empty `grep`/`glob` results under gitignored state directories (`.wrongstack/`, including `project-kit-runs`) as non-evidence: `rg` respects `.gitignore` and may skip them. Read the known-present `.wrongstack/AGENTS.md` to confirm tool visibility before concluding that a symbol or file is absent.
-- When tallying `project_kit_run`, take failure details from the error thrown by `project-kit.ts` `execute` via `JSON.stringify(result)`; do not rely on `record.json` for the error text, because it is redacted to a generic string. Use its `status`, `durationMs`, and `runId` for run metadata.
+- For `tsconfig.base.json` edits, enumerate `extends` with repo-wide `rg 'tsconfig\.base\.json'`; call graphs cannot trace JSON config references.
+- Always flag `packages/webui/tsconfig.json`, `packages/simpleui/tsconfig.json`, and `packages/webui-hq/tsconfig.json`; they inline base safety flags because bundler/JSX resolution blocks `extends`, so strictness changes can silently skip them.
+- Treat `packages/tools/src/typecheck.ts` hits as filename-discovery candidates, not option consumers.
 
-## Key-handler contract
+## Run evidence
 
-- Treat `packages/tui/tests/key-handler-replay-corpus.test.ts` as the decomposition Phase 3 acceptance gate for `createAppKeyHandler`; preserve its coupling to `tests/__snapshots__/key-handler-replay-corpus.test.ts.snap`. Inspect snapshot diffs and runtime failures, since `makeHandler` uses `as never as Parameters<typeof createAppKeyHandler>[0]`. Cross-check call-order changes against the contract and doc-comments in `packages/tui/src/key-routes/key-route-composer.ts` and `key-route-pointer.ts`.
+- Empty `rg`/glob results under `.wrongstack/` (including `project-kit-runs`) are non-evidence because `rg` honors `.gitignore`; read `.wrongstack/AGENTS.md` before concluding absence.
+- For `project_kit_run`, get error text from `project-kit.ts` `execute` via `JSON.stringify(result)`, not `record.json`; use `record.json` only for `status`, `durationMs`, and `runId`.
 
-## Symbol lookup
+## TS traps
 
-- In WrongStack, reserve `codebase-incoming-calls` for distinctive, non-overloaded names. For common names such as `create`, use receiver-scoped grep—`(sessionStore|store)\.create\(` over `packages/**/src`—and exclude test files by name; the graph’s `file` filter cannot disambiguate methods of one class.
+- Keep `packages/tui/tests/key-handler-replay-corpus.test.ts` with `tests/__snapshots__/key-handler-replay-corpus.test.ts.snap`; `makeHandler` uses `as never as Parameters<typeof createAppKeyHandler>[0]`, so compare snapshots/runtime failures and call order with `packages/tui/src/key-routes/key-route-composer.ts` and `key-route-pointer.ts`.
+- For common names like `create`, use receiver-scoped `(sessionStore|store)\.create\(` grep over `packages/**/src`, excluding tests; reserve `codebase-incoming-calls` for distinctive names because its `file` filter cannot separate one class's methods.

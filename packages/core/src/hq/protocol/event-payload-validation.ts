@@ -24,6 +24,7 @@ import type {
   HqMcpServerHealth,
 } from './mcp.js';
 import { isHqPeerLostPayload, isHqPeerRehydratePayload } from './peer.js';
+import { isHqSageSnapshotPayload } from './sage.js';
 import type {
   HqSessionAgentSummary,
   HqSessionEndedPayload,
@@ -46,6 +47,7 @@ const KNOWN_HQ_EVENT_PAYLOAD_TYPE_LIST = [
   'mailbox.snapshot',
   'mailbox.event',
   'kanban.snapshot',
+  'sage.snapshot',
   'session.snapshot',
   'session.transcript',
   'session.ended',
@@ -603,6 +605,10 @@ export function parseHqEventPayload(
         : { ok: false, reason: 'malformed-payload' };
     case 'kanban.snapshot':
       return isHqKanbanSnapshotPayload(payload)
+        ? { ok: true, payload }
+        : { ok: false, reason: 'malformed-payload' };
+    case 'sage.snapshot':
+      return isHqSageSnapshotPayload(payload)
         ? { ok: true, payload }
         : { ok: false, reason: 'malformed-payload' };
     case 'session.snapshot':

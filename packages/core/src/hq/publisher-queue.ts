@@ -23,6 +23,8 @@ export function queuedFrameCoalesceKey(
     | HqClientCommandPollMessage
     | HqClientCommandAckMessage,
 ): string | undefined {
+  // SAGE frames are independent record deltas, never replace an earlier page.
+  if (frame.type === 'client.event' && frame.event.type === 'sage.snapshot') return undefined;
   if (frame.type !== 'client.event' || !frame.event.type.endsWith('.snapshot')) {
     return undefined;
   }

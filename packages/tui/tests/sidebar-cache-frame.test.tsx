@@ -24,7 +24,7 @@ import {
   RightSidebar,
 } from '../src/components/sidebar.js';
 import { SidebarContent } from '../src/components/sidebar-content.js';
-import { Box } from '../src/ink.js';
+import { Box, Text } from '../src/ink.js';
 import { emptyMemoryContextMonitor } from '../src/memory-context-monitor.js';
 import { displayWidth } from '../src/terminal-width.js';
 import { renderRealTty, settle } from './helpers/real-tty.js';
@@ -73,6 +73,34 @@ function frameRows(lines: string[]): { line: string; width: number }[] {
 }
 
 describe('sidebar cache card frame integrity (real TTY)', () => {
+  it.each([34, 54, 108])('keeps sidebar text through live updates at %i rows', async (rows) => {
+    const columns = 200;
+    const sidebarWidth = computeSidebarWidth(columns);
+    const contentWidth = computeSidebarContentWidth(sidebarWidth);
+    const frame = (tick: number) => (
+      <Box width={columns} height={rows} overflowY="hidden">
+        <Box width={columns - sidebarWidth} flexShrink={0} flexDirection="column">
+          <Text>{`bash running ${tick}s`}</Text>
+        </Box>
+        <RightSidebar width={sidebarWidth} maxHeight={rows}>
+          {sidebarContentEl(contentWidth)}
+        </RightSidebar>
+      </Box>
+    );
+    const view = renderRealTty(frame(0), { columns, rows });
+    try {
+      for (let tick = 0; tick < 4; tick++) {
+        view.rerender(frame(tick));
+        await settle();
+        expect(view.lastFrame()).toContain('MODEL CORE');
+        expect(view.lastFrame()).toContain('PROMPT CACHE');
+        expect(view.lines().every((line) => displayWidth(line) <= columns)).toBe(true);
+      }
+    } finally {
+      view.unmount();
+    }
+  });
+
   const COLUMNS = [80, 120, 160] as const;
 
   it('shows the active provider cache ratio in the persistent cache card', async () => {

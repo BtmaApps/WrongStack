@@ -1,3 +1,5 @@
+import type { ReasoningEchoField } from './reasoning-echo-support.js';
+
 /** Wire-level deviations supported by the generic OpenAI-compatible adapter. */
 export interface CompatibilityQuirks {
   stripCacheControl?: boolean | undefined;
@@ -38,4 +40,12 @@ export interface CompatibilityQuirks {
    * the combination.
    */
   suppressEffortWithTools?: boolean | undefined;
+  /**
+   * Assistant-message field that echoes prior reasoning back:
+   * `reasoning_content` (default; DeepSeek/Kimi require it), `reasoning`
+   * (Cerebras — applied automatically for `*.cerebras.ai`), or `omit`. An
+   * endpoint that refuses the field is learned from the rejection anyway;
+   * set this only to skip that one failed request.
+   */
+  reasoningEchoField?: ReasoningEchoField | undefined;
 }

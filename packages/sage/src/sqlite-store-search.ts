@@ -18,21 +18,32 @@
  * Suggestions implement the design doc's v1
  * lexical-adjacency method: 'never' / 'empty' (default) / 'always' via an
  * OR-expanded FTS query (graph BFS is the documented v2 method, deferred).
- * `cursor` pagination is explicitly rejected — use `listSagePage` for
- * cursor navigation.
+ *
+ * Cursor pagination (B3/B4): `query.cursor` is an opaque keyset token from
+ * `SearchResult.nextCursor`, bound to the exact query/filters/ranking/
+ * session context that minted it. Malformed or mismatched tokens throw
+ * `InvalidSearchCursorError` — boundary handlers map that to HTTP 400;
+ * pagination never silently restarts. The walk is deterministic per corpus
+ * state, but bm25 depends on corpus statistics, so concurrent writes can
+ * reorder or rescore pages (no snapshot guarantee). Suggestions are emitted
+ * only on cursor-less (first-page) requests.
  *
  * Single-owner-of-state invariant preserved — read-only, composes against
  * FTS5 + the existing memories join.
  */
+
+import { createHash } from 'node:crypto';
 import type { SQLInputValue } from 'node:sqlite';
+import { normalizeSlashes } from './paths.js';
 import type {
-  SearchOptions,
-  SearchQuery,
-  SearchResult,
   SearchHit,
   SearchMatchReason,
+  SearchOptions,
+  SearchQuery,
   SearchRanking,
+  SearchResult,
 } from './service-contract.js';
+import { InvalidSearchCursorError } from './service-contract.js';
 import type { SqliteAdminHost } from './sqlite-store-admin.js';
 import { buildRetrievePathTargets } from './sqlite-store-retrieve-helpers.js';
 import {
@@ -40,7 +51,6 @@ import {
   ftsPrefixTerms,
   sqliteRowsToMemories,
 } from './sqlite-store-search-helpers.js';
-import { normalizeSlashes } from './paths.js';
 import type { MemoryAnchor, MemoryAudienceSelector, Sage, SageStatus } from './types.js';
 
 const DEFAULT_LIMIT = 50;
@@ -72,15 +82,40 @@ export function executeUnifiedSearch(
   // owning session (or to administrative callers that opt out explicitly).
   const session = buildSessionClause(options);
   const ftsSession = buildSessionClause(options, 'm.');
+  // WebUI discovery policy (docs/plans/unified-sage-search-backend-contract.md):
+  // when opted in, exclude ALL session-scoped rows — including legacy
+  // unowned ones — from rows AND counts. The WebUI access token carries no
+  // authenticated agent-session identity, so a client-provided `sessionId`
+  // (or the `includeAllSessions` admin opt-out) must never surface a
+  // session-scoped record through this surface. Stacked on top of the
+  // shared per-session visibility clause, not a replacement for it.
+  // `scope` is NOT NULL in the schema, so `!= 'session'` drops nothing else.
+  const excludeSessionScoped = options?.excludeSessionScoped === true;
+  const sessionExclusionParams: SQLInputValue[] = excludeSessionScoped ? ['session'] : [];
 
-  // Cursor pagination cannot be honored under ranking-ordered queries (bm25
-  // positions are not stable cursor keys) — reject it explicitly instead of
-  // silently ignoring a declared field. listSagePage is the cursor surface.
-  if (query.cursor) {
-    throw new Error(
-      'unifiedSearch does not support cursor pagination — use listSagePage for cursor navigation.',
+  // Cursor contract (B3/B4): strict, query/filter-bound keyset pagination.
+  // A token is only valid for the exact request shape that minted it;
+  // anything else is a client error (InvalidSearchCursorError → HTTP 400
+  // at the boundary), never a silent first page.
+  if (
+    query.cursor !== undefined &&
+    (typeof query.cursor !== 'string' || query.cursor.length === 0)
+  ) {
+    throw new InvalidSearchCursorError(
+      'Search cursor must be a non-empty opaque token from SearchResult.nextCursor.',
     );
   }
+
+  // Match clause: build a safe FTS5 MATCH expression from the query text.
+  // Computed before the cursor decode so the token's channel binding can be
+  // validated against the channel this request will actually run on.
+  const matchExpr = buildMatchExpr(query);
+  const channel: 'fts' | 'plain' = matchExpr !== undefined ? 'fts' : 'plain';
+  const binding = computeCursorBinding(query, statusFilter, ranking, options);
+  const cursorValues =
+    query.cursor !== undefined
+      ? decodeSearchCursor(query.cursor, { binding, ranking, channel })
+      : undefined;
 
   if (statusFilter.length === 0) {
     return {
@@ -89,6 +124,8 @@ export function executeUnifiedSearch(
       totalCandidates: 0,
       rankingApplied: ranking,
       queryEcho: {},
+      nextCursor: null,
+      matchChannel: channel,
     };
   }
 
@@ -105,14 +142,11 @@ export function executeUnifiedSearch(
   const sqlLimit =
     jsFilters.length > 0 ? Math.min(limit * JS_FILTER_OVERFETCH, MAX_LIMIT * 5) : limit;
 
-  // Match clause: build a safe FTS5 MATCH expression from the query text.
-  const matchExpr = buildMatchExpr(query);
-
   // WHERE filters — built inline in the FTS and non-FTS query paths below.
   const statusPlaceholders = statusFilter.map(() => '?').join(',');
 
   // ORDER BY clause per ranking mode
-  const orderBy = buildOrderBy(ranking, matchExpr !== undefined);
+  const orderBy = buildOrderBy(ranking);
 
   // Two query paths, mirroring `searchSqliteSage`. FTS5 requires
   // MATCH + bm25 to both be present. Split paths let both be tested
@@ -151,22 +185,39 @@ export function executeUnifiedSearch(
       ftsFilterClauses.push(ftsSession.clause.replace(/^\s*AND\s+/i, ''));
       ftsParams.push(...ftsSession.params);
     }
+    if (excludeSessionScoped) {
+      ftsFilterClauses.push('m.scope != ?');
+      ftsParams.push(...sessionExclusionParams);
+    }
 
-    const ftsWhereSql = ' WHERE ' + ftsFilterClauses.join(' AND ');
+    // The keyset predicate rides ONLY on the data query: `totalCandidates`
+    // reports the whole-corpus match count for the query + filters, not the
+    // remaining page tail, so every page of one walk reports the same total.
+    const ftsBaseWhereSql = ' WHERE ' + ftsFilterClauses.join(' AND ');
+    let ftsDataWhereSql = ftsBaseWhereSql;
+    let ftsDataParams: SQLInputValue[] = ftsParams;
+    if (cursorValues) {
+      const keyset = buildKeysetPredicate(rankingSortKeys(ranking, true), cursorValues, true);
+      ftsDataWhereSql = ' WHERE ' + [...ftsFilterClauses, keyset.clause].join(' AND ');
+      ftsDataParams = [...ftsParams, ...keyset.params];
+    }
     const ftsDataSql =
       // `m.id` rides along with `m.data` purely so the bm25-by-id map below can
       // be built without a second JSON.parse of every returned row.
       // CROSS JOIN with `memories_fts` first pins the join order so the MATCH
       // drives the scan — see the note in sqlite-store-search-sage.ts.
       `SELECT m.id AS id, m.data, bm25(memories_fts) AS bm25 FROM memories_fts f CROSS JOIN memories m ON m.rowid = f.rowid` +
-      ftsWhereSql +
+      ftsDataWhereSql +
       ` ORDER BY ${orderBy.fts}` +
-      ` LIMIT ${sqlLimit}`;
+      // +1 probe row: when no JS-side filter shrinks the page, fetching one
+      // row past the page size is the only way to distinguish "last page"
+      // from "exactly one more page exists" without a second query.
+      ` LIMIT ${sqlLimit + 1}`;
     const ftsCountSql =
       `SELECT COUNT(*) AS n FROM memories_fts f CROSS JOIN memories m ON m.rowid = f.rowid` +
-      ftsWhereSql;
+      ftsBaseWhereSql;
 
-    dataRows = host.stmt(ftsDataSql).all(...ftsParams) as Array<{
+    dataRows = host.stmt(ftsDataSql).all(...ftsDataParams) as Array<{
       id?: string;
       data: string;
       bm25?: number;
@@ -199,17 +250,31 @@ export function executeUnifiedSearch(
       sharedWhere.push(session.clause.replace(/^\s*AND\s+/i, ''));
       params.push(...session.params);
     }
+    if (excludeSessionScoped) {
+      sharedWhere.push('scope != ?');
+      params.push(...sessionExclusionParams);
+    }
 
-    const sharedWhereSql = sharedWhere.length > 0 ? ' WHERE ' + sharedWhere.join(' AND ') : '';
+    const baseWhereSql = sharedWhere.length > 0 ? ' WHERE ' + sharedWhere.join(' AND ') : '';
+    // Keyset on the data query only — see the FTS path for why the count
+    // query stays whole-corpus.
+    let dataWhereSql = baseWhereSql;
+    let dataParams: SQLInputValue[] = params;
+    if (cursorValues) {
+      const keyset = buildKeysetPredicate(rankingSortKeys(ranking, false), cursorValues, false);
+      dataWhereSql = ' WHERE ' + [...sharedWhere, keyset.clause].join(' AND ');
+      dataParams = [...params, ...keyset.params];
+    }
 
     const dataSql =
       `SELECT data FROM memories` +
-      sharedWhereSql +
+      dataWhereSql +
       ` ORDER BY ${orderBy.nonFts}` +
-      ` LIMIT ${sqlLimit}`;
-    const countSql = `SELECT COUNT(*) AS n FROM memories` + sharedWhereSql;
+      // +1 probe row — see the FTS path for why.
+      ` LIMIT ${sqlLimit + 1}`;
+    const countSql = `SELECT COUNT(*) AS n FROM memories` + baseWhereSql;
 
-    dataRows = host.stmt(dataSql).all(...params) as Array<{ data: string }>;
+    dataRows = host.stmt(dataSql).all(...dataParams) as Array<{ data: string }>;
     totalRow = host.stmt(countSql).get(...params) as unknown as { n: number };
     matchReason = 'recency';
   }
@@ -255,15 +320,70 @@ export function executeUnifiedSearch(
     updatedAt: memory.updatedAt,
     verifiedAt: memory.lastVerifiedAt,
     score: scores[index]!,
+    // Raw source score: present (and ≤ 0) on the FTS channel, null when the
+    // plain channel ranked without a text query. See SearchHit.bm25.
+    bm25: finalBm25[index] ?? null,
     matchReason,
   }));
 
+  // ─── Keyset anchor: mint the next page's cursor ────────────────────────
+  // The cursor encodes the total-order position of the LAST row the caller
+  // has now consumed:
+  //  - Overflow page (kept > limit): anchor at the last RETURNED hit. The
+  //    un-returned kept rows sort after it and are re-fetched on the next
+  //    page — advancing to the window end instead would SKIP them.
+  //  - Full fetch window with kept ≤ limit (audience/anchor JS filters can
+  //    drop rows): anchor at the last DECODED window row so the next page
+  //    does not re-scan rows this call already examined.
+  //  - Partial window: the walk is exhausted → null.
+  // A window whose rows were ALL corrupt cannot mint a position (no decoded
+  // anchor exists); pagination stops instead of looping on the same corrupt
+  // window forever. The +1 probe row makes "window exhausted" observable:
+  // a full window is `dataRows.length > sqlLimit`.
+  const windowExhausted = dataRows.length > sqlLimit;
+  const anchorMemory =
+    kept.length > limit
+      ? finalMemories[finalMemories.length - 1]
+      : windowExhausted
+        ? decodedMemories[decodedMemories.length - 1]
+        : undefined;
+  const sortKeys = rankingSortKeys(ranking, matchExpr !== undefined);
+  let nextCursor: string | null = null;
+  if (anchorMemory) {
+    const anchorBm25 = bm25ById.get(anchorMemory.id);
+    // Only the bm25-first rankings (relevance/hybrid on the FTS channel)
+    // carry the bm25 key in their cursor tuple; for every other mode the
+    // value is irrelevant and the token must NOT carry it (decode rejects
+    // a stray bm25 slot so a token minted by one mode cannot be replayed
+    // against another's tuple shape).
+    const needsBm25 = sortKeys.includes('bm25');
+    if (!needsBm25 || typeof anchorBm25 === 'number') {
+      nextCursor = encodeSearchCursor({
+        binding,
+        ranking,
+        channel,
+        values: {
+          ...(needsBm25 ? { bm25: anchorBm25 as number } : {}),
+          importance: anchorMemory.importance ?? 0,
+          updatedAt: anchorMemory.updatedAt,
+          id: anchorMemory.id,
+        },
+      });
+    }
+  }
+
   // Suggestions: design-doc v1 lexical adjacency. 'never' disables; 'empty'
   // (default) populates only when the hits set is empty; 'always' populates
-  // whenever an OR-expanded FTS query finds neighbors.
+  // whenever an OR-expanded FTS query finds neighbors. Cursor pages are
+  // excluded: suggestions are derived from the query, not the page, so
+  // emitting them per page would repeat the same set on every request.
   let suggestions: SearchHit[] = [];
   const suggestMode = options?.suggest ?? 'empty';
-  if (suggestMode !== 'never' && (suggestMode === 'always' || hits.length === 0)) {
+  if (
+    query.cursor === undefined &&
+    suggestMode !== 'never' &&
+    (suggestMode === 'always' || hits.length === 0)
+  ) {
     suggestions = suggestLexicalAdjacent({
       host,
       query,
@@ -296,6 +416,8 @@ export function executeUnifiedSearch(
     totalCandidates: totalRow.n,
     rankingApplied: ranking,
     queryEcho,
+    nextCursor,
+    matchChannel: channel,
   };
 }
 
@@ -316,40 +438,226 @@ function buildMatchExpr(query: SearchQuery): string | undefined {
   return terms.join(' AND ');
 }
 
+// ─── Deterministic cursor pagination (B3/B4) ─────────────────────────────
+
+/** Cursor token format version — bump on any token-shape change. */
+const SEARCH_CURSOR_VERSION = 1;
+
+type CursorSortKey = 'bm25' | 'importance' | 'updatedAt' | 'id';
+
+/**
+ * The total-order sort keys for a ranking mode.
+ *
+ * Every mode ends with `id` so the order is STRICT — a deterministic cursor
+ * walk requires a total order, and the pre-pagination ORDER BYs were only a
+ * partial order: rows tying on every listed key had DB-defined order, so a
+ * keyset walk could duplicate or skip them at page boundaries.
+ *
+ * Single source of truth: `buildOrderBy` renders these keys and
+ * `buildKeysetPredicate` paginates on them, so ordering and pagination
+ * cannot drift apart.
+ */
+function rankingSortKeys(ranking: SearchRanking, hasBm25: boolean): CursorSortKey[] {
+  switch (ranking) {
+    case 'recency':
+      return ['updatedAt', 'importance', 'id'];
+    case 'importance':
+      return ['importance', 'updatedAt', 'id'];
+    default:
+      // 'relevance' and 'hybrid' share the lexical-first order; without a
+      // text query there is no bm25 and they collapse to importance-first.
+      return hasBm25
+        ? ['bm25', 'importance', 'updatedAt', 'id']
+        : ['importance', 'updatedAt', 'id'];
+  }
+}
+
+/** SQL expression for a sort key, with the memories-table alias when joined. */
+function keyExpr(key: CursorSortKey, fts: boolean): string {
+  switch (key) {
+    case 'bm25':
+      return 'bm25(memories_fts)';
+    case 'importance':
+      return fts ? 'm.importance' : 'importance';
+    case 'updatedAt':
+      return fts ? 'm.updated_at' : 'updated_at';
+    case 'id':
+      return fts ? 'm.id' : 'id';
+  }
+}
+
 /**
  * Build the ORDER BY clause for the given ranking mode.
  * Returns separate clauses for FTS (aliased `m.`) and non-FTS paths
  * because the FTS join requires the `m.` prefix on some columns.
  */
-function buildOrderBy(ranking: SearchRanking, hasFts: boolean): { fts: string; nonFts: string } {
-  switch (ranking) {
-    case 'recency':
-      return {
-        fts: 'm.updated_at DESC, m.importance DESC',
-        nonFts: 'updated_at DESC, importance DESC',
-      };
-    case 'importance':
-      return {
-        fts: 'm.importance DESC, m.updated_at DESC',
-        nonFts: 'importance DESC, updated_at DESC',
-      };
-    case 'relevance':
-      // Lexical-first: bm25 ASC (lower = better match), then importance DESC
-      return {
-        fts: hasFts
-          ? 'bm25(memories_fts) ASC, m.importance DESC, m.updated_at DESC'
-          : 'm.importance DESC, m.updated_at DESC',
-        nonFts: 'importance DESC, updated_at DESC',
-      };
-    default:
-      // Same as relevance for FTS; importance-first for non-FTS
-      return {
-        fts: hasFts
-          ? 'bm25(memories_fts) ASC, m.importance DESC, m.updated_at DESC'
-          : 'm.importance DESC, m.updated_at DESC',
-        nonFts: 'importance DESC, updated_at DESC',
-      };
+function buildOrderBy(ranking: SearchRanking): { fts: string; nonFts: string } {
+  const render = (keys: readonly CursorSortKey[], fts: boolean): string =>
+    keys.map((key) => `${keyExpr(key, fts)} ${key === 'bm25' ? 'ASC' : 'DESC'}`).join(', ');
+  return {
+    fts: render(rankingSortKeys(ranking, true), true),
+    nonFts: render(rankingSortKeys(ranking, false), false),
+  };
+}
+
+/**
+ * Build the keyset ("strictly after the cursor position") predicate for a
+ * total order: for keys k1..kn, a row continues the walk iff it is beyond
+ * the cursor on the FIRST key where it ties on all previous keys. Rendered
+ * as a disjunction of progressively longer equality-prefixes — the SQL form
+ * of tuple comparison.
+ *
+ * Descending keys continue with `<`, the ascending bm25 key with `>`.
+ */
+function buildKeysetPredicate(
+  keys: readonly CursorSortKey[],
+  cursor: { bm25?: number; importance: number; updatedAt: string; id: string },
+  fts: boolean,
+): { clause: string; params: SQLInputValue[] } {
+  const parts: string[] = [];
+  const params: SQLInputValue[] = [];
+  for (let i = 0; i < keys.length; i++) {
+    const conditions: string[] = [];
+    for (let j = 0; j < i; j++) {
+      const key = keys[j]!;
+      const value = cursor[key];
+      if (value === undefined) {
+        throw new InvalidSearchCursorError(
+          `Search cursor is missing the '${key}' sort key required by this ranking.`,
+        );
+      }
+      params.push(value);
+      conditions.push(`${keyExpr(key, fts)} = ?`);
+    }
+    const beyond = keys[i]!;
+    const beyondValue = cursor[beyond];
+    if (beyondValue === undefined) {
+      throw new InvalidSearchCursorError(
+        `Search cursor is missing the '${beyond}' sort key required by this ranking.`,
+      );
+    }
+    params.push(beyondValue);
+    conditions.push(`${keyExpr(beyond, fts)} ${beyond === 'bm25' ? '>' : '<'} ?`);
+    parts.push(conditions.join(' AND '));
   }
+  return { clause: `(${parts.join(' OR ')})`, params };
+}
+
+/**
+ * Canonical binding of everything that defines the hit set and its order:
+ * the text query, every whole-corpus filter, the ranking, and the session
+ * context. The cursor carries a truncated SHA-256 of this string; replaying
+ * a token under a different binding is a client error, not a silent first
+ * page. Set-valued filters are sorted so parameter order never mints a
+ * different hash for the same set.
+ *
+ * `limit` is deliberately excluded: keyset pagination is page-size
+ * independent, so a walk may change page size mid-stream.
+ */
+function computeCursorBinding(
+  query: SearchQuery,
+  statuses: readonly SageStatus[],
+  ranking: SearchRanking,
+  options: SearchOptions | undefined,
+): string {
+  const canonical = JSON.stringify({
+    text: query.text?.trim() ?? '',
+    kinds: [...(query.kinds ?? [])].sort(),
+    scopes: [...(query.scopes ?? [])].sort(),
+    importanceAtLeast: query.importanceAtLeast ?? null,
+    freshnessCreated: query.freshness?.createdAfter ?? null,
+    freshnessVerified: query.freshness?.verifiedAfter ?? null,
+    audience: query.audience ?? null,
+    anchor: query.anchor ?? null,
+    paths: [...(query.paths ?? [])].sort(),
+    statuses: [...statuses].sort(),
+    ranking,
+    sessionId: options?.sessionId ?? null,
+    includeAllSessions: options?.includeAllSessions ?? false,
+    excludeSessionScoped: options?.excludeSessionScoped ?? false,
+  });
+  return createHash('sha256').update(canonical).digest('base64url').slice(0, 22);
+}
+
+/**
+ * Encode the next-page cursor: binding hash, ranking, channel, and the
+ * anchor row's total-order tuple. base64url of a compact JSON payload —
+ * opaque to callers, validated structurally on decode.
+ */
+function encodeSearchCursor(args: {
+  binding: string;
+  ranking: SearchRanking;
+  channel: 'fts' | 'plain';
+  values: { bm25?: number; importance: number; updatedAt: string; id: string };
+}): string {
+  const payload: Record<string, unknown> = {
+    v: SEARCH_CURSOR_VERSION,
+    h: args.binding,
+    r: args.ranking,
+    c: args.channel,
+    p: args.values.importance,
+    u: args.values.updatedAt,
+    i: args.values.id,
+  };
+  // The bm25 slot exists only for bm25-first rankings on the FTS channel;
+  // its absence elsewhere is part of the token's shape validation.
+  if (args.values.bm25 !== undefined) payload.b = args.values.bm25;
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+/**
+ * Decode and STRICTLY validate a cursor token against the request that is
+ * trying to replay it. Every failure mode throws {@link InvalidSearchCursorError}
+ * — pagination never silently restarts on a bad or foreign token.
+ */
+function decodeSearchCursor(
+  token: string,
+  expected: {
+    binding: string;
+    ranking: SearchRanking;
+    channel: 'fts' | 'plain';
+  },
+): { bm25?: number; importance: number; updatedAt: string; id: string } {
+  const fail = (why: string): never => {
+    throw new InvalidSearchCursorError(
+      `Invalid search cursor (${why}) — restart the search from the first page.`,
+    );
+  };
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    return fail('malformed token');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return fail('malformed token');
+  }
+  if (parsed.v !== SEARCH_CURSOR_VERSION) return fail('unsupported version');
+  if (typeof parsed.h !== 'string' || parsed.h !== expected.binding) {
+    return fail('query/filter binding mismatch');
+  }
+  if (parsed.r !== expected.ranking) return fail('ranking mismatch');
+  if (parsed.c !== expected.channel) return fail('channel mismatch');
+  if (typeof parsed.i !== 'string' || parsed.i.length === 0) return fail('missing id');
+  if (typeof parsed.u !== 'string' || parsed.u.length === 0) return fail('missing updatedAt');
+  if (typeof parsed.p !== 'number' || !Number.isFinite(parsed.p)) {
+    return fail('missing importance');
+  }
+  // The bm25 slot must be present exactly when the ranking's total order
+  // starts with bm25 (relevance/hybrid on the FTS channel) — a token minted
+  // by any other tuple shape must not replay against this one.
+  const needsBm25 = rankingSortKeys(expected.ranking, expected.channel === 'fts').includes('bm25');
+  if (needsBm25) {
+    if (typeof parsed.b !== 'number' || !Number.isFinite(parsed.b)) {
+      return fail('missing bm25');
+    }
+    return { bm25: parsed.b, importance: parsed.p, updatedAt: parsed.u, id: parsed.i };
+  }
+  if (parsed.b !== undefined) return fail('unexpected bm25');
+  return { importance: parsed.p, updatedAt: parsed.u, id: parsed.i };
 }
 
 /**
@@ -579,7 +887,7 @@ function suggestLexicalAdjacent(input: SuggestLexicalAdjacentInput): SearchHit[]
       // be built without a second JSON.parse of every returned row.
       `SELECT m.id AS id, m.data, bm25(memories_fts) AS bm25 FROM memories_fts f CROSS JOIN memories m ON m.rowid = f.rowid` +
         whereSql +
-        ` ORDER BY ${buildOrderBy(ranking, true).fts}` +
+        ` ORDER BY ${buildOrderBy(ranking).fts}` +
         ` LIMIT ${suggestionSqlLimit}`,
     )
     .all(...params) as Array<{ id?: string; data: string; bm25?: number }>;
@@ -613,6 +921,9 @@ function suggestLexicalAdjacent(input: SuggestLexicalAdjacentInput): SearchHit[]
     updatedAt: memory.updatedAt,
     verifiedAt: memory.lastVerifiedAt,
     score: scores[index]!,
+    // Raw source score, mirroring the primary path: FTS channel ≤ 0,
+    // null only if the row's bm25 could not be recovered.
+    bm25: chosenBm25[index] ?? null,
     matchReason: 'lexical' as const,
   }));
 }

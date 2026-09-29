@@ -68,6 +68,7 @@ import {
   type SubagentSlotClaim,
 } from './session-subagent-models.js';
 import {
+  areSubagentCompanionsAllowedForSession,
   areSubagentsAllowedForSession,
   lockSessionSubagentPolicyForSession,
 } from './session-subagent-policy.js';
@@ -495,6 +496,33 @@ export class Director implements DirectorFleetHost, ICoordinator {
     if (!areSubagentsAllowedForSession(policySessionId)) {
       throw new Error('Subagents are disabled for this session.');
     }
+    return this.spawnAdmitted(callerConfig, policySessionId, priceLookup);
+  }
+
+  /**
+   * Spawn a resident read-only companion (memory, explore). A solo session in
+   * `companions` mode admits these and nothing else. The exemption is its own
+   * entry point, not a config field, so no caller-built config — a
+   * `spawn_subagent` call, a project roster override — can claim it.
+   */
+  async spawnCompanion(callerConfig: SubagentConfig): Promise<string> {
+    const policySessionId = callerConfig.originSessionId ?? this.currentSessionId();
+    if (!areSubagentCompanionsAllowedForSession(policySessionId)) {
+      throw new Error('Subagent companions are disabled for this session.');
+    }
+    return this.spawnAdmitted(callerConfig, policySessionId);
+  }
+
+  private async spawnAdmitted(
+    callerConfig: SubagentConfig,
+    policySessionId: string | undefined,
+    priceLookup?: {
+      input?: number | undefined;
+      output?: number | undefined;
+      cacheRead?: number | undefined;
+      cacheWrite?: number | undefined;
+    },
+  ): Promise<string> {
     lockSessionSubagentPolicyForSession(policySessionId);
     if (this.workCompleteFlag) {
       throw new FleetSpawnBudgetError(

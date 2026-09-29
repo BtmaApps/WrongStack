@@ -250,12 +250,18 @@ export class LLMSelector implements MessageSelector {
     }
 
     const obj = parsed as Record<string, unknown>;
-    const keptRaw =
-      (obj.kept as Array<{ from: number; to: number; importance: string }> | undefined) ?? [];
-    const collapsedRaw =
-      (obj.collapsed as
-        | Array<{ from: number; to: number; summary?: string | undefined }>
-        | undefined) ?? [];
+    // A selector emitting `kept`/`collapsed` as anything but an ARRAY (a bare
+    // range object, a number, a string) is malformed output. `?? []` only
+    // covered null/undefined, so the for...of loops hit the raw value and the
+    // TypeError escaped select() — this parse runs OUTSIDE the provider-call
+    // try/catch, so nothing degraded it to the recency fallback. Missing keys
+    // keep their pinned "empty selection" meaning (?? [] first); only a
+    // present-but-wrong-typed value routes to the recency fallback.
+    const keptRaw = obj.kept ?? [];
+    const collapsedRaw = obj.collapsed ?? [];
+    if (!Array.isArray(keptRaw) || !Array.isArray(collapsedRaw)) {
+      return this.fallbackSelect(messages, budget);
+    }
 
     // Validate kept ranges — must be within [0, messageCount), from <= to
     const kept: SelectorResult['kept'] = [];

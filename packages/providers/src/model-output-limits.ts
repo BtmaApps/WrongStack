@@ -135,7 +135,7 @@ export function resolveCatalogMaxOutput(
  */
 export function resolveMaxOutputTokens(
   req: Pick<Request, 'model' | 'maxTokens'>,
-  ctx: BuildBodyContext,
+  ctx?: BuildBodyContext | undefined,
 ): number | undefined {
   // A cap the provider itself reported for this model (issue #398: the
   // catalog can list more than a deployment accepts, and every request then
@@ -149,7 +149,7 @@ export function resolveMaxOutputTokens(
   const explicit = positive(req.maxTokens);
   if (explicit !== undefined) return withinReported(explicit);
   const known =
-    resolveCatalogMaxOutput(ctx.providerId, req.model) ?? positive(ctx.capabilities.maxOutput);
+    resolveCatalogMaxOutput(ctx?.providerId, req.model) ?? positive(ctx?.capabilities?.maxOutput);
   // The user's own `limits.responseOutputTokens`, when set, caps what the model
   // could otherwise produce. Unset = the model's ceiling; nothing invented.
   const userCap = positiveLimit(activeLimits().responseOutputTokens);
@@ -164,7 +164,7 @@ export function resolveMaxOutputTokens(
  */
 export function resolveRequiredMaxOutputTokens(
   req: Pick<Request, 'model' | 'maxTokens'>,
-  ctx: BuildBodyContext,
+  ctx?: BuildBodyContext | undefined,
 ): number {
   const value = resolveMaxOutputTokens(req, ctx) ?? REQUIRED_FIELD_LAST_RESORT_MAX_OUTPUT;
   // The last resort, too, stays within a cap the provider itself reported.

@@ -20,7 +20,37 @@ pnpm install
 pnpm -F @wrongstack/sage-mcp build
 ```
 
-## Quick start — Claude Desktop
+## Connecting coding agents — `wstack sage connect`
+
+For Claude Code, Codex, Cursor and Antigravity, use the WrongStack CLI instead
+of configuring this binary by hand:
+
+```sh
+wstack sage connect claude-code   # or codex | cursor | antigravity | all
+wstack sage connect print         # JSON/TOML for any other MCP client
+wstack sage disconnect all
+```
+
+`connect` writes, in the project, the client's MCP entry (`.mcp.json`,
+`.codex/config.toml`, `.cursor/mcp.json`, `.agents/mcp_config.json`) running
+`wstack sage mcp --origin <client>`, plus a skill or rule telling the agent when
+to recall and how to propose (`.claude/skills/`, `.agents/skills/`,
+`.cursor/rules/`; Codex and Antigravity share `.agents/skills/`). It only touches entries it
+owns; `disconnect` removes them.
+
+`wstack sage mcp` (`serveAttachedSageMcpStdio`) differs from `wstack-sage-mcp`:
+
+- **Attach-only.** It never spawns the SAGE daemon. Memory is served while
+  WrongStack is open in the project; otherwise calls answer "No running
+  WrongStack SAGE daemon" and the next call retries.
+- **Releases its socket when idle** (30s), so it does not keep the daemon alive
+  after every WrongStack host has left.
+- **Read + propose.** The read tools plus `memory_candidates` narrowed to
+  `list`/`propose`; proposals are stamped with the caller and become memory
+  only through WrongStack review.
+- **Lexical search.** Semantic recall is fused inside a WrongStack host, not in
+  the daemon, so external agents get term/tag/path/anchor/graph matches only.
+
 
 Save this as your Claude Desktop MCP config (path: `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS, `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
 

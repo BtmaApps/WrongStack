@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/acp",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "license": "MIT",
   "description": "ACP (Agent Client Protocol) integration for WrongStack — client + agent support",
   "keywords": [
@@ -53,6 +53,7 @@
   "scripts": {
     "build": "node ../../scripts/build-package.mjs",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "test": "vitest run",
     "smoke": "pnpm build && node --experimental-strip-types ../../scripts/acp-smoke-test.mts"

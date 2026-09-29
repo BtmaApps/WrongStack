@@ -108,6 +108,220 @@ describe('ACPProtocolHandler', () => {
   it('reports the package version instead of a hand-maintained protocol constant', () => {
     expect(WRONGSTACK_VERSION).toBe(packageJson.version);
   });
+
+  describe('session/list parameter validation', () => {
+    it.each([
+      ['a non-string cwd', { cwd: 7 }],
+      ['a relative cwd', { cwd: 'relative/dir' }],
+      ['an unsupported cursor', { cursor: 'abc' }],
+    ])('rejects %s', async (_label, params) => {
+      const { handler, transport } = makeHandler();
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/list', params });
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 2,
+        error: { code: -32602, message: 'invalid cwd or cursor' },
+      });
+    });
+
+    it('returns stored sessions with a title only when one was persisted', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never as AgentServerTransport,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+        store: {
+          list: async () => [
+            { id: 'titled', updatedAt: '2026-01-02T00:00:00.000Z' },
+            { id: 'untitled', updatedAt: '2026-01-01T00:00:00.000Z' },
+          ],
+          load: async (id: string) => ({
+            cwd: CWD_TEST,
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            ...(id === 'titled' ? { title: 'My session' } : {}),
+          }),
+          save: async () => {},
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/list', params: {} });
+
+      const result = (
+        transport.sent.at(-1) as {
+          result?: { sessions: Array<{ sessionId: string; title?: string }> };
+        }
+      ).result;
+      const sessions = result?.sessions ?? [];
+      expect(sessions.find((s) => s.sessionId === 'titled')?.title).toBe('My session');
+      // The key must be absent, not undefined-valued, when no title was stored.
+      expect(sessions.find((s) => s.sessionId === 'untitled')).not.toHaveProperty('title');
+    });
+
+    it('filters sessions to the requested cwd', async () => {
+      const { handler, transport } = makeHandler();
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      await handler.handleMessage({ id: 3, method: 'session/list', params: { cwd: CWD_TEST } });
+
+      const result = (
+        transport.sent.at(-1) as { result?: { sessions: Array<{ cwd: string }> } }
+      ).result;
+      expect(result?.sessions).toHaveLength(1);
+      expect(result?.sessions[0]?.cwd).toBe(CWD_TEST);
+    });
+
+    it('does not duplicate a live session the store also lists', async () => {
+      let liveId = '';
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never as AgentServerTransport,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+        store: {
+          list: async () => [{ id: liveId, updatedAt: '2026-01-01T00:00:00.000Z' }],
+          load: async () => ({ cwd: CWD_TEST, updatedAt: '2026-01-01T00:00:00.000Z' }),
+          save: async () => {},
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sent = transport.sent as Array<{ id?: unknown; result?: { sessionId?: string } }>;
+      liveId = sent.find((m) => m.id === 2)?.result?.sessionId ?? '';
+
+      await handler.handleMessage({ id: 3, method: 'session/list', params: {} });
+      const result = (
+        transport.sent.at(-1) as { result?: { sessions: Array<{ sessionId: string }> } }
+      ).result;
+      // The live session already occupies the id, so the store entry is skipped.
+      expect(result?.sessions.filter((s) => s.sessionId === liveId)).toHaveLength(1);
+    });
+  });
+
+  describe('client request lifecycle', () => {
+    const PERMISSION_OPTIONS = [
+      { optionId: 'allow_once', name: 'Allow', kind: 'allow_once' as const },
+    ];
+
+    /**
+     * A runTurn that parks on a gate the test controls, then asks the client for
+     * permission. Both handoffs are explicit promises the test AWAITS — no
+     * setImmediate polling — so the interleaving is deterministic rather than a
+     * race against the event loop.
+     */
+    function gatedPermissionTurn(hooks: {
+      onEntered: () => void;
+      onIssued?: () => void;
+      gate: Promise<void>;
+      observe: (v: unknown) => void;
+    }): RunTurn {
+      return async (_input, _emit, api) => {
+        hooks.onEntered();
+        await hooks.gate;
+        hooks.onIssued?.();
+        try {
+          hooks.observe(
+            await api!.requestPermission({
+              toolCall: { toolCallId: 'tc1', title: 'write a.ts', kind: 'edit' },
+              options: PERMISSION_OPTIONS,
+            }),
+          );
+        } catch (err) {
+          hooks.observe((err as Error).message);
+        }
+        return { stopReason: 'end_turn' };
+      };
+    }
+
+    /** A promise plus its resolver. Await `promise`; calling `resolve` opens it. */
+    function deferred(): { promise: Promise<void>; resolve: () => void } {
+      let resolve!: () => void;
+      const promise = new Promise<void>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    }
+
+    async function startGatedTurn(
+      runTurn: RunTurn,
+    ): Promise<{ handler: ACPProtocolHandler; transport: FakeTransport; sessionId: string }> {
+      const { handler, transport } = makeHandler({ runTurn });
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sent = transport.sent as Array<{ id?: unknown; result?: { sessionId?: string } }>;
+      return {
+        handler,
+        transport,
+        sessionId: sent.find((m) => m.id === 2)?.result?.sessionId ?? '',
+      };
+    }
+
+    it('fails a client request immediately when its session is already aborted', async () => {
+      const entered = deferred();
+      const gate = deferred();
+      const observed: unknown[] = [];
+      const runTurn = gatedPermissionTurn({
+        onEntered: entered.resolve,
+        gate: gate.promise,
+        observe: (v) => observed.push(v),
+      });
+      const { handler, transport, sessionId } = await startGatedTurn(runTurn);
+      transport.sent.length = 0;
+
+      const turnDone = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'edit' }] },
+      });
+      // The turn is parked inside runTurn. Abort the session now, so the request
+      // it is about to issue resolves `signal.aborted === true`.
+      await entered.promise;
+      await handler.handleMessage({ method: 'session/cancel', params: { sessionId } });
+      gate.resolve();
+      await turnDone;
+
+      // Failed closed on the aborted signal — it never reached the wire, and the
+      // turn still settled normally rather than hanging.
+      expect(
+        transport.sent.find(
+          (m) => (m as { method?: string }).method === 'session/request_permission',
+        ),
+      ).toBeUndefined();
+      expect(observed).toEqual([expect.anything()]);
+    });
+
+    it('rejects a signal-free client request when the handler closes', async () => {
+      const entered = deferred();
+      const gate = deferred();
+      const issued = deferred();
+      const observed: unknown[] = [];
+      const runTurn = gatedPermissionTurn({
+        onEntered: entered.resolve,
+        onIssued: issued.resolve,
+        gate: gate.promise,
+        observe: (v) => observed.push(v),
+      });
+      const { handler, sessionId } = await startGatedTurn(runTurn);
+
+      const turnDone = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'edit' }] },
+      });
+      await entered.promise;
+      // Drop the session from the map BEFORE the request is issued. Its abort
+      // signal is the only thing that would otherwise reject the request ahead
+      // of close()'s pendingOut sweep, so the entry ends up signal-free.
+      await handler.handleMessage({ id: 4, method: 'session/close', params: { sessionId } });
+      gate.resolve();
+      // The request is now in pendingOut with no signal attached.
+      await issued.promise;
+
+      handler.close();
+      await turnDone;
+      expect(observed).toEqual(['protocol handler closed']);
+    });
+  });
+
   describe('initialization', () => {
     it('returns v1 capabilities and terminal auth only for capable clients', async () => {
       const { handler, transport } = makeHandler();
@@ -1223,6 +1437,475 @@ describe('ACPProtocolHandler', () => {
           code: -32602,
           message: 'cwd must be an absolute path to an existing directory',
         },
+      });
+    });
+
+    // Regression: a cold load (server restart, session not in memory) used to
+    // compute `persisted.cwd ?? loadCwd ?? defaultCwd`, so the client's `cwd`
+    // — which is validated just above and rejected with -32602 when invalid —
+    // was unreachable whenever the persisted record carried one. The session
+    // came back in the save-time directory and the next turn ran its tools
+    // against that stale project. The client's `cwd` must win, matching
+    // session/new and session/fork.
+    it('prefers the client cwd over the persisted one on a cold load', async () => {
+      const turnCwds: (string | undefined)[] = [];
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: async (input) => {
+          turnCwds.push(input.cwd);
+          return { stopReason: 'end_turn' };
+        },
+        store: {
+          load: vi.fn(async () => ({ id: 'cold-cwd', cwd: CWD_SAVED })),
+          save: vi.fn(async () => {}),
+        } as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({
+        id: 2,
+        method: 'session/load',
+        params: { sessionId: 'cold-cwd', cwd: CWD_LOAD },
+      });
+      expect(transport.sent.at(-1)).not.toHaveProperty('error');
+
+      // Observed on the real turn path: this is the directory the agent's
+      // tools would actually run against.
+      await handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId: 'cold-cwd', prompt: [{ type: 'text', text: 'hi' }] },
+      });
+      expect(turnCwds).toEqual([CWD_LOAD]);
+    });
+
+    it('falls back to the persisted cwd when the client sends none', async () => {
+      const turnCwds: (string | undefined)[] = [];
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: async (input) => {
+          turnCwds.push(input.cwd);
+          return { stopReason: 'end_turn' };
+        },
+        store: {
+          load: vi.fn(async () => ({ id: 'cold-nocwd', cwd: CWD_SAVED })),
+          save: vi.fn(async () => {}),
+        } as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({
+        id: 2,
+        method: 'session/load',
+        params: { sessionId: 'cold-nocwd' },
+      });
+      await handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId: 'cold-nocwd', prompt: [{ type: 'text', text: 'hi' }] },
+      });
+      expect(turnCwds).toEqual([CWD_SAVED]);
+    });
+
+    // Regression: the `emit` sink streamed session/update for a session the
+    // client had already closed. The unprompted updater has carried the
+    // session-identity guard all along ("nothing reaches a client for a
+    // session it closed, deleted, or replaced with a fresh `session/load`
+    // state") and the post-turn persist enforces it too — `emit` was the one
+    // client-facing path in this handler that did not. The client folds any
+    // session/update into its scratch with no sessionId check of its own, so a
+    // stale chunk contaminated the live transcript.
+    it('sends no session/update for a session closed mid-turn', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => {
+        release = r;
+      });
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        // Emits only after the close lands, the way a turn whose provider
+        // call had already produced a result finishes.
+        runTurn: async (_input, emit) => {
+          await gate;
+          emit({
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'STALE-AFTER-CLOSE' },
+          });
+          return { stopReason: 'end_turn' };
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await new Promise((r) => setImmediate(r));
+
+      await handler.handleMessage({ id: 4, method: 'session/close', params: { sessionId } });
+      transport.sent.length = 0; // observe strictly what arrives AFTER the close
+
+      release();
+      await promptP;
+      await new Promise((r) => setImmediate(r));
+
+      const updates = transport.sent
+        .filter((m) => (m as { method?: string }).method === 'session/update')
+        .map((m) => (m as { params?: { update?: { content?: { text?: string } } } }).params?.update
+          ?.content?.text);
+      expect(updates, 'no session/update may be emitted after session/close').not.toContain(
+        'STALE-AFTER-CLOSE',
+      );
+    });
+
+    it('sends no session/update when a cold session/load replaced the state under the same id', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => {
+        release = r;
+      });
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: async (_input, emit) => {
+          await gate;
+          emit({
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'STALE-FROM-DEAD-SESSION' },
+          });
+          return { stopReason: 'end_turn' };
+        },
+        store: {
+          load: vi.fn(async (id: string) => ({ id, cwd: CWD_TEST })),
+          save: vi.fn(async () => {}),
+        } as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await new Promise((r) => setImmediate(r));
+
+      await handler.handleMessage({ id: 4, method: 'session/close', params: { sessionId } });
+      // A NEW SessionState now occupies the same key.
+      await handler.handleMessage({ id: 5, method: 'session/load', params: { sessionId } });
+      transport.sent.length = 0;
+
+      release();
+      await promptP;
+      await new Promise((r) => setImmediate(r));
+
+      const updates = transport.sent
+        .filter((m) => (m as { method?: string }).method === 'session/update')
+        .map((m) => (m as { params?: { update?: { content?: { text?: string } } } }).params?.update
+          ?.content?.text);
+      expect(updates, 'a dead session must not stream into its replacement').not.toContain(
+        'STALE-FROM-DEAD-SESSION',
+      );
+    });
+
+    it('CONTROL: still streams session/update normally while the session is live', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: async (_input, emit) => {
+          emit({
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'LIVE-CHUNK' },
+          });
+          return { stopReason: 'end_turn' };
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+      await handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+
+      const updates = transport.sent
+        .filter((m) => (m as { method?: string }).method === 'session/update')
+        .map((m) => (m as { params?: { update?: { content?: { text?: string } } } }).params?.update
+          ?.content?.text);
+      expect(updates).toContain('LIVE-CHUNK');
+    });
+
+    // A warm `session/load` on a session with a turn in flight is refused.
+    // Reloading mid-turn would reset the scratch/history the running turn is
+    // still writing into, and the agent would keep streaming into state the
+    // client has already replaced.
+    it('refuses a session/load while a prompt is running on that session', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => {
+        release = r;
+      });
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: async () => {
+          await gate;
+          return { stopReason: 'end_turn' };
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      // Start a turn and leave it in flight.
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await new Promise((r) => setImmediate(r));
+
+      await handler.handleMessage({
+        id: 4,
+        method: 'session/load',
+        params: { sessionId, cwd: CWD_TEST },
+      });
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 4,
+        error: { code: -32000, message: 'cannot reload a session while a prompt is running' },
+      });
+
+      release();
+      await promptP;
+    });
+
+    // `parseMcpServers` takes an onSkipped reporter so a dropped entry is
+    // visible to the client instead of silently vanishing. Both the load and
+    // fork paths wire their own reporter; these cover each one.
+    it('reports a malformed mcpServers entry on a warm session/load', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      await handler.handleMessage({
+        id: 3,
+        method: 'session/load',
+        params: { sessionId, mcpServers: [{ name: 'no-command-here' }] },
+      });
+
+      const notice = transport.sent.find(
+        (m) =>
+          (m as { method?: string }).method === 'session/update' &&
+          JSON.stringify((m as { params?: unknown }).params).includes('malformed mcpServers'),
+      );
+      expect(notice, 'the client must be told which entry was dropped').toBeDefined();
+      expect(transport.sent.at(-1)).not.toHaveProperty('error');
+    });
+
+    it('reports a malformed mcpServers entry on session/fork', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      await handler.handleMessage({
+        id: 3,
+        method: 'session/fork',
+        params: { sessionId, mcpServers: [{ name: 'no-command-here' }] },
+      });
+
+      const notice = transport.sent.find(
+        (m) =>
+          (m as { method?: string }).method === 'session/update' &&
+          JSON.stringify((m as { params?: unknown }).params).includes('malformed mcpServers'),
+      );
+      expect(notice, 'the client must be told which entry was dropped').toBeDefined();
+      const forked = transport.sent.at(-1) as { result?: { sessionId?: string } };
+      expect(forked.result?.sessionId).toMatch(/^sess_/);
+    });
+
+    // A runTurn that issues a client callback and never resolves: the handler
+    // is left with a live outbound `pendingOut` entry. Closing the handler must
+    // reject that entry (the `close()` loop), and the abort path must tolerate
+    // the `$/cancel_request` send failing (the `.catch` on it).
+    const permissionRunTurn: RunTurn = async (_input, _emit, api) => {
+      await api?.requestPermission?.({
+        toolCall: { toolCallId: 'tc1', title: 'do a thing' },
+        options: [{ optionId: 'allow', name: 'Allow', kind: 'allow_once' }],
+      });
+      return { stopReason: 'end_turn' };
+    };
+
+    it('rejects an in-flight client request when the handler closes', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: permissionRunTurn,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      // Start the turn; it parks on the permission callback.
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await new Promise((r) => setImmediate(r));
+      expect(
+        transport.sent.some((m) => (m as { method?: string }).method === 'session/request_permission'),
+        'the turn should have issued a client request',
+      ).toBe(true);
+
+      handler.close();
+      await promptP.catch(() => undefined);
+    });
+
+    it('tolerates a failing $/cancel_request send when a session is cancelled', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: permissionRunTurn,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await new Promise((r) => setImmediate(r));
+
+      // Break the wire for the best-effort `$/cancel_request` send only; the
+      // turn must still settle as cancelled rather than hanging or throwing.
+      const origSend = transport.send as (m: unknown) => Promise<void>;
+      (transport as unknown as { send: (m: unknown) => Promise<void> }).send = (m: unknown) => {
+        if ((m as { method?: string })?.method === '$/cancel_request') {
+          return Promise.reject(new Error('wire gone'));
+        }
+        return origSend(m);
+      };
+      await handler.handleMessage({ method: 'session/cancel', params: { sessionId } });
+      await promptP;
+
+      // handleMessage resolves to a boolean; the stopReason travels on the wire.
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 3,
+        result: { stopReason: 'cancelled' },
+      });
+      handler.close();
+    });
+
+    it('persists through a store whose save rejects without breaking the turn', async () => {
+      const save = vi.fn(async () => {
+        throw new Error('disk on fire');
+      });
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+        store: { save, load: vi.fn(async () => null) } as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        transport.sent[transport.sent.length - 1] as { result?: { sessionId?: string } }
+      ).result?.sessionId!;
+
+      const promptP = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
+      });
+      await promptP;
+
+      // The store threw, but persistence is best-effort: the turn still
+      // completes and reports its stopReason on the wire.
+      expect(save).toHaveBeenCalled();
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 3,
+        result: { stopReason: 'end_turn' },
+      });
+    });
+
+    it('rejects a session/list with a non-absolute cwd or any cursor', async () => {
+      const { handler, transport } = makeHandler();
+      await handler.handleMessage({ id: 1, method: 'initialize', params: { protocolVersion: 1 } });
+
+      transport.sent.length = 0;
+      await handler.handleMessage({ id: 2, method: 'session/list', params: { cwd: 'relative/dir' } });
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 2,
+        error: { code: -32602, message: 'invalid cwd or cursor' },
+      });
+
+      transport.sent.length = 0;
+      await handler.handleMessage({ id: 3, method: 'session/list', params: { cursor: 'abc' } });
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 3,
+        error: { code: -32602, message: 'invalid cwd or cursor' },
+      });
+    });
+
+    it('lists persisted sessions the store knows about', async () => {
+      const transport = fakeTransport();
+      const handler = new ACPProtocolHandler({
+        transport: transport as never,
+        defaultCwd: CWD_TEST,
+        runTurn: PASSON_RUN_TURN,
+        store: {
+          save: vi.fn(async () => {}),
+          list: vi.fn(async () => [{ id: 'cold-1', updatedAt: '2026-01-01T00:00:00.000Z' }]),
+          load: vi.fn(async (id: string) => ({ id, cwd: CWD_TEST })),
+        } as never,
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize' });
+      await handler.handleMessage({ id: 2, method: 'session/list', params: {} });
+      expect(transport.sent.at(-1)).toMatchObject({
+        id: 2,
+        result: { sessions: [expect.objectContaining({ sessionId: 'cold-1', cwd: CWD_TEST })] },
       });
     });
 

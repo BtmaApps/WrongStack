@@ -44,6 +44,7 @@ vi.mock('node:child_process', async (importOriginal) => {
 import {
   isSageProjectServerAvailable,
   SageProjectServerConnection,
+  SageProjectServerNotRunningError,
 } from '../src/project-server-client.js';
 import { SAGE_PROJECT_SERVER_PROTOCOL_VERSION } from '../src/project-server-protocol.js';
 
@@ -408,5 +409,31 @@ describe('SageProjectServerConnection', () => {
     // closeDaemonLogFd is still invoked with null and must tolerate it.
     fakeChild.emit('error', new Error('spawn failed'));
     expect(mocks.closeDaemonLogFd).toHaveBeenCalledWith(null);
+  });
+
+  it('attach-only: reports a missing daemon by name and never spawns one', async () => {
+    mocks.spawn.mockClear();
+    const connection = new SageProjectServerConnection('D:/repo', undefined, {
+      spawnIfMissing: false,
+    });
+    (connection as unknown as { connectOnce: unknown }).connectOnce = vi
+      .fn()
+      .mockRejectedValue(new Error('connect ENOENT'));
+
+    await expect(connection.connect()).rejects.toBeInstanceOf(SageProjectServerNotRunningError);
+    await expect(connection.call('ping', {}, { meta: { clientId: 'c1' } })).rejects.toThrow(
+      'No running WrongStack SAGE daemon for D:/repo',
+    );
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it('attach-only: status() still answers null instead of throwing', async () => {
+    const connection = new SageProjectServerConnection('D:/repo', undefined, {
+      spawnIfMissing: false,
+    });
+    (connection as unknown as { connectOnce: unknown }).connectOnce = vi
+      .fn()
+      .mockRejectedValue(new Error('connect ENOENT'));
+    await expect(connection.status()).resolves.toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import { createProjectAgentRoster, recordDispatch } from '@wrongstack/core/agent
 import {
   AdaptiveConcurrencyController,
   type AgentFactory,
+  areSubagentCompanionsAllowedForSession,
   areSubagentsAllowedForSession,
   DEFAULT_MAX_FLEET_SPAWNS,
   type DefaultMultiAgentCoordinator,
@@ -334,7 +335,9 @@ export class MultiAgentHost {
               mailboxProjectDir: this.mailboxProjectDir(),
               roster: this.roster,
               config: config.fleet?.exploreCompanion,
-              subagentsAllowed: () => areSubagentsAllowedForSession(sessionId),
+              // Companion gate, not the general one: a Bug Hunter round runs
+              // solo but keeps its read-only companions.
+              companionsAllowed: () => areSubagentCompanionsAllowedForSession(sessionId),
             })
           : null,
     });
@@ -354,7 +357,7 @@ export class MultiAgentHost {
           current.features.memory !== false &&
           current.features.memoryCurator !== false &&
           current.Sage?.enabled !== false &&
-          areSubagentsAllowedForSession(sessionId)
+          areSubagentCompanionsAllowedForSession(sessionId)
         );
       },
       scrub: (text) => this.deps.secretScrubber.scrub(text),
@@ -373,7 +376,7 @@ export class MultiAgentHost {
     this.exploreCompanionOff = this.deps.events.on('agent.run.started', (e) => {
       // Unstamped runs exist (thin embedders); `ensure` ignores an empty id,
       // but keep the narrowing explicit rather than relying on that.
-      if (e.sessionId && areSubagentsAllowedForSession(e.sessionId)) {
+      if (e.sessionId && areSubagentCompanionsAllowedForSession(e.sessionId)) {
         this.exploreCompanions?.ensure(e.sessionId);
         // Workers have agentRole metadata and must never open their own verifier.
         if (!e.ctx.meta?.['agentRole']) this.memoryCompanion?.ensure(e.sessionId);

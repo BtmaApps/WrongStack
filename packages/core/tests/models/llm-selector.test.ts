@@ -101,6 +101,27 @@ describe('LLMSelector', () => {
       expect(result.reasoning).toBe('reasoning here');
     });
 
+    it('falls back to recency when kept is a JSON object, not an array', async () => {
+      const provider = mockProvider(['{"kept":{"from":3,"to":5},"collapsed":[],"reasoning":"x"}']);
+      const selector = new LLMSelector({ provider });
+      const messages = Array(6)
+        .fill(null)
+        .map((_, i) => makeMessage(i % 2 === 0 ? 'user' : 'assistant', `message ${i}`));
+      const result = await selector.select(messages, 1000);
+      expect(result.reasoning).toMatch(/Fallback/i);
+      expect(result.kept.length).toBeGreaterThan(0);
+    });
+
+    it('falls back to recency when collapsed is a number, not an array', async () => {
+      const provider = mockProvider(['{"kept":[{"from":0,"to":2}],"collapsed":7,"reasoning":"x"}']);
+      const selector = new LLMSelector({ provider });
+      const messages = Array(6)
+        .fill(null)
+        .map((_, i) => makeMessage(i % 2 === 0 ? 'user' : 'assistant', `message ${i}`));
+      const result = await selector.select(messages, 1000);
+      expect(result.reasoning).toMatch(/Fallback/i);
+    });
+
     it('uses fallback when provider throws', async () => {
       const provider: Provider = {
         id: 'test',

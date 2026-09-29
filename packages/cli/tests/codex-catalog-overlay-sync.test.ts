@@ -79,6 +79,7 @@ describe('openai-codex overlay ↔ core floor parity', () => {
     // Codex wire omits `max_output_tokens` entirely because the ChatGPT
     // backend rejects it.
     const expected: Record<string, number> = {
+      'gpt-6.1-sol': 872_000,
       'gpt-6-astra': 872_000,
       'gpt-6-sol': 872_000,
       'gpt-6-luna': 872_000,
@@ -100,6 +101,7 @@ describe('openai-codex overlay ↔ core floor parity', () => {
     // Ultra is a product orchestration mode (max + automatic task delegation),
     // not a reasoning.effort value sent to the Responses backend.
     for (const id of [
+      'gpt-6.1-sol',
       'gpt-6-astra',
       'gpt-6-sol',
       'gpt-6-luna',

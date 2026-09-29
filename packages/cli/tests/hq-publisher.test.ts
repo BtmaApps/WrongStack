@@ -5,6 +5,11 @@ import type { HqSocketLike } from '@wrongstack/core/hq';
 import { HQ_AUTH_FILE_VERSION, writeHqAuthFile, writeHqRuntimeFile } from '@wrongstack/core/hq';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startCliHqConnection } from '../src/hq-publisher.js';
+import { createSageHqSync } from '../src/sage-hq-sync.js';
+
+vi.mock('../src/sage-hq-sync.js', () => ({
+  createSageHqSync: vi.fn(() => ({ handleRemote: vi.fn(), stop: vi.fn() })),
+}));
 
 let dataDir: string | undefined;
 const oldDataDir = process.env['WRONGSTACK_HQ_DATA_DIR'];
@@ -51,6 +56,40 @@ class FakeSocket implements HqSocketLike {
 }
 
 describe('CLI HQ publisher connection', () => {
+  it('can explicitly own SAGE without Kanban and forwards its configured directory', () => {
+    vi.mocked(createSageHqSync).mockClear();
+    const connection = startCliHqConnection({
+      projectRoot: '/copy/custom',
+      clientKind: 'cli',
+      config: { enabled: true, url: 'http://127.0.0.1:3499' },
+      appConfig: { Sage: { storage: { directory: 'custom-memories' } } } as never,
+      ownKanbanSync: false,
+      ownSageSync: true,
+      socketFactory: () => new FakeSocket(),
+    });
+    expect(createSageHqSync).toHaveBeenCalledWith(
+      '/copy/custom',
+      connection.getPublisher(),
+      'custom-memories',
+    );
+    connection.stop();
+  });
+  it('owns SAGE sync automatically and stops it with the connection; auxiliary hosts opt out', () => {
+    vi.mocked(createSageHqSync).mockClear();
+    const options = {
+      projectRoot: '/copy/sage',
+      clientKind: 'cli' as const,
+      config: { enabled: true, url: 'http://127.0.0.1:3499', projectAlias: 'sage-project' },
+      socketFactory: () => new FakeSocket(),
+    };
+    const primary = startCliHqConnection(options);
+    const auxiliary = startCliHqConnection({ ...options, ownKanbanSync: false });
+    expect(createSageHqSync).toHaveBeenCalledTimes(1);
+    const sync = vi.mocked(createSageHqSync).mock.results[0]!.value;
+    primary.stop();
+    auxiliary.stop();
+    expect(sync.stop).toHaveBeenCalledTimes(1);
+  });
   it('uses the same alias-backed project id for independent roots', () => {
     const socketA = new FakeSocket();
     const socketB = new FakeSocket();

@@ -34,6 +34,10 @@ export interface TokenUsage {
   cacheWrite?: number | undefined;
 }
 
+function safeNonNegative(n: unknown): number {
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 /**
  * Normalize a models.dev model object's pricing into {@link CostRates}.
  * Missing model or missing `cost` yields 0 — free/unmetered plans report `$0`
@@ -55,11 +59,16 @@ export function getCostRates(model: unknown): CostRates {
   )?.cost;
   // Usage counts cache tokens OUTSIDE `input`; without a cache price they are
   // still billed, at the input rate — never for free.
+  const input = safeNonNegative(cost?.input);
+  const output = safeNonNegative(cost?.output);
+  const cacheRead = cost?.cache_read != null ? safeNonNegative(cost.cache_read) : input;
+  const cacheWrite = cost?.cache_write != null ? safeNonNegative(cost.cache_write) : input;
+
   return {
-    input: cost?.input ?? 0,
-    output: cost?.output ?? 0,
-    cacheRead: cost?.cache_read ?? cost?.input ?? 0,
-    cacheWrite: cost?.cache_write ?? cost?.input ?? 0,
+    input,
+    output,
+    cacheRead,
+    cacheWrite,
   };
 }
 
@@ -68,11 +77,22 @@ export function getCostRates(model: unknown): CostRates {
  * rates are 0 (unpriced plan).
  */
 export function computeUsageCost(usage: TokenUsage, rates: CostRates): number {
+  if (!usage || typeof usage !== 'object') return 0;
+  const input = safeNonNegative(usage.input);
+  const output = safeNonNegative(usage.output);
+  const cacheRead = safeNonNegative(usage.cacheRead);
+  const cacheWrite = safeNonNegative(usage.cacheWrite);
+
+  const rateInput = safeNonNegative(rates?.input);
+  const rateOutput = safeNonNegative(rates?.output);
+  const rateCacheRead = safeNonNegative(rates?.cacheRead);
+  const rateCacheWrite = safeNonNegative(rates?.cacheWrite);
+
   return (
-    (usage.input * rates.input +
-      usage.output * rates.output +
-      (usage.cacheRead ?? 0) * rates.cacheRead +
-      (usage.cacheWrite ?? 0) * (rates.cacheWrite ?? 0)) /
+    (input * rateInput +
+      output * rateOutput +
+      cacheRead * rateCacheRead +
+      cacheWrite * rateCacheWrite) /
     1_000_000
   );
 }

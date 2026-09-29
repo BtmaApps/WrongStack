@@ -332,7 +332,9 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
 
     if (input.mode === 'summary') {
       ctx.recordRead?.(absPath, stat.mtimeMs, 'user', contentHash);
-      rememberReadRange(ctx, absPath, stat.mtimeMs, stat.size, total, 1, Math.min(total, 200));
+      // No rememberReadRange here: summary output is structural, not content.
+      // Recording a content range made a later content read of those lines
+      // return the "already shown" stub for lines the summary never displayed.
       const symResult = shouldIncludeSymbols
         ? await fetchSymbolsForFile(absPath, ctx, signal)
         : undefined;

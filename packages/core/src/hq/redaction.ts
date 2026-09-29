@@ -66,7 +66,7 @@ const RAW_CONTENT_KEYS = new Set([
 // Kanban records are an explicitly configured project-state synchronization
 // channel, not telemetry summaries. Their user-authored fields must round-trip
 // intact; sensitive-key and secret-pattern scrubbing still applies recursively.
-const HQ_PROJECT_STATE_EVENT_TYPES = new Set(['kanban.snapshot']);
+const HQ_PROJECT_STATE_EVENT_TYPES = new Set(['kanban.snapshot', 'sage.snapshot']);
 
 const SENSITIVE_KEYS = new Set([
   'authorization',
