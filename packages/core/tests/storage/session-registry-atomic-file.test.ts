@@ -18,7 +18,9 @@ describe('session-registry advisory lock primitives', () => {
   });
 
   afterEach(async () => {
-    await fsp.rm(dir, { recursive: true, force: true });
+    // maxRetries: the stale-lock tombstone is unlinked fire-and-forget and is
+    // still delete-pending on Windows (EPERM) when teardown runs.
+    await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
   async function backdate(msAgo: number): Promise<void> {

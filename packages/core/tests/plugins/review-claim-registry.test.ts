@@ -46,7 +46,10 @@ describe('review claim registry', () => {
   });
 
   afterEach(async () => {
-    await rm(storeDir, { recursive: true, force: true });
+    // maxRetries: a stale-lock break unlinks its tombstone fire-and-forget; on
+    // Windows that file is still delete-pending here and rm's own unlink of
+    // it throws EPERM until the pending delete completes.
+    await rm(storeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
   it('allows only one plugin to emit the same file content on a shared session bus', async () => {
@@ -221,7 +224,7 @@ describe('review claim registry', () => {
       expect(emitA).toHaveBeenCalledOnce();
       expect(emitB).toHaveBeenCalledOnce();
     } finally {
-      await rm(otherTree, { recursive: true, force: true });
+      await rm(otherTree, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
   });
 
