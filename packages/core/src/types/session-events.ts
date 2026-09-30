@@ -407,7 +407,8 @@ type SessionEventVariant =
       ts: string;
       from?: { providerId: string; model: string } | undefined;
       to: { providerId: string; model: string };
-      reason: 'fallback' | 'user';
+      /** `server`: the backend itself answered with another model (see `provider.model_rerouted`). */
+      reason: 'fallback' | 'user' | 'server';
       /** HTTP status that triggered an automatic fallback, when there was one. */
       status?: number | undefined;
     }

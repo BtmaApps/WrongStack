@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveBrowserSessions } from '@/hooks/use-live-browser';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useGitInfo } from '@/hooks/useGitInfo';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
@@ -108,6 +109,16 @@ const CHIP_ORDER: DockSection[] = [
   'browser',
 ];
 
+/**
+ * Calm chrome: an idle chip is plain grey — colour marks the chip you opened,
+ * not every section that happens to have data. Goal State takes the Goal tone
+ * when open instead of the destructive red it uses under full chrome.
+ */
+const CALM_IDLE_TONE = 'text-muted-foreground hover:bg-muted/60 hover:text-foreground';
+const CALM_ACTIVE_OVERRIDE: Partial<Record<DockSection, string>> = {
+  'goal-state': CHIP_TONES.goal.active,
+};
+
 function DockChip({
   section,
   icon,
@@ -126,7 +137,10 @@ function DockChip({
   onClick: () => void;
 }) {
   const tone = CHIP_TONES[section];
+  const fullChrome = useIsFullChrome();
   const { t } = useAppTranslation();
+  const activeTone = fullChrome ? tone.active : (CALM_ACTIVE_OVERRIDE[section] ?? tone.active);
+  const idleTone = fullChrome ? tone.idle : CALM_IDLE_TONE;
   return (
     <button
       type="button"
@@ -138,7 +152,7 @@ function DockChip({
       }
       className={cn(
         'flex items-center gap-2 h-7 px-2.5 rounded-md border text-xs font-medium shrink-0 transition-colors',
-        active ? tone.active : cn('border-border/40', tone.idle),
+        active ? activeTone : cn('border-border/40', idleTone),
       )}
     >
       <span className={cn(pulse && 'animate-pulse')}>{icon}</span>

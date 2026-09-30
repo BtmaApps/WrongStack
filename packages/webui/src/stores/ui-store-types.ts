@@ -52,6 +52,7 @@ export const VIEWS = [
   'chat',
   'settings',
   'provider-test',
+  'provider-quota',
   'memory',
   'roster',
   'context',

@@ -163,11 +163,17 @@ export class SddTaskDecomposer {
     return ready;
   }
 
-  /** True when at least one non-completed, non-failed task is blocked. */
+  /** True when non-completed, non-failed tasks remain blocked and cannot make progress. */
   private hasAnyBlockedTasks(): boolean {
     const nodes = this.tracker.getAllNodes({
       status: ['pending', 'in_progress', 'blocked'],
     });
-    return nodes.some((n) => n.status === 'blocked');
+    // In-flight tasks may complete and unblock downstream tasks; never declare deadlock while work runs.
+    if (nodes.some((n) => n.status === 'in_progress')) {
+      return false;
+    }
+    // When no tasks are in progress and pendingReadyNodes() found no runnable tasks,
+    // any remaining non-terminal tasks are stuck and cannot make forward progress.
+    return nodes.some((n) => n.status === 'blocked' || n.status === 'pending');
   }
 }

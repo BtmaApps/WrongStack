@@ -38,6 +38,16 @@ export function projectStatusNotice(message: ServerMessage): StatusNoticeProject
         tone: payload['retryable'] === true ? 'warning' : 'error',
       };
     }
+    case 'provider.model_rerouted': {
+      const served = compactLine(payload['served']);
+      const requested = compactLine(payload['requested']);
+      return {
+        text: served
+          ? compactLine(`${served}${requested ? ` instead of ${requested}` : ''}`, 'Rerouted · ')
+          : 'Server answered with another model',
+        tone: 'warning',
+      };
+    }
     case 'provider.stream_error': {
       const text = compactLine(payload['message'], 'Stream · ');
       return { text: text || 'Provider stream interrupted', tone: 'warning' };

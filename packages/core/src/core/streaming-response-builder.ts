@@ -17,6 +17,7 @@ interface ThinkingEntry {
 
 interface StreamingState {
   model: string;
+  rerouted?: Response['rerouted'];
   stopReason: Response['stopReason'];
   usage: Response['usage'];
   textBuffers: string[];
@@ -77,7 +78,13 @@ export function buildResponse(state: StreamingState): Response {
     }
   }
   if (content.length === 0) content.push({ type: 'text', text: '' });
-  return { content, stopReason: state.stopReason, usage: state.usage, model: state.model };
+  return {
+    content,
+    stopReason: state.stopReason,
+    usage: state.usage,
+    model: state.model,
+    ...(state.rerouted ? { rerouted: state.rerouted } : {}),
+  };
 }
 
 export function createStreamingState(model: string): StreamingState {
@@ -305,6 +312,13 @@ export async function streamProviderToResponse(
         switch (ev.type) {
           case 'message_start':
             handleMessageStart(state, ev.model);
+            break;
+          case 'model_rerouted':
+            state.rerouted = {
+              requested: ev.requested,
+              served: ev.served,
+              ...(ev.reason ? { reason: ev.reason } : {}),
+            };
             break;
           case 'content_block_start':
             handleContentBlockStart(state, ev as Parameters<typeof handleContentBlockStart>[1]);

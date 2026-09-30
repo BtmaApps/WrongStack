@@ -8,7 +8,7 @@ import type {
   KanbanWorkbenchLane,
   KanbanWorkbenchSnapshot,
 } from '../types-operations.js';
-import { getKanbanOrchestrationSnapshot } from './assignment.js';
+import { getKanbanOrchestrationSnapshot, isAssignmentStale } from './assignment.js';
 
 const DEFAULT_LANE_LIMIT = 8;
 const DEFAULT_ALERT_LIMIT = 8;
@@ -44,7 +44,9 @@ export function buildKanbanWorkbench(
     next: unique([...snapshot.queued, ...snapshot.ready]).filter(
       (result) => !snapshot.running.some((running) => resultKey(running) === resultKey(result)),
     ),
-    blocked: unique([...snapshot.blocked, ...snapshot.failed]),
+    blocked: unique([...snapshot.blocked, ...snapshot.failed]).filter(
+      (result) => result.task.status !== 'completed' && result.task.status !== 'archived',
+    ),
     review: unique(snapshot.review),
   };
 
@@ -180,9 +182,9 @@ function buildAlerts(active: KanbanSearchResult[], nowMs: number): KanbanWorkben
   const alerts: KanbanWorkbenchAlert[] = [];
   for (const result of active) {
     const assignment = result.task.assignment;
+    const nowIso = new Date(nowMs).toISOString();
     const leaseMs = assignment?.leaseExpiresAt ? Date.parse(assignment.leaseExpiresAt) : Number.NaN;
-    const isLiveState = assignment?.status === 'running' || assignment?.status === 'queued';
-    if (isLiveState && Number.isFinite(leaseMs) && leaseMs <= nowMs) {
+    if (isAssignmentStale(assignment, nowIso)) {
       alerts.push(
         taskAlert(
           result,

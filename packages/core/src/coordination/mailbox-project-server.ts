@@ -99,6 +99,7 @@ const clients = new Set<ClientState>();
 let pendingRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let stopping = false;
+let ready = false;
 let stopAutoCompact: (() => void) | undefined;
 const stopMemoryWatchdog = startSharedHeapWatchdog({
   collectStats: () => ({
@@ -466,7 +467,9 @@ function onData(state: ClientState, chunk: string): void {
  * nothing else can register activity in the meantime.
  */
 function scheduleIdleStop(): void {
-  if (stopping || clients.size > 0 || pendingRequests > 0 || idleTimer) return;
+  // The lease sweep also runs during metadata/ACL initialization. Starting
+  // the idle countdown there can stop the owner before startup finishes.
+  if (!ready || stopping || clients.size > 0 || pendingRequests > 0 || idleTimer) return;
   idleTimer = setTimeout(() => void stop('idle-timeout'), idleMs);
   idleTimer.unref?.();
 }
@@ -663,6 +666,7 @@ void (async () => {
   try {
     await writeMetadata();
     metadataGuard.enable();
+    ready = true;
     markMetadataWritten?.();
     scheduleIdleStop();
   } catch {

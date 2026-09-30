@@ -6,6 +6,7 @@ import {
   Cpu,
   Database,
   Download,
+  Gauge,
   Hash,
   History as HistoryIcon,
   type LucideIcon,
@@ -273,6 +274,14 @@ export function CommandPalette() {
         icon: SettingsIcon,
         keywords: ['settings', 'config'],
         run: () => openMainView('settings'),
+      },
+      {
+        id: 'provider-quota',
+        category: 'Command',
+        label: t('activity:nav.provider-quota'),
+        icon: Gauge,
+        keywords: ['quota', 'plan', 'limits', 'usage', 'balance', 'subscription', 'omniroute'],
+        run: () => openMainView('provider-quota'),
       },
       {
         id: 'roster',

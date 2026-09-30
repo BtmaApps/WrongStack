@@ -24,6 +24,7 @@ import type {
 import { clearGateRefusals } from '../verification/refusal-budget.js';
 import {
   applyTaskPatch,
+  areDependenciesMet,
   cloneTaskForBoard,
   createKanbanEvent,
   createTaskObject,
@@ -36,6 +37,7 @@ import {
   placeTaskInColumn,
   requireNonBlank,
   stampAtomicityAssessment,
+  syncTaskColumnForStatus,
 } from './_internal.js';
 import { cloneContractGraphForBoard, removeTaskContractGraphState } from './contract-graph.js';
 import {
@@ -109,6 +111,10 @@ export async function addTask(
 ): Promise<{ board: KanbanBoard; task: KanbanTask } | null> {
   let event: KanbanEvent | undefined;
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
+    assertManagementWrite(board, [], eventContext);
+    if (input.id?.trim() && board.tasks.some((t) => t.id === input.id!.trim())) {
+      throw new Error(`Duplicate kanban task id: ${input.id.trim()}`);
+    }
     const task = createTaskObject(board, input);
     initializeAndValidateManagedTask(board, task);
     if (input.atomicityAssessment === undefined) stampAtomicityAssessment(board, task);
@@ -144,6 +150,7 @@ export async function copyTaskToBoard(
 
   let event: KanbanEvent | undefined;
   const updated = await mutateBoard(projectRoot, targetBoardId, (targetBoard) => {
+    assertManagementWrite(targetBoard, [], options.eventContext);
     const task = cloneTaskForBoard(targetBoard, sourceTask, {
       // Managed copies are new work and must restart at Backlog with a fresh
       // lifecycle ledger; carrying a mid-stream stage would fake progression.
@@ -160,6 +167,11 @@ export async function copyTaskToBoard(
       task.status = 'pending';
       delete task.completedAt;
       initializeAndValidateManagedTask(targetBoard, task);
+    }
+    if (targetBoard.atomicity?.mode === 'off') {
+      delete task.atomicityAssessment;
+    } else {
+      stampAtomicityAssessment(targetBoard, task);
     }
     targetBoard.tasks.push(task);
     cloneContractGraphForBoard(sourceBoard, targetBoard, new Map([[sourceTask.id, task.id]]));
@@ -294,6 +306,7 @@ export async function removeTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const taskToRemove = findTask(board, taskId);
     if (!taskToRemove) return false;
+    assertManagementWrite(board, [taskToRemove], eventContext);
     const requirementId = taskToRemove.origin?.specRequirementId;
     const graphId = taskToRemove.origin?.graphId;
     const declaredByScope = Boolean(
@@ -332,29 +345,59 @@ export async function removeTask(
     event = createKanbanEvent(board.id, taskToRemove, 'task.removed', eventContext);
     board.tasks.splice(index, 1);
     removeTaskContractGraphState(board, taskToRemove.id);
+    const affectedTasks = new Set<KanbanTask>();
     for (const task of board.tasks) {
+      let taskChanged = false;
       if (task.dependsOn?.includes(taskToRemove.id)) {
         task.dependsOn = task.dependsOn.filter((depId) => depId !== taskToRemove.id);
         if (task.dependsOn.length === 0) delete task.dependsOn;
+        taskChanged = true;
       }
       if (task.childTaskIds?.includes(taskToRemove.id)) {
         task.childTaskIds = task.childTaskIds.filter((childId) => childId !== taskToRemove.id);
         if (task.childTaskIds.length === 0) delete task.childTaskIds;
+        taskChanged = true;
       }
-      if (task.parentTaskId === taskToRemove.id) delete task.parentTaskId;
-      if (task.mergedIntoTaskId === taskToRemove.id) delete task.mergedIntoTaskId;
+      if (task.parentTaskId === taskToRemove.id) {
+        delete task.parentTaskId;
+        taskChanged = true;
+      }
+      if (task.mergedIntoTaskId === taskToRemove.id) {
+        delete task.mergedIntoTaskId;
+        taskChanged = true;
+      }
       if (task.mergedFromTaskIds?.includes(taskToRemove.id)) {
         task.mergedFromTaskIds = task.mergedFromTaskIds.filter(
           (sourceId) => sourceId !== taskToRemove.id,
         );
         if (task.mergedFromTaskIds.length === 0) delete task.mergedFromTaskIds;
+        taskChanged = true;
       }
-      if (task.chain?.previousTaskId === taskToRemove.id) delete task.chain.previousTaskId;
-      if (task.chain?.nextTaskId === taskToRemove.id) delete task.chain.nextTaskId;
+      if (task.chain?.previousTaskId === taskToRemove.id) {
+        delete task.chain.previousTaskId;
+        taskChanged = true;
+      }
+      if (task.chain?.nextTaskId === taskToRemove.id) {
+        delete task.chain.nextTaskId;
+        taskChanged = true;
+      }
+      if (taskChanged) affectedTasks.add(task);
+    }
+    const isManaged = board.lifecycle?.mode === 'managed';
+    const now = nowIso();
+    for (const task of affectedTasks) {
+      stampAtomicityAssessment(board, task);
+      if (!isManaged && task.status === 'blocked' && areDependenciesMet(board, task.id)) {
+        task.status = 'ready';
+        const previousColumnId = task.columnId;
+        syncTaskColumnForStatus(board, task, previousColumnId);
+        if (previousColumnId !== task.columnId) normalizeColumnTaskOrders(board, previousColumnId);
+      }
+      task.updatedAt = now;
     }
     if (taskToRemove.chain?.chainId) normalizeChainMetadata(board, taskToRemove.chain.chainId);
     normalizeColumnTaskOrders(board, taskToRemove.columnId);
-    board.updatedAt = nowIso();
+    board.updatedAt = now;
     return true;
   });
   if (updated?.result && event) await emitKanbanEvent(projectRoot, event);
@@ -465,6 +508,7 @@ export async function addGoalMetricToTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
     const now = nowIso();
     const nextMetric: KanbanGoalMetric = {
       id: randomUUID(),
@@ -503,6 +547,7 @@ export async function updateGoalMetricOnTask(
     const task = findTask(board, taskId);
     const metric = task ? findGoalMetric(task.goalMetrics ?? [], metricId) : undefined;
     if (!task || !metric) return null;
+    assertManagementWrite(board, [task], eventContext);
     const before = { ...metric };
     if (patch.name !== undefined)
       metric.name = requireNonBlank(patch.name, 'Kanban goal metric name');
@@ -592,6 +637,7 @@ export async function updateCheckOnTask(
     const task = findTask(board, taskId);
     const check = task?.successCriteria?.find((candidate) => candidate.id === checkId);
     if (!task || !check) return null;
+    assertManagementWrite(board, [task], eventContext);
     const before = { ...check };
     Object.assign(check, patch);
     if (patch.type !== undefined && patch.type !== before.type) {
@@ -655,6 +701,7 @@ export async function removeCheckFromTask(
     const task = findTask(board, taskId);
     const index = task?.successCriteria?.findIndex((candidate) => candidate.id === checkId) ?? -1;
     if (!task || index === -1) return null;
+    assertManagementWrite(board, [task], eventContext);
     const [removed] = task.successCriteria!.splice(index, 1);
     if (task.successCriteria!.length === 0) delete task.successCriteria;
     // Dropping a criterion is the truthful escape this function exists for

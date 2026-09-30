@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { summarizeSystemHealth } from '../../src/components/SystemHealthChip';
 import { WorkbenchTopbar } from '../../src/components/WorkbenchTopbar';
-import { type SubagentView, useFleetStore, useUIStore } from '../../src/stores';
+import { type SubagentView, useConfigStore, useFleetStore, useUIStore } from '../../src/stores';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/i18n', () => ({
@@ -60,6 +61,9 @@ describe('WorkbenchTopbar responsive component', () => {
   beforeEach(() => {
     useUIStore.setState({ sidebarOpen: false, activeActivity: 'chat', currentView: 'chat' });
     useFleetStore.setState({ agents: new Map() });
+    // The separate WrongProxy / HQ / WS indicators these tests exercise are
+    // the `full` chrome; calm chrome is covered in its own describe below.
+    useLocalPrefs.setState({ chromeLevel: 'full' });
   });
 
   it('renders project name and view badge in both mobile and desktop viewports', () => {
@@ -205,4 +209,110 @@ describe('WorkbenchTopbar responsive component', () => {
       }
     },
   );
+});
+
+describe('WorkbenchTopbar calm chrome', () => {
+  beforeEach(() => {
+    useUIStore.setState({ sidebarOpen: false, activeActivity: 'chat', currentView: 'chat' });
+    useFleetStore.setState({ agents: new Map() });
+    useLocalPrefs.setState({ chromeLevel: 'calm', hqEnabled: false, wrongProxyEnabled: false });
+    useConfigStore.setState({ wsConnected: true });
+  });
+
+  it('folds WrongProxy, HQ and WS into one health chip', () => {
+    renderTopbar();
+
+    expect(screen.queryByTestId('wrongproxy-status-button')).toBeNull();
+    expect(screen.queryByTestId('hq-status-button')).toBeNull();
+    expect(screen.queryByTestId('ws-status-indicator')).toBeNull();
+    const chip = screen.getByTestId('system-health-chip');
+    expect(chip.getAttribute('data-tone')).toBe('ok');
+  });
+
+  it('turns the health chip to a warning when the backend WS drops', () => {
+    useConfigStore.setState({ wsConnected: false });
+    renderTopbar();
+
+    const chip = screen.getByTestId('system-health-chip');
+    expect(chip.getAttribute('data-tone')).toBe('warning');
+    expect(chip.textContent).toContain('1');
+  });
+
+  it('hides the idle "Ready" chip but shows the running status', () => {
+    const { unmount } = renderTopbar();
+    expect(screen.queryByTestId('topbar-run-status')).toBeNull();
+    unmount();
+
+    render(
+      <WorkbenchTopbar
+        currentView="chat"
+        projectName="TestProject"
+        sessionLabel="Session Alpha"
+        isLoading
+        iteration={{ index: 3, max: 10 }}
+        onPalette={vi.fn()}
+        onSettings={vi.fn()}
+      />,
+    );
+    const status = screen.getByTestId('topbar-run-status');
+    // The iteration count lives in the chat header under calm chrome.
+    expect(status.textContent).not.toContain('3/10');
+  });
+
+  it('keeps the idle "Ready" chip and iteration under full chrome', () => {
+    useLocalPrefs.setState({ chromeLevel: 'full' });
+    render(
+      <WorkbenchTopbar
+        currentView="chat"
+        projectName="TestProject"
+        sessionLabel="Session Alpha"
+        isLoading
+        iteration={{ index: 3, max: 10 }}
+        onPalette={vi.fn()}
+        onSettings={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('topbar-run-status').textContent).toContain('3/10');
+    expect(screen.queryByTestId('system-health-chip')).toBeNull();
+  });
+});
+
+describe('summarizeSystemHealth', () => {
+  const disabled = { status: 'disabled' as const, latencyMs: null, url: '' };
+
+  it('flags heap pressure, a sick index and dropped tools', () => {
+    const rows = summarizeSystemHealth({
+      wsConnected: true,
+      server: {
+        pid: 42,
+        memoryUsage: { rss: 500 * 1024 ** 2, heapUsed: 90, heapTotal: 100 },
+        heapLimit: 100,
+        codebaseIndexServer: { status: 'unresponsive', connected: false },
+      },
+      droppedTools: 2,
+      wrongProxy: disabled,
+      hq: { status: 'error', latencyMs: null, url: 'http://hq', error: 'ECONNREFUSED' },
+    });
+    const tone = Object.fromEntries(rows.map((r) => [r.id, r.tone]));
+    expect(tone).toEqual({
+      ws: 'ok',
+      server: 'destructive',
+      index: 'destructive',
+      tools: 'warning',
+      wrongproxy: 'muted',
+      hq: 'destructive',
+    });
+  });
+
+  it('omits server rows until metrics arrive and dropped tools when there are none', () => {
+    const rows = summarizeSystemHealth({
+      wsConnected: false,
+      server: null,
+      droppedTools: 0,
+      wrongProxy: disabled,
+      hq: disabled,
+    });
+    expect(rows.map((r) => r.id)).toEqual(['ws', 'wrongproxy', 'hq']);
+    expect(rows[0]!.tone).toBe('warning');
+  });
 });

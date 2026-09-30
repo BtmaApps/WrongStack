@@ -212,23 +212,75 @@ function buildTagClusters(memories: Sage[]): MemoryCluster[] {
   const clusters: MemoryCluster[] = [];
   const seen = new Set<string>();
 
+  // Inverted index: tag -> the indices of the memories carrying it.
+  //
+  // The previous shape walked every (i, j) pair in the corpus and, for each
+  // pair that shared enough tags, re-walked the whole corpus to collect the
+  // cluster members — cubic in the corpus on a run that is handed every
+  // active+stale memory of the project. A pair can only share
+  // MIN_SHARED_TAGS tags if both members sit in at least one common posting
+  // list, so enumerating pairs from the postings visits a superset of the
+  // pairs the old loop could act on and skips every pair that shares nothing.
+  const postings = new Map<string, number[]>();
   for (let i = 0; i < memories.length; i++) {
-    const a = memories[i]!;
-    if (a.tags.length < MIN_SHARED_TAGS) continue;
+    for (const tag of memories[i]!.tags) {
+      const list = postings.get(tag);
+      if (list) list.push(i);
+      else postings.set(tag, [i]);
+    }
+  }
 
-    for (let j = i + 1; j < memories.length; j++) {
+  // Distinct shared-tag count per candidate pair, incremented once per
+  // (pair, shared tag). Tags are unique per memory (normalizeTags dedupes on
+  // write), so this count is exactly the length the old `shared.length` test
+  // measured. Rows below the threshold are never materialized.
+  const sharedCounts = new Map<number, Map<number, number>>();
+  for (const list of postings.values()) {
+    for (let a = 0; a < list.length; a++) {
+      for (let b = a + 1; b < list.length; b++) {
+        const i = list[a]!;
+        const j = list[b]!;
+        let partners = sharedCounts.get(i);
+        if (!partners) {
+          partners = new Map();
+          sharedCounts.set(i, partners);
+        }
+        partners.set(j, (partners.get(j) ?? 0) + 1);
+      }
+    }
+  }
+
+  // Ascending (i, j) — the order the nested scan produced. Cluster order
+  // feeds generatePairs, and generatePairs is truncated to the LLM pair
+  // budget, so the order is part of the observable result.
+  const leftIndices = [...sharedCounts.keys()].sort((x, y) => x - y);
+  for (const i of leftIndices) {
+    const partners = sharedCounts.get(i)!;
+    const rightIndices = [...partners.keys()].sort((x, y) => x - y);
+    for (const j of rightIndices) {
+      if (partners.get(j)! < MIN_SHARED_TAGS) continue;
+      const a = memories[i]!;
       const b = memories[j]!;
-      if (b.tags.length < MIN_SHARED_TAGS) continue;
-
       const shared = a.tags.filter((t) => b.tags.includes(t));
       if (shared.length >= MIN_SHARED_TAGS) {
         const key = `tags:${shared.sort().join(',')}`;
         if (seen.has(key)) continue;
         seen.add(key);
 
-        // Find all other memories sharing these same tags
-        const rawMembers = memories.filter((m) => shared.every((t) => m.tags.includes(t)));
-        const members = dedupeById(rawMembers);
+        // Find all other memories sharing these same tags. Every member
+        // carries each shared tag, so it appears in every shared tag's
+        // posting: intersect those (smallest list first) instead of scanning
+        // the corpus once per cluster.
+        const distinctShared = [...new Set(shared)];
+        let smallest = postings.get(distinctShared[0]!)!;
+        for (const tag of distinctShared) {
+          const list = postings.get(tag)!;
+          if (list.length < smallest.length) smallest = list;
+        }
+        const rawMembers = smallest.filter((index) =>
+          distinctShared.every((tag) => memories[index]!.tags.includes(tag)),
+        );
+        const members = dedupeById(rawMembers.map((index) => memories[index]!));
         if (members.length >= 2 && members.length <= MAX_CLUSTER_SIZE) {
           clusters.push({
             key,

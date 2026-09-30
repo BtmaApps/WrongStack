@@ -1576,7 +1576,7 @@ describe('SqliteSageStore', () => {
       expect(second!.applied).toBe(false);
     });
 
-    it('reverts candidate to pending when target mutation fails (P0-3c)', async () => {
+    it('resolves a race-deleted target as a recorded no-op instead of reverting to pending (P0-3c, rule 3)', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
 
@@ -1593,10 +1593,9 @@ describe('SqliteSageStore', () => {
         targetMemoryId: memory.id,
       });
 
-      // Physically remove the target memory row so that the candidate
-      // resolution mutation fails — readSqliteSageRow returns null and
-      // updateSqliteSage throws "not found". Using raw SQL DELETE to
-      // bypass the soft-delete tombstone path.
+      // Physically remove the target memory row the way production hard
+      // removal does (hygiene purge, HQ-sync tombstone apply) — raw SQL
+      // DELETE bypasses the soft-delete tombstone path.
       const internals = store as unknown as {
         runMutation: <T>(work: () => T) => Promise<T>;
         stmt: (sql: string) => { run: (...args: unknown[]) => void };
@@ -1605,19 +1604,29 @@ describe('SqliteSageStore', () => {
         internals.stmt('DELETE FROM memories WHERE id = ?').run(memory.id);
       });
 
-      // Resolve as delete — the mutation will fail because the target row
-      // no longer exists (readSqliteSageRow returns null → updateSage throws).
+      // Resolve as delete against the missing target: the requested end
+      // state already holds, so the documented policy (candidate-lifecycle
+      // rule 3) records a no-op instead of emitting a delete mutation that
+      // updateSage would fail with "not found" — reverting to pending on
+      // every retry left the candidate unresolvable except via 'keep'.
+      // (Revert-to-pending remains the behavior for reviewable failures —
+      // see the promotion race in sqlite-behavior-coverage.test.ts.)
       const first = await store.resolveCandidate(candidate.id, 'delete');
 
-      // The resolution should report applied: false (mutation failed).
       expect(first!.applied).toBe(false);
       expect(first!.candidateId).toBe(candidate.id);
+      expect(first!.error).toBeUndefined();
 
-      // The candidate must be reverted to 'pending' so the caller can retry.
-      const candidates = await store.listCandidates();
-      const reverted = candidates.find((c) => c.id === candidate.id);
-      expect(reverted).toBeDefined();
-      expect(reverted!.status).toBe('pending');
+      // The candidate must record the decision terminally ('accepted'),
+      // not revert to 'pending'.
+      const candidates = await store.listCandidates(true);
+      const resolved = candidates.find((c) => c.id === candidate.id);
+      expect(resolved).toBeDefined();
+      expect(resolved!.status).toBe('accepted');
+
+      // A second identical resolve reports alreadyResolved.
+      const second = await store.resolveCandidate(candidate.id, 'delete');
+      expect(second!.alreadyResolved).toBe(true);
     });
   });
 

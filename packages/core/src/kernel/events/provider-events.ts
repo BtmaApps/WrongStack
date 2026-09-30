@@ -251,6 +251,20 @@ export interface ProviderEventMap {
     timestamp: number;
   };
   /**
+   * The backend answered with another model than the one requested — e.g. the
+   * ChatGPT backend routes accounts flagged for high-risk cyber activity to a
+   * fallback model. Provider-reported (never inferred from a model-name diff,
+   * which aliases would trip), and emitted once per change, not per request.
+   */
+  'provider.model_rerouted': {
+    sessionId?: string | undefined;
+    providerId: string;
+    requested: string;
+    served: string;
+    reason?: string | undefined;
+    timestamp: number;
+  };
+  /**
    * Fired when the active provider/model is switched (e.g. via /model, UI switcher, or API).
    */
   'provider.model_switched': {

@@ -117,6 +117,7 @@ export interface RemoveKanbanColumnOptions {
 }
 
 export interface CreateKanbanTaskInput {
+  id?: string | undefined;
   title: string;
   description?: string | undefined;
   dueDate?: string | undefined;

@@ -19,9 +19,33 @@ const DEFAULT_REPORT_OPTIONS: ReportOptions = {
   groupBySeverity: true,
 };
 
+const REPORT_FORMATS: readonly ReportOptions['format'][] = ['markdown', 'json', 'html'];
+
+/**
+ * Narrow an arbitrary value to the declared `ReportOptions['format']` union.
+ *
+ * This is the single place the union is enforced, so a caller cannot hold a
+ * second, divergent copy of it and drift. The declared type is erased at
+ * runtime, so any value that reaches a path must be tested here rather than
+ * asserted: an out-of-union string becomes a filename segment, and
+ * `path.join(outputDir, filename)` normalizes `..` and separator segments away
+ * — which is how a report once escaped its output directory. Anything outside
+ * the union (including non-strings) falls back to the default format.
+ */
+export function resolveReportFormat(value: unknown): ReportOptions['format'] {
+  return REPORT_FORMATS.includes(value as ReportOptions['format'])
+    ? (value as ReportOptions['format'])
+    : DEFAULT_REPORT_OPTIONS.format;
+}
+
 export function createSecurityReportFilename(format: ReportOptions['format']): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  return `security-report-${timestamp}-${randomUUID().slice(0, 8)}.${format}`;
+  // Re-validated here rather than trusted: this is the choke point where
+  // `format` becomes a path segment, so the "cannot escape the output
+  // directory" invariant must hold for every caller, including a JavaScript one
+  // that never passed through a type checker.
+  const extension = resolveReportFormat(format);
+  return `security-report-${timestamp}-${randomUUID().slice(0, 8)}.${extension}`;
 }
 
 export class ReportGenerator {
@@ -34,12 +58,19 @@ export class ReportGenerator {
   async generate(scanResult: ScanResult): Promise<string> {
     await this.ensureOutputDir();
 
-    const filename = createSecurityReportFilename(this.options.format);
+    // ONE validated value drives both the content generator and the filename
+    // extension. Deriving them separately let them disagree — an out-of-union
+    // `format` produced a `.json` extension over a markdown body (or, once
+    // `createSecurityReportFilename` hardened, markdown over `.json`). The
+    // resolved format is the only thing either side may look at.
+    const format = resolveReportFormat(this.options.format);
+
+    const filename = createSecurityReportFilename(format);
     const filepath = join(this.options.outputDir, filename);
 
     let content: string;
 
-    switch (this.options.format) {
+    switch (format) {
       case 'json':
         content = this.generateJson(scanResult);
         break;

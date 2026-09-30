@@ -28,6 +28,7 @@ import {
   renderSkillAugmentation,
   saveProjectSkillAugmentation,
 } from './project-agent-skill-layer.js';
+import { refreshStaleProjectAgentLearning } from './project-agent-staleness.js';
 
 /** Resolved model handle used for headless synthesis. */
 export interface LearningOptimizerLlm {
@@ -149,6 +150,14 @@ export async function optimizeProjectAgentLearning(
   options: OptimizeLearningOptions = {},
 ): Promise<OptimizeLearningResult> {
   const normalizedRole = assertProjectAgentRole(role);
+  // Knowledge that cites files which are gone is taken out before anything is
+  // distilled: a model handed a stale directive beside a stale addendum line
+  // would faithfully merge the two into a sharper version of the same mistake.
+  try {
+    refreshStaleProjectAgentLearning(normalizedRole, projectRoot ?? process.cwd());
+  } catch {
+    // Hygiene only — a failed scrub must not cost the pass.
+  }
   const entries = readRawLearnedEntries(normalizedRole, projectRoot);
   const base = { role: normalizedRole, rawEntryCount: entries.length, skills: [] as string[] };
   if (entries.length === 0) return { ...base, status: 'no-entries' };

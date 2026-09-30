@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Test provider",
+    "provider-quota": "Quota del piano",
     "chronicle": "Chronicle",
     "intake": "Requisiti",
     "roster": "Roster agenti",
@@ -3642,6 +3643,7 @@
       "sddhub": "Hub SDD",
       "settings": "Impostazioni",
       "provider-test": "Test dei provider",
+      "provider-quota": "Quota del piano",
       "memory": "Memoria",
       "roster": "Roster",
       "codemap": "Atlante del codice",
@@ -3652,7 +3654,19 @@
       "history": "Cronologia"
     },
     "statusRunning": "In esecuzione",
-    "statusReady": "Pronto"
+    "statusReady": "Pronto",
+    "health": {
+      "issues_one": "Sistema: {{count}} problema",
+      "issues_other": "Sistema: {{count}} problemi",
+      "ok": "Sistema: tutto a posto",
+      "heading": "Stato del sistema",
+      "openIntegrations": "Impostazioni integrazioni"
+    },
+    "appearance": "Aspetto",
+    "theme": "Tema",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro",
+    "themeSystem": "Sistema"
   },
   "agentsPanel": {
     "agentRoster": "Roster agenti"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Non verificabile",
     "irrelevant": "Non pertinente",
     "advisory": "Valutazione indicativa del modello; esamina le prove prima di applicarla."
+  },
+  "quotaPanel": {
+    "title": "Quota del piano",
+    "refresh": "Aggiorna quota",
+    "refreshTitle": "Leggi ora la quota del piano di ogni provider salvato: letture dell'account che non consumano il piano.",
+    "left": "{{pct}}% rimanente",
+    "resetsIn": "si azzera tra {{time}}",
+    "fullIn": "piena tra ~{{time}} a questo ritmo",
+    "reached": "limite raggiunto",
+    "readFailed": "Impossibile leggere la quota — controlla la chiave o il piano.",
+    "reading": "Lettura…",
+    "asOf": "{{time}} fa",
+    "balance": "Saldo",
+    "none": "Nessun provider con quota del piano leggibile configurato (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Tutte le quote ({{count}})",
+    "noneInUse": "I provider in uso non riportano alcuna quota del piano.",
+    "poolMore": "+{{count}} altri nel pool — vedi Quota del piano.",
+    "poolNoMatch": "Nessun account del pool corrisponde a questo modello ({{count}} nel pool); una combinazione ne sceglie uno per richiesta."
+  },
+  "quotaPage": {
+    "title": "Quota del piano",
+    "subtitle": "Tutti gli account misurati: finestre di abbonamento, account del pool del gateway e saldi prepagati. Solo letture dell’account, nessuna chiamata al modello.",
+    "close": "Torna alla chat",
+    "search": "Filtra per provider, account o piano",
+    "attentionOnly": "Solo vicini al limite",
+    "noMatch": "Nulla corrisponde al filtro.",
+    "inUseBadge": "in uso",
+    "summary": {
+      "accounts": "Account",
+      "warn": "Oltre il 70%",
+      "critical": "Oltre il 90% o bloccati",
+      "nextRelief": "Prossimo sollievo"
+    },
+    "sections": {
+      "inUse": "In uso ora",
+      "inUseHint": "Ciò che usano le sessioni aperte e i subagenti in esecuzione.",
+      "plans": "Piani in abbonamento",
+      "pool": "Pool OmniRoute",
+      "poolHint": "Il gateway ruota tra questi account; se uno si esaurisce la sessione non si ferma.",
+      "balances": "Saldi prepagati"
+    }
   }
 }

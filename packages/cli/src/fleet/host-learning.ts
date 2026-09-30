@@ -59,7 +59,12 @@ export function captureCompletedTaskLearningForHost(
   // nothing to earn.
   if (graded) {
     try {
-      const outcome = recordDirectiveOutcomes(subject.role, finalText, succeeded, deps.projectRoot);
+      const outcome = recordDirectiveOutcomes(
+        subject.role,
+        attributionText(finalText, result),
+        succeeded,
+        deps.projectRoot,
+      );
       if (outcome.attributed > 0) {
         logger?.debug?.(
           `directive outcomes: ${outcome.attributed} applied for role "${subject.role}" (${succeeded ? 'success' : 'failure'})`,
@@ -98,6 +103,26 @@ export function captureCompletedTaskLearningForHost(
   } catch (error) {
     logger?.warn(`agent learning capture failed for role "${subject.role}": ${describe(error)}`);
   }
+}
+
+/**
+ * What the directive-outcome scan reads to decide which directives a task
+ * exercised: the final text plus the structured report's own record of what
+ * was touched.
+ *
+ * Directive anchors are overwhelmingly file paths, and `files_examined` is the
+ * one place a worker lists every file it opened — whether or not its prose
+ * mentions them. Scanning the prose alone put a directive into the control arm
+ * whenever the agent followed it without narrating it, which is the case the
+ * control arm is supposed to exclude. Capture still reads the final text only:
+ * `## LEARNED` blocks live there, and nowhere else.
+ */
+function attributionText(finalText: string, result: TaskResult): string {
+  const report = result.report;
+  if (!report) return finalText;
+  return [finalText, report.summary, ...(report.findings ?? []), ...(report.files_examined ?? [])]
+    .filter((part): part is string => typeof part === 'string' && part.length > 0)
+    .join('\n');
 }
 
 function describe(error: unknown): string {

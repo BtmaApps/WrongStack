@@ -4,8 +4,15 @@ import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { DefaultModelsRegistry } from '@wrongstack/core/models';
 import type { ModelsDevPayload } from '@wrongstack/core/types';
 import { providerIdentities } from '@wrongstack/core/utils';
-import { describe, expect, it, vi } from 'vitest';
-import { buildProviderFactoriesFromRegistry, CatalogRoutedProvider } from '../src/index.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  AnthropicProvider,
+  buildProviderFactoriesFromRegistry,
+  CatalogRoutedProvider,
+  MiniMaxProvider,
+  makeProviderFromConfig,
+  ZaiAccountProvider,
+} from '../src/index.js';
 
 const SAMPLE: ModelsDevPayload = {
   anthropic: {
@@ -380,5 +387,210 @@ describe('buildProviderFactoriesFromRegistry', () => {
         quirks: { maxTools: 0 },
       }),
     ).toThrow(/Invalid quirks/);
+  });
+});
+
+describe('MiniMax routing', () => {
+  // models.dev publishes every MiniMax entry under the Anthropic family, so
+  // without host-keyed routing they all built a plain AnthropicProvider and
+  // missed the MiniMax transport (thinking mapping, quota, region hints).
+  const minimaxModels = {
+    'MiniMax-M3': { id: 'MiniMax-M3', name: 'MiniMax-M3', tool_call: true },
+  };
+  const MINIMAX_SAMPLE: ModelsDevPayload = {
+    ...SAMPLE,
+    minimax: {
+      id: 'minimax',
+      name: 'MiniMax',
+      npm: '@ai-sdk/anthropic',
+      env: ['MINIMAX_API_KEY'],
+      api: 'https://api.minimax.io/anthropic/v1',
+      models: minimaxModels,
+    },
+    'minimax-coding-plan': {
+      id: 'minimax-coding-plan',
+      name: 'MiniMax Coding Plan',
+      npm: '@ai-sdk/anthropic',
+      env: ['MINIMAX_API_KEY'],
+      api: 'https://api.minimax.io/anthropic/v1',
+      models: minimaxModels,
+    },
+    'minimax-cn': {
+      id: 'minimax-cn',
+      name: 'MiniMax (China)',
+      npm: '@ai-sdk/anthropic',
+      env: ['MINIMAX_API_KEY'],
+      api: 'https://api.minimax.cn/anthropic/v1',
+      models: minimaxModels,
+    },
+    'minimax-cn-coding-plan': {
+      id: 'minimax-cn-coding-plan',
+      name: 'MiniMax Coding Plan (China)',
+      npm: '@ai-sdk/anthropic',
+      env: ['MINIMAX_API_KEY'],
+      api: 'https://api.minimax.cn/anthropic/v1',
+      models: minimaxModels,
+    },
+  };
+
+  it('builds the MiniMax transport for every catalog MiniMax id, both regions', async () => {
+    const registry = new DefaultModelsRegistry({
+      cacheFile: path.join(os.tmpdir(), `wstack-factest-mm-${Date.now()}.json`),
+      seed: MINIMAX_SAMPLE,
+    });
+    const factories = await buildProviderFactoriesFromRegistry({ registry });
+    for (const id of ['minimax', 'minimax-coding-plan', 'minimax-cn', 'minimax-cn-coding-plan']) {
+      const factory = factories.find((f) => f.type === id);
+      const provider = factory?.create({ type: id, apiKey: 'k' });
+      expect(provider, id).toBeInstanceOf(MiniMaxProvider);
+      expect(provider?.id).toBe(id);
+    }
+    const anthropic = factories
+      .find((f) => f.type === 'anthropic')
+      ?.create({
+        type: 'anthropic',
+        apiKey: 'k',
+      });
+    expect(anthropic).toBeInstanceOf(AnthropicProvider);
+
+    // WrongProxy on: the host layer hands the factory a proxy-mounted base
+    // URL. The vendor behind `localhost` must still get the MiniMax transport,
+    // or turning tracing on silently switches quota and thinking mapping off.
+    const proxied = factories
+      .find((f) => f.type === 'minimax-coding-plan')
+      ?.create({
+        type: 'minimax-coding-plan',
+        apiKey: 'k',
+        baseUrl: 'http://localhost:3444/proxy/api.minimax.io/anthropic/v1',
+      });
+    expect(proxied).toBeInstanceOf(MiniMaxProvider);
+  });
+
+  it('routes a hand-written alias by host, whatever family it declares', () => {
+    const viaAnthropic = makeProviderFromConfig('my-minimax', {
+      type: 'my-minimax',
+      family: 'anthropic',
+      apiKey: 'k',
+      baseUrl: 'https://api.minimaxi.com/anthropic',
+    });
+    expect(viaAnthropic).toBeInstanceOf(MiniMaxProvider);
+    const viaCompat = makeProviderFromConfig('work', {
+      type: 'work',
+      family: 'openai-compatible',
+      apiKey: 'k',
+      baseUrl: 'https://api.minimax.io/v1',
+    });
+    expect(viaCompat).toBeInstanceOf(MiniMaxProvider);
+    const elsewhere = makeProviderFromConfig('proxy', {
+      type: 'proxy',
+      family: 'anthropic',
+      apiKey: 'k',
+      baseUrl: 'https://proxy.example.com/anthropic',
+    });
+    expect(elsewhere).not.toBeInstanceOf(MiniMaxProvider);
+  });
+});
+
+describe('Z.AI / BigModel routing', () => {
+  // models.dev files all four GLM providers under openai-compatible; only the
+  // `zai*` presets carried the GLM request policy, so BigModel ids sent the
+  // generic effort fill. Every one of them gets the account plane.
+  const glmModels = { 'glm-5.3': { id: 'glm-5.3', name: 'GLM-5.3', tool_call: true } };
+  const entry = (id: string, api: string) => ({
+    id,
+    name: id,
+    npm: '@ai-sdk/openai-compatible',
+    env: ['ZHIPU_API_KEY'],
+    api,
+    models: glmModels,
+  });
+  const ZAI_SAMPLE: ModelsDevPayload = {
+    ...SAMPLE,
+    zai: entry('zai', 'https://api.z.ai/api/paas/v4'),
+    'zai-coding-plan': entry('zai-coding-plan', 'https://api.z.ai/api/coding/paas/v4'),
+    zhipuai: entry('zhipuai', 'https://open.bigmodel.cn/api/paas/v4'),
+    'zhipuai-coding-plan': entry(
+      'zhipuai-coding-plan',
+      'https://open.bigmodel.cn/api/coding/paas/v4',
+    ),
+  };
+
+  // Stubbed BEFORE any provider is built: transports capture `fetch` at
+  // construction, and these tests must never reach the network.
+  let bodies: Record<string, unknown>[] = [];
+  beforeEach(() => {
+    bodies = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        if (init?.body) bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        return new Response('', { status: 200 });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function wireBody(provider: {
+    stream: ZaiAccountProvider['stream'];
+  }): Promise<Record<string, unknown>> {
+    bodies = [];
+    for await (const _ of provider.stream(
+      {
+        model: 'glm-5.3',
+        messages: [{ role: 'user', content: 'hi' }],
+        maxTokens: 1024,
+        reasoning: { effort: 'medium' },
+      },
+      { signal: new AbortController().signal },
+    )) {
+      // drained
+    }
+    return bodies[0] ?? {};
+  }
+
+  it('wraps every catalog GLM id and gives BigModel the GLM wire contract', async () => {
+    const registry = new DefaultModelsRegistry({
+      cacheFile: path.join(os.tmpdir(), `wstack-factest-zai-${Date.now()}.json`),
+      seed: ZAI_SAMPLE,
+    });
+    const factories = await buildProviderFactoriesFromRegistry({ registry });
+    for (const id of ['zai', 'zai-coding-plan', 'zhipuai', 'zhipuai-coding-plan']) {
+      const provider = factories.find((f) => f.type === id)?.create({ type: id, apiKey: 'k' });
+      expect(provider, id).toBeInstanceOf(ZaiAccountProvider);
+      expect(provider?.id).toBe(id);
+    }
+    const bigmodel = factories
+      .find((f) => f.type === 'zhipuai-coding-plan')
+      ?.create({ type: 'zhipuai-coding-plan', apiKey: 'k' }) as ZaiAccountProvider;
+    const body = await wireBody(bigmodel);
+    expect(body['thinking']).toEqual({ type: 'enabled' });
+    expect(body['reasoning_effort']).toBe('high');
+  });
+
+  it('routes aliases and hand-rolled providers by host', async () => {
+    const viaAnthropic = makeProviderFromConfig('glm-claude', {
+      type: 'glm-claude',
+      family: 'anthropic',
+      apiKey: 'k',
+      baseUrl: 'https://api.z.ai/api/anthropic',
+    });
+    expect(viaAnthropic).toBeInstanceOf(ZaiAccountProvider);
+    const custom = makeProviderFromConfig('glm-work', {
+      type: 'glm-work',
+      family: 'openai-compatible',
+      apiKey: 'k',
+      baseUrl: 'http://localhost:3444/proxy/open.bigmodel.cn/api/coding/paas/v4',
+    });
+    expect(custom).toBeInstanceOf(ZaiAccountProvider);
+    expect((await wireBody(custom as ZaiAccountProvider))['reasoning_effort']).toBe('high');
+    const elsewhere = makeProviderFromConfig('other', {
+      type: 'other',
+      family: 'openai-compatible',
+      apiKey: 'k',
+      baseUrl: 'https://api.example.com/v1',
+    });
+    expect(elsewhere).not.toBeInstanceOf(ZaiAccountProvider);
   });
 });

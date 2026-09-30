@@ -35,7 +35,7 @@ function recoveryCode(value: unknown): WebSocketRecoveryCode | undefined {
 
 /** Only an explicit server code permits replay, never words in an error message. */
 export function webSocketRecoveryCode(error: ProviderError): WebSocketRecoveryCode | undefined {
-  const flattened = recoveryCode(error.body?.type);
+  const flattened = recoveryCode(error.body?.type) ?? recoveryCode(error.body?.code);
   if (flattened) return flattened;
   try {
     const parsed: unknown = JSON.parse(error.body?.raw ?? '');

@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Prueba de proveedor",
+    "provider-quota": "Cuota del plan",
     "chronicle": "Chronicle",
     "intake": "Requisitos",
     "roster": "Plantilla de agentes",
@@ -3642,6 +3643,7 @@
       "sddhub": "Centro SDD",
       "settings": "Ajustes",
       "provider-test": "Prueba de proveedores",
+      "provider-quota": "Cuota del plan",
       "memory": "Memoria",
       "roster": "Plantilla",
       "codemap": "Atlas de código",
@@ -3652,7 +3654,19 @@
       "history": "Historial"
     },
     "statusRunning": "Ejecutando",
-    "statusReady": "Listo"
+    "statusReady": "Listo",
+    "health": {
+      "issues_one": "Sistema: {{count}} problema",
+      "issues_other": "Sistema: {{count}} problemas",
+      "ok": "Sistema: todo bien",
+      "heading": "Estado del sistema",
+      "openIntegrations": "Ajustes de integraciones"
+    },
+    "appearance": "Apariencia",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema"
   },
   "agentsPanel": {
     "agentRoster": "Plantilla de agentes"
@@ -4104,5 +4118,46 @@
     "unverifiable": "No verificable",
     "irrelevant": "No pertinente",
     "advisory": "Evaluación orientativa del modelo; revisa las pruebas antes de aplicarla."
+  },
+  "quotaPanel": {
+    "title": "Cuota del plan",
+    "refresh": "Actualizar cuota",
+    "refreshTitle": "Leer ahora la cuota del plan de cada proveedor guardado: lecturas de cuenta que no consumen el plan.",
+    "left": "{{pct}}% restante",
+    "resetsIn": "se reinicia en {{time}}",
+    "fullIn": "llena en ~{{time}} a este ritmo",
+    "reached": "límite alcanzado",
+    "readFailed": "No se pudo leer la cuota: revisa la clave o el plan.",
+    "reading": "Leyendo…",
+    "asOf": "hace {{time}}",
+    "balance": "Saldo",
+    "none": "No hay ningún proveedor con cuota de plan legible configurado (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Todas las cuotas ({{count}})",
+    "noneInUse": "Los proveedores en uso no informan cuota de plan.",
+    "poolMore": "+{{count}} más en el pool — ver Cuota del plan.",
+    "poolNoMatch": "Ninguna cuenta del pool coincide con este modelo ({{count}} en el pool); una combinación elige una por solicitud."
+  },
+  "quotaPage": {
+    "title": "Cuota del plan",
+    "subtitle": "Todas las cuentas medidas: ventanas de suscripción, cuentas del pool del gateway y saldos prepago. Solo lecturas de cuenta; ninguna llamada al modelo.",
+    "close": "Volver al chat",
+    "search": "Filtrar por proveedor, cuenta o plan",
+    "attentionOnly": "Solo cerca del límite",
+    "noMatch": "Nada coincide con el filtro.",
+    "inUseBadge": "en uso",
+    "summary": {
+      "accounts": "Cuentas",
+      "warn": "Más del 70 %",
+      "critical": "Más del 90 % o cortadas",
+      "nextRelief": "Próximo alivio"
+    },
+    "sections": {
+      "inUse": "En uso ahora",
+      "inUseHint": "Lo que usan las sesiones abiertas y los subagentes en ejecución.",
+      "plans": "Planes de suscripción",
+      "pool": "Pool de OmniRoute",
+      "poolHint": "El gateway rota entre estas cuentas; si una se agota, la sesión no se detiene.",
+      "balances": "Saldos prepago"
+    }
   }
 }

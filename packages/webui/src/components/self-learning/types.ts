@@ -31,6 +31,12 @@ export interface RoleSkill {
   score?: number;
   /** Whether this skill makes the eager cut and is actually loaded at spawn. */
   eager?: boolean;
+  /**
+   * Why the last spawn of this role could not load the skill at all. A
+   * developed skill in this state still reaches the agent as its project
+   * addendum alone.
+   */
+  blocked?: 'missing-capability' | 'missing-tool';
 }
 
 /** A directive the loop retired after it kept correlating with failed tasks. */

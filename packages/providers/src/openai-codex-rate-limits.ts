@@ -167,7 +167,6 @@ export function parseCodexRateLimitForLimit(
   }
   const credits = parseCredits(headers);
   const meterLabel = headerStr(headers, `${prefix}-limit-name`);
-  const reachedWindowId = headerStr(headers, 'x-codex-rate-limit-reached-type')?.toLowerCase();
   const note = headerStr(headers, 'x-codex-promo-message');
   // Authoritative plan tier as the backend sees it right now. The JWT claim
   // that used to be the only source is a snapshot from when the token was
@@ -180,10 +179,31 @@ export function parseCodexRateLimitForLimit(
     ...(meterLabel !== undefined ? { meterLabel } : {}),
     windows,
     ...(credits !== undefined ? { credits } : {}),
-    ...(reachedWindowId !== undefined ? { reachedWindowId } : {}),
     ...(note !== undefined ? { note } : {}),
     capturedAt: now,
   };
+}
+
+/**
+ * The window that is actually cutting a meter off: of the windows at or above
+ * 100%, the one that reopens LAST, because the meter stays blocked until every
+ * exhausted window has reset. Undefined when nothing is exhausted.
+ */
+export function codexBlockingWindow(
+  snapshot: ProviderQuotaSnapshot,
+): ProviderQuotaWindow | undefined {
+  let blocking: ProviderQuotaWindow | undefined;
+  for (const window of snapshot.windows) {
+    if (window.usedPercent < 100) continue;
+    if (
+      blocking === undefined ||
+      (window.resetsAt !== undefined &&
+        (blocking.resetsAt === undefined || window.resetsAt > blocking.resetsAt))
+    ) {
+      blocking = window;
+    }
+  }
+  return blocking;
 }
 
 function enumerateHeaderNames(headers: EnumerableHeaders): string[] {
@@ -228,7 +248,29 @@ export function parseCodexRateLimitHeaders(
     const snapshot = parseCodexRateLimitForLimit(headers, limitId, now);
     if (hasQuotaData(snapshot)) out.push(snapshot);
   }
-  return out;
+  return markCodexReachedWindow(out, headers);
+}
+
+/**
+ * Name the window that cut the account off, on the meter that did it.
+ *
+ * `x-codex-rate-limit-reached-type` is a REASON (`rate_limit_reached`,
+ * `workspace_owner_credits_depleted`, …), not a window id, and
+ * `x-codex-active-limit` names the family it applies to (`codex` when absent)
+ * — both as the official client reads them. The window is the exhausted one
+ * in that family; a credits-depleted reason with no window at 100% names none.
+ */
+function markCodexReachedWindow(
+  snapshots: ProviderQuotaSnapshot[],
+  headers: HeadersLike,
+): ProviderQuotaSnapshot[] {
+  if (headerStr(headers, 'x-codex-rate-limit-reached-type') === undefined) return snapshots;
+  const active = normalizeLimitId(headerStr(headers, 'x-codex-active-limit') ?? DEFAULT_LIMIT_ID);
+  return snapshots.map((snapshot) => {
+    if (snapshot.meterId !== (active || DEFAULT_LIMIT_ID)) return snapshot;
+    const blocking = codexBlockingWindow(snapshot);
+    return blocking ? { ...snapshot, reachedWindowId: blocking.id } : snapshot;
+  });
 }
 
 // ── SSE event ───────────────────────────────────────────────────────────────
@@ -303,4 +345,152 @@ export function parseCodexRateLimitEvent(
     ...(credits !== undefined ? { credits } : {}),
     capturedAt: now,
   };
+}
+
+// ── Account usage read (`GET /wham/usage`) ─────────────────────────────────
+
+interface UsageWindow {
+  used_percent?: unknown;
+  limit_window_seconds?: unknown;
+  reset_after_seconds?: unknown;
+  reset_at?: unknown;
+}
+
+interface UsageRateLimit {
+  limit_reached?: unknown;
+  primary_window?: unknown;
+  secondary_window?: unknown;
+}
+
+function finite(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function usageWindow(id: string, raw: unknown, now: number): ProviderQuotaWindow | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const w = raw as UsageWindow;
+  const usedPercent = finite(w.used_percent);
+  if (usedPercent === undefined) return undefined;
+  const seconds = finite(w.limit_window_seconds);
+  const resetAfter = finite(w.reset_after_seconds);
+  const resetsAt =
+    finite(w.reset_at) ??
+    (resetAfter !== undefined && resetAfter > 0 ? Math.floor(now / 1000) + resetAfter : undefined);
+  return {
+    id,
+    usedPercent,
+    ...(seconds !== undefined && seconds > 0 ? { windowMinutes: Math.round(seconds / 60) } : {}),
+    ...(resetsAt !== undefined && resetsAt > 0 ? { resetsAt: Math.trunc(resetsAt) } : {}),
+  };
+}
+
+function usageMeter(
+  providerId: string,
+  meterId: string,
+  raw: unknown,
+  extra: Partial<ProviderQuotaSnapshot>,
+  now: number,
+): ProviderQuotaSnapshot {
+  const limit = (raw && typeof raw === 'object' ? raw : {}) as UsageRateLimit;
+  const windows: ProviderQuotaWindow[] = [];
+  for (const [id, value] of [
+    ['primary', limit.primary_window],
+    ['secondary', limit.secondary_window],
+  ] as const) {
+    const window = usageWindow(id, value, now);
+    if (window) windows.push(window);
+  }
+  // `limit_reached` names no window; the one at 100% is the one cutting off.
+  const reached =
+    limit.limit_reached === true ? windows.find((w) => w.usedPercent >= 100)?.id : undefined;
+  return {
+    providerId,
+    meterId,
+    ...extra,
+    windows,
+    ...(reached !== undefined ? { reachedWindowId: reached } : {}),
+    capturedAt: now,
+  };
+}
+
+/**
+ * Parse the ChatGPT account usage read (`GET /wham/usage`, verified live
+ * 2026-09-30 on a Pro plan) into the same snapshots the response headers
+ * produce, so a reading taken before any turn and one taken from a turn land
+ * on the same meters:
+ *
+ *   plan_type                         `pro`, `plus`, …
+ *   rate_limit.{primary,secondary}_window
+ *     .used_percent                   0..100
+ *     .limit_window_seconds           604800 = weekly (a Pro plan had only this one)
+ *     .reset_at / .reset_after_seconds
+ *   rate_limit.limit_reached          true once a window is exhausted
+ *   credits.{has_credits,unlimited,balance}
+ *   additional_rate_limits[]          { limit_name, metered_feature, rate_limit } —
+ *                                     separate pools such as `gpt-reserve`
+ *
+ * Identity fields in the same body (email, user and account ids) are never
+ * read.
+ */
+export function parseCodexUsagePayload(
+  providerId: string,
+  json: unknown,
+  now: number = Date.now(),
+): ProviderQuotaSnapshot[] {
+  if (!json || typeof json !== 'object') return [];
+  const body = json as Record<string, unknown>;
+  const planLabel = typeof body['plan_type'] === 'string' ? body['plan_type'] : undefined;
+  const rawCredits = body['credits'] as
+    | { has_credits?: unknown; unlimited?: unknown; balance?: unknown }
+    | null
+    | undefined;
+  const credits: ProviderQuotaCredits | undefined =
+    rawCredits &&
+    typeof rawCredits.has_credits === 'boolean' &&
+    typeof rawCredits.unlimited === 'boolean'
+      ? {
+          hasCredits: rawCredits.has_credits,
+          unlimited: rawCredits.unlimited,
+          ...(typeof rawCredits.balance === 'string' ? { balance: rawCredits.balance } : {}),
+        }
+      : undefined;
+  const out: ProviderQuotaSnapshot[] = [
+    usageMeter(
+      providerId,
+      DEFAULT_LIMIT_ID,
+      body['rate_limit'],
+      {
+        ...(planLabel !== undefined ? { planLabel } : {}),
+        ...(credits !== undefined ? { credits } : {}),
+      },
+      now,
+    ),
+  ];
+  const additional = body['additional_rate_limits'];
+  if (Array.isArray(additional)) {
+    for (const raw of additional) {
+      if (!raw || typeof raw !== 'object') continue;
+      const entry = raw as {
+        limit_name?: unknown;
+        metered_feature?: unknown;
+        rate_limit?: unknown;
+      };
+      const feature = typeof entry.metered_feature === 'string' ? entry.metered_feature : undefined;
+      const name = typeof entry.limit_name === 'string' ? entry.limit_name : undefined;
+      const meterId = normalizeLimitId(feature ?? name ?? '');
+      if (!meterId) continue;
+      const snapshot = usageMeter(
+        providerId,
+        meterId,
+        entry.rate_limit,
+        {
+          ...(name !== undefined ? { meterLabel: name } : {}),
+          ...(planLabel !== undefined ? { planLabel } : {}),
+        },
+        now,
+      );
+      if (hasQuotaData(snapshot)) out.push(snapshot);
+    }
+  }
+  return out.filter(hasQuotaData);
 }

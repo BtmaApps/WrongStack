@@ -108,6 +108,36 @@ describe('task outcome → learning files', () => {
     expect(loadSkillAffinity('verifier', projectRoot).entries['testing']?.failed).toBe(1);
   });
 
+  it('credits a directive whose anchor file the report lists as examined, not only narrated', () => {
+    const pathDirective =
+      'Always read `packages/core/src/coordination/agents/project-agent-capture.ts` before changing how LEARNED blocks are parsed.';
+    captureLearnedFromAgentOutputDetailed(
+      `## LEARNED\n${pathDirective}`,
+      'verifier',
+      projectRoot,
+      true,
+    );
+    const tracker = new HostLearningRoleTracker();
+    tracker.record('sub-1', 'verifier', ['testing']);
+
+    // The prose never names the file; only the structured report does.
+    tracker.capture(
+      {
+        ...taskResult('success', 'Parser behaviour confirmed; no change needed.'),
+        report: {
+          summary: 'Checked the capture parser.',
+          findings: [],
+          files_examined: ['packages/core/src/coordination/agents/project-agent-capture.ts'],
+          confidence: 0.9,
+          suggested_next_steps: [],
+        },
+      },
+      deps(),
+    );
+
+    expect(trialsFor('project-agent-capture.ts')).toEqual({ applied: 1, wins: 1, losses: 0 });
+  });
+
   it('scores nothing when the user cancelled the task', () => {
     captureLearnedFromAgentOutputDetailed(
       `## LEARNED\n${DIRECTIVE}`,

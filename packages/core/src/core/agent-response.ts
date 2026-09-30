@@ -45,6 +45,8 @@ export interface AgentResponseHandler {
 
 const MAX_TODO_SNAPSHOT_ITEMS = 10;
 const MAX_TODO_SNAPSHOT_CONTENT = 180;
+/** `ctx.meta` latch: the last model reroute surfaced for this context. */
+const MODEL_REROUTE_META_KEY = 'lastModelReroute';
 
 /**
  * Build the leader-only, per-request decision gate for `<nextsteps>`.
@@ -544,6 +546,24 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       usage: res.usage,
       stopReason: res.stopReason,
     });
+    // Once per change, not per request: every request of a rerouted account
+    // is rerouted, and a notice each time would bury the conversation. A
+    // response from the requested model clears the latch.
+    // Ancillary: a context without `meta` (embedders, partial test contexts)
+    // must still process the response, just without the latch.
+    const rerouteMeta = a.ctx.meta as Record<string, unknown> | undefined;
+    const rerouteKey = res.rerouted ? `${res.rerouted.requested}\u0000${res.rerouted.served}` : '';
+    if (rerouteKey !== (rerouteMeta?.[MODEL_REROUTE_META_KEY] ?? '')) {
+      if (rerouteMeta) rerouteMeta[MODEL_REROUTE_META_KEY] = rerouteKey;
+      if (res.rerouted) {
+        a.events.emit('provider.model_rerouted', {
+          sessionId: resolveEventSessionId(a.ctx),
+          providerId: requestProvider.id,
+          ...res.rerouted,
+          timestamp: Date.now(),
+        });
+      }
+    }
     a.ctx.tokenCounter.account(res.usage, req.model, requestProvider.id);
 
     // Issue #271: never append or persist a semantically empty assistant

@@ -1020,7 +1020,12 @@ const RULES: readonly DangerRule[] = [
 const TIMEOUT_DURATION =
   /^(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|0[xX][0-9a-fA-F]*(?:\.[0-9a-fA-F]*)?[pP][-+]?\d+)[smhd]?$/;
 
-const ARGV_LAUNCHERS: ReadonlyMap<
+// Exported for the parity guard at the bottom of this package's
+// danger-detect.test.ts, which pins `valueFlags` against core's
+// HALT_LAUNCHER_VALUE_FLAGS (security/yolo-risk.ts). The two tables are
+// hand-copied mirrors; recorded as a test-only export in
+// architecture/test-only-exports.json.
+export const ARGV_LAUNCHERS: ReadonlyMap<
   string,
   {
     valueFlags: ReadonlySet<string>;

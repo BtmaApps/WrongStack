@@ -33,6 +33,12 @@ export function recoverFailedBlockers(host: SddTaskRecoveryHost): boolean {
   const tracker = host.opts.tracker;
   let recovered = false;
   for (const node of tracker.getAllNodes({ status: ['failed'] })) {
+    // Honour the cancel marker, exactly as `requeueFailedTasks` does below.
+    // `cancelTask` sets BOTH markers and documents that they "block
+    // retry/auto-redispatch"; without this check the deadlock round resurrected
+    // a user-cancelled blocker to 'pending', re-dispatching work the user
+    // explicitly stopped and clearing the board's "Cancelled" state.
+    if (host.cancelledTasks.has(node.id) || node.metadata?.cancelled) continue;
     const blocksIncomplete = tracker.getDependents(node.id).some((d) => {
       const s = tracker.getNode(d)?.status;
       return s !== 'completed' && s !== 'failed';

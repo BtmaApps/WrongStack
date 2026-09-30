@@ -36,6 +36,8 @@ describe('isSecretField', () => {
     'bearer',
     'clientSecret',
     'client_secret',
+    // OmniRoute's management access token (ProviderConfig.managementToken).
+    'managementToken',
   ])('flags %s as secret', (name) => {
     expect(isSecretField(name)).toBe(true);
   });

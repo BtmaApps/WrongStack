@@ -52,8 +52,10 @@ export class GitDiffPlugin implements VerifierPlugin {
 
     // Check expected files
     if (config.expectedFiles?.length) {
-      const changedPaths = new Set(diff.map((d) => d.path));
-      const missing = config.expectedFiles.filter((f) => !changedPaths.has(f));
+      const changedPaths = new Set(diff.map((d) => d.path.replaceAll('\\', '/')));
+      const missing = config.expectedFiles.filter(
+        (f) => !changedPaths.has(f.replaceAll('\\', '/')),
+      );
       if (missing.length > 0) {
         status_ = 'failed';
         errors.push(`Expected changes in files not found: ${missing.join(', ')}.`);

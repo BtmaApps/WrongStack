@@ -17,7 +17,7 @@ import { nowIso, statusForColumn } from './basic-helpers.js';
 import { createKanbanEvent, emitKanbanEvent } from './board-events.js';
 // Leaf import: task-classifier.ts pulls only types and task-readiness, so this
 // direction cannot cycle back into _internal.
-import { missingManagedDispatchDetails } from './task-classifier.js';
+import { managedLifecycleStage, missingManagedDispatchDetails } from './task-classifier.js';
 import {
   applyCompletedAtForStatus,
   normalizeColumnTaskOrders,
@@ -25,6 +25,7 @@ import {
 } from './task-column-helpers.js';
 import { findTask } from './task-lookup.js';
 import { areDependenciesMet } from './task-readiness.js';
+export { areDependenciesMet } from './task-readiness.js';
 
 export {
   isoFromTimestamp,
@@ -146,7 +147,7 @@ export async function claimReadyTaskOnBoard(
         : board.tasks.filter((task) => isTaskReadyForWork(board, task)).sort(compareTasksForWork);
       const task = candidates.find(
         (candidate) =>
-          isTaskReadyForWork(board, candidate) && candidate.lifecycle?.currentStage === 'todo',
+          isTaskReadyForWork(board, candidate) && managedLifecycleStage(board, candidate) === 'todo',
       );
       if (!task) {
         const stageBlocked = candidates.length > 0;
@@ -369,8 +370,9 @@ export function isTaskReadyForWork(board: KanbanBoard, task: KanbanTask): boolea
   }
   if (task.mergedIntoTaskId) return false;
   if (!areDependenciesMet(board, task.id)) return false;
-  if (board.lifecycle?.mode === 'managed' && missingManagedDispatchDetails(task).length > 0) {
-    return false;
+  if (board.lifecycle?.mode === 'managed') {
+    if (managedLifecycleStage(board, task) !== 'todo') return false;
+    if (missingManagedDispatchDetails(task).length > 0) return false;
   }
   if (
     board.atomicity?.mode === 'enforce' &&
@@ -406,4 +408,29 @@ export function reconcileTaskColumns(board: KanbanBoard, now: string): void {
 
 export function normalizeAllColumnTaskOrders(board: KanbanBoard): void {
   for (const column of board.columns) normalizeColumnTaskOrders(board, column.id);
+}
+
+/**
+ * Staleness window for queued/running assignments that carry NO lease stamp
+ * ('running_no_lease'). A live agent heartbeats well inside this; ten
+ * minutes of total silence with no lease to expire means the owner is gone.
+ * Deliberately generous — recovery of a live claim is worse than a late
+ * recovery of a dead one.
+ */
+export const STAMPLESS_ASSIGNMENT_STALE_MS = 10 * 60 * 1000;
+
+export function isAssignmentStale(
+  assignment: KanbanAgentAssignment | undefined,
+  now: string,
+): boolean {
+  if (!assignment || (assignment.status !== 'queued' && assignment.status !== 'running')) {
+    return false;
+  }
+  const leaseExpired = assignment.leaseExpiresAt !== undefined && assignment.leaseExpiresAt <= now;
+  const lastSignalAt = assignment.heartbeatAt ?? assignment.claimedAt;
+  const stamplessAndSilent =
+    assignment.leaseExpiresAt === undefined &&
+    (lastSignalAt === undefined ||
+      new Date(now).getTime() - new Date(lastSignalAt).getTime() >= STAMPLESS_ASSIGNMENT_STALE_MS);
+  return leaseExpired || stamplessAndSilent;
 }

@@ -15,6 +15,16 @@ import type { StatuslineItem as StatuslineItemSource } from '@wrongstack/core/st
 export const SIDEBAR_MISSION_ROWS = 8;
 
 /**
+ * Maximum body rows of the right sidebar's PLAN QUOTA card (below its header).
+ * Shared contract, like {@link SIDEBAR_MISSION_ROWS}: the card model
+ * (components/sidebar-quota-model.ts) never emits more rows than this — it
+ * folds the rest into a "+N more" row — and computeMaxSidebarScroll reserves
+ * exactly this budget (plus header and caps) whenever any provider has
+ * reported quota.
+ */
+export const SIDEBAR_QUOTA_BODY_ROWS = 7;
+
+/**
  * Minimum inner-content width (cols) at which a routed F-panel sidebar twin
  * renders its `⟦ … ⟧` status pill on the title row's right edge. Below this
  * threshold the pill is bumped to a second status row so the title (and the

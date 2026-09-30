@@ -18,15 +18,22 @@ import type {
   UpdateKanbanColumnInput,
 } from '../types-operations.js';
 import {
+  areDependenciesMet,
+  assertNoDependencyCycles,
   cloneTaskForBoard,
   createBoardHistoryEntry,
   createTaskObject,
   emitBoardHistoryEvent,
   normalizeAllColumnTaskOrders,
+  normalizeChainMetadata,
   normalizeColumns,
+  normalizeColumnTaskOrders,
+  normalizeDependencyIds,
   nowIso,
   remapTaskReferences,
   requireNonBlank,
+  stampAtomicityAssessment,
+  syncTaskColumnForStatus,
 } from './_internal.js';
 import { cloneContractGraphForBoard } from './contract-graph.js';
 import { initializeAndValidateManagedTask, validateManagedLifecyclePolicy } from './lifecycle.js';
@@ -56,16 +63,52 @@ export async function createBoard(
   if (policyIssues.length) throw new Error(policyIssues[0]!.message);
 
   if (input.tasks?.length) {
-    board.tasks = input.tasks.map((task, index) => {
+    const rawTasks = input.tasks;
+    const seenIds = new Set<string>();
+    for (const raw of rawTasks) {
+      if (raw.id?.trim()) {
+        const id = raw.id.trim();
+        if (seenIds.has(id)) {
+          throw new Error(`Duplicate kanban task id: ${id}`);
+        }
+        seenIds.add(id);
+      }
+    }
+
+    board.tasks = rawTasks.map((task, index) => {
+      const { dependsOn: _dependsOn, ...taskWithoutDeps } = task;
       const created = createTaskObject(board, {
-        ...task,
+        ...taskWithoutDeps,
         title: task.title,
         columnId: task.columnId ?? board.columns[0]?.id ?? 'backlog',
         order: task.order ?? index,
       });
       initializeAndValidateManagedTask(board, created);
+      if (task.atomicityAssessment === undefined) stampAtomicityAssessment(board, created);
       return created;
     });
+
+    for (let index = 0; index < board.tasks.length; index++) {
+      const raw = rawTasks[index];
+      const created = board.tasks[index]!;
+      if (raw?.dependsOn !== undefined) {
+        const normalized = normalizeDependencyIds(board, created.id, raw.dependsOn);
+        if (normalized.length > 0) {
+          created.dependsOn = normalized;
+        } else {
+          delete created.dependsOn;
+        }
+      }
+    }
+    assertNoDependencyCycles(board);
+
+    const chainIds = new Set<string>();
+    for (const task of board.tasks) {
+      if (task.chain?.chainId) chainIds.add(task.chain.chainId);
+    }
+    for (const chainId of chainIds) {
+      normalizeChainMetadata(board, chainId);
+    }
   }
 
   await writeBoard(projectRoot, board);
@@ -255,10 +298,11 @@ export async function duplicateBoard(
       (task) => input.includeCompletedTasks !== false || task.status !== 'completed',
     );
     const idMap = new Map<string, string>();
-    board.tasks = sourceTasks.map((task) => {
+    board.tasks = sourceTasks.map((task, index) => {
       const cloned = cloneTaskForBoard(board, task, {
         targetColumnId:
           board.lifecycle?.mode === 'managed' ? board.lifecycle.columns.backlog : task.columnId,
+        targetOrder: board.lifecycle?.mode === 'managed' ? index : task.order,
         preserveAssignment: input.preserveAssignment === true,
         preserveDependencies: true,
       });
@@ -277,7 +321,24 @@ export async function duplicateBoard(
       if (!original || !cloned) continue;
       remapTaskReferences(cloned, original, idMap);
     }
+    const isManaged = board.lifecycle?.mode === 'managed';
+    for (const cloned of board.tasks) {
+      if (board.atomicity?.mode === 'off') {
+        delete cloned.atomicityAssessment;
+      } else {
+        stampAtomicityAssessment(board, cloned);
+      }
+      if (!isManaged && cloned.status === 'blocked' && areDependenciesMet(board, cloned.id)) {
+        cloned.status = 'ready';
+        const previousColumnId = cloned.columnId;
+        syncTaskColumnForStatus(board, cloned, previousColumnId);
+        if (previousColumnId !== cloned.columnId)
+          normalizeColumnTaskOrders(board, previousColumnId);
+      }
+    }
     cloneContractGraphForBoard(source, board, idMap);
+    normalizeAllColumnTaskOrders(board);
+    assertNoDependencyCycles(board);
   }
 
   await writeBoard(projectRoot, board);

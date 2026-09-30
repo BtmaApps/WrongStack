@@ -111,10 +111,11 @@ export async function createBoardFromTaskGraph(
     const dependencyId = taskIdMap.get(edge.from);
     const taskId = taskIdMap.get(edge.to);
     const task = taskId ? board.tasks.find((candidate) => candidate.id === taskId) : undefined;
-    if (!dependencyId || !task) continue;
+    if (!dependencyId || !task || dependencyId === task.id) continue;
     task.dependsOn = uniqueStrings([...(task.dependsOn ?? []), dependencyId]);
     if (task.origin) task.origin.sourceDependencyTaskIds = [...task.dependsOn];
   }
+  assertNoDependencyCycles(board);
   normalizeAllColumnTaskOrders(board);
   await writeBoard(projectRoot, board);
   return { board, taskIdMap };

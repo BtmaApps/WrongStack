@@ -1,9 +1,22 @@
 /**
  * Size at which a role's learned buffer is queued for an LLM consolidation
- * pass (merge / dedupe / promote to skills). A scheduling trigger, never a
- * cap: capture keeps every directive and nothing is evicted or cut to fit.
+ * pass (merge / dedupe / promote to skills). A scheduling trigger, not a cap:
+ * nothing is evicted at this size (see {@link LEARNED_HARD_LIMIT}).
  */
 export const LEARNED_SOFT_LIMIT = 8_192;
+
+/**
+ * Size past which capture evicts, cheapest knowledge first, into
+ * `archive/evicted-<at>.md`.
+ *
+ * A safety ceiling, not the working limit: a model-backed optimization pass
+ * resets the buffer long before this, so with a model it is never reached in
+ * practice. It exists for the case nothing else bounds — a box with no model,
+ * where no pass ever prunes and the whole raw buffer is injected into every
+ * spawn of the role. Four times the soft limit so the busiest role here
+ * (~19 KB between passes) never loses a lesson that a pass would have kept.
+ */
+export const LEARNED_HARD_LIMIT = 4 * LEARNED_SOFT_LIMIT;
 
 export const MIN_INSTRUCTIVE_LENGTH = 30;
 

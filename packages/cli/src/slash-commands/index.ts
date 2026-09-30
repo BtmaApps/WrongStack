@@ -76,6 +76,7 @@ import { buildSuggestCommand } from './suggest.js';
 import { buildDesktopCommand, buildWebuiCommand } from './surfaces.js';
 import { buildThemeCommand } from './theme.js';
 import { buildTierCommand } from './tier.js';
+import { buildZaiPlanCommand } from './zai-plan.js';
 
 // modeldiag is now a CLI subcommand (wstack modeldiag), not a slash command.
 
@@ -105,6 +106,7 @@ import { buildWorktreeCommand } from './worktree.js';
 import { buildYoloCommand } from './yolo.js';
 
 export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashCommand[] {
+  const quotaDeps = { providers: () => opts.configStore.get().providers };
   return [
     buildHelpCommand(opts),
     buildDesktopCommand(),
@@ -184,8 +186,9 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildFallbackCommand(opts),
     buildTierCommand(opts),
     ...(opts.statusTracker ? [buildProviderStatusCommand(opts.statusTracker)] : []),
-    buildOpenAIQuotaCommand(),
-    buildProviderQuotaCommand(),
+    buildOpenAIQuotaCommand(quotaDeps),
+    buildProviderQuotaCommand(quotaDeps),
+    buildZaiPlanCommand(),
     buildGitCommand(opts),
     buildCommitCommand(opts),
     buildGitcheckCommand(opts),

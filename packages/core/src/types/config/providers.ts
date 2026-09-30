@@ -79,6 +79,20 @@ export interface ProviderConfig {
   oauthClientId?: string | undefined;
   /** Client secret paired with {@link ProviderConfig.oauthClientId}. */
   oauthClientSecret?: string | undefined;
+  /**
+   * A gateway's management credential, separate from the inference key —
+   * OmniRoute's scoped access token (`oma_…`, `read` scope is enough). It
+   * reads the gateway's per-account plan limits; nothing else uses it.
+   * Encrypted at rest like every `*token` field.
+   */
+  managementToken?: string | undefined;
+  /**
+   * A plan-quota or balance read for a provider the built-in readers do not
+   * know: an account endpoint on the provider's own host, and where in its
+   * JSON the numbers are. Read with the provider's active key, never a model
+   * call. See {@link ProviderQuotaEndpoint}.
+   */
+  quotaEndpoint?: ProviderQuotaEndpoint | undefined;
   headers?: Record<string, string>;
   model?: string | undefined;
   quirks?: Record<string, unknown>;
@@ -124,6 +138,36 @@ export interface ProviderConfig {
   // packages/providers/src/oauth/ (Anthropic, OpenAI Codex, GitHub Copilot),
   // driven by their own flows rather than by user-supplied endpoints. Removed
   // so config no longer advertises a hook that reaches nothing.
+}
+
+/**
+ * Where a provider's account endpoint keeps its plan usage or balance.
+ *
+ * Paths are dot-separated (`data.usage.used`, `items.0.limit`; a leading `$.`
+ * is accepted). A window needs `total` with `used` or `remaining`, or
+ * `percent` (0..100 used); a balance needs `balance`. The URL must be on the
+ * same host as the provider's `baseUrl` — the active key is sent to it.
+ */
+export interface ProviderQuotaEndpoint {
+  /** Absolute https URL of the account read (http only on localhost). */
+  url: string;
+  /** How the active key is sent. Default `bearer`. */
+  auth?: 'bearer' | 'x-api-key' | 'none' | undefined;
+  used?: string | undefined;
+  total?: string | undefined;
+  remaining?: string | undefined;
+  /** Percentage used, 0..100, for an endpoint that reports one directly. */
+  percent?: string | undefined;
+  /** Reset time: an ISO date string or epoch seconds/milliseconds. */
+  resetAt?: string | undefined;
+  /** Window length in minutes, when the endpoint does not say. */
+  windowMinutes?: number | undefined;
+  /** Window name shown on the bar (`month`, `daily`). */
+  label?: string | undefined;
+  /** Remaining prepaid balance. */
+  balance?: string | undefined;
+  /** Currency code of `balance` (`USD`, `CNY`). Default `USD`. */
+  currency?: string | undefined;
 }
 
 /**

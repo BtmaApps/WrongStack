@@ -11,15 +11,16 @@ Lists, for every provider that has reported this session, how much of that
 subscription's plan has been consumed on each rolling window and when each
 window resets.
 
-Four provider families are metered on plans rather than per token, and all of
+Five provider families are metered on plans rather than per token, and all of
 them report into the same store:
 
 | Provider | Windows | Where the reading comes from |
 | --- | --- | --- |
 | Claude Pro/Max (`anthropic-oauth`) | `5h`, `7d` | `anthropic-ratelimit-unified-*` response headers |
-| ChatGPT / Codex (`openai-codex`) | `primary`, `secondary` (commonly 5h + weekly) | `x-codex-*` response headers |
+| ChatGPT / Codex (`openai-codex`) | `primary`, `secondary` (5h and/or weekly, per plan), plus per-feature meters | `GET chatgpt.com/backend-api/wham/usage` on demand; `x-codex-*` response headers per turn |
 | GitHub Copilot (`github-copilot`) | one 30-day window per pool (`premium_interactions`, `chat`, `code`) | `GET api.github.com/copilot_internal/user` |
 | Google Antigravity (`google-antigravity`) | one per model bucket | `POST cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
+| Z.AI / BigModel GLM Coding Plan (`zai-coding-plan`, `zhipuai-coding-plan`, aliases) | `5h`, `7d` model windows; MCP tool pool as a note | `GET {api.z.ai \| open.bigmodel.cn}/api/monitor/usage/quota/limit` — see [`/zai-plan`](zai-plan.md) |
 
 For ChatGPT/Codex on its own, [`/openai-quota`](openai-quota.md) answers the
 same question without making you read past the other providers.
@@ -51,9 +52,11 @@ turn amber at 70% and red at 90%.
 ## Notes
 
 - **The header-based readings cost nothing.** Claude and Codex publish the burn
-  on the responses to requests you were already making, so a provider appears
-  after its first request of the session and never costs an extra one. Before
-  then the command says so.
+  on the responses to requests you were already making. Claude therefore
+  appears after its first request of the session. Codex does not wait for one:
+  the command first asks the ChatGPT account usage endpoint — through the
+  active transport or any saved ChatGPT sign-in — which is a status read that
+  spends none of the plan.
 - **Antigravity reports what is LEFT, not what is used.** Its
   `remainingFraction` is inverted on the way in, and a bucket that reports no
   fraction is omitted rather than shown as full or empty — "not reported" is

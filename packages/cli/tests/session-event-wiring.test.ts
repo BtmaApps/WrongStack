@@ -116,6 +116,27 @@ describe('wireSessionEvents', () => {
     });
   });
 
+  it('journals a server-side reroute as a model switch with reason server', () => {
+    const { deps, emit, bridge } = makeDeps();
+    wireSessionEvents(deps);
+
+    emit('provider.model_rerouted', {
+      sessionId: 'sess-ctx',
+      providerId: 'openai-codex',
+      requested: 'gpt-5.3-codex',
+      served: 'gpt-5.2',
+      timestamp: 1,
+    });
+
+    expect(bridge.append).toHaveBeenCalledWith({
+      type: 'model_switched',
+      ts: expect.any(String),
+      from: { providerId: 'openai-codex', model: 'gpt-5.3-codex' },
+      to: { providerId: 'openai-codex', model: 'gpt-5.2' },
+      reason: 'server',
+    });
+  });
+
   // ── tool.started ────────────────────────────────────────────────────────
 
   it('appends tool_call_start to session bridge', () => {

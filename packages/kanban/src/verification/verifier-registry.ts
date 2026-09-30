@@ -100,11 +100,10 @@ export class VerifierRegistry {
 
     const result = await plugin.verify(check, context);
 
-    // Escalation plugins must produce concrete evidence for a VERDICT. A
-    // `skipped` result is "no verdict yet, escalation still open" and carries
-    // nothing to cite; turning it into `failed` would fail a task on the
-    // verifier's own indecision.
-    if (plugin.kind === 'escalation' && result.status !== 'skipped') {
+    // Escalation plugins must produce concrete evidence for a 'passed' verdict.
+    // An 'error' or 'skipped' result is an execution issue or pending state,
+    // and an explicit 'failed' carries the verifier's rejection reason.
+    if (plugin.kind === 'escalation' && result.status === 'passed') {
       const ev = new EvidenceValidator(DEFAULT_EVIDENCE_RULES);
       // When the check has its own escalation mode, use stricter rules.
       if (check.escalation === 'council') {

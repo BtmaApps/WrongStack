@@ -1,9 +1,11 @@
 import { recordProviderQuota } from '@wrongstack/core/quota';
-import type { Capabilities, ProviderError, Request } from '@wrongstack/core/types';
+import type { Capabilities, ProviderError, Request, StreamEvent } from '@wrongstack/core/types';
 import { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import type { AnthropicStreamState } from './presets/anthropic.js';
 import { anthropicWireFormat } from './presets/anthropic.js';
+import { upstreamHost } from './proxy-upstream.js';
+import { anthropicWireSigner, streamWithThinkingSigner } from './thinking-signer.js';
 import type { WireAdapterStreamOptions } from './wire-adapter.js';
 import { WireFormatProvider } from './wire-format.js';
 
@@ -35,13 +37,14 @@ export interface AnthropicProviderOptions {
   maxTools?: number | undefined;
 }
 
+/**
+ * Whether requests land on Anthropic itself. Read through a WrongProxy mount
+ * (`localhost:PORT/proxy/api.anthropic.com/...`): the proxy forwards headers
+ * as they are, so the auth header must match the upstream, not the hop.
+ */
 function isAnthropicHost(baseUrl: string): boolean {
-  try {
-    const host = new URL(baseUrl).hostname.toLowerCase();
-    return host === 'api.anthropic.com' || host.endsWith('.anthropic.com');
-  } catch {
-    return false;
-  }
+  const host = upstreamHost(baseUrl);
+  return host !== undefined && (host === 'anthropic.com' || host.endsWith('.anthropic.com'));
 }
 
 export class AnthropicProvider extends WireFormatProvider<AnthropicStreamState> {
@@ -66,6 +69,19 @@ export class AnthropicProvider extends WireFormatProvider<AnthropicStreamState> 
     if (opts.maxTools && opts.maxTools > 0) {
       this.maxToolsCount = opts.maxTools;
     }
+  }
+
+  /**
+   * Thinking blocks are signed by the service that produced them, and only
+   * that service can be trusted to take them back (Anthropic verifies; a
+   * foreign signature is a 400). Blocks are stamped with this endpoint's
+   * signer, other signers' blocks are filtered out before sending, and a
+   * signature rejection is repaired once — see thinking-signer.ts.
+   */
+  override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
+    yield* streamWithThinkingSigner(req, opts, anthropicWireSigner(this.baseUrl), (r) =>
+      super.stream(r, opts),
+    );
   }
 
   /**

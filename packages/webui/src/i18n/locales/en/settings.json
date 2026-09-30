@@ -818,7 +818,11 @@
     "footnote": "Settings here mirror the TUI /settings picker. Toggles apply live; some fields require a session restart.",
     "sageRelaxed": "0.72 (relaxed)",
     "sageDefault": "0.85 (default)",
-    "sageStrict": "0.95 (strict)"
+    "sageStrict": "0.95 (strict)",
+    "chromeLevelLabel": "Workbench density",
+    "chromeLevelHint": "Calm shows each figure (tokens, iteration, server health) in one place and folds secondary controls into menus. Full restores every chip and button.",
+    "chromeLevelCalm": "Calm",
+    "chromeLevelFull": "Full"
   },
   "resetLabel": "Clear local preferences",
   "cancel": "Cancel",

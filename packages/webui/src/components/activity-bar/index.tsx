@@ -8,6 +8,7 @@ import {
   Command,
   FlaskConical,
   FolderOpen,
+  Gauge,
   GitCompare,
   GitFork,
   Keyboard,
@@ -92,27 +93,25 @@ const PANELS: PanelDef[] = [
 // the 'officemap' tab of the Agent Roster view (F11). Settings lives in the
 // "…" utilities menu (Ctrl+9 / palette unchanged) — its standalone icon was
 // redundant with that menu's full Settings section.
-// Views follow the delivery pipeline, top to bottom:
-//   define (SDD spec [Requirements, Wizard, Board, Specs] → Goal → Kanban) → execute (Agent Roster)
-//   → inspect (CodeMap → TechStack → Repository History) → review (Chronicle
-//   → Chimera) → retain (Memory). Prompt Journal lives beside the chat input.
+// Default views prioritize daily work: agents, goals, tasks, and memory,
+// then specification and project tools. Diagnostics come last.
+// Prompt Journal lives beside the chat input.
 // Order also decides what stays visible on short viewports — the first N
 // views keep their slot, the rest fall into the "…" overflow menu.
 const VIEWS: ViewDef[] = [
-  { id: 'sddhub', icon: <Wand2 size={16} />, label: 'SDD' },
+  { id: 'roster', icon: <Bot size={16} />, label: 'Agent Roster' },
   { id: 'goal', icon: <Rocket size={16} />, label: 'Goal' },
   { id: 'kanban', icon: <Columns3 size={16} />, label: 'Kanban' },
-  // Agent Roster is a primary surface — it must stay visible on typical
-  // viewports instead of silently falling into the "…" overflow menu.
-  { id: 'roster', icon: <Bot size={16} />, label: 'Agent Roster' },
+  { id: 'memory', icon: <BrainCircuit size={16} />, label: 'Memory' },
+  { id: 'sddhub', icon: <Wand2 size={16} />, label: 'SDD' },
   { id: 'project-kit', icon: <PackageOpen size={16} />, label: 'Project Kit' },
   { id: 'codemap', icon: <Network size={16} />, label: 'CodeMap' },
-  { id: 'techstack', icon: <Boxes size={16} />, label: 'TechStack' },
-  { id: 'provider-test', icon: <FlaskConical size={16} />, label: 'Provider Test' },
   { id: 'history', icon: <GitFork size={16} />, label: 'Repository History' },
   { id: 'chronicle', icon: <ChartNoAxesCombined size={16} />, label: 'Chronicle' },
   { id: 'chimera', icon: <ShieldAlert size={16} />, label: 'Chimera Reviews' },
-  { id: 'memory', icon: <BrainCircuit size={16} />, label: 'Memory' },
+  { id: 'techstack', icon: <Boxes size={16} />, label: 'TechStack' },
+  { id: 'provider-test', icon: <FlaskConical size={16} />, label: 'Provider Test' },
+  { id: 'provider-quota', icon: <Gauge size={16} />, label: 'Plan Quota' },
 ];
 
 const DESKTOP_CORE_PANEL_IDS: readonly Activity[] = ['chat', 'files', 'changes', 'mailbox'];
@@ -526,7 +525,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
               Lives in the same bottom sticky column as the utilities
               "…" so it stays discoverable without crowding the icon
               column. Click-cycle: pencil → done. Reset is a one-tap
-              escape back to the default delivery-pipeline order. */}
+              escape back to the default priority order. */}
         {reorderMode ? (
           <>
             <button

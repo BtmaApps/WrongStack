@@ -31,27 +31,29 @@ export async function handleApiSessions(
     const registry = getSessionRegistry(globalRoot);
     const sessions = await registry.list();
 
-    const result = sessions.map((s): ApiSession => ({
-      sessionId: s.sessionId,
-      projectSlug: s.projectSlug,
-      projectName: s.projectName,
-      projectRoot: s.projectRoot,
-      workingDir: s.workingDir,
-      status: s.status,
-      pid: s.pid,
-      startedAt: s.startedAt,
-      lastHeartbeatAt: s.lastHeartbeatAt,
-      agentCount: s.agentCount,
-      agents: s.agents.map((a) => ({
-        id: a.id,
-        name: a.name,
-        status: a.status,
-        currentTool: a.currentTool,
-        iterations: a.iterations,
-        toolCalls: a.toolCalls,
-        lastActivityAt: a.lastActivityAt,
-      })),
-    }));
+    const result = sessions.map(
+      (s): ApiSession => ({
+        sessionId: s.sessionId,
+        projectSlug: s.projectSlug,
+        projectName: s.projectName,
+        projectRoot: s.projectRoot,
+        workingDir: s.workingDir,
+        status: s.status,
+        pid: s.pid,
+        startedAt: s.startedAt,
+        lastHeartbeatAt: s.lastHeartbeatAt,
+        agentCount: s.agentCount,
+        agents: s.agents.map((a) => ({
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          currentTool: a.currentTool,
+          iterations: a.iterations,
+          toolCalls: a.toolCalls,
+          lastActivityAt: a.lastActivityAt,
+        })),
+      }),
+    );
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));
@@ -126,6 +128,58 @@ interface WatchEntry {
   isError?: boolean;
   /** Tool use correlation id — pairs tool_call_start with tool_call_end. */
   toolUseId?: string;
+}
+
+/**
+ * Diagnostic sink for `ProjectSessionRegistry`'s swallowed per-project failures.
+ *
+ * `list()` catches every metadata/probe error and substitutes `[]`, which a
+ * caller cannot distinguish from "no sessions exist" — so a transient
+ * session-catalog blip surfaces to the operator as a bare
+ * `404 Session not found` or `delivered: 0`, with the real mechanism erased.
+ * This records the phase (`metadata` | `probe`) and errno so the next
+ * occurrence names its cause instead of guessing.
+ *
+ * Follows the module's structured-warn convention (level/event/message plus a
+ * timestamp) and never puts a path or an untrusted value in the event name.
+ * Silent by default: `list()` only fires it on a genuine failure, so a healthy
+ * request logs nothing.
+ */
+function registryFailureSink(scope: string, sessionId?: string) {
+  const failures: string[] = [];
+  return {
+    failures,
+    onProjectFailure: (slug: string, phase: 'metadata' | 'probe', error: unknown): void => {
+      const code = (error as NodeJS.ErrnoException | null)?.code ?? 'error';
+      const detail = `${slug}/${phase}/${code}`;
+      failures.push(detail);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'webui.session_registry_unavailable',
+          scope,
+          ...(sessionId !== undefined ? { sessionId } : {}),
+          detail,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    },
+  };
+}
+
+/**
+ * Body for a "session not found" reply that can also mean "the registry
+ * could not be read". The failures collected by {@link registryFailureSink}
+ * are attached so a 404 is no longer ambiguous between the two — the client
+ * already has the session id it asked for, and these are its OWN project slugs
+ * and errno codes, not another operator's data.
+ */
+function sessionNotFound(sessionId: string, failures: readonly string[]): string {
+  return JSON.stringify(
+    failures.length > 0
+      ? { error: 'Session not found', registryFailures: failures, sessionId }
+      : { error: 'Session not found', sessionId },
+  );
 }
 
 /** Join the text blocks of a message content value into a single string. */
@@ -434,10 +488,11 @@ export async function handleApiSessionMessage(
     );
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
-    const entry = await registry.get(sessionId);
+    const probe = registryFailureSink('message', sessionId);
+    const entry = await registry.get(sessionId, { onProjectFailure: probe.onProjectFailure });
     if (!entry) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Session not found' }));
+      res.end(sessionNotFound(sessionId, probe.failures));
       return;
     }
 
@@ -491,10 +546,11 @@ export async function handleApiSessionMailbox(
     );
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
-    const entry = await registry.get(sessionId);
+    const probe = registryFailureSink('mailbox', sessionId);
+    const entry = await registry.get(sessionId, { onProjectFailure: probe.onProjectFailure });
     if (!entry) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Session not found' }));
+      res.end(sessionNotFound(sessionId, probe.failures));
       return;
     }
     const paths = resolveWstackPaths({ projectRoot: entry.projectRoot, globalRoot });
@@ -580,10 +636,11 @@ export async function handleApiSessionInterrupt(
     );
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
-    const entry = await registry.get(sessionId);
+    const probe = registryFailureSink('interrupt', sessionId);
+    const entry = await registry.get(sessionId, { onProjectFailure: probe.onProjectFailure });
     if (!entry) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Session not found' }));
+      res.end(sessionNotFound(sessionId, probe.failures));
       return;
     }
     const paths = resolveWstackPaths({ projectRoot: entry.projectRoot, globalRoot });
@@ -597,7 +654,12 @@ export async function handleApiSessionInterrupt(
       priority: 'high',
     });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    const body: ApiSessionInterruptResponse = { ok: true, id: sent.id, to, delivered: entry.status };
+    const body: ApiSessionInterruptResponse = {
+      ok: true,
+      id: sent.id,
+      to,
+      delivered: entry.status,
+    };
     res.end(JSON.stringify(body));
   } catch (err) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -648,7 +710,8 @@ export async function handleApiFleetBroadcast(
     );
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
-    const all = await registry.list();
+    const probe = registryFailureSink('broadcast');
+    const all = await registry.list({ onProjectFailure: probe.onProjectFailure });
     // Scope to the WebUI host's own project (its pid's entry), like the live
     // status poll does. Fall back to every non-stale session if not found.
     const mySlug = all.find((s) => s.pid === process.pid)?.projectSlug;
@@ -656,8 +719,18 @@ export async function handleApiFleetBroadcast(
       .filter((s) => s.status !== 'stale')
       .filter((s) => (mySlug ? s.projectSlug === mySlug : true));
     if (targets.length === 0) {
+      // `list()` swallowed a per-project failure, so "no live sessions" and
+      // "the catalog could not be read" are indistinguishable here. Report
+      // which: the fleet-control tests assert `delivered >= 1`, and this is
+      // the branch that made that assertion flaky.
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, delivered: 0 }));
+      res.end(
+        JSON.stringify(
+          probe.failures.length > 0
+            ? { ok: true, delivered: 0, registryFailures: probe.failures }
+            : { ok: true, delivered: 0 },
+        ),
+      );
       return;
     }
     // Cache one mailbox per project dir (targets here share a slug).

@@ -183,6 +183,56 @@ describe('HQ persistence I/O batching', () => {
     ).toHaveLength(0);
   });
 
+  it('rotates a simple log whose tail is padded with blank lines', async () => {
+    // Regression: the tail read decided it had enough lines by counting RAW
+    // newlines, then dropped blank lines from the result. Blank padding at the
+    // tail therefore satisfied the count without contributing a single record,
+    // and the rotation took the "nothing to reclaim" branch — resetting
+    // `lineCount` from the short read while every record stayed on disk. The
+    // log then never trimmed.
+    //
+    // The padding must exceed the reader's minimum first chunk (64 KB) for the
+    // walk to stop inside the blank run rather than read the whole file; the
+    // records are padded too, so the reader's in-memory line-count estimate
+    // does not scale its first read up to the whole file.
+    const RECORDS = 200;
+    const BLANK_LINES = 90_000;
+    const filePath = path.join(dataDir, 'blank-padded.jsonl');
+    const records: string[] = [];
+    for (let sequence = 0; sequence < RECORDS; sequence++) {
+      records.push(JSON.stringify({ sequence, pad: 'x'.repeat(1000) }));
+    }
+    const body = [...records, ...Array<string>(BLANK_LINES).fill('')].join('\n');
+    await fs.writeFile(filePath, `${body}\n`, 'utf8');
+
+    const audit = new HqSimpleLog<{ sequence: number; pad: string }>({
+      dataDir,
+      filename: 'blank-padded.jsonl',
+      maxLines: RECORDS,
+      rotateKeep: 10,
+      readLimit: 10,
+    });
+    // Hydration counts 200 non-empty lines, so this append crosses maxLines and
+    // forces a rotation against the blank-padded tail.
+    audit.append({ sequence: RECORDS, pad: 'x'.repeat(1000) });
+    await audit.drain();
+
+    // The rotation must have reclaimed the file. This is the assertion that
+    // pins the regression: `readAll()` alone is NOT a sufficient guard. When
+    // the short read skips the trim it also leaves `lineCount` at the short
+    // count, and a wrong `lineCount` is fed straight back in as the reader's
+    // size estimate — which makes the reader scale its first read up to the
+    // whole file and hand back a correct-looking answer off an untrimmed file.
+    // Check what is on disk first.
+    const onDisk = (await fs.readFile(filePath, 'utf8')).trim().split('\n');
+    expect(onDisk).toHaveLength(10);
+
+    // And the newest ten records are intact and in order.
+    expect((await audit.readAll()).map((entry) => entry.sequence)).toEqual([
+      191, 192, 193, 194, 195, 196, 197, 198, 199, 200,
+    ]);
+  });
+
   it('counts lines correctly when the file ends with a newline (no trailing empty)', async () => {
     // Regression for countLines() overcount when the last byte is `\n`.
     // Hand-craft the file with 3 well-formed lines plus a trailing newline

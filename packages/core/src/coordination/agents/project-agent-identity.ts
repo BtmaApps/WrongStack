@@ -23,6 +23,7 @@ import * as path from 'node:path';
 import { formatProjectSuppliedBlock } from '../../utils/project-supplied-fence.js';
 import { CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION } from './project-agent-capture-window.js';
 import {
+  boundConsolidatedDocument,
   loadConsolidationMetadata,
   loadProjectAgentConsolidated,
 } from './project-agent-consolidation.js';
@@ -59,7 +60,9 @@ export {
 export { loadProjectAgentConfig } from './project-agent-config-io.js';
 export { validateProjectAgentConfig } from './project-agent-config-validation.js';
 export {
+  boundConsolidatedDocument,
   buildConsolidationInstruction,
+  CONSOLIDATED_MAX_BYTES,
   clearProjectAgentConsolidated,
   consolidatedDocumentPath,
   isConsolidated,
@@ -93,6 +96,7 @@ export type {
 export { splitLearnedEntries, tokenOverlap } from './project-agent-learning-entries.js';
 export {
   classifyLearnedEntry,
+  LEARNED_HARD_LIMIT,
   LEARNED_SOFT_LIMIT,
   normalizeLearnedEntry,
 } from './project-agent-learning-normalize.js';
@@ -138,10 +142,12 @@ export {
   buildSkillDistillInstruction,
   clearProjectSkillAugmentation,
   DEFAULT_EAGER_SKILL_LIMIT,
+  eagerRoleSkills,
   listProjectSkillAugmentations,
   loadProjectSkillAugmentation,
   loadSkillAffinity,
   rankRoleSkills,
+  recordSkillBlocked,
   recordSkillLoad,
   recordSkillOutcome,
   renderSkillAugmentation,
@@ -149,10 +155,18 @@ export {
   routeDirectiveToSkill,
   SKILL_AUGMENTATION_MAX_BYTES,
   SKILL_EVIDENCE_HALF_LIFE_DAYS,
+  type SkillBlockReason,
   saveProjectSkillAugmentation,
   scoreSkillAffinity,
   setSkillPinned,
 } from './project-agent-skill-layer.js';
+export {
+  createStalePathChecker,
+  refreshStaleProjectAgentLearning,
+  type StalePathChecker,
+  type StaleRefreshResult,
+  scrubStaleLines,
+} from './project-agent-staleness.js';
 export { CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION };
 
 import { loadProjectAgentLearned } from './project-agent-capture.js';
@@ -238,7 +252,10 @@ export function buildProjectContextualizedPrompt(
   // Which repo file the body came from, for the WS-SEC-02 provenance label.
   let learnedSourceFile = 'learned.md';
   if (learningPolicy.enabled) {
-    const consolidated = loadProjectAgentConsolidated(role, projectRoot);
+    // Bounded at read as well as at write: documents written before the cap
+    // existed would otherwise keep costing their full size on every spawn
+    // until the role's next optimization pass happens to run.
+    const consolidated = boundConsolidatedDocument(loadProjectAgentConsolidated(role, projectRoot));
     const rawLearned = loadProjectAgentLearned(role, projectRoot);
     if (consolidated) {
       const meta = loadConsolidationMetadata(role, projectRoot);
@@ -307,7 +324,7 @@ export function buildProjectContextualizedPrompt(
         `The file below stores **learning data for this project's "${role}" agent** — not your memory, not a session log. ` +
         `It is read back into the system prompt of every future "${role}" invocation, so each entry must teach a future agent how to act. ` +
         `On every capture the runtime **merges your new entry with every prior entry and rewrites the whole buffer as a structured instruction list** — grouped by category ("What to do", "What to avoid", "Patterns to follow", "Project facts"), with each item decomposed into **what** (the rule), **why** (the reason), and **how** (the concrete commands, file paths, or package names that anchor the rule). ` +
-        `When you discover a durable principle that future invocations should follow, end your response with a \`## LEARNED\` block. The runtime persists it to:\n\n` +
+        `When you discover a durable principle that future invocations should follow, end your response with a \`## LEARNED\` block. The runtime — never you — persists it to the file below; editing that file directly bypasses de-duplication, skill routing and outcome scoring, so do not touch it with a write tool:\n\n` +
         `  \`\`\`\n  ${learnedFilePath}\n  \`\`\`\n\n` +
         `**Write directives, not narratives.** Each LEARNED entry should be:\n\n` +
         `- A **rule or principle** that applies across sessions, not a description of what happened in this one.\n` +
@@ -374,7 +391,7 @@ export function buildProjectContextualizedPrompt(
       `\n\n## Project-developed skills\n\n` +
         `These skills have been extended with practice learned in this project: ` +
         `${developedSkills.map((skill) => `\`${skill}\``).join(', ')}. ` +
-        `Their project addendum is attached to the skill body — follow it over the generic method when the two differ.`,
+        `Their project addendum is attached to the skill body when the skill is loaded, or delivered on its own when this role cannot load the skill — follow it over the generic method when the two differ.`,
     );
   }
 

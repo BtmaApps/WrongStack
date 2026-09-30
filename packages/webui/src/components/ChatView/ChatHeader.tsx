@@ -4,6 +4,7 @@ import {
   Brain,
   ChevronDown,
   History,
+  MoreHorizontal,
   PanelLeftOpen,
   Pencil,
   Terminal,
@@ -11,6 +12,7 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SessionHistoryEntry } from '@/stores';
@@ -21,6 +23,13 @@ import { CostChip } from '../CostChip';
 import { ModePicker } from '../ModePicker';
 import { QuotaChip } from '../QuotaChip';
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { fmtTok } from './utils.js';
 
 export function ChatHeader({
@@ -112,6 +121,7 @@ export function ChatHeader({
   formatDuration: (start: number | null) => string;
 }) {
   const { t } = useAppTranslation();
+  const fullChrome = useIsFullChrome();
   const cachedTokens = Math.max(0, totalTokens.cacheRead ?? 0);
   const totalPromptTokens = Math.max(
     0,
@@ -256,18 +266,20 @@ export function ChatHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-0.5 shrink-0">
-          <Button
-            variant={toolStatsOpen ? 'secondary' : 'ghost'}
-            size="icon"
-            className={cn('h-7 w-7 relative', toolStatsOpen && 'bg-primary/10 text-primary')}
-            onClick={() => setToolStatsOpen((v) => !v)}
-            title={t('chat:header.toolStatsTitle', 'Tool call stats')}
-          >
-            <Wrench className="h-4 w-4" />
-            {toolStatsOpen && (
-              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-            )}
-          </Button>
+          {fullChrome && (
+            <Button
+              variant={toolStatsOpen ? 'secondary' : 'ghost'}
+              size="icon"
+              className={cn('h-7 w-7 relative', toolStatsOpen && 'bg-primary/10 text-primary')}
+              onClick={() => setToolStatsOpen((v) => !v)}
+              title={t('chat:header.toolStatsTitle', 'Tool call stats')}
+            >
+              <Wrench className="h-4 w-4" />
+              {toolStatsOpen && (
+                <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+              )}
+            </Button>
+          )}
           <Button
             variant={memoryPanelOpen ? 'secondary' : 'ghost'}
             size="icon"
@@ -285,30 +297,84 @@ export function ChatHeader({
               <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
             )}
           </Button>
-          <Button
-            variant={processOpen ? 'secondary' : 'ghost'}
-            size="icon"
-            className={cn('h-7 w-7 relative', processOpen && 'bg-warning/10 text-warning')}
-            onClick={() => setProcessOpen((v) => !v)}
-            title={t('chat:header.runningProcessesTitle')}
-          >
-            <Terminal className="h-4 w-4" />
-            {processOpen && (
-              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-warning" />
-            )}
-          </Button>
-          <Button
-            variant={checkpointOpen ? 'secondary' : 'ghost'}
-            size="icon"
-            className={cn('h-7 w-7 relative', checkpointOpen && 'bg-primary/10 text-primary')}
-            onClick={() => setCheckpointOpen((v) => !v)}
-            title={t('chat:header.checkpointsTitle')}
-          >
-            <History className="h-4 w-4" />
-            {checkpointOpen && (
-              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-            )}
-          </Button>
+          {fullChrome ? (
+            <>
+              <Button
+                variant={processOpen ? 'secondary' : 'ghost'}
+                size="icon"
+                className={cn('h-7 w-7 relative', processOpen && 'bg-warning/10 text-warning')}
+                onClick={() => setProcessOpen((v) => !v)}
+                title={t('chat:header.runningProcessesTitle')}
+              >
+                <Terminal className="h-4 w-4" />
+                {processOpen && (
+                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-warning" />
+                )}
+              </Button>
+              <Button
+                variant={checkpointOpen ? 'secondary' : 'ghost'}
+                size="icon"
+                className={cn('h-7 w-7 relative', checkpointOpen && 'bg-primary/10 text-primary')}
+                onClick={() => setCheckpointOpen((v) => !v)}
+                title={t('chat:header.checkpointsTitle')}
+              >
+                <History className="h-4 w-4" />
+                {checkpointOpen && (
+                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                )}
+              </Button>
+            </>
+          ) : (
+            // Calm: tool stats, running processes and checkpoints share one
+            // "session tools" menu that opens the very same overlays.
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  data-testid="chat-header-session-tools"
+                  className={cn(
+                    'h-7 w-7 relative',
+                    (toolStatsOpen || processOpen || checkpointOpen) &&
+                      'bg-primary/10 text-primary',
+                  )}
+                  title={t('chat:header.sessionToolsTitle', 'Session tools')}
+                  aria-label={t('chat:header.sessionToolsTitle', 'Session tools')}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  {t('chat:header.sessionToolsTitle', 'Session tools')}
+                </DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={toolStatsOpen}
+                  onCheckedChange={() => setToolStatsOpen((v) => !v)}
+                  className="gap-2"
+                >
+                  <Wrench className="h-4 w-4" />
+                  {t('chat:header.toolStatsTitle', 'Tool call stats')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={processOpen}
+                  onCheckedChange={() => setProcessOpen((v) => !v)}
+                  className="gap-2"
+                >
+                  <Terminal className="h-4 w-4" />
+                  {t('chat:header.runningProcessesTitle')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={checkpointOpen}
+                  onCheckedChange={() => setCheckpointOpen((v) => !v)}
+                  className="gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  {t('chat:header.checkpointsTitle')}
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -360,10 +426,12 @@ export function ChatHeader({
                     <span>cached ({cacheHitPct.toFixed(1)}%)</span>
                   </span>
                 )}
-                <span className="flex items-center gap-1" title="Fresh/uncached prompt tokens">
-                  <span className="font-medium text-foreground">{fmtTok(freshTokens)}</span>
-                  <span>fresh ({freshPct.toFixed(1)}%)</span>
-                </span>
+                {fullChrome && (
+                  <span className="flex items-center gap-1" title="Fresh/uncached prompt tokens">
+                    <span className="font-medium text-foreground">{fmtTok(freshTokens)}</span>
+                    <span>fresh ({freshPct.toFixed(1)}%)</span>
+                  </span>
+                )}
                 <span className="flex items-center gap-1" title="Completion tokens">
                   <span className="font-medium text-foreground">{fmtTok(totalTokens.output)}</span>
                   <span>completion</span>

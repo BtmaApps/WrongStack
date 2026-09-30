@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.29",
+  "packageVersion": "1.0.30",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -646,7 +646,7 @@
         "export type { MailboxProjectServerInfo, MailboxProjectServerStatus, } from './mailbox-project-server-protocol.js';",
         "export type { TaskAuctionOptions, TaskBid, } from './task-auctioneer.js';",
         "export { ACP_AGENTS, ALL_FLEET_AGENTS, AUDIT_LOG_AGENT, applyRosterBudget, BUG_HUNTER_AGENT, FLEET_ROSTER, FLEET_ROSTER_BUDGETS, FLEET_ROSTER_WITHACP, type FleetRosterBudget, GENERIC_AGENT, REFACTOR_PLANNER_AGENT, SECURITY_SCANNER_AGENT, } from './fleet.js';",
-        "export { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentBudgetTier, type AgentCapability, type AgentDefinition, type AgentPhase, ALL_AGENT_DEFINITIONS, type AutoOptimizeDecision, type AutoOptimizeEvent, type AutoOptimizePolicy, type AutoOptimizePolicyOverrides, applyProjectAgentConfig, assertProjectAgentRole, BUILD_AGENTS, buildConsolidationInstruction, buildProjectContextualizedPrompt, buildSkillDistillInstruction, CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION, CAPTURE_SESSION_WINDOW_MS, type ConsolidationMetadata, type CreateProjectAgentInput, canCaptureNewLearned, captureLearnedFromAgentOutput, captureLearnedFromAgentOutputDetailed, clearProjectAgentConsolidated, clearProjectSkillAugmentation, consolidatedDocumentPath, createProjectAgent, createProjectAgentRoster, DEFAULT_AUTO_OPTIMIZE_POLICY, DEFAULT_EAGER_SKILL_LIMIT, DELIVERY_AGENTS, DIRECTIVE_QUARANTINE_MAX_UTILITY, DIRECTIVE_QUARANTINE_MIN_APPLIED, DISCOVERY_AGENTS, type DirectiveOutcomeResult, DOMAIN_AGENTS, detectLearnedConflicts, directiveTrials, directiveUtility, directiveWasApplied, evaluateAutoOptimize, getAgentDefinition, getProjectAgentLearnStats, HEAVY_BUDGET, hintLearnedNeedsSummarization, isConsolidated, isProvenDirective, KNOWLEDGE_AGENTS, LEARNED_SOFT_LIMIT, type LearnedCaptureResult, LearningOptimizationScheduler, type LearningOptimizationSchedulerOptions, type LearningOptimizerLlm, LIGHT_BUDGET, listProjectAgentLearnedEntries, listProjectAgentRoles, listProjectSkillAugmentations, loadConsolidationMetadata, loadProjectAgentConfig, loadProjectAgentConsolidated, loadProjectAgentIdentity, loadProjectAgentLearned, loadProjectAgentLearningPolicy, loadProjectAgentProfile, loadProjectSkillAugmentation, loadRoleKnowledgeManifest, loadSkillAffinity, MEDIUM_BUDGET, META_AGENTS, type OptimizeLearningOptions, type OptimizeLearningResult, optimizeProjectAgentLearning, PLANNING_AGENTS, type ProjectAgentConfig, type ProjectAgentLearningPolicy, type ProjectAgentProfile, type QuarantinedDirective, quarantinePath, REVIEW_AGENTS, type RoleKnowledgeManifest, rankRoleSkills, readQuarantinedDirectives, readRawLearnedEntries, recordDirectiveOutcomes, recordSkillLoad, recordSkillOutcome, refreshProjectAgentIdentity, renderSkillAugmentation, resetCaptureWindow, resetCaptureWindows, resetProjectAgentIdentity, resolveAutoOptimizePolicy, resolveRoleSkillCandidates, retiredDirectivesToWarnAbout, routeDirectiveToSkill, type SaveConsolidationOptions, SKILL_AUGMENTATION_MAX_BYTES, type SkillAffinity, type SkillAffinityEntry, saveProjectAgentConsolidated, saveProjectSkillAugmentation, scoreSkillAffinity, scrubRetiredLines, setSkillPinned, slugifyProjectAgentRole, unwrapWholeDocumentFence, updateProjectAgentConfig, updateProjectAgentIdentity, updateProjectAgentKnowledge, updateProjectAgentLearned, updateProjectAgentLearningPolicy, VERIFY_AGENTS, validateProjectAgentConfig, } from './agents/index.js';",
+        "export { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentBudgetTier, type AgentCapability, type AgentDefinition, type AgentPhase, ALL_AGENT_DEFINITIONS, type AutoOptimizeDecision, type AutoOptimizeEvent, type AutoOptimizePolicy, type AutoOptimizePolicyOverrides, applyProjectAgentConfig, assertProjectAgentRole, BUILD_AGENTS, buildConsolidationInstruction, buildProjectContextualizedPrompt, buildSkillDistillInstruction, CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION, CAPTURE_SESSION_WINDOW_MS, type ConsolidationMetadata, type CreateProjectAgentInput, canCaptureNewLearned, captureLearnedFromAgentOutput, captureLearnedFromAgentOutputDetailed, clearProjectAgentConsolidated, clearProjectSkillAugmentation, consolidatedDocumentPath, createProjectAgent, createProjectAgentRoster, DEFAULT_AUTO_OPTIMIZE_POLICY, DEFAULT_EAGER_SKILL_LIMIT, DELIVERY_AGENTS, DIRECTIVE_QUARANTINE_MAX_UTILITY, DIRECTIVE_QUARANTINE_MIN_APPLIED, DISCOVERY_AGENTS, type DirectiveOutcomeResult, DOMAIN_AGENTS, detectLearnedConflicts, directiveTrials, directiveUtility, directiveWasApplied, eagerRoleSkills, evaluateAutoOptimize, getAgentDefinition, getProjectAgentLearnStats, HEAVY_BUDGET, hintLearnedNeedsSummarization, isConsolidated, isProvenDirective, KNOWLEDGE_AGENTS, LEARNED_SOFT_LIMIT, type LearnedCaptureResult, LearningOptimizationScheduler, type LearningOptimizationSchedulerOptions, type LearningOptimizerLlm, LIGHT_BUDGET, listProjectAgentLearnedEntries, listProjectAgentRoles, listProjectSkillAugmentations, loadConsolidationMetadata, loadProjectAgentConfig, loadProjectAgentConsolidated, loadProjectAgentIdentity, loadProjectAgentLearned, loadProjectAgentLearningPolicy, loadProjectAgentProfile, loadProjectSkillAugmentation, loadRoleKnowledgeManifest, loadSkillAffinity, MEDIUM_BUDGET, META_AGENTS, type OptimizeLearningOptions, type OptimizeLearningResult, optimizeProjectAgentLearning, PLANNING_AGENTS, type ProjectAgentConfig, type ProjectAgentLearningPolicy, type ProjectAgentProfile, type QuarantinedDirective, quarantinePath, REVIEW_AGENTS, type RoleKnowledgeManifest, rankRoleSkills, readQuarantinedDirectives, readRawLearnedEntries, recordDirectiveOutcomes, recordSkillBlocked, recordSkillLoad, recordSkillOutcome, refreshProjectAgentIdentity, renderSkillAugmentation, resetCaptureWindow, resetCaptureWindows, resetProjectAgentIdentity, resolveAutoOptimizePolicy, resolveRoleSkillCandidates, retiredDirectivesToWarnAbout, routeDirectiveToSkill, type SaveConsolidationOptions, SKILL_AUGMENTATION_MAX_BYTES, type SkillAffinity, type SkillAffinityEntry, saveProjectAgentConsolidated, saveProjectSkillAugmentation, scoreSkillAffinity, scrubRetiredLines, setSkillPinned, slugifyProjectAgentRole, unwrapWholeDocumentFence, updateProjectAgentConfig, updateProjectAgentIdentity, updateProjectAgentKnowledge, updateProjectAgentLearned, updateProjectAgentLearningPolicy, VERIFY_AGENTS, validateProjectAgentConfig, } from './agents/index.js';",
         "export { AUTO_WAKE_MARKER, buildAutoWakePrompt, DEFAULT_AUTO_WAKE_DEBOUNCE_MS, DEFAULT_MAX_CHAINED_WAKES, DEFAULT_MIN_WAKE_INTERVAL_MS, type LeaderAutoWakeConfig, LeaderAutoWakeController, type LeaderAutoWakeControllerOptions, type LeaderAutoWakeStartedEvent, type LeaderAutoWakeSuppressedEvent, type LeaderAutoWakeSuppressedReason, type LeaderWakeDecision, type LeaderWakePort, } from './delegation/leader-auto-wake.js';",
         "export { AdaptiveConcurrencyController, type AdaptiveConcurrencyState, } from './adaptive-concurrency.js';",
         "export { AgentStatusTracker, type AgentStatusTrackerOptions, } from './agent-status-tracker.js';",
@@ -1059,6 +1059,7 @@
         "export function formatQuotaResetIn",
         "export function getAllProviderQuota",
         "export function getProviderQuota",
+        "export function groupQuotaSnapshots",
         "export function hasQuotaData",
         "export function listQuotaProviders",
         "export function onProviderQuota",
@@ -1071,6 +1072,7 @@
         "export function withQuotaPace",
         "export function worstProviderQuotaWindow",
         "export interface ProviderQuotaCredits",
+        "export interface ProviderQuotaGroup",
         "export interface ProviderQuotaSnapshot",
         "export interface ProviderQuotaWindow",
         "export type ProviderQuotaListener"
@@ -1503,21 +1505,21 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 42,
-      "sourceLines": 11953
+      "sourceLines": 11984
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 208,
-      "sourceLines": 57965
+      "sourceFiles": 209,
+      "sourceLines": 58546
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 64,
-      "sourceLines": 14956
+      "sourceLines": 14990
     },
     {
       "directory": "design",
@@ -1559,7 +1561,7 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 60,
-      "sourceLines": 12232
+      "sourceLines": 12325
     },
     {
       "directory": "infrastructure",
@@ -1573,7 +1575,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4317
+      "sourceLines": 4331
     },
     {
       "directory": "models",
@@ -1629,7 +1631,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 1,
-      "sourceLines": 385
+      "sourceLines": 460
     },
     {
       "directory": "registry",
@@ -1650,14 +1652,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 26,
-      "sourceLines": 9945
+      "sourceLines": 10091
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5309
+      "sourceLines": 5326
     },
     {
       "directory": "skills",
@@ -1678,14 +1680,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 24888
+      "sourceLines": 24998
     },
     {
       "directory": "tasking",
       "classification": "agent-domain contract",
       "intendedOwner": "Core tasking subpath",
       "sourceFiles": 3,
-      "sourceLines": 655
+      "sourceLines": 658
     },
     {
       "directory": "tools",
@@ -1698,8 +1700,8 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 82,
-      "sourceLines": 15563
+      "sourceFiles": 83,
+      "sourceLines": 15653
     },
     {
       "directory": "typesafe",

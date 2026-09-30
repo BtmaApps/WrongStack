@@ -479,9 +479,14 @@ describe('persistence 100% coverage suite', () => {
       expect(resLive.outcome).toBe('already-owned');
 
       // 5. POSIX EADDRINUSE where socket is dead -> probe fails -> unlinks stale file -> rebinds!
-      const errSocket = new EventEmitter() as any;
-      errSocket.destroy = vi.fn();
-      _projectEndpointOps.createConnection = () => errSocket;
+      _projectEndpointOps.createConnection = () => {
+        const errSocket = new EventEmitter() as any;
+        errSocket.destroy = vi.fn();
+        // Each probe gets one refusal after its listener is installed. An
+        // interval can emit again after the once('error') listener is gone.
+        queueMicrotask(() => errSocket.emit('error', new Error('ECONNREFUSED')));
+        return errSocket;
+      };
 
       let attemptCount = 0;
       const fakeServerReclaim = new EventEmitter() as any;
@@ -503,7 +508,6 @@ describe('persistence 100% coverage suite', () => {
         endpoint: '/tmp/test.sock',
         service: 'test-svc',
       });
-      setTimeout(() => errSocket.emit('error', new Error('ECONNREFUSED')), 10);
       const resReclaimed = await reclaimPromise;
       expect(resReclaimed.outcome).toBe('bound');
       expect((resReclaimed as any).reclaimedStaleEndpoint).toBe(true);
@@ -519,7 +523,6 @@ describe('persistence 100% coverage suite', () => {
         endpoint: '/tmp/test.sock',
         service: 'test-svc',
       });
-      setTimeout(() => errSocket.emit('error', new Error('ECONNREFUSED')), 10);
       const resRmFail = await failRmPromise;
       expect(resRmFail.outcome).toBe('failed');
       expect((resRmFail as any).error.message).toContain(
@@ -534,7 +537,6 @@ describe('persistence 100% coverage suite', () => {
         endpoint: '/tmp/test.sock',
         service: 'test-svc',
       });
-      setTimeout(() => errSocket.emit('error', new Error('ECONNREFUSED')), 10);
       const resNonErrorRm = await failNonErrorRmPromise;
       expect(resNonErrorRm.outcome).toBe('failed');
       expect((resNonErrorRm as any).error.message).toContain('raw string rm error');
@@ -547,7 +549,6 @@ describe('persistence 100% coverage suite', () => {
         endpoint: '/tmp/test.sock',
         service: 'test-svc',
       });
-      setTimeout(() => errSocket.emit('error', new Error('ECONNREFUSED')), 10);
       const resEnoent = await enoentPromise;
       expect(resEnoent.outcome).toBe('bound');
 
@@ -565,9 +566,7 @@ describe('persistence 100% coverage suite', () => {
         service: 'test-svc',
         maxAttempts: 2,
       });
-      const interval = setInterval(() => errSocket.emit('error', new Error('ECONNREFUSED')), 5);
       const resMaxAttempts = await maxAttemptsPromise;
-      clearInterval(interval);
       expect(resMaxAttempts.outcome).toBe('failed');
       expect((resMaxAttempts as any).error.message).toContain('after 2 attempts');
     });

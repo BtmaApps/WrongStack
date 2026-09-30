@@ -240,6 +240,7 @@ export function executeDeleteSession(
     throw conflict('A valid delete maintenance lease is required');
 
   const transcript = containedPath(record.transcriptRelativePath);
+  const hotRedoStash = containedPath(`${sessionId}.jsonl.redo`);
   const artifacts = [
     transcript,
     containedPath(`${sessionId}.jsonl`),
@@ -248,6 +249,13 @@ export function executeDeleteSession(
     containedPath(`${sessionId}.plan.json`),
     containedPath(`${sessionId}.tasks.json`),
     containedPath(`${sessionId}.todos.json`),
+    containedPath(`${sessionId}.completed-work.json`),
+    containedPath(`${sessionId}.replay.jsonl`),
+    containedPath(`${sessionId}.annotations.json`),
+    containedPath(`${sessionId}.annotations.jsonl`),
+    containedPath(`${sessionId}.audit.jsonl`),
+    `${transcript}.redo`,
+    hotRedoStash,
     path.join(path.dirname(transcript), path.basename(sessionId)),
   ];
   const trashRoot = path.join(sessionsDir, '_trash', lease.leaseId);

@@ -98,6 +98,20 @@ export function DisplaySection({ syncPref }: DisplaySectionProps) {
           </div>
         </div>
         <div className="space-y-1 divide-y divide-border/50">
+          {/* WebUI-only — chrome density. Written straight to the local store,
+              NOT through syncPref: the server has no such key. */}
+          <div className="py-3">
+            <PreferenceSelect
+              label={t('settings:display.chromeLevelLabel')}
+              hint={t('settings:display.chromeLevelHint')}
+              value={localPrefs.chromeLevel}
+              options={[
+                { value: 'calm', label: t('settings:display.chromeLevelCalm') },
+                { value: 'full', label: t('settings:display.chromeLevelFull') },
+              ]}
+              onChange={(v) => useLocalPrefs.getState().set({ chromeLevel: v })}
+            />
+          </div>
           {/* TUI field 39 — showModelReasoning */}
           <div className="py-3">
             <PreferenceToggle

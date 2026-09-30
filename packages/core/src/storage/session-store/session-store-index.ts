@@ -53,6 +53,28 @@ export async function writeTombstone(
   }
 }
 
+/**
+ * True when a range that was read from ONE BYTE BEFORE the intended boundary
+ * starts on a newline — i.e. the intended boundary really was a line start.
+ *
+ * The incremental path reads `[cached.size, stat.size)`. A cached size that
+ * lands mid-row therefore makes the range begin with the TAIL of a JSON
+ * object: that fragment does not parse, `applySessionIndexLines` drops it, and
+ * the cache then advances past the whole row. The row is gone from the index
+ * for good, because compaction writes the parsed rows back over the file — so
+ * a dropped row is persisted, not merely missed until the next read.
+ *
+ * A crash-truncated append is how a mid-row cached size arises. The first read
+ * stamps the cache with the file's size including the partial row, and the
+ * writer's remaining bytes land after that boundary, so the row straddles it.
+ *
+ * `readFileRange` guards an incomplete line at the END of a range; nothing
+ * guarded the START, which is what this probe is for.
+ */
+function boundaryByteIsNewline(raw: string): boolean {
+  return raw.charCodeAt(0) === 0x0a;
+}
+
 export async function readIndexFile(
   indexFile: string,
   currentCache: IndexCacheEntry | null,
@@ -87,8 +109,22 @@ export async function readIndexFile(
   const sameFile =
     cached !== null && cached.ino === stat.ino && cached.birthtimeMs === stat.birthtimeMs;
   if (cached && sameFile && stat.size > cached.size) {
-    const appended = await readFileRange(indexFile, cached.size, stat.size);
-    if (appended !== null) {
+    // The range starts ONE BYTE EARLY, at the last byte already accounted for,
+    // so that byte doubles as the alignment probe. Checking alignment with a
+    // separate `open` + pread first was measured at +39.4% on this path
+    // (~512 us per incremental read, .temp_files/bench_F4_alignment_guard_cost.ts),
+    // and an incremental read happens on every session append. Folding the probe
+    // into the range reads one extra byte instead, and the difference from the
+    // unguarded path falls to +1.4% — inside the harness's own 19-23% run spread.
+    //
+    // When that byte is a newline the boundary is a line start and the extra
+    // byte is a harmless empty leading line, which `applySessionIndexLines`
+    // skips. When it is not, `cached.size` landed mid-row: fall through to the
+    // full read below, BEFORE anything is applied, so the cache never advances
+    // past a row it only half-read.
+    const probe = cached.size > 0 ? cached.size - 1 : 0;
+    const appended = await readFileRange(indexFile, probe, stat.size);
+    if (appended !== null && boundaryByteIsNewline(appended.raw)) {
       applySessionIndexLines(appended.raw, cached.byId, cached.deleted);
       const summaries = Array.from(cached.byId.values()).sort(compareSessionSummaries);
       const nextCache: IndexCacheEntry = {

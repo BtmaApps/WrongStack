@@ -1,6 +1,11 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import {
+  recordSkillBlocked,
+  recordSkillLearned,
+  resolveRoleSkillCandidates,
+} from '@wrongstack/core/agent-catalog';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
 import { AgentRosterWSHandler } from '../src/server/agent-roster-handlers.js';
@@ -27,6 +32,30 @@ describe('AgentRosterWSHandler', () => {
     expect(payload.roles.length).toBeGreaterThan(20);
     expect(payload.stats).toHaveLength(payload.roles.length);
     expect(payload.catalog).toHaveLength(payload.roles.length);
+  });
+
+  it('reports an unloadable skill as blocked and keeps it out of the eager cut', async () => {
+    // A block is what a spawn records when the role lacks the tools a skill
+    // needs. This surface used to show such a skill as loaded — the ranking it
+    // used ignored the block — so the roster claimed a skill was in play while
+    // every spawn dropped it.
+    for (const skill of resolveRoleSkillCandidates('reviewer', projectRoot)) {
+      for (let i = 0; i < 5; i++) recordSkillLearned('reviewer', skill, projectRoot);
+    }
+    recordSkillBlocked('reviewer', { chimera: 'missing-capability' }, projectRoot);
+
+    const response = await handler.handleMessage(ws, 'agent-roster.skills', { role: 'reviewer' });
+    const payload = response.payload as {
+      eagerLimit: number;
+      skills: Array<{ skill: string; eager: boolean; blocked?: string }>;
+    };
+
+    const blocked = payload.skills.find((entry) => entry.skill === 'chimera');
+    expect(blocked?.blocked).toBe('missing-capability');
+    expect(blocked?.eager).toBe(false);
+    // The slot the blocked skill vacated is refilled by the next candidate
+    // rather than left empty.
+    expect(payload.skills.filter((entry) => entry.eager)).toHaveLength(payload.eagerLimit);
   });
 
   it('pauses learning without deleting the role knowledge', async () => {

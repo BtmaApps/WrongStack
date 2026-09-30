@@ -369,6 +369,38 @@ describe('useProviderEventBridge', () => {
       );
   }
 
+  it('warns once about a server-side reroute in this session only', () => {
+    const { events, dispatch, unmount } = setupBridge('leader-session');
+    const reroute = {
+      providerId: 'openai-codex',
+      requested: 'gpt-5.3-codex',
+      served: 'gpt-5.2',
+      reason: 'flagged',
+      timestamp: 1,
+    };
+    act(() => {
+      events.emit('provider.model_rerouted', { ...reroute, sessionId: 'other-session' });
+      events.emit('provider.model_rerouted', { ...reroute, sessionId: 'leader-session' });
+    });
+    const warnings = dispatch.mock.calls.filter(([action]) =>
+      (action as { entry?: { kind?: string; text?: string } }).entry?.text?.includes(
+        'instead of gpt-5.3-codex',
+      ),
+    );
+    expect(warnings).toEqual([
+      [
+        {
+          type: 'addEntry',
+          entry: {
+            kind: 'warn',
+            text: '⚠ Server answered with gpt-5.2 instead of gpt-5.3-codex — flagged',
+          },
+        },
+      ],
+    ]);
+    unmount();
+  });
+
   it('filters out memory.staled events from other sessions', () => {
     const { events, dispatch, unmount } = setupBridge('leader-session');
     act(() => {

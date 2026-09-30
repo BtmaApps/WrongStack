@@ -1,14 +1,10 @@
-import { useHqStatus, useWrongProxyStatus } from '@/hooks/useIntegrationStatus';
-import { useAppTranslation } from '@/i18n';
-import { getPalette, PALETTES } from '@/lib/palettes';
-import { cn } from '@/lib/utils';
-import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import {
   Bot,
   Building2,
   Check,
   Command,
   Menu,
+  Monitor,
   Moon,
   MoreVertical,
   Palette,
@@ -20,17 +16,25 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
+import { useHqStatus, useWrongProxyStatus } from '@/hooks/useIntegrationStatus';
+import { useAppTranslation } from '@/i18n';
+import { getPalette, PALETTES } from '@/lib/palettes';
+import { cn } from '@/lib/utils';
+import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import { openMainView } from './activity-bar/nav';
 import { CronTrigger } from './CronTrigger';
 import { InspectorTrigger } from './InspectorPanel';
 import { NotificationMenu } from './NotificationMenu';
+import { formatCompactBytes, SystemHealthChip, useServerProcessMetrics } from './SystemHealthChip';
 import { useTheme } from './ThemeProvider';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 
@@ -43,85 +47,14 @@ export function viewLabel(view: string): string {
     .join(' ');
 }
 
-export interface ServerProcessMetrics {
-  pid: number;
-  memoryUsage: {
-    rss: number;
-    heapUsed: number;
-    heapTotal: number;
-  };
-  heapLimit: number;
-  codebaseIndexServer?:
-    | {
-        status:
-          | 'unavailable'
-          | 'offline'
-          | 'connecting'
-          | 'connected'
-          | 'degraded'
-          | 'unresponsive'
-          | 'error'
-          | 'stopping';
-        connected: boolean;
-        pid?: number | undefined;
-        health?:
-          | {
-              status: 'healthy' | 'degraded' | 'unresponsive';
-              latencyMs: number | null;
-              missedHeartbeats: number;
-              server?:
-                | {
-                    uptimeMs: number;
-                    memory: { rss: number; heapUsed: number; heapTotal: number };
-                    clients: number;
-                    activeRequests: number;
-                    queuedWrites: number;
-                    pendingExternalFiles: number;
-                    watchingExternal: boolean;
-                    watchingClients?: number | undefined;
-                    clientLeaseTimeoutMs?: number | undefined;
-                    oldestClientIdleMs?: number | undefined;
-                  }
-                | undefined;
-            }
-          | undefined;
-      }
-    | undefined;
-}
-
-export function formatCompactBytes(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
-  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${Math.round(bytes)} B`;
-}
-
-export function useServerProcessMetrics(): ServerProcessMetrics | null {
-  const [metrics, setMetrics] = useState<ServerProcessMetrics | null>(null);
-
-  useEffect(() => {
-    let disposed = false;
-    const refresh = async () => {
-      try {
-        const response = await fetch('/debug/system', { cache: 'no-store' });
-        if (!response.ok) return;
-        const next = (await response.json()) as ServerProcessMetrics;
-        if (!disposed && Number.isFinite(next.memoryUsage?.rss)) setMetrics(next);
-      } catch {
-        // Keep the rest of the workbench usable if diagnostics are unavailable.
-      }
-    };
-
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 5_000);
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  return metrics;
-}
+// `ServerProcessMetrics`, `formatCompactBytes` and `useServerProcessMetrics`
+// moved to `./SystemHealthChip` (the chip consumes them); re-exported here so
+// existing imports keep resolving.
+export {
+  formatCompactBytes,
+  type ServerProcessMetrics,
+  useServerProcessMetrics,
+} from './SystemHealthChip';
 
 // ── WorkbenchTopbar ─────────────────────────────────────────────────────────
 
@@ -191,6 +124,24 @@ export function WorkbenchTopbar({
           : 'HQ: Disabled';
 
   const serverProcess = useServerProcessMetrics();
+  // Calm chrome (default) folds RAM / Index / dropped-tools / WrongProxy / HQ /
+  // WS into SystemHealthChip and drops the duplicate theme + Office Map
+  // buttons; `full` renders the pre-calm bar unchanged.
+  const fullChrome = useIsFullChrome();
+  const updatePending = Boolean(updateAvailable && latestVersion && latestVersion !== appVersion);
+  const paletteItems = PALETTES.map((option) => (
+    <DropdownMenuItem key={option.id} onSelect={() => setPalette(option.id)} className="gap-2">
+      <span
+        aria-hidden
+        className="h-4 w-4 shrink-0 rounded-[3px] border border-border/70"
+        style={{
+          background: `linear-gradient(90deg, ${option.swatch} 0 50%, ${option.swatchSecondary} 50% 100%)`,
+        }}
+      />
+      <span className="flex-1">{t(option.labelKey)}</span>
+      {palette === option.id ? <Check className="h-3.5 w-3.5 text-primary" aria-hidden /> : null}
+    </DropdownMenuItem>
+  ));
   const heapLoad = serverProcess ? serverProcess.memoryUsage.heapUsed / serverProcess.heapLimit : 0;
   const indexServer = serverProcess?.codebaseIndexServer;
   const indexHealth = indexServer?.health;
@@ -335,7 +286,9 @@ export function WorkbenchTopbar({
                 <span className="truncate text-sm font-semibold">
                   {projectName || 'WrongStack'}
                 </span>
-                {appVersion ? (
+                {/* Calm: the version lives in the health popover; the chip only
+                    comes back here when there is an update to act on. */}
+                {appVersion && (fullChrome || updatePending) ? (
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
@@ -360,32 +313,37 @@ export function WorkbenchTopbar({
                     defaultValue: viewLabel(currentView),
                   })}
                 </span>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium',
-                    isLoading ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  {isLoading ? (
-                    <Bot className="h-3 w-3 animate-pulse" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  {isLoading
-                    ? t('activity:topbar.statusRunning')
-                    : t('activity:topbar.statusReady')}
-                  {iteration ? (
-                    <span className="tabular">
-                      {iteration.index}
-                      {iteration.max > 0 ? `/${iteration.max}` : ''}
-                    </span>
-                  ) : null}
-                </span>
+                {/* Calm: only a running agent earns a status chip — "Ready" is the
+                    resting state, and the iteration count lives in the chat. */}
+                {fullChrome || isLoading ? (
+                  <span
+                    data-testid="topbar-run-status"
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium',
+                      isLoading ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    {isLoading ? (
+                      <Bot className="h-3 w-3 animate-pulse" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {isLoading
+                      ? t('activity:topbar.statusRunning')
+                      : t('activity:topbar.statusReady')}
+                    {fullChrome && iteration ? (
+                      <span className="tabular">
+                        {iteration.index}
+                        {iteration.max > 0 ? `/${iteration.max}` : ''}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
                 {/* AGENTS entry — lives in the shared top bar so it stays on
                     screen across every tab and main view, with the running
                     subagent count for the active session always visible. */}
                 <InspectorTrigger showCountWhenZero />
-                {serverProcess ? (
+                {fullChrome && serverProcess ? (
                   <span
                     className={cn(
                       'rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
@@ -400,7 +358,7 @@ export function WorkbenchTopbar({
                     RAM {formatCompactBytes(serverProcess.memoryUsage.rss)}
                   </span>
                 ) : null}
-                {indexServer ? (
+                {fullChrome && indexServer ? (
                   <span
                     className={cn(
                       'rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
@@ -429,7 +387,7 @@ export function WorkbenchTopbar({
                     Index {indexHealth?.status ?? indexServer.status}
                   </span>
                 ) : null}
-                {droppedTools > 0 ? (
+                {fullChrome && droppedTools > 0 ? (
                   <span
                     className="rounded-md border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-warning"
                     title={`${droppedTools} tool(s) dropped from provider requests due to maxTools limit`}
@@ -453,105 +411,155 @@ export function WorkbenchTopbar({
               <Command className="h-3.5 w-3.5" />
               {t('activity:topbar.command')}
             </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-              title={effectiveTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              {effectiveTheme === 'dark' ? (
-                <Sun className="h-3.5 w-3.5" />
-              ) : (
-                <Moon className="h-3.5 w-3.5" />
-              )}
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            {fullChrome ? (
+              <>
                 <button
                   type="button"
+                  onClick={toggleTheme}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                  title={`${t('settings:general.paletteSwitcherTitle')}: ${t(getPalette(palette).labelKey)}`}
-                  aria-label={`${t('settings:general.paletteSwitcherTitle')}: ${t(getPalette(palette).labelKey)}`}
+                  title={
+                    effectiveTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+                  }
                 >
-                  <Palette className="h-3.5 w-3.5" />
+                  {effectiveTheme === 'dark' ? (
+                    <Sun className="h-3.5 w-3.5" />
+                  ) : (
+                    <Moon className="h-3.5 w-3.5" />
+                  )}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>{t('settings:general.paletteHeading')}</DropdownMenuLabel>
-                {PALETTES.map((option) => (
-                  <DropdownMenuItem
-                    key={option.id}
-                    onSelect={() => setPalette(option.id)}
-                    className="gap-2"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                      title={`${t('settings:general.paletteSwitcherTitle')}: ${t(getPalette(palette).labelKey)}`}
+                      aria-label={`${t('settings:general.paletteSwitcherTitle')}: ${t(getPalette(palette).labelKey)}`}
+                    >
+                      <Palette className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>{t('settings:general.paletteHeading')}</DropdownMenuLabel>
+                    {paletteItems}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              /* Calm: light/dark/system and the colour palette share one menu. */
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid="topbar-appearance-menu"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                    title={t('activity:topbar.appearance', 'Appearance')}
+                    aria-label={t('activity:topbar.appearance', 'Appearance')}
                   >
-                    <span
-                      aria-hidden
-                      className="h-4 w-4 shrink-0 rounded-[3px] border border-border/70"
-                      style={{
-                        background: `linear-gradient(90deg, ${option.swatch} 0 50%, ${option.swatchSecondary} 50% 100%)`,
-                      }}
-                    />
-                    <span className="flex-1">{t(option.labelKey)}</span>
-                    {palette === option.id ? (
-                      <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
-                    ) : null}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    {effectiveTheme === 'dark' ? (
+                      <Moon className="h-3.5 w-3.5" />
+                    ) : (
+                      <Sun className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>{t('activity:topbar.theme', 'Theme')}</DropdownMenuLabel>
+                  {(
+                    [
+                      ['light', t('activity:topbar.themeLight', 'Light'), Sun],
+                      ['dark', t('activity:topbar.themeDark', 'Dark'), Moon],
+                      ['system', t('activity:topbar.themeSystem', 'System'), Monitor],
+                    ] as const
+                  ).map(([value, label, Icon]) => (
+                    <DropdownMenuItem
+                      key={value}
+                      onSelect={() => setTheme(value)}
+                      className="gap-2"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                      <span className="flex-1">{label}</span>
+                      {theme === value ? (
+                        <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>{t('settings:general.paletteHeading')}</DropdownMenuLabel>
+                  {paletteItems}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <CronTrigger />
             <NotificationMenu />
-            {/* WrongProxy Status */}
-            <button
-              type="button"
-              onClick={openIntegrations}
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
-                wrongProxy.status === 'connected'
-                  ? 'border-border/70 text-success hover:bg-accent/60'
-                  : wrongProxy.status !== 'disabled'
-                    ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
-                    : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
-              )}
-              title={wrongProxyTooltip}
-              aria-label={wrongProxyTooltip}
-              data-testid="wrongproxy-status-button"
-            >
-              <Route className="h-3.5 w-3.5" />
-            </button>
+            {fullChrome ? (
+              <>
+                {/* WrongProxy Status */}
+                <button
+                  type="button"
+                  onClick={openIntegrations}
+                  className={cn(
+                    'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
+                    wrongProxy.status === 'connected'
+                      ? 'border-border/70 text-success hover:bg-accent/60'
+                      : wrongProxy.status !== 'disabled'
+                        ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
+                        : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
+                  )}
+                  title={wrongProxyTooltip}
+                  aria-label={wrongProxyTooltip}
+                  data-testid="wrongproxy-status-button"
+                >
+                  <Route className="h-3.5 w-3.5" />
+                </button>
 
-            {/* HQ Status */}
-            <button
-              type="button"
-              onClick={openIntegrations}
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
-                hq.status === 'connected'
-                  ? 'border-border/70 text-success hover:bg-accent/60'
-                  : hq.status !== 'disabled'
-                    ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
-                    : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
-              )}
-              title={hqTooltip}
-              aria-label={hqTooltip}
-              data-testid="hq-status-button"
-            >
-              <Radio className="h-3.5 w-3.5" />
-            </button>
+                {/* HQ Status */}
+                <button
+                  type="button"
+                  onClick={openIntegrations}
+                  className={cn(
+                    'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
+                    hq.status === 'connected'
+                      ? 'border-border/70 text-success hover:bg-accent/60'
+                      : hq.status !== 'disabled'
+                        ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
+                        : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
+                  )}
+                  title={hqTooltip}
+                  aria-label={hqTooltip}
+                  data-testid="hq-status-button"
+                >
+                  <Radio className="h-3.5 w-3.5" />
+                </button>
 
-            {/* Backend WS Status */}
-            <span
-              role="status"
-              aria-label={wsConnected ? 'Connected' : 'Disconnected'}
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60',
-                wsConnected ? 'text-success' : 'text-warning',
-              )}
-              title={wsConnected ? 'Connected' : 'Disconnected'}
-              data-testid="ws-status-indicator"
-            >
-              {wsConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-            </span>
+                {/* Backend WS Status */}
+                <span
+                  role="status"
+                  aria-label={wsConnected ? 'Connected' : 'Disconnected'}
+                  className={cn(
+                    'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60',
+                    wsConnected ? 'text-success' : 'text-warning',
+                  )}
+                  title={wsConnected ? 'Connected' : 'Disconnected'}
+                  data-testid="ws-status-indicator"
+                >
+                  {wsConnected ? (
+                    <Wifi className="h-3.5 w-3.5" />
+                  ) : (
+                    <WifiOff className="h-3.5 w-3.5" />
+                  )}
+                </span>
+              </>
+            ) : (
+              <SystemHealthChip
+                wsConnected={wsConnected}
+                server={serverProcess}
+                droppedTools={droppedTools}
+                wrongProxy={wrongProxy}
+                hq={hq}
+                appVersion={appVersion}
+                onOpenIntegrations={openIntegrations}
+              />
+            )}
             <button
               type="button"
               onClick={onSettings}
@@ -560,21 +568,25 @@ export function WorkbenchTopbar({
             >
               <Settings className="h-3.5 w-3.5" />
             </button>
-            <button
-              type="button"
-              onClick={openOfficeMap}
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent/60',
-                officeMapActive
-                  ? 'border-primary/40 bg-primary/10 text-primary'
-                  : 'border-border/70 bg-background/60 text-muted-foreground hover:text-foreground',
-              )}
-              title={`${t('activity:agentRoster.tabOfficeMap')} (F11)`}
-              aria-label={t('activity:agentRoster.tabOfficeMap')}
-              aria-pressed={officeMapActive}
-            >
-              <Building2 className="h-3.5 w-3.5" />
-            </button>
+            {/* Calm: Office Map stays one click away as the Agent Roster's
+                "Office Map" tab (and in the compact header's menu). */}
+            {fullChrome ? (
+              <button
+                type="button"
+                onClick={openOfficeMap}
+                className={cn(
+                  'inline-flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent/60',
+                  officeMapActive
+                    ? 'border-primary/40 bg-primary/10 text-primary'
+                    : 'border-border/70 bg-background/60 text-muted-foreground hover:text-foreground',
+                )}
+                title={`${t('activity:agentRoster.tabOfficeMap')} (F11)`}
+                aria-label={t('activity:agentRoster.tabOfficeMap')}
+                aria-pressed={officeMapActive}
+              >
+                <Building2 className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

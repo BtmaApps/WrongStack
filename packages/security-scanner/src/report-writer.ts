@@ -22,7 +22,11 @@ import {
 } from '@wrongstack/core/utils';
 
 import { retryProviderComplete } from './llm-client.js';
-import { createSecurityReportFilename, type ReportOptions } from './report-generator.js';
+import {
+  createSecurityReportFilename,
+  type ReportOptions,
+  resolveReportFormat,
+} from './report-generator.js';
 import type { ScanResult } from './scanner.js';
 import type { TechStackInfo } from './types.js';
 
@@ -177,7 +181,8 @@ export async function writeReport(
   const outputDir = path.isAbsolute(configuredOutputDir)
     ? configuredOutputDir
     : path.join(projectRoot, configuredOutputDir);
-  const format = reportOptions?.format || 'markdown';
+  // Same validated value the filename builder uses, so the two cannot disagree.
+  const format = resolveReportFormat(reportOptions?.format);
 
   try {
     await mkdir(outputDir, { recursive: true });

@@ -33,9 +33,9 @@ import { recordFileAction } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import { startNetworkTelemetryMonitor } from '@wrongstack/core/observability';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import type { SessionEventBridge } from '@wrongstack/core/storage';
 import { createSessionEventBridge, resolveSessionLoggingConfig } from '@wrongstack/core/storage';
+import { toErrorMessage } from '@wrongstack/core/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -574,6 +574,24 @@ export function wireSessionEvents(deps: WireSessionEventsDeps): WireSessionEvent
         ...(e.from ? { from: e.from } : {}),
         to: e.to,
         reason: 'user',
+      });
+    },
+  );
+
+  evOn(
+    'provider.model_rerouted',
+    (e: {
+      sessionId?: string | undefined;
+      providerId: string;
+      requested: string;
+      served: string;
+    }) => {
+      appendSessionEvent(e.sessionId, {
+        type: 'model_switched',
+        ts: new Date().toISOString(),
+        from: { providerId: e.providerId, model: e.requested },
+        to: { providerId: e.providerId, model: e.served },
+        reason: 'server',
       });
     },
   );

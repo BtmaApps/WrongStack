@@ -134,6 +134,8 @@ export interface WSProviderQuota {
   payload: {
     providerId?: string | undefined;
     snapshots: unknown[];
+    /** Only on the reply to `provider.quota.refresh`: each account read's outcome. */
+    refreshed?: unknown[] | undefined;
   };
 }
 

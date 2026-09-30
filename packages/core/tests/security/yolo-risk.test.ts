@@ -404,6 +404,63 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
     });
   });
 
+  // The halt rule read its OWN hand-written launcher list (`inlineEvalPayload`)
+  // instead of COMMAND_STRING_FLAGS — the table every other destructive family
+  // reaches through `tokenizeShell`. The two lists drifted, so the launchers that
+  // exist ONLY in the table hid a power-down: `env -S "rm -rf ~/data"` was gated
+  // as delete-outside while `env -S "shutdown now"` was not gated at all, and
+  // `cmd /c "shutdown /s /t 0"` — the ordinary Windows spelling of a halt, on a
+  // Windows host — reached the anchored regex as inert text inside one quoted
+  // token. `system-halt` is gated by default while YOLO is on by default, so each
+  // miss powered the machine down with no confirmation.
+  //
+  // Mutation-checked against the unfixed implementation: the drift cases below are
+  // `env -S` / `env -s` / `env --split-string`, `dash -c`, `ash -c`, `cmd /c` and
+  // `cmd /k` — 9 commands, each red before the fix and green after. The entries
+  // that `inlineEvalPayload` already covered (bash/sh/zsh/ksh/fish/pwsh/powershell
+  // plus `node`/`python`/`perl`/`ruby`) are kept as parity pins, not as evidence:
+  // they classify the same on both sides. One case per table entry, so the two
+  // lists cannot silently drift apart again without a test going red.
+  describe('a halt handed to any command-string launcher in the table is a halt', () => {
+    it.each([
+      ['env -S "shutdown now"'],
+      ["env -s 'reboot'"],
+      ['env --split-string "shutdown /s /t 0"'],
+      ['env --split-string="poweroff"'],
+      ['sh -c "shutdown -h now"'],
+      ['bash -c "reboot"'],
+      ['zsh -c "halt"'],
+      ['dash -c "shutdown -h now"'],
+      ['ksh -c "reboot"'],
+      ['ash -c reboot'],
+      ['fish -c poweroff'],
+      ['pwsh -Command "Stop-Computer"'],
+      ['powershell -c "Restart-Computer"'],
+      ['cmd /c "shutdown /s /t 0"'],
+      ['cmd /k "reboot"'],
+      // Unquoted payload: `exec` joins cmd+args, so this is the realistic shape.
+      ['cmd /c shutdown /s'],
+      ['env -S systemctl poweroff'],
+    ])('%j → kind=system-halt', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
+    });
+
+    // The payload is asked the SAME anchored question as a bare line, so a
+    // launcher that merely carries a halt WORD stays prose, and a value-taking
+    // table flag is never confused with a different flag on the same launcher.
+    it.each([
+      ['env -S "echo shutdown"'],
+      ['cmd /c "dir"'],
+      ['dash -c "grep -r shutdown src/"'],
+      ['env -u PATH pnpm build'],
+      ['env -i node index.js'],
+      ['dash -c "vitest run"'],
+      ['git commit -m "notes; shutdown deferred"'],
+    ])('%j → destructive=false', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBeUndefined();
+    });
+  });
+
   // Probe-verified gap (2026-09-22): the launcher prefix accepted flags, env
   // assignments and NUMERIC operands, so `nice -n 5 shutdown` and
   // `timeout -k 5 10 shutdown` happened to work — while a flag whose value is a
@@ -448,6 +505,126 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
       ['nice -n 5 npm test'],
     ])('%j → destructive=false', (cmd) => {
       expect(classifyDestructiveCommand(cmd, ROOT)).toBeUndefined();
+    });
+  });
+
+  // Probe-verified gap (2026-09-30): the launcher value pattern was
+  // `[^\s-][^\s]*`, and `"` is a legal first character — so for
+  // `exec -S "grep -r shutdown src/"` it consumed only the FRAGMENT `"grep` of a
+  // quoted argv token, then re-scanned the rest of that same quoted string
+  // (` -r shutdown src/"`) and found `shutdown` sitting in command position. A
+  // plain recursive grep was classified as a power-down, so `system-halt` — gated
+  // by default, under a default-on YOLO — fired on harmless work. The module's
+  // own rule is that prose never becomes the command: `bash -c "grep -r shutdown
+  // src/"` was already pinned as destructive=false, and the same words through a
+  // different launcher must agree.
+  //
+  // The value is now ONE argv token, and the unquoted branch refuses a first
+  // character that opens a quoted span. Alternation order alone is not enough:
+  // a preference is not an exclusion, so when the whole-span branch stops the
+  // overall match the engine backtracks into the fragment branch anyway.
+  describe('a launcher value is one argv token, not its first fragment', () => {
+    it.each([
+      ['exec -S "grep -r shutdown src/"'],
+      ['exec -s "grep -r shutdown src/"'],
+      ["exec -s 'grep -r shutdown src'"],
+      ['nohup -s "grep -r reboot logs/"'],
+      ['timeout -s "grep -r shutdown src/"'],
+      ['env -u "find . -name halt.log"'],
+      ['sudo -u "grep -r poweroff /var/log"'],
+    ])('%j → destructive=false (the halt word is quoted prose)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBeUndefined();
+    });
+
+    // A quoted value is still a value: the command AFTER it must keep gating, or
+    // the fix would merely have traded a false positive for a YOLO bypass.
+    it.each([
+      ['sudo -u "root" shutdown -h now'],
+      ['timeout -s "KILL" reboot'],
+      ['env -u "PATH" poweroff'],
+    ])('%j → kind=system-halt (quoted flag value, then the verb)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
+    });
+
+    // The unquoted spellings these flags always accepted are untouched.
+    it.each([
+      ['timeout -s KILL shutdown -h now'],
+      ['timeout --signal=KILL reboot'],
+      ['sudo -u root shutdown -h now'],
+      ['stdbuf -o 0 poweroff'],
+    ])('%j → kind=system-halt (separated value still reaches the verb)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
+    });
+  });
+
+  // Probe-verified gap (2026-09-30): the launcher's value-taking flags were one
+  // global letter class — `-[ugCncpskioe]` plus four long names — applied to ALL
+  // thirteen launchers, i.e. the UNION of every launcher's flags rather than each
+  // launcher's own. So `exec` was credited with `timeout`'s `-s`, `command` with
+  // `stdbuf`'s `-o`, and `sudo` with `-k`/`-n`/`-i`, which sudo(8) documents as
+  // taking NO value. A flag that takes no value still swallowed the following
+  // word as its "value", which promoted that word's OWN argument into the
+  // anchored verb slot: `exec -S grep shutdown` — a search for the word
+  // "shutdown" — classified as a power-down. 122 launcher×flag shapes measured.
+  //
+  // The same union was also INCOMPLETE, and that direction is the dangerous one:
+  // `-a` was missing, so the real halt `exec -a NAME shutdown -h now` ran
+  // ungated under a default-on YOLO. Scoping per launcher fixes both directions;
+  // pruning letters from the union could only trade one for the other, which is
+  // why `timeout -s KILL shutdown -h now` (a genuinely value-taking flag there)
+  // is pinned on the gated side below.
+  describe('a value-taking flag belongs to its own launcher, not to all of them', () => {
+    it.each([
+      ['exec -S grep shutdown'],
+      ['exec -s grep shutdown'],
+      ['exec -u grep shutdown'],
+      ['command -p grep shutdown'],
+      ['nohup -s grep shutdown'],
+      ['setsid -c grep shutdown'],
+      ['unbuffer -k grep shutdown'],
+      ['sudo -k grep shutdown'],
+      ['sudo -n grep shutdown'],
+      ['doas -p grep shutdown'],
+    ])('%j → destructive=false (the flag takes no value here, so `grep` is the operand)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBeUndefined();
+    });
+
+    // The same flag letter must still consume for the launcher that documents it,
+    // or the fix would merely trade a false positive for a YOLO bypass.
+    it.each([
+      ['timeout -s KILL shutdown -h now'],
+      ['timeout -k 5 10 shutdown -h now'],
+      ['sudo -u root shutdown -h now'],
+      ['sudo -C 3 shutdown -h now'],
+      ['doas -u root reboot'],
+      ['env -u PATH poweroff'],
+      ['nice -n 5 shutdown -h now'],
+      ['ionice -c 3 shutdown -h now'],
+      ['stdbuf -o 0 shutdown -h now'],
+    ])('%j → kind=system-halt (value-taking for THIS launcher)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
+    });
+
+    // The under-credit half: `exec -a NAME cmd` and `doas -a STYLE cmd` run the
+    // command, and neither was detected before `-a` was scoped to its owners.
+    it.each([
+      ['exec -a name shutdown -h now'],
+      ['exec -a wc shutdown -h now'],
+      ['doas -a authentic shutdown -h now'],
+      ['nohup nice sudo -u root shutdown -h now'],
+    ])('%j → kind=system-halt (flag value consumed, verb reached)', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
+    });
+
+    // A flag that takes no value must not eat the verb (documented backtracking
+    // behaviour), and `sudo -s` with a non-runnable operand is not a halt.
+    it.each([
+      ['sudo -i shutdown -h now'],
+      ['sudo -E reboot'],
+      ['env -i poweroff'],
+      ['sudo -s shutdown -h now'],
+    ])('%j → kind=system-halt', (cmd) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe('system-halt');
     });
   });
 

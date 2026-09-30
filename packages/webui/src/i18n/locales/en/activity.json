@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Provider Test",
+    "provider-quota": "Plan Quota",
     "chronicle": "Chronicle",
     "intake": "Requirements",
     "roster": "Agent Roster",
@@ -3703,6 +3704,7 @@
       "sddhub": "SDD Hub",
       "settings": "Settings",
       "provider-test": "Provider Test",
+      "provider-quota": "Plan Quota",
       "memory": "Memory",
       "roster": "Roster",
       "codemap": "Code Map",
@@ -3713,7 +3715,19 @@
       "history": "History"
     },
     "statusRunning": "Running",
-    "statusReady": "Ready"
+    "statusReady": "Ready",
+    "health": {
+      "issues_one": "System: {{count}} issue",
+      "issues_other": "System: {{count}} issues",
+      "ok": "System: all good",
+      "heading": "System health",
+      "openIntegrations": "Integration settings"
+    },
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
   },
   "agentsPanel": {
     "agentRoster": "Agent roster"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Unverifiable",
     "irrelevant": "Not relevant",
     "advisory": "Advisory model judgment; review the evidence before applying it."
+  },
+  "quotaPanel": {
+    "title": "Plan quota",
+    "refresh": "Refresh quota",
+    "refreshTitle": "Read the plan quota of every saved provider now — account reads that spend none of the plan.",
+    "left": "{{pct}}% left",
+    "resetsIn": "resets in {{time}}",
+    "fullIn": "full in ~{{time}} at this pace",
+    "reached": "limit reached",
+    "readFailed": "Could not read the quota — check the key or plan.",
+    "reading": "Reading…",
+    "asOf": "{{time}} ago",
+    "balance": "Balance",
+    "none": "No provider with a readable plan quota is configured (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "All plan quotas ({{count}})",
+    "noneInUse": "The providers in use report no plan quota.",
+    "poolMore": "+{{count}} more in the pool — see Plan Quota.",
+    "poolNoMatch": "No pool account matches this model ({{count}} in the pool); a combo picks one per request."
+  },
+  "quotaPage": {
+    "title": "Plan Quota",
+    "subtitle": "Every metered account — subscription windows, gateway pool accounts and prepaid balances. Account reads only; no model calls.",
+    "close": "Back to chat",
+    "search": "Filter by provider, account or plan",
+    "attentionOnly": "Near limit only",
+    "noMatch": "Nothing matches the filter.",
+    "inUseBadge": "in use",
+    "summary": {
+      "accounts": "Accounts",
+      "warn": "Above 70%",
+      "critical": "Above 90% or cut off",
+      "nextRelief": "Next relief"
+    },
+    "sections": {
+      "inUse": "In use now",
+      "inUseHint": "What the open sessions and running subagents draw on.",
+      "plans": "Subscription plans",
+      "pool": "OmniRoute pool",
+      "poolHint": "The gateway rotates across these accounts, so one running out does not stop a session.",
+      "balances": "Prepaid balances"
+    }
   }
 }

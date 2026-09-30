@@ -1,3 +1,5 @@
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ActivityBar,
   applyLockedAnchors,
@@ -7,8 +9,6 @@ import {
 } from '@/components/activity-bar';
 import { useUIStore } from '@/stores';
 import type { ActivityBarOrder } from '@/stores/ui-store-types';
-import { act, cleanup, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // Pure helpers ─────────────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
       'design',
     ]);
     // First four views by default order.
-    expect(split.visibleViewIds.slice(0, 4)).toEqual(['sddhub', 'goal', 'kanban', 'roster']);
+    expect(split.visibleViewIds).toEqual(['roster', 'goal', 'kanban', 'memory']);
   });
 
   it('honors a user-customized panel order with locked anchors', () => {
@@ -257,14 +257,19 @@ describe('activity-bar · reorder · UI mode toggles', () => {
     expect(screen.queryByTestId('activity-bar-reorder-reset')).toBeTruthy();
   });
 
-  it('Reset writes null to the store and exits reorder mode', () => {
+  it('Reset restores the default visible view order and exits reorder mode', () => {
     act(() => {
       useUIStore.getState().setActivityBarOrder({
         panels: ['design'],
-        views: [],
+        views: ['memory', 'kanban', 'goal', 'roster'],
       });
     });
-    render(<ActivityBar />);
+    const { container } = render(<ActivityBar />);
+    const visibleViewLabels = () =>
+      Array.from(container.querySelectorAll('button[data-locked="0"]')).map((button) =>
+        button.getAttribute('aria-label'),
+      );
+    const customLabels = visibleViewLabels();
     act(() => {
       screen.getByTestId('activity-bar-reorder-edit').click();
     });
@@ -273,6 +278,13 @@ describe('activity-bar · reorder · UI mode toggles', () => {
     });
     expect(useUIStore.getState().activityBarOrder).toBeNull();
     expect(screen.queryByTestId('activity-bar-reorder-edit')).toBeTruthy();
+    // The rendered icons must react to reset, not just the persisted store.
+    expect(visibleViewLabels().slice(2, 6)).toEqual([
+      customLabels[5],
+      customLabels[4],
+      customLabels[3],
+      customLabels[2],
+    ]);
   });
 
   it('exits reorder mode on Done and preserves the user order', () => {

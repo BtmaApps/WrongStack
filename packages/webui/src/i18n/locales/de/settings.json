@@ -818,7 +818,11 @@
     "footnote": "Diese Einstellungen spiegeln den TUI- /settings-Picker wider. Schalter wirken sofort; einige Felder erfordern einen Session-Neustart.",
     "sageRelaxed": "0,72 (locker)",
     "sageDefault": "0,85 (Standard)",
-    "sageStrict": "0,95 (streng)"
+    "sageStrict": "0,95 (streng)",
+    "chromeLevelLabel": "Arbeitsbereich-Dichte",
+    "chromeLevelHint": "Ruhig zeigt jede Kennzahl (Tokens, Iteration, Serverzustand) an genau einer Stelle und legt Nebenfunktionen in Menüs ab. Vollständig stellt alle Chips und Schaltflächen wieder her.",
+    "chromeLevelCalm": "Ruhig",
+    "chromeLevelFull": "Vollständig"
   },
   "resetLabel": "Lokale Einstellungen löschen",
   "cancel": "Abbrechen",

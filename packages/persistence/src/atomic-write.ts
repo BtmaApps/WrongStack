@@ -248,6 +248,7 @@ export function createPersistencePrimitives(
     const dirIsOwnerOnly =
       isOwnerOnlyMode(opts.mode) && (await prepareOwnerOnlyDir(path.dirname(targetPath)));
     const tmp = tempPathFor(targetPath);
+    let tempCreated = false;
 
     try {
       // `mode` at CREATION, not only via the chmod in commitTemp. Without it the
@@ -270,11 +271,12 @@ export function createPersistencePrimitives(
           ...(createMode !== undefined ? { mode: createMode } : {}),
         });
       }
+      tempCreated = true;
       await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
     } catch (error) {
       // `wx` reports EEXIST when a different writer already owns this random
-      // temp path. Never remove that file: this invocation did not create it.
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      // temp path. Never remove that file if this invocation did not create it.
+      if (tempCreated || (error as NodeJS.ErrnoException).code !== 'EEXIST') {
         await fs.unlink(tmp).catch(() => undefined);
       }
       throw error;
@@ -301,11 +303,13 @@ export function createPersistencePrimitives(
     const dirIsOwnerOnly =
       isOwnerOnlyMode(opts.mode) && (await prepareOwnerOnlyDir(path.dirname(targetPath)));
     const tmp = tempPathFor(targetPath);
+    let tempCreated = false;
 
     try {
       // Same creation-mode reasoning as the buffered path above.
       const createMode = opts.mode !== undefined ? opts.mode | 0o200 : undefined;
       const handle = await fs.open(tmp, 'wx', createMode);
+      tempCreated = true;
       let result: T;
       try {
         result = await write(handle);
@@ -325,9 +329,10 @@ export function createPersistencePrimitives(
       await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
       return result;
     } catch (error) {
-      // As above, EEXIST means exclusive creation never transferred ownership
-      // of this path to this invocation.
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      // As above, EEXIST on open means exclusive creation never transferred ownership
+      // of this path to this invocation. If temp was successfully created by this
+      // invocation, clean it up even if a later error carries code EEXIST.
+      if (tempCreated || (error as NodeJS.ErrnoException).code !== 'EEXIST') {
         await fs.unlink(tmp).catch(() => undefined);
       }
       throw error;

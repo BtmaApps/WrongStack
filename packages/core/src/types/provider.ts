@@ -4,6 +4,7 @@ import type { ErrorCode } from './errors.js';
 import { ERROR_CODES, WrongStackError } from './errors.js';
 import type { ImageGenerationRequest, ImageGenerationResult } from './image-generation.js';
 import type { Message } from './messages.js';
+import { kindFromErrorCode } from './provider-error-codes.js';
 import { QUOTA_EXHAUSTED_RE } from './quota-regex.js';
 import type { Tool } from './tool.js';
 
@@ -350,10 +351,13 @@ export interface Response {
   stopReason: StopReason;
   usage: Usage;
   model: string;
+  /** The backend served another model than the requested one (provider-reported, never inferred). */
+  rerouted?: { requested: string; served: string; reason?: string | undefined } | undefined;
 }
 
 export type StreamEvent =
   | { type: 'message_start'; model: string }
+  | { type: 'model_rerouted'; requested: string; served: string; reason?: string | undefined }
   | {
       type: 'content_block_start';
       kind: 'text' | 'tool_use' | 'thinking';
@@ -432,6 +436,8 @@ export interface Provider {
 export interface ProviderErrorBody {
   /** Provider-specific kind, e.g. "overloaded_error", "rate_limit_error", "invalid_request_error". */
   type?: string | undefined;
+  /** Machine code beside `type` (OpenAI `error.code`); set only when it differs from `type`. */
+  code?: string | undefined;
   /** Human-readable explanation from the provider. */
   message?: string | undefined;
   /** Provider request id, when present in the body or headers. */
@@ -503,6 +509,9 @@ export function classifyProviderError(
   if (status === 0) return 'network';
   if (status === 408) return 'timeout';
   if (status === 599) return 'stream_hang';
+  // An explicit machine code outranks status and prose (see provider-error-codes).
+  const codeKind = kindFromErrorCode(body?.code) ?? kindFromErrorCode(type);
+  if (codeKind) return codeKind;
   // Belt-and-suspenders quota check FIRST. Many providers (Kimi, Z.AI,
   // Moonshot) answer a hard billing-cycle limit with HTTP 403 and a prose
   // message like "You've reached your usage limit for this billing cycle" or

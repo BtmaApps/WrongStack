@@ -56,6 +56,22 @@ describe('candidate resolution policy coverage', () => {
     );
   });
 
+  it('records race-deleted targets as no-ops for delete and archive (rule 3)', () => {
+    expect(
+      computeResolution(candidate({ targetMemoryId: 'memory' }), 'delete', undefined, null),
+    ).toMatchObject({
+      mutation: { kind: 'noop', targetId: 'memory', applied: false },
+      resolution: { targetMemoryId: 'memory', applied: false },
+      candidateStatus: 'accepted',
+    });
+    expect(
+      computeResolution(candidate({ targetMemoryId: 'memory' }), 'archive', undefined, null),
+    ).toMatchObject({
+      mutation: { kind: 'noop', targetId: 'memory', applied: false },
+      candidateStatus: 'accepted',
+    });
+  });
+
   it('covers every resolution mutation and reason fallback', () => {
     expect(computeResolution(candidate(), 'delete', undefined, null)).toMatchObject({
       mutation: { kind: 'noop', applied: false },
@@ -96,13 +112,13 @@ describe('candidate resolution policy coverage', () => {
     });
     expect(
       computeResolution(candidate({ targetMemoryId: 'memory' }), 'delete', undefined, null),
-    ).toMatchObject({ mutation: { kind: 'delete_memory', applied: false } });
+    ).toMatchObject({ mutation: { kind: 'noop', applied: false } });
     expect(
       computeResolution(candidate({ targetMemoryId: 'memory' }), 'archive', undefined, memory()),
     ).toMatchObject({ mutation: { kind: 'archive_memory', applied: true } });
     expect(
       computeResolution(candidate({ targetMemoryId: 'memory' }), 'archive', undefined, null),
-    ).toMatchObject({ mutation: { kind: 'archive_memory', applied: false } });
+    ).toMatchObject({ mutation: { kind: 'noop', applied: false } });
   });
 });
 

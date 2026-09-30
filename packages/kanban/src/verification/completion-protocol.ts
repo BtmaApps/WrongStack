@@ -21,10 +21,12 @@
 // (manager.ts ↔ verification/completion-protocol.ts) that check:architecture flags.
 import { getBoard } from '../manager/boards.js';
 import { findTask } from '../manager/task-lookup.js';
+import { mutateBoard } from '../storage.js';
 import type {
   KanbanBoard,
   KanbanTask,
   KanbanVerificationAttachment,
+  KanbanVerificationBaseline,
   KanbanVerificationCheckResult,
   KanbanVerificationFileScope,
   KanbanVerificationReport,
@@ -32,7 +34,7 @@ import type {
 } from '../types.js';
 import { commandAllowlistFromEnv } from './command-security.js';
 import { createDefaultRegistry } from './plugins/index.js';
-import { VerificationContext } from './verification-context.js';
+import { type TreeSnapshot, VerificationContext } from './verification-context.js';
 import { buildVerificationReport } from './verification-report.js';
 import type { VerifierRegistry } from './verifier-registry.js';
 
@@ -40,7 +42,11 @@ export interface VerifyTaskCompletionOptions {
   /** Custom verifier registry (default: deterministic plugins only). */
   registry?: VerifierRegistry | undefined;
   /** Optional pre-captured git snapshot for diff comparison. */
-  snapshot?: { id: string; capturedAt: string } | undefined;
+  snapshot?:
+    | TreeSnapshot
+    | KanbanVerificationBaseline
+    | { id: string; capturedAt: string; commitHash?: string; treeHash?: string }
+    | undefined;
   /**
    * Whether to persist the verification report onto the board
    * inside verifyTaskCompletion (default: true).
@@ -135,6 +141,7 @@ async function runVerifyTaskCompletion(
     projectRoot,
     board,
     task,
+    snapshot: options.snapshot,
     // Operator-widened command allowlist, e.g.
     // WRONGSTACK_KANBAN_VERIFIER_COMMANDS=+tsc enables typecheck command
     // checks. The hard blocklist always keeps precedence.
@@ -153,8 +160,8 @@ async function runVerifyTaskCompletion(
   const checks = task.successCriteria ?? [];
   const checkResults: KanbanVerificationCheckResult[] = [];
 
-  // Capture git snapshot before running checks
-  if (checks.length > 0) {
+  // Capture git snapshot before running checks if no baseline snapshot was provided
+  if (!context.capturedSnapshot && checks.length > 0) {
     await context.captureSnapshot();
   }
 
@@ -235,14 +242,31 @@ async function runVerifyTaskCompletion(
     });
   }
 
-  // We need to get the task snapshot and persist via the board mutation.
-  // Since we can't do mutateBoard from this layer easily, we return the
-  // result and let the caller (tool/lifecycle) handle persistence.
-
   // Update the task's verification report in-memory
   updatedTask.verificationReport = report;
 
-  // Return the updated state (caller persists via board mutation)
+  if (options.persist !== false) {
+    const updated = await mutateBoard(projectRoot, boardId, (b) => {
+      const targetTask = b.tasks.find((t) => t.id === task.id);
+      if (!targetTask) return null;
+      if (updatedTask.successCriteria) {
+        targetTask.successCriteria = updatedTask.successCriteria.map((c) => ({ ...c }));
+      }
+      targetTask.verificationReport = report;
+      targetTask.updatedAt = report.completedAt;
+      b.updatedAt = report.completedAt;
+      return targetTask;
+    });
+    if (updated?.result) {
+      return {
+        board: updated.board,
+        task: updated.result,
+        report,
+      };
+    }
+  }
+
+  // Return in-memory updated state (when persist is false or board mutated externally)
   return {
     board: { ...board, tasks: board.tasks.map((t) => (t.id === task.id ? updatedTask : t)) },
     task: updatedTask,
@@ -294,7 +318,7 @@ async function verifySubtasks(
         projectRoot,
         board.id,
         child.id,
-        options,
+        { ...options, persist: false },
         path,
       );
       report = childResult.report;
@@ -352,7 +376,7 @@ async function verifyFileScope(
   const diff = await context.diffSince();
   const changedPaths = new Map<string, { operation: string; linesChanged: number }>();
   for (const entry of diff) {
-    changedPaths.set(entry.path, {
+    changedPaths.set(entry.path.replaceAll('\\', '/'), {
       operation: entry.operation,
       linesChanged: entry.linesAdded + entry.linesRemoved,
     });
@@ -363,7 +387,7 @@ async function verifyFileScope(
 
   // Check expected files
   for (const exp of expected) {
-    const actual = changedPaths.get(exp.path);
+    const actual = changedPaths.get(exp.path.replaceAll('\\', '/'));
     const found = actual !== undefined;
     if (!found) scopeMatches = false;
     files.push({
@@ -376,7 +400,7 @@ async function verifyFileScope(
 
   // Report unexpected changes
   for (const [path, info] of changedPaths) {
-    if (!expected.find((e) => e.path === path)) {
+    if (!expected.find((e) => e.path.replaceAll('\\', '/') === path)) {
       files.push({
         path,
         operation: info.operation as 'create' | 'modify' | 'delete',

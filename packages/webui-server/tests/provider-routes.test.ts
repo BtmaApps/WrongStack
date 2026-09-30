@@ -87,6 +87,7 @@ function routes(): ProviderRouteHandlers {
       handleProviderUndoClear: vi.fn(async () => undefined),
       handleProviderUpdate: vi.fn(async () => undefined),
       handleProviderProbe: vi.fn(async () => undefined),
+      handleProviderQuotaRefresh: vi.fn(async () => undefined),
       handleOAuthStart: vi.fn(async () => undefined),
       handleOAuthCode: vi.fn(async () => undefined),
       handleOAuthCancel: vi.fn(),
@@ -150,6 +151,17 @@ describe('handleProviderRoute malformed payload characterization', () => {
     ]) {
       expect(handler).not.toHaveBeenCalled();
     }
+  });
+
+  it('dispatches provider.quota.refresh to the account-quota reader', async () => {
+    const ws = mockWs();
+    const deps = routes();
+
+    await expect(handleProviderRoute(ws, { type: 'provider.quota.refresh' }, deps)).resolves.toBe(
+      true,
+    );
+
+    expect(deps.providerHandlers.handleProviderQuotaRefresh).toHaveBeenCalledWith(ws);
   });
 
   it('dispatches valid provider.remove payloads to the provider handler', async () => {

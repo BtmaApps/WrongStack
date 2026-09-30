@@ -128,6 +128,17 @@ export function codexModelsUrl(baseUrl?: string): string {
   return `${codexBackendBaseUrl(baseUrl)}/models`;
 }
 
+/**
+ * The account usage endpoint (`GET /wham/usage`) — plan windows, credits and
+ * additional limits, the read behind the official client's `/status`. It is
+ * a status read on the ChatGPT backend root, not the `/codex` route, and it
+ * spends no model call.
+ */
+export function codexUsageUrl(baseUrl?: string): string {
+  const codexRoot = codexBackendBaseUrl(baseUrl);
+  return `${codexRoot.slice(0, -'/codex'.length)}/wham/usage`;
+}
+
 // ── Authorize URL ───────────────────────────────────────────────────────────
 
 export function codexRedirectUri(port: number): string {

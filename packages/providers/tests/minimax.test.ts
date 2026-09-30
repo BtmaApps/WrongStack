@@ -88,7 +88,10 @@ describe('MiniMaxProvider', () => {
     const provider = new MiniMaxProvider({ apiKey: 'minimax-key', fetchImpl });
 
     await drain(provider, request('some-other-model'));
-    expect(urls).toEqual(['https://api.minimax.io/v1/chat/completions']);
+    // The post-turn Token Plan quota read is a separate account call.
+    expect(urls.filter((u) => !u.includes('/token_plan/'))).toEqual([
+      'https://api.minimax.io/v1/chat/completions',
+    ]);
   });
 
   it('forwards caller-supplied headers on the M3 Anthropic surface', async () => {

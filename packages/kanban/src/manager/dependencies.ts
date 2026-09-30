@@ -36,11 +36,14 @@ import {
   rewireDependents,
   setChainMetadata,
   stampAtomicityAssessment,
+  syncTaskColumnForStatus,
   tasksInChain,
   uniqueStrings,
 } from './_internal.js';
 import { archiveManagedTask, initializeAndValidateManagedTask } from './lifecycle.js';
 import { searchKanban } from './serialization.js';
+
+import { areDependenciesMet } from './task-readiness.js';
 
 export {
   areDependenciesMet,
@@ -62,6 +65,15 @@ export async function addDependency(
     if (!task || !dependency) return null;
     assertManagementWrite(board, [task], eventContext);
     addDependencyToTask(board, task, dependency);
+    stampAtomicityAssessment(board, task);
+    if (board.lifecycle?.mode !== 'managed') {
+      if (task.status === 'ready' && !areDependenciesMet(board, task.id)) {
+        task.status = 'blocked';
+        const previousColumnId = task.columnId;
+        syncTaskColumnForStatus(board, task, previousColumnId);
+        if (previousColumnId !== task.columnId) normalizeColumnTaskOrders(board, previousColumnId);
+      }
+    }
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
     event = createKanbanEvent(board.id, task, 'task.dependency.added', {
@@ -85,6 +97,7 @@ export async function splitTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const parent = findTask(board, taskId);
     if (!parent) return null;
+    assertManagementWrite(board, [parent], eventContext);
     const titles = input.titles.map((title) => requireNonBlank(title, 'Kanban split task title'));
     if (!titles.length) throw new Error('splitTask requires at least one child title.');
     const requestedColumnId = input.columnId ?? parent.columnId;
@@ -187,6 +200,7 @@ export async function mergeTasks(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const sourceTasks = resolveTaskRefs(board, input.taskIds);
     if (sourceTasks.length < 2) throw new Error('mergeTasks requires at least two tasks.');
+    assertManagementWrite(board, sourceTasks, eventContext);
     const sourceIds = new Set(sourceTasks.map((task) => task.id));
     const requestedColumnId = input.targetColumnId ?? sourceTasks[0]?.columnId;
     const columnId = existingColumnId(board, requestedColumnId);
@@ -197,6 +211,19 @@ export async function mergeTasks(
       sourceTasks.flatMap((task) => task.dependsOn ?? []).filter((depId) => !sourceIds.has(depId)),
     );
     const mergedBoundary = mergeTaskBoundaries(sourceTasks);
+    const totalEstimatedHours = sourceTasks.reduce(
+      (sum, task) => (typeof task.estimatedHours === 'number' ? sum + task.estimatedHours : sum),
+      0,
+    );
+    const totalActualHours = sourceTasks.reduce(
+      (sum, task) => (typeof task.actualHours === 'number' ? sum + task.actualHours : sum),
+      0,
+    );
+    const totalCostCeilingUsd = sourceTasks.reduce(
+      (sum, task) => (typeof task.costCeilingUsd === 'number' ? sum + task.costCeilingUsd : sum),
+      0,
+    );
+    const mergedExpectedFileChanges = sourceTasks.flatMap((t) => t.expectedFileChanges ?? []);
     const merged = createTaskObject(board, {
       title: input.title,
       description: input.description ?? mergedTaskDescription(sourceTasks),
@@ -204,6 +231,12 @@ export async function mergeTasks(
       priority: highestPriority(sourceTasks),
       labels: uniqueStrings(sourceTasks.flatMap((task) => task.labels ?? [])),
       ...(dependencies.length ? { dependsOn: dependencies } : {}),
+      ...(totalEstimatedHours > 0 ? { estimatedHours: totalEstimatedHours } : {}),
+      ...(totalActualHours > 0 ? { actualHours: totalActualHours } : {}),
+      ...(totalCostCeilingUsd > 0 ? { costCeilingUsd: totalCostCeilingUsd } : {}),
+      ...(mergedExpectedFileChanges.length
+        ? { expectedFileChanges: mergedExpectedFileChanges }
+        : {}),
       ...(input.preserveAssignment === true && sourceTasks[0]?.assignedAgent !== undefined
         ? { assignedAgent: sourceTasks[0].assignedAgent }
         : {}),
@@ -219,6 +252,7 @@ export async function mergeTasks(
     });
     merged.mergedFromTaskIds = [...sourceIds];
     initializeAndValidateManagedTask(board, merged);
+    stampAtomicityAssessment(board, merged);
     board.tasks.push(merged);
     placeTaskInColumn(board, merged, merged.columnId, merged.order);
 

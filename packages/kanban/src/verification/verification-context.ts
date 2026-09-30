@@ -26,7 +26,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { scriptSpawnArgs } from '@wrongstack/persistence';
-import type { KanbanBoard, KanbanTask } from '../types.js';
+import type { KanbanBoard, KanbanTask, KanbanVerificationBaseline } from '../types.js';
 import {
   BoundedProcessOutput,
   buildAllowlist,
@@ -139,12 +139,28 @@ export class VerificationContext {
     projectRoot: string;
     board: KanbanBoard;
     task: KanbanTask;
+    /** Optional pre-captured git snapshot for diff comparison. */
+    snapshot?:
+      | TreeSnapshot
+      | KanbanVerificationBaseline
+      | { id: string; capturedAt: string; commitHash?: string; treeHash?: string }
+      | null
+      | undefined;
     /** Optional command allowlist configuration. Extends the defaults. */
     commandAllowlist?: CommandAllowlistConfig | undefined;
   }) {
     this.projectRoot = opts.projectRoot;
     this.board = opts.board;
     this.task = opts.task;
+    this.snapshot =
+      opts.snapshot && opts.snapshot.treeHash
+        ? {
+            id: opts.snapshot.id,
+            capturedAt: opts.snapshot.capturedAt,
+            commitHash: opts.snapshot.commitHash ?? '',
+            treeHash: opts.snapshot.treeHash,
+          }
+        : null;
 
     const allowlist = buildAllowlist(opts.commandAllowlist);
     this.cmdAllow = allowlist.allow;

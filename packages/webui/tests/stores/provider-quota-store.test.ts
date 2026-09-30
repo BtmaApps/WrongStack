@@ -81,6 +81,22 @@ describe('selectWorstQuotaWindow', () => {
     expect(worst?.window.usedPercent).toBe(93);
   });
 
+  it('leaves out a gateway pool account, which the gateway rotates past', () => {
+    useProviderQuotaStore.getState().apply([
+      snapshot({ windows: [{ id: 'primary', usedPercent: 20, windowMinutes: 300 }] }),
+      snapshot({
+        providerId: 'omniroute',
+        meterId: 'omniroute:c1',
+        via: 'omniroute',
+        windows: [{ id: 'premium', usedPercent: 100 }],
+        reachedWindowId: 'premium',
+      }),
+    ]);
+    const worst = selectWorstQuotaWindow(useProviderQuotaStore.getState().meters);
+    expect(worst?.snapshot.providerId).toBe('openai-codex');
+    expect(worst?.window.usedPercent).toBe(20);
+  });
+
   it('breaks a tie toward the window that resets sooner', () => {
     const now = Math.floor(Date.now() / 1000);
     useProviderQuotaStore.getState().apply([

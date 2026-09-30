@@ -2,7 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { defaultReportGenerator, ReportGenerator } from '../src/report-generator.js';
+import {
+  createSecurityReportFilename,
+  defaultReportGenerator,
+  ReportGenerator,
+  resolveReportFormat,
+} from '../src/report-generator.js';
 import type { Finding, ScanResult } from '../src/scanner.js';
 
 let tmp: string;
@@ -289,5 +294,125 @@ describe('ReportGenerator', () => {
     expect(path.basename(file)).toMatch(
       /^security-report-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-[0-9a-f]{8}\.markdown$/,
     );
+  });
+});
+
+// ── format validation ───────────────────────────────────────────────────────
+// `createSecurityReportFilename` interpolates `format` into a filename segment
+// that callers `path.join` against an output directory, and `path.join`
+// normalizes `..` and separator segments away. The declared
+// `ReportOptions['format']` union is erased at runtime, so the union must be
+// enforced by a membership test at that choke point — an out-of-union value
+// once wrote a report outside the output directory and left it empty.
+
+describe('resolveReportFormat', () => {
+  it('passes the declared union through unchanged', () => {
+    expect(resolveReportFormat('markdown')).toBe('markdown');
+    expect(resolveReportFormat('json')).toBe('json');
+    expect(resolveReportFormat('html')).toBe('html');
+  });
+
+  it.each([
+    ['a traversal payload', 'x/../../escape.md'],
+    ['a parent-relative escape', '../../evil.md'],
+    ['a windows-style escape', 'x\\..\\..\\escape.md'],
+    ['a bare separator', '/'],
+    ['a separator-prefixed path', '/etc/passwd'],
+    ['a non-union word', 'xml'],
+    ['an almost-correct case', 'Markdown'],
+    ['an empty string', ''],
+    ['a non-string', 42],
+    ['null', null],
+    ['undefined', undefined],
+    ['an object', { toString: () => 'json' }],
+  ])('rejects %s and falls back to markdown', (_label, value) => {
+    const resolved = resolveReportFormat(value);
+    expect(resolved).toBe('markdown');
+    expect(['markdown', 'json', 'html']).toContain(resolved);
+  });
+});
+
+describe('createSecurityReportFilename', () => {
+  it.each(['markdown', 'json', 'html'] as const)('emits the %s extension as given', (format) => {
+    expect(createSecurityReportFilename(format)).toMatch(
+      new RegExp(
+        `^security-report-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-[0-9a-f]{8}\\.${format}$`,
+      ),
+    );
+  });
+
+  it.each([
+    'x/../../escape.md',
+    '../../evil.md',
+    'x\\..\\..\\escape.md',
+    '/',
+    '/etc/passwd',
+    'xml',
+    '',
+  ])('never leaks separators or dot-segments for %j', (hostile) => {
+    const name = createSecurityReportFilename(hostile as never);
+    // The invariant that matters: the returned string is ONE filename segment.
+    expect(name).not.toContain('/');
+    expect(name).not.toContain('\\');
+    expect(name).not.toContain('..');
+    expect(path.basename(name)).toBe(name);
+    expect(name).toMatch(
+      /^security-report-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-[0-9a-f]{8}\.markdown$/,
+    );
+  });
+
+  it('cannot be walked out of an output directory by path.join', () => {
+    const outputDir = path.join(tmp, 'security-reports');
+    for (const hostile of ['x/../../escape.md', '../../evil.md', 'x/../../../escape.md']) {
+      const filepath = path.join(outputDir, createSecurityReportFilename(hostile as never));
+      expect(path.dirname(filepath)).toBe(outputDir);
+      expect(path.resolve(filepath).startsWith(path.resolve(outputDir) + path.sep)).toBe(true);
+    }
+  });
+});
+
+describe('ReportGenerator derives content and extension from one validated value', () => {
+  it.each([
+    ['markdown', /\.markdown$/, '# Security Scan Report'],
+    ['json', /\.json$/, '"findings"'],
+    ['html', /\.html$/, '<!DOCTYPE html>'],
+  ] as const)('%s writes %s content under a %s name', async (format, ext, body) => {
+    const gen = new ReportGenerator({ outputDir: path.join(tmp, `agree-${format}`), format });
+    const file = await gen.generate(mkScanResult());
+    expect(file).toMatch(ext);
+    const content = await fs.readFile(file, 'utf8');
+    expect(content).toContain(body);
+  });
+
+  it.each([
+    ['a traversal payload', 'x/../../escape.md'],
+    ['a parent-relative escape', '../../evil.md'],
+    ['a non-union word', 'xml'],
+  ])('an out-of-union format (%s) keeps the report inside the output dir', async (_l, hostile) => {
+    const outDir = path.join(tmp, `pinned-${encodeURIComponent(hostile)}`);
+    const gen = new ReportGenerator({ outputDir: outDir, format: hostile as never });
+    const file = await gen.generate(mkScanResult());
+
+    // Inside the output directory...
+    expect(path.dirname(file)).toBe(outDir);
+    // ...with a single-segment name...
+    expect(path.basename(file)).toBe(path.basename(file).replace(/[\\/]/g, ''));
+    // ...and the content generator AGREES with the extension. Before the fix
+    // the two were derived independently, so a hostile format produced a
+    // `.json` name over a markdown body (or vice versa).
+    expect(file).toMatch(/\.markdown$/);
+    const content = await fs.readFile(file, 'utf8');
+    expect(content).toContain('# Security Scan Report');
+    expect(content).not.toContain('<!DOCTYPE html>');
+    expect(() => JSON.parse(content)).toThrow();
+  });
+
+  it('leaves no stray file outside the output directory', async () => {
+    const outDir = path.join(tmp, 'stray-check');
+    const gen = new ReportGenerator({ outputDir: outDir, format: 'x/../../escape.md' as never });
+    await gen.generate(mkScanResult());
+    const entries = await fs.readdir(tmp);
+    expect(entries.filter((e) => e === 'escape.md')).toEqual([]);
+    expect(entries.sort()).toEqual(['stray-check']);
   });
 });

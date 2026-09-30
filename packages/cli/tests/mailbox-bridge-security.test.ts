@@ -322,19 +322,23 @@ describe('mailbox-bridge — rate limiting', () => {
   it('returns 429 RATE_LIMITED when the limit is exceeded', async () => {
     // Fire requests rapidly — the limit is 120/min. After the budget
     // is exhausted, subsequent requests should get 429.
-    let ok200 = 0;
+    let validation400 = 0;
     let rateLimited429 = 0;
     let otherStatus = 0;
 
     for (let i = 0; i < 140; i++) {
-      const res = await http('GET', '/mailbox/agents', undefined, auth());
-      if (res.status === 200) ok200++;
-      else if (res.status === 429) rateLimited429++;
+      // A rejected query exercises the real HTTP limiter without requiring
+      // 120 daemon round trips. Backend liveness is tested by the burst above.
+      const res = await http('POST', '/mailbox/query', { limit: 'invalid' }, auth());
+      if (res.status === 400) {
+        expect((res.body as { error?: { code?: string } }).error?.code).toBe('VALIDATION_ERROR');
+        validation400++;
+      } else if (res.status === 429) rateLimited429++;
       else otherStatus++;
     }
 
     expect(rateLimited429).toBeGreaterThan(0);
-    expect(ok200).toBeGreaterThan(0);
+    expect(validation400).toBeGreaterThan(0);
     expect(otherStatus).toBe(0);
   });
 

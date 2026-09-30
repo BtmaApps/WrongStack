@@ -22,6 +22,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { zstdDecompressSync } from 'node:zlib';
 import {
   Agent,
   Context,
@@ -195,8 +196,18 @@ async function wireBodies(requests: readonly Request[]): Promise<Record<string, 
     'data: [DONE]\n\n';
   const provider = new OpenAICodexProvider({
     credentials: { accessToken: 'tok' },
-    fetchImpl: (async (_url: string, init: { body?: string }) => {
-      bodies.push(init.body ?? '');
+    fetchImpl: (async (
+      _url: string,
+      init: { body?: string | Uint8Array; headers?: Record<string, string> },
+    ) => {
+      // Real-sized turns are zstd-compressed on the wire, as for the backend.
+      bodies.push(
+        typeof init.body === 'string' || init.body === undefined
+          ? (init.body ?? '')
+          : init.headers?.['content-encoding'] === 'zstd'
+            ? zstdDecompressSync(init.body).toString('utf8')
+            : Buffer.from(init.body).toString('utf8'),
+      );
       return {
         ok: true,
         status: 200,

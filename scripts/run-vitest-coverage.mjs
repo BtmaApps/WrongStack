@@ -55,4 +55,7 @@ if (result.error) {
   console.error(result.error.message);
   process.exit(1);
 }
+if (result.signal) {
+  console.error(`Vitest coverage process terminated by ${result.signal}`);
+}
 process.exit(result.status ?? 1);

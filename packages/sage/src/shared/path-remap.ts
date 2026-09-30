@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import type { MemoryAnchor, Sage } from '../types.js';
 
 export function normalizeRelPath(p: string): string {
+  if (typeof p !== 'string') return '';
   return p.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+/g, '/').replace(/\/$/, '');
 }
 
@@ -96,6 +97,7 @@ export function memoryNeedsSymbolRemap(
 
 /** Parse common rename command shapes: `mv a b`, `git mv a b`, `Move-Item a b`. */
 export function parseRenameCommand(command: string): { from: string; to: string } | undefined {
+  if (typeof command !== 'string') return undefined;
   const c = command.replace(/\s+/g, ' ').trim();
   const token = '(?:"([^"]+)"|\'([^\']+)\'|([^\\s]+))';
   // git mv [-flags] <from> <to>
@@ -163,6 +165,7 @@ export function readIdentifierAt(
 }
 
 export function toProjectRelative(projectRoot: string, cwd: string, inputPath: string): string {
+  if (typeof inputPath !== 'string' || !inputPath.trim()) return '';
   const abs = path.isAbsolute(inputPath) ? path.resolve(inputPath) : path.resolve(cwd, inputPath);
   const rel = path.relative(projectRoot, abs);
   if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {

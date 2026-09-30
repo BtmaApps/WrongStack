@@ -8,6 +8,7 @@ import {
 } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetSharedOAuthRefreshState } from '../src/oauth-refresh-coordinator.js';
+import { requestBodyText } from './helpers/request-body.js';
 
 // Coordinators share refreshes process-wide by refresh key; every test here
 // reuses the same fake keys, so start each one from a clean slate.
@@ -397,7 +398,7 @@ describe('OpenAICodexProvider reasoning effort', () => {
     calls: Array<Record<string, unknown>>,
     defaultReasoningLevel: string,
   ): typeof fetch {
-    return (async (url: string, init?: { body?: string }) => {
+    return (async (url: string, init?: { body?: unknown; headers?: unknown }) => {
       if (String(url).includes('/codex/models')) {
         return new Response(
           JSON.stringify({
@@ -412,7 +413,7 @@ describe('OpenAICodexProvider reasoning effort', () => {
           { status: 200 },
         );
       }
-      calls.push(JSON.parse(init?.body ?? '{}') as Record<string, unknown>);
+      calls.push(JSON.parse(requestBodyText(init)) as Record<string, unknown>);
       return new Response('data: {"type":"response.completed","response":{}}\n\n', {
         status: 200,
         headers: { 'content-type': 'text/event-stream' },
@@ -541,6 +542,7 @@ describe('OpenAICodexProvider per-model catalog policy', () => {
     default_reasoning_level?: string;
     supported_reasoning_levels?: Array<{ effort: string }>;
     input_modalities?: string[];
+    truncation_policy?: { mode: string; limit: number };
   }
 
   /** Fetch that answers the catalog probe, then records the responses body. */
@@ -548,7 +550,7 @@ describe('OpenAICodexProvider per-model catalog policy', () => {
     bodies: Array<Record<string, unknown>>,
     models: CatalogEntry[],
   ): typeof fetch {
-    return (async (url: string, init?: { body?: string }) => {
+    return (async (url: string, init?: { body?: unknown; headers?: unknown }) => {
       if (String(url).includes('/codex/models')) {
         return new Response(
           JSON.stringify({
@@ -557,7 +559,7 @@ describe('OpenAICodexProvider per-model catalog policy', () => {
           { status: 200 },
         );
       }
-      bodies.push(JSON.parse(init?.body ?? '{}') as Record<string, unknown>);
+      bodies.push(JSON.parse(requestBodyText(init)) as Record<string, unknown>);
       return new Response('data: {"type":"response.completed","response":{}}\n\n', {
         status: 200,
         headers: { 'content-type': 'text/event-stream' },
@@ -682,6 +684,50 @@ describe('OpenAICodexProvider per-model catalog policy', () => {
     const input = body['input'] as Array<{ content?: Array<{ type: string }> }>;
     expect(input[0]?.content?.[0]?.type).toBe('input_image');
   });
+
+  function toolRoundTrip(output: string): Omit<Request, 'model'> {
+    return {
+      messages: [
+        { role: 'user', content: 'run the tests' },
+        {
+          role: 'assistant',
+          content: [{ type: 'tool_use', id: 'call_1', name: 'test', input: {} }],
+        },
+        {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'call_1', content: output }],
+        },
+      ],
+    };
+  }
+
+  function toolOutputOf(body: Record<string, unknown>): string | undefined {
+    const input = body['input'] as Array<{ type?: string; output?: string }>;
+    return input.find((item) => item.type === 'function_call_output')?.output;
+  }
+
+  it('truncates tool output to the catalog policy, keeping head and tail', async () => {
+    const big = `HEAD${'x'.repeat(200_000)}TAIL`;
+    const body = await sendWith(
+      [{ slug: 'gpt-6-astra', truncation_policy: { mode: 'tokens', limit: 10000 } }],
+      { model: 'gpt-6-astra', ...toolRoundTrip(big) },
+    );
+    const output = toolOutputOf(body) ?? '';
+    expect(output.startsWith('HEAD')).toBe(true);
+    expect(output.endsWith('TAIL')).toBe(true);
+    expect(output).toMatch(/…\d+ tokens truncated…/);
+    // 10000 tokens × 1.2 allowance × 4 bytes, plus the marker.
+    expect(output.length).toBeLessThan(48_100);
+  });
+
+  it('sends tool output untouched when the catalog publishes no policy', async () => {
+    const big = 'x'.repeat(200_000);
+    const body = await sendWith([{ slug: 'gpt-6-astra' }], {
+      model: 'gpt-6-astra',
+      ...toolRoundTrip(big),
+    });
+    expect(toolOutputOf(body)).toBe(big);
+  });
 });
 
 describe('live model list', () => {
@@ -784,8 +830,8 @@ describe('volatile system blocks', () => {
     const bodies: Array<Record<string, unknown>> = [];
     const provider = new OpenAICodexProvider({
       credentials: { accessToken: fakeJwt('acc_99'), expiresAt: Date.now() + 3_600_000 },
-      fetchImpl: (async (_url: string, init?: { body?: string }) => {
-        bodies.push(JSON.parse(init?.body ?? '{}') as Record<string, unknown>);
+      fetchImpl: (async (_url: string, init?: { body?: unknown; headers?: unknown }) => {
+        bodies.push(JSON.parse(requestBodyText(init)) as Record<string, unknown>);
         return new Response('data: {"type":"response.completed","response":{}}\n\n', {
           status: 200,
           headers: { 'content-type': 'text/event-stream' },
@@ -845,7 +891,7 @@ describe('OpenAICodexProvider request shape', () => {
     expect(h['originator']).toBe('wrongstack');
     expect(h['x-client-request-id']).toMatch(/^[0-9a-f-]{36}$/i);
 
-    const body = JSON.parse(captured.init?.body ?? '{}');
+    const body = JSON.parse(requestBodyText(captured.init));
     expect(body.store).toBe(false);
     expect(body.stream).toBe(true);
     expect(body.instructions).toBe('Be terse.');
@@ -879,7 +925,7 @@ describe('OpenAICodexProvider request shape', () => {
       { ...baseReq, cache: { key: 'ws-codexkey' } },
       { signal: new AbortController().signal },
     );
-    const body = JSON.parse(captured.init?.body ?? '{}');
+    const body = JSON.parse(requestBodyText(captured.init));
     expect(body.prompt_cache_key).toBe('ws-codexkey');
   });
 
@@ -897,7 +943,7 @@ describe('OpenAICodexProvider request shape', () => {
         { signal: new AbortController().signal },
       );
 
-      const body = JSON.parse(captured.init?.body ?? '{}');
+      const body = JSON.parse(requestBodyText(captured.init));
       expect(body.reasoning).toEqual({ effort, summary: 'auto' });
     },
   );
@@ -914,7 +960,7 @@ describe('OpenAICodexProvider request shape', () => {
       { signal: new AbortController().signal },
     );
 
-    const body = JSON.parse(captured.init?.body ?? '{}');
+    const body = JSON.parse(requestBodyText(captured.init));
     expect(body).not.toHaveProperty('reasoning');
   });
 
@@ -930,7 +976,7 @@ describe('OpenAICodexProvider request shape', () => {
       { signal: new AbortController().signal },
     );
 
-    const body = JSON.parse(captured.init?.body ?? '{}');
+    const body = JSON.parse(requestBodyText(captured.init));
     expect(body).not.toHaveProperty('instructions');
     expect(body).not.toHaveProperty('temperature');
     expect(body).not.toHaveProperty('top_p');
@@ -1460,7 +1506,7 @@ describe('Codex output cap', () => {
       { ...baseReq, maxTokens: undefined },
       { signal: new AbortController().signal },
     );
-    const body = JSON.parse(captured.init?.body ?? '{}');
+    const body = JSON.parse(requestBodyText(captured.init));
     // Absent, NOT the catalog ceiling: the backend default is the same number
     // without the risk of us sending a stale one.
     expect(body).not.toHaveProperty('max_output_tokens');
@@ -1473,7 +1519,7 @@ describe('Codex output cap', () => {
       fetchImpl: capturingFetch(COMPLETED_SSE, captured),
     });
     await p.complete({ ...baseReq, maxTokens: 16_384 }, { signal: new AbortController().signal });
-    expect(JSON.parse(captured.init?.body ?? '{}')).not.toHaveProperty('max_output_tokens');
+    expect(JSON.parse(requestBodyText(captured.init))).not.toHaveProperty('max_output_tokens');
   });
 });
 

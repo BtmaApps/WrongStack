@@ -25,7 +25,10 @@ export function formatMemoryHintsDetailed(
 ): FormattedMemoryHints {
   if (memories.length === 0) return { text: '', memoryIds: [] };
   const heading = opts.heading ?? 'SAGE: related project knowledge (Memory Injector)';
-  const maxChars = Math.max(0, Math.floor(opts.maxChars ?? 1200));
+  const maxChars =
+    typeof opts.maxChars === 'number' && Number.isFinite(opts.maxChars)
+      ? Math.max(0, Math.floor(opts.maxChars))
+      : 1200;
   if (maxChars === 0) return { text: '', memoryIds: [] };
   const lines = [`--- ${heading} ---`];
   const memoryIds: string[] = [];
@@ -39,7 +42,7 @@ export function formatMemoryHintsDetailed(
       memory.status !== 'active' ? memory.status : undefined,
     ].filter(Boolean);
     const anchor = formatPrimaryAnchor(memory);
-    const tags = memory.tags.slice(0, 3);
+    const tags = Array.isArray(memory.tags) ? memory.tags.slice(0, 3) : [];
     const validityReview = opts.validityReviews?.get(memory.id);
     const metadata = [
       memoryReviewReason(memory)
@@ -70,7 +73,8 @@ export function formatMemoryHintsDetailed(
     // that strip the wrapper before forwarding the text to the model are
     // unaffected, and a model trained on tool-call fences treats the
     // interior as opaque data.
-    const line = `${prefix}<memory id="${memory.id}">${escapeFenceText(memory.text)}</memory>${suffix}`;
+    const text = typeof memory.text === 'string' ? memory.text : '';
+    const line = `${prefix}<memory id="${memory.id}">${escapeFenceText(text)}</memory>${suffix}`;
     const currentLength = lines.join('\n').length;
     // The budget decides HOW MANY memories go in, never how much of one: a
     // memory cut mid-sentence can say the opposite of what was stored. The
@@ -104,7 +108,8 @@ function currentFeedbackLabel(memory: Sage): string | undefined {
 }
 
 function formatPrimaryAnchor(memory: Sage): string {
-  const anchor = memory.anchors.find((a) => a.path || a.symbol || a.command || a.role);
+  const anchors = Array.isArray(memory.anchors) ? memory.anchors : [];
+  const anchor = anchors.find((a) => a?.path || a?.symbol || a?.command || a?.role);
   if (!anchor) return '';
   if (anchor.symbol && anchor.path) return `${anchor.path}#${anchor.symbol}`;
   if (anchor.path) return anchor.path;
@@ -114,9 +119,8 @@ function formatPrimaryAnchor(memory: Sage): string {
 }
 
 function formatPrimaryRelation(memory: Sage): string {
-  const anchor = memory.anchors.find(
-    (item) => item.path || item.symbol || item.command || item.role,
-  );
+  const anchors = Array.isArray(memory.anchors) ? memory.anchors : [];
+  const anchor = anchors.find((item) => item?.path || item?.symbol || item?.command || item?.role);
   if (!anchor) return 'related_to';
   switch (anchor.type) {
     case 'file':
@@ -148,6 +152,7 @@ function formatPrimaryRelation(memory: Sage): string {
  * opaque data).
  */
 function escapeFenceText(value: string): string {
+  if (typeof value !== 'string') return '';
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

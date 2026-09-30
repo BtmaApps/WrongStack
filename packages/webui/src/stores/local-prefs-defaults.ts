@@ -211,6 +211,15 @@ export interface LocalPrefs {
    *  messages loads (opt-in; off by default). When off, the input always
    *  starts expanded. Independent of the manual collapse/expand buttons. */
   autoCollapseInput: boolean;
+  /**
+   * How much workbench chrome is on screen. `calm` shows each figure (tokens,
+   * iteration, server health, …) in ONE place and tucks secondary controls
+   * behind menus; `full` restores every duplicate and loose control exactly as
+   * it was. Local-only — never synced to the server.
+   */
+  chromeLevel: 'calm' | 'full';
+  /** Session panel "Session" stats grid expanded (calm chrome folds it). */
+  sessionStatsExpanded: boolean;
   /** Show model reasoning/thinking blocks inline in the chat */
   showModelReasoning: boolean;
   /** Agent swarm panel placement: bottom, sidebar, or off */
@@ -437,6 +446,8 @@ export const DEFAULTS: LocalPrefsData = {
   showThinkingLogs: true,
   groupToolCalls: true,
   autoCollapseInput: false,
+  chromeLevel: 'calm',
+  sessionStatsExpanded: false,
   showModelReasoning: false,
   showAgentSwarmPanel: 'bottom',
   allowOutsideProjectRoot: true,

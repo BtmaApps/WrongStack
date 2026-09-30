@@ -854,9 +854,25 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
         provider: 'p',
       },
     ]);
-    const sidecars = ['.plan.json', '.tasks.json', '.todos.json', '.completed-work.json'].map(
-      (suffix) => path.join(shard, `00-00-00Z_stale${suffix}`),
-    );
+    // `.replay.jsonl`, `.annotations.json`, the legacy `.annotations.jsonl` and
+    // `.audit.jsonl` joined the list for the same reason: `sessionScopedPath`
+    // writes them next to the transcript under the same id, so they describe a
+    // session that no longer exists once the transcript is gone. `.annotations.json`
+    // (no trailing `l`) is the LIVE name `AnnotationsStore` writes — listing only
+    // the legacy `.annotations.jsonl` deleted a file no producer emits while
+    // leaving every real annotations file behind. `.audit.jsonl` is tamper
+    // evidence, so its retention was weighed explicitly rather than left as an
+    // omission — a trailing audit log also pins its date shard open forever.
+    const sidecars = [
+      '.plan.json',
+      '.tasks.json',
+      '.todos.json',
+      '.completed-work.json',
+      '.replay.jsonl',
+      '.annotations.json',
+      '.annotations.jsonl',
+      '.audit.jsonl',
+    ].map((suffix) => path.join(shard, `00-00-00Z_stale${suffix}`));
     for (const file of sidecars) await fs.writeFile(file, '[]');
     const old = new Date('2020-02-02T00:00:00.000Z');
     await fs.utimes(path.join(shard, '00-00-00Z_stale.jsonl'), old, old);
@@ -933,6 +949,53 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
     await expect(store.prune(Number.NaN)).rejects.toThrow('Invalid prune age');
     await expect(store.prune(-1)).rejects.toThrow(TypeError);
     await expect(fs.readFile(file, 'utf8')).resolves.toContain('KEEP_ME');
+  });
+
+  it('prunes exactly the aged set when the sweep spans several worker generations', async () => {
+    // The sweep collects every candidate first, then drains it through a
+    // fixed-width worker pool. More sessions than one pool generation (16) is
+    // what makes a cursor or refcount mistake show up: a skipped candidate
+    // inflates the count, a repeated one deletes a session that was only
+    // checked once. Both used to be invisible because the loop was sequential.
+    const shards = ['2020-06-01', '2020-06-02'];
+    const perShard = 20;
+    const aged: string[] = [];
+    const young: string[] = [];
+    for (const shard of shards) {
+      const dir = path.join(tmp, shard);
+      await fs.mkdir(dir, { recursive: true });
+      for (let i = 0; i < perShard; i++) {
+        const id = `${shard}/aged_${i}`;
+        const file = path.join(dir, `aged_${i}.jsonl`);
+        await fs.writeFile(
+          file,
+          `${JSON.stringify({ type: 'session_start', ts: '2020-06-01T00:00:00.000Z', id, model: 'm', provider: 'p' })}\n`,
+          'utf8',
+        );
+        const old = new Date('2020-06-01T00:00:00.000Z');
+        await fs.utimes(file, old, old);
+        aged.push(id);
+      }
+      // Interleave a young session in each shard: the age check is per file,
+      // so a pooled run must not apply one shard's verdict to another.
+      const keepId = `${shard}/keep`;
+      await fs.writeFile(
+        path.join(dir, 'keep.jsonl'),
+        `${JSON.stringify({ type: 'session_start', ts: '2020-06-01T00:00:00.000Z', id: keepId, model: 'm', provider: 'p' })}\n`,
+        'utf8',
+      );
+      young.push(keepId);
+    }
+
+    const deleted = await store.prune(30);
+
+    expect(deleted).toBe(aged.length);
+    for (const id of aged) {
+      await expect(fs.stat(path.join(tmp, `${id}.jsonl`)), id).rejects.toBeDefined();
+    }
+    for (const id of young) {
+      await expect(fs.stat(path.join(tmp, `${id}.jsonl`)), id).resolves.toBeDefined();
+    }
   });
 
   it('rejects a non-finite checkpoint age and keeps a young manifest', async () => {

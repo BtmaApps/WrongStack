@@ -594,7 +594,6 @@
       "toPosixPath"
     ],
     "packages/core/src/quota/index.ts": [
-      "listQuotaProviders",
       "reachedQuotaWindow",
       "resetProviderQuota"
     ],
@@ -612,6 +611,8 @@
       "hotp"
     ],
     "packages/core/src/security/yolo-risk.ts": [
+      "COMMAND_STRING_FLAGS",
+      "HALT_LAUNCHER_VALUE_FLAGS",
       "pathLooksInsideProject"
     ],
     "packages/core/src/skills/github-fetcher.ts": [
@@ -971,9 +972,6 @@
     "packages/providers/src/openai-shared.ts": [
       "OPENAI_EFFORT_ACCEPT"
     ],
-    "packages/providers/src/presets/anthropic.ts": [
-      "ANTHROPIC_REDACTED_THINKING_META"
-    ],
     "packages/providers/src/presets/local-llm.ts": [
       "createLocalLlmPreset"
     ],
@@ -1176,6 +1174,7 @@
       "TelegramTelemetry"
     ],
     "packages/tools/src/_danger-detect.ts": [
+      "ARGV_LAUNCHERS",
       "unwrapArgvLaunchers"
     ],
     "packages/tools/src/_output-diet.ts": [
@@ -1781,6 +1780,9 @@
     "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx": [
       "LOCKED_YOLO_CONFIRM_KINDS",
       "YOLO_CONFIRM_KINDS"
+    ],
+    "packages/webui/src/components/SystemHealthChip.tsx": [
+      "summarizeSystemHealth"
     ],
     "packages/webui/src/components/TaskActivityTimeline.tsx": [
       "buildTaskActivityExport",

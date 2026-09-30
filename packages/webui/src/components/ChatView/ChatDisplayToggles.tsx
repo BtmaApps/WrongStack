@@ -1,3 +1,4 @@
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { useUIStore } from '@/stores';
 import { useLocalPrefs } from '@/stores/local-prefs';
@@ -26,6 +27,9 @@ export function ChatDisplayToggles({
   const groupToolCallsPref = useLocalPrefs((s) => s.groupToolCalls);
   const autoCollapseInput = useLocalPrefs((s) => s.autoCollapseInput);
   const compactMode = useUIStore((s) => s.compactMode);
+  // Calm: tokens / messages / iteration / elapsed already sit in the chat
+  // header's status row — this row keeps only the display switches.
+  const fullChrome = useIsFullChrome();
 
   return (
     <div className="ws-display-toggles flex max-w-6xl mx-auto px-2 pb-1.5 items-center gap-3 text-[11px] text-muted-foreground/75 select-none overflow-x-auto min-h-[1.75rem]">
@@ -62,7 +66,7 @@ export function ChatDisplayToggles({
           onChange={onToggleAutoCollapse}
         />
       </div>
-      {hasStatusContent && (
+      {fullChrome && hasStatusContent && (
         <>
           <span className="opacity-20 grow min-w-[1rem]" />
           <div className="flex items-center gap-3 tabular-nums text-[10px] text-muted-foreground/70 shrink-0">
@@ -107,9 +111,11 @@ export function ChatDisplayToggles({
           </div>
         </>
       )}
-      <span className="opacity-20 ml-2 text-[9px] shrink-0">
-        <kbd className="font-mono text-[9px] border rounded px-1 py-0.5 bg-muted/40">?</kbd>
-      </span>
+      {fullChrome && (
+        <span className="opacity-20 ml-2 text-[9px] shrink-0">
+          <kbd className="font-mono text-[9px] border rounded px-1 py-0.5 bg-muted/40">?</kbd>
+        </span>
+      )}
     </div>
   );
 }

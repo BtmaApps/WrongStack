@@ -83,7 +83,14 @@ export function providerErrorFromStreamPayload(
     status = 429;
   } else if (/^(api_error|server_error|internal_error)$/.test(body.type ?? '')) {
     status = 500;
-  } else if (body.type !== undefined && STREAM_ERROR_TYPE_STATUS[body.type] !== undefined) {
+  } else if (body.type !== undefined && Object.hasOwn(STREAM_ERROR_TYPE_STATUS, body.type)) {
+    // `Object.hasOwn`, not a `!== undefined` check: `body.type` is a string the
+    // provider chose, and bracket access on an Object.prototype key
+    // (`toString`, `valueOf`, `constructor`, `__proto__`) returns the inherited
+    // member rather than undefined — the guard passed and `status` became a
+    // function, so the error was classified `unknown` and made non-retryable
+    // instead of a retryable 500. Same convention as `kindFromErrorCode`
+    // (core/types/provider-error-codes.ts) for the same untrusted key.
     status = STREAM_ERROR_TYPE_STATUS[body.type] as number;
   } else {
     status = classifyProviderError(400, body) === 'invalid_request' ? 500 : 400;
@@ -113,6 +120,7 @@ export function scrubProviderErrorBody(body: ProviderErrorBody): ProviderErrorBo
   if (out.raw !== undefined) out.raw = scrubErrorText(out.raw);
   if (out.message !== undefined) out.message = scrubErrorText(out.message);
   if (out.type !== undefined) out.type = scrubErrorText(out.type);
+  if (out.code !== undefined) out.code = scrubErrorText(out.code);
   return out;
 }
 
@@ -197,7 +205,9 @@ export function parseProviderErrorBody(rawText: string): ProviderErrorBody {
     const t =
       stringOf(errField['type']) ?? stringOf(errField['status']) ?? stringOf(errField['code']);
     const m = stringOf(errField['message']) ?? extractDetail(errField['detail']);
+    const code = stringOf(errField['code']);
     if (t) body.type = t;
+    if (code && code !== t) body.code = code;
     if (m) body.message = m;
   } else if (typeof errField === 'string') {
     body.message = errField;
@@ -212,6 +222,13 @@ export function parseProviderErrorBody(rawText: string): ProviderErrorBody {
   if (!body.message) {
     const m = stringOf(parsed['message']) ?? extractDetail(parsed['detail']);
     if (m) body.message = m;
+  }
+  // MiniMax native envelope: { base_resp: { status_code, status_msg } }.
+  // Only fills what the vendor-neutral shapes above left empty.
+  const miniMax = miniMaxBaseRespError(parsed['base_resp']);
+  if (miniMax) {
+    if (!body.type && miniMax.type) body.type = miniMax.type;
+    if (!body.message) body.message = miniMax.message;
   }
 
   // request_id (Anthropic), id (some compatible providers)
@@ -336,6 +353,41 @@ export function retryAfterMsFromBody(body: ProviderErrorBody): number | undefine
   }
 
   return undefined;
+}
+
+/**
+ * MiniMax status codes (platform.minimax.io — Error Codes) mapped onto the
+ * vendor error types the classifier already understands. Codes absent here
+ * keep their message only: `1008 insufficient balance` and `2056 usage limit
+ * exceeded` classify as quota from their text, and server-side codes
+ * (1000/1001/1024/1033) take their kind from the HTTP status.
+ */
+const MINIMAX_STATUS_TYPE: Record<number, string> = {
+  1002: 'rate_limit_error', // rate limit (RPM)
+  1039: 'rate_limit_error', // token limit (TPM)
+  1041: 'rate_limit_error', // connection limit
+  2045: 'rate_limit_error', // rate growth limit
+  1004: 'authentication_error',
+  2049: 'authentication_error', // invalid API key
+  1026: 'content_filter', // input flagged
+  1027: 'content_filter', // output flagged
+  2013: 'invalid_request_error',
+};
+
+/**
+ * Read a MiniMax `base_resp` envelope. Returns undefined for a missing one or
+ * a success (`status_code: 0`). The code is appended to the message so the
+ * rendered error carries it the same way MiniMax's Anthropic surface does
+ * (`usage limit exceeded (2056)`).
+ */
+export function miniMaxBaseRespError(
+  value: unknown,
+): { code: number; type?: string | undefined; message: string } | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const code = Number(value['status_code']);
+  if (!Number.isInteger(code) || code === 0) return undefined;
+  const msg = stringOf(value['status_msg']) ?? 'MiniMax error';
+  return { code, type: MINIMAX_STATUS_TYPE[code], message: `${msg} (${code})` };
 }
 
 function stringOf(v: unknown): string | undefined {

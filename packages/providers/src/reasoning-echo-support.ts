@@ -13,6 +13,8 @@
  * Module-scoped and session-scoped for the same reasons as `effort-support.ts`:
  * the lesson survives provider rebuilds and is re-probed on the next launch.
  */
+
+import { upstreamHost } from './proxy-upstream.js';
 export type ReasoningEchoField = 'reasoning_content' | 'reasoning' | 'omit';
 
 const learned = new Map<string, ReasoningEchoField>();
@@ -46,24 +48,6 @@ function hostReasoningEchoField(baseUrl: string): ReasoningEchoField | undefined
   if (host === undefined) return undefined;
   if (host === 'cerebras.ai' || host.endsWith('.cerebras.ai')) return 'reasoning';
   return undefined;
-}
-
-/**
- * The host the request finally reaches. With the WrongProxy/WrongTrace toggle
- * on, the host layer rewrites every base URL to `<proxy>/proxy/<host><path>`
- * (`@wrongstack/core` `rewriteBaseUrl`), so the adapter sees `localhost` — the
- * upstream host is the first path segment after `/proxy/`.
- */
-function upstreamHost(baseUrl: string): string | undefined {
-  let url: URL;
-  try {
-    url = new URL(baseUrl);
-  } catch {
-    return undefined;
-  }
-  const proxied = /\/proxy\/([^/]+)/.exec(url.pathname)?.[1];
-  const host = proxied ? proxied.replace(/:\d+$/, '') : url.hostname;
-  return host.toLowerCase();
 }
 
 const REFUSAL_WORDING =

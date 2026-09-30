@@ -16,6 +16,8 @@ import {
   optimizeProjectAgentLearning,
   parseStructuredLearnedEntriesFromContent,
   rankRoleSkills,
+  recordSkillBlocked,
+  recordSkillLoad,
   recordSkillOutcome,
   renderLearnedInstructions,
   resetCaptureWindows,
@@ -192,6 +194,61 @@ describe('skill routing and the project skill layer', () => {
       ]),
     ).toBe('testing');
     expect(routeDirectiveToSkill('Be nice to reviewers.', ['testing', 'git-flow'])).toBeUndefined();
+  });
+
+  it('matches routing words as words, not inside other words', () => {
+    // `hang` inside "change"/"changes", `log` inside "dialog"/"catalog".
+    expect(
+      routeDirectiveToSkill(
+        'Record every change to the dialog catalog and review the changes twice.',
+        ['debugging', 'audit-log'],
+      ),
+    ).toBeUndefined();
+    // `npm` inside "pnpm" is no longer a second hit, so one weak word alone
+    // does not bind the directive…
+    expect(routeDirectiveToSkill('Use pnpm for local links.', ['node-modern'])).toBeUndefined();
+    // …while `pnpm` itself still counts toward a real match.
+    expect(
+      routeDirectiveToSkill('Use pnpm workspaces with ESM imports for local links.', [
+        'node-modern',
+      ]),
+    ).toBe('node-modern');
+    // Word forms of a short token still count.
+    expect(
+      routeDirectiveToSkill('Keep the logs and the audit trail together.', ['audit-log']),
+    ).toBe('audit-log');
+  });
+
+  it('clears a recorded block once the skill loads again, and only writes on change', () => {
+    recordSkillBlocked('reviewer', { testing: 'missing-capability' }, projectRoot);
+    const first = loadSkillAffinity('reviewer', projectRoot);
+    expect(first.entries['testing']?.blocked).toBe('missing-capability');
+
+    recordSkillBlocked('reviewer', { testing: 'missing-capability' }, projectRoot);
+    expect(loadSkillAffinity('reviewer', projectRoot).updatedAt).toBe(first.updatedAt);
+
+    recordSkillLoad('reviewer', ['testing'], projectRoot);
+    expect(loadSkillAffinity('reviewer', projectRoot).entries['testing']?.blocked).toBeUndefined();
+  });
+
+  it('ignores generic words from skill names', () => {
+    // "wrongstack" and "verify"/"before" used to bind these to the mailbox and
+    // verify-before-done skills on wording alone.
+    expect(
+      routeDirectiveToSkill(
+        'Always verify the `@wrongstack/core` barrel exports before importing a deep path.',
+        ['wrongstack-mailbox', 'verify-before-done'],
+      ),
+    ).toBeUndefined();
+  });
+
+  it('routes consumer-mapping directives to codebase navigation', () => {
+    expect(
+      routeDirectiveToSkill(
+        'Map consumers through the package barrel; deep-specifier greps miss every importer.',
+        ['codebase-navigation', 'node-modern', 'typescript-strict'],
+      ),
+    ).toBe('codebase-navigation');
   });
 
   it('stamps the routed skill onto the captured directive and counts it', () => {

@@ -74,7 +74,8 @@
     "noProvider": "sin-proveedor",
     "noModel": "sin-modelo",
     "memoryContextTitle": "Contexto de memoria — recuerdos SAGE inyectados",
-    "toolStatsTitle": "Estadísticas de herramientas"
+    "toolStatsTitle": "Estadísticas de herramientas",
+    "sessionToolsTitle": "Herramientas de sesión"
   },
   "toolStats": {
     "title": "Estadísticas de llamadas de herramientas",

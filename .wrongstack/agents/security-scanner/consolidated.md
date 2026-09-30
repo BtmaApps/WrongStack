@@ -60,8 +60,6 @@
 
 ## Coordination, Encryption, Memory, And SQLite Safety
 
-- Prevent previous-version mailbox writers or compactors from mutating a JSONL mailbox after v2 receipt records are enabled. Compaction in `packages/core/src/coordination/global-mailbox.ts` rewrites only materialized message objects; an older codec that ignores unknown receipt records can silently erase security-relevant actor state. Enforce an exclusive writer-version fence with offline backup-based rollback, and never dual-write global completion for new fan-out messages.
-
 - Require effective encryption before any sync write. `packages/core/src/plugins/sync-plugin.ts` must reject missing or no-op encryption before writing `sync.json`. Pass the host vault to built-in plugins through the top-level plugin API config in `packages/cli/src/wiring/plugins.ts`.
 
 - Guard permanent-memory deletion in `updateSage()` by checking both the persisted state and `input.persistence`. A request such as `{ persistence: 'permanent', status: 'deleted' }` must not bypass an existing-state-only deletion check. Every forced deletion in `packages/sage/src/sqlite-store.ts` must be recorded in the audit log with the force decision and persistence class.

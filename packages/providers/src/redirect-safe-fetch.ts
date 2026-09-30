@@ -169,7 +169,7 @@ function checkAborted(signal?: AbortSignal): void {
 export interface RedirectSafeFetchInit {
   method?: string | undefined;
   headers: Record<string, string>;
-  body?: string | undefined;
+  body?: string | Uint8Array | undefined;
   signal?: AbortSignal | undefined;
 }
 

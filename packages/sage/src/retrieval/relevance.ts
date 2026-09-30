@@ -75,7 +75,9 @@ export function memoryQueryRelevance(memory: Sage, query: string): MemoryQueryRe
   const { normalizedQuery, queryTerms } = prepareQuery(query);
   if (queryTerms.length === 0) return { strength: 0, evidence: [] };
 
-  for (const anchor of memory.anchors) {
+  const anchors = Array.isArray(memory?.anchors) ? memory.anchors : [];
+  for (const anchor of anchors) {
+    if (!anchor) continue;
     const exact = exactAnchorValue(anchor);
     if (exact && normalizedQuery.includes(exact)) {
       return {
@@ -85,8 +87,9 @@ export function memoryQueryRelevance(memory: Sage, query: string): MemoryQueryRe
     }
   }
 
-  const textTerms = new Set(informativeTerms(memory.text));
-  const tagTerms = new Set(memory.tags.flatMap(informativeTerms));
+  const textTerms = new Set(informativeTerms(typeof memory?.text === 'string' ? memory.text : ''));
+  const tags = Array.isArray(memory?.tags) ? memory.tags : [];
+  const tagTerms = new Set(tags.flatMap(informativeTerms));
   // Symbols, commands and roles only — deliberately NOT anchor paths. A path
   // is matched as a path (verbatim in the query above, or by the tool-call
   // middleware against the file the tool actually touched); letting its
@@ -94,8 +97,10 @@ export function memoryQueryRelevance(memory: Sage, query: string): MemoryQueryRe
   // makes any memory about `<pkg>/src/store.ts` look like evidence for every
   // other `store.ts` in the repository.
   const anchorTerms = new Set(
-    memory.anchors.flatMap((anchor) =>
-      informativeTerms([anchor.symbol, anchor.command, anchor.role].filter(Boolean).join(' ')),
+    anchors.flatMap((anchor) =>
+      anchor
+        ? informativeTerms([anchor.symbol, anchor.command, anchor.role].filter(Boolean).join(' '))
+        : [],
     ),
   );
   const allTerms = new Set([...textTerms, ...tagTerms, ...anchorTerms]);
@@ -214,8 +219,10 @@ export function memorySemanticRelevance(
 /** Structural corroboration required before a graph-expanded memory is injected. */
 export function memoryStructuralRelevance(memory: Sage, seeds: Sage[]): MemoryQueryRelevance {
   const memoryAnchors = structuralAnchorKeys(memory);
-  const memoryTags = new Set(memory.tags.flatMap(informativeTerms));
-  for (const seed of seeds) {
+  const memoryTagsList = Array.isArray(memory?.tags) ? memory.tags : [];
+  const memoryTags = new Set(memoryTagsList.flatMap(informativeTerms));
+  for (const seed of seeds ?? []) {
+    if (!seed) continue;
     const sharedAnchors = [...memoryAnchors].filter((key) => structuralAnchorKeys(seed).has(key));
     if (sharedAnchors.length > 0) {
       return {
@@ -223,7 +230,8 @@ export function memoryStructuralRelevance(memory: Sage, seeds: Sage[]): MemoryQu
         evidence: [`graph:shared-anchor:${sharedAnchors[0]}`],
       };
     }
-    const seedTags = new Set(seed.tags.flatMap(informativeTerms));
+    const seedTagsList = Array.isArray(seed.tags) ? seed.tags : [];
+    const seedTags = new Set(seedTagsList.flatMap(informativeTerms));
     const sharedTags = [...memoryTags].filter((tag) => seedTags.has(tag));
     if (sharedTags.length >= 2) {
       return {
@@ -258,6 +266,9 @@ let lastQueryKey: string | undefined;
 let lastQueryValue: PreparedQuery | undefined;
 
 function prepareQuery(query: string): PreparedQuery {
+  if (typeof query !== 'string' || !query.trim()) {
+    return { normalizedQuery: '', queryTerms: [] };
+  }
   if (lastQueryKey === query && lastQueryValue) return lastQueryValue;
   const prepared: PreparedQuery = {
     normalizedQuery: query.normalize('NFKC').toLowerCase().replace(/\\/g, '/'),
@@ -269,6 +280,7 @@ function prepareQuery(query: string): PreparedQuery {
 }
 
 function informativeTerms(text: string): string[] {
+  if (typeof text !== 'string') return [];
   return tokenize(text)
     .map((term) => term.replace(/^[._-]+|[._-]+$/g, ''))
     .filter((term) => term.length >= 3 && !GENERIC_QUERY_TERMS.has(term));
@@ -284,7 +296,9 @@ function exactAnchorValue(anchor: MemoryAnchor): string | undefined {
 
 function structuralAnchorKeys(memory: Sage): Set<string> {
   const keys = new Set<string>();
-  for (const anchor of memory.anchors) {
+  const anchors = Array.isArray(memory?.anchors) ? memory.anchors : [];
+  for (const anchor of anchors) {
+    if (!anchor) continue;
     const value = exactAnchorValue(anchor);
     if (value) keys.add(`${anchor.type}:${value}`);
   }

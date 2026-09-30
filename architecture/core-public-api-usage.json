@@ -9,9 +9,9 @@
       "runtimeOrMixed": 96
     },
     "@wrongstack/core/agent-catalog": {
-      "files": 18,
+      "files": 20,
       "typeOnly": 2,
-      "runtimeOrMixed": 19
+      "runtimeOrMixed": 21
     },
     "@wrongstack/core/chronicle": {
       "files": 14,
@@ -119,9 +119,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 20,
-      "typeOnly": 0,
-      "runtimeOrMixed": 20
+      "files": 46,
+      "typeOnly": 1,
+      "runtimeOrMixed": 45
     },
     "@wrongstack/core/registry": {
       "files": 142,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1240,
-      "typeOnly": 1098,
-      "runtimeOrMixed": 363
+      "files": 1258,
+      "typeOnly": 1113,
+      "runtimeOrMixed": 368
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 683,
+      "files": 684,
       "typeOnly": 66,
-      "runtimeOrMixed": 649
+      "runtimeOrMixed": 650
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -259,9 +259,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
-      "files": 17,
+      "files": 18,
       "typeOnly": 3,
-      "runtimeOrMixed": 17
+      "runtimeOrMixed": 18
     },
     "@wrongstack/core/worktree": {
       "files": 15,
@@ -2468,6 +2468,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent-catalog",
+      "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent-catalog",
       "file": "packages/cli/tests/fleet/host-learning.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -2493,6 +2499,12 @@
     {
       "specifier": "@wrongstack/core/agent-catalog",
       "file": "packages/tools/src/skill.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent-catalog",
+      "file": "packages/webui-server/tests/agent-roster-handlers.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8618,6 +8630,12 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/cli/src/slash-commands/zai-plan.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/cli/tests/slash-openai-quota.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8642,6 +8660,18 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/balance-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/custom-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/github-copilot-quota.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8649,6 +8679,36 @@
     {
       "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/google-antigravity-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/kimi-code-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/minimax-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/minimax.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/omniroute-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/openai-codex-errors.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8672,13 +8732,61 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/opencode-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/openrouter-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/presets/google-antigravity.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/zai-account.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/zai.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/account-quota-gateway-balance.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/account-quota-key-vendors.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/account-quota.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/tests/anthropic-rate-limits.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/codex-account-quota.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8696,13 +8804,61 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/minimax-account.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/minimax-quota.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/tests/openai-codex-rate-limits.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/zai-account.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/zai.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/tui/src/components/sidebar-quota-model.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/tui/src/hooks/use-provider-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/tui/src/reducers/workspace-panels.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/tui/tests/sidebar-quota-card.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/tui/tests/sidebar-quota-model.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8720,7 +8876,19 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/webui-server/src/server/provider/quota-refresh.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/webui-server/src/server/setup-events.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/webui-server/tests/provider-quota-refresh.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13490,6 +13658,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/zai-plan.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/standalone-auto-update.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14150,6 +14324,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-helpers-capabilities.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14523,6 +14703,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/slash-mode.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/slash-openai-quota.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15608,6 +15794,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/account-quota.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/aggregate.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15674,6 +15866,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/custom-quota.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/error-parse.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -15723,8 +15921,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/minimax.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15815,6 +16013,12 @@
       "file": "packages/providers/src/openai-codex-body.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/openai-codex-errors.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15962,6 +16166,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/thinking-signer.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/tool-format/from-anthropic.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16013,6 +16223,24 @@
       "file": "packages/providers/src/wire-format.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/zai.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/account-quota-gateway-balance.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/account-quota-key-vendors.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -16166,6 +16394,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/minimax-account.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/minimax.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -16209,6 +16443,24 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/openai-codex-rate-limits.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/openai-codex-request-compression.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/openai-codex-reroute.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/openai-codex-routing-hint.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16310,6 +16562,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/thinking-signer.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/tool-format.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16331,6 +16589,12 @@
       "file": "packages/providers/tests/with-catalog-capabilities.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/zai.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -19034,6 +19298,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/provider/quota-refresh.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/proxy-runtime.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -19377,6 +19647,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/provider-operations-oauth.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/provider-quota-refresh.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -21213,6 +21489,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/yolo.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/slash-commands/zai-plan.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -24327,6 +24609,12 @@
     {
       "specifier": "@wrongstack/core/wiring/proxy-rewrite",
       "file": "packages/cli/tests/wiring-provider-runtime-setup.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/wiring/proxy-rewrite",
+      "file": "packages/providers/tests/proxy-upstream.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

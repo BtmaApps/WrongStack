@@ -26,6 +26,7 @@ import {
   createProjectAgent,
   DEFAULT_EAGER_SKILL_LIMIT,
   detectLearnedConflicts,
+  eagerRoleSkills,
   evaluateAutoOptimize,
   FLEET_ROSTER,
   getProjectAgentLearnStats,
@@ -42,7 +43,6 @@ import {
   loadProjectSkillAugmentation,
   loadSkillAffinity,
   optimizeProjectAgentLearning,
-  rankRoleSkills,
   readQuarantinedDirectives,
   readRawLearnedEntries,
   resetProjectAgentIdentity,
@@ -474,8 +474,11 @@ export class AgentRosterWSHandler {
         const developed = listProjectSkillAugmentations(role, projectRoot);
         const affinity = loadSkillAffinity(role, projectRoot);
         // Raw counters do not say which skills actually get loaded — that is the
-        // ranking, and it is the only part a user can act on (by pinning).
-        const eager = new Set(rankRoleSkills(role, candidates, projectRoot));
+        // ranking, and it is the only part a user can act on (by pinning). A
+        // skill the role was last seen unable to load never makes the cut,
+        // whatever it scores: it used to be shown as loaded while every spawn
+        // dropped it.
+        const eager = new Set(eagerRoleSkills(role, candidates, projectRoot));
         return {
           type,
           payload: {
@@ -488,6 +491,11 @@ export class AgentRosterWSHandler {
               score:
                 scoreSkillAffinity(affinity.entries[skill]) + (developed.includes(skill) ? 1 : 0),
               eager: eager.has(skill),
+              // Unloadable for this role; a developed one is still delivered
+              // as its project addendum alone.
+              ...(affinity.entries[skill]?.blocked
+                ? { blocked: affinity.entries[skill]?.blocked }
+                : {}),
             })),
           },
         };

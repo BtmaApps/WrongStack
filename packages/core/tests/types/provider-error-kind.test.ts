@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { ERROR_CODES } from '../../src/types/errors.js';
 import {
-  ProviderError,
-  StreamHangError,
   classifyProviderError,
   isContextOverflowShaped,
   isRetryableKind,
+  ProviderError,
+  StreamHangError,
 } from '../../src/types/provider.js';
-import { ERROR_CODES } from '../../src/types/errors.js';
 
 describe('ProviderError.isProviderError', () => {
   it('returns true for a genuine ProviderError', () => {
@@ -144,6 +144,45 @@ describe('classifyProviderError', () => {
       classifyProviderError(429, {
         message: 'Rate limit reached: Limit 30000, Used 30000',
         raw: '{"error":{"code":"insufficient_quota","message":"Rate limit reached"}}',
+      }),
+    ).toBe('rate_limit');
+  });
+
+  it('maps unambiguous OpenAI error codes ahead of status', () => {
+    // A 429 whose plan simply does not include Codex must never be retried.
+    expect(classifyProviderError(429, { type: 'usage_not_included' })).toBe('quota_exhausted');
+    expect(
+      classifyProviderError(429, { type: 'invalid_request_error', code: 'usage_not_included' }),
+    ).toBe('quota_exhausted');
+    expect(classifyProviderError(503, { code: 'server_is_overloaded' })).toBe('overloaded');
+    expect(classifyProviderError(503, { code: 'slow_down' })).toBe('rate_limit');
+    expect(
+      classifyProviderError(400, {
+        type: 'invalid_request_error',
+        code: 'context_length_exceeded',
+      }),
+    ).toBe('context_overflow');
+  });
+
+  it('keeps safety-policy codes terminal and out of the content-filter reroute', () => {
+    for (const code of ['cyber_policy', 'bio_policy', 'invalid_prompt']) {
+      expect(
+        classifyProviderError(400, {
+          type: 'invalid_request_error',
+          code,
+          message: 'This request has been flagged for possible cybersecurity risk.',
+        }),
+      ).toBe('invalid_request');
+    }
+  });
+
+  it('does not decide quota from a billing code alone', () => {
+    // Same rule as the raw-body pin above, for the structured `code` field.
+    expect(
+      classifyProviderError(429, {
+        type: 'requests',
+        code: 'insufficient_quota',
+        message: 'Rate limit reached: Limit 30000, Used 30000',
       }),
     ).toBe('rate_limit');
   });

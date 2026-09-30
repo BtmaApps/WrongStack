@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { requireSessionId } from '@wrongstack/primitives';
+import { assertManagementWrite } from '../management-fence.js';
 import {
   createEmptyContractGraph,
   evaluateContractGraph,
@@ -106,6 +107,7 @@ export async function upsertContractNode(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, input.taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
     validateContractBinding(task, input.checkId, input.metricId);
     validateWaiver(input.state, input.waiver);
 
@@ -238,6 +240,7 @@ export async function addContractEdge(
     board.updatedAt = now;
     const ownerTask = taskForEndpoint(board, graph, from) ?? taskForEndpoint(board, graph, to);
     if (ownerTask) {
+      assertManagementWrite(board, [ownerTask], eventContext);
       event = createKanbanEvent(board.id, ownerTask, 'contract.edge.added', {
         sessionId,
         after: { ...edge },
@@ -269,6 +272,9 @@ export async function removeContractNode(
     if (index === -1) return false;
     const node = graph.nodes[index]!;
     const task = findTask(board, node.taskId);
+    if (task) {
+      assertManagementWrite(board, [task], eventContext);
+    }
     graph.nodes.splice(index, 1);
     graph.edges = graph.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId);
     graph.updatedAt = nowIso();
@@ -298,14 +304,17 @@ export async function removeContractEdge(
     const graph = board.contractGraph;
     if (!graph) return false;
     const removed = graph.edges.find((edge) => edge.id === edgeId);
+    if (!removed) return false;
+    const task =
+      taskForEndpoint(board, graph, removed.from) ?? taskForEndpoint(board, graph, removed.to);
+    if (task) {
+      assertManagementWrite(board, [task], eventContext);
+    }
     const before = graph.edges.length;
     graph.edges = graph.edges.filter((edge) => edge.id !== edgeId);
     if (graph.edges.length === before) return false;
     graph.updatedAt = nowIso();
     board.updatedAt = graph.updatedAt;
-    const task = removed
-      ? (taskForEndpoint(board, graph, removed.from) ?? taskForEndpoint(board, graph, removed.to))
-      : undefined;
     if (task && removed) {
       event = createKanbanEvent(board.id, task, 'contract.edge.removed', {
         sessionId,

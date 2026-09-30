@@ -15,6 +15,16 @@ export function isPrunableSessionJsonl(name: string): boolean {
   return isSessionTranscriptFileName(name);
 }
 
+/**
+ * How many transcripts the sweep ages and deletes at once.
+ *
+ * Bounded rather than unbounded: the work is filesystem round trips, so full
+ * concurrency buys little past the point where the OS is saturated, while an
+ * unbounded `Promise.all` over a store with tens of thousands of expired
+ * sessions would hold that many handles open at once.
+ */
+const PRUNE_CONCURRENCY = 16;
+
 export async function pruneSessionFiles(
   storeDir: string,
   maxAgeDays: number,
@@ -24,28 +34,40 @@ export async function pruneSessionFiles(
   const cutoff = Date.now() - maxAgeDays * 86_400_000;
   let deleted = 0;
 
-  const pruneFile = async (dir: string, name: string, prefix: string): Promise<void> => {
-    const jsonlPath = path.join(dir, name);
+  /**
+   * Age-check one transcript and remove its session. Resolves true when the
+   * session was deleted.
+   */
+  const pruneFile = async (jsonlPath: string, id: string): Promise<boolean> => {
     try {
       const stat = await fsp.stat(jsonlPath);
-      if (stat.mtimeMs >= cutoff) return;
+      if (stat.mtimeMs >= cutoff) return false;
       /* v8 ignore start -- defensive: file vanished between readdir and stat */
     } catch {
-      return;
+      return false;
     }
     /* v8 ignore stop */
-    const base = stripSessionTranscriptExtension(name);
-    const id = prefix ? `${prefix}/${base}` : base;
-    if (isSessionInUse && (await isSessionInUse(id))) return;
+    if (isSessionInUse && (await isSessionInUse(id))) return false;
     await deleteSession(id);
-    deleted++;
+    return true;
   };
 
   /* v8 ignore next -- defensive: store dir is ensured before prune runs */
   const entries = await fsp.readdir(storeDir, { withFileTypes: true }).catch(() => []);
+
+  // Collect every transcript candidate first. The sweep's real cost is the
+  // per-session `stat` + delete pair, and issuing those one awaited round trip
+  // at a time made a retention run scale its wall time with the number of
+  // EXPIRED sessions — exactly the store size a sweep exists to shrink.
+  const candidates: Array<{ jsonlPath: string; id: string }> = [];
   for (const entry of entries) {
     if (entry.isFile()) {
-      if (isPrunableSessionJsonl(entry.name)) await pruneFile(storeDir, entry.name, '');
+      if (isPrunableSessionJsonl(entry.name)) {
+        candidates.push({
+          jsonlPath: path.join(storeDir, entry.name),
+          id: stripSessionTranscriptExtension(entry.name),
+        });
+      }
       continue;
     }
     /* v8 ignore next -- defensive: root entries are only files or directories */
@@ -55,9 +77,26 @@ export async function pruneSessionFiles(
     const files = await fsp.readdir(dateDir, { withFileTypes: true }).catch(() => []);
     for (const file of files) {
       if (!file.isFile() || !isPrunableSessionJsonl(file.name)) continue;
-      await pruneFile(dateDir, file.name, entry.name);
+      const base = stripSessionTranscriptExtension(file.name);
+      candidates.push({ jsonlPath: path.join(dateDir, file.name), id: `${entry.name}/${base}` });
     }
   }
+
+  // Fixed-width worker pool over the shared cursor: the same fs operations as
+  // before, issued concurrently instead of serialized, with a bound so a store
+  // with tens of thousands of expired sessions cannot exhaust file handles.
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const index = cursor++;
+      const candidate = candidates[index];
+      if (!candidate) return;
+      if (await pruneFile(candidate.jsonlPath, candidate.id)) deleted++;
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(PRUNE_CONCURRENCY, candidates.length) }, () => worker()),
+  );
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;

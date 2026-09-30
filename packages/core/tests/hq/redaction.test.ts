@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createHqEventEnvelope } from '../../src/hq/protocol.js';
+import { createHqEventEnvelope, isHqSageRecord } from '../../src/hq/protocol.js';
 import {
   redactHqEvent,
   redactHqValue,
@@ -227,6 +227,69 @@ describe('HQ redaction', () => {
         paths: 'full',
       }),
     ).toEqual({ rawContent: true, toolArgs: 'redacted', paths: 'full' });
+  });
+  it('still collapses relative values that traverse outside the root to the basename', () => {
+    // '..' segments mean the value is not project-relative — the conservative
+    // basename fallback keeps applying to it.
+    const result = redactHqValue(
+      { filePath: '../outside/secrets.txt' },
+      { policy: { paths: 'project-relative' }, projectRoot: 'D:/Codebox/PROJECTS/WrongStack' },
+    );
+    expect((result.value as { filePath: string }).filePath).toBe('secrets.txt');
+  });
+});
+
+describe('HQ redaction keeps project-state sync channels round-trip intact', () => {
+  // Sage anchors are stored project-relative (normalizeProjectPath returns
+  // normalizeSlashes(rel)). Under `paths: 'project-relative'` a relative value
+  // satisfies the policy verbatim; the basename fallback previously collapsed
+  // 'packages/core/src/hq/redaction.ts' to 'redaction.ts'. The mangled record
+  // kept its revision/changeId, became HQ-authoritative via
+  // persistence.sage.merge, and replicas applied it — silently breaking
+  // path-based memory retrieval.
+  it('round-trips a sage.snapshot anchor path under paths: project-relative', () => {
+    const record = {
+      id: 'mem_sync_1',
+      revision: 1,
+      changeId: '0123456789abcdef0123456789abcdef',
+      memory: {
+        id: 'mem_sync_1',
+        scope: 'project',
+        text: 'Anchor round-trip must survive HQ redaction.',
+        kind: 'fact',
+        status: 'active',
+        importance: 0.8,
+        confidence: 0.9,
+        freshness: 0.5,
+        createdAt: '2026-09-29T00:00:00.000Z',
+        updatedAt: '2026-09-29T00:00:00.000Z',
+        tags: ['sync'],
+        anchors: [{ type: 'file', path: 'packages/core/src/hq/redaction.ts' }],
+        sources: [{ type: 'session' }],
+      },
+    };
+    expect(isHqSageRecord(record)).toBe(true);
+
+    const event = createHqEventEnvelope({
+      id: 'evt_sync_1',
+      type: 'sage.snapshot',
+      timestamp: '2026-09-29T00:00:00.000Z',
+      clientId: 'client_sync',
+      projectId: 'project_sync',
+      seq: 1,
+      payload: { projectId: 'project_sync', records: [record] },
+    });
+
+    const result = redactHqEvent(event, {
+      policy: { paths: 'project-relative' },
+      projectRoot: 'D:/Codebox/PROJECTS/WrongStack',
+    });
+
+    type SyncPayload = {
+      records: Array<{ memory: { anchors: Array<{ path?: string }> } | null }>;
+    };
+    const redactedRecord = (result.value.payload as SyncPayload).records[0]!;
+    expect(redactedRecord.memory!.anchors[0]!.path).toBe('packages/core/src/hq/redaction.ts');
   });
 });
 

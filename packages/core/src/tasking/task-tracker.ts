@@ -76,7 +76,7 @@ export class TaskTracker {
   }
 
   private notifyChange(change: TaskTrackerChange): void {
-    for (const l of this.listeners) {
+    for (const l of [...this.listeners]) {
       try {
         l(change);
       } catch {
@@ -259,6 +259,7 @@ export class TaskTracker {
       // the scheduler and falsely improve completion percentage.
       return false;
     }
+    const dependents = this.getDependents(id);
     this.graph.nodes.delete(id);
     this.graph.edges = this.graph.edges.filter((e) => e.from !== id && e.to !== id);
     this.graph.rootNodes = this.graph.rootNodes.filter((r) => r !== id);
@@ -266,6 +267,7 @@ export class TaskTracker {
     for (const n of this.graph.nodes.values()) {
       if (n.children?.includes(id)) n.children = n.children.filter((c) => c !== id);
     }
+    this.unblockNodesIfReady(dependents, `auto-unblocked: blocker ${id} removed`);
     this.graph.updatedAt = Date.now();
     this.persist();
     this.notifyChange({ type: 'node_removed', nodeId: id, node });
@@ -308,7 +310,7 @@ export class TaskTracker {
     // Auto-unblock / auto-block cascades. Re-entrancy is guarded inside the
     // helpers (flag set around their work): a listener notified mid-cascade
     // may mutate statuses but cannot re-enter the cascade itself.
-    if (status === 'completed') {
+    if (status === 'completed' || status === 'failed') {
       this.unblockDependents(id);
     }
 
@@ -372,9 +374,9 @@ export class TaskTracker {
         if (filter.status?.length && !filter.status.includes(n.status)) return false;
         if (filter.priority?.length && !filter.priority.includes(n.priority)) return false;
         if (filter.type?.length && !filter.type.includes(n.type)) return false;
-        if (filter.assignee?.length && n.assignee && !filter.assignee.includes(n.assignee))
+        if (filter.assignee?.length && (!n.assignee || !filter.assignee.includes(n.assignee)))
           return false;
-        if (filter.tags?.length && n.tags && !n.tags.some((t) => filter.tags?.includes(t)))
+        if (filter.tags?.length && (!n.tags || !n.tags.some((t) => filter.tags?.includes(t))))
           return false;
         if (filter.specRequirementId && n.specRequirementId !== filter.specRequirementId)
           return false;
@@ -483,32 +485,33 @@ export class TaskTracker {
     });
   }
 
-  private unblockDependents(completedId: string): void {
+  private unblockNodesIfReady(nodeIds: string[], reason: string): void {
     if (!this.graph || this.cascading) return;
     this.cascading = true;
     try {
-      const dependents = this.getDependents(completedId);
-      for (const depId of dependents) {
+      for (const depId of nodeIds) {
         const dep = this.graph.nodes.get(depId);
         if (dep?.status !== 'blocked') continue;
-        // Check if all blockers are now completed
         const remainingBlockers = this.getBlockers(depId);
         const allUnblocked = remainingBlockers.every((id) => {
           const blocker = this.graph?.nodes.get(id);
           return blocker?.status === 'completed' || blocker?.status === 'failed';
         });
         if (allUnblocked) {
-          this.recordCascadeStatusChange(
-            depId,
-            dep,
-            'pending',
-            `auto-unblocked: blocker ${completedId} reached a terminal state`,
-          );
+          this.recordCascadeStatusChange(depId, dep, 'pending', reason);
         }
       }
     } finally {
       this.cascading = false;
     }
+  }
+
+  private unblockDependents(completedId: string): void {
+    const dependents = this.getDependents(completedId);
+    this.unblockNodesIfReady(
+      dependents,
+      `auto-unblocked: blocker ${completedId} reached a terminal state`,
+    );
   }
 
   private checkAndBlockIfNeeded(taskId: string): void {

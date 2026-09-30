@@ -9,6 +9,8 @@
 
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Circle,
   CircleDot,
   Cpu,
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pagination } from '@/components/ui/pagination';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { usePagination } from '@/hooks/usePagination';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
@@ -52,6 +55,7 @@ import { downloadChatAsMarkdown } from '../CommandPalette';
 import { confirmModal } from '../ConfirmModal';
 import { toast } from '../Toaster';
 import { WorkspaceDock } from '../WorkspaceDock';
+import { ProviderQuotaPanel } from './ProviderQuotaPanel';
 
 // ── Formatting helpers ────────────────────────────────────────────────
 
@@ -142,14 +146,16 @@ function SectionHeading({
   label: string;
   right?: React.ReactNode;
 }) {
+  // A <span> (display:flex) rather than a <div> so the heading can also sit
+  // inside the calm-chrome stats toggle <button> as valid phrasing content.
   return (
-    <div className="flex items-center justify-between">
+    <span className="flex w-full items-center justify-between">
       <span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground font-semibold">
         {icon}
         {label}
       </span>
       {right}
-    </div>
+    </span>
   );
 }
 
@@ -214,6 +220,8 @@ export function SessionPanel() {
   const historyEntries = useHistoryStore((s) => s.entries);
 
   const localPrefs = useLocalPrefs();
+  const fullChrome = useIsFullChrome();
+  const statsExpanded = localPrefs.sessionStatsExpanded;
   // Tracks the last non-'off' autonomy mode so the binary toggle can
   // restore it after a kill-switch. Persisted in module scope so it
   // survives component remounts but resets on a hard page reload.
@@ -404,51 +412,80 @@ export function SessionPanel() {
         <WorkspaceDock />
       </div>
 
-      {/* ── Live stats ── */}
+      {/* ── Live stats ──
+          Calm chrome folds the grid behind its heading (the same figures sit
+          in the chat header's status row); full chrome always shows it. */}
       <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
-        <SectionHeading
-          icon={<Cpu className="h-3 w-3" />}
-          label={t('activity:sessionPanel.sessionLabel')}
-        />
-        <div className="grid grid-cols-2 gap-1.5">
-          <StatBox label={t('activity:sessionPanel.stats.messages')} value={messages.length} />
-          <StatBox
-            label={t('activity:sessionPanel.stats.elapsed')}
-            value={startedAt ? fmtElapsed(now - startedAt) : '--'}
+        {fullChrome ? (
+          <SectionHeading
+            icon={<Cpu className="h-3 w-3" />}
+            label={t('activity:sessionPanel.sessionLabel')}
           />
-          <StatBox
-            label={t('activity:sessionPanel.stats.tokens')}
-            value={fmtTok(totalTokens.input + totalTokens.output)}
-            sub={t('activity:sessionPanel.stats.tokensSub', {
-              in: fmtTok(totalTokens.input),
-              out: fmtTok(totalTokens.output),
-            })}
-          />
-          <StatBox label={t('activity:sessionPanel.stats.cost')} value={fmtCost(cost)} />
-          {iteration && (
-            <StatBox
-              label={t('activity:sessionPanel.stats.iteration')}
-              value={iteration.index}
-              sub={
-                iteration.max
-                  ? t('activity:sessionPanel.stats.iterationOf', { max: iteration.max })
-                  : undefined
+        ) : (
+          <button
+            type="button"
+            data-testid="session-stats-toggle"
+            aria-expanded={statsExpanded}
+            onClick={() => localPrefs.set({ sessionStatsExpanded: !statsExpanded })}
+            className="flex w-full items-center justify-between rounded-sm text-left hover:text-foreground"
+          >
+            <SectionHeading
+              icon={<Cpu className="h-3 w-3" />}
+              label={t('activity:sessionPanel.sessionLabel')}
+              right={
+                statsExpanded ? (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                )
               }
             />
-          )}
-          {sessionAgents.length > 0 && (
+          </button>
+        )}
+        {(fullChrome || statsExpanded) && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <StatBox label={t('activity:sessionPanel.stats.messages')} value={messages.length} />
             <StatBox
-              label={t('activity:sessionPanel.stats.agents')}
-              value={sessionAgents.length}
-              sub={
-                runningAgents > 0
-                  ? t('activity:sessionPanel.stats.agentsRunning', { count: runningAgents })
-                  : undefined
-              }
+              label={t('activity:sessionPanel.stats.elapsed')}
+              value={startedAt ? fmtElapsed(now - startedAt) : '--'}
             />
-          )}
-        </div>
+            <StatBox
+              label={t('activity:sessionPanel.stats.tokens')}
+              value={fmtTok(totalTokens.input + totalTokens.output)}
+              sub={t('activity:sessionPanel.stats.tokensSub', {
+                in: fmtTok(totalTokens.input),
+                out: fmtTok(totalTokens.output),
+              })}
+            />
+            <StatBox label={t('activity:sessionPanel.stats.cost')} value={fmtCost(cost)} />
+            {iteration && (
+              <StatBox
+                label={t('activity:sessionPanel.stats.iteration')}
+                value={iteration.index}
+                sub={
+                  iteration.max
+                    ? t('activity:sessionPanel.stats.iterationOf', { max: iteration.max })
+                    : undefined
+                }
+              />
+            )}
+            {sessionAgents.length > 0 && (
+              <StatBox
+                label={t('activity:sessionPanel.stats.agents')}
+                value={sessionAgents.length}
+                sub={
+                  runningAgents > 0
+                    ? t('activity:sessionPanel.stats.agentsRunning', { count: runningAgents })
+                    : undefined
+                }
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {/* ── Subscription plan quota (Codex, MiniMax, Z.AI) ── */}
+      <ProviderQuotaPanel />
 
       {/* ── Plan / todos ── */}
       {todos.length > 0 &&

@@ -2,6 +2,7 @@ import type { ProviderConfig } from '@wrongstack/core/types';
 import {
   applyProviderOAuthRefresh,
   matchesActiveProviderCredential,
+  setAccountQuotaReporting,
   setOAuthTokenPersister,
   setProviderModelPersister,
 } from '@wrongstack/providers';
@@ -11,6 +12,8 @@ export function installWebuiProviderPersisters(args: {
   mutate: (mutator: (providers: Record<string, ProviderConfig>) => void) => Promise<void>;
   warn: (message: string) => void;
 }): void {
+  // Post-turn plan-quota reads (Kimi Code, OpenCode Go, OpenRouter); host-only.
+  setAccountQuotaReporting(true);
   setOAuthTokenPersister((id, creds, source) => {
     void args
       .mutate((providers) => {

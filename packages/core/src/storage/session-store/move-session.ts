@@ -101,8 +101,13 @@ export async function executeMoveSession(
     }
 
     if (host.catalogClient && lease) {
-      leaseSpent = true;
+      // Mark the lease spent only once the delete actually consumed it. Setting
+      // this BEFORE the call meant a delete that REJECTED still left
+      // `leaseSpent === true`, so the `finally` below skipped the release and
+      // the lease stayed held until it expired on its own — refusing an
+      // immediate retry of a move that never happened.
       await host.catalogClient.call('delete', { sessionId: id, lease });
+      leaseSpent = true;
     } else {
       await host.deleteLocal(id);
     }

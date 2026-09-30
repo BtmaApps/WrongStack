@@ -305,6 +305,26 @@ export function handleProviderModelSwitched(msg: WSServerMessage) {
   toastIfForeground(chat, () => toast.info(`Model: ${to}`));
 }
 
+/** The backend answered with another model than requested; surfaced once per change. */
+export function handleProviderModelRerouted(msg: WSServerMessage) {
+  const chat = chatFor(msg);
+  if (!chat) return;
+  const payload = msg.payload as {
+    providerId: string;
+    requested: string;
+    served: string;
+    reason?: string | undefined;
+  };
+  chat.addMessage({
+    role: 'assistant',
+    content: `Server answered with \`${payload.served}\` instead of \`${payload.requested}\`${
+      payload.reason ? ` — ${payload.reason}` : ''
+    }`,
+    isError: true,
+  });
+  toastIfForeground(chat, () => toast.warn(`Rerouted to ${payload.served}`));
+}
+
 export function handleProviderFallbackPending(msg: WSServerMessage) {
   const chat = chatFor(msg);
   if (!chat) return;
@@ -390,9 +410,13 @@ export function handleProviderStatusSnapshot(msg: WSServerMessage) {
  * covers the push and the catch-up.
  */
 export function handleProviderQuota(msg: WSServerMessage) {
-  const payload = msg.payload as { snapshots?: unknown };
+  const payload = msg.payload as { snapshots?: unknown; refreshed?: unknown };
   if (!Array.isArray(payload?.snapshots)) return;
   useProviderQuotaStore.getState().apply(payload.snapshots as QuotaSnapshot[]);
+  // Present only on the reply to this tab's own `provider.quota.refresh`.
+  if (Array.isArray(payload.refreshed)) {
+    useProviderQuotaStore.getState().applyRefreshes(payload.refreshed);
+  }
 }
 
 /** `provider.audit.history` — durable block/open tail for the waiting room. */

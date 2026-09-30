@@ -8,6 +8,7 @@ import type {
   KanbanSearchResult,
 } from '../types-operations.js';
 import {
+  isAssignmentStale,
   isTaskReadyForWork,
   later,
   matchesKanbanSearch,
@@ -92,7 +93,15 @@ export async function getKanbanOrchestrationSnapshot(
       if (task.assignment?.status === 'running' || task.status === 'in_progress') {
         snapshot.running.push(result);
       }
-      if (task.status === 'blocked' || !areDependenciesMet(board, task.id)) {
+      if (
+        task.status === 'blocked' ||
+        (task.status !== 'completed' &&
+          task.status !== 'archived' &&
+          !task.mergedIntoTaskId &&
+          task.status !== 'review' &&
+          !(task.assignment?.status === 'running' || task.status === 'in_progress') &&
+          !areDependenciesMet(board, task.id))
+      ) {
         snapshot.blocked.push(result);
       }
       if (task.status === 'review') snapshot.review.push(result);
@@ -235,12 +244,7 @@ export async function getKanbanQueueHealth(
       if (readyButBlocked || pendingButBlocked) {
         dependencyBlocked.push(result);
       }
-      const expiredLease =
-        assignment !== undefined &&
-        (assignment.status === 'queued' || assignment.status === 'running') &&
-        assignment.leaseExpiresAt !== undefined &&
-        assignment.leaseExpiresAt <= now;
-      if (expiredLease) {
+      if (isAssignmentStale(assignment, now)) {
         staleAssignments.push(result);
       }
       if (

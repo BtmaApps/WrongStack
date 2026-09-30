@@ -818,7 +818,11 @@
     "footnote": "Bu ayarlar TUI /settings seçiciyle aynıdır. Anahtarlar anında uygulanır; bazı alanlar oturum yeniden başlatması gerektirir.",
     "sageRelaxed": "0,72 (gevşek)",
     "sageDefault": "0,85 (varsayılan)",
-    "sageStrict": "0,95 (katı)"
+    "sageStrict": "0,95 (katı)",
+    "chromeLevelLabel": "Çalışma alanı yoğunluğu",
+    "chromeLevelHint": "Sade görünüm her bilgiyi (token, iterasyon, sunucu sağlığı) tek yerde gösterir, ikincil kontrolleri menülere toplar. Detaylı görünüm tüm çip ve butonları geri getirir.",
+    "chromeLevelCalm": "Sade",
+    "chromeLevelFull": "Detaylı"
   },
   "resetLabel": "Yerel tercihleri temizle",
   "cancel": "İptal",

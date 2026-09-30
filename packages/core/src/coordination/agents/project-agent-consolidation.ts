@@ -39,6 +39,38 @@ export interface ConsolidationMetadata {
   skills?: string[] | undefined;
 }
 
+/**
+ * Ceiling on the role document. The whole of it is injected into the system
+ * prompt of every spawn of the role, beside up to three skill addenda — and
+ * nothing bounded it: each pass was handed the previous document "to improve
+ * upon" and grew it, so the most-used roles here reached 20–24 KB
+ * (`explore-companion`, `reviewer`, `bug-hunter`), several thousand tokens paid
+ * on every automatic spawn for a document the model is told to keep narrow.
+ */
+export const CONSOLIDATED_MAX_BYTES = 8_192;
+
+/**
+ * Keep a role document within {@link CONSOLIDATED_MAX_BYTES} on whole lines.
+ *
+ * The head is kept, not the tail: unlike a skill addendum (which the fallback
+ * renderer appends to, so its tail is newest), this document is written whole
+ * by the distillation pass, which is told to lead with what matters most.
+ */
+export function boundConsolidatedDocument(text: string): string {
+  const trimmed = text.trim();
+  if (Buffer.byteLength(trimmed, 'utf8') <= CONSOLIDATED_MAX_BYTES) return trimmed;
+  const notice = `\n\n_(truncated at ${CONSOLIDATED_MAX_BYTES} bytes — the next optimization pass must shorten it)_`;
+  let budget = CONSOLIDATED_MAX_BYTES - Buffer.byteLength(notice, 'utf8');
+  const kept: string[] = [];
+  for (const line of trimmed.split('\n')) {
+    const cost = Buffer.byteLength(`${line}\n`, 'utf8');
+    if (cost > budget) break;
+    kept.push(line);
+    budget -= cost;
+  }
+  return `${kept.join('\n').trimEnd()}${notice}`;
+}
+
 function learnedPath(role: string, projectRoot?: string): string {
   return path.join(roleDir(role, projectRoot), 'learned.md');
 }
@@ -136,7 +168,8 @@ export function saveProjectAgentConsolidated(
   const dir = roleDir(normalizedRole, projectRoot);
   mkdirSync(dir, { recursive: true });
   const fp = consolidationPath(normalizedRole, projectRoot);
-  writeTextAtomically(fp, content);
+  const bounded = boundConsolidatedDocument(content);
+  writeTextAtomically(fp, bounded);
 
   const consolidatedAt = new Date().toISOString();
   let archived: string | undefined;
@@ -166,7 +199,7 @@ export function saveProjectAgentConsolidated(
     consolidatedAt,
     sourceEntryCount: rawEntries.length,
     sourceBytes: rawBytes,
-    consolidatedBytes: Buffer.byteLength(content, 'utf8'),
+    consolidatedBytes: Buffer.byteLength(bounded, 'utf8'),
     trigger: options?.trigger ?? 'manual',
     ...(options?.model ? { model: options.model } : {}),
     ...(options?.prune ? { pruned: true } : {}),
@@ -207,6 +240,8 @@ export function buildConsolidationInstruction(
   const rawEntries = entries.map((entry) => {
     const lines = [entry.what];
     if (entry.how) lines.push(`   Anchors: ${entry.how.split('\n').join(', ')}`);
+    if (entry.skill)
+      lines.push(`   Skill: ${entry.skill} (also distilled into that skill's addendum)`);
     const { applied, wins } = directiveTrials(entry);
     // The track record is the only signal here that did not come from the same
     // agent that wrote the directive. It is what lets the pass select rather
@@ -233,6 +268,8 @@ export function buildConsolidationInstruction(
     '7. **Preserve actionable anchors.** Keep exact file paths, command names, package names, and configuration values that make a directive concrete and runnable.',
     '8. **No filler.** Do not include meta-commentary about the consolidation process. The document should read as if it were always a single authoritative reference.',
     '9. **Trust the track record over your own judgement of plausibility.** An entry may carry `Track record: applied N×, M succeeded` — completed tasks that exercised it, and how many of those succeeded. Keep the ones that keep working, even when they read as obvious. An entry applied several times with few successes has been tested and has failed the test: drop it, or narrow it to the condition under which it actually holds. Entries with no track record are unproven rather than bad — judge them on merit, but do not let one displace a proven entry.',
+    `10. **Budget: under ${CONSOLIDATED_MAX_BYTES} bytes (about 1,100 words).** The whole document is injected into every future spawn of this role, so every line is paid for on every run. When the existing document below is already over budget, cutting it down is part of this task: merge overlapping rules, then drop the weakest. Lead with what matters most — anything past the budget is truncated.`,
+    "11. **Do not duplicate skill addenda.** An entry marked `Skill: <name>` is also distilled into that skill's project addendum, which travels with the skill. Keep it here only when it matters to the role as a whole, and then in one line.",
     '',
     rawEntries.length > 0
       ? `## Raw learned entries (${rawEntries.length} total)\n\n${rawBody}`

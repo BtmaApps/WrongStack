@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assessAtomicity, candidateFromKanbanTask } from '../atomicity/assess.js';
 import { normalizeKanbanBoundaryPolicy } from '../boundary.js';
 import type {
   KanbanBoard,
@@ -38,8 +39,9 @@ export function createTaskObject(board: KanbanBoard, input: CreateKanbanTaskInpu
     board.tasks
       .filter((task) => task.columnId === columnId)
       .reduce((max, task) => Math.max(max, task.order), -1) + 1;
+  const taskId = input.id?.trim() ? input.id.trim() : randomUUID();
   const task: KanbanTask = {
-    id: randomUUID(),
+    id: taskId,
     title: requireNonBlank(input.title, 'Kanban task title'),
     columnId,
     order,
@@ -54,7 +56,7 @@ export function createTaskObject(board: KanbanBoard, input: CreateKanbanTaskInpu
     ...(input.assignee !== undefined ? { assignee: input.assignee } : {}),
     ...(input.assignment !== undefined ? { assignment: input.assignment } : {}),
     ...(input.dependsOn !== undefined
-      ? optionalArray('dependsOn', normalizeDependencyIds(board, '', input.dependsOn))
+      ? optionalArray('dependsOn', normalizeDependencyIds(board, taskId, input.dependsOn))
       : {}),
     ...(input.chain !== undefined ? { chain: { ...input.chain } } : {}),
     ...(input.parentTaskId !== undefined ? { parentTaskId: input.parentTaskId } : {}),
@@ -216,6 +218,12 @@ export function applyTaskPatch(
   const previousTitle = task.title;
   const previousDescription = task.description;
   const previousChildIds = (task.childTaskIds ?? []).join(',');
+  const previousEstimatedHours = task.estimatedHours;
+  const previousExpectedFileChanges = JSON.stringify(task.expectedFileChanges);
+  const previousDependsOn = JSON.stringify(task.dependsOn);
+  const previousCriteriaFingerprint = (task.successCriteria ?? [])
+    .map((c) => `${c.type}:${c.description}`)
+    .join(';');
   if (input.title !== undefined) task.title = requireNonBlank(input.title, 'Kanban task title');
   if (input.description !== undefined) task.description = input.description;
   if (input.dueDate !== undefined) {
@@ -338,6 +346,21 @@ export function applyTaskPatch(
   if (input.atomicityAssessment !== undefined) {
     if (input.atomicityAssessment === null) delete task.atomicityAssessment;
     else task.atomicityAssessment = { ...input.atomicityAssessment };
+  } else if (
+    board.atomicity?.mode !== 'off' &&
+    (task.title !== previousTitle ||
+      task.description !== previousDescription ||
+      (task.childTaskIds ?? []).join(',') !== previousChildIds ||
+      task.estimatedHours !== previousEstimatedHours ||
+      JSON.stringify(task.expectedFileChanges) !== previousExpectedFileChanges ||
+      JSON.stringify(task.dependsOn) !== previousDependsOn ||
+      (task.successCriteria ?? []).map((c) => `${c.type}:${c.description}`).join(';') !==
+        previousCriteriaFingerprint)
+  ) {
+    task.atomicityAssessment = assessAtomicity(
+      candidateFromKanbanTask(task),
+      board.atomicity?.config,
+    );
   }
   if (input.decomposition !== undefined) {
     if (input.decomposition === null) delete task.decomposition;

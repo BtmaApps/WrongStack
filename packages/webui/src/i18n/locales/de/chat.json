@@ -74,7 +74,8 @@
     "noProvider": "kein-anbieter",
     "noModel": "kein-modell",
     "memoryContextTitle": "Speicherkontext — injizierte SAGE-Erinnerungen",
-    "toolStatsTitle": "Tool-Aufrufstatistik"
+    "toolStatsTitle": "Tool-Aufrufstatistik",
+    "sessionToolsTitle": "Sitzungswerkzeuge"
   },
   "toolStats": {
     "title": "Tool-Aufrufstatistiken",

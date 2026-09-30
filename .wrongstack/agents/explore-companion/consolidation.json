@@ -1,15 +1,14 @@
 {
-  "consolidatedAt": "2026-09-29T18:20:44.730Z",
+  "consolidatedAt": "2026-09-30T14:25:39.926Z",
   "sourceEntryCount": 0,
   "sourceBytes": 405,
-  "consolidatedBytes": 24512,
+  "consolidatedBytes": 7446,
   "trigger": "automatic",
-  "model": "qwen-3.8-27b",
+  "model": "MiniMax-M3.1-Flash-Preview",
   "pruned": true,
-  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-09-29T18-20-44-730Z.md",
+  "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\explore-companion\\archive\\learned-2026-09-30T14-25-39-926Z.md",
   "skills": [
     "codebase-navigation",
-    "node-modern",
-    "typescript-strict"
+    "node-modern"
   ]
 }

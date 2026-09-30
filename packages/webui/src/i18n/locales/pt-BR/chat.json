@@ -74,7 +74,8 @@
     "noProvider": "sem-provedor",
     "noModel": "sem-modelo",
     "memoryContextTitle": "Contexto de memória — memórias SAGE injetadas",
-    "toolStatsTitle": "Estatísticas de ferramentas"
+    "toolStatsTitle": "Estatísticas de ferramentas",
+    "sessionToolsTitle": "Ferramentas da sessão"
   },
   "toolStats": {
     "title": "Estatísticas de chamadas de ferramentas",

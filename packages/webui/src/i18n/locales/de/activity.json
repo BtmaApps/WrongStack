@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Provider-Test",
+    "provider-quota": "Plan-Kontingent",
     "chronicle": "Chronicle",
     "intake": "Anforderungen",
     "roster": "Agenten-Roster",
@@ -3642,6 +3643,7 @@
       "sddhub": "SDD-Hub",
       "settings": "Einstellungen",
       "provider-test": "Providertest",
+      "provider-quota": "Plan-Kontingent",
       "memory": "Speicher",
       "roster": "Roster",
       "codemap": "Code-Atlas",
@@ -3652,7 +3654,19 @@
       "history": "Verlauf"
     },
     "statusRunning": "Läuft",
-    "statusReady": "Bereit"
+    "statusReady": "Bereit",
+    "health": {
+      "issues_one": "System: {{count}} Problem",
+      "issues_other": "System: {{count}} Probleme",
+      "ok": "System: alles in Ordnung",
+      "heading": "Systemzustand",
+      "openIntegrations": "Integrationseinstellungen"
+    },
+    "appearance": "Darstellung",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System"
   },
   "agentsPanel": {
     "agentRoster": "Agenten-Roster"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Nicht überprüfbar",
     "irrelevant": "Nicht relevant",
     "advisory": "Unverbindliche Modellbewertung; vor der Anwendung die Belege prüfen."
+  },
+  "quotaPanel": {
+    "title": "Plan-Kontingent",
+    "refresh": "Kontingent aktualisieren",
+    "refreshTitle": "Planquote aller gespeicherten Anbieter jetzt lesen — Kontoabfragen, die nichts vom Plan verbrauchen.",
+    "left": "{{pct}} % übrig",
+    "resetsIn": "setzt zurück in {{time}}",
+    "fullIn": "bei diesem Tempo in ~{{time}} voll",
+    "reached": "Limit erreicht",
+    "readFailed": "Kontingent konnte nicht gelesen werden — Schlüssel oder Plan prüfen.",
+    "reading": "Wird gelesen…",
+    "asOf": "vor {{time}}",
+    "balance": "Guthaben",
+    "none": "Kein Anbieter mit lesbarer Planquote konfiguriert (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Alle Plan-Kontingente ({{count}})",
+    "noneInUse": "Die genutzten Anbieter melden kein Plan-Kontingent.",
+    "poolMore": "+{{count}} weitere im Pool — siehe Plan-Kontingent.",
+    "poolNoMatch": "Kein Pool-Konto passt zu diesem Modell ({{count}} im Pool); eine Kombination wählt pro Anfrage eines."
+  },
+  "quotaPage": {
+    "title": "Plan-Kontingent",
+    "subtitle": "Alle gemessenen Konten — Abo-Fenster, Gateway-Pool-Konten und Prepaid-Guthaben. Nur Kontoabfragen, keine Modellaufrufe.",
+    "close": "Zurück zum Chat",
+    "search": "Nach Anbieter, Konto oder Plan filtern",
+    "attentionOnly": "Nur nahe am Limit",
+    "noMatch": "Nichts passt zum Filter.",
+    "inUseBadge": "in Nutzung",
+    "summary": {
+      "accounts": "Konten",
+      "warn": "Über 70 %",
+      "critical": "Über 90 % oder gesperrt",
+      "nextRelief": "Nächste Entlastung"
+    },
+    "sections": {
+      "inUse": "Gerade in Nutzung",
+      "inUseHint": "Worauf offene Sitzungen und laufende Subagenten zugreifen.",
+      "plans": "Abo-Pläne",
+      "pool": "OmniRoute-Pool",
+      "poolHint": "Das Gateway wechselt zwischen diesen Konten; ist eines erschöpft, stoppt die Sitzung nicht.",
+      "balances": "Prepaid-Guthaben"
+    }
   }
 }

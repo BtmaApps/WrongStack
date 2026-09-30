@@ -169,7 +169,14 @@ export class TaskFlow {
       this.opts.tracker.updateNodeStatus(taskId, 'completed', comment);
       this.emit('task.completed', { taskId });
     } else {
-      this.opts.tracker.updateNodeStatus(taskId, 'in_progress', comment ?? 'Needs revision');
+      // Rejected work returns to the QUEUE, not to `in_progress`. Only
+      // `pending` tasks are ever dispatched (getExecutableTasks filters to
+      // `n.status === 'pending'`), and the `all_tasks_done` condition requires
+      // `inProgress === 0`. Leaving a rejected task `in_progress` therefore
+      // stranded it: it was never re-executed and it blocked the run from
+      // ever reporting done. Matches the parallel runner's retry path, which
+      // requeues to `pending` as well.
+      this.opts.tracker.updateNodeStatus(taskId, 'pending', comment ?? 'Needs revision');
       this.emit('task.review', { taskId });
     }
   }

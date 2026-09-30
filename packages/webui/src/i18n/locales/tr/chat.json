@@ -74,7 +74,8 @@
     "noProvider": "sağlayıcı-yok",
     "noModel": "model-yok",
     "memoryContextTitle": "Bellek bağlamı — enjekte edilen SAGE anıları",
-    "toolStatsTitle": "Araç istatistikleri"
+    "toolStatsTitle": "Araç istatistikleri",
+    "sessionToolsTitle": "Oturum araçları"
   },
   "toolStats": {
     "title": "Araç çağrısı istatistikleri",

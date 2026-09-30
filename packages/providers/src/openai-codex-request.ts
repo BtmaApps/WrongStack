@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import * as zlib from 'node:zlib';
 
 import type { Request } from '@wrongstack/core/types';
 
@@ -7,6 +8,69 @@ import { CODEX_BASE_URL, codexModelsUrl, codexResponsesUrl } from './oauth/codex
 // ── OAuth refresh (shared protocol — see ./oauth/codex-protocol.ts) ──────────
 
 export const DEFAULT_CODEX_BASE = CODEX_BASE_URL;
+
+/** Bodies below this gain nothing worth the CPU; real turns are far above it. */
+const CODEX_ZSTD_MIN_BYTES = 8 * 1024;
+
+type ZstdCompress = (buffer: Uint8Array, options?: { params?: Record<number, number> }) => Buffer;
+
+/** `zlib.zstdCompressSync` where the runtime has it (Node ≥ 22.15), else null. */
+const RUNTIME_ZSTD: ZstdCompress | null =
+  typeof (zlib as { zstdCompressSync?: unknown }).zstdCompressSync === 'function'
+    ? (zlib as { zstdCompressSync: ZstdCompress }).zstdCompressSync
+    : null;
+
+/**
+ * zstd-compress a ChatGPT-backend request body, as the official client does by
+ * default (`enable_request_compression`, zstd level 3, `content-encoding: zstd`,
+ * only for its own backend). A turn re-sends the whole conversation, so the
+ * upload is the part of latency that grows with the session.
+ *
+ * Returns the JSON untouched — and leaves `headers` alone — for a proxy or
+ * custom base URL (which may not accept zstd), a runtime without zstd, a small
+ * body, a caller that already set an encoding, or any compression failure.
+ */
+export function compressCodexRequestBody(
+  json: string,
+  headers: Record<string, string>,
+  baseUrl: string,
+  compress: ZstdCompress | null = RUNTIME_ZSTD,
+): string | Uint8Array {
+  if (!compress || !isOfficialCodexBase(baseUrl)) return json;
+  if (Object.keys(headers).some((name) => name.toLowerCase() === 'content-encoding')) return json;
+  const raw = Buffer.from(json, 'utf8');
+  if (raw.length < CODEX_ZSTD_MIN_BYTES) return json;
+  try {
+    const level = (zlib.constants as Record<string, number>)['ZSTD_c_compressionLevel'];
+    const compressed = compress(raw, level === undefined ? {} : { params: { [level]: 3 } });
+    headers['content-encoding'] = 'zstd';
+    return compressed;
+  } catch {
+    return json;
+  }
+}
+
+function isOfficialCodexBase(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).host === new URL(CODEX_BASE_URL).host;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `x-codex-routing-hint`: the official client tells the ChatGPT backend which
+ * model a request is for (`model=<slug>`, plus `;tier=<tier>` when a service
+ * tier is requested — we never request one) on every HTTP request and on the
+ * WebSocket handshake (codex-rs core `build_routing_hint_header`). Routing the
+ * request to where that model is served is also where its prompt cache lives.
+ */
+export const CODEX_ROUTING_HINT_HEADER = 'x-codex-routing-hint';
+
+/** The hint for `model`, or undefined when there is no model or it is not header-safe. */
+export function codexRoutingHint(model: string | undefined): string | undefined {
+  return model && /^[\x21-\x7e]+$/.test(model) ? `model=${model}` : undefined;
+}
 
 /**
  * Put the volatile system blocks after the conversation.

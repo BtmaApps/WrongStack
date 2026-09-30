@@ -9,8 +9,8 @@ export function memoryReviewReason(memory: Sage, now = Date.now()): string | und
   if (memory.status === 'stale') return 'stale_anchor';
   // A user preference without code evidence cannot be checked by reading files.
   if (
-    !memory.anchors.some((anchor) => anchor.path) &&
-    !(memory.sources ?? []).some((source) => source.path)
+    !(memory.anchors ?? []).some((anchor) => anchor?.path) &&
+    !(memory.sources ?? []).some((source) => source?.path)
   )
     return;
   const verifiedAt = Date.parse(memory.lastVerifiedAt ?? '');

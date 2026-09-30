@@ -30,10 +30,22 @@ export async function readTailNonEmptyLines(
     const size = (await handle.stat()).size;
     let position = size;
     const chunks: Buffer[] = [];
-    // Track the accumulated newline count across chunks without doing a full
-    // concat+decode+split on every iteration. We only pay the O(N) decode
-    // cost once — when we have enough lines (or hit the start of file).
-    let totalNewlines = 0;
+    // Track how many NON-EMPTY lines the bytes read so far hold, without
+    // decoding: a line is non-empty exactly when it contains at least one byte
+    // that is not a newline, and the walk already looks at every byte it
+    // reads. We only pay the O(N) decode cost once — when we have enough lines
+    // (or hit the start of file).
+    //
+    // This used to count raw newlines instead. A blank line then advanced the
+    // stop condition below while contributing nothing to the returned array,
+    // so a log with blank lines at its tail came back short — often empty.
+    // `HqSimpleLog` rotation reads `rotateKeep + 1` lines to decide whether to
+    // trim, took the "nothing to reclaim" branch on the short read, and reset
+    // its line counter from it instead of from the file's real contents.
+    let nonEmptyLines = 0;
+    // Carried across chunks: a line straddling a chunk boundary holds bytes
+    // in the newer chunk and its terminator in the older one.
+    let lineHasBytes = false;
     // The in-memory line count lets rotation jump directly to the likely tail
     // boundary in one read. Keep 10% headroom plus one block for variable-size
     // records; if the estimate is short, expand backwards geometrically.
@@ -64,13 +76,22 @@ export async function readTailNonEmptyLines(
       if (bytesRead === 0) break;
       const chunk = bytesRead === length ? buffer : buffer.subarray(0, bytesRead);
       chunks.unshift(chunk);
-      // Byte-scan the newest chunk only — totalNewlines is an overcount of
-      // non-empty lines (consecutive newlines don't add a line) so when it
-      // crosses `limit` we are guaranteed to have enough to return.
-      for (let index = 0; index < chunk.length; index++) {
-        if (chunk[index] === 0x0a) totalNewlines++;
+      // Scan newest byte first, so the counter tracks exactly the lines the
+      // `slice(-limit)` below hands back. Chunks are visited in read order —
+      // each new read is older than the last — so the reverse scan is one
+      // continuous newest-to-oldest pass and `lineHasBytes` carries across the
+      // boundary. The oldest chunk's trailing line is partial: it is never
+      // terminated inside the region, so it is never counted, and `slice` drops
+      // it too, since every counted line sits after it.
+      for (let index = chunk.length - 1; index >= 0; index--) {
+        if (chunk[index] === 0x0a) {
+          if (lineHasBytes) nonEmptyLines++;
+          lineHasBytes = false;
+        } else {
+          lineHasBytes = true;
+        }
       }
-      if (position === 0 || totalNewlines >= limit) {
+      if (position === 0 || nonEmptyLines >= limit) {
         const lines = Buffer.concat(chunks)
           .toString('utf8')
           .split('\n')

@@ -32,6 +32,10 @@ import {
 } from './project-agent-optimizer.js';
 import { assertProjectAgentRole } from './project-agent-paths.js';
 import { listProjectSkillAugmentations } from './project-agent-skill-layer.js';
+import {
+  createStalePathChecker,
+  refreshStaleProjectAgentLearning,
+} from './project-agent-staleness.js';
 
 export interface AutoOptimizePolicy {
   /** Master switch. Default true. */
@@ -222,6 +226,19 @@ export class LearningOptimizationScheduler {
    */
   sweep(roles: readonly string[]): void {
     if (this.disposed) return;
+    // Staleness first, and for every role — not just the ones with a pass due.
+    // A role that has stopped capturing never reaches the optimizer again, so
+    // this is the only point at which its addenda are re-checked against the
+    // code they describe.
+    const checker = createStalePathChecker(this.opts.projectRoot);
+    for (const role of roles) {
+      try {
+        if (!loadProjectAgentLearningPolicy(role, this.opts.projectRoot).enabled) continue;
+        refreshStaleProjectAgentLearning(role, this.opts.projectRoot, checker);
+      } catch {
+        // Hygiene, never a start-up dependency.
+      }
+    }
     for (const role of roles) void this.runIfEligible(role, 'manual-sweep');
   }
 

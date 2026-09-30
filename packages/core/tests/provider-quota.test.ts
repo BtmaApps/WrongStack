@@ -14,6 +14,7 @@ import {
   formatQuotaResetIn,
   getAllProviderQuota,
   getProviderQuota,
+  groupQuotaSnapshots,
   hasQuotaData,
   listQuotaProviders,
   onProviderQuota,
@@ -140,6 +141,24 @@ describe('recording', () => {
     expect(current[0]?.reachedWindowId).toBe('primary');
     expect(current[0]?.windows[0]?.usedPercent).toBe(10);
   });
+
+  it('clears the cut-off flag when a fresh window reading no longer reports it', () => {
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [{ id: 'primary', usedPercent: 100 }], reachedWindowId: 'primary' }),
+    ]);
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [{ id: 'primary', usedPercent: 2 }] }),
+    ]);
+    expect(getProviderQuota('openai-codex')[0]?.reachedWindowId).toBeUndefined();
+  });
+
+  it('keeps the cut-off flag across a note-only reading', () => {
+    recordProviderQuota('openai-codex', [
+      snapshot({ windows: [{ id: 'primary', usedPercent: 100 }], reachedWindowId: 'primary' }),
+    ]);
+    recordProviderQuota('openai-codex', [snapshot({ windows: [], note: 'Upgrade to Pro' })]);
+    expect(getProviderQuota('openai-codex')[0]?.reachedWindowId).toBe('primary');
+  });
 });
 
 describe('worstProviderQuotaWindow', () => {
@@ -171,6 +190,25 @@ describe('worstProviderQuotaWindow', () => {
 
   it('returns nothing when no provider has reported', () => {
     expect(worstProviderQuotaWindow()).toBeUndefined();
+  });
+
+  it('leaves out a gateway pool account: the gateway rotates past it', () => {
+    const worst = worstProviderQuotaWindow([
+      snapshot({ windows: [{ id: 'primary', usedPercent: 40 }] }),
+      snapshot({
+        providerId: 'omniroute',
+        meterId: 'omniroute:c1',
+        via: 'omniroute',
+        windows: [{ id: 'premium', usedPercent: 100 }],
+        reachedWindowId: 'premium',
+      }),
+    ]);
+    expect(worst?.window.usedPercent).toBe(40);
+    expect(
+      worstProviderQuotaWindow([
+        snapshot({ via: 'omniroute', windows: [{ id: 'primary', usedPercent: 90 }] }),
+      ]),
+    ).toBeUndefined();
   });
 });
 
@@ -292,5 +330,45 @@ describe('quotaExhaustionInMs (pace forecast)', () => {
     recordProviderQuota('openai-codex', [reading(40)], T0);
     const [flat] = withQuotaPace(getProviderQuota('openai-codex'), T0);
     expect(flat?.windows[0]).not.toHaveProperty('exhaustsAt');
+  });
+});
+
+describe('groupQuotaSnapshots', () => {
+  const snap = (
+    providerId: string,
+    usedPercent: number,
+    resetsAt?: number,
+  ): ProviderQuotaSnapshot => ({
+    providerId,
+    meterId: 'default',
+    meterLabel: 'OpenCode Go',
+    windows: [{ id: 'primary', usedPercent, windowMinutes: 300, resetsAt }],
+    capturedAt: 1,
+  });
+
+  it('folds one account seen through several providers, in input order', () => {
+    const groups = groupQuotaSnapshots([
+      snap('opencode', 12, 2_000),
+      snap('kimi', 12, 9_000),
+      snap('opencode-go', 12, 2_000),
+      snap('opencode-go-ws', 12, 2_000),
+    ]);
+    expect(groups.map((g) => g.providerIds)).toEqual([
+      ['opencode', 'opencode-go', 'opencode-go-ws'],
+      ['kimi'],
+    ]);
+    expect(groups[0]?.snapshot.providerId).toBe('opencode');
+  });
+
+  it('keeps readings apart when any window differs or has no reset clock', () => {
+    expect(
+      groupQuotaSnapshots([snap('a', 12, 2_000), snap('b', 13, 2_000)]).map((g) => g.providerIds),
+    ).toEqual([['a'], ['b']]);
+    expect(groupQuotaSnapshots([snap('a', 0), snap('b', 0)]).map((g) => g.providerIds)).toEqual([
+      ['a'],
+      ['b'],
+    ]);
+    const empty = { ...snap('c', 0), windows: [] };
+    expect(groupQuotaSnapshots([empty, { ...empty, providerId: 'd' }])).toHaveLength(2);
   });
 });

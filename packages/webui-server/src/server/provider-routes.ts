@@ -58,6 +58,8 @@ export interface ProviderMutationHandlers {
     providerId: string,
     timeoutMs?: number | undefined,
   ) => Promise<void>;
+  /** Read MiniMax / Z.AI plan quota from their account endpoints (provider/quota-refresh.ts). */
+  handleProviderQuotaRefresh: (ws: WebSocket) => Promise<void>;
   handleProviderModelTestRun: (
     ws: WebSocket,
     input: {
@@ -564,6 +566,14 @@ async function dispatchProviderRoute(
       const strategyId = kind ? routes.providerHandlers.resolveOAuthStrategyId(kind) : undefined;
       if (!strategyId) return invalidPayload(ws, msg.type);
       routes.providerHandlers.handleOAuthCancel(ws, strategyId);
+      return true;
+    }
+
+    case 'provider.quota.refresh': {
+      // Unlike `.get`, this asks the vendors — but only the ones whose quota
+      // lives on a free account endpoint (MiniMax, Z.AI). Header-metered plans
+      // are never probed: that would spend a request of the plan being checked.
+      await routes.providerHandlers.handleProviderQuotaRefresh(ws);
       return true;
     }
 

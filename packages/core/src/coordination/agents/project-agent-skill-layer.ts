@@ -291,6 +291,21 @@ export interface SkillAffinityEntry {
   lastUsedAt?: string | undefined;
   /** Operator pin — always selected, never rotated out. */
   pinned?: boolean | undefined;
+  /**
+   * Why the last spawn of this role could not load the skill, when it could
+   * not. Only the spawn path knows (it holds the role's tools and the skill's
+   * manifest); recording it here is what lets every other surface — the
+   * ranking view, the WebUI — tell "ranked out" from "can never load". Cleared
+   * the next time the skill does load.
+   */
+  blocked?: SkillBlockReason | undefined;
+}
+
+/** Load failures that are a property of the role, not of one spawn's budget. */
+export type SkillBlockReason = 'missing-capability' | 'missing-tool';
+
+function isSkillBlockReason(value: unknown): value is SkillBlockReason {
+  return value === 'missing-capability' || value === 'missing-tool';
 }
 
 export interface SkillAffinity {
@@ -312,6 +327,7 @@ function normalizeAffinityEntry(value: unknown): SkillAffinityEntry {
     learned: count(raw.learned),
     ...(typeof raw.lastUsedAt === 'string' ? { lastUsedAt: raw.lastUsedAt } : {}),
     ...(raw.pinned === true ? { pinned: true } : {}),
+    ...(isSkillBlockReason(raw.blocked) ? { blocked: raw.blocked } : {}),
   };
 }
 
@@ -379,7 +395,53 @@ export function recordSkillLoad(
   mutateAffinity(role, skills, projectRoot, (entry) => {
     entry.loaded += 1;
     entry.lastUsedAt = now;
+    delete entry.blocked;
   });
+}
+
+/**
+ * Record that a spawn of `role` could not load these skills at all.
+ *
+ * Writes only on a change of state: the reviewer fails to load `testing` on
+ * every spawn, and rewriting the file each time would be pure churn.
+ */
+export function recordSkillBlocked(
+  role: string,
+  blocked: Readonly<Record<string, SkillBlockReason>>,
+  projectRoot?: string,
+): void {
+  const affinity = loadSkillAffinity(role, projectRoot);
+  const changed = Object.entries(blocked).filter(
+    ([skill, reason]) => isProjectSkillName(skill) && affinity.entries[skill]?.blocked !== reason,
+  );
+  if (changed.length === 0) return;
+  for (const [skill, reason] of changed) {
+    affinity.entries[skill] = { ...EMPTY_ENTRY, ...affinity.entries[skill], blocked: reason };
+  }
+  affinity.updatedAt = new Date().toISOString();
+  try {
+    saveSkillAffinity(affinity, projectRoot);
+  } catch {
+    // Affinity is an optimization signal — never fail a spawn over it.
+  }
+}
+
+/**
+ * The skills a spawn of this role will actually load, as far as the recorded
+ * history can tell: the affinity ranking with every skill the role was last
+ * seen unable to load skipped, then the eager slice. This mirrors the spawn
+ * path's selection for display surfaces that have no skill loader of their own.
+ */
+export function eagerRoleSkills(
+  role: string,
+  candidates: readonly string[],
+  projectRoot?: string,
+  limit: number = DEFAULT_EAGER_SKILL_LIMIT,
+): string[] {
+  const affinity = loadSkillAffinity(role, projectRoot);
+  return rankRoleSkills(role, candidates, projectRoot, candidates.length)
+    .filter((skill) => !affinity.entries[skill]?.blocked)
+    .slice(0, limit);
 }
 
 /**
@@ -491,7 +553,11 @@ export function rankRoleSkills(
   limit: number = DEFAULT_EAGER_SKILL_LIMIT,
 ): string[] {
   const unique = [...new Set(candidates.filter(isProjectSkillName))];
-  if (unique.length <= limit) return unique;
+  // Only a single candidate may skip ranking. A caller that asks for the whole
+  // pool in rank order (the spawn path, which filters out skills this role
+  // cannot load before it takes its eager slice) needs the order even when
+  // everything fits.
+  if (unique.length <= 1) return unique;
   const affinity = loadSkillAffinity(role, projectRoot);
   const augmented = new Set(listProjectSkillAugmentations(role, projectRoot));
   const now = Date.now();
@@ -553,6 +619,14 @@ const SKILL_VOCABULARY: Record<string, readonly string[]> = {
     'repo map',
     'architecture',
     'where is',
+    'consumer',
+    'importer',
+    'call site',
+    'caller',
+    'barrel',
+    're-export',
+    'import graph',
+    'locate',
   ],
   'data-governance': ['pii', 'retention', 'governance', 'gdpr', 'data policy'],
   debugging: ['debug', 'stack trace', 'reproduce', 'bisect', 'hang', 'root cause', 'flaky'],
@@ -574,14 +648,79 @@ const SKILL_VOCABULARY: Record<string, readonly string[]> = {
   'tech-stack': ['dependency', 'version', 'upgrade', 'toolchain', 'stack'],
   testing: ['test', 'vitest', 'jest', 'coverage', 'assert', 'fixture', 'mock', 'spec file'],
   'typescript-strict': ['typescript', 'tsc', 'type', 'generic', 'strict', 'noemit', '.d.ts'],
-  'verify-before-done': ['verify', 'verification', 'evidence', 'definition of done', 'done'],
+  // Not `verify` / `done`: "Always verify…" is the opener the capture prompt
+  // itself recommends, so those two words claimed directives about anything.
+  'verify-before-done': ['verification', 'evidence', 'definition of done', 'mark as done'],
   'wrongstack-mailbox': ['mailbox', 'message', 'inbox', 'broadcast'],
 };
 
+/**
+ * Words that appear in skill *names* but say nothing about the skill on their
+ * own. `wrongstack-mailbox` split into `wrongstack` routed every directive that
+ * mentioned `@wrongstack/core` to the mailbox skill; `verify-before-done` split
+ * into `verify` and `before` claimed every "Always verify … before …" rule,
+ * which is the exact phrasing the capture prompt asks agents to use.
+ */
+const GENERIC_NAME_TOKENS = new Set([
+  'agent',
+  'author',
+  'before',
+  'code',
+  'creator',
+  'data',
+  'design',
+  'done',
+  'engineering',
+  'flow',
+  'hunter',
+  'modern',
+  'multi',
+  'output',
+  'planner',
+  'stack',
+  'standards',
+  'tech',
+  'verify',
+  'web',
+  'wrongstack',
+]);
+
 function skillTokens(skill: string): string[] {
-  return [...skill.split('-'), ...(SKILL_VOCABULARY[skill] ?? [])].filter(
-    (token) => token.length >= 3,
-  );
+  return [
+    ...skill.split('-').filter((token) => !GENERIC_NAME_TOKENS.has(token)),
+    ...(SKILL_VOCABULARY[skill] ?? []),
+  ].filter((token) => token.length >= 3);
+}
+
+const tokenMatchers = new Map<string, RegExp>();
+
+/**
+ * Match a routing token as a word, not as a substring.
+ *
+ * Substring matching let `hang` (debugging) claim every "change", `log`
+ * (audit-log) claim "dialog" and "catalog", `spec` (sdd) claim "inspect", and
+ * `npm` claim "pnpm". Replayed over this repository's own ~400 captured
+ * directives, word matching changes the route of about one in six;
+ * `explore-companion` alone moved from 57 to 98 directives on
+ * `codebase-navigation`, the only one of its skills it can actually load.
+ * Short tokens must now stand as a word (with a plural/verb
+ * suffix); tokens of five characters or more stay prefix stems on purpose
+ * (`vulnerab`, `sanitiz`, `profil`). A token that itself starts with
+ * punctuation (`.d.ts`) needs no leading boundary.
+ */
+function tokenMatcher(token: string): RegExp {
+  let matcher = tokenMatchers.get(token);
+  if (!matcher) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const lead = /^[a-z0-9]/.test(token) ? '(?<![a-z0-9])' : '';
+    const tail =
+      token.length >= 5 || !/[a-z0-9]$/.test(token)
+        ? ''
+        : '(?:s|es|ed|d|ing|er|ers|ged|ging|ger|gers)?(?![a-z0-9])';
+    matcher = new RegExp(`${lead}${escaped}${tail}`);
+    tokenMatchers.set(token, matcher);
+  }
+  return matcher;
 }
 
 /** Explicit tag form the agent can use: `## LEARNED [skill: testing]`. */
@@ -603,7 +742,7 @@ export function routeDirectiveToSkill(
   for (const skill of candidates) {
     let score = 0;
     for (const token of skillTokens(skill)) {
-      if (haystack.includes(token)) score += token.length >= 6 ? 2 : 1;
+      if (tokenMatcher(token).test(haystack)) score += token.length >= 6 ? 2 : 1;
     }
     if (score > 0 && (!best || score > best.score)) best = { skill, score };
   }

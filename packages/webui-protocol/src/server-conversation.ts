@@ -33,6 +33,7 @@ export const SERVER_CONVERSATION_MESSAGE_TYPES = [
   'provider.error',
   'provider.fallback',
   'provider.fallback_pending',
+  'provider.model_rerouted',
   'provider.model_switched',
   'provider.response',
   'provider.retry',

@@ -24,11 +24,15 @@ import type {
   KanbanTask,
 } from '../types.js';
 import {
+  areDependenciesMet,
   createKanbanEvent,
   emitKanbanEvent,
   findTask,
   hasDependencyPath,
+  normalizeColumnTaskOrders,
   nowIso,
+  stampAtomicityAssessment,
+  syncTaskColumnForStatus,
 } from './_internal.js';
 import { splitTask } from './dependencies.js';
 
@@ -106,6 +110,7 @@ async function wireProposalDependencies(
   boardId: string,
   subtasks: KanbanDecompositionSubtask[],
   childIds: string[],
+  eventContext?: KanbanEventContext,
 ): Promise<void> {
   const edges: Array<{ taskId: string; dependsOn: string[] }> = [];
   subtasks.forEach((subtask, index) => {
@@ -118,6 +123,9 @@ async function wireProposalDependencies(
   });
   if (!edges.length) return;
   await mutateBoard(projectRoot, boardId, (board) => {
+    assertManagementWrite(board, [], eventContext);
+    const isManaged = board.lifecycle?.mode === 'managed';
+    const now = nowIso();
     for (const edge of edges) {
       const child = findTask(board, edge.taskId);
       if (!child) continue;
@@ -132,8 +140,16 @@ async function wireProposalDependencies(
         if (hasDependencyPath(board, dependencyId, edge.taskId)) continue;
         child.dependsOn = [...new Set([...(child.dependsOn ?? []), dependencyId])];
       }
+      stampAtomicityAssessment(board, child);
+      if (!isManaged && (child.status === 'ready' || child.status === 'pending') && !areDependenciesMet(board, child.id)) {
+        child.status = 'blocked';
+        const previousColumnId = child.columnId;
+        syncTaskColumnForStatus(board, child, previousColumnId);
+        if (previousColumnId !== child.columnId) normalizeColumnTaskOrders(board, previousColumnId);
+      }
+      child.updatedAt = now;
     }
-    board.updatedAt = nowIso();
+    board.updatedAt = now;
     return true;
   });
 }
@@ -218,6 +234,7 @@ export async function resolveDecompositionProposal(
   const marked = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task?.decomposition || task.decomposition.id !== proposalId) return null;
+    assertManagementWrite(board, [task], eventContext);
     if (task.decomposition.status !== 'proposed') return null;
     const now = nowIso();
     if (input.editedSubtasks?.length) {
@@ -259,12 +276,14 @@ export async function resolveDecompositionProposal(
     boardId,
     subtasks,
     applied.children.map((child) => child.id),
+    eventContext,
   );
 
   // Phase 3: stamp applied state on the proposal.
   const stamped = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task?.decomposition || task.decomposition.id !== proposalId) return null;
+    assertManagementWrite(board, [], eventContext);
     task.decomposition.status = 'applied';
     task.decomposition.appliedChildTaskIds = applied.children.map((child) => child.id);
     task.updatedAt = nowIso();

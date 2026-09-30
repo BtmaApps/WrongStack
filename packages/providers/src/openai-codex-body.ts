@@ -10,6 +10,7 @@ import {
   codexCacheSessionId,
   mapToolChoice,
 } from './openai-codex-request.js';
+import { type CodexTruncationPolicy, truncateCodexToolOutput } from './openai-codex-truncation.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
 import { messagesToResponsesInput, toolsToResponses } from './tool-format/to-responses.js';
 
@@ -59,14 +60,17 @@ export function buildCodexRequestBody(
     // makes asking for it worth anything. Skipped once the backend has
     // rejected a replay (see `stream`).
     input: appendVolatileSystem(
-      messagesToResponsesInput(req.messages, {
-        includeReasoning: options.includeReasoning,
-        // gpt-5.3-codex-spark lists `input_modalities: ["text"]`. Sending
-        // it an `input_image` part buys a 400 and a retry; dropping the
-        // image costs the picture but keeps the turn, which is the better
-        // half of a choice the caller already made by picking a text model.
-        allowImages: policy?.acceptsImages ?? true,
-      }),
+      truncateToolOutputs(
+        messagesToResponsesInput(req.messages, {
+          includeReasoning: options.includeReasoning,
+          // gpt-5.3-codex-spark lists `input_modalities: ["text"]`. Sending
+          // it an `input_image` part buys a 400 and a retry; dropping the
+          // image costs the picture but keeps the turn, which is the better
+          // half of a choice the caller already made by picking a text model.
+          allowImages: policy?.acceptsImages ?? true,
+        }),
+        policy?.truncation,
+      ),
       volatileSystem,
     ),
     include: ['reasoning.encrypted_content'],
@@ -126,4 +130,22 @@ export function buildCodexRequestBody(
     applyPromptCacheKey(body, req, options.capabilities);
   }
   return body;
+}
+
+/**
+ * Apply the catalog's per-model tool-output truncation, as the official client
+ * does before any output enters the conversation it sends. Only
+ * `function_call_output` items are touched; the canonical history keeps the
+ * full output, so a switch to another provider still sees all of it.
+ */
+function truncateToolOutputs(
+  items: Record<string, unknown>[],
+  policy: CodexTruncationPolicy | undefined,
+): Record<string, unknown>[] {
+  if (!policy) return items;
+  return items.map((item) => {
+    if (item['type'] !== 'function_call_output' || typeof item['output'] !== 'string') return item;
+    const output = truncateCodexToolOutput(item['output'], policy);
+    return output === item['output'] ? item : { ...item, output };
+  });
 }

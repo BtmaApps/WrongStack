@@ -13,9 +13,11 @@
  * below reads only the neutral shape. A second metered provider needs a
  * reporter and a one-line command, not a second copy of this file.
  *
- * The reading is observational: it appears after the first request of the
- * session, not before, and it is never fetched on its own — spending a request
- * to ask "how much have I spent" is exactly the wrong trade on a metered plan.
+ * Two sources feed it. The headers keep it current as turns run; before any
+ * turn, the command asks the account usage endpoint (`/wham/usage`, the read
+ * behind the official client's `/status`) through the active ChatGPT
+ * transport. That read is a status call, not a model call — it spends none of
+ * the plan it reports.
  *
  * Usage:
  *   /openai-quota     Show the latest reading for every metered window
@@ -26,18 +28,134 @@ import {
   formatQuotaResetIn,
   getAllProviderQuota,
   getProviderQuota,
+  groupQuotaSnapshots,
   type ProviderQuotaSnapshot,
   type ProviderQuotaWindow,
   quotaResetInMs,
   quotaWindowLabel,
 } from '@wrongstack/core/quota';
-import type { SlashCommand } from '@wrongstack/core/types';
+import type { Provider, ProviderConfig, SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
+import {
+  makeProviderFromConfig,
+  readProviderAccountQuota,
+  refreshProviderAccountQuota,
+} from '@wrongstack/providers';
 
 /** The provider this command reports on. */
 const PROVIDER_ID = 'openai-codex';
 
 const BAR_WIDTH = 24;
+
+/** Where the saved providers come from — the live config in a session. */
+export interface QuotaCommandDeps {
+  providers?: () => Readonly<Record<string, ProviderConfig>> | undefined;
+}
+
+/** ChatGPT sign-in — the `openai-codex` family, under any config key. */
+function isCodexConfig(providerId: string, cfg: ProviderConfig): boolean {
+  return (cfg.type ?? providerId) === 'openai-codex' || cfg.family === 'openai-codex';
+}
+
+/**
+ * Take a fresh account reading before rendering: from the active provider
+ * when it has an account read, otherwise from each saved ChatGPT sign-in — so
+ * the quota shows even while the session runs on another provider, and
+ * before any turn. Best effort: a failed read leaves the standing readings to
+ * be shown as they are.
+ */
+async function readAccountQuotas(
+  active: Provider | undefined,
+  deps: QuotaCommandDeps,
+): Promise<void> {
+  try {
+    if (active && (await readProviderAccountQuota(active)) !== undefined) return;
+  } catch {
+    // Fall through to the saved sign-ins.
+  }
+  const saved = Object.entries(deps.providers?.() ?? {}).filter(([id, cfg]) =>
+    isCodexConfig(id, cfg),
+  );
+  await Promise.all(
+    saved.map(async ([id, cfg]) => {
+      try {
+        const provider = makeProviderFromConfig(id, {
+          ...cfg,
+          type: cfg.type ?? id,
+          family: cfg.family ?? 'openai-codex',
+        });
+        await readProviderAccountQuota(provider);
+      } catch {
+        // A sign-in that cannot be built or read keeps its standing reading.
+      }
+    }),
+  );
+}
+
+/** The key a saved provider runs on: its active `apiKeys[]` entry, else the legacy field. */
+function activeApiKey(cfg: ProviderConfig): string | undefined {
+  const keys = Array.isArray(cfg.apiKeys) ? cfg.apiKeys : [];
+  const key =
+    keys.length > 0
+      ? ((cfg.activeKey ? keys.find((k) => k.label === cfg.activeKey) : undefined) ?? keys[0])
+          ?.apiKey
+      : cfg.apiKey;
+  return key?.trim() ? key : undefined;
+}
+
+/**
+ * Read every saved provider that has an account read — MiniMax, Z.AI /
+ * BigModel, Kimi Code, OpenCode Go, OpenRouter, an OmniRoute gateway with a
+ * management token, the prepaid balances (DeepSeek, Moonshot, SiliconFlow)
+ * and any configured `quotaEndpoint`. The reads are status calls, not model
+ * calls; a provider without one resolves without a request. Best effort,
+ * like the ChatGPT read.
+ */
+async function readKeyedAccountQuotas(deps: QuotaCommandDeps): Promise<void> {
+  const saved = Object.entries(deps.providers?.() ?? {}).filter(
+    ([id, cfg]) => !isCodexConfig(id, cfg),
+  );
+  await Promise.all(
+    saved.map(async ([id, cfg]) => {
+      const apiKey = activeApiKey(cfg);
+      // A keyless gateway is still read with its management token.
+      if (!apiKey && !cfg.managementToken) return;
+      try {
+        await refreshProviderAccountQuota({
+          providerId: id,
+          type: cfg.type,
+          baseUrl: cfg.baseUrl,
+          apiKey: apiKey ?? '',
+          managementToken: cfg.managementToken,
+          quotaEndpoint: cfg.quotaEndpoint,
+        });
+      } catch {
+        // A read that fails keeps the standing reading.
+      }
+    }),
+  );
+}
+
+/**
+ * Render every reading, folding the ones that are one account seen through
+ * several saved providers (every OpenCode key of an account reads the same
+ * usage) into one block that names them all.
+ */
+function renderQuotaSnapshots(snapshots: readonly ProviderQuotaSnapshot[]): string[] {
+  const lines: string[] = [];
+  for (const group of groupQuotaSnapshots(snapshots)) {
+    const rendered = renderQuotaSnapshot(group.snapshot);
+    if (group.providerIds.length > 1) {
+      const title = group.snapshot.meterLabel ?? group.snapshot.meterId;
+      const plan = group.snapshot.planLabel
+        ? ` ${color.dim(`plan: ${group.snapshot.planLabel}`)}`
+        : '';
+      rendered[0] = `  ${color.cyan(group.providerIds.join(', '))} ${color.dim(`— ${title} (one account)`)}${plan}`;
+    }
+    lines.push(...rendered, '');
+  }
+  return lines;
+}
 
 function bar(usedPercent: number): string {
   const clamped = Math.max(0, Math.min(100, usedPercent));
@@ -68,7 +186,9 @@ export function renderQuotaSnapshot(snapshot: ProviderQuotaSnapshot): string[] {
   const lines: string[] = [];
   const title = snapshot.meterLabel ?? snapshot.meterId;
   const plan = snapshot.planLabel ? ` ${color.dim(`plan: ${snapshot.planLabel}`)}` : '';
-  lines.push(`  ${color.cyan(snapshot.providerId)} ${color.dim(`— ${title}`)}${plan}`);
+  // A pool account behind a gateway, not the plan this session draws on.
+  const via = snapshot.via ? ` ${color.dim('(pool account)')}` : '';
+  lines.push(`  ${color.cyan(snapshot.providerId)} ${color.dim(`— ${title}`)}${via}${plan}`);
 
   for (const window of snapshot.windows) lines.push(renderWindow(window));
 
@@ -90,7 +210,7 @@ export function renderQuotaSnapshot(snapshot: ProviderQuotaSnapshot): string[] {
   return lines;
 }
 
-export function buildOpenAIQuotaCommand(): SlashCommand {
+export function buildOpenAIQuotaCommand(deps: QuotaCommandDeps = {}): SlashCommand {
   return {
     name: 'openai-quota',
     category: 'Inspect',
@@ -99,11 +219,14 @@ export function buildOpenAIQuotaCommand(): SlashCommand {
       'Usage:',
       '  /openai-quota     Show the latest ChatGPT/Codex quota reading',
       '',
-      'The reading comes from the response headers of your own requests, so it',
-      'appears after the first request of the session and costs nothing extra.',
-      'Percentages are per rolling window (commonly 5h and weekly).',
+      'The command reads the account usage endpoint of your ChatGPT sign-in',
+      'first — a status read, not a model call — so a reading shows before any',
+      'message, whichever provider the session runs on. After that, every',
+      'response on ChatGPT keeps it current.',
+      'Percentages are per rolling window (5h and/or weekly, per plan).',
     ].join('\n'),
-    run(): Promise<{ message: string }> {
+    async run(_args, ctx): Promise<{ message: string }> {
+      await readAccountQuotas(ctx?.provider, deps);
       const snapshots = getProviderQuota(PROVIDER_ID);
       const lines: string[] = [
         `${color.bold('WrongStack')} ${color.dim('— ChatGPT / Codex quota')}`,
@@ -114,12 +237,11 @@ export function buildOpenAIQuotaCommand(): SlashCommand {
         lines.push(
           `  ${color.dim('No quota reading yet.')}`,
           '',
-          `  ${color.dim('The ChatGPT backend reports quota on the responses to your own')}`,
-          `  ${color.dim('requests. Sign in with')} ${color.cyan('wstack auth login chatgpt')} ${color.dim('and send one message,')}`,
-          `  ${color.dim('then run /openai-quota again.')}`,
+          `  ${color.dim('Sign in with')} ${color.cyan('wstack auth login chatgpt')}${color.dim('; the quota is then read')}`,
+          `  ${color.dim('from the account without spending a message.')}`,
         );
       }
-      return Promise.resolve({ message: lines.join('\n') });
+      return { message: lines.join('\n') };
     },
   };
 }
@@ -138,7 +260,7 @@ export function buildOpenAIQuotaCommand(): SlashCommand {
  * and would occupy the name if one is ever built. What this shows is exactly
  * the provider plane's readings, so that is what it is called.
  */
-export function buildProviderQuotaCommand(): SlashCommand {
+export function buildProviderQuotaCommand(deps: QuotaCommandDeps = {}): SlashCommand {
   return {
     name: 'provider-quota',
     category: 'Inspect',
@@ -147,27 +269,35 @@ export function buildProviderQuotaCommand(): SlashCommand {
       'Usage:',
       '  /provider-quota   Show the latest quota reading for every metered provider',
       '',
-      'Readings are observational: each provider reports its own plan usage on',
-      'the responses to requests you were already making, so a provider appears',
-      'here after its first request of the session and costs nothing extra.',
+      'Each provider reports its own plan usage on the responses to requests',
+      'you were already making. Saved ChatGPT sign-ins and MiniMax, Z.AI, Kimi',
+      'Code, OpenCode Go, OpenRouter, DeepSeek, Moonshot and SiliconFlow keys are',
+      'also asked directly (an account read spends nothing), so they show before',
+      'any turn. An OmniRoute provider with a `managementToken` shows every',
+      "account in the gateway's pool; any other provider can describe its own",
+      'account endpoint in `quotaEndpoint`.',
       'For one provider only, /openai-quota shows just ChatGPT/Codex.',
     ].join('\n'),
-    run(): Promise<{ message: string }> {
+    async run(_args, ctx): Promise<{ message: string }> {
+      await Promise.all([readAccountQuotas(ctx?.provider, deps), readKeyedAccountQuotas(deps)]);
       // Sorted so the output does not reshuffle between runs as providers
       // report in a different order than they did last time.
       const snapshots = [...getAllProviderQuota()].sort(
-        (a, b) => a.providerId.localeCompare(b.providerId) || a.meterId.localeCompare(b.meterId),
+        (a, b) =>
+          a.providerId.localeCompare(b.providerId) ||
+          (a.meterLabel ?? a.meterId).localeCompare(b.meterLabel ?? b.meterId),
       );
       const lines: string[] = [
         `${color.bold('WrongStack')} ${color.dim('— provider subscription quota')}`,
         '',
       ];
-      for (const snapshot of snapshots) lines.push(...renderQuotaSnapshot(snapshot), '');
+      lines.push(...renderQuotaSnapshots(snapshots));
       if (snapshots.length === 0) {
         lines.push(
           `  ${color.dim('No quota reading yet.')}`,
           '',
-          `  ${color.dim('Metered plans (Claude Pro/Max, ChatGPT/Codex, Copilot, Antigravity) report')}`,
+          `  ${color.dim('Metered plans (Claude Pro/Max, ChatGPT/Codex, Copilot, Antigravity,')}`,
+          `  ${color.dim('MiniMax, Z.AI / BigModel, Kimi Code, OpenCode Go, OpenRouter, OmniRoute) report')}`,
           `  ${color.dim('usage on the responses to your own requests. Send one message on a')}`,
           `  ${color.dim('subscription login, then run /provider-quota again.')}`,
           '',
@@ -175,7 +305,7 @@ export function buildProviderQuotaCommand(): SlashCommand {
           `  ${color.dim('so it never appears here.')}`,
         );
       }
-      return Promise.resolve({ message: lines.join('\n') });
+      return { message: lines.join('\n') };
     },
   };
 }

@@ -74,7 +74,8 @@
     "noProvider": "no-provider",
     "noModel": "no-model",
     "memoryContextTitle": "Memory context — injected SAGE memories",
-    "toolStatsTitle": "Tool call stats"
+    "toolStatsTitle": "Tool call stats",
+    "sessionToolsTitle": "Session tools"
   },
   "toolStats": {
     "title": "Tool call statistics",

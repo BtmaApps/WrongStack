@@ -19,6 +19,7 @@ import type {
   CodexWebSocketOptions,
   CodexWebSocketStreamOptions,
 } from './codex-websocket-types.js';
+import { CODEX_ROUTING_HINT_HEADER } from './openai-codex-request.js';
 import { isCacheProbeEnabled, recordCacheProbeTransport } from './prompt-cache-probe.js';
 
 export type {
@@ -182,6 +183,11 @@ class CodexWebSocketConnection {
     private readonly headers: Record<string, string>,
     private readonly onHeaders?: (headers: Headers) => void,
   ) {}
+
+  /** The routing hint this connection's handshake carried. */
+  get routingHint(): string | undefined {
+    return this.headers[CODEX_ROUTING_HINT_HEADER];
+  }
 
   async *stream(
     body: Record<string, unknown>,
@@ -661,6 +667,14 @@ export class CodexWebSocketPool {
         if (opts.signal.aborted)
           throw opts.signal.reason ?? new Error('Codex WebSocket request aborted');
         let connection = this.connections.get(key);
+        // Handshake headers are fixed for a connection's life, so a session
+        // that switched model would keep routing by the old one. The switch
+        // already costs the cached prefix; a fresh handshake costs nothing more.
+        if (connection && connection.routingHint !== opts.headers[CODEX_ROUTING_HINT_HEADER]) {
+          connection.close();
+          this.connections.delete(key);
+          connection = undefined;
+        }
         if (!connection) {
           connection = new CodexWebSocketConnection(
             this.factory,

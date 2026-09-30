@@ -424,10 +424,13 @@ describe('thinking-mode round-trip', () => {
     expect(res.content).toHaveLength(2);
     // Thinking block MUST come first — Anthropic rejects assistant
     // messages where it doesn't precede other content.
+    // The signer stamp rides along so a later request to a different service
+    // can tell the block is not its own (thinking-signer.ts).
     expect(res.content[0]).toEqual({
       type: 'thinking',
       thinking: 'Let me think carefully.',
       signature: 'sig-xyz',
+      providerMeta: { thinkingSigner: 'anthropic' },
     });
     expect(res.content[1]).toEqual({ type: 'text', text: '42' });
   });

@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Teste de provedor",
+    "provider-quota": "Cota do plano",
     "chronicle": "Chronicle",
     "intake": "Requisitos",
     "roster": "Elenco de agentes",
@@ -3642,6 +3643,7 @@
       "sddhub": "Hub SDD",
       "settings": "Configurações",
       "provider-test": "Teste de provedores",
+      "provider-quota": "Cota do plano",
       "memory": "Memória",
       "roster": "Roster",
       "codemap": "Atlas de código",
@@ -3652,7 +3654,19 @@
       "history": "Histórico"
     },
     "statusRunning": "Executando",
-    "statusReady": "Pronto"
+    "statusReady": "Pronto",
+    "health": {
+      "issues_one": "Sistema: {{count}} problema",
+      "issues_other": "Sistema: {{count}} problemas",
+      "ok": "Sistema: tudo certo",
+      "heading": "Saúde do sistema",
+      "openIntegrations": "Configurações de integrações"
+    },
+    "appearance": "Aparência",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Escuro",
+    "themeSystem": "Sistema"
   },
   "agentsPanel": {
     "agentRoster": "Elenco de agentes"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Não verificável",
     "irrelevant": "Não relevante",
     "advisory": "Avaliação consultiva do modelo; examine as evidências antes de aplicá-la."
+  },
+  "quotaPanel": {
+    "title": "Cota do plano",
+    "refresh": "Atualizar cota",
+    "refreshTitle": "Ler agora a cota do plano de cada provedor salvo — leituras da conta que não gastam o plano.",
+    "left": "{{pct}}% restante",
+    "resetsIn": "reinicia em {{time}}",
+    "fullIn": "cheia em ~{{time}} neste ritmo",
+    "reached": "limite atingido",
+    "readFailed": "Não foi possível ler a cota — verifique a chave ou o plano.",
+    "reading": "Lendo…",
+    "asOf": "há {{time}}",
+    "balance": "Saldo",
+    "none": "Nenhum provedor com cota de plano legível configurado (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Todas as cotas ({{count}})",
+    "noneInUse": "Os provedores em uso não informam cota de plano.",
+    "poolMore": "+{{count}} no pool — veja Cota do plano.",
+    "poolNoMatch": "Nenhuma conta do pool corresponde a este modelo ({{count}} no pool); uma combinação escolhe uma por requisição."
+  },
+  "quotaPage": {
+    "title": "Cota do plano",
+    "subtitle": "Todas as contas medidas — janelas de assinatura, contas do pool do gateway e saldos pré-pagos. Apenas leituras de conta; nenhuma chamada ao modelo.",
+    "close": "Voltar ao chat",
+    "search": "Filtrar por provedor, conta ou plano",
+    "attentionOnly": "Só perto do limite",
+    "noMatch": "Nada corresponde ao filtro.",
+    "inUseBadge": "em uso",
+    "summary": {
+      "accounts": "Contas",
+      "warn": "Acima de 70%",
+      "critical": "Acima de 90% ou bloqueadas",
+      "nextRelief": "Próximo alívio"
+    },
+    "sections": {
+      "inUse": "Em uso agora",
+      "inUseHint": "O que as sessões abertas e os subagentes em execução usam.",
+      "plans": "Planos de assinatura",
+      "pool": "Pool do OmniRoute",
+      "poolHint": "O gateway alterna entre estas contas; se uma se esgota, a sessão não para.",
+      "balances": "Saldos pré-pagos"
+    }
   }
 }

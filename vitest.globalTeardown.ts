@@ -23,6 +23,14 @@ interface Candidate {
   commandLine: string;
 }
 
+export function hasCompetingVitestRun(candidates: readonly Candidate[], ownerPid: number): boolean {
+  return candidates.some(
+    (candidate) =>
+      candidate.pid !== ownerPid &&
+      /(?:^|[\\/])vitest\.mjs(?:["\s]|$)/u.test(candidate.commandLine),
+  );
+}
+
 const ROOT_FLAG = /--project-(?:root|dir)[\s=]+("[^"]+"|\S+)/u;
 
 function isTempRooted(commandLine: string): boolean {
@@ -85,6 +93,10 @@ export async function teardown(): Promise<void> {
     // Process enumeration is best-effort; never fail a green run over it.
     return;
   }
+
+  // Temp-rooted daemons can still belong to another active test run. Without
+  // a per-run ownership registry, concurrent cleanup must fail closed.
+  if (hasCompetingVitestRun(candidates, process.pid)) return;
 
   const orphans = candidates.filter((c) => c.pid !== process.pid && isTempRooted(c.commandLine));
   if (orphans.length === 0) return;

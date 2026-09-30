@@ -96,6 +96,9 @@ const SetupScreen = lazy(() => import('./SetupScreen').then((m) => ({ default: m
 const ProviderTestView = lazy(() =>
   import('./ProviderTestView').then((m) => ({ default: m.ProviderTestView })),
 );
+const ProviderQuotaView = lazy(() =>
+  import('./ProviderQuotaView').then((m) => ({ default: m.ProviderQuotaView })),
+);
 
 // Eager ones stay eager — they're small and chat is in front anyway. Errors
 // in `SettingsPanel` and `ContextDashboard` would otherwise double-import
@@ -158,6 +161,12 @@ const VIEW_REGISTRY_STRICT = {
     wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
     boundaryNameKey: 'activity:nav.provider-test',
     loadingLabelKey: 'activity:nav.provider-test',
+  },
+  'provider-quota': {
+    Component: ProviderQuotaView,
+    wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
+    boundaryNameKey: 'activity:nav.provider-quota',
+    loadingLabelKey: 'activity:nav.provider-quota',
   },
   settings: {
     Component: SettingsPanel as unknown as ComponentType<Record<string, unknown>>,

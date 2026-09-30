@@ -3,7 +3,9 @@ import { ProviderError } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   type HeadersLike,
+  miniMaxBaseRespError,
   parseProviderHttpError,
+  providerErrorFromStreamPayload,
   retryAfterMsFromBody,
   retryAfterMsFromHeaders,
 } from '../src/error-parse.js';
@@ -436,5 +438,113 @@ describe('ProviderError.describe', () => {
   it('does not apply a second length cut on top of the 2 KB raw truncation', () => {
     const err = parseProviderHttpError('p', 500, 'z'.repeat(5000));
     expect(err.body?.raw?.length).toBe(2000);
+  });
+});
+
+describe('MiniMax base_resp envelope', () => {
+  function baseResp(code: number, msg?: string): string {
+    return JSON.stringify({
+      base_resp: { status_code: code, ...(msg ? { status_msg: msg } : {}) },
+    });
+  }
+
+  it('reads nothing from a success or a missing envelope', () => {
+    expect(miniMaxBaseRespError(undefined)).toBeUndefined();
+    expect(miniMaxBaseRespError('x')).toBeUndefined();
+    expect(miniMaxBaseRespError({ status_code: 0, status_msg: 'success' })).toBeUndefined();
+    expect(miniMaxBaseRespError({ status_code: 'abc' })).toBeUndefined();
+  });
+
+  it('carries the code into the message, like the Anthropic surface does', () => {
+    expect(miniMaxBaseRespError({ status_code: 2056, status_msg: 'usage limit exceeded' })).toEqual(
+      { code: 2056, type: undefined, message: 'usage limit exceeded (2056)' },
+    );
+    expect(miniMaxBaseRespError({ status_code: 1000 })?.message).toBe('MiniMax error (1000)');
+  });
+
+  it('classifies the documented codes', () => {
+    const kinds: Array<[number, string, string]> = [
+      [1002, 'rate limit', 'rate_limit'],
+      [1039, 'token limit', 'rate_limit'],
+      [2049, 'invalid api key', 'auth'],
+      [1004, 'not authorized', 'auth'],
+      [1026, 'input new_sensitive', 'content_filter'],
+      [1027, 'output new_sensitive', 'content_filter'],
+      [1008, 'insufficient balance', 'quota_exhausted'],
+      [2056, 'usage limit exceeded', 'quota_exhausted'],
+      [2013, 'invalid params', 'invalid_request'],
+    ];
+    for (const [code, msg, kind] of kinds) {
+      expect(parseProviderHttpError('minimax', 400, baseResp(code, msg)).kind, String(code)).toBe(
+        kind,
+      );
+    }
+  });
+
+  it('never overrides a vendor-neutral error shape', () => {
+    const err = parseProviderHttpError(
+      'minimax',
+      429,
+      JSON.stringify({
+        error: { type: 'rate_limit_error', message: 'slow down' },
+        base_resp: { status_code: 2049, status_msg: 'invalid api key' },
+      }),
+    );
+    expect(err.body?.type).toBe('rate_limit_error');
+    expect(err.body?.message).toBe('slow down');
+  });
+
+  it('turns an in-stream envelope into a typed error', () => {
+    const quota = providerErrorFromStreamPayload('minimax', {
+      id: 'req-1',
+      choices: null,
+      base_resp: { status_code: 1008, status_msg: 'insufficient balance' },
+    });
+    expect(quota.kind).toBe('quota_exhausted');
+    expect(quota.retryable).toBe(false);
+    expect(quota.body?.message).toBe('insufficient balance (1008)');
+    const limited = providerErrorFromStreamPayload('minimax', {
+      base_resp: { status_code: 1002, status_msg: 'rate limit' },
+    });
+    expect(limited.status).toBe(429);
+    expect(limited.kind).toBe('rate_limit');
+  });
+
+  // Regression (bug-hunt 2026-09-30-r1-stream-error-type-proto): the vendor
+  // `type` is a string the PROVIDER chose, and the STREAM_ERROR_TYPE_STATUS
+  // lookup used a `!== undefined` guard. Bracket access walks the prototype
+  // chain, so an Object.prototype key passed that guard and `status` became
+  // the inherited member — a function — instead of a number. The error was
+  // then classified `unknown` and made NON-retryable, turning a retryable
+  // mid-stream upstream fault into a terminal failure. `Object.hasOwn` is the
+  // convention the sibling table already uses for this same untrusted key
+  // (kindFromErrorCode, core/types/provider-error-codes.ts).
+  it('rejects an Object.prototype vendor type instead of reading it as a status', () => {
+    for (const type of ['toString', 'valueOf', 'constructor', 'hasOwnProperty', '__proto__']) {
+      const err = providerErrorFromStreamPayload('openrouter', {
+        error: { type, message: 'upstream connection reset' },
+      });
+      expect(typeof err.status, `type "${type}" must not become the status`).toBe('number');
+      expect(err.status, `type "${type}" status`).toBe(500);
+      expect(err.kind, `type "${type}" kind`).toBe('server');
+      expect(err.retryable, `type "${type}" retryable`).toBe(true);
+    }
+  });
+
+  it('still maps the known vendor types and ordinary unknown ones', () => {
+    // Control: the guard must reject prototype keys WITHOUT rejecting real ones.
+    const overloaded = providerErrorFromStreamPayload('openrouter', {
+      error: { type: 'overloaded_error', message: 'busy' },
+    });
+    expect(overloaded.status).toBe(529);
+    expect(overloaded.kind).toBe('overloaded');
+
+    // Control: a plain unknown type was always correct and must stay so.
+    const unknown = providerErrorFromStreamPayload('openrouter', {
+      error: { type: 'not_a_real_type', message: 'upstream connection reset' },
+    });
+    expect(unknown.status).toBe(500);
+    expect(unknown.kind).toBe('server');
+    expect(unknown.retryable).toBe(true);
   });
 });

@@ -451,21 +451,22 @@ describe('Sprint 2 reliable queue (consolidated)', () => {
     });
     expect(health.counts.pending).toBe(1);
     expect(health.counts.running).toBe(2);
-    expect(health.counts.ready).toBe(1);
-    expect(health.dependencyBlocked.count).toBe(1);
+    expect(health.counts.ready).toBe(0);
+    expect(health.counts.blocked).toBe(1);
+    expect(health.dependencyBlocked.count).toBe(0);
     expect(health.staleAssignments.count).toBe(2);
     expect(health.heartbeatDue.count).toBe(2);
     expect(health.failedRetryable.count).toBe(0);
   });
 
-  it('queue_health: tool action exposes dependencyBlocked as a subset of ready', async () => {
+  it('queue_health: tool action exposes dependencyBlocked for pending tasks', async () => {
     const board = await createBoard(tmpDir, { title: 'Tool action board' });
     const blocker = await addTask(tmpDir, board.id, { title: 'Blocker', status: 'pending' });
-    const blockedReady = await addTask(tmpDir, board.id, {
+    const blockedPending = await addTask(tmpDir, board.id, {
       title: 'Waiting on blocker',
-      status: 'ready',
+      status: 'pending',
     });
-    await addDependency(tmpDir, board.id, blockedReady!.task.id, blocker!.task.id);
+    await addDependency(tmpDir, board.id, blockedPending!.task.id, blocker!.task.id);
     await addTask(tmpDir, board.id, { title: 'Free ready', status: 'ready' });
 
     const toolResult = await kanbanTool.execute(
@@ -477,13 +478,17 @@ describe('Sprint 2 reliable queue (consolidated)', () => {
     const health = (
       toolResult as {
         queueHealth?: {
-          counts: { ready: number };
+          counts: { ready: number; pending: number };
           dependencyBlocked: { count: number; tasks: unknown[] };
         };
       }
     ).queueHealth;
     expect(health).toBeDefined();
-    expect(health?.dependencyBlocked.count).toBeGreaterThan(0);
+    expect(health?.counts).toMatchObject({ ready: 1, pending: 2 });
+    expect(health?.dependencyBlocked).toMatchObject({
+      count: 1,
+      tasks: [{ task: { id: blockedPending!.task.id, status: 'pending' } }],
+    });
   });
 
   // ───────────────────────────────────────────────────────────────────────

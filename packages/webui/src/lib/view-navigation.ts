@@ -18,6 +18,7 @@ export type MainView =
   | 'sddhub'
   | 'settings'
   | 'provider-test'
+  | 'provider-quota'
   | 'memory'
   | 'roster'
   | 'codemap'

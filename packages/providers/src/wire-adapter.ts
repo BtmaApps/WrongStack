@@ -349,7 +349,7 @@ export abstract class WireAdapter implements Provider {
         const raw = await redirectSafeFetch(this.fetchImpl, url, {
           method: 'POST',
           headers,
-          body: stringifyRequestBody(body),
+          body: this.encodeRequestBody(stringifyRequestBody(body), headers),
           signal: linked.signal,
         });
         validateResponse(raw);
@@ -626,6 +626,15 @@ export abstract class WireAdapter implements Provider {
   protected abstract buildUrl(req: Request): string;
 
   /** Per-request headers. `apiKey` is already in scope — call `super.buildHeaders` first. */
+  /**
+   * Last step before a streaming request's body goes on the wire. The base
+   * sends the JSON as-is; a wire that may compress sets its own
+   * `content-encoding` on `headers` when it does.
+   */
+  protected encodeRequestBody(json: string, _headers: Record<string, string>): string | Uint8Array {
+    return json;
+  }
+
   protected buildHeaders(_req: Request): Record<string, string> {
     return {
       'content-type': 'application/json',

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -64,4 +64,27 @@ describe('atomic temp ownership', () => {
       await expect(readFile(foreignTemp, 'utf8')).resolves.toBe('foreign');
     },
   );
+
+  it('removes its own streamed temp file when a later error carries code EEXIST', async () => {
+    const primitives = createPersistencePrimitives();
+    const target = join(fixtureRoot, 'late-eexist.txt');
+    const ours = collisionTempPath('late-eexist.txt');
+
+    // Exclusive creation succeeded, so ownership of the temp path is this
+    // invocation's. An EEXIST arriving after that point (from the write
+    // callback, or from a later commit step) no longer means "someone else's
+    // file" — the guard that protects a foreign temp file must not also
+    // protect our own, or every failed rotation leaks one.
+    await expect(
+      primitives.atomicReplaceWithWriter(target, async () => {
+        throw Object.assign(
+          new Error('EEXIST raised after this invocation created the temp file'),
+          { code: 'EEXIST' },
+        );
+      }),
+    ).rejects.toMatchObject({ code: 'EEXIST' });
+
+    await expect(access(ours)).rejects.toBeDefined();
+    await expect(access(target)).rejects.toBeDefined();
+  });
 });

@@ -108,12 +108,26 @@ function learnedPath(role: string, projectRoot?: string): string {
   return path.join(roleDir(role, projectRoot), 'learned.md');
 }
 
-/** Bare anchors (backticks already stripped) that are long enough to match on. */
+/**
+ * Bare anchors (backticks already stripped) that identify something specific.
+ *
+ * Length alone was not enough: capture extracts every backticked token, so a
+ * directive that put an ordinary word in code font (`resolve`, `fallback`,
+ * `summary`) got an anchor that matches half the reports the role writes. An
+ * anchor must now also *look* like code — a path, a dotted or hyphenated name,
+ * a call, a flag, or an identifier with an inner capital. A directive left
+ * without one falls through to the wording test, as before.
+ */
 function directiveAnchors(entry: StructuredLearnedEntry): string[] {
   return entry.how
     .split('\n')
-    .map((line) => line.replace(/`/g, '').trim().toLowerCase())
-    .filter((anchor) => anchor.length >= MIN_ANCHOR_LENGTH);
+    .map((line) => line.replace(/`/g, '').trim())
+    .filter(
+      (anchor) =>
+        anchor.length >= MIN_ANCHOR_LENGTH &&
+        (/[^A-Za-z]/.test(anchor) || /[a-z][A-Z]/.test(anchor)),
+    )
+    .map((anchor) => anchor.toLowerCase());
 }
 
 function distinctiveTokens(text: string): string[] {

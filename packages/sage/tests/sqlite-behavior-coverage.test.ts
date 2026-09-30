@@ -641,7 +641,11 @@ describe('SQLite defensive and lifecycle completion coverage', () => {
     };
     await expect(store.getSage(target.id)).resolves.toBeNull();
     rowState.rowToMemory = originalRowToMemory;
-    expect(console.warn).toHaveBeenCalledTimes(7);
+    // 6 revert/warn paths remain: the mocked archive/delete failures, the
+    // promotion race, and this row failure. The missing-since-birth target
+    // ('missing-target') no longer warns — rule 3 records it as a no-op
+    // instead of reverting to pending.
+    expect(console.warn).toHaveBeenCalledTimes(6);
   });
 
   it('cleans independent reference shapes and considers project candidates in consolidation', async () => {

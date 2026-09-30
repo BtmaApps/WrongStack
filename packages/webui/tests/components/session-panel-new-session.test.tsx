@@ -36,6 +36,7 @@ import {
   useSessionTabStore,
   useUIStore,
 } from '../../src/stores/index.js';
+import { useLocalPrefs } from '../../src/stores/local-prefs.js';
 import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 
 function renderPanel() {
@@ -178,5 +179,30 @@ describe('SessionPanel quick actions', () => {
     fireEvent.click(clear);
     fireEvent.click(newSession);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('calm chrome folds the session stats grid behind its heading', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm', sessionStatsExpanded: false });
+    renderPanel();
+
+    const toggle = screen.getByTestId('session-stats-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Messages')).toBeNull();
+
+    act(() => {
+      fireEvent.click(toggle);
+    });
+    expect(useLocalPrefs.getState().sessionStatsExpanded).toBe(true);
+    expect(screen.getByText('Messages')).toBeTruthy();
+    useLocalPrefs.setState({ sessionStatsExpanded: false });
+  });
+
+  it('full chrome always shows the session stats grid', () => {
+    useLocalPrefs.setState({ chromeLevel: 'full', sessionStatsExpanded: false });
+    renderPanel();
+
+    expect(screen.queryByTestId('session-stats-toggle')).toBeNull();
+    expect(screen.getByText('Messages')).toBeTruthy();
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
   });
 });

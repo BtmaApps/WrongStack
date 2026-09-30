@@ -115,9 +115,26 @@ export async function* parseOpenAIResponsesStream(
   providerId = 'openai-codex',
   onResponseMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
   onReasoningUsage?: ((tokens: number | undefined) => void) | undefined,
+  options: ResponsesStreamOptions = {},
 ): AsyncIterable<StreamEvent> {
+  const { onWrappedHttpError } = options;
   let model = fallbackModel;
   let started = false;
+  // The model the backend says actually served the request. Reported once, and
+  // only when it differs from the requested slug (case-insensitively, as the
+  // official client compares): every request of a rerouted account carries it.
+  let rerouteReported = false;
+  const reroute = (served: string | undefined): StreamEvent | undefined => {
+    if (rerouteReported || !served) return undefined;
+    if (served.toLowerCase() === fallbackModel.toLowerCase()) return undefined;
+    rerouteReported = true;
+    return {
+      type: 'model_rerouted',
+      requested: fallbackModel,
+      served,
+      ...(options.rerouteReason ? { reason: options.rerouteReason } : {}),
+    };
+  };
   let usage: Usage = { input: 0, output: 0 };
   let stopReason: StopReason = 'end_turn';
   let sawToolUse = false;
@@ -178,6 +195,20 @@ export async function* parseOpenAIResponsesStream(
     if (!parsed.ok || !parsed.value) continue;
     const evt = parsed.value;
     const type = typeof evt['type'] === 'string' ? (evt['type'] as string) : '';
+    // Server model: the transport's own response headers (HTTP, WebSocket
+    // handshake), then any event carrying `response.headers` or — on metadata
+    // frames — top-level `headers`, in the official client's precedence.
+    const rerouted = reroute(
+      options.servedModel?.() ??
+        servedModelFromHeaders(
+          (evt['response'] as Record<string, unknown> | undefined)?.['headers'],
+        ) ??
+        servedModelFromHeaders(evt['headers']) ??
+        servedModelFromHeaders(
+          (evt['metadata'] as Record<string, unknown> | undefined)?.['headers'],
+        ),
+    );
+    if (rerouted) yield rerouted;
 
     switch (type) {
       case 'response.metadata':
@@ -398,6 +429,14 @@ export async function* parseOpenAIResponsesStream(
 
       case 'error':
       case 'response.failed': {
+        // The WebSocket transport delivers an HTTP failure as a frame —
+        // `{"type":"error","status":429,"error":{…},"headers":{…}}` — and the
+        // official client handles it exactly like that HTTP response. Its
+        // headers are the only copy of the quota windows and reset times.
+        const wrapped = type === 'error' ? wrappedHttpStatus(evt) : undefined;
+        if (wrapped !== undefined && onWrappedHttpError) {
+          throw onWrappedHttpError(wrapped, JSON.stringify(evt), wrappedHttpHeaders(evt));
+        }
         // These are application-level failures delivered over an HTTP 200 SSE
         // stream, not HTTP 502 responses. Parse the entire envelope so the
         // provider's code/message can drive canonical classification (notably
@@ -436,6 +475,60 @@ export async function* parseOpenAIResponsesStream(
   if (started) {
     yield { type: 'message_stop', stopReason, usage };
   }
+}
+
+/** Optional hooks for {@link parseOpenAIResponsesStream}. */
+export interface ResponsesStreamOptions {
+  /** Maps a WebSocket-wrapped HTTP failure frame onto the provider's HTTP error. */
+  onWrappedHttpError?: WrappedHttpErrorHandler | undefined;
+  /** The served model from transport headers the parser never sees (HTTP, WS handshake). */
+  servedModel?: (() => string | undefined) | undefined;
+  /** Explanation attached to a `model_rerouted` event. */
+  rerouteReason?: string | undefined;
+}
+
+/** `openai-model` / `x-openai-model` from a JSON header map, as the official client reads it. */
+function servedModelFromHeaders(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+    const lower = name.toLowerCase();
+    if ((lower === 'openai-model' || lower === 'x-openai-model') && typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return undefined;
+}
+
+/** Turns a WebSocket-wrapped HTTP failure into the provider's HTTP error. */
+export type WrappedHttpErrorHandler = (
+  status: number,
+  rawText: string,
+  headers: Headers | undefined,
+) => ProviderError;
+
+function wrappedHttpStatus(evt: Record<string, unknown>): number | undefined {
+  const status = evt['status'] ?? evt['status_code'];
+  return typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599
+    ? status
+    : undefined;
+}
+
+function wrappedHttpHeaders(evt: Record<string, unknown>): Headers | undefined {
+  const raw = evt['headers'];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+      continue;
+    }
+    try {
+      headers.set(name, String(value));
+    } catch {
+      // An invalid header name or value is skipped, as the official client does.
+    }
+  }
+  return headers;
 }
 
 function responseFailureStatus(

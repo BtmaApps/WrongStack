@@ -45,10 +45,10 @@ export function managementTaskVersion(board: KanbanBoard, task: KanbanTask): str
 export function assertManagementWrite(
   board: KanbanBoard,
   tasks: readonly KanbanTask[],
-  context: KanbanEventContext,
+  context?: KanbanEventContext | undefined,
   action: 'contract' | 'note' = 'contract',
 ): void {
-  if (context.expectedManagementToken === undefined) return;
+  if (context?.expectedManagementToken === undefined) return;
   const refuse = (reason: string): never => {
     throw new StaleWriteError(`Kanban manager: ${reason}`);
   };

@@ -93,6 +93,7 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/provider-status` | — | Live provider/model health: healthy, degraded, blocked |
 | `/openai-quota` | — | [openai-quota](openai-quota.md) — ChatGPT (Codex) plan windows used and reset times |
 | `/provider-quota` | — | [provider-quota](provider-quota.md) — Plan windows used and reset times for every metered provider |
+| `/zai-plan` | — | [zai-plan](zai-plan.md) — Z.AI / BigModel GLM Coding Plan: subscription, 5h/weekly windows, MCP pool, usage |
 
 `/f1` through `/f12` are twelve separately registered hidden commands, not entries in the `aliases` array.
 

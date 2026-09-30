@@ -9,10 +9,18 @@ Shows how much of the signed-in ChatGPT account's plan has been consumed on each
 rolling window, and when each window resets.
 
 A "Sign in with ChatGPT" account (`openai-codex`) is metered on rolling windows —
-typically a 5-hour one and a weekly one. The ChatGPT backend reports the burn
-only in the **response headers** of the requests you already make; none of it
-appears in the response body. WrongStack records every reading, and this command
-renders the most recent one.
+typically a 5-hour one and a weekly one, depending on the plan. Two sources
+feed the reading:
+
+- **The account usage endpoint** (`GET chatgpt.com/backend-api/wham/usage`, the
+  read behind the official client's `/status`). The command asks it first,
+  through the active ChatGPT transport or — when the session runs on another
+  provider — through each saved ChatGPT sign-in. It is a status read, not a
+  model call, so the quota shows before any message and without a session turn.
+- **The response headers** (`x-codex-*`) of the requests you already make,
+  which keep the reading current as turns run.
+
+WrongStack records every reading, and this command renders the most recent one.
 
 ## Output
 
@@ -31,9 +39,17 @@ a promo message.
 
 ## Notes
 
-- **It costs nothing.** The reading is observational — it is never fetched on
-  its own, which is why it appears only after the first request of a session.
-  Before then, `/openai-quota` says so and tells you to send a message first.
+- **It costs nothing.** The usage read spends none of the plan it reports, and
+  the header readings ride on requests you were already making. A token near
+  expiry is refreshed first (the rotated token is persisted as for any turn);
+  a `401` refreshes once and retries. A read that fails leaves the standing
+  reading in place.
+- **Extra meters.** The usage endpoint also lists per-model or per-feature
+  limits (`additional_rate_limits`); each one with a window shows as its own
+  meter. Identity fields in that response (email, user id) are never kept.
+- **In the WebUI,** the chat sidebar's quota panel triggers the same read on
+  open, every five minutes and on its refresh button, so the Codex card fills
+  before any session has run.
 - **Only ChatGPT-login accounts are metered this way.** API-key providers bill
   per token and report no window; they do not appear here. For provider health
   and failure counts see [`/provider-status`](provider-status.md).

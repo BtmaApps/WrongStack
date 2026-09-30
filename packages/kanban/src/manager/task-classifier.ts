@@ -159,7 +159,7 @@ function classification(
   };
 }
 
-function managedLifecycleStage(
+export function managedLifecycleStage(
   board: KanbanBoard,
   task: KanbanTask,
 ): KanbanLifecycleStage | undefined {

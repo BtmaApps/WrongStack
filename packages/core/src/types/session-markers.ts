@@ -269,11 +269,13 @@ export function sessionEventToMarker(ev: SessionEvent): SessionMarker | null {
       return {
         ts: ev.ts,
         source: ev.type,
-        level: ev.reason === 'fallback' ? 'warn' : 'info',
+        level: ev.reason === 'user' ? 'info' : 'warn',
         text:
           ev.reason === 'fallback'
             ? `⚠ fallback${ev.status ? ` (HTTP ${ev.status})` : ''}: ${from}${to}`
-            : `model: ${from}${to}`,
+            : ev.reason === 'server'
+              ? `⚠ rerouted by server: ${from}${to}`
+              : `model: ${from}${to}`,
       };
     }
 

@@ -195,6 +195,63 @@ describe('createSecuritySlashCommand', () => {
       );
     });
 
+    // ── --format must stay inside the declared union ─────────────────────────
+    // `format` is interpolated into the report FILENAME and then path.join()ed
+    // against the output directory, which normalizes `..` and separator
+    // segments away. Forwarding an unvalidated `--format` token (the old
+    // `as 'markdown' | 'json' | 'html'` assertion erased at runtime) let
+    // `--format x/../../escape.md` write the report outside
+    // `<projectRoot>/<outputDir>` and leave the reports directory empty.
+    it.each([
+      ['markdown', 'markdown'],
+      ['json', 'json'],
+      ['html', 'html'],
+    ])('forwards the valid --format %s unchanged', async (input, expected) => {
+      orchestratorMocks.run.mockResolvedValue({
+        scanResult: {
+          summary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+          scannedFiles: 0,
+          scanDurationMs: 0,
+        },
+        detectionResult: { detectedStacks: [] },
+        synthesizedReport: 'x',
+        reportPath: '',
+      });
+      await createSecuritySlashCommand().run(`scan --format ${input}`, fakeCtx());
+      expect(orchestratorMocks.run).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ reportOptions: { format: expected } }),
+      );
+    });
+
+    it.each([
+      ['the proof payload', 'x/../../escape.md'],
+      ['a parent-relative escape', '../../evil.md'],
+      ['a windows-style escape', 'x\\..\\..\\escape.md'],
+      ['a deeper escape', 'x/../../../escape.md'],
+      ['a bare separator', '/'],
+      ['an absolute-ish path', 'C:/Windows/System32/drivers/etc/hosts.md'],
+      ['a non-union word', 'xml'],
+    ])('coerces %s to markdown instead of passing it to the path', async (_label, payload) => {
+      orchestratorMocks.run.mockResolvedValue({
+        scanResult: {
+          summary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+          scannedFiles: 0,
+          scanDurationMs: 0,
+        },
+        detectionResult: { detectedStacks: [] },
+        synthesizedReport: 'x',
+        reportPath: '',
+      });
+      await createSecuritySlashCommand().run(`scan --format ${payload}`, fakeCtx());
+      const options = orchestratorMocks.run.mock.calls[0]?.[1] as {
+        reportOptions: { format: string };
+      };
+      // Membership must be decided by a runtime test, not a type assertion.
+      expect(['markdown', 'json', 'html']).toContain(options.reportOptions.format);
+      expect(options.reportOptions.format).toBe('markdown');
+    });
+
     it('catches orchestrator errors', async () => {
       orchestratorMocks.run.mockRejectedValue(new Error('boom'));
       const cmd = createSecuritySlashCommand();

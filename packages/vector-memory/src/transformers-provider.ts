@@ -179,7 +179,20 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
 
   private async getExtractor(): Promise<FeatureExtractor> {
     if (this.extractor) return this.extractor;
-    if (!this.loadPromise) this.loadPromise = this.loadExtractor();
+    if (!this.loadPromise) {
+      // Drop the memo when the load FAILS. Every consumer of `embed()` is
+      // fail-open (`VectorMemoryStore.embedWithCache` swallows the error and
+      // returns undefined), so a memo that kept the rejection would be
+      // indistinguishable from "this provider has no embeddings": `remember()`
+      // would persist entries without vectors and `search()` would return
+      // nothing, for the rest of the process, off one transient failure (a
+      // flaky hub, a timeout during the first model download). Retry instead —
+      // concurrent callers still share the single in-flight load.
+      this.loadPromise = this.loadExtractor().catch((err: unknown) => {
+        this.loadPromise = undefined;
+        throw err;
+      });
+    }
     this.extractor = await this.loadPromise;
     return this.extractor;
   }

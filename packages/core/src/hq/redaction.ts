@@ -192,6 +192,19 @@ function normalizePathForCompare(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/g, '');
 }
 
+/**
+ * A value that is already project-relative (no leading separator, no drive
+ * letter, no `..` segment) satisfies the 'project-relative' policy verbatim.
+ * Sage anchors and kanban references are stored project-relative, and the
+ * basename fallback below — written to strip ABSOLUTE filesystem layout
+ * outside the root — silently collapsed their directory components,
+ * corrupting the project-state sync channels' round-trip.
+ */
+function isAlreadyProjectRelative(normalized: string): boolean {
+  if (normalized.startsWith('/') || /^[A-Za-z]:/.test(normalized)) return false;
+  return !normalized.split('/').includes('..');
+}
+
 function redactPath(
   value: string,
   projectRoot: string | undefined,
@@ -201,6 +214,7 @@ function redactPath(
   if (policy.paths === 'none' || policy.paths === 'redacted') return REDACTED_PATH_REPLACEMENT;
 
   const normalizedValue = normalizePathForCompare(value);
+  if (isAlreadyProjectRelative(normalizedValue)) return normalizedValue;
   if (!projectRoot) return normalizedValue.split('/').at(-1) ?? REDACTED_PATH_REPLACEMENT;
 
   const normalizedRoot = normalizePathForCompare(projectRoot);

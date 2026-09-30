@@ -439,6 +439,27 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
     });
   });
 
+  on('provider.model_rerouted', (e) => {
+    broadcast(clients, {
+      type: 'provider.model_rerouted',
+      payload: sessionPayload({
+        sessionId: e.sessionId,
+        providerId: e.providerId,
+        requested: e.requested,
+        served: e.served,
+        ...(e.reason ? { reason: e.reason } : {}),
+        timestamp: e.timestamp,
+      }),
+    });
+    appendForCurrentSession(e.sessionId, {
+      type: 'model_switched',
+      ts: new Date().toISOString(),
+      from: { providerId: e.providerId, model: e.requested },
+      to: { providerId: e.providerId, model: e.served },
+      reason: 'server',
+    });
+  });
+
   on('provider.fallback_pending', (e) => {
     broadcast(clients, {
       type: 'provider.fallback_pending',

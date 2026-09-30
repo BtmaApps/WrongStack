@@ -1151,6 +1151,28 @@ describe('SddParallelRun — coverage edge paths', () => {
     expect((run as never as { recoveryRounds: number }).recoveryRounds).toBe(1);
   });
 
+  it('leaves a user-cancelled failed blocker cancelled during deadlock recovery', async () => {
+    // cancelTask sets BOTH cancel markers and documents that they "block
+    // retry/auto-redispatch". requeueFailedTasks honours that; the deadlock
+    // recovery round used to ignore it and flip the cancelled blocker back to
+    // 'pending', re-dispatching work the user explicitly stopped.
+    const { run, tracker, t1, t2 } = await makeHarness();
+    tracker.addEdge(t1.id, t2.id, 'depends_on');
+    tracker.updateNodeStatus(t1.id, 'failed');
+    tracker.updateNodeStatus(t2.id, 'blocked');
+
+    expect(await run.cancelTask(t1.id)).toBe(true);
+    expect(tracker.getNode(t1.id)?.metadata?.cancelled).toBe(true);
+
+    const recovered = (
+      run as never as { recoverFailedBlockers: () => boolean }
+    ).recoverFailedBlockers();
+
+    // Nothing is recoverable while the only blocker is user-cancelled.
+    expect(recovered).toBe(false);
+    expect(tracker.getNode(t1.id)?.status).toBe('failed');
+  });
+
   it('tears down interrupted tasks and retained worktrees after stop', async () => {
     const release = vi.fn(async () => {
       throw new Error('release failed');

@@ -17,6 +17,7 @@ import {
   projectSavedProviders,
   type SavedProviderView,
 } from './provider/projection.js';
+import { createQuotaRefreshHandlers } from './provider/quota-refresh.js';
 import { loadSavedProviders, saveProviders } from './provider-config-io.js';
 import type { ConnectedClient, WSServerMessage } from './types.js';
 
@@ -38,6 +39,7 @@ export function createProviderOperations(deps: ProviderOperationsDeps) {
   const crud = createProviderCrudHandlers(ctx);
   const customModels = createCustomModelHandlers(ctx);
   const probe = createProbeHandlers(ctx);
+  const quotaRefresh = createQuotaRefreshHandlers(ctx);
   const modelTest = createProviderModelTestHandlers(ctx);
   const oauth = createOauthHandlers(ctx);
 
@@ -47,6 +49,7 @@ export function createProviderOperations(deps: ProviderOperationsDeps) {
     ...crud,
     ...customModels,
     ...probe,
+    ...quotaRefresh,
     ...modelTest,
     ...oauth,
     broadcastSaved: ctx.broadcastSaved,

@@ -15,6 +15,7 @@ import { listProjectAgentRoles } from './project-agent-files.js';
 import type { LearnedCaptureResult } from './project-agent-identity-types.js';
 import { splitLearnedEntries, tokenOverlap } from './project-agent-learning-entries.js';
 import {
+  LEARNED_HARD_LIMIT,
   LEARNED_SOFT_LIMIT,
   normalizeForComparison,
   normalizeLearnedEntry,
@@ -27,6 +28,7 @@ import {
 import {
   directiveLift,
   directiveTrials,
+  enforceLearnedBudget,
   hasDirectiveLiftEvidence,
   mergeStructuredEntries,
   parseStructuredLearnedEntriesFromContent,
@@ -375,9 +377,20 @@ export function captureLearnedFromAgentOutputDetailed(
     };
   }
 
-  // Every directive is kept. Growth past LEARNED_SOFT_LIMIT queues a
-  // consolidation pass that merges and promotes; evicting to a fixed byte size
-  // here silently threw away lessons between those passes.
+  // Growth past LEARNED_SOFT_LIMIT queues a consolidation pass that merges and
+  // promotes; evicting at that size threw lessons away between passes, so
+  // nothing is evicted there. LEARNED_HARD_LIMIT is only the ceiling for a
+  // buffer no pass ever prunes (no model), and what it evicts is archived.
+  const { kept, dropped } = enforceLearnedBudget(
+    structuredEntries,
+    nowIso,
+    LEARNED_HARD_LIMIT,
+    normalizedRole,
+  );
+  if (dropped.length > 0) {
+    archiveEvictedEntries(normalizedRole, dropped, nowIso, projectRoot);
+    structuredEntries = kept;
+  }
   const newContent = renderLearnedInstructions(normalizedRole, structuredEntries, nowIso);
 
   writeTextAtomically(path.join(roleDir(normalizedRole, projectRoot), 'learned.md'), newContent);
@@ -405,6 +418,22 @@ export function captureLearnedFromAgentOutputDetailed(
     status: 'captured',
     ...(routedSkills.length > 0 ? { skills: [...new Set(routedSkills)] } : {}),
   };
+}
+
+function archiveEvictedEntries(
+  role: string,
+  evicted: readonly StructuredLearnedEntry[],
+  at: string,
+  projectRoot?: string,
+): void {
+  try {
+    writeTextAtomically(
+      path.join(roleDir(role, projectRoot), 'archive', `evicted-${at.replace(/[:.]/g, '-')}.md`),
+      renderLearnedInstructions(role, [...evicted], at),
+    );
+  } catch {
+    // The archive is an audit trail; losing it must not lose the capture.
+  }
 }
 
 export function hintLearnedNeedsSummarization(role: string, projectRoot?: string): string {

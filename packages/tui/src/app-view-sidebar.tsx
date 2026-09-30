@@ -21,6 +21,7 @@ import {
   WorktreePanelSidebar,
   WrongProxyPanelSidebar,
 } from './components/sidebar-panels.js';
+import type { QuotaCardModel } from './components/sidebar-quota-model.js';
 import type {
   useSidebarConnections,
   useSidebarKanban,
@@ -58,6 +59,8 @@ interface AppViewSidebarProps {
   /** Live probe data from `useSidebarWrongProxy`. `null` while the panel
    *  is bootstrapping or the daemon URL hasn't produced a response yet. */
   sidebarWrongProxyData: ReturnType<typeof useSidebarWrongProxy>;
+  /** PLAN QUOTA card for the active provider/model (`useProviderQuotaCard`). */
+  sidebarQuotaCard?: QuotaCardModel | undefined;
 }
 
 export function AppViewSidebar({
@@ -75,6 +78,7 @@ export function AppViewSidebar({
   sidebarPlanData,
   sidebarWrongProxyEnabled,
   sidebarWrongProxyData,
+  sidebarQuotaCard,
 }: AppViewSidebarProps): React.ReactElement | null {
   const { agent } = host;
   const { state, activity, environment, statusbar, liveTodos, liveSettings } = runtime;
@@ -247,6 +251,7 @@ export function AppViewSidebar({
         contextWindow={statusbar.contextWindow}
         contextBreakdown={statusbar.contextBreakdown}
         cacheStats={statusbar.cacheStats}
+        quota={sidebarQuotaCard}
         entries={statusbar.entriesWithLeader}
         fleetCounts={statusbar.fleetCounts}
         provider={liveProvider}

@@ -404,6 +404,9 @@ export const useLocalPrefs = create<LocalPrefs>()(
         // v15: autoCollapseInput — boolean display toggle, default false
         // (input starts expanded; auto-collapse is opt-in).
         if (typeof p.autoCollapseInput !== 'boolean') p.autoCollapseInput = false;
+        // chromeLevel — 'calm' | 'full'; anything else (absent, corrupted) is calm.
+        if (p.chromeLevel !== 'calm' && p.chromeLevel !== 'full') p.chromeLevel = 'calm';
+        if (typeof p.sessionStatsExpanded !== 'boolean') p.sessionStatsExpanded = false;
         // v14: showAgentSwarmPanel changed from boolean to tri-state string.
         // Legacy booleans: true → 'bottom', false → 'off'.
         // Invalid values (non-string, non-boolean) → 'bottom' (default).

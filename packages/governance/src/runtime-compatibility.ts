@@ -496,17 +496,10 @@ async function provisionAttachment(
       `Governance attachment claim failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  if (!attachmentClaimMatches(claim, options)) {
-    return legacy(
-      'attachment_rejected',
-      'attach',
-      claim.ok
-        ? 'Governance attachment response did not match the requested identities and capabilities.'
-        : `Governance attachment was rejected: ${claim.error.message}`,
-    );
-  }
-  const releaseClaim = (): Promise<GovernanceServiceResponse | null> =>
-    new GovernanceProjectClient(options.projectRoot, claim.result.control.credential, {
+  const releaseClaim = (
+    controlCredential: GovernanceServiceCredential,
+  ): Promise<GovernanceServiceResponse | null> =>
+    new GovernanceProjectClient(options.projectRoot, controlCredential, {
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     })
       .request({
@@ -515,6 +508,31 @@ async function provisionAttachment(
         type: 'release_runtime_attachment',
       })
       .catch(() => null);
+  if (!attachmentClaimMatches(claim, options)) {
+    // A SUCCESSFUL-but-mismatched claim (claim.ok === true) means the daemon
+    // already issued a live runtime attachment (control + model grants). We
+    // reject it because its identities/capabilities don't match what we asked
+    // for, but the attachment is real and must be released — the same contract
+    // the two sibling failure paths below follow. Release before falling back,
+    // or the daemon keeps a live attachment (and its grants) with cleanup
+    // reported as 'not_required'.
+    let cleanup: GovernanceCompatibilityCleanup = 'not_required';
+    if (claim.ok && claim.result.type === 'runtime_attachment_claimed') {
+      const released = await releaseClaim(claim.result.control.credential);
+      cleanup =
+        released?.ok && released.result.type === 'runtime_attachment_released'
+          ? 'attachment_grants_released'
+          : 'cleanup_failed';
+    }
+    return legacy(
+      'attachment_rejected',
+      'attach',
+      claim.ok
+        ? 'Governance attachment response did not match the requested identities and capabilities.'
+        : `Governance attachment was rejected: ${claim.error.message}`,
+      cleanup,
+    );
+  }
   let controlConnection: ConnectGovernanceProjectClientResult;
   let modelConnection: ConnectGovernanceProjectClientResult;
   try {
@@ -533,7 +551,7 @@ async function provisionAttachment(
       }),
     ]);
   } catch (error) {
-    const released = await releaseClaim();
+    const released = await releaseClaim(claim.result.control.credential);
     const cleanup =
       released?.ok && released.result.type === 'runtime_attachment_released'
         ? 'attachment_grants_released'
@@ -546,7 +564,7 @@ async function provisionAttachment(
     );
   }
   if (!controlConnection.connected || !modelConnection.connected) {
-    const released = await releaseClaim();
+    const released = await releaseClaim(claim.result.control.credential);
     const cleanup =
       released?.ok && released.result.type === 'runtime_attachment_released'
         ? 'attachment_grants_released'
@@ -649,6 +667,26 @@ async function provisionModel(
     );
   }
   if (!modelGrantMatches(response, options)) {
+    // A grant that was actually ISSUED (ok:true) but does not match the
+    // requested identity/capabilities must be revoked, exactly as the two
+    // connection-failure paths below revoke the grant they abandon. Without
+    // this, `cleanupFailedProvision` alone leaves a live capability grant in
+    // the daemon registry — for an `attached` source it only calls
+    // `session.stop()` (lease stop), so on a long-lived / shared daemon the
+    // grant the client just walked away from stays valid until its TTL.
+    // A server-rejected grant (ok:false) issued nothing, so there is nothing
+    // to revoke and the request is left alone.
+    if (response.ok && response.result.type === 'capability_grant_issued') {
+      await session
+        .request({
+          protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+          requestId: `compat-revoke-mismatched-grant-${randomUUID()}`,
+          type: 'revoke_capability_grant',
+          grantId: response.result.grant.grantId,
+          reason: 'model grant identity validation failed',
+        })
+        .catch(() => null);
+    }
     const cleanup = await cleanupFailedProvision(session, source);
     return legacy(
       'model_grant_rejected',

@@ -11,6 +11,7 @@ import type {
 } from '@wrongstack/core/types';
 import { ConfigError, ERROR_CODES, WrongStackError } from '@wrongstack/core/types';
 import { bindProviderCatalogId, expectDefined } from '@wrongstack/core/utils';
+import { attachAccountQuotaReporting } from './account-quota.js';
 import { AiGatewayProvider, createAiGatewayProviderFactory } from './ai-gateway.js';
 import { AnthropicProvider } from './anthropic.js';
 import { AnthropicOAuthProvider } from './anthropic-oauth.js';
@@ -19,7 +20,7 @@ import { createCatalogAwareProvider } from './catalog-provider-routing.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
 import { GoogleProvider } from './google.js';
 import { AntigravityProvider } from './google-antigravity.js';
-import { MiniMaxProvider } from './minimax.js';
+import { isMiniMaxHost, isMiniMaxProviderId, MiniMaxProvider } from './minimax.js';
 import { OpenAIProvider } from './openai.js';
 import { OpenAICodexProvider } from './openai-codex.js';
 import {
@@ -36,7 +37,14 @@ import {
   resolveProviderDefinition,
 } from './provider-definitions.js';
 import { createWireFormatFactory } from './wire-format.js';
+import { isZaiHost, withZaiAccountPlane, ZaiMessagesProvider, zaiWireContract } from './zai.js';
 
+export {
+  type AccountQuotaVendor,
+  readProviderAccountQuota,
+  refreshProviderAccountQuota,
+  setAccountQuotaReporting,
+} from './account-quota.js';
 export {
   type AiGatewayFactoryOptions,
   AiGatewayProvider,
@@ -266,6 +274,14 @@ export {
   type WireFormatConfig,
   WireFormatProvider,
 } from './wire-format.js';
+export {
+  listZaiAccounts,
+  type ZaiAccountHandle,
+  ZaiAccountProvider,
+  type ZaiPlanReport,
+  type ZaiServiceHealth,
+  zaiQuotaSnapshots,
+} from './zai.js';
 
 /**
  * Built-in tuning for known openai-compatible providers that aren't in the
@@ -522,17 +538,21 @@ export async function buildProviderFactoriesFromRegistry(
           code: 'CONFIG_INVALID',
         });
       }
+      const glm = zaiWireContract(baseUrl, 'openai-compatible');
       const provider = new OpenAICompatibleProvider({
         // The host passes the config key as `cfg.type`; it names the provider.
         id: cfg.type || 'openai-compatible',
-        definitionId: 'openai-compatible',
+        definitionId: glm?.definitionId ?? 'openai-compatible',
         apiKey: requireKey(cfg),
         baseUrl,
         headers: cfg.headers,
-        quirks: validateQuirks('openai-compatible', cfg.quirks),
+        quirks: { ...glm?.quirks, ...validateQuirks('openai-compatible', cfg.quirks) },
       });
-      bindProviderCatalogId(provider, 'openai-compatible');
-      return provider;
+      // A hand-rolled provider pointed at Z.AI / BigModel is still that
+      // vendor's account: quota, business codes, region hints.
+      const wrapped = withZaiAccountPlane(provider, { apiKey: requireKey(cfg), baseUrl });
+      bindProviderCatalogId(wrapped, 'openai-compatible');
+      return wrapped;
     },
   });
 
@@ -573,7 +593,27 @@ function resolveActiveKeyEntry(cfg: ProviderConfig): ProviderApiKey | undefined 
   return undefined;
 }
 
+/** {@link buildProvider}, plus the host-enabled post-turn account quota read. */
 function makeProvider(
+  p: ResolvedProvider,
+  cfg: ProviderConfig,
+  factoryType: string = p.id,
+  instanceId: string = p.id,
+): Provider {
+  return attachAccountQuotaReporting(buildProvider(p, cfg, factoryType, instanceId), {
+    providerId: instanceId,
+    type: factoryType,
+    baseUrl: cfg.baseUrl ?? p.apiBase,
+    apiKey:
+      resolveActiveKey(cfg) ??
+      readFromEnv(Array.isArray(cfg.envVars) ? cfg.envVars : p.envVars) ??
+      '',
+    managementToken: cfg.managementToken,
+    quotaEndpoint: cfg.quotaEndpoint,
+  });
+}
+
+function buildProvider(
   p: ResolvedProvider,
   cfg: ProviderConfig,
   factoryType: string = p.id,
@@ -642,20 +682,46 @@ function makeProvider(
     });
   }
 
+  // MiniMax is keyed on the HOST: models.dev files every `minimax*` entry
+  // (both regions) under the Anthropic family and the trusted preset under
+  // openai-compatible, and an alias may name it anything. All of them need the
+  // MiniMax transport — its thinking mapping, quota reads, region-aware auth.
+  if (
+    (family === 'anthropic' || family === 'openai-compatible') &&
+    (isMiniMaxHost(baseUrl) || (family === 'openai-compatible' && isMiniMaxProviderId(factoryType)))
+  ) {
+    return new MiniMaxProvider({
+      id,
+      apiKey: expectDefined(apiKey),
+      baseUrl,
+      headers: cfg.headers,
+    });
+  }
+
   switch (family) {
-    case 'anthropic':
+    case 'anthropic': {
       // Pass `id` so a config-side alias (e.g. `minimax-token-plan` with
       // `family: 'anthropic'`) keeps its user-visible id instead of being
       // collapsed to the wire-family canonical id. Without this the status
       // bar / pickers / fallback chain all see `id === 'anthropic'` and the
       // configured alias is silently lost — which is exactly the drift that
       // used to happen on `/model` switch and session resume.
-      return new AnthropicProvider({
+      const anthropicOpts = {
         apiKey: expectDefined(apiKey),
         baseUrl,
         id,
         maxTools: validateQuirks(id, cfg.quirks)?.maxTools,
-      });
+      };
+      // Z.AI's `/api/anthropic` (the Claude Code setup) takes GLM's own
+      // thinking contract, not Anthropic's budget_tokens shape.
+      if (isZaiHost(baseUrl)) {
+        return withZaiAccountPlane(new ZaiMessagesProvider(anthropicOpts), {
+          apiKey: expectDefined(apiKey),
+          baseUrl,
+        });
+      }
+      return new AnthropicProvider(anthropicOpts);
+    }
     case 'openai':
       return new OpenAIProvider({
         apiKey: expectDefined(apiKey),
@@ -682,19 +748,6 @@ function makeProvider(
           baseUrl,
           headers: cfg.headers,
           models: p.models,
-        });
-      }
-      // MiniMax routes M-series models to its Anthropic-compatible surface
-      // (interleaved thinking/tool blocks, prompt-cache usage) and keeps the
-      // OpenAI fallback for everything else. Without this special-case the
-      // trusted preset fell through to the generic OpenAICompatibleProvider,
-      // so the routing existed only under unit tests.
-      if (factoryType === 'minimax' || factoryType === 'minimax-coding-plan') {
-        return new MiniMaxProvider({
-          id,
-          apiKey: expectDefined(apiKey),
-          baseUrl,
-          headers: cfg.headers,
         });
       }
       // Use a tuned preset when available (Mistral, Ollama, vLLM, LM Studio, …).
@@ -732,14 +785,21 @@ function makeProvider(
           code: 'CONFIG_INVALID',
         });
       }
-      return new OpenAICompatibleProvider({
-        ...{ id, definitionId: factoryType },
-        apiKey: expectDefined(apiKey),
-        baseUrl: resolvedBaseUrl,
-        headers: cfg.headers,
-        // Preset quirks are the floor; explicit user quirks win on conflict.
-        quirks: { ...preset?.quirks, ...validateQuirks(id, cfg.quirks) },
-      });
+      // Z.AI / BigModel (zai, zai-coding-plan, zhipuai, zhipuai-coding-plan,
+      // or any alias on their hosts) get the GLM wire contract when their
+      // definition brings none, and the account plane on top of the wire.
+      const glm = zaiWireContract(resolvedBaseUrl, factoryType);
+      return withZaiAccountPlane(
+        new OpenAICompatibleProvider({
+          ...{ id, definitionId: glm?.definitionId ?? factoryType },
+          apiKey: expectDefined(apiKey),
+          baseUrl: resolvedBaseUrl,
+          headers: cfg.headers,
+          // Preset quirks are the floor; explicit user quirks win on conflict.
+          quirks: { ...glm?.quirks, ...preset?.quirks, ...validateQuirks(id, cfg.quirks) },
+        }),
+        { apiKey: expectDefined(apiKey), baseUrl: resolvedBaseUrl },
+      );
     }
     case 'openai-codex': {
       const entry = resolveActiveKeyEntry(cfg);

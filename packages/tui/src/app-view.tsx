@@ -21,6 +21,7 @@ import {
 } from './components/monitor-shell.js';
 import { usePlanPanelData } from './components/plan-panel.js';
 import { ScrollableHistory } from './components/scrollable-history.js';
+import { useProviderQuotaCard } from './hooks/use-provider-quota.js';
 import {
   useSidebarConnections,
   useSidebarKanban,
@@ -152,6 +153,12 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
 
   const sidebarProcessData = useSidebarProcessList(sidebarSlotVisible('processList'));
   const sidebarConnectionsData = useSidebarConnections(agent.ctx.projectRoot, sidebarWidth > 0);
+  // Plan quota of the provider/model in use — push-driven, dormant with no rail.
+  const sidebarQuotaCard = useProviderQuotaCard(
+    sidebarWidth > 0,
+    environment.liveProvider,
+    environment.liveModel,
+  );
   const sidebarKanbanData = useSidebarKanban(agent.ctx.projectRoot, sidebarSlotVisible('kanban'));
 
   // WrongProxy status panel — gated on the master switch via the
@@ -325,6 +332,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
               sidebarPlanData={sidebarPlanData}
               sidebarWrongProxyEnabled={wrongProxyEnabled}
               sidebarWrongProxyData={sidebarWrongProxyData}
+              sidebarQuotaCard={sidebarQuotaCard}
             />
           </Box>
         </Box>

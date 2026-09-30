@@ -15,6 +15,7 @@ import { parseToolInput } from './_tool-input.js';
 import { isEffortRejected, isEffortRejection, rememberEffortRejected } from './effort-support.js';
 import {
   type HeadersLike,
+  miniMaxBaseRespError,
   parseProviderHttpError,
   providerErrorFromStreamPayload,
 } from './error-parse.js';
@@ -490,7 +491,13 @@ async function* parseOpenAIStream(
     // `finish_reason: "error"`). Ignoring it committed an empty/partial turn
     // as a clean end_turn — or, with no choices at all, misreported the
     // provider's actual error as a generic "truncated" retry.
-    if (obj['error'] !== undefined && obj['error'] !== null) {
+    // MiniMax's OpenAI surface reports failures as HTTP 200 plus a
+    // `base_resp` with a non-zero status and no choices at all — the same
+    // silent empty turn, in its own envelope.
+    if (
+      (obj['error'] !== undefined && obj['error'] !== null) ||
+      miniMaxBaseRespError(obj['base_resp']) !== undefined
+    ) {
       throw providerErrorFromStreamPayload(opts?.providerId ?? 'openai', obj);
     }
 

@@ -17,7 +17,7 @@ import {
   type ProviderQuotaWindow,
   resetProviderQuota,
 } from '@wrongstack/core/quota';
-import type { Request, StreamEvent } from '@wrongstack/core/types';
+import type { ProviderError, Request, StreamEvent } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it } from 'vitest';
 import { OpenAICodexProvider, parseOpenAIResponsesStream } from '../src/openai-codex.js';
 import {
@@ -168,13 +168,59 @@ describe('parseCodexRateLimitHeaders', () => {
         'x-codex-credits-has-credits': 'true',
         'x-codex-credits-unlimited': 'false',
         'x-codex-credits-balance': '12.40',
-        'x-codex-rate-limit-reached-type': 'primary',
+        'x-codex-rate-limit-reached-type': 'rate_limit_reached',
         'x-codex-promo-message': 'Upgrade for more',
       }),
     );
     expect(snapshot?.credits).toEqual({ hasCredits: true, unlimited: false, balance: '12.40' });
     expect(snapshot?.reachedWindowId).toBe('primary');
     expect(snapshot?.note).toBe('Upgrade for more');
+  });
+
+  // The header is a REASON (`rate_limit_reached`, `workspace_*_credits_depleted`,
+  // ...) - the official client parses exactly those values - never a window id.
+  it('derives the cut-off window from the exhausted window, not the reason text', () => {
+    const [snapshot] = parseCodexRateLimitHeaders(
+      headers({
+        'x-codex-primary-used-percent': '100',
+        'x-codex-primary-reset-at': '1900000000',
+        'x-codex-secondary-used-percent': '100',
+        'x-codex-secondary-reset-at': '1900500000',
+        'x-codex-rate-limit-reached-type': 'rate_limit_reached',
+      }),
+    );
+    // Both are full; the account reopens only when the later one resets.
+    expect(snapshot?.reachedWindowId).toBe('secondary');
+  });
+
+  it('names no window when the reason is not an exhausted window', () => {
+    const [snapshot] = parseCodexRateLimitHeaders(
+      headers({
+        'x-codex-primary-used-percent': '40',
+        'x-codex-rate-limit-reached-type': 'workspace_owner_credits_depleted',
+      }),
+    );
+    expect(snapshot?.reachedWindowId).toBeUndefined();
+  });
+
+  it('never marks a full window as the cut-off without the reached header', () => {
+    const [snapshot] = parseCodexRateLimitHeaders(
+      headers({ 'x-codex-primary-used-percent': '100' }),
+    );
+    expect(snapshot?.reachedWindowId).toBeUndefined();
+  });
+
+  it('marks only the family named by x-codex-active-limit', () => {
+    const snapshots = parseCodexRateLimitHeaders(
+      headers({
+        'x-codex-primary-used-percent': '100',
+        'x-codex-bengalfox-primary-used-percent': '100',
+        'x-codex-active-limit': 'codex_bengalfox',
+        'x-codex-rate-limit-reached-type': 'rate_limit_reached',
+      }),
+    );
+    expect(snapshots.find((s) => s.meterId === 'codex')?.reachedWindowId).toBeUndefined();
+    expect(snapshots.find((s) => s.meterId === 'codex_bengalfox')?.reachedWindowId).toBe('primary');
   });
 
   it('returns nothing for absent headers', () => {
@@ -265,11 +311,12 @@ describe('a 429 parks the model until the published reset', () => {
   async function errorFrom(
     status: number,
     responseHeaders: Record<string, string>,
-  ): Promise<{ body?: { retryAfterMs?: number } } | null> {
+    body = '{"error":{"message":"Usage limit reached."}}',
+  ): Promise<ProviderError | null> {
     const provider = new OpenAICodexProvider({
       credentials: { accessToken: 'tok' },
       fetchImpl: (async () =>
-        new Response('{"error":{"message":"Usage limit reached."}}', {
+        new Response(body, {
           status,
           headers: responseHeaders,
         })) as never as typeof fetch,
@@ -277,7 +324,7 @@ describe('a 429 parks the model until the published reset', () => {
     const req: Request = { model: 'gpt-5-codex', messages: [{ role: 'user', content: 'hi' }] };
     return collect(provider.stream(req, { signal: new AbortController().signal })).then(
       () => null,
-      (e: unknown) => e as { body?: { retryAfterMs?: number } },
+      (e: unknown) => e as ProviderError,
     );
   }
 
@@ -287,7 +334,7 @@ describe('a 429 parks the model until the published reset', () => {
       'x-codex-primary-used-percent': '100',
       'x-codex-primary-window-minutes': '300',
       'x-codex-primary-reset-at': String(resetAt),
-      'x-codex-rate-limit-reached-type': 'primary',
+      'x-codex-rate-limit-reached-type': 'rate_limit_reached',
     });
     expect(err?.body?.retryAfterMs).toBeGreaterThan(3.9 * 3_600_000);
     expect(err?.body?.retryAfterMs).toBeLessThanOrEqual(4 * 3_600_000);
@@ -302,5 +349,106 @@ describe('a 429 parks the model until the published reset', () => {
       'x-codex-primary-reset-at': String(resetAt),
     });
     expect(err?.body?.retryAfterMs).toBeUndefined();
+  });
+
+  it('waits for the LAST exhausted window, not the first to reset', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const err = await errorFrom(429, {
+      'x-codex-primary-used-percent': '100',
+      'x-codex-primary-reset-at': String(now + 2 * 3600),
+      'x-codex-secondary-used-percent': '100',
+      'x-codex-secondary-reset-at': String(now + 3 * 86400),
+      'x-codex-rate-limit-reached-type': 'rate_limit_reached',
+    });
+    expect(err?.body?.retryAfterMs).toBeGreaterThan(2.9 * 86_400_000);
+    expect(err?.body?.retryAfterMs).toBeLessThanOrEqual(3 * 86_400_000);
+  });
+
+  it('falls back to the body resets_at when the 429 carries no quota headers', async () => {
+    const resetsAt = Math.floor(Date.now() / 1000) + 5 * 3600;
+    const err = await errorFrom(
+      429,
+      {},
+      JSON.stringify({
+        error: { type: 'usage_limit_reached', plan_type: 'plus', resets_at: resetsAt },
+      }),
+    );
+    expect(err?.kind).toBe('quota_exhausted');
+    expect(err?.body?.retryAfterMs).toBeGreaterThan(4.9 * 3_600_000);
+    expect(err?.body?.retryAfterMs).toBeLessThanOrEqual(5 * 3_600_000);
+  });
+
+  it('reads the relative resets_in_seconds form too', async () => {
+    const err = await errorFrom(
+      429,
+      {},
+      JSON.stringify({ error: { type: 'usage_limit_reached', resets_in_seconds: 90 } }),
+    );
+    expect(err?.body?.retryAfterMs).toBe(90_000);
+  });
+
+  it('never retries a plan that does not include Codex, and says why', async () => {
+    const err = await errorFrom(429, {}, JSON.stringify({ error: { type: 'usage_not_included' } }));
+    expect(err?.kind).toBe('quota_exhausted');
+    expect(err?.retryable).toBe(false);
+    expect(err?.body?.message).toMatch(/does not include Codex/);
+  });
+
+  it('explains a Cloudflare region block instead of dumping the page', async () => {
+    const err = await errorFrom(
+      403,
+      {},
+      '<html><title>Attention Required! | Cloudflare</title>Sorry, you have been blocked</html>',
+    );
+    expect(err?.body?.message).toMatch(/restricted region/);
+  });
+});
+
+describe('a WebSocket-wrapped HTTP failure is handled like the HTTP response', () => {
+  it('records its quota headers and parks until the published reset', async () => {
+    const resetAt = Math.floor(Date.now() / 1000) + 4 * 3600;
+    const frame = {
+      type: 'error',
+      status: 429,
+      error: { type: 'usage_limit_reached', message: 'The usage limit has been reached' },
+      headers: {
+        'x-codex-primary-used-percent': '100.0',
+        'x-codex-primary-window-minutes': 300,
+        'x-codex-primary-reset-at': resetAt,
+        'x-codex-rate-limit-reached-type': 'rate_limit_reached',
+      },
+    };
+    const provider = new OpenAICodexProvider({
+      credentials: { accessToken: 'tok' },
+      fetchImpl: (async () =>
+        new Response(sseBody(`data: ${JSON.stringify(frame)}\n\n`), {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        })) as never as typeof fetch,
+    });
+    const req: Request = { model: 'gpt-5-codex', messages: [{ role: 'user', content: 'hi' }] };
+    const err = await collect(provider.stream(req, { signal: new AbortController().signal })).then(
+      () => null,
+      (e: unknown) => e as ProviderError,
+    );
+    expect(err?.status).toBe(429);
+    expect(err?.kind).toBe('quota_exhausted');
+    expect(err?.body?.retryAfterMs).toBeGreaterThan(3.9 * 3_600_000);
+    expect(windowOf(codexMeter(), 'primary')).toMatchObject({
+      usedPercent: 100,
+      windowMinutes: 300,
+    });
+    expect(codexMeter()?.reachedWindowId).toBe('primary');
+  });
+
+  it('leaves a plain stream error frame (no status) on the stream path', async () => {
+    const events = 'data: {"type":"error","code":"server_error","message":"boom"}\n\n';
+    const err = await collect(
+      parseOpenAIResponsesStream(sseBody(events), 'gpt-5-codex', 'openai-codex'),
+    ).then(
+      () => null,
+      (e: unknown) => e as ProviderError,
+    );
+    expect(err?.retryable).toBe(true);
   });
 });

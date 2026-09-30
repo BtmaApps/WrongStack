@@ -818,7 +818,11 @@
     "footnote": "Estas configurações refletem o picker /settings do TUI. Alternâncias aplicam-se ao vivo; alguns campos exigem reinício da sessão.",
     "sageRelaxed": "0,72 (relaxado)",
     "sageDefault": "0,85 (padrão)",
-    "sageStrict": "0,95 (rigoroso)"
+    "sageStrict": "0,95 (rigoroso)",
+    "chromeLevelLabel": "Densidade da área de trabalho",
+    "chromeLevelHint": "Calma mostra cada dado (tokens, iteração, saúde do servidor) em um só lugar e agrupa os controles secundários em menus. Completa restaura todos os chips e botões.",
+    "chromeLevelCalm": "Calma",
+    "chromeLevelFull": "Completa"
   },
   "resetLabel": "Limpar preferências locais",
   "cancel": "Cancelar",

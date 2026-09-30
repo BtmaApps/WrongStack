@@ -9,6 +9,7 @@ import { CatalogRoutedProvider, type CatalogWireNpm, isCatalogWireNpm } from './
 import type { CompatibilityQuirks } from './compatibility-quirks.js';
 import { endpointCredentialsSuppressed } from './endpoint-credentials.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
+import { isMiniMaxProviderId } from './minimax.js';
 import { createNativeCatalogProvider, isNativeCatalogNpm } from './native-catalog.js';
 
 interface CatalogProviderRoutingOptions {
@@ -65,8 +66,7 @@ export function createCatalogAwareProvider(
   if (
     provider.id === 'opencode' ||
     provider.id === 'opencode-go' ||
-    provider.id === 'minimax' ||
-    provider.id === 'minimax-coding-plan' ||
+    isMiniMaxProviderId(provider.id) ||
     !hasMixedCatalogRoutes(provider.npm, models)
   ) {
     return undefined;

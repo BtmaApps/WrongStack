@@ -43,6 +43,9 @@ const {
   handleTrustPersisted,
   sessionHandlerMap,
 } = await import('../../src/hooks/ws-handlers/session-handlers');
+const { handleProviderModelRerouted } = await import(
+  '../../src/hooks/ws-handlers/session-execution-handlers'
+);
 
 function msg(type: string, payload: unknown) {
   return { type, payload } as never;
@@ -445,6 +448,22 @@ describe('session ws-handlers — provider / delegate / context', () => {
     );
     expect(toast.warn).toHaveBeenCalledWith('Provider stream event skipped: ping');
     expect(chat()).toBe('Provider stream warning (ping): unknown frame');
+    expect(lastMessage()?.isError).toBe(true);
+  });
+
+  it('provider.model_rerouted names both models and the reason', () => {
+    expect(sessionHandlerMap['provider.model_rerouted']).toBe(handleProviderModelRerouted);
+    handleProviderModelRerouted(
+      msg('provider.model_rerouted', {
+        providerId: 'openai-codex',
+        requested: 'gpt-5.3-codex',
+        served: 'gpt-5.2',
+        reason: 'flagged',
+        timestamp: 1,
+      }),
+    );
+    expect(toast.warn).toHaveBeenCalledWith('Rerouted to gpt-5.2');
+    expect(chat()).toBe('Server answered with `gpt-5.2` instead of `gpt-5.3-codex` — flagged');
     expect(lastMessage()?.isError).toBe(true);
   });
 

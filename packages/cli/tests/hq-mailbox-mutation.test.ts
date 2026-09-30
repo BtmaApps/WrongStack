@@ -169,11 +169,25 @@ interface Mutation {
 const runMutation = async (m: Mutation): Promise<void> => {
   const body = JSON.parse(JSON.stringify(m.validBody)) as Record<string, unknown>;
   m.mutate(body);
-  const res = await post(gatewayUrl(handle!, m.projectId, m.route), body, auth());
+  const url = gatewayUrl(handle!, m.projectId, m.route);
+  let res = await post(url, body, auth());
+  // Project discovery can temporarily return UNAVAILABLE under daemon load,
+  // before the body reaches its validator. Retry only that explicit response;
+  // all validator and authorization responses remain single-shot assertions.
+  const deadline = Date.now() + 3_000;
+  while (
+    res.status === 503 &&
+    (res.json as { error?: { code?: string } }).error?.code === 'UNAVAILABLE' &&
+    Date.now() < deadline
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    res = await post(url, body, auth());
+  }
   const expectedStatus = m.rejectStatus ?? 400;
-  expect(res.status, `mutation "${m.name}" expected ${expectedStatus} but got ${res.status}`).toBe(
-    expectedStatus,
-  );
+  expect(
+    res.status,
+    `mutation "${m.name}" expected ${expectedStatus} but got ${res.status}: ${JSON.stringify(res.json)}`,
+  ).toBe(expectedStatus);
   const err = (res.json as { error?: { code?: string; message?: string } }).error;
   expect(err?.code, `mutation "${m.name}" expected VALIDATION_ERROR envelope`).toBe(
     'VALIDATION_ERROR',

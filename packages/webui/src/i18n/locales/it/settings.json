@@ -818,7 +818,11 @@
     "footnote": "Queste impostazioni riflettono il picker /settings della TUI. Gli interruttori si applicano subito; alcuni campi richiedono il riavvio della sessione.",
     "sageRelaxed": "0,72 (permissivo)",
     "sageDefault": "0,85 (predefinito)",
-    "sageStrict": "0,95 (rigoroso)"
+    "sageStrict": "0,95 (rigoroso)",
+    "chromeLevelLabel": "Densità dell'area di lavoro",
+    "chromeLevelHint": "Essenziale mostra ogni dato (token, iterazione, stato del server) in un solo punto e raccoglie i controlli secondari nei menu. Completa ripristina tutti i chip e i pulsanti.",
+    "chromeLevelCalm": "Essenziale",
+    "chromeLevelFull": "Completa"
   },
   "resetLabel": "Cancella preferenze locali",
   "cancel": "Annulla",

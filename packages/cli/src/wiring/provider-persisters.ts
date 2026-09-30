@@ -3,6 +3,7 @@ import type { WstackPaths } from '@wrongstack/core/utils';
 import {
   applyProviderOAuthRefresh,
   matchesActiveProviderCredential,
+  setAccountQuotaReporting,
   setOAuthTokenPersister,
   setProviderModelPersister,
 } from '@wrongstack/providers';
@@ -32,6 +33,11 @@ export function installProviderPersisters(args: {
   logger?: Pick<Logger, 'warn'> | undefined;
 }): void {
   const profileConfigPath = activeProfileConfigPath(args.paths, args.config);
+
+  // Post-turn plan-quota reads for vendors whose transport cannot report its
+  // own (Kimi Code, OpenCode Go, OpenRouter). Host-only: a library consumer
+  // never makes an account call it did not ask for.
+  setAccountQuotaReporting(true);
 
   setOAuthTokenPersister((providerId, creds, source) => {
     void mutateConfigProviders(profileConfigPath, args.vault, (all) => {

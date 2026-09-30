@@ -85,6 +85,13 @@ export interface ProviderQuotaSnapshot {
   reachedWindowId?: string | undefined;
   /** Free-form provider message attached to the reading (upgrade prompts). */
   note?: string | undefined;
+  /**
+   * The gateway that relayed this reading (`omniroute`), when it describes one
+   * account of a gateway's pool rather than the plan the session draws on. The
+   * gateway rotates across its accounts, so one of them running out does not
+   * cut the session off: {@link worstProviderQuotaWindow} leaves these out.
+   */
+  via?: string | undefined;
   /** Local wall-clock ms at which this reading was observed. */
   capturedAt: number;
 }
@@ -148,7 +155,12 @@ export function recordProviderQuota(
       ...(snapshot.credits === undefined && previous?.credits !== undefined
         ? { credits: previous.credits }
         : {}),
-      ...(snapshot.reachedWindowId === undefined && previous?.reachedWindowId !== undefined
+      // …except the cut-off flag across a fresh window reading: that reading
+      // is the provider restating the meter, and its silence means "not cut
+      // off". Carrying it forward kept the chip red after the window reset.
+      ...(snapshot.reachedWindowId === undefined &&
+      snapshot.windows.length === 0 &&
+      previous?.reachedWindowId !== undefined
         ? { reachedWindowId: previous.reachedWindowId }
         : {}),
       ...(snapshot.note === undefined && previous?.note !== undefined
@@ -311,6 +323,7 @@ export function worstProviderQuotaWindow(
 ): { snapshot: ProviderQuotaSnapshot; window: ProviderQuotaWindow } | undefined {
   let best: { snapshot: ProviderQuotaSnapshot; window: ProviderQuotaWindow } | undefined;
   for (const snapshot of snapshots) {
+    if (snapshot.via !== undefined) continue;
     for (const window of snapshot.windows) {
       if (!best) {
         best = { snapshot, window };
@@ -336,6 +349,68 @@ export function reachedQuotaWindow(
 ): ProviderQuotaWindow | undefined {
   if (snapshot.reachedWindowId === undefined) return undefined;
   return snapshot.windows.find((w) => w.id === snapshot.reachedWindowId);
+}
+
+/** Readings that are one account seen through several saved providers. */
+export interface ProviderQuotaGroup {
+  /** The first reading of the group, in input order. */
+  snapshot: ProviderQuotaSnapshot;
+  /** Every provider id that reported this exact reading, in input order. */
+  providerIds: string[];
+}
+
+/**
+ * The identity of a reading, or undefined when it is too thin to prove two
+ * providers share an account. Only readings whose every window carries a
+ * reset clock qualify: two unrelated accounts can both sit at 0% of a
+ * clockless window, but not on the same reset second of every window.
+ */
+function accountReadingKey(snapshot: ProviderQuotaSnapshot): string | undefined {
+  if (snapshot.windows.length === 0) return undefined;
+  if (snapshot.windows.some((w) => w.resetsAt === undefined)) return undefined;
+  return JSON.stringify([
+    snapshot.meterId,
+    snapshot.meterLabel ?? null,
+    snapshot.planLabel ?? null,
+    snapshot.reachedWindowId ?? null,
+    snapshot.note ?? null,
+    snapshot.credits ?? null,
+    snapshot.windows.map((w) => [
+      w.id,
+      w.label ?? null,
+      w.usedPercent,
+      w.windowMinutes ?? null,
+      w.resetsAt,
+    ]),
+  ]);
+}
+
+/**
+ * Fold readings that are the same account seen through several saved
+ * providers — every OpenCode key of an account, Zen and Go alike, reads the
+ * one account usage — into one entry listing all their provider ids, so a
+ * surface shows one card instead of identical copies. Readings that differ in
+ * any window, or carry a window without a reset clock, stay separate.
+ */
+export function groupQuotaSnapshots(
+  snapshots: readonly ProviderQuotaSnapshot[],
+): ProviderQuotaGroup[] {
+  const groups: ProviderQuotaGroup[] = [];
+  const byKey = new Map<string, ProviderQuotaGroup>();
+  for (const snapshot of snapshots) {
+    const key = accountReadingKey(snapshot);
+    const existing = key === undefined ? undefined : byKey.get(key);
+    if (existing) {
+      if (!existing.providerIds.includes(snapshot.providerId)) {
+        existing.providerIds.push(snapshot.providerId);
+      }
+      continue;
+    }
+    const group = { snapshot, providerIds: [snapshot.providerId] };
+    groups.push(group);
+    if (key !== undefined) byKey.set(key, group);
+  }
+  return groups;
 }
 
 // ── Presentation ────────────────────────────────────────────────────────────

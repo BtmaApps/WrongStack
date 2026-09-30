@@ -1,6 +1,9 @@
 import {
+  CODEX_ROUTING_HINT_HEADER,
   codexCacheSessionId,
   codexClientRequestId,
+  codexRoutingHint,
+  compressCodexRequestBody,
   DEFAULT_CODEX_BASE,
   positiveContextLimit,
   resolveCodexModelsUrl,
@@ -38,11 +41,7 @@ export {
  */
 
 import { createHash, randomUUID } from 'node:crypto';
-import {
-  type ProviderQuotaSnapshot,
-  quotaResetInMs,
-  recordProviderQuota,
-} from '@wrongstack/core/quota';
+import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
   type Capabilities,
   ProviderError,
@@ -58,7 +57,6 @@ import {
   CodexWebSocketPool,
   defaultCodexWebSocketFactory,
 } from './codex-websocket.js';
-import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import {
@@ -66,11 +64,17 @@ import {
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
   type CodexTokens,
+  codexUsageUrl,
   refreshCodexTokens,
 } from './oauth/codex-protocol.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { extractAccountId, extractPlanType } from './openai-codex-account.js';
 import { buildCodexRequestBody } from './openai-codex-body.js';
+import {
+  CODEX_REROUTE_REASON,
+  type HeadersLike,
+  translateCodexHttpError,
+} from './openai-codex-errors.js';
 import type {
   CodexLiveModel,
   CodexModelMetadata,
@@ -80,16 +84,18 @@ import type {
 import {
   CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT,
   codexSendCeiling,
+  parseCodexTruncationPolicy,
   parseReasoningEffort,
   parseSupportedReasoningEfforts,
 } from './openai-codex-model-policy.js';
-import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
+import { parseCodexRateLimitHeaders, parseCodexUsagePayload } from './openai-codex-rate-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex-stream.js';
 import {
   isCacheProbeEnabled,
   recordCacheProbeRequest,
   recordCacheProbeUsage,
 } from './prompt-cache-probe.js';
+import { upstreamUrl } from './proxy-upstream.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
 import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
 
@@ -132,32 +138,10 @@ function isTurnContinuation(req: Request): boolean {
   return last.content.some((block) => block.type === 'tool_result');
 }
 
-/**
- * The soonest reset among the windows that are actually exhausted.
- *
- * "Exhausted" is the window the backend named as reached
- * (`x-codex-rate-limit-reached-type`), falling back to any window at or above
- * 100%. A window at 60% has a reset time too, and parking a model until it
- * arrives would be a self-inflicted outage — only a window we cannot currently
- * spend against is worth waiting for.
- */
-function codexResetHintMs(snapshots: readonly ProviderQuotaSnapshot[]): number | undefined {
-  let soonest: number | undefined;
-  for (const snapshot of snapshots) {
-    for (const window of snapshot.windows) {
-      const isReached =
-        snapshot.reachedWindowId === window.id ||
-        (snapshot.reachedWindowId === undefined && window.usedPercent >= 100);
-      if (!isReached) continue;
-      const ms = quotaResetInMs(window);
-      if (ms !== undefined && (soonest === undefined || ms < soonest)) soonest = ms;
-    }
-  }
-  return soonest;
-}
-
 const CODEX_MODELS_FAILURE_COOLDOWN_MS = 5_000;
 const CODEX_MODELS_TIMEOUT_MS = 3_000;
+/** Budget for the account usage read (`/wham/usage`) — a status call, never on a turn's path. */
+const CODEX_USAGE_TIMEOUT_MS = 10_000;
 /** Match the official client's in-memory/file model catalog freshness window. */
 const CODEX_MODELS_CACHE_TTL_MS = 5 * 60_000;
 /** The official client proactively refreshes ChatGPT access tokens five minutes early. */
@@ -306,6 +290,8 @@ export class OpenAICodexProvider extends WireAdapter {
    * sharing this provider. Entries are bounded like the turn-state map.
    */
   private readonly reasoningReplayDisabled = new Set<string>();
+  /** `openai-model` from the response headers, per request (see `model_rerouted`). */
+  private readonly servedModels = new WeakMap<Request, string>();
   private readonly cacheProbeRequests = new WeakMap<
     object,
     {
@@ -486,6 +472,7 @@ export class OpenAICodexProvider extends WireAdapter {
           acceptsImages: !Array.isArray(modalities) || modalities.includes('image'),
           parallelToolCalls: entry.supports_parallel_tool_calls !== false,
           supportsVerbosity: entry.support_verbosity === true,
+          truncation: parseCodexTruncationPolicy(entry.truncation_policy),
         });
       }
       if (next.size === 0) {
@@ -692,6 +679,52 @@ export class OpenAICodexProvider extends WireAdapter {
     this.onResponseMetadata?.(metadata);
   }
 
+  /**
+   * Read the plan quota from the account usage endpoint (`GET /wham/usage`)
+   * and record it — the reading a surface needs BEFORE any turn, since the
+   * `x-codex-*` headers only arrive on responses.
+   *
+   * This is a status read, not a model call: the official client's `/status`
+   * uses it, and it spends none of the plan it reports. The token is refreshed
+   * first when due (and once more on a 401), through the same coordinator —
+   * and persistence hook — every request uses, so a rotated refresh token is
+   * never lost. Like other account reads it skips the trace proxy. Resolves to
+   * the snapshots recorded, or an empty array when nothing could be read.
+   */
+  async readAccountQuota(opts: { signal?: AbortSignal | undefined; timeoutMs?: number } = {}) {
+    const signal = AbortSignal.any([
+      ...(opts.signal ? [opts.signal] : []),
+      AbortSignal.timeout(opts.timeoutMs ?? CODEX_USAGE_TIMEOUT_MS),
+    ]);
+    const url = upstreamUrl(codexUsageUrl(this.baseUrl));
+    const read = async (): Promise<Response> => {
+      const headers: Record<string, string> = {
+        accept: 'application/json',
+        authorization: `Bearer ${this.access}`,
+        originator: CODEX_ORIGINATOR,
+        'user-agent': CODEX_USER_AGENT,
+      };
+      if (this.accountId) headers['chatgpt-account-id'] = this.accountId;
+      return redirectSafeFetch(this.fetchImpl, url, { method: 'GET', headers, signal });
+    };
+    try {
+      await this.ensureFreshToken(signal);
+      let response = await read();
+      if (response.status === 401) {
+        await this.doRefresh(signal);
+        response = await read();
+      }
+      if (!response.ok) return [];
+      const payload = safeParse<unknown>(await response.text());
+      if (!payload.ok) return [];
+      const snapshots = parseCodexUsagePayload(this.id, payload.value);
+      if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
+      return snapshots;
+    } catch {
+      return [];
+    }
+  }
+
   private async ensureFreshToken(signal: AbortSignal): Promise<void> {
     await this.refreshCoordinator.ensureFreshToken(signal);
   }
@@ -720,6 +753,8 @@ export class OpenAICodexProvider extends WireAdapter {
   protected override onResponseHeaders(headers: HeadersLike | undefined, _request: Request): void {
     if (!headers) return;
     this.rememberTurnState(_request, headers.get(CODEX_TURN_STATE_HEADER) ?? undefined);
+    const served = (headers.get('openai-model') ?? headers.get('x-openai-model'))?.trim();
+    if (served) this.servedModels.set(_request, served);
     // `x-codex-plan-type` is the account's live tier as the backend sees it.
     // The JWT claim is a snapshot taken when the token was minted, so it goes
     // stale across an upgrade; prefer the header and keep the claim as the
@@ -759,6 +794,8 @@ export class OpenAICodexProvider extends WireAdapter {
     }
     const turnState = this.resolveTurnState(_req);
     if (turnState) headers[CODEX_TURN_STATE_HEADER] = turnState;
+    const routingHint = codexRoutingHint(_req.model);
+    if (routingHint) headers[CODEX_ROUTING_HINT_HEADER] = routingHint;
     return headers;
   }
 
@@ -871,33 +908,28 @@ export class OpenAICodexProvider extends WireAdapter {
             probe.reasoningTokens = tokens;
           }
         : undefined,
+      {
+        onWrappedHttpError: (status, rawText, headers) =>
+          this.translateError(status, rawText, headers),
+        servedModel: () => this.servedModels.get(req),
+        rerouteReason: CODEX_REROUTE_REASON,
+      },
     );
   }
 
-  /**
-   * Translate an HTTP failure, and mine the same quota headers off it.
-   *
-   * A 429 is the response that matters most here: it carries the quota
-   * headers like any other, and its `x-codex-*-reset-at` is an EXACT epoch for
-   * when the window reopens. Without it the waiting room falls back to
-   * exponential backoff and re-probes a five-hour (or weekly) cap every few
-   * minutes — every probe a request against an account that has none left.
-   * With it, the model parks until the published reset and wakes once.
-   */
+  protected override encodeRequestBody(
+    json: string,
+    headers: Record<string, string>,
+  ): string | Uint8Array {
+    return compressCodexRequestBody(json, headers, this.baseUrl);
+  }
+
+  /** Translate an HTTP failure and mine its quota headers — see `translateCodexHttpError`. */
   protected override translateError(
     status: number,
     text: string,
     headers?: HeadersLike,
   ): ProviderError {
-    const error = parseProviderHttpError(this.id, status, text, headers);
-    if (!headers) return error;
-
-    const snapshots = parseCodexRateLimitHeaders(headers);
-    if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
-
-    if (!error.body || error.body.retryAfterMs !== undefined) return error;
-    const resetIn = codexResetHintMs(snapshots);
-    if (resetIn !== undefined) error.body.retryAfterMs = resetIn;
-    return error;
+    return translateCodexHttpError(this.id, status, text, headers);
   }
 }

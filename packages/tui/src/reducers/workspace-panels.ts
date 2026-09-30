@@ -1,7 +1,12 @@
+import { listQuotaProviders } from '@wrongstack/core/quota';
 import type { Action } from '../app-action-type.js';
 import type { State } from '../app-state.js';
 import { retainCheckpoints } from '../checkpoint-retention.js';
-import { SIDEBAR_MISSION_ROWS, type WorktreeRow } from '../ui-contracts.js';
+import {
+  SIDEBAR_MISSION_ROWS,
+  SIDEBAR_QUOTA_BODY_ROWS,
+  type WorktreeRow,
+} from '../ui-contracts.js';
 import { closePanels } from './helpers.js';
 
 /**
@@ -75,6 +80,11 @@ function computeMaxSidebarScroll(
   // Model/context hero: stage + provider + model + load + meter + spectrum +
   // token total + up to six composition rows + marginBottom.
   contentHeight += 14;
+
+  // Plan quota card: rendered only once some provider has reported a plan
+  // reading. The card model caps its body at SIDEBAR_QUOTA_BODY_ROWS, so this
+  // reserves the exact worst case: top cap + header + body + bottom cap.
+  if (listQuotaProviders().length > 0) contentHeight += 3 + SIDEBAR_QUOTA_BODY_ROWS;
 
   // Prompt cache card: header + hit line always render; with cache activity
   // the meter, provider-hit, read and write rows appear, and Anthropic-family

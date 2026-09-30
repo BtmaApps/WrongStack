@@ -191,7 +191,11 @@ capture  →  route to a skill  →  optimize  →  <skill>.md  →  injected wi
    `## LEARNED [skill: testing]`. Untagged directives are routed automatically
    when the wording makes the target obvious (vocabulary match against the
    role's own skill set), and stay role-level when nothing matches — a
-   directive is never forced into the wrong skill.
+   directive is never forced into the wrong skill. Routing words match as
+   words, not substrings (`hang` used to claim every "change", `log` every
+   "catalog", `npm` every "pnpm"), and generic words from skill names
+   (`wrongstack`, `verify`, `before`, …) do not count; replayed over this
+   repository's captured directives that changed about one route in six.
 2. **Distil.** `optimize` groups the routed directives per skill and writes
    `.wrongstack/agents/<role>/skills/<skill>.md`: the *delta* between the
    general skill and how it must be applied in this codebase. Without an active
@@ -218,7 +222,12 @@ Every completed task now folds its outcome into the directives it exercised:
    anchors — the exact commands, paths and package names capture already
    extracts into its *how*. One anchor hit is enough. A directive with no
    anchors falls back to distinctive wording at a deliberately high bar, so in
-   practice **anchors are what make a directive measurable**.
+   practice **anchors are what make a directive measurable**. An anchor must
+   look like code (a path, a dotted/hyphenated name, a call, an identifier with
+   an inner capital): a plain word in backticks such as `` `resolve` `` matched
+   half of every role's reports. The scanned text is the final answer plus the
+   structured report's summary, findings and `files_examined`, so a directive
+   that was followed without being narrated is not counted in the control arm.
 2. **Credit.** Each exercised directive takes the task's success or failure onto
    its own record, stored on the entry as `applied=N; wins=M`.
 3. **Use.** The record then decides things that used to be decided by age alone:
@@ -294,6 +303,28 @@ A skill that cannot be loaded — missing from the loader, gated behind a
 capability the subagent lacks, or cut by the prompt budget — emits
 `subagent.skills.dropped` instead of failing silently.
 
+**Unloadable skills do not take an eager slot.** The eager three are taken from
+the ranking *after* skills the role cannot load are skipped. Taking the top
+three first and filtering afterwards meant `reviewer` (read-only, so no
+`verification.run`) ranked `testing` into its slice on every spawn and ran on
+two skills — 6 142 spawns, `code-review` and `security-scanner` never loaded.
+An explicit per-spawn `skillNames` list keeps the caller's order.
+
+**Their project addendum still arrives.** Capture routes directives by wording,
+not by what the role can run, so a role can develop an addendum for a skill it
+can never load (`explore-companion` had 179 directives on `node-modern`, which
+needs `filesystem.write`). Such an addendum is delivered on its own under
+`## Project practice: <skill>`, without the bundled body, within a 6 000-char
+reserve that is set aside before any bundled body is placed. A loadable skill
+that merely ranked below the slice is left out — its addendum rides with it the
+next time it is selected. The event reports these under `addendumOnly`.
+
+The spawn path also records the block in `affinity.json` (`"blocked":
+"missing-capability"`), cleared the next time the skill loads. Only the spawn
+path holds both the role's tools and the skill's manifest, so this is how the
+WebUI Skills panel knows to show `addendum only` / `can't load` instead of
+listing the skill as `loaded` — which is what it did for reviewer's `testing`.
+
 **The budget never spends its last bytes on generic text.** When a selected
 skill does not fit in the 16 000-char spawn budget, its *bundled body* is
 shortened (marked `_(body trimmed)_`) so the project addendum survives; the
@@ -316,10 +347,38 @@ learning — overflowing by 381 chars, so it was dropped on **every** spawn. Its
 The pass runs headlessly on whichever surface invoked it (CLI and WebUI share
 one implementation):
 
+0. **Drop stale knowledge** — see below
 1. Read the structured directives from `learned.md`
 2. Distil each skill group into `skills/<skill>.md`
-3. Synthesize the role-level `consolidated.md`
+3. Synthesize the role-level `consolidated.md` (bounded, see below)
 4. **Archive** the raw buffer to `archive/learned-<timestamp>.md` and reset it
+
+**The role document is bounded at 8 KB.** All of `consolidated.md` is injected
+into every spawn of the role, and each pass used to be handed the previous
+document "to improve upon" with no size limit, so the busiest roles here grew
+to 20–24 KB. The distillation prompt now carries the budget (and asks for
+skill-tagged directives not to be repeated, since their addendum travels with
+the skill); `saveProjectAgentConsolidated` enforces it on whole lines, and
+documents written before the cap are bounded when injected.
+
+**Stale knowledge is retired.** Most of what a role learns here cites files —
+which barrel a package is consumed through, which test pins an invariant — and
+the code moves on. Before every pass, and for every role in the start-up sweep
+(a role that stopped capturing never reaches the optimizer again), any buffer
+directive or document line that cites a repo path which no longer exists is
+removed and appended to `archive/stale-<timestamp>.md`. The check is narrow on
+purpose: only paths whose first segment is a real top-level directory, resolved
+against the root and every workspace package (so a package's `src/index.ts`
+is not "missing"); globs, `@scope/pkg` specifiers, `./relative` paths and lines
+that say the file was removed or renamed are never judged. Nothing is written
+when nothing is stale. On this repository the first sweep finds four such
+lines, among them rules about the deleted file-backed `global-mailbox.ts`.
+
+With no model, step 4 never runs, so the raw buffer — injected whole into
+every spawn when there is no role document — is bounded at capture instead:
+past `LEARNED_HARD_LIMIT` (32 KB, four times the pass trigger) the cheapest
+entries are evicted into `archive/evicted-<timestamp>.md`. A model-backed pass
+resets the buffer long before that, so the ceiling does not cost it lessons.
 
 Step 4 is what closes the loop. Consolidation used to leave `learned.md`
 untouched, so a role over the size limit stayed over it forever; the archive

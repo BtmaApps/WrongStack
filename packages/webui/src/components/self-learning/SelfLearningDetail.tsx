@@ -338,6 +338,18 @@ export function SelfLearningDetail({
                       loaded
                     </span>
                   )}
+                  {entry.blocked && (
+                    <span
+                      className="text-[9px] rounded bg-warning/15 text-warning px-1.5 py-0.5"
+                      title={
+                        entry.developed
+                          ? 'This role lacks the tools the skill needs; only its project addendum is delivered'
+                          : 'This role lacks the tools the skill needs, so it is never loaded'
+                      }
+                    >
+                      {entry.developed ? 'addendum only' : "can't load"}
+                    </span>
+                  )}
                   {entry.developed && (
                     <span className="text-[9px] rounded bg-success/15 text-success px-1.5 py-0.5">
                       developed

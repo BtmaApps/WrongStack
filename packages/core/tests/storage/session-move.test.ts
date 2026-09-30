@@ -3,10 +3,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SessionCatalogStore } from '../../src/session-catalog/store.js';
+import type { SessionMoveHost } from '../../src/storage/session-store/move-session.js';
+import { executeMoveSession } from '../../src/storage/session-store/move-session.js';
 import { inheritsIntoFork } from '../../src/storage/session-store/replay.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import { SessionSummaryTracker } from '../../src/storage/session-summary-tracker.js';
-import type { SessionEvent } from '../../src/types/session.js';
+import type { SessionEvent, SessionMoveTarget, SessionSummary } from '../../src/types/session.js';
 
 let tmp: string;
 let sourceDir: string;
@@ -216,5 +218,89 @@ describe('session_moved readers', () => {
     expect(catalog.acquireMaintenance(ID, 'move', 'mover').operation).toBe('move');
     catalog.close();
     await fs.rm(root, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  it('releases the move lease when the delete fails, and keeps it when it succeeds', async () => {
+    // `leaseSpent` guards the release in the `finally`. It used to be set
+    // BEFORE the awaited delete, so a delete that REJECTED still looked spent:
+    // the lease stayed held until it expired on its own and an immediate retry
+    // of a move that never happened was refused. The flag now flips only once
+    // the lease is genuinely consumed.
+    //
+    // Driven against `executeMoveSession` with a stub catalog client, because
+    // the release is only observable there — DefaultSessionStore builds its
+    // own catalog client from the environment and does not accept one.
+    const run = async (
+      deleteFails: boolean,
+    ): Promise<{ threw: boolean; released: boolean; ops: string }> => {
+      const calls: string[] = [];
+      const catalogClient = {
+        async call(op: string): Promise<unknown> {
+          calls.push(op);
+          if (op === 'acquire_maintenance') {
+            return {
+              sessionId: ID,
+              operation: 'delete',
+              holderId: 'holder-1',
+              leaseId: 'lease-1',
+              expiresAt: Date.now() + 900_000,
+            };
+          }
+          if (op === 'delete' && deleteFails) throw new Error('catalog delete failed');
+          return {};
+        },
+      };
+      const shard = path.join(sourceDir, '2026-09-24');
+      await fs.mkdir(shard, { recursive: true });
+      await fs.writeFile(
+        path.join(shard, `${path.basename(ID)}.jsonl`),
+        `${JSON.stringify({ type: 'session_start', ts: '2026-09-24T00:00:00.000Z', id: ID, model: 'm', provider: 'p' })}\n`,
+      );
+      const summary = { id: ID, title: 't' } as SessionSummary;
+      const host = {
+        dir: sourceDir,
+        projectRoot: path.join(tmp, 'a'),
+        maintenanceHolderId: 'holder-1',
+        catalogClient,
+        clearLoadCache: () => undefined,
+        sessionPath: (id: string, ext: string) => path.join(sourceDir, `${id}${ext}`),
+        summaryFor: async () => summary,
+        readSummaryManifest: async () => summary,
+        invalidateShardManifestBySessionId: async () => undefined,
+        appendToIndex: async () => undefined,
+        isSessionInUse: async () => null,
+        deleteLocal: async () => undefined,
+      } as unknown as SessionMoveHost;
+      // `target.store` is the target SessionStore itself — not another wrapper.
+      // Each run gets its OWN target dir: `copySessionFiles` refuses to
+      // overwrite, so a shared target would make the second run fail on the
+      // first run's copy instead of exercising the lease path.
+      const runTargetDir = await fs.mkdtemp(path.join(tmp, `target-${deleteFails}-`));
+      const target = {
+        sessionsDir: runTargetDir,
+        adoptMovedSession: async () => summary,
+      } as unknown as SessionMoveTarget['store'];
+
+      let threw = false;
+      try {
+        await executeMoveSession(host, ID, {
+          checkout: '/repo/b',
+          store: target,
+        } as SessionMoveTarget);
+      } catch {
+        threw = true;
+      }
+      return { threw, released: calls.includes('release_maintenance'), ops: calls.join(' -> ') };
+    };
+
+    const failed = await run(true);
+    expect(failed.threw, 'delete failure must propagate').toBe(true);
+    expect(failed.released, `a failed delete must release the lease (ops: ${failed.ops})`).toBe(
+      true,
+    );
+
+    const ok = await run(false);
+    expect(ok.threw, `a successful move must not throw (ops: ${ok.ops})`).toBe(false);
+    expect(ok.released, `a consumed lease must not be released (ops: ${ok.ops})`).toBe(false);
   });
 });

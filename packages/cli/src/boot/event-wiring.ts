@@ -162,6 +162,19 @@ export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
     },
   );
 
+  evOn(
+    'provider.model_rerouted',
+    (p: { sessionId?: string | undefined; requested: string; served: string; reason?: string }) => {
+      if (!isCurrentSession(p.sessionId)) return;
+      stopSpinnerAndStreaming();
+      writeErr(
+        color.yellow(
+          `  ⚠ server answered with ${p.served} instead of ${p.requested}${p.reason ? ` — ${p.reason}` : ''}\n`,
+        ),
+      );
+    },
+  );
+
   evOn('provider.error', (p: { sessionId?: string | undefined; description: string }) => {
     if (!isCurrentSession(p.sessionId)) return;
     stopSpinnerAndStreaming();

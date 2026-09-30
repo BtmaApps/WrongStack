@@ -9,8 +9,9 @@ export function isAssignmentHeartbeatDue(
   assignment: KanbanAgentAssignment,
   checkedAt: string,
 ): boolean {
-  if (!assignment.heartbeatAt || !assignment.leaseExpiresAt) return false;
-  const lastHeartbeat = new Date(assignment.heartbeatAt).getTime();
+  const lastSignal = assignment.heartbeatAt ?? assignment.claimedAt;
+  if (!lastSignal || !assignment.leaseExpiresAt) return false;
+  const lastHeartbeat = new Date(lastSignal).getTime();
   const expiresAt = new Date(assignment.leaseExpiresAt).getTime();
   const now = new Date(checkedAt).getTime();
   const lease = expiresAt - lastHeartbeat;

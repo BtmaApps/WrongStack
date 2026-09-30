@@ -363,8 +363,17 @@ export class ProjectSessionRegistry {
     }
   }
 
-  async get(sessionId: string): Promise<SessionRegistryEntry | undefined> {
-    return (await this.list()).find((entry) => entry.sessionId === sessionId);
+  /**
+   * One session, or undefined. Accepts the same {@link list} options and
+   * FORWARDS them: `get` is `list().find(...)`, so a caller that passed
+   * `onProjectFailure` and reached `get` instead would otherwise get the
+   * swallowed-failure behaviour with no way to see why.
+   */
+  async get(
+    sessionId: string,
+    options: Parameters<ProjectSessionRegistry['list']>[0] = {},
+  ): Promise<SessionRegistryEntry | undefined> {
+    return (await this.list(options)).find((entry) => entry.sessionId === sessionId);
   }
 
   subscribeProject(

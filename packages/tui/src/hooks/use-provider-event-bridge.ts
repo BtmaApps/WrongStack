@@ -393,6 +393,18 @@ export function useProviderEventBridge({
         },
       });
     });
+    // The backend itself answered with another model (e.g. a ChatGPT account
+    // flagged for cyber-risk is routed to a fallback). Emitted once per change.
+    const offModelRerouted = events.on('provider.model_rerouted', (e) => {
+      if (typeof e.sessionId === 'string' && e.sessionId !== agent.ctx.session.id) return;
+      dispatch({
+        type: 'addEntry',
+        entry: {
+          kind: 'warn',
+          text: `⚠ Server answered with ${e.served} instead of ${e.requested}${e.reason ? ` — ${e.reason}` : ''}`,
+        },
+      });
+    });
     // Fallback gate — BEFORE the chain iterates, the gate emits
     // provider.fallback_pending so the UI can show a modal with a
     // countdown and manual model selection. The overlay dispatches
@@ -718,6 +730,7 @@ export function useProviderEventBridge({
       offProvErr();
       offFallback();
       offModelSwitched();
+      offModelRerouted();
       offFallbackPending();
       offProvResp();
       offConfirmNeeded();

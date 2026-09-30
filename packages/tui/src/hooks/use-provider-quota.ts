@@ -27,6 +27,7 @@ import {
   worstProviderQuotaWindow,
 } from '@wrongstack/core/quota';
 import { useEffect, useState } from 'react';
+import { buildQuotaCardModel, type QuotaCardModel } from '../components/sidebar-quota-model.js';
 
 /** What the chip renders. Absent until some provider has reported. */
 export interface ProviderQuotaChip {
@@ -77,4 +78,40 @@ export function useProviderQuota(): ProviderQuotaChip | undefined {
   }, []);
 
   return chip;
+}
+
+/**
+ * The sidebar PLAN QUOTA card for the active provider and model.
+ *
+ * Same push-only contract as {@link useProviderQuota}: recomputed when a new
+ * reading lands or the active provider/model changes, never on a timer. While
+ * `enabled` is false (no sidebar on screen) it holds nothing and subscribes to
+ * nothing.
+ */
+export function useProviderQuotaCard(
+  enabled: boolean,
+  providerId: string | undefined,
+  model: string | undefined,
+): QuotaCardModel | undefined {
+  const [card, setCard] = useState<QuotaCardModel | undefined>(() =>
+    readQuotaCard(enabled, providerId, model),
+  );
+
+  useEffect(() => {
+    setCard(readQuotaCard(enabled, providerId, model));
+    if (!enabled) return undefined;
+    return onProviderQuota(() => {
+      setCard(readQuotaCard(enabled, providerId, model));
+    });
+  }, [enabled, providerId, model]);
+
+  return card;
+}
+
+function readQuotaCard(
+  enabled: boolean,
+  providerId: string | undefined,
+  model: string | undefined,
+): QuotaCardModel | undefined {
+  return enabled ? buildQuotaCardModel(getAllProviderQuota(), providerId, model) : undefined;
 }

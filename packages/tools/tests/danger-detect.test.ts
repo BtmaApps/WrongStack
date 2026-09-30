@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { detectDanger, unwrapArgvLaunchers } from '../src/_danger-detect.js';
+import {
+  COMMAND_STRING_FLAGS,
+  HALT_LAUNCHER_VALUE_FLAGS,
+} from '../../core/src/security/yolo-risk.js';
+import { ARGV_LAUNCHERS, detectDanger, unwrapArgvLaunchers } from '../src/_danger-detect.js';
 
 describe('transparent launchers do not hide the real command', () => {
   // Probe-verified gap (2026-09-22): `exec` receives ARGV, so a launcher is
@@ -1039,5 +1043,113 @@ describe('detectDanger — bypass argument', () => {
     expect(r1.level).toBe('safe');
     expect(r2.level).toBe('safe');
     expect(r3.level).toBe('safe');
+  });
+});
+
+/**
+ * PARITY GUARD — the `ARGV_LAUNCHERS.valueFlags` above and core's
+ * `HALT_LAUNCHER_VALUE_FLAGS` (packages/core/src/security/yolo-risk.ts) are two
+ * hand-copied mirrors of one fact: which flags take a SEPARATED value, per
+ * launcher. Nothing imports the other. This is the drift the code comments have
+ * claimed was mirrored since 2026-09-19 while no mechanism enforced it — and the
+ * drift that actually shipped, when core flattened every launcher's letters into
+ * one global class and so credited `exec` with `timeout`'s `-s` (making
+ * `exec -S grep shutdown` a machine halt) while dropping `exec`'s own `-a`
+ * (making `exec -a name shutdown -h now` invisible). Both directions of the same
+ * root cause: a wrong swallow hides the real command or promotes a word that is
+ * not one.
+ *
+ * The tables are compared as DATA, not by scraping each file's source. A regex
+ * over source matches nothing after any refactor and then passes vacuously —
+ * exactly how the original "mirrors ARGV_LAUNCHERS" comment drifted from the
+ * mirror it described. Both symbols are recorded as test-only exports in
+ * architecture/test-only-exports.json.
+ */
+describe('core and tools launcher value-flag tables stay in parity', () => {
+  const shared = [...ARGV_LAUNCHERS.keys()].filter((name) => HALT_LAUNCHER_VALUE_FLAGS.has(name));
+
+  it('compares a non-empty overlap (a vacuous pass is still a pass)', () => {
+    expect(ARGV_LAUNCHERS.size).toBeGreaterThan(8);
+    expect(HALT_LAUNCHER_VALUE_FLAGS.size).toBeGreaterThan(8);
+    // Every tools-side launcher must also exist on the core side: a launcher
+    // added to one table but not the other is the drift that hides a command.
+    expect(shared).toHaveLength(ARGV_LAUNCHERS.size);
+  });
+
+  it.each(shared)('%s — value flags match core exactly', (name) => {
+    expect([...(HALT_LAUNCHER_VALUE_FLAGS.get(name) ?? [])].sort()).toEqual(
+      [...(ARGV_LAUNCHERS.get(name)?.valueFlags ?? [])].sort(),
+    );
+  });
+
+  it('core adds only the documented `time` launcher', () => {
+    // GNU `time -o FILE` / `-f FORMAT` take values, but the tools table never
+    // peels `time` at all, so this is a deliberate one-sided addition. Listing
+    // it here forces any future addition to one table to be decided, not missed.
+    expect([...HALT_LAUNCHER_VALUE_FLAGS.keys()].filter((n) => !ARGV_LAUNCHERS.has(n))).toEqual([
+      'time',
+    ]);
+  });
+
+  it('keeps `env` split-string flags out of both value-flag sets', () => {
+    // `-S` carries a whole command line that env SPLITS AND RUNS, so it is not a
+    // value to skip past: tools expands it through `splitStringFlags`, core
+    // through COMMAND_STRING_FLAGS. Listing `-S` as value-taking would skip the
+    // payload entirely and report `env` as the command being run.
+    for (const [name, spec] of ARGV_LAUNCHERS) {
+      for (const flag of spec.splitStringFlags ?? []) {
+        expect(HALT_LAUNCHER_VALUE_FLAGS.get(name) ?? []).not.toContain(flag);
+      }
+    }
+  });
+
+  // SECOND CHANNEL: flags whose value is a whole command line the launcher
+  // splits and runs. Tools models it as `ARGV_LAUNCHERS.splitStringFlags`; core
+  // as `COMMAND_STRING_FLAGS`. Drift here is the loudest kind of silent: a
+  // wrapped `env -S "git push --force"` stays visible to one classifier and
+  // invisible to the other. NOTE the tables are deliberately NOT the same size:
+  // core must also expand the shells (`sh -c`, `pwsh -command`, `cmd /c`) because
+  // its bash-path classifier receives one string, while the tools argv path has
+  // no launcher to peel there — `sh` is already the command, owned by the
+  // inline-eval rule. So parity is asserted over the launchers they share, plus a
+  // pinned list of what core alone may carry.
+  //
+  // core stores flags LOWERCASED (its matcher compares lowercased); tools keeps
+  // the documented spelling (`-S`), so both sides are normalized before compare.
+  const lower = (flags: Iterable<string>) => [...flags].map((flag) => flag.toLowerCase()).sort();
+
+  const commandStringLaunchers = [...ARGV_LAUNCHERS].filter(
+    ([, spec]) => spec.splitStringFlags !== undefined,
+  );
+
+  it('the split-string channel is compared over a non-empty set', () => {
+    expect(commandStringLaunchers.length).toBeGreaterThan(0);
+    expect(COMMAND_STRING_FLAGS.size).toBeGreaterThan(8);
+  });
+
+  it.each(commandStringLaunchers.map(([name]) => name))(
+    '%s — tools splitStringFlags are all expanded by core',
+    (name) => {
+      const core = lower(COMMAND_STRING_FLAGS.get(name) ?? []);
+      for (const flag of ARGV_LAUNCHERS.get(name)?.splitStringFlags ?? []) {
+        expect(core).toContain(flag.toLowerCase());
+      }
+    },
+  );
+
+  it.each(commandStringLaunchers.map(([name]) => name))(
+    '%s — core adds no command-string flag the tools table does not declare',
+    (name) => {
+      const tools = lower(ARGV_LAUNCHERS.get(name)?.splitStringFlags ?? []);
+      expect(lower(COMMAND_STRING_FLAGS.get(name) ?? [])).toEqual(tools);
+    },
+  );
+
+  it('core carries command-string flags only for env plus the documented shells', () => {
+    // `cmd` (Windows cmd.exe) and tools' `command` (POSIX builtin) are different
+    // programs with different spellings — not a drift to "fix" by renaming.
+    expect(
+      [...COMMAND_STRING_FLAGS.keys()].filter((name) => !ARGV_LAUNCHERS.has(name)).sort(),
+    ).toEqual(['ash', 'bash', 'cmd', 'dash', 'fish', 'ksh', 'powershell', 'pwsh', 'sh', 'zsh']);
   });
 });

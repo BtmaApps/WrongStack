@@ -5,6 +5,7 @@
 // status badge. Shows, top to bottom:
 //   1. Context — big % badge + full-width block meter + token count
 //   2. Model — provider/model identity line
+//   2b. Plan quota — the active provider's subscription windows (when metered)
 //   3. Agent Swarm — LIVE badge, composition summary, per-agent 2-line rows
 //   4. Mission Queue — a longer todo board (up to 8 rows) with done/total badge
 //   5. Sessions — live sessions (F10) + recent resume sessions (/resume)
@@ -46,6 +47,8 @@ import {
   statusGlyph,
   trunc,
 } from './sidebar-presentation.js';
+import { QuotaCard } from './sidebar-quota.js';
+import type { QuotaCardModel } from './sidebar-quota-model.js';
 import {
   contextBarColor,
   fmtMemory,
@@ -66,6 +69,12 @@ interface SidebarContentProps {
    * the spend is hitting the prompt cache without opening `/context`.
    */
   cacheStats?: CacheStats | undefined;
+  /**
+   * Subscription quota of the active provider, narrowed to the active model,
+   * plus one row per other provider that has reported. Absent — and the card
+   * not rendered — when no provider meters a plan (API-key sessions).
+   */
+  quota?: QuotaCardModel | undefined;
   /** Fleet entries (leader + subagents) from useStatusbarViewModel. */
   entries: Record<string, FleetEntry>;
   /** Fleet counts summary. */
@@ -125,6 +134,7 @@ export function SidebarContent({
   contextWindow,
   contextBreakdown,
   cacheStats,
+  quota,
   entries,
   fleetCounts,
   provider,
@@ -335,6 +345,9 @@ export function SidebarContent({
           </>
         )}
       </Card>
+
+      {/* ── Plan quota: the active provider's subscription windows ── */}
+      {quota ? <QuotaCard quota={quota} innerWidth={innerWidth} /> : null}
 
       {/* ── Prompt cache card: hit ratio + coverage ── */}
       <Card innerWidth={innerWidth} accent={hasCacheActivity ? theme.success : undefined}>

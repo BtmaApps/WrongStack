@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Test fournisseur",
+    "provider-quota": "Quota du forfait",
     "chronicle": "Chronicle",
     "intake": "Exigences",
     "roster": "Effectif d'agents",
@@ -3642,6 +3643,7 @@
       "sddhub": "Hub SDD",
       "settings": "Paramètres",
       "provider-test": "Test de fournisseurs",
+      "provider-quota": "Quota du forfait",
       "memory": "Mémoire",
       "roster": "Effectif",
       "codemap": "Atlas de code",
@@ -3652,7 +3654,19 @@
       "history": "Historique"
     },
     "statusRunning": "En cours",
-    "statusReady": "Prêt"
+    "statusReady": "Prêt",
+    "health": {
+      "issues_one": "Système : {{count}} problème",
+      "issues_other": "Système : {{count}} problèmes",
+      "ok": "Système : tout va bien",
+      "heading": "Santé du système",
+      "openIntegrations": "Paramètres des intégrations"
+    },
+    "appearance": "Apparence",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeSystem": "Système"
   },
   "agentsPanel": {
     "agentRoster": "Effectif d'agents"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Invérifiable",
     "irrelevant": "Non pertinent",
     "advisory": "Avis du modèle ; examinez les preuves avant de l’appliquer."
+  },
+  "quotaPanel": {
+    "title": "Quota du forfait",
+    "refresh": "Actualiser le quota",
+    "refreshTitle": "Lire maintenant le quota du forfait de chaque fournisseur enregistré — des lectures de compte qui ne consomment rien du forfait.",
+    "left": "{{pct}} % restant",
+    "resetsIn": "réinitialisation dans {{time}}",
+    "fullIn": "plein dans ~{{time}} à ce rythme",
+    "reached": "limite atteinte",
+    "readFailed": "Impossible de lire le quota — vérifiez la clé ou le forfait.",
+    "reading": "Lecture…",
+    "asOf": "il y a {{time}}",
+    "balance": "Solde",
+    "none": "Aucun fournisseur avec un quota de forfait lisible n'est configuré (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Tous les quotas ({{count}})",
+    "noneInUse": "Les fournisseurs utilisés ne déclarent aucun quota de forfait.",
+    "poolMore": "+{{count}} autres dans le pool — voir Quota du forfait.",
+    "poolNoMatch": "Aucun compte du pool ne correspond à ce modèle ({{count}} dans le pool) ; une combinaison en choisit un par requête."
+  },
+  "quotaPage": {
+    "title": "Quota du forfait",
+    "subtitle": "Tous les comptes mesurés — fenêtres d’abonnement, comptes du pool de la passerelle et soldes prépayés. Lectures de compte uniquement ; aucun appel de modèle.",
+    "close": "Retour au chat",
+    "search": "Filtrer par fournisseur, compte ou forfait",
+    "attentionOnly": "Proches de la limite uniquement",
+    "noMatch": "Rien ne correspond au filtre.",
+    "inUseBadge": "utilisé",
+    "summary": {
+      "accounts": "Comptes",
+      "warn": "Au-delà de 70 %",
+      "critical": "Au-delà de 90 % ou coupés",
+      "nextRelief": "Prochain répit"
+    },
+    "sections": {
+      "inUse": "En cours d’utilisation",
+      "inUseHint": "Ce que consomment les sessions ouvertes et les sous-agents actifs.",
+      "plans": "Forfaits d’abonnement",
+      "pool": "Pool OmniRoute",
+      "poolHint": "La passerelle alterne entre ces comptes ; l’épuisement de l’un n’arrête pas la session.",
+      "balances": "Soldes prépayés"
+    }
   }
 }

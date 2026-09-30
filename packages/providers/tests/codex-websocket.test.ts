@@ -139,6 +139,36 @@ function options(sessionId: string, prewarm = false) {
 }
 
 describe('Codex WebSocket Responses transport', () => {
+  it('re-handshakes when a session switches model, so routing follows the model', async () => {
+    const handshakes: Array<Record<string, string> | undefined> = [];
+    const sockets: FakeSocket[] = [];
+    const pool = new CodexWebSocketPool((_url, connectionOptions) => {
+      handshakes.push(connectionOptions.headers);
+      const socket = new FakeSocket((current) => {
+        current.message({ type: 'response.created', response: { model: 'm' } });
+        current.message({ type: 'response.completed', response: { status: 'completed' } });
+      });
+      sockets.push(socket);
+      return socket;
+    });
+    const withHint = (hint: string) => ({
+      ...options('switching'),
+      headers: { ...headers, 'x-codex-routing-hint': hint },
+    });
+
+    await collect(pool.stream(withHint('model=gpt-5.5'), parseOpenAIResponsesStream));
+    await collect(pool.stream(withHint('model=gpt-5.5'), parseOpenAIResponsesStream));
+    expect(handshakes).toHaveLength(1);
+
+    await collect(pool.stream(withHint('model=gpt-6-astra'), parseOpenAIResponsesStream));
+    expect(handshakes.map((h) => h?.['x-codex-routing-hint'])).toEqual([
+      'model=gpt-5.5',
+      'model=gpt-6-astra',
+    ]);
+    // The stale connection is closed, not leaked until eviction.
+    expect(sockets[0]?.closeCount).toBeGreaterThan(0);
+  });
+
   it('reuses one connection for sequential requests in one session', async () => {
     const sockets: FakeSocket[] = [];
     let connectedUrl = '';

@@ -6,6 +6,7 @@ import { defaultOrchestrator } from './orchestrator.js';
 import type { PackageAuditResult, PackageAuditRunner } from './package-audit.js';
 import { defaultPackageAuditRunner } from './package-audit.js';
 import { runRedactionDiagnostic } from './redaction-diagnostic.js';
+import { resolveReportFormat } from './report-generator.js';
 
 export interface SecuritySlashCommandDependencies {
   orchestrator?: Pick<typeof defaultOrchestrator, 'run'> | undefined;
@@ -112,6 +113,7 @@ async function handleScan(
 ): Promise<{ message?: string | undefined; metadata?: Record<string, unknown> }> {
   const options = parseArgs(args);
   const projectRoot = ctx.projectRoot || ctx.cwd || process.cwd();
+  const format = resolveReportFormat(options.format);
 
   try {
     const providerInfo = getProviderFromContext(ctx);
@@ -129,9 +131,7 @@ async function handleScan(
         includeInjection: true,
         includeConfig: true,
       },
-      reportOptions: {
-        format: (options.format as 'markdown' | 'json' | 'html') || 'markdown',
-      },
+      reportOptions: { format },
     });
 
     const summary = result.scanResult.summary;

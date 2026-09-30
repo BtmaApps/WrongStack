@@ -818,7 +818,11 @@
     "footnote": "Ces paramètres reflètent le picker /settings du TUI. Les bascules s’appliquent en direct ; certains champs nécessitent un redémarrage de session.",
     "sageRelaxed": "0,72 (souple)",
     "sageDefault": "0,85 (par défaut)",
-    "sageStrict": "0,95 (strict)"
+    "sageStrict": "0,95 (strict)",
+    "chromeLevelLabel": "Densité de l'espace de travail",
+    "chromeLevelHint": "Épuré affiche chaque donnée (tokens, itération, santé du serveur) à un seul endroit et range les contrôles secondaires dans des menus. Complet rétablit toutes les puces et tous les boutons.",
+    "chromeLevelCalm": "Épuré",
+    "chromeLevelFull": "Complet"
   },
   "resetLabel": "Effacer les préférences locales",
   "cancel": "Annuler",

@@ -1,4 +1,11 @@
+import type { KanbanTask } from '../types.js';
 import { deleteBoard, listBoardSummaries, mutateBoard, readBoard, writeBoard } from '../storage.js';
+import {
+  areDependenciesMet,
+  nowIso,
+  stampAtomicityAssessment,
+  syncTaskColumnForStatus,
+} from './_internal.js';
 
 /**
  * Cards kept on a live session mirror once they reach a terminal state.
@@ -58,32 +65,55 @@ export async function compactSessionMirrorBoard(
 
     const dropped = new Set(droppable.slice(0, dropCount).map((task) => task.id));
     board.tasks = board.tasks.filter((task) => !dropped.has(task.id));
+    const affectedTasks = new Set<KanbanTask>();
     for (const task of board.tasks) {
+      let taskChanged = false;
       if (task.dependsOn?.length) {
+        const beforeLen = task.dependsOn.length;
         task.dependsOn = task.dependsOn.filter((id) => !dropped.has(id));
+        if (task.dependsOn.length !== beforeLen) taskChanged = true;
         if (task.dependsOn.length === 0) delete task.dependsOn;
       }
       if (task.childTaskIds?.length) {
+        const beforeLen = task.childTaskIds.length;
         task.childTaskIds = task.childTaskIds.filter((id) => !dropped.has(id));
+        if (task.childTaskIds.length !== beforeLen) taskChanged = true;
         if (task.childTaskIds.length === 0) delete task.childTaskIds;
       }
       if (task.parentTaskId && dropped.has(task.parentTaskId)) {
         delete task.parentTaskId;
+        taskChanged = true;
       }
       if (task.mergedIntoTaskId && dropped.has(task.mergedIntoTaskId)) {
         delete task.mergedIntoTaskId;
+        taskChanged = true;
       }
       if (task.mergedFromTaskIds?.length) {
+        const beforeLen = task.mergedFromTaskIds.length;
         task.mergedFromTaskIds = task.mergedFromTaskIds.filter((id) => !dropped.has(id));
+        if (task.mergedFromTaskIds.length !== beforeLen) taskChanged = true;
         if (task.mergedFromTaskIds.length === 0) delete task.mergedFromTaskIds;
       }
       if (task.chain?.previousTaskId && dropped.has(task.chain.previousTaskId)) {
         delete task.chain.previousTaskId;
+        taskChanged = true;
       }
       if (task.chain?.nextTaskId && dropped.has(task.chain.nextTaskId)) {
         delete task.chain.nextTaskId;
+        taskChanged = true;
       }
+      if (taskChanged) affectedTasks.add(task);
     }
+    const now = nowIso();
+    for (const task of affectedTasks) {
+      stampAtomicityAssessment(board, task);
+      if (task.status === 'blocked' && areDependenciesMet(board, task.id)) {
+        task.status = 'ready';
+        syncTaskColumnForStatus(board, task, task.columnId);
+      }
+      task.updatedAt = now;
+    }
+    board.updatedAt = now;
     removedTaskIds.push(...dropped);
     return removedTaskIds.length;
   });

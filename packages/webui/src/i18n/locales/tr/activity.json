@@ -69,6 +69,7 @@
     "codemap": "CodeMap",
     "techstack": "TechStack",
     "provider-test": "Provider Testi",
+    "provider-quota": "Plan Kotası",
     "chronicle": "Chronicle",
     "intake": "Gereksinimler",
     "roster": "Ajan Kadrosu",
@@ -3703,6 +3704,7 @@
       "sddhub": "SDD Merkezi",
       "settings": "Ayarlar",
       "provider-test": "Sağlayıcı Testi",
+      "provider-quota": "Plan Kotası",
       "memory": "Bellek",
       "roster": "Filo",
       "codemap": "Kod Atlası",
@@ -3713,7 +3715,19 @@
       "history": "Geçmiş"
     },
     "statusRunning": "Çalışıyor",
-    "statusReady": "Hazır"
+    "statusReady": "Hazır",
+    "health": {
+      "issues_one": "Sistem: {{count}} sorun",
+      "issues_other": "Sistem: {{count}} sorun",
+      "ok": "Sistem: sorun yok",
+      "heading": "Sistem sağlığı",
+      "openIntegrations": "Entegrasyon ayarları"
+    },
+    "appearance": "Görünüm",
+    "theme": "Tema",
+    "themeLight": "Açık",
+    "themeDark": "Koyu",
+    "themeSystem": "Sistem"
   },
   "agentsPanel": {
     "agentRoster": "Ajan kadrosu"
@@ -4104,5 +4118,46 @@
     "unverifiable": "Doğrulanamadı",
     "irrelevant": "İlgili değil",
     "advisory": "Model değerlendirmesidir; uygulamadan önce kanıtları inceleyin."
+  },
+  "quotaPanel": {
+    "title": "Plan kotası",
+    "refresh": "Kotayı yenile",
+    "refreshTitle": "Kayıtlı tüm sağlayıcıların plan kotasını şimdi oku — plandan hiçbir şey harcamayan hesap okumaları.",
+    "left": "%{{pct}} kaldı",
+    "resetsIn": "{{time}} sonra sıfırlanır",
+    "fullIn": "bu hızla ~{{time}} içinde dolar",
+    "reached": "limit doldu",
+    "readFailed": "Kota okunamadı — anahtarı veya planı kontrol edin.",
+    "reading": "Okunuyor…",
+    "asOf": "{{time}} önce",
+    "balance": "Bakiye",
+    "none": "Okunabilir plan kotası olan yapılandırılmış sağlayıcı yok (ChatGPT/Codex, MiniMax, Z.AI Coding Plan, Kimi Code, OpenCode Go, OpenRouter, OmniRoute, DeepSeek, Moonshot, SiliconFlow).",
+    "viewAll": "Tüm plan kotaları ({{count}})",
+    "noneInUse": "Kullanımdaki sağlayıcılar plan kotası bildirmiyor.",
+    "poolMore": "Havuzda {{count}} hesap daha — Plan Kotası sayfasına bakın.",
+    "poolNoMatch": "Bu modele uyan havuz hesabı yok (havuzda {{count}} hesap); bir kombinasyon her istekte birini seçer."
+  },
+  "quotaPage": {
+    "title": "Plan Kotası",
+    "subtitle": "Ölçülen tüm hesaplar — abonelik pencereleri, gateway havuz hesapları ve ön ödemeli bakiyeler. Yalnızca hesap okuması; model çağrısı yok.",
+    "close": "Sohbete dön",
+    "search": "Sağlayıcı, hesap veya plana göre süz",
+    "attentionOnly": "Yalnızca sınıra yakın olanlar",
+    "noMatch": "Süzgece uyan bir şey yok.",
+    "inUseBadge": "kullanımda",
+    "summary": {
+      "accounts": "Hesaplar",
+      "warn": "%70 üstü",
+      "critical": "%90 üstü veya kesilmiş",
+      "nextRelief": "En yakın sıfırlama"
+    },
+    "sections": {
+      "inUse": "Şu an kullanımda",
+      "inUseHint": "Açık oturumların ve çalışan alt ajanların kullandıkları.",
+      "plans": "Abonelik planları",
+      "pool": "OmniRoute havuzu",
+      "poolHint": "Gateway bu hesaplar arasında döner; biri tükenince oturum durmaz.",
+      "balances": "Ön ödemeli bakiyeler"
+    }
   }
 }

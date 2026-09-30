@@ -21,6 +21,7 @@ export async function aggregateStream(
   onEvent?: ((e: StreamEvent) => void) | undefined,
 ): Promise<Response> {
   let model = '';
+  let rerouted: Response['rerouted'];
   let stopReason: StopReason = 'end_turn';
   let usage: Usage = { input: 0, output: 0 };
   // Accumulate deltas as an array of chunks; join once at content-build time.
@@ -165,6 +166,13 @@ export async function aggregateStream(
         stopReason = ev.stopReason;
         usage = ev.usage;
         break;
+      case 'model_rerouted':
+        rerouted = {
+          requested: ev.requested,
+          served: ev.served,
+          ...(ev.reason ? { reason: ev.reason } : {}),
+        };
+        break;
       default:
         // Unknown SSE event — silently skip
         break;
@@ -211,5 +219,5 @@ export async function aggregateStream(
   }
   if (content.length === 0) content.push({ type: 'text', text: '' });
 
-  return { content, stopReason, usage, model };
+  return { content, stopReason, usage, model, ...(rerouted ? { rerouted } : {}) };
 }

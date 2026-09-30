@@ -91,6 +91,7 @@ export {
 export {
   formatQuotaResetIn,
   type QuotaCredits,
+  type QuotaRefreshOutcome,
   type QuotaSnapshot,
   type QuotaWindow,
   quotaWindowLabel,

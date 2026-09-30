@@ -142,8 +142,96 @@ const PAYLOAD_DELETES =
  * consuming `-i shutdown` only to fail the verb match falls back to consuming
  * `-i` alone. Mirrors `ARGV_LAUNCHERS`' `valueFlags` on the tools side.
  */
-const HALT_LAUNCHER_VALUE_FLAG = String.raw`(?:-[ugCncpskioe]|--(?:user|group|unset|chdir|adjustment|signal|kill-after))\s+[^\s-][^\s]*`;
-const HALT_LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env)\b(?:\s+(?:${HALT_LAUNCHER_VALUE_FLAG}|-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,8}`;
+// Which flags take a SEPARATED value, PER LAUNCHER — the same fact
+// `ARGV_LAUNCHERS.valueFlags` records on the tools side.
+//
+// A single global letter set cannot express this. `-[ugCncpskioe]` was the UNION
+// of every launcher's flags applied to all of them, so `exec` was credited with
+// `timeout`'s `-s`, `command` with `stdbuf`'s `-o`, and `sudo` with `-k` and `-i`
+// — which sudo(8) documents as taking NO value. Each credited flag then swallowed
+// the following word as its "value", promoting that word's own argument into the
+// anchored verb slot: `exec -S grep shutdown` classified a plain `grep` as a
+// power-down (122 such shapes measured). The union was also INCOMPLETE, which is
+// how it under-credits: `-a` was missing, so the real halt
+// `exec -a NAME shutdown -h now` went undetected. Scoping per launcher fixes both
+// directions at once; pruning letters from the union could only trade one for the
+// other.
+//
+// `time` is this module's own addition (absent from ARGV_LAUNCHERS); GNU time's
+// `-o FILE` / `-f FORMAT` do take values.
+//
+// Exported for the parity guard in packages/tools/tests/danger-detect.test.ts,
+// which pins this table against `ARGV_LAUNCHERS.valueFlags` so the two copies
+// cannot drift apart again. Recorded as a test-only export in
+// architecture/test-only-exports.json.
+export const HALT_LAUNCHER_VALUE_FLAGS: ReadonlyMap<string, readonly string[]> = new Map([
+  [
+    'sudo',
+    [
+      '-u',
+      '-g',
+      '-C',
+      '-p',
+      '-h',
+      '-r',
+      '-t',
+      '-D',
+      '-R',
+      '-T',
+      '-U',
+      '--user',
+      '--group',
+      '--close-from',
+      '--prompt',
+      '--host',
+      '--role',
+      '--type',
+      '--chdir',
+      '--chroot',
+      '--command-timeout',
+      '--other-user',
+    ],
+  ],
+  ['doas', ['-u', '-C', '-a']],
+  ['env', ['-u', '-C', '--unset', '--chdir']],
+  ['timeout', ['-s', '-k', '--signal', '--kill-after']],
+  ['nice', ['-n', '--adjustment']],
+  ['ionice', ['-c', '-n', '-p']],
+  ['stdbuf', ['-i', '-o', '-e']],
+  ['exec', ['-a']],
+  ['time', ['-o', '-f']],
+  ['command', []],
+  ['nohup', []],
+  ['setsid', []],
+  ['unbuffer', []],
+]);
+
+// The value is ONE argv token, so a quoted span is consumed whole — never as its
+// first whitespace-delimited fragment, which is how `"grep -r shutdown src/"`
+// used to leak `shutdown` into the verb slot. Listing the quoted spans first is
+// NOT enough on its own: alternation is a preference, not an exclusion, so when
+// the whole-span branch stops the overall match the engine backtracks into the
+// fragment branch anyway. The unquoted branch therefore refuses a first character
+// that OPENS a quote (`[^\s-"']`): a quoted value is consumed complete or not at
+// all, and an unbalanced quote ends the run there — the fail-closed direction.
+const HALT_LAUNCHER_VALUE = String.raw`(?:'[^']*'|"[^"]*"|[^\s-"'][^\s]*)`;
+
+/** Longest flag first, so `--user` is never truncated to the `-u` branch. */
+function haltFlagAlt(flags: readonly string[]): string {
+  if (flags.length === 0) return '';
+  const alts = [...flags]
+    .sort((a, b) => b.length - a.length)
+    .map((flag) => flag.replace(/[\\^-]/g, '\\$&'))
+    .join('|');
+  return `(?:${alts})\\s+${HALT_LAUNCHER_VALUE}|`;
+}
+
+const HALT_LAUNCHER_PREFIX = `(?:${[...HALT_LAUNCHER_VALUE_FLAGS]
+  .map(
+    ([name, flags]) =>
+      `(?:${name}\\b(?:\\s+(?:${haltFlagAlt(flags)}-[^\\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\\s]*|\\d+[smhd]?))*\\s+)`,
+  )
+  .join('|')}){0,8}`;
 
 /**
  * Ways to power the machine down or restart it.
@@ -344,8 +432,15 @@ function spaceOutUnquotedSeparators(command: string): string {
  * everywhere else. Values are stored lowercased; argument matching compares
  * lowercased, which is right for PowerShell and cmd (/c and -Command are
  * case-insensitive there) and merely fail-safe for the POSIX shells.
+ *
+ * Exported for the split-string parity guard in
+ * packages/tools/tests/danger-detect.test.ts, which pins this table against
+ * `ARGV_LAUNCHERS`' `splitStringFlags` on the tools side. The comparison there
+ * lowercases, because this map stores flags lowercased while tools keeps the
+ * documented spelling (`-S`). Recorded as a test-only export in
+ * architecture/test-only-exports.json.
  */
-const COMMAND_STRING_FLAGS: ReadonlyMap<string, readonly string[]> = new Map([
+export const COMMAND_STRING_FLAGS: ReadonlyMap<string, readonly string[]> = new Map([
   ['env', ['-s', '--split-string']],
   ['sh', ['-c']],
   ['bash', ['-c']],
@@ -1480,13 +1575,64 @@ function inlineEvalPayload(segment: string): string | undefined {
  * unclassified on purpose — that is obfuscation, which this module's header
  * documents as out of scope rather than something to chase with more regex.
  */
+/**
+ * The command line a launcher was handed inside ONE argv token, read from the
+ * SAME {@link COMMAND_STRING_FLAGS} table that `tokenizeShell` expands for every
+ * other destructive family.
+ *
+ * `inlineEvalPayload` carries its own hand-written list of launchers and flags,
+ * and that list DRIFTS from the table. Four table entries are in no version of
+ * the payload regex — `env` (whose `-S` / `--split-string` flags the regex does
+ * not list either), `dash`, `ash` and `cmd` — so
+ * `cmd /c "shutdown /s /t 0"`, the ordinary Windows spelling of a power-down,
+ * reached the anchored halt regex as inert text inside one quoted token while
+ * `cmd /c rm -rf ~` was gated. Asking the table is what keeps the two halves
+ * from disagreeing again. The launchers both lists already know (`sh`, `bash`,
+ * `zsh`, `ksh`, `fish`, `pwsh`, `powershell`) classify identically either way
+ * and are pinned as parity, not as evidence of this fix.
+ *
+ * Anchored at the start of the segment, because the question is "what does this
+ * segment RUN", not "what does it mention": `git commit -m "notes; shutdown
+ * deferred"` starts with `git` and stays prose. The `=` branch covers the glued
+ * `--split-string=<cmd>` spelling. Longer flags are alternated first so
+ * `-command` is not truncated to `-c`.
+ */
+const COMMAND_STRING_PAYLOAD = new RegExp(
+  `^(?:${[...COMMAND_STRING_FLAGS]
+    .map(
+      ([cmd, flags]) =>
+        `${cmd}\\s+(?:${[...flags]
+          .sort((a, b) => b.length - a.length)
+          .map((flag) => flag.replace(/[\\^-]/g, '\\$&'))
+          .join('|')})(?:=|\\s+)`,
+    )
+    .join('|')})(.+)$`,
+  'i',
+);
+
+/** A halt handed to a command-string launcher: `env -S "shutdown now"`. */
+function tableCommandStringPayload(segment: string): string | undefined {
+  const payload = COMMAND_STRING_PAYLOAD.exec(segment)?.[1];
+  return payload?.replace(/^(['"])([\s\S]*)\1$/, '$2').trim() || undefined;
+}
+
 function haltsTheMachine(command: string): boolean {
-  return splitShellSegments(command).some((segment) => {
+  const asks = (segment: string): boolean => {
     if (SYSTEM_HALT_COMMAND.test(segment)) return true;
-    const payload = inlineEvalPayload(segment);
-    if (payload === undefined) return false;
-    return splitShellSegments(payload).some((inner) => SYSTEM_HALT_COMMAND.test(inner));
-  });
+    for (const payload of [inlineEvalPayload(segment), tableCommandStringPayload(segment)]) {
+      if (payload === undefined) continue;
+      // The payload is asked the SAME anchored question as a bare line, which is
+      // what keeps prose out: `env -S "echo shutdown"` does not start with the
+      // halt verb, and a halt buried inside a language-level string stays
+      // unclassified on purpose — the module header documents obfuscation as out
+      // of scope rather than something to chase with more regexes.
+      if (splitShellSegments(payload).some((inner) => SYSTEM_HALT_COMMAND.test(inner))) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return splitShellSegments(command).some(asks);
 }
 
 /**

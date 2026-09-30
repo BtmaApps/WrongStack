@@ -135,6 +135,58 @@ describe('readIndexFile', () => {
     expect(result.cache).toBe(cache);
   });
 
+  it('recovers a row that straddles the cache boundary instead of dropping it', async () => {
+    // A crash-truncated append leaves the file ending mid-row. The first read
+    // stamps the cache with a size that INCLUDES that partial row, so when the
+    // writer's remaining bytes land the row spans the boundary and the
+    // incremental range begins mid-line. The fragment does not parse, the row
+    // is skipped, and the cache then advances past it — permanently, because
+    // compaction writes the parsed rows back over the file.
+    const indexFile = path.join(tmp, '_index.jsonl');
+    const a = makeSummary('a');
+    const c = makeSummary('c');
+    const cJson = JSON.stringify(c);
+    const cut = Math.floor(cJson.length / 2);
+    await fsp.writeFile(indexFile, `${JSON.stringify(a)}\n${cJson.slice(0, cut)}`, 'utf8');
+
+    const first = await readIndexFile(indexFile, null);
+    expect(first.summaries.map((s) => s.id)).toEqual(['a']);
+
+    await fsp.appendFile(indexFile, `${cJson.slice(cut)}\n`, 'utf8');
+    const second = await readIndexFile(indexFile, first.cache);
+    expect(second.summaries.map((s) => s.id).sort()).toEqual(['a', 'c']);
+    // Alignment check ran, so the range was refused and a full read happened.
+    expect(second.cache?.byId).not.toBe(first.cache?.byId);
+
+    // The whole point: the row must still be there after compaction, which is
+    // what turned the old behaviour from a cache miss into permanent loss.
+    await compactIndexInner(indexFile, second.summaries, second.deletedIds);
+    const afterCompact = await readIndexFile(indexFile, null);
+    expect(afterCompact.summaries.map((s) => s.id).sort()).toEqual(['a', 'c']);
+  });
+
+  it('keeps using the incremental range for appends that land on a line boundary', async () => {
+    // The alignment guard must not degrade the fast path it protects. Ordinary
+    // appends end with a newline, so the range is still taken — observable as
+    // the cache reusing the same byId Map instead of building a new one.
+    const indexFile = path.join(tmp, '_index.jsonl');
+    await fsp.writeFile(indexFile, `${JSON.stringify(makeSummary('a'))}\n`, 'utf8');
+    const first = await readIndexFile(indexFile, null);
+
+    await fsp.appendFile(indexFile, `${JSON.stringify(makeSummary('b'))}\n`, 'utf8');
+    const second = await readIndexFile(indexFile, first.cache);
+
+    expect(second.summaries.map((s) => s.id).sort()).toEqual(['a', 'b']);
+    expect(second.cache?.byId).toBe(first.cache?.byId);
+
+    // A tombstone on the same boundary must still apply through the range.
+    await fsp.appendFile(indexFile, `${JSON.stringify({ action: 'delete', id: 'b' })}\n`, 'utf8');
+    const third = await readIndexFile(indexFile, second.cache);
+    expect(third.summaries.map((s) => s.id)).toEqual(['a']);
+    expect(third.deletedIds.has('b')).toBe(true);
+    expect(third.cache?.byId).toBe(second.cache?.byId);
+  });
+
   it('falls through to a full read when the cache does not match the current stat', async () => {
     const indexFile = path.join(tmp, '_index.jsonl');
     const summary = makeSummary('a');

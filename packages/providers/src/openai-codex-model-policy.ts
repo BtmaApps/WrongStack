@@ -1,4 +1,7 @@
 import type { ReasoningEffort } from '@wrongstack/core/types';
+import type { CodexTruncationPolicy } from './openai-codex-truncation.js';
+
+export { parseCodexTruncationPolicy } from './openai-codex-truncation.js';
 
 /**
  * Fraction of a model's catalog `context_window` the backend actually lets a
@@ -53,6 +56,7 @@ export interface CodexModelMetadata {
   input_modalities?: unknown;
   supports_parallel_tool_calls?: unknown;
   support_verbosity?: unknown;
+  truncation_policy?: unknown;
   visibility?: unknown;
   display_name?: unknown;
   description?: unknown;
@@ -83,6 +87,8 @@ export interface CodexModelPolicy {
   /** False only when the catalog explicitly says the model cannot parallelise. */
   parallelToolCalls: boolean;
   supportsVerbosity: boolean;
+  /** Tool-output truncation the catalog prescribes; absent means "send as-is". */
+  truncation?: CodexTruncationPolicy | undefined;
 }
 
 /**

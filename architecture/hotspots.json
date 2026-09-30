@@ -63,7 +63,7 @@
       "relativeImports": 8
     },
     "packages/core/src/chronicle/project-server.ts": {
-      "lines": 852,
+      "lines": 863,
       "relativeImports": 19
     },
     "packages/core/src/coordination/collab-debug.ts": {
@@ -79,7 +79,7 @@
       "relativeImports": 45
     },
     "packages/core/src/coordination/index.ts": {
-      "lines": 854,
+      "lines": 856,
       "relativeImports": 101
     },
     "packages/core/src/coordination/subagent-budget.ts": {
@@ -123,7 +123,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1681,
+      "lines": 1827,
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
@@ -131,8 +131,8 @@
       "relativeImports": 41
     },
     "packages/core/src/types/provider.ts": {
-      "lines": 924,
-      "relativeImports": 8
+      "lines": 933,
+      "relativeImports": 9
     },
     "packages/core/src/worktree/worktree-manager.ts": {
       "lines": 848,
@@ -143,7 +143,7 @@
       "relativeImports": 8
     },
     "packages/governance/src/runtime-compatibility.ts": {
-      "lines": 860,
+      "lines": 898,
       "relativeImports": 8
     },
     "packages/governance/src/verification-ledger-store.ts": {
@@ -155,7 +155,7 @@
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 875,
+      "lines": 891,
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
@@ -199,12 +199,12 @@
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
-      "lines": 908,
-      "relativeImports": 67
+      "lines": 968,
+      "relativeImports": 71
     },
     "packages/providers/src/openai-codex.ts": {
-      "lines": 904,
-      "relativeImports": 21
+      "lines": 936,
+      "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
       "lines": 819,
@@ -283,7 +283,7 @@
       "relativeImports": 5
     },
     "packages/tools/src/_danger-detect.ts": {
-      "lines": 1367,
+      "lines": 1372,
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
@@ -311,7 +311,7 @@
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
-      "lines": 871,
+      "lines": 870,
       "relativeImports": 1
     },
     "packages/webui/src/components/AudienceMemoryPanel.tsx": {
@@ -363,7 +363,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 958,
+      "lines": 959,
       "relativeImports": 9
     },
     "packages/webui-server/src/server/backend-services.ts": {

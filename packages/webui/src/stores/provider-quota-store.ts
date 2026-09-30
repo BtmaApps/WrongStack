@@ -49,14 +49,33 @@ export interface QuotaSnapshot {
   credits?: QuotaCredits | undefined;
   reachedWindowId?: string | undefined;
   note?: string | undefined;
+  /** The gateway that relayed a pool account's reading (`omniroute`). */
+  via?: string | undefined;
   capturedAt: number;
+}
+
+/**
+ * Outcome of one on-demand account read (`provider.quota.refresh`) — only the
+ * vendors with a free account endpoint (MiniMax, Z.AI) are ever read this way.
+ */
+export interface QuotaRefreshOutcome {
+  providerId: string;
+  vendor: string;
+  ok: boolean;
+  throttled?: boolean | undefined;
+  /** Local wall-clock ms the outcome arrived. */
+  at: number;
 }
 
 interface ProviderQuotaState {
   /** Every known meter, keyed `providerId\0meterId`. */
   meters: Record<string, QuotaSnapshot>;
+  /** Last on-demand read outcome per provider id. */
+  refreshes: Record<string, QuotaRefreshOutcome>;
   /** Merge readings for one provider (a `provider.quota` push). */
   apply: (snapshots: readonly QuotaSnapshot[]) => void;
+  /** Record the outcomes carried by the reply to a `provider.quota.refresh`. */
+  applyRefreshes: (outcomes: readonly unknown[]) => void;
   clear: () => void;
 }
 
@@ -78,6 +97,7 @@ function isSnapshot(value: unknown): value is QuotaSnapshot {
 
 export const useProviderQuotaStore = create<ProviderQuotaState>((set) => ({
   meters: {},
+  refreshes: {},
   apply: (snapshots) =>
     set((state) => {
       const next = { ...state.meters };
@@ -98,7 +118,25 @@ export const useProviderQuotaStore = create<ProviderQuotaState>((set) => ({
       }
       return { meters: next };
     }),
-  clear: () => set({ meters: {} }),
+  applyRefreshes: (outcomes) =>
+    set((state) => {
+      const at = Date.now();
+      const next = { ...state.refreshes };
+      for (const raw of outcomes) {
+        if (!raw || typeof raw !== 'object') continue;
+        const o = raw as Partial<QuotaRefreshOutcome>;
+        if (typeof o.providerId !== 'string' || typeof o.ok !== 'boolean') continue;
+        next[o.providerId] = {
+          providerId: o.providerId,
+          vendor: typeof o.vendor === 'string' ? o.vendor : '',
+          ok: o.ok,
+          throttled: o.throttled === true,
+          at,
+        };
+      }
+      return { refreshes: next };
+    }),
+  clear: () => set({ meters: {}, refreshes: {} }),
 }));
 
 /**
@@ -114,6 +152,9 @@ export function selectWorstQuotaWindow(
 ): { snapshot: QuotaSnapshot; window: QuotaWindow } | undefined {
   let best: { snapshot: QuotaSnapshot; window: QuotaWindow } | undefined;
   for (const snapshot of Object.values(meters)) {
+    // A gateway pool account running out does not cut the session off: the
+    // gateway rotates to another account. Same rule as the TUI chip.
+    if (snapshot.via !== undefined) continue;
     for (const window of snapshot.windows) {
       if (!best || window.usedPercent > best.window.usedPercent) {
         best = { snapshot, window };

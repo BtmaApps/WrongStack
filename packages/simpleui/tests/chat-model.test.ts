@@ -428,6 +428,15 @@ describe('SimpleUI transient status notices', () => {
     });
   });
 
+  it('warns when the server answered with another model', () => {
+    expect(
+      projectStatusNotice({
+        type: 'provider.model_rerouted',
+        payload: { requested: 'gpt-5.3-codex', served: 'gpt-5.2' },
+      }),
+    ).toEqual({ text: 'Rerouted · gpt-5.2 instead of gpt-5.3-codex', tone: 'warning' });
+  });
+
   it('shows failed operations without surfacing successful housekeeping', () => {
     expect(
       projectStatusNotice({

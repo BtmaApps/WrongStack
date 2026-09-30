@@ -307,7 +307,7 @@ describe('TaskFlow', () => {
       expect(node?.status).toBe('completed');
     });
 
-    it('marks task as in_progress when rejected', async () => {
+    it('re-queues task to pending when rejected (so the flow can re-run it)', async () => {
       const { flow, tracker } = createFlow();
       await flow.fromSpec(
         `# Title\n\n## Overview\nContent\n\n## Requirements\n[high] Feature\n\n## Acceptance\n\nDone`,
@@ -323,8 +323,13 @@ describe('TaskFlow', () => {
 
       await flow.reviewTask(firstTaskId, false);
 
+      // Rejection returns the task to the QUEUE. It used to be set to
+      // `in_progress`, but only `pending` tasks are ever dispatched
+      // (getExecutableTasks) and `all_tasks_done` requires `inProgress === 0`,
+      // so an `in_progress` rejection stranded the task: never re-executed and
+      // the run could never report done.
       const node = tracker.getNode(firstTaskId);
-      expect(node?.status).toBe('in_progress');
+      expect(node?.status).toBe('pending');
     });
 
     it('emits task.completed when approved', async () => {

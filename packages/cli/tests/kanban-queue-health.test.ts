@@ -71,9 +71,9 @@ describe('Kanban queue health (Sprint 2 helper)', () => {
 
     expect(health.counts.pending).toBe(1);
     expect(health.counts.running).toBe(2);
-    expect(health.counts.ready).toBe(1);
-    expect(health.dependencyBlocked.count).toBe(1);
-    expect(health.dependencyBlocked.tasks[0]?.task.title).toBe('Waiting on blocker');
+    expect(health.counts.ready).toBe(0);
+    expect(health.counts.blocked).toBe(1);
+    expect(health.dependencyBlocked).toEqual({ count: 0, tasks: [] });
     expect(health.staleAssignments.count).toBe(2);
     expect(
       health.staleAssignments.tasks.map((entry) => entry.task.assignment?.agentId).sort(),
@@ -94,14 +94,14 @@ describe('Kanban queue health (Sprint 2 helper)', () => {
     expect(loaded?.tasks).toHaveLength(4);
   });
 
-  it('exposes queue_health through the kanban tool action and keeps dependencyBlocked as a subset of ready', async () => {
+  it('exposes queue_health through the kanban tool action for dependency-blocked pending tasks', async () => {
     const board = await createBoard(tmpDir, { title: 'Tool action board' });
     const blocker = await addTask(tmpDir, board.id, { title: 'Blocker', status: 'pending' });
-    const blockedReady = await addTask(tmpDir, board.id, {
+    const blockedPending = await addTask(tmpDir, board.id, {
       title: 'Waiting on blocker',
-      status: 'ready',
+      status: 'pending',
     });
-    await addDependency(tmpDir, board.id, blockedReady!.task.id, blocker!.task.id);
+    await addDependency(tmpDir, board.id, blockedPending!.task.id, blocker!.task.id);
     const freeReady = await addTask(tmpDir, board.id, {
       title: 'Free ready',
       status: 'ready',
@@ -126,16 +126,16 @@ describe('Kanban queue health (Sprint 2 helper)', () => {
       }
     ).queueHealth;
     expect(health).toBeDefined();
-    expect(health?.counts.pending).toBe(1);
-    expect(health?.counts.ready).toBe(2);
+    expect(health?.counts.pending).toBe(2);
+    expect(health?.counts.ready).toBe(1);
     expect(health?.dependencyBlocked.count).toBe(1);
-    // The dependencyBlocked bucket must be a subset of counts.ready tasks.
+    // The pending dependency-blocked task is separate from the free ready task.
     const blockedIds = new Set(
       (health!.dependencyBlocked.tasks as Array<{ task: { id: string } }>).map(
         (entry) => entry.task.id,
       ),
     );
-    expect(blockedIds.has(blockedReady!.task.id)).toBe(true);
+    expect(blockedIds.has(blockedPending!.task.id)).toBe(true);
     expect(blockedIds.has(freeReady!.task.id)).toBe(false);
   });
 

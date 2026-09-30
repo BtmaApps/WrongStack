@@ -139,14 +139,17 @@ export function computeResolution(
   let applied: boolean;
 
   if (decision === 'delete' && targetId && !isPermanent) {
-    // Delete is allowed for non-permanent — even if target was race-deleted
-    // (target === null), the store's try/catch will handle the error.
-    mutationKind = 'delete_memory';
+    // Race-deleted target (target === null): the requested end state already
+    // holds, so the resolution is a recorded no-op (doc rule 3). Emitting the
+    // delete mutation instead made the store call updateSage on the missing
+    // id — the "not found" throw reverted the candidate to pending on EVERY
+    // retry, an unresolvable loop (only a contrary 'keep' could clear it).
+    mutationKind = target !== null ? 'delete_memory' : 'noop';
     applied = target !== null;
   } else if (decision === 'archive' && targetId) {
-    // Archive is always allowed — even if target is race-deleted, the
-    // store's try/catch will handle the error.
-    mutationKind = 'archive_memory';
+    // Archive of a live target; a race-deleted target is the same recorded
+    // no-op as above (doc rule 3).
+    mutationKind = target !== null ? 'archive_memory' : 'noop';
     applied = target !== null;
   } else if (decision === 'keep') {
     mutationKind = 'noop';

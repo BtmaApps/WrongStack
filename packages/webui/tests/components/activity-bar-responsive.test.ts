@@ -37,9 +37,9 @@ describe('ActivityBar desktop responsive overflow (compact / desktop shell)', ()
 
     expect(split.overflowPanelIds).toEqual([]);
     // At 520px compact: 10 slots → 6 panels + 4 views fit. Views follow the
-    // delivery pipeline, so the primary surfaces (SDD → Goal → Kanban → Roster)
+    // daily-work priority (Roster → Goal → Kanban → Memory), so primary surfaces
     // keep their slots while secondary views overflow.
-    expect(split.visibleViewIds).toEqual(['sddhub', 'goal', 'kanban', 'roster']);
+    expect(split.visibleViewIds).toEqual(['roster', 'goal', 'kanban', 'memory']);
     expect(split.overflowViewIds).toContain('codemap');
     expect(split.overflowViewIds).toContain('history');
   });
@@ -76,7 +76,15 @@ describe('ActivityBar responsive overflow (full / browser WebUI)', () => {
     // 6 panels (worktrees/officemap moved into Changes/Roster; agents and
     // history removed) + remaining slots go to views
     expect(split.overflowPanelIds).toEqual([]);
-    expect(split.visibleViewIds.length).toBeGreaterThanOrEqual(2);
+    expect(split.visibleViewIds).toEqual([
+      'roster',
+      'goal',
+      'kanban',
+      'memory',
+      'sddhub',
+      'project-kit',
+      'codemap',
+    ]);
     // Agent Roster is a primary surface — it must stay visible, not fall
     // into the "…" overflow menu (regression guard for the VIEWS reorder).
     expect(split.visibleViewIds).toContain('roster');

@@ -31,6 +31,7 @@ import type { BuildBodyContext } from './model-output-limits.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import type { AnthropicStreamState } from './presets/anthropic.js';
 import { anthropicWireFormat } from './presets/anthropic.js';
+import { ANTHROPIC_SIGNER, streamWithThinkingSigner } from './thinking-signer.js';
 import type { WireAdapterStreamOptions } from './wire-adapter.js';
 import { WireFormatProvider } from './wire-format.js';
 
@@ -230,7 +231,16 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
     });
   }
 
+  /**
+   * Claude subscription traffic is Anthropic-signed: other services' thinking
+   * blocks are filtered out before sending and a signature rejection is
+   * repaired once — see thinking-signer.ts.
+   */
   override async *stream(req: Request, opts: { signal: AbortSignal }) {
+    yield* streamWithThinkingSigner(req, opts, ANTHROPIC_SIGNER, (r) => this.streamOnce(r, opts));
+  }
+
+  private async *streamOnce(req: Request, opts: { signal: AbortSignal }) {
     await this.ensureFreshToken(opts.signal);
     try {
       yield* this.remapToolNames(super.stream(req, opts), req.tools);

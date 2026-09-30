@@ -347,6 +347,41 @@ describe('AnthropicProvider', () => {
     expect(hdrs['authorization']).toBeUndefined();
   });
 
+  it('picks the auth header by the upstream host behind a WrongProxy mount', async () => {
+    const headersFor = async (baseUrl: string): Promise<Record<string, string>> => {
+      const spy = vi.fn(async (_url: unknown, init?: { headers?: Record<string, string> }) => ({
+        ok: true,
+        status: 200,
+        headers: init?.headers,
+        json: async () => ({
+          content: [{ type: 'text', text: 'ok' }],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        text: async () => '',
+      }));
+      const p = new AnthropicProvider({
+        apiKey: 'key',
+        baseUrl,
+        fetchImpl: spy as never as typeof fetch,
+      });
+      await p.complete(
+        { model: 'm', messages: [{ role: 'user', content: 'x' }], maxTokens: 1 },
+        { signal: new AbortController().signal },
+      );
+      return (spy.mock.calls[0]![1] as { headers: Record<string, string> }).headers;
+    };
+
+    // The proxy forwards headers untouched: Anthropic behind it still needs x-api-key.
+    const anthropic = await headersFor('http://localhost:3444/proxy/api.anthropic.com/v1');
+    expect(anthropic['x-api-key']).toBe('key');
+    expect(anthropic['authorization']).toBeUndefined();
+
+    const compatible = await headersFor('http://localhost:3444/proxy/api.kimi.com/coding/v1');
+    expect(compatible['authorization']).toBe('Bearer key');
+    expect(compatible['x-api-key']).toBeUndefined();
+  });
+
   it('non-2xx with 500 is retryable', async () => {
     const fetchImpl = mockFetch({}, 500) as never as typeof fetch;
     const p = new AnthropicProvider({ apiKey: 'k', fetchImpl });

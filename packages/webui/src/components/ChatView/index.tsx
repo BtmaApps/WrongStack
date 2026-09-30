@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Bot, ChevronDown, ChevronUp, Square } from 'lucide-
 import { lazy, Suspense, useEffect } from 'react';
 import { VList } from 'virtua';
 import { MemoryInjectorPanel } from '@/components/MemoryManager/MemoryInjectorPanel';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,7 @@ const ProcessMonitor = lazy(() =>
 export function ChatView() {
   const { t } = useAppTranslation();
   const state = useChatViewState();
+  const fullChrome = useIsFullChrome();
 
   // ── Subagent chat focus (AgentTabs) ──────────────────────────────
   // Selection lives in ui-store so roster cards / detail sections can jump
@@ -374,7 +376,7 @@ export function ChatView() {
             >
               <ChevronUp className="h-3.5 w-3.5 shrink-0" />
               <span>{t('chat:input.expandInput', 'Expand input')}</span>
-              {state.rows.length > 0 && (
+              {fullChrome && state.rows.length > 0 && (
                 <span className="ml-auto tabular-nums text-[10px] text-muted-foreground/40">
                   {state.rows.length} msgs ·{' '}
                   {fmtTok(state.totalTokens.input + state.totalTokens.output)}
