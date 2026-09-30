@@ -39,7 +39,13 @@ beforeEach(() => {
     provider: 'test-provider',
     model: 'test-model',
   });
-  useLocalPrefs.setState({ subagentsAllowed: true, subagentsPolicyLocked: false });
+  // These tests drive the launcher forms directly; calm chrome folds them
+  // (covered below), so pin full chrome where the forms are always open.
+  useLocalPrefs.setState({
+    subagentsAllowed: true,
+    subagentsPolicyLocked: false,
+    chromeLevel: 'full',
+  });
   useFileStore.setState({
     tree: [{ name: 'webui', path: 'packages/webui', type: 'directory', children: [] }],
   });
@@ -161,5 +167,23 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
       type: 'prefs.update',
       payload: expect.objectContaining({ subagentsAllowed: false }),
     });
+  });
+});
+
+describe('WelcomeScreen launchers under calm chrome', () => {
+  it('folds both launcher forms until their header is clicked, one at a time', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    render(<WelcomeScreen />);
+
+    expect(screen.queryByRole('button', { name: /setup:welcome\.bugHunterStart/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /setup:welcome\.perfStart/ })).toBeNull();
+
+    fireEvent.click(screen.getByTestId('welcome-launcher-bug'));
+    expect(screen.getByRole('button', { name: /setup:welcome\.bugHunterStart/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /setup:welcome\.perfStart/ })).toBeNull();
+
+    fireEvent.click(screen.getByTestId('welcome-launcher-perf'));
+    expect(screen.queryByRole('button', { name: /setup:welcome\.bugHunterStart/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /setup:welcome\.perfStart/ })).toBeTruthy();
   });
 });

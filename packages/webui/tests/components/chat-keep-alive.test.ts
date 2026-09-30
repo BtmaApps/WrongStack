@@ -68,12 +68,25 @@ describe('chat keep-alive', () => {
     const src = read('App.tsx');
     const binding = src.slice(
       src.indexOf('const sessionRecordId'),
-      src.indexOf('const sideContextBreakdownOpen'),
+      src.indexOf('const _fleetAgents'),
     );
 
     expect(binding).toContain('const activeSessionId = useActiveSessionId()');
     expect(binding).toContain('const sessionId = activeSessionId ?? sessionRecordId');
     expect(binding).not.toContain('const sessionId = useSessionStore((s) => s.session?.id)');
+  });
+
+  it('mounts the process monitor and the context breakdown modal exactly once', () => {
+    const app = read('App.tsx');
+    const chat = read('components/ChatView/index.tsx');
+    const count = (src: string, tag: string) => src.split(tag).length - 1;
+
+    // ProcessMonitor: App.tsx only (processMonitorOpen, shared with /kill).
+    expect(count(app, '<ProcessMonitor') + count(chat, '<ProcessMonitor')).toBe(1);
+    expect(count(app, '<ProcessMonitor')).toBe(1);
+    // ContextBreakdownModal: ChatView only (chatContextBreakdownOpen).
+    expect(count(app, '<ContextBreakdownModal') + count(chat, '<ContextBreakdownModal')).toBe(1);
+    expect(count(chat, '<ContextBreakdownModal')).toBe(1);
   });
 
   it('ChatView keeps the leader transcript mounted under a subagent tab', () => {

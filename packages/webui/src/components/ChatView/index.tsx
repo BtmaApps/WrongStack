@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Bot, ChevronDown, ChevronUp, Square } from 'lucide-react';
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { VList } from 'virtua';
 import { MemoryInjectorPanel } from '@/components/MemoryManager/MemoryInjectorPanel';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
@@ -41,10 +41,6 @@ import { ThinkingBubble } from './ThinkingBubble.js';
 import { ToggleSwitch } from './ToggleSwitch';
 import { useChatViewState } from './useChatViewState';
 import { fmtTok } from './utils.js';
-
-const ProcessMonitor = lazy(() =>
-  import('../ProcessMonitor').then((m) => ({ default: m.ProcessMonitor })),
-);
 
 export function ChatView() {
   const { t } = useAppTranslation();
@@ -444,9 +440,7 @@ export function ChatView() {
       </div>
 
       {/* Overlays */}
-      <Suspense fallback={null}>
-        <ProcessMonitor open={state.processOpen} onClose={() => state.setProcessOpen(false)} />
-      </Suspense>
+      {/* ProcessMonitor is mounted once by App.tsx (processMonitorOpen). */}
       <CheckpointTimeline
         open={state.checkpointOpen}
         onClose={() => state.setCheckpointOpen(false)}

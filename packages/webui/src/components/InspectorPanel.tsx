@@ -15,13 +15,15 @@ import {
   Columns3,
   PanelRightOpen,
   Scale,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { openPanel } from '@/components/activity-bar/nav';
+import { openAgentsSurface } from '@/components/activity-bar/nav';
 import { EventTimeline, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui';
 import { FleetAgentRow } from '@/components/ui/fleet-agent-row';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { cn } from '@/lib/utils';
@@ -89,8 +91,16 @@ export function InspectorTrigger({
   const { t } = useAppTranslation();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const activeActivity = useUIStore((s) => s.activeActivity);
+  const inspectorShowsAgents = useUIStore(
+    (s) => s.inspectorOpen && (s.inspectorTab === 'fleet' || s.inspectorTab === 'agents'),
+  );
   const currentSessionId = useActiveSessionId();
-  const agentsSidebarActive = sidebarOpen && activeActivity === 'agents';
+  // Calm chrome: the right inspector is the one agents surface; full chrome
+  // keeps the left Agents side panel.
+  const fullChrome = useIsFullChrome();
+  const agentsSidebarActive = fullChrome
+    ? sidebarOpen && activeActivity === 'agents'
+    : inspectorShowsAgents;
   const runningCount = useFleetStore(
     (s) =>
       Array.from(s.agents.values()).filter(
@@ -106,7 +116,7 @@ export function InspectorTrigger({
       data-testid="inspector-trigger"
       aria-expanded={agentsSidebarActive}
       aria-label={t('activity:inspector.openAgentsPanel')}
-      onClick={() => openPanel('agents')}
+      onClick={() => openAgentsSurface(fullChrome)}
       className={cn(
         'relative inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
         agentsSidebarActive
@@ -367,6 +377,7 @@ export function InspectorPanel() {
               >
                 <FleetTabContent
                   fleetList={fleetList}
+                  sessionId={currentSessionId ?? null}
                   leaderId={leaderId}
                   selectedAgentId={selectedAgentId}
                   eventTimeline={sessionEventTimeline}
@@ -519,33 +530,112 @@ function TabButton({
 
 // ── Fleet tab content ──────────────────────────────────────────────────
 
+type FleetFilter = 'all' | 'running' | 'completed' | 'failed';
+
+const FLEET_FILTERS: Array<{ value: FleetFilter; labelKey: string }> = [
+  { value: 'all', labelKey: 'activity:agents.filterAll' },
+  { value: 'running', labelKey: 'activity:agents.filterRunning' },
+  { value: 'completed', labelKey: 'activity:agents.filterCompleted' },
+  { value: 'failed', labelKey: 'activity:agents.filterFailed' },
+];
+
+function matchesFleetFilter(agent: SubagentView, filter: FleetFilter): boolean {
+  if (filter === 'running') return agent.status === 'running';
+  if (filter === 'completed') return agent.status === 'completed';
+  if (filter === 'failed') return agent.status === 'failed' || agent.status === 'timeout';
+  return true;
+}
+
 function FleetTabContent({
   fleetList,
+  sessionId,
   leaderId,
   selectedAgentId,
   eventTimeline,
   onSelectAgent,
 }: {
   fleetList: SubagentView[];
+  sessionId: string | null;
   leaderId: string | undefined;
   selectedAgentId: string | null;
   eventTimeline: FleetTimelineEvent[];
   onSelectAgent: (agent: SubagentView) => void;
 }) {
   const { t } = useAppTranslation();
+  // Calm chrome makes this tab THE agents surface, so it takes over the left
+  // Agents panel's status filter and "clear finished". Full chrome leaves the
+  // tab as it was (those controls live in the left panel there).
+  const fullChrome = useIsFullChrome();
+  const clearFinishedAgents = useFleetStore((s) => s.clearFinishedAgents);
+  const [filter, setFilter] = useState<FleetFilter>('all');
+  const effectiveFilter: FleetFilter = fullChrome ? 'all' : filter;
+  const shownList = useMemo(
+    () => fleetList.filter((agent) => matchesFleetFilter(agent, effectiveFilter)),
+    [fleetList, effectiveFilter],
+  );
+  const hasFinished = fleetList.some((agent) => agent.status !== 'running');
   // Fleet is bounded (active agents), show all without pagination.
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
-      {/* Agent list */}
-      {fleetList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-          <Users className="h-8 w-8 mb-2 opacity-20" />
-          <p className="text-xs font-medium">{t('activity:inspector.noAgentsActive')}</p>
-          <p className="text-[11px] mt-0.5">{t('activity:inspector.agentsAppearHint')}</p>
+      {!fullChrome && fleetList.length > 0 && (
+        <div
+          data-testid="inspector-fleet-toolbar"
+          className="flex shrink-0 items-center gap-1 border-b border-border/70 px-2 py-1"
+        >
+          {FLEET_FILTERS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFilter(opt.value)}
+              aria-pressed={filter === opt.value}
+              className={cn(
+                'rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors',
+                filter === opt.value
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )}
+            >
+              {t(opt.labelKey)}
+            </button>
+          ))}
+          <span className="flex-1" />
+          {hasFinished && (
+            <button
+              type="button"
+              onClick={() => clearFinishedAgents(sessionId)}
+              title={t('activity:agents.clearFinishedTitle')}
+              aria-label={t('activity:agents.clearFinishedTitle')}
+              className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3" />
+              {t('activity:agents.clearFinished')}
+            </button>
+          )}
         </div>
+      )}
+      {/* Agent list */}
+      {shownList.length === 0 ? (
+        fleetList.length > 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <p className="text-xs font-medium">{t('activity:agents.emptyFilteredTitle')}</p>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className="mt-1 text-[11px] text-primary hover:underline"
+            >
+              {t('activity:agents.emptyFilteredClear')}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Users className="h-8 w-8 mb-2 opacity-20" />
+            <p className="text-xs font-medium">{t('activity:inspector.noAgentsActive')}</p>
+            <p className="text-[11px] mt-0.5">{t('activity:inspector.agentsAppearHint')}</p>
+          </div>
+        )
       ) : (
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
-          {fleetList.map((agent) => (
+          {shownList.map((agent) => (
             <FleetAgentRow
               key={agent.id}
               agent={agent}

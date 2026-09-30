@@ -12,15 +12,16 @@
  * The navigation helpers themselves remain in `@/lib/view-navigation`
  * — this is a thin re-export surface, not a definition site.
  */
+
+export type { MainView, PanelMainView } from '@/lib/view-navigation';
 export {
   ACTIVITY_SHORTCUT_BY_KEY,
   ACTIVITY_SHORTCUT_LABEL_BY_ACTIVITY,
   navigateToView,
+  openAgentsSurface,
   openMainView,
   openPanel,
   pairedViewForActivity,
   shortcutLabelForActivity,
   showPanel,
 } from '@/lib/view-navigation';
-
-export type { MainView, PanelMainView } from '@/lib/view-navigation';

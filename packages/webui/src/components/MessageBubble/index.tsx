@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import remarkGfm from 'remark-gfm';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { PERF_RUN_METRIC_LABELS, PERF_RUN_MODE_LABELS } from '@/lib/perf-run-message';
 import { cn } from '@/lib/utils';
@@ -177,6 +178,21 @@ export const MessageBubble = memo(function MessageBubble({
     }
     return false;
   })();
+
+  // Calm chrome: the per-message footer (time, usage, copy/raw/pin/edit) is
+  // shown on hover or keyboard focus instead of on every message at once —
+  // only on hover-capable devices, so touch screens keep it visible. It stays
+  // visible whenever it carries state: pinned, raw view, failed send, error,
+  // editing, or the latest reply (its retry and run summary).
+  const fullChrome = useIsFullChrome();
+  const footerQuiet =
+    !fullChrome &&
+    !isPinned &&
+    !showRaw &&
+    !editing &&
+    !isLatestAssistant &&
+    !message.isError &&
+    message.status !== 'failed';
 
   /**
    * Next-steps source of truth.
@@ -615,9 +631,12 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         <div
+          data-footer-quiet={footerQuiet ? '1' : undefined}
           className={cn(
             'flex max-w-full flex-wrap items-center gap-2 px-1',
             isUser ? 'flex-row-reverse' : 'flex-row',
+            footerQuiet &&
+              'transition-opacity [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
           )}
         >
           {!hideEmptyReasoning && (

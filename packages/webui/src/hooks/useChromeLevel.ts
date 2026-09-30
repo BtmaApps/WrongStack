@@ -1,4 +1,4 @@
-import { useLocalPrefs } from '@/stores';
+import { useLocalPrefs } from '@/stores/local-prefs';
 
 /**
  * Workbench chrome density (Settings → Display → "Calm / Full").

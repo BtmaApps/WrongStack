@@ -19,6 +19,7 @@ import {
   Eraser,
   History,
   ListTodo,
+  MoreHorizontal,
   Pin,
   Plus,
   Shrink,
@@ -54,6 +55,13 @@ import { fmtTok } from '../ChatView/utils';
 import { downloadChatAsMarkdown } from '../CommandPalette';
 import { confirmModal } from '../ConfirmModal';
 import { toast } from '../Toaster';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { WorkspaceDock } from '../WorkspaceDock';
 import { ProviderQuotaPanel } from './ProviderQuotaPanel';
 
@@ -365,8 +373,8 @@ export function SessionPanel() {
     send({ type: 'sessions.list', payload: { limit: 8 } });
   }, [wsConnected, send]);
 
-  return (
-    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.28)] [scrollbar-gutter:stable]">
+  const actionsSection = (
+    <>
       {/* ── Quick actions ── */}
       <div className="grid grid-cols-2 gap-1.5 border-b border-border/70 bg-card/55 px-3 py-2.5">
         {isLoading && (
@@ -406,12 +414,18 @@ export function SessionPanel() {
           title={t('activity:sessionPanel.actions.clearTitle')}
         />
       </div>
-
+    </>
+  );
+  const dockSection = (
+    <>
       {/* Workspace controls stay with the session they describe. */}
       <div className="border-b border-border/70 px-3 py-2.5">
         <WorkspaceDock />
       </div>
-
+    </>
+  );
+  const statsSection = (
+    <>
       {/* ── Live stats ──
           Calm chrome folds the grid behind its heading (the same figures sit
           in the chat header's status row); full chrome always shows it. */}
@@ -483,10 +497,16 @@ export function SessionPanel() {
           </div>
         )}
       </div>
-
+    </>
+  );
+  const quotaSection = (
+    <>
       {/* ── Subscription plan quota (Codex, MiniMax, Z.AI) ── */}
       <ProviderQuotaPanel />
-
+    </>
+  );
+  const planSection = (
+    <>
       {/* ── Plan / todos ── */}
       {todos.length > 0 &&
         (() => {
@@ -568,7 +588,10 @@ export function SessionPanel() {
             </div>
           );
         })()}
-
+    </>
+  );
+  const pinnedSection = (
+    <>
       {/* ── Pinned answers ── */}
       {pinnedRows.length > 0 && (
         <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
@@ -621,7 +644,10 @@ export function SessionPanel() {
           />
         </div>
       )}
-
+    </>
+  );
+  const bugHuntSection = (
+    <>
       {bugHuntRun && (
         <div className="border-b border-primary/25 bg-primary/[0.06] px-3 py-2.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
@@ -634,7 +660,10 @@ export function SessionPanel() {
           </p>
         </div>
       )}
-
+    </>
+  );
+  const quickSettingsSection = (
+    <>
       {/* ── Quick settings — the mid-session knobs ── */}
       <div className="space-y-1 border-b border-border/70 px-3 py-2.5">
         <SectionHeading
@@ -669,7 +698,10 @@ export function SessionPanel() {
           }}
         />
       </div>
-
+    </>
+  );
+  const historySection = (
+    <>
       {/* ── History / recent sessions ── */}
       {(() => {
         const recent = historyEntries.slice(0, 8);
@@ -693,7 +725,7 @@ export function SessionPanel() {
                 </button>
               }
             />
-            <div className="space-y-0.5 max-h-40 overflow-y-auto">
+            <div className={cn('space-y-0.5', fullChrome && 'max-h-40 overflow-y-auto')}>
               {recent.map((entry) => (
                 <button
                   key={entry.id}
@@ -723,6 +755,102 @@ export function SessionPanel() {
           </div>
         );
       })()}
+    </>
+  );
+  // Calm chrome: one primary action (New session, plus Abort while running);
+  // Export / Compact / Clear move into the row's "more" menu with the same
+  // handlers and the same disabled rules.
+  const calmActionsSection = (
+    <div className="flex items-center gap-1.5 border-b border-border/70 bg-card/55 px-3 py-2.5">
+      <div className="grid flex-1">
+        <ActionButton
+          icon={<Plus className="h-3 w-3" />}
+          label={t('activity:sessionPanel.actions.newSession')}
+          onClick={handleNewSession}
+          disabled={!wsConnected}
+          title={t('activity:sessionPanel.actions.newSessionTitle')}
+        />
+      </div>
+      {isLoading && (
+        <div className="grid flex-1">
+          <ActionButton
+            icon={<Square className="h-3 w-3" />}
+            label={t('activity:sessionPanel.actions.abort')}
+            tone="danger"
+            onClick={() => send({ type: 'abort', payload: {} })}
+            disabled={!wsConnected}
+          />
+        </div>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            data-testid="session-actions-menu"
+            title={t('activity:sessionPanel.actions.more')}
+            aria-label={t('activity:sessionPanel.actions.more')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground/80 transition-colors hover:bg-accent"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onSelect={() => downloadChatAsMarkdown()} className="gap-2">
+            <Download className="h-4 w-4" />
+            {t('activity:sessionPanel.actions.export')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!wsConnected}
+            onSelect={() => send({ type: 'context.compact', payload: { aggressive: false } })}
+            className="gap-2"
+          >
+            <Shrink className="h-4 w-4" />
+            {t('activity:sessionPanel.actions.compact')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={!wsConnected}
+            onSelect={handleClear}
+            className="gap-2 text-destructive focus:text-destructive"
+          >
+            <Eraser className="h-4 w-4" />
+            {t('common:action.clear')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.28)] [scrollbar-gutter:stable]">
+      {fullChrome ? (
+        <>
+          {actionsSection}
+          {dockSection}
+          {statsSection}
+          {quotaSection}
+          {planSection}
+          {pinnedSection}
+          {bugHuntSection}
+          {quickSettingsSection}
+          {historySection}
+        </>
+      ) : (
+        // Calm chrome: live work first (dock, plan, pinned), then the
+        // session history as the panel's main list; the reference figures
+        // (stats, quota) and the mid-session knobs follow.
+        <>
+          {calmActionsSection}
+          {dockSection}
+          {planSection}
+          {pinnedSection}
+          {historySection}
+          {statsSection}
+          {quotaSection}
+          {bugHuntSection}
+          {quickSettingsSection}
+        </>
+      )}
     </div>
   );
 }

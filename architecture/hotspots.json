@@ -311,8 +311,8 @@
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
-      "lines": 870,
-      "relativeImports": 1
+      "lines": 898,
+      "relativeImports": 2
     },
     "packages/webui/src/components/AudienceMemoryPanel.tsx": {
       "lines": 909,
@@ -330,6 +330,10 @@
       "lines": 847,
       "relativeImports": 6
     },
+    "packages/webui/src/components/MessageBubble/index.tsx": {
+      "lines": 812,
+      "relativeImports": 13
+    },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {
       "lines": 824,
       "relativeImports": 2
@@ -340,6 +344,10 @@
     },
     "packages/webui/src/components/SettingsPanel/BrainSection.tsx": {
       "lines": 897,
+      "relativeImports": 7
+    },
+    "packages/webui/src/components/SidePanel/SessionPanel.tsx": {
+      "lines": 857,
       "relativeImports": 7
     },
     "packages/webui/src/components/SidePanel/SkillsList.tsx": {

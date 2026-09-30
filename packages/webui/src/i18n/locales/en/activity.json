@@ -439,7 +439,8 @@
       "newSessionTitle": "Start a new session (Ctrl+N)",
       "exportTitle": "Export chat as markdown (Ctrl+E)",
       "compactTitle": "Compact the context window",
-      "clearTitle": "Close this session and start a new one in this tab"
+      "clearTitle": "Close this session and start a new one in this tab",
+      "more": "More session actions"
     },
     "model": "Model",
     "modelTitle": "Change model (Ctrl+M)",
@@ -3727,7 +3728,19 @@
     "theme": "Theme",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "toggleNavigationMenu": "Toggle navigation menu",
+    "toggleNavigation": "Toggle navigation",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "moreOptions": "More options",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "offline": "Offline",
+      "checking": "Checking",
+      "disabled": "Disabled"
+    }
   },
   "agentsPanel": {
     "agentRoster": "Agent roster"
@@ -4159,5 +4172,15 @@
       "poolHint": "The gateway rotates across these accounts, so one running out does not stop a session.",
       "balances": "Prepaid balances"
     }
+  },
+  "launcher": {
+    "title": "Tools",
+    "groups": {
+      "work": "Work",
+      "knowledge": "Knowledge",
+      "quality": "Quality",
+      "system": "System"
+    },
+    "customize": "Customize the bar (the first 4 views stay on it)"
   }
 }

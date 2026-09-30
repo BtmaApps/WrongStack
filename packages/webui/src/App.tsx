@@ -25,7 +25,6 @@ import { CommandPalette } from './components/CommandPalette';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ConfirmModalHost, PromptModalHost } from './components/ConfirmModal';
 import { ConnectionBanner } from './components/ConnectionBanner';
-import { ContextBreakdownModal } from './components/ContextBreakdownModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { FallbackModal } from './components/FallbackModal';
 import { InspectorPanel } from './components/InspectorPanel';
@@ -142,8 +141,6 @@ function AppInner() {
   const activeSessionId = useActiveSessionId();
   const sessionId = activeSessionId ?? sessionRecordId;
   const nickname = useUIStore((s) => (sessionId ? s.sessionNicknames[sessionId] : undefined));
-  const sideContextBreakdownOpen = useUIStore((s) => s.sideContextBreakdownOpen);
-  const setSideContextBreakdownOpen = useUIStore((s) => s.setSideContextBreakdownOpen);
   const _fleetAgents = useFleetStore((s) => s.agents);
 
   useDesktopBridge({
@@ -381,13 +378,9 @@ function AppInner() {
       {/* Prompt library modal — triggered by /prompt slash command or library button */}
       <PromptLibraryModal />
 
-      {/* Context breakdown modal — triggered from side-panel session panel */}
-      {sideContextBreakdownOpen && (
-        <ContextBreakdownModal
-          open={sideContextBreakdownOpen}
-          onClose={() => setSideContextBreakdownOpen(false)}
-        />
-      )}
+      {/* The context breakdown modal is mounted once, by ChatView
+          (chatContextBreakdownOpen). A second copy used to sit here behind
+          `sideContextBreakdownOpen`, which nothing in the app ever opened. */}
 
       {/* Global overlays */}
       <ConfirmDialog />

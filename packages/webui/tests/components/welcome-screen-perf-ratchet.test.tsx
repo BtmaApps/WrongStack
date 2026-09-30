@@ -40,7 +40,13 @@ beforeEach(() => {
     provider: 'test-provider',
     model: 'test-model',
   });
-  useLocalPrefs.setState({ subagentsAllowed: true, subagentsPolicyLocked: false });
+  // These tests drive the launcher forms directly; calm chrome folds them
+  // (covered below), so pin full chrome where the forms are always open.
+  useLocalPrefs.setState({
+    subagentsAllowed: true,
+    subagentsPolicyLocked: false,
+    chromeLevel: 'full',
+  });
   useFileStore.setState({
     tree: [{ name: 'sage', path: 'packages/sage', type: 'directory', children: [] }],
   });

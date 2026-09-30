@@ -28,9 +28,8 @@ const client = {
 
 vi.mock('@/hooks/useWebSocket', () => ({ useWebSocket: () => ({ client }) }));
 
-const { useConfigStore, useFleetStore, useProviderQuotaStore, useUIStore } = await import(
-  '@/stores'
-);
+const { useConfigStore, useFleetStore, useLocalPrefs, useProviderQuotaStore, useUIStore } =
+  await import('@/stores');
 const { ProviderQuotaPanel } = await import('../../src/components/SidePanel/ProviderQuotaPanel.js');
 
 const sent = (type: string) => sends.filter((m) => m.type === type);
@@ -88,6 +87,9 @@ beforeEach(() => {
   useProviderQuotaStore.getState().clear();
   useFleetStore.setState({ agents: new Map() });
   useUIStore.setState({ currentView: 'chat' });
+  // The empty-state explanation and its refresh button are full chrome;
+  // calm chrome drops the whole section until a provider reports quota.
+  useLocalPrefs.setState({ chromeLevel: 'full' });
 });
 
 describe('ProviderQuotaPanel (side panel)', () => {
@@ -113,6 +115,13 @@ describe('ProviderQuotaPanel (side panel)', () => {
     expect(
       screen.getByText(/^No provider with a readable plan quota is configured \(ChatGPT\/Codex/),
     ).toBeTruthy();
+  });
+
+  it('calm chrome hides the section while no quota-readable provider is configured', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    const { container } = render(<ProviderQuotaPanel />);
+    savedProviders([{ id: 'anthropic', type: 'anthropic' }]);
+    expect(container.textContent).toBe('');
   });
 
   it('shows only the provider the session runs on, and links to the rest', () => {

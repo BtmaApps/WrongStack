@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-30T21:34:03.333Z
+**Generated:** 2026-09-30T21:35:27.187Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4311 |
-| Production source lines | 1023423 |
-| Test files | 3915 |
+| Production source files | 4312 |
+| Production source lines | 1023999 |
+| Test files | 3916 |
 | Workspace dependency edges | 131 |
-| Relative module edges | 14053 |
+| Relative module edges | 14054 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 245 | 286 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 450 | 404 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 22 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 616 | 435 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 617 | 436 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 49 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 21 | 10 | @wrongstack/core |
 | @wrongstack/webui-server | 258 | 246 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -127,6 +127,7 @@ None.
 | 899 | `packages/core/src/core/fallback-model.ts` |
 | 898 | `packages/governance/src/runtime-compatibility.ts` |
 | 898 | `packages/vector-memory/src/store.ts` |
+| 898 | `packages/webui/src/components/activity-bar/index.tsx` |
 | 897 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
 | 896 | `packages/webui-server/src/server/backend-services.ts` |
 | 896 | `packages/webui-server/src/server/memory-handlers.ts` |
@@ -135,7 +136,6 @@ None.
 | 893 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 891 | `packages/kanban/src/verification/verification-context.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
-| 886 | `packages/core/src/coordination/collab-debug.ts` |
 
 ## Exports only tests reference
 

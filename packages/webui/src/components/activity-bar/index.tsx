@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { type ReactElement, useEffect, useMemo, useState } from 'react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { MainView } from '@/lib/view-navigation';
@@ -58,6 +59,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { ToolsLauncher } from './tools-launcher';
 
 // ── Activity definitions ───────────────────────────────────────────────
 //
@@ -113,6 +115,12 @@ const VIEWS: ViewDef[] = [
   { id: 'provider-test', icon: <FlaskConical size={16} />, label: 'Provider Test' },
   { id: 'provider-quota', icon: <Gauge size={16} />, label: 'Plan Quota' },
 ];
+
+/**
+ * Calm chrome keeps this many main views (the first of the user's order) on
+ * the bar; every view — these included — is in the ToolsLauncher map.
+ */
+const CALM_BAR_VIEW_COUNT = 4;
 
 const DESKTOP_CORE_PANEL_IDS: readonly Activity[] = ['chat', 'files', 'changes', 'mailbox'];
 // Convenience set for O(1) `isLocked` checks during drag/drop.
@@ -304,12 +312,27 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
     () => resolveActivityOrder(VIEWS, customOrder?.views),
     [customOrder?.views],
   );
+  // Calm chrome (outside reorder mode): the bar carries only the first
+  // CALM_BAR_VIEW_COUNT views plus the ToolsLauncher, which maps them all.
+  // Reorder mode shows every view again so any of them can be dragged into
+  // those first slots.
+  const fullChrome = useIsFullChrome();
+  const calmBar = !fullChrome && !reorderMode;
+  const barViews = useMemo(
+    () => (calmBar ? orderedViews.slice(0, CALM_BAR_VIEW_COUNT) : orderedViews),
+    [calmBar, orderedViews],
+  );
   // Always calculate capacity — when icons don't fit the viewport they
-  // overflow into the "…" menu instead of scrolling.
+  // overflow into the "…" menu instead of scrolling. The launcher takes a slot.
   const desktopCapacity = useDesktopActivityCapacity(desktopShell);
   const desktopSplit = useMemo(
-    () => splitDesktopActivityBarItems(desktopCapacity, orderedPanels, orderedViews),
-    [desktopCapacity, orderedPanels, orderedViews],
+    () =>
+      splitDesktopActivityBarItems(
+        calmBar ? desktopCapacity - 1 : desktopCapacity,
+        orderedPanels,
+        barViews,
+      ),
+    [calmBar, desktopCapacity, orderedPanels, barViews],
   );
   const visiblePanelIdSet = useMemo(
     () => new Set(desktopSplit.visiblePanelIds),
@@ -329,8 +352,9 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
   );
   const visiblePanels = orderedPanels.filter((def) => visiblePanelIdSet.has(def.id));
   const overflowPanels = orderedPanels.filter((def) => overflowPanelIdSet.has(def.id));
-  const visibleViews = orderedViews.filter((def) => visibleViewIdSet.has(def.id));
-  const overflowViews = orderedViews.filter((def) => overflowViewIdSet.has(def.id));
+  const visibleViews = barViews.filter((def) => visibleViewIdSet.has(def.id));
+  // Calm: the launcher already lists every view, so "…" does not repeat them.
+  const overflowViews = calmBar ? [] : barViews.filter((def) => overflowViewIdSet.has(def.id));
 
   const badgeFor = (id: Activity): number | undefined => {
     if (id === 'mailbox') return unreadMail || undefined;
@@ -491,6 +515,10 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
             onDragEnd={onDragEnd}
           />
         ))}
+
+        {calmBar && (
+          <ToolsLauncher compact={desktopShell} onCustomize={() => setReorderMode(true)} />
+        )}
       </div>
 
       {/* ── Connection indicator — compact dot between icon column and utilities ── */}

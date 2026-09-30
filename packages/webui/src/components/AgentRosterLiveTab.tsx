@@ -10,7 +10,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { openPanel } from '@/components/activity-bar/nav';
+import { openAgentsSurface } from '@/components/activity-bar/nav';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { cn } from '@/lib/utils';
@@ -102,6 +103,7 @@ function fmtCost(n: number | undefined | null): string {
 
 export function LiveFleetTab({ nowTick }: { nowTick: number }) {
   const { t } = useAppTranslation();
+  const fullChrome = useIsFullChrome();
   const fleetAgents = useFleetStore((s) => s.agents);
   const currentSessionId = useActiveSessionId();
   // This tab's leader. The process-wide pointer put the crown on whichever
@@ -226,7 +228,7 @@ export function LiveFleetTab({ nowTick }: { nowTick: number }) {
           <span className="flex-1" />
           <button
             type="button"
-            onClick={() => openPanel('agents')}
+            onClick={() => openAgentsSurface(fullChrome)}
             className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             title={t('activity:agentRoster.openAgentsPanel')}
           >

@@ -135,7 +135,17 @@ export function useChatViewState() {
     [],
   );
 
-  const [processOpen, setProcessOpen] = useState(false);
+  // The process monitor is ONE app-level overlay (App.tsx) shared with /kill
+  // and the desktop bridge. This header toggle used to keep its own local flag
+  // and mount a second ProcessMonitor, so both could stack on screen.
+  const processOpen = useUIStore((s) => s.processMonitorOpen);
+  const setProcessMonitorOpen = useUIStore((s) => s.setProcessMonitorOpen);
+  const setProcessOpen = useCallback(
+    (next: SetStateAction<boolean>) => {
+      setProcessMonitorOpen(nextBoolean(next, useUIStore.getState().processMonitorOpen));
+    },
+    [setProcessMonitorOpen],
+  );
   const checkpointOpen = useUIStore((s) => s.chatCheckpointOpen);
   const setChatCheckpointOpen = useUIStore((s) => s.setChatCheckpointOpen);
   const setCheckpointOpen = useCallback(

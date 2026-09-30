@@ -431,7 +431,8 @@
       "newSessionTitle": "Yeni oturum başlat (Ctrl+N)",
       "exportTitle": "Sohbeti markdown olarak dışa aktar (Ctrl+E)",
       "compactTitle": "Bağlam penceresini sıkıştır",
-      "clearTitle": "Bu oturumu kapat ve bu sekmede yenisini başlat"
+      "clearTitle": "Bu oturumu kapat ve bu sekmede yenisini başlat",
+      "more": "Diğer oturum işlemleri"
     },
     "model": "Model",
     "modelTitle": "Modeli değiştir (Ctrl+M)",
@@ -3727,7 +3728,19 @@
     "theme": "Tema",
     "themeLight": "Açık",
     "themeDark": "Koyu",
-    "themeSystem": "Sistem"
+    "themeSystem": "Sistem",
+    "toggleNavigationMenu": "Gezinme menüsünü aç/kapat",
+    "toggleNavigation": "Gezinmeyi aç/kapat",
+    "switchToLight": "Açık temaya geç",
+    "switchToDark": "Koyu temaya geç",
+    "moreOptions": "Diğer seçenekler",
+    "status": {
+      "connected": "Bağlı",
+      "disconnected": "Bağlantı yok",
+      "offline": "Çevrimdışı",
+      "checking": "Kontrol ediliyor",
+      "disabled": "Kapalı"
+    }
   },
   "agentsPanel": {
     "agentRoster": "Ajan kadrosu"
@@ -4159,5 +4172,15 @@
       "poolHint": "Gateway bu hesaplar arasında döner; biri tükenince oturum durmaz.",
       "balances": "Ön ödemeli bakiyeler"
     }
+  },
+  "launcher": {
+    "title": "Araçlar",
+    "groups": {
+      "work": "İş",
+      "knowledge": "Bilgi",
+      "quality": "Kalite",
+      "system": "Sistem"
+    },
+    "customize": "Çubuğu özelleştir (ilk 4 görünüm çubukta kalır)"
   }
 }

@@ -169,6 +169,7 @@ export function WorkspaceDock() {
   const { t } = useAppTranslation();
   const toggleDockSection = useUIStore((s) => s.toggleDockSection);
   const hiddenChips = useUIStore((s) => s.hiddenChips);
+  const fullChrome = useIsFullChrome();
   const toggleChipHidden = useUIStore((s) => s.toggleChipHidden);
   const dockCustomizeOpen = useUIStore((s) => s.dockCustomizeOpen);
   const setDockCustomizeOpen = useUIStore((s) => s.setDockCustomizeOpen);
@@ -222,7 +223,9 @@ export function WorkspaceDock() {
     goal: (hasData.goal || dockSection === 'goal') && !hidden.has('goal'),
     'goal-state':
       (hasData['goal-state'] || dockSection === 'goal-state') && !hidden.has('goal-state'),
-    fleet: (hasData.fleet || dockSection === 'fleet') && !hidden.has('fleet'),
+    // Calm chrome: agents live in the right inspector (topbar "Agents"), so
+    // the dock does not offer a second fleet view.
+    fleet: fullChrome && (hasData.fleet || dockSection === 'fleet') && !hidden.has('fleet'),
     work: (hasData.work || dockSection === 'work') && !hidden.has('work'),
     worktrees: (hasData.worktrees || dockSection === 'worktrees') && !hidden.has('worktrees'),
     collab: (hasData.collab || dockSection === 'collab') && !hidden.has('collab'),
@@ -424,7 +427,10 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
   const [worktreeView, setWorktreeView] = useState<'graph' | 'lanes'>('graph');
   const { t } = useAppTranslation();
 
-  const open = dockSection !== null && dockSection !== 'goal';
+  const fullChrome = useIsFullChrome();
+  // Calm chrome has no Fleet chip; a persisted 'fleet' section stays closed.
+  const open =
+    dockSection !== null && dockSection !== 'goal' && (fullChrome || dockSection !== 'fleet');
   const section = open ? dockSection : null;
   const meta = section ? DOCK_INSPECTOR_META[section] : null;
 

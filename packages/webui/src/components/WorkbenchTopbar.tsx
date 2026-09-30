@@ -156,8 +156,8 @@ export function WorkbenchTopbar({
             type="button"
             onClick={toggleSidebar}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-            aria-label="Toggle navigation menu"
-            title="Toggle navigation"
+            aria-label={t('activity:topbar.toggleNavigationMenu', 'Toggle navigation menu')}
+            title={t('activity:topbar.toggleNavigation', 'Toggle navigation')}
           >
             <Menu className="h-4 w-4" />
           </button>
@@ -185,7 +185,11 @@ export function WorkbenchTopbar({
             type="button"
             onClick={toggleTheme}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-            title={effectiveTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={
+              effectiveTheme === 'dark'
+                ? t('activity:topbar.switchToLight', 'Switch to light theme')
+                : t('activity:topbar.switchToDark', 'Switch to dark theme')
+            }
           >
             {effectiveTheme === 'dark' ? (
               <Sun className="h-3.5 w-3.5" />
@@ -198,8 +202,8 @@ export function WorkbenchTopbar({
               <button
                 type="button"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                title="More options"
-                aria-label="More options"
+                title={t('activity:topbar.moreOptions', 'More options')}
+                aria-label={t('activity:topbar.moreOptions', 'More options')}
               >
                 <MoreVertical className="h-3.5 w-3.5" />
               </button>
@@ -226,7 +230,9 @@ export function WorkbenchTopbar({
                       wsConnected ? 'text-success' : 'text-warning',
                     )}
                   >
-                    {wsConnected ? 'Connected' : 'Offline'}
+                    {wsConnected
+                      ? t('activity:topbar.status.connected', 'Connected')
+                      : t('activity:topbar.status.offline', 'Offline')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -242,12 +248,12 @@ export function WorkbenchTopbar({
                     )}
                   >
                     {wrongProxy.status === 'connected'
-                      ? 'Connected'
+                      ? t('activity:topbar.status.connected', 'Connected')
                       : wrongProxy.status === 'checking'
-                        ? 'Checking'
+                        ? t('activity:topbar.status.checking', 'Checking')
                         : wrongProxy.status === 'error'
-                          ? 'Offline'
-                          : 'Disabled'}
+                          ? t('activity:topbar.status.offline', 'Offline')
+                          : t('activity:topbar.status.disabled', 'Disabled')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -263,12 +269,12 @@ export function WorkbenchTopbar({
                     )}
                   >
                     {hq.status === 'connected'
-                      ? 'Connected'
+                      ? t('activity:topbar.status.connected', 'Connected')
                       : hq.status === 'checking'
-                        ? 'Checking'
+                        ? t('activity:topbar.status.checking', 'Checking')
                         : hq.status === 'error'
-                          ? 'Offline'
-                          : 'Disabled'}
+                          ? t('activity:topbar.status.offline', 'Offline')
+                          : t('activity:topbar.status.disabled', 'Disabled')}
                   </span>
                 </div>
               </div>
@@ -418,7 +424,9 @@ export function WorkbenchTopbar({
                   onClick={toggleTheme}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                   title={
-                    effectiveTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+                    effectiveTheme === 'dark'
+                      ? t('activity:topbar.switchToLight', 'Switch to light theme')
+                      : t('activity:topbar.switchToDark', 'Switch to dark theme')
                   }
                 >
                   {effectiveTheme === 'dark' ? (
@@ -534,12 +542,20 @@ export function WorkbenchTopbar({
                 {/* Backend WS Status */}
                 <span
                   role="status"
-                  aria-label={wsConnected ? 'Connected' : 'Disconnected'}
+                  aria-label={
+                    wsConnected
+                      ? t('activity:topbar.status.connected', 'Connected')
+                      : t('activity:topbar.status.disconnected', 'Disconnected')
+                  }
                   className={cn(
                     'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60',
                     wsConnected ? 'text-success' : 'text-warning',
                   )}
-                  title={wsConnected ? 'Connected' : 'Disconnected'}
+                  title={
+                    wsConnected
+                      ? t('activity:topbar.status.connected', 'Connected')
+                      : t('activity:topbar.status.disconnected', 'Disconnected')
+                  }
                   data-testid="ws-status-indicator"
                 >
                   {wsConnected ? (

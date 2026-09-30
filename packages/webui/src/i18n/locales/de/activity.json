@@ -431,7 +431,8 @@
       "newSessionTitle": "Neue Sitzung starten (Ctrl+N)",
       "exportTitle": "Chat als Markdown exportieren (Ctrl+E)",
       "compactTitle": "Kontextfenster komprimieren",
-      "clearTitle": "Diese Sitzung schließen und in diesem Tab eine neue starten"
+      "clearTitle": "Diese Sitzung schließen und in diesem Tab eine neue starten",
+      "more": "Weitere Sitzungsaktionen"
     },
     "model": "Modell",
     "modelTitle": "Modell ändern (Ctrl+M)",
@@ -3666,7 +3667,19 @@
     "theme": "Design",
     "themeLight": "Hell",
     "themeDark": "Dunkel",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "toggleNavigationMenu": "Navigationsmenü umschalten",
+    "toggleNavigation": "Navigation umschalten",
+    "switchToLight": "Zum hellen Design wechseln",
+    "switchToDark": "Zum dunklen Design wechseln",
+    "moreOptions": "Weitere Optionen",
+    "status": {
+      "connected": "Verbunden",
+      "disconnected": "Getrennt",
+      "offline": "Offline",
+      "checking": "Wird geprüft",
+      "disabled": "Deaktiviert"
+    }
   },
   "agentsPanel": {
     "agentRoster": "Agenten-Roster"
@@ -4159,5 +4172,15 @@
       "poolHint": "Das Gateway wechselt zwischen diesen Konten; ist eines erschöpft, stoppt die Sitzung nicht.",
       "balances": "Prepaid-Guthaben"
     }
+  },
+  "launcher": {
+    "title": "Werkzeuge",
+    "groups": {
+      "work": "Arbeit",
+      "knowledge": "Wissen",
+      "quality": "Qualität",
+      "system": "System"
+    },
+    "customize": "Leiste anpassen (die ersten 4 Ansichten bleiben dort)"
   }
 }

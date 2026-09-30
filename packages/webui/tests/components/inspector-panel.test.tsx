@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { InspectorPanel } from '../../src/components/InspectorPanel';
+import { InspectorPanel, InspectorTrigger } from '../../src/components/InspectorPanel';
 import { useFleetStore, useKanbanStore, useUIStore } from '../../src/stores';
 import { DEFAULT_LANE_ID, useChatLanes } from '../../src/stores/chat-lanes';
+import { useLocalPrefs } from '../../src/stores/local-prefs';
 import {
   SESSION_DEFAULT_LANE_ID,
   setActiveSessionLane,
@@ -130,5 +131,73 @@ describe('InspectorPanel component with universal targets', () => {
     fireEvent.click(backBtn);
 
     expect(useUIStore.getState().inspectorTarget).toEqual({ kind: 'fleet', tab: 'fleet' });
+  });
+});
+
+describe('Agents surface under calm chrome', () => {
+  beforeEach(() => {
+    useChatLanes.setState({ lanes: {}, activeSessionId: DEFAULT_LANE_ID });
+    useSessionLanes.setState({ lanes: {}, activeSessionId: SESSION_DEFAULT_LANE_ID });
+    setActiveSessionLane('sess-a');
+    useFleetStore.setState({
+      agents: new Map<string, SubagentView>([
+        ['agent-run', agent('agent-run', 'sess-a')],
+        ['agent-done', { ...agent('agent-done', 'sess-a'), status: 'completed' }],
+      ]),
+      leaderId: undefined,
+      eventTimeline: [],
+    } as never);
+    useUIStore.setState({
+      inspectorOpen: true,
+      inspectorTab: 'fleet',
+      inspectorTarget: null,
+      sidebarOpen: false,
+      activeActivity: 'chat',
+    });
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+  });
+
+  it('gives the fleet tab the status filter and clear-finished', () => {
+    render(<InspectorPanel />);
+    expect(screen.getByTestId('inspector-fleet-toolbar')).toBeDefined();
+    expect(screen.getByText('agent-done')).toBeDefined();
+
+    fireEvent.click(screen.getByText('activity:agents.filterRunning'));
+    expect(screen.queryByText('agent-done')).toBeNull();
+    expect(screen.getByText('agent-run')).toBeDefined();
+
+    fireEvent.click(screen.getByText('activity:agents.filterAll'));
+    act(() => {
+      fireEvent.click(screen.getByLabelText('activity:agents.clearFinishedTitle'));
+    });
+    expect(useFleetStore.getState().agents.has('agent-done')).toBe(false);
+    expect(useFleetStore.getState().agents.has('agent-run')).toBe(true);
+  });
+
+  it('full chrome leaves the fleet tab without the toolbar', () => {
+    useLocalPrefs.setState({ chromeLevel: 'full' });
+    render(<InspectorPanel />);
+    expect(screen.queryByTestId('inspector-fleet-toolbar')).toBeNull();
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+  });
+
+  it('the top-bar Agents trigger opens and closes the inspector, not the left panel', () => {
+    useUIStore.setState({ inspectorOpen: false, inspectorTab: 'sideEffects' });
+    render(<InspectorTrigger />);
+    const trigger = screen.getByTestId('inspector-trigger');
+
+    act(() => {
+      fireEvent.click(trigger);
+    });
+    let ui = useUIStore.getState();
+    expect(ui.inspectorOpen).toBe(true);
+    expect(ui.inspectorTab).toBe('fleet');
+    expect(ui.activeActivity).not.toBe('agents');
+
+    act(() => {
+      fireEvent.click(trigger);
+    });
+    ui = useUIStore.getState();
+    expect(ui.inspectorOpen).toBe(false);
   });
 });

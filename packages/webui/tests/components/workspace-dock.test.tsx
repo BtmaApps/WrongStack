@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceDock } from '../../src/components/WorkspaceDock';
 import { useFleetStore, useSessionStore, useUIStore } from '../../src/stores';
 import { DEFAULT_LANE_ID, useChatLanes } from '../../src/stores/chat-lanes';
+import { useLocalPrefs } from '../../src/stores/local-prefs';
 import {
   SESSION_DEFAULT_LANE_ID,
   setActiveSessionLane,
@@ -50,6 +51,8 @@ beforeEach(() => {
   useSessionStore.setState({ todos: [] });
   useFleetStore.setState({ agents: new Map() } as never);
   gitInfo.current = null;
+  // The Fleet chip is full chrome; calm chrome sends agents to the inspector.
+  useLocalPrefs.setState({ chromeLevel: 'full' });
 });
 
 describe('WorkspaceDock', () => {
@@ -66,6 +69,20 @@ describe('WorkspaceDock', () => {
     render(<WorkspaceDock />);
 
     expect(screen.getByRole('button', { name: /fleet/i }).textContent).toContain('1/2');
+  });
+
+  it('calm chrome offers no Fleet chip (agents live in the right inspector)', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    setActiveSessionLane('sess-a');
+    useFleetStore.setState({
+      agents: new Map<string, SubagentView>([
+        ['a-running', agent('a-running', 'sess-a', 'running')],
+      ]),
+    } as never);
+
+    render(<WorkspaceDock />);
+
+    expect(screen.queryByRole('button', { name: /fleet/i })).toBeNull();
   });
 
   it('hides the Fleet chip when only other tabs have agents', () => {

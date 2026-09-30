@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageBubble } from '../../src/components/MessageBubble/index.js';
 import { useChatStore } from '../../src/stores/chat-store.js';
+import { useLocalPrefs } from '../../src/stores/local-prefs.js';
 import type { ChatMessage } from '../../src/stores/types.js';
 
 const mockWs = {
@@ -123,5 +124,55 @@ describe('MessageBubble edit and retry operations', () => {
     expect(messages[0]?.id).toBe('u1');
     expect(messages[0]?.content).toBe('my prompt');
     expect(messages[0]?.role).toBe('user');
+  });
+});
+
+describe('MessageBubble footer under calm chrome', () => {
+  beforeEach(() => {
+    useChatStore.getState().clearMessages();
+    useChatStore.getState().setLoading(false);
+  });
+
+  afterEach(async () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    await act(async () => {
+      await import('react-markdown');
+    });
+  });
+
+  const footer = (container: HTMLElement) =>
+    container.querySelector('[data-footer-quiet]') as HTMLElement | null;
+
+  it('quiets the footer of an older message and keeps the latest reply loud', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    const u = userMessage({ id: 'u1' });
+    const older = assistantMessage({ id: 'a1', content: 'older reply' });
+    const latest = assistantMessage({ id: 'a2', content: 'latest reply' });
+    useChatStore.getState().setMessages([u, older, latest]);
+
+    const first = render(<MessageBubble message={older} isFirst />);
+    expect(footer(first.container)).not.toBeNull();
+    first.unmount();
+
+    const last = render(<MessageBubble message={latest} isFirst />);
+    expect(footer(last.container)).toBeNull();
+  });
+
+  it('keeps a failed user message footer visible (its retry must be reachable)', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    const failed = userMessage({ id: 'u1', status: 'failed' });
+    useChatStore.getState().setMessages([failed]);
+    const { container } = render(<MessageBubble message={failed} isFirst />);
+    expect(footer(container)).toBeNull();
+  });
+
+  it('full chrome never quiets the footer', () => {
+    useLocalPrefs.setState({ chromeLevel: 'full' });
+    const u = userMessage({ id: 'u1' });
+    const older = assistantMessage({ id: 'a1' });
+    const latest = assistantMessage({ id: 'a2' });
+    useChatStore.getState().setMessages([u, older, latest]);
+    const { container } = render(<MessageBubble message={older} isFirst />);
+    expect(footer(container)).toBeNull();
   });
 });

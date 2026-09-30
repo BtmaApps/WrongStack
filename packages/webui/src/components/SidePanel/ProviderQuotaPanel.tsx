@@ -12,6 +12,7 @@
 
 import { ChevronRight, Gauge, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { openMainView } from '@/lib/view-navigation';
@@ -26,6 +27,11 @@ export function ProviderQuotaPanel() {
   const { cards, now, refreshing, refresh, wsConnected } = useQuotaFeed();
   const inUse = useModelsInUse();
   const shown = useMemo(() => cardsInUse(cards, inUse), [cards, inUse]);
+  const fullChrome = useIsFullChrome();
+
+  // Calm chrome: with no quota-reporting provider configured there is nothing
+  // to read here — the Plan Quota page (activity bar) still explains why.
+  if (!fullChrome && cards.length === 0) return null;
 
   return (
     <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">

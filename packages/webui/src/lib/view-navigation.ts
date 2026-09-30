@@ -154,6 +154,27 @@ export function openPanel(activity: Activity): void {
   setView(pairedViewForActivity(activity));
 }
 
+/**
+ * Calm chrome's single agents surface: the right-side inspector on its Fleet
+ * tab (agent detail, audit and council are its sibling tabs). A repeat call
+ * while the inspector already shows fleet or agents closes it. Full chrome
+ * keeps opening the left Agents side panel instead (`openPanel('agents')`).
+ */
+export function toggleAgentsInspector(): void {
+  const ui = useUIStore.getState();
+  if (ui.inspectorOpen && (ui.inspectorTab === 'fleet' || ui.inspectorTab === 'agents')) {
+    ui.setInspectorOpen(false);
+    return;
+  }
+  ui.setFleetMonitorOpen(true);
+}
+
+/** The "Agents" entry point for the current chrome level. */
+export function openAgentsSurface(fullChrome: boolean): void {
+  if (fullChrome) openPanel('agents');
+  else toggleAgentsInspector();
+}
+
 export function openMainView(view: MainView): void {
   const ui = useUIStore.getState();
   if (ui.currentView === view) {

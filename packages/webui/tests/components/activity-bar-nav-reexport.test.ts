@@ -14,6 +14,7 @@ describe('activity-bar/nav re-export surface', () => {
     'ACTIVITY_SHORTCUT_BY_KEY',
     'ACTIVITY_SHORTCUT_LABEL_BY_ACTIVITY',
     'navigateToView',
+    'openAgentsSurface',
     'openMainView',
     'openPanel',
     'pairedViewForActivity',

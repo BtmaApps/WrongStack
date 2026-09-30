@@ -431,7 +431,8 @@
       "newSessionTitle": "Démarrer une nouvelle session (Ctrl+N)",
       "exportTitle": "Exporter le chat en markdown (Ctrl+E)",
       "compactTitle": "Compresser la fenêtre de contexte",
-      "clearTitle": "Fermer cette session et en démarrer une nouvelle dans cet onglet"
+      "clearTitle": "Fermer cette session et en démarrer une nouvelle dans cet onglet",
+      "more": "Autres actions de session"
     },
     "model": "Modèle",
     "modelTitle": "Changer de modèle (Ctrl+M)",
@@ -3666,7 +3667,19 @@
     "theme": "Thème",
     "themeLight": "Clair",
     "themeDark": "Sombre",
-    "themeSystem": "Système"
+    "themeSystem": "Système",
+    "toggleNavigationMenu": "Afficher ou masquer le menu de navigation",
+    "toggleNavigation": "Afficher ou masquer la navigation",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "moreOptions": "Plus d'options",
+    "status": {
+      "connected": "Connecté",
+      "disconnected": "Déconnecté",
+      "offline": "Hors ligne",
+      "checking": "Vérification",
+      "disabled": "Désactivé"
+    }
   },
   "agentsPanel": {
     "agentRoster": "Effectif d'agents"
@@ -4159,5 +4172,15 @@
       "poolHint": "La passerelle alterne entre ces comptes ; l’épuisement de l’un n’arrête pas la session.",
       "balances": "Soldes prépayés"
     }
+  },
+  "launcher": {
+    "title": "Outils",
+    "groups": {
+      "work": "Travail",
+      "knowledge": "Connaissances",
+      "quality": "Qualité",
+      "system": "Système"
+    },
+    "customize": "Personnaliser la barre (les 4 premières vues y restent)"
   }
 }

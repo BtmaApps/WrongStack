@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-30T21:34:03.333Z",
+  "generatedAt": "2026-09-30T21:35:27.187Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4311,
-    "testFiles": 3915,
-    "sourceLines": 1023423,
+    "sourceFiles": 4312,
+    "testFiles": 3916,
+    "sourceLines": 1023999,
     "workspaceEdges": 131,
-    "moduleEdges": 14053,
+    "moduleEdges": 14054,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -839,8 +839,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 616,
-      "testFiles": 435,
+      "sourceFiles": 617,
+      "testFiles": 436,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -863,7 +863,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 435
+          "testFiles": 436
         }
       ]
     },
@@ -21991,6 +21991,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/activity-bar-calm.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/activity-bar-connection.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -25179,8 +25185,8 @@
     },
     {
       "file": "packages/webui/src/components/activity-bar/index.tsx",
-      "lines": 870,
-      "relativeImports": 1
+      "lines": 898,
+      "relativeImports": 2
     },
     {
       "file": "packages/webui/src/components/AudienceMemoryPanel.tsx",
@@ -25203,6 +25209,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/webui/src/components/MessageBubble/index.tsx",
+      "lines": 812,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/webui/src/components/RepositoryHistoryView.tsx",
       "lines": 824,
       "relativeImports": 2
@@ -25215,6 +25226,11 @@
     {
       "file": "packages/webui/src/components/SettingsPanel/BrainSection.tsx",
       "lines": 897,
+      "relativeImports": 7
+    },
+    {
+      "file": "packages/webui/src/components/SidePanel/SessionPanel.tsx",
+      "lines": 857,
       "relativeImports": 7
     },
     {
@@ -25485,6 +25501,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/webui/src/components/activity-bar/index.tsx",
+      "lines": 898,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/webui/src/components/SettingsPanel/BrainSection.tsx",
       "lines": 897,
       "relativeImports": 7
@@ -25523,11 +25544,6 @@
       "file": "packages/core/src/hq/auth-store.ts",
       "lines": 889,
       "relativeImports": 9
-    },
-    {
-      "file": "packages/core/src/coordination/collab-debug.ts",
-      "lines": 886,
-      "relativeImports": 11
     }
   ],
   "testOnlyExports": [

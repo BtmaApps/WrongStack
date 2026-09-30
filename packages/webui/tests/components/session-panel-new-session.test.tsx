@@ -32,6 +32,7 @@ import {
   useChatStore,
   useConfigStore,
   useFleetStore,
+  useHistoryStore,
   useSessionStore,
   useSessionTabStore,
   useUIStore,
@@ -78,6 +79,9 @@ describe('SessionPanel quick actions', () => {
       useSessionTabStore.setState({ openTabIds: [], lastSeenCounts: {}, attention: {} });
       useBugHuntRunStore.setState({ runs: {} });
       useSystemPromptStore.getState().closePicker();
+      // The quick-action tests click the loose Clear / New session buttons of
+      // full chrome; calm chrome's menu is covered by its own tests below.
+      useLocalPrefs.setState({ chromeLevel: 'full' });
     });
   });
 
@@ -204,5 +208,37 @@ describe('SessionPanel quick actions', () => {
     expect(screen.queryByTestId('session-stats-toggle')).toBeNull();
     expect(screen.getByText('Messages')).toBeTruthy();
     useLocalPrefs.setState({ chromeLevel: 'calm' });
+  });
+
+  it('calm chrome keeps New session loose and moves Export / Compact / Clear into a menu', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    renderPanel();
+
+    expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy();
+    expect(screen.getByTestId('session-actions-menu')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
+  });
+
+  it('calm chrome lists session history before the folded session stats', () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    useHistoryStore.setState({
+      entries: [
+        {
+          id: 'sess-old',
+          title: 'Older session',
+          provider: 'openai',
+          model: 'gpt-5',
+          tokenTotal: 10,
+          isCurrent: false,
+        },
+      ],
+    } as never);
+    renderPanel();
+
+    const history = screen.getByText('Older session');
+    const stats = screen.getByTestId('session-stats-toggle');
+    // DOCUMENT_POSITION_FOLLOWING (4): the stats toggle comes after history.
+    expect(history.compareDocumentPosition(stats) & 4).toBe(4);
   });
 });

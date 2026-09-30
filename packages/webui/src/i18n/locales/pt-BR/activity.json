@@ -431,7 +431,8 @@
       "newSessionTitle": "Iniciar uma nova sessão (Ctrl+N)",
       "exportTitle": "Exportar o chat como markdown (Ctrl+E)",
       "compactTitle": "Compactar a janela de contexto",
-      "clearTitle": "Fechar esta sessão e iniciar uma nova nesta aba"
+      "clearTitle": "Fechar esta sessão e iniciar uma nova nesta aba",
+      "more": "Mais ações da sessão"
     },
     "model": "Modelo",
     "modelTitle": "Trocar de modelo (Ctrl+M)",
@@ -3666,7 +3667,19 @@
     "theme": "Tema",
     "themeLight": "Claro",
     "themeDark": "Escuro",
-    "themeSystem": "Sistema"
+    "themeSystem": "Sistema",
+    "toggleNavigationMenu": "Mostrar ou ocultar o menu de navegação",
+    "toggleNavigation": "Mostrar ou ocultar a navegação",
+    "switchToLight": "Mudar para o tema claro",
+    "switchToDark": "Mudar para o tema escuro",
+    "moreOptions": "Mais opções",
+    "status": {
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "offline": "Offline",
+      "checking": "Verificando",
+      "disabled": "Desativado"
+    }
   },
   "agentsPanel": {
     "agentRoster": "Elenco de agentes"
@@ -4159,5 +4172,15 @@
       "poolHint": "O gateway alterna entre estas contas; se uma se esgota, a sessão não para.",
       "balances": "Saldos pré-pagos"
     }
+  },
+  "launcher": {
+    "title": "Ferramentas",
+    "groups": {
+      "work": "Trabalho",
+      "knowledge": "Conhecimento",
+      "quality": "Qualidade",
+      "system": "Sistema"
+    },
+    "customize": "Personalizar a barra (as 4 primeiras visões ficam nela)"
   }
 }
