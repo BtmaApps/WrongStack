@@ -207,14 +207,25 @@ let quarantinedFamilies: ChronicleQuarantinedFamily[] = [];
 function store(): Promise<ChronicleSqliteJournal> {
   sqliteStore ??= (async () => {
     await fsp.mkdir(chronicleDirectory, { recursive: true });
-    const journal = new ChronicleSqliteJournal({
-      directory: chronicleDirectory,
-      retentionDays: parsed.retentionDays,
-      durability: parsed.durability,
-      maxEvents: parsed.maxEvents,
-      maxBytes: parsed.maxBytes,
-    });
+    // Constructed INSIDE the try: the constructor opens the SQLite handle and
+    // switches it to WAL before any step that can fail (a corrupt file, a
+    // read-only directory, a full disk all throw from ensureChronicleSchema or
+    // the quota manager). Constructed outside, such a throw would escape every
+    // catch below — the rejected promise stayed memoized for the daemon's
+    // lifetime (every later request re-awaited the same rejection) AND the
+    // already-open handle leaked with its write-ahead log. `journal` is typed
+    // as possibly-undefined so the catch can close a handle that exists; when
+    // the constructor itself threw, there is nothing to close and the memo
+    // reset is the whole repair.
+    let journal: ChronicleSqliteJournal | undefined;
     try {
+      journal = new ChronicleSqliteJournal({
+        directory: chronicleDirectory,
+        retentionDays: parsed.retentionDays,
+        durability: parsed.durability,
+        maxEvents: parsed.maxEvents,
+        maxBytes: parsed.maxBytes,
+      });
       const result = await importLegacyChronicleJournal(journal, chronicleDirectory);
       quarantinedFamilies = result.quarantined;
     } catch (error) {
@@ -223,7 +234,7 @@ function store(): Promise<ChronicleSqliteJournal> {
       // keeps the database — and its write-ahead log — open the entire time.
       // Drop both so the next request gets a real retry.
       sqliteStore = undefined;
-      journal.close();
+      journal?.close();
       throw error;
     }
     return journal;

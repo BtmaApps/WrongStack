@@ -308,17 +308,25 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
   private store(): Promise<ChronicleSqliteJournal> {
     this.sqlite ??= (async () => {
       await fsPromises.mkdir(this.chronicleDirectory, { recursive: true });
-      const journal = new ChronicleSqliteJournal({
-        directory: this.chronicleDirectory,
-        ...journalLimits(this.options),
-      });
+      // Constructed INSIDE the try, mirroring the daemon: the constructor
+      // opens the SQLite handle and switches it to WAL before any step that can
+      // fail. Constructed outside, such a throw escaped the catch below — the
+      // rejected promise stayed memoized (every later call re-awaited the same
+      // rejection) AND the already-open handle leaked with its write-ahead log.
+      // When the constructor itself threw there is no handle to close, so the
+      // memo reset is the whole repair; `journal?.close()` covers the rest.
+      let journal: ChronicleSqliteJournal | undefined;
       try {
+        journal = new ChronicleSqliteJournal({
+          directory: this.chronicleDirectory,
+          ...journalLimits(this.options),
+        });
         await importLegacyChronicleJournal(journal, this.chronicleDirectory);
       } catch (error) {
         // Mirrors the daemon: a cached rejection would make every later call
         // fail identically while the handle holds the WAL open.
         this.sqlite = undefined;
-        journal.close();
+        journal?.close();
         throw error;
       }
       return journal;

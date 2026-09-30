@@ -255,25 +255,37 @@ export class ChronicleSqliteJournal {
         : Math.min(MAX_TRIM_SLACK_EVENTS, Math.floor(this.maxEvents * TRIM_SLACK_RATIO));
     const Database = loadDatabaseSync();
     this.db = new Database(this.dbPath);
-    // Before the WAL switch and before any CREATE TABLE: SQLite only accepts
-    // the auto_vacuum header bit while the file is empty and still in
-    // rollback-journal mode. After WAL it is a silent no-op.
-    ensureIncrementalVacuum(this.db);
-    this.db.exec('PRAGMA journal_mode = WAL');
-    this.db.exec(
-      options.durability === 'full' ? 'PRAGMA synchronous = FULL' : 'PRAGMA synchronous = NORMAL',
-    );
-    this.db.exec(`PRAGMA wal_autocheckpoint = ${WAL_AUTOCHECKPOINT_PAGES}`);
-    this.db.exec(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES}`);
-    ensureChronicleSchema(this.db);
-    this.quotaManager = new ChronicleQuotaManager(this.db, this.dbPath, options.maxBytes);
-    this.quotaManager.configure();
-    if (this.maxEvents !== undefined) {
-      const row = this.db.prepare('SELECT COUNT(*) AS count FROM events').get() as {
-        count: number;
-      };
-      this.retainedEventCount = row.count;
-      this.enforceEventLimitAtStartup();
+    // Every step below can throw on a real machine — a corrupt database, a
+    // read-only directory, a full disk — and the handle is already open and
+    // (from the WAL pragma on) holding a write-ahead log. A caller cannot
+    // close it: the constructor never returned, so there is no instance to call
+    // close() on. Close it here, on the only path that still holds the
+    // reference, and rethrow. Without this the handle leaks for the life of
+    // the process; on Windows the file then cannot even be unlinked.
+    try {
+      // Before the WAL switch and before any CREATE TABLE: SQLite only accepts
+      // the auto_vacuum header bit while the file is empty and still in
+      // rollback-journal mode. After WAL it is a silent no-op.
+      ensureIncrementalVacuum(this.db);
+      this.db.exec('PRAGMA journal_mode = WAL');
+      this.db.exec(
+        options.durability === 'full' ? 'PRAGMA synchronous = FULL' : 'PRAGMA synchronous = NORMAL',
+      );
+      this.db.exec(`PRAGMA wal_autocheckpoint = ${WAL_AUTOCHECKPOINT_PAGES}`);
+      this.db.exec(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES}`);
+      ensureChronicleSchema(this.db);
+      this.quotaManager = new ChronicleQuotaManager(this.db, this.dbPath, options.maxBytes);
+      this.quotaManager.configure();
+      if (this.maxEvents !== undefined) {
+        const row = this.db.prepare('SELECT COUNT(*) AS count FROM events').get() as {
+          count: number;
+        };
+        this.retainedEventCount = row.count;
+        this.enforceEventLimitAtStartup();
+      }
+    } catch (error) {
+      this.db.close();
+      throw error;
     }
   }
 
