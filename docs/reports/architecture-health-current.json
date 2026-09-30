@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-30T19:58:40.791Z",
+  "generatedAt": "2026-09-30T21:01:49.383Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4311,
-    "testFiles": 3914,
-    "sourceLines": 1023395,
+    "testFiles": 3915,
+    "sourceLines": 1023396,
     "workspaceEdges": 131,
     "moduleEdges": 14053,
     "nonCommandSlashImports": 0,
@@ -597,7 +597,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 123,
-      "testFiles": 123,
+      "testFiles": 124,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -612,7 +612,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 123
+          "testFiles": 124
         }
       ]
     },
@@ -13796,6 +13796,12 @@
       },
       {
         "file": "packages/sage/tests/format.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/graph-for-corrupt-row.test.ts",
         "projects": [
           "root-node"
         ]
