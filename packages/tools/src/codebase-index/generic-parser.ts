@@ -169,8 +169,8 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
     { re: /\blocal\s+function\s+([A-Za-z_]\w*)/g, kind: 'function' },
   ],
   r: [
-    { re: /([A-Za-z.]\w*)\s*<-\s*function\s*\(/g, kind: 'function' },
-    { re: /([A-Za-z.]\w*)\s*=\s*function\s*\(/g, kind: 'function' },
+    { re: /([A-Za-z_.][\w.]*)\s*<-\s*function\s*\(/g, kind: 'function' },
+    { re: /([A-Za-z_.][\w.]*)\s*=\s*function\s*\(/g, kind: 'function' },
   ],
   proto: [
     { re: /\b(?:message|service|enum)\s+([A-Za-z_]\w*)/g, kind: 'type' },

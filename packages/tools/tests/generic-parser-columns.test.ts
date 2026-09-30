@@ -4,6 +4,23 @@ import { parseGeneric } from '../src/codebase-index/generic-parser.js';
 // schema.ts declares `col` 0-based; the TS/JSON/YAML parsers all emit
 // 0-based. Guards the lineColAt off-by-one (round 7).
 describe('generic-parser column base', () => {
+  // col counts UTF-16 code units (JS string indices), like the TS and
+  // tree-sitter parsers — not UTF-8 bytes (é=2, 日=3, 𝐀=4) or code points (𝐀=1).
+  it('reports UTF-16 columns after é, 日本 and 𝐀 on the same line', () => {
+    const content = [
+      'class A {}',
+      '/* é */ class B {}',
+      '/* 日本 */ class C {}',
+      '/* 𝐀 */ class D {}',
+    ].join('\n');
+    const { symbols } = parseGeneric({ file: 'x.java', content, lang: 'java' });
+    const col = (name: string) => symbols.find((s) => s.name === name)?.col;
+    expect(col('A')).toBe(0);
+    expect(col('B')).toBe('/* é */ '.length); // 8
+    expect(col('C')).toBe('/* 日本 */ '.length); // 9
+    expect(col('D')).toBe('/* 𝐀 */ '.length); // 9 (bytes 11, code points 8)
+  });
+
   it('reports col 0 for a symbol at line start (first line)', () => {
     const res = parseGeneric({ file: 'a.py', content: 'def foo():\n    pass', lang: 'py' });
     const foo = res.symbols.find((s) => s.name === 'foo');
