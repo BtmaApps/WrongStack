@@ -6,6 +6,7 @@
  *
  * @module hq/persistence/timeseries-store
  */
+import { statSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { SECRET_FILE_MODE } from '../../security/file-permissions.js';
@@ -199,6 +200,19 @@ export class HqTimeseriesStore {
       this.diskLineCount += snapshot.samples.length;
       const compactAt = Math.max(this.maxBuckets + 1, this.maxBuckets * 4);
       if (this.diskLineCount >= compactAt) {
+        if (!this.loaded) {
+          await this.load();
+        }
+        // Compaction REWRITES the log from the in-memory map, so it may only
+        // run when that map faithfully represents the file. A fault that is
+        // still active leaves a PREFIX here even after the re-load above, and
+        // writing that over the log would destroy every bucket past the failure
+        // — silently and permanently. Stand down instead: the append is already
+        // durable, `diskLineCount` stays above the threshold so a later flush
+        // compacts once rehydration genuinely succeeds, and the log may grow in
+        // the meantime. Growing is recoverable; losing history is not.
+        if (!this.loaded) return;
+        this.pruneBuckets({ dropDirty: true });
         const retained = Array.from(this.buckets.values())
           .map(cloneTimeseriesSample)
           .sort((a, b) => a.ts - b.ts);
@@ -231,7 +245,16 @@ export class HqTimeseriesStore {
   async load(): Promise<void> {
     if (this.loaded) return;
     this.loadPromise ??= this.loadInternal();
-    await this.loadPromise;
+    try {
+      await this.loadPromise;
+    } finally {
+      // A load that did NOT complete leaves its promise settled with the map
+      // still incomplete, and `??=` would re-await that same settled promise on
+      // every later call — the file would never be re-read and the map would
+      // stay partial for the life of the process. Drop the memo so the next
+      // call retries against a healed filesystem.
+      if (!this.loaded) this.loadPromise = undefined;
+    }
   }
 
   private async loadInternal(): Promise<void> {
@@ -250,8 +273,10 @@ export class HqTimeseriesStore {
         lineCount++;
         try {
           const sample = JSON.parse(line) as HqTimeseriesSample;
-          // Last-write-wins per bucket (file is append-only, so later lines win).
-          this.buckets.set(sample.ts, sample);
+          // Last-write-wins per bucket from file, preserving any in-memory dirty updates.
+          if (!this.dirtyVersions.has(sample.ts)) {
+            this.buckets.set(sample.ts, sample);
+          }
         } catch {
           /* skip malformed */
         }
@@ -263,13 +288,34 @@ export class HqTimeseriesStore {
       // Missing/unreadable file. `lineCount` reflects whatever was consumed, so
       // a partial read still leaves compaction armed rather than disabled.
       this.diskLineCount = lineCount;
-      this.loaded = true;
+      // `loaded` is claimed ONLY when the file genuinely holds nothing to
+      // rehydrate — absent, or zero bytes. A read that stopped PART WAY
+      // through leaves `buckets` holding only a prefix, and compaction writes
+      // the file it keeps from exactly that map: claiming "loaded" there let
+      // `flushInternal` rewrite the whole file from a partial map and destroy
+      // every bucket past the failure. Staying unloaded keeps the store honest
+      // (and, via the `load()` reset, retryable) until a read reaches EOF.
+      if (fileByteLength(this.filePath) === 0) this.loaded = true;
       return;
     }
     this.diskLineCount = lineCount;
     this.loaded = true;
     // Prune to retention.
     this.pruneBuckets();
+  }
+}
+
+/**
+ * Size of `filePath` in bytes, or 0 when it cannot be stat'd at all (missing,
+ * or a path we cannot inspect). A zero here means there is provably nothing on
+ * disk to rehydrate, which is the only case where a failed load may still be
+ * treated as a completed one.
+ */
+function fileByteLength(filePath: string): number {
+  try {
+    return statSync(filePath).size;
+  } catch {
+    return 0;
   }
 }
 

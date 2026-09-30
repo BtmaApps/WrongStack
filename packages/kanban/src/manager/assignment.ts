@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertManagementWrite } from '../management-fence.js';
 import { mutateBoard } from '../storage.js';
 import type {
   KanbanAgentAssignment,
@@ -45,7 +46,23 @@ import { dependencyIncompleteMessage, getDependencyReadinessIssues } from './tas
  * Deliberately generous — recovery of a live claim is worse than a late
  * recovery of a dead one.
  */
-const STAMPLESS_ASSIGNMENT_STALE_MS = 10 * 60 * 1000;
+export const STAMPLESS_ASSIGNMENT_STALE_MS = 10 * 60 * 1000;
+
+export function isAssignmentStale(
+  assignment: KanbanAgentAssignment | undefined,
+  now: string,
+): boolean {
+  if (!assignment || (assignment.status !== 'queued' && assignment.status !== 'running')) {
+    return false;
+  }
+  const leaseExpired = assignment.leaseExpiresAt !== undefined && assignment.leaseExpiresAt <= now;
+  const lastSignalAt = assignment.heartbeatAt ?? assignment.claimedAt;
+  const stamplessAndSilent =
+    assignment.leaseExpiresAt === undefined &&
+    (lastSignalAt === undefined ||
+      new Date(now).getTime() - new Date(lastSignalAt).getTime() >= STAMPLESS_ASSIGNMENT_STALE_MS);
+  return leaseExpired || stamplessAndSilent;
+}
 
 let lastGlobalClaimBoardId: string | undefined;
 
@@ -146,6 +163,10 @@ export async function assignTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
+    if (task.status === 'archived' || task.mergedIntoTaskId) {
+      throw new Error(`Cannot assign inactive task ${task.id}.`);
+    }
     const before = task.assignment ? { ...task.assignment } : undefined;
     if (
       input.protectActiveAssignment === true &&
@@ -405,26 +426,13 @@ export async function recoverStaleTaskAssignments(
     const isManaged = board.lifecycle?.mode === 'managed';
     for (const task of board.tasks) {
       const assignment = task.assignment;
-      if (!assignment || (assignment.status !== 'queued' && assignment.status !== 'running')) {
-        continue;
-      }
-      // Two staleness signals:
-      //  - a stamped lease that has expired, or
-      //  - NO lease stamp at all and prolonged silence. The old
-      //    `!leaseExpiresAt → continue` skipped stampless assignments
-      //    forever — a claim written without a lease (the state the
-      //    classifier names 'running_no_lease', which the retry path below
-      //    itself produces by deleting the stamp) could never be recovered:
-      //    the agent dies, the task stays locked for good.
-      const leaseExpired =
-        assignment.leaseExpiresAt !== undefined && assignment.leaseExpiresAt <= checkedAt;
-      const lastSignalAt = assignment.heartbeatAt ?? assignment.claimedAt;
-      const stamplessAndSilent =
-        assignment.leaseExpiresAt === undefined &&
-        (lastSignalAt === undefined ||
-          new Date(checkedAt).getTime() - new Date(lastSignalAt).getTime() >=
-            STAMPLESS_ASSIGNMENT_STALE_MS);
-      if (!leaseExpired && !stamplessAndSilent) continue;
+      // A task with no assignment is never stale (`isAssignmentStale` returns
+      // false for undefined), so skip it explicitly and narrow `assignment`
+      // before the stale check and every use below. Without this, every
+      // `assignment.…` below is `KanbanAgentAssignment | undefined` and the
+      // declaration emit fails.
+      if (!assignment) continue;
+      if (!isAssignmentStale(assignment, checkedAt)) continue;
       const previousColumnId = task.columnId;
       const beforeAssignment = { ...assignment };
       const isHeartbeatDueNow = isAssignmentHeartbeatDue(assignment, checkedAt);
@@ -676,10 +684,14 @@ export async function releaseTaskClaim(
     // current column (e.g. 'running'). Lifecycle columns are authoritative —
     // releasing a claim does not move a managed card backward. Use
     // repair_managed_projection or manual transition to correct the stage.
-    if (!isManaged) {
+    if (!isManaged && task.status !== 'archived' && task.status !== 'completed') {
       task.status = input.status ?? (areDependenciesMet(board, task.id) ? 'ready' : 'blocked');
+      if (task.status === 'completed') {
+        task.completedAt = task.completedAt ?? nowIso();
+      } else {
+        delete task.completedAt;
+      }
     }
-    delete task.completedAt;
     const now = nowIso();
     if (input.reason) {
       task.notes = [
@@ -692,8 +704,8 @@ export async function releaseTaskClaim(
         },
       ];
     }
-    // Only sync column for non-managed boards.
-    if (!isManaged) {
+    // Only sync column for non-managed, non-archived boards.
+    if (!isManaged && task.status !== 'archived') {
       syncTaskColumnForStatus(board, task, previousColumnId);
     }
     task.updatedAt = now;

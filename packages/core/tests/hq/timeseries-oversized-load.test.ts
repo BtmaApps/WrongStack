@@ -11,8 +11,40 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HqTimeseriesStore } from '../../src/hq/persistence.js';
+
+// Inert unless a test arms it, so the oversized-file case below reads through
+// the real fs. Only the Nth `handle.read` of the log can be made to throw, which
+// is what a mid-stream EIO (or a Windows AV/filter-driver grabbing the handle)
+// looks like to the store.
+const readFault = vi.hoisted(() => ({ armed: false, throwsOnRead: 0, reads: 0 }));
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  const open = actual.open;
+  return {
+    ...actual,
+    open: async (p: Parameters<typeof open>[0], flags?: string, mode?: number) => {
+      const handle = await open(p as string, flags as never, mode);
+      if (!(String(p).endsWith('timeseries.jsonl') && flags === 'r')) return handle;
+      return new Proxy(handle, {
+        get(target, prop, receiver) {
+          if (prop !== 'read') return Reflect.get(target, prop, receiver);
+          return (...args: unknown[]) => {
+            readFault.reads += 1;
+            if (readFault.armed && readFault.reads === readFault.throwsOnRead) {
+              const err: NodeJS.ErrnoException = new Error('EIO: simulated mid-stream read fault');
+              err.code = 'EIO';
+              throw err;
+            }
+            return (target.read as (...a: unknown[]) => unknown)(...args);
+          };
+        },
+      });
+    },
+  };
+});
 
 let dataDir: string;
 
@@ -81,6 +113,46 @@ describe('HqTimeseriesStore oversized load', () => {
     const store = new HqTimeseriesStore({ dataDir, bucketMs: 1000 });
     await store.load();
     expect(await store.read()).toEqual([]);
+  });
+
+  it('re-reads the file on a second load() after a failed one', async () => {
+    // The `load()` memo (`this.loadPromise ??= this.loadInternal()`) is a
+    // retry-memoization: it must be dropped when the load it cached did NOT
+    // complete. Left in place, `??=` re-awaits the promise the FAILED attempt
+    // already settled, so the file is never re-read and the map stays a partial
+    // prefix for the life of the process — silently, with no error to trace.
+    //
+    // The failure has to be a read that stops PART WAY THROUGH a non-empty
+    // file. A missing file is a different case and is legitimately treated as
+    // "loaded" (there is provably nothing to rehydrate), so it never reaches
+    // the memo-reset path and cannot stand in for it here.
+    const store = new HqTimeseriesStore({ dataDir, bucketMs: 1000, maxBuckets: 10 });
+
+    // Two buckets, padded past the 256 KB read chunk so a fault on the second
+    // read lands mid-file and leaves a genuine partial prefix.
+    const pad = 'x'.repeat(200_000);
+    await fs.writeFile(
+      filePath(),
+      `${JSON.stringify({ ts: 1000, costUsd: 1, pad })}\n${JSON.stringify({ ts: 2000, costUsd: 2, pad })}\n`,
+    );
+
+    // Load #1 fails part way through, so the map is missing the newest bucket.
+    readFault.armed = true;
+    readFault.throwsOnRead = 2;
+    readFault.reads = 0;
+    await store.load();
+    readFault.armed = false;
+    expect(readFault.reads).toBeGreaterThan(1);
+    expect((await store.read()).map((s) => s.ts)).toEqual([1000]);
+
+    // Load #2: the filesystem is healthy again, so this MUST go back to disk.
+    // If the memo survived, no new reads would happen and the newest bucket
+    // would stay invisible — both to the store and to the compaction that
+    // later rewrites the file from this very map.
+    const readsBefore = readFault.reads;
+    await store.load();
+    expect(readFault.reads).toBeGreaterThan(readsBefore);
+    expect((await store.read()).map((s) => s.ts)).toEqual([1000, 2000]);
   });
 
   it('decodes multi-byte characters split across read chunks', async () => {

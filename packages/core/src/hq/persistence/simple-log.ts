@@ -79,12 +79,24 @@ export class HqSimpleLog<T> {
 
   private async ensureLineCount(): Promise<void> {
     if (this.counted) return;
-    this.hydration ??= countNonEmptyLines(this.filePath)
-      .catch(() => 0)
-      .then((count) => {
+    // `countNonEmptyLines` resolves 0 for a MISSING file — a correct answer, so
+    // it latches — but REJECTS when a read faults part way through. That
+    // rejection used to be funneled through `.catch(() => 0)` and then latched
+    // as `counted = true` with a wrong zero: from then on the store counted
+    // from 0 forever, so it only rotated after `maxLines` fresh appends and a
+    // single transient read fault stretched the on-disk log well past its cap.
+    // Stay uncounted instead so the next call retries a healed file. `append`
+    // is best-effort and must never reject, so the fault is absorbed here
+    // rather than propagated. Mirrors `HqEventLog.ensureLineCount`.
+    this.hydration ??= countNonEmptyLines(this.filePath).then(
+      (count) => {
         this.lineCount = count;
         this.counted = true;
-      });
+      },
+      () => {
+        this.hydration = undefined;
+      },
+    );
     await this.hydration;
   }
 
