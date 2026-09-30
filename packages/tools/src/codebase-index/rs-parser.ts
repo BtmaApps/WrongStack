@@ -115,7 +115,11 @@ export function maskRustNonCode(src: string): string {
       continue;
     }
     const prev = src[i - 1] ?? '';
-    const rawPrefixOk = !/\w/.test(prev) || (prev === 'b' && !/\w/.test(src[i - 2] ?? ''));
+    // `br"…"` (byte) and `cr"…"` (C string, Rust 1.77) are raw too. Missing
+    // `c` sent `cr"C:\"` to the escaping branch below, whose `\"` never
+    // closes the literal, blanking every declaration after it.
+    const rawPrefixOk =
+      !/\w/.test(prev) || ((prev === 'b' || prev === 'c') && !/\w/.test(src[i - 2] ?? ''));
     if (c === 'r' && (next === '"' || next === '#') && rawPrefixOk) {
       let j = i + 1;
       let hashes = 0;

@@ -64,4 +64,22 @@ describe('maskRustNonCode', () => {
     expect(masked.split('\n')).toHaveLength(src.split('\n').length);
     expect(masked).not.toMatch(/raw|c\n/);
   });
+
+  // `cr"…"` is a raw C string (Rust 1.77): `\` is literal, so `cr"C:\"` closes
+  // at the second quote. Treated as an escaping string, it never closed and
+  // every declaration after it was masked away.
+  it('treats cr"…" raw C strings as raw, like r"…" and br"…"', async () => {
+    const after = async (literal: string) =>
+      (await names(`const P: &CStr = ${literal};\nfn after() {}\nstruct Next;\n`)).filter(
+        (n) => n === 'function:after' || n === 'struct:Next',
+      );
+    expect(await after('cr"C:\\"')).toEqual(['function:after', 'struct:Next']);
+    expect(await after('cr#"a\\"#')).toEqual(['function:after', 'struct:Next']);
+    // Controls: the raw forms that already worked, and a non-raw C string.
+    expect(await after('r"C:\\"')).toEqual(['function:after', 'struct:Next']);
+    expect(await after('br"C:\\"')).toEqual(['function:after', 'struct:Next']);
+    expect(await after('c"ok"')).toEqual(['function:after', 'struct:Next']);
+    // An identifier ending in `c` before `r"` is not a raw-string prefix.
+    expect(maskRustNonCode('abcr"x"')).toBe('abcr" "');
+  });
 });
