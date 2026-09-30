@@ -313,8 +313,13 @@ describe('SageProjectServerConnection', () => {
     });
     await expect(req1).rejects.toThrow('Custom failure');
 
-    // UnauthorizedSageRequest error invalidates auth token
-    void connection.call('ping', {}, { meta: { clientId: 'client-1' } });
+    // UnauthorizedSageRequest error invalidates auth token. Keep the promise:
+    // call() retries the refusal after AUTH_RETRY_DELAY_MS, and the retry
+    // finds the socket closed below. Left as `void`, that rejection went
+    // unhandled and failed whichever later test was running when it fired.
+    const req2 = connection.call('ping', {}, { meta: { clientId: 'client-1' } });
+    // Retried, not surfaced: the refusal itself must not be the rejection.
+    const req2Settled = expect(req2).rejects.toThrow('SAGE server connection is not available');
     await Promise.resolve();
     const out2 = JSON.parse(String(socket.write.mock.calls.at(-1)?.[0]).trim());
     send(socket, {
@@ -326,6 +331,7 @@ describe('SageProjectServerConnection', () => {
     });
     // It retries, so we reject all or abort
     connection.close();
+    await req2Settled;
   });
 
   it('handles handshake timeout and request timeout', async () => {
