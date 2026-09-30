@@ -218,6 +218,98 @@ describe('SageProjectServerConnection', () => {
     }
   });
 
+  /** Connect, send one call, refuse it; returns before call() resumes. */
+  async function refuseOneCall() {
+    const connection = new SageProjectServerConnection('D:/repo');
+    const connecting = connection.connect();
+    send(socket, hello());
+    await connecting;
+    const call = connection.call('ping', {}, { meta: { clientId: 'client-1' } });
+    const outcome: { settled: 'pending' | 'resolved' | 'rejected'; reason?: unknown } = {
+      settled: 'pending',
+    };
+    call.then(
+      () => {
+        outcome.settled = 'resolved';
+      },
+      (reason) => {
+        outcome.settled = 'rejected';
+        outcome.reason = reason;
+      },
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const first = JSON.parse(String(socket.write.mock.calls.at(-1)?.[0]).trim());
+    send(socket, {
+      type: 'response',
+      id: first.id,
+      ok: false,
+      error: 'Unauthorized',
+      errorName: 'UnauthorizedSageRequest',
+    });
+    return { connection, outcome };
+  }
+
+  it('close() wakes a call sleeping between auth retries instead of leaving it for the delay', async () => {
+    vi.useFakeTimers();
+    try {
+      const { connection, outcome } = await refuseOneCall();
+      await vi.advanceTimersByTimeAsync(0); // call() is now inside the retry delay
+      expect(outcome.settled).toBe('pending');
+      const writes = socket.write.mock.calls.length;
+
+      connection.close();
+      await vi.advanceTimersByTimeAsync(0); // no timer time passes
+
+      expect(outcome.settled).toBe('rejected');
+      expect((outcome.reason as Error).message).toBe('SAGE server client disconnected');
+      await vi.advanceTimersByTimeAsync(200);
+      expect(socket.write.mock.calls.length).toBe(writes); // the retry never ran
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('close() in the same turn as the refusal, before call() resumes, still rejects at once', async () => {
+    vi.useFakeTimers();
+    try {
+      const { connection, outcome } = await refuseOneCall();
+      connection.close();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(outcome.settled).toBe('rejected');
+      expect((outcome.reason as Error).message).toBe('SAGE server client disconnected');
+      await vi.advanceTimersByTimeAsync(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a call made after close() still waits the full auth-retry delay', async () => {
+    vi.useFakeTimers();
+    try {
+      const connection = new SageProjectServerConnection('D:/repo') as any;
+      // releaseConnection() closes and expects the next call to work normally.
+      connection.close();
+      connection.ensureConnected = vi.fn(async () => undefined);
+      const unauthorized = new Error('unauthorized');
+      unauthorized.name = 'UnauthorizedSageRequest';
+      connection.request = vi
+        .fn()
+        .mockRejectedValueOnce(unauthorized)
+        .mockResolvedValueOnce({ ok: true });
+
+      const reqPromise = connection.call('ping', {}, { meta: { clientId: 'c1' } });
+      const settled = expect(reqPromise).resolves.toEqual({ ok: true });
+      await vi.advanceTimersByTimeAsync(149);
+      expect(connection.request).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await settled;
+      expect(connection.request).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('unsubscribes state and event listeners', () => {
     const connection = new SageProjectServerConnection('D:/repo');
     const unsubState = connection.onStateChange(() => {});
@@ -314,12 +406,12 @@ describe('SageProjectServerConnection', () => {
     await expect(req1).rejects.toThrow('Custom failure');
 
     // UnauthorizedSageRequest error invalidates auth token. Keep the promise:
-    // call() retries the refusal after AUTH_RETRY_DELAY_MS, and the retry
-    // finds the socket closed below. Left as `void`, that rejection went
+    // call() treats the refusal as retriable and waits to retry, and the
+    // close() below ends that wait. Left as `void`, the rejection went
     // unhandled and failed whichever later test was running when it fired.
     const req2 = connection.call('ping', {}, { meta: { clientId: 'client-1' } });
     // Retried, not surfaced: the refusal itself must not be the rejection.
-    const req2Settled = expect(req2).rejects.toThrow('SAGE server connection is not available');
+    const req2Settled = expect(req2).rejects.toThrow('SAGE server client disconnected');
     await Promise.resolve();
     const out2 = JSON.parse(String(socket.write.mock.calls.at(-1)?.[0]).trim());
     send(socket, {

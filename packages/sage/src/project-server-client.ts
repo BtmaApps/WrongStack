@@ -221,6 +221,13 @@ export class SageProjectServerConnection {
   private authToken: string | undefined;
   /** Error reported by the live socket before it closed, if any. */
   private closeCause: Error | null = null;
+  /**
+   * Aborted by `close()` so a `call()` sleeping between auth retries wakes at
+   * once instead of after `AUTH_RETRY_DELAY_MS`. Replaced on every close: the
+   * connection stays usable (`releaseConnection()` expects the next call to
+   * reconnect), so a later call must not see an already-aborted signal.
+   */
+  private closeController = new AbortController();
 
   private readonly spawnIfMissing: boolean;
 
@@ -284,6 +291,10 @@ export class SageProjectServerConnection {
     options: SageProjectServerCallOptions,
   ): Promise<SageServerOperations[O]['result']> {
     if (options.signal?.aborted) throw cancellationError(options.signal);
+    // Captured before any await: close() swaps in a fresh controller, so
+    // reading it at the retry would miss a close() that landed while this
+    // call was waiting on the refused response and sleep the full delay.
+    const closed = this.closeController.signal;
     await this.ensureConnected(this.spawnIfMissing);
     if (options.signal?.aborted) throw cancellationError(options.signal);
     let lastError: unknown;
@@ -308,7 +319,10 @@ export class SageProjectServerConnection {
           error.name === 'UnauthorizedSageRequest' &&
           attempt < AUTH_RETRY_MAX_ATTEMPTS;
         if (!retriable) throw error;
-        await delay(AUTH_RETRY_DELAY_MS, options.signal);
+        await delay(
+          AUTH_RETRY_DELAY_MS,
+          options.signal ? AbortSignal.any([options.signal, closed]) : closed,
+        );
         if (options.signal?.aborted) throw cancellationError(options.signal);
       }
     }
@@ -354,6 +368,8 @@ export class SageProjectServerConnection {
     this.connectReject = null;
     if (socket && !socket.destroyed) socket.destroy();
     this.rejectPending(new Error('SAGE server client disconnected'));
+    this.closeController.abort(new Error('SAGE server client disconnected'));
+    this.closeController = new AbortController();
     this.transition(isSageProjectServerAvailable() ? 'offline' : 'unavailable');
   }
 
