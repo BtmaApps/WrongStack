@@ -106,9 +106,9 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
     { re: /\bnamespace\s+([A-Za-z_\\]+)/g, kind: 'namespace' },
   ],
   ruby: [
-    { re: /^\s*def\s+(?:self\.)?([A-Za-z_]\w*[!?]?)/gm, kind: 'function' },
-    { re: /^\s*class\s+([A-Za-z_]\w*)/gm, kind: 'class' },
-    { re: /^\s*module\s+([A-Za-z_]\w*)/gm, kind: 'namespace' },
+    { re: /^[ \t]*def\s+(?:self\.)?([A-Za-z_]\w*[!?]?)/gm, kind: 'function' },
+    { re: /^[ \t]*class\s+([A-Za-z_]\w*)/gm, kind: 'class' },
+    { re: /^[ \t]*module\s+([A-Za-z_]\w*)/gm, kind: 'namespace' },
   ],
   swift: [
     { re: /\b(?:func)\s+([A-Za-z_]\w*)/g, kind: 'function' },
@@ -144,7 +144,7 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
     { re: /<(?:script|template|style)\b/gi, kind: 'namespace' },
   ],
   css: [
-    { re: /^\s*([.#]?[A-Za-z_][\w-]*)\s*\{/gm, kind: 'type' },
+    { re: /^[ \t]*([.#]?[A-Za-z_][\w-]*)\s*\{/gm, kind: 'type' },
     { re: /@(?:keyframes|media|supports)\s+([^{\s]+)/g, kind: 'namespace' },
   ],
   vue: [

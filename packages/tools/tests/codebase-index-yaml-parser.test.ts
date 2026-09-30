@@ -72,6 +72,33 @@ describe('yaml-parser parseSymbols', () => {
     expect(find(content, 'flag')).toMatchObject({ kind: 'literal', line: 3 });
   });
 
+  it('reports the key line, not the preceding blank line, after an empty line', () => {
+    // A `\s*` indent group can span newlines under /m, so a match began on the
+    // blank line: the symbol landed one line early and the newline inflated
+    // the indent past the >12 skip threshold, dropping deep keys entirely.
+    const deep = ' '.repeat(12);
+    expect(find('a: 1\n\n  b: 2\n', 'b')).toMatchObject({ line: 3 });
+    expect(find('items:\n\n  - c: 3\n', 'c')).toMatchObject({ line: 3 });
+    expect(find('a: 1\n\n  run: |\n    echo hi\n', 'run')).toMatchObject({ line: 3 });
+    expect(find(`a:\n\n${deep}deep: 1\n`, 'deep')).toMatchObject({ line: 3 });
+    // Control: the same deep key without a blank line was always found.
+    expect(find(`a:\n${deep}deep: 1\n`, 'deep')).toMatchObject({ line: 2 });
+  });
+
+  it('reports the 0-based column of the key itself, not of the line start', () => {
+    // col was `match.index - lineStart`, and every key regex matches from `^`,
+    // so every key — however deeply indented — reported col 0.
+    expect(find('top: 1\n', 'top')).toMatchObject({ line: 1, col: 0 });
+    expect(find('a:\n  b: 2\n', 'b')).toMatchObject({ line: 2, col: 2 });
+    expect(find('a:\n\tb: 2\n', 'b')).toMatchObject({ line: 2, col: 1 });
+    expect(find('items:\n  - c: 3\n', 'c')).toMatchObject({ line: 2, col: 4 });
+    expect(find('items:\n-   d: 4\n', 'd')).toMatchObject({ line: 2, col: 4 });
+    expect(find('a:\n    run: |\n      echo hi\n', 'run')).toMatchObject({ line: 2, col: 4 });
+    expect(find('a:\n\n  b: 2\n', 'b')).toMatchObject({ line: 3, col: 2 });
+    // Anchors already matched at the sigil; keep that column.
+    expect(find('a:\n  x: &base 1\n', 'base')).toMatchObject({ line: 2, col: 5 });
+  });
+
   it('emits each block-scalar header exactly once (section 2 defers to section 4)', () => {
     const content = ['literal: |', '  multi', '  line', 'folded: >', '  text'].join('\n');
     const res = parse(content);

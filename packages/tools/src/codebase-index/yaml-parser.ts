@@ -101,7 +101,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   // ── 2. Top-level and nested key: value pairs ───────────────────────────────
   // Matches `key: value` (but not block scalars or document markers)
   // Uses negative lookbehind and context to avoid false positives
-  const kvRegex = /^(\s*)([^:#\s][^:#\s]*)\s*:/gm;
+  const kvRegex = /^([ \t]*)([^:#\s][^:#\s]*)\s*:/gm;
   for (let match = kvRegex.exec(content); match !== null; match = kvRegex.exec(content)) {
     const indent = match[1]?.length ?? 0;
     const key = unquoteKey(match[2] ?? '');
@@ -110,7 +110,8 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     const offset = match.index ?? 0;
     if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
-    const col = offset - (lineOffsets[line - 1] ?? 0);
+    // The match starts at `^`; the key itself sits after the indent.
+    const col = offset + indent - (lineOffsets[line - 1] ?? 0);
 
     // Skip block scalar indicators (| or > at column 0 with key name before :)
     const lineContent = lines[line - 1] ?? '';
@@ -140,7 +141,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   // anchoring `-` at column 0 silently dropped every indented item, and the
   // section-2 kvRegex cannot catch them either (`-` + space never satisfies
   // `\s*:`), so they produced no symbol at all.
-  const listItemRegex = /^(\s*)-(\s+)([^:#\s][^:#\s]*)\s*:/gm;
+  const listItemRegex = /^([ \t]*)-(\s+)([^:#\s][^:#\s]*)\s*:/gm;
   for (
     let match = listItemRegex.exec(content);
     match !== null;
@@ -150,7 +151,9 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     const offset = match.index ?? 0;
     if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
-    const col = offset - (lineOffsets[line - 1] ?? 0);
+    // Key column = indent + `-` + the spaces after it.
+    const keyStart = offset + (match[1]?.length ?? 0) + 1 + (match[2]?.length ?? 0);
+    const col = keyStart - (lineOffsets[line - 1] ?? 0);
     const value = extractValue(content, offset + match[0]?.length);
     const kind: IndexSymbol['kind'] = isScalar(value) ? 'literal' : 'property';
     symbols.push(
@@ -168,7 +171,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
 
   // ── 4. Block scalar keys (key: | or key: >) ────────────────────────────────
   // Indentation/chomping indicators (`|-`, `>+`, `|2`) are part of the header.
-  const blockScalarRegex = /^(\s*)([^:#\s][^:#\s]*)\s*:[ \t]*[|>][-+0-9]*(?=[ \t]|$)/gm;
+  const blockScalarRegex = /^([ \t]*)([^:#\s][^:#\s]*)\s*:[ \t]*[|>][-+0-9]*(?=[ \t]|$)/gm;
   for (
     let match = blockScalarRegex.exec(content);
     match !== null;
@@ -178,7 +181,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     const offset = match.index ?? 0;
     if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
-    const col = offset - (lineOffsets[line - 1] ?? 0);
+    const col = offset + (match[1]?.length ?? 0) - (lineOffsets[line - 1] ?? 0);
     symbols.push(
       makeSymbol({
         name: key,
