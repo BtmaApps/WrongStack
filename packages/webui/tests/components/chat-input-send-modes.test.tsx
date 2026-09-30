@@ -107,7 +107,9 @@ beforeEach(() => {
   // plain send path. Force it off so the refine branch doesn't swallow our
   // assertions. The enhance gate lives in local-prefs (`enhanceEnabled`); the
   // open-panel state stays in the UI store (`refinePanel`).
-  useLocalPrefs.setState({ enhanceEnabled: false });
+  // These tests drive the btw / steer buttons, which only calm chrome
+  // hides — pin full chrome so each send mode stays clickable.
+  useLocalPrefs.setState({ enhanceEnabled: false, chromeLevel: 'full' });
   useUIStore.setState({ refinePanel: null });
 });
 

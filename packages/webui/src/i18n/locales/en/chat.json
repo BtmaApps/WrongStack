@@ -59,7 +59,8 @@
     "expandInput": "Expand input",
     "collapseInput": "Collapse",
     "startListening": "Voice input (Speech to text)",
-    "stopListening": "Listening... (Click to stop)"
+    "stopListening": "Listening... (Click to stop)",
+    "promptsMenu": "Prompts"
   },
   "header": {
     "openSidebarTitle": "Open sidebar (Ctrl+\\)",
@@ -75,7 +76,8 @@
     "noModel": "no-model",
     "memoryContextTitle": "Memory context — injected SAGE memories",
     "toolStatsTitle": "Tool call stats",
-    "sessionToolsTitle": "Session tools"
+    "sessionToolsTitle": "Session tools",
+    "displaySection": "Display"
   },
   "toolStats": {
     "title": "Tool call statistics",

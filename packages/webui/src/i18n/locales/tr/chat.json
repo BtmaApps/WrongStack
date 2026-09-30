@@ -59,7 +59,8 @@
     "expandInput": "Girişi genişlet",
     "collapseInput": "Daralt",
     "startListening": "Sesli giriş (Konuşmayı metne dönüştür)",
-    "stopListening": "Dinleniyor... (Durdurmak için tıklayın)"
+    "stopListening": "Dinleniyor... (Durdurmak için tıklayın)",
+    "promptsMenu": "Promptlar"
   },
   "header": {
     "openSidebarTitle": "Kenar çubuğunu aç (Ctrl+\\)",
@@ -75,7 +76,8 @@
     "noModel": "model-yok",
     "memoryContextTitle": "Bellek bağlamı — enjekte edilen SAGE anıları",
     "toolStatsTitle": "Araç istatistikleri",
-    "sessionToolsTitle": "Oturum araçları"
+    "sessionToolsTitle": "Oturum araçları",
+    "displaySection": "Görünüm"
   },
   "toolStats": {
     "title": "Araç çağrısı istatistikleri",

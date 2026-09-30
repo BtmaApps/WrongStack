@@ -59,7 +59,8 @@
     "expandInput": "Espandi l'input",
     "collapseInput": "Comprimi",
     "startListening": "Input vocale (Da voce a testo)",
-    "stopListening": "In ascolto... (Fai clic per fermare)"
+    "stopListening": "In ascolto... (Fai clic per fermare)",
+    "promptsMenu": "Prompt"
   },
   "header": {
     "openSidebarTitle": "Apri barra laterale (Ctrl+\\)",
@@ -75,7 +76,8 @@
     "noModel": "nessun-modello",
     "memoryContextTitle": "Contesto memoria — ricordi SAGE iniettati",
     "toolStatsTitle": "Statistiche strumenti",
-    "sessionToolsTitle": "Strumenti di sessione"
+    "sessionToolsTitle": "Strumenti di sessione",
+    "displaySection": "Visualizzazione"
   },
   "toolStats": {
     "title": "Statistiche chiamate strumenti",

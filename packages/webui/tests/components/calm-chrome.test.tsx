@@ -120,4 +120,13 @@ describe('chrome level', () => {
       expect(screen.getByText('msgs')).toBeTruthy();
     });
   });
+
+  describe('ChatHeader display switches', () => {
+    it('calm: the session-tools trigger exists for the display switches to live in', () => {
+      useLocalPrefs.setState({ chromeLevel: 'calm' });
+      renderHeader();
+      // Radix renders menu content only when open; the trigger is the entry.
+      expect(screen.getByTestId('chat-header-session-tools')).toBeTruthy();
+    });
+  });
 });

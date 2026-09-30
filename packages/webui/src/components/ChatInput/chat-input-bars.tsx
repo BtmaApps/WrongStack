@@ -1,8 +1,15 @@
-import { BookOpen, Cpu, FileText, History } from 'lucide-react';
+import { BookOpen, ChevronDown, Cpu, FileText, History } from 'lucide-react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { cn } from '@/lib/utils';
 import { openMainView } from '@/lib/view-navigation';
 import type { useFileReferenceStore } from '@/stores';
 import { FileReferenceChip } from '../FileReferenceChip.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu.js';
 import { type ImageAttachment, isPdfAttachment } from './image-attachments.js';
 import { SessionEffortSelect } from './session-effort-select.js';
 import { SubagentModelsButton } from './subagent-models-button.js';
@@ -190,26 +197,57 @@ export function ModelAndPromptBar({
   onOpenModelSwitcher: () => void;
   t: (key: string) => string;
 }) {
+  const fullChrome = useIsFullChrome();
   return (
     <div className="flex flex-wrap items-center gap-2 px-1">
-      <button
-        type="button"
-        onClick={() => openMainView('prompts')}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        title={t('activity:promptJournal.title')}
-        aria-label={t('activity:promptJournal.title')}
-      >
-        <History className="h-3.5 w-3.5" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={onOpenPromptLibrary}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/50 transition-all duration-200"
-        title={t('chat:input.openPromptLibrary')}
-      >
-        <BookOpen className="h-3.5 w-3.5" />
-        {t('activity:chatInput.promptLibrary')}
-      </button>
+      {fullChrome ? (
+        <>
+          <button
+            type="button"
+            onClick={() => openMainView('prompts')}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title={t('activity:promptJournal.title')}
+            aria-label={t('activity:promptJournal.title')}
+          >
+            <History className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPromptLibrary}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/50 transition-all duration-200"
+            title={t('chat:input.openPromptLibrary')}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            {t('activity:chatInput.promptLibrary')}
+          </button>
+        </>
+      ) : (
+        // Calm chrome: the prompt library and the prompt journal share one
+        // "Prompts" menu instead of two loose buttons.
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-testid="composer-prompts-menu"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/50 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/50 transition-all duration-200"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              {t('chat:input.promptsMenu')}
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onSelect={onOpenPromptLibrary} className="gap-2">
+              <BookOpen className="h-4 w-4" />
+              {t('activity:chatInput.promptLibrary')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openMainView('prompts')} className="gap-2">
+              <History className="h-4 w-4" />
+              {t('activity:promptJournal.title')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <button
         type="button"
         onClick={onOpenModelSwitcher}

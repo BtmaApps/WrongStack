@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { warmProviderWhileTyping } from '@/lib/provider-warm';
@@ -74,6 +75,7 @@ export function ChatInput({
   const ws = useWebSocket();
   const { sendMessage, sendAbort, client, refineModel, updatePrefs } = ws;
   const { t } = useAppTranslation();
+  const fullChrome = useIsFullChrome();
   const enhanceEnabled = useLocalPrefs((s) => s.enhanceEnabled);
 
   const sessionProvider = useSessionStore((s) => s.session?.provider);
@@ -446,7 +448,9 @@ export function ChatInput({
                 ? t('chat:inputPlaceholderConnecting')
                 : isLoading
                   ? t('chat:inputPlaceholderLoading')
-                  : t('chat:inputPlaceholder')
+                  : fullChrome
+                    ? t('chat:inputPlaceholder')
+                    : `${t('chat:inputPlaceholder')}  ·  $ skill · @ file`
             }
             className={cn(
               'flex min-h-[64px] w-full resize-none overflow-y-auto rounded-lg border border-input bg-card/80 px-4 py-3 pr-12 shadow-sm sm:min-h-[44px]',
@@ -459,7 +463,10 @@ export function ChatInput({
             disabled={!client?.isConnected || topicCheckBusy}
           />
 
-          <div className="px-1 pt-1 text-xs text-muted-foreground">$ skill · @ file</div>
+          {/* Calm chrome folds this hint into the placeholder. */}
+          {fullChrome && (
+            <div className="px-1 pt-1 text-xs text-muted-foreground">$ skill · @ file</div>
+          )}
           <DraftTokenCounter
             input={input}
             lastInputTokens={lastInputTokens}

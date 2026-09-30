@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComposerButtonBar } from '../../src/components/ChatInput/composer-button-bar';
+import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/i18n', () => ({
   useAppTranslation: () => ({
@@ -55,5 +56,34 @@ describe('ComposerButtonBar component', () => {
 
     const stopListeningBtn = screen.getByTitle('Listening... (Click to stop)');
     expect(stopListeningBtn).toBeDefined();
+  });
+
+  describe('send-mode buttons by chrome level', () => {
+    it('full: btw, steer and queue all render once the chat has started', () => {
+      useLocalPrefs.setState({ chromeLevel: 'full' });
+      render(<ComposerButtonBar {...defaultProps} />);
+      expect(screen.queryByTestId('send-btw')).not.toBeNull();
+      expect(screen.queryByTestId('send-steer')).not.toBeNull();
+      expect(screen.queryByTestId('send-queue')).not.toBeNull();
+      useLocalPrefs.setState({ chromeLevel: 'calm' });
+    });
+
+    it('calm + idle: btw and steer (both identical to Send) are hidden, queue stays', () => {
+      useLocalPrefs.setState({ chromeLevel: 'calm' });
+      render(<ComposerButtonBar {...defaultProps} />);
+      expect(screen.queryByTestId('send-btw')).toBeNull();
+      expect(screen.queryByTestId('send-steer')).toBeNull();
+      expect(screen.queryByTestId('send-queue')).not.toBeNull();
+      expect(screen.getByTestId('send-submit')).toBeDefined();
+    });
+
+    it('calm + running: steer comes back to interrupt the run', () => {
+      useLocalPrefs.setState({ chromeLevel: 'calm' });
+      render(<ComposerButtonBar {...defaultProps} isLoading />);
+      expect(screen.queryByTestId('send-btw')).toBeNull();
+      const steer = screen.getByTestId('send-steer');
+      fireEvent.click(steer);
+      expect(defaultProps.handleSteer).toHaveBeenCalledTimes(1);
+    });
   });
 });

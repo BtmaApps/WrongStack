@@ -162,6 +162,7 @@ export function ChatView() {
         totalTokens={state.totalTokens}
         startTime={state.startTime}
         formatDuration={state.formatDuration}
+        onToggleAutoCollapse={state.handleToggleAutoCollapse}
       />
       {/* Messages.
           Both panes stay MOUNTED; the one not in front is parked. The leader
@@ -418,15 +419,19 @@ export function ChatView() {
               </button>
             )}
             <ProviderWaitingRoom />
-            <ChatDisplayToggles
-              hasStatusContent={state.hasStatusContent}
-              totalTokens={state.totalTokens}
-              rowsCount={state.rows.length}
-              iteration={state.iteration}
-              startTime={state.startTime}
-              formatDuration={state.formatDuration}
-              onToggleAutoCollapse={state.handleToggleAutoCollapse}
-            />
+            {/* Calm chrome moves these switches into the chat header's
+                session-tools menu; full chrome keeps the row. */}
+            {fullChrome && (
+              <ChatDisplayToggles
+                hasStatusContent={state.hasStatusContent}
+                totalTokens={state.totalTokens}
+                rowsCount={state.rows.length}
+                iteration={state.iteration}
+                startTime={state.startTime}
+                formatDuration={state.formatDuration}
+                onToggleAutoCollapse={state.handleToggleAutoCollapse}
+              />
+            )}
             <div className="ws-chat-input-wrap p-0">
               <div className="max-w-6xl mx-auto">
                 <BackgroundShellStrip />

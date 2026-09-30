@@ -1,5 +1,6 @@
 import { Bell, ListPlus, Mic, MicOff, RotateCw, Send, Sparkles } from 'lucide-react';
 import type React from 'react';
+import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { cn } from '@/lib/utils';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { Button } from '../ui/button.js';
@@ -51,6 +52,13 @@ export function ComposerButtonBar({
   onToggleSpeech,
 }: ComposerButtonBarProps) {
   const enhanceEnabled = useLocalPrefs((s) => s.enhanceEnabled);
+  // Calm chrome drops the send-mode buttons that duplicate Send:
+  //  - btw ALWAYS submits exactly like Send/Enter (both call submitWith('btw')),
+  //  - steer only differs from Send while a run is in flight (it interrupts).
+  // Queue keeps its slot — holding a prompt is not something Send does.
+  const fullChrome = useIsFullChrome();
+  const showBtw = fullChrome;
+  const showSteer = fullChrome || isLoading;
 
   return (
     <div className="flex w-full justify-end gap-1 overflow-x-auto no-scrollbar sm:w-auto sm:overflow-visible">
@@ -130,34 +138,38 @@ export function ComposerButtonBar({
 
       {(chatStarted || isLoading) && (
         <>
-          <Button
-            type="button"
-            size="icon"
-            variant="default"
-            disabled={
-              topicCheckBusy || (!input.trim() && pendingImages.length === 0) || !clientConnected
-            }
-            onClick={handleBtw}
-            className="h-[44px] w-[44px] shrink-0 rounded-md"
-            title={isLoading ? t('chat:input.btwRunningTitle') : t('chat:input.btwIdleTitle')}
-            data-testid="send-btw"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            disabled={
-              topicCheckBusy || (!input.trim() && pendingImages.length === 0) || !clientConnected
-            }
-            onClick={handleSteer}
-            className="h-[44px] w-[44px] shrink-0 rounded-md border-warning/50 text-warning hover:bg-warning/10"
-            title={isLoading ? t('chat:input.steerRunningTitle') : t('chat:input.steerIdleTitle')}
-            data-testid="send-steer"
-          >
-            <RotateCw className="h-4 w-4" />
-          </Button>
+          {showBtw && (
+            <Button
+              type="button"
+              size="icon"
+              variant="default"
+              disabled={
+                topicCheckBusy || (!input.trim() && pendingImages.length === 0) || !clientConnected
+              }
+              onClick={handleBtw}
+              className="h-[44px] w-[44px] shrink-0 rounded-md"
+              title={isLoading ? t('chat:input.btwRunningTitle') : t('chat:input.btwIdleTitle')}
+              data-testid="send-btw"
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+          )}
+          {showSteer && (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              disabled={
+                topicCheckBusy || (!input.trim() && pendingImages.length === 0) || !clientConnected
+              }
+              onClick={handleSteer}
+              className="h-[44px] w-[44px] shrink-0 rounded-md border-warning/50 text-warning hover:bg-warning/10"
+              title={isLoading ? t('chat:input.steerRunningTitle') : t('chat:input.steerIdleTitle')}
+              data-testid="send-steer"
+            >
+              <RotateCw className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             type="button"
             size="icon"

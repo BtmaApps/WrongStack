@@ -148,7 +148,9 @@ beforeEach(() => {
   wsMock.adviseTopic.mockClear();
   wsMock.client.supportsCapability.mockClear();
   useChatStore.setState({ messages: [], queue: [], isLoading: false });
-  useLocalPrefs.setState({ enhanceEnabled: false });
+  // These tests drive the btw / steer buttons, which only calm chrome
+  // hides — pin full chrome so each send mode stays clickable.
+  useLocalPrefs.setState({ enhanceEnabled: false, chromeLevel: 'full' });
   useUIStore.setState({
     chromeBySession: {},
     chromeSessionId: null,

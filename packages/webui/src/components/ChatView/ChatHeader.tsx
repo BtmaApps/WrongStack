@@ -15,7 +15,8 @@ import {
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import type { SessionHistoryEntry } from '@/stores';
+import { type SessionHistoryEntry, useUIStore } from '@/stores';
+import { useLocalPrefs } from '@/stores/local-prefs';
 import { AutonomyPicker } from '../AutonomyPicker';
 import { ContextFillBar } from '../ContextBar';
 import { ContextModePicker } from '../ContextModePicker';
@@ -28,6 +29,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { fmtTok } from './utils.js';
@@ -73,6 +75,7 @@ export function ChatHeader({
   totalTokens,
   startTime,
   formatDuration,
+  onToggleAutoCollapse,
 }: {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -119,9 +122,18 @@ export function ChatHeader({
   totalTokens: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
   startTime: number | null;
   formatDuration: (start: number | null) => string;
+  /** Calm chrome hosts the transcript display switches in the session-tools
+   *  menu; auto-collapse needs the view's handler (it also re-expands). */
+  onToggleAutoCollapse?: (() => void) | undefined;
 }) {
   const { t } = useAppTranslation();
   const fullChrome = useIsFullChrome();
+  const showThinkingLogs = useLocalPrefs((s) => s.showThinkingLogs);
+  const groupToolCalls = useLocalPrefs((s) => s.groupToolCalls);
+  const autoCollapseInput = useLocalPrefs((s) => s.autoCollapseInput);
+  const compactMode = useUIStore((s) => s.compactMode);
+  // Display switches keep the menu open so several can be flipped in a row.
+  const keepMenuOpen = (event: Event) => event.preventDefault();
   const cachedTokens = Math.max(0, totalTokens.cacheRead ?? 0);
   const totalPromptTokens = Math.max(
     0,
@@ -372,6 +384,45 @@ export function ChatHeader({
                   <History className="h-4 w-4" />
                   {t('chat:header.checkpointsTitle')}
                 </DropdownMenuCheckboxItem>
+                {/* The transcript display switches (full chrome shows them as
+                    a row above the composer). Same prefs, same handlers. */}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t('chat:header.displaySection', 'Display')}</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={showThinkingLogs}
+                  onSelect={keepMenuOpen}
+                  onCheckedChange={() =>
+                    useLocalPrefs.getState().set({ showThinkingLogs: !showThinkingLogs })
+                  }
+                  data-testid="display-toggle-reasoning"
+                >
+                  {t('activity:chatView.reasoning')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={groupToolCalls}
+                  onSelect={keepMenuOpen}
+                  onCheckedChange={() =>
+                    useLocalPrefs.getState().set({ groupToolCalls: !groupToolCalls })
+                  }
+                >
+                  {t('activity:chatView.groupTools')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={compactMode}
+                  onSelect={keepMenuOpen}
+                  onCheckedChange={() => useUIStore.getState().toggleCompactMode()}
+                >
+                  {t('activity:chatView.compact')}
+                </DropdownMenuCheckboxItem>
+                {onToggleAutoCollapse && (
+                  <DropdownMenuCheckboxItem
+                    checked={autoCollapseInput}
+                    onSelect={keepMenuOpen}
+                    onCheckedChange={onToggleAutoCollapse}
+                  >
+                    {t('activity:chatView.autoCollapse')}
+                  </DropdownMenuCheckboxItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

@@ -59,7 +59,8 @@
     "expandInput": "Expandir a entrada",
     "collapseInput": "Recolher",
     "startListening": "Entrada de voz (Voz para texto)",
-    "stopListening": "Ouvindo... (Clique para parar)"
+    "stopListening": "Ouvindo... (Clique para parar)",
+    "promptsMenu": "Prompts"
   },
   "header": {
     "openSidebarTitle": "Abrir barra lateral (Ctrl+\\)",
@@ -75,7 +76,8 @@
     "noModel": "sem-modelo",
     "memoryContextTitle": "Contexto de memória — memórias SAGE injetadas",
     "toolStatsTitle": "Estatísticas de ferramentas",
-    "sessionToolsTitle": "Ferramentas da sessão"
+    "sessionToolsTitle": "Ferramentas da sessão",
+    "displaySection": "Exibição"
   },
   "toolStats": {
     "title": "Estatísticas de chamadas de ferramentas",

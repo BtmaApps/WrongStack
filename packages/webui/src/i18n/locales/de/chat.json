@@ -59,7 +59,8 @@
     "expandInput": "Eingabe erweitern",
     "collapseInput": "Einklappen",
     "startListening": "Spracheingabe (Speech to text)",
-    "stopListening": "Zuhören... (Zum Stoppen klicken)"
+    "stopListening": "Zuhören... (Zum Stoppen klicken)",
+    "promptsMenu": "Prompts"
   },
   "header": {
     "openSidebarTitle": "Seitenleiste öffnen (Ctrl+\\)",
@@ -75,7 +76,8 @@
     "noModel": "kein-modell",
     "memoryContextTitle": "Speicherkontext — injizierte SAGE-Erinnerungen",
     "toolStatsTitle": "Tool-Aufrufstatistik",
-    "sessionToolsTitle": "Sitzungswerkzeuge"
+    "sessionToolsTitle": "Sitzungswerkzeuge",
+    "displaySection": "Darstellung"
   },
   "toolStats": {
     "title": "Tool-Aufrufstatistiken",
