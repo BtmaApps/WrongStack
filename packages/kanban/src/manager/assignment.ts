@@ -686,11 +686,12 @@ export async function releaseTaskClaim(
     // repair_managed_projection or manual transition to correct the stage.
     if (!isManaged && task.status !== 'archived' && task.status !== 'completed') {
       task.status = input.status ?? (areDependenciesMet(board, task.id) ? 'ready' : 'blocked');
-      if (task.status === 'completed') {
-        task.completedAt = task.completedAt ?? nowIso();
-      } else {
-        delete task.completedAt;
-      }
+      // The resulting status is always pending/ready/blocked — input.status is
+      // typed `'pending' | 'ready' | 'blocked'` and the fallback is ready/blocked —
+      // so the released card is never 'completed' here. The old inner
+      // `=== 'completed'` branch was unreachable (TS2367 on declaration emit);
+      // a released, non-managed card always has its completed stamp cleared.
+      delete task.completedAt;
     }
     const now = nowIso();
     if (input.reason) {
