@@ -570,10 +570,28 @@ function extractCandidatesFromMessage(text: string, role: 'user' | 'agent'): Ext
   const cleaned = text.replace(/\s+/g, ' ').trim();
   if (!cleaned) return out;
 
+  // The channels below scan the same text, so one occurrence can match
+  // several of them (`TaskGraph` is both back-ticked and camelCase). Each
+  // emitted candidate counts as a mention in `mergeTerm`, so a later
+  // channel must not re-emit the same term from a span an earlier channel
+  // already claimed — otherwise a single sighting reads as a repeat.
+  const claimed: Array<{ start: number; end: number; key: string }> = [];
+  const claim = (match: RegExpMatchArray, term: string): void => {
+    const start = match.index ?? 0;
+    claimed.push({ start, end: start + match[0].length, key: normalizeTerm(term) });
+  };
+  const isClaimed = (match: RegExpMatchArray, term: string): boolean => {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const key = normalizeTerm(term);
+    return claimed.some((c) => c.key === key && start >= c.start && end <= c.end);
+  };
+
   // 1) Back-ticked identifiers.
   for (const match of cleaned.matchAll(/`([A-Za-z][A-Za-z0-9_-]{2,80})`/g)) {
     const term = match[1] as string;
     if (isStoplisted(term)) continue;
+    claim(match, term);
     out.push({
       term,
       definition: '',
@@ -589,6 +607,8 @@ function extractCandidatesFromMessage(text: string, role: 'user' | 'agent'): Ext
     const raw = (match[1] ?? '').trim();
     const term = cleanBoldedCandidate(raw);
     if (!term || isStoplisted(term)) continue;
+    if (isClaimed(match, term)) continue;
+    claim(match, term);
     out.push({
       term,
       definition: '',
@@ -608,6 +628,7 @@ function extractCandidatesFromMessage(text: string, role: 'user' | 'agent'): Ext
     const term = match[1] as string;
     if (!hasCamelBoundary(term)) continue;
     if (isStoplisted(term)) continue;
+    if (isClaimed(match, term)) continue;
     out.push({
       term,
       definition: '',
@@ -621,23 +642,22 @@ function extractCandidatesFromMessage(text: string, role: 'user' | 'agent'): Ext
   // 4) Multi-word proper names ("Mailbox Bridge", "Project Root").
   //    These are rarer, so require an explicit article before them:
   //    "the X Y" or "X Y is/are/has ...".
-  const multiWord = cleaned.match(
+  for (const match of cleaned.matchAll(
     /\b(?:the\s+|a\s+|an\s+)?((?:[A-Z][a-z]{2,})(?:\s+[A-Z][a-z0-9]{2,}){0,3})\b/g,
-  );
-  if (multiWord) {
-    for (const raw of multiWord) {
-      const term = raw.replace(/^(?:the|a|an)\s+/i, '').trim();
-      if (term.split(/\s+/).length < 2) continue;
-      if (isStoplisted(term)) continue;
-      out.push({
-        term,
-        definition: '',
-        confidence: 0.5,
-        mentionCount: 1,
-        evidence: [raw],
-        sources: [source],
-      });
-    }
+  )) {
+    const raw = match[0];
+    const term = raw.replace(/^(?:the|a|an)\s+/i, '').trim();
+    if (term.split(/\s+/).length < 2) continue;
+    if (isStoplisted(term)) continue;
+    if (isClaimed(match, term)) continue;
+    out.push({
+      term,
+      definition: '',
+      confidence: 0.5,
+      mentionCount: 1,
+      evidence: [raw],
+      sources: [source],
+    });
   }
 
   // Attach definition hints ONLY when the term appears at the start of

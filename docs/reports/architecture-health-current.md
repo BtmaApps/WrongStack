@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-30T21:01:49.383Z
+**Generated:** 2026-09-30T21:31:46.047Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4311 |
-| Production source lines | 1023396 |
+| Production source lines | 1023416 |
 | Test files | 3915 |
 | Workspace dependency edges | 131 |
 | Relative module edges | 14053 |
@@ -131,11 +131,11 @@ None.
 | 896 | `packages/webui-server/src/server/backend-services.ts` |
 | 896 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 894 | `packages/tools/src/bash.ts` |
+| 893 | `packages/sage/src/domain-term-extractor.ts` |
 | 893 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 891 | `packages/kanban/src/verification/verification-context.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
 | 886 | `packages/core/src/coordination/collab-debug.ts` |
-| 886 | `packages/tools/src/codebase-index/dead-code-scan.ts` |
 
 ## Exports only tests reference
 

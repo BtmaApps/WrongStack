@@ -211,7 +211,7 @@
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
-      "lines": 873,
+      "lines": 893,
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {

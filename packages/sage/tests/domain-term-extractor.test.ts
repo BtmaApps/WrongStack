@@ -144,6 +144,26 @@ describe('SageDomainTermExtractor — detection', () => {
     expect(names).toContain('TaskGraph');
   });
 
+  it('counts one occurrence matched by several channels as one mention', () => {
+    // `TaskGraph` is both back-ticked and camelCase, **TaskGraph** both bolded
+    // and camelCase. Each sighting used to be emitted once per channel, so a
+    // single mention merged into mentionCount 2 and earned the repeat bonus.
+    const run = (text: string) =>
+      ex
+        .extractFromConversation({ messages: [{ role: 'user', text }], minConfidence: 0 })
+        .find((r) => r.term === 'TaskGraph');
+
+    const ticked = run('We touched `TaskGraph` today.');
+    expect(ticked?.mentionCount).toBe(1);
+    expect(ticked?.confidence).toBe(0.7);
+    expect(run('We touched **TaskGraph** today.')?.mentionCount).toBe(1);
+    expect(run('We touched TaskGraph today.')?.mentionCount).toBe(1);
+
+    // Genuine repeats still count, across channels too.
+    expect(run('`TaskGraph` then later `TaskGraph` again.')?.mentionCount).toBe(2);
+    expect(run('`TaskGraph` first, then bare TaskGraph later.')?.mentionCount).toBe(2);
+  });
+
   it('captures inline "TERM is DEFINITION" hints as the definition field', () => {
     const result = ex.extractFromConversation({
       messages: [
