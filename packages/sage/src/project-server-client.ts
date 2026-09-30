@@ -221,13 +221,7 @@ export class SageProjectServerConnection {
   private authToken: string | undefined;
   /** Error reported by the live socket before it closed, if any. */
   private closeCause: Error | null = null;
-  /**
-   * Aborted by `close()` so a `call()` sleeping between auth retries wakes at
-   * once instead of after `AUTH_RETRY_DELAY_MS`. Replaced on every close: the
-   * connection stays usable (`releaseConnection()` expects the next call to
-   * reconnect), so a later call must not see an already-aborted signal.
-   */
-  private closeController = new AbortController();
+  private closeController = new AbortController(); // close() aborts, then replaces it
 
   private readonly spawnIfMissing: boolean;
 
@@ -291,10 +285,7 @@ export class SageProjectServerConnection {
     options: SageProjectServerCallOptions,
   ): Promise<SageServerOperations[O]['result']> {
     if (options.signal?.aborted) throw cancellationError(options.signal);
-    // Captured before any await: close() swaps in a fresh controller, so
-    // reading it at the retry would miss a close() that landed while this
-    // call was waiting on the refused response and sleep the full delay.
-    const closed = this.closeController.signal;
+    const closed = this.closeController.signal; // read before any await; close() swaps it
     await this.ensureConnected(this.spawnIfMissing);
     if (options.signal?.aborted) throw cancellationError(options.signal);
     let lastError: unknown;
@@ -319,10 +310,8 @@ export class SageProjectServerConnection {
           error.name === 'UnauthorizedSageRequest' &&
           attempt < AUTH_RETRY_MAX_ATTEMPTS;
         if (!retriable) throw error;
-        await delay(
-          AUTH_RETRY_DELAY_MS,
-          options.signal ? AbortSignal.any([options.signal, closed]) : closed,
-        );
+        const wake = options.signal ? AbortSignal.any([options.signal, closed]) : closed;
+        await delay(AUTH_RETRY_DELAY_MS, wake);
         if (options.signal?.aborted) throw cancellationError(options.signal);
       }
     }
