@@ -2,9 +2,9 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import { normalizeProjectPath, normalizeSlashes } from './paths.js';
 import { sqliteAnchorNode } from './sqlite-store-anchors.js';
-import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { MEMORY_NODE_PREFIX, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import { escapeGlobPattern } from './sqlite-store-pagination.js';
+import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
 import type { MemoryGraphEdge, Sage } from './types.js';
 
 interface SqliteGraphForContext {
@@ -55,8 +55,9 @@ export async function graphSqliteSageFor(
     const batchRows = ctx
       .stmt(`SELECT data FROM memories WHERE id IN (${placeholders})`)
       .all(...memIds) as Array<{ data: string }>;
-    const memAnchorMap = batchRows.map((r) => sqliteRowToMemory(r));
-    for (const memory of memAnchorMap) {
+    // Skip-and-log decoding (as findRelatedSage does): one corrupt start row
+    // must not fail the whole lookup — its edges are still in the graph.
+    for (const memory of sqliteRowsToMemories(batchRows)) {
       for (const anchor of memory.anchors) {
         const node = sqliteAnchorNode(anchor);
         if (node) starts.add(node);
