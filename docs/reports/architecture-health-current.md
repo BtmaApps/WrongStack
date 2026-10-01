@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-01T20:27:05.715Z
+**Generated:** 2026-10-01T20:52:33.387Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4317 |
-| Production source lines | 1029690 |
+| Production source lines | 1029693 |
 | Test files | 3948 |
 | Workspace dependency edges | 131 |
 | Relative module edges | 14076 |
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- packages/kanban/src/verification/verification-context.ts: hotspot shrunk from 891 to 890 lines; review and update the ratchet in the same change
 
 ## Workspace packages
 

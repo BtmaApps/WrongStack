@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-01T20:27:05.715Z",
+  "generatedAt": "2026-10-01T20:52:33.387Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4317,
     "testFiles": 3948,
-    "sourceLines": 1029690,
+    "sourceLines": 1029693,
     "workspaceEdges": 131,
     "moduleEdges": 14076,
     "nonCommandSlashImports": 0,
@@ -24,7 +24,9 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 974
   },
-  "errors": [],
+  "errors": [
+    "packages/kanban/src/verification/verification-context.ts: hotspot shrunk from 891 to 890 lines; review and update the ratchet in the same change"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -25192,7 +25194,7 @@
     },
     {
       "file": "packages/kanban/src/verification/verification-context.ts",
-      "lines": 891,
+      "lines": 890,
       "relativeImports": 3
     },
     {

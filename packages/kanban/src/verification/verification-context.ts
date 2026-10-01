@@ -153,7 +153,7 @@ export class VerificationContext {
     this.board = opts.board;
     this.task = opts.task;
     this.snapshot =
-      opts.snapshot && opts.snapshot.treeHash
+      opts.snapshot?.treeHash
         ? {
             id: opts.snapshot.id,
             capturedAt: opts.snapshot.capturedAt,
