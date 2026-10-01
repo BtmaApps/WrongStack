@@ -2,53 +2,48 @@
 
 ## Review Evidence and Coverage
 
-- Treat diffs and changed-file lists as incomplete, potentially stale evidence. Resolve every finding against live on-disk source with `read`/`grep` and cite current `file:line`; bundles may omit siblings or capture a pre-`file.external.edit` snapshot.
-- If an added import references a module omitted from the bundle, `glob` its directory and read the sibling. Report a missing module only when it is absent on disk.
-- When a read conflicts with a distinctive new token, verify the token with live `grep`. Before filing `TS6133`, `noUnusedParameters`, or a similar signature finding, re-read the changed function’s current definition and cite the live line.
-- If `[artifact middle omitted]` hides a changed region, do not issue an all-clear. Reissue fresh `offset`/`limit` ranges, such as `offset=1 limit=250` followed by `offset=251`; if the read cache prevents range recovery, use `grep` with `context_lines`.
-- Never file a Medium+ finding without a line actually read during the review. Treat search results and green tests as leads, not proof.
-- If coverage remains incomplete, name the uncovered `file:line` ranges and set `completion: "partial"`; use `{"findings": []}` when no defect is confirmed rather than implying a clean full review.
+- Treat diffs, changed-file lists, and artifact bundles as incomplete or stale. Confirm every finding and any all-clear against current on-disk source with `read`/`grep`, and cite live `file:line`. If a changed import names an omitted sibling, `glob` its directory and read it; report a missing module only when absent on disk.
+- If a read conflicts with a distinctive new token, verify it with live `grep`. Before filing `TS6133`, `noUnusedParameters`, or a signature finding, reread the current declaration and changed function. Searches and green tests are leads, not proof.
+- Never file a Medium+ finding without reading its exact line. If `[artifact middle omitted]` hides a changed region, reread bounded ranges or use contextual `grep`; do not issue an all-clear. Name uncovered `file:line` ranges and set `completion: "partial"`; use `{"findings": []}` when no defect is confirmed, not to imply complete coverage.
 
 ## Finding Validation
 
 - Trace changed invariants through every producer, consumer, lifecycle path, and exact-equality assertion. Reviewing only changed lines or current fixtures is insufficient.
-- Thread new options and fields end to end: declaration, handler, production consumer, and tests. A mocked-store test cannot distinguish a live option from dead wiring; `grep` the exact flag in the store implementation before judging it.
-- Verify every branch initializes values used by later code. A field-mapped array declared only inside a feature-specific branch can cause a TDZ `ReferenceError` on other paths.
-- During renames and shape changes, grep both old and new names across all reads and writes. Ensure new mutable state is initialized and reset and that extracted helpers are called with matching signatures.
-- Verify language semantics before reporting a failure path. In `optionalFn?.(arg).catch(cb)`, optional chaining short-circuits the continuous chain; only an invoked callee returning a non-Promise can make `.catch` invalid.
-- Before flagging an added store return field, grep `implements <Interface>`. Optional additive fields are generally safe unless exact whole-object assertions or required destructuring impose a stricter contract.
+- Thread fields and options end to end—declaration, handler, production consumer, and tests—and grep the exact flag in the real store or call site. Mock-only tests cannot prove live wiring. Fields sourced solely from trusted host configuration, rather than HTTP or WebSocket input, are additive wiring rather than a new request attack surface.
+- Verify every branch initializes values used later, mutable state is reset, and rename or shape changes leave no old reads or writes. Match extracted helpers to call-site signatures. Before flagging a store return field, grep `implements <Interface>`; optional additive fields are normally safe unless exact object assertions or required destructuring make them incompatible.
+- Check language semantics before filing. In `optionalFn?.(arg).catch(cb)`, optional chaining short-circuits the chain; `.catch` is unsafe only when an invoked callee returns a non-Promise.
+- Normalize model or API limits before `slice` or SQL `LIMIT`: reject `NaN`, `Infinity`, negatives, and out-of-range integers. `slice(0, -n)` drops the last `n` items, and `x ?? default` does not catch `NaN`. Resolve `clampLimit` by import and live definition: `packages/webui-server/src/server/ws-validation-common.ts` has `(value, def, max)` with minimum 1, while `packages/core/src/chronicle/metrics-schema.ts` has `(limit, fallback)` with a 10,000 cap.
+- Resolve `computeStableJsonHash` and `computeTextHash` to `packages/bench/src/fingerprint.ts` before judging path safety; `shortHash` is 12-character SHA-256 hex, so its suffix is separator-free when appended to `slug()` output.
 
-## Project Contracts
+## Settings and Preferences
 
-- In `packages/tools/src/project-kit/**`, `assertKitId`/`KIT_ID` and `kitPath` in `catalog.ts` centralize name, traversal, separator, and symlink validation. Do not report path traversal or symlink escape unless a new caller bypasses these guards.
-- Additions to `KitProcessResult` or `KitRunRecord` must remain optional (`?: T | undefined`) unless all existing literals are updated. A parent timestamp on the `failure` branch while `resultReceived` remains `false` is intentional: the record represents a terminal IPC message, not necessarily a result.
-- For changes to `packages/webui/src/types/sage.ts`, compare fields in both directions with `packages/sage/src/memory-model.ts`. `kind: string` versus the closed `SageKind` union and optional canonical `sources` are deliberate safe widenings, not drift.
-- `loadGitignoreMatcher(root)` in `packages/tools/src/codebase-index/gitignore.ts` reads only the root `.gitignore`, without nested files or a `.git` requirement. It supports last-match-wins `!` negation and trailing-slash directory rules; verify the enumerator’s `require_git` behavior before claiming parity with ripgrep.
-- Treat edits to `architecture/hotspots.json` as a ratchet that must be regenerated in the same change. `validateHotspotBaseline` in `scripts/lib/architecture-health.mjs` checks every drift for files at or above `thresholdLines: 800`; the 50-row cap in `docs/reports/architecture-health-current.md` can legitimately reflow the report tail.
-- In `packages/plugins/src/semver-bump/index.ts`, the `commitError` early-exit guard is correct because that variable is assigned only on failure. Tests asserting warnings must preserve the exact `commit failed: …` then `tag failed: …` order and literals.
-- Security scanners that replace whole-input matching with chunked scanning must overlap by at least the maximum pattern length or deduplicate by absolute offset; a one-character overlap can miss matches crossing chunk boundaries.
-- In `packages/cli/src/repl.ts`, `onSuggestionsParsed(null)` clears suggestions, while `onSuggestionsParsed([])` is a successful empty parse. In `auto` mode, route progression only through `runAutoProceed` and its `loopGuard`; a direct `agent.run()` bypasses repetition protection.
+- Validate numeric preferences in the serve, seed, and broadcast paths—not only in `prefs.update`. `packages/webui-server/src/server/context-meta.ts` seeds numbers with only a type check, so hand-edited fractional, zero, or excessive values can reach `packages/simpleui/src/settings-panel.tsx`; an out-of-range `tgPollIntervalSec` may make its `<select>` display the first option. Ensure `presetOptions` applies `Number.isInteger` and its floor guard and never re-offers invalid stored values; pair this with allowed keys in `pref-helpers.ts` and required defaults in `prefs-model.ts`.
+- SimpleUI toggles must update the model, defaults, parser, shallow equality, catalog, row binding, and `BOOLEAN_PREF_KEYS` in `packages/webui-server/src/server/ws-payload-preferences.ts`; the server rejects unlisted update keys.
+- `CONFIG_BEHAVIOR_DEFAULTS.autonomy` in `packages/core/src/storage/config-loader.ts` is the canonical TUI autonomy-default source. A setting must flow through TUI state, contracts, reducers, the CLI settings adapter, overlays, persistence, and `app-view`. `LiveSettingsInput` also requires hydration from `cfg.features` and persistence back to `feats`; update picker fixtures, field counts, reset coverage, labels, and sections.
+
+## Locale Resources
+
+- For placeholder parity, inspect every result of `glob packages/webui/src/i18n/locales/*/settings.json`. Do not grep with `"[^"]*\{\{token\}\}"`: JSON-escaped quotes inside values break `[^"]*`. Search the key and placeholder independently, or use `[^}]*` on the placeholder side, and verify each locale has the identical key and token contract.
 
 ## TUI Contracts
 
-- Treat every newly reachable filtered array as potentially empty. Guard selected values, clamp indices before calling windowing functions, and never cast an array lookup to a member type when the array actually contains objects.
-- Selection reducers, index-based consumers, and caller-supplied React keys form part of the same contract. Verify index synchronization, element type, and uniqueness guarantees rather than relying on current fixture ordering.
-- Preserve React hook order, synchronously snapshot render-bumped revisions before effects, and check a local cancellation flag inside timer callbacks to prevent stale or post-unmount updates.
-- Account for every subtraction from a measured history total, including assistant tails, tool tails, autocomplete popovers, and status overlays. Preserve `EntryHeightCache` seeding with `cache.sync(ids)` before `cache.recordMany(...)`.
-- Do not place fresh results such as `cache.totalHeight()` directly in effect dependencies; use a revision or stable memoized value. Derive picker widths from rendered labels because `padEnd` does not truncate longer strings.
-
-## Settings and Defaults
-
-- `CONFIG_BEHAVIOR_DEFAULTS.autonomy` in `packages/core/src/storage/config-loader.ts` is the canonical TUI autonomy-default source. A new setting must flow through `packages/tui/src/app-state.ts`, `app-initial-state.ts`, settings contracts/reducers, `packages/cli/src/boot/tui-settings-adapter.ts`, overlay routing, picker rendering, persistence, and `app-view` forwarding.
-- Adding a setting also requires updating `SettingsPickerValues` fixtures, field-count assertions, reset coverage, labels, and sections. Optional `AutonomyConfig` booleans and legacy fleet-chat enum tokens are intentional compatibility behavior.
-- `LiveSettingsInput` additions require both hydration from `cfg.features` and persistence back to `feats` in `packages/cli/src/boot/tui-settings-adapter.ts`; a declaration with only one mapping is dead wiring.
-- SimpleUI preference toggles must update the model/default/parser, shallow equality, catalog, row binding, and `BOOLEAN_PREF_KEYS` in `packages/webui-server/src/server/ws-payload-preferences.ts`; the server rejects unlisted `prefs.update` keys.
-- For changed defaults, inspect the actual resolver and production consumer. A host enablement flip must agree with `HOST_PLUGIN_AUDIT_ENTRIES` and `resolvePluginEnablement`; declarations and historical comments are not authoritative.
+- Treat every newly reachable filtered array as potentially empty. Guard selected values, clamp indices before windowing, and never cast an array lookup to a member type when the array contains objects. Selection reducers, index consumers, and caller-supplied React keys must agree on synchronization, element type, and uniqueness.
+- Preserve React hook order, snapshot render-bumped revisions before effects, and check cancellation inside timer callbacks. Do not put fresh values such as `cache.totalHeight()` directly in effect dependencies; use a revision or stable memo.
+- Account for every subtraction from measured history totals, including assistant and tool tails, autocomplete popovers, and status overlays. Preserve `EntryHeightCache` seeding with `cache.sync(ids)` before `cache.recordMany(...)`, and derive picker widths from rendered labels because `padEnd` does not truncate.
 
 ## Tests and Generated Definitions
 
-- A literal assertion guards behavior only when the test matches exact syntax and the live source occurrence reaches the relevant runtime path. Verify build arguments reach `run('bun', args)` or spawn, and feature switches are read through closures over live state rather than captured construction values.
-- Exact output assertions must respect implementation caps. `runCmd` in `packages/cli/src/goal-commands.ts` retains only the last `MAX_CMD_OUTPUT` (`200_000`) characters through `createTailBuffer`.
-- After changing protocol catalogs, run their catalog tests and grep exact type strings repository-wide before calling an entry dead. Declaration plus forward handler wiring is sufficient even if documentation is stale.
+- A literal assertion guards behavior only when it matches exact live syntax and that occurrence reaches the runtime path. Verify build arguments reach the actual spawn and feature switches read live state. For cross-package source pins, prove the new regex matches the exact literal and the old regex does not; both matching is vacuous, while neither matching guards nothing.
+- Respect implementation caps in exact-output tests. `runCmd` in `packages/cli/src/goal-commands.ts` retains only the last `MAX_CMD_OUTPUT` (`200_000`) characters through `createTailBuffer`.
+- After changing protocol catalogs, run their catalog tests and grep exact type strings repository-wide before calling an entry dead. Declaration plus forward-handler wiring is sufficient even when documentation is stale.
 
-_(truncated at 8192 bytes — the next optimization pass must shorten it)_
+## Project Contracts
+
+- In `packages/tools/src/project-kit/**`, `assertKitId`/`KIT_ID` and `kitPath` in `catalog.ts` centralize name, traversal, separator, and symlink validation. Flag escape only when a new caller bypasses them.
+- Additions to `KitProcessResult` or `KitRunRecord` must remain optional unless all existing literals are updated. A parent timestamp on the `failure` branch while `resultReceived` remains false is intentional.
+- For `packages/webui/src/types/sage.ts`, compare both directions with `packages/sage/src/memory-model.ts`; `kind: string`, closed `SageKind`, and optional canonical `sources` are deliberate safe widenings.
+- `loadGitignoreMatcher(root)` in `packages/tools/src/codebase-index/gitignore.ts` reads only the root `.gitignore`, supports last-match-wins negation and trailing-slash rules, and has no nested-file or `.git` requirement.
+- Treat `architecture/hotspots.json` as a regenerated ratchet. `validateHotspotBaseline` in `scripts/lib/architecture-health.mjs` checks drift for files at or above `thresholdLines: 800`; the 50-row report cap can legitimately reflow the tail.
+- In `packages/plugins/src/semver-bump/index.ts`, the `commitError` early exit is correct because it is assigned only on failure; warning tests must preserve the exact commit-then-tag failure order and literals.
+- Chunked security scanners must overlap by at least the maximum pattern length or deduplicate by absolute offset; a one-character overlap can miss boundary matches.
+- In `packages/cli/src/repl.ts`, `onSuggestionsParsed(null)` clears suggestions while `onSuggestionsParsed([])` is a successful empty parse. In `auto` mode, use `runAutoProceed` and its `loopGuard`, not a direct `agent.run()` bypass.
