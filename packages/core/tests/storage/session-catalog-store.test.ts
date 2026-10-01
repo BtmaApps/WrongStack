@@ -335,6 +335,37 @@ describe('SessionCatalogStore', () => {
     store.close();
   });
 
+  // Regression: `clampListLimit` (storage/session-store/list-sessions.ts)
+  // normalizes an untrusted caller limit so 0 and negative BOTH mean an empty
+  // page — documented as "matching the catalog RPC's bounded limit" and pinned
+  // by tests/storage/session-store-list-limit.test.ts. This RPC clamped to a
+  // floor of 1 instead, so `sessionStore.list(0)` answered with the single
+  // NEWEST session when the catalog daemon was up and with nothing when it was
+  // not — the same call returned different rows depending on the backend.
+  it('treats limit 0 and negative limits as an empty page (backend parity)', async () => {
+    const { store } = await fixture();
+    for (let i = 0; i < 3; i++) {
+      store.upsertSummary({
+        id: `2026-08-08/sess_page_${i}`,
+        title: `page ${i}`,
+        model: 'page-model',
+        provider: 'page-provider',
+        tokenTotal: i,
+        lastActivityAt: `2026-08-08T0${i}:00:00.000Z`,
+      });
+    }
+
+    // The control: a positive limit is still honored (newest first).
+    expect(store.listCatalog({ limit: 2 })).toHaveLength(2);
+    expect(store.listCatalog({ limit: 3 })).toHaveLength(3);
+    expect(store.listCatalog()).toHaveLength(3);
+
+    // The contract: 0 and negative are an empty page, never a 1-row page.
+    expect(store.listCatalog({ limit: 0 })).toEqual([]);
+    expect(store.listCatalog({ limit: -1 })).toEqual([]);
+    store.close();
+  });
+
   it('excludes maintenance while live and deletes only with an exact maintenance lease', async () => {
     const { root, store } = await fixture();
     const id = '2026-08-08/sess_delete';

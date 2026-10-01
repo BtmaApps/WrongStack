@@ -33,7 +33,15 @@ export function listCatalogRecords(
 ): CatalogSessionRecord[] {
   const requestedLimit = criteria.limit ?? 100;
   if (!Number.isFinite(requestedLimit)) throw new TypeError('Invalid session catalog limit');
-  const bounded = Math.min(MAX_PAGE, Math.max(1, Math.floor(requestedLimit)));
+  // Floor at 0, NOT 1: `clampListLimit` (storage/session-store/list-sessions.ts)
+  // normalizes an untrusted caller limit so that 0 and negative both mean an
+  // EMPTY PAGE, explicitly "matching the catalog RPC's bounded limit" — the
+  // in-process backend gets that for free from `slice(0, 0)`. A floor of 1 here
+  // made `limit: 0` (and every negative limit) answer with the single NEWEST
+  // session on the catalog path while the scan path answered with none, so the
+  // same `sessionStore.list(0)` returned different rows depending on whether
+  // the catalog daemon was running.
+  const bounded = Math.min(MAX_PAGE, Math.max(0, Math.floor(requestedLimit)));
   const clauses: string[] = [];
   const values: Array<string | number> = [];
   const jsonText = (field: string): string =>
