@@ -116,6 +116,46 @@ describe('SessionCatalogStore', () => {
     store.close();
   });
 
+  // Regression: 'closing' is terminal (session_end written, process shutting
+  // down) and executeHeartbeat already preserves it, but executePublishAgents
+  // recomputed status from the agent list alone — so a roster batch landing
+  // after mark_closing flipped the lease back to 'active'/'idle' and undid the
+  // filter every consumer applies on 'closing'. The race is live: the daemon
+  // dispatches socket frames without serializing them, and markClosing() does
+  // not await an in-flight flushAgents().
+  it('does not resurrect a closing lease on the next agent publish', async () => {
+    const { store } = await fixture();
+    const credential = store.claimNew(entry('2026-08-08/sess_closing'), 'owner-a');
+    const running = [
+      { id: 'a1', name: 'agent-1', status: 'running' },
+    ] as SessionRegistryEntry['agents'];
+
+    store.publishAgents(credential, 1, running);
+    expect(store.getLive(credential.sessionId)?.status).toBe('active');
+
+    store.markClosing(credential);
+    expect(store.getLive(credential.sessionId)?.status).toBe('closing');
+
+    store.publishAgents(credential, 2, running);
+    expect(store.getLive(credential.sessionId)?.status).toBe('closing');
+    // The roster itself still updates — only the lifecycle status is sticky.
+    expect(store.getLive(credential.sessionId)?.agentCount).toBe(1);
+    store.close();
+  });
+
+  it('a stale agent revision is rejected and leaves the roster intact', async () => {
+    const { store } = await fixture();
+    const credential = store.claimNew(entry('2026-08-08/sess_stale'), 'owner-a');
+    const running = [
+      { id: 'a1', name: 'agent-1', status: 'running' },
+    ] as SessionRegistryEntry['agents'];
+
+    store.publishAgents(credential, 5, running);
+    expect(store.publishAgents(credential, 2, []).accepted).toBe(false);
+    expect(store.getLive(credential.sessionId)?.agentCount).toBe(1);
+    store.close();
+  });
+
   it('frees an unexpired lease once its owner process is gone', async () => {
     // A CLI leaving through the forced-exit path never releases its lease;
     // waiting out the expiry made `wstack -r <id>` right after a one-shot run

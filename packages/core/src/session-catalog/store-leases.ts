@@ -313,7 +313,16 @@ export function executePublishAgents(
   const entry = parseJson<SessionRegistryEntry>(row.entry_json);
   entry.agents = boundedAgents;
   entry.agentCount = boundedAgents.length;
-  entry.status = boundedAgents.some((agent) => agent.status !== 'idle') ? 'active' : 'idle';
+  // 'closing' is TERMINAL — the session wrote session_end and is shutting
+  // down (session-registry-types.ts), and the sibling executeHeartbeat above
+  // preserves it explicitly. Recomputing status from the agent list alone let
+  // a roster publish that landed after mark_closing resurrect the session as
+  // 'active'/'idle'; that race is live because the daemon dispatches socket
+  // frames without serializing them (project-server.ts onData) and
+  // markClosing() does not await an in-flight flushAgents(). Consumers filter
+  // on 'closing' precisely to hide shutting-down sessions.
+  const derivedStatus = boundedAgents.some((agent) => agent.status !== 'idle') ? 'active' : 'idle';
+  entry.status = row.status === 'closing' ? 'closing' : derivedStatus;
   entry.lastHeartbeatAt = new Date().toISOString();
   db.prepare(
     'UPDATE session_leases SET entry_json=?,agent_revision=?,status=?,last_heartbeat_at=? WHERE session_id=? AND lease_id=?',
