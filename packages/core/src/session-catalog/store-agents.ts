@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
@@ -35,6 +36,7 @@ export function writeSessionAgentRows(
   records: readonly SessionAgentRecord[],
   size: number,
   mtimeMs: number,
+  contentHash: string,
   transaction: <T>(run: () => T) => T,
 ): void {
   transaction(() => {
@@ -66,9 +68,9 @@ export function writeSessionAgentRows(
       );
     });
     db.prepare(
-      `INSERT INTO session_agent_index(session_id,transcript_size,transcript_mtime_ms,derived_at)
-       VALUES (?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET transcript_size=excluded.transcript_size,transcript_mtime_ms=excluded.transcript_mtime_ms,derived_at=excluded.derived_at`,
-    ).run(sessionId, size, mtimeMs, new Date().toISOString());
+      `INSERT INTO session_agent_index(session_id,transcript_size,transcript_mtime_ms,transcript_content_hash,derived_at)
+       VALUES (?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET transcript_size=excluded.transcript_size,transcript_mtime_ms=excluded.transcript_mtime_ms,transcript_content_hash=excluded.transcript_content_hash,derived_at=excluded.derived_at`,
+    ).run(sessionId, size, mtimeMs, contentHash, new Date().toISOString());
   });
 }
 
@@ -90,15 +92,40 @@ export function getSessionAgentsList(
     return [];
   }
 
+  // Read the bytes ONCE: a memo hit still has to hash them to know the file is
+  // unchanged, and a miss needs them to derive. Hashing the RAW bytes (not the
+  // inflated text) keeps the memo key a property of the file on disk, so hot
+  // and gzip transcripts are handled identically.
+  let bytes: Buffer;
+  try {
+    bytes = fs.readFileSync(file);
+  } catch {
+    return [];
+  }
+  const contentHash = createHash('sha256').update(bytes).digest('hex');
+
+  // Size + mtime alone cannot prove the journal is unchanged: an in-place
+  // rewrite to the SAME byte length (`1.2.3` -> `1.2.4`, a rewind/repair/clear)
+  // with an mtime that did not advance — coarse timestamp granularity, or a
+  // rewrite inside the same tick — is invisible to a stat. That served a stale
+  // roster for a journal the projection is supposed to follow exactly, so the
+  // content hash is the actual arbiter and the stat pair is only a fast path.
   const cached = db
     .prepare(
-      'SELECT transcript_size, transcript_mtime_ms FROM session_agent_index WHERE session_id=?',
+      'SELECT transcript_size, transcript_mtime_ms, transcript_content_hash FROM session_agent_index WHERE session_id=?',
     )
-    .get(sessionId) as { transcript_size: number; transcript_mtime_ms: number } | undefined;
+    .get(sessionId) as
+    | {
+        transcript_size: number;
+        transcript_mtime_ms: number;
+        transcript_content_hash: string | null;
+      }
+    | undefined;
   if (
     cached &&
     Number(cached.transcript_size) === stat.size &&
-    Number(cached.transcript_mtime_ms) === stat.mtimeMs
+    Number(cached.transcript_mtime_ms) === stat.mtimeMs &&
+    cached.transcript_content_hash === contentHash
   ) {
     return readSessionAgentRows(db, sessionId);
   }
@@ -111,11 +138,7 @@ export function getSessionAgentsList(
     // an EMPTY roster and cached it — archived sessions reported "no agents"
     // forever. Inflate gzip transcripts before parsing; hot .jsonl files are
     // unaffected.
-    raw = (
-      transcriptRel.endsWith('.jsonl.gz')
-        ? gunzipSync(fs.readFileSync(file))
-        : fs.readFileSync(file)
-    ).toString('utf8');
+    raw = (transcriptRel.endsWith('.jsonl.gz') ? gunzipSync(bytes) : bytes).toString('utf8');
   } catch {
     return [];
   }
@@ -131,6 +154,6 @@ export function getSessionAgentsList(
     }
   }
   const derived = deriveSessionAgents(events);
-  writeSessionAgentRows(db, sessionId, derived, stat.size, stat.mtimeMs, transaction);
+  writeSessionAgentRows(db, sessionId, derived, stat.size, stat.mtimeMs, contentHash, transaction);
   return derived;
 }

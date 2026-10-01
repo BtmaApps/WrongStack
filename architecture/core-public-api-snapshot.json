@@ -1660,7 +1660,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5343
+      "sourceLines": 5387
     },
     {
       "directory": "skills",

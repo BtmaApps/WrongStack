@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it } from 'vitest';
 import { deriveSessionAgents } from '../src/session-catalog/session-agents.js';
@@ -195,6 +196,80 @@ describe('SessionCatalogStore.listSessionAgents', () => {
       expect(store.listSessionAgents(sessionId)[0]?.status).toBe('completed');
     } finally {
       store.close();
+    }
+  });
+
+  it('re-derives after a same-length journal rewrite with an unmoved mtime', () => {
+    // Regression: the roster memo was keyed on (size, mtime) ONLY, so an
+    // in-place rewrite to the SAME byte length whose mtime did not advance —
+    // coarse timestamp granularity, or a rewind/repair/clear inside one tick —
+    // served the OLD roster for a journal this projection is documented to
+    // follow exactly ("a projection cannot drift"). 'alpha' and 'bravo' are the
+    // same width, so the swap is invisible to a stat; the content hash is what
+    // distinguishes them.
+    const root = makeTempProject();
+    const sessionId = '2026-08-26/sess_SAMELEN';
+    const file = path.join(root, 'sessions', '2026-08-26', 'sess_SAMELEN.jsonl');
+    const journal = (agentId: string): string => {
+      const events = [
+        { type: 'session_start', ts: ts(0), id: sessionId, model: 'm', provider: 'p' },
+        { type: 'agent_spawned', ts: ts(1), agentId, role: 'reviewer' },
+      ] as SessionEvent[];
+      return `${events.map((e) => JSON.stringify(e)).join('\n')}\n`;
+    };
+
+    // Pin a WHOLE-SECOND mtime. fs.utimesSync takes float seconds and cannot
+    // restore a raw stat.mtimeMs bit-exactly, so pinning a clean value is what
+    // makes this assert content invalidation rather than filesystem timing.
+    const PINNED_SECONDS = 1_700_000_000;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, journal('alpha'), 'utf8');
+    fs.utimesSync(file, PINNED_SECONDS, PINNED_SECONDS);
+    // The rewrite is genuinely the same length.
+    expect(fs.statSync(file).size).toBe(Buffer.byteLength(journal('bravo'), 'utf8'));
+
+    const store = new SessionCatalogStore(root);
+    try {
+      store.rebuildCatalog();
+      expect(store.listSessionAgents(sessionId).map((a) => a.agentId)).toEqual(['alpha']);
+
+      fs.writeFileSync(file, journal('bravo'), 'utf8');
+      fs.utimesSync(file, PINNED_SECONDS, PINNED_SECONDS);
+      expect(store.listSessionAgents(sessionId).map((a) => a.agentId)).toEqual(['bravo']);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('migrates a catalog written before transcript_content_hash existed', () => {
+    // The index table is created with CREATE TABLE IF NOT EXISTS, which covers
+    // a new TABLE but not a new COLUMN — a catalog from an older binary keeps
+    // the four-column shape, so every read naming the hash column would throw
+    // on open. Reopening must add it via the guarded ALTER and still serve the
+    // roster (the NULL hash reads as "unknown" and forces one re-derive).
+    const root = makeTempProject();
+    const sessionId = '2026-08-26/sess_LEGACY';
+    seedSession(root, sessionId, [
+      { type: 'session_start', ts: ts(0), id: sessionId, model: 'm', provider: 'p' },
+      { type: 'agent_spawned', ts: ts(1), agentId: 'helper', role: 'reviewer' },
+    ] as SessionEvent[]);
+
+    const first = new SessionCatalogStore(root);
+    first.rebuildCatalog();
+    first.listSessionAgents(sessionId);
+    first.close();
+
+    // Roll the table back to the pre-hash shape, as an older binary left it.
+    const legacy = new DatabaseSync(path.join(root, 'sessions', 'catalog.sqlite'));
+    legacy.exec('ALTER TABLE session_agent_index DROP COLUMN transcript_content_hash');
+    legacy.close();
+
+    const reopened = new SessionCatalogStore(root);
+    try {
+      reopened.rebuildCatalog();
+      expect(reopened.listSessionAgents(sessionId).map((a) => a.agentId)).toEqual(['helper']);
+    } finally {
+      reopened.close();
     }
   });
 

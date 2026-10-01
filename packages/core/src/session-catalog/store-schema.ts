@@ -75,6 +75,25 @@ export interface CatalogRow {
   archived_at?: string | null;
 }
 
+/**
+ * `session_agent_index` gained `transcript_content_hash` after its first
+ * release. The table is created with `CREATE TABLE IF NOT EXISTS`, so a catalog
+ * written by an older binary keeps its old four-column shape and every SELECT
+ * naming the new column would throw on open — the `IF NOT EXISTS` escape hatch
+ * that covers a new TABLE does not cover a new COLUMN.
+ *
+ * Purely additive, so it must not bump SCHEMA_VERSION (see the note above) and
+ * an older binary simply ignores the extra column. Existing rows land as NULL,
+ * which reads as "hash unknown" and forces exactly one re-derive.
+ */
+export function ensureSessionAgentIndexColumns(db: DatabaseSync): void {
+  const cols = db.prepare('PRAGMA table_info(session_agent_index)').all() as Array<{
+    name: string;
+  }>;
+  if (cols.some((col) => col.name === 'transcript_content_hash')) return;
+  db.exec('ALTER TABLE session_agent_index ADD COLUMN transcript_content_hash TEXT');
+}
+
 export type SessionStorageState = 'hot' | 'cold';
 
 export function ensureCatalogStorageColumns(db: DatabaseSync): void {
@@ -222,6 +241,7 @@ export function initializeCatalogSchema(db: DatabaseSync): void {
       session_id TEXT PRIMARY KEY,
       transcript_size INTEGER NOT NULL,
       transcript_mtime_ms REAL NOT NULL,
+      transcript_content_hash TEXT,
       derived_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(indexed_at DESC);
@@ -230,6 +250,7 @@ export function initializeCatalogSchema(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_maintenance_expiry ON maintenance_leases(expires_at);
   `);
   ensureCatalogStorageColumns(db);
+  ensureSessionAgentIndexColumns(db);
   db.prepare('INSERT INTO catalog_meta(key,value) VALUES (?,?) ON CONFLICT(key) DO NOTHING').run(
     'schema_version',
     String(SCHEMA_VERSION),
