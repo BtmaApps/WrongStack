@@ -330,12 +330,17 @@ export function requiredString(value: unknown, field: string): string {
   return value;
 }
 
+// Servers in the wild send an optional OAuth field as `null` or `""` (e.g. a
+// token response with `"scope": ""`). RFC 6749 makes these fields optional, so
+// both mean "not sent" rather than a malformed response that fails the sign-in.
 export function optionalString(value: unknown, field: string): string | undefined {
-  return value === undefined ? undefined : requiredString(value, field);
+  return value === undefined || value === null || value === ''
+    ? undefined
+    : requiredString(value, field);
 }
 
 export function optionalBoolean(value: unknown, field: string): boolean | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined || value === null) return undefined;
   if (typeof value !== 'boolean') {
     throw new Error(`MCP authorization field "${field}" must be a boolean`);
   }
@@ -350,7 +355,7 @@ export function boundedStringArray(value: unknown, field: string, maxItems: numb
 }
 
 export function optionalStringArray(value: unknown, field: string, maxItems: number): string[] {
-  return value === undefined ? [] : boundedStringArray(value, field, maxItems);
+  return value === undefined || value === null ? [] : boundedStringArray(value, field, maxItems);
 }
 
 export function secureOAuthUrl(value: string, label: string): URL {

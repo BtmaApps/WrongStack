@@ -182,14 +182,17 @@ describe('MCP authorization primitives', () => {
       },
     };
     const result = await discoverMcpAuthorization('https://mcp.example.com/mcp', {
-      challengeHeader:
-        challengeFor('https://attacker.example/.well-known/oauth-protected-resource'),
+      challengeHeader: challengeFor(
+        'https://attacker.example/.well-known/oauth-protected-resource',
+      ),
       fetchJson: async (url: string) => {
         requested.push(url);
         return documents[url];
       },
     });
-    expect(requested).not.toContain('https://attacker.example/.well-known/oauth-protected-resource');
+    expect(requested).not.toContain(
+      'https://attacker.example/.well-known/oauth-protected-resource',
+    );
     // Discovery falls through to the origin-derived candidate, so a
     // cross-host AUTHORIZATION SERVER is still resolved.
     expect(new URL(result.authorizationServer.issuer).origin).toBe('https://auth.example.com');
@@ -785,6 +788,57 @@ describe('MCP authorization primitives', () => {
       expect(requests[0]?.get('code_verifier')).toBe(session.codeVerifier);
       expect(requests[1]?.get('resource')).toBe(`${origin}/mcp`);
       expect(requests[1]?.get('refresh_token')).toBe('refresh-one');
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('reads empty or null optional token response fields as absent', async () => {
+    let origin = '';
+    const server = http.createServer((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify({
+            access_token: 'access-one',
+            token_type: null,
+            expires_in: null,
+            refresh_token: null,
+            scope: '',
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('fixture did not bind');
+    origin = `http://127.0.0.1:${address.port}`;
+    const authorizationServer = {
+      issuer: `${origin}/auth`,
+      authorizationEndpoint: `${origin}/authorize`,
+      tokenEndpoint: `${origin}/token`,
+      scopesSupported: [],
+    };
+    const session = createMcpAuthorizationRequest({
+      authorizationServer,
+      clientId: 'wrongstack-client',
+      redirectUri: `${origin}/callback`,
+      resource: `${origin}/mcp`,
+    });
+    try {
+      const token = await exchangeMcpAuthorizationCode({
+        authorizationServer,
+        clientId: session.clientId,
+        redirectUri: session.redirectUri,
+        resource: session.resource,
+        code: 'authorization-code',
+        codeVerifier: session.codeVerifier,
+      });
+      expect(token.accessToken).toBe('access-one');
+      expect(token.scopes).toEqual([]);
+      expect(token.refreshToken).toBeUndefined();
+      expect(token.expiresAt).toBeUndefined();
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }

@@ -391,7 +391,7 @@ function parseTokenResponse(value: unknown, resource: string): MCPTokenSet {
   }
   const expiresIn = response['expires_in'];
   let expiresAt: number | undefined;
-  if (expiresIn !== undefined) {
+  if (expiresIn !== undefined && expiresIn !== null) {
     if (
       typeof expiresIn !== 'number' ||
       !Number.isFinite(expiresIn) ||
