@@ -69,7 +69,13 @@ describe('startStreamJson', () => {
     startStreamJson({ events, write: (line) => out.push(line), includePartialMessages: true });
     events.emit('provider.text_delta', { ctx: { agentId: 'leader' } as never, text: 'a' });
     events.emit('provider.text_delta', { ctx: { agentId: 'worker@1' } as never, text: 'b' });
-    events.emit('tool.executed', { agentId: 'worker@1', name: 'bash', ok: true, durationMs: 1 });
+    events.emit('tool.executed', {
+      id: 'call-bash',
+      agentId: 'worker@1',
+      name: 'bash',
+      ok: true,
+      durationMs: 1,
+    });
     expect(lines(out)).toEqual([{ type: 'text_delta', text: 'a' }]);
   });
 });

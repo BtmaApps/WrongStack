@@ -41,6 +41,7 @@ describe('SessionStats', () => {
     const r = rig();
     r.events.emit('iteration.completed', {} as never); // trigger hasActivity
     r.events.emit('tool.executed', {
+      id: 'call-fetch',
       name: 'fetch',
       durationMs: 20,
       ok: true,
@@ -68,36 +69,42 @@ describe('SessionStats', () => {
       stopReason: 'end_turn',
     });
     r.events.emit('tool.executed', {
+      id: 'call-read-a1',
       name: 'read',
       durationMs: 5,
       ok: true,
       input: { path: 'src/a.ts' },
     });
     r.events.emit('tool.executed', {
+      id: 'call-read-a2',
       name: 'read',
       durationMs: 3,
       ok: true,
       input: { path: 'src/a.ts' }, // duplicate path, should be deduped
     });
     r.events.emit('tool.executed', {
+      id: 'call-read-b',
       name: 'read',
       durationMs: 7,
       ok: true,
       input: { path: 'src/b.ts' },
     });
     r.events.emit('tool.executed', {
+      id: 'call-edit-a',
       name: 'edit',
       durationMs: 20,
       ok: true,
       input: { path: 'src/a.ts' },
     });
     r.events.emit('tool.executed', {
+      id: 'call-write-c',
       name: 'write',
       durationMs: 12,
       ok: true,
       input: { path: 'src/c.ts', content: 'hello world' },
     });
     r.events.emit('tool.executed', {
+      id: 'call-bash',
       name: 'bash',
       durationMs: 100,
       ok: false,

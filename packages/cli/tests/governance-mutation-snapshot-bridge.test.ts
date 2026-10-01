@@ -195,18 +195,25 @@ describe('CLI governance mutation snapshot bridge', () => {
     });
 
     events.emit('tool.executed', {
+      id: 'call-read',
       name: 'read',
       durationMs: 1,
       ok: true,
       mutating: false,
     });
     events.emit('tool.executed', {
+      id: 'call-edit',
       name: 'edit',
       durationMs: 1,
       ok: false,
       mutating: true,
     });
-    events.emit('tool.executed', { name: 'legacy-edit', durationMs: 1, ok: true });
+    events.emit('tool.executed', {
+      id: 'call-legacy-edit',
+      name: 'legacy-edit',
+      durationMs: 1,
+      ok: true,
+    });
     await bridge.close();
 
     expect(captureWorkspaceCheckpoint).not.toHaveBeenCalled();
@@ -233,7 +240,13 @@ describe('CLI governance mutation snapshot bridge', () => {
     });
 
     for (const name of ['edit', 'write']) {
-      events.emit('tool.executed', { name, durationMs: 1, ok: true, mutating: true });
+      events.emit('tool.executed', {
+        id: `call-${name}`,
+        name,
+        durationMs: 1,
+        ok: true,
+        mutating: true,
+      });
     }
     await bridge.close();
 
@@ -343,6 +356,7 @@ describe('CLI governance mutation snapshot bridge', () => {
     bridge.installToolBoundary(pipelines);
     for (let index = 0; index < 64; index += 1) {
       events.emit('tool.executed', {
+        id: `call-${index}`,
         name: 'edit',
         durationMs: 1,
         ok: true,
@@ -376,7 +390,13 @@ describe('CLI governance mutation snapshot bridge', () => {
       logger: { warn },
     });
 
-    events.emit('tool.executed', { name: 'edit', durationMs: 1, ok: true, mutating: true });
+    events.emit('tool.executed', {
+      id: 'call-edit',
+      name: 'edit',
+      durationMs: 1,
+      ok: true,
+      mutating: true,
+    });
     await bridge.close();
 
     expect(recordWorkspaceSnapshot).not.toHaveBeenCalled();
@@ -399,6 +419,7 @@ describe('CLI governance mutation snapshot bridge', () => {
 
     for (let index = 0; index < 65; index += 1) {
       events.emit('tool.executed', {
+        id: `call-${index}`,
         name: 'edit',
         durationMs: 1,
         ok: true,
