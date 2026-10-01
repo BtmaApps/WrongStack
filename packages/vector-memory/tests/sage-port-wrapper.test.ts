@@ -15,6 +15,8 @@
  * two tests below pin that the forwarded options stay serializable.
  */
 
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import type { MemoryPort } from '@wrongstack/core/types';
 import {
@@ -238,7 +240,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     });
     const store = new VectorMemoryStore({
       provider: new FakeEmbeddingProvider({ dimensions: 32 }),
-      projectRoot: 'D:/tmp/wrap-test',
+      projectRoot: path.join(os.tmpdir(), 'wrap-test'),
     } as VectorMemoryStoreOptions);
     try {
       const wrapped = wrapMemoryPortWithVectorRecall(port, { store });
@@ -265,7 +267,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     });
     const store = new VectorMemoryStore({
       provider: new FakeEmbeddingProvider({ dimensions: 32 }),
-      projectRoot: 'D:/tmp/wrap-test-2',
+      projectRoot: path.join(os.tmpdir(), 'wrap-test-2'),
     } as VectorMemoryStoreOptions);
     try {
       const wrapped = wrapMemoryPortWithVectorRecall(port, { store, weight: 0.5 });
@@ -323,7 +325,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     });
     const store = new VectorMemoryStore({
       provider: new FakeEmbeddingProvider({ dimensions: 32 }),
-      projectRoot: 'D:/tmp/wrap-test-3',
+      projectRoot: path.join(os.tmpdir(), 'wrap-test-3'),
     } as VectorMemoryStoreOptions);
     try {
       const wrapped = wrapMemoryPortWithVectorRecall(port, { store });
@@ -408,7 +410,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     const port = makeFakePort();
     const store = new VectorMemoryStore({
       provider: new FakeEmbeddingProvider({ dimensions: 32 }),
-      projectRoot: 'D:/tmp/wrap-test-4',
+      projectRoot: path.join(os.tmpdir(), 'wrap-test-4'),
     } as VectorMemoryStoreOptions);
     try {
       const wrapped = wrapMemoryPortWithVectorRecall(port, { store });
@@ -463,7 +465,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     const port = new ClassInstancePort();
     const store = new VectorMemoryStore({
       provider: new FakeEmbeddingProvider({ dimensions: 32 }),
-      projectRoot: 'D:/tmp/wrap-test-5',
+      projectRoot: path.join(os.tmpdir(), 'wrap-test-5'),
     } as VectorMemoryStoreOptions);
     try {
       const wrapped = wrapMemoryPortWithVectorRecall(port as unknown as MemoryPort, { store });

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { webuiSessionFrameLog } from '../src/server/session-frame-log.js';
 import {
   createSessionPromptQueue,
@@ -78,6 +78,9 @@ describe('high-risk audit regressions', () => {
     const queue = createSessionPromptQueue(deps);
     expect(await queue.list('session')).toHaveLength(100);
     expect(JSON.parse(await fs.readFile(legacyFile, 'utf8'))).toHaveLength(1);
+    // The migrated queue is written in the background; wait for it so the
+    // temp-dir teardown does not race the write (ENOTEMPTY on Linux).
+    await vi.waitFor(() => fs.access(path.join(sessionsDir, 'session', 'queue.json')));
   });
 
   it('F338 does not retain a single frame larger than the per-session byte cap', () => {
