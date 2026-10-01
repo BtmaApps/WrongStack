@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.30] — 2026-10-01
+
+A provider-account release. Every provider sold on a plan or a prepaid balance
+now reports what is left of it — in the statusline, the TUI sidebar and a WebUI
+quota page — read from documented account endpoints that spend nothing. Z.AI /
+BigModel and MiniMax get their own account planes, the ChatGPT (Codex) backend
+gets the official client's truncation and error handling, and the WebUI opens in
+a calmer layout. A long audit pass closes the release with several dozen
+semantic fixes across the workspace.
+
+### Added
+
+- **Quota for every metered provider.** Kimi Code, OpenCode, OpenRouter and OmniRoute readings join Claude, ChatGPT, Copilot and Antigravity in the shared quota store; DeepSeek, Moonshot and SiliconFlow report their prepaid balance. A provider the built-in readers do not know can declare `quotaEndpoint` (URL plus JSON paths) — the key is only ever sent to the provider's own host. The TUI sidebar gets a quota section, and the WebUI gets a Provider Quota page plus a side-panel card that lists only the providers in use, refreshable on demand.
+- **ChatGPT quota before the first turn.** `/openai-quota` reads `chatgpt.com/backend-api/wham/usage` (the official client's `/status` read, not a model call) through the active or any saved ChatGPT sign-in, and shows per-feature meters alongside the 5-hour and weekly windows.
+- **Z.AI / BigModel GLM Coding Plan: `/zai-plan`.** Plan in force, 5-hour and weekly windows, the monthly MCP tool pool, per-model token usage with cache-hit rate, streak and service health. Code `1310` (weekly/monthly limit) is classified as quota exhaustion and waits for the real reset instead of a mis-parsed time zone. BigModel hosts now get the same wire contract as Z.AI.
+- **MiniMax account plane.** Every `minimax*` catalog entry routes to the MiniMax provider by host, thinking is sent the way MiniMax documents it per model generation (M3 adaptive, M3.1-Flash effort levels), the unsupported 1-hour cache TTL is dropped, the token plan quota is read, a quota failure waits for the real window reset, and a `401` checks whether the key belongs to the other region.
+- **Thinking signatures stay with their signer.** Thinking blocks are stamped with the host that signed them; a block from another signer (for example Z.AI's Anthropic endpoint) is not replayed to Anthropic, and an "Invalid signature" 400 drops the signed blocks and retries once.
+- **Fallback suggestions.** Settings → Fallbacks proposes fallback profiles from the models.dev catalog of the providers you have configured — never disabled models, never an older generation when the provider ships a newer one.
+- **Project agents prune stale knowledge.** Learned notes that cite a repo path which no longer exists are dropped from the buffer, the role document and addenda (archived, not lost), and the role document is bounded on save.
+
+### Changed
+
+- **The WebUI opens in a calm layout.** Settings → Display → "Workbench density" defaults to `calm`: system indicators fold into one health chip, display switches and session tools move into menus, the activity bar shows six panels plus a tools launcher, Agents opens the right-hand inspector, and message footers appear on hover. `full` keeps the previous screen exactly.
+- **ChatGPT (Codex) follows the official client more closely.** Tool output is truncated by the model's published `truncation_policy` (head and tail kept, deterministic so the cached prefix stays stable), `usage_limit_reached` carries its reset time, a server-side model reroute is announced once, and the two failures whose raw text does not say what to do get a readable message.
+- **YOLO risk gating** catches more destructive shapes: `+refspec` force pushes and combined short-flag clusters, `del /s` and `Remove-Item` switch-value forms, disk and partition wipes, separators glued to a word and command lines nested inside one argument.
+
+### Fixed
+
+- **Behind WrongProxy, host detection read the proxy.** MiniMax and Anthropic checks used the request URL's hostname, so behind the local proxy the MiniMax transport was never built and a real Anthropic API key was sent as `Bearer`. Host checks now resolve the upstream host.
+- **Interrupted parallel tool calls on resume** produced a duplicated `tool_use`; their results now merge into one user turn.
+- **Multi-byte text split across chunks** was corrupted in hook output, the MCP HTTP server body and the perf runner.
+- **Locale-sensitive offsets.** Lower-casing that changes string length (`İ`) shifted match offsets in transcript search and in path-guard quoting checks; SQLite's ASCII-only `LOWER()` missed non-Latin SAGE fallbacks; LSP byte columns were read as UTF-16.
+- **Plugins parsed tool output in the wrong format** for Biome 2 JSON (lint-gate), Mocha JSON (test-runner-gate) and file-less `tsc` errors (type-gate); template auto-escape escaped the template's own text, not just substituted values; plugin version ranges only honoured `^`, `~` and exact pins.
+- **Redaction** missed secret names containing digits (`R2_`, `B2_`, `S3_…`) and `ACCESS_KEY` / `SECRET_KEY` in commands.
+- **Smaller fixes:** checkpoints missed renamed files (`git diff` now runs with `--no-renames`); a dangling edge or cycle dropped tasks from a goal plan; SDD reported "all tasks completed" at 199/200; diff counters treated `+++`/`---` lines inside hunks as headers; non-Latin project-agent directives deduplicated as identical; a corrupt SAGE graph row or a failed Chronicle journal constructor no longer poisons later reads; HQ log state survives a partial read; Rust `cr"…"` literals and YAML/Ruby/CSS line matches index correctly in the codebase index.
+
 ## [1.0.29] — 2026-09-29
 
 A SAGE release. Project memories now travel with the project: an enabled HQ

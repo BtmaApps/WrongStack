@@ -51,35 +51,27 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.29
+### What's new in 1.0.30
 
-Highlights since 1.0.27:
-
-- **Project memory travels with the project.** With HQ enabled, SAGE's
-  project, file and symbol memories — updates and deletions included — sync to
-  every machine that shares the committed project identity, with offline edits
-  resolved by revision instead of clock time. `wstack sage sync` runs the same
-  bridge without a chat session.
-- **Other coding agents can use SAGE.** `wstack sage connect claude-code`
-  (or `codex`, `cursor`, `antigravity`, `all`) wires the project's memory into
-  that agent as an MCP server with a matching skill: it can recall, and it can
-  propose memories that land in WrongStack's review queue.
-- **Project Kit.** Reusable, schema-checked project scripts with verification
-  cases, source revisions and run history, a WebUI page to browse them, and a
-  Tool Coach that points the agent at a matching kit before it writes another
-  one-off script. See [Project Kit](docs/project-kit.md).
-- **Memories that check themselves.** A read-only Memory Companion verifies
-  injected memories against current source with exact quotes, agents leave
-  evidence-backed feedback after real use, and a memory can state the
-  conditions under which it applies. See
-  [SAGE feedback lifecycle](docs/sage-feedback-lifecycle.md).
-- **One ranked Memory search in the WebUI** across SAGE and the vector index,
-  with stable paging and links from vector mirrors back to their memories.
-- **Fewer rough edges.** OpenAI-compatible endpoints learn which reasoning
-  echo field they accept (DeepSeek, Kimi, Cerebras), project daemons recover
-  when two releases fight over one metadata file, `/commit` and `/push` handle
-  their flags and multiple remotes correctly, and TechStack reads Elixir,
-  Python, Swift, Maven and NuGet manifests accurately.
+- **Know what is left of every plan.** Claude, ChatGPT, Copilot, Antigravity,
+  Z.AI / BigModel, MiniMax, Kimi Code, OpenCode, OpenRouter and OmniRoute
+  report their plan windows, and DeepSeek, Moonshot and SiliconFlow their
+  prepaid balance — in the statusline, the TUI sidebar and a WebUI quota page,
+  read from account endpoints that spend nothing. Any other provider can
+  declare a `quotaEndpoint`. See [`/provider-quota`](docs/slash/provider-quota.md).
+- **Vendor account planes.** `/zai-plan` shows the GLM Coding Plan the way the
+  official client does; MiniMax routes by host with per-model thinking and real
+  reset waits; ChatGPT (Codex) shows its quota before the first turn and
+  truncates tool output by the model's published policy.
+- **A calmer WebUI.** The workbench opens in a `calm` density that folds status
+  into one health chip and moves secondary controls into menus; `full` keeps
+  the previous screen exactly.
+- **Fallback suggestions** from the models.dev catalog of the providers you
+  have configured, and project agents that drop learned notes citing files
+  that no longer exist.
+- **Several dozen semantic fixes** from a long audit pass: resume of
+  interrupted parallel tool calls, multi-byte chunk boundaries, locale-sensitive
+  offsets, plugin output parsing and secret redaction among them.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -648,7 +640,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.29** — current release; semver from 1.0.0 onward
+- **v1.0.30** — current release; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` (18 gates) before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`
