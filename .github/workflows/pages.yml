@@ -10,6 +10,9 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      # wrongstack.com/install.{sh,ps1} are emitted from these at build time.
+      - 'scripts/install/install.sh'
+      - 'scripts/install/install.ps1'
       # The website build validates these source-owned catalogs. Trigger the
       # deploy workflow when they change so stale operator pages fail visibly.
       - 'packages/tools/src/builtin.ts'

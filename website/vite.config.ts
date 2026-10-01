@@ -483,10 +483,34 @@ function contentRoutes() {
   return routes;
 }
 
+/**
+ * `wrongstack.com/install.sh` and `/install.ps1` are the advertised installer
+ * URLs. GitHub Pages cannot redirect, so the canonical scripts are emitted
+ * into the site as-is — read from `scripts/install/`, never committed a second
+ * time, so the site copy cannot drift from the one the release ships.
+ */
+const INSTALLER_SCRIPTS = ['install.sh', 'install.ps1'] as const;
+
+function installerScriptPath(name: (typeof INSTALLER_SCRIPTS)[number]) {
+  return path.resolve(websiteRoot, '..', 'scripts', 'install', name);
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    {
+      name: 'wrongstack-installer-scripts',
+      generateBundle() {
+        for (const fileName of INSTALLER_SCRIPTS) {
+          this.emitFile({
+            type: 'asset',
+            fileName,
+            source: fs.readFileSync(installerScriptPath(fileName)),
+          });
+        }
+      },
+    },
     {
       name: 'wrongstack-static-routes',
       buildStart() {

@@ -16,12 +16,12 @@
 
 ```bash
 # macOS / Linux — one self-contained binary, no Node.js needed
-curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+curl -fsSL https://wrongstack.com/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+irm https://wrongstack.com/install.ps1 | iex
 ```
 
 </div>
@@ -196,12 +196,12 @@ assets inside — no Node.js, npm or `node_modules`:
 
 ```bash
 # macOS / Linux
-curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+curl -fsSL https://wrongstack.com/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+irm https://wrongstack.com/install.ps1 | iex
 ```
 
 The installers download the build for your OS/CPU (musl is detected on

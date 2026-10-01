@@ -1,7 +1,7 @@
 #!/bin/sh
 # WrongStack standalone installer (Linux, macOS).
 #
-#   curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+#   curl -fsSL https://wrongstack.com/install.sh | sh
 #
 # Environment:
 #   WSTACK_VERSION      release to install, e.g. 1.0.21 (default: latest)

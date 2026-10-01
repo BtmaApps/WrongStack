@@ -64,12 +64,12 @@ WrongStack ships as a standalone binary through GitHub Releases:
 
 ```bash
 # macOS / Linux — install (or reinstall) the latest release
-curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+curl -fsSL https://wrongstack.com/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+irm https://wrongstack.com/install.ps1 | iex
 ```
 
 Then keep it current from inside the tool with `wstack update`.

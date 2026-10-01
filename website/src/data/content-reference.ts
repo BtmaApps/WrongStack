@@ -304,9 +304,10 @@ export const securityLayers = [
 export const repoUrl = 'https://github.com/WrongStack/WrongStack';
 /** WrongStack ships as a standalone binary from GitHub Releases; npm is legacy. */
 export const releasesUrl = `${repoUrl}/releases`;
-const releaseDownloadUrl = `${releasesUrl}/latest/download`;
-export const installCommand = `curl -fsSL ${releaseDownloadUrl}/install.sh | sh`;
-export const installCommandWindows = `irm ${releaseDownloadUrl}/install.ps1 | iex`;
+/** Served by this site from `scripts/install/` (see vite.config.ts). */
+const installBaseUrl = 'https://wrongstack.com';
+export const installCommand = `curl -fsSL ${installBaseUrl}/install.sh | sh`;
+export const installCommandWindows = `irm ${installBaseUrl}/install.ps1 | iex`;
 export const docsUrl = `${repoUrl}/tree/main/docs`;
 /** Single source of truth with JSON-LD / META — do not hard-code a second number. */
 export const version = META.version;

@@ -89,11 +89,16 @@ verified. It does not replace the GitHub binary/Desktop release path.
 
 ```bash
 # macOS / Linux
-curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+curl -fsSL https://wrongstack.com/install.sh | sh
 
 # Windows PowerShell
-irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+irm https://wrongstack.com/install.ps1 | iex
 ```
+
+  The same scripts also ship as release assets
+  (`https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh`
+  / `install.ps1`); the wrongstack.com copies are emitted from
+  `scripts/install/` by the website build.
 
 - [ ] Run `wstack version` from the installed standalone binary
 - [ ] If npm publication was requested, verify packages such as

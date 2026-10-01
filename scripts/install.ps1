@@ -1,6 +1,6 @@
 # WrongStack standalone installer (Windows).
 #
-#   irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+#   irm https://wrongstack.com/install.ps1 | iex
 #
 # Environment:
 #   WSTACK_VERSION      release to install, e.g. 1.0.21 (default: latest)
