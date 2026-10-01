@@ -268,10 +268,9 @@ export interface ToolEventMap {
      * The tool_use id (e.g. "toolu_…") issued by the provider for this call.
      * Pairs with `tool.started.id` so subscribers can correlate start/finish
      * even when the model fires multiple tools in parallel with identical
-     * inputs. Optional only for legacy emit sites — new code should always
-     * set it.
+     * inputs.
      */
-    id?: string | undefined;
+    id: string;
     name: string;
     durationMs: number;
     ok: boolean;

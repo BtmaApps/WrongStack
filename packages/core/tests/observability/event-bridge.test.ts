@@ -140,7 +140,7 @@ describe('wireMetricsToEvents', () => {
     const { sink, counter, histogram } = makeSink();
     wireMetricsToEvents(bus, sink);
     bus.emit('tool.started', { name: 'bash', id: 't1' });
-    bus.emit('tool.executed', { name: 'bash', durationMs: 42, ok: true });
+    bus.emit('tool.executed', { id: 't1', name: 'bash', durationMs: 42, ok: true });
     expect(counter).toHaveBeenCalledWith('tool.starts.total', 1, { tool: 'bash' });
     expect(counter).toHaveBeenCalledWith('tool.executions.total', 1, {
       tool: 'bash',
@@ -155,6 +155,7 @@ describe('wireMetricsToEvents', () => {
     wireMetricsToEvents(bus, sink);
     bus.emit('tool.started', { name: 'mcp__private-server__secret-tool', id: 't1' });
     bus.emit('tool.executed', {
+      id: 't1',
       name: 'mcp__private-server__secret-tool',
       durationMs: 12,
       ok: false,
@@ -226,8 +227,8 @@ describe('wireMetricsToEvents', () => {
     const handle = wireMetricsToEvents(bus, sink);
     expect(handle.getToolUsage().size).toBe(0);
     bus.emit('tool.started', { name: 'read', id: 't1' });
-    bus.emit('tool.executed', { name: 'read', durationMs: 25, ok: true });
-    bus.emit('tool.executed', { name: 'bash', durationMs: 100, ok: false });
+    bus.emit('tool.executed', { id: 't1', name: 'read', durationMs: 25, ok: true });
+    bus.emit('tool.executed', { id: 't2', name: 'bash', durationMs: 100, ok: false });
     const usage = handle.getToolUsage();
     expect(usage.get('read')?.invocations).toBe(2);
     expect(usage.get('read')?.failures).toBe(0);
@@ -243,7 +244,7 @@ describe('wireMetricsToEvents', () => {
     const { sink } = makeSink();
     const handle = wireMetricsToEvents(bus, sink);
     bus.emit('tool.started', { name: 'mcp__srv__tool', id: 't1' });
-    bus.emit('tool.executed', { name: 'mcp__srv__tool', durationMs: 5, ok: true });
+    bus.emit('tool.executed', { id: 't1', name: 'mcp__srv__tool', durationMs: 5, ok: true });
     const usage = handle.getToolUsage();
     expect(usage.get('mcp_proxy')?.invocations).toBe(2);
     expect(usage.has('mcp__srv__tool')).toBe(false);

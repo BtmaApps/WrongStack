@@ -15,7 +15,13 @@ const STEER: BrainDecision = {
 };
 
 function okEdit(path: string): EventMap['tool.executed'] {
-  return { name: 'edit', durationMs: 5, ok: true, input: { file_path: path } };
+  return {
+    id: `call-edit-${path}`,
+    name: 'edit',
+    durationMs: 5,
+    ok: true,
+    input: { file_path: path },
+  };
 }
 
 describe('BrainMonitor — file churn signal', () => {
@@ -118,6 +124,7 @@ describe('BrainMonitor — file churn signal', () => {
 
     events.emit('tool.executed', { ...okEdit('src/a.ts'), ok: false });
     events.emit('tool.executed', {
+      id: 'call-read-a',
       name: 'read',
       durationMs: 1,
       ok: true,
@@ -135,6 +142,7 @@ describe('BrainMonitor — file churn signal', () => {
     monitor({ fileChurnThreshold: 3 });
 
     const okPatch = {
+      id: 'call-patch',
       name: 'patch',
       durationMs: 1,
       ok: true,
@@ -280,7 +288,7 @@ describe('BrainMonitor — agent stall signal', () => {
     runStarted();
     for (let i = 0; i < 6; i++) {
       await vi.advanceTimersByTimeAsync(30_000);
-      events.emit('tool.executed', { name: 'read', durationMs: 1, ok: true });
+      events.emit('tool.executed', { id: `call-read-${i}`, name: 'read', durationMs: 1, ok: true });
     }
     expect(emitted).toHaveLength(0);
   });

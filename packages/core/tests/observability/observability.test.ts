@@ -284,9 +284,9 @@ describe('wireMetricsToEvents', () => {
 
     bus.emit('iteration.completed', { ctx: {} as any, index: 0 });
     bus.emit('iteration.completed', { ctx: {} as any, index: 1 });
-    bus.emit('tool.executed', { name: 'read', durationMs: 12, ok: true });
-    bus.emit('tool.executed', { name: 'read', durationMs: 30, ok: true });
-    bus.emit('tool.executed', { name: 'bash', durationMs: 200, ok: false });
+    bus.emit('tool.executed', { id: 'call-1', name: 'read', durationMs: 12, ok: true });
+    bus.emit('tool.executed', { id: 'call-2', name: 'read', durationMs: 30, ok: true });
+    bus.emit('tool.executed', { id: 'call-3', name: 'bash', durationMs: 200, ok: false });
     bus.emit('provider.response', {
       ctx: {} as any,
       usage: { input: 1000, output: 500, cacheRead: 200, cacheWrite: 0 },

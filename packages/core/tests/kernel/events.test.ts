@@ -72,7 +72,7 @@ describe('ScopedEventBus', () => {
 
     expect(bus.scopedListenerCount).toBe(0);
     bus.emit('session.started', { id: '1' });
-    bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true });
     expect(a).not.toHaveBeenCalled();
     expect(b).not.toHaveBeenCalled();
   });
@@ -247,7 +247,7 @@ describe('EventBus', () => {
     bus.on('session.started', a);
     bus.on('tool.executed', b);
     bus.emit('session.started', { id: '1' });
-    bus.emit('tool.executed', { name: 'test', durationMs: 100, ok: true });
+    bus.emit('tool.executed', { id: 'call-test', name: 'test', durationMs: 100, ok: true });
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);
   });
@@ -328,7 +328,7 @@ describe('EventBus', () => {
       bus.once('session.started', fn);
       bus.emit('session.started', { id: '1' });
       // other event type should not trigger
-      bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
+      bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true });
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
@@ -342,7 +342,7 @@ describe('EventBus', () => {
       bus.on('tool.executed', b);
       bus.clear();
       bus.emit('session.started', { id: '1' });
-      bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
+      bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true });
       expect(a).not.toHaveBeenCalled();
       expect(b).not.toHaveBeenCalled();
     });
@@ -368,11 +368,16 @@ describe('EventBus', () => {
     const fn = vi.fn();
     bus.onAny(fn);
     bus.emit('session.started', { id: '1' });
-    bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true });
     bus.emit('error', { err: new Error('boom'), phase: 'test' });
     expect(fn).toHaveBeenCalledTimes(3);
     expect(fn).toHaveBeenCalledWith('session.started', { id: '1' });
-    expect(fn).toHaveBeenCalledWith('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    expect(fn).toHaveBeenCalledWith('tool.executed', {
+      id: 'call-x',
+      name: 'x',
+      durationMs: 0,
+      ok: true,
+    });
   });
 
   it('onAny() returns working unsubscribe', () => {
@@ -611,10 +616,17 @@ describe('EventBus wildcard matcher isolation', () => {
     bus.onPattern('tool.*', later);
     bus.on('tool.executed', named);
 
-    expect(() => bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true })).not.toThrow();
+    expect(() =>
+      bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true }),
+    ).not.toThrow();
     expect(named).toHaveBeenCalledTimes(1);
     expect(later).toHaveBeenCalledTimes(1);
-    expect(later).toHaveBeenCalledWith('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    expect(later).toHaveBeenCalledWith('tool.executed', {
+      id: 'call-x',
+      name: 'x',
+      durationMs: 0,
+      ok: true,
+    });
     expect(logs.some((m) => m.includes('tool.executed'))).toBe(true);
   });
 
@@ -647,8 +659,8 @@ describe('EventBus wildcard matcher isolation', () => {
     bus.onRegex(crashingMatcher(), vi.fn());
     bus.onPattern('tool.*', later);
 
-    bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
-    bus.emit('tool.executed', { name: 'y', durationMs: 0, ok: true });
+    bus.emit('tool.executed', { id: 'call-x', name: 'x', durationMs: 0, ok: true });
+    bus.emit('tool.executed', { id: 'call-y', name: 'y', durationMs: 0, ok: true });
     expect(later).toHaveBeenCalledTimes(2);
   });
 });

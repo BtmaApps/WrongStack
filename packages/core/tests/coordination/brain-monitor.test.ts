@@ -18,11 +18,11 @@ const CONTINUE: BrainDecision = {
 };
 
 function failedTool(name: string): EventMap['tool.executed'] {
-  return { name, durationMs: 5, ok: false, output: 'boom' };
+  return { id: `call-${name}`, name, durationMs: 5, ok: false, output: 'boom' };
 }
 
 function okTool(name: string): EventMap['tool.executed'] {
-  return { name, durationMs: 5, ok: true };
+  return { id: `call-${name}`, name, durationMs: 5, ok: true };
 }
 
 /** Wait for the monitor's async engage() chain to settle. */

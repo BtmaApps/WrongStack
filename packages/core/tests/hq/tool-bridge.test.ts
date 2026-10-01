@@ -82,7 +82,7 @@ describe('startToolTelemetryBridge', () => {
     const spy = vi.fn();
     const publisher = fakePublisher(spy);
     startToolTelemetryBridge({ events, publisher });
-    events.emit('tool.executed', { name: 'bash', durationMs: 50, ok: false });
+    events.emit('tool.executed', { id: 'toolu_2', name: 'bash', durationMs: 50, ok: false });
     const payload: HqToolCompletedPayload = spy.mock.calls[0]![0].payload;
     expect(payload.status).toBe('error');
   });
@@ -117,6 +117,7 @@ describe('startToolTelemetryBridge', () => {
     startToolTelemetryBridge({ events, publisher: fakePublisher(spy) });
     const secret = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     events.emit('tool.executed', {
+      id: 'toolu_4',
       name: 'bash',
       durationMs: 10,
       ok: true,
@@ -133,6 +134,7 @@ describe('startToolTelemetryBridge', () => {
     startToolTelemetryBridge({ events, publisher: fakePublisher(spy, { rawContent: false }) });
     const secret = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     events.emit('tool.executed', {
+      id: 'toolu_4',
       name: 'bash',
       durationMs: 10,
       ok: true,
@@ -150,7 +152,7 @@ describe('startToolTelemetryBridge', () => {
     const stop = startToolTelemetryBridge({ events, publisher });
     stop();
     events.emit('tool.started', { name: 'read', id: 'x' });
-    events.emit('tool.executed', { name: 'read', durationMs: 1, ok: true });
+    events.emit('tool.executed', { id: 'x', name: 'read', durationMs: 1, ok: true });
     expect(spy).not.toHaveBeenCalled();
   });
 

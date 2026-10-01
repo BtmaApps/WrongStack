@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventBus } from '../../src/kernel/events.js';
 import { attachAutoExtend } from '../../src/coordination/index.js';
+import { EventBus } from '../../src/kernel/events.js';
 
 function emitTool(bus: EventBus): void {
-  bus.emit('tool.executed', { name: 'read', durationMs: 1, ok: true });
+  bus.emit('tool.executed', { id: 'call-read', name: 'read', durationMs: 1, ok: true });
 }
 
 function emitThreshold(
