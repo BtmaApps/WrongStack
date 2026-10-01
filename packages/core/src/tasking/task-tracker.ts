@@ -376,8 +376,7 @@ export class TaskTracker {
         if (filter.type?.length && !filter.type.includes(n.type)) return false;
         if (filter.assignee?.length && (!n.assignee || !filter.assignee.includes(n.assignee)))
           return false;
-        if (filter.tags?.length && !n.tags?.some((t) => filter.tags?.includes(t)))
-          return false;
+        if (filter.tags?.length && !n.tags?.some((t) => filter.tags?.includes(t))) return false;
         if (filter.specRequirementId && n.specRequirementId !== filter.specRequirementId)
           return false;
         return true;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-01T20:52:33.387Z",
+  "generatedAt": "2026-10-01T20:54:07.557Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -24,9 +24,7 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 974
   },
-  "errors": [
-    "packages/kanban/src/verification/verification-context.ts: hotspot shrunk from 891 to 890 lines; review and update the ratchet in the same change"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [

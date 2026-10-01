@@ -152,15 +152,14 @@ export class VerificationContext {
     this.projectRoot = opts.projectRoot;
     this.board = opts.board;
     this.task = opts.task;
-    this.snapshot =
-      opts.snapshot?.treeHash
-        ? {
-            id: opts.snapshot.id,
-            capturedAt: opts.snapshot.capturedAt,
-            commitHash: opts.snapshot.commitHash ?? '',
-            treeHash: opts.snapshot.treeHash,
-          }
-        : null;
+    this.snapshot = opts.snapshot?.treeHash
+      ? {
+          id: opts.snapshot.id,
+          capturedAt: opts.snapshot.capturedAt,
+          commitHash: opts.snapshot.commitHash ?? '',
+          treeHash: opts.snapshot.treeHash,
+        }
+      : null;
 
     const allowlist = buildAllowlist(opts.commandAllowlist);
     this.cmdAllow = allowlist.allow;
