@@ -103,6 +103,17 @@ describe('FrameResume', () => {
     },
   });
 
+  it.each([null, [], 'invalid', 42])(
+    'passes malformed session.start payload %j through',
+    (payload) => {
+      const applied: Frame[] = [];
+      const resume = new FrameResume<Frame>((frames) => applied.push(...frames));
+      const frame = { type: 'session.start', payload } as unknown as Frame;
+      expect(resume.onSessionStart(frame)).toBe(frame);
+      expect(applied).toEqual([]);
+    },
+  );
+
   it('drops the transcript replay of a tab being caught up, and only of that tab', () => {
     const applied: Frame[] = [];
     const resume = new FrameResume<Frame>((frames) => applied.push(...frames));

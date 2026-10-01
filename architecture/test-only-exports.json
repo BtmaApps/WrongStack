@@ -1917,7 +1917,8 @@
       "DEFAULT_FONT_PRESET",
       "FONT_FAMILIES",
       "FONT_ROLE_CSS_VARIABLE",
-      "isFamilyAllowedForRole"
+      "isFamilyAllowedForRole",
+      "isFontFamilyId"
     ],
     "packages/webui/src/lib/model-calendar.ts": [
       "isCalendarRuleBlocking"

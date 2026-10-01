@@ -9,11 +9,11 @@ import {
   type AISpecSession,
   type AISpecSessionPersistence,
 } from '../src/spec-builder.js';
-import type { SpecStore } from '../src/spec-store.js';
+import { SpecStore } from '../src/spec-store.js';
 
 function mockStore(): SpecStore {
   const saved = new Map<string, Specification>();
-  return {
+  return Object.assign(new SpecStore({ baseDir: join(tmpdir(), 'unused-spec-store') }), {
     save: vi.fn(async (spec: Specification) => {
       saved.set(spec.id, spec);
     }),
@@ -33,7 +33,7 @@ function mockStore(): SpecStore {
       updatedAt: 0,
     })),
     update: vi.fn(async () => null),
-  };
+  });
 }
 
 async function persistedBuilder(

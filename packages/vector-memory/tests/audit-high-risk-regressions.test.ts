@@ -69,7 +69,7 @@ describe('high-risk audit regressions', () => {
           : undefined,
     } as never;
     const handle = subscribeVectorMemoryToSage({ store, memoryStore });
-    events.emit('memory.updated', { memoryId: 'sage' });
+    events.emit('memory.updated', { memoryId: 'sage', status: 'updated' });
     await new Promise((resolve) => setTimeout(resolve, 20));
     handle.dispose();
     expect(forgotten).toBe(1);

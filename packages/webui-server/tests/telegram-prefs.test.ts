@@ -178,7 +178,7 @@ describe('telegram preference seeding', () => {
     }) as never;
 
   it('defaults the poll interval and chat to the Telegram plugin defaults', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     // Mirrors DEFAULT_CONFIG.pollIntervalSec (packages/telegram/src/config.ts:86).
     expect(context.meta['tgPollIntervalSec']).toBe(2);
@@ -186,7 +186,7 @@ describe('telegram preference seeding', () => {
   });
 
   it('seeds persisted poll interval and chat so the panel agrees on first connect', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({ extensions: { telegram: { pollIntervalSec: 7, notifyChatId: -100123 } } }),
       context,

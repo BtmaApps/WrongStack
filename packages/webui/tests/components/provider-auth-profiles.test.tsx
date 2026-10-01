@@ -21,6 +21,8 @@ function mount(onAddProvider = vi.fn(), providerTab: 'catalog' | 'saved' = 'cata
   render(
     <ProviderSection
       activeProvider="openai"
+      disabledProviders={[]}
+      onToggleProviderDisabled={vi.fn()}
       catalogProviders={[
         {
           id: 'openai',

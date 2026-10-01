@@ -29,6 +29,14 @@ describe('promiseWithTimeout', () => {
     );
   });
 
+  it('consumes a rejected promise when the signal was already aborted', async () => {
+    const ac = new AbortController();
+    ac.abort(new Error('cancelled'));
+    await expect(
+      promiseWithTimeout(Promise.reject(new Error('late failure')), 1000, ac.signal),
+    ).rejects.toThrow('cancelled');
+  });
+
   it('rejects with signal reason when aborted during wait', async () => {
     const ac = new AbortController();
     const slow = new Promise<string>(() => {});

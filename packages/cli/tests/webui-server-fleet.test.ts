@@ -48,7 +48,11 @@ describe('runWebUI subagent fleet bridge', () => {
       events,
       session: { id: 'test-session' } as any,
       agent: {
-        ctx: { model: 'test-model', provider: { id: 'test-provider' } },
+        ctx: {
+          session: { id: 'test-session' },
+          model: 'test-model',
+          provider: { id: 'test-provider' },
+        },
         run: vi.fn(),
       } as any,
     });

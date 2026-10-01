@@ -2,7 +2,11 @@ import type { Server } from 'node:http';
 import * as path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const createHttpServer = vi.hoisted(() => vi.fn(() => ({}) as unknown as Server));
+const createHttpServer = vi.hoisted(() =>
+  vi.fn<typeof import('../src/server/http-server.js').createHttpServer>(
+    () => ({}) as unknown as Server,
+  ),
+);
 
 vi.mock('../src/server/http-server.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/server/http-server.js')>()),
@@ -40,6 +44,18 @@ describe('startHttpServer → createHttpServer option threading', () => {
     globalRoot: '/tmp/.wrongstack',
     globalConfigPath: '/tmp/.wrongstack/config.json',
     projectRoot: '/tmp/project',
+    openBrowser: false,
+    watcherMetrics: {
+      fileChangesDetected: 0,
+      filesProcessed: 0,
+      broadcastsSent: 0,
+      debounceResets: 0,
+      totalDebounceDelayMs: 0,
+      activeProjects: 0,
+      averageDebounceDelayMs: 0,
+      watcherActive: false,
+    },
+    onFleetPing: () => {},
   } as const;
 
   const load = () => import('../src/server/server-runtime.js');
@@ -68,7 +84,7 @@ describe('startHttpServer → createHttpServer option threading', () => {
 
   it('still threads the previously-forwarded options (no regression)', async () => {
     const { startHttpServer } = await load();
-    const watcherMetrics = { watcherActive: true } as never;
+    const watcherMetrics = { ...requiredOpts.watcherMetrics, watcherActive: true };
 
     startHttpServer({ ...requiredOpts, watcherMetrics, distDir: '/tmp/dist' });
 

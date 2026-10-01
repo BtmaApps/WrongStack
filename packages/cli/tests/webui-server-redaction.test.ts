@@ -34,6 +34,7 @@ describe('runWebUI redaction', () => {
       session: { id: 'test-session' } as any,
       agent: {
         ctx: {
+          session: { id: 'test-session' },
           model: 'test-model',
           provider: { id: 'test-provider' },
         },

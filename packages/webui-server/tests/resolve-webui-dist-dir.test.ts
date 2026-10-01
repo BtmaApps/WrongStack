@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 const createHttpServer = vi.hoisted(() => vi.fn(() => ({}) as never));
 
@@ -33,7 +33,7 @@ vi.mock('node:module', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:module')>();
   return {
     ...actual,
-    default: actual.default,
+    default: actual,
     createRequire: (from: string | URL) => {
       const real = actual.createRequire(from);
       return {
@@ -67,7 +67,7 @@ vi.mock('node:module', async (importOriginal) => {
  */
 describe('standalone frontend dist last-resort fallback', () => {
   let root: string;
-  let warn: ReturnType<typeof vi.spyOn>;
+  let warn: MockInstance<typeof console.warn>;
 
   const requiredOpts = {
     wsHost: '127.0.0.1',

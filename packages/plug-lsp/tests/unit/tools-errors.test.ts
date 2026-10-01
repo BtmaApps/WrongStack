@@ -7,6 +7,7 @@ import { createDefinitionTool } from '../../src/tools/definition.js';
 import { createDiagnosticsTool } from '../../src/tools/diagnostics.js';
 import { createRenameTool } from '../../src/tools/rename.js';
 import {
+  createLineTextReader,
   resolveInputPath,
   stringifyToolError,
   type ToolDeps,
@@ -40,6 +41,20 @@ describe('tool error and edge paths', () => {
     );
     expect(stringifyToolError(new Error('boom'))).toContain('boom');
     expect(stringifyToolError('wat')).toContain('wat');
+  });
+
+  it('caches unreadable files so missing line text preserves raw columns', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'plug-lsp-line-reader-'));
+    try {
+      const file = path.join(root, 'missing.ts');
+      const reader = createLineTextReader(makeDeps(null).tracker);
+      expect(reader(file, 0)).toBeUndefined();
+      await fs.writeFile(file, 'new text');
+      expect(reader(file, 0)).toBeUndefined();
+      expect(createLineTextReader(makeDeps(null).tracker)(file, 0)).toBe('new text');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it('throws capability and not-found errors from kept tools', async () => {

@@ -1,7 +1,7 @@
 import type { Server } from 'node:http';
 import { describe, expect, it, vi } from 'vitest';
-import type { FileWatcherMetrics } from '../src/server/setup-events-watcher.js';
 import { startStaticServe } from '../src/server/frontend-static-serve.js';
+import type { FileWatcherMetrics } from '../src/server/setup-events-watcher.js';
 
 /**
  * Regression guard for the CLI-embedded WebUI.
@@ -32,7 +32,9 @@ describe('startStaticServe → createHttpServer wiring', () => {
   const stubServer = () => ({ close: vi.fn() }) as unknown as Server;
 
   it('forwards watcherMetrics verbatim to the constructed server', async () => {
-    const createServer = vi.fn(() => stubServer());
+    const createServer = vi.fn<typeof import('../src/server/http-server.js').createHttpServer>(() =>
+      stubServer(),
+    );
     const watcherMetrics = metrics();
 
     await startStaticServe(
@@ -61,7 +63,9 @@ describe('startStaticServe → createHttpServer wiring', () => {
   // makes `/api/codemap/*` honour `meta.codebaseIndexDir` (see
   // api-router.gaps.test.ts, which pins the router side of the same chain).
   it('forwards indexDir and executePackageOperation so codemap routes and TechStack operations survive the CLI path', async () => {
-    const createServer = vi.fn(() => stubServer());
+    const createServer = vi.fn<typeof import('../src/server/http-server.js').createHttpServer>(() =>
+      stubServer(),
+    );
     const executePackageOperation = vi.fn();
     const indexDir = '/custom/.codebase-index';
 
@@ -85,7 +89,9 @@ describe('startStaticServe → createHttpServer wiring', () => {
   });
 
   it('passes watcherMetrics: undefined (never omits the key) when the host supplies none', async () => {
-    const createServer = vi.fn(() => stubServer());
+    const createServer = vi.fn<typeof import('../src/server/http-server.js').createHttpServer>(() =>
+      stubServer(),
+    );
 
     await startStaticServe(
       {

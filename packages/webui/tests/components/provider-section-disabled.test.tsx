@@ -23,7 +23,9 @@ const noopNav = {
 };
 
 /** Minimal props: everything irrelevant to the toggle is an inert stub. */
-function baseProps(overrides: Record<string, unknown> = {}) {
+type Props = Parameters<typeof ProviderSavedProfiles>[0];
+
+function baseProps(overrides: Partial<Props> = {}): Props {
   return {
     t: ((key: string) => key) as never,
     savedProviders: [provider],
@@ -72,7 +74,7 @@ describe('ProviderSavedProfiles — disable provider toggle', () => {
 
   it('renders an enabled switch and reports the provider id on toggle', () => {
     const onToggleProviderDisabled = vi.fn();
-    render(<ProviderSavedProfiles {...(baseProps({ onToggleProviderDisabled }) as never)} />);
+    render(<ProviderSavedProfiles {...baseProps({ onToggleProviderDisabled })} />);
 
     const toggle = screen.getByRole('switch', { name: 'settings:provider.disableToggle' });
     expect(toggle.getAttribute('aria-checked')).toBe('false');
@@ -84,7 +86,7 @@ describe('ProviderSavedProfiles — disable provider toggle', () => {
   });
 
   it('shows the switch on and the badge when the provider is already disabled', () => {
-    render(<ProviderSavedProfiles {...(baseProps({ disabledProviders: ['openai'] }) as never)} />);
+    render(<ProviderSavedProfiles {...baseProps({ disabledProviders: ['openai'] })} />);
 
     expect(
       screen
@@ -95,7 +97,7 @@ describe('ProviderSavedProfiles — disable provider toggle', () => {
   });
 
   it('matches disabled ids case-insensitively, like the resolver', () => {
-    render(<ProviderSavedProfiles {...(baseProps({ disabledProviders: ['OpenAI'] }) as never)} />);
+    render(<ProviderSavedProfiles {...baseProps({ disabledProviders: ['OpenAI'] })} />);
 
     expect(
       screen
