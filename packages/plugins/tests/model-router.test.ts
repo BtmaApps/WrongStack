@@ -78,6 +78,21 @@ describe('requestCharSize / pickRule', () => {
     expect(size).toBe(7);
   });
 
+  it('weighs a tool call by its serialized argument object', () => {
+    const big = 'x'.repeat(5_000);
+    const size = requestCharSize({
+      messages: [
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', name: 'edit', input: { old_string: big, new_string: big } },
+          ],
+        },
+      ],
+    });
+    expect(size).toBeGreaterThan(10_000);
+  });
+
   it('picks the first fully-matching rule', () => {
     const rules = [
       { maxChars: 10, hasTools: false, model: 'cheap' },

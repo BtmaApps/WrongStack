@@ -145,6 +145,10 @@ function generateKey(value: string): string {
   const base = value
     .toLowerCase()
     .normalize('NFKD')
+    // NFKD splits `ş` into `s` + a combining mark. The mark is neither a
+    // letter nor a digit, so without dropping it every accented letter became
+    // a word break: `Değer` → `t.deg_er`.
+    .replace(/\p{M}+/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 40);
@@ -157,8 +161,10 @@ function generateKey(value: string): string {
 function looksLikeUserText(value: string, minLength: number): boolean {
   if (value.length < minLength) return false;
   if (/^\s*$/.test(value)) return false;
-  // Only digits, punctuation, whitespace, underscores.
-  if (/^[0-9\s\W_]+$/.test(value)) return false;
+  // No letters at all: digits, punctuation, symbols, whitespace. Unicode-aware —
+  // the old `/^[0-9\s\W_]+$/` (no `u` flag) counted every non-ASCII letter as
+  // `\W`, so Cyrillic, CJK or Arabic UI text was never extracted.
+  if (!/\p{L}/u.test(value)) return false;
   // URL/path-like, color hex, short identifiers, import paths.
   if (
     /^(https?:|ftp:|www\.|\/|\.\/|@|#[0-9a-f]{3,8}$|\.?(jsx?|tsx?|vue|css|scss|json|png|svg|jpg)$)/i.test(

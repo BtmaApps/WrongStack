@@ -110,7 +110,7 @@ export function asVectorRecallProviderAdapter(store: VectorMemoryStore): VectorR
         id: h.entry.id,
         score: h.score,
         text: h.entry.text,
-        ...(h.entry.summary ? { summary: h.entry.summary } : {}),
+        ...(h.entry.summary !== undefined ? { summary: h.entry.summary } : {}),
         tags: h.entry.tags,
         ...(h.entry.metadata ? { metadata: h.entry.metadata } : {}),
       }));
@@ -168,7 +168,7 @@ export function wrapMemoryPortWithVectorRecall(
    * in-process store); double-fusing would rank the same hits twice.
    */
   const callerOwnsFusion = (searchOpts: SageSearchOptions | undefined): boolean =>
-    Boolean(searchOpts?.vectorRecall);
+    typeof (searchOpts?.vectorRecall as { search?: unknown } | undefined)?.search === 'function';
 
   const wrapSearchSage =
     (original: (query: string, opts?: unknown) => Promise<Sage[]>) =>
@@ -205,17 +205,16 @@ export function wrapMemoryPortWithVectorRecall(
     Object.getPrototypeOf(port),
     Object.getOwnPropertyDescriptors(port),
   ) as MemoryPort;
-  const wrapSearchCapability = <C extends SearchCapabilityShape>(original: C): C => ({
-    ...original,
-    searchSage: wrapSearchSage(original.searchSage as never),
-    ...(original.searchSageWithBreakdown
-      ? {
-          searchSageWithBreakdown: wrapSearchWithBreakdown(
-            original.searchSageWithBreakdown as never,
-          ),
-        }
-      : {}),
-  });
+  const wrapSearchCapability = <C extends SearchCapabilityShape>(original: C): C => {
+    const capability = Object.create(original) as C;
+    capability.searchSage = wrapSearchSage(original.searchSage.bind(original) as never);
+    if (original.searchSageWithBreakdown) {
+      capability.searchSageWithBreakdown = wrapSearchWithBreakdown(
+        original.searchSageWithBreakdown.bind(original) as never,
+      );
+    }
+    return capability;
+  };
 
   // Every read-side capability that exposes `searchSage` is wrapped. The
   // service capability is included on purpose: the agent's memory tools

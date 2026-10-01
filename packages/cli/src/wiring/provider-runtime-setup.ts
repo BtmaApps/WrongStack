@@ -324,6 +324,7 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
     'fallbackProfile',
     'favoriteModels',
     'disabledModels',
+    'disabledProviders',
     'favoriteModelsOnly',
     'modelAvailabilitySchedule',
     'modelMatrix',

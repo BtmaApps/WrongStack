@@ -345,4 +345,11 @@ describe('deepMerge — onNonPrimitiveArrayReplace callback', () => {
     expect(cb).toHaveBeenCalledOnce();
     expect(cb).toHaveBeenCalledWith('servers', 0, 1);
   });
+
+  it('prefer-base adds a patch key that only exists on Object.prototype', () => {
+    const result = deepMerge({ a: 1 }, { valueOf: 2, toString: 'x' } as Record<string, unknown>, {
+      conflictResolution: 'prefer-base',
+    });
+    expect(JSON.parse(JSON.stringify(result))).toEqual({ a: 1, valueOf: 2, toString: 'x' });
+  });
 });

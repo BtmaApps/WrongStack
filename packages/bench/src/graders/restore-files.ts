@@ -16,8 +16,8 @@ export async function restoreFromTemplate(
 ): Promise<string[]> {
   const restored: string[] = [];
   for (const rel of relPaths) {
-    const source = inside(templateDir, rel);
-    const target = inside(workdir, rel);
+    const source = await inside(templateDir, rel);
+    const target = await inside(workdir, rel);
     if (!source || !target) continue;
     let original: Buffer;
     try {
@@ -40,7 +40,7 @@ export function restoredNote(restored: readonly string[], what: string): string 
 }
 
 /** `rel` resolved under `root`, or undefined when it is absolute or escapes. */
-function inside(root: string, rel: string): string | undefined {
+async function inside(root: string, rel: string): Promise<string | undefined> {
   if (path.isAbsolute(rel)) return undefined;
   const rootAbs = path.resolve(root);
   const target = path.resolve(rootAbs, rel);
@@ -53,5 +53,29 @@ function inside(root: string, rel: string): string | undefined {
   ) {
     return undefined;
   }
-  return target;
+  const canonicalRoot = await fs.realpath(rootAbs).catch(() => undefined);
+  if (!canonicalRoot) return undefined;
+  for (let probe = target; ; probe = path.dirname(probe)) {
+    let canonical: string;
+    try {
+      canonical = await fs.realpath(probe);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || probe === rootAbs) {
+        return undefined;
+      }
+      const entry = await fs.lstat(probe).catch(() => undefined);
+      if (entry?.isSymbolicLink()) return undefined;
+      continue;
+    }
+    const resolved = path.resolve(canonical, path.relative(probe, target));
+    const canonicalRelative = path.relative(canonicalRoot, resolved);
+    if (
+      canonicalRelative === '..' ||
+      canonicalRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(canonicalRelative)
+    ) {
+      return undefined;
+    }
+    return target;
+  }
 }

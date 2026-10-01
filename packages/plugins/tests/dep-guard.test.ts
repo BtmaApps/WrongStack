@@ -320,6 +320,15 @@ describe('typosquat detection', () => {
     expect(typosquatOf('lodash')).toBeNull();
     expect(typosquatOf('some-random-package')).toBeNull();
   });
+
+  it('compares against the installing ecosystem and skips known distinct neighbours', async () => {
+    // `request` is an npm package; `requests` is the pip anchor.
+    expect(typosquatOf('request', 'npm')).toBeNull();
+    expect(typosquatOf('request', 'PyPI')).toBe('requests');
+    expect(typosquatOf('preact', 'npm')).toBeNull();
+    expect(typosquatOf('vuex', 'npm')).toBeNull();
+    expect(typosquatOf('raect', 'npm')).toBe('react');
+  });
 });
 
 describe('dep-guard plugin', () => {

@@ -48,6 +48,7 @@ export function QuickModelSwitcher() {
   const setOpen = useUIStore((s) => s.setModelSwitcherOpen);
   const favoriteModels = useLocalPrefs((s) => s.favoriteModels);
   const disabledModels = useLocalPrefs((s) => s.disabledModels);
+  const disabledProviders = useLocalPrefs((s) => s.disabledProviders);
   const keyboardShortcuts = useLocalPrefs((s) => s.keyboardShortcuts);
   const [query, setQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState<string | null>(null);
@@ -182,6 +183,7 @@ export function QuickModelSwitcher() {
         favoritesOnly,
         favoriteModels,
         disabledModels,
+        disabledProviders,
       ),
     [
       saved,
@@ -193,6 +195,7 @@ export function QuickModelSwitcher() {
       favoritesOnly,
       favoriteModels,
       disabledModels,
+      disabledProviders,
     ],
   );
 

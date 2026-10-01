@@ -65,7 +65,14 @@ export function handleAcpSessionUpdate(
       }
       return;
     case 'usage_update':
-      if (typeof u.used === 'number' && typeof u.size === 'number') {
+      if (
+        typeof u.used === 'number' &&
+        Number.isFinite(u.used) &&
+        u.used >= 0 &&
+        typeof u.size === 'number' &&
+        Number.isFinite(u.size) &&
+        u.size >= 0
+      ) {
         const usage = {
           used: u.used,
           size: u.size,

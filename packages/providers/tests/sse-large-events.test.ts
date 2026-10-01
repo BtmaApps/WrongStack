@@ -33,6 +33,35 @@ function contentOf(data: string): unknown {
 }
 
 describe('large SSE events', () => {
+  for (const ending of ['\n', '\r\n', '\r']) {
+    it(`rejects an oversized terminated data line with ${JSON.stringify(ending)} framing`, async () => {
+      const text = `data: ${'x'.repeat(33 * 1024 * 1024)}${ending}${ending}`;
+      const drain = async () => {
+        for await (const _ of parseSSE(body(text, text.length))) {
+        }
+      };
+      await expect(drain()).rejects.toThrow(/exceeds/);
+    });
+  }
+
+  it('checks the combined length when a large line terminates in a later chunk', async () => {
+    const text = `data: ${'x'.repeat(33 * 1024 * 1024)}\n\n`;
+    const drain = async () => {
+      for await (const _ of parseSSE(body(text, 20 * 1024 * 1024))) {
+      }
+    };
+    await expect(drain()).rejects.toThrow(/exceeds/);
+  });
+
+  it('bounds a single event assembled from many individually valid data lines', async () => {
+    const line = `data: ${'x'.repeat(1024 * 1024)}\n`;
+    const drain = async () => {
+      for await (const _ of parseSSE(body(line.repeat(33) + '\n'))) {
+      }
+    };
+    await expect(drain()).rejects.toThrow(/exceeds/);
+  });
+
   it('parseSSE reassembles a single data line larger than 256 KB', async () => {
     const messages = [];
     for await (const m of parseSSE(body(`data: ${event}\n\n`))) messages.push(m);

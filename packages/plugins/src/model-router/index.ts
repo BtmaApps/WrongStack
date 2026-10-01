@@ -44,6 +44,7 @@
  */
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
 import { createHostStates, providerSignal } from '../runtime/host-state.js';
+import { safeJsonStringify } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -166,7 +167,14 @@ export function requestCharSize(request: Record<string, unknown>): number {
       const o = v as Record<string, unknown>;
       if (typeof o['text'] === 'string') size += (o['text'] as string).length;
       if (o['content'] !== undefined) walk(o['content']);
-      if (o['input'] !== undefined) walk(o['input']);
+      // A tool call's `input` is an argument OBJECT that is sent serialized;
+      // walking it found only keys named text/content/input, so an `edit`'s
+      // old/new strings weighed nothing and a large request could match a
+      // small-model `maxChars` rule.
+      const input = o['input'];
+      if (input && typeof input === 'object' && !Array.isArray(input)) {
+        size += safeJsonStringify(input).length;
+      } else if (input !== undefined) walk(input);
       if (o['arguments'] !== undefined) walk(o['arguments']);
     }
   };

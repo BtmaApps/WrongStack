@@ -116,6 +116,29 @@ describe('schema-evolution-guard plugin', () => {
     expect(result?.additionalContext).toContain('NOT NULL added without default at line 1');
   });
 
+  it('does not flag columns of a table being created or an IS NOT NULL predicate', () => {
+    const api = makeApi({ extensions: { 'schema-evolution-guard': { failSeverity: 'block' } } });
+    plugin.setup(api as never);
+    const result = getHook(api)({
+      toolName: 'write',
+      toolInput: {
+        path: 'prisma/migrations/20240105_create/migration.sql',
+        content: [
+          'CREATE TABLE "Order" (',
+          '  "id" SERIAL NOT NULL,',
+          '  "status" TEXT NOT NULL,',
+          '  CONSTRAINT "Order_pkey" PRIMARY KEY ("id")',
+          ');',
+          'CREATE INDEX "Order_open" ON "Order" ("status") WHERE "status" IS NOT NULL;',
+          'ALTER TABLE "Item" ALTER COLUMN "sku" SET NOT NULL;',
+        ].join('\n'),
+      },
+      toolResult: { content: '', isError: false },
+    });
+    expect(result?.reason).toContain('NOT NULL added without default at line 7');
+    expect(result?.reason).not.toMatch(/line [1-6]\b/);
+  });
+
   it('does not flag NOT NULL when a DEFAULT is present', () => {
     const api = makeApi();
     plugin.setup(api as never);

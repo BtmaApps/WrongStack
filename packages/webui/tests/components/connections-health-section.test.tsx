@@ -289,4 +289,63 @@ describe('ConnectionsHealthSection', () => {
     });
     expect(screen.queryByText('done')).toBeNull();
   });
+
+  it('restarts every controllable daemon from one bulk action', () => {
+    render(<ConnectionsHealthSection />);
+    const report = healthResult([
+      { id: 'session-catalog', status: 'healthy' },
+      { id: 'kanban', status: 'healthy' },
+      { id: 'sage', status: 'offline' },
+    ]);
+    // Advisory-only control plane: the backend says "none", so a bulk restart
+    // must leave it alone, exactly like the per-card button does.
+    report.services.push({
+      id: 'governance',
+      label: 'Governance control plane',
+      status: 'degraded',
+      required: false,
+      mode: 'project-daemon-advisory',
+      detail: 'degraded',
+      control: 'none',
+    });
+    report.services.push({
+      id: 'webui',
+      label: 'WebUI transport',
+      status: 'healthy',
+      required: true,
+      mode: 'cli-embedded',
+      detail: 'connected',
+    });
+    emit('connections.health_result', report);
+    send.mockClear();
+
+    act(() => screen.getByTestId('restart-all-services').click());
+
+    const restarted = send.mock.calls
+      .map(([message]) => message as { type: string; payload?: { serviceId: string } })
+      .filter((message) => message.type === 'connections.service_action')
+      .map((message) => message.payload?.serviceId);
+    // sage is asleep — restarting it would spawn a daemon purely to stop it.
+    expect(restarted).toEqual(['session-catalog', 'kanban']);
+    expect(send).toHaveBeenCalledWith({ type: 'connections.health' });
+  });
+
+  it('disables the bulk restart when nothing is running', () => {
+    render(<ConnectionsHealthSection />);
+    emit('connections.health_result', healthResult([{ id: 'sage', status: 'offline' }]));
+    expect((screen.getByTestId('restart-all-services') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows the daemon release and uptime, and flags a stale build', () => {
+    render(<ConnectionsHealthSection />);
+    const report = healthResult([{ id: 'chronicle', status: 'degraded' }]);
+    report.services[0]!.daemonVersion = '1.0.26';
+    report.services[0]!.uptimeMs = 3_600_000;
+    report.services[0]!.versionMismatch = true;
+    emit('connections.health_result', report);
+
+    expect(screen.getByTestId('version-skew-badge')).toBeTruthy();
+    expect(screen.getByText('1.0.26')).toBeTruthy();
+    expect(screen.getByText('1h 0m')).toBeTruthy();
+  });
 });

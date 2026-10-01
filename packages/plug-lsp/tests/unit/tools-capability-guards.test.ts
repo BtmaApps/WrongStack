@@ -321,10 +321,35 @@ describe('tool capability guards', () => {
       expect.anything(),
     );
 
-    await createCodeActionsTool(deps).execute({ path: file, line: 3, character: 5 }, ctx, opts());
+    await createCodeActionsTool(deps).execute({ path: file, line: 2, character: 5 }, ctx, opts());
     expect(server.codeAction).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        range: { start: { line: 2, character: 4 }, end: { line: 2, character: 4 } },
+        range: { start: { line: 1, character: 4 }, end: { line: 1, character: 4 } },
+      }),
+      expect.any(Number),
+      expect.anything(),
+    );
+  });
+
+  it('converts the byte column to UTF-16 like every other position tool', async () => {
+    const { root, file } = await fixture();
+    // `foo` starts at byte column 12 (1-based) but UTF-16 character 10: `ş`
+    // is two bytes and one UTF-16 unit.
+    await fs.writeFile(file, 'const ş = foo;');
+    const server = fakeServer({
+      capabilities: { codeActionProvider: true },
+      waitForDiagnostics: vi.fn(async () => []),
+      codeAction: vi.fn(async () => []),
+    });
+    await createCodeActionsTool(makeDeps(server)).execute(
+      { path: file, line: 1, character: 12 },
+      { cwd: root } as never,
+      opts(),
+    );
+    // The raw `character - 1` sent 11, one past `f`.
+    expect(server.codeAction).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        range: { start: { line: 0, character: 10 }, end: { line: 0, character: 10 } },
       }),
       expect.any(Number),
       expect.anything(),

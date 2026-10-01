@@ -1,9 +1,10 @@
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-protocol';
 import { formatDiagnostics } from '../../src/formatters/diagnostics.js';
 import { formatLocations } from '../../src/formatters/location.js';
-
 import { editsByPath, summarizeWorkspaceEdit } from '../../src/formatters/workspace-edit.js';
+import { humanToLSP } from '../../src/position.js';
 import { pathToUri } from '../../src/utils/uri.js';
 
 const cwd = process.cwd();
@@ -166,6 +167,43 @@ describe('formatters', () => {
     const accumulated =
       multiEditsSameDoc.get(`${cwd}\\a.ts`) ?? multiEditsSameDoc.get(`${cwd}/a.ts`);
     expect(accumulated).toHaveLength(2);
+  });
+});
+
+describe('formatter columns use the tools’ 1-based byte convention', () => {
+  // `foo` is UTF-16 character 10 but byte column 12 (1-based): `ş` is two
+  // bytes and one UTF-16 unit. Printing `character + 1` gave 11, and passing
+  // that back to hover/definition (which read it as a byte column) landed on
+  // the space before `foo`.
+  const lineText = 'const ş = foo;';
+  const file = `${cwd}/u.ts`;
+  const reader = (p: string, line: number) =>
+    path.resolve(p) === path.resolve(file) && line === 0 ? lineText : undefined;
+
+  it('prints a location column that round-trips through humanToLSP', () => {
+    const out = formatLocations(
+      [{ uri: pathToUri(file), range: range(0, 10) }],
+      cwd,
+      undefined,
+      reader,
+    );
+    const column = Number(out.split(':').at(-1));
+    expect(column).toBe(12);
+    expect(humanToLSP(lineText, { line: 1, character: column })).toEqual({
+      line: 0,
+      character: 10,
+    });
+  });
+
+  it('prints a diagnostic column the same way', () => {
+    const out = formatDiagnostics(new Map([[file, [diagnostic(0, 10, 1, 'boom')]]]), {
+      cwd,
+      severityFilter: ['error'],
+      maxPerFile: 5,
+      maxTotal: 5,
+      lineText: reader,
+    });
+    expect(out).toContain('L1:12 ERROR');
   });
 });
 

@@ -55,9 +55,11 @@
  * @public
  */
 import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { basename } from 'node:path';
 import type { NotificationMessage, NotificationResult } from '@wrongstack/core/notifications';
 import { type Logger, type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
 import { safeJsonStringify } from '../runtime/index.js';
 import { DesktopNotifier } from './desktop-notifier.js';
 import { WebhookNotificationChannel } from './webhook-channel.js';
@@ -120,59 +122,24 @@ const DEFAULTS: NotifyHubConfig = {
   desktop: false,
 };
 
-function isPrivateIPv4(hostname: string): boolean {
-  // S8 (J1): `::ffff:127.0.0.1` (IPv4-mapped IPv6) used to slip past
-  // the dot-split because `split('.')` produced four segments but the
-  // first was `::ffff:127` and `Number('::ffff:127')` was `NaN` — so
-  // `isPrivateIPv4` returned false and `http://[::ffff:127.0.0.1]:3456`
-  // was considered a public, sendable webhook host. Normalise the
-  // mapped form down to its embedded IPv4 first; the rest of the
-  // check is unchanged.
-  //
-  // The WHATWG URL parser (what `normalizeWebhookUrl` goes through) never
-  // hands us the dotted form: it serialises `[::ffff:127.0.0.1]` as the
-  // hex form `::ffff:7f00:1`, which the dot-split alone would still miss.
-  // Convert that hex tail back to dotted IPv4 before checking.
-  const hexMapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(hostname);
-  const normalised = hexMapped
-    ? [
-        Number.parseInt(hexMapped[1]!, 16) >> 8,
-        Number.parseInt(hexMapped[1]!, 16) & 0xff,
-        Number.parseInt(hexMapped[2]!, 16) >> 8,
-        Number.parseInt(hexMapped[2]!, 16) & 0xff,
-      ].join('.')
-    : hostname.replace(/^::ffff:/i, '');
-  const parts = normalised.split('.').map((p) => Number(p));
-  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
-    return false;
-  }
-  const [a, b] = parts as [number, number, number, number];
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168)
-  );
+/**
+ * Private / loopback / link-local / reserved address test, delegated to the
+ * shared SSRF guard (`@wrongstack/core/utils` ip-guard) used by `fetch` and
+ * web-search. The hand-rolled copy that lived here covered the common IPv4
+ * ranges and `fc`/`fd`/`fe80` prefixes but passed `[::]`, CGNAT, multicast
+ * and every IPv6 transition form that embeds a private IPv4 — NAT64
+ * `[64:ff9b::a9fe:a9fe]` is 169.254.169.254, the cloud metadata endpoint.
+ */
+function isPrivateAddress(address: string): boolean {
+  const kind = isIP(address);
+  if (kind === 4) return isPrivateIPv4(address);
+  if (kind === 6) return isPrivateIPv6(address);
+  return false;
 }
 
 function isBlockedHostname(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  // `fc`/`fd`/`fe80:` are IPv6 unique-local / link-local PREFIXES, and an
-  // IPv6 literal always contains a colon. A DNS name never does, so gating
-  // these three tests on a colon is what keeps an ordinary public host that
-  // merely begins with those two letters (fcbarcelona.com, fdroid.org) from
-  // being misread as a private address and refused.
-  const isV6 = h.includes(':');
-  return (
-    h === 'localhost' ||
-    h.endsWith('.localhost') ||
-    h === '::1' ||
-    h === '0:0:0:0:0:0:0:1' ||
-    (isV6 && (h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80:'))) ||
-    isPrivateIPv4(h)
-  );
+  return h === 'localhost' || h.endsWith('.localhost') || isPrivateAddress(h);
 }
 
 /**
@@ -194,17 +161,7 @@ async function hasPrivateResolvedIP(hostname: string): Promise<boolean> {
   try {
     const entries = await lookup(hostname, { all: true, verbatim: true });
     for (const { address } of entries) {
-      if (isPrivateIPv4(address)) return true;
-      const lower = address.toLowerCase();
-      if (
-        lower === '::1' ||
-        lower === '0:0:0:0:0:0:0:1' ||
-        lower.startsWith('fc') ||
-        lower.startsWith('fd') ||
-        lower.startsWith('fe80:')
-      ) {
-        return true;
-      }
+      if (isPrivateAddress(address)) return true;
     }
     return false;
   } catch {

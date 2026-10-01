@@ -16,7 +16,11 @@ export class IntakeEventEmitter {
 
   /** Publish an event. Listener errors are swallowed so one bad listener cannot break others. */
   emit(event: IntakeEventName, data: Omit<IntakeEvent, 'event' | 'timestamp'>): void {
-    const payload: IntakeEvent = { event, timestamp: new Date().toISOString(), ...data };
+    const payload: IntakeEvent = Object.freeze({
+      ...data,
+      event,
+      timestamp: new Date().toISOString(),
+    });
     for (const listener of [...this.listeners]) {
       try {
         listener(payload);

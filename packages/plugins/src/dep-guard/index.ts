@@ -52,7 +52,7 @@
 import { shellCommandLinesFromInput } from '@wrongstack/core/security';
 import type { HookInvocationContext, Plugin } from '@wrongstack/core/types';
 import { registerLockfileSync } from './lockfile-sync.js';
-import { type RegistryFinding, registryVerdict } from './registry.js';
+import { type Ecosystem, ecosystemOf, type RegistryFinding, registryVerdict } from './registry.js';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -287,35 +287,43 @@ function matchesPattern(name: string, pattern: string): boolean {
   return name.toLowerCase() === pattern.toLowerCase();
 }
 
-/** Well-known packages used as typosquat anchors. */
-const POPULAR_PACKAGES = [
-  'react',
-  'react-dom',
-  'express',
-  'lodash',
-  'axios',
-  'typescript',
-  'vite',
-  'vitest',
-  'next',
-  'vue',
-  'svelte',
-  'zod',
-  'prettier',
-  'eslint',
-  'jest',
-  'webpack',
-  'commander',
-  'chalk',
-  'dotenv',
-  'requests',
-  'numpy',
-  'pandas',
-  'flask',
-  'django',
-  'serde',
-  'tokio',
-];
+/**
+ * Well-known packages used as typosquat anchors, PER ECOSYSTEM. One flat list
+ * compared npm installs against PyPI/crates names: `npm i request` (a real npm
+ * package) was flagged as a typosquat of the pip package `requests`.
+ */
+const POPULAR_PACKAGES: Record<Ecosystem, readonly string[]> = {
+  npm: [
+    'react',
+    'react-dom',
+    'express',
+    'lodash',
+    'axios',
+    'typescript',
+    'vite',
+    'vitest',
+    'next',
+    'vue',
+    'svelte',
+    'zod',
+    'prettier',
+    'eslint',
+    'jest',
+    'webpack',
+    'commander',
+    'chalk',
+    'dotenv',
+  ],
+  PyPI: ['requests', 'numpy', 'pandas', 'flask', 'django'],
+  'crates.io': ['serde', 'tokio'],
+};
+
+/**
+ * Established packages that sit one edit from an anchor on purpose
+ * (`preact`/`react`, `vuex`/`vue`). Warning on them sends the model to second-
+ * guess a correct dependency.
+ */
+const KNOWN_DISTINCT = new Set(['preact', 'vuex', 'nuxt']);
 
 /**
  * Optimal-string-alignment distance (Levenshtein + adjacent
@@ -350,10 +358,12 @@ export function editDistance(a: string, b: string): number {
   return (d[a.length] as number[])[b.length] as number;
 }
 
-export function typosquatOf(name: string): string | null {
+export function typosquatOf(name: string, ecosystem: Ecosystem | null = 'npm'): string | null {
   const lower = name.toLowerCase().replace(/^@[^/]+\//, '');
-  if (POPULAR_PACKAGES.includes(lower)) return null;
-  for (const popular of POPULAR_PACKAGES) {
+  if (KNOWN_DISTINCT.has(lower)) return null;
+  const anchors = ecosystem ? POPULAR_PACKAGES[ecosystem] : Object.values(POPULAR_PACKAGES).flat();
+  if (anchors.includes(lower)) return null;
+  for (const popular of anchors) {
     if (editDistance(lower, popular) === 1) return popular;
   }
   return null;
@@ -522,7 +532,9 @@ const plugin: Plugin = {
       if (!command) return;
 
       const installs = parseInstallCommands(command);
-      const packages = installs.flatMap((i) => i.packages);
+      const packages = installs.flatMap((i) =>
+        i.packages.map((p) => ({ ...p, ecosystem: ecosystemOf(i.manager) })),
+      );
       if (packages.length === 0) return;
       state.installsSeen += 1;
       api.metrics.counter('installs_seen');
@@ -552,7 +564,7 @@ const plugin: Plugin = {
           );
         }
         if (cfg.typosquatCheck) {
-          const lookalike = typosquatOf(pkg.name);
+          const lookalike = typosquatOf(pkg.name, pkg.ecosystem);
           if (lookalike) {
             const baseNote = `"${pkg.name}" is one edit away from the well-known package "${lookalike}" — possible typosquat. Verify the name before installing.`;
             if (cfg.confirmTyposquatsWithLlm && api.llm) {

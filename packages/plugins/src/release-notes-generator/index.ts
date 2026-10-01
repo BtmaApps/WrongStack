@@ -133,24 +133,28 @@ interface Commit {
   type: CommitType | 'uncategorized';
   scope: string | null;
   description: string;
+  /** Conventional `type!:` marker — the one fact release notes exist to carry. */
+  breaking: boolean;
 }
 
 function parseConventionalCommit(subject: string): {
   type: CommitType | 'uncategorized';
   scope: string | null;
   description: string;
+  breaking: boolean;
 } {
-  const match = subject.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(?:\(([^)]+)\))?!?:\s*(.+)$/);
+  const match = subject.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(?:\(([^)]+)\))?(!?):\s*(.+)$/);
   if (!match) {
-    return { type: 'uncategorized', scope: null, description: subject };
+    return { type: 'uncategorized', scope: null, description: subject, breaking: false };
   }
   const rawType = match[1]!.toLowerCase();
   const scope = match[2] ?? null;
-  const description = match[3]!;
+  const breaking = match[3] === '!';
+  const description = match[4]!;
   const type = CONVENTIONAL_TYPES.includes(rawType as CommitType)
     ? (rawType as CommitType)
     : 'uncategorized';
-  return { type, scope, description };
+  return { type, scope, description, breaking };
 }
 
 function formatCommit(c: Commit, includeScope: boolean): string {
@@ -158,6 +162,7 @@ function formatCommit(c: Commit, includeScope: boolean): string {
   if (includeScope && c.scope) {
     line += ` [${c.scope}]`;
   }
+  if (c.breaking) line += ' **BREAKING:**';
   line += ` ${c.description}`;
   return line;
 }
@@ -290,6 +295,7 @@ function buildPolishPrompt(
     hash: commit.hash.slice(0, 7),
     type: commit.type,
     scope: commit.scope,
+    breaking: commit.breaking,
     subject: commit.subject,
   }));
   return [

@@ -40,6 +40,7 @@ import {
   requireHttpServerConfig,
 } from './registry-authorization.js';
 import {
+  advanceCatalogVersion,
   cloneCatalogRecords,
   collectCatalogPages,
   registryCatalogSnapshot,
@@ -230,7 +231,9 @@ export class MCPRegistry {
     // start() only marks a slot lazy when a cache directory is configured.
     const cacheDir = expectDefined(this.cacheDir);
     const hash = manifestConfigHash(slot.cfg);
+    const generation = slot.startupGeneration;
     const cached = await readCapabilityManifest(cacheDir, slot.cfg.name, hash);
+    if (this.servers.get(slot.cfg.name) !== slot || slot.startupGeneration !== generation) return;
     if (cached) {
       slot.serverMetadata = cached.serverMetadata;
       slot.resources = cached.resources;
@@ -253,15 +256,16 @@ export class MCPRegistry {
     if (slot.client && slot.state === 'connected') return Promise.resolve(slot.client);
     if (slot.connecting) return slot.connecting;
 
-    const promise = (async () => {
-      try {
-        await this.attemptConnect(slot);
-        return slot.client;
-      } finally {
-        slot.connecting = undefined;
-      }
-    })();
+    const generation = slot.startupGeneration;
+    const promise = this.attemptConnect(slot).then(() =>
+      slot.startupGeneration === generation ? slot.client : undefined,
+    );
     slot.connecting = promise;
+    const clearFlight = () => {
+      // A stop/restart can install another flight before this one settles.
+      if (slot.connecting === promise) slot.connecting = undefined;
+    };
+    void promise.then(clearFlight, clearFlight);
 
     return promise;
   }
@@ -380,6 +384,7 @@ export class MCPRegistry {
   async stop(name: string): Promise<void> {
     const slot = this.servers.get(name);
     if (!slot) return;
+    slot.startupGeneration = (slot.startupGeneration ?? 0) + 1;
     slot.reconnectPending = false;
     // Cancel the pending backoff timer. Without this, a disconnect scheduled
     // for reconnection would fire its `attemptReconnect` callback after the
@@ -452,7 +457,7 @@ export class MCPRegistry {
     }
     if (slot.state === 'dormant') return;
     if (slot.operations.inFlightCalls > 0) {
-      throw new Error(`MCP server "${name}" has tool calls in flight — try again when they finish`);
+      throw new Error(`MCP server "${name}" has requests in flight — try again when they finish`);
     }
     await sleepIdleSlot(this.idleContext(), slot);
   }
@@ -529,14 +534,20 @@ export class MCPRegistry {
   async listResources(name: string, opts: { refresh?: boolean } = {}): Promise<MCPResource[]> {
     const slot = this.requireSlot(name);
     if (!opts.refresh && slot.resources) return cloneCatalogRecords(slot.resources);
-    const client = await this.ensureConnected(name);
-    if (!client.getServerMetadata()?.capabilities.resources) return [];
-    slot.resources = await collectCatalogPages(
-      (cursor) => client.listResources(cursor ? { cursor } : {}),
-      (page) => page.resources,
-    );
-    await this.persistCapabilityManifest(slot);
-    return cloneCatalogRecords(slot.resources);
+    const version = advanceCatalogVersion(slot, 'resources');
+    return this.withConnectedClient(name, async (client, assertCurrent) => {
+      if (!client.getServerMetadata()?.capabilities.resources) return [];
+      const resources = await collectCatalogPages(
+        (cursor) => client.listResources(cursor ? { cursor } : {}),
+        (page) => page.resources,
+      );
+      assertCurrent();
+      if (slot.catalogVersions?.resources === version) {
+        slot.resources = resources;
+        await this.persistCapabilityManifest(slot);
+      }
+      return cloneCatalogRecords(resources);
+    });
   }
 
   async listResourceTemplates(
@@ -545,18 +556,24 @@ export class MCPRegistry {
   ): Promise<MCPResourceTemplate[]> {
     const slot = this.requireSlot(name);
     if (!opts.refresh && slot.resourceTemplates) return cloneCatalogRecords(slot.resourceTemplates);
-    const client = await this.ensureConnected(name);
-    if (!client.getServerMetadata()?.capabilities.resources) return [];
-    slot.resourceTemplates = await collectCatalogPages(
-      (cursor) => client.listResourceTemplates(cursor ? { cursor } : {}),
-      (page) => page.resourceTemplates,
-    );
-    await this.persistCapabilityManifest(slot);
-    return cloneCatalogRecords(slot.resourceTemplates);
+    const version = advanceCatalogVersion(slot, 'resourceTemplates');
+    return this.withConnectedClient(name, async (client, assertCurrent) => {
+      if (!client.getServerMetadata()?.capabilities.resources) return [];
+      const templates = await collectCatalogPages(
+        (cursor) => client.listResourceTemplates(cursor ? { cursor } : {}),
+        (page) => page.resourceTemplates,
+      );
+      assertCurrent();
+      if (slot.catalogVersions?.resourceTemplates === version) {
+        slot.resourceTemplates = templates;
+        await this.persistCapabilityManifest(slot);
+      }
+      return cloneCatalogRecords(templates);
+    });
   }
 
   async readResource(name: string, uri: string): Promise<MCPReadResourceResult> {
-    return (await this.ensureConnected(name)).readResource(uri);
+    return this.withConnectedClient(name, (client) => client.readResource(uri));
   }
 
   async selectResourceForInsertion(
@@ -568,24 +585,30 @@ export class MCPRegistry {
   }
 
   async subscribeResource(name: string, uri: string): Promise<void> {
-    await (await this.ensureConnected(name)).subscribeResource(uri);
+    await this.withConnectedClient(name, (client) => client.subscribeResource(uri));
   }
 
   async unsubscribeResource(name: string, uri: string): Promise<void> {
-    await (await this.ensureConnected(name)).unsubscribeResource(uri);
+    await this.withConnectedClient(name, (client) => client.unsubscribeResource(uri));
   }
 
   async listPrompts(name: string, opts: { refresh?: boolean } = {}): Promise<MCPPrompt[]> {
     const slot = this.requireSlot(name);
     if (!opts.refresh && slot.prompts) return cloneCatalogRecords(slot.prompts);
-    const client = await this.ensureConnected(name);
-    if (!client.getServerMetadata()?.capabilities.prompts) return [];
-    slot.prompts = await collectCatalogPages(
-      (cursor) => client.listPrompts(cursor ? { cursor } : {}),
-      (page) => page.prompts,
-    );
-    await this.persistCapabilityManifest(slot);
-    return cloneCatalogRecords(slot.prompts);
+    const version = advanceCatalogVersion(slot, 'prompts');
+    return this.withConnectedClient(name, async (client, assertCurrent) => {
+      if (!client.getServerMetadata()?.capabilities.prompts) return [];
+      const prompts = await collectCatalogPages(
+        (cursor) => client.listPrompts(cursor ? { cursor } : {}),
+        (page) => page.prompts,
+      );
+      assertCurrent();
+      if (slot.catalogVersions?.prompts === version) {
+        slot.prompts = prompts;
+        await this.persistCapabilityManifest(slot);
+      }
+      return cloneCatalogRecords(prompts);
+    });
   }
 
   async getPrompt(
@@ -593,7 +616,41 @@ export class MCPRegistry {
     promptName: string,
     args?: Record<string, string> | undefined,
   ): Promise<MCPGetPromptResult> {
-    return (await this.ensureConnected(serverName)).getPrompt(promptName, args);
+    return this.withConnectedClient(serverName, (client) => client.getPrompt(promptName, args));
+  }
+
+  /** Keep all remote requests awake and reject results from superseded clients. */
+  private async withConnectedClient<T>(
+    name: string,
+    run: (client: MCPClient, assertCurrent: () => void) => Promise<T>,
+  ): Promise<T> {
+    const slot = this.requireSlot(name);
+    const generation = slot.startupGeneration;
+    slot.operations.inFlightCalls++;
+    slot.operations.peakInFlightCalls = Math.max(
+      slot.operations.peakInFlightCalls,
+      slot.operations.inFlightCalls,
+    );
+    try {
+      const client = await this.ensureConnected(name);
+      const assertCurrent = () => {
+        if (
+          this.servers.get(name) !== slot ||
+          slot.startupGeneration !== generation ||
+          slot.client !== client ||
+          slot.state !== 'connected'
+        ) {
+          throw new Error(`MCP server "${name}" connection changed during request`);
+        }
+      };
+      assertCurrent();
+      const result = await run(client, assertCurrent);
+      assertCurrent();
+      return result;
+    } finally {
+      slot.operations.inFlightCalls = Math.max(0, slot.operations.inFlightCalls - 1);
+      if (slot.startupGeneration === generation) slot.lastUsed = Date.now();
+    }
   }
 
   async selectPromptForInsertion(
@@ -772,6 +829,8 @@ export class MCPRegistry {
   private readonly onResourcesChanged = (name: string): void => {
     const slot = this.servers.get(name);
     if (!slot) return;
+    advanceCatalogVersion(slot, 'resources');
+    advanceCatalogVersion(slot, 'resourceTemplates');
     slot.resources = undefined;
     slot.resourceTemplates = undefined;
     void this.persistCapabilityManifest(slot);
@@ -789,6 +848,7 @@ export class MCPRegistry {
   private readonly onPromptsChanged = (name: string): void => {
     const slot = this.servers.get(name);
     if (!slot) return;
+    advanceCatalogVersion(slot, 'prompts');
     slot.prompts = undefined;
     void this.persistCapabilityManifest(slot);
     this.log.info(`MCP server "${name}" prompt catalog invalidated`);

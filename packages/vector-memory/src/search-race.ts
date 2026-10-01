@@ -92,14 +92,16 @@ export async function runSearchRace(
     typeof options.limit === 'number' && Number.isFinite(options.limit)
       ? Math.max(0, Math.floor(options.limit))
       : 20;
-  const threshold = options.threshold ?? 0;
+  const threshold = Number.isNaN(options.threshold)
+    ? 0
+    : Math.max(0, Math.min(1, options.threshold ?? 0));
 
   // Vector channel — independent semantic recall.
   let vectorHits: VectorSearchHit[] = [];
   if (limit > 0) {
     try {
       vectorHits = await vectorStore.search(query, {
-        limit,
+        limit: Math.max(limit * 2, 50),
         ...(threshold > 0 ? { threshold } : {}),
       });
     } catch {
@@ -126,7 +128,16 @@ export async function runSearchRace(
   }> = [];
   const seenIds = new Set<string>();
 
-  const lexicalCapped = lexical.slice(0, limit);
+  const lexicalCapped: Sage[] = [];
+  const lexicalIds = new Set<string>();
+  if (limit > 0) {
+    for (const memory of lexical) {
+      if (lexicalIds.has(memory.id)) continue;
+      lexicalIds.add(memory.id);
+      lexicalCapped.push(memory);
+      if (lexicalCapped.length >= limit) break;
+    }
+  }
   for (let i = 0; i < lexicalCapped.length; i++) {
     const mem = lexicalCapped[i]!;
     const score = lexicalCapped.length <= 1 ? 1 : 1 - i / Math.max(1, lexicalCapped.length - 1);
@@ -144,15 +155,35 @@ export async function runSearchRace(
   const overlapById = new Map<string, (typeof overlap)[number]>();
   for (const row of overlap) overlapById.set(row.id, row);
 
+  const uniqueVectorHits = new Map<
+    string,
+    { sageId: string; vectorScore: number; preview: string }
+  >();
   for (const hit of vectorHits) {
     const sageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
-    if (typeof sageId !== 'string') continue;
+    if (typeof sageId !== 'string' || sageId.trim().length === 0) continue;
+    const vectorScore = Number.isNaN(hit.score) ? 0 : Math.max(0, Math.min(1, hit.score));
+    const duplicate = uniqueVectorHits.get(sageId);
+    if (duplicate) {
+      if (vectorScore > duplicate.vectorScore) {
+        duplicate.vectorScore = vectorScore;
+        duplicate.preview = previewText(hit.entry.text, 140);
+      }
+      continue;
+    }
+    if (uniqueVectorHits.size >= limit) continue;
+    uniqueVectorHits.set(sageId, {
+      sageId,
+      vectorScore,
+      preview: previewText(hit.entry.text, 140),
+    });
+  }
+
+  for (const hit of uniqueVectorHits.values()) {
+    const { sageId, vectorScore } = hit;
     const existing = overlapById.get(sageId);
     if (existing) {
-      // Keep the highest (first encountered) vector score
-      if (existing.vectorScore === null) {
-        existing.vectorScore = hit.score;
-      }
+      existing.vectorScore = vectorScore;
       continue;
     }
     if (seenIds.has(sageId)) continue;
@@ -160,8 +191,8 @@ export async function runSearchRace(
     vectorOnly.push({
       id: sageId,
       lexicalScore: null,
-      vectorScore: hit.score,
-      preview: previewText(hit.entry.text, 140),
+      vectorScore,
+      preview: hit.preview,
     });
   }
   // Partition unpatched rows into lexicalOnly, preserving forward rank order.

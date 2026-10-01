@@ -19,9 +19,11 @@
  *                      directory with that name at any depth; an internal slash
  *                      (e.g. `docs/generated/`) anchors it to the root.
  *   - contains `/`   → anchored glob matched against the path relative to
- *                      the project root, e.g. `docs/generated`
- *   - otherwise      → glob matched against the basename at any depth,
- *                      e.g. `*.env` matches `.env` and `config/.env`
+ *                      the project root, e.g. `docs/generated` (and, as in
+ *                      git, everything beneath a matching directory)
+ *   - otherwise      → glob matched against every path component at any
+ *                      depth, e.g. `*.env` matches `.env` and `config/.env`,
+ *                      and `dist` matches `dist/app.js`
  *
  * The hook only ever touches `.gitignore` files inside the project root
  * (containment is checked against the hook's `cwd`). In `append` mode it
@@ -145,11 +147,15 @@ export function matchGitignorePattern(relPath: string, pattern: string): boolean
     // Bare directory name: matches a directory with that name at any depth.
     return segments.some((s) => s === dir);
   }
+  // A pattern without a trailing `/` matches files AND directories, and git
+  // ignores everything beneath an ignored directory. Matching only the full
+  // path / basename left `dist/bundle.js` uncovered by a `dist` line, so the
+  // hook re-appended `dist/` to a .gitignore that already ignored it.
   if (anchored || pat.includes('/')) {
-    return globToRegExp(toForwardSlashes(pat)).test(rel);
+    return new RegExp(`^${globToSource(toForwardSlashes(pat))}(?:/|$)`).test(rel);
   }
-  const base = segments[segments.length - 1] ?? '';
-  return globToRegExp(pat).test(base);
+  const re = globToRegExp(pat);
+  return segments.some((s) => re.test(s));
 }
 
 /** First artifact pattern matching `relPath`, or null when none match. */

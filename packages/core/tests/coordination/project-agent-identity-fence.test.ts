@@ -151,3 +151,40 @@ describe('buildProjectContextualizedPrompt (WS-SEC-02)', () => {
     expect(prompt.indexOf('FIRST-PARTY BASE')).toBeLessThan(prompt.indexOf('<project-supplied'));
   });
 });
+
+describe('buildProjectContextualizedPrompt with a malformed knowledge.json', () => {
+  it('does not throw when the repo manifest is missing fields or carries null queries', () => {
+    // Cast straight to the manifest type, this used to throw
+    // "Cannot read properties of undefined (reading 'length')" and fail
+    // every spawn of the role.
+    const root = projectWithAgentFiles('frontend', {
+      'knowledge.json': JSON.stringify({
+        role: 'frontend',
+        liveQueries: { react: null, vite: { registry: 'https://registry.npmjs.org/vite/latest' } },
+      }),
+    });
+    expect(() => buildProjectContextualizedPrompt('BASE', 'frontend', root)).not.toThrow();
+  });
+
+  it('keeps the well-formed items of a partially valid manifest', () => {
+    const root = projectWithAgentFiles('frontend', {
+      'knowledge.json': JSON.stringify({
+        checklist: ['Current React version from package.json', 42, null],
+        liveQueries: {
+          react: {
+            registry: 'https://registry.npmjs.org/react/latest',
+            key: 'version',
+            description: 'React',
+          },
+          broken: 'not-a-query',
+        },
+        verifyThreshold: 'high',
+      }),
+    });
+    const prompt = buildProjectContextualizedPrompt('BASE', 'frontend', root);
+    expect(prompt).toContain('- Current React version from package.json');
+    expect(prompt).toContain('https://registry.npmjs.org/react/latest');
+    expect(prompt).not.toContain('broken');
+    expect(prompt).toContain('below 0.5');
+  });
+});

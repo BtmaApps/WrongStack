@@ -247,12 +247,19 @@ async function getGitDiff(
     }
 
     // Parse added/removed from diff line markers.
+    // Only the `--- a/…` / `+++ b/…` file header is skipped. Excluding every
+    // line that starts with `---`/`+++` also dropped content: a removed YAML or
+    // Markdown `---` separator, a removed `-- SQL comment`, an added `++i;`.
     const lines = rawDiff.split('\n');
     let added = 0;
     let removed = 0;
+    let inHunk = false;
     for (const line of lines) {
-      if (line.startsWith('+') && !line.startsWith('+++')) added++;
-      else if (line.startsWith('-') && !line.startsWith('---')) removed++;
+      if (line.startsWith('diff --git ')) inHunk = false;
+      else if (line.startsWith('@@')) inHunk = true;
+      else if (!inHunk && /^(?:---|\+\+\+) (?:[ab]\/|\/dev\/null|")/.test(line)) continue;
+      else if (line.startsWith('+')) added++;
+      else if (line.startsWith('-')) removed++;
     }
 
     return { diff: rawDiff, added, removed, isNewFile: !isTracked };

@@ -2,9 +2,7 @@ import type { ModelProvenance } from '@wrongstack/core/types';
 import type { SessionScopedPayload } from './protocol-core.js';
 
 /** Moved to webui-protocol (conversation-core.ts), the single source the SDK shares. */
-export type {
-  WSSessionsList,
-} from '@wrongstack/webui-protocol';
+export type { WSSessionsList } from '@wrongstack/webui-protocol';
 
 export interface WSDiagGet {
   type: 'diag.get';
@@ -132,6 +130,67 @@ export interface ProviderCatalogModelMatch {
   outputCost?: number | undefined;
   provenance?: ModelProvenance | undefined;
   capabilities: string[];
+}
+
+export type FallbackSuggestionId = 'strong' | 'balanced' | 'fast' | 'budget';
+
+/** One model in a suggested chain — mirrors core `FallbackSuggestionEntry`. */
+export interface FallbackSuggestionEntry {
+  ref: string;
+  provider: string;
+  model: string;
+  name: string;
+  strength: number;
+  speed: number;
+  cheapness: number;
+  contextWindow?: number | undefined;
+  inputCost?: number | undefined;
+  outputCost?: number | undefined;
+  releaseDate?: string | undefined;
+  reasoning: boolean;
+  unstable: boolean;
+}
+
+/** Mirrors core `FallbackSuggestion` (`@wrongstack/core/models`). */
+export interface FallbackSuggestion {
+  id: FallbackSuggestionId;
+  chain: string[];
+  entries: FallbackSuggestionEntry[];
+  score: number;
+  providerCount: number;
+  source: 'heuristic' | 'llm';
+  rationale?: string | undefined;
+}
+
+export interface WSFallbackSuggest {
+  type: 'fallback.suggest';
+  payload: {
+    requestId?: string | undefined;
+    sessionId?: string | undefined;
+    mode?: 'heuristic' | 'llm' | undefined;
+    chainLength?: number | undefined;
+    /** Live exclusion lists — the server's config copy can lag a fresh toggle. */
+    disabledModels?: string[] | undefined;
+    disabledProviders?: string[] | undefined;
+  };
+}
+
+export interface WSFallbackSuggestions {
+  type: 'fallback.suggestions';
+  payload: {
+    requestId?: string | undefined;
+    sessionId?: string | undefined;
+    mode: 'heuristic' | 'llm';
+    suggestions: FallbackSuggestion[];
+    /** Size of the reachable pool the suggestions were drawn from. */
+    candidateCount: number;
+    /** `provider/model` that ran the LLM pass. */
+    llmModel?: string | undefined;
+    /** Why the LLM pass fell back to the heuristic result (or a collection failure). */
+    error?: string | undefined;
+    /** LLM chains rejected for naming a model outside the pool. */
+    rejected?: number | undefined;
+  };
 }
 
 export interface WSCatalogModelSearchResult {

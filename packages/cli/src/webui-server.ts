@@ -30,6 +30,7 @@ import {
   clientWantsSession,
   collectDisplayedSessionIds,
   createCustomModeStore,
+  createDefaultFileWatcherMetrics,
   createEmbeddedMessageRouter,
   createEmbeddedProviderOperations,
   createSessionAgentRegistry,
@@ -265,6 +266,11 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     onFleetPing: () => {
       void fleetBroadcastCli?.();
     },
+    // Without this, /debug/watcher-metrics 503s and the Debug Dashboard has to
+    // report the watcher as "Unavailable". The CLI host runs no status watcher
+    // of its own, so this object stays all-zero and watcherActive reads false —
+    // which is the truthful state for an embedded host.
+    watcherMetrics: createDefaultFileWatcherMetrics(),
     onTechStackEvent: (event) => broadcast(event),
     getLlm: () =>
       opts.agent.ctx.provider && opts.agent.ctx.model
@@ -499,6 +505,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     modelsRegistry: opts.modelsRegistry,
     providerAuthRegistry: opts.providerAuthRegistry,
     getDisabledModels: () => opts.appConfig?.disabledModels ?? [],
+    getDisabledProviders: () => opts.appConfig?.disabledProviders ?? [],
     send,
     broadcast,
     log: (m) => console.log(m),

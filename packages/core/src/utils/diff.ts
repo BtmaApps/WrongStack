@@ -178,8 +178,11 @@ export function unifiedDiff(
       const e = edits[cursor];
       if (!e) break;
       if (e.op === 'equal') {
+        // `trailing` counts equal lines actually pushed. Counting the line
+        // that ends the hunk too made the trim below drop one real context
+        // line, so a hunk followed by a long equal run kept `context - 1`.
+        if (trailing >= context * 2) break;
         trailing++;
-        if (trailing > context * 2) break;
       } else {
         trailing = 0;
       }

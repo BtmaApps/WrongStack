@@ -78,6 +78,20 @@ export function isModelDisabled(
 }
 
 /**
+ * Provider-level exclusion (`disabledProviders`): a bare provider id that
+ * switches off every model the provider serves. Checked before the per-model
+ * list so a parked provider disappears from every picker at once.
+ */
+export function isProviderDisabled(
+  provider: string,
+  disabledProviders?: readonly string[] | null,
+): boolean {
+  if (!disabledProviders || disabledProviders.length === 0) return false;
+  const p = provider.trim().toLowerCase();
+  return disabledProviders.some((raw) => raw?.trim().toLowerCase() === p);
+}
+
+/**
  * Build the full list of (provider, model) candidates from saved
  * providers and the cached model catalog, apply the search filter
  * (case-insensitive substring on provider / model id / model name),
@@ -100,10 +114,14 @@ export function buildModelCandidates(
   favoritesOnly?: boolean,
   favoriteModels?: readonly string[],
   disabledModels?: readonly string[],
+  disabledProviders?: readonly string[],
 ): ModelCandidate[] {
   const list: ModelCandidate[] = [];
   for (const sp of saved) {
     if (providerFilter && sp.id !== providerFilter) continue;
+    // Provider-level exclusion first: a parked provider contributes no rows at
+    // all, so the per-model scan below never runs for it.
+    if (isProviderDisabled(sp.id, disabledProviders)) continue;
     const models = modelsByProvider[sp.id] ?? [];
     for (const m of models) {
       if (isModelDisabled(sp.id, m.id, disabledModels)) continue;

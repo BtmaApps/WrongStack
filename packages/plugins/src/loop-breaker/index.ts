@@ -40,7 +40,8 @@
  * @public
  */
 import { execFile } from 'node:child_process';
-import { isAbsolute, relative } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { isAbsolute, join, relative } from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
 
 // ---------------------------------------------------------------------------
@@ -391,11 +392,11 @@ async function gitDiffFingerprint(
   ) {
     return null;
   }
-  try {
-    const diff = await new Promise<string>((resolve, reject) => {
+  const git = (args: string[]): Promise<string> =>
+    new Promise<string>((resolve, reject) => {
       execFile(
         'git',
-        ['diff', '--no-ext-diff', '--', pathspec],
+        args,
         {
           cwd,
           encoding: 'utf8',
@@ -413,7 +414,21 @@ async function gitDiffFingerprint(
         },
       );
     });
-    return diff.length === 0 ? '' : hashString(diff);
+  try {
+    const diff = await git(['diff', '--no-ext-diff', '--', pathspec]);
+    if (diff.length > 0) return hashString(diff);
+    // `git diff` is empty for an UNTRACKED file however it changes, so every
+    // write while scaffolding new files read as "no diff" and the streak
+    // blocked a run that was making steady progress. Fingerprint such a file
+    // by path + content instead: rewriting it unchanged still repeats.
+    try {
+      await git(['ls-files', '--error-unmatch', '--', pathspec]);
+      return '';
+    } catch (err) {
+      if (signal.aborted) throw err;
+      const content = await readFile(join(cwd, pathspec), 'utf8');
+      return `untracked:${hashString(`${pathspec}\u0000${content}`)}`;
+    }
   } catch (err) {
     if (signal.aborted) throw err;
     return null;

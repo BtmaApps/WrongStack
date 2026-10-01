@@ -73,6 +73,19 @@ describe('agent-handoff plugin', () => {
     );
   });
 
+  it('reads the core payload: a failed delegate is not "done" and each session gets its note', async () => {
+    const api = makeApi();
+    agentHandoffPlugin.setup(api as never);
+    const handler = getEventHandler(api, 'subagent.done');
+    handler({ sessionId: 'sess-a', summary: 'Finished.', ok: false });
+    handler({ sessionId: 'sess-b', summary: 'Finished.', ok: true });
+    const send = api.mailbox?.send as ReturnType<typeof vi.fn>;
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    const subjects = send.mock.calls.map((c) => (c[0] as { subject: string }).subject);
+    expect(subjects[0]).toContain('sess-a — failed');
+    expect(subjects[1]).toContain('sess-b — done');
+  });
+
   it('coerces object-valued fields instead of rendering [object Object]', async () => {
     // Regression: the `...raw` spread leaked unknown-typed values into the
     // string fields, so an object-valued task rendered into the note body as

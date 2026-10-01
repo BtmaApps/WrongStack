@@ -48,9 +48,28 @@ function searchableText(entry: HistoryEntry): { text: string; lower: string } | 
   let text = copyableTextForEntry(entry);
   if (entry.kind === 'tool') text = `${entry.name}\n${text}`;
   if (text.length > MAX_SEARCH_CHARS_PER_ENTRY) text = text.slice(0, MAX_SEARCH_CHARS_PER_ENTRY);
-  const value = { text, lower: text.toLowerCase() };
+  const value = { text, lower: foldCase(text) };
   textCache.set(entry, value);
   return value;
+}
+
+/**
+ * Lowercase WITHOUT changing any code-unit offset, so an index found in the
+ * folded haystack is the same index in the original text.
+ *
+ * `toLowerCase()` is not length-preserving: `İ` (Turkish dotted capital I)
+ * becomes `i` + U+0307. Each one before a hit shifted the reported column —
+ * the highlight landed early, or on the wrong line — and `istanbul` never
+ * matched `İstanbul`. A character whose lowercase form is longer keeps just
+ * its leading base letter.
+ */
+function foldCase(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const lower = ch.toLowerCase();
+    out += lower.length === ch.length ? lower : lower.slice(0, ch.length);
+  }
+  return out;
 }
 
 /** Smart case: an all-lowercase query matches case-insensitively. */
@@ -73,7 +92,7 @@ export function findTranscriptMatches(
 ): TranscriptMatch[] {
   if (query.trim() === '') return [];
   const caseSensitive = isCaseSensitive(query);
-  const needle = caseSensitive ? query : query.toLowerCase();
+  const needle = caseSensitive ? query : foldCase(query);
   const matches: TranscriptMatch[] = [];
   for (const entry of entries) {
     if (entry.kind === 'thinking' && !options.includeReasoning) continue;

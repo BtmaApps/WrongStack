@@ -90,11 +90,36 @@ describe('recordDispatch', () => {
 
     recordDispatch(entry({ role: 'newest' }), root);
 
-    const after = readFileSync(dispatchLogPath(root), 'utf8').trim().split('\n');
-    expect(after).toHaveLength(2_500);
+    const raw = readFileSync(dispatchLogPath(root), 'utf8');
+    const after = raw.trim().split('\n');
+    // Rotation lands under the cap even though these lines are long: a fixed
+    // line count left this file above 1 MiB, so every append re-rotated.
+    expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(512 * 1_024);
     expect(JSON.parse(after.at(-1) as string).role).toBe('newest');
-    // The dropped lines are the oldest ones, not an arbitrary slice.
-    expect(JSON.parse(after[0] as string).role).toBe('role-1501');
+    // The dropped lines are the oldest ones, not an arbitrary slice: the kept
+    // tail is contiguous and ends right before the newest entry.
+    expect(JSON.parse(after.at(-2) as string).role).toBe('role-3999');
+    const firstKept = Number(JSON.parse(after[0] as string).role.replace('role-', ''));
+    expect(firstKept).toBe(4_000 - (after.length - 1));
+  });
+
+  it('does not rewrite the whole log on every append once rotated', () => {
+    const root = newRoot();
+    const longRole = 'payments-reconciliation-specialist';
+    const long = entry({
+      role: longRole,
+      alternatives: Array.from({ length: 6 }, (_, index) => `${longRole}-${index}`),
+      matched: ['reconciliation', 'settlement', 'ledger', 'payments', 'invoice', 'chargeback'],
+      sessionId: '2026-10-01/sess_01M3PGGAZ6F4QPDYW814BX8KG6',
+    });
+    recordDispatch(long, root);
+    const line = readFileSync(dispatchLogPath(root), 'utf8');
+    // Over 420 bytes per line: past the point where 2,500 lines fit in the cap.
+    expect(Buffer.byteLength(line, 'utf8')).toBeGreaterThan(420);
+    writeFileSync(dispatchLogPath(root), line.repeat(Math.ceil((1_024 * 1_024 + 1) / line.length)));
+
+    recordDispatch(long, root);
+    expect(statSync(dispatchLogPath(root)).size).toBeLessThanOrEqual(512 * 1_024);
   });
 });
 

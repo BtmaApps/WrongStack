@@ -228,9 +228,10 @@ function normalizeLine(line: string): string {
   return normalized;
 }
 
-function buildFingerprint(lines: string[]): string {
-  return lines
-    .map(normalizeLine)
+/** Fingerprint of the `minLines` window starting at `start` over pre-normalized lines. */
+function windowFingerprint(normalizedLines: string[], start: number, minLines: number): string {
+  return normalizedLines
+    .slice(start, start + minLines)
     .filter((l) => l.length > 0)
     .join('\n');
 }
@@ -308,8 +309,24 @@ interface CodeWindow {
   fingerprint: string;
 }
 
-function extractWindows(filePath: string, content: string, minLines: number): CodeWindow[] {
+/**
+ * Duplicate-candidate windows of one file. `isDuplicate` says whether a
+ * fingerprint occurs at least twice across the scan; only those windows are
+ * kept, so the interval dedup below can never skip a real duplicate.
+ *
+ * The dedup used to run on EVERY window before matching, which tiled each
+ * file at fixed offsets (1, 1+minLines, …). Two copies of a block were then
+ * found only when their start lines were congruent mod `minLines` — a block
+ * at line 1 of one file and line 4 of another produced no finding at all.
+ */
+function extractWindows(
+  filePath: string,
+  content: string,
+  minLines: number,
+  isDuplicate: (fingerprint: string) => boolean,
+): CodeWindow[] {
   const rawLines = content.split(/\r?\n/);
+  const normalizedLines = rawLines.map(normalizeLine);
   // Per-file interval tracker. The naive sliding-window scanner above
   // emits (rawLines.length - minLines + 1) windows per file; for a 200-line
   // file with minLines=8 that's 193 windows, most of which overlap and
@@ -322,32 +339,24 @@ function extractWindows(filePath: string, content: string, minLines: number): Co
   // and skip any new window whose range overlaps an existing one for the
   // same file — that way one duplication produces one location per file,
   // not one location per shifted window.
-  const covered: Array<[number, number]> = [];
+  // Windows are visited in ascending start order, so a new window can only
+  // overlap the most recently kept one.
+  let coveredUntil = 0;
   const windows: CodeWindow[] = [];
   for (let i = 0; i <= rawLines.length - minLines; i++) {
     const startLine = i + 1;
     const endLine = i + minLines;
-    let overlaps = false;
-    for (const [s, e] of covered) {
-      // Intervals overlap iff startLine <= e && s <= endLine (inclusive on both ends).
-      if (startLine <= e && s <= endLine) {
-        overlaps = true;
-        break;
-      }
-    }
-    if (overlaps) continue;
-    const slice = rawLines.slice(i, i + minLines);
-    const fingerprint = buildFingerprint(slice);
-    if (fingerprint.length === 0) continue;
-    const snippet = slice.join('\n');
+    if (startLine <= coveredUntil) continue;
+    const fingerprint = windowFingerprint(normalizedLines, i, minLines);
+    if (fingerprint.length === 0 || !isDuplicate(fingerprint)) continue;
     windows.push({
       file: filePath,
       startLine,
       endLine,
-      snippet,
+      snippet: rawLines.slice(i, i + minLines).join('\n'),
       fingerprint,
     });
-    covered.push([startLine, endLine]);
+    coveredUntil = endLine;
   }
   return windows;
 }
@@ -357,9 +366,26 @@ function findDuplicates(
   minLines: number,
   maxFindings: number,
 ): DuplicateFinding[] {
+  // Pass 1: how often each window fingerprint occurs across every file.
+  // Counted by compact hash so a project scan does not retain one string
+  // per window; a collision only admits a candidate that pass 2's exact
+  // string grouping then drops as a singleton.
+  const occurrences = new Map<number, number>();
+  for (const content of files.values()) {
+    const normalizedLines = content.split(/\r?\n/).map(normalizeLine);
+    for (let i = 0; i <= normalizedLines.length - minLines; i++) {
+      const fingerprint = windowFingerprint(normalizedLines, i, minLines);
+      if (fingerprint.length === 0) continue;
+      const hash = hashFingerprint(fingerprint);
+      occurrences.set(hash, (occurrences.get(hash) ?? 0) + 1);
+    }
+  }
+  const isDuplicate = (fingerprint: string): boolean =>
+    (occurrences.get(hashFingerprint(fingerprint)) ?? 0) >= 2;
+
   const byFingerprint = new Map<string, CodeWindow[]>();
   for (const [filePath, content] of files.entries()) {
-    const windows = extractWindows(filePath, content, minLines);
+    const windows = extractWindows(filePath, content, minLines, isDuplicate);
     for (const w of windows) {
       const list = byFingerprint.get(w.fingerprint) ?? [];
       list.push(w);

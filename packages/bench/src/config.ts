@@ -30,18 +30,18 @@ export function parseBenchConfig(raw: unknown): BenchConfig {
       throw new Error(`cells[${i}] must be an object`);
     }
     const cell = c as Record<string, unknown>;
-    const provider = cell['provider'];
-    const model = cell['model'];
-    if (typeof provider !== 'string' || provider.length === 0) {
+    const rawProvider = cell['provider'];
+    const rawModel = cell['model'];
+    if (typeof rawProvider !== 'string' || rawProvider.trim().length === 0) {
       throw new Error(`cells[${i}].provider must be a non-empty string`);
     }
-    if (typeof model !== 'string' || model.length === 0) {
+    if (typeof rawModel !== 'string' || rawModel.trim().length === 0) {
       throw new Error(`cells[${i}].model must be a non-empty string`);
     }
-    const label =
-      typeof cell['label'] === 'string' && cell['label'].length > 0
-        ? cell['label']
-        : `${provider}/${model}`;
+    const provider = rawProvider.trim();
+    const model = rawModel.trim();
+    const configuredLabel = typeof cell['label'] === 'string' ? cell['label'].trim() : '';
+    const label = configuredLabel.length > 0 ? configuredLabel : `${provider}/${model}`;
     if (seen.has(label)) {
       throw new Error(`duplicate cell label "${label}" — labels must be unique`);
     }
@@ -168,8 +168,12 @@ export async function loadBenchConfig(path: string): Promise<BenchConfig> {
 
 function positiveInt(value: unknown, fallback: number, name: string): number {
   if (value === undefined) return fallback;
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(`${name} must be a positive number`);
   }
-  return Math.floor(value);
+  const normalized = Math.floor(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 1) {
+    throw new Error(`${name} must be a positive number`);
+  }
+  return normalized;
 }

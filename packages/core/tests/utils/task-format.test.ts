@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { completionPercent } from '../../src/types/task-graph.js';
 import {
   computeTaskItemProgress,
   formatTaskList,
@@ -13,6 +14,18 @@ const mk = (over: Partial<TaskItem> & { id: string; status: TaskItem['status'] }
   createdAt: '2026-01-01',
   updatedAt: '2026-01-01',
   ...over,
+});
+
+describe('completion percentage', () => {
+  it('reads 100% only when every task is completed', () => {
+    const tasks: TaskItem[] = Array.from({ length: 200 }, (_, i) =>
+      mk({ id: String(i), status: i === 0 ? 'pending' : 'completed' }),
+    );
+    expect(computeTaskItemProgress(tasks).percentComplete).toBe(99);
+    expect(completionPercent(200, 200)).toBe(100);
+    expect(completionPercent(0, 0)).toBe(0);
+    expect(completionPercent(1, 3)).toBe(33);
+  });
 });
 
 describe('computeTaskItemProgress', () => {

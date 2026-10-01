@@ -62,6 +62,52 @@ describe('FallbackProfileManager', () => {
     ).toBe(false);
   });
 
+  it('excludes every model of a disabled provider from named, explicit, and smart routes', () => {
+    // Provider-level switch: `disabledProviders` parks the whole provider, so
+    // every model it serves disappears from all three resolution paths even
+    // though the profile/explicit refs below are written verbatim.
+    const mgr = new FallbackProfileManager(
+      makeConfig({
+        disabledProviders: ['anthropic'],
+      }),
+    );
+
+    expect(mgr.resolve('primary-failover')).toEqual([
+      { providerId: 'openai', model: 'gpt-4o-mini', providerSwitched: false },
+    ]);
+    // Case-insensitive, and the primary provider is droppable too.
+    const offPrimary = new FallbackProfileManager(makeConfig({ disabledProviders: ['OpenAI'] }));
+    expect(offPrimary.resolveRefs(['openai/gpt-4o-mini', 'anthropic/claude-opus-4-8'])).toEqual([
+      { providerId: 'anthropic', model: 'claude-opus-4-8', providerSwitched: true },
+    ]);
+    expect(
+      mgr
+        .resolveEffective({})
+        .some(
+          (entry) =>
+            (entry.providerId === 'anthropic' && entry.model === 'claude-opus-4-8') ||
+            (entry.providerId === 'anthropic' && entry.model === 'claude-sonnet-4-8'),
+        ),
+    ).toBe(false);
+    expect(
+      mgr
+        .resolveCandidates({ providerId: 'openai', model: 'gpt-4o' })
+        .some((entry) => entry.providerId === 'anthropic'),
+    ).toBe(false);
+    // Drifted session: the configured primary (openai) is normally re-offered
+    // as a candidate. With openai switched off it must not be — and no other
+    // source in this config can produce an openai entry, so the assertion is
+    // specific to the configured-primary push.
+    const offPrimaryProvider = new FallbackProfileManager(
+      makeConfig({ disabledProviders: ['openai'] }),
+    );
+    expect(
+      offPrimaryProvider
+        .resolveCandidates({ providerId: 'anthropic', model: 'claude-opus-4-8' })
+        .some((entry) => entry.providerId === 'openai'),
+    ).toBe(false);
+  });
+
   it('keeps profile entries whose provider carries no credentials in config', () => {
     // Config-level "usability" is not a reliable signal (a key can reach the
     // provider without appearing in `config.providers`), and applying it only

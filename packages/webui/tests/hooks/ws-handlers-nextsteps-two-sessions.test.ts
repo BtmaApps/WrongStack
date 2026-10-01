@@ -22,6 +22,7 @@ vi.mock('@/lib/ws-client', () => ({ getWSClient: () => ({ send: vi.fn(), sendMes
 
 // ── SUT (imported after mocks) ────────────────────────────────────────────
 import {
+  handleIterationStarted,
   handleRunResult,
   handleToolExecuted,
   handleToolStarted,
@@ -189,5 +190,36 @@ describe('next-steps survive interleaved runs across two sessions', () => {
     expect(laneA?.messages.filter((m) => (m.nextSteps?.steps.length ?? 0) > 0)).toHaveLength(0);
     const laneAText = JSON.stringify(laneA?.messages);
     expect(laneAText).not.toContain('Run lane A tests');
+  });
+
+  it("shows a later turn's tool suggestions even though an earlier turn already showed some", () => {
+    const iterationStarted = (sessionId: string): WSServerMessage =>
+      ({
+        type: 'iteration.started',
+        payload: { index: 1, sessionId },
+      }) as unknown as WSServerMessage;
+    const turn2 = [{ text: 'Ship the lane A fix' }];
+
+    vi.useFakeTimers({ now: 1_000_000 });
+    handleIterationStarted(iterationStarted(SESSION_A));
+    handleToolStarted(nextStepsStarted(SESSION_A, 'tool_1', stepsA));
+    handleToolExecuted(nextStepsExecuted(SESSION_A, 'tool_1'));
+    handleRunResult(runResult(SESSION_A));
+
+    // The user reads the reply and sends the next prompt.
+    vi.setSystemTime(1_060_000);
+    handleIterationStarted(iterationStarted(SESSION_A));
+    handleToolStarted(nextStepsStarted(SESSION_A, 'tool_2', turn2));
+    handleToolExecuted(nextStepsExecuted(SESSION_A, 'tool_2'));
+    handleRunResult(runResult(SESSION_A));
+    vi.useRealTimers();
+
+    // The "already rendered?" check looked at the whole history, so turn 1's
+    // chips suppressed every later turn's tool-provided suggestions.
+    const laneA = useChatLanes.getState().lanes[SESSION_A];
+    const rendered = laneA?.messages
+      .filter((m) => (m.nextSteps?.steps.length ?? 0) > 0)
+      .map((m) => m.nextSteps?.steps.map((s) => s.text));
+    expect(rendered).toEqual([stepsA.map((s) => s.text), turn2.map((s) => s.text)]);
   });
 });

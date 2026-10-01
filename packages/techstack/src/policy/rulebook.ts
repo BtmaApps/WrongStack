@@ -203,17 +203,80 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isValidIsoDateTime(value: string): boolean {
-  return !Number.isNaN(Date.parse(value));
-}
-
-function selectorHasAtLeastOneField(selector: unknown): boolean {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return (
-    isPlainObject(selector) &&
-    (isNonEmptyString(selector.ecosystem) ||
-      isNonEmptyString(selector.name) ||
-      isNonEmptyString(selector.namePattern))
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= daysInMonth &&
+    hour <= 23 &&
+    minute <= 59 &&
+    second <= 59 &&
+    !Number.isNaN(Date.parse(value))
   );
 }
+
+const RULEBOOK_KEYS = new Set([
+  'schemaVersion',
+  'projectId',
+  'pinned',
+  'banned',
+  'deferred',
+  'preferred',
+  'packageManager',
+  'advisorHints',
+]);
+
+const PACKAGE_MANAGER_KEYS = new Set([
+  'npm',
+  'python',
+  'rust',
+  'go',
+  'dotnet',
+  'php',
+  'dart',
+  'java',
+  'ruby',
+  'swift',
+  'elixir',
+]);
+
+function selectorHasAtLeastOneField(selector: unknown): boolean {
+  if (!isPlainObject(selector)) return false;
+  const values = [selector.ecosystem, selector.name, selector.namePattern];
+  return (
+    values.every((value) => value === undefined || isNonEmptyString(value)) &&
+    values.some(isNonEmptyString)
+  );
+}
+
+function reportUnknownProperties(
+  value: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  path: string,
+  errors: string[],
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) errors.push(`${path} contains unknown property: ${key}`);
+  }
+}
+
+const SELECTOR_KEYS = new Set(['ecosystem', 'name', 'namePattern']);
+const PIN_KEYS = new Set(['selector', 'max', 'reason', 'reviewAfter']);
+const BAN_KEYS = new Set(['selector', 'reason', 'replacement', 'since']);
+const REPLACEMENT_KEYS = new Set(['ecosystem', 'name', 'minVersion', 'notes']);
+const DEFER_KEYS = new Set(['selector', 'until', 'reason', 'ticket']);
+const PREFER_KEYS = new Set(['selector', 'context', 'deprecates']);
 
 /**
  * Locate and parse a rulebook from the target project tree.
@@ -320,18 +383,24 @@ export function validateRulebook(input: unknown): readonly string[] {
     return ['rulebook must be a JSON object'];
   }
 
+  for (const key of Object.keys(input)) {
+    if (!RULEBOOK_KEYS.has(key)) errors.push(`unknown top-level property: ${key}`);
+  }
+
   if (input.schemaVersion !== '1') {
     errors.push(`schemaVersion must be '1', got ${JSON.stringify(input.schemaVersion)}`);
   }
 
-  const hasAnySection = [
-    input.pinned,
-    input.banned,
-    input.deferred,
-    input.preferred,
-    input.packageManager,
-    input.advisorHints,
-  ].some((section) => section !== undefined);
+  if (input.projectId !== undefined && !isNonEmptyString(input.projectId)) {
+    errors.push('projectId must be a non-empty string');
+  }
+
+  const hasAnySection =
+    [input.pinned, input.banned, input.deferred, input.preferred].some(
+      (section) => Array.isArray(section) && section.length > 0,
+    ) ||
+    (isPlainObject(input.packageManager) && Object.keys(input.packageManager).length > 0) ||
+    isNonEmptyString(input.advisorHints);
   if (!hasAnySection) {
     errors.push(
       'rulebook must declare at least one of pinned/banned/deferred/preferred/packageManager/advisorHints',
@@ -346,6 +415,15 @@ export function validateRulebook(input: unknown): readonly string[] {
         if (!isPlainObject(entry)) {
           errors.push(`pinned[${index}] must be an object`);
           return;
+        }
+        reportUnknownProperties(entry, PIN_KEYS, `pinned[${index}]`, errors);
+        if (isPlainObject(entry.selector)) {
+          reportUnknownProperties(
+            entry.selector,
+            SELECTOR_KEYS,
+            `pinned[${index}].selector`,
+            errors,
+          );
         }
         if (!selectorHasAtLeastOneField(entry.selector)) {
           errors.push(
@@ -377,6 +455,15 @@ export function validateRulebook(input: unknown): readonly string[] {
           errors.push(`banned[${index}] must be an object`);
           return;
         }
+        reportUnknownProperties(entry, BAN_KEYS, `banned[${index}]`, errors);
+        if (isPlainObject(entry.selector)) {
+          reportUnknownProperties(
+            entry.selector,
+            SELECTOR_KEYS,
+            `banned[${index}].selector`,
+            errors,
+          );
+        }
         if (!selectorHasAtLeastOneField(entry.selector)) {
           errors.push(
             `banned[${index}].selector must set at least one of name/namePattern/ecosystem`,
@@ -395,11 +482,29 @@ export function validateRulebook(input: unknown): readonly string[] {
           if (!isPlainObject(entry.replacement)) {
             errors.push(`banned[${index}].replacement must be an object`);
           } else {
+            reportUnknownProperties(
+              entry.replacement,
+              REPLACEMENT_KEYS,
+              `banned[${index}].replacement`,
+              errors,
+            );
             if (!isNonEmptyString(entry.replacement.ecosystem)) {
               errors.push(`banned[${index}].replacement.ecosystem must be non-empty`);
             }
             if (!isNonEmptyString(entry.replacement.name)) {
               errors.push(`banned[${index}].replacement.name must be non-empty`);
+            }
+            if (
+              entry.replacement.minVersion !== undefined &&
+              typeof entry.replacement.minVersion !== 'string'
+            ) {
+              errors.push(`banned[${index}].replacement.minVersion must be a string`);
+            }
+            if (
+              entry.replacement.notes !== undefined &&
+              typeof entry.replacement.notes !== 'string'
+            ) {
+              errors.push(`banned[${index}].replacement.notes must be a string`);
             }
           }
         }
@@ -415,6 +520,15 @@ export function validateRulebook(input: unknown): readonly string[] {
         if (!isPlainObject(entry)) {
           errors.push(`deferred[${index}] must be an object`);
           return;
+        }
+        reportUnknownProperties(entry, DEFER_KEYS, `deferred[${index}]`, errors);
+        if (isPlainObject(entry.selector)) {
+          reportUnknownProperties(
+            entry.selector,
+            SELECTOR_KEYS,
+            `deferred[${index}].selector`,
+            errors,
+          );
         }
         if (!selectorHasAtLeastOneField(entry.selector)) {
           errors.push(
@@ -442,6 +556,15 @@ export function validateRulebook(input: unknown): readonly string[] {
           errors.push(`preferred[${index}] must be an object`);
           return;
         }
+        reportUnknownProperties(entry, PREFER_KEYS, `preferred[${index}]`, errors);
+        if (isPlainObject(entry.selector)) {
+          reportUnknownProperties(
+            entry.selector,
+            SELECTOR_KEYS,
+            `preferred[${index}].selector`,
+            errors,
+          );
+        }
         if (!selectorHasAtLeastOneField(entry.selector)) {
           errors.push(
             `preferred[${index}].selector must set at least one of name/namePattern/ecosystem`,
@@ -453,18 +576,36 @@ export function validateRulebook(input: unknown): readonly string[] {
         if (entry.deprecates !== undefined && !selectorHasAtLeastOneField(entry.deprecates)) {
           errors.push(`preferred[${index}].deprecates must be a valid selector`);
         }
+        if (isPlainObject(entry.deprecates)) {
+          reportUnknownProperties(
+            entry.deprecates,
+            SELECTOR_KEYS,
+            `preferred[${index}].deprecates`,
+            errors,
+          );
+        }
       });
     }
   }
 
-  if (input.packageManager !== undefined && !isPlainObject(input.packageManager)) {
-    errors.push('packageManager must be an object');
+  if (input.packageManager !== undefined) {
+    if (!isPlainObject(input.packageManager)) {
+      errors.push('packageManager must be an object');
+    } else {
+      for (const [key, value] of Object.entries(input.packageManager)) {
+        if (!PACKAGE_MANAGER_KEYS.has(key)) {
+          errors.push(`packageManager contains unknown property: ${key}`);
+        } else if (typeof value !== 'string') {
+          errors.push(`packageManager.${key} must be a string`);
+        }
+      }
+    }
   }
 
   if (input.advisorHints !== undefined) {
     if (typeof input.advisorHints !== 'string') {
       errors.push('advisorHints must be a string');
-    } else if (new TextEncoder().encode(input.advisorHints).length > 8192) {
+    } else if (new TextEncoder().encode(JSON.stringify(input.advisorHints)).length > 8192) {
       errors.push('advisorHints exceeds the 8192-byte limit');
     }
   }

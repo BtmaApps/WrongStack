@@ -154,13 +154,16 @@ export function searchSqliteSage(
     }
   }
 
-  const likePattern = `%${escapeLikePattern(query.toLowerCase())}%`;
+  // Fold both sides the same Unicode-aware way (as the list page does).
+  // SQLite's LOWER() folds ASCII only, so a JS-lowercased `ş` never matched a
+  // stored `Ş` and non-English memories were unsearchable on this path.
+  const likePattern = `%${escapeLikePattern(query.normalize('NFKC').toLowerCase())}%`;
   const placeholders = statusFilter.map(() => '?').join(',');
   const rows = ctx
     .stmt(
       `SELECT data FROM memories
          WHERE status IN (${placeholders})${scopeClause}${session.clause}${audienceSqlClause}${neverInjectClause}
-         AND LOWER(json_extract(data, '$.text')) LIKE ? ESCAPE '\\'
+         AND sage_unicode_lower(json_extract(data, '$.text')) LIKE ? ESCAPE '\\'
          ORDER BY importance DESC
          LIMIT ?`,
     )

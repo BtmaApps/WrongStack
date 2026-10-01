@@ -44,7 +44,7 @@ describe('Connection protocol completion coverage', () => {
       new AbortController().signal,
     );
     stdout.write(frame({ jsonrpc: '2.0', id: 999, result: 'ignored' }));
-    stdout.write(frame({ jsonrpc: '2.0', id: '1', result: { ok: true } }));
+    stdout.write(frame({ jsonrpc: '2.0', id: 1, result: { ok: true } }));
     await expect(success).resolves.toEqual({ ok: true });
 
     const failure = connection.sendRequest('failure', null, 1_000, new AbortController().signal);

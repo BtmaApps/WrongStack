@@ -1,10 +1,17 @@
 import type { Tool } from '@wrongstack/core/types';
 import type { CodeAction, Command } from 'vscode-languageserver-protocol';
 import { LSP_CONSTANTS } from '../constants.js';
+import { humanToLSP } from '../position.js';
 import { supportsCodeAction } from '../server/capabilities.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 import { pathToUri } from '../utils/uri.js';
-import { requireServer, resolveInputPath, type ToolDeps, toToolError } from './shared.js';
+import {
+  readDocumentContent,
+  requireServer,
+  resolveInputPath,
+  type ToolDeps,
+  toToolError,
+} from './shared.js';
 
 interface Input {
   path: string;
@@ -41,15 +48,22 @@ export function createCodeActionsTool(deps: ToolDeps): Tool<Input, string> {
             LSPErrorCode.CapabilityMissing,
             `Server "${server.name}" does not support code actions`,
           );
-        await deps.tracker.open(file);
+        const content = await readDocumentContent(file, deps.tracker);
+        await deps.tracker.open(file, content);
         const uri = pathToUri(file);
         const diagnostics = await server.waitForDiagnostics(
           uri,
           deps.cfg.diagnosticsWaitMs,
           signal,
         );
-        const line = Math.max(0, (input.line ?? 1) - 1);
-        const character = Math.max(0, (input.character ?? 1) - 1);
+        // Same 1-based byte-column convention as every other LSP tool. The raw
+        // `character - 1` here sent a byte column where the server expects
+        // UTF-16, so on a line with multi-byte text before the cursor the
+        // actions came back for the wrong spot.
+        const { line, character } = humanToLSP(content, {
+          line: input.line ?? 1,
+          character: input.character ?? 1,
+        });
         const actions = await server.codeAction(
           {
             textDocument: { uri },

@@ -1,3 +1,5 @@
+import { countUnifiedDiffLines } from './unified-diff-count.js';
+
 export type RecordValue = Record<string, unknown>;
 
 export const DEFAULT_LIST_LIMIT = 500;
@@ -484,8 +486,7 @@ export function compactDiff(diff: string): string {
     0,
   );
   const hunks = lines.filter((line) => line.startsWith('@@')).length;
-  const added = lines.filter((line) => line.startsWith('+') && !line.startsWith('+++')).length;
-  const removed = lines.filter((line) => line.startsWith('-') && !line.startsWith('---')).length;
+  const { added, removed } = countUnifiedDiffLines(diff);
 
   // Collect [start, end] intervals as we scan lines sequentially.
   // Intervals are naturally ordered by line index — no sort needed.

@@ -49,11 +49,16 @@ export function createSageSurfaceSyncSource(
   sage: Pick<SageSurface, 'listSagePage'>,
   opts: SageSurfaceSyncOptions = {},
 ): SageSyncSource {
-  const pageSize = clamp(opts.pageSize ?? DEFAULT_PAGE_SIZE, HARD_FLOOR_PAGE, HARD_CEILING_PAGE);
+  const pageSize = normalizePositiveInteger(opts.pageSize, DEFAULT_PAGE_SIZE, HARD_CEILING_PAGE);
   const maxTotal =
     opts.maxTotal === undefined
       ? Number.POSITIVE_INFINITY
-      : clamp(opts.maxTotal, 1, HARD_CEILING_TOTAL);
+      : normalizePositiveInteger(
+          opts.maxTotal,
+          Number.POSITIVE_INFINITY,
+          HARD_CEILING_TOTAL,
+          Number.POSITIVE_INFINITY,
+        );
   return {
     async listActiveMemories({ limit }) {
       // `limit` is what `VectorMemoryStore.syncFromSage` asks for (5 000
@@ -61,9 +66,7 @@ export function createSageSurfaceSyncSource(
       // `limit` and `maxTotal` bounds the walk; the larger wins when both
       // are set to a sentinel meaning "no cap".
       const requested =
-        limit === undefined
-          ? maxTotal
-          : clamp(limit, 1, maxTotal === Number.POSITIVE_INFINITY ? limit : maxTotal);
+        limit === undefined ? maxTotal : normalizePositiveInteger(limit, maxTotal, maxTotal);
       const memories: Array<{
         id: string;
         text: string;
@@ -100,7 +103,7 @@ export function createSageSurfaceSyncSource(
           memories.push({
             id: m.id,
             text: m.text,
-            ...(m.summary ? { summary: m.summary } : {}),
+            ...(typeof m.summary === 'string' ? { summary: m.summary } : {}),
             ...(m.tags && m.tags.length > 0 ? { tags: m.tags } : {}),
             metadata: {
               sageKind: m.kind,
@@ -125,6 +128,14 @@ export function createSageSurfaceSyncSource(
   };
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+function normalizePositiveInteger(
+  value: number | undefined,
+  fallback: number,
+  max: number,
+  infinityValue: number = max,
+): number {
+  if (value === undefined || Number.isNaN(value)) return fallback;
+  if (value === Number.POSITIVE_INFINITY) return infinityValue;
+  if (value === Number.NEGATIVE_INFINITY) return HARD_FLOOR_PAGE;
+  return Math.max(HARD_FLOOR_PAGE, Math.min(max, Math.floor(value)));
 }

@@ -16,6 +16,8 @@ export interface ProviderOperationsDeps {
   send?: ((ws: WebSocket, message: WSServerMessage) => void) | undefined;
   modelsRegistry?: ModelsRegistry | undefined;
   getDisabledModels?: (() => readonly string[]) | undefined;
+  /** Provider ids switched off entirely (Config.disabledProviders). */
+  getDisabledProviders?: (() => readonly string[]) | undefined;
   providerAuthRegistry?: ProviderAuthRegistry | undefined;
   log?: ((message: string) => void) | undefined;
   hasActiveModel?: (() => boolean) | undefined;

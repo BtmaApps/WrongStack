@@ -103,7 +103,7 @@ export function findOnPath(cmd: string): string | null {
   const exists = (p: string): boolean => {
     try {
       accessSync(p, constants.X_OK);
-      return true;
+      return statSync(p).isFile();
     } catch {
       return false;
     }

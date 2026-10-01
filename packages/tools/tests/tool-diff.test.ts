@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DIFF_LINE_SAFETY_CAP,
-  TOOL_DIFF_BROWSER_SRC,
   computeLineDiff,
+  DIFF_LINE_SAFETY_CAP,
   diffFromToolInput,
   diffRowsFromToolInput,
   parseUnifiedDiff,
   parseUnifiedDiffPreview,
+  TOOL_DIFF_BROWSER_SRC,
   truncMid,
 } from '../src/tool-diff.js';
 
@@ -97,7 +97,20 @@ describe('parseUnifiedDiff', () => {
     expect(rows[0]).toEqual({ kind: 'meta', text: '--- a/x' });
     expect(rows[1]).toEqual({ kind: 'meta', text: '+++ b/x' });
   });
+
+  it('keeps body lines that merely start with --- or +++ as changes', () => {
+    const rows = parseUnifiedDiff(BODY_LOOKS_LIKE_HEADER);
+    expect(rows.filter((r) => r.kind !== 'meta')).toEqual([
+      { kind: 'del', text: '-- drop table t;' },
+      { kind: 'del', text: '---' },
+      { kind: 'add', text: '++i;' },
+      { kind: 'ctx', text: 'end' },
+    ]);
+  });
 });
+
+const BODY_LOOKS_LIKE_HEADER =
+  '--- a/x\n+++ b/x\n@@ -1,3 +1,2 @@\n--- drop table t;\n----\n+++i;\n end\n';
 
 // ---------------------------------------------------------------------------
 // Parity: the HQ browser transcription must match the TS implementation.
@@ -163,6 +176,13 @@ describe('tool-diff parity (TS vs embedded browser source)', () => {
     const patch =
       'diff --git a/x b/x\nindex 111..222\n--- a/x\n+++ b/x\n@@ -1,2 +1,2 @@\n ctx\n-old\n+new\n';
     expect(bs.parseUnifiedDiff(patch)).toEqual(parseUnifiedDiff(patch));
+    expect(bs.parseUnifiedDiff(BODY_LOOKS_LIKE_HEADER)).toEqual(
+      parseUnifiedDiff(BODY_LOOKS_LIKE_HEADER),
+    );
+    // The write tool's new-file diff: a lone `+++` header before any hunk.
+    const lone = '+++ src/new.ts\n+ (new file)';
+    expect(parseUnifiedDiff(lone)[0]).toEqual({ kind: 'meta', text: '+++ src/new.ts' });
+    expect(bs.parseUnifiedDiff(lone)).toEqual(parseUnifiedDiff(lone));
   });
 });
 
@@ -196,6 +216,17 @@ describe('parseUnifiedDiffPreview (rich, TUI-promoted)', () => {
       Number.POSITIVE_INFINITY,
     );
     expect(p.rows.map((r) => r.kind)).toEqual(['hunk', 'del', 'add']);
+  });
+
+  it('keeps a removed `---` line and the line numbers after it', () => {
+    const p = parseUnifiedDiffPreview(BODY_LOOKS_LIKE_HEADER, Number.POSITIVE_INFINITY);
+    expect(p.rows.filter((r) => r.kind !== 'hunk')).toEqual([
+      { kind: 'del', text: '--- drop table t;', oldLine: 1 },
+      { kind: 'del', text: '----', oldLine: 2 },
+      { kind: 'add', text: '+++i;', newLine: 1 },
+      { kind: 'ctx', text: ' end', oldLine: 3, newLine: 2 },
+    ]);
+    expect(p.removed).toBe(2);
   });
 
   it('folds overflow into hidden counts at the maxLines cap', () => {

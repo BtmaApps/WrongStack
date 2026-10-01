@@ -121,7 +121,11 @@ function readConfig(raw: unknown): MigrationPlannerConfig {
 // ---------------------------------------------------------------------------
 
 function normalizeVersion(v: string): string {
-  return v.replace(/^v/i, '').trim();
+  // Range operators as package.json spells the installed version (`^1.2.3`).
+  return v
+    .trim()
+    .replace(/^(?:[\^~]|[<>]?=?)\s*/, '')
+    .replace(/^v/i, '');
 }
 
 function readChangelog(
@@ -180,7 +184,22 @@ function extractVersionSections(
 
   if (sections.length === 0) return [changelog];
 
+  // Selected by version order, not by finding the two headings: a version
+  // copied from package.json (`^1.0.0`) never equalled a heading, so the
+  // from-release itself was attributed to the upgrade, and a `to` release the
+  // changelog does not list returned the entire history.
+  const from = parseVersion(fromNv);
+  const to = parseVersion(toNv);
   const relevant: string[] = [];
+  if (from && to) {
+    for (const section of sections) {
+      const version = parseVersion(section.version);
+      if (version && compareVersions(version, from) > 0 && compareVersions(version, to) <= 0) {
+        relevant.push(`## ${section.header}\n${section.body}`);
+      }
+    }
+    return relevant.length > 0 ? relevant : [changelog];
+  }
   for (const section of sections) {
     if (section.version === toNv) {
       relevant.push(`## ${section.header}\n${section.body}`);
@@ -192,6 +211,39 @@ function extractVersionSections(
   }
 
   return relevant.length > 0 ? relevant : [changelog];
+}
+
+interface ParsedVersion {
+  core: [number, number, number];
+  pre: string[];
+}
+
+function parseVersion(text: string): ParsedVersion | null {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(text);
+  if (!match) return null;
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    pre: match[4] ? match[4].split('.') : [],
+  };
+}
+
+/** SemVer precedence: core numbers, then a prerelease sorts before its release. */
+function compareVersions(a: ParsedVersion, b: ParsedVersion): number {
+  for (let i = 0; i < 3; i += 1) {
+    const diff = a.core[i]! - b.core[i]!;
+    if (diff !== 0) return diff;
+  }
+  if (a.pre.length === 0 || b.pre.length === 0) return b.pre.length - a.pre.length;
+  for (let i = 0; i < Math.max(a.pre.length, b.pre.length); i += 1) {
+    const x = a.pre[i];
+    const y = b.pre[i];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    const numeric = /^\d+$/.test(x) && /^\d+$/.test(y);
+    const diff = numeric ? Number(x) - Number(y) : x < y ? -1 : x > y ? 1 : 0;
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 function extractBreakingChanges(sectionText: string): string[] {

@@ -79,9 +79,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 312,
+      "files": 317,
       "typeOnly": 149,
-      "runtimeOrMixed": 177
+      "runtimeOrMixed": 182
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/models": {
-      "files": 37,
-      "typeOnly": 9,
-      "runtimeOrMixed": 29
+      "files": 39,
+      "typeOnly": 10,
+      "runtimeOrMixed": 30
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -124,9 +124,9 @@
       "runtimeOrMixed": 45
     },
     "@wrongstack/core/registry": {
-      "files": 142,
+      "files": 146,
       "typeOnly": 63,
-      "runtimeOrMixed": 82
+      "runtimeOrMixed": 86
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 178,
+      "files": 179,
       "typeOnly": 27,
-      "runtimeOrMixed": 154
+      "runtimeOrMixed": 155
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1258,
-      "typeOnly": 1113,
-      "runtimeOrMixed": 368
+      "files": 1264,
+      "typeOnly": 1118,
+      "runtimeOrMixed": 369
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 684,
+      "files": 686,
       "typeOnly": 66,
-      "runtimeOrMixed": 650
+      "runtimeOrMixed": 652
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -7070,6 +7070,18 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/manifest-cache.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7088,9 +7100,21 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-restart-generation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry-single-flight.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-startup-stop.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -7694,6 +7718,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/vector-memory/tests/audit-high-risk-regressions.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8222,6 +8252,12 @@
     },
     {
       "specifier": "@wrongstack/core/models",
+      "file": "packages/webui-server/src/server/fallback-suggest-handler.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
       "file": "packages/webui-server/src/server/max-context-updater.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8253,6 +8289,12 @@
     {
       "specifier": "@wrongstack/core/models",
       "file": "packages/webui-server/src/server/route-contracts.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/webui-server/tests/fallback-suggest-handler.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -9416,7 +9458,25 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/manifest-cache.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/registry-lazy.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-restart-generation.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9425,6 +9485,12 @@
       "file": "packages/mcp/tests/registry-single-flight.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-startup-stop.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -10827,6 +10893,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/tests/start-webui-remediation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/telegram-prefs.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -15062,6 +15134,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-coverage.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15080,7 +15158,19 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-restart-generation.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-single-flight.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-startup-stop.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15309,6 +15399,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/unit/document-tracker-lifecycle.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18974,6 +19070,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/fallback-suggest-handler.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/file-handler-helpers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19383,8 +19485,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/session-history.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -19569,6 +19671,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/embedded-host-adapters.proxy.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/fallback-suggest-handler.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -22508,6 +22616,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/notify-hub/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/semver-bump/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23895,6 +24009,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/entry.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/fallback-suggest-handler.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

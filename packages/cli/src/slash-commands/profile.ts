@@ -227,6 +227,7 @@ async function switchProfile(
     'fallbackProfile',
     'favoriteModels',
     'disabledModels',
+    'disabledProviders',
     'favoriteModelsOnly',
     'modelAvailabilitySchedule',
     'modelMatrix',

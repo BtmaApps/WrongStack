@@ -46,6 +46,7 @@ export const fieldSourceSchema = z.enum(['user', 'llm', 'deterministic', 'system
 
 const httpUrlSchema = z
   .string()
+  .trim()
   .max(MAX_REFERENCE_LENGTH)
   .refine((value) => {
     try {
@@ -56,39 +57,47 @@ const httpUrlSchema = z
     }
   }, 'must be a valid http(s) URL');
 
-const idSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .refine((value) => value.trim().length > 0, 'must not be blank');
+const idSchema = z.string().trim().min(1).max(128);
 const nonBlankString = (max: number, label: string) =>
   z
     .string()
     .max(max, `${label} exceeds the maximum length of ${max} characters`)
     .refine((value) => value.trim().length > 0, `${label} must not be empty or whitespace-only`);
+const normalizedOptionalString = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => (value.length > 0 ? value : undefined))
+    .optional();
 
 export const attachmentInputSchema = z
   .object({
-    name: nonBlankString(200, 'attachment name'),
+    name: z.string().trim().min(1).max(200),
     kind: z.enum(INTAKE_ATTACHMENT_KINDS),
-    path: z.string().max(MAX_REFERENCE_LENGTH).optional(),
+    path: z.string().trim().min(1).max(MAX_REFERENCE_LENGTH).optional(),
     url: httpUrlSchema.optional(),
     sizeBytes: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-    mimeType: z.string().max(100).optional(),
+    mimeType: normalizedOptionalString(100),
   })
   .refine((value) => (value.path === undefined) !== (value.url === undefined), {
     message: 'exactly one of path or url is required',
   });
 
-export const relatedResourceInputSchema = z.object({
-  kind: z.enum(RELATED_RESOURCE_KINDS),
-  reference: nonBlankString(MAX_REFERENCE_LENGTH, 'related resource reference'),
-  title: z.string().max(200).optional(),
-});
+export const relatedResourceInputSchema = z
+  .object({
+    kind: z.enum(RELATED_RESOURCE_KINDS),
+    reference: z.string().trim().min(1).max(MAX_REFERENCE_LENGTH),
+    title: normalizedOptionalString(200),
+  })
+  .refine((value) => value.kind !== 'url' || httpUrlSchema.safeParse(value.reference).success, {
+    path: ['reference'],
+    message: 'URL resource reference must be a valid http(s) URL',
+  });
 
 export const questionTemplateInputSchema = z.object({
-  field: nonBlankString(64, 'question field'),
-  question: nonBlankString(MAX_QUESTION_LENGTH, 'question text'),
+  field: z.string().trim().min(1).max(64),
+  question: z.string().trim().min(1).max(MAX_QUESTION_LENGTH),
   required: z.boolean().optional(),
 });
 
@@ -186,12 +195,18 @@ export const updateIntakeSchema = z
   .strict();
 
 export const answerInputSchema = z.object({
-  field: nonBlankString(64, 'answer field'),
-  answer: nonBlankString(MAX_ANSWER_LENGTH, 'answer').max(
-    MAX_ANSWER_LENGTH,
-    `answer exceeds the maximum length of ${MAX_ANSWER_LENGTH} characters`,
-  ),
-  question: z.string().max(MAX_QUESTION_LENGTH).optional(),
+  field: z
+    .string()
+    .trim()
+    .min(1, 'answer field must not be empty or whitespace-only')
+    .max(64, 'answer field exceeds the maximum length of 64 characters'),
+  answer: z.string().trim().min(1).max(MAX_ANSWER_LENGTH),
+  question: z
+    .string()
+    .trim()
+    .max(MAX_QUESTION_LENGTH)
+    .transform((value) => (value.length > 0 ? value : undefined))
+    .optional(),
 });
 
 export const attachResourceInputSchema = z
@@ -276,18 +291,22 @@ export function validateFieldSource(value: unknown): IntakeFieldSource {
 
 /** Deterministic fallback summary derived from the original request. */
 export function deterministicSummary(originalRequest: string, maxLength = 240): string {
+  const limit = Number.isFinite(maxLength) ? Math.max(0, Math.floor(maxLength)) : 0;
+  if (limit === 0) return '';
   const collapsed = originalRequest.replace(/\s+/g, ' ').trim();
-  if (collapsed.length <= maxLength) return collapsed;
-  return `${collapsed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  if (collapsed.length <= limit) return collapsed;
+  return `${collapsed.slice(0, limit - 1).trimEnd()}…`;
 }
 
 /** Deterministic fallback title derived from the original request. */
 export function deterministicTitle(originalRequest: string, maxLength = MAX_TITLE_LENGTH): string {
+  const limit = Number.isFinite(maxLength) ? Math.max(0, Math.floor(maxLength)) : 0;
+  if (limit === 0) return '';
   const newlineIdx = originalRequest.search(/\r?\n/);
   const firstLine = (
     newlineIdx >= 0 ? originalRequest.slice(0, newlineIdx) : originalRequest
   ).trim();
-  if (firstLine.length === 0) return 'Untitled request';
-  if (firstLine.length <= maxLength) return firstLine;
-  return `${firstLine.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  const title = firstLine.length === 0 ? 'Untitled request' : firstLine;
+  if (title.length <= limit) return title;
+  return `${title.slice(0, limit - 1).trimEnd()}…`;
 }

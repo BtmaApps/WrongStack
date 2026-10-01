@@ -213,12 +213,15 @@ async function findShellFiles(dir: string, pattern: string, isRoot = true): Prom
       results.push(...(await findShellFiles(full, pattern, false)));
     } else if (
       entry.isFile() &&
+      // Only what shellcheck can parse: it supports sh/bash/dash/ksh, answers a
+      // zsh file with SC1071 and a Dockerfile with parse errors, so scanning
+      // those reported one bogus error per file found.
       (entry.name.endsWith('.sh') ||
         entry.name.endsWith('.bash') ||
-        entry.name.endsWith('.zsh') ||
-        entry.name === 'Dockerfile' ||
+        entry.name.endsWith('.ksh') ||
         entry.name === '.bashrc' ||
-        entry.name === '.zshrc')
+        entry.name === '.bash_profile' ||
+        entry.name === '.profile')
     ) {
       if (!pattern || entry.name.includes(pattern)) {
         results.push(full);

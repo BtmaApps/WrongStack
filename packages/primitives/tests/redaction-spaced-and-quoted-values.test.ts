@@ -52,3 +52,16 @@ describe('quoted secret values containing a space', () => {
     expect(redactSecrets(once)).toBe(once);
   });
 });
+
+describe('cloud access-key env spellings', () => {
+  it.each([
+    [
+      'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENG aws s3 ls',
+      'AWS_SECRET_ACCESS_KEY=[REDACTED] aws s3 ls',
+    ],
+    ['S3_SECRET_KEY=hunter2hunter2 ./sync', 'S3_SECRET_KEY=[REDACTED] ./sync'],
+  ])('%s', (input, expected) => {
+    expect(redactCommand(input)).toBe(expected);
+    expect(redactSecrets(input)).toBe(expected);
+  });
+});

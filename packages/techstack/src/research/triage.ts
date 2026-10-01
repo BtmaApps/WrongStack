@@ -44,7 +44,7 @@ function priorityFor(dep: DependencyObservation): number {
  * TypeScript file while producing the same runtime key.
  */
 function dedupKey(dep: DependencyObservation): string {
-  return `${dep.ecosystem}\0${dep.name}\0${dep.locked ?? dep.requested ?? ''}`;
+  return `${dep.ecosystem}\0${dep.name}\0${dep.locked ?? dep.installed ?? dep.requested ?? ''}`;
 }
 
 export interface TriageOptions {

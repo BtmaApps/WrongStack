@@ -74,8 +74,10 @@ export function resolveConflictText(text: string, side: ConflictSide): string {
     }
     if (isMarker(line, '|', size)) state = 'base';
     else if (isMarker(line, '=', size)) state = 'theirs';
-    else if (isMarker(line, '>', size)) state = 'normal';
-    else if (state === 'ours' && side === 'base') out.push(line);
+    else if (isMarker(line, '>', size)) {
+      if (state !== 'theirs') return text;
+      state = 'normal';
+    } else if (state === 'ours' && side === 'base') out.push(line);
     else if (state === 'theirs' && side === 'incoming') out.push(line);
     // 'base' section + the non-selected side are dropped.
   }

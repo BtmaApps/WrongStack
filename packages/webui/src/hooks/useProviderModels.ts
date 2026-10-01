@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { isModelDisabled, isModelInFavorites } from '@/components/QuickModelSwitcher.filter';
+import {
+  isModelDisabled,
+  isModelInFavorites,
+  isProviderDisabled,
+} from '@/components/QuickModelSwitcher.filter';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore } from '@/stores';
@@ -28,6 +32,7 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
   const wsUrl = useConfigStore((s) => s.wsUrl);
   const favoriteModels = useLocalPrefs((s) => s.favoriteModels);
   const disabledModels = useLocalPrefs((s) => s.disabledModels);
+  const disabledProviders = useLocalPrefs((s) => s.disabledProviders);
   const { listSavedProviders, listProviderModels } = useWebSocket();
   const [saved, setSaved] = useState<Array<{ id: string; type?: string }>>([]);
   const profileSnapshots = useRef(new Map<string, string>());
@@ -95,6 +100,7 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
     const out: ModelCandidate[] = [];
     for (const profile of saved) {
       const provider = profile.id;
+      if (isProviderDisabled(provider, disabledProviders)) continue;
       for (const m of byProvider[provider] ?? []) {
         if (isModelDisabled(provider, m.id, disabledModels)) continue;
         // Unknown modalities remain eligible for custom/local providers. A
@@ -114,5 +120,5 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
       }
     }
     return out;
-  }, [saved, byProvider, favoriteModels, disabledModels]);
+  }, [saved, byProvider, favoriteModels, disabledModels, disabledProviders]);
 }

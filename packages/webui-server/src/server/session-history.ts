@@ -1,5 +1,10 @@
 import { normalizeSubagentModelPlan } from '@wrongstack/core/coordination';
-import type { ContentBlock, SessionEvent, SessionSummary } from '@wrongstack/core/types';
+import {
+  type ContentBlock,
+  type SessionEvent,
+  type SessionSummary,
+  totalUsageTokens,
+} from '@wrongstack/core/types';
 
 /**
  * Stable WebSocket projection for the WebUI history surfaces.
@@ -62,6 +67,23 @@ function blockText(block: ContentBlock | string): string {
       return '[block]';
     }
   }
+}
+
+function userContentPreview(content: string | ContentBlock[]): string {
+  const text = (
+    typeof content === 'string'
+      ? content
+      : content
+          .filter(
+            (block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text',
+          )
+          .map((block) => block.text)
+          .join(' ')
+  )
+    .trim()
+    .replace(/\s+/g, ' ');
+  const normalized = text || '(non-text input)';
+  return normalized.length > 160 ? `${normalized.slice(0, 159)}…` : normalized;
 }
 
 interface SessionInspectEvent {
@@ -366,10 +388,18 @@ export function buildInspectPayload(
   let computedCompactionCount = 0;
   let computedMessageCount = 0;
   let computedIterationCount = 0;
+  let computedTokenTotal = 0;
+  let computedLastUserMessage: string | undefined;
+  let computedModel = fallback.model;
+  let computedProvider = fallback.provider;
+  let lastEventType: SessionEvent['type'] | undefined;
+  let hadSessionError = false;
   const computedToolBreakdown: Record<string, number> = {};
 
   for (let i = 0; i < events.length; i++) {
     const e = events[i]!;
+    lastEventType = e.type;
+    if (e.type === 'error' || e.type === 'provider_error') hadSessionError = true;
     inspectEvents[i] = {
       ts: e.ts,
       type: e.type,
@@ -384,33 +414,58 @@ export function buildInspectPayload(
         toolName: e.toolName,
         ts: e.ts,
       });
-      computedFileChangeCount++;
-    } else if (e.type === 'tool_call_end') {
+    } else if (e.type === 'file_snapshot') {
+      computedFileChangeCount += e.files.length;
+    } else if (e.type === 'tool_call_start') {
       computedToolCallCount++;
-      if (e.ok === false) computedToolErrorCount++;
       computedToolBreakdown[e.name] = (computedToolBreakdown[e.name] ?? 0) + 1;
+    } else if (e.type === 'tool_result') {
+      if (e.isError) computedToolErrorCount++;
     } else if (e.type === 'compaction') {
       computedCompactionCount++;
     } else if (e.type === 'user_input') {
       computedMessageCount++;
+      computedLastUserMessage = userContentPreview(e.content);
+    } else if (e.type === 'message_appended' && e.version === 1 && e.message) {
+      computedMessageCount++;
+      if (e.message.role === 'user') {
+        computedLastUserMessage = userContentPreview(e.message.content);
+      }
     } else if (e.type === 'llm_response') {
+      computedMessageCount++;
+      computedTokenTotal += totalUsageTokens(e.usage);
+      if (e.model) computedModel = e.model;
+      if (e.provider) computedProvider = e.provider;
+    } else if (e.type === 'in_flight_start') {
       computedIterationCount++;
+    } else if (e.type === 'session_end') {
+      computedTokenTotal = Math.max(computedTokenTotal, totalUsageTokens(e.usage));
     }
   }
 
   const s = summary;
+  const computedOutcome: SessionSummary['outcome'] =
+    lastEventType === 'session_end'
+      ? 'completed'
+      : lastEventType === 'in_flight_start'
+        ? 'aborted'
+        : hadSessionError
+          ? 'error'
+          : undefined;
   return {
     id: s?.id ?? fallback.id,
     title: s?.title ?? fallback.title,
     ...(s?.name !== undefined ? { name: s.name } : {}),
-    model: s?.model ?? fallback.model,
-    provider: s?.provider ?? fallback.provider,
+    model: s?.model ?? computedModel,
+    provider: s?.provider ?? computedProvider,
     startedAt: s?.startedAt ?? fallback.startedAt,
     ...((s?.endedAt ?? fallback.endedAt) !== undefined
       ? { endedAt: s?.endedAt ?? fallback.endedAt }
       : {}),
-    tokenTotal: s?.tokenTotal ?? 0,
-    ...(s?.outcome !== undefined ? { outcome: s.outcome } : {}),
+    tokenTotal: s?.tokenTotal ?? computedTokenTotal,
+    ...((s?.outcome ?? computedOutcome) !== undefined
+      ? { outcome: s?.outcome ?? computedOutcome }
+      : {}),
     messageCount: s?.messageCount ?? computedMessageCount,
     iterationCount: s?.iterationCount ?? computedIterationCount,
     toolCallCount: s?.toolCallCount ?? computedToolCallCount,
@@ -420,7 +475,9 @@ export function buildInspectPayload(
     toolBreakdown: s?.toolBreakdown ?? computedToolBreakdown,
     events: inspectEvents,
     fileEvents,
-    ...(s?.lastUserMessage !== undefined ? { lastUserMessage: s.lastUserMessage } : {}),
+    ...((s?.lastUserMessage ?? computedLastUserMessage) !== undefined
+      ? { lastUserMessage: s?.lastUserMessage ?? computedLastUserMessage }
+      : {}),
   };
 }
 

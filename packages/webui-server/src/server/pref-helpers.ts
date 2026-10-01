@@ -71,6 +71,10 @@ export const PREF_KEYS = [
   'tgSessionEnd',
   'tgDelegate',
   'tgLongToolMs',
+  // Poll interval (seconds) + default notification chat. The two settings
+  // `/telegram-settings` exposes that the panel could not previously save.
+  'tgPollIntervalSec',
+  'tgChatId',
   'reasoningMode',
   'reasoningEffort',
   'reasoningPreserve',
@@ -79,6 +83,7 @@ export const PREF_KEYS = [
   'fallbackProfiles',
   'favoriteModels',
   'disabledModels',
+  'disabledProviders',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'modelMatrix',
@@ -266,6 +271,74 @@ export async function updateGlobalConfig(
 }
 
 /**
+ * Apply `payload.tgChatId` to the `extensions.telegram` block, mirroring
+ * `/telegram-settings chat <id>` (packages/cli/src/slash-commands/telegram-settings.ts:191-239).
+ *
+ * Setting the notification chat is not a single-field write in the CLI, and
+ * copying only the ID would leave the two surfaces disagreeing about a
+ * security-relevant decision. The CLI therefore also:
+ *
+ *  - refuses a group/supergroup/channel target (negative ID) unless
+ *    `allowGroupChats` is explicitly true, because those broadcast to every
+ *    member of the chat;
+ *  - appends the target to `allowedOutboundChats` (deduped by string form, so a
+ *    stored `'12345'` is not duplicated by an incoming `12345`);
+ *  - pairs a PRIVATE chat: `inboundMode: 'paired'` + `allowedUsers` +
+ *    `allowedChats`. `paired` is what lets the user drive the agent from
+ *    Telegram, and `readTelegramConfig` throws if `paired` is set without a
+ *    `notifyChatId` (packages/telegram/src/config.ts:257) — so a bare
+ *    `notifyChatId` write would leave the config in an invalid, throwing state;
+ *  - for a group target, keeps an existing inbound allowlist and otherwise
+ *    pins `inboundMode: 'disabled'` so adding a broadcast target never
+ *    silently opens the bot to inbound traffic.
+ *
+ * An empty string clears the target. Clearing must also drop `paired`,
+ * otherwise the resulting `inboundMode: 'paired'` with no `notifyChatId` is
+ * exactly the throwing state above.
+ */
+function applyTelegramChatId(tg: Record<string, unknown>, raw: string): void {
+  const normalized = raw.trim();
+
+  if (normalized === '') {
+    delete tg['notifyChatId'];
+    // `paired` without a notifyChatId throws in readTelegramConfig.
+    if (tg['inboundMode'] === 'paired') tg['inboundMode'] = 'disabled';
+    return;
+  }
+
+  const chatId = Number(normalized);
+  const isGroup = chatId < 0;
+  if (isGroup && tg['allowGroupChats'] !== true) {
+    // Refuse rather than write. The validator has already rejected malformed
+    // IDs; this is the group broadcast guard.
+    return;
+  }
+
+  tg['notifyChatId'] = chatId;
+
+  const existing = Array.isArray(tg['allowedOutboundChats'])
+    ? (tg['allowedOutboundChats'] as unknown[]).filter(
+        (value): value is string | number => typeof value === 'string' || typeof value === 'number',
+      )
+    : [];
+  if (!existing.map(String).includes(String(chatId))) {
+    tg['allowedOutboundChats'] = [...existing, chatId];
+  }
+
+  if (isGroup) {
+    const hasInboundAllowlist =
+      (Array.isArray(tg['allowedUsers']) && tg['allowedUsers'].length > 0) ||
+      (Array.isArray(tg['allowedChats']) && tg['allowedChats'].length > 0);
+    tg['inboundMode'] = hasInboundAllowlist ? 'allowlist' : 'disabled';
+    return;
+  }
+
+  tg['inboundMode'] = 'paired';
+  tg['allowedUsers'] = [chatId];
+  tg['allowedChats'] = [chatId];
+}
+
+/**
  * Persist pref changes into the active profile config — the SAME keys the TUI
  * settings picker writes — so a toggle made in the browser survives restarts
  * and is visible to the CLI/TUI (and vice versa on next boot). Best-effort
@@ -403,6 +476,8 @@ export async function persistPrefsToConfig(
         decrypted.favoriteModels = payload['favoriteModels'];
       if (Array.isArray(payload['disabledModels']))
         decrypted.disabledModels = payload['disabledModels'];
+      if (Array.isArray(payload['disabledProviders']))
+        decrypted.disabledProviders = payload['disabledProviders'];
       if (typeof payload['favoriteModelsOnly'] === 'boolean')
         decrypted.favoriteModelsOnly = payload['favoriteModelsOnly'];
       if (Array.isArray(payload['modelAvailabilitySchedule']))
@@ -531,7 +606,9 @@ export async function persistPrefsToConfig(
       const tgTouched =
         typeof payload['tgSessionEnd'] === 'boolean' ||
         typeof payload['tgDelegate'] === 'boolean' ||
-        typeof payload['tgLongToolMs'] === 'number';
+        typeof payload['tgLongToolMs'] === 'number' ||
+        typeof payload['tgPollIntervalSec'] === 'number' ||
+        typeof payload['tgChatId'] === 'string';
       if (tgTouched) {
         const ext = (decrypted.extensions as Record<string, Record<string, unknown>>) ?? {};
         const tg = ext['telegram'] ?? {};
@@ -543,6 +620,12 @@ export async function persistPrefsToConfig(
         }
         if (typeof payload['tgLongToolMs'] === 'number') {
           tg['longToolThresholdMs'] = payload['tgLongToolMs'];
+        }
+        if (typeof payload['tgPollIntervalSec'] === 'number') {
+          tg['pollIntervalSec'] = payload['tgPollIntervalSec'];
+        }
+        if (typeof payload['tgChatId'] === 'string') {
+          applyTelegramChatId(tg, payload['tgChatId']);
         }
         ext['telegram'] = tg;
         decrypted.extensions = ext;

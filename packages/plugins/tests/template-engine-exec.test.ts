@@ -137,6 +137,18 @@ describe('template_expand', () => {
     expect(raw.result).toBe('<a>&');
   });
 
+  it('escapes substituted values, not the template text around them', async () => {
+    const tools = setup();
+    const res = await tools.template_expand!.execute({
+      template:
+        '<li class="x">{{v}}</li>{{#each tags}}<b>{{item}}</b>{{/each}} const a: Array<string> = [];',
+      variables: { v: 'a<b', tags: '<i>' },
+    });
+    expect(res.result).toBe(
+      '<li class="x">a&lt;b</li><b>&lt;i&gt;</b> const a: Array<string> = [];',
+    );
+  });
+
   it('writes to a relative output_path', async () => {
     const tools = setup();
     const res = await tools.template_expand!.execute({

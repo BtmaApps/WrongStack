@@ -32,13 +32,14 @@ export async function extractModelPatch(opts: {
   const exec = opts.exec ?? execCommand;
   // git is a real executable — no shell needed, so nothing in the (controlled)
   // args is ever interpreted.
-  await exec({
+  const staged = await exec({
     command: 'git',
     args: ['add', '-A'],
     cwd: opts.workdir,
     timeoutMs: opts.timeoutMs,
     shell: false,
   });
+  assertGitSuccess(staged, 'add');
   // Pin the output format: the user's git config otherwise chooses it —
   // diff.mnemonicPrefix / diff.noprefix change the `a/` `b/` headers the
   // test-file filter below parses (held-out test edits then LEAKED into the
@@ -59,6 +60,7 @@ export async function extractModelPatch(opts: {
     timeoutMs: opts.timeoutMs,
     shell: false,
   });
+  assertGitSuccess(diff, 'diff');
   const raw = diff.stdout;
   const testPaths = opts.testPatch ? extractPatchPaths(opts.testPatch) : new Set<string>();
   // Always drop two kinds of sections: (1) edits to the held-out test files,
@@ -69,6 +71,14 @@ export async function extractModelPatch(opts: {
     raw,
     (a, b) => testPaths.has(a) || testPaths.has(b) || isHarnessArtifact(a) || isHarnessArtifact(b),
   );
+}
+
+function assertGitSuccess(result: ExecResult, step: string): void {
+  if (result.exitCode !== 0 || result.timedOut || result.truncated) {
+    throw new Error(
+      `Cannot extract model patch: git ${step} failed (exit=${String(result.exitCode)}, timeout=${result.timedOut}, truncated=${result.truncated ?? false}): ${result.stderr}`,
+    );
+  }
 }
 
 /** True for paths the wstack harness itself creates/edits in the checkout. */

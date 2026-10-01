@@ -868,3 +868,61 @@ Always run pnpm typecheck before declaring work complete.`;
     });
   });
 });
+
+describe('non-Latin directives', () => {
+  let projectRoot = '';
+
+  beforeEach(() => {
+    projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wrongstack-agent-unicode-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  it('keeps distinct Cyrillic directives instead of treating them as duplicates', () => {
+    // Both used to normalize to '' (ASCII-only `\w`), compare as identical,
+    // and the second capture was rejected as a near-duplicate of the first.
+    const first = captureLearnedFromAgentOutputDetailed(
+      '## LEARNED\nВсегда запускайте тесты из корня репозитория перед коммитом.',
+      'reviewer',
+      projectRoot,
+      true,
+    );
+    const second = captureLearnedFromAgentOutputDetailed(
+      '## LEARNED\nНикогда не редактируйте сгенерированные файлы вручную, используйте генератор.',
+      'reviewer',
+      projectRoot,
+      true,
+    );
+    expect(first.status).toBe('captured');
+    expect(second.status).toBe('captured');
+    expect(parseStructuredLearnedEntries('reviewer', projectRoot)).toHaveLength(2);
+
+    // Real near-duplicates in the same script are still caught.
+    const repeat = captureLearnedFromAgentOutputDetailed(
+      '## LEARNED\nВсегда запускайте тесты из корня репозитория перед каждым коммитом.',
+      'reviewer',
+      projectRoot,
+      true,
+    );
+    expect(repeat.status).toBe('quality_rejected');
+    expect(parseStructuredLearnedEntries('reviewer', projectRoot)).toHaveLength(2);
+  });
+
+  it('does not merge two unrelated CJK directives into one entry', () => {
+    const merged = mergeStructuredEntries(
+      mergeStructuredEntries([], {
+        text: '始终在提交前从仓库根目录运行完整的测试套件。',
+        category: 'convention',
+        capturedAt: '2026-10-01T00:00:00.000Z',
+      }),
+      {
+        text: '必须在发布之前确认变更日志已经更新并且版本号一致。',
+        category: 'convention',
+        capturedAt: '2026-10-01T00:00:01.000Z',
+      },
+    );
+    expect(merged).toHaveLength(2);
+  });
+});

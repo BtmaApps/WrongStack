@@ -43,6 +43,7 @@ import { type ChimeraRouteHandlers, createChimeraRouteHandlers } from './chimera
 import { handleConfigDoctor } from './config-doctor.js';
 import { computeConfigPrefUpdates } from './config-pref-updates.js';
 import { emitFallbackChoice } from './fallback-choice.js';
+import { handleFallbackSuggest } from './fallback-suggest-handler.js';
 import {
   handleGitChanges,
   handleGitCommit,
@@ -138,6 +139,7 @@ export function buildRoutes(
     clients: state.getClients(),
     modelsRegistry: deps.modelsRegistry,
     getDisabledModels: () => state.getConfig().disabledModels ?? [],
+    getDisabledProviders: () => state.getConfig().disabledProviders ?? [],
     hasActiveModel: () => Boolean(state.getConfig().model),
     onProvidersLoaded: (providers) => {
       state.setConfig(patchConfig(state.getConfig(), { providers }));
@@ -299,6 +301,15 @@ export function buildRoutes(
         });
       }
     },
+    suggestFallbacks: (ws, msg) =>
+      handleFallbackSuggest(ws, msg.payload, {
+        collectCandidates: providerHandlers.collectFallbackCandidates,
+        resolveLlm: (sessionId) => {
+          const ctx = sessionContext(sessionId);
+          return { provider: ctx.provider, model: ctx.model };
+        },
+        send,
+      }),
   };
 
   const systemPromptAdapter = {

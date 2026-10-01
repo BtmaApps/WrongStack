@@ -247,11 +247,13 @@ async function runTypeCheck(cfg: TypeGateConfig): Promise<TypeCheckResult | null
   const combined = `${stdout}\n${stderr}`.trim();
   const durationMs = Date.now() - start;
 
-  // tsc produces "file.ts(line,col): error TS1234: message" or "file.ts:line:col - error TS1234: message"
+  // tsc produces "file.ts(line,col): error TS1234: message" or "file.ts:line:col - error TS1234: message",
+  // and a project-level failure with no file at all: "error TS5023: Unknown compiler option",
+  // "error TS18003: No inputs were found". Without the line-start form a broken tsconfig passed.
   const errors: string[] = [];
   const lines = combined.split(/\r?\n/);
   for (const line of lines) {
-    if (/\berror\b/i.test(line) && /(?::\s*|\s+-\s+)error\s+TS\d+:/i.test(line)) {
+    if (/\berror\b/i.test(line) && /(?:^\s*|:\s*|\s+-\s+)error\s+TS\d+:/i.test(line)) {
       errors.push(line.trim());
       if (errors.length >= cfg.maxErrors) break;
     }

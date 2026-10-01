@@ -65,7 +65,12 @@ export function applySlotTools(
   const allowed = slot.cfg.allowedTools;
   const filtered = tools.filter((t) => !allowed || allowed.includes(t.name));
   const signature = JSON.stringify(
-    filtered.map((t) => [t.name, t.description ?? null, t.inputSchema ?? null]),
+    filtered.map((t) => [
+      t.name,
+      t.description ?? null,
+      t.inputSchema ?? null,
+      t.outputSchema ?? null,
+    ]),
   );
   // Lazy wrappers resolve the live client on every call, so an unchanged tool
   // set needs no rebinding on wake. A CHANGED set must be re-registered — the
@@ -135,50 +140,70 @@ export async function discoverSlotCapabilities(
   client: MCPClient,
 ): Promise<void> {
   const startedAt = Date.now();
-  slot.serverMetadata = client.getServerMetadata();
-  const capabilities = slot.serverMetadata?.capabilities;
+  const versions = { ...slot.catalogVersions };
+  const serverMetadata = client.getServerMetadata();
+  const capabilities = serverMetadata?.capabilities;
+  let resources: ServerSlot['resources'];
+  let resourceTemplates: ServerSlot['resourceTemplates'];
+  let prompts: ServerSlot['prompts'];
   if (capabilities?.resources) {
     try {
-      slot.resources = await collectCatalogPages(
+      resources = await collectCatalogPages(
         (cursor) => client.listResources(cursor ? { cursor } : {}),
         (page) => page.resources,
       );
     } catch (err) {
-      slot.resources = undefined;
+      if (!ownsConnectedSlot(ctx, slot, client)) return;
       ctx.recordFailure(slot, 'protocol', 'resource-discovery-failed');
       ctx.log.warn(`MCP server "${slot.cfg.name}" resource discovery failed`, err);
     }
+    if (!ownsConnectedSlot(ctx, slot, client)) return;
     try {
-      slot.resourceTemplates = await collectCatalogPages(
+      resourceTemplates = await collectCatalogPages(
         (cursor) => client.listResourceTemplates(cursor ? { cursor } : {}),
         (page) => page.resourceTemplates,
       );
     } catch (err) {
-      slot.resourceTemplates = undefined;
+      if (!ownsConnectedSlot(ctx, slot, client)) return;
       ctx.recordFailure(slot, 'protocol', 'resource-template-discovery-failed');
       ctx.log.warn(`MCP server "${slot.cfg.name}" resource template discovery failed`, err);
     }
-  } else {
-    slot.resources = undefined;
-    slot.resourceTemplates = undefined;
   }
+  if (!ownsConnectedSlot(ctx, slot, client)) return;
   if (capabilities?.prompts) {
     try {
-      slot.prompts = await collectCatalogPages(
+      prompts = await collectCatalogPages(
         (cursor) => client.listPrompts(cursor ? { cursor } : {}),
         (page) => page.prompts,
       );
     } catch (err) {
-      slot.prompts = undefined;
+      if (!ownsConnectedSlot(ctx, slot, client)) return;
       ctx.recordFailure(slot, 'protocol', 'prompt-discovery-failed');
       ctx.log.warn(`MCP server "${slot.cfg.name}" prompt discovery failed`, err);
     }
-  } else {
-    slot.prompts = undefined;
   }
+  // Discovery can settle after stop, idle sleep, or replacement. Publish only
+  // while this client still owns the connected slot.
+  if (!ownsConnectedSlot(ctx, slot, client)) return;
+  slot.serverMetadata = serverMetadata;
+  if (slot.catalogVersions?.resources === versions.resources) slot.resources = resources;
+  if (slot.catalogVersions?.resourceTemplates === versions.resourceTemplates) {
+    slot.resourceTemplates = resourceTemplates;
+  }
+  if (slot.catalogVersions?.prompts === versions.prompts) slot.prompts = prompts;
   const durationMs = Date.now() - startedAt;
   pushBounded(slot.operations.discoverySamples, durationMs, MCP_OPERATION_LIMITS.LATENCY_SAMPLES);
   ctx.recordOperation(slot, 'discover', 'complete', undefined, durationMs, false);
+}
+
+function ownsConnectedSlot(
+  ctx: RegistryConnectContext,
+  slot: ServerSlot,
+  client: MCPClient,
+): boolean {
+  return (
+    ctx.servers.get(slot.cfg.name) === slot && slot.client === client && slot.state === 'connected'
+  );
 }
 
 export async function persistSlotCapabilityManifest(
@@ -210,10 +235,13 @@ export async function attemptConnectSlot(
   slot: ServerSlot,
 ): Promise<void> {
   const MAX_ATTEMPTS = MCP_CONSTANTS.RECONNECT.MAX_ATTEMPTS;
+  const generation = slot.startupGeneration;
+  const isCurrent = () =>
+    ctx.servers.get(slot.cfg.name) === slot && slot.startupGeneration === generation;
   let attempt = 0;
   while (attempt < MAX_ATTEMPTS) {
     // A slot removed (forget/markDisabled) or replaced must not keep spawning.
-    if (ctx.servers.get(slot.cfg.name) !== slot) {
+    if (!isCurrent()) {
       return;
     }
     attempt++;
@@ -247,11 +275,7 @@ export async function attemptConnectSlot(
       client.addToolsChangedListener(ctx.onToolsChanged);
       ctx.addCatalogListeners(client);
       await client.connect();
-      if (
-        (slot.state as ConnectionState) === 'disconnected' ||
-        !ctx.servers.has(slot.cfg.name) ||
-        ctx.servers.get(slot.cfg.name) !== slot
-      ) {
+      if ((slot.state as ConnectionState) === 'disconnected' || !isCurrent()) {
         client.removeExitListener(ctx.onChildExit);
         if (boundDisconnect) client.removeDisconnectListener(boundDisconnect);
         client.removeToolsChangedListener(ctx.onToolsChanged);
@@ -279,8 +303,11 @@ export async function attemptConnectSlot(
       // list, not the one a dormant boot loaded from the previous cache.
       slot.discoveredTools = discovered;
       await discoverSlotCapabilities(ctx, slot, mc);
+      if (!ownsConnectedSlot(ctx, slot, mc)) return;
       await persistSlotCapabilityManifest(ctx.cacheDir, slot);
-      applySlotTools(ctx, slot, discovered, mc);
+      if (!ownsConnectedSlot(ctx, slot, mc)) return;
+      // Notifications may refresh the catalog while discovery/cache I/O awaits.
+      applySlotTools(ctx, slot, mc.listTools(), mc);
       const durationMs = Date.now() - startedAt;
       pushBounded(
         slot.operations.connectionSamples,
@@ -303,8 +330,6 @@ export async function attemptConnectSlot(
       });
       return;
     } catch (err) {
-      ctx.recordFailure(slot, 'transport', 'connect-attempt-failed', Date.now() - startedAt);
-      ctx.log.warn(`MCP server "${slot.cfg.name}" connect attempt ${attempt} failed`, err);
       if (client) {
         client.removeExitListener(ctx.onChildExit);
         if (boundDisconnect) client.removeDisconnectListener(boundDisconnect);
@@ -312,6 +337,10 @@ export async function attemptConnectSlot(
         ctx.removeCatalogListeners(client);
         await client.close().catch(() => {});
       }
+      // Superseded work must not retry or mutate the replacement's health.
+      if (!isCurrent() || (slot.state as ConnectionState) === 'disconnected') return;
+      ctx.recordFailure(slot, 'transport', 'connect-attempt-failed', Date.now() - startedAt);
+      ctx.log.warn(`MCP server "${slot.cfg.name}" connect attempt ${attempt} failed`, err);
       if (attempt >= MAX_ATTEMPTS) {
         ctx.log.error(
           `MCP server "${slot.cfg.name}" connect exhausted after ${MAX_ATTEMPTS} attempts`,
@@ -333,10 +362,7 @@ export async function attemptConnectSlot(
       }
       const delay = 500 * 2 ** attempt;
       await new Promise((r) => setTimeout(r, delay));
-      if (
-        (slot.state as ConnectionState) === 'disconnected' ||
-        ctx.servers.get(slot.cfg.name) !== slot
-      ) {
+      if ((slot.state as ConnectionState) === 'disconnected' || !isCurrent()) {
         return;
       }
     }

@@ -38,9 +38,12 @@ export function generateReport(snapshot: Snapshot, format: ReportFormat = 'md'):
   }
   if (snapshot.findings.length > 0) {
     lines.push('## Findings', '');
-    const bySeverity = new Map<string, typeof snapshot.findings>();
-    for (const finding of snapshot.findings)
-      bySeverity.set(finding.severity, [...(bySeverity.get(finding.severity) ?? []), finding]);
+    const bySeverity = new Map<string, Snapshot['findings'][number][]>();
+    for (const finding of snapshot.findings) {
+      const bucket = bySeverity.get(finding.severity);
+      if (bucket) bucket.push(finding);
+      else bySeverity.set(finding.severity, [finding]);
+    }
     for (const severity of ['critical', 'high', 'medium', 'low', 'info']) {
       const findings = bySeverity.get(severity);
       if (!findings?.length) continue;

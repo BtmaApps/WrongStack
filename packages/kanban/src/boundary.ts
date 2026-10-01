@@ -176,8 +176,10 @@ function warnIfBoundaryRulesInactive(policy: KanbanBoundaryPolicy): void {
 export function normalizeBoundaryPath(value: string): string | null {
   const trimmed = value.trim().replace(/\\/g, '/');
   if (!trimmed || path.posix.isAbsolute(trimmed) || path.win32.isAbsolute(trimmed)) return null;
-  const normalized = path.posix.normalize(trimmed).replace(/^\.\//, '').replace(/\/$/, '');
-  if (!normalized || normalized === '..' || normalized.startsWith('../')) return null;
+  // `normalize('./')` stays `./`, which the strip below reduced to '' — the
+  // project root then read as "escapes the project". Empty here means root.
+  const normalized = path.posix.normalize(trimmed).replace(/^\.\//, '').replace(/\/$/, '') || '.';
+  if (normalized === '..' || normalized.startsWith('../')) return null;
   return normalized;
 }
 

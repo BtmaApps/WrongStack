@@ -226,7 +226,7 @@ export function sageKeyedContentHash(text: string, sageId: string): string {
 
 /** Encode a Float32Array to a SQLite BLOB (Buffer). */
 export function encodeVector(vec: Float32Array): Buffer {
-  return Buffer.from(vec.buffer, vec.byteOffset, vec.byteLength);
+  return Buffer.from(new Uint8Array(vec.buffer, vec.byteOffset, vec.byteLength));
 }
 
 /** Decode a SQLite BLOB (Buffer or Uint8Array) back to a Float32Array. */

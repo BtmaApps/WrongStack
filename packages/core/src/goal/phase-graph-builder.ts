@@ -1,4 +1,4 @@
-import { DefaultTaskStore, TaskTracker, type TaskStore } from '../tasking/index.js';
+import { DefaultTaskStore, type TaskStore, TaskTracker } from '../tasking/index.js';
 import type { TaskGraph, TaskPriority } from '../types/task-graph.js';
 import type { PhaseGraph, PhaseNode, PhaseTemplate } from './types.js';
 
@@ -144,11 +144,18 @@ export class PhaseGraphBuilder {
   ): Promise<PhaseGraph> {
     const tasksPerPhase = options.tasksPerPhase ?? 5;
     const nodes = Array.from(taskGraph.nodes.values());
+    // Only edges between tasks that exist. An edge from a deleted task used to
+    // raise its target's in-degree with nothing ever able to lower it, so the
+    // target — and everything depending on it — never left Kahn's queue and
+    // was silently missing from the plan.
+    const edges = taskGraph.edges.filter(
+      (edge) => taskGraph.nodes.has(edge.from) && taskGraph.nodes.has(edge.to),
+    );
 
     // Build adjacency and prerequisites so a dependent is never pulled ahead of another parent.
     const dependents = new Map<string, string[]>();
     const prerequisites = new Map<string, string[]>();
-    for (const edge of taskGraph.edges) {
+    for (const edge of edges) {
       const list = dependents.get(edge.from) ?? [];
       list.push(edge.to);
       dependents.set(edge.from, list);
@@ -160,7 +167,7 @@ export class PhaseGraphBuilder {
     // Topological sort (Kahn's algorithm) — tasks that are depended-on come first.
     const inDegree = new Map<string, number>();
     for (const node of nodes) inDegree.set(node.id, 0);
-    for (const edge of taskGraph.edges) {
+    for (const edge of edges) {
       inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
     }
 
@@ -193,6 +200,14 @@ export class PhaseGraphBuilder {
         inDegree.set(depId, deg);
         if (deg === 0) queue.push(depId);
       }
+    }
+    // Tasks on a dependency cycle never reach in-degree zero. A cycle is a
+    // planning defect, but dropping its members turned it into silently lost
+    // work; they are appended in graph order instead, after everything that
+    // could be ordered.
+    if (topoSorted.length < nodes.length) {
+      const sorted = new Set(topoSorted);
+      for (const node of nodes) if (!sorted.has(node.id)) topoSorted.push(node.id);
     }
 
     // Group topologically-sorted nodes into phases, keeping dependent

@@ -342,6 +342,35 @@ describe('start-webui.ts source-text wiring', () => {
     // anchor into a different `startHttpServer` invocation.
     expect(callWindow).toContain('});');
   });
+
+  // The Debug Dashboard's "Watcher Status" card is driven by
+  // /debug/watcher-metrics, whose 503 branch ("File watcher metrics not
+  // available") fires whenever deps.watcherMetrics is falsy — that is what
+  // made a stale build render as a stopped watcher. The 503 is unreachable as
+  // long as startWebUI threads a real metrics object into the one
+  // startHttpServer call, so pin that wiring the way the vector-memory keys
+  // are pinned above.
+  it('threads a watcherMetrics object into startHttpServer, keeping the 503 branch unreachable', async () => {
+    const startWebuiPath = path.resolve(
+      import.meta.dirname,
+      '..',
+      'src',
+      'server',
+      'start-webui.ts',
+    );
+    const source = await fs.readFile(startWebuiPath, 'utf8');
+
+    // Created unconditionally, so the value can never be undefined …
+    expect(source).toContain(
+      'const watcherMetricsRef: FileWatcherMetrics = createDefaultFileWatcherMetrics()',
+    );
+
+    // … and threaded into the same startHttpServer({ ... }) call.
+    const startHttpServerIdx = source.indexOf('startHttpServer({');
+    expect(startHttpServerIdx).toBeGreaterThan(-1);
+    const callWindow = source.slice(startHttpServerIdx, startHttpServerIdx + 2_000);
+    expect(callWindow).toContain('watcherMetrics: watcherMetricsRef');
+  });
 });
 
 // Regression test: the standalone WebUI boot must mirror the CLI host

@@ -201,7 +201,10 @@ export function parseConventional(subject: string, body = ''): Omit<Conventional
   // footer colon. Subject `!` handling is unchanged.
   const hasBreakingInBody = /(?:^|\W)BREAKING[ -]CHANGES?(?!\w)/i.test(body);
   return {
-    type: m?.[1] ?? 'chore',
+    // Types are case-insensitive (Conventional Commits §16), and
+    // commit-validator lowercases them before validating: `Feat: x` passed
+    // the gate as a feat but missed `type === 'feat'` here and bumped patch.
+    type: m?.[1]?.toLowerCase() ?? 'chore',
     breaking: hasBreakingInSubject || hasBreakingInBody,
     scope: m?.[3],
     message: m?.[5] ?? subject,

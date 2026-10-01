@@ -25,15 +25,22 @@ export function autoTriggerMsFor(text: string): number {
  * killed on a retryable failure) and only for FRESH failures. Cancel/Stop
  * disarms it, so does `autoArm` turning false (autonomy switched off), and a
  * run already restarted by the user disarms it too.
+ *
+ * A disarm is written back to the message (`autoContinue: false`), not only
+ * kept in component state: the countdown is armed by the state initializer,
+ * so any remount inside the fresh window (a loading flicker, the list
+ * re-rendering the row) re-armed a countdown the user had cancelled.
  */
 export function FailedRunContinue({
   text,
   timestamp,
   autoArm = false,
+  messageId,
 }: {
   text: string;
   timestamp?: number;
   autoArm?: boolean;
+  messageId?: string;
 }) {
   const { t } = useAppTranslation();
   const addMessage = useChatStore((s) => s.addMessage);
@@ -54,9 +61,15 @@ export function FailedRunContinue({
   const firedRef = useRef(false);
   const [gone, setGone] = useState(false);
 
+  const disarm = () => {
+    setRemainingMs(null);
+    if (messageId) useChatStore.getState().updateMessage(messageId, { autoContinue: false });
+  };
+
   const fire = () => {
     if (firedRef.current) return;
     firedRef.current = true;
+    disarm();
     // A run the user already restarted takes precedence over the auto-fire.
     if (useChatStore.getState().isLoading) return;
     if (!canAutoSubmit()) return;
@@ -90,7 +103,7 @@ export function FailedRunContinue({
       return;
     }
     if (useChatStore.getState().isLoading) {
-      setRemainingMs(null);
+      disarm();
       return;
     }
     const timer = setTimeout(
@@ -116,7 +129,7 @@ export function FailedRunContinue({
       {seconds !== null && (
         <button
           type="button"
-          onClick={() => setRemainingMs(null)}
+          onClick={disarm}
           className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('activity:failedRun.cancel', { defaultValue: 'Cancel' })}

@@ -140,6 +140,40 @@ describe('mergeIntoChangelog', () => {
     expect(oldIdx).toBeLessThan(releaseIdx);
   });
 
+  it('keeps prose, other bullet styles, sub-bullets and unknown sections it does not model', () => {
+    const existing = [
+      '# Changelog',
+      '',
+      '## [Unreleased]',
+      '',
+      'Big refactor ahead.',
+      '',
+      '### Added',
+      '- feature A',
+      '  - detail of A',
+      '* starred item',
+      '',
+      '### Deprecated',
+      '- old api',
+      '',
+      '### Migration Notes',
+      '- run the script',
+      '',
+      '## [1.0.0]',
+      '- release',
+      '',
+    ].join('\n');
+    const out = mergeIntoChangelog(existing, '### Fixed\n- bug B');
+    expect(out).toContain('Big refactor ahead.');
+    expect(out).toContain('- feature A\n  - detail of A');
+    expect(out).toContain('starred item');
+    // Deprecated items stay under Deprecated, not the previous section.
+    expect(out).toMatch(/### Deprecated\n- old api/);
+    expect(out).toMatch(/### Migration Notes\n- run the script/);
+    expect(out).toContain('### Fixed\n- bug B');
+    expect(out.indexOf('## [1.0.0]')).toBeGreaterThan(out.indexOf('run the script'));
+  });
+
   it('adds an Unreleased section after the H1 when absent', () => {
     const out = mergeIntoChangelog('# Changelog\n\n## [1.0.0]\n- x\n', '### Added\n- y');
     expect(out.indexOf('## [Unreleased]')).toBeLessThan(out.indexOf('## [1.0.0]'));

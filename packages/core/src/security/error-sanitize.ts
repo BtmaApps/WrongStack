@@ -105,20 +105,13 @@ function safeHomedir(): string {
 
 /**
  * Windows paths are case-insensitive, so a message may spell the home
- * directory with different casing than `os.homedir()` reports.
+ * directory with different casing than `os.homedir()` reports. Matched on the
+ * original text: lowercasing first shifts every later offset when the message
+ * holds a character whose lowercase form is longer (Turkish `İ` → `i̇`), which
+ * cut the replacement at the wrong place and left part of the path behind.
  */
 function replaceAllCaseInsensitive(haystack: string, needle: string, replacement: string): string {
-  if (!needle || needle.length === 0) return haystack;
-  const lowerHay = haystack.toLowerCase();
-  const lowerNeedle = needle.toLowerCase();
-  let idx = lowerHay.indexOf(lowerNeedle);
-  if (idx === -1) return haystack;
-  let out = '';
-  let from = 0;
-  while (idx !== -1) {
-    out += haystack.slice(from, idx) + replacement;
-    from = idx + needle.length;
-    idx = lowerHay.indexOf(lowerNeedle, from);
-  }
-  return out + haystack.slice(from);
+  if (!needle) return haystack;
+  const pattern = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+  return haystack.replace(pattern, () => replacement);
 }

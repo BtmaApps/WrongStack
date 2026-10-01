@@ -317,6 +317,33 @@ describe('todo-listener plugin', () => {
       expect(api.mailbox?.send).toHaveBeenCalledTimes(2);
     });
 
+    it('broadcasts the list the todo tool holds, keeping unfinished rows a call omits', async () => {
+      const api = createMockAPI({ withMailbox: true, enabled: true });
+      api.config.extensions = { 'todo-listener': { enabled: true, cooldownMs: 0 } };
+      todoListenerPlugin.setup(api as never);
+      const hook = getHook(api);
+      await hook({
+        toolName: 'todo',
+        toolInput: {
+          todos: [
+            { id: 'a', content: 'parse', status: 'in_progress' },
+            { id: 'b', content: 'render', status: 'pending' },
+            { id: 'c', content: 'ship', status: 'pending' },
+          ],
+        },
+        toolResult: { content: 'ok', isError: false },
+      });
+      // Only the finished row is sent; `b` and `c` stay on the tool's list.
+      await hook({
+        toolName: 'todo',
+        toolInput: { todos: [{ id: 'a', content: 'parse', status: 'completed' }] },
+        toolResult: { content: 'ok', isError: false },
+      });
+      const sent = vi.mocked(api.mailbox!.send).mock.calls[1]![0] as { body: string };
+      const body = JSON.parse(sent.body) as { count: number; pending: number; completed: number };
+      expect(body).toMatchObject({ count: 3, pending: 2, completed: 1 });
+    });
+
     it('enforces cooldownMs between broadcasts', async () => {
       const api = createMockAPI({ withMailbox: true, enabled: true });
       api.config.extensions = { 'todo-listener': { enabled: true, cooldownMs: 60_000 } };

@@ -621,6 +621,30 @@ describe('spec-linker plugin', () => {
       expect(result.modifiedInput.content).not.toContain('"[token-budget]');
     });
 
+    it('treats ~~~ and longer backtick fences as code too', async () => {
+      const api = createMockAPI();
+      api.config.extensions = { 'spec-linker': { autoFix: true } };
+      specLinkerPlugin.setup(api as never);
+      const hook = getHook(api, 'PreToolUse');
+      const content = [
+        'Before secret-scanner.',
+        '~~~jsonc',
+        '{ "plugins": { "token-budget": {} } }',
+        '~~~',
+        '````md',
+        '```',
+        'lint-gate inside',
+        '````',
+      ].join('\n');
+      const result = (await hook({
+        toolName: 'write',
+        toolInput: { path: '/tmp/x.md', content },
+      })) as { modifiedInput: { content: string } };
+      expect(result.modifiedInput.content).toContain('[secret-scanner](./src/secret-scanner)');
+      expect(result.modifiedInput.content).toContain('"token-budget": {}');
+      expect(result.modifiedInput.content).toContain('\nlint-gate inside\n');
+    });
+
     it('respects word boundaries in autoFix mode', async () => {
       const api = createMockAPI();
       api.config.extensions = { 'spec-linker': { autoFix: true } };

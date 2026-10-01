@@ -228,7 +228,11 @@ export async function prepareWorkdir(
   attempt?: number | undefined,
 ): Promise<string> {
   const suffix = attempt !== undefined && attempt > 1 ? `__a${attempt}` : '';
-  const safe = `${slug(cellLabel)}__${slug(taskId)}${suffix}`;
+  const cellSlug = slug(cellLabel);
+  const cellKey = /[\\/]/.test(cellLabel)
+    ? `${cellSlug}-${computeStableJsonHash(cellLabel).slice(0, 8)}`
+    : cellSlug;
+  const safe = `${cellKey}__${slug(taskId)}${suffix}`;
   const dest = path.join(sandbox.workRoot, safe);
   // Fresh copy every time: a previous failed run must not leak edits forward.
   await fs.rm(dest, { recursive: true, force: true });
@@ -240,7 +244,10 @@ export async function prepareWorkdir(
     filter:
       excludeSet.size === 0
         ? undefined
-        : (src) => !src.split(/[\\/]/).some((seg) => excludeSet.has(seg)),
+        : (src) => {
+            const relative = path.relative(templateDir, src);
+            return relative === '' || !relative.split(/[\\/]/).some((seg) => excludeSet.has(seg));
+          },
   });
   return dest;
 }

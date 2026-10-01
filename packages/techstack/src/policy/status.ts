@@ -79,12 +79,20 @@ export function compareVersions(a: string, b: string): number {
   const bPre = bMatch?.[2];
 
   // Compare base segments numerically
-  const aBaseParts = aBase.split('.').map(Number);
-  const bBaseParts = bBase.split('.').map(Number);
+  const aBaseSegments = aBase.split('.');
+  const bBaseSegments = bBase.split('.');
+  if (
+    aBaseSegments.some((segment) => !/^\d+$/.test(segment)) ||
+    bBaseSegments.some((segment) => !/^\d+$/.test(segment))
+  ) {
+    throw new Error('Invalid numeric version segment');
+  }
+  const aBaseParts = aBaseSegments.map(BigInt);
+  const bBaseParts = bBaseSegments.map(BigInt);
 
   for (let i = 0; i < Math.max(aBaseParts.length, bBaseParts.length); i++) {
-    const aNum = aBaseParts[i] ?? 0;
-    const bNum = bBaseParts[i] ?? 0;
+    const aNum = aBaseParts[i] ?? 0n;
+    const bNum = bBaseParts[i] ?? 0n;
     if (aNum > bNum) return 1;
     if (aNum < bNum) return -1;
   }
@@ -108,8 +116,8 @@ export function compareVersions(a: string, b: string): number {
     if (aId === bId) continue;
     const aNumeric = /^\d+$/.test(aId);
     const bNumeric = /^\d+$/.test(bId);
-    if (aNumeric && bNumeric && Number(aId) !== Number(bId)) {
-      return Number(aId) > Number(bId) ? 1 : -1;
+    if (aNumeric && bNumeric && BigInt(aId) !== BigInt(bId)) {
+      return BigInt(aId) > BigInt(bId) ? 1 : -1;
     }
     if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
     return aId > bId ? 1 : -1;

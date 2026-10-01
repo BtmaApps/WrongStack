@@ -1,9 +1,13 @@
 /**
  * Return the Jaccard similarity (0-1) of two normalised token sets.
+ *
+ * Empty tokens are not tokens: `''.split(/\s+/)` is `['']`, so two texts with
+ * nothing comparable in them used to share that one phantom token and score
+ * a perfect 1 — "identical" — instead of 0.
  */
 export function tokenOverlap(a: string, b: string): number {
-  const setA = new Set(a.split(/\s+/));
-  const setB = new Set(b.split(/\s+/));
+  const setA = new Set(a.split(/\s+/).filter(Boolean));
+  const setB = new Set(b.split(/\s+/).filter(Boolean));
   const intersect = new Set([...setA].filter((t) => setB.has(t)));
   const union = new Set([...setA, ...setB]);
   return union.size === 0 ? 0 : intersect.size / union.size;

@@ -18,14 +18,22 @@ export function withDaemonVersion<T extends { status: string; detail: string }>(
   service: T,
   daemonVersion: unknown,
   clientVersion = WRONGSTACK_RUNTIME_VERSION,
-): T & { versionMismatch?: boolean } {
+): T & { versionMismatch?: boolean; daemonVersion?: string } {
   if (service.status === 'offline' || service.status === 'unavailable') return service;
   const known = typeof daemonVersion === 'string' && daemonVersion.length > 0;
   if (known && daemonVersion === clientVersion) {
-    return { ...service, detail: `${service.detail} WrongStack ${daemonVersion}.` };
+    return {
+      ...service,
+      daemonVersion,
+      detail: `${service.detail} WrongStack ${daemonVersion}.`,
+    };
   }
   return {
     ...service,
+    // A legacy daemon reports nothing at all, so `daemonVersion` stays absent
+    // rather than being filled with a placeholder the UI would render as if
+    // it were a real release.
+    ...(known ? { daemonVersion } : {}),
     status: service.status === 'healthy' ? 'degraded' : service.status,
     versionMismatch: true,
     detail: `${service.detail} ${known ? `Daemon WrongStack ${daemonVersion}; client ${clientVersion}. Version mismatch: align client and daemon installations, then restart the daemon from Connections.` : `Daemon version unknown (legacy); client ${clientVersion}. Restart the daemon from Connections to load the installed version.`}`,

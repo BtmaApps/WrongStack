@@ -117,7 +117,7 @@ export class GovernanceProjectClient {
         try {
           const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
           const response = decodeGovernanceIpcResponse(parsed);
-          if (expectedRequestId && response.requestId !== expectedRequestId) {
+          if (expectedRequestId !== null && response.requestId !== expectedRequestId) {
             finish(new Error('Governance IPC response request id does not match.'));
             return;
           }

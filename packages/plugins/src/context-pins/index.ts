@@ -294,14 +294,19 @@ const plugin: Plugin = {
       );
     }
     const loaded = loadPins(cfg.filePath);
-    state.pins = loaded.pins.slice(0, cfg.maxPins);
+    // Every stored pin is kept: `maxPins` caps the prompt block and refuses a
+    // new pin, it does not delete. Slicing here dropped the pins past a lowered
+    // cap, and the next add/remove rewrote the file without them.
+    state.pins = loaded.pins;
     state.nextId = loaded.nextId;
 
     // ── System prompt contributor — the reason this plugin exists ─────
     if (cfg.enabled) {
       state.contributorUnregister = api.registerSystemPromptContributor(async () => {
         if (state.pins.length === 0) return [];
-        const lines = state.pins.map((p) => `- ${p.label ? `[${p.label}] ` : ''}${p.text}`);
+        const lines = state.pins
+          .slice(0, cfg.maxPins)
+          .map((p) => `- ${p.label ? `[${p.label}] ` : ''}${p.text}`);
         return [
           {
             type: 'text' as const,

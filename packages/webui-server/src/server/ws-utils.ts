@@ -24,8 +24,16 @@ export const WEBUI_WS_MAX_BUFFERED_BYTES = 32 * 1024 * 1024;
  */
 export function sendSerialized(ws: WebSocket, data: string, frameBytes?: number): boolean {
   if (ws.readyState !== WebSocket.OPEN) return false;
-  const buffered = Number.isFinite(ws.bufferedAmount) ? ws.bufferedAmount : 0;
-  const bytes = frameBytes ?? Buffer.byteLength(data, 'utf8');
+  const buffered =
+    ws.bufferedAmount === undefined
+      ? 0
+      : Number.isFinite(ws.bufferedAmount) && ws.bufferedAmount >= 0
+        ? ws.bufferedAmount
+        : WEBUI_WS_MAX_BUFFERED_BYTES + 1;
+  const bytes =
+    frameBytes !== undefined && Number.isSafeInteger(frameBytes) && frameBytes >= 0
+      ? frameBytes
+      : Buffer.byteLength(data, 'utf8');
   if (buffered + bytes > WEBUI_WS_MAX_BUFFERED_BYTES) {
     try {
       ws.terminate();
@@ -51,7 +59,11 @@ export function sendSerialized(ws: WebSocket, data: string, frameBytes?: number)
  * No-op when the socket is not in OPEN state (disconnected / closing).
  */
 export function send(ws: WebSocket, msg: object): void {
-  sendSerialized(ws, JSON.stringify(stampDispatchSession(msg)));
+  try {
+    sendSerialized(ws, JSON.stringify(stampDispatchSession(msg)));
+  } catch {
+    // A malformed internal frame must not crash the active message dispatch.
+  }
 }
 
 /**
@@ -67,18 +79,31 @@ export function broadcast(
   targetSessionId?: string,
 ): void {
   const payload = (msg as { payload?: unknown }).payload;
-  const sessionId =
-    targetSessionId ??
-    (payload &&
-    typeof payload === 'object' &&
-    'sessionId' in payload &&
-    typeof (payload as { sessionId?: unknown }).sessionId === 'string'
-      ? (payload as { sessionId: string }).sessionId
-      : undefined);
-
+  let sessionId: string | undefined;
+  if (targetSessionId !== undefined) {
+    if (typeof targetSessionId !== 'string' || targetSessionId.trim().length === 0) return;
+    sessionId = targetSessionId;
+  } else if (payload && typeof payload === 'object' && 'sessionId' in payload) {
+    const value = (payload as { sessionId?: unknown }).sessionId;
+    // A present-but-unusable sessionId carries NO scope information, so it
+    // degrades to "no session" (project-wide) exactly as it did before this
+    // check was tightened. `return` here instead dropped the frame for EVERY
+    // client: `sessionPayload` (connection-handler.ts) unconditionally
+    // materializes the key, and host events whose `e.sessionId` is
+    // legitimately optional (tool.started, subagent.event) therefore reached
+    // this branch as `sessionId: undefined` and vanished. The value is only
+    // ever a routing key, never a trust boundary — filtering it out is not
+    // safer than ignoring it.
+    sessionId = typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+  }
   // A session's frames are numbered so a reconnecting page can ask for the
   // ones it missed (see session-frame-log.ts); project-wide frames are not.
-  const data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
+  let data: string;
+  try {
+    data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
+  } catch {
+    return;
+  }
   const frameBytes = Buffer.byteLength(data, 'utf8');
   for (const [ws, client] of clients) {
     if (clientWantsSession(client, sessionId)) sendSerialized(ws, data, frameBytes);
@@ -99,7 +124,8 @@ export function clientWantsSession(
   client: Pick<ConnectedClient, 'sessionId' | 'sessionIds'>,
   sessionId: string | undefined,
 ): boolean {
-  if (!sessionId) return true;
+  if (sessionId === undefined) return true;
+  if (sessionId.trim().length === 0) return false;
   if (client.sessionIds && client.sessionIds.size > 0) return client.sessionIds.has(sessionId);
   if (!client.sessionId) return true;
   return client.sessionId === sessionId;
@@ -109,7 +135,12 @@ export function clientWantsSession(
  * Broadcast unconditionally to all connected clients.
  */
 export function broadcastAll(clients: Map<WebSocket, ConnectedClient>, msg: object): void {
-  const data = JSON.stringify(msg);
+  let data: string;
+  try {
+    data = JSON.stringify(msg);
+  } catch {
+    return;
+  }
   const frameBytes = Buffer.byteLength(data, 'utf8');
   for (const [ws] of clients) {
     sendSerialized(ws, data, frameBytes);
@@ -189,9 +220,18 @@ export function stampDispatchSession<T extends object>(msg: T): T {
   const requestId = operationRequest.getStore();
   if (!sessionId && !requestId) return msg;
   const payload = (msg as { payload?: unknown }).payload;
-  if (payload !== undefined && (typeof payload !== 'object' || payload === null)) return msg;
-  const addSession = sessionId && !(payload && 'sessionId' in payload);
-  const addRequest = requestId && !(payload && 'requestId' in payload);
+  if (
+    payload !== undefined &&
+    (typeof payload !== 'object' || payload === null || Array.isArray(payload))
+  )
+    return msg;
+  const payloadRecord = (payload ?? {}) as Record<string, unknown>;
+  const existingSessionId = payloadRecord['sessionId'];
+  const existingRequestId = payloadRecord['requestId'];
+  const addSession =
+    sessionId && !(typeof existingSessionId === 'string' && existingSessionId.trim().length > 0);
+  const addRequest =
+    requestId && !(typeof existingRequestId === 'string' && existingRequestId.trim().length > 0);
   if (!addSession && !addRequest) return msg;
   return {
     ...msg,
@@ -231,17 +271,21 @@ export function generateAuthToken(): string {
 
 export function resolveAuthToken(explicit?: string | undefined): string {
   const configured =
-    explicit?.trim() ||
+    (typeof explicit === 'string' ? explicit.trim() : undefined) ||
     process.env['WEBUI_TOKEN']?.trim() ||
     process.env['WEBUI_AUTH_TOKEN']?.trim();
   return configured || generateAuthToken();
 }
 
 export function hostForBrowserUrl(bindHost: string): string {
-  if (bindHost === '0.0.0.0') return '127.0.0.1';
-  if (bindHost === '::' || bindHost === '[::]') return '[::1]';
-  if (bindHost.includes(':') && !bindHost.startsWith('[')) return `[${bindHost}]`;
-  return bindHost;
+  if (typeof bindHost !== 'string' || bindHost.trim().length === 0) {
+    throw new Error('Browser URL host must be a non-empty string');
+  }
+  const host = bindHost.trim();
+  if (host === '0.0.0.0') return '127.0.0.1';
+  if (host === '::' || host === '[::]') return '[::1]';
+  if (host.includes(':') && !host.startsWith('[')) return `[${host}]`;
+  return host;
 }
 
 export function buildWebUIAccessUrl(opts: {
@@ -251,9 +295,34 @@ export function buildWebUIAccessUrl(opts: {
   protocol?: 'http' | 'https' | undefined;
   publicUrl?: string | undefined;
 }): string {
-  const protocol = opts.protocol ?? 'http';
-  const base =
-    opts.publicUrl?.trim() || `${protocol}://${hostForBrowserUrl(opts.host)}:${opts.port}`;
+  const publicUrl = opts.publicUrl?.trim();
+  let parsedPublicUrl: URL | undefined;
+  if (publicUrl) {
+    try {
+      parsedPublicUrl = new URL(publicUrl);
+    } catch {
+      // Preserve the legacy malformed-public-URL fallback below.
+    }
+    if (
+      parsedPublicUrl &&
+      parsedPublicUrl.protocol !== 'http:' &&
+      parsedPublicUrl.protocol !== 'https:'
+    ) {
+      throw new Error('WebUI public URL must use http or https');
+    }
+  }
+  const protocol = opts.protocol === undefined ? 'http' : opts.protocol;
+  const host = typeof opts.host === 'string' ? opts.host.trim() : '';
+  if (!publicUrl) {
+    if (protocol !== 'http' && protocol !== 'https') {
+      throw new Error('WebUI access URL protocol must be http or https');
+    }
+    if (!host) throw new Error('WebUI access URL host must be non-empty');
+    if (!Number.isSafeInteger(opts.port) || opts.port < 1 || opts.port > 65_535) {
+      throw new Error('WebUI access URL port must be an integer between 1 and 65535');
+    }
+  }
+  const base = publicUrl || `${protocol}://${hostForBrowserUrl(host)}:${opts.port}`;
   if (!opts.token) return base;
   try {
     const url = new URL(base);
@@ -265,7 +334,10 @@ export function buildWebUIAccessUrl(opts: {
     }
     return rendered;
   } catch {
-    return `${base}${base.includes('?') ? '&' : '?'}token=${encodeURIComponent(opts.token)}`;
+    const hashIndex = base.indexOf('#');
+    const beforeHash = hashIndex >= 0 ? base.slice(0, hashIndex) : base;
+    const hash = hashIndex >= 0 ? base.slice(hashIndex) : '';
+    return `${beforeHash}${beforeHash.includes('?') ? '&' : '?'}token=${encodeURIComponent(opts.token)}${hash}`;
   }
 }
 
@@ -283,7 +355,8 @@ export function messageSessionId(msg: { payload?: unknown }): string | undefined
   const payload = msg.payload;
   return payload &&
     typeof payload === 'object' &&
-    typeof (payload as { sessionId?: unknown }).sessionId === 'string'
+    typeof (payload as { sessionId?: unknown }).sessionId === 'string' &&
+    (payload as { sessionId: string }).sessionId.trim().length > 0
     ? (payload as { sessionId: string }).sessionId
     : undefined;
 }
@@ -317,8 +390,13 @@ export function withRequestId<T extends Record<string, unknown>>(
   const direct = (requestPayload as { requestId?: unknown }).requestId;
   const nested = (requestPayload as { payload?: { requestId?: unknown } | undefined }).payload
     ?.requestId;
-  const requestId = typeof direct === 'string' ? direct : nested;
-  if (typeof requestId === 'string' && requestId.length > 0) {
+  const requestId =
+    typeof direct === 'string' && direct.trim().length > 0
+      ? direct
+      : typeof nested === 'string' && nested.trim().length > 0
+        ? nested
+        : undefined;
+  if (requestId !== undefined) {
     return { ...responsePayload, requestId };
   }
   return responsePayload;

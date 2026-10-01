@@ -135,6 +135,52 @@ describe('H2 accepted-candidate reconciliation sweep', () => {
     ).toBe(true);
   });
 
+  it('releases an accepted candidate whose updatedAt is unparseable', async () => {
+    const store = createStore();
+    const candidate = await store.createCandidate({
+      text: 'H2 corrupt timestamp sentence.',
+      scope: 'project',
+      kind: 'fact',
+    });
+    // A legacy-imported or hand-edited row: `updatedAt` is not a date at all.
+    // Such a candidate can never satisfy the recency test, so folding it in
+    // with `||` skipped it on EVERY sweep and stranded it `accepted` with no
+    // memoryId — permanently unreviewable, which is the exact outcome this
+    // sweep exists to prevent. It must be released like any other orphan.
+    craftAccepted(store, candidate, undefined, 'not-a-real-date');
+    store.close();
+
+    const reopened = createStore();
+    const after = await candidateRow(reopened, candidate.id);
+    expect(after.status).toBe('pending');
+    expect(after.memoryId).toBeUndefined();
+
+    const audit = await reopened.readAudit(100);
+    expect(
+      audit.some(
+        (entry) =>
+          entry.event === 'memory.candidate_accept_reconciled' &&
+          (entry.details as { outcome?: string } | undefined)?.outcome === 'released',
+      ),
+    ).toBe(true);
+  });
+
+  it('releases an accepted candidate whose updatedAt is empty', async () => {
+    const store = createStore();
+    const candidate = await store.createCandidate({
+      text: 'H2 empty timestamp sentence.',
+      scope: 'project',
+      kind: 'fact',
+    });
+    craftAccepted(store, candidate, undefined, '');
+    store.close();
+
+    const reopened = createStore();
+    const after = await candidateRow(reopened, candidate.id);
+    expect(after.status).toBe('pending');
+    expect(after.memoryId).toBeUndefined();
+  });
+
   it('leaves fully annotated accepted candidates alone', async () => {
     const store = createStore();
     const memory = await store.rememberSage({

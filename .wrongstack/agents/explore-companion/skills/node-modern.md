@@ -1,18 +1,18 @@
-## Architecture baselines
+## Evidence discipline
 
-- From the repository root, search each `architecture/*.json` leaf by exact text, such as `rg -n -F 'test-only-exports.json'`; repeat for every leaf and never substitute import/call-graph tools. Pair the search with root `package.json` scripts `check:architecture`, `check:architecture:sync`, and `report:architecture`. Inspect runtime `fs` reads in `scripts/lib/architecture-health.mjs` (`loadArchitectureInputs`) and `scripts/check-*.mjs`, plus sync rewrite flags such as `--write-hotspot-baseline`; use a zero-hit `vitest.scripts.config.ts` search as confirmation that the gate is npm-scripts-only.
+- Never infer file absence from a zero-hit content `grep`; it matches contents, not filenames. Confirm absence with a direct `read` showing ENOENT and an exact-directory `tree` with `truncated=false`, such as `packages/webui-server/tests`.
 
-## WebUI test routing
+## Vitest topology
 
-- Run `cd packages/webui && npx vitest run <file>`; do not use root `vitest run` for WebUI because it excludes `packages/webui/**`.
-- In `packages/webui/vitest.config.ts`, route `tests/server/**` to `server-node` and all other suites, including `tests/components/**`, to `browser-jsdom`; preserve the Node/jsdom environments, globals, 30s timeouts, `setupFiles: tests/setup/i18n-deferred.ts`, and repeated `@wrongstack/*` aliases. Cite the selected Vitest project. Keep server tests in Node because `@wrongstack/governance` uses `node:sqlite`, which Vite’s jsdom bundler rejects on Linux CI. Do not assume inline projects inherit root `resolve`/`ssr`.
+- Derive `packages/webui-server` suite behavior from live `packages/webui-server/vitest.config.ts`: one project, `environment: 'node'`, `include: ['tests/**/*.test.ts']`, and coverage thresholds `/statements 76`, `/functions 69`, `/branches 66`. Do not import the `packages/webui` split (`tests/server/**` → `server-node`, `browser-jsdom`).
+- When tracing `start-http-server*`, distinguish responsibilities: `startHttpServer` is exported by `packages/webui-server/src/server/server-runtime.ts`, while `http-server.ts` owns `allowedHostnames` and consumes it as `trustedHostnames`. Allowed-hostnames coverage is in `packages/webui-server/tests/ws-auth.test.ts` and `packages/webui-server/tests/frontend-static-serve.test.ts`, not `packages/webui-server/tests/http-server.test.ts`.
 
-## Consumer mapping
+## Partial mocks
 
-- Trace `packages/sdd/src/spec-store.ts` through the `@wrongstack/sdd` barrel at `packages/sdd/src/index.ts:43` (`SpecStore`, `SpecStoreOptions`, `SpecIndexEntry`); do not stop at a zero-hit deep `spec-store` search, and search `new SpecStore(` with `path=packages`. Check `packages/webui-server/src/server/specs-ws-handler.ts`, `sdd-wizard-wiring.ts`, and `packages/cli/src/slash-commands/sdd.ts`; exclude type-only `spec-builder.ts` and `sdd-interview-driver.ts` from value-consumer counts.
+- For `vi.mock('<specifier>', importOriginal => ({...spread, overridden}))`, verify the mocked specifier independently from the dynamic-import target `import('../src/server/server-runtime.js')`. A stale mock specifier can silently run the real implementation; in `packages/webui-server/tests/start-http-server-allowed-hostnames.test.ts`, that means binding port 3456 rather than testing option threading.
 
-## Focused probes
+## Root manifest dependencies
 
-- Without `packages/<pkg>/vitest*.ts`, run `npx vitest run packages/tools/tests/<file>.test.ts`; account for `packages/**/tests/**/*.test.{ts,tsx}` and `perFile: false`.
-- Run `packages/cli/tests/hq-dashboard.test.ts` with `pnpm --filter @wrongstack/cli test:hqdash`; save output under `.reports/release-check-matrix/*.log`.
-- Before executing `.temp_files/*.cjs`, inspect writes to `review-reports.jsonl`, `review-findings.jsonl`, and `.review-store-maintenance.json`; avoid repeated `fs.appendFileSync`. Resolve `vite` and `@playwright/test` with `createRequire` against `packages/webui/package.json`.
+- Classify root `package.json` access by role: `scripts/bump-version.mjs` (`collectManifests()`) solely writes root `version`; `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs` read root-manifest content.
+- Establish completeness with a literal `'package.json'` content grep over `scripts/` (`output_mode: content`, `truncated=false`) and zero-hit greps of root `vitest*.ts` and `playwright.config.ts`. Ignore per-package `packageJson` paths such as `scripts/build-package.mjs` and `src/version.ts`.
+- Read workspace membership from `pnpm-workspace.yaml`; do not infer it from a `workspaces` field.

@@ -140,11 +140,11 @@ export async function realpathAllowMissing(p: string): Promise<string> {
 /** Guard: ensure msg is an object with a payload of the expected shape.
  *  Throws TypeError if the shape is wrong so callers catch it explicitly. */
 export function validatedPayload<T>(msg: unknown, label: string): T {
-  if (msg == null || typeof msg !== 'object') {
+  if (msg == null || typeof msg !== 'object' || Array.isArray(msg)) {
     throw new TypeError(`Expected object for ${label}, got ${msg}`);
   }
   const payload = (msg as { payload?: unknown }).payload;
-  if (payload == null || typeof payload !== 'object') {
+  if (payload == null || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new TypeError(`Expected payload object for ${label}, got ${payload}`);
   }
   return payload as T;
@@ -154,5 +154,7 @@ export function withSessionEcho<T extends Record<string, unknown>>(
   payload: T,
   sessionId: string | undefined,
 ): T & { sessionId?: string } {
-  return sessionId ? { ...payload, sessionId } : payload;
+  return typeof sessionId === 'string' && sessionId.trim().length > 0
+    ? { ...payload, sessionId }
+    : payload;
 }

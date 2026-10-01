@@ -14,6 +14,7 @@ import type {
   AgentRecentTool,
   AgentTodoItem,
 } from '../session-catalog/session-registry.js';
+import { countUnifiedDiffLines } from '../utils/unified-diff-count.js';
 
 /** Registry snapshots must stay small even when a tool receives a large patch. */
 const TOOL_TEXT_CAP = 360;
@@ -44,16 +45,8 @@ function lineCount(value: string): number {
 }
 
 function patchDelta(value: string): { addedLines: number; removedLines: number } {
-  let addedLines = 0;
-  let removedLines = 0;
-  const hunkStart = value.indexOf('@@');
-  if (hunkStart === -1) return { addedLines, removedLines };
-  for (const line of value.slice(hunkStart).split(/\r?\n/)) {
-    if (line.startsWith('+++') || line.startsWith('---')) continue;
-    if (line.startsWith('+')) addedLines += 1;
-    else if (line.startsWith('-')) removedLines += 1;
-  }
-  return { addedLines, removedLines };
+  const { added, removed } = countUnifiedDiffLines(value);
+  return { addedLines: added, removedLines: removed };
 }
 
 function compactText(value: string): string {

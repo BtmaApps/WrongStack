@@ -4,7 +4,13 @@ import { formatDiagnostics } from '../formatters/diagnostics.js';
 import { supportsPullDiagnostics } from '../server/capabilities.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 import { pathToUri } from '../utils/uri.js';
-import { requireServer, resolveInputPath, type ToolDeps, toToolError } from './shared.js';
+import {
+  createLineTextReader,
+  requireServer,
+  resolveInputPath,
+  type ToolDeps,
+  toToolError,
+} from './shared.js';
 
 interface DiagnosticsInput {
   path?: string | undefined;
@@ -69,6 +75,7 @@ export function createDiagnosticsTool(deps: ToolDeps): Tool<DiagnosticsInput, st
           severityFilter: deps.cfg.severityFilter,
           maxPerFile: deps.cfg.maxDiagnosticsPerFile,
           maxTotal: input.limit ?? deps.cfg.maxDiagnosticsTotal,
+          lineText: createLineTextReader(deps.tracker),
         });
         return `${output}\nChecked ${files.length} ${input.path ? 'file' : 'tracked files'} via ${[...servers].join(', ')}; severities: ${deps.cfg.severityFilter.join(', ')}.`;
       } catch (err) {

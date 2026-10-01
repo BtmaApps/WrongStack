@@ -389,6 +389,34 @@ describe('subject separator requires whitespace after the colon', () => {
     expect(result?.decision).toBe('block');
   });
 
+  it('validates a commit run with git global options', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const result = await getHook(api)({
+      toolName: 'bash',
+      toolInput: { command: 'git -c user.name=bot commit -m "bad subject"' },
+    });
+    expect(result?.decision).toBe('block');
+  });
+
+  it('accepts a valid CRLF message and still checks its subject', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    await expect(
+      hook({
+        toolName: 'git_autocommit',
+        toolInput: { message: 'feat(api): add retries\r\n\r\nBody text.\r\n' },
+      }),
+    ).resolves.toBeUndefined();
+    const dotted = await hook({
+      toolName: 'git_autocommit',
+      toolInput: { message: 'fix: done.\r\n\r\nBody' },
+    });
+    expect(dotted?.decision).toBe('block');
+    expect(dotted?.reason).toContain('period');
+  });
+
   it('still allows tab after the colon (whitespace, matching semver-bump)', async () => {
     const api = makeApi();
     commitValidatorPlugin.setup(api as never);

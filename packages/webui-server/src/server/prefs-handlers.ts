@@ -133,6 +133,8 @@ function routingPatch(payload: Record<string, unknown>): Record<string, unknown>
   }
   if (Array.isArray(payload['favoriteModels'])) patch['favoriteModels'] = payload['favoriteModels'];
   if (Array.isArray(payload['disabledModels'])) patch['disabledModels'] = payload['disabledModels'];
+  if (Array.isArray(payload['disabledProviders']))
+    patch['disabledProviders'] = payload['disabledProviders'];
   if (typeof payload['favoriteModelsOnly'] === 'boolean') {
     patch['favoriteModelsOnly'] = payload['favoriteModelsOnly'];
   }

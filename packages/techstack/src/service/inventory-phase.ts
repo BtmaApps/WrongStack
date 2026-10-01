@@ -80,6 +80,7 @@ export async function runInventoryPhase(
       );
     } catch {
       // One malformed workspace must not discard other ecosystem inventories.
+      coverage = 'partial';
     }
     coverage = aggregateCoverage(coverage, workspace.coverage);
     completed++;

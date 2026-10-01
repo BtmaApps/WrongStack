@@ -134,6 +134,20 @@ export function computeLineDiff(oldText: string, newText: string): DiffRow[] | n
 }
 
 /**
+ * A `--- ` line immediately followed by a `+++ ` line: the file-header pair.
+ *
+ * Inside a hunk, testing either prefix on its own also caught BODY lines — a
+ * removed `-- SQL comment` is `--- SQL comment`, a removed markdown `---` rule
+ * is `----`, an added `++i;` is `+++i;` — which were then shown as headers (or
+ * dropped, shifting every later line number) instead of as the change. Before
+ * a file section's first `@@` no body line can occur, so a lone header there
+ * (the write tool's new-file diff is just `+++ <path>`) still counts.
+ */
+function isFileHeaderPair(lines: readonly string[], index: number): boolean {
+  return (lines[index] ?? '').startsWith('--- ') && (lines[index + 1] ?? '').startsWith('+++ ');
+}
+
+/**
  * Parse a unified-diff string into renderable rows. Hunk headers (`@@ ... @@`)
  * and file headers (`--- `, `+++ `, `diff `, `index `) become `meta` rows; body
  * lines map to add/del/ctx by their leading char. `\ No newline at end of file`
@@ -141,13 +155,21 @@ export function computeLineDiff(oldText: string, newText: string): DiffRow[] | n
  */
 export function parseUnifiedDiff(patchText: string): DiffRow[] {
   const rows: DiffRow[] = [];
-  const lines = patchText.split('\n');
-  for (const r of lines) {
-    const raw = r.replace(/\r$/, '');
+  const lines = patchText.split('\n').map((r) => r.replace(/\r$/, ''));
+  let sawHunk = false;
+  for (let k = 0; k < lines.length; k++) {
+    const raw = lines[k] ?? '';
+    if (isFileHeaderPair(lines, k)) {
+      rows.push({ kind: 'meta', text: raw }, { kind: 'meta', text: lines[k + 1] ?? '' });
+      k++;
+      sawHunk = false;
+      continue;
+    }
+    if (raw.startsWith('@@')) sawHunk = true;
+    else if (raw.startsWith('diff ')) sawHunk = false;
     if (
+      (!sawHunk && (raw.startsWith('--- ') || raw.startsWith('+++ '))) ||
       raw.startsWith('@@') ||
-      raw.startsWith('--- ') ||
-      raw.startsWith('+++ ') ||
       raw.startsWith('diff ') ||
       raw.startsWith('index ') ||
       raw.startsWith('\\ ')
@@ -252,11 +274,23 @@ export function parseUnifiedDiffPreview(
   const all: DiffLineRow[] = [];
   let oldLn = 0;
   let newLn = 0;
-  for (const raw of diff.split('\n')) {
-    const line = raw.replace(/\r$/, '');
-    if (line.startsWith('+++') || line.startsWith('---')) continue;
-    if (line.startsWith('diff --git') || line.startsWith('index ')) continue;
+  const lines = diff.split('\n').map((raw) => raw.replace(/\r$/, ''));
+  let sawHunk = false;
+  for (let k = 0; k < lines.length; k++) {
+    const line = lines[k] ?? '';
+    if (isFileHeaderPair(lines, k)) {
+      k++;
+      sawHunk = false;
+      continue;
+    }
+    if (!sawHunk && (line.startsWith('+++') || line.startsWith('---'))) continue;
+    if (line.startsWith('diff --git')) {
+      sawHunk = false;
+      continue;
+    }
+    if (line.startsWith('index ')) continue;
     if (line.startsWith('@@')) {
+      sawHunk = true;
       const m = line.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
       if (m) {
         oldLn = Number.parseInt(m[1] ?? '0', 10) || 0;
@@ -356,9 +390,11 @@ export const TOOL_DIFF_BROWSER_SRC: string = [
   '  return rows;',
   '}',
   'function parseUnifiedDiff(patchText){',
-  '  var rows=[], lines=patchText.split("\\n"), k, raw;',
-  '  for(k=0;k<lines.length;k++){ raw=lines[k].replace(/\\r$/,"");',
-  '    if(raw.indexOf("@@")===0||raw.indexOf("--- ")===0||raw.indexOf("+++ ")===0||raw.indexOf("diff ")===0||raw.indexOf("index ")===0||raw.indexOf("\\\\ ")===0){ rows.push({kind:"meta",text:raw}); }',
+  '  var rows=[], lines=patchText.split("\\n").map(function(l){return l.replace(/\\r$/,"");}), k, raw, sawHunk=false;',
+  '  for(k=0;k<lines.length;k++){ raw=lines[k];',
+  '    if(raw.indexOf("--- ")===0&&k+1<lines.length&&lines[k+1].indexOf("+++ ")===0){ rows.push({kind:"meta",text:raw}); rows.push({kind:"meta",text:lines[k+1]}); k++; sawHunk=false; continue; }',
+  '    if(raw.indexOf("@@")===0){ sawHunk=true; } else if(raw.indexOf("diff ")===0){ sawHunk=false; }',
+  '    if((!sawHunk&&(raw.indexOf("--- ")===0||raw.indexOf("+++ ")===0))||raw.indexOf("@@")===0||raw.indexOf("diff ")===0||raw.indexOf("index ")===0||raw.indexOf("\\\\ ")===0){ rows.push({kind:"meta",text:raw}); }',
   '    else if(raw.charAt(0)==="+"){ rows.push({kind:"add",text:raw.slice(1)}); }',
   '    else if(raw.charAt(0)==="-"){ rows.push({kind:"del",text:raw.slice(1)}); }',
   '    else { rows.push({kind:"ctx",text: raw.charAt(0)===" " ? raw.slice(1) : raw}); }',

@@ -136,13 +136,18 @@ export async function fuseWithVectorMemory(
   // syncFromSage). Memories without a sageId stay unreachable from this
   // fusion — they're standalone vector entries, not mirrored SAGE data.
   const sageById = new Map<string, Sage>();
-  for (const memory of lexical) sageById.set(memory.id, memory);
+  const uniqueLexical: Sage[] = [];
+  for (const memory of lexical) {
+    if (sageById.has(memory.id)) continue;
+    sageById.set(memory.id, memory);
+    uniqueLexical.push(memory);
+  }
 
   // Build the lexical-side rank list.
-  const lexicalRanked: LexicalCandidate[] = lexical.map((memory, index) => ({
+  const lexicalRanked: LexicalCandidate[] = uniqueLexical.map((memory, index) => ({
     memory,
-    rankScore: lexicalRankScore(index, lexical.length),
-    lexicalScore: lexicalRankScore(index, lexical.length),
+    rankScore: lexicalRankScore(index, uniqueLexical.length),
+    lexicalScore: lexicalRankScore(index, uniqueLexical.length),
   }));
 
   // Build the vector-side rank list, only including hits that map to a
@@ -151,15 +156,22 @@ export async function fuseWithVectorMemory(
   // Deduplicate by sageId so each SAGE memory has exactly one vector rank
   // (its highest-scoring hit), preventing duplicate RRF score accumulation.
   const vectorRanked: Array<{ memory: Sage; vectorScore: number }> = [];
-  const seenVectorSageIds = new Set<string>();
+  const vectorIndexBySageId = new Map<string, number>();
   for (let i = 0; i < vectorHits.length; i++) {
     const hit = vectorHits[i]!;
     const sageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
-    if (typeof sageId !== 'string' || seenVectorSageIds.has(sageId)) continue;
+    if (typeof sageId !== 'string') continue;
     const memory = sageById.get(sageId);
     if (!memory) continue;
-    seenVectorSageIds.add(sageId);
-    vectorRanked.push({ memory, vectorScore: hit.score });
+    const vectorScore = normalizeScore(hit.score);
+    const existingIndex = vectorIndexBySageId.get(sageId);
+    if (existingIndex !== undefined) {
+      const existing = vectorRanked[existingIndex]!;
+      existing.vectorScore = Math.max(existing.vectorScore, vectorScore);
+      continue;
+    }
+    vectorIndexBySageId.set(sageId, vectorRanked.length);
+    vectorRanked.push({ memory, vectorScore });
   }
 
   // RRF over both channels. RRF (k + rank) is order-agnostic of score
@@ -215,7 +227,7 @@ export function asVectorRecallProvider(store: VectorMemoryStore): VectorRecallPr
         id: h.entry.id,
         score: h.score,
         text: h.entry.text,
-        ...(h.entry.summary ? { summary: h.entry.summary } : {}),
+        ...(h.entry.summary !== undefined ? { summary: h.entry.summary } : {}),
         tags: h.entry.tags,
         ...(h.entry.metadata ? { metadata: h.entry.metadata } : {}),
       }));
@@ -228,6 +240,11 @@ function clamp01(value: number): number {
   if (value < 0) return 0;
   if (value > 1) return 1;
   return value;
+}
+
+function normalizeScore(value: number): number {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(1, value));
 }
 
 // Re-export so callers can `import { vectorRankScore }` for tests.

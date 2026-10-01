@@ -89,6 +89,17 @@ export interface CriticalPathResult {
   bottleneckTasks: string[];
 }
 
+/**
+ * Rounded completion percentage that reads 100 only when every task is done.
+ * Plain rounding reported 199/200 as 100%, and callers treat `=== 100` as
+ * "all tasks completed" (the SDD executing phase announces it to the model).
+ */
+export function completionPercent(completed: number, total: number): number {
+  if (total <= 0) return 0;
+  if (completed >= total) return 100;
+  return Math.min(99, Math.round((completed / total) * 100));
+}
+
 export function computeTaskProgress(graph: TaskGraph): TaskProgress {
   let completed = 0;
   let pending = 0;
@@ -132,7 +143,7 @@ export function computeTaskProgress(graph: TaskGraph): TaskProgress {
     failed,
     review,
     completed,
-    percentComplete: total > 0 ? Math.round((completed / total) * 100) : 0,
+    percentComplete: completionPercent(completed, total),
     estimatedHours,
     actualHours,
   };

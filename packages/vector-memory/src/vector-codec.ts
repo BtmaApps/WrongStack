@@ -8,7 +8,7 @@
  */
 
 export function encodeVector(vec: Float32Array): Buffer {
-  return Buffer.from(vec.buffer, vec.byteOffset, vec.byteLength);
+  return Buffer.from(new Uint8Array(vec.buffer, vec.byteOffset, vec.byteLength));
 }
 
 export function decodeVector(buf: Buffer | Uint8Array): Float32Array {

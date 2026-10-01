@@ -126,6 +126,13 @@ describe('treeFingerprint', () => {
     expect(await treeFingerprint(dir)).not.toBe(edited);
   });
 
+  it('moves when an untracked file is edited, not only when one appears', async () => {
+    await fs.writeFile(path.join(dir, 'new.ts'), 'export const x = 1;\n');
+    const before = await treeFingerprint(dir);
+    await fs.writeFile(path.join(dir, 'new.ts'), 'export const x = 2;\n');
+    expect(await treeFingerprint(dir)).not.toBe(before);
+  });
+
   it('drives the plugin hook end to end: pass, then fail on the same tree', async () => {
     const plugin = (await import('../src/test-flake-detector/index.js')).default;
     const registerHook = (() => {

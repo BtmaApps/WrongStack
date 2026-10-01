@@ -52,12 +52,18 @@ export function renderTaskGraph(
 
   // Build adjacency for display
   const childrenMap = new Map<string, string[]>();
+  const dependentsMap = new Map<string, string[]>();
   for (const edge of graph.edges) {
     if (edge.type === 'depends_on') {
       // edge.from depends on edge.to → edge.to is a blocker
       const deps = childrenMap.get(edge.from) ?? [];
       deps.push(edge.to);
       childrenMap.set(edge.from, deps);
+      if (graph.nodes.has(edge.from)) {
+        const dependents = dependentsMap.get(edge.to) ?? [];
+        dependents.push(edge.from);
+        dependentsMap.set(edge.to, dependents);
+      }
     }
   }
 
@@ -75,13 +81,13 @@ export function renderTaskGraph(
         });
 
   for (const rootId of startNodes) {
-    renderNode(graph, rootId, lines, rendered, childrenMap, compact, '');
+    renderNode(graph, rootId, lines, rendered, childrenMap, dependentsMap, compact, '');
   }
 
   // Render any orphan nodes
   for (const [id] of graph.nodes) {
     if (!rendered.has(id)) {
-      renderNode(graph, id, lines, rendered, childrenMap, compact, '');
+      renderNode(graph, id, lines, rendered, childrenMap, dependentsMap, compact, '');
     }
   }
 
@@ -98,6 +104,7 @@ function renderNode(
   lines: string[],
   rendered: Set<string>,
   childrenMap: Map<string, string[]>,
+  dependentsMap: Map<string, string[]>,
   compact: boolean,
   prefix: string,
 ): void {
@@ -127,13 +134,10 @@ function renderNode(
   }
 
   // Render nodes that depend on this one
-  const dependents = graph.edges
-    .filter((e) => e.type === 'depends_on' && e.to === nodeId)
-    .map((e) => e.from)
-    .filter((id) => graph.nodes.has(id));
+  const dependents = dependentsMap.get(nodeId) ?? [];
 
   for (const depId of dependents) {
-    renderNode(graph, depId, lines, rendered, childrenMap, compact, prefix + '  ');
+    renderNode(graph, depId, lines, rendered, childrenMap, dependentsMap, compact, prefix + '  ');
   }
 }
 

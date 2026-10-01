@@ -82,6 +82,7 @@ const SHARED_CORPUS: Array<[string, string]> = [
   ['env quoted value', 'API_KEY="7f3a9c1e5b8d2f4a6c0e9b7d3a5f8c2e"'],
   ['shell export', 'export DATABASE_PASSWORD=s3cr3tp4ssw0rd9f8a7b6c'],
   ['env colon form', 'SERVICE_SECRET: 9f8a7b6c5d4e3f2a1b0c9d8e7f6a'],
+  ['env key with a digit', 'R2_SECRET_ACCESS_KEY=9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c'],
 ];
 
 function pluginDetects(text: string): boolean {

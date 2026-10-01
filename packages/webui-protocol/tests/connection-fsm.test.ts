@@ -271,3 +271,35 @@ describe('enqueueBounded', () => {
     expect(enqueueBounded([1, 2], 3, 1.9)).toEqual({ queue: [3], dropped: 1 });
   });
 });
+
+describe('reconnect upper bounds', () => {
+  for (const [jitterRatio, sample] of [
+    [0.5, 1],
+    [1, 1],
+    [0.5, 0.75],
+    [1, 0.75],
+  ] as const) {
+    it(`keeps the final jittered delay under maxBackoffMs (${jitterRatio}, ${sample})`, () => {
+      const config = { ...DEFAULT_SURFACE_CONNECTION_CONFIG, maxBackoffMs: 5000, jitterRatio };
+      const state = { ...createSurfaceConnectionState(), reconnectAttempt: 5 };
+      const result = planConnectionReconnect(state, config, 0, () => sample);
+      expect(result.plan?.delayMs).toBeLessThanOrEqual(5000);
+      expect(result.plan?.retryAt).toBeLessThanOrEqual(5000);
+    });
+  }
+
+  for (const reconnectAttempt of [1024, 2048]) {
+    it(`keeps zero backoff finite during unlimited reconnect attempt ${reconnectAttempt}`, () => {
+      const config = {
+        ...DEFAULT_SURFACE_CONNECTION_CONFIG,
+        initialBackoffMs: 0,
+        maxReconnectAttempts: Infinity,
+      };
+      const state = { ...createSurfaceConnectionState(), reconnectAttempt };
+      expect(planConnectionReconnect(state, config, 1000, () => 0.5).plan).toMatchObject({
+        delayMs: 0,
+        retryAt: 1000,
+      });
+    });
+  }
+});

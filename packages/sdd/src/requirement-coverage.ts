@@ -81,14 +81,16 @@ export function assertTaskGraphExecutionIntegrity(graph: TaskGraph): void {
   const outgoing = new Map<string, string[]>();
   for (const edge of dependencies) {
     indegree.set(edge.to, indegree.get(edge.to)! + 1);
-    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+    const dependents = outgoing.get(edge.from);
+    if (dependents) dependents.push(edge.to);
+    else outgoing.set(edge.from, [edge.to]);
   }
   const ready = Array.from(indegree.entries())
     .filter(([, degree]) => degree === 0)
     .map(([id]) => id);
   let visited = 0;
-  while (ready.length > 0) {
-    const id = ready.shift()!;
+  for (let cursor = 0; cursor < ready.length; cursor++) {
+    const id = ready[cursor]!;
     visited += 1;
     for (const dependent of outgoing.get(id) ?? []) {
       const next = indegree.get(dependent)! - 1;

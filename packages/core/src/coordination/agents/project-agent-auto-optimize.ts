@@ -176,6 +176,14 @@ const FAILURE_BACKOFF_MAX_MS = 6 * 60 * 60_000;
 export class LearningOptimizationScheduler {
   private readonly pending = new Map<string, NodeJS.Timeout>();
   private readonly failures = new Map<string, { until: number; backoffMs: number }>();
+  /**
+   * Roles with a pass queued or running. Eligibility is evaluated before a pass
+   * is enqueued but the cooldown is only stamped when it finishes, so without
+   * this a capture debounce firing during a slow pass (or the start-up sweep)
+   * saw the role as still eligible and queued a second full pass right behind
+   * the first — another model call over a buffer that pass had just pruned.
+   */
+  private readonly queued = new Set<string>();
   private running: Promise<void> = Promise.resolve();
   private inFlight: string | null = null;
   private disposed = false;
@@ -243,7 +251,7 @@ export class LearningOptimizationScheduler {
   }
 
   private async runIfEligible(role: string, trigger?: 'manual-sweep'): Promise<void> {
-    if (this.disposed) return;
+    if (this.disposed || this.queued.has(role)) return;
     const backoff = this.failures.get(role);
     if (backoff && this.now < backoff.until) return;
     let decision: AutoOptimizeDecision;
@@ -258,7 +266,10 @@ export class LearningOptimizationScheduler {
 
   /** Serialize passes: one optimization at a time, process-wide. */
   private enqueue(role: string, trigger: AutoOptimizeEvent['trigger']): Promise<void> {
-    const next = this.running.then(() => this.execute(role, trigger));
+    this.queued.add(role);
+    const next = this.running
+      .then(() => this.execute(role, trigger))
+      .finally(() => this.queued.delete(role));
     // Keep the chain alive even if a link rejects — `execute` never throws, but
     // a future caller adding one must not wedge the queue.
     this.running = next.catch(() => {});

@@ -54,6 +54,8 @@ export interface ModelsDevModel {
   release_date?: string | undefined;
   last_updated?: string | undefined;
   open_weights?: boolean | undefined;
+  /** Upstream lifecycle marker: `deprecated` / `beta` (absent = generally available). */
+  status?: string | undefined;
   modalities?:
     | {
         input?: string[] | undefined;

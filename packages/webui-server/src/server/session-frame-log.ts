@@ -60,6 +60,23 @@ function createSessionFrameLog(): SessionFrameLog {
     epoch: randomBytes(8).toString('hex'),
 
     sequence(sessionId, msg) {
+      if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+        throw new Error('Session frame log requires a non-empty session id');
+      }
+      if (typeof msg !== 'object' || msg === null || Array.isArray(msg)) {
+        throw new Error('Session frame log requires an object message');
+      }
+      const seq = (issued.get(sessionId) ?? 0) + 1;
+      const { seq: _callerSeq, stream: _callerStream, ...frame } = msg as Record<string, unknown>;
+      const payload = (frame as { payload?: { sessionId?: unknown } }).payload;
+      const named = payload && typeof payload === 'object' ? payload.sessionId : undefined;
+      const data = JSON.stringify(
+        named === sessionId ? { ...frame, seq } : { ...frame, seq, stream: sessionId },
+      );
+      const bytes = Buffer.byteLength(data, 'utf8');
+      issued.set(sessionId, seq);
+      if (bytes > MAX_BYTES) return data;
+
       let log = logs.get(sessionId);
       if (log) logs.delete(sessionId);
       else log = { frames: [], bytes: 0 };
@@ -68,15 +85,6 @@ function createSessionFrameLog(): SessionFrameLog {
         const oldest = logs.keys().next().value;
         if (oldest !== undefined) logs.delete(oldest);
       }
-
-      const seq = (issued.get(sessionId) ?? 0) + 1;
-      issued.set(sessionId, seq);
-      const payload = (msg as { payload?: { sessionId?: unknown } }).payload;
-      const named = payload && typeof payload === 'object' ? payload.sessionId : undefined;
-      const data = JSON.stringify(
-        named === sessionId ? { ...msg, seq } : { ...msg, seq, stream: sessionId },
-      );
-      const bytes = Buffer.byteLength(data, 'utf8');
       log.frames.push({ seq, data, bytes });
       log.bytes += bytes;
       while (log.frames.length > MAX_FRAMES || (log.bytes > MAX_BYTES && log.frames.length > 1)) {
@@ -94,7 +102,8 @@ function createSessionFrameLog(): SessionFrameLog {
       const log = logs.get(sessionId);
       if (!log) return null;
       const oldest = log.frames[0]?.seq;
-      if (oldest === undefined || oldest > afterSeq + 1) return null;
+      const newest = log.frames[log.frames.length - 1]?.seq;
+      if (oldest === undefined || oldest > afterSeq + 1 || newest !== last) return null;
       return log.frames.filter((f) => f.seq > afterSeq).map((f) => f.data);
     },
   };

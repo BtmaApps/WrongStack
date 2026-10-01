@@ -293,11 +293,16 @@ const plugin: Plugin = {
           return typeof v === 'string' ? v : (safeJsonStringify(v) ?? undefined);
         };
         const rawTodos = raw['todos'];
+        // Core emits `subagent.done` as `{sessionId, summary, ok}`. Without
+        // these fallbacks a failed delegate was announced as "done", and two
+        // delegates with the same summary hashed alike, dropping the second.
         const p: HandoffPayload = {
-          agentId: asString(raw['agentId']),
+          agentId: asString(raw['agentId']) ?? asString(raw['sessionId']),
           agentName: asString(raw['agentName']),
           task: asString(raw['task']),
-          status: asString(raw['status']),
+          status:
+            asString(raw['status']) ??
+            (raw['ok'] === false ? 'failed' : raw['ok'] === true ? 'done' : undefined),
           summary: asString(raw['summary']),
           result: raw['result'] ?? raw['output'] ?? raw['data'] ?? raw['toolResult'],
           todos: Array.isArray(rawTodos)

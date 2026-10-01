@@ -128,7 +128,10 @@ export function subscribeVectorMemoryToSage(
     if (disposed || !memory) return;
     // Session-scoped memories stay private — never mirror them. This
     // matches `createSageSurfaceSyncSource`'s privacy contract.
-    if (memory.scope === 'session') return;
+    if (memory.scope === 'session') {
+      await forgetMirror(memoryId);
+      return;
+    }
     // Only recallable memories belong in the semantic corpus. An archived,
     // superseded or contradicted memory used to be re-embedded on every
     // status change and then kept forever (the sweep only dropped deleted
@@ -186,12 +189,12 @@ export function subscribeVectorMemoryToSage(
   // mirror is a single `events.offPattern` call.
   const offAccepted = events.onPattern('memory.accepted', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
-    if (typeof memoryId !== 'string') return;
+    if (typeof memoryId !== 'string' || memoryId.trim().length === 0) return;
     serialized(memoryId, () => mirror(memoryId));
   });
   const offRecovered = events.onPattern('memory.recovered', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
-    if (typeof memoryId !== 'string') return;
+    if (typeof memoryId !== 'string' || memoryId.trim().length === 0) return;
     serialized(memoryId, () => mirror(memoryId));
   });
   // A re-remember that merges into an existing row can replace its text,
@@ -199,12 +202,12 @@ export function subscribeVectorMemoryToSage(
   // `memory.accepted` or `memory.updated`.
   const offMerged = events.onPattern('memory.merged', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
-    if (typeof memoryId !== 'string') return;
+    if (typeof memoryId !== 'string' || memoryId.trim().length === 0) return;
     serialized(memoryId, () => mirror(memoryId));
   });
   const offUpdated = events.onPattern('memory.updated', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
-    if (typeof memoryId !== 'string') return;
+    if (typeof memoryId !== 'string' || memoryId.trim().length === 0) return;
     // A status patch to 'deleted' is the SAGE-side tombstone; the
     // companion `memory.deleted` event fires the actual delete. Skip
     // updates whose only change is the status field so we don't race
@@ -215,7 +218,7 @@ export function subscribeVectorMemoryToSage(
   });
   const offDeleted = events.onPattern('memory.deleted', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
-    if (typeof memoryId !== 'string') return;
+    if (typeof memoryId !== 'string' || memoryId.trim().length === 0) return;
     serialized(memoryId, () => forgetMirror(memoryId));
   });
 
@@ -278,7 +281,11 @@ export async function forgetStaleSageMirrors(
   // is also the only correct primitive here: the sweep deletes as it walks,
   // and under OFFSET every deletion shifts the remaining rows left so the
   // next page skips exactly as many entries as were removed.
-  const PAGE = Math.max(1, options?.pageSize ?? 500);
+  const configuredPageSize = options?.pageSize ?? 500;
+  const PAGE =
+    Number.isFinite(configuredPageSize) && configuredPageSize >= 1
+      ? Math.floor(configuredPageSize)
+      : 500;
   let after: { updatedAt: string; id: string } | undefined;
   for (;;) {
     const page = store.list(after ? { limit: PAGE, after } : { limit: PAGE });
@@ -288,7 +295,7 @@ export async function forgetStaleSageMirrors(
     for (const entry of page) {
       scanned++;
       const sageId = (entry.metadata as { sageId?: unknown } | undefined)?.sageId;
-      if (typeof sageId !== 'string') continue;
+      if (typeof sageId !== 'string' || sageId.trim().length === 0) continue;
       try {
         const memory = await surface.getSage(sageId);
         // `getSage` returns the row for every status (tombstones stay in
@@ -355,12 +362,17 @@ export async function sweepStaleSageMirrors(
   opts: SweepStaleSageMirrorsOptions,
 ): Promise<SweepStaleSageMirrorsResult> {
   const markerPath = path.join(opts.store.directory, SAGE_SWEEP_MARKER_FILENAME);
-  const interval = opts.minIntervalMs ?? DEFAULT_SWEEP_INTERVAL_MS;
+  const configuredInterval = opts.minIntervalMs ?? DEFAULT_SWEEP_INTERVAL_MS;
+  const interval =
+    Number.isFinite(configuredInterval) && configuredInterval >= 0
+      ? configuredInterval
+      : DEFAULT_SWEEP_INTERVAL_MS;
   if (!opts.force) {
     try {
       const raw = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { at?: unknown };
       const at = typeof raw.at === 'string' ? Date.parse(raw.at) : Number.NaN;
-      if (Number.isFinite(at) && Date.now() - at < interval) {
+      const ageMs = Date.now() - at;
+      if (Number.isFinite(at) && ageMs >= 0 && ageMs < interval) {
         return { swept: false, reason: 'throttled' };
       }
     } catch {
@@ -370,8 +382,9 @@ export async function sweepStaleSageMirrors(
   // Claim the slot BEFORE the walk, not after. The sweep can take a while on
   // a large corpus, and a second host booting in that window must not start
   // its own concurrent pass over the same rows.
+  const claimAt = new Date().toISOString();
   try {
-    fs.writeFileSync(markerPath, JSON.stringify({ at: new Date().toISOString() }), 'utf8');
+    fs.writeFileSync(markerPath, JSON.stringify({ at: claimAt }), 'utf8');
   } catch {
     // A read-only data directory disables the throttle, not the sweep.
   }
@@ -382,6 +395,12 @@ export async function sweepStaleSageMirrors(
     );
     return { swept: true, ...result };
   } catch (err) {
+    try {
+      const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { at?: unknown };
+      if (marker.at === claimAt) fs.unlinkSync(markerPath);
+    } catch {
+      // Missing, corrupt, or replaced marker: another process owns the path.
+    }
     opts.logger?.warn?.(`vector-memory stale-mirror sweep failed: ${errMsg(err)}`);
     return { swept: false, reason: errMsg(err) };
   }

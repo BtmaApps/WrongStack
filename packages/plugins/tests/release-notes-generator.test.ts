@@ -134,6 +134,17 @@ describe('generate_release_notes tool', () => {
     expect(result.notes).toContain('[auth]');
   });
 
+  it('marks a `type!:` commit as breaking instead of dropping the marker', async () => {
+    mockGitOutput = ['aaa111\tfeat(api)!: drop the v1 routes', 'bbb222\tfix: keep v2'].join('\n');
+    const api = makeApi();
+    plugin.setup(api as never);
+    const result = (await getTool(api, 'generate_release_notes')({ from: 'v1', to: 'HEAD' })) as {
+      notes: string;
+    };
+    expect(result.notes).toContain('- aaa111 [api] **BREAKING:** drop the v1 routes');
+    expect(result.notes).toContain('- bbb222 keep v2');
+  });
+
   it('puts non-conventional commits in Uncategorized', async () => {
     mockGitOutput = ['aaa111\twip: random thing', 'bbb222\tfeat: real feature'].join('\n');
 

@@ -6,6 +6,7 @@ import { supportsDefinition } from '../server/capabilities.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 import { pathToUri } from '../utils/uri.js';
 import {
+  createLineTextReader,
   readDocumentContent,
   requireServer,
   resolveInputPath,
@@ -56,7 +57,7 @@ export function createDefinitionTool(deps: ToolDeps): Tool<PositionInput, string
           LSP_CONSTANTS.TOOL_TIMEOUT_MS,
           signal,
         );
-        return formatLocations(locs, ctx.cwd);
+        return formatLocations(locs, ctx.cwd, undefined, createLineTextReader(deps.tracker));
       } catch (err) {
         throw toToolError(err);
       }

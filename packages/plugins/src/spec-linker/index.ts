@@ -209,17 +209,34 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Lines inside fenced code blocks, by CommonMark's rule: a fence is 3+
+ * backticks OR tildes, and only a run of the SAME character at least as long
+ * closes it. Recognising ``` alone left `~~~` blocks unfenced — auto-fix then
+ * rewrote plugin names inside code samples into links — and let a shorter
+ * inner ``` close a ```` block early.
+ */
 function mapMarkdownFences(lines: string[]): boolean[] {
   const fenced = new Array<boolean>(lines.length).fill(false);
-  let inFence = false;
+  let open: { char: string; length: number } | null = null;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!;
-    if (/^\s*```/.test(line)) {
-      fenced[i] = true;
-      inFence = !inFence;
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(lines[i]!)?.[1];
+    if (open === null) {
+      if (marker) {
+        open = { char: marker[0]!, length: marker.length };
+        fenced[i] = true;
+      }
       continue;
     }
-    fenced[i] = inFence;
+    fenced[i] = true;
+    if (
+      marker &&
+      marker[0] === open.char &&
+      marker.length >= open.length &&
+      lines[i]!.trim() === marker
+    ) {
+      open = null;
+    }
   }
   return fenced;
 }

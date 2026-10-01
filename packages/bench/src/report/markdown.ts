@@ -210,7 +210,7 @@ function renderInsights(results: TaskResult[]): string[] {
       `Unanimous pass: ${insights.unanimousPass.length}. Unanimous fail: ${insights.unanimousFail.length}.`,
   );
   lines.push('');
-  lines.push(`| Task | ${insights.cellLabels.join(' | ')} |`);
+  lines.push(`| Task | ${insights.cellLabels.map(markdownCell).join(' | ')} |`);
   lines.push(`|---|${insights.cellLabels.map(() => '---').join('|')}|`);
   for (const row of insights.disagreements) {
     const cells = insights.cellLabels.map((label) => {

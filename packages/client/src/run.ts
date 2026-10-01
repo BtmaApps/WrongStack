@@ -109,18 +109,36 @@ export class Run implements AsyncIterable<RunEvent> {
 
   /** Answer a `tool.confirm_needed` this run raised. */
   confirm(id: string, decision: ConfirmDecision): void {
-    this.hooks.confirm(id, decision);
+    if (!this.settled) this.hooks.confirm(id, decision);
   }
 
   [Symbol.asyncIterator](): AsyncIterator<RunEvent> {
+    let returned = false;
+    const pending = new Set<(next: IteratorResult<RunEvent>) => void>();
     return {
       next: () => {
+        if (returned) return Promise.resolve({ value: undefined, done: true });
         const event = this.queue.shift();
         if (event) return Promise.resolve({ value: event, done: false });
         if (this.settled) return Promise.resolve({ value: undefined, done: true });
-        return new Promise((resolve) => this.waiters.push(resolve));
+        return new Promise((resolve) => {
+          const waiter = (next: IteratorResult<RunEvent>) => {
+            pending.delete(waiter);
+            resolve(next);
+          };
+          pending.add(waiter);
+          this.waiters.push(waiter);
+        });
       },
-      return: () => Promise.resolve({ value: undefined, done: true }),
+      return: () => {
+        returned = true;
+        for (const waiter of [...pending]) {
+          const index = this.waiters.indexOf(waiter);
+          if (index >= 0) this.waiters.splice(index, 1);
+          waiter({ value: undefined, done: true });
+        }
+        return Promise.resolve({ value: undefined, done: true });
+      },
     };
   }
 

@@ -422,7 +422,12 @@ export async function* parseOpenAIResponsesStream(
           const s = ensureStart();
           if (s) yield s;
         }
-        stopReason = mapResponsesStatus(resp?.status, sawToolUse);
+        stopReason = mapResponsesStatus(
+          resp?.status,
+          sawToolUse,
+          (resp as { incomplete_details?: { reason?: unknown } } | undefined)?.incomplete_details
+            ?.reason,
+        );
         sawTerminal = true;
         break;
       }
@@ -574,8 +579,16 @@ function nonNegative(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
-function mapResponsesStatus(status: string | undefined, sawToolUse: boolean): StopReason {
-  if (status === 'incomplete') return 'max_tokens';
+function mapResponsesStatus(
+  status: string | undefined,
+  sawToolUse: boolean,
+  incompleteReason?: unknown,
+): StopReason {
+  // `incomplete` is a filter block as well as a token cut-off; chat
+  // completions' `content_filter` already maps to `refusal`.
+  if (status === 'incomplete') {
+    return incompleteReason === 'content_filter' ? 'refusal' : 'max_tokens';
+  }
   // 'completed' (and anything else benign) → tool_use when a call was emitted.
   return sawToolUse ? 'tool_use' : 'end_turn';
 }

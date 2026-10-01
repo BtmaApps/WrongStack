@@ -31,18 +31,27 @@ function roundup3(input: number): number {
 }
 
 /** Parse `KEY:VALUE/KEY:VALUE/...` into an upper-cased metric map. */
-function parseMetrics(vector: string): Map<string, string> {
+function parseMetrics(
+  vector: string,
+  allowedHeaders: readonly string[],
+): Map<string, string> | undefined {
+  const parts = vector.split('/');
+  const header = parts.shift()?.toUpperCase();
+  if (header === undefined || !allowedHeaders.includes(header)) return undefined;
   const metrics = new Map<string, string>();
-  for (const part of vector.split('/')) {
+  for (const part of parts) {
     const separator = part.indexOf(':');
     if (separator <= 0) continue;
-    metrics.set(part.slice(0, separator).toUpperCase(), part.slice(separator + 1).toUpperCase());
+    const key = part.slice(0, separator).toUpperCase();
+    if (metrics.has(key)) return undefined;
+    metrics.set(key, part.slice(separator + 1).toUpperCase());
   }
   return metrics;
 }
 
 function cvss31(vector: string): number | undefined {
-  const metrics = parseMetrics(vector);
+  const metrics = parseMetrics(vector, ['CVSS:3.0', 'CVSS:3.1']);
+  if (!metrics) return undefined;
   const av = AV3[metrics.get('AV') ?? ''];
   const ac = AC3[metrics.get('AC') ?? ''];
   const scope = metrics.get('S');
@@ -72,7 +81,8 @@ function cvss31(vector: string): number | undefined {
 }
 
 function cvss20(vector: string): number | undefined {
-  const metrics = parseMetrics(vector);
+  const metrics = parseMetrics(vector, ['CVSS:2.0']);
+  if (!metrics) return undefined;
   const av = AV2[metrics.get('AV') ?? ''];
   const ac = AC2[metrics.get('AC') ?? ''];
   const au = AU2[metrics.get('AU') ?? ''];

@@ -22,6 +22,7 @@ export type SettingsEntryKind =
   | 'segmented' // radio-group style choice (Autonomy modes)
   | 'toggle' // on/off switch (YOLO, Model reasoning, Chime, Confirm exit, Refine)
   | 'select' // single-select dropdown (Agent mode)
+  | 'text' // free-text field (Telegram notification chat)
   | 'palette'; // colour palette swatch row (group of buttons)
 
 export interface SettingsEntryBase {
@@ -45,7 +46,7 @@ export interface SettingsGroup {
   title: string;
 }
 
-export type SettingsGroupId = 'autonomy' | 'refine' | 'mode' | 'palette' | 'session';
+export type SettingsGroupId = 'autonomy' | 'refine' | 'mode' | 'palette' | 'session' | 'telegram';
 
 /** Display order — keep stable so the panel never reshuffles rows. */
 export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
@@ -54,6 +55,7 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
   { id: 'mode', title: 'Mode' },
   { id: 'palette', title: 'Color Palette' },
   { id: 'session', title: 'Session' },
+  { id: 'telegram', title: 'Telegram' },
 ];
 
 export const SETTINGS_CATALOG: readonly SettingsEntry[] = [
@@ -185,6 +187,23 @@ export const SETTINGS_CATALOG: readonly SettingsEntry[] = [
     hint: 'Ask before quitting with a run in flight.',
     keywords: ['exit', 'quit', 'confirm', 'safety'],
     kind: 'toggle',
+  },
+  // ── Telegram ────────────────────────────────────────────────────────
+  {
+    id: 'telegram.pollInterval',
+    group: 'telegram',
+    label: 'Polling interval',
+    hint: 'Seconds between Telegram polls (1–60). Lower is more responsive but makes more API calls.',
+    keywords: ['telegram', 'poll', 'interval', 'seconds', 'bot'],
+    kind: 'select',
+  },
+  {
+    id: 'telegram.chatId',
+    group: 'telegram',
+    label: 'Notification chat',
+    hint: 'Default chat ID for notifications. A positive ID pairs your private chat with the bot; group IDs are refused unless allowGroupChats is set in the config. Leave empty to clear.',
+    keywords: ['telegram', 'chat', 'id', 'notify', 'notification', 'pair'],
+    kind: 'text',
   },
 ] as const;
 

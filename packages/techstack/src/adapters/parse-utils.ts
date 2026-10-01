@@ -14,7 +14,7 @@ export function stripInlineComment(line: string, marker = '#'): string {
       escaped = false;
       continue;
     }
-    if (character === '\\' && quote !== undefined) {
+    if (character === '\\' && quote === '"') {
       escaped = true;
       continue;
     }
@@ -43,18 +43,43 @@ export function parseTomlKeyValue(line: string): TomlKeyValue | undefined {
 
 export function parseXmlAttributes(source: string): ReadonlyMap<string, string> {
   const attributes = new Map<string, string>();
-  const regex = /([A-Za-z_:][\w:.-]*)\s*=\s*(["'])(.*?)\2/g;
+  const regex = /([A-Za-z_:][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/g;
   for (const match of source.matchAll(regex)) {
     const key = match[1];
     const value = match[3];
-    if (key !== undefined && value !== undefined) attributes.set(key, value);
+    if (key !== undefined && value !== undefined) attributes.set(key, decodeXmlEntities(value));
   }
   return attributes;
 }
 
 export function xmlTagValue(source: string, tag: string): string | undefined {
   const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`<${escaped}(?:\\s[^>]*)?>\\s*([^<]+?)\\s*</${escaped}>`, 'i')
+  const value = new RegExp(`<${escaped}(?:\\s[^>]*)?>\\s*([^<]+?)\\s*</${escaped}>`, 'i')
     .exec(source)?.[1]
     ?.trim();
+  return value === undefined ? undefined : decodeXmlEntities(value);
+}
+
+function decodeXmlEntities(value: string): string {
+  return value.replace(
+    /&(?:#(\d+)|#x([0-9a-f]+)|amp|lt|gt|quot|apos);/gi,
+    (entity, decimal: string | undefined, hexadecimal: string | undefined) => {
+      if (decimal !== undefined || hexadecimal !== undefined) {
+        const codePoint = Number.parseInt(decimal ?? hexadecimal ?? '', decimal ? 10 : 16);
+        try {
+          return String.fromCodePoint(codePoint);
+        } catch {
+          return entity;
+        }
+      }
+      const named: Record<string, string> = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&apos;': "'",
+      };
+      return named[entity.toLowerCase()] ?? entity;
+    },
+  );
 }

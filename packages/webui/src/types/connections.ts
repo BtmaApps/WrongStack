@@ -15,6 +15,10 @@ export interface ConnectionHealthService {
   required: boolean;
   mode: string;
   detail: string;
+  /** Release the daemon reported on its last health ping; absent for legacy daemons. */
+  daemonVersion?: string;
+  /** True when the daemon's release differs from the running client's. */
+  versionMismatch?: boolean;
   ownerPid?: number | undefined;
   endpoint?: string | undefined;
   storage?: string | undefined;

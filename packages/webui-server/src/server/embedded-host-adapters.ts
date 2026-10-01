@@ -49,6 +49,7 @@ export interface EmbeddedProviderContext extends EmbeddedHostTransport {
   modelsRegistry: ModelsRegistry | undefined;
   providerAuthRegistry?: import('@wrongstack/core/registry').ProviderAuthRegistry | undefined;
   getDisabledModels?: (() => readonly string[]) | undefined;
+  getDisabledProviders?: (() => readonly string[]) | undefined;
 }
 
 export interface EmbeddedAgentConfigContext extends EmbeddedHostTransport {
@@ -154,6 +155,7 @@ export function createEmbeddedProviderOperations(ctx: EmbeddedProviderContext) {
     modelsRegistry: ctx.modelsRegistry,
     providerAuthRegistry: ctx.providerAuthRegistry,
     getDisabledModels: ctx.getDisabledModels,
+    getDisabledProviders: ctx.getDisabledProviders,
     log: ctx.log,
   });
 }

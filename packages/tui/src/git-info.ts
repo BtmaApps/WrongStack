@@ -68,7 +68,16 @@ export async function readGitInfo(cwd: string): Promise<GitInfo | null> {
   // repo (or git is missing) — bail entirely. The counters above may hold
   // partial folds; discarding them here is why they are never read on the
   // failure path.
-  if (!numstatRes.ok || !statusRes.ok) return null;
+  // One exception: on an unborn branch (`git init`, no commit yet) `diff HEAD`
+  // fails — there is no HEAD to diff against — while `status` succeeds and
+  // reports `branch.oid (initial)`. That is still a repository; hiding the
+  // chip there made the `(initial)` handling in branchLabel unreachable.
+  if (!statusRes.ok) return null;
+  if (!numstatRes.ok) {
+    if (branchOid !== '(initial)') return null;
+    added = 0;
+    deleted = 0;
+  }
 
   return { branch: branchLabel(branchHead, branchOid), added, deleted, untracked };
 }

@@ -55,6 +55,10 @@ interface ListenerState {
   lastBroadcastAt: number;
   /** Hook handle for teardown. */
   hookUnregister: null | (() => void);
+  /** The list as the `todo` tool holds it (see {@link mergeTodos}). */
+  knownTodos: TodoItem[];
+  /** `session.ended` subscription for teardown. */
+  sessionUnsubscribe: null | (() => void);
 }
 
 const state: ListenerState = {
@@ -66,6 +70,8 @@ const state: ListenerState = {
   lastPayloadHash: '',
   lastBroadcastAt: 0,
   hookUnregister: null,
+  knownTodos: [],
+  sessionUnsubscribe: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -131,6 +137,30 @@ function hashTodos(todos: TodoItem[]): string {
   return h.toString(16);
 }
 
+/**
+ * The list the `todo` tool now holds. A call's input is not the list: the
+ * tool keeps every unfinished row the call leaves out ("omission is not
+ * cancellation") and lets only the first `in_progress` row stay in progress.
+ * Broadcasting the input alone reported a shorter list, wrong counts, and no
+ * work in progress while a retained row still had it.
+ */
+function mergeTodos(previous: readonly TodoItem[], supplied: readonly TodoItem[]): TodoItem[] {
+  const items = supplied.map((item) => ({ ...item }));
+  const ids = new Set(items.map((item) => item.id));
+  for (const item of previous) {
+    if (item.status === 'completed' || ids.has(item.id)) continue;
+    items.push({ ...item });
+    ids.add(item.id);
+  }
+  let seenInProgress = false;
+  for (const item of items) {
+    if (item.status !== 'in_progress') continue;
+    if (seenInProgress) item.status = 'pending';
+    seenInProgress = true;
+  }
+  return items;
+}
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -176,6 +206,8 @@ const plugin: Plugin = {
     state.lastPayloadHash = '';
     state.lastBroadcastAt = 0;
     state.hookUnregister = releaseHandle(state.hookUnregister);
+    state.sessionUnsubscribe = releaseHandle(state.sessionUnsubscribe);
+    state.knownTodos = [];
 
     const cfg = readConfig(api.config.extensions?.['todo-listener']);
     const mailbox: Mailbox | undefined = api.mailbox;
@@ -215,7 +247,7 @@ const plugin: Plugin = {
           }
         | TodoItem[]
         | undefined;
-      const todos = Array.isArray(inp)
+      const supplied = Array.isArray(inp)
         ? (inp as TodoItem[])
         : Array.isArray(inp?.todos)
           ? inp.todos
@@ -228,6 +260,9 @@ const plugin: Plugin = {
                 : Array.isArray(inp?.list)
                   ? inp.list
                   : [];
+      const todos = mergeTodos(state.knownTodos, supplied);
+      // The tool clears a list once every row is done; the next call starts fresh.
+      state.knownTodos = todos.every((t) => t.status === 'completed') ? [] : todos;
       const inProgress = todos.find((t) => t.status === 'in_progress');
       const pending = todos.filter((t) => t.status === 'pending').length;
       const completed = todos.filter((t) => t.status === 'completed').length;
@@ -295,6 +330,11 @@ const plugin: Plugin = {
     };
 
     state.hookUnregister = api.registerHook('PostToolUse', 'todo', hook as never);
+    // The plugin outlives a session; the next one starts with no list.
+    const offSession = api.onEvent?.('session.ended', () => {
+      state.knownTodos = [];
+    });
+    state.sessionUnsubscribe = typeof offSession === 'function' ? offSession : null;
 
     // --- todo_listener_status tool ---
     api.tools.register({
@@ -342,6 +382,8 @@ const plugin: Plugin = {
       }
       state.hookUnregister = null;
     }
+    state.sessionUnsubscribe = releaseHandle(state.sessionUnsubscribe);
+    state.knownTodos = [];
     const final = {
       invocations: state.invocationCount,
       sent: state.sentCount,

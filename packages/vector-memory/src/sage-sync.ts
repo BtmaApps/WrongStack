@@ -116,14 +116,6 @@ export async function startFirstBootSageSync(
       return { synced: false, reason: decision.reason };
     }
     // Force bypasses completion, never a live/unknown foreign owner.
-    if (opts.force) {
-      try {
-        fs.unlinkSync(markerPath(store));
-      } catch {
-        // Missing/unwritable advisory marker must not break the sync.
-      }
-    }
-
     const provider = storeProvider(store);
     // Cheap pre-check: module not even installed → defer without a throw.
     if (provider && typeof provider.isAvailable === 'function' && !(await provider.isAvailable())) {
@@ -145,6 +137,14 @@ export async function startFirstBootSageSync(
           'vector-memory sage sync deferred: embedding probe failed (model not cached / backend error)',
         );
         return { synced: false, reason: 'provider-unavailable' };
+      }
+    }
+
+    if (opts.force) {
+      try {
+        fs.unlinkSync(markerPath(store));
+      } catch {
+        // Missing/unwritable advisory marker must not break the sync.
       }
     }
 
@@ -227,6 +227,8 @@ export function decideWhetherToSync(
   now: Date = new Date(),
   pidAlive: (pid: number) => boolean = defaultPidAlive,
 ): SyncDecision {
+  const effectiveStaleAfterMs =
+    Number.isFinite(staleAfterMs) && staleAfterMs >= 0 ? staleAfterMs : RUNNING_STALE_MS;
   const existing = readMarker(store);
   if (!existing) return { run: true, reason: 'no-marker' };
   if (existing.phase === 'complete') {
@@ -238,20 +240,27 @@ export function decideWhetherToSync(
       return { run: true, reason: 'vector-incomplete' };
     }
     const completedAt = Date.parse(existing.completedAt ?? '');
-    if (!Number.isFinite(completedAt) || now.getTime() - completedAt >= RECONCILE_INTERVAL_MS) {
+    const completionAgeMs = now.getTime() - completedAt;
+    if (
+      !Number.isFinite(completedAt) ||
+      completionAgeMs < 0 ||
+      completionAgeMs >= RECONCILE_INTERVAL_MS
+    ) {
       return { run: true, reason: 'reconciliation-due' };
     }
     return { run: false, reason: 'already-complete' };
   }
-  if (existing.pid === process.pid) {
+  const markerPid =
+    Number.isSafeInteger(existing.pid) && (existing.pid as number) > 0 ? existing.pid : undefined;
+  if (markerPid === process.pid) {
     // Our own marker — e.g. a second call in the same process. Safe to take
     // over: the pid is trivially alive and nobody else owns the sync.
     return { run: true, reason: 'running-own-pid' };
   }
   const startedAt = existing.startedAt ? Date.parse(existing.startedAt) : Number.NaN;
   const ageMs = Number.isNaN(startedAt) ? Number.POSITIVE_INFINITY : now.getTime() - startedAt;
-  const stale = ageMs > staleAfterMs;
-  if (existing.pid === undefined) {
+  const stale = ageMs < 0 || ageMs > effectiveStaleAfterMs;
+  if (markerPid === undefined) {
     // Anonymous marker: no pid to probe — the wall-clock window is the only
     // signal, so a fresh one is respected and a stale/undated one is taken over.
     return Number.isNaN(startedAt) || stale
@@ -262,18 +271,18 @@ export function decideWhetherToSync(
       : { run: false, reason: 'running-unknown-pid' };
   }
   try {
-    if (pidAlive(existing.pid)) {
+    if (pidAlive(markerPid)) {
       // Alive: never hijack — even when the marker looks stale, the owner may
       // legitimately still be working (e.g. a slow first-boot model download).
       return {
         run: false,
-        reason: `running-pid-${existing.pid}${stale ? '-stale-but-alive' : ''}`,
+        reason: `running-pid-${markerPid}${stale ? '-stale-but-alive' : ''}`,
       };
     }
-    return { run: true, reason: `running-pid-${existing.pid}-dead` };
+    return { run: true, reason: `running-pid-${markerPid}-dead` };
   } catch {
     // Probe itself failed unexpectedly (not "dead"): conservatively skip.
-    return { run: false, reason: `running-pid-${existing.pid}-probe-failed` };
+    return { run: false, reason: `running-pid-${markerPid}-probe-failed` };
   }
 }
 

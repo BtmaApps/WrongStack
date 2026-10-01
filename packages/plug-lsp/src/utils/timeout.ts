@@ -5,7 +5,10 @@ export async function promiseWithTimeout<T>(
   ms: number,
   signal?: AbortSignal | undefined,
 ): Promise<T> {
-  if (signal?.aborted) throw abortError(signal);
+  if (signal?.aborted) {
+    void promise.catch(() => {});
+    throw abortError(signal);
+  }
   let timer: NodeJS.Timeout | undefined;
   return await new Promise<T>((resolve, reject) => {
     const cleanup = () => {

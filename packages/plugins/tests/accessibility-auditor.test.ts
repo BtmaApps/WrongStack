@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const accessibilityAuditorPlugin = (await import('../src/accessibility-auditor')).default;
 
@@ -129,6 +129,23 @@ describe('accessibility-auditor plugin', () => {
     };
     expect(result.ok).toBe(true);
     expect(result.findings.some((f) => f.rule === 'missing-input-label')).toBe(false);
+  });
+
+  it('recognizes a JSX htmlFor label and does not read data-id as an id', async () => {
+    writeFixture(
+      'JsxLabel.tsx',
+      [
+        '<label htmlFor="email">Email</label>',
+        '<input data-id="row" id="email" type="email" />',
+        '<li data-id="row"></li>',
+      ].join('\n'),
+    );
+    const api = makeApi();
+    accessibilityAuditorPlugin.setup(api as never);
+    const result = (await getTool(api, 'a11y_audit')({ path: FIXTURE_DIR })) as {
+      findings: Array<{ rule: string }>;
+    };
+    expect(result.findings.map((f) => f.rule)).toEqual([]);
   });
 
   it('a11y_audit reports missing button text', async () => {

@@ -152,6 +152,22 @@ describe('type-gate plugin', () => {
     expect(result?.additionalContext).toContain('error TS1234');
   });
 
+  it('fails on a project-level tsc error that names no file', async () => {
+    vi.mocked(execFileSync).mockImplementation(() => {
+      throw Object.assign(new Error('tsc failed'), {
+        stdout: "error TS5023: Unknown compiler option 'strictt'.",
+      });
+    });
+    const api = makeApi({ enabled: true });
+    typeGatePlugin.setup(api as never);
+    const result = await getHook(api)({
+      toolName: 'write',
+      toolInput: { path: 'src/foo.ts' },
+      toolResult: { content: '', isError: false },
+    });
+    expect(result?.additionalContext).toContain('error TS5023');
+  });
+
   it('block severity returns a block decision on type errors', async () => {
     vi.mocked(execFileSync).mockImplementation(() => {
       throw Object.assign(new Error('tsc failed'), {

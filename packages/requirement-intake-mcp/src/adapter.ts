@@ -248,7 +248,7 @@ export function createRequirementIntakeMcpToolHost(
         status: submitted.record.status,
         projectId,
         created: result.created,
-        idempotent: submitted.idempotent,
+        idempotent: result.idempotent || submitted.idempotent,
       },
       isError: false,
     };
@@ -262,7 +262,12 @@ export function createRequirementIntakeMcpToolHost(
     throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);
     const statuses = filterStatuses(args['statuses']);
-    const records = await service.listIntakes(projectId, ctx, statuses ? { statuses } : undefined);
+    const records = await service.listIntakes(
+      projectId,
+      ctx,
+      statuses !== undefined ? { statuses } : undefined,
+    );
+    throwIfAborted(signal);
     return {
       content: {
         projectId,
@@ -284,10 +289,9 @@ export function createRequirementIntakeMcpToolHost(
 
 function filterStatuses(value: unknown): IntakeStatus[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const known = value.filter((item): item is IntakeStatus =>
+  return value.filter((item): item is IntakeStatus =>
     (INTAKE_STATUSES as readonly string[]).includes(String(item)),
   );
-  return known.length > 0 ? known : undefined;
 }
 
 export function createRequirementIntakeMcpServer(

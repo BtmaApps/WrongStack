@@ -45,6 +45,40 @@ function storePath(wrongstackDir: string): string {
 
 const BUILTIN_IDS = new Set(['balanced', 'frugal', 'deep', 'archival']); // archival is reserved as a deprecated built-in alias.
 
+function validThresholds(value: unknown): value is CustomContextMode['thresholds'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const { warn, soft, hard } = value as Record<string, unknown>;
+  return (
+    typeof warn === 'number' &&
+    Number.isFinite(warn) &&
+    warn >= 0 &&
+    typeof soft === 'number' &&
+    Number.isFinite(soft) &&
+    soft >= warn &&
+    typeof hard === 'number' &&
+    Number.isFinite(hard) &&
+    hard >= soft &&
+    hard <= 1
+  );
+}
+
+function numericPolicyError(mode: CustomContextMode): string | undefined {
+  if (!Number.isFinite(mode.targetLoad) || mode.targetLoad < 0 || mode.targetLoad > 1) {
+    return 'targetLoad must be a finite number between 0 and 1';
+  }
+  if (!Number.isSafeInteger(mode.preserveK) || mode.preserveK < 0) {
+    return 'preserveK must be a non-negative safe integer';
+  }
+  if (!Number.isSafeInteger(mode.eliseThreshold) || mode.eliseThreshold < 0) {
+    return 'eliseThreshold must be a non-negative safe integer';
+  }
+  return undefined;
+}
+
+function validAggressiveOn(value: unknown): value is 'warn' | 'soft' | 'hard' {
+  return value === 'warn' || value === 'soft' || value === 'hard';
+}
+
 export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
   const modes = new Map<string, CustomContextMode>();
 
@@ -54,9 +88,26 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
       const raw = await fs.readFile(storePath(wrongstackDir), 'utf8');
       const parsed = JSON.parse(raw) as { modes?: CustomContextMode[] };
       if (Array.isArray(parsed.modes)) {
-        for (const m of parsed.modes) {
-          if (m.id && !BUILTIN_IDS.has(m.id)) {
-            modes.set(m.id, { ...m, custom: true });
+        for (const value of parsed.modes) {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+          const m = value as CustomContextMode;
+          const id = typeof m.id === 'string' ? m.id.trim() : '';
+          if (
+            id.length > 0 &&
+            typeof m.name === 'string' &&
+            m.name.trim().length > 0 &&
+            !BUILTIN_IDS.has(id)
+          ) {
+            const candidate = { ...m, id, name: m.name.trim(), custom: true };
+            if (
+              typeof candidate.description !== 'string' ||
+              !validThresholds(candidate.thresholds) ||
+              numericPolicyError(candidate) !== undefined ||
+              !validAggressiveOn(candidate.aggressiveOn)
+            ) {
+              continue;
+            }
+            modes.set(id, candidate);
           }
         }
       }
@@ -72,34 +123,52 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
   };
 
   const create = (mode: CustomContextMode): { ok: boolean; error?: string | undefined } => {
-    if (!mode.id || typeof mode.id !== 'string') {
+    if (!mode || typeof mode !== 'object' || Array.isArray(mode)) {
+      return { ok: false, error: 'mode must be an object' };
+    }
+    if (typeof mode.id !== 'string' || mode.id.trim().length === 0) {
       return { ok: false, error: 'id is required' };
     }
-    if (BUILTIN_IDS.has(mode.id)) {
-      return { ok: false, error: `Cannot override built-in mode "${mode.id}"` };
+    const id = mode.id.trim();
+    if (BUILTIN_IDS.has(id)) {
+      return { ok: false, error: `Cannot override built-in mode "${id}"` };
     }
-    if (modes.has(mode.id)) {
-      return { ok: false, error: `Mode "${mode.id}" already exists` };
+    if (modes.has(id)) {
+      return { ok: false, error: `Mode "${id}" already exists` };
     }
-    if (!mode.name) {
+    if (typeof mode.name !== 'string' || mode.name.trim().length === 0) {
       return { ok: false, error: 'name is required' };
     }
+    if (mode.description !== undefined && typeof mode.description !== 'string') {
+      return { ok: false, error: 'description must be a string' };
+    }
+    if (mode.aggressiveOn !== undefined && !validAggressiveOn(mode.aggressiveOn)) {
+      return { ok: false, error: 'aggressiveOn must be warn, soft, or hard' };
+    }
     const entry: CustomContextMode = {
-      id: mode.id,
-      name: mode.name,
-      description: mode.description || '',
+      id,
+      name: mode.name.trim(),
+      description: mode.description ?? '',
       thresholds: {
         warn: mode.thresholds?.warn ?? 0.6,
         soft: mode.thresholds?.soft ?? 0.75,
         hard: mode.thresholds?.hard ?? 0.9,
       },
-      aggressiveOn: mode.aggressiveOn || 'soft',
+      aggressiveOn: mode.aggressiveOn ?? 'soft',
       preserveK: mode.preserveK ?? 10,
       eliseThreshold: mode.eliseThreshold ?? 2000,
       targetLoad: mode.targetLoad ?? 0.65,
       custom: true,
     };
-    modes.set(mode.id, entry);
+    if (!validThresholds(entry.thresholds)) {
+      return { ok: false, error: 'thresholds must satisfy 0 <= warn <= soft <= hard <= 1' };
+    }
+    const numericError = numericPolicyError(entry);
+    if (numericError) return { ok: false, error: numericError };
+    if (!validAggressiveOn(entry.aggressiveOn)) {
+      return { ok: false, error: 'aggressiveOn must be warn, soft, or hard' };
+    }
+    modes.set(id, entry);
     void save().catch(() => {});
     return { ok: true };
   };
@@ -108,38 +177,67 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
     id: string,
     patch: Partial<CustomContextMode>,
   ): { ok: boolean; error?: string | undefined } => {
-    if (BUILTIN_IDS.has(id)) {
-      return { ok: false, error: `Cannot modify built-in mode "${id}"` };
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return { ok: false, error: 'id is required' };
     }
-    const existing = modes.get(id);
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+      return { ok: false, error: 'patch must be an object' };
+    }
+    const normalizedId = id.trim();
+    if (BUILTIN_IDS.has(normalizedId)) {
+      return { ok: false, error: `Cannot modify built-in mode "${normalizedId}"` };
+    }
+    const existing = modes.get(normalizedId);
     if (!existing) {
-      return { ok: false, error: `Mode "${id}" not found` };
+      return { ok: false, error: `Mode "${normalizedId}" not found` };
     }
     const next: CustomContextMode = { ...existing };
-    if (patch.name !== undefined) next.name = patch.name;
-    if (patch.description !== undefined) next.description = patch.description;
+    if (patch.name !== undefined) {
+      if (typeof patch.name !== 'string' || patch.name.trim().length === 0) {
+        return { ok: false, error: 'name is required' };
+      }
+      next.name = patch.name.trim();
+    }
+    if (patch.description !== undefined) {
+      if (typeof patch.description !== 'string') {
+        return { ok: false, error: 'description must be a string' };
+      }
+      next.description = patch.description;
+    }
     if (patch.thresholds) {
       next.thresholds = {
         warn: patch.thresholds.warn ?? existing.thresholds.warn,
         soft: patch.thresholds.soft ?? existing.thresholds.soft,
         hard: patch.thresholds.hard ?? existing.thresholds.hard,
       };
+      if (!validThresholds(next.thresholds)) {
+        return { ok: false, error: 'thresholds must satisfy 0 <= warn <= soft <= hard <= 1' };
+      }
     }
     if (patch.preserveK !== undefined) next.preserveK = patch.preserveK;
     if (patch.eliseThreshold !== undefined) next.eliseThreshold = patch.eliseThreshold;
     if (patch.targetLoad !== undefined) next.targetLoad = patch.targetLoad;
     if (patch.aggressiveOn !== undefined) next.aggressiveOn = patch.aggressiveOn;
-    modes.set(id, next);
+    const numericError = numericPolicyError(next);
+    if (numericError) return { ok: false, error: numericError };
+    if (!validAggressiveOn(next.aggressiveOn)) {
+      return { ok: false, error: 'aggressiveOn must be warn, soft, or hard' };
+    }
+    modes.set(normalizedId, next);
     void save().catch(() => {});
     return { ok: true };
   };
 
   const remove = (id: string): { ok: boolean; error?: string | undefined } => {
-    if (BUILTIN_IDS.has(id)) {
-      return { ok: false, error: `Cannot delete built-in mode "${id}"` };
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return { ok: false, error: 'id is required' };
     }
-    if (!modes.delete(id)) {
-      return { ok: false, error: `Mode "${id}" not found` };
+    const normalizedId = id.trim();
+    if (BUILTIN_IDS.has(normalizedId)) {
+      return { ok: false, error: `Cannot delete built-in mode "${normalizedId}"` };
+    }
+    if (!modes.delete(normalizedId)) {
+      return { ok: false, error: `Mode "${normalizedId}" not found` };
     }
     void save().catch(() => {});
     return { ok: true };
@@ -157,7 +255,7 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
       targetLoad: m.targetLoad,
       custom: false as const,
     }));
-    const custom = [...modes.values()];
+    const custom = [...modes.values()].map((mode) => structuredClone(mode));
     return [...builtins, ...custom];
   };
 

@@ -313,18 +313,24 @@ function parseOutdatedOutput(
   try {
     const data = JSON.parse(json) as Record<string, unknown>;
     parsedOk = true;
+    const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
     for (const name of Object.keys(data)) {
-      const info = (data[name] ?? {}) as Record<string, unknown>;
-      const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
-      packages.push({
-        name,
-        current: str(info['current']) ?? 'unknown',
-        latest: str(info['latest']) ?? 'unknown',
-        wanted: str(info['wanted']) ?? 'unknown',
-        // npm calls it `type`; pnpm calls it `dependencyType`.
-        type: str(info['type']) ?? str(info['dependencyType']) ?? 'unknown',
-        location: str(info['location']) ?? name,
-      });
+      // npm turns a dependency outdated in several places (workspaces) into
+      // an ARRAY of entries under its name; read as one object, every field
+      // came out `unknown`. One row per location.
+      const value = data[name] ?? {};
+      for (const entry of Array.isArray(value) ? value : [value]) {
+        const info = (entry ?? {}) as Record<string, unknown>;
+        packages.push({
+          name,
+          current: str(info['current']) ?? 'unknown',
+          latest: str(info['latest']) ?? 'unknown',
+          wanted: str(info['wanted']) ?? 'unknown',
+          // npm calls it `type`; pnpm calls it `dependencyType`.
+          type: str(info['type']) ?? str(info['dependencyType']) ?? 'unknown',
+          location: str(info['location']) ?? name,
+        });
+      }
     }
   } catch {
     // JSON parse failed, return raw output

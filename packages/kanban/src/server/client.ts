@@ -67,6 +67,7 @@ function trimConnectionCache(protectedConnection: KanbanServerConnection): void 
 
 class KanbanServerConnection {
   private socket: net.Socket | null = null;
+  private connectingSocket: net.Socket | null = null;
   private buffer = '';
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
@@ -122,7 +123,7 @@ class KanbanServerConnection {
     // failed attempt used to bubble up as a connect error that callers answered
     // by spawning yet another daemon.
     const deadline = Date.now() + SPAWN_CONNECT_DEADLINE_MS;
-    while (!this.socket && Date.now() < deadline) {
+    while (!this.destroyed && !this.socket && Date.now() < deadline) {
       await this.tryConnectExisting();
       if (this.socket) break;
       // The daemon we started exits at once when another still holds the
@@ -135,14 +136,17 @@ class KanbanServerConnection {
       }
       await new Promise((r) => setTimeout(r, SPAWN_CONNECT_RETRY_MS));
     }
+    if (this.destroyed) throw new Error('Connection closed');
     if (!this.socket)
       throw new Error(`Failed to connect to kanban project server at ${this.endpoint}`);
     return this.helloPromise;
   }
 
   private async tryConnectExisting(): Promise<void> {
+    if (this.destroyed) throw new Error('Connection closed');
     if (this.socket) return;
     const sock = net.createConnection(this.endpoint);
+    this.connectingSocket = sock;
     sock.setEncoding('utf8');
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -150,18 +154,30 @@ class KanbanServerConnection {
         reject(new Error('connect-timeout'));
       }, CONNECT_TIMEOUT_MS);
       timer.unref?.();
+      const onClose = () => {
+        clearTimeout(timer);
+        reject(new Error('Connection closed before connect'));
+      };
+      sock.once('close', onClose);
       sock.once('connect', () => {
         clearTimeout(timer);
+        sock.removeListener('close', onClose);
         resolve();
       });
       sock.once('error', (err) => {
         clearTimeout(timer);
+        sock.removeListener('close', onClose);
         reject(err);
       });
     }).catch(() => {
       sock.destroy();
       // Connection refused → no server running; caller will spawn one
     });
+    if (this.connectingSocket === sock) this.connectingSocket = null;
+    if (this.destroyed) {
+      sock.destroy();
+      throw new Error('Connection closed');
+    }
     if (sock.destroyed) return;
     this.socket = sock;
     sock.on('data', (chunk: string) => this.onData(chunk));
@@ -170,6 +186,7 @@ class KanbanServerConnection {
   }
 
   private async spawnServer(): Promise<void> {
+    if (this.destroyed) return;
     try {
       const url = isStandaloneBinary()
         ? standaloneDaemonUrl('kanban')
@@ -192,6 +209,7 @@ class KanbanServerConnection {
   }
 
   private onData(chunk: string): void {
+    if (this.destroyed) return;
     this.buffer += chunk;
     // Check the cap on append, not inside the frame loop. A peer that never
     // sends a newline never enters the loop, so the in-loop check could not
@@ -240,7 +258,7 @@ class KanbanServerConnection {
           if (pending) {
             this.pending.delete(parsed.id);
             clearTimeout(pending.timer);
-            if ('ok' in parsed) {
+            if (parsed.ok === true) {
               pending.resolve((parsed as { result?: unknown }).result);
             } else {
               const errPayload = (parsed as { error?: { code?: unknown; message?: unknown } })
@@ -281,6 +299,9 @@ class KanbanServerConnection {
   private onClose(reason: string): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    const connecting = this.connectingSocket;
+    this.connectingSocket = null;
+    connecting?.destroy();
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = null;
     this.socket = null;

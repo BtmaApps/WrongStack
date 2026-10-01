@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -716,6 +716,53 @@ describe('serveStdio', () => {
 });
 
 describe('serveHttp', () => {
+  it('keeps a multi-byte character that arrives split across two request chunks', async () => {
+    let received: unknown;
+    const handle = await serveHttp(
+      new MCPServer({
+        host: makeHost({
+          callTool: async (_name, args) => {
+            received = args;
+            return { content: 'ok', isError: false };
+          },
+        }),
+      }),
+      { port: 0 },
+    );
+    try {
+      const body = Buffer.from(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'echo', arguments: { text: 'Türkçe şğ' } },
+        }),
+        'utf8',
+      );
+      // Cut inside the two-byte `ğ` and send the halves 50 ms apart, so the
+      // server sees them as separate `data` chunks.
+      const cut = body.lastIndexOf(Buffer.from('ğ', 'utf8')) + 1;
+      const status = await new Promise<number>((resolve, reject) => {
+        const req = request(
+          handle.url,
+          { method: 'POST', headers: { 'content-type': 'application/json' } },
+          (res) => {
+            res.resume();
+            res.on('end', () => resolve(res.statusCode ?? 0));
+          },
+        );
+        req.on('error', reject);
+        req.write(body.subarray(0, cut));
+        setTimeout(() => req.end(body.subarray(cut)), 50);
+      });
+      expect(status).toBe(200);
+      // Decoding each chunk on its own delivered `Türkçe ş��`.
+      expect(received).toEqual({ text: 'Türkçe şğ' });
+    } finally {
+      await handle.close();
+    }
+  });
+
   it('serves JSON-RPC over POST on an ephemeral loopback port', async () => {
     const handle = await serveHttp(new MCPServer({ host: makeHost() }), { port: 0 });
     try {

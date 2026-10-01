@@ -1,8 +1,11 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { EventBus } from '@wrongstack/core/kernel';
+import { ToolRegistry } from '@wrongstack/core/registry';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MCPTool } from '../src/client.js';
+import { MCPClient } from '../src/client.js';
 import {
   manifestConfigHash,
   readCapabilityManifest,
@@ -10,6 +13,7 @@ import {
   writeCapabilityManifest,
   writeManifest,
 } from '../src/manifest-cache.js';
+import { MCPRegistry } from '../src/registry.js';
 
 let tmp: string;
 
@@ -18,6 +22,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
@@ -41,6 +46,60 @@ describe('manifestConfigHash', () => {
 });
 
 describe('readManifest / writeManifest', () => {
+  it('discovers tools on a cold connection when a cached tool entry is corrupt', async () => {
+    const cfg = { name: 'svc', transport: 'stdio' as const, command: 'unused', lazy: true };
+    await fs.mkdir(path.join(tmp, 'mcp-tools'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'mcp-tools', 'svc.json'),
+      JSON.stringify({ configHash: manifestConfigHash(cfg), tools: [null] }),
+      'utf8',
+    );
+    const toolRegistry = new ToolRegistry();
+    const registry = new MCPRegistry({
+      toolRegistry,
+      events: new EventBus(),
+      cacheDir: tmp,
+      idleTimeoutMs: 0,
+      log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
+    });
+    const connect = vi.spyOn(MCPClient.prototype, 'connect').mockResolvedValue();
+    vi.spyOn(MCPClient.prototype, 'close').mockResolvedValue();
+    vi.spyOn(MCPClient.prototype, 'listTools').mockReturnValue(tools);
+    vi.spyOn(MCPClient.prototype, 'getServerMetadata').mockReturnValue(undefined);
+    try {
+      await registry.start(cfg);
+      expect(connect).toHaveBeenCalledOnce();
+      expect(toolRegistry.list()).toHaveLength(2);
+      expect(registry.list()[0]?.state).toBe('connected');
+    } finally {
+      await registry.stopAll();
+    }
+  });
+
+  it.each([
+    ['null entry', [null]],
+    ['boolean entry', [false]],
+    ['string entry', ['broken']],
+    ['missing name', [{ inputSchema: {} }]],
+    ['numeric name', [{ name: 42, inputSchema: {} }]],
+    ['empty name', [{ name: '', inputSchema: {} }]],
+    ['array input schema', [{ name: 'broken', inputSchema: [] }]],
+    ['array output schema', [{ name: 'broken', inputSchema: {}, outputSchema: [] }]],
+    ['mixed valid and corrupt entries', [tools[0], null]],
+    ['non-array tool catalog', { name: 'broken', inputSchema: {} }],
+  ])(
+    'treats %s as a cache miss instead of accepting a broken startup catalog',
+    async (_label, cachedTools) => {
+      await fs.mkdir(path.join(tmp, 'mcp-tools'), { recursive: true });
+      await fs.writeFile(
+        path.join(tmp, 'mcp-tools', 'svc.json'),
+        JSON.stringify({ configHash: 'hash', tools: cachedTools }),
+        'utf8',
+      );
+      await expect(readCapabilityManifest(tmp, 'svc', 'hash')).resolves.toBeNull();
+    },
+  );
+
   it('round-trips tools when the hash matches', async () => {
     const hash = manifestConfigHash({ transport: 'stdio', command: 'npx' });
     await writeManifest(tmp, 'svc', hash, tools);

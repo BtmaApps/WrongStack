@@ -8,6 +8,30 @@ afterEach(() => {
 
 import { i18n } from '../../src/i18n';
 
+// Minimal /debug/system payload for the watcher-card cases below. Omitting
+// codebaseIndexServer/processes keeps the rendered surface small so the
+// assertions cannot collide with unrelated text.
+const systemPayload = () => ({
+  pid: 100,
+  memoryUsage: { rss: 1, heapUsed: 1, heapTotal: 1, external: 0, arrayBuffers: 0 },
+  heapLimit: 100,
+  uptime: 10,
+  cpuUsage: { user: 0, system: 0 },
+  timestamp: Date.now(),
+});
+
+const watcherPayload = {
+  fileChangesDetected: 0,
+  filesProcessed: 0,
+  broadcastsSent: 0,
+  debounceResets: 0,
+  totalDebounceDelayMs: 0,
+  activeProjects: 1,
+  averageDebounceDelayMs: 0,
+  watcherActive: true,
+  timestamp: Date.now(),
+};
+
 describe('DebugDashboard codebase index health', () => {
   // Pin the language before rendering: the component renders t()-derived
   // labels, and an unpinned translator can race initialization into raw keys.
@@ -129,5 +153,134 @@ describe('DebugDashboard codebase index health', () => {
     expect(screen.getByText(/7 metric drops/u)).toBeTruthy();
     expect(screen.getByText('42 coalesced · 2 dropped')).toBeTruthy();
     expect(screen.getByText('snapshot in-flight')).toBeTruthy();
+  });
+
+  // Regression guards for the three-state watcher card. A metrics endpoint
+  // that never delivers usable JSON is NOT evidence the watcher stopped, but
+  // the two-way boolean rendered every one of these as "Stopped" — which is
+  // how a stale server build (503), a dev-server HTML response, and an auth
+  // failure all became indistinguishable from a dead watcher.
+  it('renders the watcher status as unavailable, not stopped, when the metrics endpoint 503s', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/debug/watcher-metrics')) {
+          return {
+            ok: false,
+            status: 503,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ error: 'File watcher metrics not available' }),
+          };
+        }
+        return { ok: true, json: async () => systemPayload() };
+      }),
+    );
+
+    render(<DebugDashboard />);
+
+    // All four File Watcher cards report the unavailable state together.
+    await waitFor(() => expect(screen.getAllByText('Unavailable')).toHaveLength(4));
+    expect(screen.queryByText('Stopped')).toBeNull();
+  });
+
+  it('renders the watcher status as unavailable when the metrics endpoint returns non-JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/debug/watcher-metrics')) {
+          // A Vite dev server answers an unproxied path with index.html: 200
+          // but text/html, so `res.ok` alone would have claimed "Running".
+          return {
+            ok: true,
+            headers: { get: () => 'text/html' },
+            json: async () => ({}),
+          };
+        }
+        return { ok: true, json: async () => systemPayload() };
+      }),
+    );
+
+    render(<DebugDashboard />);
+
+    // All four File Watcher cards report the unavailable state together.
+    await waitFor(() => expect(screen.getAllByText('Unavailable')).toHaveLength(4));
+    expect(screen.queryByText('Stopped')).toBeNull();
+  });
+
+  it('still renders the watcher status as stopped when the watcher reports itself inactive', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/debug/watcher-metrics')) {
+          return {
+            ok: true,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ ...watcherPayload, watcherActive: false }),
+          };
+        }
+        return { ok: true, json: async () => systemPayload() };
+      }),
+    );
+
+    render(<DebugDashboard />);
+
+    await waitFor(() => expect(screen.getByText('Stopped')).toBeTruthy());
+    expect(screen.queryByText('Unavailable')).toBeNull();
+  });
+
+  // The three numeric cards had the same conflation as the status card: `?? 0`
+  // turned a failed fetch into a confident zero, so a 503 rendered as a
+  // healthy watcher that happened to have done no work.
+  it('renders every File Watcher card as unavailable, not zero, when the metrics endpoint fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/debug/watcher-metrics')) {
+          return {
+            ok: false,
+            status: 503,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ error: 'File watcher metrics not available' }),
+          };
+        }
+        return { ok: true, json: async () => systemPayload() };
+      }),
+    );
+
+    render(<DebugDashboard />);
+
+    // All four cards in the File Watcher section share the failure: watcher
+    // status, active projects, file changes, files processed.
+    await waitFor(() => expect(screen.getAllByText('Unavailable')).toHaveLength(4));
+    expect(screen.queryByText('Stopped')).toBeNull();
+  });
+
+  it('renders the File Watcher counters with real readings when metrics arrive', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/debug/watcher-metrics')) {
+          return {
+            ok: true,
+            headers: { get: () => 'application/json' },
+            json: async () => ({
+              ...watcherPayload,
+              activeProjects: 3,
+              fileChangesDetected: 42,
+              filesProcessed: 7,
+            }),
+          };
+        }
+        return { ok: true, json: async () => systemPayload() };
+      }),
+    );
+
+    render(<DebugDashboard />);
+
+    await waitFor(() => expect(screen.getByText('Running')).toBeTruthy());
+    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('42')).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.queryByText('Unavailable')).toBeNull();
   });
 });

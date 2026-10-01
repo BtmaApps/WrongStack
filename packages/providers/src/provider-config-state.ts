@@ -87,6 +87,13 @@ export function removeProviderFallbackReferences(
   if (Array.isArray(config['disabledModels'])) {
     config['disabledModels'] = removeModelRefs(config['disabledModels'])!;
   }
+  // `disabledProviders` holds bare provider ids (not model refs), so the
+  // provider-level entry is dropped directly when its provider goes away.
+  if (Array.isArray(config['disabledProviders'])) {
+    config['disabledProviders'] = (config['disabledProviders'] as unknown[]).filter(
+      (id) => typeof id !== 'string' || id.trim().toLowerCase() !== providerId.trim().toLowerCase(),
+    );
+  }
   if (isRecord(config['models'])) {
     for (const [modelId, definition] of Object.entries(config['models'])) {
       if (isRecord(definition) && definition['provider'] === providerId) {

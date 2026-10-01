@@ -80,23 +80,26 @@ function ranksBefore(a: { id: string; score: number }, b: { id: string; score: n
  * `VectorMemoryError` instead of being ignored — a silently-dropped
  * cursor makes a paging caller believe it reached the end of the corpus.
  */
-function normalizeSearchCursor(cursor: { score: number; id: string }): {
+function normalizeSearchCursor(cursor: unknown): {
   score: number;
   id: string;
 } {
+  const candidate = cursor as { score?: unknown; id?: unknown } | null;
   if (
-    typeof cursor.score !== 'number' ||
-    !Number.isFinite(cursor.score) ||
-    cursor.score < 0 ||
-    cursor.score > 1 ||
-    typeof cursor.id !== 'string' ||
-    cursor.id.length === 0
+    typeof candidate !== 'object' ||
+    candidate === null ||
+    typeof candidate.score !== 'number' ||
+    !Number.isFinite(candidate.score) ||
+    candidate.score < 0 ||
+    candidate.score > 1 ||
+    typeof candidate.id !== 'string' ||
+    candidate.id.trim().length === 0
   ) {
     throw new VectorMemoryError(
       'Invalid search cursor: expected { score: number in [0, 1], id: non-empty string }.',
     );
   }
-  return cursor;
+  return { score: candidate.score, id: candidate.id };
 }
 
 const DEFAULT_DIRECTORY = '.wrongstack/vector-memory';
@@ -105,6 +108,61 @@ const DEFAULT_FILENAME = 'vector-memory.db';
 const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
 /** Maximum entries to evict in a single LRU sweep. */
 const CACHE_EVICT_BATCH = 256;
+const VECTOR_SCOPES: ReadonlySet<string> = new Set(['project', 'user', 'session']);
+const VECTOR_KINDS: ReadonlySet<string> = new Set(['note', 'fact', 'summary', 'snippet', 'link']);
+
+function assertVectorScope(value: unknown, operation: string): asserts value is VectorScope {
+  if (typeof value !== 'string' || !VECTOR_SCOPES.has(value)) {
+    throw new VectorMemoryError(`${operation}: scope must be project, user, or session`);
+  }
+}
+
+function assertVectorKind(value: unknown, operation: string): asserts value is VectorKind {
+  if (typeof value !== 'string' || !VECTOR_KINDS.has(value)) {
+    throw new VectorMemoryError(`${operation}: kind must be note, fact, summary, snippet, or link`);
+  }
+}
+
+function cloneJsonMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(metadata);
+  } catch {
+    throw new Error('VectorMemoryStore.remember: metadata must be JSON-serializable');
+  }
+  const cloned = JSON.parse(serialized) as Record<string, unknown>;
+  if (!jsonValuesEqual(metadata, cloned)) {
+    throw new Error('VectorMemoryStore.remember: metadata must contain lossless JSON values');
+  }
+  return cloned;
+}
+
+function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (typeof left === 'number' && typeof right === 'number') return Object.is(left, right);
+  if (Array.isArray(left)) {
+    return (
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => index in left && jsonValuesEqual(value, right[index]))
+    );
+  }
+  if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(left);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  const leftKeys = Object.keys(left as Record<string, unknown>);
+  const rightRecord = right as Record<string, unknown>;
+  return (
+    leftKeys.length === Object.keys(rightRecord).length &&
+    leftKeys.every(
+      (key) =>
+        Object.hasOwn(rightRecord, key) &&
+        jsonValuesEqual((left as Record<string, unknown>)[key], rightRecord[key]),
+    )
+  );
+}
 
 export class VectorMemoryStore {
   private readonly db: DatabaseSync;
@@ -115,11 +173,29 @@ export class VectorMemoryStore {
 
   constructor(opts: VectorMemoryStoreOptions) {
     if (!opts.provider) throw new Error('VectorMemoryStore: provider is required');
-    if (!opts.projectRoot) throw new Error('VectorMemoryStore: projectRoot is required');
+    if (
+      typeof opts.projectRoot !== 'string' ||
+      opts.projectRoot.trim().length === 0 ||
+      !path.isAbsolute(opts.projectRoot)
+    ) {
+      throw new Error('VectorMemoryStore: projectRoot must be a non-empty absolute path');
+    }
+    if (typeof opts.provider.embed !== 'function') {
+      throw new Error('VectorMemoryStore: provider embed must be a function');
+    }
+    if (typeof opts.provider.id !== 'string' || opts.provider.id.trim().length === 0) {
+      throw new Error('VectorMemoryStore: provider id must be a non-empty string');
+    }
+    if (!Number.isSafeInteger(opts.provider.dimensions) || opts.provider.dimensions < 1) {
+      throw new Error('VectorMemoryStore: provider dimensions must be a positive safe integer');
+    }
     this.provider = opts.provider;
 
-    const dir = opts.directory ?? DEFAULT_DIRECTORY;
-    const filename = opts.filename ?? DEFAULT_FILENAME;
+    const dir = opts.directory === undefined ? DEFAULT_DIRECTORY : opts.directory;
+    const filename = opts.filename === undefined ? DEFAULT_FILENAME : opts.filename;
+    if (typeof dir !== 'string' || dir.trim().length === 0) {
+      throw new Error('Vector memory directory must be a non-empty project-relative path.');
+    }
     if (path.isAbsolute(dir)) {
       throw new Error('Vector memory directory must be project-relative.');
     }
@@ -130,7 +206,26 @@ export class VectorMemoryStore {
     }
     fs.mkdirSync(rootDir, { recursive: true });
     this.rootDir = rootDir;
+    if (
+      typeof filename !== 'string' ||
+      filename.trim().length === 0 ||
+      path.isAbsolute(filename) ||
+      path.basename(filename) !== filename ||
+      filename.includes('\0')
+    ) {
+      throw new Error(
+        'Vector memory filename must be a non-empty file name without path segments.',
+      );
+    }
     this.dbPath = path.join(rootDir, filename);
+    const dbRelative = path.relative(rootDir, this.dbPath);
+    if (
+      dbRelative === '..' ||
+      dbRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(dbRelative)
+    ) {
+      throw new Error('Vector memory database must stay inside its data directory.');
+    }
     const Database = loadRuntimeDatabaseSync();
     this.db = new Database(this.dbPath);
     initVectorSchema(this.db);
@@ -234,11 +329,27 @@ export class VectorMemoryStore {
    */
   private async embedWithCache(text: string, strict = false): Promise<Float32Array | undefined> {
     const now = new Date().toISOString();
-    const cached = this.cachedVector(text, now);
-    if (cached) return cached;
+    let cached: Float32Array | undefined;
+    try {
+      cached = this.cachedVector(text, now);
+    } catch {
+      // A malformed advisory cache row is a miss; the provider call below
+      // repairs it through the normal cache upsert.
+    }
+    if (cached && cached.length === this.provider.dimensions && cached.every(Number.isFinite)) {
+      return cached;
+    }
     try {
       const result = await this.provider.embed([text]);
       const vec = result[0];
+      if (vec && vec.length !== this.provider.dimensions) {
+        throw new Error(
+          `Embedding provider "${this.provider.id}" returned ${vec.length} dimensions; expected ${this.provider.dimensions}.`,
+        );
+      }
+      if (vec && !vec.every(Number.isFinite)) {
+        throw new Error(`Embedding provider "${this.provider.id}" returned non-finite values.`);
+      }
       if (vec) this.cacheVector(text, vec, now);
       return vec;
     } catch (err) {
@@ -258,6 +369,12 @@ export class VectorMemoryStore {
    */
   findByContentHash(contentHash: string, scope?: VectorScope): VectorEntryWithVector | undefined {
     this.assertOpen();
+    if (typeof contentHash !== 'string' || !/^[a-f\d]{64}$/i.test(contentHash)) {
+      throw new VectorMemoryError(
+        'VectorMemoryStore.findByContentHash: contentHash must be a 64-character hex digest',
+      );
+    }
+    if (scope !== undefined) assertVectorScope(scope, 'VectorMemoryStore.findByContentHash');
     const row = (
       scope === undefined
         ? this.db.prepare('SELECT * FROM entries WHERE content_hash = ? LIMIT 1').get(contentHash)
@@ -295,6 +412,9 @@ export class VectorMemoryStore {
    */
   findBySageId(sageId: string): VectorEntryWithVector | undefined {
     this.assertOpen();
+    if (typeof sageId !== 'string' || sageId.trim().length === 0) {
+      throw new VectorMemoryError('VectorMemoryStore.findBySageId: sageId must be non-empty');
+    }
     const row = this.db
       .prepare(
         `SELECT * FROM entries
@@ -325,10 +445,48 @@ export class VectorMemoryStore {
    */
   async remember(input: VectorEntryInput): Promise<VectorEntryWithVector> {
     this.assertOpen();
-    if (!input.text || input.text.trim().length === 0) {
+    if (input.providerId !== undefined && input.providerId !== this.provider.id) {
+      throw new VectorMemoryError(
+        `Unsupported provider override "${input.providerId}"; active provider is "${this.provider.id}".`,
+      );
+    }
+    if (typeof input.text !== 'string') {
+      throw new Error('VectorMemoryStore.remember: text must be a string');
+    }
+    if (input.text.trim().length === 0) {
       throw new Error('VectorMemoryStore.remember: text must be non-empty');
     }
-    return withFileLock(this.lockPath, () => this.rememberUnlocked(input), {
+    if (input.summary !== undefined && typeof input.summary !== 'string') {
+      throw new Error('VectorMemoryStore.remember: summary must be a string');
+    }
+    if (
+      input.metadata !== undefined &&
+      (typeof input.metadata !== 'object' ||
+        input.metadata === null ||
+        Array.isArray(input.metadata))
+    ) {
+      throw new Error('VectorMemoryStore.remember: metadata must be an object');
+    }
+    if (input.metadata !== undefined) {
+      const prototype = Object.getPrototypeOf(input.metadata);
+      if (prototype !== Object.prototype && prototype !== null) {
+        throw new Error('VectorMemoryStore.remember: metadata must be a plain object');
+      }
+    }
+    if (
+      input.tags !== undefined &&
+      (!Array.isArray(input.tags) || !input.tags.every((tag) => typeof tag === 'string'))
+    ) {
+      throw new Error('VectorMemoryStore.remember: tags must be an array of strings');
+    }
+    if (input.scope !== undefined) assertVectorScope(input.scope, 'VectorMemoryStore.remember');
+    if (input.kind !== undefined) assertVectorKind(input.kind, 'VectorMemoryStore.remember');
+    const normalizedInput: VectorEntryInput = {
+      ...input,
+      ...(input.metadata !== undefined ? { metadata: cloneJsonMetadata(input.metadata) } : {}),
+      ...(input.tags !== undefined ? { tags: [...input.tags] } : {}),
+    };
+    return withFileLock(this.lockPath, () => this.rememberUnlocked(normalizedInput), {
       timeoutMs: DEFAULT_LOCK_TIMEOUT_MS,
     });
   }
@@ -348,7 +506,40 @@ export class VectorMemoryStore {
       contentHash = sageKeyedContentHash(input.text, sageId);
       existing = this.findByContentHash(contentHash, scope);
     }
-    if (existing) return existing;
+    if (existing) {
+      if (
+        existing.providerId === this.provider.id &&
+        existing.dimensions === this.provider.dimensions &&
+        existing.vector
+      ) {
+        return existing;
+      }
+      const recoveredVector = await this.embedWithCache(input.text);
+      if (!recoveredVector) return existing;
+      const recoveredAt = new Date().toISOString();
+      this.db
+        .prepare(
+          `INSERT INTO vectors (entry_id, provider_id, dimensions, vector, created_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(entry_id, provider_id) DO UPDATE SET
+             vector = excluded.vector,
+             dimensions = excluded.dimensions,
+             created_at = excluded.created_at`,
+        )
+        .run(
+          existing.id,
+          this.provider.id,
+          recoveredVector.length,
+          encodeVector(recoveredVector),
+          recoveredAt,
+        );
+      return {
+        ...existing,
+        providerId: this.provider.id,
+        dimensions: recoveredVector.length,
+        vector: recoveredVector,
+      };
+    }
 
     const metadata = input.metadata ?? {};
     const tags = input.tags ?? [];
@@ -416,6 +607,9 @@ export class VectorMemoryStore {
 
   get(id: string): VectorEntryWithVector | undefined {
     this.assertOpen();
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      throw new VectorMemoryError('VectorMemoryStore.get: id must be a non-empty string');
+    }
     const row = this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id) as
       | Record<string, unknown>
       | undefined;
@@ -447,6 +641,9 @@ export class VectorMemoryStore {
   /** Hard-delete an entry by id. Wrapped in `withFileLock` for cross-process safety. */
   async forget(id: string): Promise<boolean> {
     this.assertOpen();
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      throw new VectorMemoryError('VectorMemoryStore.forget: id must be a non-empty string');
+    }
     return withFileLock(this.lockPath, async () => this.forgetUnlocked(id), {
       timeoutMs: DEFAULT_LOCK_TIMEOUT_MS,
     });
@@ -454,6 +651,19 @@ export class VectorMemoryStore {
 
   async search(query: string, opts: VectorSearchOptions = {}): Promise<VectorSearchHit[]> {
     this.assertOpen();
+    if (opts.providerId !== undefined && opts.providerId !== this.provider.id) {
+      throw new VectorMemoryError(
+        `Unsupported provider override "${opts.providerId}"; active provider is "${this.provider.id}".`,
+      );
+    }
+    if (opts.scope !== undefined) assertVectorScope(opts.scope, 'VectorMemoryStore.search');
+    if (opts.kind !== undefined) assertVectorKind(opts.kind, 'VectorMemoryStore.search');
+    if (opts.threshold !== undefined && typeof opts.threshold !== 'number') {
+      throw new VectorMemoryError('VectorMemoryStore.search: threshold must be a number');
+    }
+    if (opts.limit !== undefined && typeof opts.limit !== 'number') {
+      throw new VectorMemoryError('VectorMemoryStore.search: limit must be a number');
+    }
     // Normalize before use: the top-k loop below compares against `limit` and
     // assigns `top.length = limit`. A NaN defeats every comparison (n >= NaN
     // and n > NaN are both false), so neither the skip guard nor the
@@ -462,7 +672,9 @@ export class VectorMemoryStore {
     // model-facing `vector_memory_search` tool, whose schema advertises
     // `minimum: 1` but does not enforce it at runtime.
     const limit = normalizeLimit(opts.limit);
-    const threshold = opts.threshold ?? 0;
+    const threshold = Number.isNaN(opts.threshold)
+      ? 0
+      : Math.max(0, Math.min(1, opts.threshold ?? 0));
     const includeVectors = opts.includeVectors === true;
     const cursor = opts.cursor === undefined ? undefined : normalizeSearchCursor(opts.cursor);
     if (typeof query !== 'string' || query.trim().length === 0) return [];
@@ -520,7 +732,13 @@ export class VectorMemoryStore {
     // head; `limit` is single-digit in every caller.
     const top: Array<{ id: string; score: number; vector: Float32Array }> = [];
     for (const row of scanRows) {
-      const vec = decodeVector(row.vec_blob);
+      let vec: Float32Array;
+      try {
+        vec = decodeVector(row.vec_blob);
+      } catch {
+        continue;
+      }
+      if (vec.length !== dimensions || !vec.every(Number.isFinite)) continue;
       const raw = cosineSimilarity(queryVec, vec);
       const score = Math.max(0, Math.min(1, raw));
       if (!Number.isFinite(score) || score < threshold) continue;
@@ -593,6 +811,24 @@ export class VectorMemoryStore {
     } = {},
   ): VectorEntry[] {
     this.assertOpen();
+    if (opts.scope !== undefined) assertVectorScope(opts.scope, 'VectorMemoryStore.list');
+    if (opts.kind !== undefined) assertVectorKind(opts.kind, 'VectorMemoryStore.list');
+    if (opts.limit !== undefined && typeof opts.limit !== 'number') {
+      throw new VectorMemoryError('VectorMemoryStore.list: limit must be a number');
+    }
+    if (
+      opts.after !== undefined &&
+      (typeof opts.after !== 'object' ||
+        opts.after === null ||
+        typeof opts.after.updatedAt !== 'string' ||
+        !Number.isFinite(Date.parse(opts.after.updatedAt)) ||
+        typeof opts.after.id !== 'string' ||
+        opts.after.id.trim().length === 0)
+    ) {
+      throw new VectorMemoryError(
+        'VectorMemoryStore.list: after must contain a valid updatedAt and non-empty id',
+      );
+    }
     const where: string[] = [];
     const params: Array<string | number> = [];
     if (opts.scope !== undefined) {
@@ -618,6 +854,12 @@ export class VectorMemoryStore {
     opts: { onlyMissing?: boolean } = {},
   ): Promise<{ processed: number; errors: number }> {
     this.assertOpen();
+    if (typeof opts !== 'object' || opts === null || Array.isArray(opts)) {
+      throw new VectorMemoryError('VectorMemoryStore.reindexAll: options must be an object');
+    }
+    if (opts.onlyMissing !== undefined && typeof opts.onlyMissing !== 'boolean') {
+      throw new VectorMemoryError('VectorMemoryStore.reindexAll: onlyMissing must be a boolean');
+    }
     return withFileLock(
       this.lockPath,
       async () => {
@@ -639,7 +881,7 @@ export class VectorMemoryStore {
             // already valid for the same content_hash.
             const result = await this.provider.embed([row.text as string]);
             const v = result[0];
-            if (!v) {
+            if (!v || v.length !== this.provider.dimensions || !v.every(Number.isFinite)) {
               errors++;
               continue;
             }
@@ -746,8 +988,8 @@ export class VectorMemoryStore {
    */
   async evictCache(keepMostRecent: number): Promise<{ removed: number }> {
     this.assertOpen();
-    if (keepMostRecent < 0) {
-      throw new Error('evictCache: keepMostRecent must be >= 0');
+    if (!Number.isSafeInteger(keepMostRecent) || keepMostRecent < 0) {
+      throw new Error('evictCache: keepMostRecent must be >= 0 and a safe integer');
     }
     return withFileLock(
       this.lockPath,
@@ -765,8 +1007,14 @@ export class VectorMemoryStore {
                LIMIT ?
             )`,
         );
-        const info = stmt.run(Math.min(toRemove, CACHE_EVICT_BATCH));
-        return { removed: Number(info.changes) };
+        let removed = 0;
+        while (removed < toRemove) {
+          const info = stmt.run(Math.min(toRemove - removed, CACHE_EVICT_BATCH));
+          const changed = Number(info.changes);
+          removed += changed;
+          if (changed === 0) break;
+        }
+        return { removed };
       },
       { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
     );
@@ -791,18 +1039,33 @@ export class VectorMemoryStore {
       id: row.id as string,
       text: row.text as string,
       summary: summaryValue ?? (undefined as string | undefined),
-      metadata: safeParseJson(row.metadata, {}),
-      tags: safeParseJson(row.tags, []),
-      scope: row.scope as VectorEntry['scope'],
-      kind: row.kind as VectorEntry['kind'],
+      metadata: safeParseMetadata(row.metadata),
+      tags: safeParseTags(row.tags),
+      scope:
+        typeof row.scope === 'string' && VECTOR_SCOPES.has(row.scope)
+          ? (row.scope as VectorEntry['scope'])
+          : 'session',
+      kind:
+        typeof row.kind === 'string' && VECTOR_KINDS.has(row.kind)
+          ? (row.kind as VectorEntry['kind'])
+          : 'note',
       contentHash: row.content_hash as string,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
-      providerId: vectorRow?.provider_id ?? '',
-      dimensions: vectorRow?.dimensions ?? 0,
+      providerId: '',
+      dimensions: 0,
     };
     if (vectorRow?.vector) {
-      entry.vector = decodeVector(vectorRow.vector);
+      try {
+        const vector = decodeVector(vectorRow.vector);
+        if (vector.length === vectorRow.dimensions && vector.every(Number.isFinite)) {
+          entry.providerId = vectorRow.provider_id;
+          entry.dimensions = vectorRow.dimensions;
+          entry.vector = vector;
+        }
+      } catch {
+        // Corrupt advisory vectors are omitted; the entry itself remains readable.
+      }
     }
     return entry;
   }
@@ -821,10 +1084,26 @@ export class VectorMemoryStore {
 
     for (const memory of memories) {
       try {
+        if (typeof memory.id !== 'string' || memory.id.trim().length === 0) {
+          throw new Error('SAGE memory id must be a non-empty string');
+        }
         const hash = VectorMemoryStore.contentHash(memory.text);
+        const expectedMetadata = {
+          ...(memory.metadata ?? {}),
+          source: 'sage',
+          sageId: memory.id,
+        };
+        const expectedTags = memory.tags ?? [];
+        const expectedSummary = memory.summary ?? undefined;
         // By SAGE id: a text match owned by another memory is not this mirror.
         const existing = this.findBySageId(memory.id);
-        if (existing && VectorMemoryStore.contentHash(existing.text) === hash) {
+        const sameState =
+          existing !== undefined &&
+          VectorMemoryStore.contentHash(existing.text) === hash &&
+          existing.summary === expectedSummary &&
+          jsonValuesEqual(existing.tags, expectedTags) &&
+          jsonValuesEqual(existing.metadata, expectedMetadata);
+        if (sameState) {
           skipped++;
           continue;
         }
@@ -843,14 +1122,14 @@ export class VectorMemoryStore {
         await withFileLock(
           this.lockPath,
           () => {
-            if (existing) {
+            if (existing && !sameState) {
               this.forgetUnlocked(existing.id);
             }
             return this.rememberUnlocked({
               text: memory.text,
-              summary: memory.summary ?? undefined,
-              metadata: { source: 'sage', sageId: memory.id, ...(memory.metadata ?? {}) },
-              tags: memory.tags ?? [],
+              summary: expectedSummary,
+              metadata: expectedMetadata,
+              tags: expectedTags,
               scope: 'project',
               kind: 'note',
             });
@@ -890,6 +1169,18 @@ function safeParseJson<T>(value: unknown, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function safeParseMetadata(value: unknown): Record<string, unknown> {
+  const parsed = safeParseJson<unknown>(value, undefined);
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : {};
+}
+
+function safeParseTags(value: unknown): string[] {
+  const parsed = safeParseJson<unknown>(value, undefined);
+  return Array.isArray(parsed) && parsed.every((tag) => typeof tag === 'string') ? parsed : [];
 }
 
 function errMsg(err: unknown): string {

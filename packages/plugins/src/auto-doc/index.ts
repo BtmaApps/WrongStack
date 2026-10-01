@@ -278,7 +278,14 @@ function injectDocComment(content: string, entity: ParsedEntity, doc: string): s
   const codeLine = lines[idx] ?? '';
   /* v8 ignore next -- /^(\s*)/ always matches; the ?.[1] ?? '' fallback is defensive. */
   const indent = codeLine.match(/^(\s*)/)?.[1] ?? '';
-  lines.splice(idx, 0, `${indent}${doc}`);
+  // Re-indent EVERY line to the declaration. The templates carry a fixed
+  // three-space ` * ` body, which only lined up under a two-space-indented
+  // member: a top-level `export function` got `/**` at column 0 and its
+  // `*` lines at column 3.
+  const docLines = doc
+    .split('\n')
+    .map((line, i) => (i === 0 ? `${indent}${line.trim()}` : `${indent} ${line.trim()}`));
+  lines.splice(idx, 0, ...docLines);
   return lines.join('\n');
 }
 

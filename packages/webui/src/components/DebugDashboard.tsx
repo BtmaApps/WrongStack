@@ -252,6 +252,31 @@ export function DebugDashboard() {
     void fetchMetrics();
   };
 
+  // Three states, not two. `fileWatcher === null` means the metrics request
+  // itself did not deliver usable JSON (non-OK, 503, unauthorized, or an HTML
+  // response from a dev server). That is *not* evidence the watcher stopped —
+  // collapsing it into "Stopped" made a stale server build, an auth failure,
+  // and a genuinely dead watcher all render identically.
+  const watcher = data.fileWatcher;
+  const watcherStatus = !watcher
+    ? t('activity:debug.unavailable')
+    : watcher.watcherActive
+      ? t('activity:debug.running')
+      : t('activity:debug.stopped');
+  const watcherStatusColor = !watcher
+    ? 'text-muted-foreground'
+    : watcher.watcherActive
+      ? 'text-success'
+      : 'text-destructive';
+  // The three numeric File Watcher cards share the status card's failure mode:
+  // with no metrics object there is no reading at all. `?? 0` rendered a
+  // failed fetch as a confident zero, so a 503 looked like an idle-but-healthy
+  // watcher. They now surface the same unavailable state instead.
+  const watcherValue = (reading: number | undefined): string | number =>
+    watcher ? (reading ?? 0) : t('activity:debug.unavailable');
+  const watcherValueColor = (healthy: string): string =>
+    watcher ? healthy : 'text-muted-foreground';
+
   return (
     <div
       ref={useScrollPosition('debug')}
@@ -326,35 +351,31 @@ export function DebugDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title={t('activity:debug.watcherStatus')}
-              value={
-                data.fileWatcher?.watcherActive
-                  ? t('activity:debug.running')
-                  : t('activity:debug.stopped')
-              }
+              value={watcherStatus}
               icon={Server}
-              color={data.fileWatcher?.watcherActive ? 'text-success' : 'text-destructive'}
+              color={watcherStatusColor}
             />
             <MetricCard
               title={t('activity:debug.activeProjects')}
-              value={data.fileWatcher?.activeProjects ?? 0}
+              value={watcherValue(watcher?.activeProjects)}
               subtitle={t('activity:debug.projectsWatched')}
               icon={FileWarning}
-              color="text-primary"
+              color={watcherValueColor('text-primary')}
             />
             <MetricCard
               title={t('activity:debug.fileChanges')}
-              value={data.fileWatcher?.fileChangesDetected ?? 0}
+              value={watcherValue(watcher?.fileChangesDetected)}
               subtitle={t('activity:debug.totalDetected')}
               icon={Activity}
-              color="text-primary"
-              trend="neutral"
+              color={watcherValueColor('text-primary')}
+              trend={watcher ? 'neutral' : undefined}
             />
             <MetricCard
               title={t('activity:debug.filesProcessed')}
-              value={data.fileWatcher?.filesProcessed ?? 0}
+              value={watcherValue(watcher?.filesProcessed)}
               subtitle={t('activity:debug.afterHash')}
               icon={Gauge}
-              color="text-success"
+              color={watcherValueColor('text-success')}
             />
           </div>
 

@@ -47,6 +47,7 @@ export const CLIENT_CONFIGURATION_MESSAGE_TYPES = [
   'connections.health',
   'connections.service_action',
   'diag.get',
+  'fallback.suggest',
   'key.add',
   'key.delete',
   'key.set_active',

@@ -43,11 +43,23 @@ export async function waitForShutdown(probe?: () => Promise<boolean>): Promise<v
   }
   const deadline = Date.now() + RESTART_DEADLINE_MS;
   while (Date.now() < deadline) {
+    const remainingMs = Math.max(1, deadline - Date.now());
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const stillUp = await probe();
+      const stillUp = await Promise.race([
+        probe(),
+        new Promise<boolean>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Shutdown probe exceeded the restart deadline')),
+            remainingMs,
+          );
+        }),
+      ]);
+      if (timer) clearTimeout(timer);
       if (!stillUp) return;
-    } catch {
-      return;
+    } catch (error) {
+      if (timer) clearTimeout(timer);
+      throw new Error(`Shutdown probe failed: ${errMessage(error)}`);
     }
     await new Promise((resolve) => setTimeout(resolve, RESTART_POLL_INTERVAL_MS));
   }
@@ -71,7 +83,9 @@ export function failureService(
     mode,
     detail: message,
     lastError: message,
-    ...(latencyMs === undefined ? {} : { latencyMs }),
+    ...(typeof latencyMs === 'number' && Number.isFinite(latencyMs) && latencyMs >= 0
+      ? { latencyMs }
+      : {}),
   };
 }
 

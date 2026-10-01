@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-01T09:43:03.295Z
+**Generated:** 2026-10-01T19:03:46.667Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4312 |
-| Production source lines | 1024003 |
-| Test files | 3916 |
+| Production source files | 4317 |
+| Production source lines | 1029690 |
+| Test files | 3947 |
 | Workspace dependency edges | 131 |
-| Relative module edges | 14054 |
+| Relative module edges | 14076 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -32,19 +32,19 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 553 | 570 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 972 | 876 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 974 | 879 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 44 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 40 | 31 | @wrongstack/persistence |
-| @wrongstack/kanban | 95 | 75 | @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/kanban | 95 | 76 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 47 | 50 | @wrongstack/core |
-| @wrongstack/persistence | 8 | 15 | — |
-| @wrongstack/plug-lsp | 50 | 49 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/mcp | 47 | 54 | @wrongstack/core |
+| @wrongstack/persistence | 8 | 18 | — |
+| @wrongstack/plug-lsp | 50 | 51 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
-| @wrongstack/primitives | 9 | 9 | — |
-| @wrongstack/providers | 108 | 99 | @wrongstack/core |
+| @wrongstack/primitives | 9 | 10 | — |
+| @wrongstack/providers | 108 | 100 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 15 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
@@ -52,16 +52,16 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
-| @wrongstack/simpleui | 108 | 85 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/simpleui | 108 | 87 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 41 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 245 | 286 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 450 | 404 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
-| @wrongstack/vector-memory | 14 | 22 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 617 | 436 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/vector-memory | 14 | 23 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
+| @wrongstack/webui | 619 | 440 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 49 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 21 | 10 | @wrongstack/core |
-| @wrongstack/webui-server | 258 | 246 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
+| @wrongstack/webui-server | 259 | 255 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 6 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |
 
@@ -88,54 +88,54 @@ None.
 |---:|---|
 | 1827 | `packages/core/src/security/yolo-risk.ts` |
 | 1372 | `packages/tools/src/_danger-detect.ts` |
+| 1189 | `packages/vector-memory/src/store.ts` |
 | 1176 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 1064 | `packages/tools/src/codebase-index/writer.ts` |
 | 1024 | `packages/tools/src/json.ts` |
 | 1008 | `packages/cli/src/execution.ts` |
 | 1002 | `packages/core/src/coordination/director.ts` |
+| 1000 | `packages/mcp/src/client.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
-| 992 | `packages/mcp/src/client.ts` |
 | 992 | `packages/sage/src/sqlite-store.ts` |
+| 983 | `packages/webui-server/src/server/embedded-message-router.ts` |
+| 982 | `packages/mcp/src/registry.ts` |
 | 980 | `packages/sage/src/project-server.ts` |
 | 974 | `packages/core/src/execution/auto-compaction-middleware.ts` |
-| 972 | `packages/webui-server/src/server/embedded-message-router.ts` |
 | 968 | `packages/providers/src/index.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
+| 960 | `packages/webui/src/types/client-message.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
-| 959 | `packages/webui/src/types/client-message.ts` |
 | 946 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |
 | 936 | `packages/providers/src/openai-codex.ts` |
+| 935 | `packages/simpleui/src/settings-panel.tsx` |
 | 933 | `packages/core/src/types/provider.ts` |
 | 930 | `packages/sage/src/sqlite-store-search.ts` |
 | 926 | `packages/cli/src/auth-menu/panel-service.ts` |
 | 924 | `packages/webui/src/hooks/ws-handlers.ts` |
-| 922 | `packages/mcp/src/registry.ts` |
 | 921 | `packages/tools/src/session-kanban.ts` |
 | 920 | `packages/cli/src/fleet/host.ts` |
 | 911 | `packages/kanban/src/server/project-server.ts` |
 | 911 | `packages/sdd/src/sdd-parallel-run.ts` |
+| 909 | `packages/cli/src/webui-server.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
+| 907 | `packages/mcp/src/server.ts` |
+| 906 | `packages/plugins/src/duplicate-code-detector/index.ts` |
+| 906 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 904 | `packages/cli/src/cli-main.ts` |
 | 903 | `packages/sage/src/sqlite-store-hygiene.ts` |
-| 902 | `packages/cli/src/webui-server.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |
-| 902 | `packages/mcp/src/server.ts` |
 | 901 | `packages/cli/src/slash-commands/sdd.ts` |
 | 899 | `packages/core/src/core/fallback-model.ts` |
 | 898 | `packages/governance/src/runtime-compatibility.ts` |
-| 898 | `packages/vector-memory/src/store.ts` |
 | 898 | `packages/webui/src/components/activity-bar/index.tsx` |
 | 897 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
 | 896 | `packages/webui-server/src/server/backend-services.ts` |
 | 896 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 894 | `packages/tools/src/bash.ts` |
 | 893 | `packages/sage/src/domain-term-extractor.ts` |
-| 893 | `packages/tools/src/codebase-index/project-server-client.ts` |
-| 891 | `packages/kanban/src/verification/verification-context.ts` |
-| 889 | `packages/core/src/hq/auth-store.ts` |
 
 ## Exports only tests reference
 

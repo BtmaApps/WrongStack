@@ -3,8 +3,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { standalonePackageDir } from '@wrongstack/core/utils';
-import { type CreateHttpServerOptions, createHttpServer } from './http-server.js';
+import {
+  type CreateHttpServerOptions,
+  createHttpServer,
+  resolveCreateHttpServerOptions,
+} from './http-server.js';
 import { createProjectIntakeService } from './intake-service.js';
 import { listenWithRetry } from './port-utils.js';
 import { errMessage } from './ws-utils.js';
@@ -37,6 +42,61 @@ export interface StaticServeHandle {
   port: number;
 }
 
+/** Read a manifest's `name` field, or undefined when it is absent/unparsable. */
+function readPackageName(manifestPath: string): string | undefined {
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: unknown };
+    return typeof manifest.name === 'string' ? manifest.name : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Directory that `baseUrl` lives in, accepting both URL and path forms. */
+function dirOf(baseUrl: string | URL): string {
+  if (baseUrl instanceof URL || baseUrl.startsWith('file:')) {
+    return path.dirname(fileURLToPath(baseUrl));
+  }
+  return path.dirname(path.resolve(baseUrl));
+}
+
+/**
+ * pnpm-workspace fallback: find a sibling package by the workspace layout.
+ *
+ * `createRequire().resolve()` only sees packages a manifest actually declares
+ * as a dependency. `@wrongstack/webui-server` deliberately does NOT depend on
+ * `@wrongstack/webui` — the frontend is a sibling package, and the CLI→webui
+ * cross-package edge was removed on purpose (audit §3.1.1) — so in a workspace
+ * install the specifier throws and the whole lookup used to bail out with
+ * `undefined`. `resolveDistDir` then returned null, `startStaticServe`
+ * degraded to WS-only, and `GET /` answered 404 with no diagnostic anywhere.
+ *
+ * Walking up for a pnpm workspace root and reading `packages/<unscoped>` is
+ * the same idiom `ensureDistDir` already uses to locate the build root, so
+ * this stays consistent instead of introducing a second convention.
+ */
+function findWorkspaceSiblingPackageJson(
+  packageName: string,
+  startDir: string,
+): string | undefined {
+  const slash = packageName.indexOf('/');
+  const unscoped = slash === -1 ? packageName : packageName.slice(slash + 1);
+  if (!unscoped) return undefined;
+  let dir = startDir;
+  for (let depth = 0; depth < 12; depth++) {
+    if (existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+      const candidate = path.join(dir, 'packages', unscoped, 'package.json');
+      // Verify the manifest name: a directory called `webui` is only a match
+      // if it actually declares the package we asked for.
+      if (readPackageName(candidate) === packageName) return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
 /** Bun-compatible replacement for Node's newer `module.findPackageJSON`. */
 export function findInstalledPackageJson(
   specifier: string,
@@ -49,25 +109,22 @@ export function findInstalledPackageJson(
   const standaloneDir = standalonePackageDir(packageName);
   if (standaloneDir !== null) return path.join(standaloneDir, 'package.json');
 
-  let current: string;
+  let current: string | undefined;
   try {
     current = path.dirname(createRequire(baseUrl).resolve(packageName));
   } catch {
-    return undefined;
+    // Not resolvable as a dependency — fall through to the workspace layout.
+    current = undefined;
   }
-  for (let depth = 0; depth < 12; depth++) {
+  for (let depth = 0; current !== undefined && depth < 12; depth++) {
     const candidate = path.join(current, 'package.json');
-    try {
-      const manifest = JSON.parse(readFileSync(candidate, 'utf8')) as { name?: unknown };
-      if (manifest.name === packageName) return candidate;
-    } catch {
-      // Continue toward the package root.
-    }
+    if (readPackageName(candidate) === packageName) return candidate;
     const parent = path.dirname(current);
     if (parent === current) break;
     current = parent;
   }
-  return undefined;
+
+  return findWorkspaceSiblingPackageJson(packageName, dirOf(baseUrl));
 }
 
 export interface StaticServeOptions {
@@ -79,6 +136,14 @@ export interface StaticServeOptions {
   distDir?: string | undefined;
   /** Push-on-write hook for `POST /api/fleet/ping` (immediate fleet re-broadcast). */
   onFleetPing?: (() => void) | undefined;
+  /**
+   * Live file-watcher metrics sink backing `GET /debug/watcher-metrics`.
+   * Omitting it makes that route answer 503 and the WebUI Debug Dashboard
+   * report the watcher as unavailable, so every host that embeds the WebUI
+   * must thread its own metrics object through here — not just the
+   * standalone `start-webui` server.
+   */
+  watcherMetrics?: CreateHttpServerOptions['watcherMetrics'];
   /** TechStack HTTP job events projected to the embedded WebSocket server. */
   onTechStackEvent?:
     | ((event: import('@wrongstack/webui-server').WSServerMessage) => void)
@@ -94,6 +159,20 @@ export interface StaticServeOptions {
     | undefined;
   /** Active target project root for TechStack and CodeMap APIs. */
   projectRoot?: string | undefined;
+  /**
+   * Optional codebase-index directory override. `createHttpServer` hands the
+   * whole options object to `handleApiRoutes`, so this reaches the
+   * `/api/codemap/*` and `/api/deadcode/*` handlers. Omitting it here made the
+   * CLI-embedded WebUI ignore a `meta.codebaseIndexDir` override and silently
+   * fall back to the default `<projectRoot>/.codebase-index`.
+   */
+  indexDir?: CreateHttpServerOptions['indexDir'];
+  /**
+   * TechStack package add/remove execution. Forwarded by the standalone
+   * `startHttpServer` path but historically dropped here, leaving the
+   * CLI-embedded WebUI without working package operations.
+   */
+  executePackageOperation?: CreateHttpServerOptions['executePackageOperation'];
   /** Public browser-facing WS URL injected into the React app. */
   publicWsUrl?: string | undefined;
   /**
@@ -112,6 +191,10 @@ export interface StaticServeOptions {
    * from it (WS-001).
    */
   allowedHostnames?: readonly string[] | undefined;
+  /** `/ws-auth` cookie exchange; defaults to enabled (see `CreateHttpServerOptions`). */
+  enableWsCookie?: CreateHttpServerOptions['enableWsCookie'];
+  /** `Secure` auth cookie; inferred from a `wss://` `publicWsUrl` when omitted. */
+  secureCookies?: CreateHttpServerOptions['secureCookies'];
   /**
    * When true, skip `server.listen()` — the caller is responsible for
    * calling listen after attaching the WebSocketServer. This prevents
@@ -315,6 +398,30 @@ export async function ensureDistDir(
 }
 
 /**
+ * Announce that the frontend could not be resolved.
+ *
+ * A null dist is a DEGRADED boot, not a clean shutdown: the host keeps its
+ * WebSocket surface and every static request answers 404. Nothing logged that,
+ * so an operator saw a WebUI that simply had no pages, and the only clue was
+ * a bare "Not found" body. The remedy is spelled out here because the call
+ * site has already lost the context of what was tried.
+ */
+export function warnFrontendUnavailable(reason: string, detail?: string): void {
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: 'webui.frontend_unavailable',
+      message:
+        `Frontend not resolved (${reason}) — serving WebSocket only; ` +
+        `every static request will answer 404. ` +
+        (detail ??
+          'Build it with `pnpm --filter @wrongstack/webui build`, or pass an explicit dist directory.'),
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
+/**
  * Injectable seams for `startStaticServe`. Both default to
  * the real implementations; tests override them to assert
  * the wiring without resolving the webui package or binding
@@ -344,7 +451,10 @@ export async function startStaticServe(
   const distDir = deps.resolveDist
     ? deps.resolveDist(opts.distDir)
     : await ensureDist(opts.distDir);
-  if (distDir === null) return null;
+  if (distDir === null) {
+    warnFrontendUnavailable('no frontend dist could be resolved');
+    return null;
+  }
 
   const intakeService =
     opts.intakeService ??
@@ -355,28 +465,33 @@ export async function startStaticServe(
         })
       : undefined);
 
-  const server = create({
-    getSessionProjectRoot: opts.getSessionProjectRoot,
-    host: opts.host,
-    port: opts.httpPort,
-    distDir,
-    globalRoot: opts.globalRoot,
-    onFleetPing: opts.onFleetPing,
-    onTechStackEvent: opts.onTechStackEvent,
-    getLlm: opts.getLlm,
-    projectRoot: opts.projectRoot,
-    publicWsUrl: opts.publicWsUrl,
-    apiToken: opts.apiToken,
-    requireToken: opts.requireToken,
-    allowedHostnames: opts.allowedHostnames,
-    intakeService,
-    ...(opts.getExtraConnectSrc ? { getExtraConnectSrc: opts.getExtraConnectSrc } : {}),
-    ...(opts.getIntegrationTarget ? { getIntegrationTarget: opts.getIntegrationTarget } : {}),
-    ...(opts.getVectorMemoryStore ? { getVectorMemoryStore: opts.getVectorMemoryStore } : {}),
-    ...(opts.vectorMemoryModelCacheDir
-      ? { vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir }
-      : {}),
-  });
+  const server = create(
+    resolveCreateHttpServerOptions({
+      getSessionProjectRoot: opts.getSessionProjectRoot,
+      host: opts.host,
+      port: opts.httpPort,
+      distDir,
+      globalRoot: opts.globalRoot,
+      onFleetPing: opts.onFleetPing,
+      watcherMetrics: opts.watcherMetrics,
+      onTechStackEvent: opts.onTechStackEvent,
+      getLlm: opts.getLlm,
+      projectRoot: opts.projectRoot,
+      indexDir: opts.indexDir,
+      executePackageOperation: opts.executePackageOperation,
+      publicWsUrl: opts.publicWsUrl,
+      apiToken: opts.apiToken,
+      requireToken: opts.requireToken,
+      allowedHostnames: opts.allowedHostnames,
+      enableWsCookie: opts.enableWsCookie,
+      secureCookies: opts.secureCookies,
+      intakeService,
+      getExtraConnectSrc: opts.getExtraConnectSrc,
+      getIntegrationTarget: opts.getIntegrationTarget,
+      getVectorMemoryStore: opts.getVectorMemoryStore,
+      vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir,
+    }),
+  );
 
   if (!opts.deferListen) {
     // Bind-time EADDRINUSE safety net: `findFreePort` probes with a

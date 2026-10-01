@@ -181,6 +181,68 @@ export interface CreateHttpServerOptions {
 }
 
 /**
+ * Whether the `ws_token` cookie must be `Secure`: true only when the
+ * browser-facing WS origin is TLS (`wss://`). See
+ * {@link CreateHttpServerOptions.secureCookies}.
+ */
+export function inferSecureCookies(publicWsUrl: string | undefined): boolean {
+  return publicWsUrl?.trim().toLowerCase().startsWith('wss:') ?? false;
+}
+
+/**
+ * Every {@link CreateHttpServerOptions} key, present even when its value is
+ * `undefined`. The mapped type makes adding a field to the options interface a
+ * compile error here until it is threaded through.
+ */
+export type ResolvedCreateHttpServerOptions = {
+  [K in keyof Required<CreateHttpServerOptions>]: CreateHttpServerOptions[K];
+};
+
+/**
+ * The single place the host entry points (`startStaticServe` for the
+ * CLI-embedded WebUI, `startHttpServer` for the standalone server) build the
+ * options handed to {@link createHttpServer}.
+ *
+ * `createHttpServer` passes its whole options object to `handleApiRoutes`, so
+ * a field a host forgot to copy silently disabled the feature behind it on
+ * that host only (watcherMetrics, allowedHostnames, indexDir and
+ * executePackageOperation were each lost this way). Listing every key here —
+ * enforced by {@link ResolvedCreateHttpServerOptions} — keeps both hosts on an
+ * identical key set. The cookie policy is also settled here, once:
+ * `secureCookies` defaults to {@link inferSecureCookies} and `enableWsCookie`
+ * to `true`, the same defaults `createHttpServer` applies.
+ */
+export function resolveCreateHttpServerOptions(
+  input: CreateHttpServerOptions,
+): ResolvedCreateHttpServerOptions {
+  return {
+    getSessionProjectRoot: input.getSessionProjectRoot,
+    port: input.port,
+    host: input.host,
+    distDir: input.distDir,
+    publicWsUrl: input.publicWsUrl,
+    globalRoot: input.globalRoot,
+    apiToken: input.apiToken,
+    requireToken: input.requireToken,
+    allowedHostnames: input.allowedHostnames,
+    enableWsCookie: input.enableWsCookie ?? true,
+    secureCookies: input.secureCookies ?? inferSecureCookies(input.publicWsUrl),
+    watcherMetrics: input.watcherMetrics,
+    onFleetPing: input.onFleetPing,
+    getExtraConnectSrc: input.getExtraConnectSrc,
+    getIntegrationTarget: input.getIntegrationTarget,
+    projectRoot: input.projectRoot,
+    indexDir: input.indexDir,
+    onTechStackEvent: input.onTechStackEvent,
+    getLlm: input.getLlm,
+    executePackageOperation: input.executePackageOperation,
+    intakeService: input.intakeService,
+    getVectorMemoryStore: input.getVectorMemoryStore,
+    vectorMemoryModelCacheDir: input.vectorMemoryModelCacheDir,
+  };
+}
+
+/**
  * Create the static-file HTTP server. Returns the `http.Server` (not
  * listening yet) so the caller can attach to a `shutdown()` hook and
  * coordinate the listen() with the WebSocket bootstrap.
@@ -189,8 +251,7 @@ export function createHttpServer(opts: CreateHttpServerOptions): http.Server {
   const port = opts.port ?? Number.parseInt(process.env['PORT'] ?? '3456', 10);
   const distDir = path.resolve(opts.distDir);
   const requireAccessToken = Boolean(opts.requireToken) || !isLoopbackBind(opts.host);
-  const secureCookies =
-    opts.secureCookies ?? opts.publicWsUrl?.trim().toLowerCase().startsWith('wss:') ?? false;
+  const secureCookies = opts.secureCookies ?? inferSecureCookies(opts.publicWsUrl);
   const trustedHostnames: readonly string[] = (() => {
     const names = [...(opts.allowedHostnames ?? [])];
     if (opts.publicWsUrl) {

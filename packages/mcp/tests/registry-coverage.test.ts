@@ -308,7 +308,12 @@ describe('MCPRegistry coverage', () => {
     internals(registry).servers.set('catalog', slot);
     await expect(registry.listPrompts('catalog', { refresh: true })).resolves.toHaveLength(2);
     await discoverSlotCapabilities(
-      { recordFailure: vi.fn(), recordOperation: vi.fn(), log: { warn: vi.fn() } } as never,
+      {
+        servers: internals(registry).servers,
+        recordFailure: vi.fn(),
+        recordOperation: vi.fn(),
+        log: { warn: vi.fn() },
+      } as never,
       slot as never,
       client as never,
     );
@@ -324,7 +329,6 @@ describe('MCPRegistry coverage', () => {
 
   it('records capability discovery failures', async () => {
     const { log } = fixture();
-    const slot = makeSlot('catalog');
     const client = {
       getServerMetadata: () => ({
         capabilities: { resources: {}, prompts: {} },
@@ -341,8 +345,14 @@ describe('MCPRegistry coverage', () => {
         throw new Error('prompts failed');
       }),
     };
+    const slot = makeSlot('catalog', { client });
     await discoverSlotCapabilities(
-      { recordFailure: vi.fn(), recordOperation: vi.fn(), log } as never,
+      {
+        servers: new Map([['catalog', slot]]),
+        recordFailure: vi.fn(),
+        recordOperation: vi.fn(),
+        log,
+      } as never,
       slot as never,
       client as never,
     );

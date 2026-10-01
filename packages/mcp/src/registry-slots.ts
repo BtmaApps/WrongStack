@@ -27,6 +27,10 @@ export interface ServerSlot {
   resources?: MCPResource[] | undefined;
   resourceTemplates?: MCPResourceTemplate[] | undefined;
   prompts?: MCPPrompt[] | undefined;
+  /** Orders refreshes and list-change invalidations independently per catalog. */
+  catalogVersions?:
+    | Partial<Record<'resources' | 'resourceTemplates' | 'prompts', number>>
+    | undefined;
   /** Serializes replacements so rapid list-change notifications cannot restore stale data. */
   manifestWrite?: Promise<void> | undefined;
   attempts: number;
@@ -40,6 +44,8 @@ export interface ServerSlot {
   lastUsed: number;
   /** Single-flight guard so concurrent first-calls trigger only one connect. */
   connecting?: Promise<MCPClient | undefined> | undefined;
+  /** Invalidates asynchronous startup work when a stop interrupts it. */
+  startupGeneration?: number | undefined;
   /** Whether this lazy server's resolver wrappers are registered (register once). */
   registeredLazy: boolean;
   /**

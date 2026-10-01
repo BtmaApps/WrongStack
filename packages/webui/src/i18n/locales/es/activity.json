@@ -663,6 +663,7 @@
     "watcherStatus": "Estado del observador",
     "running": "En ejecución",
     "stopped": "Detenido",
+    "unavailable": "No disponible",
     "activeProjects": "Proyectos activos",
     "projectsWatched": "Proyectos observados",
     "fileChanges": "Cambios de archivos",

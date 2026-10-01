@@ -514,7 +514,7 @@ class Nfa {
     if (node.k === 'cls') {
       const s = this.newState();
       const a = this.newState();
-      this.add(s, a, node.set);
+      if (node.set.length > 0) this.add(s, a, node.set);
       return { start: s, accept: a };
     }
     if (node.k === 'seq') {

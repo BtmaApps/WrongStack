@@ -199,3 +199,53 @@ describe('crash recovery end-to-end', () => {
     await store.dispose?.();
   });
 });
+
+describe('crash recovery of parallel tool calls', () => {
+  const shape = (messages: ReadonlyArray<{ role: string; content: unknown }>): string[] =>
+    messages
+      .filter((message) => message.role !== 'system')
+      .map((message) => {
+        const blocks = Array.isArray(message.content)
+          ? (message.content as Array<{ type: string; id?: string; tool_use_id?: string }>)
+          : [];
+        const parts = blocks.map((block) =>
+          block.type === 'tool_use'
+            ? `use:${block.id}`
+            : block.type === 'tool_result'
+              ? `res:${block.tool_use_id}`
+              : block.type,
+        );
+        return `${message.role}[${parts.join(',')}]`;
+      });
+
+  it('answers every interrupted call of one turn in one result turn, without duplicating a tool_use', async () => {
+    const dir = await tempDir();
+    const store = new DefaultSessionStore({ dir });
+    const writer = await store.create({ id: 'par', model: 'm', provider: 'p' });
+    await writer.append({ type: 'user_input', ts: '2026-01-01T00:00:01.000Z', content: 'go' });
+    await writer.writeInFlightMarker('iteration 0 / tools: bash, read');
+    await writer.append({
+      type: 'llm_response',
+      ts: '2026-01-01T00:00:02.000Z',
+      content: [
+        { type: 'tool_use', id: 'tu-a', name: 'bash', input: { command: 'ls' } },
+        { type: 'tool_use', id: 'tu-b', name: 'read', input: { path: 'x' } },
+      ],
+      stopReason: 'tool_use',
+      usage: { input: 5, output: 5 },
+      model: 'm',
+      provider: 'p',
+    });
+    await writer.flush();
+    // The process dies with both calls outstanding.
+
+    const resumed = await new DefaultSessionStore({ dir }).resume('par');
+    // It used to come back as assistant[a,b] -> user[res a] -> assistant[b] ->
+    // user[res b]: `b` duplicated and unanswered in its own turn.
+    expect(shape(resumed.data.messages).slice(-2)).toEqual([
+      'assistant[use:tu-a,use:tu-b]',
+      'user[res:tu-a,res:tu-b]',
+    ]);
+    await resumed.writer.close();
+  });
+});

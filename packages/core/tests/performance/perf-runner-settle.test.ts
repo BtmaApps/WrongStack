@@ -23,7 +23,12 @@ vi.mock('node:child_process', async (importOriginal) => ({
 const { runOnce } = await import('../../src/performance/perf-runner.js');
 
 /** A child that reports an exit status and then keeps its pipes open forever. */
-function fakeChild(): EventEmitter & { pid: number; kill: () => boolean } {
+function fakeChild(): EventEmitter & {
+  pid: number;
+  kill: () => boolean;
+  stdout: EventEmitter;
+  stderr: EventEmitter;
+} {
   const child = new EventEmitter() as EventEmitter & {
     pid: number;
     kill: () => boolean;
@@ -67,5 +72,19 @@ describe('runOnce settlement', () => {
     child.emit('exit', 0);
     child.emit('close', 0);
     await expect(run).resolves.toMatchObject({ exitCode: 0 });
+  });
+
+  it('keeps a multi-byte character split across two stdout chunks', async () => {
+    const child = fakeChild();
+    mocks.spawn.mockReturnValue(child);
+    const run = runOnce({ command: 'bench', cwd: process.cwd(), timeoutMs: 30_000 });
+    const bytes = Buffer.from('süre: 12ms ğ\n', 'utf8');
+    const cut = bytes.indexOf(Buffer.from('ğ', 'utf8')) + 1;
+    // Per-chunk decoding turned each half of `ğ` into U+FFFD.
+    child.stdout.emit('data', bytes.subarray(0, cut));
+    child.stdout.emit('data', bytes.subarray(cut));
+    child.emit('exit', 0);
+    child.emit('close', 0);
+    await expect(run).resolves.toMatchObject({ stdout: 'süre: 12ms ğ\n' });
   });
 });

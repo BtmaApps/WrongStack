@@ -145,6 +145,7 @@ import type {
   WSAuthOAuthStatus,
   WSCatalogModelSearchResult,
   WSCompletionResult,
+  WSFallbackSuggestions,
   WSDiagGet,
   WSFilesList,
   WSKeyOperationResult,
@@ -282,6 +283,7 @@ export type WSServerMessage =
   | WSSessionInspect
   | WSProviderCatalog
   | WSCatalogModelSearchResult
+  | WSFallbackSuggestions
   | WSProviderModels
   | WSProviderModelTestStarted
   | WSProviderModelTestResult

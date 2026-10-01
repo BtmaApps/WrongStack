@@ -515,7 +515,12 @@ export {
 } from './session-history.js';
 export type { SessionRouteHandlers } from './session-routes.js';
 export { handleSessionRoute } from './session-routes.js';
-export { setupEvents, statusProjectHashFromWatchFilename } from './setup-events.js';
+export {
+  createDefaultFileWatcherMetrics,
+  setupEvents,
+  statusProjectHashFromWatchFilename,
+} from './setup-events.js';
+export type { FileWatcherMetrics } from './setup-events.js';
 export type { ShellGitRouteHandlers } from './shell-git-routes.js';
 export { handleShellGitRoute } from './shell-git-routes.js';
 export {

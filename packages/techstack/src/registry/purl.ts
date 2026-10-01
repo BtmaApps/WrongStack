@@ -88,11 +88,12 @@ export function buildPurl(parts: PurlParts): string {
   segments.push(encodePurlSegment(parts.name));
 
   if (parts.version) {
-    segments.push('@', encodePurlSegment(parts.version));
+    segments.push('@', encodePurlVersion(parts.version));
   }
 
   if (parts.qualifiers && parts.qualifiers.size > 0) {
     const qs = [...parts.qualifiers.entries()]
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join('&');
     segments.push('?', qs);
@@ -153,6 +154,7 @@ export function parsePurl(purl: string): PurlParts | undefined {
   const atIdx = main.lastIndexOf('@');
   if (atIdx > 0) {
     // Must be after the type prefix (i.e., not @scope)
+    if (atIdx === main.length - 1) return undefined;
     version = decodePurlSegment(main.slice(atIdx + 1));
     main = main.slice(0, atIdx);
   }
@@ -203,7 +205,7 @@ export function purlTypeForEcosystem(ecosystem: EcosystemId): string {
  * Returns undefined for unknown types.
  */
 export function ecosystemForPurlType(type: string): EcosystemId | undefined {
-  return PURL_TYPE_TO_ECOSYSTEM[type];
+  return Object.hasOwn(PURL_TYPE_TO_ECOSYSTEM, type) ? PURL_TYPE_TO_ECOSYSTEM[type] : undefined;
 }
 
 /**
@@ -235,7 +237,7 @@ export function constructPurl(ecosystem: EcosystemId, name: string, version?: st
   // like `github.com/gorilla/mux` stay literal. Build the Go PURL string
   // directly so no `/` encoding is applied.
   if (ecosystem === 'go') {
-    const versionSuffix = version !== undefined ? `@${encodePurlSegment(version)}` : '';
+    const versionSuffix = version !== undefined ? `@${encodePurlVersion(version)}` : '';
     return `pkg:${type}/${name}${versionSuffix}`;
   }
   // PyPI names reach the purl in their canonical PEP 503 form (lowercase, with
@@ -348,9 +350,14 @@ export function normalizePypiName(name: string): string {
  * Percent-encode characters that are not allowed unencoded.
  */
 function encodePurlSegment(segment: string): string {
-  // The PURL spec says the value must be percent-encoded as per RFC 3986.
-  // In practice, we need to encode: @ / % and other reserved chars.
-  return segment.replace(/%/g, '%25').replace(/@/g, '%40').replace(/\//g, '%2F');
+  return encodeURIComponent(segment).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+function encodePurlVersion(version: string): string {
+  return /^\$\{[^}]+\}$/.test(version) ? version : encodePurlSegment(version);
 }
 
 /**

@@ -318,7 +318,8 @@ export function projectHqEventMessage(message: {
     typeof event['timestamp'] !== 'string' ||
     typeof event['clientId'] !== 'string' ||
     typeof event['projectId'] !== 'string' ||
-    typeof event['seq'] !== 'number'
+    !Number.isSafeInteger(event['seq']) ||
+    (event['seq'] as number) < 0
   ) {
     return null;
   }

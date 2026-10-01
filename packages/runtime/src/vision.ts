@@ -77,22 +77,15 @@ export async function routeImagesForModel(
   blocks: ContentBlock[],
   opts: VisionRoutingOptions,
 ): Promise<VisionRoutingResult> {
+  opts.signal.throwIfAborted();
   const images = blocks.filter((b): b is ImageBlock => b.type === 'image');
   if (images.length === 0) {
     return { blocks, route: 'none', convertedImages: 0 };
   }
   for (const img of images) {
-    if (img.source.type === 'url' && img.source.url) {
-      try {
-        await assertNotPrivateHost(new URL(img.source.url).hostname);
-      } catch (err) {
-        const reason =
-          err instanceof Error && err.message.startsWith('fetch:')
-            ? err.message.slice('fetch:'.length).trim()
-            : 'unresolvable host';
-        throw new VisionUrlBlockedError({ url: img.source.url, reason });
-      }
-    }
+    if (img.source.type === 'url') await assertSafeVisionUrl(img.source.url);
+    else if (!img.source.data?.trim())
+      throw new Error('vision: base64 image data must not be empty');
   }
 
   if (opts.supportsVision) {
@@ -121,6 +114,7 @@ export async function routeImagesForModel(
     // not be reported as the reason this one could not be described.
     let lastErr: unknown;
     for (const adapter of adapters) {
+      opts.signal.throwIfAborted();
       try {
         const candidate = await adapter.describe({
           image: block,
@@ -235,7 +229,7 @@ function isLikelyVisionTool(tool: Tool): boolean {
   if (/(generate|create|draw|paint|edit|upscale|remove|write|delete)/.test(haystack)) return false;
   if (!/(vision|image|screenshot|ocr|describe|analy[sz]e)/.test(haystack)) return false;
   const props = schemaProperties(tool);
-  return VISION_IMAGE_KEYS.some((key) => key in props);
+  return VISION_IMAGE_KEYS.some((key) => key !== 'mediaType' && key !== 'mimeType' && key in props);
 }
 
 async function buildToolPayload(
@@ -250,6 +244,10 @@ async function buildToolPayload(
   const url = image.source.url;
   let cleanup: (() => Promise<void>) | undefined;
 
+  if (image.source.type === 'base64' && !data?.trim()) {
+    throw new Error('vision: base64 image data must not be empty');
+  }
+
   // SSRF guard: when the image is referenced by URL, validate the host
   // BEFORE forwarding it to the underlying vision tool. The tool may
   // itself fetch the URL (the typical case for an MCP image-understanding
@@ -257,17 +255,7 @@ async function buildToolPayload(
   // / RFC1918 ranges would otherwise become an SSRF vector. Without this
   // gate, vision is a back-door around the fetch.ts SSRF guard (which
   // only applies when the explicit `fetch` tool is invoked).
-  if (image.source.type === 'url' && url) {
-    try {
-      await assertNotPrivateHost(new URL(url).hostname);
-    } catch (err) {
-      const reason =
-        err instanceof Error && err.message.startsWith('fetch:')
-          ? err.message.slice('fetch:'.length).trim()
-          : 'unresolvable host';
-      throw new VisionUrlBlockedError({ url, reason });
-    }
-  }
+  if (image.source.type === 'url') await assertSafeVisionUrl(url);
 
   const pathKey = firstPresent(props, [...VISION_PATH_KEYS]);
   if (pathKey && image.source.type === 'base64' && data) {
@@ -311,8 +299,46 @@ function firstPresent(props: Record<string, unknown>, keys: string[]): string | 
   return keys.find((key) => key in props);
 }
 
+async function assertSafeVisionUrl(rawUrl: string | undefined): Promise<void> {
+  if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0) {
+    throw new VisionUrlBlockedError({ url: rawUrl ?? '', reason: 'image URL is empty' });
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new VisionUrlBlockedError({ url: rawUrl, reason: 'unresolvable host' });
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new VisionUrlBlockedError({ url: rawUrl, reason: 'only http(s) image URLs are allowed' });
+  }
+  try {
+    await assertNotPrivateHost(parsed.hostname);
+  } catch (err) {
+    const reason =
+      err instanceof Error && err.message.startsWith('fetch:')
+        ? err.message.slice('fetch:'.length).trim()
+        : 'unresolvable host';
+    throw new VisionUrlBlockedError({ url: rawUrl, reason });
+  }
+}
+
 async function writeTempImage(data: string, mediaType: string): Promise<string> {
-  const ext = mediaType.includes('jpeg') || mediaType.includes('jpg') ? 'jpg' : 'png';
+  const subtype = mediaType.split(';')[0]?.trim().toLowerCase();
+  const ext =
+    subtype === 'image/jpeg' || subtype === 'image/jpg'
+      ? 'jpg'
+      : subtype === 'image/png'
+        ? 'png'
+        : subtype === 'image/gif'
+          ? 'gif'
+          : subtype === 'image/webp'
+            ? 'webp'
+            : subtype === 'image/avif'
+              ? 'avif'
+              : subtype === 'image/svg+xml'
+                ? 'svg'
+                : 'img';
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-vision-'));
   const file = path.join(dir, `image.${ext}`);
   await fs.writeFile(file, data, 'base64');

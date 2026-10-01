@@ -251,6 +251,39 @@ export function ConnectionsHealthSection() {
     };
   }, [services]);
 
+  // Bulk restart target: every service the backend reports as controllable
+  // (`control !== 'none'`, mirroring the per-card button) minus the WebUI
+  // transport, which has no daemon to bounce. Sleeping on-demand daemons are
+  // excluded on purpose — a restart would *spawn* them just to stop them
+  // again, and they already load the installed release whenever they next
+  // start. Auto-healing services are excluded too: a manual restart would
+  // race the heal that is already in flight.
+  const bulkRestartTargets = useMemo(
+    () =>
+      services.filter(
+        (service) =>
+          service.id !== 'webui' &&
+          service.control !== 'none' &&
+          service.status !== 'offline' &&
+          service.status !== 'unavailable' &&
+          !autoHealing.has(service.id),
+      ),
+    [autoHealing, services],
+  );
+
+  const restartAllServices = useCallback(() => {
+    for (const service of bulkRestartTargets) {
+      handleServiceAction(service.id, 'restart');
+    }
+    // The health snapshot is pre-restart; pull a fresh one so the cards
+    // reflect the new PIDs/uptime as soon as the daemons come back.
+    refreshRef.current();
+  }, [bulkRestartTargets, handleServiceAction]);
+
+  const bulkRestartPending =
+    bulkRestartTargets.length > 0 &&
+    bulkRestartTargets.every((service) => pendingActions.has(service.id));
+
   return (
     <section
       className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm"
@@ -268,10 +301,27 @@ export function ConnectionsHealthSection() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
-          {t('settings:connection.healthRefresh')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={restartAllServices}
+            disabled={bulkRestartTargets.length === 0 || bulkRestartPending}
+            data-testid="restart-all-services"
+            title={
+              t('settings:connection.restartAllTitle', {
+                defaultValue: 'Restart every running IPC daemon in one go',
+              }) as string
+            }
+          >
+            <RotateCcw className={cn('mr-1.5 h-3.5 w-3.5', bulkRestartPending && 'animate-spin')} />
+            {t('settings:connection.restartAll', { defaultValue: 'Restart all' }) as string}
+          </Button>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+            <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
+            {t('settings:connection.healthRefresh')}
+          </Button>
+        </div>
       </div>
 
       <div className="my-4 flex flex-wrap items-center gap-2 text-[11px]">
@@ -365,6 +415,12 @@ function ServiceCard({
   // trigger). The service silently degrades to a process-local fallback, so
   // it deserves a louder treatment than the generic "unavailable" badge.
   const endpointInvalid = service.mode === 'endpoint-invalid';
+  const versionSkew = service.versionMismatch === true;
+  const versionSkewRemedy = t('settings:connection.versionSkewRemedy', {
+    defaultValue:
+      'This daemon is still running the release it was started on, not the installed one. ' +
+      'Use Restart on this service (or Restart all) to load the current version.',
+  }) as string;
   const endpointInvalidRemedy = t('settings:connection.endpointInvalidRemedy', {
     defaultValue:
       'The IPC socket path exceeds this platform\u2019s length limit, so the shared daemon ' +
@@ -372,12 +428,16 @@ function ServiceCard({
       'TMPDIR (e.g. export TMPDIR=/tmp) and restart WrongStack.',
   }) as string;
   const fields = [
+    // Release first: a daemon left over from before an update is the failure
+    // this panel exists to make visible, and "which build am I talking to"
+    // is the first question an operator asks of a service that misbehaves.
+    service.daemonVersion ? ['version', service.daemonVersion] : undefined,
+    service.uptimeMs !== undefined ? ['uptime', formatDuration(service.uptimeMs)] : undefined,
     service.ownerPid !== undefined ? ['PID', String(service.ownerPid)] : undefined,
     service.clients !== undefined ? ['clients', String(service.clients)] : undefined,
     service.activeRequests !== undefined ? ['active', String(service.activeRequests)] : undefined,
     service.queuedWork !== undefined ? ['queued', String(service.queuedWork)] : undefined,
     service.latencyMs !== undefined ? ['latency', `${service.latencyMs}ms`] : undefined,
-    service.uptimeMs !== undefined ? ['uptime', formatDuration(service.uptimeMs)] : undefined,
   ].filter((field): field is string[] => field !== undefined);
 
   return (
@@ -393,6 +453,20 @@ function ServiceCard({
               {!service.required && (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t('settings:connection.healthOptional')}
+                </span>
+              )}
+              {versionSkew && (
+                <span
+                  className="inline-flex cursor-help items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-warning"
+                  title={versionSkewRemedy}
+                  data-testid="version-skew-badge"
+                >
+                  <TriangleAlert className="h-2.5 w-2.5" />
+                  {
+                    t('settings:connection.versionSkewBadge', {
+                      defaultValue: 'outdated build',
+                    }) as string
+                  }
                 </span>
               )}
               {endpointInvalid && (

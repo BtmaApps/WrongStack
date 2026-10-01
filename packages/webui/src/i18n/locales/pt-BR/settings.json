@@ -140,7 +140,11 @@
     },
     "serviceActionRestart": "Reiniciar {{label}}",
     "webuiTransport": "Transporte do WebUI",
-    "serviceAutoRestarting": "Reiniciando automaticamente…"
+    "serviceAutoRestarting": "Reiniciando automaticamente…",
+    "restartAllTitle": "Reiniciar todos os daemons IPC em execução de uma vez",
+    "restartAll": "Reiniciar tudo",
+    "versionSkewRemedy": "Este daemon ainda está executando a versão com que foi iniciado, não a instalada. Use Reiniciar neste serviço (ou Reiniciar tudo) para carregar a versão atual.",
+    "versionSkewBadge": "build desatualizado"
   },
   "provider": {
     "removeProfileConfirm": "Remover o perfil “{{alias}}” e todas as suas chaves?",
@@ -189,7 +193,10 @@
     "keyLabelPlaceholder": "Rótulo da chave (ex. default, production)",
     "apiKeyPlaceholder": "Chave de API",
     "saveKey": "Salvar chave",
-    "savedToast": "Chave salva para {{name}}"
+    "savedToast": "Chave salva para {{name}}",
+    "disableToggle": "Desativar provedor",
+    "disableToggleHint": "Todos os modelos deste provedor são excluídos do roteamento de fallback e dos seletores de modelos. As chaves e a configuração são mantidas.",
+    "disabledBadge": "Desativado"
   },
   "providerModels": {
     "addCustom": "Adicionar modelo personalizado",
@@ -571,6 +578,45 @@
     "addFavoriteModel": "Adicionar modelo favorito…",
     "inactive": "inativo"
   },
+  "fallbackSuggest": {
+    "heading": "Perfis de fallback sugeridos",
+    "body": "Gerados a partir do catálogo models.dev dos provedores que você salvou — apenas modelos atuais e com suporte a ferramentas. Modelos descontinuados, substituídos ou com mais de seis meses ficam de fora.",
+    "modeLabel": "Mecanismo de sugestão",
+    "modeHeuristic": "Catálogo",
+    "modeLlm": "Assistido por LLM",
+    "llmHint": "Seu modelo ativo reordena o mesmo conjunto do catálogo com base no que sabe sobre benchmarks e confiabilidade. Ele só pode escolher modelos acessíveis.",
+    "generate": "Sugerir",
+    "loading": "Preparando sugestões…",
+    "empty": "Não há modelos acessíveis suficientes para uma cadeia de fallback. Adicione outro provedor ou ative mais modelos.",
+    "poolSummary_one": "Escolhido entre {{count}} modelo dos seus provedores",
+    "poolSummary_other": "Escolhido entre {{count}} modelos dos seus provedores",
+    "rankedBy": "ordenado por {{model}}",
+    "llmFailed": "Etapa LLM indisponível, exibindo sugestões do catálogo: {{error}}",
+    "archetype": {
+      "strong": "Forte",
+      "balanced": "Equilibrado",
+      "fast": "Rápido",
+      "budget": "Econômico"
+    },
+    "archetypeHint": {
+      "strong": "Os modelos mais capazes primeiro, custe o que custar.",
+      "balanced": "Capazes o bastante para trabalho real a um preço sensato.",
+      "fast": "A menor latência que ainda usa ferramentas de forma confiável.",
+      "budget": "Os modelos mais baratos que ainda concluem tarefas de código."
+    },
+    "sourceLlm": "LLM",
+    "sourceHeuristic": "Catálogo",
+    "providerCount_one": "{{count}} provedor",
+    "providerCount_other": "{{count}} provedores",
+    "free": "grátis",
+    "reasoning": "raciocínio",
+    "unstable": "beta / prévia",
+    "addAsProfile": "Adicionar como perfil",
+    "savedAs": "Salvo como {{name}}",
+    "useAsChain": "Usar como cadeia ativa",
+    "chainActive": "Cadeia ativa",
+    "profileAdded": "Perfil de fallback \"{{name}}\" adicionado"
+  },
   "fleet": {
     "heading": "Frota e Streaming",
     "fleetChatVerbosityLabel": "Transmitir eventos da frota",
@@ -604,6 +650,11 @@
     "telegramDelegateHint": "Envia uma nota humanizada quando um sub-agente conclui.",
     "telegramLongToolLabel": "Ferramentas longas",
     "telegramLongToolHint": "Notifica quando uma ferramenta excede {{ms}}ms. 0 para desativar.",
+    "telegramPollIntervalLabel": "Intervalo de consulta",
+    "telegramPollIntervalHint": "Segundos entre consultas ao Telegram (1–60). Menor é mais responsivo, mas gera mais chamadas de API.",
+    "telegramChatIdLabel": "Chat de notificação",
+    "telegramChatIdHint": "ID de chat padrão para notificações. Um ID positivo emparelha seu chat privado com o bot; IDs de grupo (negativos) são recusados a menos que allowGroupChats esteja habilitado na configuração. Deixe vazio para limpar.",
+    "telegramChatIdInvalid": "Informe um ID de chat inteiro diferente de zero, ou deixe vazio.",
     "telegramChangesApply": "As mudanças se aplicam imediatamente.",
     "telegramNotConfigured": "O Telegram não está configurado. Execute /telegram-setup na CLI para conectar um bot primeiro.",
     "heading": "Integrations",

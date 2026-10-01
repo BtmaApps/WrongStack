@@ -33,6 +33,7 @@ export class DocumentTracker {
   private readonly lastUsed = new Map<string, number>();
   private clock = 0;
   private trackedBytes = 0;
+  private generation = 0;
   private cwd: string;
 
   constructor(
@@ -66,7 +67,8 @@ export class DocumentTracker {
     try {
       const stat = await fs.stat(absPath);
       if (!stat.isFile() || stat.size > MAX_DOCUMENT_BYTES) return null;
-      return await fs.readFile(absPath, 'utf8');
+      const text = await fs.readFile(absPath, 'utf8');
+      return Buffer.byteLength(text, 'utf8') <= MAX_DOCUMENT_BYTES ? text : null;
     } catch (err) {
       this.log.debug(`LSP tracker could not read ${label} ${absPath}`, err);
       return null;
@@ -74,11 +76,12 @@ export class DocumentTracker {
   }
 
   async fileWritten(filePath: string): Promise<void> {
+    const generation = this.generation;
     const absPath = this.resolve(filePath);
     const languageId = this.detectLanguage(absPath);
     if (!languageId) return;
     const text = await this.readTrackable(absPath, 'changed file');
-    if (text === null) return;
+    if (text === null || generation !== this.generation) return;
     const doc = this.docs.get(absPath);
     if (!doc) {
       await this.open(absPath, text);
@@ -106,17 +109,18 @@ export class DocumentTracker {
   }
 
   async open(filePath: string, knownText?: string): Promise<boolean> {
+    const generation = this.generation;
     const absPath = this.resolve(filePath);
     const languageId = this.detectLanguage(absPath);
     if (!languageId) return false;
     let text: string;
     if (knownText !== undefined) {
       // A caller-supplied body still counts against the per-document cap.
-      if (knownText.length > MAX_DOCUMENT_BYTES) return false;
+      if (Buffer.byteLength(knownText, 'utf8') > MAX_DOCUMENT_BYTES) return false;
       text = knownText;
     } else {
       const read = await this.readTrackable(absPath, 'file');
-      if (read === null) return false;
+      if (read === null || generation !== this.generation) return false;
       text = read;
     }
     let doc = this.docs.get(absPath);
@@ -167,6 +171,7 @@ export class DocumentTracker {
   }
 
   async forceCloseAll(): Promise<void> {
+    this.generation++;
     for (const doc of this.docs.values()) {
       for (const server of this.registry().list()) {
         /* v8 ignore next -- close only applies to ready servers that saw the doc. */
@@ -193,8 +198,8 @@ export class DocumentTracker {
 
   /** Adjust the running byte total when a document's text is replaced. */
   private accountText(previous: string | undefined, next: string | undefined): void {
-    this.trackedBytes -= previous?.length ?? 0;
-    this.trackedBytes += next?.length ?? 0;
+    this.trackedBytes -= previous === undefined ? 0 : Buffer.byteLength(previous, 'utf8');
+    this.trackedBytes += next === undefined ? 0 : Buffer.byteLength(next, 'utf8');
   }
 
   /** Close and forget one document, keeping servers in sync. */

@@ -116,6 +116,7 @@ const STRING_ARRAY_PREF_KEYS = new Set([
   'fallbackModels',
   'favoriteModels',
   'disabledModels',
+  'disabledProviders',
   // Auto-review explicit fallback chain (derived when fallbackProfile is unset;
   // surfaced for visibility/override).
   'autoReviewFallbackModels',
@@ -192,6 +193,9 @@ const NUMBER_PREF_KEYS = new Set([
   'enhanceDelayMs',
   'enhanceCountdownMs',
   'tgLongToolMs',
+  // Telegram polling interval (seconds). Same 1–60 bound the CLI's
+  // `/telegram-settings poll` enforces and `telegramConfigSchema` declares.
+  'tgPollIntervalSec',
   'breakerAutoKillResetMs',
   // Chimera + auto-review numeric knobs
   'chimeraMaxFiles',
@@ -219,7 +223,7 @@ const NUMBER_PREF_KEYS = new Set([
  * `maxIterations: -5` or `maxConcurrent: 0` are rejected loudly instead
  * of silently landing in `config.tools` / `config.maxConcurrent`.
  */
-const NUMBER_PREF_BOUNDS: Record<string, { min: number; max: number }> = {
+const NUMBER_PREF_BOUNDS: Record<string, { min: number; max: number; integer?: boolean }> = {
   // Iteration / concurrency — maxIterations 0 = unlimited (the core default);
   // maxConcurrent must be at least 1 to make progress.
   maxIterations: { min: 0, max: Number.POSITIVE_INFINITY },
@@ -233,6 +237,14 @@ const NUMBER_PREF_BOUNDS: Record<string, { min: number; max: number }> = {
   preRefineSeconds: { min: 0, max: Number.POSITIVE_INFINITY },
   // Probability — must lie in [0, 1].
   sageMemoryInjectThreshold: { min: 0, max: 1 },
+  // Telegram polling interval, in seconds. Same 1–60 range the CLI
+  // (`/telegram-settings poll`) and telegramConfigSchema both enforce, so a
+  // 0 or 61 is rejected here rather than persisted and then ignored.
+  // `integer` because the bounds alone would let 2.9 through: the CLI rejects
+  // it ("Invalid value") and the plugin's JSON schema declares
+  // `type: 'integer'`, so persisting a fractional interval would write a value
+  // the Telegram config reader treats as out-of-schema.
+  tgPollIntervalSec: { min: 1, max: 60, integer: true },
   // Debounce / delay — non-negative ms.
   autoReviewDebounceMs: { min: 0, max: Number.POSITIVE_INFINITY },
 };
@@ -256,6 +268,40 @@ const STRING_PREF_KEYS = new Set([
   // can override here for non-default daemon ports / paths.
   'wrongProxyUrl',
 ]);
+
+/**
+ * Telegram default notification chat (`Config.extensions.telegram.notifyChatId`).
+ *
+ * Not a plain string: the CLI's `/telegram-settings chat` accepts a numeric
+ * Telegram ID only, and `classifyTelegramChatId`
+ * (packages/cli/src/slash-commands/telegram-setup.ts) splits it on sign —
+ * positive = private chat, negative = group/supergroup/channel. Groups are an
+ * outbound-broadcast target, so the CLI refuses them unless
+ * `extensions.telegram.allowGroupChats` is explicitly true.
+ *
+ * The same classification is re-implemented here rather than imported:
+ * `@wrongstack/webui-server` does not depend on `@wrongstack/telegram` or the
+ * CLI package, and this module is on the hot path for every `prefs.update`
+ * frame. `tests/telegram-prefs.test.ts` pins the parity.
+ */
+const TELEGRAM_CHAT_ID_PREF_KEYS = new Set(['tgChatId']);
+
+/**
+ * Validate a Telegram chat ID exactly as the CLI does: a non-zero safe integer.
+ * An empty string clears the target (the CLI has no clear verb, but the WebUI
+ * input is editable, so clearing must be expressible).
+ */
+function validateTelegramChatId(value: unknown, path: string): string | null {
+  if (typeof value !== 'string') return `${path} must be a string`;
+  const normalized = value.trim();
+  if (normalized === '') return null;
+  if (!/^-?\d+$/.test(normalized)) return `${path} must be a Telegram chat ID (integer)`;
+  const chatId = Number(normalized);
+  if (!Number.isSafeInteger(chatId) || chatId === 0) {
+    return `${path} must be a non-zero chat ID`;
+  }
+  return null;
+}
 
 const ENUM_PREF_KEYS: Record<string, Set<string>> = {
   autonomy: AUTONOMY_VALUES,
@@ -516,9 +562,14 @@ function validatePreferenceValue(key: string, value: unknown): string | null {
       return `prefs.update payload.${key} must be a finite number`;
     }
     const bounds = NUMBER_PREF_BOUNDS[key];
-    if (bounds && (value < bounds.min || value > bounds.max)) {
-      const maxStr = bounds.max === Number.POSITIVE_INFINITY ? '∞' : String(bounds.max);
-      return `prefs.update payload.${key} must be in [${bounds.min}, ${maxStr}]`;
+    if (bounds) {
+      if (value < bounds.min || value > bounds.max) {
+        const maxStr = bounds.max === Number.POSITIVE_INFINITY ? '∞' : String(bounds.max);
+        return `prefs.update payload.${key} must be in [${bounds.min}, ${maxStr}]`;
+      }
+      if (bounds.integer && !Number.isInteger(value)) {
+        return `prefs.update payload.${key} must be an integer`;
+      }
     }
     return null;
   }
@@ -653,6 +704,9 @@ function validatePreferenceValue(key: string, value: unknown): string | null {
   if (LIMITS_PREF_KEYS.has(key)) {
     return validateLimitsValue(value, `prefs.update payload.${key}`);
   }
+  if (TELEGRAM_CHAT_ID_PREF_KEYS.has(key)) {
+    return validateTelegramChatId(value, `prefs.update payload.${key}`);
+  }
   const allowed = ENUM_PREF_KEYS[key];
   if (allowed) {
     return typeof value === 'string' && allowed.has(value)
@@ -692,6 +746,7 @@ export const VALIDATED_PREF_KEYS: ReadonlySet<string> = new Set<string>([
   ...MODEL_TIERS_PREF_KEYS,
   ...LIMITS_PREF_KEYS,
   ...SUBAGENT_MODEL_PLAN_PREF_KEYS,
+  ...TELEGRAM_CHAT_ID_PREF_KEYS,
   ...Object.keys(ENUM_PREF_KEYS),
 ]);
 

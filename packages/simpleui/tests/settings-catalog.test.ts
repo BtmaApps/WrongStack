@@ -62,6 +62,15 @@ describe('settings-catalog', () => {
     expect(coach.kind).toBe('toggle');
     expect(matchesQuery(coach, 'Session', 'tool coach')).toBe(true);
   });
+
+  it('exposes the Telegram settings in their own group', () => {
+    const poll = SETTINGS_CATALOG.find((e) => e.id === 'telegram.pollInterval')!;
+    const chat = SETTINGS_CATALOG.find((e) => e.id === 'telegram.chatId')!;
+    expect(poll).toMatchObject({ group: 'telegram', kind: 'select' });
+    expect(chat).toMatchObject({ group: 'telegram', kind: 'text' });
+    expect(matchesQuery(poll, 'Telegram', 'polling')).toBe(true);
+    expect(matchesQuery(chat, 'Telegram', 'chat id')).toBe(true);
+  });
 });
 
 describe('matchesQuery', () => {

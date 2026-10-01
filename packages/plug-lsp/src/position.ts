@@ -51,6 +51,17 @@ export function lspToHuman(content: string, pos: LSPPosition): HumanPosition {
   return { line: lineIdx + 1, character: bytes + 1 };
 }
 
+/**
+ * 1-based byte column for a 0-based UTF-16 `character` on one line of text —
+ * the column convention every tool INPUT uses (see {@link humanToLSP}). Output
+ * that printed `character + 1` instead handed the model a UTF-16 column, and
+ * passing it back in landed one character early per multi-byte character
+ * before it on the line.
+ */
+export function lspColumnToHuman(lineText: string, character: number): number {
+  return lspToHuman(lineText, { line: 0, character }).character;
+}
+
 export function humanToLSPRange(content: string, range: HumanRange): LSPRange {
   return { start: humanToLSP(content, range.start), end: humanToLSP(content, range.end) };
 }

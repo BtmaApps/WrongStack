@@ -5,7 +5,7 @@
  * a flake.
  *
  * The key is (working-tree fingerprint, command). The fingerprint hashes
- * `HEAD`, the full `git diff HEAD` and the names of untracked files, so any
+ * `HEAD`, the full `git diff HEAD` and every untracked file (name + content), so any
  * code change gives a new key and a failure after a change is never called
  * flaky. The command is part of the key because it decides which tests ran:
  * a test absent from a filtered run's failures did not pass, it did not run.
@@ -17,6 +17,8 @@
  */
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import { buildChildEnv } from '@wrongstack/core/utils';
 
 /** Runs kept per (fingerprint, command); older ones go first. */
@@ -106,7 +108,17 @@ function git(cwd: string, args: string[]): Promise<string | null> {
   });
 }
 
-/** Hash of HEAD + the tracked diff + untracked names; null outside a git repository. */
+/** Untracked files up to this size are hashed by content; larger ones by size + mtime. */
+const UNTRACKED_CONTENT_HASH_MAX_BYTES = 1024 * 1024;
+
+/**
+ * Hash of HEAD + the tracked diff + every untracked file's name AND content;
+ * null outside a git repository.
+ *
+ * Names alone kept the key fixed while a brand-new (untracked) module was
+ * edited, so a test broken by that edit was reported as having passed "on
+ * this same code" earlier — a flake verdict for a real regression.
+ */
 export async function treeFingerprint(cwd: string): Promise<string | null> {
   const [head, diff, untracked] = await Promise.all([
     git(cwd, ['rev-parse', 'HEAD']),
@@ -114,14 +126,23 @@ export async function treeFingerprint(cwd: string): Promise<string | null> {
     git(cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
   if (head === null || diff === null || untracked === null) return null;
-  return createHash('sha256')
-    .update(head)
-    .update('\0')
-    .update(diff)
-    .update('\0')
-    .update(untracked)
-    .digest('hex')
-    .slice(0, 32);
+  const hash = createHash('sha256').update(head).update('\0').update(diff).update('\0');
+  for (const name of untracked.split('\0').filter(Boolean)) {
+    hash.update(name).update('\0');
+    const file = join(cwd, name);
+    try {
+      const info = await stat(file);
+      hash.update(
+        info.size <= UNTRACKED_CONTENT_HASH_MAX_BYTES
+          ? await readFile(file)
+          : `${info.size}:${info.mtimeMs}`,
+      );
+    } catch {
+      // Vanished between listing and reading: its name is still hashed.
+    }
+    hash.update('\0');
+  }
+  return hash.digest('hex').slice(0, 32);
 }
 
 export interface FlakyFinding {

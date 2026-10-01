@@ -87,6 +87,9 @@ export function setupWebuiCredentialWatcher(options: {
         ...(snapshot.disabledModels !== undefined
           ? { disabledModels: snapshot.disabledModels }
           : {}),
+        ...(snapshot.disabledProviders !== undefined
+          ? { disabledProviders: snapshot.disabledProviders }
+          : {}),
         ...(snapshot.favoriteModelsOnly !== undefined
           ? { favoriteModelsOnly: snapshot.favoriteModelsOnly }
           : {}),

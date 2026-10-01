@@ -15,6 +15,30 @@ export {
   startCatalog,
 } from './catalog-refresh.js';
 export { CODEX_MODELS, type CodexModelMeta, codexModelMeta } from './codex-catalog.js';
+export {
+  buildFallbackSuggestPrompt,
+  DEFAULT_MAX_AGE_MONTHS,
+  excludeListedModels,
+  FALLBACK_SUGGEST_JSON_SCHEMA,
+  FALLBACK_SUGGEST_SYSTEM_PROMPT,
+  FALLBACK_SUGGESTION_IDS,
+  type FallbackSuggestCandidate,
+  type FallbackSuggestion,
+  type FallbackSuggestionEntry,
+  type FallbackSuggestionId,
+  formatFallbackRef,
+  isFallbackEligible,
+  isModelRefListed,
+  LLM_POOL_LIMIT,
+  type LlmMergeResult,
+  mergeLlmFallbackSuggestions,
+  modelVersion,
+  type ScoredFallbackCandidate,
+  type SuggestFallbackOptions,
+  scoreFallbackCandidates,
+  selectLlmCandidatePool,
+  suggestFallbackProfiles,
+} from './fallback-suggest.js';
 export { LLMSelector, type LLMSelectorOptions } from './llm-selector.js';
 export {
   DefaultModeStore,

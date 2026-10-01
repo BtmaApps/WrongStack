@@ -800,7 +800,7 @@ export function compileUserRegex(pattern: string, flags: string = ''): CompileRe
   if (typeof flags !== 'string') {
     return { ok: false, reason: 'flags must be a string' };
   }
-  const cacheKey = `${flags}\u0000${pattern}`;
+  const cacheKey = JSON.stringify([flags, pattern]);
   const cached = COMPILED_CACHE.get(cacheKey);
   if (cached !== undefined) {
     // The cache stores the VERDICT only — never the instance that is handed
@@ -810,7 +810,7 @@ export function compileUserRegex(pattern: string, flags: string = ''): CompileRe
     // another caller's results. Reconstruct a fresh instance from the
     // validated source on every call; the expensive ReDoS heuristics are
     // already skipped by the cache hit.
-    return cached.ok ? { ok: true, regex: new RegExp(pattern, flags) } : cached;
+    return cached.ok ? { ok: true, regex: new RegExp(pattern, flags) } : { ...cached };
   }
 
   if (COMPILED_CACHE.size >= CACHE_MAX_SIZE) {
@@ -826,7 +826,7 @@ export function compileUserRegex(pattern: string, flags: string = ''): CompileRe
   COMPILED_CACHE.set(cacheKey, result);
   // Same instance-isolation as the cache-hit path above: callers get a fresh
   // RegExp, so mutating `lastIndex` on one result cannot corrupt another.
-  return result.ok ? { ok: true, regex: new RegExp(pattern, flags) } : result;
+  return result.ok ? { ok: true, regex: new RegExp(pattern, flags) } : { ...result };
 }
 
 function compileUncached(pattern: string, flags: string): CompileUserRegexResult {

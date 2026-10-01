@@ -59,13 +59,27 @@ let contributorUnregister: (() => void) | null = null;
 // Template engine
 // ---------------------------------------------------------------------------
 
-function expandTemplate(template: string, variables: Record<string, string>): string {
+const identity = (value: string): string => value;
+
+function escapeHtmlValue(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function expandTemplate(
+  template: string,
+  variables: Record<string, string>,
+  escape: (value: string) => string = identity,
+): string {
   let result = template;
 
   // Replace simple {{variable}} patterns (supporting hyphens and dots with optional whitespace)
   result = result.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, key) => {
     const value = variables[key];
-    if (value !== undefined) return String(value);
+    if (value !== undefined) return escape(String(value));
     return match; // leave unresolved
   });
 
@@ -83,7 +97,11 @@ function expandConditionals(template: string, variables: Record<string, string>)
   );
 }
 
-function expandLoops(template: string, variables: Record<string, string>): string {
+function expandLoops(
+  template: string,
+  variables: Record<string, string>,
+  escape: (value: string) => string = identity,
+): string {
   // Handle {{#each items}}...{{item}}...{{/each}}
   // Simplified: just repeat the block for each item separated by newlines
   return template.replace(
@@ -95,7 +113,7 @@ function expandLoops(template: string, variables: Record<string, string>): strin
       if (typeof val === 'string' && val.includes(',')) {
         const items = val.split(',').map((s) => s.trim());
         return items
-          .map((item) => expandTemplate(content, { ...variables, [key]: item, item }))
+          .map((item) => expandTemplate(content, { ...variables, [key]: item, item }, escape))
           .join('\n');
       }
       // A one-element list iterates once: bind the iteration variable the
@@ -104,7 +122,7 @@ function expandLoops(template: string, variables: Record<string, string>): strin
       // resolves for a single value too. `{{items}}` keeps resolving to the
       // whole value — `variables[key]` already is `val`, so nothing pinned
       // changes.
-      return expandTemplate(content, { ...variables, [key]: val, item: val });
+      return expandTemplate(content, { ...variables, [key]: val, item: val }, escape);
     },
   );
 }
@@ -114,25 +132,21 @@ function renderTemplate(
   variables: Record<string, string>,
   escapeHtml = true,
 ): string {
+  // Auto-escape (controlled by config or caller) applies to substituted
+  // VALUES only. Escaping the whole rendered output also escaped the
+  // template's own text, so `<div>{{name}}</div>` or a code scaffold with
+  // `Array<string>` came out as `&lt;div&gt;…` / `Array&lt;string&gt;`.
+  const escape = escapeHtml ? escapeHtmlValue : identity;
   let result = template;
 
   // Process conditionals first
   result = expandConditionals(result, variables);
 
   // Process loops
-  result = expandLoops(result, variables);
+  result = expandLoops(result, variables, escape);
 
   // Process simple variable substitution
-  result = expandTemplate(result, variables);
-
-  // Auto-escape HTML when enabled (controlled by config or caller)
-  if (escapeHtml) {
-    result = result
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+  result = expandTemplate(result, variables, escape);
 
   return result;
 }

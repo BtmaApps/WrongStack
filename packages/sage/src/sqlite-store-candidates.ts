@@ -504,7 +504,16 @@ export function reconcileAcceptedCandidates(
     }
     if (candidate.memoryId) continue; // Fully annotated — nothing to reconcile.
     const acceptedAtMs = Date.parse(candidate.updatedAt);
-    if (!Number.isFinite(acceptedAtMs) || nowMs - acceptedAtMs < graceMs) {
+    // Only a candidate genuinely INSIDE the recency window is skipped. An
+    // unparseable/missing `updatedAt` (a legacy-imported epoch or hand-edited
+    // row — `sqliteRowToCandidate` is an unvalidated `JSON.parse` cast) can
+    // never satisfy this test, so folding it in with `||` skipped such a
+    // candidate on EVERY sweep, forever: it stayed `accepted` with no
+    // `memoryId`, and `listSqliteCandidates` (status = 'pending') hid it, so it
+    // was permanently unreviewable — the exact outcome this sweep exists to
+    // prevent. It is also safe to fall through: a live in-flight accept always
+    // stamps `nowIso()`, so only a parseable-and-recent candidate can be one.
+    if (Number.isFinite(acceptedAtMs) && nowMs - acceptedAtMs < graceMs) {
       result.skipped++;
       continue;
     }

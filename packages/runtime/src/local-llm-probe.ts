@@ -72,7 +72,13 @@ export interface ProbeResult {
 export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
   const { baseUrl, apiKey, noAuth, scrubber, fetchImpl, timeoutMs } = opts;
   const fetchFn = fetchImpl ?? fetch;
-  const timeout = timeoutMs ?? PROBE_TIMEOUT_MS;
+  const timeout =
+    typeof timeoutMs === 'number' &&
+    Number.isFinite(timeoutMs) &&
+    timeoutMs > 0 &&
+    timeoutMs <= 2_147_483_647
+      ? Math.floor(timeoutMs)
+      : PROBE_TIMEOUT_MS;
 
   if (typeof baseUrl !== 'string' || baseUrl.trim().length === 0) {
     return { ok: false, status: 'no_base_url', detail: 'baseUrl is empty' };
@@ -80,12 +86,18 @@ export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
 
   // Normalize the URL: append `/models` if the user gave us the chat
   // completions base. Strip trailing slashes so we can just concatenate.
-  const base = baseUrl.trim().replace(/\/+$/, '');
-  const url = /\/models$/.test(base) ? base : `${base}/models`;
+  const rawBase = baseUrl.trim();
+  const suffixIndex = [rawBase.indexOf('?'), rawBase.indexOf('#')]
+    .filter((index) => index >= 0)
+    .reduce((lowest, index) => Math.min(lowest, index), rawBase.length);
+  const base = rawBase.slice(0, suffixIndex).replace(/\/+$/, '');
+  const suffix = rawBase.slice(suffixIndex);
+  const url = `${/\/models$/.test(base) ? base : `${base}/models`}${suffix}`;
 
   const headers: Record<string, string> = { accept: 'application/json' };
-  if (!noAuth && apiKey) {
-    headers['authorization'] = `Bearer ${apiKey}`;
+  const normalizedApiKey = apiKey?.trim();
+  if (!noAuth && normalizedApiKey) {
+    headers['authorization'] = `Bearer ${normalizedApiKey}`;
   }
 
   const started = Date.now();
@@ -156,10 +168,15 @@ export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
     }
     const seen = new Set<string>();
     for (const entry of rawList) {
-      if (!entry || typeof entry !== 'object') continue;
-      const e = entry as Record<string, unknown>;
+      const e = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : undefined;
       const raw =
-        typeof e['id'] === 'string' ? e['id'] : typeof e['name'] === 'string' ? e['name'] : null;
+        typeof entry === 'string'
+          ? entry
+          : typeof e?.['id'] === 'string'
+            ? e['id']
+            : typeof e?.['name'] === 'string'
+              ? e['name']
+              : null;
       if (raw === null) continue;
       const id = scrubber.scrub(raw).trim();
       if (id.length === 0) continue;

@@ -106,11 +106,14 @@ export function planConnectionReconnect(
     1,
     finiteNonNegative(config.jitterRatio, DEFAULT_SURFACE_CONNECTION_CONFIG.jitterRatio),
   );
-  const base = Math.min(initialBackoffMs * backoffMultiplier ** (attempt - 1), maxBackoffMs);
+  const base =
+    initialBackoffMs === 0
+      ? 0
+      : Math.min(initialBackoffMs * backoffMultiplier ** (attempt - 1), maxBackoffMs);
   const randomValue = random();
   const sample = Number.isFinite(randomValue) ? Math.min(1, Math.max(0, randomValue)) : 0.5;
   const centeredJitter = (sample * 2 - 1) * jitterRatio;
-  const delayMs = Math.max(0, Math.round(base * (1 + centeredJitter)));
+  const delayMs = Math.min(maxBackoffMs, Math.max(0, Math.round(base * (1 + centeredJitter))));
   return {
     state: { ...state, phase: 'reconnecting', reconnectAttempt: attempt },
     plan: { attempt, delayMs, retryAt: now + delayMs },

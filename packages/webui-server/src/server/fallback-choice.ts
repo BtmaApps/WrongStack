@@ -18,7 +18,8 @@ export function emitFallbackChoice(
 ): { ok: true } | { ok: false; message: string } {
   const parsed = validateModelFallbackChoicePayload(msg.payload);
   if (!parsed.ok) return parsed;
-  events?.emit('provider.fallback_choice', {
+  if (!events) return { ok: false, message: 'Fallback choice event bus is unavailable' };
+  events.emit('provider.fallback_choice', {
     requestId: parsed.value.requestId,
     ...(parsed.value.providerId ? { providerId: parsed.value.providerId } : {}),
     ...(parsed.value.model ? { model: parsed.value.model } : {}),

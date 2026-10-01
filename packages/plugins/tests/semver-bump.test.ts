@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import semverBumpPlugin, { determineBump, parseConventional } from '../src/semver-bump';
 
 const mockApi = {
@@ -175,6 +175,12 @@ describe('determineBump', () => {
 
   it('returns minor when a feat commit is present', () => {
     expect(determineBump([c('fix'), c('feat')])).toBe('minor');
+  });
+
+  it('treats the commit type case-insensitively, as commit-validator does', () => {
+    const parsed = parseConventional('Feat(API): add endpoint');
+    expect(parsed.type).toBe('feat');
+    expect(determineBump([{ hash: 'h1', ...parsed }])).toBe('minor');
   });
 
   it('returns patch otherwise (refactor/fix/chore do not bump minor)', () => {

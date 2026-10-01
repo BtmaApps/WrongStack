@@ -35,9 +35,7 @@ export interface SnapshotDiff {
  * re-statused alongside a sibling of the same name was reported as nothing.
  */
 const depKey = (dep: DependencyObservation): string =>
-  dep.workspaceId
-    ? `${dep.workspaceId}:${dep.ecosystem}:${dep.name}`
-    : `${dep.ecosystem}:${dep.name}`;
+  JSON.stringify([dep.workspaceId || null, dep.ecosystem, dep.name]);
 
 /** The resolved version of one instance, or `''` when it was never resolved. */
 const instanceVersion = (dep: DependencyObservation): string =>
@@ -73,6 +71,7 @@ export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): Sna
 
   const fields: Array<keyof DependencyObservation> = [
     'locked',
+    'installed',
     'requested',
     'status',
     'latestStable',
@@ -113,15 +112,20 @@ export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): Sna
     // Multi-instance: the resolved version IS the instance identity, so pair on
     // it. Paired instances are diffed field-by-field; the unpaired ones are a
     // genuine add or remove rather than something to silently drop.
-    const oldByVersion = new Map(oldDeps.map((dep) => [instanceVersion(dep), dep]));
-    const newVersions = new Set(newDeps.map((dep) => instanceVersion(dep)));
+    const oldByVersion = new Map<string, DependencyObservation[]>();
+    for (const dep of oldDeps) {
+      const version = instanceVersion(dep);
+      const bucket = oldByVersion.get(version);
+      if (bucket) bucket.push(dep);
+      else oldByVersion.set(version, [dep]);
+    }
     for (const dep of newDeps) {
-      const previous = oldByVersion.get(instanceVersion(dep));
+      const previous = oldByVersion.get(instanceVersion(dep))?.shift();
       if (previous) recordFieldChanges(previous, dep);
       else added.push(dep);
     }
-    for (const dep of oldDeps) {
-      if (!newVersions.has(instanceVersion(dep))) removed.push(dep);
+    for (const remaining of oldByVersion.values()) {
+      removed.push(...remaining);
     }
   }
 

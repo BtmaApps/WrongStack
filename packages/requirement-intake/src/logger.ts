@@ -16,6 +16,10 @@ export interface IntakeLogger {
   error(scope: string, message: string, fields?: IntakeLogFields): void;
 }
 
+function snapshotFields(fields: IntakeLogFields | undefined): IntakeLogFields | undefined {
+  return fields === undefined ? undefined : { ...fields };
+}
+
 /** Default logger — silent. Hosts may wire their own structured logger. */
 export class NoopIntakeLogger implements IntakeLogger {
   info(_scope: string, _message: string, _fields?: IntakeLogFields): void {}
@@ -37,7 +41,7 @@ export class InMemoryIntakeLogger implements IntakeLogger {
       level: 'info',
       scope,
       message,
-      ...(fields !== undefined ? { fields } : {}),
+      ...(fields !== undefined ? { fields: snapshotFields(fields) } : {}),
     });
   }
 
@@ -46,7 +50,7 @@ export class InMemoryIntakeLogger implements IntakeLogger {
       level: 'warn',
       scope,
       message,
-      ...(fields !== undefined ? { fields } : {}),
+      ...(fields !== undefined ? { fields: snapshotFields(fields) } : {}),
     });
   }
 
@@ -55,7 +59,7 @@ export class InMemoryIntakeLogger implements IntakeLogger {
       level: 'error',
       scope,
       message,
-      ...(fields !== undefined ? { fields } : {}),
+      ...(fields !== undefined ? { fields: snapshotFields(fields) } : {}),
     });
   }
 }

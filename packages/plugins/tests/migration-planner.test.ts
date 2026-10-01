@@ -463,6 +463,33 @@ describe('migration-planner plugin', () => {
     );
   });
 
+  it('selects releases by version order for a package.json range and an unlisted target', async () => {
+    vi.mocked(existsSync).mockImplementation(
+      (p) => String(p) === 'node_modules/my-pkg/CHANGELOG.md',
+    );
+    vi.mocked(readFileSync).mockReturnValue(
+      [
+        '## [2.0.0] - 2024-01-01',
+        '### BREAKING CHANGES',
+        '- Removed legacy API `foo()`',
+        '## [1.0.0] - 2023-01-01',
+        '### BREAKING CHANGES',
+        '- Initial stable release',
+      ].join('\n'),
+    );
+    const api = makeApi();
+    migrationPlannerPlugin.setup(api as never);
+    const result = (await getTool(
+      api,
+      'migration_plan',
+    )({
+      packageName: 'my-pkg',
+      fromVersion: '^1.0.0',
+      toVersion: '2.1.0',
+    })) as { breakingChanges: string[] };
+    expect(result.breakingChanges).toEqual(['Removed legacy API `foo()`']);
+  });
+
   it('does not treat a level-1 title with an embedded version as a release section', async () => {
     // Regression: widening the heading regex to `#{1,3}` let document titles
     // like `# v1.5.0 — historical archive` become release sections whose body

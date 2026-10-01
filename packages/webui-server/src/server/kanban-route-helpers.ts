@@ -26,7 +26,13 @@ export interface KanbanRouteHelperContext {
 
 /** Who is acting: the tab that asked, falling back to the runtime session. */
 export function actingSessionId(ctx: KanbanRouteHelperContext): string | undefined {
-  return ctx.requestSessionId ?? ctx.context?.session?.id;
+  if (typeof ctx.requestSessionId === 'string' && ctx.requestSessionId.trim().length > 0) {
+    return ctx.requestSessionId;
+  }
+  const runtimeSessionId = ctx.context?.session?.id;
+  return typeof runtimeSessionId === 'string' && runtimeSessionId.trim().length > 0
+    ? runtimeSessionId
+    : undefined;
 }
 
 export async function syncSessionSource(
@@ -71,9 +77,10 @@ export function activityContext(
   note?: string,
 ): KanbanEventContext {
   const sessionId = requireSessionId(actingSessionId(ctx), 'kanban board mutation');
+  const normalizedActor = actor?.trim();
   return {
     sessionId,
-    ...(actor ? { actor } : {}),
+    ...(normalizedActor ? { actor: normalizedActor } : {}),
     ...(note?.trim() ? { note: note.trim() } : {}),
   };
 }
@@ -99,5 +106,9 @@ export async function touchTaskPresence(
 }
 
 export function findTask(tasks: KanbanTask[], taskId: string): KanbanTask | undefined {
-  return tasks.find((task) => task.id === taskId || task.id.startsWith(taskId));
+  if (typeof taskId !== 'string' || taskId.trim().length === 0) return undefined;
+  const exact = tasks.find((task) => task.id === taskId);
+  if (exact) return exact;
+  const matches = tasks.filter((task) => task.id.startsWith(taskId));
+  return matches.length === 1 ? matches[0] : undefined;
 }

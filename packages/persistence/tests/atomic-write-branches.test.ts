@@ -269,6 +269,38 @@ describe('persistence primitive edge branches', () => {
     expect(doubles.fs.open).toHaveBeenCalledTimes(5);
   });
 
+  for (const changed of ['ino', 'dev', 'birthtimeMs'] as const) {
+    it(`does not unlink a replacement lock with unchanged mtime but changed ${changed}`, async () => {
+      const initial = { mtimeMs: 1, ino: 10, dev: 20, birthtimeMs: 30 };
+      doubles.fs.open.mockRejectedValueOnce(errorWithCode('EEXIST'));
+      doubles.fs.stat
+        .mockResolvedValueOnce(initial)
+        .mockResolvedValueOnce({ ...initial, [changed]: initial[changed] + 1 });
+      vi.spyOn(Date, 'now').mockReturnValue(10_000);
+      await createPersistencePrimitives().withFileLock(
+        '/tmp/state.json',
+        async () => {
+          expect(doubles.fs.unlink).not.toHaveBeenCalled();
+        },
+        { timeoutMs: 1000, staleMs: 100 },
+      );
+    });
+  }
+
+  for (const staleMs of [10, 20, 40]) {
+    it(`refreshes a live lock before its ${staleMs}ms stale window expires`, async () => {
+      vi.useFakeTimers();
+      await createPersistencePrimitives().withFileLock(
+        '/tmp/state.json',
+        async () => {
+          await vi.advanceTimersByTimeAsync(Math.floor(staleMs / 2));
+          expect(doubles.lockHandle.utimes).toHaveBeenCalledOnce();
+        },
+        { staleMs },
+      );
+    });
+  }
+
   it('refreshes the heartbeat and tolerates heartbeat cleanup failures', async () => {
     doubles.lockHandle.utimes.mockRejectedValue(errorWithCode('EIO'));
     doubles.lockHandle.close.mockRejectedValue(errorWithCode('EIO'));

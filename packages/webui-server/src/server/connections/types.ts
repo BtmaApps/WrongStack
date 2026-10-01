@@ -20,6 +20,8 @@ export interface ConnectionHealthService {
   required: boolean;
   mode: string;
   detail: string;
+  /** Release the daemon reported on its last health ping; absent for legacy daemons. */
+  daemonVersion?: string;
   versionMismatch?: boolean;
   ownerPid?: number | undefined;
   endpoint?: string | undefined;

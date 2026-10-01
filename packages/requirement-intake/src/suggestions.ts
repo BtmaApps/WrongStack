@@ -169,10 +169,11 @@ export function toProposals(suggestion: NormalizedLlmSuggestion): LlmSuggestionP
 
 /** Ensure a raw value is a non-blank string within a length bound. */
 export function assertSuggestionString(value: unknown, label: string, max: number): string {
-  if (typeof value !== 'string' || value.trim().length === 0 || value.length > max) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed.length === 0 || trimmed.length > max) {
     throw new IntakeValidationError([
       { field: `suggestion.${label}`, message: `invalid ${label} suggestion value` },
     ]);
   }
-  return value;
+  return trimmed;
 }

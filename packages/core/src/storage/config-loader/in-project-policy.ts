@@ -38,6 +38,10 @@ const IN_PROJECT_ALLOWED_KEYS: ReadonlySet<string> = new Set([
   'fallbackProfile',
   'favoriteModels',
   'disabledModels',
+  // Same class as `disabledModels`: an exclusion list that can only hide a
+  // provider the user already configured. It adds no credential or exec
+  // surface, and the user can re-enable the provider at any time.
+  'disabledProviders',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'fallbackAuto',
@@ -159,6 +163,7 @@ const KNOWN_CONFIG_TOP_LEVEL_KEY_LIST = [
   'fallbackProfile',
   'favoriteModels',
   'disabledModels',
+  'disabledProviders',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'fallbackAuto',

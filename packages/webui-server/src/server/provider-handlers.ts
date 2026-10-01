@@ -78,6 +78,8 @@ interface ProviderHandlerDeps {
   /** Used by the ChatGPT OAuth flow's tier-2 model lookup (best-effort). */
   modelsRegistry?: ModelsRegistry | undefined;
   getDisabledModels?: (() => readonly string[]) | undefined;
+  /** Provider ids switched off entirely (Config.disabledProviders). */
+  getDisabledProviders?: (() => readonly string[]) | undefined;
   providerAuthRegistry?: import('@wrongstack/core/registry').ProviderAuthRegistry | undefined;
   hasActiveModel?: (() => boolean) | undefined;
   onProvidersLoaded?:
@@ -120,6 +122,7 @@ export function createProviderHandlers(deps: ProviderHandlerDeps) {
     broadcast: (message) => deps.broadcast(deps.clients, message),
     modelsRegistry: deps.modelsRegistry,
     getDisabledModels: deps.getDisabledModels,
+    getDisabledProviders: deps.getDisabledProviders,
     providerAuthRegistry: deps.providerAuthRegistry,
     log: (message) => console.log(message),
     hasActiveModel: deps.hasActiveModel,

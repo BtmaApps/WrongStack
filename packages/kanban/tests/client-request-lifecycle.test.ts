@@ -61,6 +61,24 @@ async function connect() {
 }
 
 describe('Kanban client request lifecycle', () => {
+  for (const ok of [false, 0, 'true', null]) {
+    it(`never treats an unsuccessful response flag ${JSON.stringify(ok)} as success`, async () => {
+      const { connection, state } = await connect();
+      const pending = connection.request('ping', {});
+      void pending.catch(() => undefined);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const id = state.pending.keys().next().value;
+      expect(id).toBeDefined();
+      state.socket.emit(
+        'data',
+        JSON.stringify({ id, ok, error: { code: 'VALIDATION', message: 'fixture failure' } }) +
+          '\n',
+      );
+      await expect(pending).rejects.toThrow('fixture failure');
+      expect(state.pending.size).toBe(0);
+    });
+  }
+
   it('rejects a request closed while resuming from hello without retaining it', async () => {
     const { connection, state } = await connect();
     const pending = connection.request('ping', {});

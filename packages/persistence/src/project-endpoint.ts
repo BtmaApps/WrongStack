@@ -138,39 +138,51 @@ function isErrno(error: unknown): error is NodeJS.ErrnoException {
 /**
  * True when something is accepting connections at `endpoint` right now.
  *
- * This is the only safe way to tell a live owner from a stale socket file, and
- * the answer decides whether reclaiming is allowed. Any failure — refused,
- * missing, timed out — reads as "not live": a daemon that cannot be reached
- * within the probe window cannot be serving clients either, and leaving the
- * project permanently unstartable is the worse outcome.
+ * False means liveness was not confirmed. Reclaiming needs stronger evidence:
+ * only missing/refused connections prove absence; permission/resource errors
+ * and timeouts leave ownership unknown.
  */
-export function isProjectEndpointLive(
+export async function isProjectEndpointLive(
   endpoint: string,
   timeoutMs: number = PROBE_TIMEOUT_MS,
 ): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
+  return (await probeProjectEndpoint(endpoint, timeoutMs)) === 'live';
+}
+
+type EndpointProbeState = 'live' | 'absent' | 'unknown';
+
+function failedProbeState(error: unknown): EndpointProbeState {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return code === 'ENOENT' || code === 'ECONNREFUSED' ? 'absent' : 'unknown';
+}
+
+function probeProjectEndpoint(
+  endpoint: string,
+  timeoutMs: number = PROBE_TIMEOUT_MS,
+): Promise<EndpointProbeState> {
+  return new Promise<EndpointProbeState>((resolve) => {
     let settled = false;
     let probe: net.Socket;
     try {
       probe = _projectEndpointOps.createConnection(endpoint);
-    } catch {
-      return resolve(false);
+    } catch (error) {
+      return resolve(failedProbeState(error));
     }
-    const finish = (live: boolean): void => {
+    const finish = (state: EndpointProbeState): void => {
       if (settled) return;
       settled = true;
       probe.destroy();
-      resolve(live);
+      resolve(state);
     };
-    const timer = setTimeout(() => finish(false), timeoutMs);
+    const timer = setTimeout(() => finish('unknown'), timeoutMs);
     timer.unref?.();
     probe.once('connect', () => {
       clearTimeout(timer);
-      finish(true);
+      finish('live');
     });
-    probe.once('error', () => {
+    probe.once('error', (error) => {
       clearTimeout(timer);
-      finish(false);
+      finish(failedProbeState(error));
     });
   });
 }
@@ -298,7 +310,16 @@ export async function bindProjectEndpoint(
       // reclaim and probing would only add a race.
       if (isWindows) return { outcome: 'already-owned' };
 
-      if (await isProjectEndpointLive(endpoint)) return { outcome: 'already-owned' };
+      const owner = await probeProjectEndpoint(endpoint);
+      if (owner === 'live') return { outcome: 'already-owned' };
+      if (owner === 'unknown') {
+        return {
+          outcome: 'failed',
+          error: new Error(
+            `${service} could not verify that its IPC endpoint at ${endpoint} is stale; refusing to reclaim an endpoint with unknown ownership.`,
+          ),
+        };
+      }
 
       try {
         await fsOp('rm')(endpoint, { force: true });

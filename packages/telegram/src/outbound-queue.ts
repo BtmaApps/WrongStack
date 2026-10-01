@@ -80,6 +80,12 @@ interface ChatLane {
 const DEFAULT_MAX_PER_CHAT = 32;
 const DEFAULT_MAX_CONCURRENCY = 4;
 
+function positiveInteger(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1
+    ? Math.floor(value)
+    : fallback;
+}
+
 export class OutboundQueue {
   readonly #opts: {
     maxPerChat: number;
@@ -102,8 +108,8 @@ export class OutboundQueue {
   >();
 
   constructor(opts: OutboundQueueOptions) {
-    const maxPerChat = Math.max(1, opts.maxPerChat ?? DEFAULT_MAX_PER_CHAT);
-    const maxConcurrency = Math.max(1, opts.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY);
+    const maxPerChat = positiveInteger(opts.maxPerChat, DEFAULT_MAX_PER_CHAT);
+    const maxConcurrency = positiveInteger(opts.maxConcurrency, DEFAULT_MAX_CONCURRENCY);
     this.#opts = {
       maxPerChat,
       maxConcurrency,

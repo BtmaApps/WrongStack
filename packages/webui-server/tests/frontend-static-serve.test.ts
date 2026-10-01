@@ -1,7 +1,10 @@
 import { EventEmitter } from 'node:events';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
+import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { pathToFileURL } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ensureDistDir,
   findInstalledPackageJson,
@@ -24,6 +27,81 @@ describe('frontend-static-serve', () => {
 
     it('handles empty package specifier', () => {
       expect(findInstalledPackageJson('')).toBeUndefined();
+    });
+
+    // Regression cover for the 404/WS-only degradation: a sibling workspace
+    // package is not a declared dependency, so Node resolution throws and the
+    // lookup used to return undefined with no diagnostic.
+    describe('pnpm workspace fallback', () => {
+      // Synthetic name so the assertions can never be satisfied by a real
+      // global/standalone install of the package under test.
+      const PKG = '@wrongstack/ws-dist-fixture-abc';
+      const DIR = 'ws-dist-fixture-abc';
+      let root: string;
+
+      const writeSibling = (manifestName: string): string => {
+        const dir = path.join(root, 'packages', DIR);
+        mkdirSync(dir, { recursive: true });
+        const manifest = path.join(dir, 'package.json');
+        writeFileSync(manifest, JSON.stringify({ name: manifestName, version: '0.0.0' }));
+        return manifest;
+      };
+
+      // Lives inside the workspace but is NOT the package we ask for.
+      const hostEntry = (): string => path.join(root, 'packages', 'host', 'dist', 'entry.js');
+
+      beforeEach(() => {
+        root = mkdtempSync(path.join(tmpdir(), 'ws-dist-fixture-'));
+        writeFileSync(path.join(root, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n");
+      });
+
+      afterEach(() => {
+        rmSync(root, { recursive: true, force: true });
+      });
+
+      it('resolves a workspace sibling when the specifier is not a dependency', () => {
+        const expected = writeSibling(PKG);
+        expect(findInstalledPackageJson(PKG, hostEntry())).toBe(expected);
+      });
+
+      it('resolves the same sibling from a file: URL base', () => {
+        const expected = writeSibling(PKG);
+        expect(findInstalledPackageJson(PKG, pathToFileURL(hostEntry()).href)).toBe(expected);
+      });
+
+      it('rejects a sibling directory whose manifest declares another name', () => {
+        writeSibling('@wrongstack/some-other-package');
+        expect(findInstalledPackageJson(PKG, hostEntry())).toBeUndefined();
+      });
+
+      it('returns undefined outside any pnpm workspace', () => {
+        writeSibling(PKG);
+        const bare = mkdtempSync(path.join(tmpdir(), 'ws-dist-bare-'));
+        try {
+          rmSync(path.join(bare, 'pnpm-workspace.yaml'), { force: true });
+          expect(
+            findInstalledPackageJson(PKG, path.join(bare, 'dist', 'entry.js')),
+          ).toBeUndefined();
+        } finally {
+          rmSync(bare, { recursive: true, force: true });
+        }
+      });
+
+      it('prefers a real installed dependency over the workspace sibling', () => {
+        const sibling = writeSibling(PKG);
+        const installed = path.join(root, 'node_modules', '@wrongstack', DIR);
+        mkdirSync(installed, { recursive: true });
+        writeFileSync(
+          path.join(installed, 'package.json'),
+          JSON.stringify({ name: PKG, version: '0.0.0', main: 'index.js' }),
+        );
+        writeFileSync(path.join(installed, 'index.js'), 'module.exports = {};');
+        // Same tree, so a directory-name match would be ambiguous on purpose.
+        expect(findInstalledPackageJson(PKG, hostEntry())).not.toBe(sibling);
+        expect(findInstalledPackageJson(PKG, hostEntry())).toBe(
+          path.join(installed, 'package.json'),
+        );
+      });
     });
   });
 
@@ -166,6 +244,29 @@ describe('frontend-static-serve', () => {
         },
       );
       expect(result).toBeNull();
+    });
+
+    // The silent-degradation guard: a null dist used to return with no log at
+    // all, so an operator saw a WebUI that simply had no pages and the only
+    // clue was a bare "Not found" body.
+    it('warns with the remedy when the frontend cannot be resolved', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        await startStaticServe(
+          { host: '127.0.0.1', httpPort: 3000, globalRoot: '/global' },
+          { resolveDist: () => null },
+        );
+        const line = warn.mock.calls.map(([l]) => String(l)).find((l) => l.includes('frontend_unavailable'));
+        expect(line).toBeDefined();
+        const parsed = JSON.parse(String(line));
+        expect(parsed).toMatchObject({ level: 'warn', event: 'webui.frontend_unavailable' });
+        // The message must name the consequence AND the fix.
+        expect(parsed.message).toMatch(/WebSocket only/i);
+        expect(parsed.message).toMatch(/404/);
+        expect(parsed.message).toContain('pnpm --filter @wrongstack/webui build');
+      } finally {
+        warn.mockRestore();
+      }
     });
 
     it('starts server with deferListen: true', async () => {

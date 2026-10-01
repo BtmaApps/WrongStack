@@ -126,6 +126,8 @@ function shallowEqualPrefs(a: SimplePrefs, b: SimplePrefs): boolean {
     'refinerModel',
     'refinerFallbackProfile',
     'fallbackProfiles',
+    'tgPollIntervalSec',
+    'tgChatId',
   ];
   for (const key of keys) {
     const av = a[key];

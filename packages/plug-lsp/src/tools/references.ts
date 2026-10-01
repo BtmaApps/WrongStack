@@ -6,6 +6,7 @@ import { supportsReferences } from '../server/capabilities.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 import { pathToUri } from '../utils/uri.js';
 import {
+  createLineTextReader,
   readDocumentContent,
   requireServer,
   resolveInputPath,
@@ -64,6 +65,8 @@ export function createReferencesTool(deps: ToolDeps): Tool<Input, string> {
             signal,
           ),
           ctx.cwd,
+          undefined,
+          createLineTextReader(deps.tracker),
         );
       } catch (err) {
         throw toToolError(err);

@@ -9,6 +9,7 @@ import { i18n, useAppTranslation } from '@/i18n';
 import { buildKnownModelSet } from '@/lib/fallback-ref';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import type { WSModelSwitchResult } from '@/types';
+import { FallbackSuggestionsPanel } from './FallbackSuggestionsPanel';
 import { PreferenceToggle } from './PreferenceToggle';
 
 interface FallbacksSectionProps {
@@ -238,6 +239,14 @@ export function FallbacksSection({
           onChange={(next) => syncPref('favoriteModels', next)}
         />
       </div>
+
+      {/* Suggested profiles — built from the saved providers' catalogs */}
+      <FallbackSuggestionsPanel
+        profiles={localPrefs.fallbackProfiles}
+        activeChain={localPrefs.fallbackModels}
+        onAddProfile={updateFallbackProfile}
+        onUseChain={(chain) => syncPref('fallbackModels', chain)}
+      />
 
       {/* Fallback Profiles */}
       <div className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">

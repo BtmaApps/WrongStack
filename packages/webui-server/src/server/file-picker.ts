@@ -50,14 +50,23 @@ export function isHiddenEntry(name: string): boolean {
  * the result is the paths sorted lexicographically, capped to `limit`.
  */
 export function rankFiles(paths: readonly string[], query: string, limit: number): string[] {
+  if (typeof query !== 'string') return [];
   const q = query.toLowerCase();
+  const normalizedLimit =
+    typeof limit === 'number' && Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0;
   const scored: Array<{ path: string; score: number }> = [];
+  const seen = new Set<string>();
   for (const p of paths) {
+    if (typeof p !== 'string') continue;
+    const normalizedPath = p.replaceAll('\\', '/');
+    const key = process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath;
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (!q) {
       scored.push({ path: p, score: 0 });
       continue;
     }
-    const lower = p.toLowerCase();
+    const lower = normalizedPath.toLowerCase();
     const base = lower.split('/').pop() ?? lower;
     let score = 0;
     if (base === q) score = 100;
@@ -65,9 +74,9 @@ export function rankFiles(paths: readonly string[], query: string, limit: number
     else if (lower.includes(q)) score = 20;
     else continue;
     // Penalise depth so root files come first.
-    score -= p.split('/').length;
+    score -= Math.min(19, normalizedPath.split('/').length);
     scored.push({ path: p, score });
   }
   scored.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  return scored.slice(0, limit).map((s) => s.path);
+  return scored.slice(0, normalizedLimit).map((s) => s.path);
 }

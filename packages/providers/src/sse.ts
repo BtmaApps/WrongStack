@@ -134,6 +134,7 @@ export async function* parseSSE(
   let skipLeadingLf = false;
   let event = 'message';
   const dataLines: string[] = [];
+  let eventBytes = 0;
 
   const flush = (): SSEMessage | undefined => {
     if (dataLines.length === 0 && event === 'message') return undefined;
@@ -141,6 +142,7 @@ export async function* parseSSE(
     const msg: SSEMessage = { event, data };
     event = 'message';
     dataLines.length = 0;
+    eventBytes = 0;
     return msg;
   };
 
@@ -159,7 +161,16 @@ export async function* parseSSE(
       if (value.startsWith(' ')) value = value.slice(1);
     }
     if (field === 'event') event = value || 'message';
-    else if (field === 'data') dataLines.push(value);
+    else if (field === 'data') {
+      eventBytes += TEXT_ENCODER.encode(value).byteLength + (dataLines.length > 0 ? 1 : 0);
+      if (eventBytes > MAX_BUFFER_BYTES) {
+        throw new ParseError({
+          message: `SSE: event data exceeds ${MAX_BUFFER_BYTES} bytes — upstream is not framing events`,
+          source: 'sse',
+        });
+      }
+      dataLines.push(value);
+    }
     return undefined;
   };
 
@@ -180,6 +191,12 @@ export async function* parseSSE(
       if (byte !== 0x0a && byte !== 0x0d) continue;
       const lineEnd = i;
       const lineBytes = chunk.subarray(lineStart, lineEnd);
+      if (pendingLength + lineBytes.length > MAX_BUFFER_BYTES) {
+        throw new ParseError({
+          message: `SSE: pending line exceeds ${MAX_BUFFER_BYTES} bytes — upstream is not framing events`,
+          source: 'sse',
+        });
+      }
       let completeLine = takePending(lineBytes);
       if (completeLine.length > 0 && completeLine[completeLine.length - 1] === 0x0d) {
         completeLine = completeLine.subarray(0, completeLine.length - 1);

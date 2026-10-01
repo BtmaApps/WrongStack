@@ -11,6 +11,7 @@
  * behind four focused entry points.
  */
 
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +19,8 @@ import type { Config, ModelsRegistry } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { protocolAdvertisement } from '@wrongstack/webui-protocol';
 import { type WebSocket, WebSocketServer } from 'ws';
-import { createHttpServer } from './http-server.js';
+import { resolveDistDir, warnFrontendUnavailable } from './frontend-static-serve.js';
+import { createHttpServer, resolveCreateHttpServerOptions } from './http-server.js';
 import { createProjectIntakeService } from './intake-service.js';
 import { registerShutdownHandlers } from './lifecycle.js';
 import { resolveProviderModelMetadata } from './model-catalog.js';
@@ -461,11 +463,31 @@ function resolveWebuiDistDir(fromUrl: string, explicitDistDir?: string | undefin
     const serverEntry = requireFromHere.resolve('@wrongstack/webui');
     return path.dirname(serverEntry); // .../dist
   } catch {
-    // Legacy fallback: assume the webui dist is co-located with the server
-    // runtime (the pre-extraction layout). This path is wrong for the
-    // extracted @wrongstack/webui-server package, but keeping it preserves
-    // any bespoke/test setups that still lay out files that way.
-    return path.resolve(path.dirname(fileURLToPath(fromUrl)), '..', '..', 'dist');
+    // `@wrongstack/webui` is a sibling package, not a declared dependency, so
+    // this throws in a workspace install. `resolveDistDir` understands the
+    // pnpm workspace layout and locates the real frontend dist.
+    //
+    // Skipping this is what made the standalone entry answer 404 "Not found"
+    // on `/` with no diagnostic: the legacy guess below resolves to THIS
+    // package's own `dist/`, which exists but has no index.html, so the
+    // static handler silently degraded to WS-only.
+    const workspaceDist = resolveDistDir();
+    if (workspaceDist !== null) return workspaceDist;
+
+    // Last resort: the pre-extraction co-located layout, preserved for
+    // bespoke/test setups that still lay files out that way.
+    const legacyGuess = path.resolve(path.dirname(fileURLToPath(fromUrl)), '..', '..', 'dist');
+    // This guess is usually WRONG for the extracted package: it lands on
+    // webui-server's own dist, which exists but has no index.html. Say so
+    // instead of letting every static request fail with a bare 404.
+    if (!existsSync(path.join(legacyGuess, 'index.html'))) {
+      warnFrontendUnavailable(
+        'no installed or workspace @wrongstack/webui package',
+        `Falling back to the legacy co-located layout at ${legacyGuess}, which has no index.html. ` +
+          'Build the frontend with `pnpm --filter @wrongstack/webui build`, or pass --dist-dir.',
+      );
+    }
+    return legacyGuess;
   }
 }
 
@@ -513,33 +535,51 @@ export function startHttpServer(opts: {
   getIntegrationTarget?:
     | import('./http-server/integration-status.js').IntegrationTargetResolver
     | undefined;
+  /**
+   * Extra `Host`/`Origin` hostnames the CSRF / DNS-rebinding guard accepts,
+   * for operators fronting the WebUI with a tunnel or reverse proxy (WS-001).
+   * The `publicWsUrl` hostname is trusted implicitly. Dropping this here made
+   * the standalone server ignore operator-supplied hostnames and reject
+   * tunneled origins that the CLI-embedded host accepts.
+   */
+  allowedHostnames?: readonly string[] | undefined;
+  /** Optional codebase-index directory override for `/api/codemap/*` and `/api/deadcode/*`. */
+  indexDir?: string | undefined;
+  /** `/ws-auth` cookie exchange; defaults to enabled (see `CreateHttpServerOptions`). */
+  enableWsCookie?: boolean | undefined;
+  /** `Secure` auth cookie; inferred from a `wss://` `publicWsUrl` when omitted. */
+  secureCookies?: boolean | undefined;
 }): import('node:http').Server {
   const intakeService =
     opts.intakeService ??
     createProjectIntakeService({ projectRoot: opts.projectRoot, globalRoot: opts.globalRoot });
-  const httpServer = createHttpServer({
-    getSessionProjectRoot: opts.getSessionProjectRoot,
-    host: opts.wsHost,
-    port: opts.httpPort,
-    distDir: resolveWebuiDistDir(import.meta.url, opts.distDir),
-    publicWsUrl: opts.publicWsUrl,
-    globalRoot: opts.globalRoot,
-    apiToken: opts.wsToken,
-    requireToken: opts.requireToken,
-    watcherMetrics: opts.watcherMetrics,
-    onFleetPing: opts.onFleetPing,
-    onTechStackEvent: opts.onTechStackEvent,
-    getLlm: opts.getLlm,
-    executePackageOperation: opts.executePackageOperation,
-    projectRoot: opts.projectRoot,
-    intakeService,
-    ...(opts.getExtraConnectSrc ? { getExtraConnectSrc: opts.getExtraConnectSrc } : {}),
-    ...(opts.getIntegrationTarget ? { getIntegrationTarget: opts.getIntegrationTarget } : {}),
-    ...(opts.getVectorMemoryStore ? { getVectorMemoryStore: opts.getVectorMemoryStore } : {}),
-    ...(opts.vectorMemoryModelCacheDir
-      ? { vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir }
-      : {}),
-  });
+  const httpServer = createHttpServer(
+    resolveCreateHttpServerOptions({
+      getSessionProjectRoot: opts.getSessionProjectRoot,
+      host: opts.wsHost,
+      port: opts.httpPort,
+      distDir: resolveWebuiDistDir(import.meta.url, opts.distDir),
+      publicWsUrl: opts.publicWsUrl,
+      globalRoot: opts.globalRoot,
+      apiToken: opts.wsToken,
+      requireToken: opts.requireToken,
+      allowedHostnames: opts.allowedHostnames,
+      enableWsCookie: opts.enableWsCookie,
+      secureCookies: opts.secureCookies,
+      watcherMetrics: opts.watcherMetrics,
+      onFleetPing: opts.onFleetPing,
+      onTechStackEvent: opts.onTechStackEvent,
+      getLlm: opts.getLlm,
+      executePackageOperation: opts.executePackageOperation,
+      projectRoot: opts.projectRoot,
+      indexDir: opts.indexDir,
+      intakeService,
+      getExtraConnectSrc: opts.getExtraConnectSrc,
+      getIntegrationTarget: opts.getIntegrationTarget,
+      getVectorMemoryStore: opts.getVectorMemoryStore,
+      vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir,
+    }),
+  );
   return httpServer;
 }
 

@@ -305,7 +305,12 @@ describe('memory slash command', () => {
       const cmd = buildMemoryCommand(ctx);
       const result = await cmd.run('race pool');
       expect(runMessage(result)).toBe('RACE'); // mocked formatter
-      expect(vectorStore.search).toHaveBeenCalledWith('pool', { limit: 20 });
+      // The vector channel deliberately fetches a WIDER window than the
+      // lexical top-20 (`Math.max(limit * 2, 50)` in runSearchRace) so a
+      // semantic hit the lexical channel missed can still be ranked — a
+      // same-size window would make the race a no-op re-read. Assert the real
+      // window, not the old limit-20 shape.
+      expect(vectorStore.search).toHaveBeenCalledWith('pool', { limit: 50 });
     });
 
     it('keeps the race usable when the vector store throws (fail-open)', async () => {

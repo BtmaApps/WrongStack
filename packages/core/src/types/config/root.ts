@@ -108,6 +108,15 @@ export interface Config {
   /** Provider-qualified model refs hidden from pickers and excluded from fallback routing. */
   disabledModels?: string[] | undefined;
   /**
+   * Provider ids switched off entirely. Every model of a listed provider is
+   * excluded from fallback routing (named profiles, explicit chains, smart
+   * defaults, bridge) and hidden from pickers — the provider-level analogue of
+   * {@link disabledModels}, for quickly parking a registered provider without
+   * deleting its credentials. Entries are bare provider ids (`openai`), matched
+   * case-insensitively. Re-enable by removing the id.
+   */
+  disabledProviders?: string[] | undefined;
+  /**
    * When true, auto-derived fallback chains are restricted to `favoriteModels`.
    * Explicit fallback profiles/chains are always honored as written.
    */

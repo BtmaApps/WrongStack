@@ -408,7 +408,12 @@ export function asString(value: unknown): string | undefined {
 
 export function clampLimit(limit: number | undefined, fallback: number): number {
   if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) return fallback;
-  return Math.min(Math.floor(limit), 10_000);
+  // A positive fractional limit (0 < limit < 1) passed the guard above but
+  // floored to 0, so the `LIMIT ?` clause returned no rows at all — the store
+  // reported "no data" where the caller's fallback had promised rows. Both
+  // sibling clamps keep a one-row floor for the same reason
+  // (ws-validation-common.ts, kanban workbench.ts).
+  return Math.min(Math.max(1, Math.floor(limit)), 10_000);
 }
 
 export function normalizeKey(value: string): string {

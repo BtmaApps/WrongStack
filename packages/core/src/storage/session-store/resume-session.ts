@@ -270,6 +270,27 @@ function appendSyntheticRecoveryMessages(
     const toolUse =
       findToolUseBlock(next, result.id) ?? findToolUseBlockInEvents(pendingEvents, result.id);
     if (!toolUse) continue;
+    const resultBlock: ContentBlock = {
+      type: 'tool_result',
+      tool_use_id: result.id,
+      content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+      is_error: result.isError,
+    };
+    // Parallel calls interrupted together share one assistant turn, so their
+    // results belong in the ONE user turn that answers it. Treating each
+    // result on its own pushed `user[res a]` after `assistant[a, b]`, then
+    // re-emitted `assistant[b]` for the second — a duplicated tool_use id and
+    // an unanswered `b` in the original turn, which providers reject outright.
+    if (isToolResultTurnAnswering(next, result.id)) {
+      const last = next[next.length - 1] as Message;
+      // A fresh message, not a push: message objects are shared with the
+      // load cache, so mutating one would rewrite the next load's history.
+      next[next.length - 1] = {
+        ...last,
+        content: [...(last.content as ContentBlock[]), resultBlock],
+      };
+      continue;
+    }
     if (!isLastMessageToolUseFor(next, result.id)) {
       next.push({
         role: 'assistant',
@@ -277,21 +298,30 @@ function appendSyntheticRecoveryMessages(
         ts: result.ts,
       });
     }
-    next.push({
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: result.id,
-          content:
-            typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
-          is_error: result.isError,
-        },
-      ],
-      ts: result.ts,
-    });
+    next.push({ role: 'user', content: [resultBlock], ts: result.ts });
   }
   return next;
+}
+
+/**
+ * True when the conversation ends in a tool-result-only user turn that answers
+ * the assistant turn holding `id` — the slot a further result for that turn
+ * must join.
+ */
+function isToolResultTurnAnswering(messages: readonly Message[], id: string): boolean {
+  const last = messages[messages.length - 1];
+  if (
+    last?.role !== 'user' ||
+    !Array.isArray(last.content) ||
+    last.content.length === 0 ||
+    !last.content.every((block) => block.type === 'tool_result')
+  ) {
+    return false;
+  }
+  if (last.content.some((block) => block.type === 'tool_result' && block.tool_use_id === id)) {
+    return false;
+  }
+  return isLastMessageToolUseFor(messages.slice(0, -1), id);
 }
 
 function findToolUseBlock(messages: readonly Message[], id: string): ContentBlock | null {

@@ -56,6 +56,8 @@ export class SSETransport extends BaseHTTPTransport {
   private _nextId = 1;
   private readerDone = false;
   private closed = false;
+  private toolCatalogVersion = 0;
+  private toolCatalogRevision = 0;
   private readLoopAbort?: AbortController | undefined;
   private reader?: globalThis.ReadableStreamDefaultReader<string> | undefined;
   /** POST target announced by the server's `endpoint` event. */
@@ -77,11 +79,13 @@ export class SSETransport extends BaseHTTPTransport {
 
   /** Refresh tool list when server sends notifications/tools/list_changed. */
   private async handleToolsListChanged(): Promise<void> {
+    const version = ++this.toolCatalogVersion;
     try {
       const tools = await listAllTools((params) => this.httpPost('tools/list', params));
       // A failed refresh keeps the last known catalog instead of wiping it.
-      if (!tools) return;
+      if (!tools || version !== this.toolCatalogVersion) return;
       this.tools.splice(0, this.tools.length, ...tools);
+      this.toolCatalogRevision++;
       for (const cb of this.toolsChangedListeners) {
         try {
           cb([...this.tools]);
@@ -95,6 +99,7 @@ export class SSETransport extends BaseHTTPTransport {
   }
 
   async connect(): Promise<void> {
+    this.toolCatalogVersion++;
     this.readerDone = false;
     this.closed = false;
     this.endpointUrl = undefined;
@@ -214,8 +219,11 @@ export class SSETransport extends BaseHTTPTransport {
         // servers may not require it
       }
 
+      const revision = this.toolCatalogRevision;
       const tools = await listAllTools((params) => this.httpPost('tools/list', params));
-      this.tools.splice(0, this.tools.length, ...(tools ?? []));
+      if (revision === this.toolCatalogRevision) {
+        this.tools.splice(0, this.tools.length, ...(tools ?? []));
+      }
 
       this.state = 'connected';
       clearTimeout(startupTimer);
@@ -495,6 +503,7 @@ export class SSETransport extends BaseHTTPTransport {
   }
 
   async close(): Promise<void> {
+    this.toolCatalogVersion++;
     this.releasePinnedDispatcher();
     // Idempotent. Keyed on `closed`, not on state: a stream that already
     // dropped leaves the state 'disconnected' but its in-flight requests,

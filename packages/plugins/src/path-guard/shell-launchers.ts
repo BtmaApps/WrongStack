@@ -94,7 +94,10 @@ export function gitInvocationArguments(command: string): string[] {
   );
   let match: RegExpExecArray | null = gitStart.exec(command);
   while (match !== null) {
-    const gitOffset = match[0].toLowerCase().lastIndexOf('git');
+    // The pattern ends in `git`, so its offset is fixed. Searching a lowercased
+    // copy shifted it whenever the path prefix held a character whose
+    // lowercase form is longer (`İ` → `i̇`) and read the quote map past it.
+    const gitOffset = match[0].length - 'git'.length;
     if (gitOffset < 0 || quotedIndexes[match.index + gitOffset] === 1) {
       match = gitStart.exec(command);
       continue;

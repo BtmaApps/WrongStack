@@ -244,6 +244,39 @@ describe('scheduler', () => {
     scheduler.dispose();
   });
 
+  it('does not queue a second pass for a role whose pass is still running', async () => {
+    learn(
+      'verifier',
+      'Always run `pnpm vitest run` from the repository root, never per package.',
+      'testing',
+    );
+    let calls = 0;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { scheduler, events } = makeScheduler({
+      getLlm: async () => {
+        calls++;
+        await gate;
+        return undefined;
+      },
+    });
+    scheduler.sweep(['verifier']);
+    // Let the sweep's pass start and park inside `getLlm`.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toBe(1);
+    // A capture lands mid-pass. The cooldown is only stamped when the pass
+    // ends, so eligibility alone still says yes here.
+    scheduler.notifyCaptured('verifier');
+    release();
+    await scheduler.idle();
+    await scheduler.idle();
+    expect(calls).toBe(1);
+    expect(events).toHaveLength(1);
+    scheduler.dispose();
+  });
+
   it('sweeps roles that became eligible before the session started', async () => {
     learn(
       'verifier',

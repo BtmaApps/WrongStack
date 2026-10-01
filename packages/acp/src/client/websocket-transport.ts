@@ -79,7 +79,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
         ),
       );
     }
-    const timeoutMs = this.opts.handshakeTimeoutMs ?? 30_000;
+    const timeoutMs = finitePositiveLimit(this.opts.handshakeTimeoutMs, 30_000);
     return new Promise<void>((resolve, reject) => {
       const ws = new WS(this.opts.url, this.opts.protocols);
       // WHATWG sockets (Node's undici included) default to 'blob', which
@@ -262,5 +262,7 @@ export class WebSocketClientTransport implements ACPClientTransport {
 }
 
 function finitePositiveLimit(value: number | undefined, fallback: number): number {
-  return value !== undefined && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  const normalized = Math.floor(value);
+  return Number.isSafeInteger(normalized) && normalized >= 1 ? normalized : fallback;
 }

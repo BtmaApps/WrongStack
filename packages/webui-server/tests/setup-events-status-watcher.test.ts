@@ -95,8 +95,14 @@ describe('registerSetupEventsStatusWatcher', () => {
     });
 
     expect(dispose).toBeDefined();
-    expect(metrics.watcherActive).toBe(true);
     expect(on).toHaveBeenCalledWith('client.status', expect.any(Function));
+
+    // watcherActive tracks the fs.watch handle, which does not exist until
+    // the async startWatcher() gets past `await fs.mkdir`. Registration alone
+    // must not claim a live handle.
+    expect(metrics.watcherActive).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(metrics.watcherActive).toBe(true);
 
     // Register a known project hash
     listeners['client.status']?.({ projectHash: 'hash-abc' });
@@ -197,6 +203,52 @@ describe('registerSetupEventsStatusWatcher', () => {
     );
     consoleError.mockRestore();
 
+    dispose?.();
+  });
+
+  it('leaves watcherActive false when the watcher fails to start', async () => {
+    const fs = await import('node:fs/promises');
+    const { registerSetupEventsStatusWatcher } = await import(
+      '../src/server/setup-events-status-watcher.js'
+    );
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    vi.mocked(fs.mkdir).mockRejectedValueOnce(new Error('Permission denied'));
+
+    const metrics = {
+      fileChangesDetected: 0,
+      filesProcessed: 0,
+      broadcastsSent: 0,
+      debounceResets: 0,
+      totalDebounceDelayMs: 0,
+      activeProjects: 0,
+      averageDebounceDelayMs: 0,
+      watcherActive: false,
+    };
+
+    const dispose = registerSetupEventsStatusWatcher({
+      wpaths: {
+        projectStatus: 'status.json',
+        globalRoot: '/some/dir',
+      } as never,
+      watcherMetrics: metrics,
+      clients: new Map(),
+      broadcast: vi.fn(),
+      on: vi.fn(),
+      isDisposed: () => false,
+    });
+
+    // Registration alone must not claim a live handle.
+    expect(metrics.watcherActive).toBe(false);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // fs.mkdir threw, so no handle was ever created. Reporting Running here is
+    // exactly what made the Debug Dashboard claim a watcher was healthy while
+    // nothing was watching.
+    expect(metrics.watcherActive).toBe(false);
+
+    consoleError.mockRestore();
     dispose?.();
   });
 

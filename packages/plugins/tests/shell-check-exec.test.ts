@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the OS-facing calls so we exercise the plugin's logic without a real
 // shellcheck binary or filesystem.
@@ -233,6 +233,7 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
           dirent('.git', true),
           dirent('top.sh', false),
           dirent('Dockerfile', false),
+          dirent('prompt.zsh', false),
           dirent('notes.txt', false),
         ];
       }
@@ -250,8 +251,9 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
     const res = await tools.shellcheck!.execute({ directory: tmpRoot });
     expect(res.ok).toBe(true);
     expect(res.mode).toBe('directory');
-    // top.sh, Dockerfile, nested.sh (node_modules/.git skipped, notes.txt ignored)
-    expect(res.filesScanned).toBe(3);
+    // top.sh, nested.sh (node_modules/.git skipped; notes.txt, and the Dockerfile
+    // and zsh file shellcheck cannot parse, are not handed to it)
+    expect(res.filesScanned).toBe(2);
     expect(res.filesWithIssues).toBe(2);
     expect(res.summary as { errors: number; warnings: number }).toMatchObject({
       total: 3,

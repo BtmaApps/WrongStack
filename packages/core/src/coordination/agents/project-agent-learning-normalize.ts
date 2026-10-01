@@ -165,10 +165,19 @@ export function classifyLearnedEntry(text: string): LearnedEntryCategory {
   return 'fact';
 }
 
+/**
+ * Token signature used for near-duplicate detection.
+ *
+ * Letters and digits of every script survive. The class used to be ASCII `\w`,
+ * which erased Cyrillic, CJK, Greek and every other non-Latin word entirely:
+ * each such directive normalized to the empty string, all of them compared
+ * as identical, and a role learning in those languages kept exactly one
+ * directive — the second was rejected as a "near-duplicate" of the first.
+ */
 export function normalizeForComparison(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
+    .replace(/[^\p{L}\p{N}_\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .split(/\s+/)

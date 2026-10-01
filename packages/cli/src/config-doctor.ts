@@ -78,6 +78,7 @@ const KNOWN_TOP_LEVEL_KEYS = [
   'modelTiers',
   'favoriteModels',
   'disabledModels',
+  'disabledProviders',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'context',

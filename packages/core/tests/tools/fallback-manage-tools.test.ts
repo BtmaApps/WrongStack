@@ -387,6 +387,51 @@ describe('provider_manage', () => {
     expect(result.message).toContain('No providers');
   });
 
+  it('disables a provider without deleting its config, then re-enables it', async () => {
+    const opts = makeOpts();
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+
+    const off = await run(tool, { action: 'disable', provider: 'test-provider' });
+    expect(off.status).toBe('ok');
+    expect(off.message).toContain('Disabled provider: test-provider');
+    const cfg = opts.getConfig() as unknown as {
+      disabledProviders?: string[];
+      providers: Record<string, unknown>;
+    };
+    expect(cfg.disabledProviders).toEqual(['test-provider']);
+    // Disable is not remove: the entry (and its credentials) must survive.
+    expect(Object.keys(cfg.providers)).toContain('test-provider');
+
+    const listed = await run(tool, { action: 'list' });
+    expect(listed.message).toContain('[DISABLED]');
+
+    const on = await run(tool, { action: 'enable', provider: 'test-provider' });
+    expect(on.message).toContain('Enabled provider: test-provider');
+    expect(
+      (opts.getConfig() as unknown as { disabledProviders?: string[] }).disabledProviders,
+    ).toBeUndefined();
+  });
+
+  it('matches disabled provider ids case-insensitively without duplicating entries', async () => {
+    const opts = makeOpts({ disabledProviders: ['Test-Provider'] });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
+
+    // A casing difference between the stored entry and the heading id must not
+    // silently re-enable the provider in `list`.
+    expect((await run(tool, { action: 'list' })).message).toContain('[DISABLED]');
+
+    await run(tool, { action: 'disable', provider: 'test-provider' });
+    expect(
+      (opts.getConfig() as unknown as { disabledProviders?: string[] }).disabledProviders,
+    ).toEqual(['test-provider']);
+  });
+
+  it('rejects disable/enable for an unknown provider', async () => {
+    const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_MANAGE_TOOL_NAME);
+    await expect(run(tool, { action: 'disable', provider: 'nope' })).rejects.toThrow(/not found/);
+    await expect(run(tool, { action: 'enable', provider: 'nope' })).rejects.toThrow(/not found/);
+  });
+
   it('adds a new provider', async () => {
     const opts = makeOpts();
     const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);

@@ -20,7 +20,7 @@ import type {
   WSUserInputSubmit,
 } from './runtime.js';
 import type { SageAnchor, SageScope, SageStatus, WSMemorySageForFileRequest } from './sage.js';
-import type { OAuthKind, WSCompletionRequest } from './system.js';
+import type { OAuthKind, WSCompletionRequest, WSFallbackSuggest } from './system.js';
 
 /** Metadata persisted by the custom-provider model editor in provider add/update messages. */
 export interface ProviderCustomModelWire {
@@ -369,6 +369,7 @@ export type WSClientMessageCore =
       payload: { providerId: string; includeDisabled?: boolean | undefined };
     }
   | { type: 'provider.models.search'; payload: { query: string; limit?: number | undefined } }
+  | WSFallbackSuggest
   | {
       type: 'provider.test.run';
       payload: {

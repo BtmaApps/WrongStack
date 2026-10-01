@@ -359,7 +359,9 @@ const plugin: Plugin = {
 
       if (toolName === 'git_autocommit') {
         const commit = parseAutocommitResult(String(input.toolResult.content ?? ''));
-        if (commit) state.commits.push(commit.message);
+        // The message carries the LLM-written body after a blank line; a PR
+        // title and a bullet list take the subject only.
+        if (commit) state.commits.push(commit.message.split(/\r?\n/, 1)[0]!.trim() || 'commit');
         return;
       }
 

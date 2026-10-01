@@ -271,7 +271,9 @@ export function createKanbanMcpToolHost(
       }
 
       try {
+        signal.throwIfAborted();
         const result = await executeKanban(args, context, signal);
+        signal.throwIfAborted();
         const failed =
           !!result &&
           typeof result === 'object' &&

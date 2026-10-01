@@ -35,6 +35,7 @@ import {
   type EmbeddedSessionContext,
 } from './embedded-host-adapters.js';
 import { emitFallbackChoice } from './fallback-choice.js';
+import { handleFallbackSuggest } from './fallback-suggest-handler.js';
 import {
   handleGitChanges,
   handleGitCommit,
@@ -524,6 +525,7 @@ export function createEmbeddedMessageRouter(
     send: deps.providerCtx.send,
     modelsRegistry: deps.providerCtx.modelsRegistry,
     getDisabledModels: deps.providerCtx.getDisabledModels,
+    getDisabledProviders: deps.providerCtx.getDisabledProviders,
     providerAuthRegistry: deps.providerCtx.providerAuthRegistry,
     log: deps.providerCtx.log,
     hasActiveModel: () => Boolean(deps.agentConfigCtx.agent.ctx.model),
@@ -592,6 +594,15 @@ export function createEmbeddedMessageRouter(
         });
       }
     },
+    suggestFallbacks: (ws, msg) =>
+      handleFallbackSuggest(ws, msg.payload, {
+        collectCandidates: providerOperations.collectFallbackCandidates,
+        resolveLlm: (sessionId) => {
+          const ctx = sessionContextOf(sessionId);
+          return { provider: ctx.provider, model: ctx.model };
+        },
+        send,
+      }),
     adoptDefaultProviderIfUnset: providerOperations.adoptDefaultProviderIfUnset,
     providerHandlers: providerOperations,
     statusTracker: deps.statusTracker,

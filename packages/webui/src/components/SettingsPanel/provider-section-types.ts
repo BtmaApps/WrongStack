@@ -98,6 +98,13 @@ export interface ProviderSectionProps {
   onRemoveProvider: (providerId: string) => Promise<boolean> | void;
   /** Called when a saved provider model is picked. */
   onPickProviderModel: (providerId: string, modelId: string) => void;
+  /**
+   * Provider ids switched off entirely (`Config.disabledProviders`). Every
+   * model of a listed provider is skipped in fallback routing and pickers.
+   */
+  disabledProviders: string[];
+  /** Flip one provider's disabled state (persisted through `updatePrefs`). */
+  onToggleProviderDisabled: (providerId: string) => void;
   /** WebSocket client used for saved-provider model probing/clearing. */
   ws: WrongStackWebSocketClient;
   /** Search filter text. */

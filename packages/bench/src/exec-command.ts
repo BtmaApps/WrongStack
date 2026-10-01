@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { StringDecoder } from 'node:string_decoder';
 import { treeKill } from './runner.js';
 
 /**
@@ -52,7 +53,7 @@ export function execCommand(opts: {
   maxBufferBytes?: number | undefined;
 }): Promise<ExecResult> {
   const useShell = opts.shell ?? true;
-  const maxBufferBytes = opts.maxBufferBytes ?? DEFAULT_MAX_BUFFER_BYTES;
+  const maxBufferBytes = positiveSafeInteger(opts.maxBufferBytes, DEFAULT_MAX_BUFFER_BYTES);
   return new Promise<ExecResult>((resolve) => {
     let child: ReturnType<typeof spawn>;
     try {
@@ -94,6 +95,8 @@ export function execCommand(opts: {
     let truncated = false;
     let bufferedBytes = 0;
     let settled = false;
+    const stdoutDecoder = new StringDecoder('utf8');
+    const stderrDecoder = new StringDecoder('utf8');
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -117,12 +120,16 @@ export function execCommand(opts: {
     // Append a chunk to the target stream up to the shared byte budget. Once the
     // combined stdout+stderr budget is exhausted, stop buffering and kill the
     // process tree so a runaway command can't OOM the runner.
-    const appendCapped = (chunk: Buffer, append: (s: string) => void): void => {
+    const appendCapped = (
+      chunk: Buffer,
+      decoder: StringDecoder,
+      append: (s: string) => void,
+    ): void => {
       if (truncated) return;
       const remaining = maxBufferBytes - bufferedBytes;
       if (chunk.length <= remaining) {
         bufferedBytes += chunk.length;
-        append(chunk.toString('utf8'));
+        append(decoder.write(chunk));
         return;
       }
       // Keep only what fits, on a UTF-8 boundary, then cut the process off.
@@ -135,20 +142,24 @@ export function execCommand(opts: {
         // `cut` stays < chunk.length (this branch runs only when chunk.length > remaining),
         // so the index is always defined; `!` silences strict-mode possibly-undefined.
         while (cut > 0 && (chunk[cut]! & 0xc0) === 0x80) cut--;
-        append(chunk.subarray(0, cut).toString('utf8'));
+        append(decoder.write(chunk.subarray(0, cut)));
         bufferedBytes = maxBufferBytes;
       }
       truncated = true;
       treeKill(child);
     };
 
-    child.stdout?.on('data', (d: Buffer) => appendCapped(d, (s) => (stdout += s)));
-    child.stderr?.on('data', (d: Buffer) => appendCapped(d, (s) => (stderr += s)));
+    child.stdout?.on('data', (d: Buffer) => appendCapped(d, stdoutDecoder, (s) => (stdout += s)));
+    child.stderr?.on('data', (d: Buffer) => appendCapped(d, stderrDecoder, (s) => (stderr += s)));
 
     const done = (exitCode: number | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (!truncated) {
+        stdout += stdoutDecoder.end();
+        stderr += stderrDecoder.end();
+      }
       resolve({ exitCode, stdout, stderr, timedOut, truncated });
     };
 
@@ -158,6 +169,12 @@ export function execCommand(opts: {
     });
     child.on('close', (code) => done(code));
   });
+}
+
+function positiveSafeInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  const normalized = Math.floor(value);
+  return Number.isSafeInteger(normalized) && normalized >= 1 ? normalized : fallback;
 }
 
 /** Quote a single arg for the shell only when it contains whitespace. */

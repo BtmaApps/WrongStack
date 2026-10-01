@@ -77,6 +77,7 @@ export function SubagentModelPickerDialog({
   const wsUrl = useConfigStore((s) => s.wsUrl);
   const favoriteModels = useLocalPrefs((s) => s.favoriteModels);
   const disabledModels = useLocalPrefs((s) => s.disabledModels);
+  const disabledProviders = useLocalPrefs((s) => s.disabledProviders);
 
   const [query, setQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState<string | null>(null);
@@ -143,6 +144,7 @@ export function SubagentModelPickerDialog({
         favoritesOnly,
         favoriteModels ?? [],
         disabledModels ?? [],
+        disabledProviders ?? [],
       ),
     [
       saved,
@@ -156,6 +158,7 @@ export function SubagentModelPickerDialog({
       favoritesOnly,
       favoriteModels,
       disabledModels,
+      disabledProviders,
     ],
   );
 

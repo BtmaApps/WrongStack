@@ -1,13 +1,14 @@
 import type {
+  TaskProgress as TaskGraphProgress,
   TaskPriority,
   TaskStatus,
   TaskType,
-  TaskProgress as TaskGraphProgress,
 } from '../types/task-graph.js';
+import { completionPercent } from '../types/task-graph.js';
 import { color } from './color.js';
 
 // Re-export graph types for convenience
-export type { TaskStatus, TaskPriority, TaskType };
+export type { TaskPriority, TaskStatus, TaskType };
 
 // ---------------------------------------------------------------------------
 // Session-level task item — mirrors TaskNode but with string timestamps
@@ -89,7 +90,7 @@ export function computeTaskItemProgress(tasks: TaskItem[]): TaskGraphProgress {
     failed,
     review,
     completed,
-    percentComplete: tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0,
+    percentComplete: completionPercent(completed, tasks.length),
     estimatedHours,
     actualHours,
   };

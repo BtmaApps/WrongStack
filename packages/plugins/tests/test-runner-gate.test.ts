@@ -187,6 +187,30 @@ describe('hook behavior', () => {
     expect(result?.additionalContext).toContain('test C');
   });
 
+  it('reads mocha JSON and reports its failures', async () => {
+    mockExecFile.mockImplementation((_cmd, args, _options, callback) => {
+      if (args.includes('--version')) return callback(null, '10.0.0\n', '');
+      callback(
+        null,
+        JSON.stringify({
+          stats: { suites: 1, tests: 2, passes: 1, pending: 0, failures: 1 },
+          failures: [{ fullTitle: 'math adds', err: { message: 'expected 3 to equal 4' } }],
+          passes: [{ fullTitle: 'math subtracts' }],
+        }),
+        '',
+      );
+    });
+    const api = makeApi({ extensions: { 'test-runner-gate': { enabled: true, runner: 'mocha' } } });
+    await testRunnerGatePlugin.setup(api as never);
+    const result = await getHook(api)({
+      toolName: 'write',
+      toolInput: { path: 'src/math.ts', content: 'x' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    expect(result?.additionalContext).toContain('FAILED');
+    expect(result?.additionalContext).toContain('math adds: expected 3 to equal 4');
+  });
+
   it('stays silent when tool errored', async () => {
     const api = makeApi({ enabled: true });
     await testRunnerGatePlugin.setup(api as never);

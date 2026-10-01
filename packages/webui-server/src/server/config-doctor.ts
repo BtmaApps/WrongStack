@@ -16,6 +16,13 @@ export interface ConfigDoctorDeps {
   applyRuntimeConfig: (config: Config) => void;
 }
 
+let lastBackupStamp = 0n;
+function nextBackupStamp(): string {
+  const clock = BigInt(Date.now()) * 1_000_000n;
+  lastBackupStamp = clock > lastBackupStamp ? clock : lastBackupStamp + 1n;
+  return lastBackupStamp.toString();
+}
+
 async function readConfig(
   file: string,
   vault: SecretVault,
@@ -49,7 +56,7 @@ export async function handleConfigDoctor(
       // shared config writer decrypts, mutates, re-encrypts, and atomically saves.
       // Use a timestamped suffix so consecutive `/doctor fix` runs don't
       // overwrite prior snapshots (the UI surfaces this path to the user).
-      const backupSuffix = `.last-${Date.now()}`;
+      const backupSuffix = `.last-${nextBackupStamp()}`;
       const backupPath = `${deps.profileConfigPath}${backupSuffix}`;
       await atomicWrite(backupPath, current.raw, { mode: 0o600 });
       await deps.updateConfig((config) => {

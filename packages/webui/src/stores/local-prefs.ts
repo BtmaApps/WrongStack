@@ -301,6 +301,7 @@ export const useLocalPrefs = create<LocalPrefs>()(
         }
         if (!Array.isArray(p.favoriteModels)) p.favoriteModels = [];
         if (!Array.isArray(p.disabledModels)) p.disabledModels = [];
+        if (!Array.isArray(p.disabledProviders)) p.disabledProviders = [];
         if (typeof p.favoriteModelsOnly !== 'boolean') p.favoriteModelsOnly = false;
         if (!Array.isArray(p.modelAvailabilitySchedule)) p.modelAvailabilitySchedule = [];
         if (!p.modelMatrix || typeof p.modelMatrix !== 'object' || Array.isArray(p.modelMatrix)) {
@@ -324,6 +325,21 @@ export const useLocalPrefs = create<LocalPrefs>()(
         if (typeof p.wrongProxyUrl !== 'string' || p.wrongProxyUrl.trim().length === 0) {
           p.wrongProxyUrl = 'http://localhost:3444';
         }
+        // Telegram poll interval + notification chat. Type-check so a
+        // corrupted persisted value (e.g. `"5"`, -3, a NaN poll interval) never
+        // reaches the panel or the server's bounded validator, which would
+        // reject the whole `prefs.update` payload. The 1–60 range mirrors the
+        // server-side NUMBER_PREF_BOUNDS bound; restore the default whenever
+        // the stored value is not a usable number in range.
+        if (
+          typeof p.tgPollIntervalSec !== 'number' ||
+          !Number.isFinite(p.tgPollIntervalSec) ||
+          p.tgPollIntervalSec < 1 ||
+          p.tgPollIntervalSec > 60
+        ) {
+          p.tgPollIntervalSec = 2;
+        }
+        if (typeof p.tgChatId !== 'string') p.tgChatId = '';
         // Chimera/auto-review migration — backfill with the canonical defaults
         // so persisted stores from pre-v9 don't expose `undefined` to the panel.
         if (typeof p.chimeraEnabled !== 'boolean') p.chimeraEnabled = true;

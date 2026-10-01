@@ -87,6 +87,12 @@ function hashIdempotencyKey(key: string): string {
   return createHash('sha256').update(key, 'utf8').digest('hex');
 }
 
+function positiveIntegerOrDefault(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  const normalized = Math.floor(value);
+  return Number.isSafeInteger(normalized) && normalized >= 1 ? normalized : fallback;
+}
+
 function indexEntryFor(record: RequirementIntakeRecord): IntakeIndexEntry {
   return {
     id: record.id,
@@ -114,7 +120,7 @@ export class RequirementIntakeStore {
       resolveWstackPaths({ projectRoot: process.cwd() }).projectRequirementIntakes;
     this.indexPath = path.join(this.baseDir, INDEX_PATH);
     this.idempotencyPath = path.join(this.baseDir, IDEMPOTENCY_PATH);
-    this.maxIdempotencyEntries = options.maxIdempotencyEntries ?? 10_000;
+    this.maxIdempotencyEntries = positiveIntegerOrDefault(options.maxIdempotencyEntries, 10_000);
     this.lockTimeoutMs = options.lockTimeoutMs ?? 15_000;
   }
 
@@ -259,6 +265,7 @@ export class RequirementIntakeStore {
         const next: RequirementIntakeRecord = structuredClone(current);
         await mutate(next);
 
+        next.id = current.id;
         next.version = current.version + 1;
         next.updatedAt = Date.now();
         this.appendHistory(next, options);

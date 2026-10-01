@@ -49,11 +49,15 @@ describe('isKanbanBoardActive — the single board-active predicate', () => {
     // OR session:<id> tag among the live session ids). If this fails,
     // update BOTH sides deliberately — the server totals land in the same
     // store fields the client fallback feeds.
+    //
+    // The presence clause compares strictly (`entry.active === true`) since
+    // the twin was refactored off truthiness; `isKanbanBoardActive` is
+    // exercised on booleans, so the two stay equivalent.
     const serverSrc = readFileSync(
       join(ROOT, '..', 'webui-server', 'src', 'server', 'kanban-route-pagination.ts'),
       'utf8',
     );
-    expect(serverSrc).toMatch(/presence\?\.some\(\(entry\) => entry\.active\) === true/);
+    expect(serverSrc).toMatch(/presence\?\.some\(\(entry\) => entry\.active === true\) === true/);
     expect(serverSrc).toMatch(/tag\.startsWith\('session:'\)/);
   });
 });

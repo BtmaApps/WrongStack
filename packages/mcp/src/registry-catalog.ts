@@ -1,9 +1,21 @@
 import type { ConnectionState } from './contracts.js';
 import type { MCPPrompt, MCPResource, MCPResourceTemplate, MCPServerMetadata } from './protocol.js';
+import type { ServerSlot } from './registry-slots.js';
 import type { MCPRegistryCatalog } from './registry-types.js';
 
 const MAX_CATALOG_PAGES = 100;
 const MAX_CATALOG_ITEMS = 10_000;
+
+export function advanceCatalogVersion(
+  slot: ServerSlot,
+  kind: 'resources' | 'resourceTemplates' | 'prompts',
+): number {
+  slot.catalogVersions ??= {};
+  const versions = slot.catalogVersions;
+  const version = (versions[kind] ?? 0) + 1;
+  versions[kind] = version;
+  return version;
+}
 
 export async function collectCatalogPages<Page extends { nextCursor?: string | undefined }, Item>(
   load: (cursor?: string | undefined) => Promise<Page>,

@@ -787,13 +787,17 @@ export async function handleHttpRequest(
     return send(415, JSON.stringify({ error: 'content-type must be application/json' }));
   }
 
-  let body = '';
+  // Raw chunks, decoded once at the end: a TCP chunk can end inside a
+  // multi-byte character, and decoding each chunk on its own turned both
+  // halves into U+FFFD — a tool argument like `"ş"` reached the handler as
+  // `"��"`, with the JSON still valid and nothing reporting the damage.
+  const chunks: Buffer[] = [];
   let bodyBytes = 0;
   let aborted = false;
   req.on('data', (chunk: Buffer) => {
     if (aborted) return;
     bodyBytes += chunk.byteLength;
-    body += chunk.toString('utf8');
+    chunks.push(chunk);
     if (bodyBytes > HTTP_BODY_CAP) {
       aborted = true;
       send(413, JSON.stringify({ error: 'payload too large' }));
@@ -802,6 +806,7 @@ export async function handleHttpRequest(
   });
   req.on('end', () => {
     if (aborted) return;
+    const body = Buffer.concat(chunks, bodyBytes).toString('utf8');
     void server
       .handleMessage(body)
       .then((out) => {

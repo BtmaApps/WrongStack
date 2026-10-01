@@ -209,14 +209,30 @@ interface GitCommandMatch {
  * Path restores (`git checkout main -- file`) do not switch; for -b/-c the
  * new branch name is the target; `git switch -` (unknown target) is ignored.
  */
+/**
+ * Git's global options, which sit between `git` and the subcommand:
+ * `-C <dir>`, `-c <k=v>`, `--git-dir <d>` / `--work-tree <d>`, `--opt=value`
+ * and bare flags (`--no-pager`, `-P`). Matching `git\s+commit` alone let
+ * `git -C . commit` or `git -c user.name=x commit` past the guard.
+ */
+const GIT_GLOBAL_OPTIONS = String.raw`(?:\s+(?:-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|--(?:git-dir|work-tree|namespace|exec-path|super-prefix)\s+(?!-)\S+|--?(?![Cc]\s)[A-Za-z][\w-]*(?:=\S+)?))*`;
+const GIT_OP_RE = new RegExp(
+  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(commit|push|merge)(?![a-zA-Z0-9_-])`,
+  'g',
+);
+const GIT_SWITCH_RE = new RegExp(
+  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(?:checkout|switch)\s+([^;&|\n]*)`,
+  'g',
+);
+
 function detectGitOpsInCommand(command: string): GitCommandMatch[] {
   const cmd = command.trim();
   const snippet = cmd.slice(0, 120);
   const events: Array<{ at: number; op?: GitCommandMatch['type']; to?: string }> = [];
-  for (const m of cmd.matchAll(/\bgit\s+(commit|push|merge)(?![a-zA-Z0-9_-])/g)) {
+  for (const m of cmd.matchAll(GIT_OP_RE)) {
     events.push({ at: m.index ?? 0, op: m[1] as GitCommandMatch['type'] });
   }
-  for (const m of cmd.matchAll(/\bgit\s+(?:checkout|switch)\s+([^;&|\n]*)/g)) {
+  for (const m of cmd.matchAll(GIT_SWITCH_RE)) {
     const args = (m[1] ?? '').trim().split(/\s+/).filter(Boolean);
     if (args.includes('--')) continue;
     const create = args.findIndex((a) => /^(?:-[bBcC]|--orphan)$/.test(a));

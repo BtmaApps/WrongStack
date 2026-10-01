@@ -216,6 +216,26 @@ describe('detect_duplicate_code tool', () => {
     expect(result.findings[0]!.locations.length).toBe(2);
   });
 
+  it('finds a duplicated block that starts at a different line in each file', async () => {
+    const block = `function sharedBlock() {\n  const a = 1;\n  const b = 2;\n  const c = 3;\n  const d = 4;\n  const e = 5;\n  const f = 6;\n  return a + b + c + d + e + f;\n}\n`;
+    setFilesystem({
+      '/project/src/a.ts': `${block}export const a = 1;\n`,
+      '/project/src/b.ts': `import x from 'x';\nimport y from 'y';\nconst z = x + y;\n${block}export const b = 2;\n`,
+    });
+
+    const api = makeApi({ enabled: true });
+    plugin.setup(api as never);
+    const detect = getTool(api, 'detect_duplicate_code');
+    const result = (await detect({ path: 'src' })) as {
+      findings: Array<{ locations: Array<{ file: string; startLine: number }> }>;
+    };
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]!.locations.map((l) => `${l.file}:${l.startLine}`).sort()).toEqual([
+      'src/a.ts:1',
+      'src/b.ts:4',
+    ]);
+  });
+
   it('reports no duplicates for distinct files', async () => {
     setFilesystem({
       '/project/src/a.ts': 'export const a = 1;\n',

@@ -162,7 +162,9 @@ const STANDARD_TYPES = [
  */
 function parseCommitMessage(message: string, cfg: CommitValidatorConfig): ParsedCommit {
   const errors: string[] = [];
-  const firstLine = message.trim().split('\n')[0] ?? '';
+  // CRLF too: `.` does not match `\r`, so a subject line ending in one failed
+  // the format regex below and a valid Windows-authored message was blocked.
+  const firstLine = message.trim().split(/\r?\n/)[0] ?? '';
 
   if (!firstLine) {
     return {
@@ -236,7 +238,7 @@ function parseCommitMessage(message: string, cfg: CommitValidatorConfig): Parsed
   // The body is everything after the first line (conventional-commit
   // format requires a blank line between subject and body).
   if (cfg.bodyRequired) {
-    const lines = message.trim().split('\n');
+    const lines = message.trim().split(/\r?\n/);
     // Subject is lines[0]. A properly formatted body has a blank line
     // after the subject, then the body content.
     const bodyStart = lines.findIndex((line, i) => i > 0 && line.trim() === '');
@@ -299,6 +301,16 @@ const GIT_MESSAGE_FLAG_RE = new RegExp(
   ].join('|'),
   'g',
 );
+
+/**
+ * `git commit`, allowing git's global options before the subcommand
+ * (`-C <dir>`, `-c <k=v>`, `--git-dir <d>`, `--no-pager`). Requiring
+ * `git\s+commit` let `git -c user.name=x commit -m "bad"` skip validation.
+ * Same grammar as branch-guard's detector; alternatives are disjoint so the
+ * scan stays linear.
+ */
+const GIT_COMMIT_RE =
+  /\bgit(?:\s+(?:-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|--(?:git-dir|work-tree|namespace|exec-path|super-prefix)\s+(?!-)\S+|--?(?![Cc]\s)[A-Za-z][\w-]*(?:=\S+)?))*\s+commit(?![a-zA-Z0-9_-])/;
 
 function extractMessageFromBash(command: string): string | null {
   const parts: string[] = [];
@@ -454,7 +466,7 @@ const plugin: Plugin = {
           (inp['input'] as string | undefined);
         if (typeof command !== 'string') return;
         // Only intercept git commit commands (not plumbing like commit-tree).
-        if (!/\bgit\s+commit(?![a-zA-Z0-9_-])/.test(command)) return;
+        if (!GIT_COMMIT_RE.test(command)) return;
         message = extractMessageFromBash(command);
         if (!message) return; // No -m flag found — can't validate, let it through.
       } else {

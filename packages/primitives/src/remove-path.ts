@@ -10,8 +10,9 @@ function pathExists(target: string): boolean {
   try {
     fs.lstatSync(target);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
   }
 }
 

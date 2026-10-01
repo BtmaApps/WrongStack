@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Logger } from '@wrongstack/core/types';
 import type { DocumentTracker } from '../document-tracker.js';
+import type { LineTextReader } from '../formatters/location.js';
+import { splitLines } from '../position.js';
 import type { LSPRegistry } from '../registry.js';
 import type { LSPServer } from '../server/lsp-server.js';
 import type { PlugLSPConfig } from '../types.js';
@@ -59,6 +62,32 @@ export async function readDocumentContent(
 ): Promise<string> {
   const tracked = tracker.get(filePath);
   return tracked?.text ?? (await fs.readFile(filePath, 'utf8'));
+}
+
+/**
+ * Line reader for the output formatters, so the columns a tool prints use the
+ * same 1-based byte convention its inputs do. Tracked documents are read from
+ * memory (the version the server answered about); others from disk, once per
+ * file per call. A file that cannot be read keeps the raw column.
+ */
+export function createLineTextReader(tracker: DocumentTracker): LineTextReader {
+  const cache = new Map<string, string[] | null>();
+  return (filePath, line) => {
+    let lines = cache.get(filePath);
+    if (lines === undefined) {
+      let text: string | undefined = tracker.get(filePath)?.text;
+      if (text === undefined) {
+        try {
+          text = readFileSync(filePath, 'utf8');
+        } catch {
+          text = undefined;
+        }
+      }
+      lines = text === undefined ? null : splitLines(text);
+      cache.set(filePath, lines);
+    }
+    return lines?.[line];
+  };
 }
 
 export function textDocumentPosition(

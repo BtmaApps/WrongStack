@@ -176,3 +176,41 @@ describe('freshness gate', () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('disarm survives a remount', () => {
+  it('cancel writes autoContinue:false back so a remount of the row stays manual', async () => {
+    const { useChatStore } = await import('../../src/stores');
+    const id = useChatStore.getState().addMessage({
+      role: 'assistant',
+      content: 'Error: provider overloaded',
+      isError: true,
+      autoContinue: true,
+    });
+    const armed = () =>
+      useChatStore.getState().messages.find((m) => m.id === id)?.autoContinue === true;
+    const element = () => (
+      <FailedRunContinue
+        text="Error: provider overloaded"
+        timestamp={Date.now()}
+        autoArm={armed()}
+        messageId={id}
+      />
+    );
+
+    const first = render(element());
+    expect(continueButton().textContent).toContain('15s');
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/ }));
+    expect(armed()).toBe(false);
+    first.unmount();
+
+    // The bubble re-renders its button from the message, as MessageBubble does.
+    render(element());
+    expect(continueButton().textContent).not.toContain('s');
+    for (let step = 0; step < 20; step += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+});

@@ -56,6 +56,7 @@ import { BoundedSet } from '../runtime/index.js';
 type Section =
   | 'Added'
   | 'Changed'
+  | 'Deprecated'
   | 'Fixed'
   | 'Removed'
   | 'Security'
@@ -164,6 +165,7 @@ const TYPE_TO_SECTION: Record<string, Section> = {
 const SECTION_ORDER: Section[] = [
   'Added',
   'Changed',
+  'Deprecated',
   'Fixed',
   'Removed',
   'Security',
@@ -252,44 +254,83 @@ export function mergeIntoChangelog(existing: string | null, block: string): stri
   const currentUnreleased = existing.slice(startIndex, endIndex);
   const rest = existing.slice(endIndex);
 
-  const existingEntries: ChangelogEntry[] = [];
-  let currentSection: Section = 'Changed';
-  for (const line of currentUnreleased.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('### ')) {
-      const secName = trimmed.slice(4).trim() as Section;
-      if (SECTION_ORDER.includes(secName)) currentSection = secName;
-    } else if (trimmed.startsWith('- ')) {
-      existingEntries.push({
-        section: currentSection,
-        text: trimmed.slice(2).trim(),
-        origin: 'manual',
-        when: new Date().toISOString(),
-      });
-    }
+  // Merge structurally WITHOUT dropping what the parser does not model. The
+  // old rebuild kept only `### <known section>` headings and top-level `- `
+  // bullets, so `*`/`+` bullets, sub-bullets, prose and an unknown section's
+  // items (`### Deprecated` was refiled under the previous section) were
+  // silently deleted from the user's changelog.
+  const current = parseUnreleased(currentUnreleased);
+  const incoming = parseUnreleased(block);
+  for (const [section, items] of incoming.sections) {
+    const target = current.sections.get(section) ?? [];
+    // New entries first, as before; exact duplicates collapse.
+    current.sections.set(section, [...items, ...target.filter((item) => !items.includes(item))]);
   }
-
-  const newEntries: ChangelogEntry[] = [];
-  let newSec: Section = 'Changed';
-  for (const line of block.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('### ')) {
-      const secName = trimmed.slice(4).trim() as Section;
-      if (SECTION_ORDER.includes(secName)) newSec = secName;
-    } else if (trimmed.startsWith('- ')) {
-      newEntries.push({
-        section: newSec,
-        text: trimmed.slice(2).trim(),
-        origin: 'manual',
-        when: new Date().toISOString(),
-      });
-    }
-  }
-
-  const combinedBlock = renderUnreleasedBlock([...newEntries, ...existingEntries]);
+  current.preamble.push(...incoming.preamble.filter((l) => !current.preamble.includes(l)));
+  const combinedBlock = renderParsedUnreleased(current);
   const formattedRest = rest.trim() ? `\n\n${rest.trimStart()}` : '\n';
 
   return `${existing.slice(0, startIndex)}\n\n${combinedBlock}${formattedRest}`;
+}
+
+interface ParsedUnreleased {
+  /** Prose before the first section heading, verbatim. */
+  preamble: string[];
+  /** Section name → items; an item keeps its continuation/sub-bullet lines. */
+  sections: Map<string, string[]>;
+}
+
+/** Parse an Unreleased body into sections, preserving every non-blank line. */
+function parseUnreleased(text: string): ParsedUnreleased {
+  const preamble: string[] = [];
+  const sections = new Map<string, string[]>();
+  let section: string | undefined;
+  let items: string[] | undefined;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const heading = /^###\s+(.+)$/.exec(trimmed);
+    if (heading?.[1]) {
+      section = heading[1].trim();
+      items = sections.get(section) ?? [];
+      sections.set(section, items);
+      continue;
+    }
+    const bullet = /^[-*+]\s+(.*)$/.exec(line);
+    if (bullet && section === undefined) {
+      section = 'Changed';
+      items = sections.get(section) ?? [];
+      sections.set(section, items);
+    }
+    if (bullet && items) {
+      items.push((bullet[1] ?? '').trim());
+    } else if (items && items.length > 0) {
+      // Indented sub-bullet or wrapped text belongs to the previous item.
+      items[items.length - 1] = `${items[items.length - 1]}\n${line.trimEnd()}`;
+    } else if (items) {
+      items.push(trimmed);
+    } else {
+      preamble.push(line.trimEnd());
+    }
+  }
+  return { preamble, sections };
+}
+
+/** Render known sections in Keep-a-Changelog order, then any others as found. */
+function renderParsedUnreleased(parsed: ParsedUnreleased): string {
+  const parts: string[] = [];
+  if (parsed.preamble.length > 0) parts.push(...parsed.preamble, '');
+  const known = new Set<string>(SECTION_ORDER);
+  const order = [
+    ...SECTION_ORDER.filter((s) => parsed.sections.has(s)),
+    ...[...parsed.sections.keys()].filter((s) => !known.has(s)),
+  ];
+  for (const section of order) {
+    const items = parsed.sections.get(section);
+    if (!items || items.length === 0) continue;
+    parts.push(`### ${section}`, ...items.map((t) => `- ${t}`), '');
+  }
+  return parts.join('\n').trimEnd();
 }
 
 // ---------------------------------------------------------------------------

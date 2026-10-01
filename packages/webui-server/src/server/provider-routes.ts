@@ -87,6 +87,8 @@ export interface ProviderRouteHandlers {
   refineModel: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   /** Forward a model.fallback_choice client message to the EventBus. */
   fallbackChoice: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  /** Suggest fallback profiles from the saved providers' catalogs. */
+  suggestFallbacks: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   /** Adopt a just-added provider as the live default when no model is active. */
   adoptDefaultProviderIfUnset: (providerId: string) => Promise<void>;
   providerHandlers: ProviderMutationHandlers;
@@ -310,6 +312,9 @@ async function dispatchProviderRoute(
       return true;
     case 'model.fallback_choice':
       await routes.fallbackChoice(ws, msg);
+      return true;
+    case 'fallback.suggest':
+      await routes.suggestFallbacks(ws, msg);
       return true;
 
     case 'key.add':

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock execSync + execFile before importing the plugin. The plugin
 // switched from execSync string templates to execFile argv to defeat
@@ -191,6 +191,34 @@ describe('stat mode', () => {
     expect(result?.additionalContext).toContain('-');
     // Stat mode should NOT include the diff body
     expect(result?.additionalContext).not.toContain('diff --git');
+  });
+});
+
+describe('line counts', () => {
+  it('counts content lines that start with --- or +++ and skips only the file header', async () => {
+    // ls-files (tracked), then the diff itself.
+    mockExecFileSync
+      .mockImplementationOnce(() => 'docs/a.md\n')
+      .mockImplementationOnce(() =>
+        [
+          'diff --git a/docs/a.md b/docs/a.md',
+          '--- a/docs/a.md',
+          '+++ b/docs/a.md',
+          '@@ -1,3 +1,2 @@',
+          '----',
+          '-title: old',
+          '+++count;',
+          ' body',
+        ].join('\n'),
+      );
+    const api = makeApi({ extensions: { 'diff-summary': { mode: 'stat' } } });
+    diffSummaryPlugin.setup(api as never);
+    const result = await getHook(api)({
+      toolName: 'edit',
+      toolInput: { path: 'docs/a.md', old_string: 'a', new_string: 'b' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    expect(result?.additionalContext).toContain('docs/a.md: +1 -2');
   });
 });
 

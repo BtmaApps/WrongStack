@@ -195,6 +195,15 @@ export function ModelTiersSection({ syncPref }: ModelTiersSectionProps): React.R
                       profile: {name}
                     </option>
                   ))}
+                  {/* `fallbackProfiles` is user-editable, so a tier can outlive
+                      the profile it references. Without this the select reports
+                      its first option — "profile: (none)" — falsely claiming
+                      nothing is pinned, and touching it would write `undefined`
+                      and drop the reference for good. Same guard as
+                      BrainSection's council-persona picker. */}
+                  {level.fallbackProfile && !profileNames.includes(level.fallbackProfile) ? (
+                    <option value={level.fallbackProfile}>profile: {level.fallbackProfile}</option>
+                  ) : null}
                 </select>
 
                 <input

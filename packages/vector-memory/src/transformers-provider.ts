@@ -79,13 +79,35 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
   private loadPromise: Promise<FeatureExtractor> | undefined;
 
   constructor(opts: TransformersEmbeddingProviderOptions = {}) {
-    this.modelId = opts.modelId ?? DEFAULT_VECTOR_MODEL_ID;
+    const modelId = opts.modelId === undefined ? DEFAULT_VECTOR_MODEL_ID : opts.modelId;
+    if (typeof modelId !== 'string' || modelId.trim().length === 0) {
+      throw new Error('TransformersEmbeddingProvider: modelId must be a non-empty string');
+    }
+    this.modelId = modelId;
+    if (
+      opts.cacheDir !== undefined &&
+      (typeof opts.cacheDir !== 'string' || opts.cacheDir.trim().length === 0)
+    ) {
+      throw new Error('TransformersEmbeddingProvider: cacheDir must be a non-empty string');
+    }
     this.cacheDir = opts.cacheDir;
-    this.dtype = opts.dtype ?? DEFAULT_VECTOR_DTYPE;
-    this.device = opts.device ?? 'cpu';
+    const dtype = opts.dtype === undefined ? DEFAULT_VECTOR_DTYPE : opts.dtype;
+    if (!['q8', 'fp16', 'fp32', 'q4'].includes(dtype)) {
+      throw new Error('TransformersEmbeddingProvider: unsupported dtype');
+    }
+    this.dtype = dtype;
+    const device = opts.device === undefined ? 'cpu' : opts.device;
+    if (!['cpu', 'wasm', 'webgpu'].includes(device)) {
+      throw new Error('TransformersEmbeddingProvider: unsupported device');
+    }
+    this.device = device;
     const batchSize = opts.batchSize ?? 16;
     this.batchSize = Number.isFinite(batchSize) && batchSize >= 1 ? Math.floor(batchSize) : 16;
-    this.maxChars = opts.maxChars ?? 2048;
+    const maxChars = opts.maxChars ?? 2048;
+    this.maxChars = Number.isFinite(maxChars) && maxChars >= 1 ? Math.floor(maxChars) : 2048;
+    if (opts.allowRemoteModels !== undefined && typeof opts.allowRemoteModels !== 'boolean') {
+      throw new Error('TransformersEmbeddingProvider: allowRemoteModels must be a boolean');
+    }
     this.allowRemote = opts.allowRemoteModels ?? true;
     this.dimensions = DEFAULT_VECTOR_DIMENSIONS;
     // Stable id includes model + dtype so changing either triggers reindex.
@@ -119,7 +141,22 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
     const results: Float32Array[] = [];
     for (const batch of batches) {
       const out = await extractor(batch, { pooling: 'mean', normalize: true });
-      results.push(...this.tensorToVectors(out, batch.length));
+      const vectors = this.tensorToVectors(out, batch.length);
+      if (vectors.length !== batch.length) {
+        throw new Error(
+          `TransformersEmbeddingProvider: pipeline returned ${vectors.length} vectors for a batch of ${batch.length}`,
+        );
+      }
+      const width = vectors[0]?.length ?? 0;
+      if (width === 0 || vectors.some((vector) => vector.length !== width)) {
+        throw new Error(
+          'TransformersEmbeddingProvider: pipeline returned empty or unequal-width vectors',
+        );
+      }
+      if (vectors.some((vector) => !vector.every(Number.isFinite))) {
+        throw new Error('TransformersEmbeddingProvider: pipeline returned non-finite values');
+      }
+      results.push(...vectors);
     }
     return results;
   }
@@ -169,7 +206,9 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
       if (flat.length % batchSize === 0) {
         const dimensions = flat.length / batchSize;
         return Array.from({ length: batchSize }, (_, index) =>
-          Float32Array.from((flat as unknown as number[]).slice(index * dimensions, (index + 1) * dimensions)),
+          Float32Array.from(
+            (flat as unknown as number[]).slice(index * dimensions, (index + 1) * dimensions),
+          ),
         );
       }
       return [Float32Array.from(flat as unknown as number[])];

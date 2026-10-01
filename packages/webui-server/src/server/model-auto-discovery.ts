@@ -30,10 +30,28 @@ function isOverlayRegistry(value: unknown): value is OverlayRegistry {
 
 async function readCache(file: string): Promise<DiscoverCache> {
   try {
-    return JSON.parse(await fs.readFile(file, 'utf8')) as DiscoverCache;
+    const parsed = JSON.parse(await fs.readFile(file, 'utf8')) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as DiscoverCache)
+      : {};
   } catch {
     return {};
   }
+}
+
+function validCacheEntry(value: unknown): value is DiscoverCacheEntry {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const entry = value as { fetchedAt?: unknown; provider?: unknown };
+  if (
+    typeof entry.fetchedAt !== 'string' ||
+    !Number.isFinite(Date.parse(entry.fetchedAt)) ||
+    !entry.provider ||
+    typeof entry.provider !== 'object'
+  ) {
+    return false;
+  }
+  const models = (entry.provider as { models?: unknown }).models;
+  return !!models && typeof models === 'object' && !Array.isArray(models);
 }
 
 export async function discoverAndMergeWebuiProviders(opts: {
@@ -89,7 +107,12 @@ export async function discoverAndMergeWebuiProviders(opts: {
           return;
         }
 
-        const cached = cache[cacheKey];
+        const candidate = cache[cacheKey];
+        const cached = validCacheEntry(candidate) ? candidate : undefined;
+        if (candidate !== undefined && !cached) {
+          delete cache[cacheKey];
+          cacheDirty = true;
+        }
         if (cached) {
           if (modelDiscoveryAuthoritative) {
             registry.mergeOverlay(

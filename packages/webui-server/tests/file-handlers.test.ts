@@ -373,6 +373,40 @@ describe('file handlers integration', () => {
       expect(response.payload.files.length).toBeLessThanOrEqual(3);
     });
 
+    it('never returns a larger page for a negative limit than for a positive one', async () => {
+      // `payload.limit` is model-controlled and used to be forwarded straight
+      // into `rankFiles`'s `scored.slice(0, limit)`. `slice(0, -1)` does NOT
+      // mean "nothing" — it means "every element except the last" — so a
+      // negative limit answered a small-page request with the whole tree.
+      for (let i = 0; i < 6; i++) {
+        fsSync.writeFileSync(path.join(tempDir, `file${i}.txt`), '');
+      }
+
+      const positive = createMockWs();
+      await handleFilesList(positive, { type: 'files.list', payload: { limit: 1 } }, tempDir);
+      const positiveResponse = positive.sent[0] as { payload: { files: string[] } };
+
+      const negative = createMockWs();
+      await handleFilesList(negative, { type: 'files.list', payload: { limit: -1 } }, tempDir);
+      const negativeResponse = negative.sent[0] as { payload: { files: string[] } };
+
+      expect(negativeResponse.payload.files.length).toBeLessThanOrEqual(
+        positiveResponse.payload.files.length,
+      );
+    });
+
+    it('clamps a non-finite limit instead of forwarding it to slice()', async () => {
+      for (let i = 0; i < 6; i++) {
+        fsSync.writeFileSync(path.join(tempDir, `file${i}.txt`), '');
+      }
+
+      const ws = createMockWs();
+      await handleFilesList(ws, { type: 'files.list', payload: { limit: Number.NaN } }, tempDir);
+
+      const response = ws.sent[0] as { payload: { files: string[] } };
+      expect(response.payload.files.length).toBeLessThanOrEqual(6);
+    });
+
     it('filters by query (fuzzy search)', async () => {
       fsSync.writeFileSync(path.join(tempDir, 'alpha.ts'), '');
       fsSync.writeFileSync(path.join(tempDir, 'beta.ts'), '');

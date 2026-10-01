@@ -37,8 +37,14 @@ import {
  * Refusing a `-`-leading value is also the safe direction semantically — such
  * a token is treated as another flag, so scanning continues toward the writer
  * rather than swallowing it as an option value.
+ *
+ * The value-taking set is GNU's `-a -d -E -I -L -n -P -s` plus BSD's
+ * `-J -R -S`. A missing one (`-d @`, `-a list`) left its value standing where
+ * the writer was expected, so `xargs -d @ rm .env` named no target at all.
+ * GNU's `-e`/`-i`/`-l` take only an attached value and must stay flags, or
+ * `xargs -e rm .env` would swallow `rm` the same way.
  */
-const XARGS_OPTIONS = String.raw`(?:\s+(?:(?:-[InLsPjeE]|--(?:arg-file|replace|max-args|max-lines|max-chars|max-procs))\s+[^\s-][^\s]*|-[^\s]+))*`;
+const XARGS_OPTIONS = String.raw`(?:\s+(?:(?:-[adEIJLnPRSs]|--(?:arg-file|delimiter|replace|max-args|max-lines|max-chars|max-procs|process-slot-var))\s+[^\s-][^\s]*|-[^\s]+))*`;
 
 /**
  * Command-start boundary shared by every destructive-writer rule. All writer
@@ -150,7 +156,17 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
     }
   }
   const tokenIsQuoted = (match: RegExpExecArray, token: string): boolean => {
-    const offset = match[0].toLowerCase().indexOf(token.toLowerCase());
+    // Located in the original text: lowercasing the whole match first moves
+    // every later offset when it holds a character whose lowercase form is
+    // longer (`İ` → `i̇`), which read the quote map at the wrong index.
+    const needle = token.toLowerCase();
+    let offset = -1;
+    for (let index = 0; index + token.length <= match[0].length; index += 1) {
+      if (match[0].slice(index, index + token.length).toLowerCase() === needle) {
+        offset = index;
+        break;
+      }
+    }
     return offset >= 0 && quotedIndexes[match.index + offset] === 1;
   };
   const shellOperandTokens = (raw: string): string[] => {

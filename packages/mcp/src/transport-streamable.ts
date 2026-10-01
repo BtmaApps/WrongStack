@@ -30,6 +30,8 @@ import {
 export class StreamableHTTPTransport extends BaseHTTPTransport {
   private _nextId = 1;
   private closed = false;
+  private toolCatalogVersion = 0;
+  private toolCatalogRevision = 0;
   private sessionId?: string | undefined;
 
   constructor(opts: HttpTransportOptions) {
@@ -136,10 +138,12 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   }
 
   private async refreshTools(): Promise<void> {
+    const version = ++this.toolCatalogVersion;
     try {
       const tools = await listAllTools((params) => this.postRaw('tools/list', params));
-      if (!tools) return;
+      if (!tools || version !== this.toolCatalogVersion) return;
       this.tools.splice(0, this.tools.length, ...tools);
+      this.toolCatalogRevision++;
       for (const listener of this.toolsChangedListeners) {
         try {
           listener([...tools]);
@@ -153,6 +157,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   }
 
   async connect(): Promise<void> {
+    this.toolCatalogVersion++;
     this.closed = false;
     this.state = 'connecting';
     this.serverMetadata = undefined;
@@ -220,8 +225,11 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       this.sessionId = initRes.headers.get('mcp-session-id') ?? undefined;
       await this.postRaw('notifications/initialized', {});
 
+      const revision = this.toolCatalogRevision;
       const tools = await listAllTools((params) => this.postRaw('tools/list', params));
-      this.tools.splice(0, this.tools.length, ...(tools ?? []));
+      if (revision === this.toolCatalogRevision) {
+        this.tools.splice(0, this.tools.length, ...(tools ?? []));
+      }
 
       this.state = 'connected';
       clearTimeout(startupTimer);
@@ -384,6 +392,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   }
 
   async close(): Promise<void> {
+    this.toolCatalogVersion++;
     this.releasePinnedDispatcher();
     // Keyed on `closed`, not state: after a session-fatal status the state is
     // already 'disconnected', and returning early left in-flight requests

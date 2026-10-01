@@ -116,6 +116,27 @@ function isDisabledModel(
   return disabled.has(`${providerId}/${model}`.toLowerCase());
 }
 
+/**
+ * Provider ids the user switched off entirely (`config.disabledProviders`).
+ *
+ * Bare ids matched case-insensitively — the provider-level analogue of
+ * {@link disabledModelKeys}. A set (not the raw array) so the three resolution
+ * loops pay one lookup per candidate instead of a linear scan.
+ */
+function disabledProviderKeys(config: Config): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const id of asRefList(config.disabledProviders) ?? []) {
+    if (typeof id !== 'string') continue;
+    const normalized = id.trim().toLowerCase();
+    if (normalized) keys.add(normalized);
+  }
+  return keys;
+}
+
+function isDisabledProvider(disabled: ReadonlySet<string>, providerId: string): boolean {
+  return disabled.has(providerId.trim().toLowerCase());
+}
+
 function buildProfiles(config: Config): ReadonlyMap<string, readonly string[]> {
   const entries = new Map<string, readonly string[]>();
   for (const [name, chain] of Object.entries(config.fallbackProfiles ?? {})) {
@@ -239,6 +260,7 @@ export class FallbackProfileManager {
     const resolved: FallbackChainEntry[] = [];
     const seen = new Set<string>();
     const disabled = disabledModelKeys(this.config);
+    const disabledProviders = disabledProviderKeys(this.config);
 
     for (const ref of chain) {
       const parsed = parseModelRef(ref);
@@ -252,6 +274,7 @@ export class FallbackProfileManager {
       // Skip self-reference
       if (excludeKey && key === excludeKey) continue;
       if (isDisabledModel(disabled, providerId, parsed.model)) continue;
+      if (isDisabledProvider(disabledProviders, providerId)) continue;
 
       // NOTE: `checkProvider().usable` is deliberately NOT applied here.
       // It reports whether the CONFIG carries a key or endpoint for the
@@ -409,6 +432,10 @@ export class FallbackProfileManager {
       providerId: this.config.provider,
       model: this.config.model,
     };
+    // Read here as well as inside resolve/resolveRefs/smartDefault: the
+    // configured-primary push below is its own routing decision and must honour
+    // the same provider-level switch.
+    const disabledProviders = disabledProviderKeys(this.config);
 
     // Outside a closed-world allowlist, honour fallbackAuto explicitly and use
     // auto discovery by default when the setting is absent.
@@ -467,8 +494,11 @@ export class FallbackProfileManager {
       candidates.push(...this.resolveBridge(current));
 
       // Configured primary — try it before any fallback entries when the
-      // active context is still on an older model.
+      // active context is still on an older model. Skipped entirely when the
+      // user switched that provider off: the switch is provider-wide, so a
+      // drifted session must not be routed back onto it.
       if (
+        !isDisabledProvider(disabledProviders, configuredPrimary.providerId) &&
         !(
           configuredPrimary.providerId === current.providerId &&
           configuredPrimary.model === current.model
@@ -558,6 +588,7 @@ export class FallbackProfileManager {
     const resolved: FallbackChainEntry[] = [];
     const seen = new Set<string>();
     const disabled = disabledModelKeys(this.config);
+    const disabledProviders = disabledProviderKeys(this.config);
 
     for (const ref of refs) {
       const parsed = parseModelRef(ref);
@@ -569,6 +600,7 @@ export class FallbackProfileManager {
       seen.add(key);
       if (excludeKey && key === excludeKey) continue;
       if (isDisabledModel(disabled, providerId, parsed.model)) continue;
+      if (isDisabledProvider(disabledProviders, providerId)) continue;
 
       // Skip entries blocked by the runtime status tracker or the calendar.
       if (!this.isRuntimeAvailable(providerId, parsed.model)) continue;
@@ -604,6 +636,7 @@ export class FallbackProfileManager {
     const hasFavorites = favoriteSet.size > 0;
     const favoritesOnly = this.config.favoriteModelsOnly === true;
     const disabled = disabledModelKeys(this.config);
+    const disabledProviders = disabledProviderKeys(this.config);
     const seen = new Set<string>();
     const favorites: string[] = [];
     const sameProvider: string[] = [];
@@ -617,6 +650,7 @@ export class FallbackProfileManager {
 
     for (const id of ids) {
       const entry = providers[id];
+      if (isDisabledProvider(disabledProviders, id)) continue;
       if (!this.checkProvider(id).usable) continue;
       // Skip the entire provider if it's blocked at the provider level
       // (all its models would be blocked too, but we check per-model below)

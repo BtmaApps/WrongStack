@@ -76,12 +76,7 @@ export class OffsetStore {
 
     try {
       const parsed = JSON.parse(raw);
-      if (
-        typeof parsed !== 'number' ||
-        !Number.isFinite(parsed) ||
-        parsed < 0 ||
-        parsed % 1 !== 0
-      ) {
+      if (typeof parsed !== 'number' || !Number.isSafeInteger(parsed) || parsed < 0) {
         return null;
       }
       return parsed;
@@ -95,7 +90,7 @@ export class OffsetStore {
    * Creates the parent directory on first call.
    */
   write(offset: number): void {
-    if (!this.path || offset < 0) return;
+    if (!this.path || !Number.isSafeInteger(offset) || offset < 0) return;
 
     mkdirSync(dirname(this.path), { recursive: true });
 

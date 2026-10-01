@@ -64,7 +64,7 @@ export function outcomeFromResult(result: TaskResult): TaskOutcome {
     graded,
     status: result.run.status,
     detail: result.grade.detail,
-    costUsd: result.run.costUsd,
+    costUsd: finiteNonNegative(result.run.costUsd),
   };
 }
 
@@ -75,21 +75,33 @@ export function outcomeFromResult(result: TaskResult): TaskOutcome {
  * status collapses to the first non-crash status encountered.
  */
 function mergeOutcomes(a: TaskOutcome, b: TaskOutcome): TaskOutcome {
+  const passed =
+    a.passed === true || b.passed === true
+      ? true
+      : a.passed === false || b.passed === false
+        ? false
+        : null;
   return {
     // A graded failure is a verdict even when another attempt went ungraded
     // (SWE-bench: an empty patch is graded, an exported one is not) — the
     // leaderboard's pass@k counts it as a failure, so the matrix must too.
-    passed:
-      a.passed === true || b.passed === true
-        ? true
-        : a.passed === false || b.passed === false
-          ? false
-          : null,
+    passed,
     graded: a.graded || b.graded,
-    status: a.status === 'crashed' ? b.status : a.status,
-    detail: a.detail ?? b.detail,
-    costUsd: a.costUsd + b.costUsd,
+    status:
+      b.passed === true
+        ? b.status
+        : a.passed === true
+          ? a.status
+          : a.status === 'crashed'
+            ? b.status
+            : a.status,
+    detail: b.passed === true ? b.detail : a.passed === true ? a.detail : (a.detail ?? b.detail),
+    costUsd: finiteNonNegative(a.costUsd + b.costUsd),
   };
+}
+
+function finiteNonNegative(value: number): number {
+  return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
 /** Build the per-task matrix and intra-run disagreements from raw rows. */
@@ -98,7 +110,7 @@ export function buildIntraRunInsights(results: TaskResult[]): IntraRunInsights {
   const seenTasks = new Set<string>();
   const cellLabels: string[] = [];
   const seenCells = new Set<string>();
-  const matrix: Record<string, Record<string, TaskOutcome>> = {};
+  const matrix = Object.create(null) as Record<string, Record<string, TaskOutcome>>;
 
   for (const row of results) {
     if (!seenTasks.has(row.taskId)) {
@@ -115,7 +127,7 @@ export function buildIntraRunInsights(results: TaskResult[]): IntraRunInsights {
     // is consistent with the leaderboard's pass@k view.
     let byCell = matrix[row.taskId];
     if (!byCell) {
-      byCell = {};
+      byCell = Object.create(null) as Record<string, TaskOutcome>;
       matrix[row.taskId] = byCell;
     }
     const current = outcomeFromResult(row);

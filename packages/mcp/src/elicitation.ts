@@ -502,7 +502,8 @@ export class ServerRequestResponder {
       return { jsonrpc: '2.0', id, result: { action: 'cancel' } };
     } finally {
       clearTimeout(deadline);
-      this.pending.delete(id);
+      // dispose/reconnect may reuse an id before the previous surface settles.
+      if (this.pending.get(id) === controller) this.pending.delete(id);
     }
   }
 

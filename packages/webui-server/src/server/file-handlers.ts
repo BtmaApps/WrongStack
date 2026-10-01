@@ -23,6 +23,7 @@ import {
 } from './file-handler-helpers.js';
 import { isHiddenEntry, rankFiles, SKIP_DIRS } from './file-picker.js';
 import { isPathInside, resolveWorkingDirInsideProject } from './path-containment.js';
+import { clampLimit } from './ws-payload-validation.js';
 import { errMessage, messageSessionId, send } from './ws-utils.js';
 
 // ── Type helpers (inlined, no dependence on types.ts) ──
@@ -454,7 +455,12 @@ export async function handleFilesList(
   projectRoot: string,
 ): Promise<void> {
   const payload = (msg as { payload?: FilesListPayload }).payload ?? {};
-  const limit = payload.limit ?? 50;
+  // `payload.limit` is model-controlled (a browser frame) and is forwarded to
+  // `rankFiles`, which ends in `scored.slice(0, limit)`. A NEGATIVE limit there
+  // does not mean "nothing" — `slice(0, -1)` means "every element except the
+  // last", so `files.list` answered a request for a small page with the whole
+  // tree. Clamp before the picker, matching the mailbox route's convention.
+  const limit = clampLimit(payload.limit, 50, 600);
 
   // Guard: the requested list root must be both lexically AND via
   // realpath() inside the project root. A symlinked subdirectory that

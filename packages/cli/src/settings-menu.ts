@@ -113,6 +113,7 @@ const PROJECT_SAFE_FIELDS = new Set([
   'fallbackProfile',
   'favoriteModels',
   'disabledModels',
+  'disabledProviders',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'fallbackAuto',

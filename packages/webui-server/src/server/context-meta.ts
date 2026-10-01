@@ -61,6 +61,7 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['fallbackProfiles'] = config.fallbackProfiles ?? {};
   meta['favoriteModels'] = config.favoriteModels ?? [];
   meta['disabledModels'] = config.disabledModels ?? [];
+  meta['disabledProviders'] = config.disabledProviders ?? [];
   meta['favoriteModelsOnly'] = config.favoriteModelsOnly === true;
   meta['modelAvailabilitySchedule'] = config.modelAvailabilitySchedule ?? [];
   meta['modelMatrix'] = config.modelMatrix ?? {};
@@ -162,6 +163,14 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['tgDelegate'] = tgExt?.['notifyOnDelegate'] !== false; // default true
   const tgMs = tgExt?.['longToolThresholdMs'];
   meta['tgLongToolMs'] = typeof tgMs === 'number' ? tgMs : 30_000;
+  // Defaults match telegram's DEFAULT_CONFIG (packages/telegram/src/config.ts:86).
+  const tgPoll = tgExt?.['pollIntervalSec'];
+  meta['tgPollIntervalSec'] = typeof tgPoll === 'number' ? tgPoll : 2;
+  // Chat ID is a routing target, not a credential — the CLI prints it in
+  // `/telegram-settings`, so it is seeded like any other visible setting.
+  const tgChat = tgExt?.['notifyChatId'];
+  meta['tgChatId'] =
+    tgChat !== undefined && tgChat !== null && typeof tgChat !== 'object' ? String(tgChat) : '';
 
   // WrongProxy / WrongTrace: seed the flat meta keys the WebUI panel reads
   // (`wrongProxyEnabled`, `wrongProxyUrl`) from the canonical nested shape

@@ -245,6 +245,22 @@ function paceKey(providerId: string, meterId: string, windowId: string): string 
   return `${providerId}\0${meterId}\0${windowId}`;
 }
 
+/**
+ * Seconds a reset clock may drift between readings of one cycle. Several
+ * providers report the reset only as "N seconds from now" (Codex's
+ * `reset-after-seconds` fallback, MiniMax `remains_time`), which turns into an
+ * absolute time that wobbles by a second from one reading to the next. An exact
+ * comparison treated each wobble as a new cycle and threw the pace record away,
+ * so the forecast never got its ten minutes. A real new cycle moves the reset
+ * by a whole window.
+ */
+const RESET_JITTER_SECONDS = 60;
+
+function resetMoved(previous: number | undefined, next: number | undefined): boolean {
+  if (previous === undefined || next === undefined) return previous !== next;
+  return Math.abs(next - previous) > RESET_JITTER_SECONDS;
+}
+
 function recordPace(providerId: string, snapshot: ProviderQuotaSnapshot, now: number): void {
   for (const window of snapshot.windows) {
     if (!Number.isFinite(window.usedPercent)) continue;
@@ -253,7 +269,10 @@ function recordPace(providerId: string, snapshot: ProviderQuotaSnapshot, now: nu
     const last = samples.at(-1);
     // A new reset time or a falling percentage is a new cycle: the old
     // readings describe spending that no longer counts.
-    if (last && (last.resetsAt !== window.resetsAt || window.usedPercent < last.usedPercent)) {
+    if (
+      last &&
+      (resetMoved(last.resetsAt, window.resetsAt) || window.usedPercent < last.usedPercent)
+    ) {
       samples = [];
     }
     samples.push({ at: now, usedPercent: window.usedPercent, resetsAt: window.resetsAt });
@@ -455,5 +474,10 @@ export function formatQuotaResetIn(ms: number | undefined): string | undefined {
 
 /** Percentage rendered the way both the chip and the report show it. */
 export function formatQuotaPercent(usedPercent: number): string {
-  return `${usedPercent.toFixed(usedPercent >= 10 || usedPercent <= 0 ? 0 : 1)}%`;
+  // Rounding must not announce a cut-off that has not happened: 99.6 read as
+  // "100%" on a window that still had room. 9.96 rounds to "10%", not "10.0%".
+  if (usedPercent > 99 && usedPercent < 100) return '99%';
+  const digits = usedPercent >= 10 || usedPercent <= 0 ? 0 : 1;
+  const text = usedPercent.toFixed(digits);
+  return digits === 1 && text === '10.0' ? '10%' : `${text}%`;
 }

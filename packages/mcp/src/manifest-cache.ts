@@ -38,6 +38,21 @@ interface ManifestFile {
   prompts?: MCPPrompt[] | undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isCachedTool(value: unknown): value is MCPTool {
+  return (
+    isRecord(value) &&
+    typeof value['name'] === 'string' &&
+    value['name'].trim().length > 0 &&
+    (value['description'] === undefined || typeof value['description'] === 'string') &&
+    isRecord(value['inputSchema']) &&
+    (value['outputSchema'] === undefined || isRecord(value['outputSchema']))
+  );
+}
+
 export interface MCPCapabilityManifest {
   tools: MCPTool[];
   serverMetadata?: MCPServerMetadata | undefined;
@@ -118,7 +133,12 @@ export async function readCapabilityManifest(
   try {
     const raw = await fs.readFile(manifestFile(cacheDir, name), 'utf8');
     const parsed = JSON.parse(raw) as ManifestFile;
-    if (parsed.configHash !== configHash || !Array.isArray(parsed.tools)) return null;
+    if (
+      parsed.configHash !== configHash ||
+      !Array.isArray(parsed.tools) ||
+      !parsed.tools.every(isCachedTool)
+    )
+      return null;
     return {
       tools: parsed.tools,
       serverMetadata:

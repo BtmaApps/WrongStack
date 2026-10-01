@@ -74,6 +74,9 @@ const STRONG_COPYLEFT_LICENSES = new Set([
 ]);
 
 const NETWORK_COPYLEFT_LICENSES = new Set([
+  'agpl-1.0',
+  'agpl-1.0-only',
+  'agpl-1.0-or-later',
   'agpl-3.0',
   'agpl-3.0-only',
   'agpl-3.0-or-later',

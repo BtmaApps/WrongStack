@@ -57,4 +57,19 @@ describe('PhaseGraphBuilder.fromTaskGraph dependency order', () => {
     expect(grouped[0]).toEqual(['A', 'C']);
     expect(grouped.flat().sort()).toEqual(['A', 'B', 'C']);
   });
+
+  it('keeps a task whose only incoming edge comes from a task that no longer exists', async () => {
+    // The dangling edge raised B's in-degree with nothing able to lower it, so
+    // B never left the topological queue and vanished from the plan.
+    const grouped = await groupedTasks([{ from: 'deleted-task', to: 'B' }]);
+    expect(grouped.flat().sort()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('keeps the members of a dependency cycle instead of dropping them', async () => {
+    const grouped = await groupedTasks([
+      { from: 'B', to: 'C' },
+      { from: 'C', to: 'B' },
+    ]);
+    expect(grouped.flat().sort()).toEqual(['A', 'B', 'C']);
+  });
 });

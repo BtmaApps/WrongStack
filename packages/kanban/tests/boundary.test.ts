@@ -128,6 +128,17 @@ describe('Kanban boundaries', () => {
     ).toThrow(/stay inside the project/);
   });
 
+  it('accepts `./` as the project root, like `.`', () => {
+    const policy = normalizeKanbanBoundaryPolicy({
+      ...boardPolicy,
+      allow: [{ kind: 'directory', path: './', access: 'read' }],
+      deny: [],
+    });
+    expect(policy.allow[0]?.path).toBe('.');
+    const layers = resolveKanbanBoundaryLayers({ boundary: policy });
+    expect(evaluateKanbanBoundaryPath(layers, 'src/a.ts', 'read').decision).toBe('allow');
+  });
+
   it('rejects malformed policies received from untyped clients', () => {
     expect(() =>
       normalizeKanbanBoundaryPolicy({ ...boardPolicy, enabled: 'yes' } as never),

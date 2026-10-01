@@ -193,7 +193,7 @@ describe('groupMailboxEvents', () => {
     expect(projects[0]?.messages[0]?.message.timestamp).toBe('2026-07-03T09:00:00.000Z');
   });
 
-  it('keeps only the first event when the same mailId arrives twice via events', () => {
+  it('keeps the latest event when the same mailId arrives twice via events', () => {
     const a = messageSummary({
       mailId: 'same',
       messageId: 'same',
@@ -210,8 +210,8 @@ describe('groupMailboxEvents', () => {
     ];
     const { projects } = groupMailboxEvents(null, events);
     expect(projects[0]?.messages).toHaveLength(1);
-    // First-seen wins within the event stream (mailIndex dedupe is one-shot).
-    expect(projects[0]?.messages[0]?.message.timestamp).toBe('2026-07-03T08:00:00.000Z');
+    // Events arrive oldest-first: the later one carries the current state.
+    expect(projects[0]?.messages[0]?.message.timestamp).toBe('2026-07-03T09:00:00.000Z');
   });
 
   it('sorts messages newest-first within each project', () => {
@@ -445,8 +445,41 @@ describe('groupMailboxEvents', () => {
       },
     ];
     const { projects } = groupMailboxEvents(null, events);
-    // Only the online=true event should bump the count.
-    expect(projects[0]?.onlineAgentCount).toBe(1);
+    // Counted by each agent's latest event: a1 registered, then went offline.
+    expect(projects[0]?.onlineAgentCount).toBe(0);
+  });
+
+  it('reflects a later completion and counts each online agent once', () => {
+    const sent = messageSummary({ mailId: 'm1', messageId: 'm1' });
+    const done = messageSummary({ mailId: 'm1', messageId: 'm1', completed: true, readCount: 1 });
+    const heartbeat = (seq: number, agentId: string): HqEventEnvelope => ({
+      ...mailboxEvent(`hb-${seq}`, undefined, 'demo', seq),
+      payload: {
+        mailboxId: 'demo:mailbox',
+        action: 'agent.heartbeat',
+        agent: {
+          agentId,
+          name: agentId,
+          sessionId: 's',
+          status: 'running',
+          iterations: 0,
+          toolCalls: 0,
+          lastActivityAt: '2026-07-03T08:00:00.000Z',
+          lastSeenAt: '2026-07-03T08:00:00.000Z',
+          online: true,
+        },
+      },
+    });
+    const { projects } = groupMailboxEvents(null, [
+      mailboxEvent('m1', sent, 'demo', 1),
+      heartbeat(2, 'a1'),
+      heartbeat(3, 'a1'),
+      heartbeat(4, 'a2'),
+      mailboxEvent('m1', done, 'demo', 5),
+    ]);
+    expect(projects[0]?.messages[0]?.message.completed).toBe(true);
+    expect(projects[0]?.incompleteCount).toBe(0);
+    expect(projects[0]?.onlineAgentCount).toBe(2);
   });
 
   it('returns hasAnyActivity=true only when at least one group has messages', () => {

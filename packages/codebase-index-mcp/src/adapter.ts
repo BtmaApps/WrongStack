@@ -218,6 +218,7 @@ export function createCodebaseIndexMcpToolHost(
       const signal = callOptions?.signal ?? new AbortController().signal;
 
       try {
+        signal.throwIfAborted();
         const builtin = BUILTIN_TOOLS[toolName];
         if (builtin) {
           const validate = builtin.validate;
@@ -228,6 +229,7 @@ export function createCodebaseIndexMcpToolHost(
             }
           }
           const content = await executeTool(builtin, args, context, signal);
+          signal.throwIfAborted();
           // The built-in tools THROW on failure (caught below). This guards a
           // payload from an older tool build that still degraded a failed
           // query to `indexStatus: 'error'` — an MCP client must see a failure.
@@ -239,24 +241,24 @@ export function createCodebaseIndexMcpToolHost(
           ...(opts.indexDir ? { indexDir: opts.indexDir } : {}),
         };
         if (toolName === 'codebase_package_graph') {
-          return { content: await getPackageGraph(base, signal), isError: false };
+          const content = await getPackageGraph(base, signal);
+          signal.throwIfAborted();
+          return { content, isError: false };
         }
         if (toolName === 'codebase_file_graph') {
-          return {
-            content: await getFileGraph(
-              { ...base, packageFilter: String(args['package']).trim() },
-              signal,
-            ),
-            isError: false,
-          };
-        }
-        return {
-          content: await getSymbolGraph(
-            { ...base, fileFilter: String(args['file']).trim() },
+          const content = await getFileGraph(
+            { ...base, packageFilter: String(args['package']).trim() },
             signal,
-          ),
-          isError: false,
-        };
+          );
+          signal.throwIfAborted();
+          return { content, isError: false };
+        }
+        const content = await getSymbolGraph(
+          { ...base, fileFilter: String(args['file']).trim() },
+          signal,
+        );
+        signal.throwIfAborted();
+        return { content, isError: false };
       } catch (error) {
         return {
           content: error instanceof Error ? error.message : String(error),

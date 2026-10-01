@@ -61,11 +61,22 @@ export function createHttpClient(options: HttpClientOptions): WrongStackHttpClie
         retryable: true,
       });
     }
-    const text = await response.text();
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (error) {
+      throw new WrongStackError({
+        kind: 'connection',
+        code: 'response_body',
+        detail: error instanceof Error ? error.message : String(error),
+        retryable: true,
+      });
+    }
     if (!response.ok) {
       let detail = text;
       try {
-        detail = (JSON.parse(text) as ApiErrorBody).error ?? text;
+        const errorBody = JSON.parse(text) as ApiErrorBody;
+        detail = typeof errorBody.error === 'string' ? errorBody.error : text;
       } catch {
         // Some refusals are plain text.
       }
@@ -73,7 +84,7 @@ export function createHttpClient(options: HttpClientOptions): WrongStackHttpClie
         kind: kindForStatus(response.status),
         code: String(response.status),
         ...(detail ? { detail } : {}),
-        retryable: response.status >= 500,
+        retryable: response.status === 408 || response.status === 429 || response.status >= 500,
       });
     }
     try {

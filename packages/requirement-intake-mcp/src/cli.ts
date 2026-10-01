@@ -76,7 +76,12 @@ export function parseArgs(
         return undefined;
       }
       index++;
-      return next;
+      const trimmed = next.trim();
+      if (trimmed.length === 0) {
+        warn('mcp_cli_flag_missing_value', `${arg} expects a non-blank value; ignoring it.`);
+        return undefined;
+      }
+      return trimmed;
     };
     switch (arg) {
       case '--project-root': {

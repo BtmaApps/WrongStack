@@ -160,7 +160,9 @@ describeUnix('bindProjectEndpoint', () => {
       if (owner !== null && owner !== 0) {
         queueMicrotask(() => probe.emit('connect'));
       } else {
-        queueMicrotask(() => probe.emit('error', new Error('stale')));
+        queueMicrotask(() =>
+          probe.emit('error', Object.assign(new Error('stale'), { code: 'ECONNREFUSED' })),
+        );
       }
       return probe as never;
     }) as never;

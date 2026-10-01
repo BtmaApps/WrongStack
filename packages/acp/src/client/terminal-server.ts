@@ -121,8 +121,8 @@ export class TerminalServer {
   constructor(opts: TerminalServerOptions) {
     this.projectRoot = path.resolve(opts.projectRoot);
     this.commandTimeoutMs = opts.commandTimeoutMs ?? 5 * 60_000;
-    this.outputByteLimit = opts.outputByteLimit ?? 1024 * 1024;
-    this.maxOutputByteLimit = opts.maxOutputByteLimit ?? 16 * 1024 * 1024;
+    this.outputByteLimit = this.clampFiniteInt(opts.outputByteLimit, 1024 * 1024);
+    this.maxOutputByteLimit = this.clampFiniteInt(opts.maxOutputByteLimit, 16 * 1024 * 1024);
     // Short, grep-friendly, no PII. 8 hex chars ≈ 4B values — plenty to
     // disambiguate concurrent TerminalServers within a single process.
     this.instanceId = `term_srv_${randomBytes(4).toString('hex')}`;
@@ -201,10 +201,12 @@ export class TerminalServer {
             clearTimeout(state.timeoutHandle);
             state.timeoutHandle = null;
           }
-          const exitStatus = {
-            exitCode: typeof code === 'number' ? code : null,
-            signal: typeof signalName === 'string' ? signalName : null,
-          };
+          const exitStatus =
+            state.exitStatus ??
+            ({
+              exitCode: typeof code === 'number' ? code : null,
+              signal: typeof signalName === 'string' ? signalName : null,
+            } as const);
           state.exitStatus = exitStatus;
           resolve(exitStatus);
         });
@@ -451,7 +453,12 @@ export class TerminalServer {
    * unbounded memory growth.
    */
   private clampFiniteInt(value: number | undefined, defaultValue: number): number {
-    if (value === undefined || !Number.isFinite(value) || value < 1) {
+    if (
+      value === undefined ||
+      !Number.isFinite(value) ||
+      value < 1 ||
+      !Number.isSafeInteger(Math.trunc(value))
+    ) {
       return defaultValue;
     }
     return Math.trunc(value);

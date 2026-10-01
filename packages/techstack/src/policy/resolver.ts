@@ -149,7 +149,8 @@ export function matchesSelector(
   }
 
   const nameOk = hasName && selector.name?.trim().toLowerCase() === name.trim().toLowerCase();
-  const patternOk = hasPattern && patternToRegex(selector.namePattern ?? '').test(name);
+  const patternOk =
+    hasPattern && patternToRegex(selector.namePattern?.trim() ?? '').test(name.trim());
   return nameOk === true || patternOk === true;
 }
 
@@ -206,7 +207,8 @@ export class RangeParseError extends Error {
 }
 
 /** `1.2.3`, `1.2`, `1`, with an optional prerelease suffix. */
-const VERSION_RE = /^\d+(?:\.\d+)*(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+const VERSION_RE =
+  /^\d+(?:\.\d+)*(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 function mustVersion(raw: string, input: string, position: number): string {
   const version = raw.trim();
@@ -283,29 +285,24 @@ export function parseRange(input: string): ParsedRange {
 
 // ── Range evaluation ─────────────────────────────────────────────────────
 
-function versionParts(version: string): number[] {
-  return (
-    version
-      .split('-')[0]
-      ?.split('.')
-      .map((segment) => Number.parseInt(segment, 10)) ?? []
-  );
+function versionParts(version: string): bigint[] {
+  return version.split(/[-+]/)[0]?.split('.').map(BigInt) ?? [];
 }
 
 /** Upper bound (exclusive) for a caret range, per semver caret rules. */
 function caretUpper(version: string): string {
-  const [major = 0, minor = 0, patch = 0] = versionParts(version);
-  if (major > 0) return `${major + 1}.0.0`;
-  if (minor > 0) return `0.${minor + 1}.0`;
-  return `0.0.${patch + 1}`;
+  const [major = 0n, minor = 0n, patch = 0n] = versionParts(version);
+  if (major > 0n) return `${major + 1n}.0.0`;
+  if (minor > 0n) return `0.${minor + 1n}.0`;
+  return `0.0.${patch + 1n}`;
 }
 
 /** Upper bound (exclusive) for a tilde range. */
 function tildeUpper(version: string): string {
   const parts = versionParts(version);
-  const [major = 0, minor = 0] = parts;
-  if (parts.length >= 2) return `${major}.${minor + 1}.0`;
-  return `${major + 1}.0.0`;
+  const [major = 0n, minor = 0n] = parts;
+  if (parts.length >= 2) return `${major}.${minor + 1n}.0`;
+  return `${major + 1n}.0.0`;
 }
 
 /**

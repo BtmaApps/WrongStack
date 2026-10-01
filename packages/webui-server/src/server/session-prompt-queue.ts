@@ -121,7 +121,7 @@ function bytesOf(value: unknown): number {
 }
 
 function attachmentCount(blocks: readonly ContentBlock[]): number {
-  return blocks.filter((block) => block.type === 'image' || block.type === 'document').length;
+  return blocks.filter((block) => block.type === 'image').length;
 }
 
 function promptView(item: QueuedPrompt): QueuedPromptView {
@@ -131,6 +131,10 @@ function promptView(item: QueuedPrompt): QueuedPromptView {
     addedAt: item.addedAt,
     imageCount: attachmentCount(item.blocks),
   };
+}
+
+function clonePrompt(item: QueuedPrompt): QueuedPrompt {
+  return { ...item, blocks: structuredClone(item.blocks) };
 }
 
 /** The drained prompt as pages show it: its text and its images. */
@@ -162,9 +166,12 @@ export async function queuedPromptBlocks(
 
 function fromPersisted(item: PersistedQueueItem & { id?: unknown; addedAt?: unknown }) {
   return {
-    id: typeof item.id === 'string' && item.id ? item.id : nextId(),
+    id: typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : nextId(),
     text: item.displayText,
-    addedAt: typeof item.addedAt === 'number' ? item.addedAt : Date.now(),
+    addedAt:
+      typeof item.addedAt === 'number' && Number.isFinite(item.addedAt) && item.addedAt >= 0
+        ? item.addedAt
+        : Date.now(),
     blocks: item.blocks,
     ...(item.shouldRefine !== undefined ? { shouldRefine: item.shouldRefine } : {}),
     ...(item.journalRaw !== undefined ? { journalRaw: item.journalRaw } : {}),
@@ -219,7 +226,7 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
   };
 
   /** Prompts a previous host kept in the old per-project directory. */
-  const readLegacy = async (sessionId: string): Promise<QueuedPrompt[]> => {
+  const readLegacy = async (sessionId: string, capacity: number): Promise<QueuedPrompt[]> => {
     const name = legacyFileName(sessionId);
     if (!deps.legacyDir || !name) return [];
     const file = path.join(deps.legacyDir, name);
@@ -229,7 +236,8 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       const parsed: unknown = JSON.parse(await fsp.readFile(file, 'utf8'));
       const legacy = Array.isArray(parsed) ? parsed.filter(isLegacyPrompt) : [];
       const items: QueuedPrompt[] = [];
-      for (const prompt of legacy.slice(0, QUEUE_MAX_ITEMS)) {
+      const selected = legacy.slice(0, Math.max(0, capacity));
+      for (const prompt of selected) {
         try {
           items.push({
             id: nextId(),
@@ -241,7 +249,16 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
           deps.warn?.(`queued prompt for ${sessionId} dropped: ${toErrorMessage(err)}`);
         }
       }
-      await fsp.rm(file, { force: true });
+      const remaining = legacy.slice(selected.length);
+      try {
+        if (remaining.length > 0) {
+          await fsp.writeFile(file, JSON.stringify(remaining), 'utf8');
+        } else {
+          await fsp.rm(file, { force: true });
+        }
+      } catch (err) {
+        deps.warn?.(`old prompt queue for ${sessionId} not updated: ${toErrorMessage(err)}`);
+      }
       return items;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -258,13 +275,31 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
     if (pending) return pending;
     const read = (async (): Promise<QueuedPrompt[]> => {
       const stored = (await storeFor(sessionId)?.read()) ?? [];
-      const legacy = await readLegacy(sessionId);
-      const items = [...stored.map(fromPersisted), ...legacy].slice(0, QUEUE_MAX_ITEMS);
+      const legacy = await readLegacy(sessionId, QUEUE_MAX_ITEMS - stored.length);
+      const persisted = stored as Array<PersistedQueueItem & { id?: unknown; addedAt?: unknown }>;
+      const hydrated = persisted.map(fromPersisted);
+      let repaired = hydrated.some(
+        (item, index) =>
+          item.id !== persisted[index]?.id || item.addedAt !== persisted[index]?.addedAt,
+      );
+      const items: QueuedPrompt[] = [];
+      const seenIds = new Set<string>();
+      for (const item of [...hydrated, ...legacy].slice(0, QUEUE_MAX_ITEMS)) {
+        let unique = item;
+        if (seenIds.has(unique.id)) {
+          let id = nextId();
+          while (seenIds.has(id)) id = nextId();
+          unique = { ...unique, id };
+          repaired = true;
+        }
+        seenIds.add(unique.id);
+        items.push(unique);
+      }
       // A mutation that raced the read already created the live list.
       const live = queues.get(sessionId);
       if (live) return live;
       queues.set(sessionId, items);
-      if (legacy.length > 0) void persist(sessionId);
+      if (legacy.length > 0 || repaired) void persist(sessionId);
       return items;
     })().finally(() => loading.delete(sessionId));
     loading.set(sessionId, read);
@@ -367,7 +402,7 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       await changed(sessionId);
       // Queued while idle: nothing will end to drain it, so start it now.
       void drain(sessionId);
-      return { ok: true, item };
+      return { ok: true, item: clonePrompt(item) };
     },
 
     async remove(sessionId, id) {
@@ -391,7 +426,7 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       return count;
     },
 
-    list: load,
+    list: async (sessionId) => (await load(sessionId)).map(clonePrompt),
     drain,
   };
 }

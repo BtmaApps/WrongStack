@@ -47,9 +47,18 @@ export class TrendStore {
   constructor(private readonly source: SnapshotSource) {}
 
   analyze(projectId: string, limit = 100): TrendReport {
-    const snapshots = this.source
-      .listSnapshots(projectId, limit)
-      .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    const snapshots = [...this.source.listSnapshots(projectId, limit)].sort(
+      (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
+    );
+    const packageWorkspaces = new Map<string, Set<string>>();
+    for (const snapshot of snapshots) {
+      for (const dependency of snapshot.dependencies) {
+        const key = `${dependency.ecosystem}:${dependency.name}`;
+        const workspaces = packageWorkspaces.get(key) ?? new Set<string>();
+        workspaces.add(dependency.workspaceId);
+        packageWorkspaces.set(key, workspaces);
+      }
+    }
     const versionHistory = new Map<
       string,
       Array<{
@@ -66,7 +75,11 @@ export class TrendStore {
       const at = Date.parse(snapshot.createdAt);
       const active = new Set<string>();
       for (const dependency of snapshot.dependencies) {
-        const key = `${dependency.ecosystem}:${dependency.name}`;
+        const packageKey = `${dependency.ecosystem}:${dependency.name}`;
+        const key =
+          (packageWorkspaces.get(packageKey)?.size ?? 0) > 1
+            ? JSON.stringify([packageKey, dependency.workspaceId])
+            : packageKey;
         active.add(key);
         const vulnerable = dependency.status === 'vulnerable';
         const history = versionHistory.get(key) ?? [];

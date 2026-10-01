@@ -10,19 +10,35 @@ export interface KanbanBoardPage {
   orphanedTotal: number;
 }
 
+function sortableString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 export function paginateKanbanBoards(
   boards: KanbanBoardSummary[],
   input: { page: number; pageSize: number; activeSessionIds?: readonly string[] | undefined },
 ): KanbanBoardPage {
-  const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize)));
-  const activeSessionIds = new Set(input.activeSessionIds ?? []);
+  const requestedPageSize =
+    typeof input.pageSize === 'number' && !Number.isNaN(input.pageSize) ? input.pageSize : 1;
+  const pageSize = Math.min(100, Math.max(1, Math.floor(requestedPageSize)));
+  const activeSessionIds = new Set(
+    (input.activeSessionIds ?? []).filter(
+      (id): id is string => typeof id === 'string' && id.trim().length > 0,
+    ),
+  );
   const isActive = (board: KanbanBoardSummary) =>
-    board.presence?.some((entry) => entry.active) === true ||
-    board.tags?.some((tag) => tag.startsWith('session:') && activeSessionIds.has(tag.slice(8))) ===
-      true;
+    board.presence?.some((entry) => entry.active === true) === true ||
+    board.tags?.some(
+      (tag) =>
+        typeof tag === 'string' && tag.startsWith('session:') && activeSessionIds.has(tag.slice(8)),
+    ) === true;
   const sorted = [...boards].sort((left, right) => {
     const activityOrder = Number(isActive(right)) - Number(isActive(left));
-    return activityOrder || right.updatedAt.localeCompare(left.updatedAt);
+    return (
+      activityOrder ||
+      sortableString(right.updatedAt).localeCompare(sortableString(left.updatedAt)) ||
+      sortableString(left.id).localeCompare(sortableString(right.id))
+    );
   });
   const activeTotal = sorted.filter(isActive).length;
   const total = sorted.length;

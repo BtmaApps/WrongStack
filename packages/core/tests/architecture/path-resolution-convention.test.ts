@@ -51,6 +51,16 @@ const ALLOWED_FILES: Record<string, string> = {
   // containment, realpath canonicalization) documented in-file.
   'webui-server/src/server/shell-open.ts':
     'Has its own layered containment (metachar guard → lexical containment → realpath canonicalization); webui-server cannot import the tools-private _util resolvers.',
+  // store.ts REJECTS a non-absolute projectRoot; it never resolves one. This
+  // is the inverse of the pattern the gate bans: there is no
+  // `isAbsolute(x) ? x : resolve(root, x)` passthrough to contain, and no
+  // relative root is silently resolved against the process CWD. Routing the
+  // check through safeResolveReal would REGRESS it into the exact escape
+  // hatch the gate exists to stop (a relative projectRoot quietly becoming
+  // <cwd>/<root>), and vector-memory is not a tool-input surface — it cannot
+  // import the tools-private _util resolvers anyway.
+  'vector-memory/src/store.ts':
+    'Constructor guard that REJECTS a non-absolute projectRoot (throws); it performs no resolve, so there is no unfiltered input-resolve to contain, and no relative root is silently resolved against CWD.',
 };
 
 /** Tool-input objects whose paths tempt a bare isAbsolute passthrough. */

@@ -148,7 +148,9 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   SHORT_FLAG_TOKEN_PATTERN,
   SHORT_FLAG_SECRET_PATTERN,
   // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, PASSWORD="x y", …
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
+  // `ACCESS_KEY`/`SECRET_KEY` are the cloud spellings (`AWS_SECRET_ACCESS_KEY=… aws s3 ls`,
+  // `S3_SECRET_KEY`); without them the most common inline credential printed verbatim.
+  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
 ];
 
@@ -172,7 +174,7 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // is also why the separator admits surrounding whitespace, as the command
   // profile's does: `PASSWORD: hunter2` and `PASSWORD = hunter2` used to reach
   // the phone verbatim while `/ps` redacted them.
-  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
+  /(?:TOKEN|API_KEY|API_SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
 ];
 

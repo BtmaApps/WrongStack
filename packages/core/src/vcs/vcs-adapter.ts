@@ -173,7 +173,12 @@ function gitAdapter(root: string, binary: string, run: VcsRunner): VcsAdapter {
     baseRevision: async () => singleRevision(await git('rev-parse', '--verify', 'HEAD')),
     changedPaths: async () => {
       const [tracked, untracked] = await Promise.all([
-        git('diff', 'HEAD', '--name-only', '-z', '--'),
+        // `--no-renames`: rename detection is on by default for `git diff`,
+        // and `--name-only` then prints only a staged rename's NEW path. The
+        // old one is a deletion from the base, and without it a workspace
+        // checkpoint records no `absent` entry — materialized onto a checkout
+        // of the base, the renamed-away file stays behind.
+        git('diff', 'HEAD', '--name-only', '--no-renames', '-z', '--'),
         git('ls-files', '--others', '--exclude-standard', '-z'),
       ]);
       if (!ok(tracked) || !ok(untracked)) return undefined;

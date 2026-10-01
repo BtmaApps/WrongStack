@@ -12,10 +12,12 @@ const PROVIDER_MANAGE_SCHEMA: JSONSchema = {
   properties: {
     action: {
       type: 'string',
-      enum: ['list', 'add', 'configure', 'remove'],
+      enum: ['list', 'add', 'configure', 'remove', 'disable', 'enable'],
       description:
         'Operation: list (show all providers), add (add a new provider config), ' +
-        'configure (update fields of an existing provider), remove (delete a provider config).',
+        'configure (update fields of an existing provider), remove (delete a provider config), ' +
+        'disable (skip every model of the provider in fallback routing and pickers while ' +
+        'keeping its config and credentials), enable (undo a disable).',
     },
     provider: {
       type: 'string',
@@ -63,7 +65,7 @@ const PROVIDER_MANAGE_SCHEMA: JSONSchema = {
 };
 
 interface ProviderManageInput {
-  action: 'list' | 'add' | 'configure' | 'remove';
+  action: 'list' | 'add' | 'configure' | 'remove' | 'disable' | 'enable';
   provider?: string | undefined;
   type?: string | undefined;
   models?: string[] | undefined;
@@ -238,13 +240,16 @@ export function createProviderManageTool(
     name: PROVIDER_MANAGE_TOOL_NAME,
     description:
       'View or configure provider entries. List all configured providers with their ' +
-      'type, model lists, base URL, and key status. Add new providers, update their ' +
-      'settings, or remove unused ones. API keys should be set via provider_key_set ' +
-      'instead of passing them here — they are visible in the LLM output.',
+      'type, model lists, base URL, key status, and disabled state. Add new providers, ' +
+      'update their settings, disable or enable them, or remove unused ones. Disabling a ' +
+      'provider keeps its config and credentials but excludes every one of its models from ' +
+      'fallback routing (including named profiles) and model pickers. API keys should be ' +
+      'set via provider_key_set instead of passing them here — they are visible in the LLM output.',
     usageHint:
       '"list" to see all providers. "add" with provider id and type to create. ' +
       '"configure" to update models, baseUrl, family, or envVars. ' +
-      '"remove" to delete a provider. Use provider_key_set for API key management.',
+      '"disable" to park a provider (all its models are skipped everywhere) and "enable" ' +
+      'to restore it. "remove" to delete a provider. Use provider_key_set for API key management.',
     category: 'config',
     inputSchema: PROVIDER_MANAGE_SCHEMA,
     permission: 'auto',
@@ -258,6 +263,14 @@ export function createProviderManageTool(
         ...((config.providers ?? {}) as unknown as Record<string, Record<string, unknown>>),
       };
       const leaderProvider: string = config.provider ?? '';
+      // Raw ids as the user wrote them; compared case-insensitively so a casing
+      // difference between the heading id and the entry never silently re-enables
+      // a provider.
+      const disabledProviders = (
+        Array.isArray(config.disabledProviders) ? config.disabledProviders : []
+      ).filter((id) => typeof id === 'string' && id.trim().length > 0);
+      const isDisabled = (id: string): boolean =>
+        disabledProviders.some((entry) => entry.trim().toLowerCase() === id.trim().toLowerCase());
 
       if (input.action === 'list') {
         const ids = Object.keys(providers);
@@ -276,12 +289,17 @@ export function createProviderManageTool(
             const prefix = id === leaderProvider ? '★ ' : '  ';
             const baseUrl = entry.baseUrl ? ` url:${entry.baseUrl}` : '';
             const family = entry.family ? ` family:${entry.family}` : '';
-            return `  ${prefix}${id} (${type}) key:${hasKey} models:[${models}]${baseUrl}${family}`;
+            const off = isDisabled(id) ? ' [DISABLED]' : '';
+            return `  ${prefix}${id} (${type}) key:${hasKey} models:[${models}]${baseUrl}${family}${off}`;
           })
           .join('\n');
         return {
           status: 'ok',
-          message: `Providers (leader: ${leaderProvider}):\n${msg}`,
+          message: `Providers (leader: ${leaderProvider}):\n${msg}${
+            disabledProviders.length > 0
+              ? `\nDisabled providers (${disabledProviders.length}): ${disabledProviders.join(', ')} — all their models are skipped in fallback routing and pickers.`
+              : ''
+          }`,
           providers: ids,
         };
       }
@@ -434,6 +452,50 @@ export function createProviderManageTool(
           cfg.providers = providers;
         });
         return { status: 'ok', message: `✓ Removed provider: ${input.provider}` };
+      }
+
+      if (input.action === 'disable' || input.action === 'enable') {
+        if (!input.provider) {
+          throw new ToolValidationError({
+            message: `Provide "provider" id to ${input.action}.`,
+            field: 'provider',
+          });
+        }
+        if (!providers[input.provider]) {
+          throw new ToolValidationError({
+            message: `Provider "${input.provider}" not found. Use "list" to see configured providers.`,
+            field: 'provider',
+          });
+        }
+        const target = input.provider.trim();
+        // Drop any case-variant first so the stored list stays a true set, then
+        // add the caller's spelling when disabling (config stays readable).
+        const next = disabledProviders.filter(
+          (id) => id.trim().toLowerCase() !== target.toLowerCase(),
+        );
+        if (input.action === 'disable') next.push(target);
+        await opts.updateConfig((cfg) => {
+          cfg.disabledProviders = next.length > 0 ? [...next].sort() : undefined;
+        });
+        if (input.action === 'enable') {
+          return {
+            status: 'ok',
+            message:
+              `✓ Enabled provider: ${target} — its models are selectable and eligible for ` +
+              'fallback routing again.',
+          };
+        }
+        return {
+          status: 'ok',
+          message:
+            `✓ Disabled provider: ${target} — every one of its models is now skipped in fallback ` +
+            'routing (named profiles, explicit chains, smart defaults) and in model pickers. Its ' +
+            `config and credentials are kept; re-enable with provider_manage({ action: "enable", provider: "${target}" }).${
+              input.provider === leaderProvider
+                ? ' The active session keeps running on its current model; new fallbacks will not route to this provider.'
+                : ''
+            }`,
+        };
       }
 
       throw new ToolValidationError({

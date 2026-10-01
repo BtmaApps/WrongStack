@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { isModelDisabled } from '@/components/QuickModelSwitcher.filter';
+import { isModelDisabled, isProviderDisabled } from '@/components/QuickModelSwitcher.filter';
 import { toast } from '@/components/Toaster';
 import { useProviderModels } from '@/hooks/useProviderModels';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
@@ -224,6 +224,23 @@ export function SettingsPanel() {
     [localPrefs, updatePrefs, switchContextMode],
   );
 
+  /**
+   * Toggle one provider's disabled state. Mirrors the resolver's matching rule
+   * (bare id, case-insensitive) so a casing difference can never leave a
+   * provider half-on: the entry is replaced, not appended.
+   */
+  const toggleProviderDisabled = useCallback(
+    (providerId: string) => {
+      const key = providerId.trim().toLowerCase();
+      const current = localPrefs.disabledProviders ?? [];
+      const next = current.some((id) => id.trim().toLowerCase() === key)
+        ? current.filter((id) => id.trim().toLowerCase() !== key)
+        : [...current, providerId];
+      syncPref('disabledProviders', next);
+    },
+    [localPrefs.disabledProviders, syncPref],
+  );
+
   const [catalogProviders, setCatalogProviders] = useState<CatalogProvider[]>([]);
   const [catalogModels, setCatalogModels] = useState<Record<string, CatalogModel[]>>({});
   const [savedProviders, setSavedProviders] = useState<SavedProvider[]>([]);
@@ -244,10 +261,12 @@ export function SettingsPanel() {
     () => ({
       ...catalogModels,
       [provider]: (catalogModels[provider] ?? []).filter(
-        (candidate) => !isModelDisabled(provider, candidate.id, localPrefs.disabledModels),
+        (candidate) =>
+          !isProviderDisabled(provider, localPrefs.disabledProviders) &&
+          !isModelDisabled(provider, candidate.id, localPrefs.disabledModels),
       ),
     }),
-    [catalogModels, localPrefs.disabledModels, provider],
+    [catalogModels, localPrefs.disabledModels, localPrefs.disabledProviders, provider],
   );
   const activeTabDef = TABS.find((tab) => tab.id === settingsActiveTab);
   const selectTab = useCallback(
@@ -548,6 +567,8 @@ export function SettingsPanel() {
                   onAddProvider={handleAddProvider}
                   onRemoveProvider={handleRemoveProvider}
                   onPickProviderModel={handlePickProviderModel}
+                  disabledProviders={localPrefs.disabledProviders}
+                  onToggleProviderDisabled={toggleProviderDisabled}
                   ws={ws.client}
                   catalogQuery={catalogQuery}
                   setCatalogQuery={setCatalogQuery}

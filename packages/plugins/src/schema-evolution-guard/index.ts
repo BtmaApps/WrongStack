@@ -152,6 +152,7 @@ function findIssues(content: string, kind: FileKind, maxFindings: number): strin
   const findings: string[] = [];
   const lines = content.split(/\r?\n/);
   let inOpenApiRequiredList = false;
+  let inCreateTable = false;
 
   for (let i = 0; i < lines.length && findings.length < maxFindings; i++) {
     const line = lines[i]!;
@@ -159,6 +160,17 @@ function findIssues(content: string, kind: FileKind, maxFindings: number): strin
 
     switch (kind) {
       case 'sql': {
+        // A column of a table this statement creates has no existing rows to
+        // violate NOT NULL, and `IS NOT NULL` is a predicate, not a constraint.
+        // Both were reported (and refused under `block`) as a NOT NULL added
+        // without a default, so every new-table migration tripped the guard.
+        const createsTable =
+          /\bCREATE\s+(?:(?:GLOBAL|LOCAL)\s+)?(?:TEMP(?:ORARY)?\s+|UNLOGGED\s+)?TABLE\b/i.test(
+            line,
+          );
+        const newTableColumn = inCreateTable || createsTable;
+        if (line.includes(';')) inCreateTable = false;
+        else if (createsTable) inCreateTable = true;
         if (/DROP\s+TABLE\b/i.test(line)) {
           findings.push(`DROP TABLE at line ${lineNumber}`);
           continue;
@@ -167,7 +179,12 @@ function findIssues(content: string, kind: FileKind, maxFindings: number): strin
           findings.push(`DROP COLUMN at line ${lineNumber}`);
           continue;
         }
-        if (/\bNOT\s+NULL\b/i.test(line) && !/DEFAULT\b/i.test(line) && !/DROP\b/i.test(line)) {
+        if (
+          !newTableColumn &&
+          /\bNOT\s+NULL\b/i.test(line.replace(/\bIS\s+NOT\s+NULL\b/gi, '')) &&
+          !/DEFAULT\b/i.test(line) &&
+          !/DROP\b/i.test(line)
+        ) {
           findings.push(`NOT NULL added without default at line ${lineNumber}`);
         }
         break;

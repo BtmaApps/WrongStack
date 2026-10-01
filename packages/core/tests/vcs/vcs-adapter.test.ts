@@ -277,6 +277,37 @@ describe('adapters against the real binaries', () => {
     expect(await vcs?.currentBranch()).toBe('default');
   });
 
+  it('git lists both sides of a staged rename, so a checkpoint records the old path as absent', async () => {
+    const repo = path.join(tmp, 'rename-repo');
+    await fsp.mkdir(repo);
+    await fsp.writeFile(path.join(repo, 'a.txt'), 'some content that git can match\n');
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: repo, windowsHide: true });
+    await git('init', '-q');
+    await git('add', '.');
+    await git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'base');
+    await git('mv', 'a.txt', 'b.txt');
+
+    // Rename detection is on by default, and `--name-only` then printed only
+    // `b.txt`: the deletion of `a.txt` was invisible to the checkpoint.
+    expect((await vcsAdapter('git', repo).changedPaths())?.sort()).toEqual(['a.txt', 'b.txt']);
+
+    const cas = new SessionCheckpointCas({
+      rootDir: path.join(tmp, 'cas-rename'),
+      projectRoot: repo,
+    });
+    const checkpoint = await cas.capture('rename', 0);
+    const manifest = JSON.parse(
+      await fsp.readFile(
+        path.join(tmp, 'cas-rename', 'manifests', `${checkpoint?.manifestHash}.json`),
+        'utf8',
+      ),
+    ) as { entries: Array<{ path: string; state: string }> };
+    expect(manifest.entries.map((e) => `${e.path}:${e.state}`)).toEqual([
+      'a.txt:absent',
+      'b.txt:file',
+    ]);
+  });
+
   it('a checkpoint of a project in a subdirectory of the repository keeps project paths', async () => {
     const repo = path.join(tmp, 'mono');
     const project = path.join(repo, 'packages', 'app');

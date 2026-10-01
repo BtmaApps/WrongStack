@@ -239,6 +239,10 @@ describe('presentation', () => {
     expect(formatQuotaPercent(51)).toBe('51%');
     expect(formatQuotaPercent(2.5)).toBe('2.5%');
     expect(formatQuotaPercent(0)).toBe('0%');
+    // Never show the cut-off figure before it is reached.
+    expect(formatQuotaPercent(99.6)).toBe('99%');
+    expect(formatQuotaPercent(100)).toBe('100%');
+    expect(formatQuotaPercent(9.97)).toBe('10%');
   });
 
   it('resolves the window the provider says is cutting the account off', () => {
@@ -296,6 +300,17 @@ describe('quotaExhaustionInMs (pace forecast)', () => {
     expect(
       quotaExhaustionInMs('openai-codex', 'default', window(60), T0 + 2 * MIN),
     ).toBeUndefined();
+  });
+
+  it('keeps the pace across a reset clock that wobbles by a second', () => {
+    // "reset in N seconds" converted to an absolute time drifts between readings.
+    const reset = (T0 + 180 * MIN) / 1000;
+    recordProviderQuota('openai-codex', [reading(40, reset)], T0);
+    recordProviderQuota('openai-codex', [reading(45, reset + 1)], T0 + 10 * MIN);
+    recordProviderQuota('openai-codex', [reading(50, reset)], T0 + 20 * MIN);
+    expect(quotaExhaustionInMs('openai-codex', 'default', window(50, reset), T0 + 20 * MIN)).toBe(
+      100 * MIN,
+    );
   });
 
   it('starts over when the window resets', () => {

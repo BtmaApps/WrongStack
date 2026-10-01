@@ -80,8 +80,15 @@ export interface DispatchLogEntry {
  * latency on a fleet that spawns thousands of times a week.
  */
 const ROTATE_AT_BYTES = 1_024 * 1_024;
-/** Lines kept after a rotation. Roughly half the cap, so rotation is amortised. */
-const ROTATE_KEEP_LINES = 2_500;
+/**
+ * Bytes kept after a rotation: half the cap, so rotation is amortised.
+ *
+ * A byte budget, not a line count. Keeping a fixed 2,500 lines only halved the
+ * file while lines averaged under ~420 bytes; a project with long custom role
+ * names (or six long alternatives per entry) crossed that, the rotated file
+ * stayed above the cap, and every later append paid a full read and rewrite.
+ */
+const ROTATE_KEEP_BYTES = ROTATE_AT_BYTES / 2;
 /** Cap per array field so one pathological entry cannot bloat a line. */
 const MAX_LIST_ITEMS = 6;
 
@@ -133,7 +140,15 @@ function rotateIfLarge(filePath: string): void {
     if (statSync(filePath).size <= ROTATE_AT_BYTES) return;
     const raw = readFileSync(filePath, 'utf8');
     const lines = raw.split('\n').filter((line) => line.length > 0);
-    const kept = lines.slice(-ROTATE_KEEP_LINES);
+    const kept: string[] = [];
+    let bytes = 0;
+    for (let index = lines.length - 1; index >= 0; index--) {
+      const line = lines[index] as string;
+      bytes += Buffer.byteLength(line, 'utf8') + 1;
+      if (bytes > ROTATE_KEEP_BYTES && kept.length > 0) break;
+      kept.push(line);
+    }
+    kept.reverse();
     const temporaryPath = `${filePath}.rotate.${process.pid}.tmp`;
     writeFileSync(temporaryPath, `${kept.join('\n')}\n`, 'utf8');
     renameSync(temporaryPath, filePath);

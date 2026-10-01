@@ -176,7 +176,8 @@ async function readPngFile(p: string): Promise<ClipboardImage | null> {
       await fs.unlink(p).catch(() => undefined);
       throw new Error(`Clipboard image exceeds ${MAX_IMAGE_BYTES / 1024 / 1024}MB limit`);
     }
-    if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) {
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    if (pngSignature.some((byte, index) => buf[index] !== byte)) {
       await fs.unlink(p).catch(() => undefined);
       return null;
     }

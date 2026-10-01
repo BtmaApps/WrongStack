@@ -55,10 +55,17 @@ type NextSteps = ReturnType<typeof projectNextStepsToolInput>;
  * Continue countdown may auto-fire for. A recoverable non-provider failure is
  * not one — a context overflow would overflow again, and the loop guard or
  * iteration limit stopped the run on purpose.
+ *
+ * Only a `failed` run qualifies. A run the user stopped comes back `aborted`,
+ * and its error is whatever the provider threw when the signal cut the request
+ * (a dropped stream reads as a recoverable `PROVIDER_NETWORK_ERROR`) — judged
+ * by the error alone, Stop armed a countdown that restarted the run.
  */
 export function isAutoContinuableRunError(
   error: { code?: string | undefined; recoverable?: boolean | undefined } | undefined,
+  status: string,
 ): boolean {
+  if (status !== 'failed') return false;
   if (error?.recoverable !== true) return false;
   const code = error.code ?? '';
   return code.startsWith('PROVIDER_') && code !== 'PROVIDER_CONTEXT_OVERFLOW';
@@ -506,8 +513,16 @@ export function handleRunResult(msg: WSServerMessage) {
     // final hunt round or on a later ordinary chat turn.
     completedToolNextSteps.delete(chat.sessionId);
   } else if (payload.status === 'done' && laneNextStepSuggestions.length > 0) {
+    // Only THIS run's reply can already carry these steps (from its own
+    // `<nextsteps>` block). Scanning the whole history meant the first turn
+    // that ever rendered chips suppressed the tool-provided suggestions of
+    // every turn after it.
+    const runStartedAt = chat.runStart?.at;
     const hasRenderedSuggestions = chat.messages.some(
-      (message) => message.role === 'assistant' && (message.nextSteps?.steps.length ?? 0) > 0,
+      (message) =>
+        message.role === 'assistant' &&
+        (message.nextSteps?.steps.length ?? 0) > 0 &&
+        (runStartedAt === undefined || message.timestamp >= runStartedAt),
     );
     if (!hasRenderedSuggestions) {
       chat.addMessage({
@@ -588,10 +603,12 @@ export function handleRunResult(msg: WSServerMessage) {
       role: 'assistant',
       content: `Error: ${payload.error.message}`,
       isError: true,
-      ...(isAutoContinuableRunError(payload.error) ? { autoContinue: true } : {}),
+      ...(isAutoContinuableRunError(payload.error, payload.status) ? { autoContinue: true } : {}),
     });
     const isSilentAbort =
-      payload.error.message === 'User aborted' || payload.error.message === 'aborted';
+      payload.status === 'aborted' ||
+      payload.error.message === 'User aborted' ||
+      payload.error.message === 'aborted';
     const foreground = isForeground(chat);
     if (!isSilentAbort) {
       // A toast is a foreground interruption with no room to say WHICH

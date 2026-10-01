@@ -288,7 +288,7 @@ export class RequirementIntakeService {
     const record = await this.requireRecord(id, ctx, 'answer');
     this.assertMutable(record, 'addAnswer');
     const validated = this.guardValidation(() => validateAnswerInput(input));
-    this.assertAnswerField(validated.field);
+    this.assertAnswerField(record, validated.field);
 
     return this.store
       .update(
@@ -704,7 +704,11 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     now: number,
   ): RequirementIntakeRecord {
-    return buildNewIntakeRecord(input, ctx, now, this.catalog);
+    const catalog = input.questions?.map((question) => ({
+      ...question,
+      required: question.required ?? false,
+    }));
+    return buildNewIntakeRecord(input, ctx, now, catalog ?? this.catalog);
   }
 
   private async requireRecord(
@@ -736,9 +740,14 @@ export class RequirementIntakeService {
     }
   }
 
-  private assertAnswerField(field: string): void {
+  private assertAnswerField(record: RequirementIntakeRecord, field: string): void {
     const catalogFields = new Set(this.catalog.map((template) => template.field));
-    if (!catalogFields.has(field) && !(INTAKE_FIELDS as readonly string[]).includes(field)) {
+    const recordHasField = record.questions.some((question) => question.field === field);
+    if (
+      !recordHasField &&
+      !catalogFields.has(field) &&
+      !(INTAKE_FIELDS as readonly string[]).includes(field)
+    ) {
       throw new IntakeValidationError([
         { field: 'field', message: `unknown intake field: ${field}` },
       ]);

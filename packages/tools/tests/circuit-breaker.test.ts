@@ -74,6 +74,28 @@ describe('CircuitBreaker', () => {
       expect(cb.canProceed).toBe(false);
     });
 
+    it('trips on consecutive slow calls with the default window and threshold', () => {
+      // Each call runs past the 180s threshold, so no two share the 60s window.
+      const cb = new CircuitBreaker();
+      for (let i = 0; i < 2; i++) {
+        vi.advanceTimersByTime(200_000);
+        cb.afterCall(200_000, false);
+        expect(cb.canProceed).toBe(true);
+      }
+      vi.advanceTimersByTime(200_000);
+      cb.afterCall(200_000, false);
+      expect(cb.canProceed).toBe(false);
+    });
+
+    it('a fast success breaks a slow streak', () => {
+      const cb = new CircuitBreaker();
+      for (const ms of [200_000, 200_000, 10, 200_000, 200_000]) {
+        vi.advanceTimersByTime(Math.max(ms, 1_000));
+        cb.afterCall(ms, false);
+      }
+      expect(cb.canProceed).toBe(true);
+    });
+
     it('fast successes do not count as slow', () => {
       const cb = new CircuitBreaker({
         slowCallThresholdMs: 1000,

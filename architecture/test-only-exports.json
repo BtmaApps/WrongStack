@@ -663,6 +663,7 @@
       "isProjectId"
     ],
     "packages/core/src/utils/tool-output-renderers.ts": [
+      "compactDiff",
       "inputListSummary",
       "numberFromInput"
     ],
@@ -809,8 +810,7 @@
     "packages/plug-lsp/src/position.ts": [
       "humanToLSPRange",
       "lspToHuman",
-      "lspToHumanRange",
-      "splitLines"
+      "lspToHumanRange"
     ],
     "packages/plug-lsp/src/registry.ts": [
       "registryCoverage"

@@ -144,8 +144,12 @@ export function readIdentifierAt(
     const lines = text.split(/\r?\n/);
     const row = lines[line - 1];
     if (!row) return undefined;
-    const col = character - 1;
-    if (col > row.length) return undefined;
+    // plug-lsp's `character` is a 1-based BYTE column (its humanToLSP), not
+    // a UTF-16 index: read as one, every multi-byte character earlier on the
+    // line shifted the cursor right, and the "old symbol" captured for the
+    // anchor remap could be a neighbouring identifier.
+    const col = byteColumnToIndex(row, character - 1);
+    if (col === undefined) return undefined;
     // Expand to word characters (unicode letters/digits/_/$).
     let start = col;
     let end = col;
@@ -162,6 +166,20 @@ export function readIdentifierAt(
   } catch {
     return undefined;
   }
+}
+
+/** UTF-16 index of a 0-based byte column; undefined past the end of the line. */
+function byteColumnToIndex(row: string, byteCol: number): number | undefined {
+  if (byteCol > Buffer.byteLength(row, 'utf8')) return undefined;
+  let bytes = 0;
+  let index = 0;
+  for (const ch of row) {
+    const width = Buffer.byteLength(ch, 'utf8');
+    if (bytes + width > byteCol) break;
+    bytes += width;
+    index += ch.length;
+  }
+  return index;
 }
 
 export function toProjectRelative(projectRoot: string, cwd: string, inputPath: string): string {

@@ -43,7 +43,15 @@ export function registerSetupEventsStatusWatcher(
   const DEBOUNCE_MS = 150;
   const pendingStatuses = new Map<string, { data: unknown; firstWriteAt: number }>();
 
-  if (watcherMetrics) initializeFileWatcherMetrics(watcherMetrics);
+  if (watcherMetrics) {
+    initializeFileWatcherMetrics(watcherMetrics);
+    // The fs.watch handle does not exist yet: startWatcher() awaits
+    // `fs.mkdir` before it reaches fsWatch. initializeFileWatcherMetrics
+    // optimistically claims "active", which made a start that threw (or a
+    // dispose that landed first) report Running forever. The flag is driven
+    // by the real handle lifecycle in startWatcher/dispose instead.
+    watcherMetrics.watcherActive = false;
+  }
 
   const logWatcherMetricsEnabled = shouldLogWatcherStats();
   const logWatcherMetrics = () => logFileWatcherMetrics(watcherMetrics);
@@ -123,12 +131,18 @@ export function registerSetupEventsStatusWatcher(
         },
       );
 
+      // Only now does a live handle exist. Every earlier point (registration,
+      // the mkdir await, an early dispose) means "not watching", so the flag
+      // tracks the handle rather than the intent to create one.
+      if (watcherMetrics) watcherMetrics.watcherActive = true;
+
       if (logWatcherMetricsEnabled) {
         console.log(
           `[setup-events] Watching ${projectsDir} for status.json changes (hash-filtered, debounced)`,
         );
       }
     } catch (err) {
+      if (watcherMetrics) watcherMetrics.watcherActive = false;
       console.error(
         JSON.stringify({
           level: 'error',

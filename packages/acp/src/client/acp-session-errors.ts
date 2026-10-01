@@ -21,7 +21,7 @@ export function isJsonRpcError(v: unknown): v is JsonRpcError {
   return (
     typeof v === 'object' &&
     v !== null &&
-    typeof (v as { code?: unknown }).code === 'number' &&
+    Number.isSafeInteger((v as { code?: unknown }).code) &&
     typeof (v as { message?: unknown }).message === 'string'
   );
 }

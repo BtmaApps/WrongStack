@@ -498,6 +498,14 @@ describe('SqliteSageStore', () => {
       );
     });
 
+    it('folds non-ASCII case in the LIKE fallback', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      const city = await store.rememberSage({ text: 'Şehir planı İzmir için' });
+      // A one-character query has no FTS terms, so it takes the LIKE path.
+      const results = await store.searchSage('ş');
+      expect(results.map((memory) => memory.id)).toEqual([city.id]);
+    });
+
     it('keeps session parameters ordered correctly in LIKE fallback searches', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       const sessionA = await store.rememberSage({

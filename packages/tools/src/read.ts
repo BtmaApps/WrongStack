@@ -269,12 +269,25 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
     const requestedEnd = prior
       ? Math.min(offset + limit - 1, prior.totalLines)
       : offset + limit - 1;
-    if (
+    // Size + mtime (2 s tolerance on Windows) cannot see a same-length edit
+    // made within the window — `1.2.3` → `1.2.4`, a `sed -i` digit flip — and
+    // a suppressed read then told the model the file was "unchanged". Confirm
+    // with the content hash recorded at the last read before suppressing.
+    let earlyBuf: Buffer | undefined;
+    const rangeCovered =
       input.mode !== 'summary' &&
       limit > 0 &&
-      prior &&
+      prior !== undefined &&
       offset <= requestedEnd &&
-      coversRange(prior, stat.mtimeMs, stat.size, offset, requestedEnd)
+      coversRange(prior, stat.mtimeMs, stat.size, offset, requestedEnd);
+    if (rangeCovered && prior.contentHash !== undefined) {
+      signal?.throwIfAborted();
+      earlyBuf = await fs.readFile(absPath);
+    }
+    if (
+      rangeCovered &&
+      prior &&
+      (earlyBuf === undefined || sha256hex(earlyBuf.toString('utf8')) === prior.contentHash)
     ) {
       ctx.recordRead?.(absPath, stat.mtimeMs, 'user', ctx.lastReadHash?.(absPath));
       const symResult = shouldIncludeSymbols
@@ -294,7 +307,7 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
     }
 
     signal?.throwIfAborted();
-    const buf = await fs.readFile(absPath);
+    const buf = earlyBuf ?? (await fs.readFile(absPath));
     // A PDF saved without its extension is found by its `%PDF-` header.
     if (isPdf(absPath, buf)) return readPdf(input, absPath, buf, stat.mtimeMs, ctx);
     if (isBinaryBuffer(buf)) {
@@ -353,7 +366,7 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
     }
     if (limit === 0) {
       ctx.recordRead?.(absPath, stat.mtimeMs, 'user', contentHash);
-      rememberReadRange(ctx, absPath, stat.mtimeMs, stat.size, total, 1, 0);
+      rememberReadRange(ctx, absPath, stat.mtimeMs, stat.size, total, 1, 0, contentHash);
       const symResult = shouldIncludeSymbols
         ? await fetchSymbolsForFile(absPath, ctx, signal)
         : undefined;
@@ -409,6 +422,7 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
       total,
       offset,
       offset + slice.length - 1,
+      contentHash,
     );
 
     const symResult = shouldIncludeSymbols
@@ -488,6 +502,8 @@ interface ReadRangeRecord {
   size: number;
   totalLines: number;
   ranges: Array<{ start: number; end: number }>;
+  /** Whole-file content hash at the last read (absent on older records). */
+  contentHash?: string | undefined;
 }
 
 const READ_RANGES_META_KEY = 'tools.read.ranges.v1';
@@ -524,12 +540,16 @@ function rememberReadRange(
   totalLines: number,
   start: number,
   end: number,
+  contentHash?: string,
 ): void {
   if (end < start) return;
   const ranges = getReadRanges(ctx);
   const prior = ranges[absPath];
   const nextRanges =
-    prior && prior.size === size && Math.abs(prior.mtimeMs - mtimeMs) <= MTIME_TOLERANCE_MS
+    prior &&
+    prior.size === size &&
+    Math.abs(prior.mtimeMs - mtimeMs) <= MTIME_TOLERANCE_MS &&
+    (prior.contentHash === undefined || prior.contentHash === contentHash)
       ? prior.ranges.slice()
       : [];
   nextRanges.push({ start, end });
@@ -538,6 +558,7 @@ function rememberReadRange(
     size,
     totalLines,
     ranges: mergeRanges(nextRanges),
+    ...(contentHash !== undefined ? { contentHash } : {}),
   };
 }
 

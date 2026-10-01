@@ -15,6 +15,22 @@ const FEATURE_PREF_KEYS: ReadonlyArray<readonly [string, FeatureFlagKey]> = [
   ['featureToolCoach', 'toolCoach'],
 ];
 
+function stringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+    ? [...value]
+    : undefined;
+}
+
+function fallbackProfileMap(value: unknown): Record<string, string[]> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const entries: Array<[string, string[]]> = [];
+  for (const [key, models] of Object.entries(value)) {
+    const validated = stringList(models);
+    if (validated !== undefined) entries.push([key, validated]);
+  }
+  return Object.fromEntries(entries);
+}
+
 /**
  * Translate a settings-pane payload into a config patch. Pure: it reads
  * `config` and returns new objects, touching neither.
@@ -58,31 +74,30 @@ export function computeConfigPrefUpdates(
     } as NonNullable<Config['features']>;
   }
 
-  if (Array.isArray(payload['fallbackModels']))
-    updates.fallbackModels = payload['fallbackModels'] as string[];
-  if (
-    payload['fallbackProfiles'] &&
-    typeof payload['fallbackProfiles'] === 'object' &&
-    !Array.isArray(payload['fallbackProfiles'])
-  ) {
-    updates.fallbackProfiles = payload['fallbackProfiles'] as Record<string, string[]>;
-  }
-  if (Array.isArray(payload['favoriteModels']))
-    updates.favoriteModels = payload['favoriteModels'] as string[];
-  if (Array.isArray(payload['disabledModels']))
-    updates.disabledModels = payload['disabledModels'] as string[];
+  const fallbackModels = stringList(payload['fallbackModels']);
+  if (fallbackModels !== undefined) updates.fallbackModels = fallbackModels;
+  const fallbackProfiles = fallbackProfileMap(payload['fallbackProfiles']);
+  if (fallbackProfiles !== undefined) updates.fallbackProfiles = fallbackProfiles;
+  const favoriteModels = stringList(payload['favoriteModels']);
+  if (favoriteModels !== undefined) updates.favoriteModels = favoriteModels;
+  const disabledModels = stringList(payload['disabledModels']);
+  if (disabledModels !== undefined) updates.disabledModels = disabledModels;
+  const disabledProviders = stringList(payload['disabledProviders']);
+  if (disabledProviders !== undefined) updates.disabledProviders = disabledProviders;
   if (typeof payload['favoriteModelsOnly'] === 'boolean')
     updates.favoriteModelsOnly = payload['favoriteModelsOnly'];
   if (Array.isArray(payload['modelAvailabilitySchedule']))
-    updates.modelAvailabilitySchedule = payload[
-      'modelAvailabilitySchedule'
-    ] as import('@wrongstack/core/models').ModelBlackoutRule[];
+    updates.modelAvailabilitySchedule = structuredClone(
+      payload['modelAvailabilitySchedule'],
+    ) as import('@wrongstack/core/models').ModelBlackoutRule[];
   if (
     payload['modelMatrix'] &&
     typeof payload['modelMatrix'] === 'object' &&
     !Array.isArray(payload['modelMatrix'])
   ) {
-    updates.modelMatrix = payload['modelMatrix'] as NonNullable<Config['modelMatrix']>;
+    updates.modelMatrix = structuredClone(payload['modelMatrix']) as NonNullable<
+      Config['modelMatrix']
+    >;
   }
   if (typeof payload['fallbackAuto'] === 'boolean') updates.fallbackAuto = payload['fallbackAuto'];
 

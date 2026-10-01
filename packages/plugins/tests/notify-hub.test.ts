@@ -102,6 +102,11 @@ describe('notify-hub plugin', () => {
       'http://10.0.0.5/hook',
       'http://192.168.1.20/hook',
       'http://[::1]/hook',
+      // Shared ip-guard coverage the hand-rolled check lacked:
+      'http://[::]/hook',
+      'http://[64:ff9b::a9fe:a9fe]/latest/meta-data', // NAT64 → 169.254.169.254
+      'http://[2002:7f00:1::]/hook', // 6to4 → 127.0.0.1
+      'http://100.64.0.1/hook', // CGNAT
     ]) {
       const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
       await notifyHubPlugin.setup(api as never);

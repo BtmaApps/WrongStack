@@ -22,7 +22,7 @@ export interface SequencedFrame {
 
 function frameSeq(msg: SequencedFrame): { sessionId: string; seq: number } | null {
   const seq = msg.seq;
-  if (typeof seq !== 'number' || !Number.isInteger(seq)) return null;
+  if (typeof seq !== 'number' || !Number.isSafeInteger(seq) || seq < 0) return null;
   const payload = msg.payload as { sessionId?: unknown } | undefined;
   const sessionId =
     typeof msg.stream === 'string'
@@ -136,7 +136,9 @@ export class SessionFrameGate<T extends SequencedFrame> {
     this.held.delete(sessionId);
     if (!held) return [];
     // A hold is dropped once it is empty, so there is a newest frame.
-    this.applied.set(sessionId, Math.max(...held.keys()));
+    let newest = Number.NEGATIVE_INFINITY;
+    for (const seq of held.keys()) newest = Math.max(newest, seq);
+    this.applied.set(sessionId, newest);
     return [...held.entries()].sort(([a], [b]) => a - b).map(([, msg]) => msg);
   }
 }
@@ -198,6 +200,9 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
    * throw away the answer still streaming.
    */
   onSessionStart(msg: T): T {
+    if (msg.payload === null || typeof msg.payload !== 'object' || Array.isArray(msg.payload)) {
+      return msg;
+    }
     const payload = msg.payload as Record<string, unknown>;
     if (typeof payload.eventEpoch === 'string')
       this.apply(this.gate.adoptEpoch(payload.eventEpoch));

@@ -76,6 +76,7 @@ export class Connection {
     signal: AbortSignal,
   ): Promise<R> {
     this.assertOpen();
+    if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('aborted');
     const id = this.allocateRequestId();
     const request: JsonRpcMessage = { jsonrpc: '2.0', id, method, params };
     const response = new Promise<R>((resolve, reject) => {
@@ -209,7 +210,9 @@ export class Connection {
 
   private handleMessage(msg: JsonRpcMessage): void {
     if (msg.id !== undefined && msg.id !== null && !msg.method) {
-      const id = Number(msg.id);
+      // Client request IDs are numeric; coercion can settle an unrelated call.
+      if (typeof msg.id !== 'number' || !Number.isSafeInteger(msg.id)) return;
+      const id = msg.id;
       const pending = this.pending.get(id);
       if (!pending) return;
       this.pending.delete(id);

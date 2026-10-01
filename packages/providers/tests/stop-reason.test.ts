@@ -6,6 +6,8 @@ describe('stop-reason', () => {
     it('maps end_turn', () => expect(normalizeAnthropic('end_turn')).toBe('end_turn'));
     it('maps tool_use', () => expect(normalizeAnthropic('tool_use')).toBe('tool_use'));
     it('maps max_tokens', () => expect(normalizeAnthropic('max_tokens')).toBe('max_tokens'));
+    it('maps a context-window cut-off to max_tokens, not a finished turn', () =>
+      expect(normalizeAnthropic('model_context_window_exceeded')).toBe('max_tokens'));
     it('maps stop_sequence', () =>
       expect(normalizeAnthropic('stop_sequence')).toBe('stop_sequence'));
     it('maps refusal', () => expect(normalizeAnthropic('refusal')).toBe('refusal'));

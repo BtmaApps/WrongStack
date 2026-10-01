@@ -5,6 +5,11 @@ export function buildGoalState(
   activePhaseId?: string,
   status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped' = 'idle',
 ): Record<string, unknown> {
+  const normalizedStatus = ['idle', 'running', 'paused', 'completed', 'failed', 'stopped'].includes(
+    status,
+  )
+    ? status
+    : 'idle';
   if (!graph) {
     return {
       phases: [],
@@ -17,13 +22,16 @@ export function buildGoalState(
       verifyTasks: false,
       chimeraReview: false,
       finalVerification: null,
-      status,
+      status: normalizedStatus,
     };
   }
 
   const phases = Array.from(graph.phases.values());
   const currentActiveId =
-    activePhaseId || phases.find((p) => p.status === 'running')?.id || phases[0]?.id || '';
+    (activePhaseId && graph.phases.has(activePhaseId) ? activePhaseId : undefined) ||
+    phases.find((p) => p.status === 'running')?.id ||
+    phases[0]?.id ||
+    '';
   const activePhase = graph.phases.get(currentActiveId);
 
   const totalTasks = phases.reduce((sum, p) => sum + p.taskGraph.nodes.size, 0);
@@ -45,7 +53,7 @@ export function buildGoalState(
     estimateHours: t.estimateHours,
     actualHours: t.actualHours,
     assignee: t.assignee,
-    tags: t.tags || [],
+    tags: Array.isArray(t.tags) ? t.tags.filter((tag) => typeof tag === 'string') : [],
     startedAt: t.startedAt,
     completedAt: t.completedAt,
   });
@@ -63,10 +71,17 @@ export function buildGoalState(
       actualDurationMs: p.actualDurationMs,
       startedAt: p.startedAt,
       completedAt: p.completedAt,
-      progressPercent: nodes.length > 0 ? Math.round((done / nodes.length) * 100) : 0,
+      progressPercent:
+        nodes.length > 0
+          ? Math.round((done / nodes.length) * 100)
+          : p.status === 'completed'
+            ? 100
+            : 0,
       taskCount: nodes.length,
       completedTasks: done,
-      assignedAgents: p.assignedAgents,
+      assignedAgents: Array.isArray(p.assignedAgents)
+        ? p.assignedAgents.filter((agent) => typeof agent === 'string')
+        : [],
       isActive: p.id === currentActiveId,
       // Every phase carries its full task list so the board can render each
       // phase as a column (not just the selected one).
@@ -128,7 +143,7 @@ export function buildGoalState(
     multiBoard: graph.multiBoard ?? false,
     verifyTasks: graph.verifyTasks ?? false,
     chimeraReview: graph.chimeraReview ?? false,
-    finalVerification: graph.finalVerification ?? null,
-    status,
+    finalVerification: graph.finalVerification ? structuredClone(graph.finalVerification) : null,
+    status: normalizedStatus,
   };
 }

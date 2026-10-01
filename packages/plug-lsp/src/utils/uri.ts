@@ -16,7 +16,7 @@ export function uriToPath(uri: string): string {
  * cannot be mapped to a path.
  */
 export function uriToPathOrUri(uri: string): string {
-  if (!uri.startsWith('file:')) return uri;
+  if (!/^file:/i.test(uri)) return uri;
   try {
     return fileURLToPath(uri);
   } catch {
@@ -36,7 +36,7 @@ export function uriToPathOrUri(uri: string): string {
  * untranslatable scheme is still a stable identifier on its own.
  */
 export function uriKey(uri: string, platform: NodeJS.Platform = process.platform): string {
-  if (!uri.startsWith('file:')) return uri;
+  if (!/^file:/i.test(uri)) return uri;
   try {
     const parsed = new URL(uri);
     if (parsed.hostname === '' && parsed.pathname === '/') return uri;

@@ -155,6 +155,18 @@ export interface SaveConsolidationOptions extends Partial<ConsolidationMetadata>
    * pre-prune buffer is kept under `archive/` for audit.
    */
   prune?: boolean | undefined;
+  /**
+   * Keys of the directives the synthesis was actually given. When set, prune
+   * removes only those and keeps everything else in the buffer.
+   *
+   * The optimizer reads the buffer, then awaits a model for up to two minutes
+   * per call. A capture from another session of the same role landing in that
+   * window was never shown to the model, yet a whole-buffer reset archived it
+   * and it was never injected again. With `sourceKeys` it stays in the buffer,
+   * and — because `consolidatedAt` is then the snapshot time — it reads as
+   * fresh to the prompt builder and is injected as a pending delta.
+   */
+  sourceKeys?: readonly string[] | undefined;
 }
 
 export function saveProjectAgentConsolidated(
@@ -171,7 +183,9 @@ export function saveProjectAgentConsolidated(
   const bounded = boundConsolidatedDocument(content);
   writeTextAtomically(fp, bounded);
 
-  const consolidatedAt = new Date().toISOString();
+  // A caller that snapshotted the buffer passes the snapshot time, so entries
+  // captured after it compare as fresh in `buildProjectContextualizedPrompt`.
+  const consolidatedAt = options?.consolidatedAt ?? new Date().toISOString();
   let archived: string | undefined;
   if (options?.prune) {
     const rawText = loadProjectAgentLearnedText(normalizedRole, projectRoot);
@@ -179,12 +193,19 @@ export function saveProjectAgentConsolidated(
       archived = archivePath(normalizedRole, consolidatedAt, projectRoot);
       writeTextAtomically(archived, rawText);
     }
-    // Reset the active buffer. Every directive it held is now represented in
-    // consolidated.md (and in the per-skill addenda), so the next capture
-    // starts from a clean, well under-budget document.
+    // Reset the active buffer. Every directive the synthesis saw is now
+    // represented in consolidated.md (and in the per-skill addenda), so the
+    // next capture starts from a clean, well under-budget document. Anything
+    // it did not see is kept.
+    const consumed = options.sourceKeys ? new Set(options.sourceKeys) : undefined;
+    const unseen = consumed
+      ? readRawLearnedEntries(normalizedRole, projectRoot).filter(
+          (entry) => !consumed.has(entry.key),
+        )
+      : [];
     writeTextAtomically(
       learnedPath(normalizedRole, projectRoot),
-      renderLearnedInstructions(normalizedRole, [], consolidatedAt),
+      renderLearnedInstructions(normalizedRole, unseen, consolidatedAt),
     );
   }
 
@@ -233,6 +254,8 @@ export function buildConsolidationInstruction(
 ): {
   instruction: string;
   rawEntries: string[];
+  /** Keys of the directives in `instruction`, for a prune that keeps the rest. */
+  sourceKeys: string[];
   hasExistingConsolidation: boolean;
 } {
   const normalizedRole = assertProjectAgentRole(role);
@@ -311,6 +334,7 @@ export function buildConsolidationInstruction(
   return {
     instruction: sections.join('\n'),
     rawEntries,
+    sourceKeys: entries.map((entry) => entry.key),
     hasExistingConsolidation: Boolean(existingConsolidation),
   };
 }

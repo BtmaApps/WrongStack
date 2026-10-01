@@ -166,7 +166,10 @@ export function deepMerge(base: unknown, patch: unknown, options: DeepMergeOptio
         const existingLen = Array.isArray(existing) ? existing.length : 0;
         onNonPrimitiveArrayReplace(k, existingLen, v.length);
       }
-      out[k] = conflictResolution === 'prefer-base' && k in baseObj ? existing : v;
+      // Own keys only: `in` also sees Object.prototype, so a patch key named
+      // `valueOf`/`toString` absent from base kept the inherited FUNCTION,
+      // which JSON then dropped — the patch value was silently lost.
+      out[k] = conflictResolution === 'prefer-base' && Object.hasOwn(baseObj, k) ? existing : v;
     }
     // When v === undefined, leave the existing value untouched
     // (this matches config-loader's behaviour: undefined in patch

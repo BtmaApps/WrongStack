@@ -182,27 +182,42 @@ export function groupMailboxEvents(
   }
 
   // 3. Walk mailbox.event envelopes — these carry the live action verb
-  //    (sent/read/completed/updated). Dedupe by mailId during ingestion
-  //    so we never insert a duplicate row.
+  //    (sent/read/completed/updated). Events arrive oldest-first, so a
+  //    mailId's LATER event carries its current state: every copy goes to
+  //    the group that first saw the mailId, and step 4's dedupe keeps the
+  //    last one. Keeping the first instead pinned a message to its `sent`
+  //    copy — still unread and incomplete after it was read and completed.
+  //    Agents likewise count by their latest event, once each: counting
+  //    every online-flagged event inflated the figure with each heartbeat
+  //    and never dropped an agent that went offline.
   const mailIndex = new Map<string, ProjectGroup>();
+  const agentOnline = new Map<ProjectGroup, Map<string, boolean>>();
   for (const evt of events) {
     if (evt.type !== 'mailbox.event' || !isMailboxEvent(evt.payload)) continue;
     const p = evt.payload;
     const g = ensureGroup(seen, evt.projectId);
     g.mailboxId = p.mailboxId;
     g.scope = g.scope ?? 'project';
-    if (p.message !== undefined && !mailIndex.has(p.message.mailId)) {
-      mailIndex.set(p.message.mailId, g);
-      g.messages.push({
+    if (p.message !== undefined) {
+      const owner = mailIndex.get(p.message.mailId) ?? g;
+      mailIndex.set(p.message.mailId, owner);
+      owner.messages.push({
         message: p.message,
         source: 'event',
         key: `e:${p.message.mailId}:${evt.seq}`,
         projectId: evt.projectId,
       });
     }
-    if (p.agent?.online) {
-      g.onlineAgentCount += 1;
+    if (p.agent !== undefined) {
+      const agents = agentOnline.get(g) ?? new Map<string, boolean>();
+      agents.set(p.agent.agentId, p.agent.online === true);
+      agentOnline.set(g, agents);
     }
+  }
+  for (const [g, agents] of agentOnline) {
+    // Snapshot counters stay authoritative, like the message counters below.
+    if (g.countersFromSnapshot) continue;
+    g.onlineAgentCount = [...agents.values()].filter(Boolean).length;
   }
 
   // 4. Collapse duplicates by mailId + sort newest-first within each group.

@@ -51,6 +51,7 @@ export const SERVER_CONFIGURATION_MESSAGE_TYPES = [
   'connections.health_result',
   'connections.service_action_result',
   'diag.get',
+  'fallback.suggestions',
   'key.operation_result',
   'model.switch_result',
   'prefs.updated',

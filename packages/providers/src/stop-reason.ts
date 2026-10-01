@@ -7,6 +7,9 @@ export function normalizeAnthropic(stop: string | null | undefined): StopReason 
     case 'tool_use':
       return 'tool_use';
     case 'max_tokens':
+    // The reply was cut off by the model's context window, not finished:
+    // read as `end_turn`, a truncated answer looked complete.
+    case 'model_context_window_exceeded':
       return 'max_tokens';
     case 'stop_sequence':
       return 'stop_sequence';

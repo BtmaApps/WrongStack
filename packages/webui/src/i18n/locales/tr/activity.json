@@ -663,6 +663,7 @@
     "watcherStatus": "İzleyici Durumu",
     "running": "Çalışıyor",
     "stopped": "Durduruldu",
+    "unavailable": "Kullanılamıyor",
     "activeProjects": "Etkin Projeler",
     "projectsWatched": "İzlenen projeler",
     "fileChanges": "Dosya Değişiklikleri",

@@ -41,24 +41,26 @@ export class SpecVersioning {
     history.push(version);
     this.versions.set(spec.id, history);
 
-    return version;
+    return structuredClone(version);
   }
 
   /** Get version history for a spec. */
   getHistory(specId: string): SpecVersion[] {
-    return this.versions.get(specId) ?? [];
+    return structuredClone(this.versions.get(specId) ?? []);
   }
 
   /** Get a specific version of a spec. */
   getVersion(specId: string, version: string): SpecVersion | undefined {
     const history = this.versions.get(specId) ?? [];
-    return history.find((v) => v.version === version);
+    const found = history.find((v) => v.version === version);
+    return found ? structuredClone(found) : undefined;
   }
 
   /** Get the latest version of a spec. */
   getLatest(specId: string): SpecVersion | undefined {
     const history = this.versions.get(specId) ?? [];
-    return history[history.length - 1];
+    const latest = history[history.length - 1];
+    return latest ? structuredClone(latest) : undefined;
   }
 
   /** Compute diff between two versions of a spec. */
@@ -165,6 +167,17 @@ export class SpecVersioning {
         task.title = mod.requirement.description;
         task.description = this.buildTaskDescription(mod.requirement);
         task.priority = mod.requirement.priority;
+        const metadataTags = new Set<string>([
+          mod.previousVersion.type,
+          mod.previousVersion.priority,
+          mod.requirement.type,
+          mod.requirement.priority,
+        ]);
+        task.tags = [
+          ...(task.tags ?? []).filter((tag) => !metadataTags.has(tag)),
+          mod.requirement.type,
+          mod.requirement.priority,
+        ];
         task.updatedAt = Date.now();
         changes.push(`Updated task: ${task.title} (${mod.changes.join(', ')})`);
       }
@@ -190,6 +203,9 @@ export class SpecVersioning {
       changes.push(`Added task: ${newTask.title}`);
     }
 
+    graph.requiredRequirementIds = Array.from(
+      new Set(newSpec.requirements.map((requirement) => requirement.id)),
+    );
     graph.updatedAt = Date.now();
     return { graph, changes };
   }

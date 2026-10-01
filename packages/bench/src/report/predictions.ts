@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { computeTextHash } from '../fingerprint.js';
 
 /**
  * One SWE-bench prediction row, in the exact shape the official harness
@@ -45,10 +46,10 @@ export async function writeInstancePrediction(
   cellLabel: string,
   prediction: SwebenchPrediction,
 ): Promise<void> {
-  const dir = path.join(predictionsDir, slug(cellLabel));
+  const dir = path.join(predictionsDir, storageKey(cellLabel));
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
-    path.join(dir, `${slug(prediction.instance_id)}.json`),
+    path.join(dir, `${storageKey(prediction.instance_id)}.json`),
     JSON.stringify(prediction),
     'utf8',
   );
@@ -59,7 +60,7 @@ export async function collectCellPredictions(
   predictionsDir: string,
   cellLabel: string,
 ): Promise<SwebenchPrediction[]> {
-  const dir = path.join(predictionsDir, slug(cellLabel));
+  const dir = path.join(predictionsDir, storageKey(cellLabel));
   let entries: string[];
   try {
     entries = await fs.readdir(dir);
@@ -69,12 +70,29 @@ export async function collectCellPredictions(
   const out: SwebenchPrediction[] = [];
   for (const name of entries.filter((e) => e.endsWith('.json')).sort()) {
     try {
-      out.push(JSON.parse(await fs.readFile(path.join(dir, name), 'utf8')) as SwebenchPrediction);
+      const parsed: unknown = JSON.parse(await fs.readFile(path.join(dir, name), 'utf8'));
+      if (isPrediction(parsed)) out.push(parsed);
     } catch {
       // skip unreadable
     }
   }
   return out;
+}
+
+function storageKey(value: string): string {
+  return `${slug(value)}-${computeTextHash(value)}`;
+}
+
+function isPrediction(value: unknown): value is SwebenchPrediction {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record['instance_id'] === 'string' &&
+    record['instance_id'].length > 0 &&
+    typeof record['model_name_or_path'] === 'string' &&
+    record['model_name_or_path'].length > 0 &&
+    typeof record['model_patch'] === 'string'
+  );
 }
 
 /**

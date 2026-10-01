@@ -114,11 +114,17 @@ export function applyTextEdits(original: string, edits: TextEdit[]): string {
   return out + original.slice(cursor);
 }
 
+/**
+ * Line starts under LSP's line-break rule: `\n`, `\r\n` AND a lone `\r` (the
+ * same rule `splitLines` applies when positions are computed). Splitting on
+ * `\n` alone made a CR-only file one line long, so every edit past line 0
+ * clamped to end-of-document and was appended there instead.
+ */
 function buildLineStarts(text: string): number[] {
   const starts = [0];
   for (let i = 0; i < text.length; i++) {
     const ch = text.charCodeAt(i);
-    if (ch === 10) starts.push(i + 1);
+    if (ch === 10 || (ch === 13 && text.charCodeAt(i + 1) !== 10)) starts.push(i + 1);
   }
   return starts;
 }

@@ -1128,6 +1128,41 @@ describe('Agent — additional coverage', () => {
     expect(firstBlock).toMatchObject({ type: 'text', text: 'partial answer' });
   });
 
+  it('an abort that severs a provider request reports AGENT_ABORTED, not the provider error', async () => {
+    // The severed request throws a recoverable provider error. Carried as the
+    // run's error, surfaces read the stop as a transient provider failure (the
+    // WebUI armed its auto-continue countdown on it).
+    const ctrlBox: { current?: AbortController } = {};
+    const provider = {
+      id: 'severed-mock',
+      capabilities: {
+        tools: false,
+        parallelTools: false,
+        vision: false,
+        streaming: false,
+        promptCache: false,
+        systemPrompt: true,
+        jsonMode: false,
+        maxContext: 200_000,
+        cacheControl: 'none' as const,
+      },
+      async complete() {
+        ctrlBox.current?.abort();
+        await new Promise((r) => setImmediate(r));
+        throw new ProviderError('request severed HTTP 503', 503, true, 'severed-mock');
+      },
+    } as never as MockProvider;
+    const { agent, tmp } = await buildAgent(provider);
+    cleanupDirs.push(tmp);
+    const ctrl = new AbortController();
+    ctrlBox.current = ctrl;
+    const result = await agent.run('hi', { signal: ctrl.signal });
+    expect(result.status).toBe('aborted');
+    expect(result.error?.code).toBe('AGENT_ABORTED');
+    expect(result.error?.recoverable).toBe(false);
+    expect(ProviderError.isProviderError(result.error?.cause)).toBe(true);
+  });
+
   it('drains context abort hooks on normal completion', async () => {
     const provider = new StreamingMockProvider([
       { content: [{ type: 'text', text: 'ok' }], stopReason: 'end_turn' },

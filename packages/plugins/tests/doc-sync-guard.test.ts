@@ -1,3 +1,5 @@
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const docSyncGuardPlugin = (await import('../src/doc-sync-guard')).default;
@@ -112,6 +114,35 @@ describe('doc-sync-guard plugin', () => {
     expect(result).toBeDefined();
     expect(result?.additionalContext).toContain('src/foo.ts');
     expect(result?.additionalContext).toContain('README.md');
+  });
+
+  it('judges an edit by the whole edited doc, not the replaced fragment', () => {
+    const api = makeApi();
+    docSyncGuardPlugin.setup(api as never);
+    const hook = getHook(api);
+    const root = join('packages', 'plugins', 'tests', `.doc-sync-${process.pid}`);
+    const doc = join(root, 'docs', 'guide.md');
+    mkdirSync(dirname(doc), { recursive: true });
+    writeFileSync(doc, '# Guide\n\nSee src/baz.ts for the API.\n');
+    try {
+      hook({
+        toolName: 'write',
+        toolInput: { path: 'src/baz.ts', content: 'export const baz = 1;' },
+        toolResult: { content: '', isError: false },
+      });
+      const result = hook({
+        toolName: 'edit',
+        toolInput: {
+          path: doc,
+          old_string: 'teh API',
+          new_string: 'the API',
+        },
+        toolResult: { content: '', isError: false },
+      });
+      expect(result).toBeUndefined();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('does not warn when the doc references the changed source file', () => {

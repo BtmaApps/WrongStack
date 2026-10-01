@@ -28,6 +28,13 @@ describe('SecretScrubber', () => {
       '[REDACTED:high_entropy_env]',
     );
   });
+  it.each(['R2_SECRET_ACCESS_KEY', 'B2_APPLICATION_KEY', 'S3_SECRET_KEY'])(
+    'redacts an env key that carries a digit (%s)',
+    (key) => {
+      const value = 'abcdef1234567890abcdef1234567890';
+      expect(s.scrub(`${key}=${value}`)).toBe(`${key}=[REDACTED:high_entropy_env]`);
+    },
+  );
   it('leaves normal text untouched', () => {
     expect(s.scrub('hello world')).toBe('hello world');
   });
@@ -376,6 +383,7 @@ describe('SecretScrubber', () => {
       ['prefixed key', `{"anthropicApiKey": "${secret}"}`],
       ['whitespace around the colon', `{"token" : "${secret}"}`],
       ['client_secret', `{"client_secret":"${secret}"}`],
+      ['an upper-case header key', `{"AUTHORIZATION":"Basic ${secret}"}`],
     ])('redacts a credential behind a %s', (_label, payload) => {
       const scrubbed = s.scrub(payload);
       expect(scrubbed).toContain('[REDACTED:json_credential_key]');

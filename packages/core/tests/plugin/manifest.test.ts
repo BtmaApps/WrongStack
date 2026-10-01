@@ -83,6 +83,46 @@ describe('Plugin manifest — structured dependencies', () => {
   });
 });
 
+describe('Plugin manifest — semver range forms', () => {
+  // KERNEL_API_VERSION is 0.1.10. Every one of these used to be read as an
+  // exact pin with the operator stripped (`>=0.1.0` meant `=0.1.0`, `*` meant
+  // `=0.0.0`), so the plugin was refused with PLUGIN_API_MISMATCH.
+  it.each(['>=0.1.0', '>= 0.1.0', '*', '0.1.x', '0.1', '>=0.1.0 <0.2.0', '^0.2 || ^0.1'])(
+    'loads a plugin whose apiVersion is %s',
+    async (apiVersion) => {
+      const { loaded, failed } = await loadPlugins([p({ name: 'ranged', apiVersion })], {
+        apiFactory: () => fakeApi,
+        log,
+      });
+      expect(failed).toEqual([]);
+      expect(loaded.map((x) => x.name)).toEqual(['ranged']);
+    },
+  );
+
+  it.each(['>=0.2.0', '<0.1.10', '0.2.x', '0.1.9', '^0.2 || ^1'])(
+    'still refuses a plugin whose apiVersion %s excludes the kernel',
+    async (apiVersion) => {
+      const { loaded, failed } = await loadPlugins([p({ name: 'ranged', apiVersion })], {
+        apiFactory: () => fakeApi,
+        log,
+      });
+      expect(loaded).toEqual([]);
+      expect(failed.map((f) => f.plugin.name)).toEqual(['ranged']);
+    },
+  );
+
+  it('honours a >= dependency range', async () => {
+    const { loaded } = await loadPlugins(
+      [
+        p({ name: 'auth', version: '1.5.0' }),
+        p({ name: 'ext', dependsOn: [{ name: 'auth', version: '>=1.2.0' }] }),
+      ],
+      { apiFactory: () => fakeApi, log },
+    );
+    expect(loaded.map((x) => x.name)).toEqual(['auth', 'ext']);
+  });
+});
+
 describe('Plugin manifest — configSchema validation', () => {
   it('passes one canonically resolved default-plus-user option bag to the API factory', async () => {
     let received: Readonly<Record<string, unknown>> | undefined;

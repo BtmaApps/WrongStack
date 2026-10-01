@@ -111,8 +111,26 @@ export class SpecParser {
     const requirements: SpecRequirement[] = [];
     let inRequirements = false;
     let idCounter = 0;
+    let fence: string | undefined;
 
     for (const line of lines) {
+      const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+      const markerRun = marker?.[1];
+      if (fence) {
+        if (
+          markerRun &&
+          markerRun[0] === fence[0] &&
+          markerRun.length >= fence.length &&
+          !marker?.[2]?.trim()
+        ) {
+          fence = undefined;
+        }
+        continue;
+      }
+      if (marker) {
+        fence = marker[1];
+        continue;
+      }
       if (/^##\s+Requirements/i.test(line.trim())) {
         inRequirements = true;
         continue;
@@ -120,8 +138,11 @@ export class SpecParser {
       if (inRequirements && /^##\s+/.test(line.trim())) break;
 
       if (inRequirements) {
-        const req = this.parseRequirementLine(line, `REQ-${++idCounter}`);
-        if (req) requirements.push(req);
+        const req = this.parseRequirementLine(line, `REQ-${idCounter + 1}`);
+        if (req) {
+          idCounter += 1;
+          requirements.push(req);
+        }
       }
     }
 
@@ -146,11 +167,11 @@ export class SpecParser {
     }
 
     let priority: SpecRequirement['priority'] = 'medium';
-    if (trimmed.includes('[critical]') || trimmed.includes('[prio:high]')) {
+    if (lower.includes('[critical]') || lower.includes('[prio:high]')) {
       priority = 'critical';
-    } else if (trimmed.includes('[high]')) {
+    } else if (lower.includes('[high]')) {
       priority = 'high';
-    } else if (trimmed.includes('[low]')) {
+    } else if (lower.includes('[low]')) {
       priority = 'low';
     }
 
@@ -158,7 +179,12 @@ export class SpecParser {
       id,
       type,
       priority,
-      description: trimmed.replace(/\[[^\]]+\]/g, '').trim(),
+      description: trimmed
+        .replace(
+          /\[(?:functional|non-functional|security|performance|ux|critical|high|medium|low|prio:high)\]/gi,
+          '',
+        )
+        .trim(),
       acceptanceCriteria: [],
     };
   }

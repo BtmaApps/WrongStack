@@ -1,5 +1,10 @@
-import { hasProviderCredential, resolveProviderModelList } from '@wrongstack/core/models';
-import type { ModelsRegistry } from '@wrongstack/core/types';
+import {
+  type FallbackSuggestCandidate,
+  hasProviderCredential,
+  isModelRefListed,
+  resolveProviderModelList,
+} from '@wrongstack/core/models';
+import type { ModelsRegistry, ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
 import {
   resolveProviderCatalogForModels,
@@ -12,18 +17,103 @@ import type { ProviderServiceContext } from './mutations.js';
 import { probeModelDescriptors, projectSavedProviders } from './projection.js';
 
 /**
+ * One provider's model list exactly as the WebUI picker sees it: saved
+ * allowlist + catalog (+ sibling catalog), probed from `{baseUrl}/models`
+ * when both are empty, enriched with catalog price/limits/capabilities.
+ * Shared by `provider.models` and the fallback suggestion engine so the two
+ * can never disagree about what the user can reach.
+ */
+async function resolveEnrichedModels(
+  modelsRegistry: ModelsRegistry,
+  providerId: string,
+  config: ProviderConfig | undefined,
+) {
+  const provider = await resolveProviderCatalogForModels(modelsRegistry, providerId, config);
+  const siblingCatalogKey = config?.family ?? providerId;
+  const siblingId = SIBLING_CATALOG[siblingCatalogKey];
+  const sibling =
+    siblingId && siblingId !== providerId
+      ? await modelsRegistry.getProvider(siblingId).catch(() => undefined)
+      : undefined;
+  let models = resolveProviderModelList(
+    config?.models,
+    provider,
+    config?.type ?? providerId,
+    sibling,
+  );
+  if (models.length === 0 && config?.baseUrl) models = await probeModelDescriptors(config);
+  // Reasoning-effort vocabulary straight from the in-memory catalog
+  // objects (already normalized by the registry — no extra lookups).
+  // Sibling-catalog models (e.g. openai ids listed for openai-codex) are
+  // mapped from their own catalog so the levels travel with the model.
+  const reasoningByModelId = new Map(
+    [...(provider?.models ?? []), ...(sibling && sibling !== provider ? sibling.models : [])].map(
+      (m) => [m.id, m.reasoningConfig],
+    ),
+  );
+  const enriched = await Promise.all(
+    models.map(async (model) => {
+      const rc = reasoningByModelId.get(model.id);
+      const reasoningEffortLevels =
+        rc?.effortSupported && rc.effortLevels?.length ? [...rc.effortLevels] : undefined;
+      // Tri-state companion to the levels: undefined = undocumented, false
+      // = the model documents that it has no effort control.
+      const effortSupported = rc?.effortSupported;
+      if (model.contextWindow && model.capabilities.length > 0) {
+        return reasoningEffortLevels || effortSupported !== undefined
+          ? { ...model, reasoningEffortLevels, effortSupported }
+          : model;
+      }
+      const resolved = await resolveProviderModelMetadata(
+        modelsRegistry,
+        providerId,
+        model.id,
+        config,
+      ).catch(() => undefined);
+      if (!resolved) {
+        return reasoningEffortLevels || effortSupported !== undefined
+          ? { ...model, reasoningEffortLevels, effortSupported }
+          : model;
+      }
+      const capabilities = new Set(model.capabilities);
+      if (resolved.capabilities.tools) capabilities.add('tools');
+      if (resolved.capabilities.reasoning) capabilities.add('reasoning');
+      if (resolved.capabilities.vision) capabilities.add('vision');
+      return {
+        ...model,
+        contextWindow: model.contextWindow ?? resolved.capabilities.maxContext ?? undefined,
+        inputCost: model.inputCost ?? resolved.cost?.input,
+        outputCost: model.outputCost ?? resolved.cost?.output,
+        capabilities: [...capabilities],
+        ...(reasoningEffortLevels ? { reasoningEffortLevels } : {}),
+        ...(effortSupported !== undefined ? { effortSupported } : {}),
+      };
+    }),
+  );
+  return enriched;
+}
+
+/**
  * Catalog + model-resolution surface (6B-2). Moved verbatim from
  * provider-handlers.ts: list/saved/search/models handlers plus the
  * default-provider adoption flow.
  */
 export function createCatalogHandlers(ctx: ProviderServiceContext) {
+  // Same ref grammar as the WebUI pickers (`provider/model`, `provider model`,
+  // bare `model`) — a looser server-side match let `provider model` entries
+  // through here while every picker hid them.
   const isDisabled = (providerId: string, modelId: string): boolean => {
-    const full = `${providerId}/${modelId}`.toLowerCase();
-    const bare = modelId.toLowerCase();
-    return (ctx.deps.getDisabledModels?.() ?? []).some((entry) => {
-      const normalized = entry.trim().toLowerCase();
-      return normalized === full || normalized === bare;
-    });
+    // A disabled provider hides every one of its models — checked first so the
+    // per-model scan is skipped entirely for a parked provider.
+    const offProvider = providerId.trim().toLowerCase();
+    if (
+      (ctx.deps.getDisabledProviders?.() ?? []).some(
+        (id) => id.trim().toLowerCase() === offProvider,
+      )
+    ) {
+      return true;
+    }
+    return isModelRefListed(providerId, modelId, ctx.deps.getDisabledModels?.());
   };
   async function handleProvidersList(ws: WebSocket): Promise<void> {
     const { deps, sendMessage, sendOperationResult } = ctx;
@@ -100,73 +190,10 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     }
     try {
       const saved = await ctx.loadConfigProviders();
-      const config = saved[providerId];
-      const provider = await resolveProviderCatalogForModels(
+      const enriched = await resolveEnrichedModels(
         ctx.deps.modelsRegistry,
         providerId,
-        config,
-      );
-      const siblingCatalogKey = config?.family ?? providerId;
-      const siblingId = SIBLING_CATALOG[siblingCatalogKey];
-      const sibling =
-        siblingId && siblingId !== providerId
-          ? await ctx.deps.modelsRegistry.getProvider(siblingId).catch(() => undefined)
-          : undefined;
-      let models = resolveProviderModelList(
-        config?.models,
-        provider,
-        config?.type ?? providerId,
-        sibling,
-      );
-      if (models.length === 0 && config?.baseUrl) models = await probeModelDescriptors(config);
-      // Reasoning-effort vocabulary straight from the in-memory catalog
-      // objects (already normalized by the registry — no extra lookups).
-      // Sibling-catalog models (e.g. openai ids listed for openai-codex) are
-      // mapped from their own catalog so the levels travel with the model.
-      const reasoningByModelId = new Map(
-        [
-          ...(provider?.models ?? []),
-          ...(sibling && sibling !== provider ? sibling.models : []),
-        ].map((m) => [m.id, m.reasoningConfig]),
-      );
-      const enriched = await Promise.all(
-        models.map(async (model) => {
-          const rc = reasoningByModelId.get(model.id);
-          const reasoningEffortLevels =
-            rc?.effortSupported && rc.effortLevels?.length ? [...rc.effortLevels] : undefined;
-          // Tri-state companion to the levels: undefined = undocumented, false
-          // = the model documents that it has no effort control.
-          const effortSupported = rc?.effortSupported;
-          if (model.contextWindow && model.capabilities.length > 0) {
-            return reasoningEffortLevels || effortSupported !== undefined
-              ? { ...model, reasoningEffortLevels, effortSupported }
-              : model;
-          }
-          const resolved = await resolveProviderModelMetadata(
-            ctx.deps.modelsRegistry as ModelsRegistry,
-            providerId,
-            model.id,
-            config,
-          ).catch(() => undefined);
-          if (!resolved) {
-            return reasoningEffortLevels || effortSupported !== undefined
-              ? { ...model, reasoningEffortLevels, effortSupported }
-              : model;
-          }
-          const capabilities = new Set(model.capabilities);
-          if (resolved.capabilities.tools) capabilities.add('tools');
-          if (resolved.capabilities.reasoning) capabilities.add('reasoning');
-          if (resolved.capabilities.vision) capabilities.add('vision');
-          return {
-            ...model,
-            contextWindow: model.contextWindow ?? resolved.capabilities.maxContext ?? undefined,
-            inputCost: model.inputCost ?? resolved.cost?.input,
-            outputCost: model.outputCost ?? resolved.cost?.output,
-            capabilities: [...capabilities],
-            ...(reasoningEffortLevels ? { reasoningEffortLevels } : {}),
-            ...(effortSupported !== undefined ? { effortSupported } : {}),
-          };
-        }),
+        saved[providerId],
       );
       ctx.sendMessage(ws, {
         type: 'provider.models',
@@ -180,6 +207,40 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     } catch (error) {
       ctx.sendOperationResult(ws, false, errMessage(error));
     }
+  }
+
+  /**
+   * Every model of every SAVED provider, minus the user's disabled models —
+   * the only pool fallback suggestions may draw from. A provider whose
+   * catalog cannot be resolved is skipped, never fatal.
+   */
+  async function collectFallbackCandidates(): Promise<FallbackSuggestCandidate[]> {
+    const registry = ctx.deps.modelsRegistry;
+    if (!registry) return [];
+    const saved = await ctx.loadConfigProviders();
+    const perProvider = await Promise.all(
+      Object.entries(saved).map(async ([providerId, config]) => {
+        const models = await resolveEnrichedModels(registry, providerId, config).catch(() => []);
+        return models
+          .filter((model) => !isDisabled(providerId, model.id))
+          .map(
+            (model): FallbackSuggestCandidate => ({
+              provider: providerId,
+              model: model.id,
+              name: model.name,
+              releaseDate: model.releaseDate,
+              contextWindow: model.contextWindow,
+              maxOutput: model.maxOutput,
+              inputCost: model.inputCost,
+              outputCost: model.outputCost,
+              capabilities: model.capabilities,
+              status: model.status,
+              family: model.family,
+            }),
+          );
+      }),
+    );
+    return perProvider.flat();
   }
 
   async function adoptDefaultProviderIfUnset(providerId: string): Promise<void> {
@@ -209,6 +270,7 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
     handleProvidersSaved,
     handleProviderModels,
     handleProviderModelsSearch,
+    collectFallbackCandidates,
     adoptDefaultProviderIfUnset,
   };
 }

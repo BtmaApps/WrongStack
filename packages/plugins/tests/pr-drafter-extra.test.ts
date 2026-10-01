@@ -130,6 +130,26 @@ describe('pr-drafter extra coverage', () => {
     expect(h.message).toContain('1 commit(s)');
   });
 
+  it('uses only the commit subject for the title and the commit list', async () => {
+    const api = makeApi();
+    prDrafterPlugin.setup(api as never);
+    getPostHook(api)({
+      toolName: 'git_autocommit',
+      toolInput: {},
+      toolResult: {
+        content: autocommitResult('feat: add login\n\nWires the form to the session store.'),
+        isError: false,
+      },
+    });
+    const draft = (await getTool(api, 'pr_draft')({ preview: true })) as {
+      title: string;
+      body: string;
+    };
+    expect(draft.title).toBe('feat: add login');
+    expect(draft.body).toContain('- feat: add login\n');
+    expect(draft.body).not.toContain('Wires the form');
+  });
+
   it('ignores failed, errored, dry-run and truncated-without-hash git_autocommit calls', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);

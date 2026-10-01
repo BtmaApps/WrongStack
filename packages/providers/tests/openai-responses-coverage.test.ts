@@ -317,3 +317,37 @@ describe('OpenAIResponsesProvider', () => {
     expect(result.stopReason).toBe('end_turn');
   });
 });
+
+describe('Responses incomplete stop reasons', () => {
+  const sse = (frames: unknown[]) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(frames.map((f) => `data: ${JSON.stringify(f)}\n\n`).join('')),
+        );
+        controller.close();
+      },
+    });
+
+  it.each([
+    ['content_filter', 'refusal'],
+    ['max_output_tokens', 'max_tokens'],
+  ])('maps incomplete_details.reason %s to %s', async (reason, expected) => {
+    const { OpenAIResponsesProvider } = await import('../src/openai-responses.js');
+    const p = new OpenAIResponsesProvider({ id: 'p', apiKey: 'k', baseUrl: 'https://x/v1' });
+    const events: Array<Record<string, unknown>> = [];
+    for await (const ev of (p as any).parseStream(
+      sse([
+        { type: 'response.output_text.delta', delta: 'partial' },
+        {
+          type: 'response.incomplete',
+          response: { status: 'incomplete', incomplete_details: { reason }, usage: {} },
+        },
+      ]),
+      'gpt-4',
+    )) {
+      events.push(ev);
+    }
+    expect(events.at(-1)).toMatchObject({ type: 'message_stop', stopReason: expected });
+  });
+});

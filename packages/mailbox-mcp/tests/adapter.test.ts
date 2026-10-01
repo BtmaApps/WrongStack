@@ -80,6 +80,55 @@ describe('request bounds', () => {
 });
 
 describe('createMailboxMcpToolHost', () => {
+  it.each([
+    { subject: '  code sample  ', body: '    return 42;\n  ' },
+    { subject: 'plain subject', body: 'plain body' },
+    { subject: '\tsample\r\n', body: '\r\n\tcode\r\n' },
+  ])('preserves send payload whitespace: %j', async ({ subject, body }) => {
+    const send = vi.fn().mockResolvedValue({ id: 'message-1' });
+    const host = createMailboxMcpToolHost(backend({ send }), new MailboxEventEmitter(), {
+      actor: 'external-agent',
+      writable: true,
+    });
+
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'send',
+        to: ' leader ',
+        type: ' note ',
+        subject,
+        body,
+      }),
+    ).resolves.toMatchObject({ isError: false });
+    expect(send).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ to: 'leader', type: 'note', subject, body }),
+    );
+  });
+
+  it.each([
+    { subject: 'subject', body: '', missing: 'body' },
+    { subject: 'subject', body: ' \n\t ', missing: 'body' },
+    { subject: '', body: 'body', missing: 'subject' },
+    { subject: ' \t ', body: 'body', missing: 'subject' },
+  ])('rejects blank send payloads: %j', async ({ subject, body, missing }) => {
+    const send = vi.fn();
+    const host = createMailboxMcpToolHost(backend({ send }), new MailboxEventEmitter(), {
+      actor: 'external-agent',
+      writable: true,
+    });
+
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'send',
+        to: 'leader',
+        type: 'note',
+        subject,
+        body,
+      }),
+    ).resolves.toEqual({ isError: true, content: `${missing} is required` });
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('advertises full tiered tools in admin mode', async () => {
     const host = createMailboxMcpToolHost(backend(), new MailboxEventEmitter(), {
       actor: 'external-agent',

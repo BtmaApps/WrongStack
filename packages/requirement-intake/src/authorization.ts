@@ -84,7 +84,7 @@ export class ProjectMembershipIntakeAuthorizer implements IntakeAuthorizer {
 
   constructor(options: ProjectMembershipIntakeAuthorizerOptions) {
     this.projectsOf = options.projectsOf;
-    this.ownerOnly = options.ownerOnlyOperations ?? new Set();
+    this.ownerOnly = new Set(options.ownerOnlyOperations);
   }
 
   async isAllowed(
@@ -95,8 +95,8 @@ export class ProjectMembershipIntakeAuthorizer implements IntakeAuthorizer {
     if (record && record.projectId !== ctx.projectId) return false;
     const memberships = await this.projectsOf(ctx.id, ctx.type);
     if (!memberships.has(ctx.projectId)) return false;
-    if (this.ownerOnly.has(operation) && record) {
-      return record.requestedBy === ctx.id;
+    if (this.ownerOnly.has(operation)) {
+      return record !== undefined && record.requestedBy === ctx.id;
     }
     return true;
   }

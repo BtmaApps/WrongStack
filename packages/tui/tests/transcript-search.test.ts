@@ -41,6 +41,17 @@ function stateWith(list: HistoryEntry[]): State {
   };
 }
 
+describe('findTranscriptMatches case folding', () => {
+  it('keeps the hit column exact after characters whose lowercase is longer', () => {
+    const list: HistoryEntry[] = [{ id: 1, kind: 'user', text: 'İzmir İstanbul parser' }];
+    const [match] = findTranscriptMatches(list, 'parser', { includeReasoning: true });
+    expect(match).toMatchObject({ column: 15, length: 6 });
+    expect(match!.line.slice(match!.column, match!.column + match!.length)).toBe('parser');
+    const [city] = findTranscriptMatches(list, 'istanbul', { includeReasoning: true });
+    expect(city).toMatchObject({ column: 6, length: 8 });
+  });
+});
+
 describe('findTranscriptMatches', () => {
   it('matches lowercase queries in any case, oldest first, one per entry', () => {
     const matches = findTranscriptMatches(entries, 'parser', { includeReasoning: true });

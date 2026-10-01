@@ -32,9 +32,9 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import type { Plugin } from '@wrongstack/core/types';
-import { releaseHandle, BoundedMap } from '../runtime/index.js';
+import { scriptSpawnArgs } from '@wrongstack/core/utils';
+import { BoundedMap, releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
 
@@ -351,13 +351,25 @@ function parseLinterOutput(stdout: string, linterName: string): LintIssue[] {
     if (linterName === 'biome') {
       for (const d of data.diagnostics ?? []) {
         const cat = d.category ?? 'unknown';
+        // `biome check` also reports formatting (`format`) and assists
+        // (`assist/source/organizeImports`) at severity error. Neither is a
+        // lint finding — format-on-save and import-organizer apply them after
+        // the write — yet they flagged nearly every write a model produced.
+        if (cat === 'format' || String(cat).startsWith('assist/')) continue;
         const sev =
           d.severity === 'error' ? 'error' : d.severity === 'warning' ? 'warning' : 'info';
         issues.push({
           severity: sev,
           rule: cat,
-          message: d.description ?? cat,
-          line: d.location?.span?.[0] ?? undefined,
+          // Biome 2 reports `message` and `location.start.line`; `span` is a
+          // character offset, never a line number.
+          message:
+            typeof d.message === 'string'
+              ? d.message
+              : typeof d.description === 'string'
+                ? d.description
+                : cat,
+          line: typeof d.location?.start?.line === 'number' ? d.location.start.line : undefined,
         });
       }
     } else {

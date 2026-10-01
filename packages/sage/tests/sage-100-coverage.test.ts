@@ -934,6 +934,13 @@ describe('sage 100% coverage suite', () => {
       const noId = readIdentifierAt(filePath, 1, 18);
       expect(noId).toBeUndefined();
 
+      // 4b. byte column, as plug-lsp's rename takes it: `ğüş` is 6 bytes /
+      // 3 UTF-16 units, so byte column 19 is `x`; read as a UTF-16 index it
+      // lands three characters later, on the space before `2`.
+      const multiPath = path.join(tempDir, 'id_multibyte.ts');
+      await fs.writeFile(multiPath, 'const ğüş = 1, x = 2;\n', 'utf8');
+      expect(readIdentifierAt(multiPath, 1, 19)).toBe('x');
+
       // 5. readIdentifierAt missing file
       const missingId = readIdentifierAt('nonexistent_file_xyz.ts', 1, 1);
       expect(missingId).toBeUndefined();

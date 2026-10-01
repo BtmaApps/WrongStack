@@ -82,17 +82,21 @@ export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
   for (const node of nodes) {
     if (node.status === 'completed') continue;
     const downstream = getTransitiveBlocked(graph, node.id, blocksMap);
-    if (downstream.size > 0) {
-      const blockedHours = Array.from(downstream).reduce((sum, id) => {
-        const n = graph.nodes.get(id);
-        return sum + (n?.estimateHours ?? 0);
-      }, 0);
+    const activeDownstream = Array.from(downstream).filter((id) => {
+      const downstreamNode = graph.nodes.get(id);
+      return downstreamNode?.status !== 'completed';
+    });
+    if (activeDownstream.length > 0) {
+      const blockedHours = activeDownstream.reduce(
+        (sum, id) => sum + taskEstimateHours(graph, id, 0),
+        0,
+      );
       bottlenecks.push({
         taskId: node.id,
         title: node.title,
-        blockedCount: downstream.size,
+        blockedCount: activeDownstream.length,
         blockedHours,
-        severity: Math.min(100, Math.round((downstream.size / nodes.length) * 100)),
+        severity: Math.min(100, Math.round((activeDownstream.length / nodes.length) * 100)),
       });
     }
   }
@@ -104,7 +108,7 @@ export function analyzeCriticalPath(graph: TaskGraph): CriticalPathAnalysis {
 
   // Total hours on critical path
   const totalHours = criticalPath.reduce((sum, id) => {
-    return sum + (graph.nodes.get(id)!.estimateHours ?? 0);
+    return sum + taskEstimateHours(graph, id, 0);
   }, 0);
 
   // Parallel execution groups
@@ -170,7 +174,7 @@ function computeCriticalPath(
 
   // Initialize each node's distance to its own estimate
   for (const id of allIds) {
-    dist.set(id, graph.nodes.get(id)?.estimateHours ?? 1);
+    dist.set(id, taskEstimateHours(graph, id, 1));
     prev.set(id, null);
   }
 
@@ -192,7 +196,7 @@ function computeCriticalPath(
       const blocked = blocksMap.get(id);
       if (!blocked) continue;
       for (const blockedId of blocked) {
-        const candidateDist = dist.get(id)! + (graph.nodes.get(blockedId)?.estimateHours ?? 1);
+        const candidateDist = dist.get(id)! + taskEstimateHours(graph, blockedId, 1);
         if (candidateDist > (dist.get(blockedId) ?? 0)) {
           dist.set(blockedId, candidateDist);
           prev.set(blockedId, id);
@@ -225,6 +229,11 @@ function computeCriticalPath(
   }
 
   return path;
+}
+
+function taskEstimateHours(graph: TaskGraph, taskId: string, fallback: number): number {
+  const value = graph.nodes.get(taskId)?.estimateHours;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 /**

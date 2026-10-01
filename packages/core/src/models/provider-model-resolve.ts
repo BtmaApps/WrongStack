@@ -22,6 +22,10 @@ export interface ProviderModelDescriptor {
   outputCost?: number | undefined;
   /** Declared output modalities, used by agent-model pickers to exclude image/video-only models. */
   outputModalities?: string[] | undefined;
+  /** models.dev lifecycle marker (`deprecated` / `beta`); absent = GA or unknown. */
+  status?: string | undefined;
+  /** models.dev version line (`minimax`, `glm`, `claude-opus`) shared across releases. */
+  family?: string | undefined;
   provenance?: ModelProvenance | undefined;
   capabilities: string[];
 }
@@ -38,6 +42,8 @@ export function describeCatalogModel(m: ModelsDevModel): ProviderModelDescriptor
     inputCost: m.cost?.input,
     outputCost: m.cost?.output,
     ...(m.modalities?.output !== undefined ? { outputModalities: m.modalities.output } : {}),
+    ...(m.status ? { status: m.status } : {}),
+    ...(m.family ? { family: m.family } : {}),
     ...(m.provenance ? { provenance: m.provenance } : {}),
     capabilities: [
       ...(m.tool_call ? ['tools'] : []),

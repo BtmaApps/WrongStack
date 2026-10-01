@@ -42,6 +42,14 @@ export interface OpenedSocket {
 
 export const SOCKET_OPEN = 1;
 
+function isSessionStartPayload(value: unknown): value is WSSessionStart['payload'] {
+  if (typeof value !== 'object' || value === null) return false;
+  const payload = value as Record<string, unknown>;
+  return ['sessionId', 'model', 'provider'].every(
+    (key) => typeof payload[key] === 'string' && payload[key].trim().length > 0,
+  );
+}
+
 /**
  * Open a socket and wait for the server's `session.start`. After that the
  * socket's frames and its close go to `routes`; before it, a failure rejects.
@@ -96,6 +104,7 @@ export function openSocket(
         routes.close(event);
         return;
       }
+      if (settled) return;
       if (opened) {
         fail(
           new WrongStackError({
@@ -110,6 +119,7 @@ export function openSocket(
       failedHandshake();
     });
     socket.addEventListener('message', (event) => {
+      if (settled) return;
       const frame = parseFrame(event.data);
       if (!frame) return;
       if (announced) {
@@ -120,9 +130,14 @@ export function openSocket(
         early.push(frame);
         return;
       }
+      if (!isSessionStartPayload(frame.payload)) {
+        fail(new WrongStackError({ kind: 'protocol', code: 'invalid_session_start' }));
+        socket.close();
+        return;
+      }
       announced = true;
       clearTimeout(timer);
-      resolve({ socket, start: frame.payload as WSSessionStart['payload'], early });
+      resolve({ socket, start: frame.payload, early });
     });
   });
 }

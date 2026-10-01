@@ -108,6 +108,9 @@ export function buildNewIntakeRecord(
   const title = titleProvided ? input.title!.trim() : deterministicTitle(input.originalRequest);
   const requestType = normalizeRequestType(input.requestType);
   const idempotencyKey = input.idempotencyKey?.trim();
+  const businessGoal = input.businessGoal?.trim();
+  const expectedOutcome = input.expectedOutcome?.trim();
+  const scopeNotes = input.scopeNotes?.trim();
   const attachments: IntakeAttachment[] = (input.attachments ?? []).map((attachment) => ({
     id: `${ATTACHMENT_ID_PREFIX}${ulid()}`,
     name: attachment.name,
@@ -148,10 +151,10 @@ export function buildNewIntakeRecord(
     priority: input.priority ?? 'unspecified',
     requestedBy: input.requestedBy,
     ...(vibeState ? { isVibeMode: true, vibeProtocol: vibeState } : {}),
-    ...(input.businessGoal !== undefined ? { businessGoal: input.businessGoal } : {}),
+    ...(businessGoal ? { businessGoal } : {}),
     targetUsers: [...(input.targetUsers ?? [])],
-    ...(input.expectedOutcome !== undefined ? { expectedOutcome: input.expectedOutcome } : {}),
-    ...(input.scopeNotes !== undefined ? { scopeNotes: input.scopeNotes } : {}),
+    ...(expectedOutcome ? { expectedOutcome } : {}),
+    ...(scopeNotes ? { scopeNotes } : {}),
     constraints: [...(input.constraints ?? [])],
     providedContext: [...(input.providedContext ?? [])],
     attachments,
@@ -165,10 +168,10 @@ export function buildNewIntakeRecord(
       normalized_summary: 'deterministic',
       request_type: input.requestType !== undefined ? 'user' : 'deterministic',
       priority: input.priority !== undefined ? 'user' : 'deterministic',
-      ...(input.businessGoal !== undefined ? { business_goal: 'user' as const } : {}),
+      ...(businessGoal ? { business_goal: 'user' as const } : {}),
       ...(input.targetUsers !== undefined ? { target_users: 'user' as const } : {}),
-      ...(input.expectedOutcome !== undefined ? { expected_outcome: 'user' as const } : {}),
-      ...(input.scopeNotes !== undefined ? { scope_notes: 'user' as const } : {}),
+      ...(expectedOutcome ? { expected_outcome: 'user' as const } : {}),
+      ...(scopeNotes ? { scope_notes: 'user' as const } : {}),
       ...(input.constraints !== undefined ? { constraints: 'user' as const } : {}),
       ...(input.providedContext !== undefined ? { provided_context: 'user' as const } : {}),
       ...(attachments.length > 0 ? { attachments: 'user' as const } : {}),

@@ -216,6 +216,49 @@ describe('lint-gate local linter resolution', () => {
     );
   });
 
+  it('reads Biome 2 diagnostics and ignores its format/assist entries', async () => {
+    await installFakeLinter(projectRoot, '@biomejs/biome', 'biome', 'bin/biome.js');
+    const at = (line: number) => ({ path: 'input.ts', start: { line, column: 1 } });
+    const biomeOutput = JSON.stringify({
+      diagnostics: [
+        {
+          severity: 'error',
+          message: 'This is an unexpected use of the debugger statement.',
+          category: 'lint/suspicious/noDebugger',
+          location: at(3),
+        },
+        { severity: 'error', message: 'Formatter would have printed…', category: 'format' },
+        {
+          severity: 'error',
+          message: 'The imports are not sorted.',
+          category: 'assist/source/organizeImports',
+        },
+      ],
+    });
+    execFileMock
+      .mockImplementationOnce(() => {
+        queueMicrotask(() => completeExecCall(0, null, 'Version: 2.5.13'));
+        return {} as never;
+      })
+      .mockImplementationOnce(() => {
+        queueMicrotask(() => completeExecCall(1, null, biomeOutput));
+        return {} as never;
+      });
+
+    api = makeApi(projectRoot, { linter: 'biome' });
+    lintGatePlugin.setup(api as never);
+    const result = (await getHook(api)({
+      toolName: 'write',
+      toolInput: { path: path.join(projectRoot, 'src', 'example.ts'), content: 'debugger;\n' },
+    })) as { additionalContext?: string };
+    const context = result.additionalContext ?? '';
+    expect(context).toContain(
+      'lint/suspicious/noDebugger: This is an unexpected use of the debugger statement. (line 3)',
+    );
+    expect(context).not.toContain('format');
+    expect(context).not.toContain('organizeImports');
+  });
+
   it('runs lint through the same local Node entry instead of npx or a .cmd shim', async () => {
     const biomeEntry = await installFakeLinter(
       projectRoot,

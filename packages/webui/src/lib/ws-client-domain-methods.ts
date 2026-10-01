@@ -152,6 +152,23 @@ const domainMethods = {
     this.send({ type: 'providers.saved' });
   },
 
+  /**
+   * Ask for fallback profile suggestions built from the saved providers'
+   * catalogs. Session-stamped so `mode: 'llm'` runs on THIS tab's model.
+   */
+  suggestFallbacks(
+    this: WsClientDomainHost,
+    payload: {
+      requestId: string;
+      mode: 'heuristic' | 'llm';
+      chainLength?: number | undefined;
+      disabledModels?: string[] | undefined;
+      disabledProviders?: string[] | undefined;
+    },
+  ) {
+    this.send({ type: 'fallback.suggest', payload: this.withSession({ ...payload }) });
+  },
+
   searchProviderModels(this: WsClientDomainHost, query: string, limit?: number) {
     this.send({
       type: 'provider.models.search',

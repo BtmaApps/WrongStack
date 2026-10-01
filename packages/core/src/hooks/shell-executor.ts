@@ -361,16 +361,23 @@ export async function runShellHookDetailed(
     let out = '';
     let err = '';
     let outTrunc = false;
-    child.stdout?.on('data', (d: Buffer) => {
+    // Decode at the stream, not per chunk: a pipe chunk can end inside a
+    // multi-byte character, and `chunk.toString('utf8')` turned each half into
+    // U+FFFD — corrupting a `mutate` hook's rewritten tool input, or its
+    // context, without any error. The stream decoder carries the partial
+    // character into the next chunk.
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stdout?.on('data', (d: string) => {
       if (outTrunc) return;
-      out += d.toString('utf8');
+      out += d;
       if (Buffer.byteLength(out, 'utf8') > MAX_OUTPUT_BYTES) {
         out = out.slice(0, MAX_OUTPUT_BYTES);
         outTrunc = true;
       }
     });
-    child.stderr?.on('data', (d: Buffer) => {
-      if (err.length < MAX_OUTPUT_BYTES) err += d.toString('utf8');
+    child.stderr?.on('data', (d: string) => {
+      if (err.length < MAX_OUTPUT_BYTES) err += d;
     });
 
     child.on('error', (e) => {

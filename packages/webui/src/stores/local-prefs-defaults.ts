@@ -60,6 +60,8 @@ export interface LocalPrefs {
   favoriteModels: string[];
   /** Provider-qualified models intentionally hidden from selection and fallback routing. */
   disabledModels: string[];
+  /** Provider ids intentionally switched off: every one of their models is hidden and skipped. */
+  disabledProviders: string[];
   /** Restrict auto-derived fallback chains to favorite models. */
   favoriteModelsOnly: boolean;
   /**
@@ -256,6 +258,18 @@ export interface LocalPrefs {
   tgDelegate: boolean;
   /** Long-tool threshold in ms. 0 = disabled. */
   tgLongToolMs: number;
+  /**
+   * Bot polling interval in seconds. 1–60; the server rejects anything
+   * outside that range, matching `/telegram-settings poll`.
+   */
+  tgPollIntervalSec: number;
+  /**
+   * Default chat ID for notifications (`extensions.telegram.notifyChatId`).
+   * Empty string = not set. Positive = private chat (paired with the bot);
+   * negative = group/channel, which the server refuses unless the config
+   * sets `allowGroupChats: true`.
+   */
+  tgChatId: string;
 
   /**
    * Display-only UI language (BCP-47 code, e.g. `en`, `pt-BR`).
@@ -411,6 +425,7 @@ export const DEFAULTS: LocalPrefsData = {
   fallbackProfiles: {},
   favoriteModels: [],
   disabledModels: [],
+  disabledProviders: [],
   favoriteModelsOnly: false,
   modelMatrix: {},
   subagentModelPlan: { enabled: true, lock: true, followSessionModel: false, slots: [] },
@@ -467,6 +482,11 @@ export const DEFAULTS: LocalPrefsData = {
   tgSessionEnd: false,
   tgDelegate: true,
   tgLongToolMs: 30_000,
+  // Telegram polling interval (s) and default notification chat. Defaults
+  // mirror telegram's DEFAULT_CONFIG (packages/telegram/src/config.ts:86)
+  // and the server seeds in context-meta.ts.
+  tgPollIntervalSec: 2,
+  tgChatId: '',
   uiLocale: detectLocale(),
   chimeraAutoFix: 'off',
   // Display toggles (TUI SettingsPicker parity — fields 21, 41, 42, 43, 44).

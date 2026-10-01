@@ -112,20 +112,71 @@ function parseSemver(v: string): [number, number, number] {
   return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
 }
 
+function compareSemver(a: [number, number, number], b: [number, number, number]): number {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+}
+
+const COMPARATOR_RE =
+  /^(\^|~|>=|<=|>|<|=)?v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:[-+].*)?$/;
+
+/** One comparator (`^1.2`, `>=0.1.0`, `0.1.x`, `*`) against a version. */
+function satisfiesComparator(token: string, version: [number, number, number]): boolean {
+  if (token === '' || token === '*' || token === 'x' || token === 'X') return true;
+  const match = COMPARATOR_RE.exec(token);
+  if (!match) return false;
+  const op = match[1] ?? '=';
+  const parts = [match[2], match[3], match[4]];
+  // How many leading components are concrete numbers; the rest are wildcards.
+  const fixed = parts.findIndex((part) => part === undefined || !/^\d+$/.test(part));
+  const specified = fixed === -1 ? 3 : fixed;
+  const [rMaj, rMin, rPatch] = parts.map((part) =>
+    part !== undefined && /^\d+$/.test(part) ? Number.parseInt(part, 10) : 0,
+  ) as [number, number, number];
+  const [vMaj, vMin, vPatch] = version;
+  const cmp = compareSemver(version, [rMaj, rMin, rPatch]);
+  switch (op) {
+    case '^':
+      if (rMaj === 0) return vMaj === 0 && vMin === rMin && vPatch >= rPatch;
+      return vMaj === rMaj && (vMin > rMin || (vMin === rMin && vPatch >= rPatch));
+    case '~':
+      return vMaj === rMaj && vMin === rMin && vPatch >= rPatch;
+    case '>=':
+      return cmp >= 0;
+    case '>':
+      return cmp > 0;
+    case '<=':
+      return cmp <= 0;
+    case '<':
+      return cmp < 0;
+    default:
+      // A full version is an exact pin; a partial one (`0.1`, `0.1.x`) is an
+      // x-range that matches every version sharing the given prefix.
+      return [vMaj, vMin, vPatch]
+        .slice(0, specified)
+        .every((component, index) => component === [rMaj, rMin, rPatch][index]);
+  }
+}
+
+/**
+ * Whether `version` satisfies a semver range.
+ *
+ * The documented contract is a "semver range", but this used to understand
+ * only `^`, `~` and an exact pin: every other operator fell through to the
+ * exact branch with the operator stripped, so `>=0.1.0` meant `=0.1.0`, `*`
+ * meant `=0.0.0`, and a plugin declaring either was refused with
+ * `PLUGIN_API_MISMATCH` against a kernel it supports. Alternatives (`||`) and
+ * space-separated comparator sets (`>=0.1.0 <0.3.0`) are now honoured too.
+ */
 function satisfies(range: string, version: string): boolean {
-  const [vMaj, vMin, vPatch] = parseSemver(version);
-  const trimmed = range.trim();
-  const op = trimmed.startsWith('^') ? '^' : trimmed.startsWith('~') ? '~' : '=';
-  const ver = trimmed.replace(/^[\^~=]/, '');
-  const [rMaj, rMin, rPatch] = parseSemver(ver);
-  if (op === '^') {
-    if (rMaj === 0) return vMaj === 0 && vMin === rMin && vPatch >= rPatch;
-    return vMaj === rMaj && (vMin > rMin || (vMin === rMin && vPatch >= rPatch));
-  }
-  if (op === '~') {
-    return vMaj === rMaj && vMin === rMin && vPatch >= rPatch;
-  }
-  return vMaj === rMaj && vMin === rMin && vPatch === rPatch;
+  const parsed = parseSemver(version);
+  // `>= 1.2.0` and `>=1.2.0` are the same comparator.
+  const normalized = range.trim().replace(/(\^|~|>=|<=|>|<|=)\s+/g, '$1');
+  return normalized.split('||').some((set) =>
+    set
+      .trim()
+      .split(/\s+/)
+      .every((token) => satisfiesComparator(token, parsed)),
+  );
 }
 
 /** Normalize either `string` or `PluginDependency` into the structured form. */

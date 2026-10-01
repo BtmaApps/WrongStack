@@ -95,6 +95,17 @@ describe('auto-i18n-extractor plugin', () => {
     expect(result.strings[0]?.keySuggestion).toBe('t.click_me');
   });
 
+  it('extracts non-Latin text and keys accented words without splitting them', async () => {
+    mockFile(`export const labels = ['Привет мир', 'Değer girin', '12:30 — 45%'];`);
+    const api = makeApi();
+    plugin.setup(api as never);
+    const result = (await getTool(api, 'i18n_extract')({ path: 'src/Labels.tsx' })) as {
+      strings: Array<{ value: string; keySuggestion: string }>;
+    };
+    expect(result.strings.map((s) => s.value)).toEqual(['Привет мир', 'Değer girin']);
+    expect(result.strings[1]?.keySuggestion).toBe('t.deger_girin');
+  });
+
   it('i18n_extract filters out excluded attributes', async () => {
     mockFile(`<div className="wrapper" aria-label="Close dialog" data-testid="main" id="x">
   <span title="Save changes">Save changes</span>

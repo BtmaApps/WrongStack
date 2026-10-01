@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The no-diff detector (postHook → gitDiffFingerprint) shells out to
@@ -11,10 +14,15 @@ vi.mock('node:child_process', () => ({
   execFile: vi.fn(
     (
       _file: unknown,
-      _args: unknown,
+      args: string[],
       _options: unknown,
       callback: (error: Error | null, stdout: string) => void,
     ) => {
+      // Paths under `scaffold/` are untracked: `ls-files --error-unmatch` fails.
+      if (args[0] === 'ls-files' && args.at(-1)?.startsWith('scaffold')) {
+        callback(new Error('error: pathspec did not match any file(s) known to git'), '');
+        return { unref: vi.fn() } as never;
+      }
       // Empty diff — the target file is clean and stays clean.
       callback(null, '');
       return { unref: vi.fn() } as never;
@@ -297,6 +305,33 @@ describe('loop-breaker plugin', () => {
     const block = preHook({ toolName: 'read', toolInput: { path: '/next' } });
     expect(block?.decision).toBe('block');
     expect(block?.reason).toContain('no diff was produced');
+  });
+
+  it('does not count writes to new untracked files as "no diff"', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'loop-breaker-'));
+    try {
+      mkdirSync(join(dir, 'scaffold'));
+      const api = makeEnabledApi({ noDiffWarnAfter: 1, noDiffBlockAfter: 2, blockAfter: 99 });
+      loopBreakerPlugin.setup(api as never);
+      const preHook = getHook(api);
+      const postHook = getAsyncHook(api, 'PostToolUse');
+      const write = (name: string) => ({
+        toolName: 'write',
+        toolInput: { path: `scaffold/${name}` },
+        cwd: dir,
+        toolResult: { isError: false, content: 'ok' },
+      });
+      for (const name of ['a.ts', 'b.ts', 'c.ts', 'd.ts']) {
+        writeFileSync(join(dir, 'scaffold', name), `export const ${name[0]} = 1;\n`);
+        expect(await postHook(write(name))).toBeUndefined();
+      }
+      expect(preHook({ toolName: 'read', toolInput: { path: '/next' } })).toBeUndefined();
+      // Rewriting the same untracked file unchanged is still a repeat.
+      const warn = await postHook(write('d.ts'));
+      expect(warn?.additionalContext).toContain('no diff has changed for 1 mutating step');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('respects ignoreTools', () => {

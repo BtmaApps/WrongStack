@@ -118,13 +118,16 @@ const ASSET_ROOT_KEY = Symbol.for('wrongstack.standalone-assets');
 export function standaloneAssetRoot(): string | null {
   if (!isStandaloneBinary()) return null;
   const root = (globalThis as Record<symbol, unknown>)[ASSET_ROOT_KEY];
-  return typeof root === 'string' && root.length > 0 ? root : null;
+  return typeof root === 'string' && path.isAbsolute(root) ? root : null;
 }
 
 /** `@wrongstack/core` → `<assetRoot>/core` in the binary; null elsewhere. */
 export function standalonePackageDir(packageName: string): string | null {
   const root = standaloneAssetRoot();
   if (root === null) return null;
+  if (!/^@wrongstack\/[a-z0-9][a-z0-9-]*$/.test(packageName)) {
+    throw new Error(`Invalid WrongStack package name for standalone assets: ${packageName}`);
+  }
   return path.join(root, packageName.replace(/^@wrongstack\//, ''));
 }
 

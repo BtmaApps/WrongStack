@@ -47,8 +47,10 @@ const JSON_CREDENTIAL_KEY_ANCHORS: readonly string[] = [
   'PASSWORD"',
   'authorization"',
   'Authorization"',
+  'AUTHORIZATION"',
   'bearer"',
   'Bearer"',
+  'BEARER"',
 ];
 
 const PATTERNS: Pattern[] = [
@@ -220,7 +222,9 @@ const PATTERNS: Pattern[] = [
     // delimiter, 2=key name, 3=value.
     regex:
       // `.` is in the value class: dotted tokens (Discord `a.b.c`) leaked whole.
-      /(^|\s)([A-Z_]{4,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE))\s*[:=]\s*['"]?([A-Za-z0-9_/+=.-]{20,512})['"]?(?=\s|$)/g,
+      // Digits are in the key class (not as its first character): `R2_SECRET_ACCESS_KEY`,
+      // `B2_APPLICATION_KEY`, `S3_SECRET_KEY` (object-store credentials) leaked.
+      /(^|\s)([A-Z_][A-Z0-9_]{3,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE))\s*[:=]\s*['"]?([A-Za-z0-9_/+=.-]{20,512})['"]?(?=\s|$)/g,
     anchor: ['KEY', 'TOKEN', 'SECRET', 'PASSWORD', 'PWD', 'PASSPHRASE'],
   },
   {

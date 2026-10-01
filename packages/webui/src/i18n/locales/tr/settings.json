@@ -140,7 +140,11 @@
     },
     "serviceActionRestart": "Yeniden başlat {{label}}",
     "webuiTransport": "WebUI taşıması",
-    "serviceAutoRestarting": "Otomatik yeniden başlatılıyor…"
+    "serviceAutoRestarting": "Otomatik yeniden başlatılıyor…",
+    "restartAllTitle": "Çalışan tüm IPC daemon'larını tek seferde yeniden başlat",
+    "restartAll": "Tümünü yeniden başlat",
+    "versionSkewRemedy": "Bu daemon, kurulu sürümü değil başlatıldığı sürümü çalıştırmaya devam ediyor. Güncel sürümü yüklemek için bu hizmette Yeniden başlat'ı (veya Tümünü yeniden başlat) kullanın.",
+    "versionSkewBadge": "eski sürüm"
   },
   "provider": {
     "removeProfileConfirm": "“{{alias}}” auth profili ve tüm key'leri silinsin mi?",
@@ -189,7 +193,10 @@
     "keyLabelPlaceholder": "Anahtar etiketi (örn. default, production)",
     "apiKeyPlaceholder": "API anahtarı",
     "saveKey": "Anahtarı Kaydet",
-    "savedToast": "{{name}} için anahtar kaydedildi"
+    "savedToast": "{{name}} için anahtar kaydedildi",
+    "disableToggle": "Sağlayıcıyı devre dışı bırak",
+    "disableToggleHint": "Bu sağlayıcının tüm modelleri yedek (fallback) yönlendirmesinden ve model seçicilerden çıkarılır. Anahtarları ve yapılandırması korunur.",
+    "disabledBadge": "Devre dışı"
   },
   "providerModels": {
     "addCustom": "Özel model ekle",
@@ -571,6 +578,45 @@
     "addFavoriteModel": "Favori modele ekle…",
     "inactive": "devre dışı"
   },
+  "fallbackSuggest": {
+    "heading": "Önerilen fallback profilleri",
+    "body": "Kayıtlı sağlayıcılarınızın models.dev kataloğundan üretilir — yalnızca güncel ve araç çağırabilen modeller. Devre dışı bıraktığınız, kullanımdan kalkmış, yeni sürümü çıkmış ve en yeni sürümden altı aydan eski modeller dahil edilmez.",
+    "modeLabel": "Öneri motoru",
+    "modeHeuristic": "Katalog",
+    "modeLlm": "LLM destekli",
+    "llmHint": "Aktif modeliniz aynı katalog havuzunu benchmark ve güvenilirlik bilgisine göre yeniden sıralar. Yalnızca erişebildiğiniz modelleri seçebilir.",
+    "generate": "Öner",
+    "loading": "Öneriler hazırlanıyor…",
+    "empty": "Fallback zinciri kuracak kadar erişilebilir model yok. Başka bir sağlayıcı ekleyin veya daha fazla model etkinleştirin.",
+    "poolSummary_one": "Sağlayıcılarınızdaki {{count}} modelden seçildi",
+    "poolSummary_other": "Sağlayıcılarınızdaki {{count}} modelden seçildi",
+    "rankedBy": "sıralayan: {{model}}",
+    "llmFailed": "LLM adımı kullanılamadı, katalog önerileri gösteriliyor: {{error}}",
+    "archetype": {
+      "strong": "Güçlü",
+      "balanced": "Dengeli",
+      "fast": "Hızlı",
+      "budget": "Ekonomik"
+    },
+    "archetypeHint": {
+      "strong": "Maliyetine bakmadan en yetenekli modeller önce.",
+      "balanced": "Makul fiyata gerçek iş çıkaracak kadar yetenekli.",
+      "fast": "Araçları hâlâ güvenilir çağıran en düşük gecikme.",
+      "budget": "Kodlama görevini bitirebilen en ucuz modeller."
+    },
+    "sourceLlm": "LLM",
+    "sourceHeuristic": "Katalog",
+    "providerCount_one": "{{count}} sağlayıcı",
+    "providerCount_other": "{{count}} sağlayıcı",
+    "free": "ücretsiz",
+    "reasoning": "reasoning",
+    "unstable": "beta / önizleme",
+    "addAsProfile": "Profil olarak ekle",
+    "savedAs": "{{name}} olarak kayıtlı",
+    "useAsChain": "Aktif zincir yap",
+    "chainActive": "Aktif zincir",
+    "profileAdded": "\"{{name}}\" fallback profili eklendi"
+  },
   "fleet": {
     "heading": "Filo ve Akış",
     "fleetChatVerbosityLabel": "Filo olaylarını akıt",
@@ -604,6 +650,11 @@
     "telegramDelegateHint": "Bir alt-ajan tamamlandığında insanlaştırılmış not gönder.",
     "telegramLongToolLabel": "Uzun süren araçlar",
     "telegramLongToolHint": "Bir araç {{ms}}ms aşarsa bildir. Devre dışı bırakmak için 0 ayarla.",
+    "telegramPollIntervalLabel": "Anlama aralığı",
+    "telegramPollIntervalHint": "Telegram anlama çağrıları arasındaki saniye (1–60). Düşük değer daha hızlı yanıt verir ama daha çok API çağrısı yapar.",
+    "telegramChatIdLabel": "Bildirim sohbeti",
+    "telegramChatIdHint": "Bildirimler için varsayılan sohbet kimliği. Pozitif kimlik özel sohbetinizi botla eşleştirir; grup kimlikleri (negatif) yapılandırmada allowGroupChats etkinleştirilmedikçe reddedilir. Temizlemek için boş bırakın.",
+    "telegramChatIdInvalid": "Sıfırdan farklı bir tam sayı sohbet kimliği girin veya boş bırakın.",
     "telegramChangesApply": "Değişiklikler hemen uygulanır.",
     "telegramNotConfigured": "Telegram yapılandırılmamış. Önce bir bot bağlamak için CLI'da /telegram-setup çalıştırın.",
     "heading": "Integrations",

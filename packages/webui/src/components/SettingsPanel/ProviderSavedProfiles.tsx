@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { confirmModal } from '@/components/ConfirmModal';
+import { isProviderDisabled } from '@/components/QuickModelSwitcher.filter';
 
 import { ModelEditor } from '../SetupScreen/ModelEditor';
 
@@ -23,6 +24,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
 import { LOCAL_SERVER_PRESETS } from './local-presets';
+
+import { PreferenceToggle } from './PreferenceToggle';
 
 import { ProviderModelsPanel } from './ProviderModelsPanel';
 export function ProviderSavedProfiles({
@@ -50,6 +53,8 @@ export function ProviderSavedProfiles({
   onRemoveProvider,
   ws,
   onPickProviderModel,
+  disabledProviders,
+  onToggleProviderDisabled,
   setShowAddKeyForm,
   showAddKeyForm,
   onSetActiveKey,
@@ -98,6 +103,10 @@ export function ProviderSavedProfiles({
   onRemoveProvider: (providerId: string) => void | Promise<boolean>;
   ws: import('../../lib/ws-client.js').WrongStackWebSocketClient;
   onPickProviderModel: (providerId: string, modelId: string) => void;
+  /** Provider ids switched off entirely (`Config.disabledProviders`). */
+  disabledProviders: string[];
+  /** Flip one provider's disabled state (persisted through `updatePrefs`). */
+  onToggleProviderDisabled: (providerId: string) => void;
   setShowAddKeyForm: React.Dispatch<React.SetStateAction<string | null>>;
   showAddKeyForm: string | null;
   onSetActiveKey: (providerId: string, label: string) => void | Promise<boolean>;
@@ -262,6 +271,12 @@ export function ProviderSavedProfiles({
                   <h4 className="min-w-0 break-words font-mono text-sm font-semibold text-foreground">
                     {sp.id}
                   </h4>
+                  {isProviderDisabled(sp.id, disabledProviders) && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      <EyeOff className="h-3 w-3" />
+                      {t('settings:provider.disabledBadge')}
+                    </span>
+                  )}
                   {sp.family && (
                     <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {sp.family}
@@ -323,6 +338,16 @@ export function ProviderSavedProfiles({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-border/70 bg-background/60 px-3">
+              <PreferenceToggle
+                label={t('settings:provider.disableToggle')}
+                hint={t('settings:provider.disableToggleHint')}
+                value={isProviderDisabled(sp.id, disabledProviders)}
+                disabled={saving}
+                onChange={() => onToggleProviderDisabled(sp.id)}
+              />
             </div>
 
             <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.85fr)]">

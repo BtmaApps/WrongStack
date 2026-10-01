@@ -100,7 +100,11 @@ export function decodeGovernanceIpcEnvelope(input: unknown): GovernanceIpcEnvelo
 }
 
 export function encodeGovernanceIpcFrame(value: unknown): Buffer {
-  const frame = Buffer.from(`${JSON.stringify(value)}\n`, 'utf8');
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) {
+    throw new Error('Governance IPC frame value is not JSON-serializable.');
+  }
+  const frame = Buffer.from(`${serialized}\n`, 'utf8');
   if (frame.byteLength > GOVERNANCE_IPC_MAX_FRAME_BYTES) {
     throw new Error(`Governance IPC frame exceeds ${GOVERNANCE_IPC_MAX_FRAME_BYTES} bytes.`);
   }
@@ -109,7 +113,12 @@ export function encodeGovernanceIpcFrame(value: unknown): Buffer {
 
 export function decodeGovernanceIpcResponse(input: unknown): GovernanceServiceResponse {
   const record = plainRecord(input);
-  if (!record || typeof record.ok !== 'boolean' || typeof record.requestId !== 'string') {
+  if (
+    !record ||
+    typeof record.ok !== 'boolean' ||
+    typeof record.requestId !== 'string' ||
+    record.requestId.trim().length === 0
+  ) {
     throw new Error('Governance IPC response has an invalid envelope.');
   }
   if (record.ok) {

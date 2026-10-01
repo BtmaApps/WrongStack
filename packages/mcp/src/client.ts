@@ -101,6 +101,8 @@ export class MCPClient {
   private _lastNotifySkipped = false;
   private closePromise?: Promise<void> | undefined;
   private connectPromise?: Promise<void> | undefined;
+  private toolCatalogVersion = 0;
+  private toolCatalogRevision = 0;
   // HTTP transports
   private sseTransport?: SSETransport | undefined;
   private httpTransport?: StreamableHTTPTransport | undefined;
@@ -187,6 +189,7 @@ export class MCPClient {
   }
 
   private async connectInner(): Promise<void> {
+    this.toolCatalogVersion++;
     this.state = 'connecting';
     this._serverMetadata = undefined;
 
@@ -358,7 +361,9 @@ export class MCPClient {
           toErrorMessage(err),
       );
     }
-    this._tools = (await listAllTools((params) => this.request('tools/list', params))) ?? [];
+    const revision = this.toolCatalogRevision;
+    const tools = (await listAllTools((params) => this.request('tools/list', params))) ?? [];
+    if (revision === this.toolCatalogRevision) this._tools = tools;
     // Cache tools so reconnect can re-register without re-discovering
     this._toolsCache = this._tools;
     this.state = 'connected';
@@ -444,6 +449,7 @@ export class MCPClient {
   }
 
   private async closeInner(): Promise<void> {
+    this.toolCatalogVersion++;
     if (this.child) {
       const child = this.child;
       // Always register the listener first. Checking exitCode/signalCode
@@ -858,13 +864,15 @@ export class MCPClient {
    * to a hard crash on a transient notification glitch.
    */
   private async handleToolsListChanged(): Promise<void> {
+    const version = ++this.toolCatalogVersion;
     try {
       const tools = await listAllTools((params) => this.request('tools/list', params));
       // An error response used to normalize to [] and wipe every registered
       // tool on a transient refresh failure — keep the last catalog instead.
-      if (!tools) return;
+      if (!tools || version !== this.toolCatalogVersion) return;
       this._tools = tools;
       this._toolsCache = tools;
+      this.toolCatalogRevision++;
       for (const listener of this.toolsChangedListeners) {
         try {
           listener(this.opts.name, [...tools]);

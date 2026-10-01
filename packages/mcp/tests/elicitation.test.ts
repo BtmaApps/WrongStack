@@ -280,11 +280,13 @@ describe('ServerRequestResponder', () => {
 
     // Required plain string field: '' is a valid answer and is forwarded.
     answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
-    expect(await r.answer(elicitRequest(1, { requestedSchema: noteSchema(['note'], {}) }))).toEqual({
-      jsonrpc: '2.0',
-      id: 1,
-      result: { action: 'accept', content: { note: '' } },
-    });
+    expect(await r.answer(elicitRequest(1, { requestedSchema: noteSchema(['note'], {}) }))).toEqual(
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        result: { action: 'accept', content: { note: '' } },
+      },
+    );
 
     // Optional field: the key must reach the server rather than vanish.
     answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
@@ -344,6 +346,37 @@ describe('ServerRequestResponder', () => {
     r.dispose();
     expect(await second).toMatchObject({ result: { action: 'cancel' } });
   });
+
+  for (const id of [1, 'reused-id']) {
+    it(`keeps a new form pending when an old disposed form settles with reused id ${id}`, async () => {
+      const finish: Array<() => void> = [];
+      const responder = new ServerRequestResponder(
+        () =>
+          new Promise((resolve) => {
+            finish.push(() => resolve({ action: 'decline' }));
+          }),
+      );
+      const old = responder.answer(elicitRequest(id));
+      responder.dispose();
+      const next = responder.answer(elicitRequest(id));
+      try {
+        finish[0]?.();
+        await old;
+        expect(responder.awaitingUser).toBe(true);
+        await expect(responder.answer(elicitRequest('another'))).resolves.toMatchObject({
+          error: { code: -32603 },
+        });
+        responder.cancel({ requestId: id });
+        finish[1]?.();
+        await expect(next).resolves.toMatchObject({ result: { action: 'cancel' } });
+        expect(responder.awaitingUser).toBe(false);
+      } finally {
+        responder.dispose();
+        for (const resolve of finish) resolve();
+        await Promise.all([old, next]);
+      }
+    });
+  }
 });
 
 function formRequest(
@@ -474,14 +507,11 @@ describe('elicitViaUserInput', () => {
     const MIN_THREE: ElicitationField = { ...REQUIRED_NOTE, minLength: 3 };
     const OPTIONAL_NOTE: ElicitationField = { ...REQUIRED_NOTE, required: false };
 
-    const blank =
-      (req: UserInputRequest): UserInputResponse => ({
-        requestId: req.id,
-        status: 'submitted',
-        answers: [
-          { questionId: 'f0', selectedOptionIds: [], text: '', usedRecommendation: false },
-        ],
-      });
+    const blank = (req: UserInputRequest): UserInputResponse => ({
+      requestId: req.id,
+      status: 'submitted',
+      answers: [{ questionId: 'f0', selectedOptionIds: [], text: '', usedRecommendation: false }],
+    });
 
     // No lower bound: '' is in bounds, so it is accepted on the first prompt.
     const plain = answering(blank);
@@ -513,13 +543,15 @@ describe('elicitViaUserInput', () => {
     expect(optional.requests).toHaveLength(1);
 
     // And a typed answer is still forwarded exactly as entered.
-    const typed = answering((req: UserInputRequest): UserInputResponse => ({
-      requestId: req.id,
-      status: 'submitted',
-      answers: [
-        { questionId: 'f0', selectedOptionIds: [], text: '  hello  ', usedRecommendation: false },
-      ],
-    }));
+    const typed = answering(
+      (req: UserInputRequest): UserInputResponse => ({
+        requestId: req.id,
+        status: 'submitted',
+        answers: [
+          { questionId: 'f0', selectedOptionIds: [], text: '  hello  ', usedRecommendation: false },
+        ],
+      }),
+    );
     expect(await elicitViaUserInput(formRequest([REQUIRED_NOTE], typed))).toEqual({
       action: 'accept',
       content: { note: '  hello  ' },

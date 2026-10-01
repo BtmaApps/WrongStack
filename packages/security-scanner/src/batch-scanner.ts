@@ -48,6 +48,19 @@ export class BatchScanner {
     const errors: string[] = [];
     const scanStats = { readCount: 0, errors };
 
+    if (options.abortController.signal.aborted) {
+      return {
+        timestamp: new Date().toISOString(),
+        projectRoot: options.projectRoot,
+        techStack: options.techStack,
+        findings: [],
+        summary: { critical: 0, high: 0, medium: 0, low: 0, total: 0 },
+        scannedFiles: 0,
+        scanDurationMs: Date.now() - startTime,
+        errors,
+      };
+    }
+
     const targetFiles = options.skill.metadata.targetFiles;
     const fallbackExtensions: string[] = [
       '.ts',
@@ -103,8 +116,8 @@ export class BatchScanner {
         errorHandler: options.errorHandler,
         scanStats: batchStats,
       });
-      if (options.abortController.signal.aborted) break;
       scanStats.readCount += batchStats.readCount;
+      if (options.abortController.signal.aborted) break;
       findings.push(...batchFindings);
     }
 
@@ -226,13 +239,18 @@ export class BatchScanner {
         const defaultFile = opts.files[0]
           ? path.relative(opts.projectRoot, opts.files[0]).replace(/\\/g, '/')
           : 'unknown';
+        const scannedFiles = new Set(
+          opts.files.map((file) =>
+            path.relative(opts.projectRoot, path.resolve(file)).replace(/\\/g, '/'),
+          ),
+        );
         const validSeverities = ['critical', 'high', 'medium', 'low'] as const;
 
         return (Array.isArray(parsed) ? parsed : [])
           .filter(
             (item): item is NonNullable<typeof item> => typeof item === 'object' && item !== null,
           )
-          .map((item, idx) => {
+          .flatMap((item, idx): Finding[] => {
             const rawFile =
               typeof item.file === 'string' && item.file.trim().length > 0
                 ? item.file
@@ -240,16 +258,18 @@ export class BatchScanner {
             const normalizedFile = (
               path.isAbsolute(rawFile) ? path.relative(opts.projectRoot, rawFile) : rawFile
             ).replace(/\\/g, '/');
+            if (!scannedFiles.has(normalizedFile)) return [];
             const category = validCategories.includes(item.category as Finding['category'])
               ? (item.category as Finding['category'])
               : 'injection';
-            const rawSeverity = typeof item.severity === 'string' ? item.severity.toLowerCase() : '';
+            const rawSeverity =
+              typeof item.severity === 'string' ? item.severity.toLowerCase() : '';
             const severity: Finding['severity'] = validSeverities.includes(
               rawSeverity as Finding['severity'],
             )
               ? (rawSeverity as Finding['severity'])
               : 'medium';
-            return {
+            const finding: Finding = {
               id: `llm-analysis-${normalizedFile}-${item.line ?? 0}-${idx}`,
               severity,
               category,
@@ -266,6 +286,7 @@ export class BatchScanner {
               patternId: 'llm-analysis',
               confidence: 'high' as const,
             };
+            return [finding];
           });
       }
       return [];

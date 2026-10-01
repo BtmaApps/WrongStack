@@ -51,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 902,
+      "lines": 909,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
@@ -86,6 +86,10 @@
       "lines": 858,
       "relativeImports": 3
     },
+    "packages/core/src/core/agent-loop.ts": {
+      "lines": 820,
+      "relativeImports": 36
+    },
     "packages/core/src/core/fallback-model.ts": {
       "lines": 899,
       "relativeImports": 16
@@ -113,6 +117,10 @@
     "packages/core/src/hq/auth-store.ts": {
       "lines": 889,
       "relativeImports": 9
+    },
+    "packages/core/src/models/fallback-suggest.ts": {
+      "lines": 888,
+      "relativeImports": 0
     },
     "packages/core/src/plugins/skills-plugin.ts": {
       "lines": 827,
@@ -159,35 +167,39 @@
       "relativeImports": 3
     },
     "packages/mcp/src/client.ts": {
-      "lines": 992,
+      "lines": 1000,
       "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 922,
+      "lines": 982,
       "relativeImports": 21
     },
     "packages/mcp/src/server.ts": {
-      "lines": 902,
+      "lines": 907,
       "relativeImports": 2
     },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
-      "lines": 880,
+      "lines": 906,
       "relativeImports": 1
     },
     "packages/plugins/src/loop-breaker/index.ts": {
-      "lines": 838,
+      "lines": 853,
       "relativeImports": 0
+    },
+    "packages/plugins/src/migration-planner/index.ts": {
+      "lines": 825,
+      "relativeImports": 2
     },
     "packages/plugins/src/secret-scanner/index.ts": {
       "lines": 848,
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {
-      "lines": 842,
+      "lines": 845,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {
-      "lines": 878,
+      "lines": 906,
       "relativeImports": 1
     },
     "packages/primitives/src/regex-ambiguity.ts": {
@@ -207,7 +219,7 @@
       "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
-      "lines": 819,
+      "lines": 828,
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -245,6 +257,10 @@
     "packages/simpleui/src/lib/message-handler.ts": {
       "lines": 833,
       "relativeImports": 19
+    },
+    "packages/simpleui/src/settings-panel.tsx": {
+      "lines": 935,
+      "relativeImports": 5
     },
     "packages/tools/src/bash-kill-guard.ts": {
       "lines": 817,
@@ -307,7 +323,7 @@
       "relativeImports": 52
     },
     "packages/vector-memory/src/store.ts": {
-      "lines": 898,
+      "lines": 1189,
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -331,7 +347,7 @@
       "relativeImports": 6
     },
     "packages/webui/src/components/MessageBubble/index.tsx": {
-      "lines": 812,
+      "lines": 813,
       "relativeImports": 13
     },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {
@@ -371,7 +387,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 959,
+      "lines": 960,
       "relativeImports": 9
     },
     "packages/webui-server/src/server/backend-services.ts": {
@@ -379,8 +395,8 @@
       "relativeImports": 15
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 972,
-      "relativeImports": 56
+      "lines": 983,
+      "relativeImports": 57
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1176,
@@ -388,6 +404,10 @@
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
       "lines": 896,
+      "relativeImports": 2
+    },
+    "packages/webui-server/src/server/pref-helpers.ts": {
+      "lines": 852,
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {

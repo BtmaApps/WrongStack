@@ -206,7 +206,10 @@ export async function optimizeProjectAgentLearning(
   }
 
   // ── Role-level consolidation ────────────────────────────────────────────
-  const { instruction } = buildConsolidationInstruction(normalizedRole, projectRoot);
+  // Stamped before the buffer is read, so anything captured while the model
+  // works is newer than the consolidation and survives the prune below.
+  const snapshotAt = new Date().toISOString();
+  const { instruction, sourceKeys } = buildConsolidationInstruction(normalizedRole, projectRoot);
   if (!options.llm) {
     // A model-less pass still rewrote the skill layer, so it counts as a pass.
     // Leaving it unstamped is what made `minIntervalMs` a no-op on a headless
@@ -239,6 +242,8 @@ export async function optimizeProjectAgentLearning(
       model: options.llm.model,
       prune,
       skills: refreshed,
+      consolidatedAt: snapshotAt,
+      sourceKeys,
     });
   } catch (error) {
     return {

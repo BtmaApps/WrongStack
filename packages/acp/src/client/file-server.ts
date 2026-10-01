@@ -142,6 +142,9 @@ export class FileServer {
       const stat = await this.operations.stat(safe).catch((err) => {
         throw mapFsError(err, safe);
       });
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `readTextFile timed out after ${this.timeoutMs}ms`);
+      }
       if (stat.size > this.maxReadBytes) {
         throw new FsError(
           'TOO_LARGE',
@@ -153,6 +156,17 @@ export class FileServer {
         encoding: 'utf8',
         signal: controller.signal,
       });
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `readTextFile timed out after ${this.timeoutMs}ms`);
+      }
+      const actualSize = Buffer.byteLength(content, 'utf8');
+      if (actualSize > this.maxReadBytes) {
+        throw new FsError(
+          'TOO_LARGE',
+          safe,
+          `file is ${actualSize} bytes after read, max read is ${this.maxReadBytes} bytes`,
+        );
+      }
       if (params.line == null && params.limit == null) return { content };
       const lines = content.match(/[^\n]*\n|[^\n]+$/g) ?? [];
       const start = (params.line ?? 1) - 1;
@@ -195,12 +209,24 @@ export class FileServer {
         encoding: 'utf8',
         signal: controller.signal,
       });
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `writeTextFile timed out after ${this.timeoutMs}ms`);
+      }
       // Re-verify both tmp and the rename destination's parent dir before
       // rename. This closes the TOCTOU window where an attacker could plant a
       // symlink at the destination's parent between resolveInside and rename.
       await this.assertRealInside(tmp);
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `writeTextFile timed out after ${this.timeoutMs}ms`);
+      }
       await this.assertRealInside(path.dirname(safe));
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `writeTextFile timed out after ${this.timeoutMs}ms`);
+      }
       await this.operations.rename(tmp, safe);
+      if (controller.signal.aborted) {
+        throw new FsError('TIMEOUT', safe, `writeTextFile timed out after ${this.timeoutMs}ms`);
+      }
     } catch (err) {
       if (err instanceof FsError) {
         // Best-effort cleanup of the tmp file

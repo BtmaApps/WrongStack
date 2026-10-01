@@ -80,8 +80,13 @@ export function createH1State<T>(initial: T): H1State<T> {
     register(key, unregister) {
       const prior = handles.get(key);
       if (prior) {
-        safeRelease(prior);
         handles.delete(key);
+        safeRelease(prior);
+        const reentrant = handles.get(key);
+        if (reentrant) {
+          handles.delete(key);
+          safeRelease(reentrant);
+        }
       }
       if (unregister) {
         handles.set(key, unregister);

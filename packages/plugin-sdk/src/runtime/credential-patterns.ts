@@ -189,7 +189,7 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
     // that mapping (enforced by credential-pattern-parity.test.ts).
     type: 'high_entropy_env',
     regex:
-      /(?<=(?:^|\s)[A-Z_]{4,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE)\s{0,8}[:=]\s{0,8}['"]?)[A-Za-z0-9_/+=-]{20,512}(?=['"]?(?:\s|$))/gm,
+      /(?<=(?:^|\s)[A-Z_][A-Z0-9_]{3,}(?:KEY|TOKEN|SECRET|PASSWORD|PWD|PASSPHRASE)\s{0,8}[:=]\s{0,8}['"]?)[A-Za-z0-9_/+=-]{20,512}(?=['"]?(?:\s|$))/gm,
   },
   {
     // Credentials serialised as JSON, keyed rather than prefixed. Every other

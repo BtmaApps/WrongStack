@@ -142,6 +142,18 @@ describe('hook behavior — git commit on protected branch', () => {
     expect(result?.reason).toContain('protected');
   });
 
+  it.each([
+    'git -C . commit -m "x"',
+    'git -c user.name=bot commit -m "x"',
+    'git --no-pager push origin main',
+    'git --git-dir .git commit -m "x"',
+  ])('sees through git global options: %s', async (command) => {
+    const api = makeApi();
+    branchGuardPlugin.setup(api as never);
+    const result = await getHook(api)({ toolName: 'bash', toolInput: { command } });
+    expect(result?.decision).toBe('block');
+  });
+
   it('blocks git_autocommit tool on main', async () => {
     const api = makeApi();
     branchGuardPlugin.setup(api as never);

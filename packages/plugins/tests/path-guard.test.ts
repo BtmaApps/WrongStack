@@ -240,6 +240,19 @@ describe('destructiveTargets', () => {
     expect(destructiveTargets('xargs -r rm .env')).toContain('.env');
   });
 
+  it('knows every value-taking xargs option and keeps attached-only ones as flags', async () => {
+    expect(destructiveTargets('xargs -d @ rm .env')).toContain('.env');
+    expect(destructiveTargets("printf .env | xargs -d '@' rm")).toContain('.env');
+    expect(destructiveTargets('xargs -a list.txt rm .env')).toContain('.env');
+    expect(destructiveTargets('xargs --delimiter @ rm .env')).toContain('.env');
+    expect(destructiveTargets('xargs -e rm .env')).toContain('.env');
+  });
+
+  it('reads the quote state at the right offset when the command holds a dotted capital I', async () => {
+    expect(destructiveTargets("echo İİİİİİİİİ .env | xargs -I '{}' rm")).toContain('.env');
+    expect(destructiveTargets('/opt/İİİİİİ/git "checkout" -- .env')).toContain('.env');
+  });
+
   it('preserves parentheses in destructive path operands', async () => {
     expect(destructiveTargets('rm -rf "$(pwd)/.env"')).toContain('$(pwd)/.env');
     expect(destructiveTargets('(cd workspace && rm .env)')).toContain('.env');

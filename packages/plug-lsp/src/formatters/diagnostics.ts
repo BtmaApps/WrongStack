@@ -1,6 +1,8 @@
 import type { Diagnostic } from 'vscode-languageserver-protocol';
+import { lspColumnToHuman } from '../position.js';
 import type { SeverityName } from '../types.js';
 import { displayPath } from '../utils/uri.js';
+import type { LineTextReader } from './location.js';
 
 const SEVERITY: Record<number, SeverityName> = {
   1: 'error',
@@ -23,6 +25,8 @@ export function formatDiagnostics(
     severityFilter: SeverityName[];
     maxPerFile: number;
     maxTotal: number;
+    /** Reads a line so columns go out in the tools' 1-based byte convention. */
+    lineText?: LineTextReader | undefined;
   },
 ): string {
   const allowed = new Set(opts.severityFilter);
@@ -43,7 +47,7 @@ export function formatDiagnostics(
     if (shown.length === 0) break;
     files++;
     total += shown.length;
-    const lines = shown.map((d) => formatDiagnostic(d));
+    const lines = shown.map((d) => formatDiagnostic(d, opts.lineText?.(file, d.range.start.line)));
     sections.push(
       `${displayPath(file, opts.cwd)} (${shown.length}):\n${lines.map((l) => `  ${l}`).join('\n')}`,
     );
@@ -53,13 +57,17 @@ export function formatDiagnostics(
   return `${sections.join('\n\n')}\n\nTotal: ${total} diagnostics in ${files} files.`;
 }
 
-function formatDiagnostic(d: Diagnostic): string {
+function formatDiagnostic(d: Diagnostic, lineText?: string): string {
   /* v8 ignore next -- fallback handles invalid server severity values defensively. */
   const sev = SEVERITY[d.severity ?? 1] ?? 'error';
   const source = d.source ? ` ${d.source}${d.code !== undefined ? `(${String(d.code)})` : ''}` : '';
   const msgRaw = typeof d.message === 'string' ? d.message : d.message.value;
   const msg = msgRaw.replace(/\s*\r?\n\s*/g, ' | ');
-  return `L${d.range.start.line + 1}:${d.range.start.character + 1} ${LABEL[sev]}${source}: ${msg}`;
+  const column =
+    lineText !== undefined
+      ? lspColumnToHuman(lineText, d.range.start.character)
+      : d.range.start.character + 1;
+  return `L${d.range.start.line + 1}:${column} ${LABEL[sev]}${source}: ${msg}`;
 }
 
 function compareDiagnostics(a: Diagnostic, b: Diagnostic): number {

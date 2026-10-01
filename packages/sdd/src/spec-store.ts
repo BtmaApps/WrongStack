@@ -30,6 +30,7 @@ interface SpecIndex {
 export class SpecStore {
   private readonly baseDir: string;
   private readonly indexPath: string;
+  private writeChain: Promise<void> = Promise.resolve();
 
   constructor(opts: SpecStoreOptions) {
     this.baseDir = opts.baseDir;
@@ -37,13 +38,19 @@ export class SpecStore {
   }
 
   async save(spec: Specification): Promise<void> {
-    await ensureDir(this.baseDir);
-    const filePath = this.filePath(spec.id);
-    await atomicWrite(filePath, JSON.stringify(spec, null, 2), { mode: 0o600 });
-    await this.updateIndex(spec);
+    const snapshot = structuredClone(spec);
+    const pending = this.writeChain.then(async () => {
+      await ensureDir(this.baseDir);
+      const filePath = this.filePath(snapshot.id);
+      await atomicWrite(filePath, JSON.stringify(snapshot, null, 2), { mode: 0o600 });
+      await this.updateIndex(snapshot);
+    });
+    this.writeChain = pending.catch(() => undefined);
+    await pending;
   }
 
   async load(id: string): Promise<Specification | null> {
+    await this.writeChain;
     // Resolve the path OUTSIDE the read try/catch so a containment
     // failure (H-6 regression) propagates as a caller-visible error
     // instead of being silently coerced to "not found".
@@ -57,11 +64,13 @@ export class SpecStore {
   }
 
   async list(): Promise<SpecIndexEntry[]> {
+    await this.writeChain;
     const index = await this.readIndex();
     return index.entries.sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   async delete(id: string): Promise<boolean> {
+    await this.writeChain;
     // Same separation as `load`: validate the id first, then handle the
     // I/O errors that mean "this id is not present" as a clean false.
     const filePath = this.filePath(id);
@@ -75,6 +84,7 @@ export class SpecStore {
   }
 
   async exists(id: string): Promise<boolean> {
+    await this.writeChain;
     try {
       await fsp.access(this.filePath(id));
       return true;
@@ -151,7 +161,7 @@ export class SpecStore {
     try {
       const raw = await fsp.readFile(this.indexPath, 'utf8');
       const parsed = JSON.parse(raw) as SpecIndex;
-      if (parsed?.version === 1) return parsed;
+      if (parsed?.version === 1 && Array.isArray(parsed.entries)) return parsed;
     } catch {
       /* no index yet */
     }

@@ -146,3 +146,28 @@ describe('runShellHook argument quoting', () => {
     expect(r.failure?.kind).toBe('rejected');
   });
 });
+
+describe('runShellHook output decoding', () => {
+  it('keeps a multi-byte character that arrives split across two stdout chunks', async () => {
+    // Two writes 50 ms apart, cut inside the two-byte `ğ`. Decoding each chunk
+    // on its own turned both halves into U+FFFD.
+    const split = write(
+      'split.cjs',
+      [
+        "const full = Buffer.from(JSON.stringify({ additionalContext: 'Türkçe şğ' }), 'utf8');",
+        "const cut = full.lastIndexOf(Buffer.from('ğ', 'utf8')) + 1;",
+        'process.stdin.resume();',
+        "process.stdin.on('end', () => {",
+        '  process.stdout.write(full.subarray(0, cut));',
+        '  setTimeout(() => process.stdout.write(full.subarray(cut)), 50);',
+        '});',
+        '',
+      ].join('\n'),
+    );
+    const r = await runShellHookDetailed({ command: `node "${split}"` }, input());
+    expect(r.failure).toBeUndefined();
+    expect((r.outcome as { additionalContext?: string } | null)?.additionalContext).toBe(
+      'Türkçe şğ',
+    );
+  });
+});

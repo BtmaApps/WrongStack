@@ -330,14 +330,16 @@ function conciseMarker(value: string): string {
 function serialise(value: unknown): string {
   if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? '';
   } catch {
     return String(value);
   }
 }
 
 function stringValue(value: unknown): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

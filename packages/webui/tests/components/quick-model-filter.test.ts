@@ -4,6 +4,7 @@ import {
   type CatalogModelLite,
   isModelDisabled,
   isModelInFavorites,
+  isProviderDisabled,
   type SavedProviderLite,
 } from '../../src/components/QuickModelSwitcher.filter';
 
@@ -267,6 +268,50 @@ describe('disabled model filtering', () => {
     expect(
       out.some((candidate) => candidate.provider === 'openai' && candidate.model === 'gpt-5'),
     ).toBe(false);
+  });
+});
+
+describe('disabled provider filtering', () => {
+  it('recognizes a bare provider id, case-insensitively', () => {
+    expect(isProviderDisabled('openai', ['openai'])).toBe(true);
+    expect(isProviderDisabled('OpenAI', [' openai '])).toBe(true);
+    expect(isProviderDisabled('anthropic', ['openai'])).toBe(false);
+    expect(isProviderDisabled('openai', undefined)).toBe(false);
+    expect(isProviderDisabled('openai', null)).toBe(false);
+    expect(isProviderDisabled('openai', [])).toBe(false);
+  });
+
+  it('removes every model of a disabled provider from the candidate list', () => {
+    const out = buildModelCandidates(
+      saved,
+      models,
+      '',
+      undefined,
+      undefined,
+      null,
+      false,
+      [],
+      [],
+      ['openai'],
+    );
+    expect(out).toHaveLength(3);
+    expect(out.some((candidate) => candidate.provider === 'openai')).toBe(false);
+  });
+
+  it('does not resurrect a disabled provider via favoritesOnly', () => {
+    const out = buildModelCandidates(
+      saved,
+      models,
+      '',
+      undefined,
+      undefined,
+      null,
+      true,
+      ['openai/gpt-5'],
+      [],
+      ['openai'],
+    );
+    expect(out).toEqual([]);
   });
 });
 

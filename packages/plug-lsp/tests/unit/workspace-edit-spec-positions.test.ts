@@ -39,4 +39,16 @@ describe('applyTextEdits LSP position semantics', () => {
   it('treats a line past the end as the end of the document', () => {
     expect(applyTextEdits('a\nb', [edit(2, 0, 2, 0, '\nc')])).toBe('a\nb\nc');
   });
+
+  it('counts a lone CR as a line break, as LSP does', () => {
+    // Splitting on LF alone made this file one line long, so the edit to line
+    // 1 clamped to end-of-document and was appended after the last CR.
+    expect(applyTextEdits('let a = 1;\rlet b = a;\r', [edit(1, 8, 1, 9, 'x')])).toBe(
+      'let a = 1;\rlet b = x;\r',
+    );
+    // Mixed endings still resolve each line correctly.
+    expect(applyTextEdits('a\r\nb\rc\nd', [edit(2, 0, 2, 1, 'C'), edit(3, 0, 3, 1, 'D')])).toBe(
+      'a\r\nb\rC\nD',
+    );
+  });
 });

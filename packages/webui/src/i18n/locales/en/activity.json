@@ -671,6 +671,7 @@
     "watcherStatus": "Watcher Status",
     "running": "Running",
     "stopped": "Stopped",
+    "unavailable": "Unavailable",
     "activeProjects": "Active Projects",
     "projectsWatched": "Projects being watched",
     "fileChanges": "File Changes",

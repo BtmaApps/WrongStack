@@ -90,6 +90,13 @@ export class CircuitBreaker {
 
   private state: BreakerState = 'closed';
   private consecutiveFailures = 0;
+  /**
+   * Slow successes in a row. The window count alone could never trip on the
+   * defaults: a slow call runs >= 180s but the window is 60s, so sequential
+   * slow calls never shared it and "3 consecutive slow calls" (see
+   * DEFAULT_MAX_SLOW_CALLS) never tripped anything.
+   */
+  private consecutiveSlowCalls = 0;
   private window: CallRecord[] = [];
   private lastFailureAt: number | null = null;
   private lastSlowAt: number | null = null;
@@ -217,6 +224,7 @@ export class CircuitBreaker {
     this.window.push({ at: now, failed, slow });
 
     if (failed) {
+      this.consecutiveSlowCalls = 0;
       this.consecutiveFailures++;
       this.lastFailureAt = now;
       if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
@@ -228,10 +236,11 @@ export class CircuitBreaker {
     // Success: reset consecutive failure counter.
     this.consecutiveFailures = 0;
 
+    this.consecutiveSlowCalls = slow ? this.consecutiveSlowCalls + 1 : 0;
     if (slow) {
       this.lastSlowAt = now;
       const slowCount = this.window.filter((c) => c.slow).length;
-      if (slowCount >= this.maxSlowCalls) {
+      if (slowCount >= this.maxSlowCalls || this.consecutiveSlowCalls >= this.maxSlowCalls) {
         this._trip();
       }
     }
@@ -259,6 +268,7 @@ export class CircuitBreaker {
     if (this.state === 'open') return; // already open
     this.state = 'open';
     this.openedAt = Date.now();
+    this.consecutiveSlowCalls = 0;
     // P3 #23 (before-release.md): clear the window on trip. Old records are
     // irrelevant once tripped — the breaker starts fresh after cooldown
     // (half-open → closed resets the counters). Without this the window array
@@ -278,6 +288,7 @@ export class CircuitBreaker {
     const wasRecovering = this.state !== 'closed';
     this.state = 'closed';
     this.consecutiveFailures = 0;
+    this.consecutiveSlowCalls = 0;
     this.window = [];
     this.openedAt = null;
     // Only notify on a real recovery (open/half-open → closed), not on the

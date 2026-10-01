@@ -57,6 +57,16 @@ describe('mailbox-time', () => {
       expect(formatRelativeTime(ts, mockNow)).toBe('2y ago');
     });
 
+    it('never prints a bucket threshold as a count just before rolling over', () => {
+      expect(formatRelativeTime(new Date(mockNow - 59_600).toISOString(), mockNow)).toBe('59s ago');
+      expect(formatRelativeTime(new Date(mockNow - 3_599_000).toISOString(), mockNow)).toBe(
+        '59m ago',
+      );
+      expect(formatRelativeTime(new Date(mockNow - 86_399_000).toISOString(), mockNow)).toBe(
+        '23h ago',
+      );
+    });
+
     it('clamps future timestamps to "0s ago"', () => {
       const future = '2026-07-04T12:00:30.000Z'; // 30s in the future
       expect(formatRelativeTime(future, mockNow)).toBe('0s ago');

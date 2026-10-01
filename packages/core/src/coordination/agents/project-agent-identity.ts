@@ -196,12 +196,54 @@ export function loadRoleKnowledgeManifest(
   projectRoot?: string,
 ): RoleKnowledgeManifest | undefined {
   const projectPath = path.join(roleDir(role, projectRoot), 'knowledge.json');
+  let parsed: unknown;
   try {
-    const raw = readFileSync(projectPath, 'utf8');
-    return JSON.parse(raw) as RoleKnowledgeManifest;
+    parsed = JSON.parse(readFileSync(projectPath, 'utf8'));
   } catch {
     return BUILT_IN_KNOWLEDGE_MANIFESTS[role];
   }
+  return normalizeKnowledgeManifest(parsed, role) ?? BUILT_IN_KNOWLEDGE_MANIFESTS[role];
+}
+
+/**
+ * Coerce a repo-committed `knowledge.json` into the manifest shape, keeping
+ * every well-formed item and dropping the rest.
+ *
+ * The file was cast straight to the type, and `buildProjectContextualizedPrompt`
+ * then read `checklist.length` and each query's fields. A manifest missing
+ * `checklist`, or carrying a `null` query, threw a TypeError out of prompt
+ * composition — failing every spawn of that role over a hand-edited file.
+ */
+function normalizeKnowledgeManifest(
+  value: unknown,
+  role: string,
+): RoleKnowledgeManifest | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const checklist = Array.isArray(raw['checklist'])
+    ? raw['checklist'].filter((item): item is string => typeof item === 'string' && !!item.trim())
+    : [];
+  const liveQueries: RoleKnowledgeManifest['liveQueries'] = {};
+  const queries = raw['liveQueries'];
+  if (typeof queries === 'object' && queries !== null && !Array.isArray(queries)) {
+    for (const [topic, query] of Object.entries(queries)) {
+      if (typeof query !== 'object' || query === null) continue;
+      const { registry, key, description } = query as Record<string, unknown>;
+      if (typeof registry !== 'string' || typeof key !== 'string') continue;
+      liveQueries[topic] = {
+        registry,
+        key,
+        description: typeof description === 'string' ? description : topic,
+      };
+    }
+  }
+  const threshold = raw['verifyThreshold'];
+  return {
+    role: typeof raw['role'] === 'string' ? raw['role'] : role,
+    liveQueries,
+    checklist,
+    verifyThreshold: typeof threshold === 'number' && Number.isFinite(threshold) ? threshold : 0.5,
+  };
 }
 
 /**

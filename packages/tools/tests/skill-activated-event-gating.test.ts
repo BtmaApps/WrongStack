@@ -1,20 +1,20 @@
-// Proof that `skill_activated` session events are appended for resource-only
-// and pagination calls (not just final-body deliveries), so on session
-// resume `restoreRequiredSkillsFromEvents` marks skills as loaded even when
-// the body was never delivered to the model. The required-skill gate then
-// passes incorrectly, defeating its purpose.
+// `skill_activated` must be recorded ONLY for a call that actually delivered
+// the skill body. `packages/tools/src/skill.ts` gates both markRequiredSkillLoaded
+// and the session append on `!loadedResource && nextOffset === undefined`, so a
+// resource-only read or a pagination page records nothing — which is what keeps
+// the required-skill gate honest after a session resume.
 //
-// Trigger sequence that reproduces the bug:
+// History: the append used to be unconditional, so this sequence defeated the
+// gate for a required skill:
 //   1. arm the gate for a required skill (e.g. bug-hunter).
 //   2. call skill({ name: 'bug-hunter', resource: 'scripts/x.py' }) — a
 //      resource-only request; body is NOT delivered.
-//   3. observe that ctx.session.append receives type='skill_activated' even
+//   3. ctx.session.append received type='skill_activated' anyway, even
 //      though markRequiredSkillLoaded was NOT called for this call.
-//   4. simulate a session resume: feed the recorded events to
-//      restoreRequiredSkillsFromEvents.
-//   5. the gate now reports pending=[] — the skill counts as loaded.
-//   6. correct behavior: the gate must still report pending=['bug-hunter']
-//      because the body was never delivered.
+//   4. on session resume, restoreRequiredSkillsFromEvents replayed that event
+//      and the gate reported pending=[] — the skill counted as loaded.
+// The correct behaviour, asserted below: pending stays ['bug-hunter'], because
+// the body was never delivered.
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -101,7 +101,7 @@ describe('proof: skill_activated event must only fire for full-body deliveries',
     ).toEqual([]);
   });
 
-  it('after resume, a skill loaded only via resource requests is NOT pending', async () => {
+  it('after resume, a skill whose body was never delivered is still pending', async () => {
     const { dir, raw } = await buildSkill('bug-hunter');
     const tool = makeSkillTool({
       list: async () => [

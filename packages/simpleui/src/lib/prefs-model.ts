@@ -53,6 +53,21 @@ export interface SimplePrefs {
   refinerFallbackProfile: string;
   fallbackProfiles: Record<string, string[]>;
   subagentModelPlan: SubagentModelPlan;
+  /**
+   * Telegram bot polling interval in seconds. 1–60. Mirrors
+   * `Config.extensions.telegram.pollIntervalSec`, the same field the CLI's
+   * `/telegram-settings poll` and the WebUI panel write.
+   */
+  tgPollIntervalSec: number;
+  /**
+   * Default Telegram notification chat (`extensions.telegram.notifyChatId`).
+   * Empty string = not set. Positive = private chat (paired with the bot);
+   * negative = group/channel, which the server refuses unless the config sets
+   * `allowGroupChats: true`. Setting it is not a bare field write — the server
+   * also pairs the bot and unwinds `inboundMode` on clear, so the two surfaces
+   * agree on who may message the agent.
+   */
+  tgChatId: string;
 }
 
 export const DEFAULT_PREFS: SimplePrefs = {
@@ -73,6 +88,10 @@ export const DEFAULT_PREFS: SimplePrefs = {
   refinerFallbackProfile: '',
   fallbackProfiles: {},
   subagentModelPlan: { enabled: true, lock: true, followSessionModel: false, slots: [] },
+  // Telegram defaults mirror telegram's DEFAULT_CONFIG (packages/telegram/
+  // src/config.ts:86) and the server seed in webui-server context-meta.ts.
+  tgPollIntervalSec: 2,
+  tgChatId: '',
 };
 
 export const AUTONOMY_MODES: readonly AutonomyMode[] = ['off', 'suggest', 'auto'];
@@ -124,6 +143,16 @@ export function parsePrefs(payload: unknown, previous: SimplePrefs = DEFAULT_PRE
         ? (raw['fallbackProfiles'] as Record<string, string[]>)
         : previous.fallbackProfiles,
     subagentModelPlan: parseSubagentModelPlan(raw['subagentModelPlan'], previous.subagentModelPlan),
+    tgPollIntervalSec:
+      typeof raw['tgPollIntervalSec'] === 'number' &&
+      Number.isInteger(raw['tgPollIntervalSec']) &&
+      raw['tgPollIntervalSec'] >= 1 &&
+      raw['tgPollIntervalSec'] <= 60
+        ? raw['tgPollIntervalSec']
+        : // Hold the previous value rather than showing an interval the
+          // server would reject; a partial snapshot must not blank the panel.
+          previous.tgPollIntervalSec,
+    tgChatId: typeof raw['tgChatId'] === 'string' ? raw['tgChatId'] : previous.tgChatId,
   };
 }
 

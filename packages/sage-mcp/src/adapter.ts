@@ -180,6 +180,7 @@ export function createSageMcpToolHost(
         }
 
         const output = await tool.execute(callArgs, ctx, { signal });
+        signal.throwIfAborted();
         if (typeof output === 'string') return { content: output, isError: false };
         return { content: output as unknown, isError: false };
       } catch (error) {

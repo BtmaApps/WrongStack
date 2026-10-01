@@ -1,10 +1,15 @@
 import type { Location, LocationLink } from 'vscode-languageserver-protocol';
+import { lspColumnToHuman } from '../position.js';
 import { displayPath, uriToPathOrUri } from '../utils/uri.js';
+
+/** Text of one 0-based line of a file, when it can be read. */
+export type LineTextReader = (filePath: string, line: number) => string | undefined;
 
 export function formatLocations(
   locations: Location | LocationLink | Array<Location | LocationLink> | null,
   cwd: string,
   limit = 100,
+  lineText?: LineTextReader,
 ): string {
   if (!locations) return 'No locations found.';
   const list = Array.isArray(locations) ? locations : [locations];
@@ -12,7 +17,16 @@ export function formatLocations(
   const lines = list.slice(0, limit).map((loc) => {
     const uri = 'uri' in loc ? loc.uri : loc.targetUri;
     const range = 'range' in loc ? loc.range : loc.targetSelectionRange;
-    return `${displayUri(uri, cwd)}:${range.start.line + 1}:${range.start.character + 1}`;
+    // Columns go out in the same 1-based byte convention the tools take in,
+    // so a location can be passed straight back to hover/definition/rename.
+    const text = /^file:/i.test(uri)
+      ? lineText?.(uriToPathOrUri(uri), range.start.line)
+      : undefined;
+    const column =
+      text !== undefined
+        ? lspColumnToHuman(text, range.start.character)
+        : range.start.character + 1;
+    return `${displayUri(uri, cwd)}:${range.start.line + 1}:${column}`;
   });
   if (list.length > limit) lines.push(`... truncated ${list.length - limit} more`);
   return lines.join('\n');
@@ -26,5 +40,5 @@ export function formatLocations(
  */
 function displayUri(uri: string, cwd: string): string {
   const resolved = uriToPathOrUri(uri);
-  return uri.startsWith('file:') ? displayPath(resolved, cwd) : resolved;
+  return /^file:/i.test(uri) ? displayPath(resolved, cwd) : resolved;
 }

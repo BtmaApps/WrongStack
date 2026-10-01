@@ -72,4 +72,33 @@ describe('parsePrefs', () => {
   it('holds the previous showTabTitle for malformed values', () => {
     expect(parsePrefs({ showTabTitle: 'nope' }, seeded).showTabTitle).toBe(true);
   });
+
+  it('reads the Telegram poll interval and chat from the snapshot', () => {
+    // Same two fields `/telegram-settings poll|chat` and the WebUI panel write.
+    expect(parsePrefs({ tgPollIntervalSec: 7, tgChatId: '-100123' })).toMatchObject({
+      tgPollIntervalSec: 7,
+      tgChatId: '-100123',
+    });
+    // An empty chat is a real value ("not set"), not a missing key.
+    expect(parsePrefs({ tgChatId: '' }, seeded).tgChatId).toBe('');
+  });
+
+  it('defaults the Telegram poll interval to the plugin default of 2', () => {
+    expect(parsePrefs({}).tgPollIntervalSec).toBe(2);
+    expect(DEFAULT_PREFS.tgPollIntervalSec).toBe(2);
+  });
+
+  it.each([0, 61, -1, 2.9, Number.NaN, '5'])(
+    'holds the previous poll interval for the out-of-range value %j',
+    (value) => {
+      // The server rejects these, so showing them would advertise a setting
+      // that never persisted.
+      expect(parsePrefs({ tgPollIntervalSec: value }, seeded).tgPollIntervalSec).toBe(2);
+    },
+  );
+
+  it('holds the previous chat id for a non-string value', () => {
+    expect(parsePrefs({ tgChatId: 12345 }, seeded).tgChatId).toBe('');
+    expect(parsePrefs({ tgChatId: null }, seeded).tgChatId).toBe('');
+  });
 });

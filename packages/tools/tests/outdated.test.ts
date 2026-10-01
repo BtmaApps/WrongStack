@@ -116,6 +116,22 @@ describe('outdatedTool', () => {
     expect(result.output).toContain('treated as success');
   });
 
+  it('expands npm’s array value for a dependency outdated in several workspaces', async () => {
+    const payload = JSON.stringify({
+      lodash: [
+        { current: '4.17.0', wanted: '4.17.21', latest: '4.17.21', location: 'packages/a' },
+        { current: '4.16.0', wanted: '4.17.21', latest: '4.17.21', location: 'packages/b' },
+      ],
+    });
+    spawnMocks.spawn.mockImplementation(() => childWithStdout(payload, 1));
+    const result = await outdatedTool.execute({}, makeCtx(), makeOpts());
+    expect(result.total).toBe(2);
+    expect(result.packages.map((p) => `${p.location}@${p.current}`)).toEqual([
+      'packages/a@4.17.0',
+      'packages/b@4.16.0',
+    ]);
+  });
+
   it('parses the pnpm outdated JSON shape (dependencyType, no location)', async () => {
     const payload = JSON.stringify({
       vitest: {

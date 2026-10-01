@@ -30,7 +30,18 @@ export async function readSummary(
   outDir: string,
 ): Promise<Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'>> {
   const raw = await fs.readFile(path.join(outDir, 'summary.json'), 'utf8');
-  return JSON.parse(raw) as Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'>;
+  const parsed: unknown = JSON.parse(raw);
+  if (
+    !isRecord(parsed) ||
+    typeof parsed['suite'] !== 'string' ||
+    typeof parsed['finishedAt'] !== 'string' ||
+    !isRecord(parsed['fingerprint']) ||
+    !Array.isArray(parsed['cells']) ||
+    !parsed['cells'].every(isCellResultRecord)
+  ) {
+    throw new Error('Benchmark summary has an invalid envelope.');
+  }
+  return parsed as unknown as Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'>;
 }
 
 /** Load per-(task × cell) rows from a finished run directory. Missing file → []. */
@@ -46,7 +57,8 @@ export async function readResultsJsonl(outDir: string): Promise<TaskResult[]> {
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
     try {
-      rows.push(JSON.parse(trimmed) as TaskResult);
+      const parsed: unknown = JSON.parse(trimmed);
+      if (isTaskResultRecord(parsed)) rows.push(parsed as unknown as TaskResult);
     } catch {
       // `bench run` streams partial results.jsonl to disk during the run so a
       // crash keeps partial results; a hard-killed write can leave a truncated
@@ -55,6 +67,31 @@ export async function readResultsJsonl(outDir: string): Promise<TaskResult[]> {
     }
   }
   return rows;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCellResultRecord(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isRecord(value['cell']) &&
+    typeof value['cell']['label'] === 'string' &&
+    value['cell']['label'].length > 0
+  );
+}
+
+function isTaskResultRecord(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value['taskId'] === 'string' &&
+    value['taskId'].length > 0 &&
+    isCellResultRecord({ cell: value['cell'] }) &&
+    isRecord(value['grade']) &&
+    isRecord(value['run']) &&
+    isRecord(value['tools'])
+  );
 }
 
 /** Load summary.json plus results.jsonl so a report can be re-rendered or compared. */

@@ -484,7 +484,12 @@ describe('persistence 100% coverage suite', () => {
         errSocket.destroy = vi.fn();
         // Each probe gets one refusal after its listener is installed. An
         // interval can emit again after the once('error') listener is gone.
-        queueMicrotask(() => errSocket.emit('error', new Error('ECONNREFUSED')));
+        queueMicrotask(() =>
+          errSocket.emit(
+            'error',
+            Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+          ),
+        );
         return errSocket;
       };
 

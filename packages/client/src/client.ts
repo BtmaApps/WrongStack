@@ -129,6 +129,7 @@ export class WrongStackClient {
   private readonly waiters = new Set<{
     match: (frame: Frame) => boolean;
     resolve: (frame: Frame) => void;
+    reject: (error: WrongStackError) => void;
   }>();
   private closeError: WrongStackError | undefined;
   private readonly closeListeners = new Set<(error: WrongStackError | undefined) => void>();
@@ -196,17 +197,27 @@ export class WrongStackClient {
     }
     this.runs.set(id, { run, socket: this.socketNumber });
     if (!this.subscribed.includes(sessionId)) this.subscribe(sessionId);
-    this.post({
-      type: 'user_message',
-      payload: {
-        id,
-        content: text,
-        timestamp: Date.now(),
-        sessionId,
-        ...(options.images ? { images: options.images } : {}),
-        ...(options.freshContext ? { freshContext: true } : {}),
-      },
-    });
+    try {
+      this.post({
+        type: 'user_message',
+        payload: {
+          id,
+          content: text,
+          timestamp: Date.now(),
+          sessionId,
+          ...(options.images ? { images: options.images } : {}),
+          ...(options.freshContext ? { freshContext: true } : {}),
+        },
+      });
+    } catch (error) {
+      this.runs.delete(id);
+      const failure =
+        error instanceof WrongStackError
+          ? error
+          : new WrongStackError({ kind: 'connection', code: 'send', detail: String(error) });
+      run.fail(failure);
+      throw failure;
+    }
     return run;
   }
 
@@ -298,7 +309,17 @@ export class WrongStackClient {
   post(message: CoreClientMessage | Frame): void {
     const unusable = this.unusable();
     if (unusable) throw unusable;
-    this.socket.send(JSON.stringify(message));
+    let serialized: string;
+    try {
+      serialized = JSON.stringify(message);
+    } catch (error) {
+      throw new WrongStackError({
+        kind: 'protocol',
+        code: 'serialize',
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+    this.socket.send(serialized);
   }
 
   close(): void {
@@ -407,10 +428,14 @@ export class WrongStackClient {
           this.waiters.delete(waiter);
           resolve(frame);
         },
+        reject: (error: WrongStackError) => {
+          clearTimeout(timer);
+          this.waiters.delete(waiter);
+          reject(error);
+        },
       };
       const timer = setTimeout(() => {
-        this.waiters.delete(waiter);
-        reject(new WrongStackError({ kind: 'timeout', code: 'no_answer', retryable: true }));
+        waiter.reject(new WrongStackError({ kind: 'timeout', code: 'no_answer', retryable: true }));
       }, timeoutMs);
       this.waiters.add(waiter);
     });
@@ -611,7 +636,9 @@ export class WrongStackClient {
     if (this.connection === 'closed') return;
     this.closeError = error;
     this.connection = 'closed';
-    this.failRuns(() => true, error ?? new WrongStackError({ kind: 'connection', code: 'closed' }));
+    const closeError = error ?? new WrongStackError({ kind: 'connection', code: 'closed' });
+    this.failRuns(() => true, closeError);
+    for (const waiter of [...this.waiters]) waiter.reject(closeError);
     this.setState('closed', error);
     for (const listener of this.closeListeners) {
       try {

@@ -8,6 +8,7 @@
  * opaque for HTTP bodies, scrubbed-but-readable for authenticated channels.
  */
 import { homedir } from 'node:os';
+import { sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ERROR_DETAIL_MAX,
@@ -79,6 +80,12 @@ describe('scrubErrorDetail', () => {
     if (swapped !== home) {
       expect(scrubErrorDetail(new Error(`at ${swapped}/x`))).not.toContain(swapped);
     }
+  });
+
+  it('cuts the home directory at the right place when the message holds a dotted capital I', () => {
+    const home = homedir();
+    const out = scrubErrorDetail(new Error(`İİİ okunamadı: ${home}${sep}a.ts`));
+    expect(out).toBe(`İİİ okunamadı: ~${sep}a.ts`);
   });
 
   it('caps the detail length', () => {

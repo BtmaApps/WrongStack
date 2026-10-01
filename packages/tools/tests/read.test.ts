@@ -74,6 +74,21 @@ describe('read tool', () => {
     expect(second.text).not.toContain('1→first');
   });
 
+  it('re-reads a same-size edit that keeps the mtime within tolerance', async () => {
+    const file = path.join(sb.dir, 'version.txt');
+    await fs.writeFile(file, 'version 1.2.3\n');
+    await readTool.execute({ path: 'version.txt' }, sb.ctx, { signal: newSignal() });
+    const { mtime } = await fs.stat(file);
+    await fs.writeFile(file, 'version 1.2.4\n');
+    // Same size, same mtime: only the content tells the two apart.
+    await fs.utimes(file, mtime, mtime);
+    const again = await readTool.execute({ path: 'version.txt' }, sb.ctx, {
+      signal: newSignal(),
+    });
+    expect(again.cached).not.toBe(true);
+    expect(again.text).toContain('1→version 1.2.4');
+  });
+
   it('does not suppress a new explicit range that was not seen yet', async () => {
     const file = path.join(sb.dir, 'ranges.txt');
     await fs.writeFile(file, Array.from({ length: 20 }, (_, i) => `line${i + 1}`).join('\n'));

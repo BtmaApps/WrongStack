@@ -334,6 +334,38 @@ describe('optimization writes skill addenda and unblocks the buffer', () => {
     expect(result.status).toBe('no-entries');
     expect(called).toBe(false);
   });
+
+  it('keeps a directive captured while the model is consolidating, and injects it', async () => {
+    captureLearnedFromAgentOutputDetailed(
+      '## LEARNED\nAlways run `pnpm vitest run` from the repository root so workspace configs resolve.',
+      'reviewer',
+      projectRoot,
+      true,
+    );
+    const late =
+      'Always pass explicit file paths to `biome check --write` instead of whole directories.';
+    const result = await optimizeProjectAgentLearning('reviewer', projectRoot, {
+      // Another session of the same role captures while the model is working.
+      // Only during the role-level call: a capture during a skill call lands
+      // before the consolidation snapshot, so the model does see it.
+      llm: stubLlm('# Consolidated\n\n- Run tests from the repository root.', (req) => {
+        if (!req.system?.[0]?.text.includes('consolidate')) return;
+        captureLearnedFromAgentOutputDetailed(`## LEARNED\n${late}`, 'reviewer', projectRoot, true);
+      }),
+    });
+    expect(result.status).toBe('optimized');
+
+    // The synthesized directive is pruned; the one the model never saw is not.
+    const remaining = parseStructuredLearnedEntriesFromContent(
+      loadProjectAgentLearned('reviewer', projectRoot),
+    ).map((entry) => entry.what);
+    expect(remaining).toEqual([late]);
+
+    // And it reaches the next spawn as a pending delta beside the document.
+    const prompt = buildProjectContextualizedPrompt('base', 'reviewer', projectRoot);
+    expect(prompt).toContain('Run tests from the repository root.');
+    expect(prompt).toContain('biome check --write');
+  });
 });
 
 describe('prompt assembly', () => {

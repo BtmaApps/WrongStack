@@ -45,7 +45,7 @@ const FILENAME_MAP: Readonly<Record<string, string>> = {
 
 export function languageIdFor(filePath: string): string | null {
   const base = path.basename(filePath);
-  const exact = FILENAME_MAP[base];
+  const exact = Object.hasOwn(FILENAME_MAP, base) ? FILENAME_MAP[base] : undefined;
   if (exact) return exact;
 
   if (base.endsWith('.test.ts') || base.endsWith('.spec.ts')) return 'typescript';

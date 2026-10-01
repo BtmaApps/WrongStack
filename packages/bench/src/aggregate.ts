@@ -54,8 +54,8 @@ export function aggregateCell(cell: ModelCell, results: TaskResult[]): CellResul
   const passed = graded.filter((r) => r.grade.passed).length;
   const timeouts = results.filter((r) => r.run.status === 'timeout').length;
 
-  const editCalls = sum(results, (r) => r.tools.editCalls);
-  const editErrors = sum(results, (r) => r.tools.editErrors);
+  const editCalls = counterSum(results, (r) => r.tools.editCalls);
+  const editErrors = counterSum(results, (r) => r.tools.editErrors);
   // Edit-apply rate is undefined when no edit was ever attempted; report 1
   // (nothing failed to apply) so a no-op run doesn't drag the column down.
   // Clamp to [0,1]: a single over-reported error (editErrors > editCalls) must
@@ -91,7 +91,7 @@ export function aggregateCell(cell: ModelCell, results: TaskResult[]): CellResul
     p50Iterations: median(results.map((r) => r.run.iterations)),
     p50ElapsedMs: median(results.map((r) => r.run.elapsedMs)),
     timeoutRate: timeouts / attemptCount,
-    totalRateLimitRetries: sum(results, (r) => r.tools.rateLimitRetries),
+    totalRateLimitRetries: counterSum(results, (r) => r.tools.rateLimitRetries),
   };
   if (traceEval) cellResult.traceEval = traceEval;
   return cellResult;
@@ -156,12 +156,14 @@ function rate(eligible: number, passed: number): ConditionalRate {
 
 /** Group all results by cell label and aggregate each group. */
 export function aggregateAll(cells: ModelCell[], results: TaskResult[]): CellResult[] {
-  return cells.map((cell) =>
-    aggregateCell(
-      cell,
-      results.filter((r) => r.cell.label === cell.label),
-    ),
-  );
+  const byCell = new Map<string, TaskResult[]>();
+  for (const result of results) {
+    const label = result.cell.label;
+    const bucket = byCell.get(label);
+    if (bucket) bucket.push(result);
+    else byCell.set(label, [result]);
+  }
+  return cells.map((cell) => aggregateCell(cell, byCell.get(cell.label) ?? []));
 }
 
 /** Median of a numeric array (0 for empty). Exported for tests. */
@@ -174,13 +176,16 @@ export function median(values: number[]): number {
   const sorted = [...finite].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2
+    ? (sorted[mid - 1] as number) / 2 + (sorted[mid] as number) / 2
     : (sorted[mid] as number);
 }
 
-function sum<T>(items: T[], pick: (item: T) => number): number {
+function counterSum<T>(items: T[], pick: (item: T) => number): number {
   let total = 0;
-  for (const item of items) total += pick(item);
+  for (const item of items) {
+    const value = pick(item);
+    if (Number.isSafeInteger(value) && value >= 0) total += value;
+  }
   return total;
 }
 

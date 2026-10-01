@@ -37,10 +37,14 @@ export const SYSTEM_SESSION_PREFIX = 'system:' as const;
  * acted.
  */
 export function systemSessionId(actor: string): string {
-  return `${SYSTEM_SESSION_PREFIX}${actor}`;
+  return `${SYSTEM_SESSION_PREFIX}${requireSessionId(actor, 'system session actor').trim()}`;
 }
 
 /** Whether this id names a daemon rather than a user session. */
 export function isSystemSessionId(sessionId: string | null | undefined): boolean {
-  return typeof sessionId === 'string' && sessionId.startsWith(SYSTEM_SESSION_PREFIX);
+  return (
+    typeof sessionId === 'string' &&
+    sessionId.startsWith(SYSTEM_SESSION_PREFIX) &&
+    sessionId.slice(SYSTEM_SESSION_PREFIX.length).trim().length > 0
+  );
 }

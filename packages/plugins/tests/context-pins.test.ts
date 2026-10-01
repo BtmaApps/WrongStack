@@ -167,6 +167,18 @@ describe('context-pins plugin', () => {
     expect(list['totalPins']).toBe(1);
   });
 
+  it('keeps stored pins past a lowered maxPins instead of deleting them on the next write', async () => {
+    const filePath = join(tmp, 'pins.json');
+    const api = makeApi({ extensions: { 'context-pins': { filePath } } });
+    contextPinsPlugin.setup(api as never);
+    for (const text of ['one', 'two', 'three']) await getTool(api, 'pin_add').execute({ text });
+
+    const api2 = makeApi({ extensions: { 'context-pins': { filePath, maxPins: 2 } } });
+    contextPinsPlugin.setup(api2 as never);
+    await getTool(api2, 'pin_remove').execute({ id: 'pin-1' });
+    expect(readFileSync(filePath, 'utf-8')).toContain('three');
+  });
+
   it('rejects filePath outside the project directory and runs in-memory', async () => {
     const outside = join(tmpdir(), `outside-pins-${Date.now()}.json`);
     const api = makeApi({ extensions: { 'context-pins': { filePath: outside } } });

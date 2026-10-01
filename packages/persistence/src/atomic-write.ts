@@ -329,10 +329,9 @@ export function createPersistencePrimitives(
       await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
       return result;
     } catch (error) {
-      // As above, EEXIST on open means exclusive creation never transferred ownership
-      // of this path to this invocation. If temp was successfully created by this
-      // invocation, clean it up even if a later error carries code EEXIST.
-      if (tempCreated || (error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      // Any failed exclusive open leaves ownership elsewhere, regardless of its
+      // error code. Only clean up after this invocation actually created the temp.
+      if (tempCreated) {
         await fs.unlink(tmp).catch(() => undefined);
       }
       throw error;
@@ -423,12 +422,15 @@ export function createPersistencePrimitives(
           const stat = await fs.stat(lockPath);
           if (Date.now() - stat.mtimeMs > staleMs) {
             // Re-stat right before removing. A live holder's heartbeat (or a
-            // fresh holder that just acquired) changes mtimeMs; only delete
-            // when the lock is STILL the same stale file we observed, so we
-            // never unlink another actor's fresh lock in the stat→unlink gap.
+            // fresh holder that just acquired) changes mtimeMs. Also compare
+            // identity: coarse timestamp precision can give a replacement
+            // inode the same mtime as the stale file we observed.
             const recheck = await fs.stat(lockPath).catch(() => undefined);
             if (
               recheck &&
+              recheck.ino === stat.ino &&
+              recheck.dev === stat.dev &&
+              recheck.birthtimeMs === stat.birthtimeMs &&
               recheck.mtimeMs === stat.mtimeMs &&
               Date.now() - recheck.mtimeMs > staleMs
             ) {
@@ -461,7 +463,7 @@ export function createPersistencePrimitives(
     // cleared before its first tick for any short section, so the common path
     // pays no syscalls. Deferring or raising the floor beyond staleMs/2 would
     // let a long holder go stale before the first refresh and be stolen.)
-    const refreshMs = Math.max(50, Math.floor(staleMs / 2));
+    const refreshMs = Math.max(1, Math.floor(staleMs / 2));
     const heartbeat = setInterval(() => {
       const now = new Date();
       // Refresh the file we acquired, even if stale recovery replaced its

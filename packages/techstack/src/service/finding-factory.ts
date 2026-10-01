@@ -6,7 +6,7 @@ export function computeDependencyFingerprint(
   const parts = dependencies
     .map(
       (dependency) =>
-        `${dependency.name}@${dependency.locked ?? dependency.requested ?? 'unknown'}`,
+        `${dependency.name}@${dependency.locked ?? dependency.installed ?? dependency.requested ?? 'unknown'}`,
     )
     .sort()
     .join(',');

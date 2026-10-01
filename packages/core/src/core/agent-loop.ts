@@ -8,7 +8,12 @@ import { attachSessionNotes } from '../session-note-attach.js';
 import { armRequiredSkills } from '../skills/required-skill-gate.js';
 import type { TextBlock } from '../types/blocks.js';
 import { isToolUseBlock } from '../types/blocks.js';
-import { toWrongStackError } from '../types/errors.js';
+import {
+  AgentError,
+  ERROR_CODES,
+  toWrongStackError,
+  type WrongStackError,
+} from '../types/errors.js';
 import type { Request, Response } from '../types/provider.js';
 import { effectiveInputTokens } from '../types/provider.js';
 import { isRuntimeContextInput, recordUserIntentEvidence } from '../utils/context-evidence.js';
@@ -88,6 +93,25 @@ export function signalAbortReason(signal: AbortSignal): string {
   if (r instanceof Error) return r.message || r.name;
   if (typeof r === 'string' && r.length > 0) return r;
   return 'aborted';
+}
+
+/**
+ * The error an `aborted` result carries: always `AGENT_ABORTED`.
+ *
+ * `toWrongStackError` passes an existing WrongStackError through untouched, so
+ * a stop that severed a provider request returned the provider's own error —
+ * a recoverable `PROVIDER_NETWORK_ERROR` — and surfaces read it as a transient
+ * provider failure (the WebUI armed its auto-continue countdown on it). The
+ * severed request's error stays reachable as the cause.
+ */
+function abortedRunError(err: unknown): WrongStackError {
+  const wrapped = toWrongStackError(err, 'AGENT_ABORTED');
+  if (wrapped.code === ERROR_CODES.AGENT_ABORTED) return wrapped;
+  return new AgentError({
+    message: wrapped.message,
+    code: ERROR_CODES.AGENT_ABORTED,
+    cause: wrapped,
+  });
 }
 
 interface LoopHandlers {
@@ -393,7 +417,7 @@ export function createAgentLoopHandler(
           return {
             status: 'aborted',
             iterations,
-            error: toWrongStackError(controller.signal.reason ?? 'aborted', 'AGENT_ABORTED'),
+            error: abortedRunError(controller.signal.reason ?? 'aborted'),
             abortReason: signalAbortReason(controller.signal),
           };
         }
@@ -538,7 +562,7 @@ export function createAgentLoopHandler(
             return {
               status: 'aborted',
               iterations,
-              error: toWrongStackError(err, 'AGENT_ABORTED'),
+              error: abortedRunError(err),
               abortReason: signalAbortReason(controller.signal),
             };
           }
@@ -722,7 +746,7 @@ export function createAgentLoopHandler(
             return {
               status: 'aborted',
               iterations,
-              error: toWrongStackError(toolErr, 'AGENT_ABORTED'),
+              error: abortedRunError(toolErr),
               finalText,
               delegateSummaries,
               abortReason: signalAbortReason(controller.signal),
@@ -741,7 +765,7 @@ export function createAgentLoopHandler(
           return {
             status: 'aborted',
             iterations,
-            error: toWrongStackError(controller.signal.reason ?? 'aborted', 'AGENT_ABORTED'),
+            error: abortedRunError(controller.signal.reason ?? 'aborted'),
             finalText,
             delegateSummaries,
             abortReason: signalAbortReason(controller.signal),

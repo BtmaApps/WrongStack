@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import autoDocPlugin from '../src/auto-doc';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -145,6 +145,26 @@ describe('runAutoDoc doc generation', () => {
     expect(content).toContain('/**');
     expect(content).toContain('TODO:');
     expect(content).toContain('greet');
+  });
+
+  it('aligns the comment body with the declaration at any indentation', async () => {
+    const filePath = path.join(tmpDir, 'align.ts');
+    await fs.writeFile(
+      filePath,
+      [
+        'export function top(a: string): void {',
+        '    function inner(b: number): void {}',
+        '}',
+      ].join('\n'),
+    );
+    await runAutoDocTool({ files: [filePath], dryRun: false });
+    const lines = (await fs.readFile(filePath, 'utf-8')).split('\n');
+    const topStart = lines.indexOf('/**');
+    expect(lines[topStart + 1]).toMatch(/^ \* /);
+    expect(lines.find((l) => l.trim() === '*/' && !l.startsWith('    '))).toBe(' */');
+    const innerStart = lines.indexOf('    /**');
+    expect(innerStart).toBeGreaterThan(-1);
+    expect(lines[innerStart + 1]).toMatch(/^ {5}\* /);
   });
 
   it('respects --style jsdoc', async () => {

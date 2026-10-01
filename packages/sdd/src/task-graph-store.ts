@@ -155,7 +155,7 @@ export class TaskGraphStore implements TaskStore {
     try {
       const raw = await fsp.readFile(this.indexPath, 'utf8');
       const parsed = JSON.parse(raw) as TaskGraphIndex;
-      if (parsed?.version === 1) return parsed;
+      if (parsed?.version === 1 && Array.isArray(parsed.entries)) return parsed;
     } catch {
       /* no index yet */
     }

@@ -140,7 +140,11 @@
     },
     "serviceActionRestart": "Redémarrer {{label}}",
     "webuiTransport": "Transport WebUI",
-    "serviceAutoRestarting": "Redémarrage automatique…"
+    "serviceAutoRestarting": "Redémarrage automatique…",
+    "restartAllTitle": "Redémarrer tous les démons IPC en cours d'exécution en une seule fois",
+    "restartAll": "Tout redémarrer",
+    "versionSkewRemedy": "Ce démon exécute encore la version avec laquelle il a démarré, pas celle qui est installée. Utilisez Redémarrer sur ce service (ou Tout redémarrer) pour charger la version actuelle.",
+    "versionSkewBadge": "version obsolète"
   },
   "provider": {
     "removeProfileConfirm": "Supprimer le profil « {{alias}} » et toutes ses clés ?",
@@ -189,7 +193,10 @@
     "keyLabelPlaceholder": "Libellé de la clé (ex. default, production)",
     "apiKeyPlaceholder": "Clé API",
     "saveKey": "Enregistrer la clé",
-    "savedToast": "Clé enregistrée pour {{name}}"
+    "savedToast": "Clé enregistrée pour {{name}}",
+    "disableToggle": "Désactiver le fournisseur",
+    "disableToggleHint": "Tous les modèles de ce fournisseur sont exclus du routage de secours et des sélecteurs de modèles. Ses clés et sa configuration sont conservées.",
+    "disabledBadge": "Désactivé"
   },
   "providerModels": {
     "addCustom": "Ajouter un modèle personnalisé",
@@ -571,6 +578,45 @@
     "addFavoriteModel": "Ajouter un modèle favori…",
     "inactive": "inactif"
   },
+  "fallbackSuggest": {
+    "heading": "Profils de repli suggérés",
+    "body": "Construits à partir du catalogue models.dev de vos fournisseurs enregistrés : uniquement des modèles récents compatibles avec les outils. Les modèles obsolètes, remplacés ou vieux de plus de six mois sont exclus.",
+    "modeLabel": "Moteur de suggestion",
+    "modeHeuristic": "Catalogue",
+    "modeLlm": "Assisté par LLM",
+    "llmHint": "Votre modèle actif réordonne le même ensemble du catalogue selon ce qu'il sait des benchmarks et de la fiabilité. Il ne peut choisir que des modèles accessibles.",
+    "generate": "Suggérer",
+    "loading": "Préparation des suggestions…",
+    "empty": "Pas assez de modèles accessibles pour une chaîne de repli. Ajoutez un autre fournisseur ou activez davantage de modèles.",
+    "poolSummary_one": "Choisi parmi {{count}} modèle de vos fournisseurs",
+    "poolSummary_other": "Choisi parmi {{count}} modèles de vos fournisseurs",
+    "rankedBy": "classé par {{model}}",
+    "llmFailed": "Étape LLM indisponible, suggestions du catalogue affichées : {{error}}",
+    "archetype": {
+      "strong": "Puissant",
+      "balanced": "Équilibré",
+      "fast": "Rapide",
+      "budget": "Économique"
+    },
+    "archetypeHint": {
+      "strong": "Les modèles les plus capables d'abord, quel qu'en soit le coût.",
+      "balanced": "Assez capables pour du vrai travail à un prix raisonnable.",
+      "fast": "La latence la plus faible qui utilise encore les outils de façon fiable.",
+      "budget": "Les modèles les moins chers qui terminent encore les tâches de code."
+    },
+    "sourceLlm": "LLM",
+    "sourceHeuristic": "Catalogue",
+    "providerCount_one": "{{count}} fournisseur",
+    "providerCount_other": "{{count}} fournisseurs",
+    "free": "gratuit",
+    "reasoning": "raisonnement",
+    "unstable": "bêta / aperçu",
+    "addAsProfile": "Ajouter comme profil",
+    "savedAs": "Enregistré sous {{name}}",
+    "useAsChain": "Utiliser comme chaîne active",
+    "chainActive": "Chaîne active",
+    "profileAdded": "Profil de repli « {{name}} » ajouté"
+  },
   "fleet": {
     "heading": "Flotte & Streaming",
     "fleetChatVerbosityLabel": "Streamer les événements de flotte",
@@ -604,6 +650,11 @@
     "telegramDelegateHint": "Envoyer une note humanisée quand un sous-agent termine.",
     "telegramLongToolLabel": "Outils longs",
     "telegramLongToolHint": "Notifier quand un outil dépasse {{ms}}ms. 0 pour désactiver.",
+    "telegramPollIntervalLabel": "Intervalle d'interrogation",
+    "telegramPollIntervalHint": "Secondes entre les interrogations Telegram (1–60). Plus bas est plus réactif, mais génère plus d'appels API.",
+    "telegramChatIdLabel": "Chat de notification",
+    "telegramChatIdHint": "ID de chat par défaut pour les notifications. Un ID positif apparie votre chat privé au bot ; les IDs de groupe (négatifs) sont refusés sauf si allowGroupChats est activé dans la configuration. Laissez vide pour effacer.",
+    "telegramChatIdInvalid": "Saisissez un ID de chat entier non nul, ou laissez vide.",
     "telegramChangesApply": "Les changements s'appliquent immédiatement.",
     "telegramNotConfigured": "Telegram n'est pas configuré. Lancez /telegram-setup dans la CLI pour connecter un bot d'abord.",
     "heading": "Integrations",

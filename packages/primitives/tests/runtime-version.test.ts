@@ -22,7 +22,23 @@ describe('daemon release health', () => {
     expect(WRONGSTACK_RUNTIME_VERSION).toBe(packageInfo.version);
     expect(
       withDaemonVersion({ status: 'healthy', detail: 'Ready.' }, WRONGSTACK_RUNTIME_VERSION),
-    ).toEqual({ status: 'healthy', detail: `Ready. WrongStack ${packageInfo.version}.` });
+    ).toEqual({
+      status: 'healthy',
+      detail: `Ready. WrongStack ${packageInfo.version}.`,
+      daemonVersion: WRONGSTACK_RUNTIME_VERSION,
+    });
+  });
+
+  it('reports the daemon release so a stale build is identifiable', () => {
+    expect(
+      withDaemonVersion({ status: 'healthy', detail: 'Ready.' }, '0.9.0', '1.0.0').daemonVersion,
+    ).toBe('0.9.0');
+  });
+
+  it('leaves a legacy daemon unreported rather than inventing a release', () => {
+    expect(
+      withDaemonVersion({ status: 'healthy', detail: 'Ready.' }, undefined, '1.0.0').daemonVersion,
+    ).toBeUndefined();
   });
 
   it.each(['0.9.0', '2.0.0', undefined, null, 17, ''])(

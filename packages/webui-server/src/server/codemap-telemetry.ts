@@ -30,10 +30,16 @@ const TOOL_OPERATION: Record<string, CodeMapOperation> = {
   'codebase-search': 'search',
 };
 
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : undefined;
+}
+
 function numberField(input: Record<string, unknown>, names: string[]): number | undefined {
   for (const name of names) {
-    const value = input[name];
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value);
+    const value = positiveInteger(input[name]);
+    if (value !== undefined) return value;
   }
   return undefined;
 }
@@ -51,11 +57,17 @@ export function normalizeCodeMapFileTarget(
   line?: number,
   endLine?: number,
 ): CodeMapFileTarget {
+  const normalizedLine = positiveInteger(line);
+  const candidateEnd = positiveInteger(endLine);
+  const normalizedEnd =
+    candidateEnd !== undefined && normalizedLine !== undefined
+      ? Math.max(normalizedLine, candidateEnd)
+      : candidateEnd;
   return {
     filePath: normalizeTarget(projectRoot, filePath),
     operation: operation === 'rename' ? 'edit' : operation,
-    ...(line ? { line } : {}),
-    ...(endLine ? { endLine } : {}),
+    ...(normalizedLine !== undefined ? { line: normalizedLine } : {}),
+    ...(normalizedEnd !== undefined ? { endLine: normalizedEnd } : {}),
   };
 }
 
@@ -79,6 +91,7 @@ export function extractCodeMapFileTargets(
   toolName: string,
   rawInput: unknown,
 ): CodeMapFileTarget[] {
+  if (typeof toolName !== 'string') return [];
   const operation = TOOL_OPERATION[toolName.toLowerCase()];
   if (!operation || !rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return [];
   const input = rawInput as Record<string, unknown>;
@@ -101,7 +114,9 @@ export function extractCodeMapFileTargets(
   const line = numberField(input, ['line', 'offset', 'startLine', 'start_line', 'line_start']);
   const explicitEnd = numberField(input, ['endLine', 'end_line', 'line_end']);
   const limit = numberField(input, ['limit']);
-  const endLine = explicitEnd ?? (line && limit ? line + limit - 1 : undefined);
+  const candidateEnd = explicitEnd ?? (line && limit ? line + limit - 1 : undefined);
+  const endLine =
+    candidateEnd !== undefined && line !== undefined ? Math.max(line, candidateEnd) : candidateEnd;
   const seen = new Set<string>();
   const targets: CodeMapFileTarget[] = [];
   for (const rawPath of rawPaths) {

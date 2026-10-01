@@ -249,7 +249,13 @@ const plugin: Plugin = {
 
       if (isDocFile(path, cfg.docNames)) {
         state.docWrites += 1;
-        let content = extractDocContent(input.toolInput);
+        // An `edit` carries only the replaced fragment (`new_string`), so
+        // checking it reported every tracked file as unreferenced on a
+        // one-word typo fix in a README that already names them. This hook
+        // runs after the edit landed: read the whole doc from disk instead,
+        // and say nothing when it cannot be read.
+        const isFragment = input.toolName === 'edit';
+        let content = isFragment ? undefined : extractDocContent(input.toolInput);
         if (!content) {
           try {
             if (existsSync(path)) content = readFileSync(path, 'utf-8');

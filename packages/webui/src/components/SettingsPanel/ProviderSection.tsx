@@ -38,6 +38,8 @@ export function ProviderSection({
   onAddProvider,
   onRemoveProvider,
   onPickProviderModel,
+  disabledProviders,
+  onToggleProviderDisabled,
   ws,
   catalogQuery,
   setCatalogQuery,
@@ -504,6 +506,8 @@ export function ProviderSection({
           onRemoveProvider={onRemoveProvider}
           ws={ws}
           onPickProviderModel={onPickProviderModel}
+          disabledProviders={disabledProviders}
+          onToggleProviderDisabled={onToggleProviderDisabled}
           setShowAddKeyForm={setShowAddKeyForm}
           showAddKeyForm={showAddKeyForm}
           onSetActiveKey={onSetActiveKey}

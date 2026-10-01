@@ -78,6 +78,18 @@ describeIfGit('readGitInfo', () => {
     }
   });
 
+  it('reports a repository with no commits yet instead of hiding it', async () => {
+    const fresh = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-unborn-'));
+    try {
+      run(fresh, ['init', '--initial-branch=trunk', '--quiet']);
+      await fsp.writeFile(path.join(fresh, 'x.txt'), 'x');
+      const info = await readGitInfo(fresh);
+      expect(info).toMatchObject({ branch: 'trunk', added: 0, deleted: 0, untracked: 1 });
+    } finally {
+      await fsp.rm(fresh, { recursive: true, force: true });
+    }
+  });
+
   it('reports branch and zero changes on a clean tree', async () => {
     const info = await readGitInfo(repoDir);
     expect(info).not.toBeNull();

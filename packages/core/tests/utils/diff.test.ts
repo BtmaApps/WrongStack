@@ -37,6 +37,25 @@ describe('unifiedDiff', () => {
     expect(d).toContain('+++ foo.ts');
   });
 
+  it('keeps full trailing context on a hunk that ends before a long equal run', () => {
+    const a = Array.from({ length: 20 }, (_, i) => `l${i + 1}`);
+    const b = [...a];
+    b[1] = 'X';
+    b[15] = 'Y';
+    const d = unifiedDiff(`${a.join('\n')}\n`, `${b.join('\n')}\n`);
+    const hunks = d.split(/^@@.*@@$/m).slice(1);
+    expect(d).toContain('@@ -1,5 +1,5 @@');
+    expect(hunks[0]?.replace(/^\n|\n$/g, '').split('\n')).toEqual([
+      ' l1',
+      '-l2',
+      '+X',
+      ' l3',
+      ' l4',
+      ' l5',
+    ]);
+    expect(d).toContain('@@ -13,7 +13,7 @@');
+  });
+
   it('normalizes CRLF and LF so equivalent line endings do not produce false diffs', () => {
     expect(unifiedDiff('a\r\nb\r\n', 'a\nb\n')).toBe('');
     const d = unifiedDiff('a\r\nb\r\n', 'a\r\nB\r\n');

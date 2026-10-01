@@ -20,6 +20,7 @@
  */
 
 import { connect } from 'node:net';
+import { StringDecoder } from 'node:string_decoder';
 
 export const _connectSocket = { connect };
 
@@ -117,8 +118,9 @@ export function createIpcTransport(socketPath?: string, timeouts?: IpcTimeouts):
         // frame carrying our response arrives. Junk/partial lines are skipped,
         // not fatal — the daemon is allowed to chatter before answering.
         let buffer = '';
+        const decoder = new StringDecoder('utf8');
         for await (const chunk of sock) {
-          buffer += (chunk as Buffer).toString('utf8');
+          buffer += decoder.write(chunk as Buffer);
           let newlineAt = buffer.indexOf('\n');
           while (newlineAt !== -1) {
             const line = buffer.slice(0, newlineAt).trim();
@@ -135,7 +137,7 @@ export function createIpcTransport(socketPath?: string, timeouts?: IpcTimeouts):
             } catch {
               continue; // malformed line — tolerate, keep scanning
             }
-            if (envelope.id !== id && envelope.id !== null) {
+            if (envelope.id !== id) {
               // Result and error envelopes share the same correlation rule.
               // A stale/foreign error must not fail the current request.
               continue;

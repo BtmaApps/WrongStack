@@ -300,6 +300,19 @@ describe('gitignore-guard PostToolUse hook', () => {
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
 
+  it('treats a slashless .gitignore line as covering files under that directory', async () => {
+    seedGitignore(rootGitignore, 'node_modules\n/dist\n');
+    const api = makeApi({ extensions: { 'gitignore-guard': { mode: 'append' } } });
+    await plugin.setup(api as never);
+    const hook = getHook(api);
+
+    expect(await hook(writeInput('dist/bundle.js'))).toBeUndefined();
+    expect(await hook(writeInput('packages/a/node_modules/x/index.js'))).toBeUndefined();
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    expect(matchGitignorePattern('docs/generated/a.md', 'docs/generated')).toBe(true);
+    expect(matchGitignorePattern('docs/generated-old/a.md', 'docs/generated')).toBe(false);
+  });
+
   it.each(['suggest', 'append'])(
     'does not treat root-only ignores as nested coverage in %s mode',
     async (mode) => {

@@ -15,7 +15,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { isModelDisabled, isModelInFavorites } from '@/components/QuickModelSwitcher.filter';
+import {
+  isModelDisabled,
+  isModelInFavorites,
+  isProviderDisabled,
+} from '@/components/QuickModelSwitcher.filter';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { cn } from '@/lib/utils';
 import { openMainView, showPanel } from '@/lib/view-navigation';
@@ -129,7 +133,11 @@ export function ProviderTestView(): React.ReactElement {
       setSelected(
         new Set(
           next
-            .filter((model) => !isModelDisabled(providerId, model.id, localPrefs.disabledModels))
+            .filter(
+              (model) =>
+                !isProviderDisabled(providerId, localPrefs.disabledProviders) &&
+                !isModelDisabled(providerId, model.id, localPrefs.disabledModels),
+            )
             .map((model) => model.id),
         ),
       );
@@ -189,6 +197,7 @@ export function ProviderTestView(): React.ReactElement {
   const disableCandidates = results.filter(
     (result) =>
       result.status === 'failed' &&
+      !isProviderDisabled(providerId, localPrefs.disabledProviders) &&
       !isModelDisabled(providerId, result.modelId, localPrefs.disabledModels),
   );
 

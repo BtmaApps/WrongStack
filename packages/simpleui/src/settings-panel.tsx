@@ -56,11 +56,82 @@ function laneFromValue(value: string): SubagentLane {
   return { provider: value.slice(0, i), model: value.slice(i + 1) };
 }
 
+/** A provider/model pair the panel can offer. */
+type ModelOption = { provider: string; model: string };
+
+/** Option values the provider/model selects already offer.
+ *  `modelOptions` is an optional prop, so both the refiner and the lane
+ *  selects must tolerate it being absent — a catalog that has not loaded
+ *  offers nothing but the "inherit"/"Session model" entry. */
+function modelOptionValues(options: ModelOption[] | undefined): string[] {
+  return (options ?? []).map((option) => `${option.provider}/${option.model}`);
+}
+
+/**
+ * A passthrough `<option>` for a value this select is bound to but does not
+ * offer — the string-valued form of {@link presetOptions}'s rule, which
+ * cannot serve these because it is numeric.
+ *
+ * Catalog-driven selects (agent modes, provider/model pairs) bind to a value
+ * that can legitimately fall outside the offered list: `modelOptions` is
+ * optional, the agent-mode catalog can drop a mode that is still active, and a
+ * lane or refiner can be pinned from another surface (TUI, WebUI). With no
+ * matching `<option>`, the DOM reports the FIRST one, so the control
+ * silently displays — and on re-pick, silently writes — a different value
+ * than the one stored.
+ *
+ * Renders nothing when `value` is empty (the control is unpinned) or already
+ * offered, so callers can drop it in unconditionally.
+ */
+function PassthroughOption({
+  value,
+  offered,
+  label,
+}: {
+  value: string;
+  offered: readonly string[];
+  label?: string;
+}) {
+  if (!value || offered.includes(value)) return null;
+  return <option value={value}>{label ?? value}</option>;
+}
+
 const AUTONOMY_HINT: Record<AutonomyMode, string> = {
   off: 'You drive every turn.',
   suggest: 'Agent proposes the next step; you confirm.',
   auto: 'Agent proceeds on its own between turns.',
 };
+
+/** Options for a preset `<select>`, always including the stored value.
+ *
+ *  A `<select value={X}>` whose `<option>` list omits X does not render blank:
+ *  the DOM reports the FIRST option as the value. So a preset-only select
+ *  bound to a preference another surface can set to a non-preset silently
+ *  displays — and on re-pick, silently writes — a different value than the one
+ *  stored. For `refine.preRefineSeconds` that misreport is the worst possible
+ *  one, because 0 renders as "Off — send immediately": an 8-second countdown
+ *  written by the TUI's own presets would display as disabled.
+ *
+ *  `floor` is the control's own lower bound and differs per setting — the poll
+ *  interval rejects 0 while the countdown treats it as "Off" — so the caller
+ *  supplies it. A hand-edited config can hold a fractional or negative value;
+ *  those are outside every setting's accepted range (the server's
+ *  NUMBER_PREF_BOUNDS and `parsePrefs` both refuse them), so they must never
+ *  be offered back as a selectable option.
+ */
+function presetOptions(presets: readonly number[], current: number, floor: number): number[] {
+  if (!Number.isInteger(current) || current < floor) return [...presets];
+  return presets.includes(current) ? [...presets] : [...presets, current].sort((a, b) => a - b);
+}
+
+/** Presets for the pre-refine grace countdown (seconds). 0 = skip. A subset of
+ *  the TUI's `PRE_REFINE_SECONDS_PRESETS = [0, 2, 3, 5, 8, 10]`, whose 2 and 8
+ *  `presetOptions` covers by unioning in the stored value. */
+const PRE_REFINE_COUNTDOWN_PRESETS = [0, 3, 5, 10] as const;
+
+/** Presets for the Telegram bot polling interval (seconds). 1–60, the range the
+ *  server validator enforces. */
+const TG_POLL_INTERVAL_PRESETS = [1, 2, 5, 10, 30, 60] as const;
 
 interface ToggleRowProps {
   label: string;
@@ -176,6 +247,36 @@ export function SettingsPanel({
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // Telegram chat ID is free text, so it holds a draft and commits on blur /
+  // Enter. Sending on every keystroke would put "-" or "12abc" on the wire,
+  // and `validatePreferenceValue` rejects the WHOLE prefs.update payload on
+  // one bad key — leaving the optimistic local value on screen while config
+  // never changed.
+  const [tgChatDraft, setTgChatDraft] = useState(prefs.tgChatId);
+  const [tgChatInvalid, setTgChatInvalid] = useState(false);
+  useEffect(() => {
+    // Re-seed only from a non-empty server value, so a write the server
+    // refused (e.g. a group chat without allowGroupChats) does not wipe what
+    // the user typed.
+    if (prefs.tgChatId !== '') setTgChatDraft(prefs.tgChatId);
+  }, [prefs.tgChatId]);
+  // Mirrors validateTelegramChatId in webui-server ws-payload-preferences.ts:
+  // empty clears, otherwise a non-zero safe integer.
+  const commitTgChat = () => {
+    const trimmed = tgChatDraft.trim();
+    if (trimmed !== '' && !/^-?\d+$/.test(trimmed)) {
+      setTgChatInvalid(true);
+      return;
+    }
+    const chatId = Number(trimmed);
+    if (trimmed !== '' && (!Number.isSafeInteger(chatId) || chatId === 0)) {
+      setTgChatInvalid(true);
+      return;
+    }
+    setTgChatInvalid(false);
+    if (trimmed !== prefs.tgChatId) onPrefChange({ tgChatId: trimmed });
+  };
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedQuery(query), 150);
     return () => window.clearTimeout(handle);
@@ -438,11 +539,13 @@ export function SettingsPanel({
                 disabled={offline}
                 onChange={(event) => onPrefChange({ preRefineSeconds: Number(event.target.value) })}
               >
-                {[0, 3, 5, 10].map((seconds) => (
-                  <option key={seconds} value={String(seconds)}>
-                    {seconds === 0 ? 'Off — send immediately' : `${seconds} seconds`}
-                  </option>
-                ))}
+                {presetOptions(PRE_REFINE_COUNTDOWN_PRESETS, prefs.preRefineSeconds, 0).map(
+                  (seconds) => (
+                    <option key={seconds} value={String(seconds)}>
+                      {seconds === 0 ? 'Off — send immediately' : `${seconds} seconds`}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
             <label
@@ -487,6 +590,18 @@ export function SettingsPanel({
                     profile:{prefs.refinerFallbackProfile}
                   </option>
                 ) : null}
+                {/* The pinned pair may predate this catalog (pinned on the TUI
+                    or WebUI, or while `modelOptions` is still loading). Without
+                    this the select reports "Session model", i.e. falsely
+                    claiming no refiner is pinned. */}
+                <PassthroughOption
+                  value={
+                    prefs.refinerProvider && prefs.refinerModel
+                      ? `${prefs.refinerProvider}/${prefs.refinerModel}`
+                      : ''
+                  }
+                  offered={modelOptionValues(modelOptions)}
+                />
               </select>
             </label>
             <small className="settings-hint">
@@ -519,11 +634,16 @@ export function SettingsPanel({
                 {modes.length === 0 ? (
                   <option value={activeModeId}>{activeModeId}</option>
                 ) : (
-                  modes.map((mode) => (
-                    <option key={mode.id} value={mode.id}>
-                      {mode.name}
-                    </option>
-                  ))
+                  <>
+                    {modes.map((mode) => (
+                      <option key={mode.id} value={mode.id}>
+                        {mode.name}
+                      </option>
+                    ))}
+                    {/* The catalog can drop a mode that is still active. Without
+                        this the select reports the first listed mode instead. */}
+                    <PassthroughOption value={activeModeId} offered={modes.map((m) => m.id)} />
+                  </>
                 )}
               </select>
             </label>
@@ -667,12 +787,13 @@ export function SettingsPanel({
                         {option.provider}/{option.model}
                       </option>
                     ))}
-                    {/* A lane pinned to a tier or profile elsewhere (TUI, WebUI)
-                        keeps its value visible instead of silently reading as
-                        "inherit" here. */}
-                    {laneValue(lane) && !lane.provider ? (
-                      <option value={laneValue(lane)}>{laneValue(lane)}</option>
-                    ) : null}
+                    {/* A lane pinned elsewhere (TUI, WebUI) — to a tier, a profile, or a
+                        concrete pair this catalog does not contain — keeps its
+                        value visible instead of silently reading as "inherit". */}
+                    <PassthroughOption
+                      value={laneValue(lane)}
+                      offered={modelOptionValues(modelOptions)}
+                    />
                   </select>
                 </div>
               ))}
@@ -731,6 +852,74 @@ export function SettingsPanel({
               settingId="session.confirmExit"
               hidden={rowHidden('session.confirmExit')}
             />
+          </section>
+
+          <section
+            className="settings-group"
+            aria-label="Telegram"
+            data-group-id="telegram"
+            style={groupHidden('telegram') ? { display: 'none' } : undefined}
+          >
+            <h2>
+              TELEGRAM
+              <GroupCount groupId="telegram" label={groupCountLabel('telegram')} />
+            </h2>
+            <label
+              className="settings-field"
+              data-setting-id="telegram.pollInterval"
+              style={rowHidden('telegram.pollInterval') ? { display: 'none' } : undefined}
+            >
+              <span>Polling interval</span>
+              {/* A select can only ever emit a valid value, so the 1–60 bound
+                  the server enforces needs no client-side guard here — unlike
+                  a free number input, which would have to reject and revert. */}
+              <select
+                value={String(prefs.tgPollIntervalSec)}
+                disabled={offline}
+                onChange={(event) =>
+                  onPrefChange({ tgPollIntervalSec: Number(event.target.value) })
+                }
+              >
+                {presetOptions(TG_POLL_INTERVAL_PRESETS, prefs.tgPollIntervalSec, 1).map(
+                  (seconds) => (
+                    <option key={seconds} value={String(seconds)}>
+                      {seconds === 1 ? '1 second' : `${seconds} seconds`}
+                    </option>
+                  ),
+                )}
+              </select>
+              <small className="settings-hint">
+                How often the bot checks Telegram for new messages. Lower is more responsive but
+                makes more API calls.
+              </small>
+            </label>
+            <label
+              className="settings-field"
+              data-setting-id="telegram.chatId"
+              style={rowHidden('telegram.chatId') ? { display: 'none' } : undefined}
+            >
+              <span>Notification chat</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={tgChatDraft}
+                disabled={offline}
+                aria-invalid={tgChatInvalid}
+                onChange={(event) => {
+                  setTgChatDraft(event.target.value);
+                  if (tgChatInvalid) setTgChatInvalid(false);
+                }}
+                onBlur={commitTgChat}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+              <small className="settings-hint">
+                {tgChatInvalid
+                  ? 'Enter a non-zero integer chat ID, or leave empty.'
+                  : 'Default chat for notifications. A positive ID pairs your private chat with the bot; group IDs are refused unless allowGroupChats is set in the config. Leave empty to clear.'}
+              </small>
+            </label>
           </section>
 
           {isFiltering && !hasResults && (

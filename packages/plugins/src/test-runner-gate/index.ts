@@ -503,6 +503,34 @@ async function runTests(
 
   try {
     const data = JSON.parse(stdout);
+    // Mocha's JSON reporter has its own shape — `{stats:{tests,passes,failures},
+    // failures:[{fullTitle, err:{message}}]}`. Read through the Jest/Vitest
+    // fields below, every count was 0 and a failing mocha suite PASSED.
+    if (
+      data &&
+      typeof data.stats === 'object' &&
+      data.stats !== null &&
+      !('numTotalTests' in data)
+    ) {
+      const tests = Number(data.stats.tests) || 0;
+      const failed = Number(data.stats.failures) || 0;
+      const passedCount = Number(data.stats.passes) || 0;
+      const failures = (Array.isArray(data.failures) ? data.failures : [])
+        .slice(0, 5)
+        .map((f: { fullTitle?: string; title?: string; err?: { message?: string } }) => {
+          const message = String(f.err?.message ?? '')
+            .split('\n')[0]
+            ?.slice(0, 200);
+          return `${f.fullTitle ?? f.title ?? 'unknown'}: ${message}`;
+        });
+      return {
+        passed: failed === 0,
+        testCount: tests,
+        failCount: failed,
+        duration: ` ${passedCount} passed, ${failed} failed`,
+        failures,
+      };
+    }
     const numTotalTests = data.numTotalTests ?? 0;
     const numFailedTests = data.numFailedTests ?? 0;
     const numPassedTests = data.numPassedTests ?? 0;

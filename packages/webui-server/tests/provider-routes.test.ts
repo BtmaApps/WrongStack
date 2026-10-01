@@ -73,6 +73,7 @@ function routes(): ProviderRouteHandlers {
     switchModel: vi.fn(async () => undefined),
     refineModel: vi.fn(async () => undefined),
     fallbackChoice: vi.fn(async () => undefined),
+    suggestFallbacks: vi.fn(async () => undefined),
     adoptDefaultProviderIfUnset: vi.fn(async () => undefined),
     providerHandlers: {
       loadConfigProviders: vi.fn(async () => ({})),

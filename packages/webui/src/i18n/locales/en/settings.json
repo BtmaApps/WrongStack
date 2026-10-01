@@ -194,7 +194,11 @@
     },
     "serviceActionRestart": "Restart {{label}}",
     "webuiTransport": "WebUI transport",
-    "serviceAutoRestarting": "Auto-restarting…"
+    "serviceAutoRestarting": "Auto-restarting…",
+    "restartAllTitle": "Restart every running IPC daemon in one go",
+    "restartAll": "Restart all",
+    "versionSkewRemedy": "This daemon is still running the release it was started on, not the installed one. Use Restart on this service (or Restart all) to load the current version.",
+    "versionSkewBadge": "outdated build"
   },
   "provider": {
     "removeProfileConfirm": "Remove auth profile “{{alias}}” and all its keys?",
@@ -243,7 +247,10 @@
     "keyLabelPlaceholder": "Key label (e.g. default, production)",
     "apiKeyPlaceholder": "API key",
     "saveKey": "Save Key",
-    "savedToast": "Saved key for {{name}}"
+    "savedToast": "Saved key for {{name}}",
+    "disableToggle": "Disable provider",
+    "disableToggleHint": "All of this provider's models are skipped in fallback routing and model pickers. Its keys and configuration are kept.",
+    "disabledBadge": "Disabled"
   },
   "providerModels": {
     "addCustom": "Add custom model",
@@ -625,6 +632,45 @@
     "addFavoriteModel": "Add favorite model…",
     "inactive": "inactive"
   },
+  "fallbackSuggest": {
+    "heading": "Suggested fallback profiles",
+    "body": "Built from the models.dev catalog of the providers you have saved — current, tool-capable models only. Disabled models, deprecated models, superseded versions and anything more than six months behind the newest release are left out.",
+    "modeLabel": "Suggestion engine",
+    "modeHeuristic": "Catalog",
+    "modeLlm": "LLM-assisted",
+    "llmHint": "Your active model re-ranks the same catalog pool using what it knows about benchmarks and reliability. It can only pick models you can reach.",
+    "generate": "Suggest",
+    "loading": "Building suggestions…",
+    "empty": "Not enough reachable models for a fallback chain. Add another provider or enable more models.",
+    "poolSummary_one": "Drawn from {{count}} model across your providers",
+    "poolSummary_other": "Drawn from {{count}} models across your providers",
+    "rankedBy": "ranked by {{model}}",
+    "llmFailed": "LLM pass unavailable, showing catalog suggestions: {{error}}",
+    "archetype": {
+      "strong": "Strong",
+      "balanced": "Balanced",
+      "fast": "Fast",
+      "budget": "Budget"
+    },
+    "archetypeHint": {
+      "strong": "Most capable models first, whatever they cost.",
+      "balanced": "Capable enough for real work at a sensible price.",
+      "fast": "Lowest latency that still drives tools reliably.",
+      "budget": "Cheapest models that can still finish coding tasks."
+    },
+    "sourceLlm": "LLM",
+    "sourceHeuristic": "Catalog",
+    "providerCount_one": "{{count}} provider",
+    "providerCount_other": "{{count}} providers",
+    "free": "free",
+    "reasoning": "reasoning",
+    "unstable": "beta / preview",
+    "addAsProfile": "Add as profile",
+    "savedAs": "Saved as {{name}}",
+    "useAsChain": "Use as active chain",
+    "chainActive": "Active chain",
+    "profileAdded": "Fallback profile \"{{name}}\" added"
+  },
   "fleet": {
     "heading": "Fleet & Streaming",
     "fleetChatVerbosityLabel": "Stream fleet events",
@@ -659,6 +705,11 @@
     "telegramDelegateHint": "Send a humanized note when a subagent completes.",
     "telegramLongToolLabel": "Long-running tools",
     "telegramLongToolHint": "Notify when a tool exceeds {{ms}}ms. Set 0 to disable.",
+    "telegramPollIntervalLabel": "Polling interval",
+    "telegramPollIntervalHint": "Seconds between Telegram polls (1–60). Lower is more responsive but makes more API calls.",
+    "telegramChatIdLabel": "Notification chat",
+    "telegramChatIdHint": "Default chat ID for notifications. A positive ID pairs your private chat with the bot; group IDs (negative) are refused unless allowGroupChats is enabled in the config. Leave empty to clear.",
+    "telegramChatIdInvalid": "Enter a non-zero integer chat ID, or leave empty.",
     "telegramChangesApply": "Changes apply immediately.",
     "telegramNotConfigured": "Telegram is not configured.",
     "disabledHint": "Enable the feature in the Context tab to use this section."

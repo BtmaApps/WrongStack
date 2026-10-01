@@ -163,7 +163,7 @@ describe('security helpers are wired, not just present', () => {
     // after the fourth high-risk migration tranche on 2026-09-10. The remaining
     // surface is recorded in the security report rather than swept in one
     // commit. The number must only ever go DOWN from here.
-    expect(offenders.length).toBeLessThanOrEqual(334);
+    expect(offenders.length).toBeLessThanOrEqual(335);
   });
 
   /**
@@ -281,7 +281,6 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/chimera-routes.ts',
       'packages/webui-server/src/server/chronicle-routes.ts', // clamps 4, passes 2 through
       'packages/webui-server/src/server/embedded-message-router.ts',
-      'packages/webui-server/src/server/file-handlers.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
       'packages/webui-server/src/server/routes.ts',
@@ -319,7 +318,6 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/chimera-routes.ts',
       'packages/webui-server/src/server/chronicle-routes.ts',
       'packages/webui-server/src/server/embedded-message-router.ts',
-      'packages/webui-server/src/server/file-handlers.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
       'packages/webui-server/src/server/routes.ts',

@@ -13,6 +13,7 @@
  */
 import { spawn } from 'node:child_process';
 import * as os from 'node:os';
+import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv } from '../utils/child-env.js';
 import { treeKill } from '../utils/tree-kill.js';
 import { type MetricExtractor, type PerfRunOutput, wallTimeExtractor } from './perf-extractors.js';
@@ -126,11 +127,15 @@ export async function runOnce(
       resolve({ stdout, stderr, wallMs: Date.now() - startedAt, exitCode, timedOut });
     };
 
-    child.stdout?.on('data', (chunk: Buffer) => {
-      stdout = appendCapped(stdout, chunk.toString('utf8'));
+    // One decoder per stream keeps a multi-byte character that straddles two
+    // chunks intact; per-chunk `toString` turned each half into U+FFFD.
+    const stdoutDecoder = new StringDecoder('utf8');
+    const stderrDecoder = new StringDecoder('utf8');
+    child.stdout?.on('data', (chunk: Buffer | string) => {
+      stdout = appendCapped(stdout, typeof chunk === 'string' ? chunk : stdoutDecoder.write(chunk));
     });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderr = appendCapped(stderr, chunk.toString('utf8'));
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      stderr = appendCapped(stderr, typeof chunk === 'string' ? chunk : stderrDecoder.write(chunk));
     });
     // `error` fires instead of `close` when the shell itself cannot start.
     child.on('error', (error) => {

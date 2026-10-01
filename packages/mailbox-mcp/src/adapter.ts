@@ -193,10 +193,10 @@ function toolDescriptor(
   };
 }
 
-function requiredString(args: Record<string, unknown>, key: string): string {
+function requiredString(args: Record<string, unknown>, key: string, trim = true): string {
   const value = args[key];
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${key} is required`);
-  return value.trim();
+  return trim ? value.trim() : value;
 }
 
 function optionalString(args: Record<string, unknown>, key: string): string | undefined {
@@ -207,6 +207,15 @@ function optionalString(args: Record<string, unknown>, key: string): string | un
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function optionalRetentionAge(args: Record<string, unknown>, key: string): number | undefined {
+  const value = args[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error(`${key} must be a finite non-negative number`);
+  }
+  return value;
 }
 
 /**
@@ -482,8 +491,8 @@ async function executeManage(
           from: identity.actor,
           to: normalizeRecipient(requiredString(args, 'to'), identity.sessionId),
           type,
-          subject: requiredString(args, 'subject'),
-          body: requiredString(args, 'body'),
+          subject: requiredString(args, 'subject', false),
+          body: requiredString(args, 'body', false),
           senderSessionId: identity.sessionId,
           ...(optionalEnum(args, 'priority', PRIORITIES) !== undefined
             ? { priority: optionalEnum(args, 'priority', PRIORITIES) }
@@ -605,27 +614,27 @@ async function executeAdmin(
     case 'purge_stale':
       return {
         result: await mailbox.purgeStale({
-          ...(optionalNumber(args, 'completedMaxAgeMs') !== undefined
-            ? { completedMaxAgeMs: optionalNumber(args, 'completedMaxAgeMs') }
+          ...(optionalRetentionAge(args, 'completedMaxAgeMs') !== undefined
+            ? { completedMaxAgeMs: optionalRetentionAge(args, 'completedMaxAgeMs') }
             : {}),
-          ...(optionalNumber(args, 'incompleteMaxAgeMs') !== undefined
-            ? { incompleteMaxAgeMs: optionalNumber(args, 'incompleteMaxAgeMs') }
+          ...(optionalRetentionAge(args, 'incompleteMaxAgeMs') !== undefined
+            ? { incompleteMaxAgeMs: optionalRetentionAge(args, 'incompleteMaxAgeMs') }
             : {}),
         }),
       };
     case 'auto_compact':
       return {
         result: await mailbox.autoCompact({
-          ...(optionalNumber(args, 'readMaxAgeMs') !== undefined
-            ? { readMaxAgeMs: optionalNumber(args, 'readMaxAgeMs') }
+          ...(optionalRetentionAge(args, 'readMaxAgeMs') !== undefined
+            ? { readMaxAgeMs: optionalRetentionAge(args, 'readMaxAgeMs') }
             : {}),
-          ...(optionalNumber(args, 'defaultTtlMs') !== undefined
-            ? { defaultTtlMs: optionalNumber(args, 'defaultTtlMs') }
+          ...(optionalRetentionAge(args, 'defaultTtlMs') !== undefined
+            ? { defaultTtlMs: optionalRetentionAge(args, 'defaultTtlMs') }
             : {}),
         }),
       };
     case 'purge_agents':
-      return { purged: await mailbox.purgeAgents(optionalNumber(args, 'maxAgeMs')) };
+      return { purged: await mailbox.purgeAgents(optionalRetentionAge(args, 'maxAgeMs')) };
     case 'purge_clients':
       return { purged: await mailbox.purgeClients() };
     case 'credential_issue':
@@ -722,6 +731,7 @@ export function createMailboxMcpToolHost(
             : name === 'mailbox_manage'
               ? await executeManage(mailbox, action, args, identity)
               : await executeAdmin(mailbox, action, args, actor);
+        signal.throwIfAborted();
         return { content, isError: false };
       } catch (error) {
         return {

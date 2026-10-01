@@ -110,6 +110,7 @@ export function makePermissionPolicy(
   return async (req) => {
     if (req.signal.aborted) return { outcome: 'cancelled' };
     const allow = await decide(req);
+    if (req.signal.aborted) return { outcome: 'cancelled' };
     return allow ? pickAllow(req.options) : pickReject(req.options);
   };
 }

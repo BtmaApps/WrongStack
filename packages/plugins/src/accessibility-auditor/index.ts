@@ -154,7 +154,9 @@ const TAG_IMG = /<img\b[^>]*>/gi;
 const TAG_INPUT = /<input\b[^>]*\/?>/gi;
 const TAG_BUTTON = /<button\b[^>]*>([\s\S]*?)<\/button>/gi;
 const INPUT_BUTTON = /<input\b[^>]*\btype\s*=\s*["'](submit|button|reset)["'][^>]*\/?>/gi;
-const ATTR_ID = /\bid\s*=\s*["']([^"']+)["']/gi;
+// `(?<![-\w])`, not `\b`: a hyphen is a word boundary, so `\bid` also read
+// `data-id="…"` as an element id (false duplicate ids, wrong label lookup).
+const ATTR_ID = /(?<![-\w])id\s*=\s*["']([^"']+)["']/gi;
 const ATTR_ALT = /\balt\s*=/i;
 const ATTR_ARIA_LABEL = /\b(?:aria-label|aria-labelledby)\s*=/i;
 const ATTR_ARIA_DESCRIBEDBY = /\baria-describedby\s*=/i;
@@ -208,7 +210,7 @@ function hasFieldsetLegendLabel(
   const labelledBy = tag.match(/\baria-labelledby\s*=\s*["']([^"']+)["']/i);
   if (labelledBy?.[1]) {
     for (const id of labelledBy[1].split(/\s+/).filter(Boolean)) {
-      const idRe = new RegExp(`\\bid\\s*=\\s*["']${escapeRegExp(id)}["']`, 'i');
+      const idRe = new RegExp(`(?<![-\\w])id\\s*=\\s*["']${escapeRegExp(id)}["']`, 'i');
       if (idRe.test(content)) return true;
     }
   }
@@ -313,13 +315,15 @@ async function auditFile(filePath: string, projectRoot: string): Promise<A11yFin
       const hasAriaLabel = ATTR_ARIA_LABEL.test(tag);
       const hasDescribedBy = ATTR_ARIA_DESCRIBEDBY.test(tag);
       const hasTitle = ATTR_TITLE.test(tag);
-      const idMatchLocal = tag.match(/\bid\s*=\s*["']([^"']+)["']/i);
+      const idMatchLocal = tag.match(/(?<![-\w])id\s*=\s*["']([^"']+)["']/i);
       const id = idMatchLocal ? idMatchLocal[1] : null;
 
       let hasLabelFor = false;
       if (id) {
         const labelForRe = new RegExp(
-          `<label\\b[^>]*\\bfor\\s*=\\s*["']${escapeRegExp(id)}["']`,
+          // JSX spells the attribute `htmlFor`; `\bfor` never matched it, so
+          // every React label/input pair was reported unlabelled.
+          `<label\\b[^>]*(?<![-\\w])(?:html)?for\\s*=\\s*["']${escapeRegExp(id)}["']`,
           'i',
         );
         hasLabelFor = labelForRe.test(content);
