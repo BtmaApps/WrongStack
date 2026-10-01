@@ -120,10 +120,18 @@ describe('hashRequest: tool properties that reach the hash', () => {
   });
 });
 
-// ── The actual bug: different `_estDefTokens` values produce different hashes ──
+// ── Runtime-only tool fields must not move the digest ──
+//
+// `_estDefTokens`, `timeoutMs` and `estimatedDurationMs` are set per process or
+// per run and never reach the provider, so two requests differing only in them
+// must hash identically. This WAS a real defect (fixed 2026-09-16 by making
+// `semanticTool()` project the wire triple); the assertions below were inverted
+// when it was fixed and only these labels still described the old behaviour.
+// The labels are corrected here so no future reader mistakes the fixed contract
+// for an open bug.
 
-describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable', () => {
-  it('produces different hashes when tools differ only by _estDefTokens', () => {
+describe('digest invariance: runtime-only Tool fields never change the hash', () => {
+  it('hashes identically when tools differ only by _estDefTokens', () => {
     const reqWithout = makeBaseRequest();
     reqWithout.tools = [
       {
@@ -157,19 +165,12 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       },
     ];
 
-    const hashWithout = hashRequest(reqWithout);
-    const hashWith = hashRequest(reqWith);
-
-    console.log('\n[Hash WITHOUT _estDefTokens]', hashWithout);
-    console.log('[Hash WITH _estDefTokens]', hashWith);
-    console.log('[Hashes equal?]', hashWithout === hashWith);
-
-    // This FAILS on unfixed code: _estDefTokens IS included in the hash,
-    // causing instability. After fix: PASS.
-    expect(hashWithout).toBe(hashWith);
+    // `_estDefTokens` is a registration-time token-estimate cache: it differs on
+    // every run while the provider payload stays byte-identical.
+    expect(hashRequest(reqWithout)).toBe(hashRequest(reqWith));
   });
 
-  it('produces different hashes when tools differ only by timeoutMs', () => {
+  it('hashes identically when tools differ only by timeoutMs', () => {
     const reqWithout = makeBaseRequest();
     reqWithout.tools = [
       {
@@ -203,18 +204,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       },
     ];
 
-    const hashWithout = hashRequest(reqWithout);
-    const hashWith = hashRequest(reqWith);
-
-    console.log('\n[Hash WITHOUT timeoutMs]', hashWithout);
-    console.log('[Hash WITH timeoutMs]', hashWith);
-    console.log('[Hashes equal?]', hashWithout === hashWith);
-
-    // This FAILS on unfixed code. After fix: PASS.
-    expect(hashWithout).toBe(hashWith);
+    // `timeoutMs` is executor policy — local to the run, never sent to the provider.
+    expect(hashRequest(reqWithout)).toBe(hashRequest(reqWith));
   });
 
-  it('produces different hashes when tools differ only by estimatedDurationMs', () => {
+  it('hashes identically when tools differ only by estimatedDurationMs', () => {
     const reqWithout = makeBaseRequest();
     reqWithout.tools = [
       {
@@ -248,15 +242,8 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       },
     ];
 
-    const hashWithout = hashRequest(reqWithout);
-    const hashWith = hashRequest(reqWith);
-
-    console.log('\n[Hash WITHOUT estimatedDurationMs]', hashWithout);
-    console.log('[Hash WITH estimatedDurationMs]', hashWith);
-    console.log('[Hashes equal?]', hashWithout === hashWith);
-
-    // This FAILS on unfixed code. After fix: PASS.
-    expect(hashWithout).toBe(hashWith);
+    // `estimatedDurationMs` is a UI hint for the spinner — local display only.
+    expect(hashRequest(reqWithout)).toBe(hashRequest(reqWith));
   });
 });
 
@@ -370,5 +357,60 @@ describe('wire-invariance: non-provider Tool fields never change the hash', () =
     const d = makeBaseRequest();
     d.tools = [{ ...baseTool, name: 'readx' }];
     expect(hashRequest(d)).not.toBe(hashRequest(a));
+  });
+});
+
+// ── The stability property the digest exists for ──
+//
+// Replay finds a recorded response BY HASH, so one request must always produce
+// one hash: across repeat calls, and across two equal requests that were built
+// separately. The second case is the one that bites in practice — the recorder
+// and the replayer construct the request separately, so any dependence on
+// object identity or key insertion order turns a recorded run into a silent
+// cache miss and `mode: 'replay'` throws "no recorded response" for a request
+// that was recorded verbatim. Sorting (stableStringify) is what makes it hold.
+
+describe('digest stability: identical requests hash identically', () => {
+  const stableTool = {
+    name: 'read',
+    description: 'Read a file',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    permission: 'confirm' as const,
+    mutating: false,
+    execute: noopExecute,
+  } satisfies Tool;
+
+  it('returns the same hash for repeated calls on one request', () => {
+    const req = makeBaseRequest();
+    req.tools = [stableTool];
+
+    const first = hashRequest(req);
+    expect(hashRequest(req)).toBe(first);
+    expect(hashRequest(req)).toBe(first);
+  });
+
+  it('returns the same hash for a separately built but equal request', () => {
+    const recorded = makeBaseRequest();
+    recorded.tools = [stableTool];
+
+    const replayed = makeBaseRequest();
+    // Identical content, different object graph AND different key order — the
+    // shape a replayer naturally produces.
+    replayed.tools = [
+      {
+        mutating: false,
+        execute: noopExecute,
+        permission: 'confirm' as const,
+        inputSchema: {
+          required: ['path'],
+          properties: { path: { type: 'string' } },
+          type: 'object',
+        },
+        description: 'Read a file',
+        name: 'read',
+      } satisfies Tool,
+    ];
+
+    expect(hashRequest(replayed)).toBe(hashRequest(recorded));
   });
 });
