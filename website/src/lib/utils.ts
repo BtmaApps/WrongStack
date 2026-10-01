@@ -353,9 +353,23 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.30',
+    date: '2026-10-01',
+    latest: true,
+    tagline: 'Plan quota and balances for every metered provider, and a calmer WebUI',
+    highlights: [
+      'Plan windows for Claude, ChatGPT, Copilot, Antigravity, Z.AI, MiniMax, Kimi Code, OpenCode, OpenRouter and OmniRoute; prepaid balances for DeepSeek, Moonshot and SiliconFlow',
+      'Quota shows in the statusline, the TUI sidebar and a WebUI quota page, read from account endpoints that spend nothing; other providers can declare a quotaEndpoint',
+      '/zai-plan reports the GLM Coding Plan, and MiniMax gets host-based routing, per-model thinking and real reset waits',
+      'ChatGPT (Codex) shows its quota before the first turn and truncates tool output by the published policy of each model',
+      'The WebUI opens in a calm density; the full layout stays one setting away',
+      'Fallback suggestions come from the models.dev catalog of your configured providers',
+      'Several dozen semantic fixes: resume of interrupted parallel tool calls, multi-byte chunk boundaries, locale-sensitive offsets, plugin output parsing and secret redaction',
+    ],
+  },
+  {
     version: '1.0.29',
     date: '2026-09-29',
-    latest: true,
     tagline: 'SAGE memory that syncs across machines and reaches other coding agents',
     highlights: [
       'Project, file and symbol memories sync through HQ to every client sharing the committed project identity',
