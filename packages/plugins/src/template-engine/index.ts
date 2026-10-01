@@ -72,14 +72,14 @@ function escapeHtmlValue(value: string): string {
 function expandTemplate(
   template: string,
   variables: Record<string, string>,
-  escape: (value: string) => string = identity,
+  escapeValue: (value: string) => string = identity,
 ): string {
   let result = template;
 
   // Replace simple {{variable}} patterns (supporting hyphens and dots with optional whitespace)
   result = result.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, key) => {
     const value = variables[key];
-    if (value !== undefined) return escape(String(value));
+    if (value !== undefined) return escapeValue(String(value));
     return match; // leave unresolved
   });
 
@@ -100,7 +100,7 @@ function expandConditionals(template: string, variables: Record<string, string>)
 function expandLoops(
   template: string,
   variables: Record<string, string>,
-  escape: (value: string) => string = identity,
+  escapeValue: (value: string) => string = identity,
 ): string {
   // Handle {{#each items}}...{{item}}...{{/each}}
   // Simplified: just repeat the block for each item separated by newlines
@@ -113,7 +113,7 @@ function expandLoops(
       if (typeof val === 'string' && val.includes(',')) {
         const items = val.split(',').map((s) => s.trim());
         return items
-          .map((item) => expandTemplate(content, { ...variables, [key]: item, item }, escape))
+          .map((item) => expandTemplate(content, { ...variables, [key]: item, item }, escapeValue))
           .join('\n');
       }
       // A one-element list iterates once: bind the iteration variable the
@@ -122,7 +122,7 @@ function expandLoops(
       // resolves for a single value too. `{{items}}` keeps resolving to the
       // whole value — `variables[key]` already is `val`, so nothing pinned
       // changes.
-      return expandTemplate(content, { ...variables, [key]: val, item: val }, escape);
+      return expandTemplate(content, { ...variables, [key]: val, item: val }, escapeValue);
     },
   );
 }
@@ -136,17 +136,17 @@ function renderTemplate(
   // VALUES only. Escaping the whole rendered output also escaped the
   // template's own text, so `<div>{{name}}</div>` or a code scaffold with
   // `Array<string>` came out as `&lt;div&gt;…` / `Array&lt;string&gt;`.
-  const escape = escapeHtml ? escapeHtmlValue : identity;
+  const escapeValue = escapeHtml ? escapeHtmlValue : identity;
   let result = template;
 
   // Process conditionals first
   result = expandConditionals(result, variables);
 
   // Process loops
-  result = expandLoops(result, variables, escape);
+  result = expandLoops(result, variables, escapeValue);
 
   // Process simple variable substitution
-  result = expandTemplate(result, variables, escape);
+  result = expandTemplate(result, variables, escapeValue);
 
   return result;
 }
