@@ -247,6 +247,50 @@ describe('CircuitBreaker', () => {
       expect(cb.beforeCall(true)).toBe(true);
       expect(cb.beforeCall(false)).toBe(false);
     });
+
+    // Regression: half-open is documented as allowing ONE call through
+    // (CircuitBreakerConfig.cooldownMs). A call is admitted by beforeCall and
+    // reported later by afterCall, so a concurrent second call arriving while
+    // the probe is still running must be refused — otherwise the burst that
+    // tripped the breaker resumes in full at the moment it should be probing.
+    it('half-open admits only the first probe while it is still running', () => {
+      const cb = new CircuitBreaker({ maxConsecutiveFailures: 1, cooldownMs: 1000 });
+      cb.afterCall(10, true); // trips
+      expect(cb.beforeCall()).toBe(false); // inside the cooldown
+
+      vi.advanceTimersByTime(1500); // cooldown elapsed -> half-open
+      expect(cb.beforeCall()).toBe(true); // the probe
+      expect(cb.snapshot().state).toBe('half-open');
+      expect(cb.beforeCall()).toBe(false); // a second concurrent call is refused
+
+      cb.afterCall(10, false); // the probe succeeds
+      expect(cb.snapshot().state).toBe('closed');
+      expect(cb.beforeCall()).toBe(true); // normal operation resumes
+    });
+
+    it('half-open re-admits exactly one probe after a failed probe', () => {
+      const cb = new CircuitBreaker({ maxConsecutiveFailures: 1, cooldownMs: 1000 });
+      cb.afterCall(10, true); // trips
+      vi.advanceTimersByTime(1500);
+      expect(cb.beforeCall()).toBe(true); // probe
+      expect(cb.beforeCall()).toBe(false); // refused while it runs
+      cb.afterCall(10, true); // probe fails -> back to open
+      expect(cb.snapshot().state).toBe('open');
+
+      vi.advanceTimersByTime(1500); // next cooldown elapses
+      expect(cb.beforeCall()).toBe(true); // exactly one new probe
+      expect(cb.beforeCall()).toBe(false); // and only that one
+    });
+
+    it('CONTROL: repeated calls are all admitted while closed', () => {
+      const cb = new CircuitBreaker({ maxConsecutiveFailures: 5, cooldownMs: 1000 });
+      expect(cb.beforeCall()).toBe(true);
+      cb.afterCall(10, false);
+      expect(cb.beforeCall()).toBe(true);
+      cb.afterCall(10, false);
+      expect(cb.beforeCall()).toBe(true);
+      expect(cb.snapshot().state).toBe('closed');
+    });
   });
 
   describe('afterCall bypass', () => {

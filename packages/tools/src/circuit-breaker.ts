@@ -100,6 +100,14 @@ export class CircuitBreaker {
   private window: CallRecord[] = [];
   private lastFailureAt: number | null = null;
   private lastSlowAt: number | null = null;
+  /**
+   * True while the single half-open probe call is in flight (admitted by
+   * `beforeCall`, not yet reported by `afterCall`). Half-open admits exactly
+   * one call through; without this, every concurrent bash/exec call sailed
+   * through until the probe finished — which is the whole burst the breaker
+   * tripped on, re-admitted at the moment it was supposed to probe.
+   */
+  private halfOpenProbeInFlight = false;
   /** Timestamp when the breaker was opened (for cooldown calculation). */
   private openedAt: number | null = null;
 
@@ -189,6 +197,15 @@ export class CircuitBreaker {
     if (bypass || !this.enabled) return true;
     this._checkStateTransition();
     if (this.state === 'open') return false;
+    // Half-open admits ONE probe call (see `CircuitBreakerConfig.cooldownMs`).
+    // A tool call is admitted here and reported later by `afterCall`, so
+    // without this gate every call issued while the probe is still running
+    // would pass too, and the burst that tripped the breaker would resume in
+    // full exactly at the point the breaker exists to hold it back.
+    if (this.state === 'half-open') {
+      if (this.halfOpenProbeInFlight) return false;
+      this.halfOpenProbeInFlight = true;
+    }
     return true;
   }
 
@@ -269,6 +286,7 @@ export class CircuitBreaker {
     this.state = 'open';
     this.openedAt = Date.now();
     this.consecutiveSlowCalls = 0;
+    this.halfOpenProbeInFlight = false;
     // P3 #23 (before-release.md): clear the window on trip. Old records are
     // irrelevant once tripped — the breaker starts fresh after cooldown
     // (half-open → closed resets the counters). Without this the window array
@@ -291,6 +309,7 @@ export class CircuitBreaker {
     this.consecutiveSlowCalls = 0;
     this.window = [];
     this.openedAt = null;
+    this.halfOpenProbeInFlight = false;
     // Only notify on a real recovery (open/half-open → closed), not on the
     // initial closed state or an idempotent re-reset.
     if (wasRecovering) {
