@@ -26,6 +26,7 @@ async function fixture() {
   const initial = {
     version: 1,
     typesafe: {
+      enabled: true,
       route: 'typesafe',
       apiKey: 'old',
       endpoint: 'https://old.test',
@@ -37,10 +38,26 @@ async function fixture() {
   return { file, store: new DefaultConfigStore(initial as unknown as Config) };
 }
 describe('Jev settings', () => {
+  it('persists the master disable while preserving the stored key and consumer choices', async () => {
+    const { file, store } = await fixture();
+    await saveJevSettings(store, file, undefined, { features: { tool: true, brain: false } });
+    await saveJevSettings(store, file, undefined, { enabled: false });
+    expect(JSON.parse(await readFile(file, 'utf8')).typesafe).toMatchObject({
+      enabled: false,
+      apiKey: 'old',
+      judgments: { tool: true, brain: false },
+    });
+    expect(jevSettingsSnapshot(store.get())).toMatchObject({
+      enabled: false,
+      status: 'disabled',
+      features: { tool: true, brain: false },
+      readiness: { tool: { state: 'disabled' } },
+    });
+  });
   it('distinguishes permission from missing dependencies', () => {
     const config = {
       version: 1,
-      typesafe: { apiKey: 'k' },
+      typesafe: { enabled: true, apiKey: 'k' },
       context: { strategy: 'hybrid' },
       modelTiers: { enabled: false },
       skills: { suggest: { enabled: true } },
@@ -92,7 +109,7 @@ describe('Jev settings', () => {
     const { file, store } = await fixture();
     await saveJevSettings(store, file, undefined, { route: 'openrouter' });
     const raw = JSON.parse(await readFile(file, 'utf8'));
-    expect(raw).toMatchObject({ unrelated: 42, typesafe: { route: 'openrouter' } });
+    expect(raw).toMatchObject({ unrelated: 42, typesafe: { enabled: true, route: 'openrouter' } });
     expect(raw.typesafe.apiKey).toBeUndefined();
     expect(raw.typesafe.endpoint).toBeUndefined();
     expect(store.get().typesafe?.model).toBeUndefined();

@@ -62,6 +62,7 @@ export interface TypeSafeRestGateOptions {
 }
 
 export interface TypeSafeRestGate {
+  readonly paymentRequired?: boolean | undefined;
   /** True while callers should not touch the network. */
   isResting(): boolean;
   /** Epoch ms the current rest ends, or `undefined` when not resting. */
@@ -105,21 +106,35 @@ export function createTypeSafeRestGate(opts: TypeSafeRestGateOptions = {}): Type
   let until = 0;
   let nextCooldown = baseCooldownMs;
   let lastReason: string | undefined;
+  let paymentRequired = false;
   // Set by a rest, cleared by a success: the first calls after the cooldown are
   // probes, and ANY host failure then reopens the gate (the weight reset at
   // rest would otherwise let a timed-out probe leave it closed).
   let probing = false;
 
   return {
-    isResting: () => now() < until,
-    restingUntil: () => (now() < until ? until : undefined),
+    get paymentRequired() {
+      return paymentRequired;
+    },
+    isResting: () => paymentRequired || now() < until,
+    restingUntil: () =>
+      paymentRequired ? Number.POSITIVE_INFINITY : now() < until ? until : undefined,
     reason: () => lastReason,
     recordSuccess() {
+      // An in-flight success must not clear a concurrent payment rejection.
+      if (paymentRequired) return;
       weight = 0;
       nextCooldown = baseCooldownMs;
       probing = false;
     },
     recordFailure(err) {
+      if (paymentRequired) return false;
+      if (err instanceof FetchError && err.status === 402) {
+        paymentRequired = true;
+        lastReason =
+          'Jev payment required (HTTP 402); automatic requests stopped for this account until the process restarts or the account changes. Disable Jev with /jev off.';
+        return true;
+      }
       const w = typeSafeFailureWeight(err);
       if (w === 0) return false;
       // Still resting: a call that was already in flight — same outage signal.

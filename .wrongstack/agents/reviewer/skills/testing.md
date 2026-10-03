@@ -1,12 +1,12 @@
-## `packages/webui-server` — collab and cost
+## Design-tool guards (`packages/tools`, `packages/core`)
 
-- For a `stateFingerprint` change in `packages/webui-server/src/server/collab/session-registry.ts`, read all of `collab/` in the same pass, including the `stateFingerprint` comparison and `record()` in `broadcast-scheduler.ts` and the invariants in `annotations.ts`. Confirm the scheduler detects real state changes without over-triggering on unchanged state.
-- For numeric normalization in `packages/webui-server/src/server/usage-cost.ts`, require the cache-price fallback to use `!= null`, not `||` or `??`, so an explicit `0` is preserved. Check the declared `CostRates`/`TokenUsage` fields against the exact four-key `toEqual` assertions in `packages/webui-server/tests/usage-cost.test.ts` and the four-key mock in `packages/webui-server/tests/server-runtime.test.ts`; flag any enumeration mismatch.
+- Before flagging any ENOENT hard-fail in the design tool's path guards, read `resolveReal` in `packages/tools/src/design.ts`: it walks up parents on ENOENT and falls back to `path.resolve`, so a not-yet-existing capture/verify/materialize path cannot crash `assertProjectRelative` or `out` materialization — never report one as a defect.
+- Treat design-verify kit-vs-capture precedence exactly as defined by `resolveVerifyTokens` in `packages/core/src/execution/design-project-store.ts`: a pinned-but-unreadable kit returns `undefined`. Flag any change that falls back to `.design/captured-tokens.json` instead.
 
-## `packages/cli` — captured output
+## Provider env isolation (`packages/providers`)
 
-- Before treating `expect(res.out).toBe(...)` in `packages/cli/tests/goal-commands-runcmd.test.ts` as decode-path coverage, compare the expected output size with `runCmd`’s tail behavior: `createTailBuffer` in `packages/cli/src/goal-commands.ts` retains only the last `MAX_CMD_OUTPUT` (`200_000`) characters. Do not credit an assertion whose source output exceeds that cap unless it explicitly validates the retained tail.
+- Judge tests claiming "without global env changes" against the live env-layering mechanism, not the test text: `endpointEnv` (~line 57 in `packages/providers/src/native-catalog.ts`) must stay a per-provider spread copy of `process.env` overlaid with profile-scoped `AZURE_RESOURCE_NAME`, `AWS_REGION`, `GOOGLE_VERTEX_*` — a copy, not a mutation — so those tests pass via real per-closure isolation. Any regression to writing `process.env` directly, or to env-fallback precedence, breaks the concrete URL `toContain` assertion; flag it as a defect.
 
 ## Verdicts
 
-- Emit `json { "findings": [] }` only when these checks reveal no defect; otherwise put concrete defects in `findings`.
+- Emit `json { "findings": [] }` only when every check above passes; otherwise list each concrete defect in `findings`.

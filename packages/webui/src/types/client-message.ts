@@ -757,6 +757,8 @@ export type WSClientMessageCore =
       type: 'system_prompt.presets.preview';
       payload: { text: string; sessionId?: string; requestId: number };
     }
+  | { type: 'user_instructions.get'; payload?: Record<string, never> }
+  | { type: 'user_instructions.save'; payload: { text: string; baseMtimeMs: number | null } }
   | { type: 'projects.list' }
   | { type: 'projects.add'; payload: { root: string; name?: string | undefined } }
   | { type: 'projects.select'; payload: { root: string; name?: string | undefined } }

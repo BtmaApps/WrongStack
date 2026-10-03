@@ -68,6 +68,7 @@ export type WSSystemMiscServerMessage =
         issues: Array<{ severity: 'error' | 'warning'; line: number; message: string }>;
       };
     }
+  | { type: 'user_instructions'; payload: WSUserInstructions }
   | {
       type: 'techstack.job.started';
       payload: {
@@ -378,4 +379,16 @@ export interface WSSystemPromptPreset {
   text: string;
   revision: number;
   sourceChanged: boolean;
+}
+
+/** `~/.wrongstack/AGENTS.md` as the editor sees it, or why it could not. */
+export interface WSUserInstructions {
+  path?: string;
+  displayPath?: string;
+  text?: string;
+  exists?: boolean;
+  /** Revision token: send it back with a save; `null` = the file did not exist. */
+  mtimeMs?: number | null;
+  saved?: boolean;
+  error?: string;
 }

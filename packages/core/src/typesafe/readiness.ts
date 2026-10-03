@@ -26,7 +26,7 @@ export function jevFeatureReadiness(
   return Object.fromEntries(
     Object.entries(features).map(([feature, enabled]) => {
       let reason: JevFeatureReadiness['reason'] = 'trigger-required';
-      if (!enabled) reason = 'disabled';
+      if (config.typesafe?.enabled !== true || !enabled) reason = 'disabled';
       else if (!accountReady) reason = 'account-required';
       else if (
         (feature === 'memoryRecall' || feature === 'memoryTriage') &&

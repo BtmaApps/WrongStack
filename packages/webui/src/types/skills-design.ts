@@ -72,6 +72,8 @@ export interface WSDesignUse {
     overrides?: Record<string, string> | undefined;
     light?: Record<string, string> | undefined;
     dark?: Record<string, string> | undefined;
+    /** WCAG AA gate: fg/bg + primary/bg pairs below 4.5:1 (empty = clean). */
+    contrastIssues?: Array<{ theme: 'light' | 'dark'; pair: string; ratio: number }> | undefined;
     error?: string | undefined;
   };
 }
@@ -128,6 +130,8 @@ export interface WSDesignMaterialize {
     path?: string | undefined;
     format?: string | undefined;
     stack?: string | undefined;
+    /** WCAG AA gate: fg/bg + primary/bg pairs below 4.5:1 (empty = clean). */
+    contrastIssues?: Array<{ theme: 'light' | 'dark'; pair: string; ratio: number }> | undefined;
     error?: string | undefined;
   };
 }
@@ -136,7 +140,12 @@ export interface WSDesignVerify {
   type: 'design.verify';
   payload: {
     ok: boolean;
-    kit?: string | undefined;
+    /** Token basis: 'kit' (pinned) or 'captured' (the project's own tokens). */
+    source?: 'kit' | 'captured' | undefined;
+    /** Kit id when source === 'kit'; null when verifying against a capture. */
+    kit?: string | null | undefined;
+    /** Files the capture was taken from, when source === 'captured'. */
+    capturedFrom?: string[] | null | undefined;
     filesScanned?: number | undefined;
     score?: number | undefined;
     violationCount?: number | undefined;

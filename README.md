@@ -334,6 +334,9 @@ Its dashboard tabs expose measured tool averages/P95 and file read/edit/write
 counts, with recorded source and diff line statistics where available.
 The Models tab compares provider/model reliability, measured latency and spend,
 and recorded work/quality signals across the leader and its subagents.
+The secondary sidebar pins Story at the top and switches it to **Back to
+session** when open. Chat sidebar sections collapse and reorder by dragging,
+with keyboard/touch arrow controls and saved browser layout preferences.
 
 **SimpleUI** is a full, independent chat surface (Vite + React), not a
 stripped WebUI. It reuses the same WebSocket backend but ships its own bundle,
@@ -426,13 +429,18 @@ old notes.
 
 ### TypeSafe / Jev decisions
 
+Jev is off by default, even with a saved or environment API key. Enable it with
+`/jev on` or **Settings → Jev → Enable Jev**; `/jev off` disables all consumers
+and paid calls while preserving the key. HTTP 402 stops further automatic
+requests for that account until restart or an account change.
+
 Manage the decision provider, key and feature switches in **Settings → Jev** in
 the WebUI, or **`/jev`** in the TUI. The WebUI includes a live activity view
 with request timing, usage, answers and safe failure categories; `/jev logs`
 exposes the same process history. See
 [Jev settings and activity](docs/jev-settings-and-activity.md).
 
-Configured accounts also expose the `jev` decision tool: agents can request
+Explicitly enabled, configured accounts also expose the `jev` decision tool: agents can request
 yes/no probabilities, choose among alternatives, or score supplied evidence
 against a rubric. `jev_status` checks local availability without a network
 request. Control this independently with `/jev feature tool on|off` or

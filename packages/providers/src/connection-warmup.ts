@@ -76,7 +76,7 @@ export function warmConnection(
         read += chunk.value.byteLength;
         if (read > MAX_WARM_BODY_BYTES) {
           await reader.cancel();
-          break;
+          return;
         }
       }
       // Only mark the origin warm after the response body has been read into

@@ -174,6 +174,9 @@ export function observeJevClient(
   const secrets = opts.secrets ?? [];
   const logContent = opts.logContent === true;
   return {
+    get paymentRequired() {
+      return client.paymentRequired === true;
+    },
     get open() {
       return client.open;
     },

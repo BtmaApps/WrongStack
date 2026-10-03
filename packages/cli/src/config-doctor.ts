@@ -721,6 +721,8 @@ function checkTypeSafeAccount(
     delete typesafe['route'];
   }
 
+  if (typesafe?.['enabled'] !== true) return;
+
   const skills = isPlainObject(fixed['skills']) ? fixed['skills'] : undefined;
   const suggest = skills && isPlainObject(skills['suggest']) ? skills['suggest'] : undefined;
   const fleet = isPlainObject(fixed['fleet']) ? fixed['fleet'] : undefined;

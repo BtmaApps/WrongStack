@@ -234,6 +234,7 @@ describe('renderSuggestionBlock', () => {
 
 function configWith(suggest: unknown): Config {
   return {
+    typesafe: { enabled: true },
     features: { skills: true },
     skills: { suggest },
   } as unknown as Config;

@@ -24,6 +24,7 @@ const SSE_READER_MAX_DATA_LINES = 1024;
 
 export class SSEReader {
   private buffer = '';
+  private skipLeadingLF = false;
   private dataLines: string[] = [];
   private eventName = '';
   private endpointListeners: Array<(endpoint: string) => void> = [];
@@ -66,18 +67,25 @@ export class SSEReader {
 
   feed(chunk: string): void {
     const carried = this.buffer.length;
+    // A CRLF pair may straddle chunks; the CR already ended the line.
+    if (this.skipLeadingLF && chunk.length > 0) {
+      this.skipLeadingLF = false;
+      if (chunk.startsWith('\n')) chunk = chunk.slice(1);
+    }
     this.buffer += chunk;
     // Scan with a moving cursor and slice the retained tail ONCE at the end,
     // instead of `buffer = buffer.slice(idx+1)` per line (which re-copies the
     // whole remaining buffer for every newline — O(n²) for many small lines).
     let start = 0;
-    let idx = this.buffer.indexOf('\n', start);
-    while (idx !== -1) {
-      let end = idx;
-      if (end > start && this.buffer.charCodeAt(end - 1) === 13 /* \r */) end--;
-      this.processLine(this.buffer.slice(start, end));
+    for (let idx = 0; idx < this.buffer.length; idx++) {
+      const code = this.buffer.charCodeAt(idx);
+      if (code !== 10 && code !== 13) continue;
+      this.processLine(this.buffer.slice(start, idx));
+      if (code === 13) {
+        if (this.buffer.charCodeAt(idx + 1) === 10) idx++;
+        else if (idx + 1 === this.buffer.length) this.skipLeadingLF = true;
+      }
       start = idx + 1;
-      idx = this.buffer.indexOf('\n', start);
     }
     if (start > 0) this.buffer = this.buffer.slice(start);
     // The cap bounds an UNTERMINATED line, so it is checked after complete
@@ -186,6 +194,7 @@ export class SSEReader {
 
   reset(): void {
     this.buffer = '';
+    this.skipLeadingLF = false;
     this.dataLines = [];
     this.eventName = '';
     this.listeners = [];

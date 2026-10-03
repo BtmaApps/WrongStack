@@ -15,7 +15,7 @@ export function resolveHttpBearerHeaders(
   if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(envName)) {
     throw new Error(`MCP bearerTokenEnv "${envName}" is not a valid environment variable name`);
   }
-  const token = env[envName];
+  const token = Object.hasOwn(env, envName) ? env[envName] : undefined;
   if (!token) throw new Error(`MCP "${options.name}" requires environment variable ${envName}`);
   if (token.length > 16_384 || /[\r\n]/.test(token)) {
     throw new Error(`MCP "${options.name}" bearer token is oversized or contains newlines`);

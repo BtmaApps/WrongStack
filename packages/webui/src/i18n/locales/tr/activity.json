@@ -1,5 +1,6 @@
 {
   "storyWidget": {
+    "back": "Oturuma dön",
     "open": "Oturum Story ekranını aç",
     "hint": "Oturum dashboard'unu aç. Özet, bu sekmenin eldeki lider tool çağrılarını ve bilinen worker'larını gösterir; çubuklar kaydedilmiş çağrı başlangıçlarıdır.",
     "working": "Çalışıyor",
@@ -8,6 +9,15 @@
     "calls": "çağrı",
     "workers": "worker",
     "age": "Oturumun başlamasından beri geçen süre"
+  },
+  "sessionLayout": {
+    "actions": "Hızlı işlemler",
+    "workspace": "Çalışma alanı",
+    "bugHunt": "Hata avı",
+    "drag": "{{label}} bölümünü sürükle",
+    "dragHint": "Sıralamak için sürükleyin; tutamaçta ↑/↓ tuşlarını veya ok düğmelerini kullanın.",
+    "moveUp": "{{label}} bölümünü yukarı taşı",
+    "moveDown": "{{label}} bölümünü aşağı taşı"
   },
   "projectKit": {
     "subtitle": "Bu projeye özel, tekrar kullanılabilir araçlar.",
@@ -2039,6 +2049,7 @@
   },
   "designStudio": {
     "pickHint": "Bir kit seç — ajan buna uyacak.",
+    "contrastWarn": "AA kontrastı 4,5:1'in altında",
     "gallery": "Galeri",
     "galleryTitle": "Canlı önizleme galerisini aç",
     "stackTitle": "Hedef yığın",

@@ -54,6 +54,7 @@ export interface TypeSafeBreakerOptions {
 }
 
 export interface TypeSafeBreaker extends TypeSafeClient {
+  readonly paymentRequired?: boolean;
   /** True once the breaker has opened. Surfaces read it for status output. */
   readonly open: boolean;
 }
@@ -72,8 +73,12 @@ export function createTypeSafeBreaker(opts: TypeSafeBreakerOptions): TypeSafeBre
   let consecutive = 0;
   let open = false;
   let reason = '';
+  let paymentRequired = false;
 
   return {
+    get paymentRequired() {
+      return paymentRequired;
+    },
     get open() {
       return open;
     },
@@ -85,17 +90,20 @@ export function createTypeSafeBreaker(opts: TypeSafeBreakerOptions): TypeSafeBre
         return result;
       } catch (err) {
         const status = err instanceof FetchError ? err.status : 0;
-        if (!AUTH_STATUSES.has(status)) {
+        if (status !== 402 && !AUTH_STATUSES.has(status)) {
           // Anything else leaves the count where it was. A rate limit between
           // two 401s must not reset the evidence, and must not add to it.
           throw err;
         }
         consecutive++;
-        if (consecutive >= threshold) {
+        if (!open && (status === 402 || consecutive >= threshold)) {
+          paymentRequired = status === 402;
           open = true;
           reason =
-            `${label} rejected the credential ${consecutive} times (HTTP ${status}); ` +
-            'disabled for this client. Check it with `wstack typesafe test` and restart the session.';
+            status === 402
+              ? `${label} payment required (HTTP 402); requests stopped for this client. Disable Jev with /jev off, or fix billing and restart the session.`
+              : `${label} rejected the credential ${consecutive} times (HTTP ${status}); ` +
+                'disabled for this client. Check it with `wstack typesafe test` and restart the session.';
           try {
             opts.onOpen?.(reason);
           } catch {

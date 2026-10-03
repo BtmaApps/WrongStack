@@ -24,6 +24,7 @@ import {
   type PrefsHandlerContext,
 } from './prefs-handlers.js';
 import type { WSClientMessage } from './types.js';
+import { handleUserInstructions } from './user-instructions-handlers.js';
 import { messageSessionId, send } from './ws-utils.js';
 
 export interface PrefsRouteHandlers {
@@ -91,6 +92,8 @@ export function createPrefsRouteHandlers(
  *   - `prefs.get`
  *   - `prefs.update`
  *   - `system_prompt.get`
+ *   - `system_prompt.presets.*`
+ *   - `user_instructions.get` / `user_instructions.save`
  *   - `config.doctor`
  *
  * Regression-tested by packages/webui/tests/server/dispatcher-routing.test.ts.
@@ -129,6 +132,16 @@ export async function handlePrefsRoute(
         msg.type.slice('system_prompt.presets.'.length),
         (msg.payload ?? {}) as Record<string, unknown>,
         messageSessionId(msg),
+      );
+      return true;
+    }
+    case 'user_instructions.get':
+    case 'user_instructions.save': {
+      await handleUserInstructions(
+        ws,
+        msg.type === 'user_instructions.get' ? 'get' : 'save',
+        (msg.payload ?? {}) as Record<string, unknown>,
+        send,
       );
       return true;
     }

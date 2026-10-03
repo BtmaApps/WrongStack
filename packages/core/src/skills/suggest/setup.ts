@@ -92,6 +92,7 @@ export function createSkillSuggestionSetup(
   deps: SkillSuggestionSetupDeps,
 ): Middleware<Request> | undefined {
   const suggest = deps.config.skills?.suggest;
+  if (deps.config.typesafe?.enabled !== true) return undefined;
   // Opt-in: this sends the user's prompt text to a third-party service on
   // every new turn. That is a decision an operator makes explicitly, never a
   // default that arrives with an upgrade.

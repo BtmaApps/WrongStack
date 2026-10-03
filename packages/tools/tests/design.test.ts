@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { loadActiveKit } from '@wrongstack/core/design';
+import { loadActiveKit, loadCapturedTokens } from '@wrongstack/core/design';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { designTool } from '../src/design.js';
 
@@ -277,5 +277,122 @@ describe('designTool', () => {
     // The color remediation contradicts the composition advice on a report
     // with zero color violations.
     expect(res.output).not.toContain('Replace off-palette colors');
+  });
+
+  // ── WCAG AA contrast gate: warn (never block) on sub-4.5:1 pairs ──────────
+
+  it('warns at use time when a set override breaks AA, and stays silent when clean', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-contrast-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      const res = await designTool.execute(
+        {
+          action: 'use',
+          kit: 'minimal-clarity',
+          stack: 'web',
+          // Near-white primary on minimal-clarity's oklch(99% 0 0) light bg.
+          set: { 'light.primary': 'oklch(95% 0.02 250)' },
+        },
+        ctx,
+        opts,
+      );
+      const warnLine = res.output.split('\n').find((l) => l.includes('WCAG AA contrast'));
+      expect(warnLine).toBeDefined();
+      expect(warnLine).toMatch(/light primary\/bg = \d+\.\d+:1/);
+      // The dark theme was not overridden — it must not appear in the warning.
+      expect(warnLine).not.toContain('dark');
+
+      // The same kit WITHOUT overrides must not warn.
+      const clean = await designTool.execute(
+        { action: 'use', kit: 'minimal-clarity', stack: 'web' },
+        { cwd: root, tools: [], projectRoot: root, meta: {} } as any,
+        opts,
+      );
+      expect(clean.output).not.toContain('WCAG AA contrast:');
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('materialize still writes the theme file but appends the contrast warning', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-contrast2-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+      await designTool.execute(
+        { action: 'set', set: { 'light.primary': 'oklch(95% 0.02 250)' } },
+        ctx,
+        opts,
+      );
+      const mat = await designTool.execute(
+        { action: 'materialize', out: 'tokens.css' },
+        ctx,
+        opts,
+      );
+      // Warn, never block: the file is written AND the warning is appended.
+      expect(mat.output).toMatch(/Wrote/);
+      expect(mat.output).toMatch(/WCAG AA contrast/);
+      expect(mat.output).toMatch(/light primary\/bg/);
+      const css = await fs.readFile(path.join(projectRoot, 'tokens.css'), 'utf8');
+      expect(css).toContain('--primary');
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  // ── Kit-less verify: captured project tokens ───────────────────────────────
+
+  it('capture snapshots a CSS token source and verify runs against it without a kit', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-cap-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      await fs.mkdir(path.join(projectRoot, 'src'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectRoot, 'src', 'index.css'),
+        [
+          ':root {',
+          '  --primary: 222 47% 11%;',
+          '  --background: oklch(99% 0 0);',
+          '  --radius-md: 0.5rem;',
+          '}',
+          '.dark {',
+          '  --primary: 210 40% 96%;',
+          '}',
+          '',
+        ].join('\n'),
+      );
+
+      const cap = await designTool.execute({ action: 'capture' }, ctx, opts);
+      expect(cap.action).toBe('capture');
+      expect(cap.output).toMatch(/Captured \d+ token value\(s\)/);
+      expect(cap.path).toContain('captured-tokens.json');
+      const persisted = await loadCapturedTokens(projectRoot);
+      expect(persisted?.tokens.light?.['primary']).toMatch(/^#/);
+      // Dark overlays light: primary flipped by .dark, background inherited.
+      expect(persisted?.tokens.dark?.['primary']).not.toBe(persisted?.tokens.light?.['primary']);
+      expect(persisted?.tokens.dark?.['background']).toBe('oklch(99% 0 0)');
+
+      // Drift check WITHOUT a pinned kit: an off-capture hex must be flagged.
+      await fs.writeFile(path.join(projectRoot, 'app.css'), '.x { color: #123123; }\n');
+      const res = await designTool.execute({ action: 'verify', files: ['app.css'] }, ctx, opts);
+      expect(res.source).toBe('captured');
+      expect(res.kit).toBeUndefined();
+      expect(res.output).toMatch(/captured tokens/);
+      expect(res.violations ?? 0).toBeGreaterThan(0);
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('verify with no kit and no capture still fails with actionable guidance', async () => {
+    const bare = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-bare2-'));
+    try {
+      const ctx = { cwd: bare, tools: [], projectRoot: bare, meta: {} } as any;
+      await expect(designTool.execute({ action: 'verify' }, ctx, opts)).rejects.toThrow(
+        /no active kit, no captured tokens/i,
+      );
+    } finally {
+      await fs.rm(bare, { recursive: true, force: true });
+    }
   });
 });

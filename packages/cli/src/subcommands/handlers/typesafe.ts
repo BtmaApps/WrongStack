@@ -49,6 +49,7 @@ type TypeSafeConfig = NonNullable<Config['typesafe']>;
 const USAGE = [
   'Usage:',
   '  wstack typesafe [status]                 show account and feature configuration',
+  '  wstack typesafe on|off                   enable/disable all Jev requests (keeps key)',
   '  wstack typesafe login [--route <id>]     store an API key in the active profile',
   '      [--endpoint <url>] [--model <id>]    configure a proxy or pin a model',
   '  wstack typesafe test                     send one question and report the answer',
@@ -79,6 +80,18 @@ export const typesafeCmd: SubcommandHandler = async (args, deps) => {
 
   const sub = (args[0] ?? 'status').toLowerCase();
   switch (sub) {
+    case 'on':
+    case 'off': {
+      const configPath = activeProfileConfigPath(deps.paths, deps.config);
+      await mutateConfigProviders(configPath, deps.vault, (_providers, config) => {
+        config['typesafe'] = {
+          ...(config['typesafe'] as TypeSafeConfig | undefined),
+          enabled: sub === 'on',
+        };
+      });
+      write(`Jev ${sub === 'on' ? 'enabled' : 'disabled'}. Saved in ${configPath}.`);
+      return 0;
+    }
     case 'status':
       return showStatus(deps, write);
     case 'login':
@@ -139,7 +152,9 @@ function showStatus(deps: SubcommandDeps, write: (line: string) => void): number
   write('');
   write(
     color.bold('Judgments') +
-      color.dim('  (on with an account; typesafe.judgments.<id>: false turns one off)'),
+      color.dim(
+        '  (requires typesafe.enabled: true; typesafe.judgments.<id>: false turns one off)',
+      ),
   );
   for (const feature of TYPESAFE_JUDGMENT_FEATURES) {
     const on = isTypeSafeJudgmentEnabled(deps.config, feature);
@@ -167,7 +182,7 @@ function showStatus(deps: SubcommandDeps, write: (line: string) => void): number
     }
   }
 
-  if (account.status !== 'ready' && features.length > 0) {
+  if (account.status !== 'ready' && account.status !== 'disabled' && features.length > 0) {
     write('');
     write(`  ${color.amber('Run `wstack typesafe login` — these switches do nothing today.')}`);
     return 1;
@@ -214,7 +229,10 @@ async function login(deps: SubcommandDeps, write: (line: string) => void): Promi
     return next;
   };
   const settings = update(deps.config.typesafe ?? {});
-  const preview = resolveTypeSafeAccount({ config: { typesafe: settings }, env: {} });
+  const preview = resolveTypeSafeAccount({
+    config: { typesafe: { ...settings, enabled: true } },
+    env: {},
+  });
   if (preview.status === 'unusable') {
     write(`${preview.reason}. For a custom route, pass --endpoint <url>.`);
     return 1;
@@ -250,6 +268,7 @@ async function login(deps: SubcommandDeps, write: (line: string) => void): Promi
   });
 
   write(`${color.green('✓')} Key stored in ${configPath}`);
+  write('  Storing a key does not enable Jev. Use `wstack typesafe on` when you want it.');
   if (route) write(`  route set to ${route}`);
   write(`  Verify it with ${color.bold('wstack typesafe test')}.`);
   return 0;
@@ -261,7 +280,7 @@ async function test(deps: SubcommandDeps, write: (line: string) => void): Promis
   const account = resolveTypeSafeAccount({ config: deps.config, restGate: null });
   if (account.status !== 'ready') {
     write(`${color.red('✗')} ${account.reason}`);
-    write('  Run `wstack typesafe login`.');
+    if (account.status !== 'disabled') write('  Run `wstack typesafe login`.');
     return 1;
   }
 

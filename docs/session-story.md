@@ -8,7 +8,8 @@ content, available while browsing Session, Files, Changes, Mailbox, or other
 sidebar panels. It shows retained leader tool calls, explicitly owned workers,
 session age, and a mini chart of retained call starts for the active tab. It
 uses existing live stores without polling Chronicle. Click to open the full
-dashboard; on mobile this also closes the sidebar overlay. Select a session to
+dashboard; while Story is open the same widget becomes **Back to session**.
+It stays above the scrolling sections. On mobile either action closes the sidebar overlay. Select a session to
 enable the widget. These cached snapshot counts are not durable history totals.
 
 The dashboard opens on **Overview**, with an animated category ring, observed

@@ -89,6 +89,7 @@ export function JevSection({
         payload: {
           requestId,
           patch: {
+            enabled: form.enabled === true,
             route: form.route,
             endpoint: form.endpoint.trim() || null,
             model: form.model.trim() || null,
@@ -131,6 +132,15 @@ export function JevSection({
       )}
       {form && (
         <fieldset disabled={busy} className="space-y-3 min-w-0">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={form.enabled === true}
+              onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+            />
+            {t('settings:jev.enabled')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('settings:jev.enabledHint')}</p>
           <label className="block text-sm">
             {t('settings:jev.route')}
             <select
@@ -310,7 +320,11 @@ export function JevSection({
           )}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => send('jev.set')}>{t('settings:jev.save')}</Button>
-            <Button variant="outline" onClick={() => send('jev.test')}>
+            <Button
+              variant="outline"
+              disabled={state.settings?.enabled !== true}
+              onClick={() => send('jev.test')}
+            >
               {t('settings:jev.test')}
             </Button>
           </div>
@@ -322,7 +336,13 @@ export function JevSection({
         <p className="text-xs text-muted-foreground">{t('settings:jev.checkHint')}</p>
         <Button
           variant="outline"
-          disabled={busy || state.checks?.running || !form || state.settings?.status !== 'ready'}
+          disabled={
+            busy ||
+            state.checks?.running ||
+            !form ||
+            state.settings?.enabled !== true ||
+            state.settings?.status !== 'ready'
+          }
           onClick={() => send('jev.check')}
         >
           {state.checks?.running || (busy && checking.current)

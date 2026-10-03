@@ -103,6 +103,15 @@ export interface DesignKitTokens {
   dark?: DesignTokenSet | undefined;
 }
 
+/** A kit directory that failed to load — surfaced as authoring feedback. */
+export interface SkippedKitInfo {
+  /** Directory name under its discovery layer. */
+  dir: string;
+  source: DesignKitManifest['source'];
+  /** Why it was skipped (shown in `design list` and the /design picker). */
+  reason: string;
+}
+
 /** Compact menu entry rendered into the request when frontend work is detected. */
 export interface DesignKitEntry {
   id: string;
@@ -139,6 +148,8 @@ export interface DesignKitLoader {
   list(): Promise<DesignKitManifest[]>;
   /** Structured entries for the compact menu. */
   listEntries(): Promise<DesignKitEntry[]>;
+  /** Kit directories that failed to load (authoring feedback), if any. */
+  listSkipped(): Promise<SkippedKitInfo[]>;
   find(id: string): Promise<DesignKitManifest | undefined>;
   /** Compact, model-facing menu of every available kit. */
   menuText(): Promise<string>;

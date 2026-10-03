@@ -11,6 +11,7 @@ import type { SlashCommandContext } from './command-context.js';
 
 const HELP = [
   '/jev — TypeSafe / Jev account, feature switches and activity',
+  '/jev on|off — enable/disable ALL Jev requests; keeps the saved key and feature choices',
   '/jev login typesafe|openrouter|custom — securely add/replace the account key',
   '/jev route typesafe|openrouter — change route (clears old key/model/endpoint)',
   '/jev endpoint <url> — set a custom endpoint before custom login',
@@ -104,7 +105,9 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
       }
       if (!opts.paths) return { message: 'Profile path unavailable.' };
       let patch: Record<string, unknown>;
-      if (sub === 'login') {
+      if (['on', 'off', 'enable', 'disable'].includes(sub)) {
+        patch = { enabled: sub === 'on' || sub === 'enable' };
+      } else if (sub === 'login') {
         if (!['typesafe', 'openrouter', 'custom'].includes(arg)) return { message: HELP };
         if (!opts.readSecret || !opts.vault)
           return {
@@ -137,7 +140,9 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
         );
         return {
           message:
-            'Jev settings saved. Restart existing sessions to apply all consumers. /jev test verifies the saved connection.',
+            patch['enabled'] === false
+              ? 'Jev settings saved. All Jev requests disabled; the saved key and feature choices are preserved.'
+              : 'Jev settings saved. Restart existing sessions to install newly enabled consumers. /jev test verifies the saved connection.',
         };
       } catch {
         return {

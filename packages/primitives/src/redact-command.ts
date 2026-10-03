@@ -266,7 +266,14 @@ export function redactCommandArgs(
     return { command: redactCommand(command), args: [] };
   }
   const redactedCommand = redactCommand(command);
-  const redactedArgs = args.map((a) => redactCommand(a));
+  const redactedArgs = args.map((a) => {
+    const equals = typeof a === 'string' ? a.indexOf('=') : -1;
+    // An argv value can contain unquoted whitespace; it is already one token.
+    if (equals > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, equals))) {
+      return `${a.slice(0, equals + 1)}[REDACTED]`;
+    }
+    return redactCommand(a);
+  });
   for (let i = 0; i < redactedArgs.length - 1; i++) {
     const flag = redactedArgs[i];
     const next = redactedArgs[i + 1];

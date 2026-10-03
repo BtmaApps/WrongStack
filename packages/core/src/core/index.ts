@@ -92,6 +92,12 @@ export {
   renderNextStepsBlock,
   writePendingNextSteps,
 } from './next-steps-slot.js';
+export {
+  readUserInstructions,
+  type UserInstructionsDocument,
+  userInstructionsFile,
+  writeUserInstructions,
+} from './project-instructions.js';
 export { runProviderWithRetry } from './provider-runner.js';
 export { setQueuedMessagesSnapshot } from './queued-messages.js';
 export {

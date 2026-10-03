@@ -31,7 +31,11 @@ import {
 } from './instruction-bundle.js';
 import { type InstructionTemplateContext, renderInstructionLayer } from './instruction-template.js';
 import { PROMPT as DEFAULT_PROMPT, LEADER_AFTER_TASK_PROMPT } from './modes/default.js';
-import { RootInstructionsCache } from './project-instructions.js';
+import {
+  RootInstructionsCache,
+  UserInstructionsCache,
+  userInstructionsFile,
+} from './project-instructions.js';
 import { tagBlock } from './system-prompt-blocks.js';
 import { buildEnvironment } from './system-prompt-environment.js';
 import { renderDomainGlossary } from './system-prompt-glossary.js';
@@ -165,6 +169,11 @@ export interface DefaultSystemPromptBuilderOptions {
    */
   appendedInstructions?: string | undefined;
   /**
+   * The user-scope instruction file. Default `~/.wrongstack/AGENTS.md`
+   * (under `WRONGSTACK_HOME` when set); `false` leaves it out.
+   */
+  userInstructionsFile?: string | false | undefined;
+  /**
    * Token-saving mode tier. Controls how aggressively the system prompt is
    * compacted: skill bodies are omitted/trimmed, tool hints are shortened,
    * and optional guidance sections (delegation, mailbox, context management)
@@ -219,6 +228,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
    */
   private envCacheByRoot = new Map<string, string>();
   private readonly rootInstructions = new RootInstructionsCache();
+  private readonly userInstructions = new UserInstructionsCache();
   private skillCache?: string | undefined;
   /** Cached full skill bodies (after frontmatter), built once per session. */
   private skillBodyCache?: string | undefined;
@@ -426,6 +436,13 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         'environment',
       ),
     ];
+    // User-scope AGENTS.md first, then the project's. Subagents get both:
+    // they are standing rules, not session context.
+    const userFile = this.opts.userInstructionsFile ?? userInstructionsFile();
+    const userInstructions = userFile ? await this.userInstructions.load(userFile) : '';
+    if (userInstructions) {
+      session.push(tagBlock({ type: 'text', text: userInstructions }, 'user-instructions'));
+    }
     // Root AGENTS.md / CLAUDE.md; subdirectory files arrive as deltas with
     // tool results instead (see project-instructions.ts).
     const projectInstructions = await this.rootInstructions.load(ctx.projectRoot);

@@ -23,7 +23,6 @@ import { useAppTranslation } from '@/i18n';
 import { getPalette, PALETTES } from '@/lib/palettes';
 import { cn } from '@/lib/utils';
 import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
-import { openMainView } from './activity-bar/nav';
 import { CronTrigger } from './CronTrigger';
 import { InspectorTrigger } from './InspectorPanel';
 import { NotificationMenu } from './NotificationMenu';
@@ -57,6 +56,37 @@ export {
 } from './SystemHealthChip';
 
 // ── WorkbenchTopbar ─────────────────────────────────────────────────────────
+
+function VersionBadge({
+  version,
+  latestVersion,
+  updatePending,
+}: {
+  version: string;
+  latestVersion: string;
+  updatePending: boolean;
+}) {
+  if (!version) return null;
+  return (
+    <span
+      data-testid="topbar-version"
+      className={cn(
+        'inline-flex max-w-full shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums',
+        updatePending
+          ? 'border-warning/40 bg-warning/10 text-warning'
+          : 'border-primary/30 bg-primary/10 text-foreground',
+      )}
+      title={
+        updatePending
+          ? `Update available: v${version} → v${latestVersion} — run wstack update`
+          : `WrongStack v${version}`
+      }
+    >
+      <span className="shrink-0">v{version}</span>
+      {updatePending && <span className="truncate text-[10px]">→ v{latestVersion}</span>}
+    </span>
+  );
+}
 
 export function WorkbenchTopbar({
   currentView,
@@ -97,8 +127,10 @@ export function WorkbenchTopbar({
   const agentRosterActiveTab = useUIStore((s) => s.agentRosterActiveTab);
   const officeMapActive = currentView === 'roster' && agentRosterActiveTab === 'officemap';
   const openOfficeMap = () => {
-    useUIStore.getState().setAgentRosterActiveTab('officemap');
-    openMainView('roster');
+    const ui = useUIStore.getState();
+    ui.setAgentRosterActiveTab('officemap');
+    ui.setSidebarOpen(false);
+    ui.setCurrentView('roster');
   };
   const openIntegrations = () => {
     useUIStore.getState().setSettingsActiveTab('integrations');
@@ -125,10 +157,27 @@ export function WorkbenchTopbar({
 
   const serverProcess = useServerProcessMetrics();
   // Calm chrome (default) folds RAM / Index / dropped-tools / WrongProxy / HQ /
-  // WS into SystemHealthChip and drops the duplicate theme + Office Map
-  // buttons; `full` renders the pre-calm bar unchanged.
+  // WS into SystemHealthChip and combines the appearance controls.
   const fullChrome = useIsFullChrome();
   const updatePending = Boolean(updateAvailable && latestVersion && latestVersion !== appVersion);
+  const officeMapButton = (
+    <button
+      type="button"
+      onClick={openOfficeMap}
+      className={cn(
+        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border hover:bg-accent/60',
+        officeMapActive
+          ? 'border-primary/40 bg-primary/10 text-primary'
+          : 'border-border/70 bg-background/60 text-muted-foreground hover:text-foreground',
+      )}
+      title={`${t('activity:agentRoster.tabOfficeMap')} (F11)`}
+      aria-label={t('activity:agentRoster.tabOfficeMap')}
+      aria-pressed={officeMapActive}
+      data-testid="topbar-office-map"
+    >
+      <Building2 className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
   const paletteItems = PALETTES.map((option) => (
     <DropdownMenuItem key={option.id} onSelect={() => setPalette(option.id)} className="gap-2">
       <span
@@ -151,17 +200,17 @@ export function WorkbenchTopbar({
     <>
       {/* ── Mobile Compact Header (<md) ── */}
       <div className="flex shrink-0 items-center justify-between border-b border-border/70 bg-card/85 px-2.5 py-1.5 shadow-sm backdrop-blur-xl md:hidden">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
             onClick={toggleSidebar}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
             aria-label={t('activity:topbar.toggleNavigationMenu', 'Toggle navigation menu')}
             title={t('activity:topbar.toggleNavigation', 'Toggle navigation')}
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-xs font-semibold">{projectName || 'WrongStack'}</span>
               <span className="rounded bg-muted/60 px-1 py-0.5 text-[10px] text-muted-foreground font-mono">
@@ -173,10 +222,20 @@ export function WorkbenchTopbar({
                 </span>
               )}
             </div>
+            {appVersion && (
+              <div className="mt-0.5 flex min-w-0">
+                <VersionBadge
+                  version={appVersion}
+                  latestVersion={latestVersion}
+                  updatePending={updatePending}
+                />
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {officeMapButton}
           {/* AGENTS entry — shared top bar, present on every tab/view (icon +
               badge only at this width; the label expands in on lg screens). */}
           <InspectorTrigger />
@@ -292,28 +351,11 @@ export function WorkbenchTopbar({
                 <span className="truncate text-sm font-semibold">
                   {projectName || 'WrongStack'}
                 </span>
-                {/* Calm: the version lives in the health popover; the chip only
-                    comes back here when there is an update to act on. */}
-                {appVersion && (fullChrome || updatePending) ? (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
-                      updateAvailable && latestVersion && latestVersion !== appVersion
-                        ? 'border-warning/40 bg-warning/10 text-warning'
-                        : 'border-border/70 bg-muted/50 text-muted-foreground',
-                    )}
-                    title={
-                      updateAvailable && latestVersion && latestVersion !== appVersion
-                        ? `Update available: v${appVersion} → v${latestVersion} — run wstack update`
-                        : `WrongStack v${appVersion}`
-                    }
-                  >
-                    v{appVersion}
-                    {updateAvailable && latestVersion && latestVersion !== appVersion ? (
-                      <span className="text-[10px] opacity-80">→ v{latestVersion}</span>
-                    ) : null}
-                  </span>
-                ) : null}
+                <VersionBadge
+                  version={appVersion}
+                  latestVersion={latestVersion}
+                  updatePending={updatePending}
+                />
                 <span className="rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[11px] text-muted-foreground">
                   {t(`activity:topbar.view.${currentView}`, {
                     defaultValue: viewLabel(currentView),
@@ -584,25 +626,7 @@ export function WorkbenchTopbar({
             >
               <Settings className="h-3.5 w-3.5" />
             </button>
-            {/* Calm: Office Map stays one click away as the Agent Roster's
-                "Office Map" tab (and in the compact header's menu). */}
-            {fullChrome ? (
-              <button
-                type="button"
-                onClick={openOfficeMap}
-                className={cn(
-                  'inline-flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent/60',
-                  officeMapActive
-                    ? 'border-primary/40 bg-primary/10 text-primary'
-                    : 'border-border/70 bg-background/60 text-muted-foreground hover:text-foreground',
-                )}
-                title={`${t('activity:agentRoster.tabOfficeMap')} (F11)`}
-                aria-label={t('activity:agentRoster.tabOfficeMap')}
-                aria-pressed={officeMapActive}
-              >
-                <Building2 className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
+            {officeMapButton}
           </div>
         </div>
       </div>

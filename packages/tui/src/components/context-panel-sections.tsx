@@ -73,6 +73,7 @@ const SOURCE_LABEL: Record<string, string> = {
   identity: 'identity',
   'tool-usage': 'tool-usage',
   environment: 'environment',
+  'user-instructions': '~/AGENTS.md',
   'project-instructions': 'AGENTS.md',
   skills: 'skills',
   mode: 'mode',

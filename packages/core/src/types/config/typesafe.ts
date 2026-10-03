@@ -14,6 +14,8 @@
  * silently turn anything on.
  */
 export interface TypeSafeConfig {
+  /** Master opt-in. Unset/false disables all Jev requests, even with a saved/env key. */
+  enabled?: boolean | undefined;
   /**
    * API key. This is the normal place to put it.
    *
@@ -80,15 +82,15 @@ export interface TypeSafeConfig {
    * Per-feature switches for the System One judgments that sit in front of
    * (never instead of) an existing path. Each one runs ONLY while this account
    * resolves `ready` and the host is not resting; otherwise the feature takes
-   * the path it always had. Unset means ON when an account is configured —
-   * a TypeSafe key exists for nothing else — and `false` turns one off.
+   * the path it always had. Requires `typesafe.enabled: true`; within that
+   * opt-in, unset means allowed and `false` turns one feature off.
    */
   judgments?: TypeSafeJudgmentsConfig | undefined;
 }
 
-/** See {@link TypeSafeConfig.judgments}. `false` disables; unset = on with an account. */
+/** See {@link TypeSafeConfig.judgments}. `false` disables; unset = allowed after master opt-in. */
 export interface TypeSafeJudgmentsConfig {
-  /** Agent-callable structured decision tool. Unset = on with an account. */
+  /** Agent-callable structured decision tool. Requires master opt-in; unset = allowed. */
   tool?: boolean | undefined;
   /** Brain decisions: a Choice over the options before the LLM tier. */
   brain?: boolean | undefined;

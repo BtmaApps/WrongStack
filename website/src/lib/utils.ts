@@ -444,7 +444,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-09-20',
     tagline: 'Agent-callable Jev decisions, scoped SAGE triage, and safer redirects',
     highlights: [
-      'Configure Jev accounts, models, timeouts and feature switches through /jev or the WebUI settings panel',
+      'Jev is off by default even with a key; /jev on|off or WebUI settings control all consumers, with automatic requests stopped on HTTP 402',
       'Agents can request validated Noul, Choice and Score judgments over supplied evidence; jev_status checks readiness offline',
       'Jev activity views expose request timing, usage, answers and safe failure categories across terminal and browser surfaces',
       'SAGE daily triage paginates the full candidate set and carries session corpus, injector evidence and glossary provenance',

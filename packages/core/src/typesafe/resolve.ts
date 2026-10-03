@@ -19,7 +19,8 @@
  *
  * ## What it does not do
  *
- * It does not decide whether a feature runs, and it does not define what
+ * The master opt-in gates all clients, including diagnostics. It does not
+ * otherwise decide whether a feature runs, and it does not define what
  * running without TypeSafe looks like. Each consumer keeps its own `enabled`
  * switch and its own degraded path — the dispatch classifier falls back to the
  * prose classifier, the skill suggester emits no block at all. There is
@@ -31,8 +32,9 @@
 import type { Config } from '../types/config/root.js';
 import type { TypeSafeConfig } from '../types/config/typesafe.js';
 import { observeJevClient } from './activity.js';
-import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
+import { createTypeSafeBreaker, type TypeSafeBreaker, TypeSafeDisabledError } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
+import { typeSafeAllowed, typeSafePolicySignal } from './policy.js';
 import { sharedTypeSafeRestGate, type TypeSafeRestGate, withTypeSafeRest } from './rest.js';
 import { isTypeSafeRoute, TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
 
@@ -93,6 +95,11 @@ export interface TypeSafeAccountUnconfigured {
   reason: string;
 }
 
+export interface TypeSafeAccountDisabled {
+  status: 'disabled';
+  reason: string;
+}
+
 /** A credential or endpoint exists but cannot be used as written. */
 export interface TypeSafeAccountUnusable {
   status: 'unusable';
@@ -101,6 +108,7 @@ export interface TypeSafeAccountUnusable {
 
 export type TypeSafeAccount =
   | TypeSafeAccountReady
+  | TypeSafeAccountDisabled
   | TypeSafeAccountUnconfigured
   | TypeSafeAccountUnusable;
 
@@ -143,6 +151,12 @@ export function resolveTypeSafeRoute(
  */
 export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSafeAccount {
   const account = deps.config.typesafe ?? {};
+  if (!typeSafeAllowed(deps.config)) {
+    return {
+      status: 'disabled',
+      reason: 'Jev is disabled. Enable it with /jev on or Settings → Jev.',
+    };
+  }
   const env = deps.env ?? process.env;
   if (account.route !== undefined && !isTypeSafeRoute(account.route)) {
     return { status: 'unusable', reason: 'typesafe.route must be typesafe, openrouter or custom' };
@@ -196,7 +210,27 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
       ? undefined
       : (deps.restGate ?? sharedTypeSafeRestGate(endpoint, apiKey));
   const client = createTypeSafeBreaker({
-    client: rest ? withTypeSafeRest(transport, rest, deps.onRest) : transport,
+    client: {
+      systemOne(req, signal) {
+        const feature =
+          req.activityPurpose === 'self-test'
+            ? undefined
+            : req.activityFeature?.startsWith('plugin:')
+              ? 'tool'
+              : req.activityFeature;
+        if (!typeSafeAllowed(deps.config, feature))
+          throw new TypeSafeDisabledError('Jev is disabled by settings.');
+        const policySignal = typeSafePolicySignal(deps.config);
+        const requestSignal =
+          policySignal && signal
+            ? AbortSignal.any([policySignal, signal])
+            : (policySignal ?? signal);
+        return (rest ? withTypeSafeRest(transport, rest, deps.onRest) : transport).systemOne(
+          req,
+          requestSignal,
+        );
+      },
+    },
     threshold: account.authFailureLimit,
     label: spec?.label ?? 'TypeSafe',
     onOpen: deps.onDisabled,

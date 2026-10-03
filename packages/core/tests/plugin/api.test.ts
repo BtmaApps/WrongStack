@@ -750,7 +750,7 @@ describe('DefaultPluginAPI.jev', () => {
       pipelines: {} as ConstructorParameters<typeof DefaultPluginAPI>[0]['pipelines'],
       toolRegistry,
       providerRegistry: new ProviderRegistry(),
-      config: { version: 1, typesafe: { apiKey: 'test-key' } } as Config,
+      config: { version: 1, typesafe: { enabled: true, apiKey: 'test-key' } } as Config,
       log: new DefaultLogger({ level: 'error' }),
     };
     const external = new DefaultPluginAPI({ ...base, official: false });
@@ -806,7 +806,7 @@ describe('DefaultPluginAPI.jev', () => {
         }),
       ).rejects.toThrow('unavailable');
       toolRegistry.setSessionRestriction({ deny: [] });
-      base.config.typesafe = { apiKey: 'test-key', judgments: { tool: false } };
+      base.config.typesafe = { enabled: true, apiKey: 'test-key', judgments: { tool: false } };
       await expect(
         official.jev!.judge({
           state: {},
@@ -821,7 +821,16 @@ describe('DefaultPluginAPI.jev', () => {
       ).rejects.toThrow('unavailable');
       expect(fetchMock).toHaveBeenCalledTimes(1);
 
-      base.config.typesafe = { apiKey: 'test-key' };
+      base.config.typesafe = { enabled: false, apiKey: 'test-key', judgments: { tool: true } };
+      await expect(
+        official.jev!.judge({
+          state: {},
+          questions: { check: { type: 'noul', instructions: 'Allowed?' } },
+        }),
+      ).rejects.toThrow('unavailable');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      base.config.typesafe = { enabled: true, apiKey: 'test-key' };
       fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
       const pending = official.jev!.judge({
         state: { finding: 'still broken' },

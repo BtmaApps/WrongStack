@@ -45,7 +45,10 @@ describe('TypeSafe route wiring', () => {
       vi.stubGlobal('fetch', fetchImpl);
       const provider = providerWith([]);
       const classifier = makeDispatchClassifier({
-        config: { typesafe: { route }, fleet: { dispatch: { typesafeClassifier: true } } } as never,
+        config: {
+          typesafe: { enabled: true, route },
+          fleet: { dispatch: { typesafeClassifier: true } },
+        } as never,
         provider,
         model: 'chat-model',
         env: { [keyEnv]: 'route-test-key' },

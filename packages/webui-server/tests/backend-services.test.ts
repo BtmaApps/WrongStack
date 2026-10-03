@@ -297,7 +297,7 @@ describe('createAgentServices', () => {
   it('resolves the Brain Jev account from the latest host config', async () => {
     const input = makeInput();
     await createAgentServices(input);
-    input.config = { ...input.config, typesafe: { judgments: { brain: false } } };
+    input.config = { ...input.config, typesafe: { enabled: true, judgments: { brain: false } } };
     vi.mocked(createBrainRuntime).mock.calls.at(-1)![0].getSystemOneJudge!();
     expect(resolveTypeSafeJudge).toHaveBeenLastCalledWith(
       expect.objectContaining({ config: input.config, feature: 'brain' }),

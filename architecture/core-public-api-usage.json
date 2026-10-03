@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 358,
+      "files": 359,
       "typeOnly": 283,
-      "runtimeOrMixed": 96
+      "runtimeOrMixed": 97
     },
     "@wrongstack/core/agent-catalog": {
       "files": 20,
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 9,
+      "files": 10,
       "typeOnly": 1,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
       "files": 75,
@@ -129,9 +129,9 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/registry": {
-      "files": 147,
+      "files": 148,
       "typeOnly": 64,
-      "runtimeOrMixed": 86
+      "runtimeOrMixed": 87
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -224,9 +224,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 702,
+      "files": 703,
       "typeOnly": 67,
-      "runtimeOrMixed": 667
+      "runtimeOrMixed": 668
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2371,6 +2371,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/user-instructions-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/worklist-session-context.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -4268,6 +4274,12 @@
     {
       "specifier": "@wrongstack/core/design",
       "file": "packages/webui-server/src/server/design-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
+      "file": "packages/webui-server/tests/design-verify-captured.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9866,6 +9878,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/tui/tests/connections-slash.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/tui/tests/design-slash-capture.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -24752,6 +24770,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/token-estimator.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/user-instructions-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

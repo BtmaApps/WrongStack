@@ -1,5 +1,6 @@
 {
   "storyWidget": {
+    "back": "Back to session",
     "open": "Open session Story",
     "hint": "Open the session dashboard. Snapshot shows retained leader tool calls and known workers for this tab; bars show recorded call starts.",
     "working": "Working",
@@ -8,6 +9,15 @@
     "calls": "calls",
     "workers": "workers",
     "age": "Time since this session started"
+  },
+  "sessionLayout": {
+    "actions": "Quick actions",
+    "workspace": "Workspace",
+    "bugHunt": "Bug hunt",
+    "drag": "Drag {{label}}",
+    "dragHint": "Drag to reorder; use ↑/↓ on the handle or the arrow buttons.",
+    "moveUp": "Move {{label}} up",
+    "moveDown": "Move {{label}} down"
   },
   "projectKit": {
     "subtitle": "Reusable tools, built for this project.",
@@ -2044,6 +2054,7 @@
   },
   "designStudio": {
     "pickHint": "Pick a kit — the agent will adhere to it.",
+    "contrastWarn": "AA contrast below 4.5:1",
     "gallery": "Gallery",
     "galleryTitle": "Open live preview gallery",
     "stackTitle": "Target stack",

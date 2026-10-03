@@ -13,6 +13,7 @@ import { Check, Download, Palette, Search, ShieldCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { ContrastBadges, type ContrastIssue } from '@/components/ContrastBadges';
 import { i18n, useAppTranslation } from '@/i18n';
 import { colorToHex } from '@/lib/color';
 import { cn } from '@/lib/utils';
@@ -260,6 +261,7 @@ export function DesignGalleryView({ className }: { className?: string }) {
   const [stack, setStack] = useState<string>('web');
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<string | null>(null);
+  const [contrastIssues, setContrastIssues] = useState<ContrastIssue[]>([]);
 
   useEffect(() => {
     if (!client) return;
@@ -283,13 +285,26 @@ export function DesignGalleryView({ className }: { className?: string }) {
       setKits(p?.kits ?? []);
       setActiveKit(p?.activeKit ?? null);
       setOverrides(p?.overrides ?? {});
+      // Authoritative kit state; a previous tab's contrast warning is stale.
+      setContrastIssues([]);
     };
     const onUse = (msg: unknown) => {
       if (isForeign(msg)) return;
-      const p = (msg as { payload?: { ok?: boolean; kit?: string; overrides?: Tokens } }).payload;
+      const p = (
+        msg as {
+          payload?: {
+            ok?: boolean;
+            kit?: string;
+            overrides?: Tokens;
+            contrastIssues?: ContrastIssue[];
+          };
+        }
+      ).payload;
       if (p?.ok && p.kit) {
         setActiveKit(p.kit);
         setOverrides(p.overrides ?? {});
+        // WCAG AA gate result from the server (empty = clean).
+        setContrastIssues(p.contrastIssues ?? []);
       }
     };
     const onSet = (msg: unknown) => {
@@ -313,12 +328,25 @@ export function DesignGalleryView({ className }: { className?: string }) {
       if (p?.ok && p.kit) {
         setActiveKit(p.kit);
         setOverrides(p.overrides ?? {});
+        // Swap drops overrides; the gate runs again on the next use.
+        setContrastIssues([]);
         setStatus(`Swapped to ${p.kit}`);
       }
     };
     const onMat = (msg: unknown) => {
       if (isForeign(msg)) return;
-      const p = (msg as { payload?: { ok?: boolean; path?: string; error?: string } }).payload;
+      const p = (
+        msg as {
+          payload?: {
+            ok?: boolean;
+            path?: string;
+            error?: string;
+            contrastIssues?: ContrastIssue[];
+          };
+        }
+      ).payload;
+      // The materialize reply re-runs the gate on the persisted overrides.
+      if (p?.ok && p.contrastIssues) setContrastIssues(p.contrastIssues);
       setStatus(
         p?.ok
           ? i18n.t('activity:design.wrote', { path: p.path })
@@ -334,6 +362,9 @@ export function DesignGalleryView({ className }: { className?: string }) {
             score?: number;
             violationCount?: number;
             filesScanned?: number;
+            source?: 'kit' | 'captured';
+            kit?: string | null;
+            capturedFrom?: string[] | null;
             error?: string;
           };
         }
@@ -342,15 +373,22 @@ export function DesignGalleryView({ className }: { className?: string }) {
         setStatus(i18n.t('activity:design.verifyError', { error: p?.error ?? 'error' }));
         return;
       }
+      // Basis label — a capture-based score must never read as a kit score.
+      const basis =
+        p.source === 'captured'
+          ? ` — captured tokens (${p.capturedFrom?.join(', ') ?? 'design capture'})`
+          : p.kit
+            ? ` — kit ${p.kit}`
+            : '';
       const pct = Math.round((p.score ?? 1) * 100);
       setStatus(
-        p.violationCount
+        (p.violationCount
           ? i18n.t('activity:design.verifyOffPalette', {
               pct,
               count: p.violationCount,
               files: p.filesScanned,
             })
-          : i18n.t('activity:design.verifyClean', { files: p.filesScanned }),
+          : i18n.t('activity:design.verifyClean', { files: p.filesScanned })) + basis,
       );
     };
     client.on('design.list', onList);
@@ -571,6 +609,7 @@ export function DesignGalleryView({ className }: { className?: string }) {
                     </div>
                     {isActive && <ColorEditor kit={kit} overrides={ov} onSet={setOverride} />}
                     {isActive && <TuneEditor onTune={tuneKit} />}
+                    {isActive && <ContrastBadges issues={contrastIssues} />}
                   </div>
                 </div>
               );

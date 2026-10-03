@@ -2,7 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { summarizeSystemHealth } from '../../src/components/SystemHealthChip';
 import { WorkbenchTopbar } from '../../src/components/WorkbenchTopbar';
-import { type SubagentView, useConfigStore, useFleetStore, useUIStore } from '../../src/stores';
+import {
+  type SubagentView,
+  useConfigStore,
+  useFleetStore,
+  useSessionStore,
+  useUIStore,
+} from '../../src/stores';
 import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/i18n', () => ({
@@ -274,6 +280,80 @@ describe('WorkbenchTopbar calm chrome', () => {
     );
     expect(screen.getByTestId('topbar-run-status').textContent).toContain('3/10');
     expect(screen.queryByTestId('system-health-chip')).toBeNull();
+  });
+});
+
+describe('Office shortcut and visible runtime version', () => {
+  beforeEach(() => {
+    useUIStore.setState({
+      sidebarOpen: true,
+      activeActivity: 'chat',
+      currentView: 'chat',
+      agentRosterActiveTab: 'catalog',
+    });
+    useLocalPrefs.setState({ chromeLevel: 'calm', hqEnabled: false, wrongProxyEnabled: false });
+    useConfigStore.setState({ wsConnected: false });
+    useSessionStore.setState({
+      appVersion: '1.0.31',
+      latestVersion: '1.0.31',
+      updateAvailable: false,
+    });
+  });
+
+  it.each(['calm', 'full'] as const)(
+    'keeps the building shortcut and version in both headers in %s chrome',
+    (chromeLevel) => {
+      useLocalPrefs.setState({ chromeLevel });
+      renderTopbar();
+      const buttons = screen.getAllByTestId('topbar-office-map');
+      expect(buttons).toHaveLength(2);
+      const versions = screen.getAllByTestId('topbar-version');
+      expect(versions).toHaveLength(2);
+      expect(versions.every((badge) => badge.textContent === 'v1.0.31')).toBe(true);
+      fireEvent.click(buttons[1]!);
+      expect(useUIStore.getState()).toMatchObject({
+        currentView: 'roster',
+        agentRosterActiveTab: 'officemap',
+        sidebarOpen: false,
+      });
+    },
+  );
+
+  it('opens Office Map from another roster tab and keeps it open on repeated clicks', () => {
+    useUIStore.setState({ currentView: 'roster' });
+    const view = renderTopbar('roster');
+    fireEvent.click(screen.getAllByTestId('topbar-office-map')[0]!);
+    expect(useUIStore.getState()).toMatchObject({
+      currentView: 'roster',
+      agentRosterActiveTab: 'officemap',
+    });
+    view.rerender(
+      <WorkbenchTopbar
+        currentView="roster"
+        isLoading={false}
+        iteration={null}
+        onPalette={vi.fn()}
+        onSettings={vi.fn()}
+      />,
+    );
+    const buttons = screen.getAllByTestId('topbar-office-map');
+    expect(buttons.every((button) => button.getAttribute('aria-pressed') === 'true')).toBe(true);
+    fireEvent.click(buttons[1]!);
+    expect(useUIStore.getState().currentView).toBe('roster');
+  });
+
+  it('retains the update hint and does not invent a version before the backend reports it', () => {
+    useSessionStore.setState({ latestVersion: '1.0.32', updateAvailable: true });
+    const view = renderTopbar();
+    expect(
+      screen
+        .getAllByTestId('topbar-version')
+        .every((badge) => badge.getAttribute('title')?.includes('v1.0.31 → v1.0.32')),
+    ).toBe(true);
+    view.unmount();
+    useSessionStore.setState({ appVersion: '', latestVersion: '', updateAvailable: false });
+    renderTopbar();
+    expect(screen.queryByTestId('topbar-version')).toBeNull();
   });
 });
 

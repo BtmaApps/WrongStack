@@ -770,7 +770,17 @@
     "tokenSavingMinimal": "Minimal — temel optimizasyon",
     "tokenSavingLight": "Hafif — orta derecede azaltma",
     "tokenSavingMedium": "Orta — önemli tasarruflar",
-    "tokenSavingAggressive": "Agresif — en küçük doğrudan yüzey ve prompt"
+    "tokenSavingAggressive": "Agresif — en küçük doğrudan yüzey ve prompt",
+    "userInstructions": {
+      "heading": "Genel kuralların (AGENTS.md)",
+      "hint": "Her projede geçerli kendi talimatların. Projenin AGENTS.md dosyasından önce system prompt'a girer, bir sonraki turdan itibaren uygulanır.",
+      "placeholder": "# Kurallarım\n- Türkçe cevap ver.\n- Commit'lere co-author satırı ekleme.",
+      "missing": "henüz yok; kaydedince oluşturulur",
+      "save": "Kaydet",
+      "reload": "Yeniden yükle",
+      "saved": "Kaydedildi.",
+      "discard": "Kaydedilmemiş değişiklikler atılsın mı?"
+    }
   },
   "logs": {
     "logLevelLabel": "Günlük seviyesi",
@@ -1188,6 +1198,8 @@
     "resetOverrides": "Rol değişikliklerini temizle"
   },
   "jev": {
+    "enabled": "Jev’i etkinleştir",
+    "enabledHint": "Varsayılan kapalıdır. Kapatınca araçlar ve tanılama dahil tüm Jev çağrıları durur; anahtarınız ve özellik seçimleriniz korunur.",
     "description": "Karar sağlayıcısını yönetin ve Jev’in nerede kullanıldığını izleyin.",
     "loading": "Jev ayarları yükleniyor…",
     "timeout": "Sunucudan yanıt gelmedi. Yeniden bağlanıp deneyin.",
@@ -1241,6 +1253,7 @@
     "includeChecks": "Tanılama isteklerini göster",
     "selfTest": "Tanılama",
     "account": {
+      "disabled": "Jev kapalı",
       "ready": "Hesap yapılandırılmış",
       "unconfigured": "Hesap gerekli",
       "unusable": "Hesap ayarları geçersiz"

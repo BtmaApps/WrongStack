@@ -1,5 +1,6 @@
 {
   "storyWidget": {
+    "back": "Zurück zur Sitzung",
     "open": "Session Story öffnen",
     "hint": "Sitzungsdashboard öffnen. Die Übersicht zeigt gespeicherte Tool-Aufrufe des Hauptagenten und bekannte Worker dieses Tabs; Balken zeigen aufgezeichnete Aufrufstarts.",
     "working": "Aktiv",
@@ -8,6 +9,15 @@
     "calls": "Aufrufe",
     "workers": "Worker",
     "age": "Zeit seit Beginn dieser Sitzung"
+  },
+  "sessionLayout": {
+    "actions": "Schnellaktionen",
+    "workspace": "Arbeitsbereich",
+    "bugHunt": "Fehlersuche",
+    "drag": "{{label}} ziehen",
+    "dragHint": "Zum Sortieren ziehen; ↑/↓ am Griff oder die Pfeiltasten verwenden.",
+    "moveUp": "{{label}} nach oben verschieben",
+    "moveDown": "{{label}} nach unten verschieben"
   },
   "projectKit": {
     "subtitle": "Wiederverwendbare Werkzeuge für dieses Projekt.",
@@ -1978,6 +1988,7 @@
   },
   "designStudio": {
     "pickHint": "Kit wählen — der Agent hält sich daran.",
+    "contrastWarn": "AA-Kontrast unter 4,5:1",
     "gallery": "Galerie",
     "galleryTitle": "Live-Vorschau-Galerie öffnen",
     "stackTitle": "Ziel-Stack",

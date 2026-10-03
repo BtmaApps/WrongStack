@@ -12,8 +12,10 @@ import {
   makeDesignDetectToolCallMiddleware,
   makeDesignDetectUserInputMiddleware,
   makeDesignStudioRequestMiddleware,
+  makeDesignVerifyToolCallMiddleware,
   setActiveKit,
 } from '../../src/execution/design-detect.js';
+import { saveCapturedTokens } from '../../src/execution/design-project-store.js';
 import type { DesignKitLoader } from '../../src/types/design-kit.js';
 import type { Request } from '../../src/types/provider.js';
 
@@ -24,6 +26,7 @@ function fakeCtx(): { meta: Record<string, unknown> } {
 const fakeLoader: DesignKitLoader = {
   list: async () => [],
   listEntries: async () => [],
+  listSkipped: async () => [],
   find: async () => undefined,
   menuText: async () => '## Design kits (pick ONE)\n- **minimal-clarity** — calm',
   readBody: async () => '',
@@ -63,6 +66,60 @@ describe('detectFrontendFile', () => {
   it('ignores non-frontend files', () => {
     expect(detectFrontendFile('server/db.ts')).toBeNull();
     expect(detectFrontendFile('README.md')).toBeNull();
+  });
+
+  it('maps Kotlin files to the compose stack (and .kts is not a screen)', () => {
+    expect(detectFrontendFile('app/src/main/java/com/example/MainActivity.kt')?.stack).toBe(
+      'compose',
+    );
+    // Gradle Kotlin scripts are build config, not Compose UI.
+    expect(detectFrontendFile('build.gradle.kts')).toBeNull();
+  });
+});
+
+describe('detectFrontendFile — React Native project scoping', () => {
+  it('scopes .tsx/.jsx writes to react-native when package.json depends on react-native', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-rn-'));
+    try {
+      await fs.writeFile(
+        path.join(root, 'package.json'),
+        JSON.stringify({ name: 'app', dependencies: { 'react-native': '0.76.0' } }),
+      );
+      expect(detectFrontendFile('src/App.tsx', root)?.stack).toBe('react-native');
+      expect(detectFrontendFile('components/Button.jsx', root)?.stack).toBe('react-native');
+      // Web-only extensions stay web even inside an RN project.
+      expect(detectFrontendFile('styles/theme.css', root)?.stack).toBe('web');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('counts expo / nativewind in devDependencies as RN markers too', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-rn-expo-'));
+    try {
+      await fs.writeFile(
+        path.join(root, 'package.json'),
+        JSON.stringify({ devDependencies: { expo: '~51.0.0' } }),
+      );
+      expect(detectFrontendFile('app/screen.tsx', root)?.stack).toBe('react-native');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps .tsx as web without an RN marker, and projectRoot stays optional', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-rn-web-'));
+    try {
+      await fs.writeFile(
+        path.join(root, 'package.json'),
+        JSON.stringify({ dependencies: { react: '^19.0.0', vite: '^6.0.0' } }),
+      );
+      expect(detectFrontendFile('src/App.tsx', root)?.stack).toBe('web');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+    // No projectRoot → backward-compatible default.
+    expect(detectFrontendFile('src/App.tsx')?.stack).toBe('web');
   });
 });
 
@@ -106,6 +163,106 @@ describe('toolCall middleware', () => {
       async (p) => p,
     );
     expect(getDesignState(ctx as unknown as { meta: Record<string, unknown> })?.active).toBe(true);
+  });
+
+  it('activates with the compose stack for a Kotlin write', async () => {
+    const ctx = fakeCtx() as unknown as Context;
+    const mw = makeDesignDetectToolCallMiddleware();
+    await mw.handler(
+      {
+        toolUse: { type: 'tool_use', id: 'k', name: 'write', input: { path: 'ui/theme/Theme.kt' } },
+        result: { type: 'tool_result', tool_use_id: 'k', content: [] },
+        ctx,
+      } as never,
+      async (p) => p,
+    );
+    const s = getDesignState(ctx as unknown as { meta: Record<string, unknown> });
+    expect(s?.active).toBe(true);
+    expect(s?.stack).toBe('compose');
+  });
+
+  it('scopes a .tsx write to react-native in an RN project', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-rn-mw-'));
+    try {
+      await fs.writeFile(
+        path.join(root, 'package.json'),
+        JSON.stringify({ dependencies: { expo: '*' } }),
+      );
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      const mw = makeDesignDetectToolCallMiddleware();
+      await mw.handler(
+        {
+          toolUse: { type: 'tool_use', id: 'x', name: 'write', input: { path: 'screens/Home.tsx' } },
+          result: { type: 'tool_result', tool_use_id: 'x', content: [] },
+          ctx,
+        } as never,
+        async (p) => p,
+      );
+      const s = getDesignState(ctx as unknown as { meta: Record<string, unknown> });
+      expect(s?.active).toBe(true);
+      expect(s?.stack).toBe('react-native');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('write-time verify middleware — captured tokens', () => {
+  it('checks drift against the project\u2019s captured tokens when no kit is pinned', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-cap-mw-'));
+    try {
+      await saveCapturedTokens(root, {
+        stack: 'web',
+        files: ['src/index.css'],
+        tokens: { light: { primary: '#ff0000' }, dark: { primary: '#ff0000' } },
+      });
+      await fs.writeFile(path.join(root, 'app.css'), '.x { color: #123123; }\n');
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      const mw = makeDesignVerifyToolCallMiddleware();
+      const out = (await mw.handler(
+        {
+          toolUse: { type: 'tool_use', id: 'w', name: 'write', input: { path: 'app.css' } },
+          result: { type: 'tool_result', tool_use_id: 'w', content: '' },
+          ctx,
+        } as never,
+        async (p) => p,
+      )) as { result: { content: string } };
+      expect(out.result.content).toContain('captured project tokens');
+      expect(out.result.content).toContain('#123123');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still notices once — naming capture — when neither kit nor capture exists', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-cap-mw2-'));
+    try {
+      await fs.writeFile(path.join(root, 'app.css'), '.x { color: #123123; }\n');
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      const mw = makeDesignVerifyToolCallMiddleware();
+      const payload = {
+        toolUse: { type: 'tool_use', id: 'w', name: 'write', input: { path: 'app.css' } },
+        result: { type: 'tool_result', tool_use_id: 'w', content: '' },
+        ctx,
+      } as never;
+      const first = (await mw.handler(payload, async (p) => p)) as {
+        result: { content: string };
+      };
+      expect(first.result.content).toContain('NOT being design-checked');
+      expect(first.result.content).toContain('capture');
+      // Once per session — a second write stays silent instead of nagging.
+      const second = (await mw.handler(
+        {
+          toolUse: { type: 'tool_use', id: 'w', name: 'write', input: { path: 'app.css' } },
+          result: { type: 'tool_result', tool_use_id: 'w', content: '' },
+          ctx,
+        } as never,
+        async (p) => p,
+      )) as { result: { content: string } };
+      expect(second.result.content).toBe('');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });
 

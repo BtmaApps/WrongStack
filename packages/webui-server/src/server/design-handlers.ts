@@ -24,13 +24,16 @@ import {
   getDesignKitLoader,
   getDesignState,
   isDesignStack,
+  kitContrastIssues,
   loadActiveKit,
   materializeTokens,
   recordKitChoice,
   recordOverrides,
   resolveMaterializeTarget,
   resolveSemanticTune,
+  resolveVerifyTokens,
   runDesignVerify,
+  type KitContrastIssue,
   type SemanticTune,
   setActiveKit,
   setDesignOverrides,
@@ -188,6 +191,10 @@ export async function handleDesignUse(
     const body = await loader.readBody(kit.id, stack);
     const rawTokens = await loader.readTokens(kit.id);
     const tokens = rawTokens ? applyTokenOverrides(rawTokens, overrides) : rawTokens;
+    // WCAG AA gate — the same check the `design` tool runs at use time, so a
+    // contrast-breaking override is named identically on both surfaces.
+    // Always an array (empty = clean) so clients can rely on the field.
+    const contrastIssues: KitContrastIssue[] = tokens ? kitContrastIssues(tokens) : [];
     reply(ws, ctx, {
       type: 'design.use',
       payload: {
@@ -200,6 +207,7 @@ export async function handleDesignUse(
         overrides,
         light: tokens?.light ?? {},
         dark: tokens?.dark ?? {},
+        contrastIssues,
       },
     });
   } catch (err) {
@@ -343,6 +351,9 @@ export async function handleDesignMaterialize(
       return;
     }
     const tokens = applyTokenOverrides(raw, active.overrides);
+    // Same gate as the tool's materialize: warn in the payload, never block —
+    // the theme file is still written below.
+    const contrastIssues = kitContrastIssues(tokens);
     const result = materializeTokens({
       tokens,
       stack,
@@ -359,7 +370,7 @@ export async function handleDesignMaterialize(
     await fs.writeFile(abs, result.content);
     reply(ws, ctx, {
       type: 'design.materialize',
-      payload: { ok: true, path: result.path, format: result.format, stack },
+      payload: { ok: true, path: result.path, format: result.format, stack, contrastIssues },
     });
   } catch (err) {
     reply(ws, ctx, { type: 'design.materialize', payload: { ok: false, error: String(err) } });
@@ -369,24 +380,24 @@ export async function handleDesignMaterialize(
 /** Scan project UI files for off-palette colors against the active kit. */
 export async function handleDesignVerify(ws: WebSocket, ctx: DesignContext): Promise<void> {
   try {
-    const active = await loadActiveKit(ctx.projectRoot);
-    if (!active) {
-      reply(ws, ctx, { type: 'design.verify', payload: { ok: false, error: 'No active kit' } });
+    // Kit or capture — the same precedence as the `design` tool: a pinned kit
+    // wins, else the project's captured tokens (design capture), else error.
+    const source = await resolveVerifyTokens(ctx.projectRoot);
+    if (!source) {
+      reply(ws, ctx, {
+        type: 'design.verify',
+        payload: { ok: false, error: 'No active kit or captured tokens' },
+      });
       return;
     }
-    const loader = getDesignKitLoader(ctx.projectRoot);
-    const raw = await loader.readTokens(active.kit);
-    if (!raw) {
-      reply(ws, ctx, { type: 'design.verify', payload: { ok: false, error: 'Kit has no tokens' } });
-      return;
-    }
-    const tokens = applyTokenOverrides(raw, active.overrides);
-    const report = await runDesignVerify(ctx.projectRoot, tokens);
+    const report = await runDesignVerify(ctx.projectRoot, source.tokens);
     reply(ws, ctx, {
       type: 'design.verify',
       payload: {
         ok: true,
-        kit: active.kit,
+        source: source.source,
+        kit: source.source === 'kit' ? source.kit ?? null : null,
+        capturedFrom: source.source === 'captured' ? source.files ?? [] : null,
         filesScanned: report.filesScanned,
         score: report.score,
         violations: report.violations.slice(0, 50),

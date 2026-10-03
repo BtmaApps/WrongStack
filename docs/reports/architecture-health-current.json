@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T14:40:17.590Z",
+  "generatedAt": "2026-10-03T15:14:49.374Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4391,
-    "testFiles": 4005,
-    "sourceLines": 1045995,
+    "sourceFiles": 4398,
+    "testFiles": 4015,
+    "sourceLines": 1047773,
     "workspaceEdges": 133,
-    "moduleEdges": 14293,
+    "moduleEdges": 14312,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 976
+    "testOnlyExports": 982
   },
   "errors": [],
   "packageCycles": [],
@@ -150,7 +150,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 559,
-      "testFiles": 578,
+      "testFiles": 579,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -190,7 +190,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 578
+          "testFiles": 579
         }
       ]
     },
@@ -241,8 +241,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 981,
-      "testFiles": 884,
+      "sourceFiles": 983,
+      "testFiles": 886,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -257,7 +257,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 884
+          "testFiles": 886
         }
       ]
     },
@@ -788,7 +788,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 450,
-      "testFiles": 408,
+      "testFiles": 409,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -811,7 +811,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 408
+          "testFiles": 409
         }
       ]
     },
@@ -841,8 +841,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 639,
-      "testFiles": 454,
+      "sourceFiles": 643,
+      "testFiles": 457,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -865,7 +865,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 454
+          "testFiles": 457
         }
       ]
     },
@@ -917,8 +917,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 263,
-      "testFiles": 260,
+      "sourceFiles": 264,
+      "testFiles": 263,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -944,7 +944,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 260
+          "testFiles": 263
         }
       ]
     },
@@ -2153,6 +2153,12 @@
       },
       {
         "file": "packages/cli/tests/bench-compare.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/bench-experiments.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7666,6 +7672,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/execution/design-capture.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/execution/design-color.test.ts",
         "projects": [
           "root-node"
@@ -8363,6 +8375,12 @@
       },
       {
         "file": "packages/core/tests/jev-activity-content.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/jev-disable-payment.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18250,6 +18268,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/design-slash-capture.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/detect-at-token.test.ts",
         "projects": [
           "root-node"
@@ -21100,6 +21124,18 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/design-contrast-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/design-verify-captured.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/discover-mailbox-bridge.test.ts",
         "projects": [
           "root-node"
@@ -22258,6 +22294,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/user-instructions-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/vector-memory-handlers.test.ts",
         "projects": [
           "root-node"
@@ -22739,6 +22781,12 @@
       },
       {
         "file": "packages/webui/tests/components/design-gallery-view.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/design-studio-contrast-badges.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -23416,6 +23464,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/session-sections.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/session-story-view.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -23675,6 +23729,12 @@
       },
       {
         "file": "packages/webui/tests/components/user-input-dialog.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/user-instructions-section.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -25787,8 +25847,8 @@
     },
     {
       "file": "packages/webui/src/components/SidePanel/SessionPanel.tsx",
-      "lines": 857,
-      "relativeImports": 7
+      "lines": 850,
+      "relativeImports": 8
     },
     {
       "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
@@ -25822,7 +25882,7 @@
     },
     {
       "file": "packages/webui/src/types/client-message.ts",
-      "lines": 997,
+      "lines": 999,
       "relativeImports": 9
     },
     {
@@ -25913,14 +25973,14 @@
       "relativeImports": 15
     },
     {
+      "file": "packages/webui/src/types/client-message.ts",
+      "lines": 999,
+      "relativeImports": 9
+    },
+    {
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 997,
       "relativeImports": 52
-    },
-    {
-      "file": "packages/webui/src/types/client-message.ts",
-      "lines": 997,
-      "relativeImports": 9
     },
     {
       "file": "packages/sage/src/sqlite-store.ts",
@@ -27070,8 +27130,28 @@
       "name": "makeSeatCallerForVoter"
     },
     {
+      "file": "packages/core/src/execution/design-capture.ts",
+      "name": "normalizeCssValue"
+    },
+    {
+      "file": "packages/core/src/execution/design-capture.ts",
+      "name": "parseCssTokens"
+    },
+    {
+      "file": "packages/core/src/execution/design-capture.ts",
+      "name": "parseDartTokens"
+    },
+    {
+      "file": "packages/core/src/execution/design-capture.ts",
+      "name": "parseTsThemeTokens"
+    },
+    {
       "file": "packages/core/src/execution/design-detect.ts",
       "name": "makeDesignVerifyToolCallMiddleware"
+    },
+    {
+      "file": "packages/core/src/execution/design-project-store.ts",
+      "name": "clearCapturedTokens"
     },
     {
       "file": "packages/core/src/execution/model-runtime.ts",
@@ -29972,6 +30052,10 @@
     {
       "file": "packages/webui/src/stores/notification-store.ts",
       "name": "MAX_NOTIFICATIONS"
+    },
+    {
+      "file": "packages/webui/src/stores/session-panel-layout.ts",
+      "name": "normalizeSessionPanelOrder"
     },
     {
       "file": "packages/webui/src/stores/session-tab-store.ts",

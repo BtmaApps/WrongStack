@@ -1,5 +1,6 @@
 import {
   applyTokenOverrides,
+  captureProjectTokens,
   clearActiveKit,
   clearPersistedActiveKit,
   getDesignKitLoader,
@@ -8,6 +9,7 @@ import {
   materializeTokens,
   recordOverrides,
   resolveSemanticTune,
+  saveCapturedTokens,
   setActiveKit,
   setDesignOverrides,
 } from '@wrongstack/core/design';
@@ -31,15 +33,24 @@ export function useDesignKitSlashCommands(deps: TuiSlashCommandOptions): void {
     const cmd = {
       name: 'design',
       description:
-        'Design Studio: /design (picker) | <kit> [stack] | off | foundations | set <k=v> | tune <k=v> | swap <kit> | materialize [stack] [path] | verify.',
+        'Design Studio: /design (picker) | <kit> [stack] | off | foundations | set <k=v> | tune <k=v> | swap <kit> | materialize [stack] [path] | capture [files…] | verify.',
       async run(args: string) {
         const loader = getDesignKitLoader(projectRoot);
         const tokens = (args ?? '').trim().split(/\s+/).filter(Boolean);
         const sub = tokens[0]?.toLowerCase();
         if (!sub) {
           const kits = await loader.listEntries();
+          const skipped = await loader.listSkipped();
           dispatch({ type: 'designPickerOpen', kits });
-          return { message: undefined };
+          // Malformed kit folders surface at picker load instead of silently
+          // vanishing from the list.
+          return {
+            message: skipped.length
+              ? `⚠️ ${skipped.length} kit folder(s) skipped: ${skipped
+                  .map((s) => `${s.dir} — ${s.reason}`)
+                  .join('; ')}`
+              : undefined,
+          };
         }
         if (sub === 'off') {
           clearActiveKit(agent.ctx);
@@ -149,6 +160,35 @@ export function useDesignKitSlashCommands(deps: TuiSlashCommandOptions): void {
             return { message: `Failed to write ${result.path}: ${(e as Error).message}` };
           }
           return { message: `Wrote ${result.format} → ${result.path}` };
+        }
+        if (sub === 'capture') {
+          // Kit-less verify: snapshot the project's OWN token source so
+          // `design verify` (and the write-time drift check) have a basis
+          // while no kit is pinned. Mirrors the tool's capture action.
+          const files = tokens.slice(1).filter(Boolean);
+          const result = await captureProjectTokens(projectRoot, {
+            files: files.length > 0 ? files : undefined,
+          });
+          const lightN = Object.keys(result.tokens.light ?? {}).length;
+          const darkN = Object.keys(result.tokens.dark ?? {}).length;
+          if (lightN + darkN === 0) {
+            return {
+              message:
+                `Design capture found no tokens.${result.notes.length ? ` ${result.notes.join(' ')}` : ''}` +
+                ' Pass files explicitly: /design capture src/index.css',
+            };
+          }
+          const rel = await saveCapturedTokens(projectRoot, {
+            stack: result.stack,
+            files: result.files,
+            tokens: result.tokens,
+            palettes: result.palettes,
+          });
+          return {
+            message:
+              `Captured ${lightN + darkN} token value(s) (${lightN} light / ${darkN} dark) from ` +
+              `${result.files.join(', ')} → ${rel}. /design verify now runs against them while no kit is pinned.`,
+          };
         }
         const kit = await loader.find(sub);
         if (!kit) {

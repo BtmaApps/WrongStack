@@ -483,8 +483,17 @@
     "packages/core/src/execution/council-brain.ts": [
       "makeSeatCallerForVoter"
     ],
+    "packages/core/src/execution/design-capture.ts": [
+      "normalizeCssValue",
+      "parseCssTokens",
+      "parseDartTokens",
+      "parseTsThemeTokens"
+    ],
     "packages/core/src/execution/design-detect.ts": [
       "makeDesignVerifyToolCallMiddleware"
+    ],
+    "packages/core/src/execution/design-project-store.ts": [
+      "clearCapturedTokens"
     ],
     "packages/core/src/execution/model-runtime.ts": [
       "resolveParametersForRequest"
@@ -1990,6 +1999,9 @@
     ],
     "packages/webui/src/stores/notification-store.ts": [
       "MAX_NOTIFICATIONS"
+    ],
+    "packages/webui/src/stores/session-panel-layout.ts": [
+      "normalizeSessionPanelOrder"
     ],
     "packages/webui/src/stores/session-tab-store.ts": [
       "readStoredTabs",

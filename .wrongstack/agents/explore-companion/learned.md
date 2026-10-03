@@ -4,259 +4,224 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T17:59:18.725Z; skill=codebase-navigation; applied=8; wins=8; skipped=12; skippedWins=12 -->
-- **[skill: codebase-navigation] When mapping the blast radius of a gitignored one-shot checker script under `.temp_files/`, treat its assertion anchors — every `existsSync`/`readdirSync`/`execSync` target — as the real blast surface and verify each anchor's *live* state with a direct `tree`/ENOENT probe instead of trusting `codebase-search`: the persisted index can still contain symbols from directories deleted after indexing (e.g. `packages/webui/dist.__probe_backup` hits surviving an ENOENT live check), so index presence is never proof an assertion target exists. Pair with a start/end re-read of the script, since the requester's edits can land mid-probe.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T13:19:28.003Z; skill=codebase-navigation; applied=2; wins=2; skipped=5; skippedWins=5 -->
+- **Always close consumers of `packages/core/src/execution/design-*.ts` modules with a word-bounded token grep, never trust `codebase-impact-analysis` alone — production callers import via the wildcard barrel `packages/core/src/design/index.ts` (`export * from '../execution/design-*.js'`, public subpath `./design` in `packages/core/package.json`), which the call graph resolves to a false "0 direct call sites" while its transitive rows flood with unrelated `apps/desktop/**` `line:0` noise. Anchor: `@wrongstack/core/design`, `captureProjectTokens`, `packages/tools/src/design.ts`, `packages/tui/src/hooks/use-design-kit-slash-commands.ts`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `.temp_files/`
-  - *How:* `existsSync`
-  - *How:* `readdirSync`
-  - *How:* `execSync`
-  - *How:* `tree`
-  - *How:* `codebase-search`
-  - *How:* `packages/webui/dist.__probe_backup`
+  - *How:* `packages/core/src/execution/design-*.ts`
+  - *How:* `codebase-impact-analysis`
+  - *How:* `packages/core/src/design/index.ts`
+  - *How:* `export * from '../execution/design-*.js'`
+  - *How:* `./design`
+  - *How:* `packages/core/package.json`
+  - *How:* `apps/desktop/**`
+  - *How:* `line:0`
+  - *How:* `@wrongstack/core/design`
+  - *How:* `captureProjectTokens`
+  - *How:* `packages/tools/src/design.ts`
+  - *How:* `packages/tui/src/hooks/use-design-kit-slash-commands.ts`
+  - *How:* `@wrongstack/core`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T17:34:23.893Z; skill=codebase-navigation; applied=16; wins=16; skipped=24; skippedWins=24 -->
-- **Always grep a `*.test.ts` body for `readFileSync`/`join(ROOT, ...)` targets when asked for its callers and dependents — source-pin suites (e.g. `packages/webui/tests/lib/kanban-board-active.test.ts`) assert on the *text* of production files they never import, so their blast radius is those files, not their import graph. Pair the usual export/importer greps with a body scan for disk reads before declaring a test file a zero-dependency leaf.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T08:05:49.256Z; skill=codebase-navigation; applied=18; wins=18; skipped=20; skippedWins=20 -->
+- **Always grep a component's direct test for the `data-testid` tokens it queries (e.g. `getByTestId('notification-menu-trigger')` in `packages/webui/tests/components/*.test.tsx`) before assessing the blast radius of editing that component — testids are a runtime contract, not a type-level one, and `packages/webui` tests are never typechecked (`packages/webui/tsconfig.json` includes only `src/**/*`), so renaming a rendered `data-testid` (e.g. `notification-menu-trigger`, `notification-badge` in `packages/webui/src/components/NotificationMenu.tsx`) breaks the suite with zero compiler signal.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `*.test.ts`
-  - *How:* `readFileSync`
-  - *How:* `join(ROOT, ...)`
-  - *How:* `packages/webui/tests/lib/kanban-board-active.test.ts`
+  - *How:* `data-testid`
+  - *How:* `getByTestId('notification-menu-trigger')`
+  - *How:* `packages/webui/tests/components/*.test.tsx`
+  - *How:* `packages/webui`
+  - *How:* `packages/webui/tsconfig.json`
+  - *How:* `src/**/*`
+  - *How:* `notification-menu-trigger`
+  - *How:* `notification-badge`
+  - *How:* `packages/webui/src/components/NotificationMenu.tsx`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T16:54:41.645Z; skill=codebase-navigation; applied=87; wins=87; skipped=8; skippedWins=8 -->
-- **Always pair a leaf-specifier repo-wide grep (`output_mode: "content"`, `truncated=false`) with direct reads of any candidate file whose grep hit shows a closing brace on its own line (e.g. `} from '../settings-menu.js';`) — that is a multiline `import {` block whose member list lives lines above the hit, and reporting importers from the hit line alone will silently drop every symbol except the last. The same applies to `codebase-skeleton`, which shows a file's own imports but never which symbols its consumers pull.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T07:24:46.880Z; skill=codebase-navigation; applied=2; wins=2; skipped=42; skippedWins=42 -->
+- **Always verify render-test coverage with an import grep, not filename adjacency, when mapping consumers of a `packages/webui/src/components/**` component: the component's direct render test can live in an unrelatedly-named file (e.g. `AgentDetailSection` is rendered by `packages/webui/tests/components/subagent-chat-tabs.test.tsx`), while the same-named test file (`agent-detail-section.test.tsx`) may exercise only the store (`useFleetStore`) and never import the component. A word-bounded `\bComponent\b` grep with `.mjs` included in scope closes both directions in one pass.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `output_mode: "content"`
-  - *How:* `truncated=false`
-  - *How:* `} from '../settings-menu.js';`
-  - *How:* `import {`
-  - *How:* `codebase-skeleton`
-  - *How:* `../settings-menu.js`
-
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T16:23:29.179Z; skill=codebase-navigation; applied=36; wins=36; skipped=116; skippedWins=116 -->
-- **Always surface a temp probe script's own header-comment invariants before mapping its blast radius: one-shot scripts under gitignored `.temp_files/` (e.g. `.mjs` HTTP probes like `probe-live-*.mjs`) have no exports, importers, or index coverage, so their real blast radius is the live endpoints they touch — grep the body for `http.` verbs and process-kill calls, and flag GET-only/never-kill contracts (a probe server can parent the agent session itself) when a leader edits the script unread.**
-  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `.temp_files/`
+  - *How:* `packages/webui/src/components/**`
+  - *How:* `AgentDetailSection`
+  - *How:* `packages/webui/tests/components/subagent-chat-tabs.test.tsx`
+  - *How:* `agent-detail-section.test.tsx`
+  - *How:* `useFleetStore`
+  - *How:* `\bComponent\b`
   - *How:* `.mjs`
-  - *How:* `probe-live-*.mjs`
-  - *How:* `http.`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T15:47:52.362Z; skill=codebase-navigation; applied=64; wins=64; skipped=120; skippedWins=120 -->
-- **Keep grep `pattern` alternations under the 256-character cap: split large symbol-closure searches into multiple `files_with_matches` greps (e.g. functions vs types/consts) rather than one long regex, then verify unexpected hits in content mode — comment-only mentions of exported type names (e.g. `SqliteCreateCandidateContext` in `packages/sage-mcp/src/adapter.ts`) are common and must not be counted as importers.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T05:45:37.982Z; skill=codebase-navigation; applied=30; wins=30; skipped=36; skippedWins=36 -->
+- **Never apply the blanket "`packages/webui/**` is excluded from root Vitest" claim when predicting whether a root-cwd `vitest run packages/webui/tests/<path>` collects tests — read the per-directory `exclude` list in root `vitest.config.ts` (currently lines ~224–234, excluding `tests/components|hooks|stores|lib|integration|server|i18n|helpers|fixtures|setup|types/**` while deliberately leaving `tests/pure/**` collectible). A script pointing `TEST` at `packages/webui/tests/pure/**` runs at root and is functional; pointing it at any other webui test dir collects zero files, exits 1, and makes pass/fail signals meaningless. Anchor: `vitest.config.ts`, `packages/webui/tests/pure/**`, `exclude`, `npx vitest run`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `pattern`
+  - *How:* `packages/webui/**`
+  - *How:* `vitest run packages/webui/tests/<path>`
+  - *How:* `exclude`
+  - *How:* `vitest.config.ts`
+  - *How:* `tests/components|hooks|stores|lib|integration|server|i18n|helpers|fixtures|setup|types/**`
+  - *How:* `tests/pure/**`
+  - *How:* `TEST`
+  - *How:* `packages/webui/tests/pure/**`
+  - *How:* `npx vitest run`
+
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T08:37:13.939Z; skill=codebase-navigation; applied=1; wins=1; skipped=34; skippedWins=34 -->
+- **Pair every import-specifier grep (`from ['"]…<mod>…['"]`) with a bare-token grep for the module path when closing consumers of a types module: inline dynamic type imports such as `import('../stores/types.js').SubagentView` in `packages/webui/src/components/use-office-map-topology.ts` never match the `from '…'` form, so a specifier-only sweep undercounts. The bare-token `files_with_matches` pass is the cheap way to catch them and reconcile counts.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `from ['"]…<mod>…['"]`
+  - *How:* `import('../stores/types.js').SubagentView`
+  - *How:* `packages/webui/src/components/use-office-map-topology.ts`
+  - *How:* `from '…'`
   - *How:* `files_with_matches`
-  - *How:* `SqliteCreateCandidateContext`
-  - *How:* `packages/sage-mcp/src/adapter.ts`
+  - *How:* `../stores/types.js`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T19:09:29.474Z; skill=typescript-strict; applied=1; wins=1 -->
-- **Never conclude a package is excluded from `pnpm check:test_types` from a zero-hit grep of its name in `scripts/check-test-typecheck.mjs` — `discoverProjects()` (lines ~37–66) scans every workspace package directory generically for a `tsconfig.test.json` plus a `tests/` dir containing `*.test.ts`; package names are never hardcoded. Prove participation with a `glob "packages/<pkg>/tsconfig*.json"` for the config and a check that `tests/` has test files, and treat any edit that could introduce new test-type diagnostics as tripping the `architecture/test-typecheck-baseline` ratchet wired into `release:check`.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-03T12:25:11.263Z; skipped=20; skippedWins=20 -->
+- **When a `packages/webui/src/components/**` component renders no `data-testid` attributes, grep its render tests for `getByText(`/`queryByText(` literals instead — those literals pin the exact string template (e.g. `` `${theme} ${pair} ${ratio.toFixed(2)}:1` `` in `packages/webui/src/components/ContrastBadges.tsx:44` is frozen by `getByText('light primary/bg 1.18:1')` in `packages/webui/tests/components/design-studio-contrast-badges.test.tsx`), and since `packages/webui` tests are never typechecked, separator/precision changes break the suite with zero compiler signal.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `pnpm check:test_types`
-  - *How:* `scripts/check-test-typecheck.mjs`
-  - *How:* `discoverProjects()`
-  - *How:* `tsconfig.test.json`
-  - *How:* `tests/`
-  - *How:* `*.test.ts`
-  - *How:* `glob "packages/<pkg>/tsconfig*.json"`
-  - *How:* `architecture/test-typecheck-baseline`
-  - *How:* `release:check`
-
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T17:38:42.521Z; skill=codebase-navigation; applied=1; wins=1; skipped=31; skippedWins=31 -->
-- **Never trust a zero-match `grep` whose pattern contains a raw `<` — the angle bracket can arrive HTML-escaped (`&lt;`) and silently search for the wrong literal, producing a false absence. Verify such empty results by re-running with a ripgrep hex escape (`\x3CSettingsPanel` instead of `<SettingsPanel`) or a brace-anchored variant before reporting "no JSX usage".**
-  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `grep`
-  - *How:* `<`
-  - *How:* `&lt;`
-  - *How:* `\x3CSettingsPanel`
-  - *How:* `<SettingsPanel`
-
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T16:46:47.959Z; skill=codebase-navigation; applied=108; wins=108; skipped=7; skippedWins=7 -->
-- **When a probed `.temp_files/` one-shot script returns ENOENT even though the leader reports having just edited it, conclude the edit was lost or never persisted instead of searching harder — prove it three ways (direct `read` ENOENT, complete `tree` with a name-variant glob plus case-insensitive artifact grep for the distinguishing substring, and a repo-wide exact-name `grep` with `truncated=false`), then report recreation as consequence-free for the import graph only if the reference grep is zero, since `.temp_files/` is gitignored and invisible to `codebase-search`/`codebase-incoming-calls`.**
-  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `.temp_files/`
-  - *How:* `read`
-  - *How:* `tree`
-  - *How:* `grep`
-  - *How:* `truncated=false`
-  - *How:* `codebase-search`
-  - *How:* `codebase-incoming-calls`
-
-<!-- learned-stamp: category=warning; capturedAt=2026-10-01T16:19:01.164Z; skill=node-modern; applied=56; wins=56; skipped=102; skippedWins=102 -->
-- **When mapping a gitignored `.temp_files/` script's reference closure, expect `glob **/<name>*` to return zero even while the file exists (ignore rules hide it) — prove existence only with a direct `read`. If a repo-wide reference `grep` times out, do not retry it; narrow to likely invocation homes (`scripts/`, root `package.json` content greps) and label full-tree closure as unverified.**
-  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `.temp_files/`
-  - *How:* `glob **/<name>*`
-  - *How:* `read`
-  - *How:* `grep`
-  - *How:* `scripts/`
-  - *How:* `package.json`
+  - *How:* `packages/webui/src/components/**`
+  - *How:* `data-testid`
+  - *How:* `getByText(`
+  - *How:* `queryByText(`
+  - *How:* `in`
+  - *How:* `is frozen by`
+  - *How:* `), and since`
+  - *How:* `packages/webui/src/components/ContrastBadges.tsx`
+  - *How:* `packages/webui/tests/components/design-studio-contrast-badges.test.tsx`
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:44:40.163Z; applied=28; wins=28; skipped=90; skippedWins=90 -->
-- **- Always grep the captured tree *artifact* log for a case-insensitive filename substring when a `.temp_files/` tree listing comes back `truncated=true`: the displayed tree is capped, but the artifact file holds the complete enumeration, and one `dts`-style substring grep of it exhaustively rules out every naming variant of a probe target in a single pass — cheaper than paginated re-trees or per-name globs, which ignore rules hide anyway.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files/`
-  - *How:* `truncated=true`
-  - *How:* `dts`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:40:55.298Z; skill=codebase-navigation; applied=46; wins=46; skipped=80; skippedWins=80 -->
-- **- Treat a module's static import block as an incomplete dependency list: dynamic `import('...')` calls (e.g. `void import('@wrongstack/providers').then(...)` in `packages/webui-server/src/server/prefs-handlers.ts:478`) are invisible to `codebase-skeleton` and file reads of the import header. Before declaring outgoing deps closed, run `codebase-outgoing-calls` or a body grep for `\bimport\(` — the index resolves dynamic-import callees the skeleton omits. - Reconcile `codebase-outgoing-calls` rows against the verified import closure before reporting dependencies: rows anchored to files outside that closure (local variables like `parsed`/`ctx` colliding with same-named declarations in `packages/core`/`packages/cli`) are index noise, not edges.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `import('...')`
-  - *How:* `void import('@wrongstack/providers').then(...)`
-  - *How:* `packages/webui-server/src/server/prefs-handlers.ts:478`
-  - *How:* `codebase-skeleton`
-  - *How:* `codebase-outgoing-calls`
-  - *How:* `\bimport\(`
-  - *How:* `parsed`
-  - *How:* `ctx`
-  - *How:* `packages/core`
-  - *How:* `packages/cli`
-  - *How:* `packages/webui-server/src/server/prefs-handlers.ts`
-  - *How:* `@wrongstack/providers`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T17:43:14.995Z; applied=6; wins=6; skipped=23; skippedWins=23 -->
-- **Always capture and reproduce the full content of a self-deleting one-shot script (one whose allowlist includes its own filename, e.g. `.temp_files/*.mjs` cleaners using `rmSync`) in the probe deliverable itself — mid-probe execution destroys the only evidence, so embed the captured source and line anchors in the report instead of citing a file the leader can no longer open. Pair this with the start/end drift re-read rule: an ENOENT on the second read of such a script is the script's own effect, not a lost edit.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T08:10:49.506Z; skill=codebase-navigation; applied=1; wins=1; skipped=36; skippedWins=36 -->
+- **Always diff a `.temp_files/*.mjs` scratch probe against its tracked twin beyond the shared helper name: one `codebase-search` on the distinctive function (here `uncommentedLines`) locates the twin, then read both rule-constant blocks. Scratch copies typically drop guard-only structures (here `ISOLATED_COLOR_SURFACES` in `packages/webui/tests/lib/theme-color-boundaries.test.ts`) and swap relative `srcRoot` resolution for a hardcoded absolute path — those omissions are exactly where a leader's edit silently diverges from the enforced gate. [skill: codebase-navigation]**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `.temp_files/*.mjs`
-  - *How:* `rmSync`
+  - *How:* `codebase-search`
+  - *How:* `uncommentedLines`
+  - *How:* `ISOLATED_COLOR_SURFACES`
+  - *How:* `packages/webui/tests/lib/theme-color-boundaries.test.ts`
+  - *How:* `srcRoot`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:23:22.218Z; applied=54; wins=54; skipped=99; skippedWins=99 -->
-- **Always diff two reads of a volatile `.temp_files/` target instead of treating the first read as final: between start and end snapshots, compare imports and line counts, and report the drift explicitly (e.g. a new `readFileSync` import appearing at `.temp_files/_ratchet-probe.mjs:5` mid-probe). A concurrent in-flight edit by the leader is the expected cause — re-anchor all `file:line` citations to the snapshot they came from rather than reconciling silently.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T07:05:50.426Z; skill=codebase-navigation; applied=11; wins=11; skipped=35; skippedWins=35 -->
+- **Always distrust `callerName`/`callerKind` attribution on import-edge rows in `codebase-impact-analysis` output for `packages/webui/src/components/**` consumers: it labeled the `WorktreesPanel` import inside `ChangesPanel.tsx` as belonging to the unrelated top-level `STATUS_META` const and emitted an indirect row with `callerName: "FileRow", line: 0`. Treat the affected-file list as authoritative and confirm the exact import/render lines with a word-bounded token grep (`\b<ComponentName>\b`) plus the JSX-site read — the same conflation discipline already used for `codebase-incoming-calls` single-letter rows.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files/`
-  - *How:* `readFileSync`
-  - *How:* `.temp_files/_ratchet-probe.mjs:5`
-  - *How:* `file:line`
-  - *How:* `.temp_files/_ratchet-probe.mjs`
+  - *How:* `callerName`
+  - *How:* `callerKind`
+  - *How:* `codebase-impact-analysis`
+  - *How:* `packages/webui/src/components/**`
+  - *How:* `WorktreesPanel`
+  - *How:* `ChangesPanel.tsx`
+  - *How:* `STATUS_META`
+  - *How:* `callerName: "FileRow", line: 0`
+  - *How:* `\b<ComponentName>\b`
+  - *How:* `codebase-incoming-calls`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:58:07.918Z; skill=codebase-navigation; applied=50; wins=50; skipped=40; skippedWins=40 -->
-- **Always include dynamic-import and mock patterns — `(import\(|vi\.mock\()` — when closing a module's consumer set; a `from '<specifier>'` grep alone missed the *only* production caller of `packages/cli/src/webui-server.ts` (`await import('../webui-server.js')` at `packages/cli/src/boot/dispatch-webui.ts:237`) and the `vi.mock` at `packages/cli/tests/cli-dispatch-journeys.test.ts:20`. Pair the symbol-name grep, the from-line grep, and the `import()`/`vi.mock` grep before reporting a module's import closure as complete.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T08:57:16.458Z; skill=codebase-navigation; applied=1; wins=1; skipped=30; skippedWins=30 -->
+- **Always read a React component's source instead of trusting `codebase-outgoing-calls` for its internal behavior: local closure functions inside components (`fire`, `disarm` in `packages/webui/src/components/MessageBubble/FailedRunContinue.tsx`) resolve to unrelated same-name symbols repo-wide (e.g. `fire` in `packages/acp/tests/acp-concurrent-prompt.test.ts`), producing false callee edges. Same conflation discipline as incoming-calls, but for outgoing rows on tsx components.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `(import\(|vi\.mock\()`
-  - *How:* `from '<specifier>'`
-  - *How:* `packages/cli/src/webui-server.ts`
-  - *How:* `await import('../webui-server.js')`
-  - *How:* `packages/cli/src/boot/dispatch-webui.ts:237`
-  - *How:* `vi.mock`
-  - *How:* `packages/cli/tests/cli-dispatch-journeys.test.ts:20`
-  - *How:* `import()`
-  - *How:* `../webui-server.js`
-  - *How:* `packages/cli/src/boot/dispatch-webui.ts`
-  - *How:* `packages/cli/tests/cli-dispatch-journeys.test.ts`
+  - *How:* `codebase-outgoing-calls`
+  - *How:* `fire`
+  - *How:* `disarm`
+  - *How:* `packages/webui/src/components/MessageBubble/FailedRunContinue.tsx`
+  - *How:* `packages/acp/tests/acp-concurrent-prompt.test.ts`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T18:35:08.361Z; skill=typescript-strict; applied=2; wins=2; skipped=13; skippedWins=13 -->
-- **Always treat `packages/simpleui` vitest configuration as living in `packages/simpleui/vite.config.ts` (`test: { maxWorkers }` + react plugin) — there is no `vitest.config.ts` in that package, and per-file `// @vitest-environment jsdom` docblocks in `packages/simpleui/tests/**` are the sole jsdom selector for most suites, so removing a docblock line silently drops the suite to a node environment that fails on `document`. Before predicting blast radius of editing a `packages/simpleui` test file, check both type gates: the package `typecheck` script (`tsc --noEmit`) uses `tsconfig.json`, which excludes `tests`, while `tsconfig.test.json` (includes `tests/**/*`) is executed repo-wide by `scripts/check-test-typecheck.mjs` via `pnpm check:test-types` — a baseline ratchet that fails on new or increased diagnostics and is wired into `release:check`.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T08:04:36.728Z; skill=codebase-navigation; applied=1; wins=1; skipped=39; skippedWins=39 -->
+- **Always resolve a CSS `import './<name>.css'` specifier to its containing directory before attributing consumers: two files in different packages can both say `import './automation.css'` yet load two different stylesheets. When mapping a stylesheet's blast radius, glob for same-named twins in sibling packages (here `packages/simpleui/src/automation.css` vs `packages/webui/src/components/automation.css`, both imported via identical relative specifiers from `automation-workspace.tsx` and `AutomationView.tsx` respectively), then grep each twin separately for token-level divergence before telling the leader an edit is or isn't cross-package. Also grep class-name tokens (e.g. `automation-(overlay|dialog|close)`) rather than component names to find the stylesheet's true class consumers — the dialog classes were rendered by `automation-panel.tsx`, not the importing file itself.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/simpleui`
-  - *How:* `packages/simpleui/vite.config.ts`
-  - *How:* `test: { maxWorkers }`
+  - *How:* `import './<name>.css'`
+  - *How:* `import './automation.css'`
+  - *How:* `packages/simpleui/src/automation.css`
+  - *How:* `packages/webui/src/components/automation.css`
+  - *How:* `automation-workspace.tsx`
+  - *How:* `AutomationView.tsx`
+  - *How:* `automation-(overlay|dialog|close)`
+  - *How:* `automation-panel.tsx`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T13:26:06.084Z; skill=codebase-navigation; applied=1; wins=1; skipped=3; skippedWins=3 -->
+- **Always verify which named symbols each barrel consumer actually pulls before counting it as a dependent of a component module: a test file importing from a re-export barrel (e.g. `packages/tui/tests/sidebar-presentation.test.tsx` importing `ConnectionsPanelSidebar` from `../src/components/sidebar-panels.js`) may consume only sibling modules re-exported by the same barrel (here `sidebar-panels-workspace.js`, not `sidebar-panels-task.js`). Pair the import-specifier grep (`from '…<barrel>.js'`) with a check of the imported names against the target module's export list — the barrel's own re-export blocks name the true source file for each symbol.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `packages/tui/tests/sidebar-presentation.test.tsx`
+  - *How:* `ConnectionsPanelSidebar`
+  - *How:* `../src/components/sidebar-panels.js`
+  - *How:* `sidebar-panels-workspace.js`
+  - *How:* `sidebar-panels-task.js`
+  - *How:* `from '…<barrel>.js'`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T13:14:13.940Z; skill=codebase-navigation; applied=3; wins=3; skipped=6; skippedWins=6 -->
+- **When a repository comment claims behavior is "pinned by `<name>.test.ts`", grep the claimed assertion (e.g. the exact fixture string like `[x] partial`) inside the named test file before attributing the pin — same-named test twins commonly exist across packages (here the comment in `packages/webui/src/lib/goal.ts` points at `packages/webui/tests/stores/goal-store.test.ts`, not `packages/core/tests/storage/goal-store.test.ts`). Also: a test file with no `export` statements has zero importers by construction; the only legitimate "callers" are vitest `include` patterns in `vitest.config.ts`.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `<name>.test.ts`
+  - *How:* `[x] partial`
+  - *How:* `packages/webui/src/lib/goal.ts`
+  - *How:* `packages/webui/tests/stores/goal-store.test.ts`
+  - *How:* `packages/core/tests/storage/goal-store.test.ts`
+  - *How:* `export`
+  - *How:* `include`
   - *How:* `vitest.config.ts`
-  - *How:* `// @vitest-environment jsdom`
-  - *How:* `packages/simpleui/tests/**`
-  - *How:* `document`
-  - *How:* `typecheck`
-  - *How:* `tsc --noEmit`
-  - *How:* `tsconfig.json`
-  - *How:* `tests`
-  - *How:* `tsconfig.test.json`
-  - *How:* `tests/**/*`
-  - *How:* `scripts/check-test-typecheck.mjs`
-  - *How:* `pnpm check:test-types`
-  - *How:* `release:check`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:00:44.689Z; applied=153; wins=153; skipped=20; skippedWins=20 -->
-- **Treat every edit inside a `.temp_files/` proof-round directory as ephemeral and unrecoverable: `.temp_files/` is gitignored and round dirs rotate wholesale (parent `tree` ENOENT proves whole-round deletion, not just file churn). Before editing or running anything under `.temp_files/<skill>/<round>/`, re-read the exact target file and re-run the parent-directory `tree` (`truncated=false`) in the same breath, then run `npx vitest run --config <round>/<exact-config>` from repo root — and warn the requester that any edit made before a rotation is gone with no git history to recover it from.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T06:45:46.183Z; skill=codebase-navigation; applied=14; wins=14; skipped=35; skippedWins=35 -->
+- **When closing consumers of a `packages/webui/src/components/**` React component, always extend the token-grep extension set beyond `*.{ts,tsx}` to include `.mjs` — browser smokes under `packages/webui/tests/*-smoke.mjs` import components directly via in-page source strings, and a `.ts,.tsx`-only sweep missed the sole executable consumer (`mailbox-compose-browser-smoke.mjs` importing `ChangesPanel`). Pair the word-bounded token grep with the package `package.json` `test:*-browser` scripts to learn whether that consumer is a manual gate.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files/`
-  - *How:* `tree`
-  - *How:* `.temp_files/<skill>/<round>/`
-  - *How:* `truncated=false`
-  - *How:* `npx vitest run --config <round>/<exact-config>`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T17:01:49.388Z; applied=19; wins=19; skipped=63; skippedWins=63 -->
-- **When a probe maps a factory module under `packages/webui-server/src/server/`, treat `tests/host-seam-parity.test.ts` as the seam-drift canary for blast radius: it asserts embedded-host adapters (e.g. `embedded-host-adapters.ts`) stay parity with the standalone host, so any edit to the embedded context interfaces or factories should flag that suite even when it does not import the leaf file directly.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/webui-server/src/server/`
-  - *How:* `tests/host-seam-parity.test.ts`
-  - *How:* `embedded-host-adapters.ts`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T15:51:51.499Z; skill=codebase-navigation; applied=161; wins=161; skipped=20; skippedWins=20 -->
-- **When a probed `.temp_files` round path returns ENOENT, enumerate its parent directory with an exact `tree` (`truncated=false`) instead of reporting "not found" — proof rounds rotate (e.g. `r1-...` deleted while `r2-...` appears under the same skill dir in `.temp_files/`), and the leader's stale reference should be answered with the live successor path plus a re-verify-existence warning, since round cleanup can delete edits mid-session.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files`
-  - *How:* `tree`
-  - *How:* `truncated=false`
-  - *How:* `r1-...`
-  - *How:* `r2-...`
-  - *How:* `.temp_files/`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T17:34:20.918Z; skill=codebase-navigation; applied=41; wins=41 -->
-- **When a recursive glob-filtered `tree` under `.temp_files/` reports `total_files=N` but the display truncates before alphabetically-late entries, re-run the tree with a root-level glob (`*<name>*`, not `**/*<name>*`) — it returns the actual filenames with `truncated=false`, which is what you need before warning a leader about name-variant siblings of a temp script they edited unread.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `tree`
-  - *How:* `.temp_files/`
-  - *How:* `total_files=N`
-  - *How:* `*<name>*`
-  - *How:* `**/*<name>*`
-  - *How:* `truncated=false`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:41:38.252Z; skill=node-modern; applied=32; wins=32; skipped=93; skippedWins=93 -->
-- **When judging edit blast radius for `packages/webui-server/tests/*.test.ts`, always check assertions for CWD-relative `path.resolve('packages', ...)` calls against the package `test` script's CWD (`vitest run --config vitest.config.ts` in `package.json` runs with package-dir CWD, not repo root) — guards can silently degrade to trivially-passing or self-skip depending on invocation directory, so state both readings instead of assuming repo-root execution.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/webui-server/tests/*.test.ts`
-  - *How:* `path.resolve('packages', ...)`
-  - *How:* `test`
-  - *How:* `vitest run --config vitest.config.ts`
+  - *How:* `packages/webui/src/components/**`
+  - *How:* `*.{ts,tsx}`
+  - *How:* `.mjs`
+  - *How:* `packages/webui/tests/*-smoke.mjs`
+  - *How:* `.ts,.tsx`
+  - *How:* `mailbox-compose-browser-smoke.mjs`
+  - *How:* `ChangesPanel`
   - *How:* `package.json`
+  - *How:* `test:*-browser`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T17:57:04.572Z; skill=codebase-navigation; applied=3; wins=3; skipped=18; skippedWins=18 -->
-- **When mapping a gitignored one-shot diagnostic script under `.temp_files/`, define its blast radius from the body, not the import graph: enumerate every `execSync`/`spawn` template-literal command (the interpolated `spec` strings are the real surface — shell metacharacters throw) and every `fs` walk root, and always flag CWD-relative git pathspecs (`git status --porcelain -- <path>` resolves against the current directory), which silently report a false "clean" when run outside the repo root. Re-read the file immediately before finalizing: leader edits land mid-probe and overwrite the only snapshot.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T08:49:20.721Z; skill=codebase-navigation; applied=8; wins=8; skipped=24; skippedWins=24 -->
+- **When mapping a `.design/*` file's blast radius in this repo, treat it as a **runtime prompt-injection source, not inert docs**: `.design/` is gitignored (`.gitignore` ~, so `glob` returning 0 files is ignore-filtering, not absence — prove existence with direct `read`), and `readDesignBrief()` in `packages/core/src/execution/design-detect.ts` injects its first 6000 bytes into agent system prompts on every Design Studio turn. Edits have zero test blast radius (`packages/core/tests/execution/design-detect.test.ts` uses `fs.mkdtemp` fixtures) and zero git-recovery options, but directly change the constraints future agent turns receive.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files/`
-  - *How:* `execSync`
-  - *How:* `spawn`
-  - *How:* `spec`
-  - *How:* `fs`
-  - *How:* `git status --porcelain -- <path>`
-
-<!-- learned-stamp: category=convention; capturedAt=2026-10-01T16:09:45.221Z; skill=codebase-navigation; applied=11; wins=11; skipped=156; skippedWins=156 -->
-- **When mapping importers of a `packages/*/src/types/<leaf>.ts` module, grep three patterns, not one: the path-style specifier (`types/<leaf>`), the sibling specifier (`from './<leaf>.js'` — invisible to path-style searches inside the same `types/` dir), and the exported symbol names repo-wide. Same-named types are often locally redefined in sibling packages (e.g. `ConnectionHealthService` exists independently in `packages/webui/src/types/connections.ts`, `packages/webui-server/src/server/connections/types.ts`, and `packages/tui/src/connections-health.ts`), so verify every symbol hit with an import-line check before counting it as a consumer.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/*/src/types/<leaf>.ts`
-  - *How:* `types/<leaf>`
-  - *How:* `from './<leaf>.js'`
-  - *How:* `types/`
-  - *How:* `ConnectionHealthService`
-  - *How:* `packages/webui/src/types/connections.ts`
-  - *How:* `packages/webui-server/src/server/connections/types.ts`
-  - *How:* `packages/tui/src/connections-health.ts`
-
-## Patterns to follow
-
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-01T16:37:52.275Z; skill=codebase-navigation; applied=91; wins=91; skipped=42; skippedWins=42 -->
-- **Pair every bare-module-name grep with an import-line grep (`from ['"].*<leaf>`) before naming importers: same-named modules across `packages/cli` and `packages/webui-server` (e.g. `credential-watcher` vs `start-webui-credential-watcher` exporting `setupWebuiCredentialWatcher`) plus comment/report-artifact matches inflate `files_with_matches`, while the import-line pattern yields the authoritative consumer set in one pass.**
-  - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
-  - *How:* `from ['"].*<leaf>`
-  - *How:* `packages/cli`
-  - *How:* `packages/webui-server`
-  - *How:* `credential-watcher`
-  - *How:* `start-webui-credential-watcher`
-  - *How:* `setupWebuiCredentialWatcher`
-  - *How:* `files_with_matches`
-
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-01T17:22:17.292Z; skill=codebase-navigation; applied=51; wins=51 -->
-- **Prefer a glob-filtered `tree` (`tree` with `glob: "**/*<substring>*"`, read `total_files` from the header) over grepping a captured tree artifact log when proving filename-variant absence in an ignored tree like `.temp_files/`: inline tree output has no artifact file to grep, the display cap hides rows, but `total_files=0` under the glob filter is the complete match count across every subdirectory in one pass — pair it with a repo-wide case-insensitive content grep (`truncated=false`) and a direct `read` ENOENT for the three-way absence proof.**
-  - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
-  - *How:* `tree`
-  - *How:* `glob: "**/*<substring>*"`
-  - *How:* `total_files`
-  - *How:* `.temp_files/`
-  - *How:* `total_files=0`
-  - *How:* `truncated=false`
+  - *How:* `.design/*`
+  - *How:* `.design/`
+  - *How:* `.gitignore`
+  - *How:* `glob`
   - *How:* `read`
+  - *How:* `readDesignBrief()`
+  - *How:* `packages/core/src/execution/design-detect.ts`
+  - *How:* `packages/core/tests/execution/design-detect.test.ts`
+  - *How:* `fs.mkdtemp`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T05:54:54.645Z; skill=codebase-navigation; applied=9; wins=9; skipped=55; skippedWins=55 -->
+- **When mapping a `.temp_files/*.mjs` harness or runner script, always scan for undeclared identifiers left over from renames (e.g. a `void <name>;` lint-silencer naming an array that was renamed to `real`). Scratch `.mjs` has no typecheck gate, so the crash surfaces only at runtime — typically after the expensive loop finishes but before results print — making a long run produce no output. Anchor: `.temp_files/`, `void`, `ReferenceError`, `--reporter=dot`.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `.temp_files/*.mjs`
+  - *How:* `void <name>;`
+  - *How:* `real`
+  - *How:* `.mjs`
+  - *How:* `.temp_files/`
+  - *How:* `void`
+  - *How:* `ReferenceError`
+  - *How:* `--reporter=dot`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T05:42:32.789Z; skill=codebase-navigation; applied=11; wins=11; skipped=56; skippedWins=56 -->
+- **When mapping a `.temp_files/*.mjs` patcher/generator script, extract its hardcoded `SRC`/`DST` path constants first — they are the complete incoming/outgoing edge list. Close them with one anchor grep into the `SRC` twin (verifying the script's `src.includes(...)` literals still match) and one existence read of the `DST` artifact, skipping `codebase-*` tools entirely (index-blind to `.temp_files/`). This is cheaper and more precise than searching for a tracked twin by distinctive function names when the script names its source explicitly.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `.temp_files/*.mjs`
+  - *How:* `SRC`
+  - *How:* `DST`
+  - *How:* `src.includes(...)`
+  - *How:* `codebase-*`
+  - *How:* `.temp_files/`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T05:40:22.518Z; skill=codebase-navigation; applied=6; wins=6; skipped=62; skippedWins=62 -->
+- **When mapping a `.temp_files/*.mjs` scratch analysis script, run one `codebase-search` on its distinctive function names (e.g. `decodePng`) to find the tracked twin it was lifted from — scratch scripts commonly derive from tracked browser smokes like `packages/webui/tests/*-smoke.mjs`, and the twin is where real, gate-relevant behavior lives. The dependency arrow is one-way (scratch copies tracked), so scratch edits have zero blast radius, but a leader intending behavioral change may have edited the wrong file.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `.temp_files/*.mjs`
+  - *How:* `codebase-search`
+  - *How:* `decodePng`
+  - *How:* `packages/webui/tests/*-smoke.mjs`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-03T14:09:15.619Z; skill=node-modern -->
+- **When mapping the blast radius of any `packages/plugins/tests/*.test.ts` file, always check **both** vitest collectors before predicting gates: the package config (`packages/plugins/vitest.config.ts`, `include: ['tests/**/*.test.ts']`, `globals: false`, coverage thresholds 94/95/91/79 over `src/**`) and the root `vitest.config.ts` `packages/**/tests/**` include — plus `packages/plugins/tsconfig.test.json` (includes `tests/**/*`, exercised by the repo-level `pnpm check:test-types`). `docs/reports/architecture-health-current.json` lists every root-collected test file under a `projects` array (e.g. `"root-node"`), which corroborates collection cheaply in one grep.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `packages/plugins/tests/*.test.ts`
+  - *How:* `packages/plugins/vitest.config.ts`
+  - *How:* `include: ['tests/**/*.test.ts']`
+  - *How:* `globals: false`
+  - *How:* `src/**`
+  - *How:* `vitest.config.ts`
+  - *How:* `packages/**/tests/**`
+  - *How:* `packages/plugins/tsconfig.test.json`
+  - *How:* `tests/**/*`
+  - *How:* `pnpm check:test-types`
+  - *How:* `docs/reports/architecture-health-current.json`
+  - *How:* `projects`
+  - *How:* `"root-node"`
 
 ---
-*Last capture: 2026-10-01T19:09:29.474Z · 24 entries*
+*Last capture: 2026-10-03T14:09:15.619Z · 18 entries*

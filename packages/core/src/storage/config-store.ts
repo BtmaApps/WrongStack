@@ -1,5 +1,6 @@
 import type { Config, ConfigStore } from '../types/config.js';
 import { ConfigError, ERROR_CODES } from '../types/errors.js';
+import { createTypeSafePolicy } from '../typesafe/policy.js';
 import { toErrorMessage } from '../utils/error.js';
 
 /**
@@ -30,10 +31,14 @@ function stripEphemeralFields(cfg: Partial<Config>): Partial<Config> {
  */
 export class DefaultConfigStore implements ConfigStore {
   private current: Readonly<Config>;
+  private publishTypeSafePolicy: ReturnType<typeof createTypeSafePolicy>;
   private watchers = new Set<(next: Readonly<Config>, prev: Readonly<Config>) => void>();
 
   constructor(initial: Config) {
     this.current = deepFreeze(structuredClone(initial));
+    this.publishTypeSafePolicy = createTypeSafePolicy(this.current);
+    this.publishTypeSafePolicy(initial);
+    this.publishTypeSafePolicy(this.current);
   }
 
   get(): Readonly<Config> {
@@ -69,6 +74,7 @@ export class DefaultConfigStore implements ConfigStore {
 
     const prev = this.current;
     this.current = next;
+    this.publishTypeSafePolicy(next);
     // Notify watchers AFTER mutating `current` so re-entrant watcher reads
     // see the new state. Watcher exceptions are caught individually so one
     // misbehaving subscriber can't block the others.

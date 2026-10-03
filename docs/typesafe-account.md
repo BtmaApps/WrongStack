@@ -6,14 +6,16 @@ account in **WebUI → Settings → Jev** or with **`/jev` in the TUI**. The
 switches, connection tests and the live debug log.
 
 Brain, memory triage/recall, topic changes, compaction, Kanban verification,
-model tier selection and semantic lint allow judgments by default when an
-account is configured. [Skill suggestion](./skills-suggestion.md) and the
+model tier selection and semantic lint allow judgments only after
+`typesafe.enabled: true` is explicitly set and an account is configured. [Skill suggestion](./skills-suggestion.md) and the
 [dispatch classifier](./fleet-dispatch-classifier.md) are separately opt-in.
 Each consumer keeps its fallback when a judgment is unavailable.
 
 ```
 wstack typesafe            inspect configuration (no network test)
-wstack typesafe login      store a key in the active profile
+wstack typesafe login      store a key in the active profile (does not enable Jev)
+wstack typesafe on         explicitly enable Jev
+wstack typesafe off        stop all Jev requests while keeping the key
 wstack typesafe test       spend one question proving the key really works
 ```
 
@@ -78,6 +80,7 @@ user profile, then restart the session/server that loaded that configuration:
 
 ```json
 {
+  "typesafe": { "enabled": true },
   "skills": { "suggest": { "enabled": true } },
   "fleet": { "dispatch": { "typesafeClassifier": true } }
 }
@@ -106,12 +109,11 @@ approvals/permissions, every tool call, or normal chat generation. There is no
 chat-model entry for Jev; configure its decision account in **Settings → Jev**
 or with the CLI account commands.
 
-## Judgments: on with an account, always with a fallback
+## Judgments: master opt-in, always with a fallback
 
 The nine judgment features above (`typesafe.judgments.<id>`) differ from the
-two original consumers in one way: they are **on whenever an account resolves
-`ready`**, and `typesafe.judgments.<id>: false` turns one off. A TypeSafe key
-exists for nothing else. Automatic judgments sit in front of existing paths;
+two original consumers in one way: they are allowed after **`typesafe.enabled: true` and an account resolving
+`ready`**, and `typesafe.judgments.<id>: false` turns one off. A stored or environment key alone never enables Jev. Automatic judgments sit in front of existing paths;
 the `tool` feature lets the calling model request a judgment explicitly and
 handle failures itself. `wstack typesafe status` lists them.
 

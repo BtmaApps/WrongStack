@@ -16,6 +16,8 @@
 import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type { DesignKitTokens } from '../types/design-kit.js';
+import { getDesignKitLoader } from './design-kit-loader.js';
 
 const DESIGN_DIR = '.design';
 
@@ -201,4 +203,119 @@ export async function clearPersistedActiveKit(projectRoot: string): Promise<void
 /** @deprecated Rules are read fresh; retained for existing test-helper callers. */
 export function _resetDesignRulesCache(): void {
   // No process-lifetime cache: it hid rules written after the first UI request.
+}
+
+// ── captured project tokens (kit-less verify) ────────────────────────────────
+
+/**
+ * The project's OWN token system, snapshotted by `design capture` into
+ * `.design/captured-tokens.json`. Lets the verify loop (tool + write-time
+ * middleware) run against an established system without pinning a kit — the
+ * "middle case" design-critique documents as the common one in mature
+ * codebases.
+ */
+export interface CapturedTokens {
+  stack: string;
+  capturedAt: string;
+  files: string[];
+  tokens: DesignKitTokens;
+  /** `[data-palette]` variant blocks, recorded separately by capture (informational). */
+  palettes?: Record<string, Record<string, string>> | undefined;
+}
+
+const CAPTURED_FILE = 'captured-tokens.json';
+
+/** Persist a capture (best-effort). Returns the project-relative path used. */
+export async function saveCapturedTokens(
+  projectRoot: string,
+  captured: {
+    stack: string;
+    files: string[];
+    tokens: DesignKitTokens;
+    palettes?: Record<string, Record<string, string>>;
+    capturedAt?: string;
+  },
+): Promise<string> {
+  const dir = await ensureDesignDir(projectRoot);
+  const record: CapturedTokens = {
+    stack: captured.stack,
+    capturedAt: captured.capturedAt ?? new Date().toISOString(),
+    files: captured.files,
+    tokens: captured.tokens,
+    ...(captured.palettes ? { palettes: captured.palettes } : {}),
+  };
+  const rel = path.join(DESIGN_DIR, CAPTURED_FILE);
+  await fs.writeFile(path.join(dir, CAPTURED_FILE), `${JSON.stringify(record, null, 2)}\n`);
+  return rel;
+}
+
+/** Read the persisted capture, if any (absent/malformed → undefined). */
+export async function loadCapturedTokens(projectRoot: string): Promise<CapturedTokens | undefined> {
+  try {
+    const raw = await fs.readFile(path.join(designProjectDir(projectRoot), CAPTURED_FILE), 'utf8');
+    const parsed = JSON.parse(raw) as Partial<CapturedTokens>;
+    if (parsed?.tokens && (parsed.tokens.light || parsed.tokens.dark)) {
+      return {
+        stack: parsed.stack ?? 'web',
+        capturedAt: parsed.capturedAt ?? '',
+        files: parsed.files ?? [],
+        tokens: parsed.tokens,
+        palettes: parsed.palettes,
+      };
+    }
+  } catch {
+    // absent or malformed — no capture
+  }
+  return undefined;
+}
+
+/** Remove the persisted capture (e.g. the token source moved). Best-effort. */
+export async function clearCapturedTokens(projectRoot: string): Promise<void> {
+  try {
+    await fs.rm(path.join(designProjectDir(projectRoot), CAPTURED_FILE), { force: true });
+  } catch {
+    // best-effort
+  }
+}
+
+export interface VerifyTokenSource {
+  /** Override-applied (kit) or as-captured (project) token sets. */
+  tokens: DesignKitTokens;
+  source: 'kit' | 'captured';
+  /** Kit id when source === 'kit'. */
+  kit?: string | undefined;
+  /** Project-relative files the capture came from, when source === 'captured'. */
+  files?: string[] | undefined;
+}
+
+/**
+ * Resolve the token basis for the verify loop. A pinned kit ALWAYS wins — an
+ * explicit commitment outranks a snapshot; if the pinned kit's tokens are
+ * unreadable, undefined is returned (never a silent fallback to the capture,
+ * which would report drift against the wrong basis). Without a pin, the
+ * captured project tokens serve as the kit-less middle case.
+ */
+export async function resolveVerifyTokens(
+  projectRoot: string,
+): Promise<VerifyTokenSource | undefined> {
+  const active = await loadActiveKit(projectRoot).catch(() => undefined);
+  if (active) {
+    const loader = getDesignKitLoader(projectRoot);
+    // readTokens() merges the foundations base under ANY id, so it never
+    // returns undefined for an unknown kit — check the manifest explicitly.
+    // A pin that no longer resolves reports nothing rather than silently
+    // switching basis to the capture.
+    const manifest = await loader.find(active.kit).catch(() => undefined);
+    if (!manifest) return undefined;
+    const raw = await loader.readTokens(active.kit).catch(() => undefined);
+    if (!raw) return undefined;
+    return {
+      tokens: applyTokenOverrides(raw, active.overrides),
+      source: 'kit',
+      kit: active.kit,
+    };
+  }
+  const captured = await loadCapturedTokens(projectRoot).catch(() => undefined);
+  if (captured) return { tokens: captured.tokens, source: 'captured', files: captured.files };
+  return undefined;
 }

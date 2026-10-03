@@ -770,7 +770,17 @@
     "pluginInjectionShield": "Injection Shield — prompt injection",
     "pluginPromptFirewall": "Prompt Firewall — input filtering",
     "pluginTokenBudget": "Token Budget — token limits",
-    "pluginLoopBreaker": "Loop Breaker — runaway detection"
+    "pluginLoopBreaker": "Loop Breaker — runaway detection",
+    "userInstructions": {
+      "heading": "Your global rules (AGENTS.md)",
+      "hint": "Your own instructions for every project. They go into the system prompt ahead of the project's AGENTS.md and apply from the next turn.",
+      "placeholder": "# My rules\n- Answer in English.\n- Never add co-author trailers to commits.",
+      "missing": "not created yet; saving creates it",
+      "save": "Save",
+      "reload": "Reload",
+      "saved": "Saved.",
+      "discard": "Discard unsaved changes?"
+    }
   },
   "logs": {
     "heading": "Logs & Debug",
@@ -1188,6 +1198,8 @@
     "resetOverrides": "Clear role overrides"
   },
   "jev": {
+    "enabled": "Enable Jev",
+    "enabledHint": "Off by default. Disabling stops all Jev requests, including tools and diagnostics, while keeping your key and feature choices.",
     "description": "Manage the decision provider and see where Jev is used.",
     "loading": "Loading Jev settings…",
     "timeout": "No response from server. Reconnect and retry.",
@@ -1241,6 +1253,7 @@
     "includeChecks": "Include diagnostic requests",
     "selfTest": "Diagnostic",
     "account": {
+      "disabled": "Jev disabled",
       "ready": "Account configured",
       "unconfigured": "Account required",
       "unusable": "Account settings invalid"

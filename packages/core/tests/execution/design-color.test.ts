@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   colorToHex,
+  contrastRatio,
   isColorToken,
   oklchToHex,
   parseOklch,
@@ -52,5 +53,25 @@ describe('design-color — OKLCH conversion', () => {
     expect(isColorToken('#0a0a0a')).toBe(true);
     expect(isColorToken('1.25rem')).toBe(false);
     expect(isColorToken('Inter, system-ui, sans-serif')).toBe(false);
+  });
+});
+
+describe('design-color — WCAG contrast', () => {
+  it('computes achromatic extremes exactly, in either argument order', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBe(21);
+    expect(contrastRatio('#ffffff', '#000000')).toBe(21);
+    expect(contrastRatio('#808080', '#808080')).toBeCloseTo(1, 5);
+  });
+
+  it('mixes oklch and hex inputs through the same normalization', () => {
+    // oklch(0% 0 0) === #000000, so this must equal the hex-on-hex result.
+    expect(contrastRatio('oklch(0% 0 0)', '#ffffff')).toBe(21);
+    // sRGB red on white ≈ 4.0:1 — the classic AA body-text failure.
+    expect(contrastRatio('#ff0000', '#ffffff')).toBeCloseTo(4.0, 2);
+  });
+
+  it('returns null when either side is not a parseable color', () => {
+    expect(contrastRatio('Inter, sans-serif', '#ffffff')).toBeNull();
+    expect(contrastRatio('#ffffff', '1.25rem')).toBeNull();
   });
 });

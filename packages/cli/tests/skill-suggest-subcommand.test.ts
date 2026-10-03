@@ -55,7 +55,7 @@ function skillLoader() {
 function fakeDeps(overrides: Record<string, unknown> = {}) {
   const lines: string[] = [];
   const deps = {
-    config: { features: { skills: true }, skills: {} },
+    config: { typesafe: { enabled: true }, features: { skills: true }, skills: {} },
     renderer: {
       write: (text: string) => {
         lines.push(text.replace(/\n$/, ''));

@@ -49,11 +49,15 @@ export async function handleJevRoute(
   try {
     if (msg.type === 'jev.set') {
       await saveJevSettings(ctx.store, ctx.file, ctx.vault, p?.patch);
-      message = 'Saved. Restart existing sessions to apply all Jev consumers.';
+      message =
+        ctx.store.get().typesafe?.enabled === true
+          ? 'Saved. Restart existing sessions to install newly enabled Jev consumers.'
+          : 'Saved. All Jev requests disabled; the saved key and feature choices are preserved.';
     }
     if (msg.type === 'jev.test') message = await testJevConnection(ctx.store.get());
     if (msg.type === 'jev.check') {
       const config = ctx.store.get();
+      if (config.typesafe?.enabled !== true) throw new Error('Jev is disabled');
       const key = accountKey(config);
       let state = checks.get(ctx.store);
       if (state?.running && state.key !== key)

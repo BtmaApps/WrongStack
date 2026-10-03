@@ -22,6 +22,7 @@ describe('diagnoseConfig — TypeSafe account', () => {
     const report = diagnoseConfig(
       {
         version: 1,
+        typesafe: { enabled: true },
         skills: { suggest: { enabled: true } },
         fleet: { dispatch: { typesafeClassifier: true } },
       },
@@ -38,15 +39,23 @@ describe('diagnoseConfig — TypeSafe account', () => {
   });
 
   it('accepts a key that lives only in the environment', () => {
-    const report = diagnoseConfig({ version: 1, skills: { suggest: { enabled: true } } }, [], {
-      TYPESAFE_API_KEY: 'k',
-    });
+    const report = diagnoseConfig(
+      { version: 1, typesafe: { enabled: true }, skills: { suggest: { enabled: true } } },
+      [],
+      {
+        TYPESAFE_API_KEY: 'k',
+      },
+    );
     expect(report.findings).toEqual([]);
   });
 
   it('accepts an OpenRouter key for the OpenRouter route', () => {
     const report = diagnoseConfig(
-      { version: 1, typesafe: { route: 'openrouter' }, skills: { suggest: { enabled: true } } },
+      {
+        version: 1,
+        typesafe: { enabled: true, route: 'openrouter' },
+        skills: { suggest: { enabled: true } },
+      },
       [],
       { OPENROUTER_API_KEY: 'sk-or-x' },
     );
@@ -57,7 +66,7 @@ describe('diagnoseConfig — TypeSafe account', () => {
     // Left in place, an invalid route would surface below as "no account",
     // which points the reader at the wrong line entirely.
     const report = diagnoseConfig(
-      { version: 1, typesafe: { route: 'openai', apiKey: 'k' } },
+      { version: 1, typesafe: { enabled: true, route: 'openai', apiKey: 'k' } },
       [],
       NO_ENV,
     );

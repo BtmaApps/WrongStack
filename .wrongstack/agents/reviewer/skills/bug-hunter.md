@@ -1,7 +1,8 @@
-## Default-assertion flips in tests
+## Default assertions in tests
 
-All rules in this section are proven for this repo: [applied 8×, 8 ok].
+- [applied 8×, 8 ok] Judge flipped assertions under `packages/core/tests/**` by the default the resolver's current operator computes in `packages/core/src/plugins/*-config.ts` — never by config types or historical comments. For `cfg.x ?? DEFAULT`, evaluate both the explicit `'off'` case and the omitted-key case before reporting a flip such as `cascadeOn` `off`→`high` or a default-on `enabled` as a regression; read `enabled: cfg.enabled !== false` exactly as written.
 
-- When a test diff in `packages/core/tests/**` flips a default assertion (e.g. `cascadeOn` `off`→`high`, or `enabled` flipping to default-on), validate the new expectation against the resolver's actual operator in `packages/core/src/plugins/*-config.ts` — never against the config type declaration or the old test's wording.
-- For resolvers written as `cfg.x ?? DEFAULT`, remember that an explicit falsy value or `'off'` is a distinct branch from the key being absent: confirm the diff pins both branches (an explicit-`'off'` assertion and a no-key assertion) before treating the flip as correct.
-- Treat inline comments like "regression used to be `=== true`" as historical claims, not evidence of a live defect. Check the current source — e.g. whether the master switch is now `enabled: cfg.enabled !== false` — before flagging or "fixing" anything based on the comment.
+## Stale writes in verification
+
+- [applied 5×, 5 ok] Treat every `STALE_WRITE_PREFIX` throw from `packages/kanban/src/verification/` as a retry signal, not a bug. `verificationStateFingerprint` in `packages/kanban/src/verification/task-inputs.ts` hashes the full descendant/dependency task tree plus board policy, excluding only `updatedAt`, `notes`, `links`, `labels`, `order`, `dueDate`, and assignment `heartbeatAt`/`leaseExpiresAt`, so a concurrent write during a gate→verify→finalize sequence intentionally fails closed with "Re-run the completion gate". If a stale write is the only anomaly, return `json { "findings": [] }` instead of reporting it.
+- Before reporting an `assertAcceptedContractUnchanged` throw in `packages/kanban/src/manager/lifecycle/accepted-contract.ts`, verify the trigger: it fires only for managed boards with `currentStage === 'done'`, compares input fingerprints (statuses excluded) plus `[check.id, check.status]` outcomes, and lets fresh reports with `verdict === 'passed'` escape the check.

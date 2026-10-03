@@ -69,4 +69,5 @@ export const SERVER_CONFIGURATION_MESSAGE_TYPES = [
   'system_prompt.presets',
   'system_prompt.preset_validation',
   'system_prompt.preset_preview',
+  'user_instructions',
 ] as const;

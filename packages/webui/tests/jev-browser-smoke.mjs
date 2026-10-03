@@ -20,7 +20,7 @@ const client = getWSClient(useConfigStore.getState().wsUrl);
 const listeners = new Set();
 const originalOn = client.on.bind(client);
 client.on = (type, fn) => { if (type !== 'jev.state') return originalOn(type, fn); listeners.add(fn); return () => listeners.delete(fn); };
-let settings = { status: 'ready', keySource: 'config', route: 'typesafe', endpoint: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest', requestTimeoutMs: 4000, features: { brain: true, memoryTriage: true, topicShift: true, memoryRecall: true, compaction: true, kanbanVerify: true, modelTier: true, semanticLint: true, skillSuggestion: false, fleetDispatch: false } };
+let settings = { enabled: true, status: 'ready', keySource: 'config', route: 'typesafe', endpoint: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest', requestTimeoutMs: 4000, features: { brain: true, memoryTriage: true, topicShift: true, memoryRecall: true, compaction: true, kanbanVerify: true, modelTier: true, semanticLint: true, skillSuggestion: false, fleetDispatch: false } };
 settings.contextStrategy = 'hybrid';
 settings.readiness = Object.fromEntries(Object.keys(settings.features).map(feature => [feature, { state: feature === 'compaction' || feature === 'modelTier' ? 'blocked' : settings.features[feature] ? 'conditional' : 'disabled', reason: feature === 'compaction' ? 'selective-required' : feature === 'modelTier' ? 'tiers-disabled' : settings.features[feature] ? 'trigger-required' : 'disabled' }]));
 settings.recallTurnContext = false;
@@ -121,7 +121,7 @@ try {
       /waiting for trigger|tetiklenmeyi bekliyor/,
     );
     await page
-      .getByRole('button', { name: /Test all 10 features|10 özelliği canlı test et/ })
+      .getByRole('button', { name: /Test all 11 features|11 özelliği canlı test et/ })
       .click();
     await page.getByTestId('jev-check-report').waitFor();
     assert.match(await page.getByTestId('jev-check-report').innerText(), /20\/20/);
@@ -135,10 +135,27 @@ try {
       .getByRole('heading', { name: 'TypeSafe / Jev', exact: true })
       .scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, `${width}x${height}.png`) });
+    await page.getByLabel(/Enable Jev|Jev’i etkinleştir/, { exact: true }).uncheck();
+    await save.click();
+    await page.waitForFunction(
+      () => window.__jevSent.findLast((m) => m.type === 'jev.set')?.payload.patch.enabled === false,
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: /Test saved connection|Kayıtlı bağlantıyı test et/ })
+        .isDisabled(),
+      true,
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: /Test all 11 features|11 özelliği canlı test et/ })
+        .isDisabled(),
+      true,
+    );
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Jev browser smoke passed: 1280x900, 390x844, 390x300; Settings tab navigation/order, save, masked key, activity and horizontal overflow.',
+    'Jev browser smoke passed: 1280x900, 390x844, 390x300; Settings tab navigation/order, save, masked key, activity, master disable and horizontal overflow.',
   );
 } finally {
   await browser.close();

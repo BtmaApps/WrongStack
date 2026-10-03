@@ -1,18 +1,16 @@
-## Evidence discipline
+## Proven — apply first
 
-- Never infer file absence from a zero-hit content `grep`; it matches contents, not filenames. Confirm absence with a direct `read` showing ENOENT and an exact-directory `tree` with `truncated=false`, such as `packages/webui-server/tests`.
+- Before editing `packages/webui-server/src/server/route-family-dispatcher.ts` or its call sites, read `packages/webui-server/tests/host-dispatcher-parity.test.ts`: it extracts the `createRouteFamilyDispatcher(` options block from raw source (`balancedBlockAfter`), so reformatting the call in `message-dispatcher.ts` or `embedded-message-router.ts` fails the contract with zero runtime change. [applied 9×, 9 ok]
+- Predict collection from configs, not habit. Root `vitest.config.ts` pins `test.include` to `packages/**/tests/**` + `apps/**/tests/**` and `test.exclude` to `'**/.temp_files/**'`: a `.temp_files/proof-driven-bug-hunter/<round>/` test runs only with a sibling `vitest.proof.config.mjs` (explicit `vitest run <path>` from root won't collect it) and never moves the coverage ratchet (`include` is `packages/*/src/**`). Never enumerate configs with nested-brace globs — `vitest.*.{ts,mts,js,mjs,json}` returned 0 files here; use a content grep or exact-name read. [applied 4×, 4 ok]
+- Closing consumers of a types-only module (`packages/core/src/types/spec.ts`), grep both specifier forms — sibling `from './spec.js'` (module dir) and `@wrongstack/core/types/spec.js` (repo-wide) — and check `packages/core/package.json`'s exports map for the subpath (`types/spec`) and any wildcard (`\.\*`). With only explicit entries (`./types`, `./types/limits`), package-specifier imports resolve solely via `scripts/vitest-core-aliases.mjs` and fail plain Node ESM — report an exposure anomaly, not a working path. [applied 3×, 3 ok]
 
-## Vitest topology
+## Vitest gates and mocks
 
-- Derive `packages/webui-server` suite behavior from live `packages/webui-server/vitest.config.ts`: one project, `environment: 'node'`, `include: ['tests/**/*.test.ts']`, and coverage thresholds `/statements 76`, `/functions 69`, `/branches 66`. Do not import the `packages/webui` split (`tests/server/**` → `server-node`, `browser-jsdom`).
-- When tracing `start-http-server*`, distinguish responsibilities: `startHttpServer` is exported by `packages/webui-server/src/server/server-runtime.ts`, while `http-server.ts` owns `allowedHostnames` and consumes it as `trustedHostnames`. Allowed-hostnames coverage is in `packages/webui-server/tests/ws-auth.test.ts` and `packages/webui-server/tests/frontend-static-serve.test.ts`, not `packages/webui-server/tests/http-server.test.ts`.
+- For blast radius of `packages/plugins/tests/*.test.ts`, predict gates from both collectors plus the type gate: `packages/plugins/vitest.config.ts` (`include: ['tests/**/*.test.ts']`, `globals: false`, coverage 94/95/91/79 over `src/**`), the root `packages/**/tests/**` include, and `packages/plugins/tsconfig.test.json` (`tests/**/*`) exercised by `pnpm check:test-types`; one grep of the `projects` array (e.g. `"root-node"`) in `docs/reports/architecture-health-current.json` corroborates root collection.
+- Derive `packages/webui-server` behavior from its own `vitest.config.ts` (one project, `environment: 'node'`, thresholds 76/69/66) — never the `packages/webui` split. Its `test` script (`vitest run --config vitest.config.ts`) executes from the package directory: judge `path.resolve('packages', ...)` assertions under both CWDs and state which reading makes a guard trivially pass or self-skip.
+- In `start-http-server-allowed-hostnames.test.ts`, `vi.mock('<specifier>', importOriginal => ({...spread, overridden}))` must exactly match the specifier imported by `import('../src/server/server-runtime.js')` — a mismatch lets the real server bind port 3456.
 
-## Partial mocks
+## Evidence and workspace closure
 
-- For `vi.mock('<specifier>', importOriginal => ({...spread, overridden}))`, verify the mocked specifier independently from the dynamic-import target `import('../src/server/server-runtime.js')`. A stale mock specifier can silently run the real implementation; in `packages/webui-server/tests/start-http-server-allowed-hostnames.test.ts`, that means binding port 3456 rather than testing option threading.
-
-## Root manifest dependencies
-
-- Classify root `package.json` access by role: `scripts/bump-version.mjs` (`collectManifests()`) solely writes root `version`; `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs` read root-manifest content.
-- Establish completeness with a literal `'package.json'` content grep over `scripts/` (`output_mode: content`, `truncated=false`) and zero-hit greps of root `vitest*.ts` and `playwright.config.ts`. Ignore per-package `packageJson` paths such as `scripts/build-package.mjs` and `src/version.ts`.
-- Read workspace membership from `pnpm-workspace.yaml`; do not infer it from a `workspaces` field.
+- Zero hits never prove absence. In gitignored `.temp_files/`, a zero-result `glob **/<name>*` is inconclusive — prove existence with a direct `read`; claim ENOENT only with an exact-directory `tree` (`truncated=false`). On a repo-wide `grep` timeout, don't retry: narrow to `scripts/` and root `package.json`, and label full-tree closure unverified.
+- Read workspace membership from `pnpm-workspace.yaml`, never a root `workspaces` field. Before tracing root-manifest impact, classify access: `scripts/bump-version.mjs` writes only `version`; `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs` read content.

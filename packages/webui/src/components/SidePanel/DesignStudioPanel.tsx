@@ -23,6 +23,7 @@ import { useActiveSessionId } from '@/stores';
 import { useAppTranslation } from '@/i18n';
 import { showPanel } from '@/lib/view-navigation';
 import { Pagination } from '@/components/ui/pagination';
+import { ContrastBadges, type ContrastIssue } from '@/components/ContrastBadges';
 
 interface KitSummary {
   id: string;
@@ -66,6 +67,7 @@ export function DesignStudioPanel({ className }: { className?: string }) {
   const [loading, setLoading] = useState(true);
   const [stack, setStack] = useState<string>('web');
   const [busyKit, setBusyKit] = useState<string | null>(null);
+  const [contrastIssues, setContrastIssues] = useState<ContrastIssue[]>([]);
   const sessionId = useActiveSessionId();
 
   useEffect(() => {
@@ -83,12 +85,26 @@ export function DesignStudioPanel({ className }: { className?: string }) {
       setKits(p?.kits ?? []);
       setActiveKit(p?.activeKit ?? null);
       setLoading(false);
+      setContrastIssues([]);
     };
     const onUse = (msg: unknown) => {
-      const p = (msg as { payload?: { ok?: boolean; kit?: string; sessionId?: string } }).payload;
+      const p = (
+        msg as {
+          payload?: {
+            ok?: boolean;
+            kit?: string;
+            sessionId?: string;
+            contrastIssues?: ContrastIssue[];
+          };
+        }
+      ).payload;
       if (!isOurs(p)) return;
       setBusyKit(null);
-      if (p?.ok && p.kit) setActiveKit(p.kit);
+      if (p?.ok && p.kit) {
+        setActiveKit(p.kit);
+        // WCAG AA gate result from the server (empty = clean).
+        setContrastIssues(p.contrastIssues ?? []);
+      }
     };
     client.on('design.list', onList);
     client.on('design.use', onUse);
@@ -201,6 +217,8 @@ export function DesignStudioPanel({ className }: { className?: string }) {
                 <Swatches tokens={kit.light} label={t('activity:designStudio.light')} />
                 <Swatches tokens={kit.dark} label={t('activity:designStudio.dark')} />
               </div>
+
+              {isActive && <ContrastBadges issues={contrastIssues} />}
 
               {kit.bestFor && (
                 <p className="text-[10px] text-muted-foreground mt-2 leading-snug">

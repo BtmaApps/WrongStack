@@ -8,7 +8,7 @@
  * probability. Each one must use the judgment only when:
  *
  *   1. an account resolves `ready` (unconfigured → silent, unusable → one warning),
- *   2. its own switch in `typesafe.judgments` is not `false`,
+ *   2. the master `typesafe.enabled` is true and its feature switch is not false,
  *   3. the host is not resting after transient failures (`rest.ts`), and
  *   4. the credential has not been rejected (`breaker.ts`).
  *
@@ -35,6 +35,7 @@ import type { Config } from '../types/config/root.js';
 import type { TypeSafeJudgmentsConfig } from '../types/config/typesafe.js';
 import type { TypeSafeClient } from './client.js';
 import { type WarnSink, warnOnce } from './notify.js';
+import { typeSafeAllowed, typeSafePolicyScope } from './policy.js';
 import { resolveTypeSafeAccount, type TypeSafeAccountReady } from './resolve.js';
 import { TYPESAFE_ROUTES } from './route.js';
 
@@ -54,7 +55,7 @@ export const TYPESAFE_JUDGMENT_FEATURES: readonly TypeSafeJudgmentFeature[] = [
 
 export interface TypeSafeJudge {
   /** Current shared client health, evaluated when the judge is resolved. */
-  unavailableReason?: 'auth-rejected' | 'resting' | undefined;
+  unavailableReason?: 'auth-rejected' | 'payment-required' | 'resting' | undefined;
   client: TypeSafeClient;
   /** Model id to send; the account's own. */
   model: string;
@@ -69,15 +70,16 @@ export interface ResolveTypeSafeJudgeDeps {
   logger?: (WarnSink & { debug?: (message: string) => void }) | undefined;
 }
 
-/** Whether the feature's switch allows it. Unset = allowed. */
+/** Master opt-in plus the feature switch; a credential alone never enables it. */
 export function isTypeSafeJudgmentEnabled(
   config: Pick<Config, 'typesafe'>,
   feature: TypeSafeJudgmentFeature,
 ): boolean {
-  return config.typesafe?.judgments?.[feature] !== false;
+  return typeSafeAllowed(config, feature);
 }
 
 const accounts = new Map<string, TypeSafeAccountReady>();
+let scopedAccounts = new WeakMap<object, Map<string, TypeSafeAccountReady>>();
 
 /**
  * A client for `feature`, or `undefined` when it must take its fallback path.
@@ -90,10 +92,10 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
   const env = deps.env ?? process.env;
   const logger = deps.logger;
   const probe = resolveTypeSafeAccount({ config: deps.config, env, restGate: null });
-  if (probe.status === 'unconfigured') return undefined;
+  if (probe.status === 'unconfigured' || probe.status === 'disabled') return undefined;
   if (probe.status === 'unusable') {
-    // A key or endpoint exists and is wrong. Features default ON with an
-    // account, so this is someone who meant to use TypeSafe: say it once.
+    // A key or endpoint exists and is wrong. The master is explicitly on,
+    // so this is someone who meant to use TypeSafe: say it once.
     warnOnce(logger, `typesafe is configured but unusable: ${probe.reason}`);
     return undefined;
   }
@@ -110,7 +112,13 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
     createHash('sha256').update(apiKey).digest('hex').slice(0, 16),
   ].join('\0');
 
-  let account = deps.env ? undefined : accounts.get(id);
+  const scope = typeSafePolicyScope(deps.config);
+  let memo = scope ? scopedAccounts.get(scope) : accounts;
+  if (!memo) {
+    memo = new Map();
+    scopedAccounts.set(scope!, memo);
+  }
+  let account = deps.env ? undefined : memo.get(id);
   if (!account) {
     const resolved = resolveTypeSafeAccount({
       config: deps.config,
@@ -126,23 +134,27 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
     });
     if (resolved.status !== 'ready') return undefined;
     account = resolved;
-    if (!deps.env) accounts.set(id, account);
+    if (!deps.env) memo.set(id, account);
   }
   return {
     client: account.client,
     model: account.model,
     feature: deps.feature,
-    unavailableReason: account.client.open
-      ? 'auth-rejected'
-      : account.rest?.isResting()
-        ? 'resting'
-        : undefined,
+    unavailableReason:
+      account.client.paymentRequired || account.rest?.paymentRequired
+        ? 'payment-required'
+        : account.client.open
+          ? 'auth-rejected'
+          : account.rest?.isResting()
+            ? 'resting'
+            : undefined,
   };
 }
 
 /** Test seam. Never call from product code. */
 export function resetTypeSafeJudgesForTests(): void {
   accounts.clear();
+  scopedAccounts = new WeakMap();
 }
 
 /** Run `fn` against the judge, or return `undefined` on any failure. */

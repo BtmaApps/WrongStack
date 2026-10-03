@@ -1,5 +1,6 @@
 {
   "storyWidget": {
+    "back": "Volver a la sesión",
     "open": "Abrir Story de la sesión",
     "hint": "Abrir el panel de la sesión. El resumen muestra llamadas a herramientas del agente principal y workers conocidos de esta pestaña; las barras muestran inicios de llamadas registrados.",
     "working": "Activo",
@@ -8,6 +9,15 @@
     "calls": "llamadas",
     "workers": "workers",
     "age": "Tiempo desde el inicio de esta sesión"
+  },
+  "sessionLayout": {
+    "actions": "Acciones rápidas",
+    "workspace": "Espacio de trabajo",
+    "bugHunt": "Búsqueda de errores",
+    "drag": "Arrastrar {{label}}",
+    "dragHint": "Arrastra para reordenar; usa ↑/↓ en el asa o los botones de flecha.",
+    "moveUp": "Mover {{label}} arriba",
+    "moveDown": "Mover {{label}} abajo"
   },
   "projectKit": {
     "subtitle": "Herramientas reutilizables para este proyecto.",
@@ -1978,6 +1988,7 @@
   },
   "designStudio": {
     "pickHint": "Elige un kit — el agente se ceñirá a él.",
+    "contrastWarn": "Contraste AA inferior a 4,5:1",
     "gallery": "Galería",
     "galleryTitle": "Abrir galería de vista previa en vivo",
     "stackTitle": "Stack objetivo",

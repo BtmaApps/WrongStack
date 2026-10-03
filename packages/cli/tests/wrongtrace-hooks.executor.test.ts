@@ -4,15 +4,15 @@
  * ToolExecutor makes before dispatching a tool) consults the registered
  * gate hooks and denies/allows/releases accordingly.
  *
- * Runs against the live daemon when reachable; every lock assertion
- * degrades gracefully offline. Uses the REAL HookRegistry + HookRunner
- * from @wrongstack/core, not stubs, so this proves the wiring contract.
+ * Runs against a local daemon fixture, including an explicit offline case.
+ * Uses the REAL HookRegistry + HookRunner from @wrongstack/core, so this
+ * proves the wiring contract without depending on the operator's daemon.
  */
 
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getWrongTrace, resetWrongTraceGate } from '../src/wiring/wrongtrace-gate.js';
 import {
   createWrongTraceHookPair,
@@ -62,8 +62,10 @@ function startStubDaemon(fragilePath: string): Promise<{
   url: string;
   close: () => Promise<void>;
   lockOwners: () => Array<{ path: string; owner: string }>;
+  setAvailable: (value: boolean) => void;
 }> {
   const locks = new Map<string, string>();
+  let available = true;
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://stub.local');
     const respond = (body: unknown, status = 200): void => {
@@ -73,6 +75,10 @@ function startStubDaemon(fragilePath: string): Promise<{
     const route = (post: Record<string, unknown>): void => {
       switch (url.pathname) {
         case '/api/health':
+          if (!available) {
+            respond({ status: 'offline' }, 503);
+            return;
+          }
           // socket_path: '' keeps IPC unwired (client.test.ts precedent for
           // deterministic runs beside a live daemon). Returning NO
           // socket_path would fall back to defaultSocketPath() — the LIVE
@@ -170,13 +176,29 @@ function startStubDaemon(fragilePath: string): Promise<{
             server.close(() => resolveClose());
           }),
         lockOwners: () => [...locks.entries()].map(([path, owner]) => ({ path, owner })),
+        setAvailable: (value) => {
+          available = value;
+        },
       });
     });
   });
 }
 
-afterAll(() => {
+let previousUrl: string | undefined;
+let stub: Awaited<ReturnType<typeof startStubDaemon>>;
+const FRAGILE_PATH = `${PROBE}-fragile.ts`;
+beforeEach(async () => {
+  previousUrl = process.env.WRONGTRACE_URL;
+  stub = await startStubDaemon(FRAGILE_PATH);
+  process.env.WRONGTRACE_URL = stub.url;
   resetWrongTraceGate();
+  expect((await getWrongTrace()).isAvailable).toBe(true);
+});
+afterEach(async () => {
+  if (previousUrl === undefined) delete process.env.WRONGTRACE_URL;
+  else process.env.WRONGTRACE_URL = previousUrl;
+  resetWrongTraceGate();
+  await stub.close();
 });
 
 describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
@@ -184,12 +206,6 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const wt = await getWrongTrace();
     const runner = buildRunner();
     const env = { cwd: process.cwd() };
-
-    if (!wt.isAvailable) {
-      const r = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
-      expect(r.block).toBeFalsy(); // offline → allow
-      return;
-    }
 
     await wt.lockFile(PROBE, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
     try {
@@ -209,8 +225,6 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
 
     const pre = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
     expect(pre.block).toBeFalsy();
-
-    if (!wt.isAvailable) return; // offline: no lock lifecycle to assert
 
     const held = (await wt.listLocks()).find((l) => l.path === PROBE);
     expect(held?.owner).toBe(`wrongstack:${SESSION}`);
@@ -237,13 +251,6 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const runner = buildRunner((event) => emitted.push(event));
     const env = { cwd: process.cwd() };
 
-    // Offline daemon → no gate events (fail-open contract).
-    if (!wt.isAvailable) {
-      await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
-      expect(emitted).toHaveLength(0);
-      return;
-    }
-
     // Foreign lock → deny event with the owner in the reason.
     await wt.lockFile(PROBE, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
     try {
@@ -267,45 +274,32 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
   });
 
   it('fragile files allow with a surgical-edit nudge in additionalContext', async () => {
-    // HERMETIC: the live daemon's fragile files are exactly the files other
-    // agents hold locks on, so allow-vs-deny races real shared state — the
-    // gate denies any foreign-locked file before the nudge can fire (that is
-    // why this test used to flip with live fleet activity). Point the gate at
-    // an in-process stub serving ONE known-fragile probe file with no locks:
-    // the allow+nudge+claim/release contract becomes deterministic while the
-    // test still drives the REAL HookRunner + hook-pair wiring.
-    const prevUrl = process.env.WRONGTRACE_URL;
-    const fragilePath = `${PROBE}-fragile.ts`;
-    const stub = await startStubDaemon(fragilePath);
-    process.env.WRONGTRACE_URL = stub.url;
+    const emitted: WrongTraceGateDecisionEvent[] = [];
+    const runner = buildRunner((event) => emitted.push(event));
+    const env = { cwd: process.cwd() };
+    const r = await runner.preToolUse('edit', { path: FRAGILE_PATH }, env, { mutating: true });
+    expect(r.block).toBeFalsy();
+    expect(r.additionalContext).toContain('fragile');
+    expect(stub.lockOwners()).toEqual([{ path: FRAGILE_PATH, owner: `wrongstack:${SESSION}` }]);
+    await runner.postToolUse('edit', { path: FRAGILE_PATH }, { content: '', isError: false }, env);
+    expect(stub.lockOwners()).toHaveLength(0);
+    expect(emitted.some((e) => e.kind === 'allow-fragile')).toBe(true);
+    expect(emitted.some((e) => e.kind === 'lock-acquired')).toBe(true);
+    expect(emitted.some((e) => e.kind === 'lock-released')).toBe(true);
+  });
+
+  it('allows an edit without gate events or lock claims when its daemon is offline', async () => {
+    stub.setAvailable(false);
     resetWrongTraceGate();
-    try {
-      const emitted: WrongTraceGateDecisionEvent[] = [];
-      const runner = buildRunner((event) => emitted.push(event));
-      const env = { cwd: process.cwd() };
-
-      const r = await runner.preToolUse('edit', { path: fragilePath }, env, { mutating: true });
-      expect(r.block).toBeFalsy();
-      expect(r.additionalContext).toContain('fragile');
-
-      // preToolUse claimed the daemon lock for this session…
-      expect(stub.lockOwners()).toEqual([{ path: fragilePath, owner: `wrongstack:${SESSION}` }]);
-
-      // …and postToolUse released it.
-      await runner.postToolUse('edit', { path: fragilePath }, { content: '', isError: false }, env);
-      expect(stub.lockOwners()).toHaveLength(0);
-
-      expect(emitted.some((e) => e.kind === 'allow-fragile')).toBe(true);
-      expect(emitted.some((e) => e.kind === 'lock-acquired')).toBe(true);
-      expect(emitted.some((e) => e.kind === 'lock-released')).toBe(true);
-    } finally {
-      // Restore without stringifying undefined: when WRONGTRACE_URL was not
-      // set before the test, DELETE it — assigning undefined would store the
-      // literal "undefined" and a later discovery would probe http://undefined.
-      if (prevUrl === undefined) delete process.env.WRONGTRACE_URL;
-      else process.env.WRONGTRACE_URL = prevUrl;
-      resetWrongTraceGate();
-      await stub.close();
-    }
+    expect((await getWrongTrace()).isAvailable).toBe(false);
+    const emitted: WrongTraceGateDecisionEvent[] = [];
+    const runner = buildRunner((event) => emitted.push(event));
+    const env = { cwd: process.cwd() };
+    expect(
+      (await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true })).block,
+    ).toBeFalsy();
+    await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
+    expect(emitted).toHaveLength(0);
+    expect(stub.lockOwners()).toHaveLength(0);
   });
 });

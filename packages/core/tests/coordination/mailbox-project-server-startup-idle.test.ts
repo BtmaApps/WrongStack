@@ -10,12 +10,18 @@ import {
 
 const permissions = vi.hoisted(() => ({
   entered: false,
+  onEnter: undefined as (() => void) | undefined,
   release: undefined as (() => void) | undefined,
+  cleaningUp: false,
 }));
 
 vi.mock('../../src/security/file-permissions.js', () => ({
-  restrictFilePermissions: async () => {
+  restrictFilePermissions: async (_file: string, options?: { label?: string }) => {
+    if (options?.label !== 'mailbox-server-metadata') return;
     permissions.entered = true;
+    permissions.onEnter?.();
+    // A failed startup observation must not strand a later ACL invocation.
+    if (permissions.cleaningUp) return;
     await new Promise<void>((resolve) => {
       permissions.release = resolve;
     });
@@ -35,11 +41,22 @@ it('starts the idle countdown only after metadata permissions are ready', async 
       ['--project-dir', temp.root],
       1,
     );
-    await vi.waitFor(() => expect(permissions.entered).toBe(true));
+    // Wait for the exact ACL phase, not vi.waitFor's default one-second poll
+    // budget. Cold metadata I/O can exceed that budget under full coverage.
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Metadata ACL setup never started')), 15_000);
+      const ready = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      permissions.onEnter = ready;
+      if (permissions.entered) ready();
+    });
     // Multiple lease sweeps and a whole idle window pass during ACL work.
     await sleep(400);
     await expect(fs.access(metadataPath)).resolves.toBeUndefined();
   } finally {
+    permissions.cleaningUp = true;
     permissions.release?.();
     try {
       await waitForMetadataRemoval(metadataPath);

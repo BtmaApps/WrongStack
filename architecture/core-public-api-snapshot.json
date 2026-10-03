@@ -154,6 +154,7 @@
         "export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';",
         "export { formatModelRef, type ModelRef, normalizeModelRef, parseModelRef, } from './model-ref.js';",
         "export { markUserInputObserver, userInputObserverCount } from './user-input-observers.js';",
+        "export { readUserInstructions, type UserInstructionsDocument, userInstructionsFile, writeUserInstructions, } from './project-instructions.js';",
         "export { runProviderWithRetry } from './provider-runner.js';",
         "export { setQueuedMessagesSnapshot } from './queued-messages.js';",
         "export { type AgentInit, type AgentInput, type AgentPipelines, createDefaultPipelines, installPipelineErrorBoundaries, type ToolCallPipelinePayload, } from './agent-types.js';",
@@ -630,13 +631,14 @@
       },
       "source": "packages/core/src/design/index.ts",
       "declarations": [
+        "export * from '../execution/design-capture.js';",
         "export * from '../execution/design-detect.js';",
         "export * from '../execution/design-kit-loader.js';",
         "export * from '../execution/design-materialize.js';",
         "export * from '../execution/design-project-store.js';",
         "export * from '../execution/design-tune.js';",
         "export * from '../execution/design-verify.js';",
-        "export { isDesignStack, type DesignStack } from '../types/design-kit.js';"
+        "export { isDesignStack, type DesignStack, type SkippedKitInfo } from '../types/design-kit.js';"
       ]
     },
     {
@@ -1535,21 +1537,21 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 64,
-      "sourceLines": 15063
+      "sourceLines": 15185
     },
     {
       "directory": "design",
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 11
+      "sourceLines": 12
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 71,
-      "sourceLines": 20570
+      "sourceFiles": 72,
+      "sourceLines": 21308
     },
     {
       "directory": "extension",
@@ -1682,7 +1684,7 @@
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 20,
-      "sourceLines": 3892
+      "sourceLines": 3893
     },
     {
       "directory": "statusline",
@@ -1696,7 +1698,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 25044
+      "sourceLines": 25050
     },
     {
       "directory": "tasking",
@@ -1710,28 +1712,28 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 23,
-      "sourceLines": 4553
+      "sourceLines": 4557
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15756
+      "sourceLines": 15769
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
-      "sourceFiles": 13,
-      "sourceLines": 2256
+      "sourceFiles": 14,
+      "sourceLines": 2379
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 78,
-      "sourceLines": 13587
+      "sourceLines": 13588
     },
     {
       "directory": "vcs",

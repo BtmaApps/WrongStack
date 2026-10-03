@@ -186,3 +186,35 @@ export function classifyTokenValue(value: string): import('../types/design-kit.j
   }
   return 'raw';
 }
+
+// ── WCAG 2.x contrast ────────────────────────────────────────────────────────
+
+/** sRGB relative luminance of a `#rrggbb[aa]` hex; alpha is ignored. */
+function hexLuminance(hex: string): number {
+  const h = hex.slice(1, 7);
+  const channel = (part: string) => {
+    const c = Number.parseInt(part, 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return (
+    0.2126 * channel(h.slice(0, 2)) +
+    0.7152 * channel(h.slice(2, 4)) +
+    0.0722 * channel(h.slice(4, 6))
+  );
+}
+
+/**
+ * WCAG 2.x contrast ratio (1..21) between two color tokens — any mix of OKLCH
+ * and hex, normalized through `colorToHex`. Returns null when either side is
+ * not a parseable color. Same math as the corpus AA floor test, so a kit that
+ * passes that test passes this gate.
+ */
+export function contrastRatio(a: string, b: string): number | null {
+  const ha = colorToHex(a);
+  const hb = colorToHex(b);
+  if (!ha || !hb) return null;
+  const la = hexLuminance(ha);
+  const lb = hexLuminance(hb);
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}

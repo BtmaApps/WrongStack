@@ -86,7 +86,7 @@ export function normalizeOpenAIChatUsage(u: OpenAIChatUsageWire, previous: Usage
       ? nonNegative(u.prompt_cache_hit_tokens) + nonNegative(u.prompt_cache_miss_tokens)
       : u.total_tokens !== undefined
         ? Math.max(0, u.total_tokens - completion)
-        : previous.input + cached + cacheWrite;
+        : previous.input + retainedCacheRead + retainedCacheWrite;
   // Hybrid gateways use Anthropic/MiniMax delta semantics in an OpenAI-shaped
   // envelope: `input_tokens` is fresh-only and the cache counts are separate.
   // `prompt_tokens`, when present, remains OpenAI's total. A broken gateway

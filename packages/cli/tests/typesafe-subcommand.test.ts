@@ -25,7 +25,7 @@ async function invoke(
 function fakeDeps(config: Record<string, unknown> = {}) {
   const lines: string[] = [];
   const deps = {
-    config: { features: {}, ...config },
+    config: { typesafe: { enabled: true }, features: {}, ...config },
     renderer: {
       write: (text: string) => lines.push(text.replace(/\n$/, '')),
       writeError: vi.fn(),
@@ -51,6 +51,25 @@ afterEach(() => {
 });
 
 describe('wstack typesafe status', () => {
+  it('can switch all consumers off and on without deleting the saved account', async () => {
+    const saved = {
+      typesafe: { enabled: true, apiKey: 'stored-key', judgments: { brain: false } },
+    };
+    vi.spyOn(configUtils, 'mutateConfigProviders').mockImplementation(
+      async (_path, _vault, mutate) => {
+        mutate({}, saved);
+      },
+    );
+    const { deps } = fakeDeps(saved);
+    expect((await invoke(['off'], deps)).code).toBe(0);
+    expect(saved.typesafe).toEqual({
+      enabled: false,
+      apiKey: 'stored-key',
+      judgments: { brain: false },
+    });
+    expect((await invoke(['on'], deps)).code).toBe(0);
+    expect(saved.typesafe.enabled).toBe(true);
+  });
   it('exits 0 with no account when nothing asks for one', async () => {
     // Having no TypeSafe account is an ordinary state, not a problem.
     const { deps, output } = fakeDeps();
@@ -69,7 +88,7 @@ describe('wstack typesafe status', () => {
 
   it('shows the OpenRouter route and never prints the key', async () => {
     process.env['OPENROUTER_API_KEY'] = 'sk-or-supersecret';
-    const { deps, output } = fakeDeps({ typesafe: { route: 'openrouter' } });
+    const { deps, output } = fakeDeps({ typesafe: { enabled: true, route: 'openrouter' } });
     await invoke([], deps);
     expect(output()).toContain('openrouter.ai/api/alpha/decisions');
     expect(output()).toContain('~typesafe/jev-latest');
@@ -93,7 +112,7 @@ describe('wstack typesafe test', () => {
           ),
       ),
     );
-    const { deps, output } = fakeDeps({ typesafe: { apiKey: 'k' } });
+    const { deps, output } = fakeDeps({ typesafe: { enabled: true, apiKey: 'k' } });
     const { code } = await invoke(['test'], deps);
     expect(code).toBe(0);
     expect(output()).toContain('jev-1.13.0');
@@ -105,7 +124,7 @@ describe('wstack typesafe test', () => {
       'fetch',
       vi.fn(async () => new Response('nope', { status: 401 })),
     );
-    const { deps, output } = fakeDeps({ typesafe: { apiKey: 'bad' } });
+    const { deps, output } = fakeDeps({ typesafe: { enabled: true, apiKey: 'bad' } });
     const { code } = await invoke(['test'], deps);
     expect(code).toBe(1);
     expect(output()).toContain('rejected the key');
@@ -116,7 +135,9 @@ describe('wstack typesafe test', () => {
       'fetch',
       vi.fn(async () => new Response('slow down', { status: 429 })),
     );
-    const { deps, output } = fakeDeps({ typesafe: { apiKey: 'k', requestTimeoutMs: 500 } });
+    const { deps, output } = fakeDeps({
+      typesafe: { enabled: true, apiKey: 'k', requestTimeoutMs: 500 },
+    });
     const { code } = await invoke(['test'], deps);
     expect(code).toBe(1);
     expect(output()).toContain('key is probably fine');
@@ -134,7 +155,7 @@ describe('wstack typesafe test', () => {
           }),
       ),
     );
-    const { deps, output } = fakeDeps({ typesafe: { apiKey: 'k' } });
+    const { deps, output } = fakeDeps({ typesafe: { enabled: true, apiKey: 'k' } });
     const { code } = await invoke(['test'], deps);
     expect(code).toBe(1);
     expect(output()).toContain('malformed');
@@ -155,6 +176,7 @@ describe('wstack typesafe login', () => {
   it('drops the previous host and model when explicitly switching routes', async () => {
     const saved = {
       typesafe: {
+        enabled: true,
         route: 'custom',
         endpoint: 'https://old-proxy.test/decisions',
         model: 'jev-1.13.0',
@@ -170,12 +192,18 @@ describe('wstack typesafe login', () => {
     const { deps } = fakeDeps(saved);
     const { code } = await invoke(['login', '--route', 'openrouter', '--key', 'new'], deps);
     expect(code).toBe(0);
-    expect(saved.typesafe).toEqual({ route: 'openrouter', apiKey: 'new', requestTimeoutMs: 900 });
+    expect(saved.typesafe).toEqual({
+      enabled: true,
+      route: 'openrouter',
+      apiKey: 'new',
+      requestTimeoutMs: 900,
+    });
   });
 
   it('keeps endpoint and model when rotating the key without changing route', async () => {
     const saved = {
       typesafe: {
+        enabled: true,
         route: 'custom',
         endpoint: 'https://proxy.test/decisions',
         model: 'jev-1.13.0',
@@ -190,6 +218,7 @@ describe('wstack typesafe login', () => {
     const { deps } = fakeDeps(saved);
     expect((await invoke(['login', '--key', 'new'], deps)).code).toBe(0);
     expect(saved.typesafe).toEqual({
+      enabled: true,
       route: 'custom',
       endpoint: 'https://proxy.test/decisions',
       model: 'jev-1.13.0',

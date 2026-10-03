@@ -16,6 +16,7 @@ export const JEV_FEATURES = [
 ] as const;
 export type JevFeature = (typeof JEV_FEATURES)[number];
 export interface JevSettingsPatch {
+  enabled?: boolean;
   route?: 'typesafe' | 'openrouter' | 'custom';
   apiKey?: string | null;
   endpoint?: string | null;
@@ -32,7 +33,9 @@ export function validateJevSettingsPatch(value: unknown): JevSettingsPatch {
     throw new Error('Expected a Jev settings object');
   const patch = value as Record<string, unknown>;
   for (const [key, val] of Object.entries(patch)) {
-    if (key === 'route') {
+    if (key === 'enabled') {
+      if (typeof val !== 'boolean') throw new Error('Invalid Jev enabled setting');
+    } else if (key === 'route') {
       if (!isTypeSafeRoute(val)) throw new Error('Invalid Jev route');
     } else if (['apiKey', 'endpoint', 'model'].includes(key)) {
       if (val !== null && (typeof val !== 'string' || !val.trim() || val.length > 4096))
@@ -91,6 +94,7 @@ function apply(config: Partial<Config>, patch: JevSettingsPatch): Partial<Config
     delete typesafe.model;
   }
   for (const key of [
+    'enabled',
     'route',
     'apiKey',
     'endpoint',
@@ -128,7 +132,7 @@ function apply(config: Partial<Config>, patch: JevSettingsPatch): Partial<Config
         dispatch: { ...config.fleet?.dispatch, typesafeClassifier: patch.features.fleetDispatch },
       };
   }
-  if (typesafe.route === 'custom' && !typesafe.endpoint)
+  if (patch.enabled !== false && typesafe.route === 'custom' && !typesafe.endpoint)
     throw new Error('Custom route requires an endpoint');
   return next;
 }
@@ -159,13 +163,23 @@ export function jevSettingsSnapshot(config: Readonly<Config>) {
     ]),
   ) as Record<JevFeature, boolean>;
   return {
+    enabled: config.typesafe?.enabled === true,
     status: account.status,
-    reason: account.status === 'ready' ? undefined : account.reason,
+    reason:
+      account.status === 'ready'
+        ? account.rest?.isResting()
+          ? account.rest.reason()
+          : undefined
+        : account.reason,
     route,
     model: config.typesafe?.model ?? spec?.model ?? '',
     endpoint,
     requestTimeoutMs: config.typesafe?.requestTimeoutMs ?? 4000,
-    keySource: account.status === 'ready' ? account.keySource : 'none',
+    keySource: config.typesafe?.apiKey?.trim()
+      ? 'config'
+      : process.env[spec?.env ?? TYPESAFE_ROUTES.typesafe.env]?.trim()
+        ? 'env'
+        : 'none',
     features,
     logContent: config.typesafe?.logContent === true,
     recallTurnContext: config.Sage?.inject?.turnContext === true,

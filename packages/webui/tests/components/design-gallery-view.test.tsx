@@ -114,6 +114,36 @@ describe('DesignGalleryView', () => {
     expect(screen.getByText(/clean/)).toBeTruthy();
   });
 
+  it('labels the verify status with its token basis — capture never reads as a kit score', () => {
+    render(<DesignGalleryView />);
+    emit('design.list', { kits: [KIT], activeKit: 'kit-one', overrides: {} });
+
+    // Captured project tokens: the basis (and its source files) ride the status.
+    emit('design.verify', {
+      ok: true,
+      score: 0.8,
+      violationCount: 3,
+      filesScanned: 5,
+      source: 'captured',
+      kit: null,
+      capturedFrom: ['src/index.css'],
+    });
+    expect(screen.getByText(/80% on-palette/)).toBeTruthy();
+    expect(screen.getByText(/captured tokens \(src\/index\.css\)/)).toBeTruthy();
+
+    // Kit basis replaces it.
+    emit('design.verify', {
+      ok: true,
+      score: 1,
+      violationCount: 0,
+      filesScanned: 5,
+      source: 'kit',
+      kit: 'minimal-clarity',
+    });
+    expect(screen.getByText(/kit minimal-clarity/)).toBeTruthy();
+    expect(screen.queryByText(/captured tokens/)).toBeNull();
+  });
+
   it('drops a late design.list that belongs to another tab', () => {
     act(() => setActiveSessionLane('tab-1'));
     render(<DesignGalleryView />);

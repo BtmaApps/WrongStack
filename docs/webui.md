@@ -23,6 +23,13 @@ Tools reports measured timings and Files reports operation/line evidence.
 Models compares provider reliability, latency, token/cache/cost coverage, and
 recorded tool/task/verification/loop signals across the leader and subagents.
 
+The secondary left menu keeps **Story** fixed above its scrolling content and
+switches it to **Back to session** while the dashboard is open. In the chat
+panel, each section can be collapsed by its heading and reordered by dragging
+its grip. The grip also supports ↑/↓ keys, and arrow buttons work on touch
+screens. Section order and open/closed choices persist in this browser.
+Collapsing a section keeps its live workspace subscriptions mounted.
+
 ## Ports
 
 The Web UI uses a **single shared HTTP/WebSocket port**. The HTTP server serves the
@@ -263,6 +270,12 @@ parked (`inert`, out of flow) while another view is in front — the transcript,
 scroll position and unsent draft survive a trip to Files or Kanban.
 
 ### Notable behaviours
+
+- **Office shortcut and version** — the building icon stays visible at the top
+  right in calm/full chrome and the mobile header. It opens Agent Roster's
+  Office Map tab, which contains the Agents Office and Topology views. The
+  runtime version appears beside the project name on desktop and directly
+  below it on mobile; an available update also shows the latest version.
 
 - **Theme** — the workbench topbar (`WorkbenchTopbar`) carries a single
   sun/moon button that flips between light and dark. The stored preference is

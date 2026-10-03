@@ -1,5 +1,21 @@
 # Jev settings and activity
 
+Jev is **disabled by default**, including profiles that already contain an API
+key or use `TYPESAFE_API_KEY`. Enable it explicitly with **Enable Jev** and Save,
+`/jev on`, or `wstack typesafe on` (`typesafe.enabled: true`). `/jev off` or
+`wstack typesafe off` disables every Jev consumer, the `jev` tool, plugin calls
+and billed diagnostics while preserving the key and individual feature choices.
+The local `jev_status` tool remains available without making requests. Turning
+the master switch off also blocks retained clients and cancels in-flight
+requests in running sessions owned by the config store. Requests already sent
+may still be billed. Restart sessions when enabling middleware created at boot.
+
+HTTP **402 Payment Required** stops further automatic requests for that endpoint
+and credential in the process, across features and fresh clients. Consumers use
+their existing fallback. Fix billing and restart, change the account, or leave
+Jev disabled. An explicit connection test can still probe an enabled account;
+a failed diagnostic client stops after its first 402 too.
+
 Open **WebUI → Settings → Jev** to select TypeSafe, OpenRouter Decisions or a
 custom endpoint; add, replace or remove the profile API key; override the model
 and request timeout; and enable or disable each consumer. The saved key is never
@@ -16,6 +32,8 @@ In the TUI, `/jev` (alias `/typesafe`) shows the account and every feature switc
 `/settings jev` reaches the same command. Examples:
 
 ```text
+/jev on
+/jev off
 /jev login typesafe
 /jev login openrouter
 /jev endpoint https://example.com/v1/systemone
@@ -53,7 +71,7 @@ See [Brain controls](slash/brain.md#the-judge-is-still-part-of-council).
 
 ## Agent-callable decisions
 
-With an account configured, the `tool` feature exposes `jev` alongside `llm`
+With Jev explicitly enabled and an account configured, the `tool` feature exposes `jev` alongside `llm`
 and `council`. Disable it with `/jev feature tool off` or **Agent decision tool**
 in Settings → Jev (`typesafe.judgments.tool: false`). This tool tracks saved
 account and feature changes in running CLI/TUI and embedded WebUI sessions.

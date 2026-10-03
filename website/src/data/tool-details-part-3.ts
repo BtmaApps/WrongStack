@@ -725,9 +725,9 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
     params: [
       {
         name: 'action',
-        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify'",
+        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | 'capture'",
         description:
-          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift. Default: list.',
+          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift (pinned kit, or the project’s captured tokens); capture = snapshot the project’s existing token source so verify works without a kit. Default: list.',
       },
       {
         name: 'kit',
@@ -767,7 +767,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
         name: 'files',
         type: 'string[]',
         description:
-          'Verify: explicit project-relative files to scan. Default: a bounded UI-file walk.',
+          'Verify: explicit project-relative files to scan. Default: a bounded UI-file walk. Capture: explicit token-source files (.css / theme .ts / .dart). Default: conventional paths like src/index.css, src/theme/theme.ts, lib/theme/theme.dart.',
       },
     ],
     notes: [

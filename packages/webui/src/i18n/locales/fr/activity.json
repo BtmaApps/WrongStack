@@ -1,5 +1,6 @@
 {
   "storyWidget": {
+    "back": "Retour à la session",
     "open": "Ouvrir Story de la session",
     "hint": "Ouvrir le tableau de bord de la session. Le résumé montre les appels d'outils conservés de l'agent principal et les workers connus de cet onglet ; les barres indiquent les débuts d'appels enregistrés.",
     "working": "Actif",
@@ -8,6 +9,15 @@
     "calls": "appels",
     "workers": "workers",
     "age": "Temps écoulé depuis le début de cette session"
+  },
+  "sessionLayout": {
+    "actions": "Actions rapides",
+    "workspace": "Espace de travail",
+    "bugHunt": "Recherche de bugs",
+    "drag": "Déplacer {{label}}",
+    "dragHint": "Glissez pour réordonner ; utilisez ↑/↓ sur la poignée ou les boutons fléchés.",
+    "moveUp": "Monter {{label}}",
+    "moveDown": "Descendre {{label}}"
   },
   "projectKit": {
     "subtitle": "Des outils réutilisables pour ce projet.",
@@ -1978,6 +1988,7 @@
   },
   "designStudio": {
     "pickHint": "Choisir un kit — l'agent s'y conformera.",
+    "contrastWarn": "Contraste AA inférieur à 4,5:1",
     "gallery": "Galerie",
     "galleryTitle": "Ouvrir la galerie d'aperçu en direct",
     "stackTitle": "Stack cible",

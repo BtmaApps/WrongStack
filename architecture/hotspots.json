@@ -375,8 +375,8 @@
       "relativeImports": 7
     },
     "packages/webui/src/components/SidePanel/SessionPanel.tsx": {
-      "lines": 857,
-      "relativeImports": 7
+      "lines": 850,
+      "relativeImports": 8
     },
     "packages/webui/src/components/SidePanel/SkillsList.tsx": {
       "lines": 803,
@@ -403,7 +403,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 997,
+      "lines": 999,
       "relativeImports": 9
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {

@@ -3,14 +3,19 @@ import * as path from 'node:path';
 import type { DesignStack } from '@wrongstack/core/design';
 import {
   applyTokenOverrides,
+  captureProjectTokens,
   getDesignKitLoader,
   isDesignStack,
+  kitContrastIssues,
   loadActiveKit,
   materializeTokens,
   recordKitChoice,
   recordOverrides,
   resolveSemanticTune,
+  resolveVerifyTokens,
   runDesignVerify,
+  saveCapturedTokens,
+  type KitContrastIssue,
   type SemanticTune,
   setActiveKit,
   setDesignOverrides,
@@ -53,7 +58,16 @@ async function resolveReal(p: string): Promise<string> {
 }
 
 export interface DesignInput {
-  action?: 'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | undefined;
+  action?:
+    | 'list'
+    | 'use'
+    | 'foundations'
+    | 'set'
+    | 'tune'
+    | 'materialize'
+    | 'verify'
+    | 'capture'
+    | undefined;
   kit?: string | undefined;
   stack?: string | undefined;
   /** action "set" / "use": token overrides, e.g. { primary: "oklch(...)", "dark.bg": "#111" }. */
@@ -64,7 +78,7 @@ export interface DesignInput {
   out?: string | undefined;
   /** action "materialize": overwrite an existing file. */
   force?: boolean | undefined;
-  /** action "verify": explicit files to scan (project-relative). Defaults to a UI-file walk. */
+  /** action "verify"/"capture": explicit files to scan/read (project-relative). Verify defaults to a UI-file walk; capture to conventional token-source paths. */
   files?: string | string[] | undefined;
 }
 
@@ -75,6 +89,8 @@ export interface DesignOutput {
   output: string;
   /** action "materialize": where the theme file was (or would be) written. */
   path?: string | undefined;
+  /** action "verify"/"capture": what the token basis was — 'kit' or 'captured'. */
+  source?: string | undefined;
   /** action "verify": adherence score 0..1 and violation count. */
   score?: number | undefined;
   violations?: number | undefined;
@@ -88,6 +104,46 @@ function normalizeOverrides(set: unknown): Overrides {
     }
   }
   return out;
+}
+
+/**
+ * Refuse a caller-supplied project-relative path that would escape the
+ * project root (shared by verify's scan list and capture's source list).
+ * Canonicalized through realpath so symlinks / bind mounts can't smuggle an
+ * out-of-root path past the prefix check; `rel === '..'` / '..<sep>' prefix
+ * (not bare startsWith) so in-root names like `..hidden` stay legal.
+ */
+async function assertProjectRelative(
+  files: string[],
+  projectRoot: string,
+  label: string,
+): Promise<void> {
+  const root = await resolveReal(projectRoot);
+  for (const f of files) {
+    const absResolved = path.isAbsolute(f) ? path.resolve(f) : path.resolve(path.join(projectRoot, f));
+    const absParent = await resolveReal(path.dirname(absResolved));
+    const abs = path.join(absParent, path.basename(absResolved));
+    const rel = path.relative(root, abs);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      throw new ToolValidationError({
+        message: `design: ${label} "${f}" would escape the project root`,
+        field: 'files',
+      });
+    }
+  }
+}
+
+/**
+ * WCAG AA gate text: warns (never blocks) when a kit's readable-text pairs fall
+ * below 4.5:1 in either theme. Empty string when the kit is clean.
+ */
+function contrastWarning(issues: KitContrastIssue[]): string {
+  if (issues.length === 0) return '';
+  const detail = issues.map((i) => `${i.theme} ${i.pair} = ${i.ratio.toFixed(2)}:1`).join(', ');
+  return (
+    `\n⚠️ WCAG AA contrast: ${detail} (< 4.5:1). Fix the override or re-tune the token ` +
+    '(design set primary=oklch(…)) — foundations make AA the floor, not a preference.\n'
+  );
 }
 
 /**
@@ -124,11 +180,13 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     properties: {
       action: {
         type: 'string',
-        enum: ['list', 'use', 'foundations', 'set', 'tune', 'materialize', 'verify'],
+        enum: ['list', 'use', 'foundations', 'set', 'tune', 'materialize', 'verify', 'capture'],
         description:
           'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; ' +
           'tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme ' +
-          'file; verify = scan UI for token drift. Default: list.',
+          'file; verify = scan UI for token drift (pinned kit, or the project\u2019s captured tokens); ' +
+          'capture = snapshot the project\u2019s existing token source so verify works without a kit. ' +
+          'Default: list.',
       },
       kit: {
         type: 'string',
@@ -173,7 +231,9 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         type: 'array',
         items: { type: 'string' },
         description:
-          'Verify: explicit project-relative files to scan. Default: a bounded UI-file walk.',
+          'Verify: explicit project-relative files to scan. Default: a bounded UI-file walk. ' +
+          'Capture: explicit token-source files (.css / theme .ts / .dart). Default: conventional ' +
+          'paths like src/index.css, src/theme/theme.ts, lib/theme/theme.dart.',
       },
     },
     required: [],
@@ -190,6 +250,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       'tune',
       'materialize',
       'verify',
+      'capture',
     ]);
     if (input.action !== undefined && !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
@@ -247,6 +308,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       const keepOverrides = persisted?.kit === manifest.id ? (persisted.overrides ?? {}) : {};
       const overrides: Overrides = { ...keepOverrides, ...normalizeOverrides(input.set) };
       const tokens = rawTokens ? applyTokenOverrides(rawTokens, overrides) : rawTokens;
+      const contrastWarn = tokens ? contrastWarning(kitContrastIssues(tokens)) : '';
 
       setActiveKit(ctx, manifest.id, resolvedStack, overrides);
       await recordKitChoice(
@@ -275,7 +337,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         action,
         kit: manifest.id,
         stack: resolvedStack,
-        output: `${header}${tokenBlock}\n${body}`,
+        output: `${header}${tokenBlock}${contrastWarn}\n${body}`,
       };
     }
 
@@ -330,6 +392,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       const rawTokens = await loader.readTokens(active.kit);
       if (!rawTokens) throw new Error(`design: kit "${active.kit}" has no tokens.json.`);
       const tokens = applyTokenOverrides(rawTokens, active.overrides);
+      const contrastWarn = contrastWarning(kitContrastIssues(tokens));
       const result = materializeTokens({
         tokens,
         stack: resolvedStack,
@@ -393,49 +456,75 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         path: result.path,
         output:
           `Wrote ${result.format} to ${result.path}. Import these tokens in your UI so the kit ` +
-          `palette is the source of truth. ${exists ? '(overwrote existing file)' : ''}`,
+          `palette is the source of truth. ${exists ? '(overwrote existing file)' : ''}` + contrastWarn,
       };
     }
 
-    if (action === 'verify') {
+    if (action === 'capture') {
       signal?.throwIfAborted();
-      const active = await loadActiveKit(ctx.projectRoot);
-      if (!active) throw new Error(NO_ACTIVE_KIT);
-      signal?.throwIfAborted();
-      const rawTokens = await loader.readTokens(active.kit);
-      if (!rawTokens) throw new Error(`design: kit "${active.kit}" has no tokens.json.`);
-      signal?.throwIfAborted();
-      const tokens = applyTokenOverrides(rawTokens, active.overrides);
       const normalizedFiles = input.files
         ? (Array.isArray(input.files) ? input.files : String(input.files).split(','))
             .filter((f): f is string => typeof f === 'string')
             .map((f) => f.trim().replace(/\\/g, '/'))
             .filter(Boolean)
         : undefined;
-      // Containment: explicit files are documented as project-relative, but a
-      // ../ climb or an absolute outside path was resolved and read as-is —
-      // the violation report then echoes outside file paths and snippets into
-      // the tool output. Mirror the materialize guard: canonicalize through
-      // realpath (symlink/bind-mount safe) and refuse escapes before reading.
-      // In-root absolute paths stay allowed, as for materialize's out.
+      if (normalizedFiles) await assertProjectRelative(normalizedFiles, ctx.projectRoot, 'capture file');
+      const result = await captureProjectTokens(ctx.projectRoot, { files: normalizedFiles });
+      const lightN = Object.keys(result.tokens.light ?? {}).length;
+      const darkN = Object.keys(result.tokens.dark ?? {}).length;
+      if (lightN + darkN === 0) {
+        throw new Error(
+          `design capture: no tokens found.${result.notes.length ? ` ${result.notes.join(' ')}` : ''}`,
+        );
+      }
+      const relPath = await saveCapturedTokens(ctx.projectRoot, {
+        stack: result.stack,
+        files: result.files,
+        tokens: result.tokens,
+        palettes: result.palettes,
+      });
+      const lines = [
+        `Captured ${lightN + darkN} token value(s) (${lightN} light / ${darkN} dark) from ${result.files.join(', ')} → ${relPath}.`,
+        `Stack inferred: ${result.stack}.`,
+        result.skipped.length ? `Skipped (no tokens found): ${result.skipped.join(', ')}.` : '',
+        result.notes.length ? `Notes: ${result.notes.join(' · ')}` : '',
+        'These are the project\u2019s OWN tokens — `design {action:"verify"}` and the write-time ' +
+          'drift check now run against them while no kit is pinned. Re-run capture when the ' +
+          'token source changes.',
+      ].filter(Boolean);
+      return {
+        action,
+        stack: result.stack,
+        path: relPath,
+        source: 'captured',
+        output: lines.join('\n'),
+      };
+    }
+
+    if (action === 'verify') {
+      signal?.throwIfAborted();
+      // Kit-less middle case: a pinned kit wins, else the project's captured
+      // tokens (design capture), else there is nothing to verify against.
+      const source = await resolveVerifyTokens(ctx.projectRoot);
+      if (!source) {
+        throw new Error(
+          'design: nothing to verify against (no active kit, no captured tokens). Pin one with ' +
+            '`design {action:"use", kit:"<id>"}`, or capture the project\u2019s own tokens with ' +
+            '`design {action:"capture"}`.',
+        );
+      }
+      signal?.throwIfAborted();
+      const tokens = source.tokens;
+      const normalizedFiles = input.files
+        ? (Array.isArray(input.files) ? input.files : String(input.files).split(','))
+            .filter((f): f is string => typeof f === 'string')
+            .map((f) => f.trim().replace(/\\/g, '/'))
+            .filter(Boolean)
+        : undefined;
+      // Containment: explicit files are documented as project-relative; mirror
+      // the materialize guard (realpath-canonicalized, in-root absolutes OK).
       if (normalizedFiles) {
-        const root = await resolveReal(ctx.projectRoot);
-        for (const f of normalizedFiles) {
-          const absResolved = path.isAbsolute(f)
-            ? path.resolve(f)
-            : path.resolve(path.join(ctx.projectRoot, f));
-          const absParent = await resolveReal(path.dirname(absResolved));
-          const abs = path.join(absParent, path.basename(absResolved));
-          const rel = path.relative(root, abs);
-          // `rel === '..'` / '..<sep>' prefix: a sibling like `..hidden`
-          // inside the root is legal and must not trip this check.
-          if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
-            throw new ToolValidationError({
-              message: `design: verify file "${f}" would escape the project root`,
-              field: 'files',
-            });
-          }
-        }
+        await assertProjectRelative(normalizedFiles, ctx.projectRoot, 'verify file');
       }
       const report = await runDesignVerify(ctx.projectRoot, tokens, normalizedFiles);
       const pct = Math.round(report.score * 100);
@@ -469,13 +558,20 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           'not "clean": review them by hand against the materialized theme, or load the ' +
           '`design-critique` skill.'
         : '';
+      const sourceLine =
+        source.source === 'kit'
+          ? `Kit: ${source.kit}.`
+          : `Token source: the project\u2019s own captured tokens (${source.files?.join(', ') ?? 'design capture'}).`;
       const summary =
+        `${sourceLine}\n` +
         `Adherence: ${pct}% on-palette across ${report.filesScanned} file(s). ` +
         `${report.violations.length} violation(s)${axisLine ? ` (${axisLine})` : ''}.` +
         (report.violations.length
           ? `\n${top}${report.violations.length > 25 ? `\n  …and ${report.violations.length - 25} more` : ''}` +
             (colorHits
-              ? `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).`
+              ? `\n\nReplace off-palette colors with ${
+                  source.source === 'kit' ? 'kit tokens' : 'the project\u2019s own tokens'
+                } (or the materialized CSS vars / token utilities).`
               : '') +
             (composition
               ? `\n${composition} composition finding(s) need contextual review against the brief. ` +
@@ -488,7 +584,8 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         'require rendered review with `design-critique`.';
       return {
         action,
-        kit: active.kit,
+        kit: source.source === 'kit' ? source.kit : undefined,
+        source: source.source,
         output: summary,
         score: report.score,
         violations: report.violations.length,

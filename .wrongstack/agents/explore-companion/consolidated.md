@@ -2,48 +2,46 @@
 
 ## Result Submission
 
-- Submit findings through `submit_result`; this role has no `mailbox` capability. Keep every field ASCII-only. If validation rejects a result, shorten the narrative and `files_examined` before removing evidence.
-- Separate confirmed findings from inconclusive checks. A failed tool, ignored path, unavailable index, or unqualified zero-hit result is not proof of absence.
-- State evidence freshness. Re-read volatile targets before finalizing and report concurrent edits, deletion, or a missing baseline that limits conclusions.
+- Submit findings with `submit_result`; this role has no `mailbox`. Keep every field ASCII-only. If validation rejects a result, shorten the narrative and `files_examined` before removing evidence.
+- Separate confirmed findings from inconclusive checks. Tool failure, ignored paths, index gaps, truncation, or an unqualified zero-hit result never proves absence.
+- Re-read or re-tree volatile targets immediately before `submit_result`; report observed state transitions rather than an earlier snapshot.
 
-## Evidence Discipline
+## Search and Evidence Discipline
 
-- Read named files directly. Treat `codebase-skeleton` line ranges as approximate; pin declarations, imports, and assertions with exact searches or short reads.
-- `glob` and `grep` honor ignore rules. For ignored paths such as `.temp_files/`, `dist/`, and `.wrongstack/`, use an exact-directory `tree` with `truncated=false` plus direct reads; `codebase-search` is not authoritative.
-- A zero-hit content grep does not prove a file is absent. Prove absence with a direct `read` (authoritative `ENOENT`) and an untruncated exact-directory `tree`; for volatile ignored trees, check at probe start and end.
-- Content-mode `grep` may display only three rows per file even when `count=14 shown=14 truncated=false`; this display cap is independent of truncation. First build an exhaustive candidate set with an exact-token `files_with_matches` search and `truncated=false`, then use a file-scoped content search or direct reads for omitted usage lines.
-- Treat call graphs as corroboration only: they may miss ignored files, writes, barrels, dynamic/type-only imports, mocks, and name collisions. Treat `git diff HEAD` as historical evidence only for tracked files.
+- Read named files directly. Treat skeleton ranges and call-graph rows as leads; confirm declarations, imports, assertions, and wiring with exact searches or short reads.
+- Build tracked candidate sets with repo-wide, case-sensitive `grep` in `files_with_matches` mode and `truncated=false`. Read hits to reject comments, generated artifacts, same-file references, and suffix collisions.
+- Use word-boundary tokens such as `\bSymbol\b` and search every export separately; case variants and same-file call-graph conflation can otherwise create false edges or false absence. Only `codebase-incoming-calls` rows with `callType: "call"` are runtime call edges; report capped counts separately.
+- Avoid directory-level nested braces, extension alternation, and large combined token patterns for file enumeration or capped searches. Confirm config presence with flat globs such as `packages/wrongtrace/*`, exact-name reads, or `tree`; split searches by family and run the most generic token alone after an unexpected zero.
+- Raw `<` may arrive HTML-escaped. For JSX/component usage, combine an exact import search with `\bComponentName\b`, then inspect hits to distinguish imports, JSX render sites, re-exports, and mentions.
+- Content search does not search filenames. A test need not mention itself. Zero hits describe only the searched scope; filesystem absence requires direct `ENOENT` plus an untruncated containing-directory tree.
 
-## Consumer and Public-API Mapping
+## Public Surface and Consumer Closure
 
-- Never reuse a stored importer count or exact-\(N\) claim. Rerun live repository-wide searches and require `truncated=false` before reporting completeness.
-- Search both the leaf-module specifier and exact exported-symbol names in `files_with_matches` mode. Search relative, package, subpath, and barrel specifiers; a `from`-line-only search can miss `vi.mock` references.
-- Verify every candidate in content mode with surrounding context. Reject suffix collisions, comments, documentation, generated reports, and same-named implementations; read complete multiline import blocks before identifying imported symbols.
-- For common test stems, enumerate exact filenames first with a glob such as `glob "**/runtime.test.ts"`. Bare stem counts cannot distinguish packages or comment mentions.
-- Read every intermediary barrel and the package export map before declaring a module private. Distinguish `export *` from explicit re-export lists and treat underscore-prefixed modules as potentially public.
-- Verify every `codebase-incoming-calls` row, especially `callType: "import"`, with an exact `\b<symbol>\b` content grep over `src`. Import rows can be anchored to an unrelated enclosing declaration and do not reliably identify the referencing structure.
-- For manifest dependents, classify actual readers and writers by operations such as `collectManifests()`, `readFileSync`, and `resolve`; search hits alone are not dependency edges. Read `pnpm-workspace.yaml` rather than expecting a `workspaces` field.
+- Establish API exposure before counting consumers: diff module exports against every barrel re-export, follow wildcard barrels, and inspect the owning `package.json` `exports`. An alias accepted only by `scripts/vitest-core-aliases.mjs` but absent from `exports` is an exposure anomaly, not a public Node ESM path.
+- Pair exact module-specifier searches—static `from`, `require`, and dynamic `import()`—with separate exported-symbol searches; named-token grep cannot detect wildcard re-exports.
+- For `packages/wrongtrace/src/*`, search both `@wrongstack/wrongtrace` and the CLI shim `packages/cli/src/wiring/wrongtrace-hooks.ts`; split factory families so match caps cannot hide tests.
+- For `packages/webui/src/lib/ws-client-*.ts`, also inspect the installer block, composed intersection, and re-exports at the bottom of `packages/webui/src/lib/ws-client.ts`; consumers resolve through that facade.
 
-## Test Impact
+## Test Collection, Typechecking, and Browser Smokes
 
-- Read the full test before predicting impact. Enumerate assertions, imported values and types, events, errors, platform gates, snapshots, strict `fetch` stubs, and partial `vi.mock` requirements.
-- Cross-check each assertion against the live production callee, especially return statements and types. Do not infer behavior from comments or historical assumptions.
-- For partial mocks, verify that the `vi.mock()` specifier still resolves to the intended live module. Check it separately from the dynamic-import target because those modules may differ; a stale mock specifier can leave the real implementation active.
-- Resolve commands from live package scripts and Vitest configuration. Read `coverage.include` and thresholds before predicting gate impact; root coverage uses aggregate `perFile: false` thresholds and excludes `**/.temp_files/**`.
+- Read the current root and package Vitest configs, package scripts, and test tsconfig instead of predicting collection. The root currently collects both `packages/**/tests/**/*.test.{ts,tsx}` and `packages/**/src/**/__tests__/**`, so a `src/__tests__` suite can run at root and package level.
+- `packages/webui/**` is excluded from root Vitest. Run its suite with `cd packages/webui && pnpm test`, following `packages/webui/vitest.config.ts` and `packages/webui/TESTING.md`; `packages/webui-server/tests/` remains root-collected.
+- The WebUI config collects `tests/**/*.test.{ts,tsx}`, not `*-smoke.mjs`, and `packages/webui/tsconfig.json` includes only `src/**/*`. Before naming a smoke's gate, check filename references, internal virtual-module or plugin identifiers, `test:*-browser` scripts, config inclusion, and tsconfig; absence from scripts means manual-only (`node tests/<name>.mjs`).
+- Read each smoke's `assert.*` calls. Report `console.log` diagnostics as printed, not asserted. Across `page.evaluate`, compare the in-page returned object shape with Node-side property reads; mismatches can escape typecheck and Vitest because `.mjs` smokes are not collected.
+- Run `pnpm check:test-types` when test diagnostics could change. `packages/webui-server/vitest.config.ts` currently has one Node project, `include: ['tests/**/*.test.ts']`, and coverage thresholds of 76/69/66 for statements/functions/branches. `packages/simpleui` uses `vite.config.ts`; most suites need `// @vitest-environment jsdom`.
 
-## Proof Rounds and Scratch Artifacts
+## Ignored Scratch Namespace (`.temp_files/`)
 
-- Snapshot live `.temp_files/` targets with exact `tree` checks at probe start and end. Capture a full direct read on first success and re-read immediately before finalizing.
-- Triage `.log`, `.txt`, and `.json` files as captured artifacts before source-module search. Discover runner artifacts by exact round or owner prefix, not an assumed full filename.
-- An output whose last block is `START` without a matching `END` represents a live or interrupted run, not a completed proof round. Preserve existing evidence before recommending another run.
-- PowerShell parses a script to AST before execution, so later edits do not alter an in-flight instance. Avoid reruns when startup deletes files or concurrent instances share append targets.
-- Run round tests from repository root with `npx vitest run --config <round>/<exact-config>`. Inspect `root`, aliases, and include resolution, then enumerate sibling `*.test.ts` files before interpreting an exact or wildcard stem.
+- `.temp_files/` is gitignored and absent from codebase indexes and normal content grep. Use direct `read`, exact containing-directory `tree(..., truncated=false)`, a repo-wide literal-path grep for tracked references, and the complete harness tree artifact; do not content-grep the large scratch tree.
+- Classify `.temp_files/*.mjs` by its body and artifacts, not extension or filename. Print-only probes are not assertion gates. Read the sibling runner named in the header and treat files the script writes as operational dependents; a redirected `-run.log` without final `-out.txt`/`.png` artifacts indicates an interrupted run.
+- For `.temp_files/*.txt` browser-capture logs, bridge to tracked code through wire tokens such as `token.method`. Decode the `data:` URL in `PAGEERROR: Failed to fetch dynamically imported module` before searching for the failing module's symbols.
+- Treat `.temp_files/proof-driven-bug-hunter/<round>/` as volatile: re-tree the exact round immediately before submission and report additions, removals, or `ENOENT`. A round with no sibling `*.test.ts` makes `vitest --config` inert with `No test files found`.
+- Validate hardcoded test paths against the runner's actual cwd. Assess scratch configs separately: `test.root`, normalized `test.include`, config imports and aliases, and whether a proof test's relative subject import bypasses `coreAliases`.
+- An `ENOENT` round may mean promotion, not deletion: search the slug after `rNN-` in tracked code and `// Round NN:` under `packages/*/tests/` before concluding absence.
 
-## Project Facts
+## Role-Specific Wiring Checks
 
-- `packages/webui-server/vitest.config.ts` defines one Node project with `include: ['tests/**/*.test.ts']` and coverage thresholds of statements 76, functions 69, and branches 66. Do not apply the `packages/webui` `server-node`/`browser-jsdom` split to this package.
-- In `packages/webui-server`, `startHttpServer` comes from `src/server/server-runtime.ts`, while `http-server.ts` declares `allowedHostnames` and consumes it as `trustedHostnames`. Existing hostname coverage is in `tests/ws-auth.test.ts` and `tests/frontend-static-serve.test.ts`, not `tests/http-server.test.ts`.
-- `scripts/bump-version.mjs` (`collectManifests()`) is the root `version` writer. Root-manifest readers are `scripts/build-portable.mjs`, `scripts/test-affected.mjs` via `SALT_FILES`, and `scripts/release-check-matrix.mjs` via a version-insensitive hash. Reverify with a literal `'package.json'` content search under `scripts/`.
-- Production tools under `packages/tools/src/*.ts` are normally imported by `src/index.ts` for re-exports and `src/builtin.ts` for registration, while tests may import `../src/*.js` directly. Prove current topology with separate searches for the tool constant and exports such as `TreeInput`, `TreeOutput`, and `MAX_TREE_OUTPUT_BYTES`; verify `tree.js` hits are not `session-tree.js` or `resume-session-tree.js` collisions.
-- Cross-package consumers may be invisible to leaf-specifier searches. `packages/vector-memory/src/sage-port-wrapper.ts` consumes Sage exports through `@wrongstack/sage` and `packages/sage/src/index.ts`; CLI handler factories flow through `src/server/index.ts` and `@wrongstack/webui-server` to `packages/cli/src/webui-server/route-contexts.ts`.
-- `architecture/*.json` files are data loaded through `fs`, not ordinary imports. Architecture API snapshots do not enumerate every subpath or `export *` surface, so verify live barrels and package exports before claiming privacy.
+- For `packages/webui-server/src/server/*-routes.ts`, run separate exact searches for a specifier such as `from './<name>-routes.js'`, each word-bounded exported `createXxx`/`handleXxx`, and wire-token families (`x.y.run`, `abort`, `result`); inspect protocol, client message types, tests, and top-level declarations separately.
+- Changes around `createRouteFamilyDispatcher(` in `message-dispatcher.ts` or `embedded-message-router.ts` must be checked against `packages/webui-server/tests/host-dispatcher-parity.test.ts`; its raw-source `balancedBlockAfter` check can fail on reformatting without a runtime change.
+- For a request to persist an event field, read its payload type under `packages/core/src/kernel/events/` before consumers. Then inspect the emit path, such as `packages/core/src/execution/tool-executor-logging.ts`, to decide whether changes are adapter-only or require executor and EventMap edits.
+- Trace `process.cwd()` to the filesystem path, spawn cwd, project-root field, or display value it controls; search `process\.chdir\(` separately because it mutates process-wide state. Verify test paths from the command's actual working directory before attributing `No test files found`.

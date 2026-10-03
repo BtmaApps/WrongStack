@@ -54,6 +54,73 @@ describe('DefaultDesignKitLoader', () => {
     }
   });
 
+  it('reports kit folders that fail to load instead of silently skipping them', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-kit-skip-'));
+    const projectDir = path.join(tmp, 'project');
+    try {
+      await fs.mkdir(path.join(projectDir, 'good-kit'), { recursive: true });
+      await fs.mkdir(path.join(projectDir, 'no-name-kit'), { recursive: true });
+      await fs.mkdir(path.join(projectDir, 'bad-stacks-kit'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, 'good-kit', 'KIT.md'),
+        '---\nid: good-kit\nname: Good Kit\naesthetic: test\nstacks: [web]\nthemes: [light, dark]\nbestFor: test\n---\n',
+      );
+      // name: never declared → skipped with a reason.
+      await fs.writeFile(
+        path.join(projectDir, 'no-name-kit', 'KIT.md'),
+        '---\nid: no-name-kit\nstacks: [web]\n---\n# body\n',
+      );
+      // stacks declared but every entry invalid → rejected, not widened to all.
+      await fs.writeFile(
+        path.join(projectDir, 'bad-stacks-kit', 'KIT.md'),
+        '---\nid: bad-stacks-kit\nname: Bad Stacks\nstacks: [wbe, react-nativ]\n---\n# body\n',
+      );
+      const loader = new DefaultDesignKitLoader({
+        inProjectDir: projectDir,
+        globalDir: path.join(tmp, 'missing'),
+        bundledDir: undefined,
+      });
+      const ids = (await loader.list()).map((k) => k.id);
+      expect(ids).toEqual(['good-kit']);
+      const skipped = await loader.listSkipped();
+      expect(skipped).toHaveLength(2);
+      expect(skipped.map((s) => s.dir).sort()).toEqual(['bad-stacks-kit', 'no-name-kit']);
+      expect(skipped.find((s) => s.dir === 'no-name-kit')?.reason).toMatch(/missing "name"/);
+      expect(skipped.find((s) => s.dir === 'bad-stacks-kit')?.reason).toMatch(
+        /no valid stack.*web, react-native, flutter, swiftui, compose/,
+      );
+      // The menu carries the same feedback — this is what `design list` shows.
+      const menu = await loader.menuText();
+      expect(menu).toContain('good-kit');
+      expect(menu).toMatch(/⚠️ skipped `bad-stacks-kit`/);
+      expect(menu).toMatch(/⚠️ skipped `no-name-kit`/);
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('still defaults stacks to all five when `stacks:` is omitted entirely', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-kit-nostacks-'));
+    const projectDir = path.join(tmp, 'project');
+    try {
+      await fs.mkdir(path.join(projectDir, 'omitted-kit'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, 'omitted-kit', 'KIT.md'),
+        '---\nid: omitted-kit\nname: Omitted\naesthetic: test\nthemes: [light, dark]\nbestFor: test\n---\n',
+      );
+      const loader = new DefaultDesignKitLoader({
+        inProjectDir: projectDir,
+        globalDir: path.join(tmp, 'missing'),
+        bundledDir: undefined,
+      });
+      const kit = await loader.find('omitted-kit');
+      expect(kit?.stacks).toHaveLength(5);
+      expect(await loader.listSkipped()).toEqual([]);
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('discovers the bundled kits and excludes _foundations from the menu', async () => {
     const loader = bundledLoader();
     const all = await loader.list();

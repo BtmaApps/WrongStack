@@ -1836,6 +1836,11 @@ budget is at most three per-call timeouts; it is not unlimited with pool length.
 
 ### Jev System One — optional typed decisions
 
+Jev requires explicit `typesafe.enabled: true` (default off). A saved or
+environment API key alone does not activate it. `/jev off` disables all Jev
+consumers, tool/plugin requests and diagnostics while keeping the key. HTTP 402
+stops automatic requests for the account until restart or an account change.
+
 With an available Jev account and `typesafe.judgments.brain` enabled, option
 requests can use typed Choice plus Noul evidence sufficiency before Council/LLM.
 At least two options are required, within the live risk ceiling and below the

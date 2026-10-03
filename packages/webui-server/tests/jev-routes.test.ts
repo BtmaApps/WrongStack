@@ -4,9 +4,38 @@ import type { WebSocket } from 'ws';
 import { handleJevRoute } from '../src/server/jev-routes.js';
 
 describe('Jev routes', () => {
+  it('never starts billed diagnostics with a disabled master, even with a saved key', async () => {
+    const send = vi.fn();
+    const check = vi.fn();
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const store = {
+        get: () => ({ typesafe: { enabled: false, apiKey: 'private-key' } }) as Config,
+      } as ConfigStore;
+      const ctx = { store, file: '', vault: undefined, send, check };
+      await handleJevRoute(ctx, {} as WebSocket, {
+        type: 'jev.check',
+        payload: { requestId: 'check' },
+      });
+      await handleJevRoute(ctx, {} as WebSocket, {
+        type: 'jev.test',
+        payload: { requestId: 'test' },
+      });
+      expect(check).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(send.mock.calls.at(-1)?.[1].payload.settings).toMatchObject({
+        status: 'disabled',
+        enabled: false,
+      });
+      expect(JSON.stringify(send.mock.calls)).not.toContain('private-key');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it('shares an in-flight diagnostic run and hides stale reports after account changes', async () => {
     const send = vi.fn();
-    let config = { typesafe: { apiKey: 'first' } } as Config;
+    let config = { typesafe: { enabled: true, apiKey: 'first' } } as Config;
     const store = { get: () => config } as ConfigStore;
     let finish!: (value: import('@wrongstack/runtime/jev-checks').JevCheckReport) => void;
     const check = vi.fn(
@@ -30,7 +59,7 @@ describe('Jev routes', () => {
     finish({ at: 1, model: 'jev', route: 'typesafe', cases: [], passed: 20, total: 20 });
     await Promise.all([first, second]);
     expect(send.mock.calls.at(-1)?.[1].payload.checks.report.passed).toBe(20);
-    config = { typesafe: { apiKey: 'second' } } as Config;
+    config = { typesafe: { enabled: true, apiKey: 'second' } } as Config;
     await handleJevRoute(ctx, {} as WebSocket, { type: 'jev.get' });
     expect(send.mock.calls.at(-1)?.[1].payload.checks.report).toBeUndefined();
     expect(JSON.stringify(send.mock.calls)).not.toContain('first');
@@ -38,7 +67,8 @@ describe('Jev routes', () => {
   it('returns a correlated credential-free account snapshot', async () => {
     const send = vi.fn();
     const store = {
-      get: () => ({ typesafe: { route: 'typesafe', apiKey: 'private-key' } }) as Config,
+      get: () =>
+        ({ typesafe: { enabled: true, route: 'typesafe', apiKey: 'private-key' } }) as Config,
     } as ConfigStore;
     expect(
       await handleJevRoute({ store, file: '', vault: undefined, send }, {} as WebSocket, {

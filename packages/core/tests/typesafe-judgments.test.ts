@@ -82,17 +82,24 @@ describe('resolveTypeSafeJudge', () => {
   it('is silent and absent without an account', () => {
     const warn = vi.fn();
     expect(
-      resolveTypeSafeJudge({ config: {}, feature: 'brain', env: {}, logger: { warn } }),
+      resolveTypeSafeJudge({
+        config: { typesafe: { enabled: true } },
+        feature: 'brain',
+        env: {},
+        logger: { warn },
+      }),
     ).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('is on by default with an account and off when switched off', () => {
+  it('allows judgments after explicit master opt-in and honors feature switches', () => {
     const env = { TYPESAFE_API_KEY: 'k' };
-    expect(resolveTypeSafeJudge({ config: {}, feature: 'brain', env })).toBeDefined();
+    expect(
+      resolveTypeSafeJudge({ config: { typesafe: { enabled: true } }, feature: 'brain', env }),
+    ).toBeDefined();
     expect(
       resolveTypeSafeJudge({
-        config: { typesafe: { judgments: { brain: false } } },
+        config: { typesafe: { enabled: true, judgments: { brain: false } } },
         feature: 'brain',
         env,
       }),
@@ -101,14 +108,14 @@ describe('resolveTypeSafeJudge', () => {
 
   it('warns once when the account is unusable', () => {
     const warn = vi.fn();
-    const config = { typesafe: { apiKey: 'k', endpoint: 'ftp://nope' } };
+    const config = { typesafe: { enabled: true, apiKey: 'k', endpoint: 'ftp://nope' } };
     resolveTypeSafeJudge({ config, feature: 'brain', env: {}, logger: { warn } });
     resolveTypeSafeJudge({ config, feature: 'topicShift', env: {}, logger: { warn } });
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('shares one client across features for the same account', () => {
-    const config = { typesafe: { apiKey: 'shared-key' } };
+    const config = { typesafe: { enabled: true, apiKey: 'shared-key' } };
     const a = resolveTypeSafeJudge({ config, feature: 'brain' });
     const b = resolveTypeSafeJudge({ config, feature: 'memoryTriage' });
     expect(a?.client).toBe(b?.client);

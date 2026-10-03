@@ -33,6 +33,14 @@ beforeEach(async () => {
 });
 afterEach(cleanup);
 describe('Story sidebar snapshot', () => {
+  it('can return from Story when the active session has gone away', () => {
+    useUIStore.setState({ currentView: 'session-story' });
+    render(<StoryWidget />);
+    const back = screen.getByRole('button', { name: 'Back to session' });
+    expect(back.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(back);
+    expect(useUIStore.getState().currentView).toBe('chat');
+  });
   it('follows the selected tab and excludes other-tab and untagged workers', () => {
     setActiveSessionLane('a');
     chatLane('a').addExecution({
@@ -82,8 +90,18 @@ describe('Story sidebar snapshot', () => {
       sidebarOpen: true,
       activeActivity: 'files',
     });
+    expect(screen.getByRole('button', { name: 'Back to session' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to session' }));
+    expect(useUIStore.getState()).toMatchObject({
+      currentView: 'chat',
+      sidebarOpen: true,
+      activeActivity: 'chat',
+    });
     view.rerender(<StoryWidget collapseOnOpen />);
     fireEvent.click(screen.getByRole('button', { name: 'Open session Story' }));
     expect(useUIStore.getState().sidebarOpen).toBe(false);
+    act(() => useUIStore.getState().setSidebarOpen(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to session' }));
+    expect(useUIStore.getState()).toMatchObject({ currentView: 'chat', sidebarOpen: false });
   });
 });

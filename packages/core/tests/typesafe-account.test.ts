@@ -25,7 +25,9 @@ function fetchError(status: number): FetchError {
 
 describe('resolveTypeSafeRoute', () => {
   it('infers the native route from a configured key', () => {
-    expect(resolveTypeSafeRoute({ typesafe: { apiKey: 'k' } }, noEnv)).toBe('typesafe');
+    expect(resolveTypeSafeRoute({ typesafe: { enabled: true, apiKey: 'k' } }, noEnv)).toBe(
+      'typesafe',
+    );
   });
 
   it('never infers openrouter from a chat OPENROUTER_API_KEY alone', () => {
@@ -33,7 +35,10 @@ describe('resolveTypeSafeRoute', () => {
     // moved prompt egress and billing to OpenRouter without the user choosing
     // it for this feature; the route must be named explicitly.
     expect(resolveTypeSafeRoute({}, { OPENROUTER_API_KEY: 'sk-or-x' })).toBe('typesafe');
-    const account = resolveTypeSafeAccount({ config: {}, env: { OPENROUTER_API_KEY: 'sk-or-x' } });
+    const account = resolveTypeSafeAccount({
+      config: { typesafe: { enabled: true } },
+      env: { OPENROUTER_API_KEY: 'sk-or-x' },
+    });
     expect(account.status).toBe('unconfigured');
   });
 
@@ -46,13 +51,15 @@ describe('resolveTypeSafeRoute', () => {
   });
 
   it('treats an explicit endpoint as the custom route', () => {
-    expect(resolveTypeSafeRoute({ typesafe: { endpoint: 'https://proxy/x' } }, noEnv)).toBe(
-      'custom',
-    );
+    expect(
+      resolveTypeSafeRoute({ typesafe: { enabled: true, endpoint: 'https://proxy/x' } }, noEnv),
+    ).toBe('custom');
   });
 
   it('honours an explicit route over inference', () => {
-    expect(resolveTypeSafeRoute({ typesafe: { route: 'openrouter' } }, noEnv)).toBe('openrouter');
+    expect(resolveTypeSafeRoute({ typesafe: { enabled: true, route: 'openrouter' } }, noEnv)).toBe(
+      'openrouter',
+    );
   });
 });
 
@@ -61,20 +68,22 @@ describe('resolveTypeSafeAccount', () => {
     'reports an unusable endpoint: %s',
     (endpoint) => {
       expect(
-        resolveTypeSafeAccount({ config: { typesafe: { endpoint, apiKey: 'k' } }, env: noEnv })
-          .status,
+        resolveTypeSafeAccount({
+          config: { typesafe: { enabled: true, endpoint, apiKey: 'k' } },
+          env: noEnv,
+        }).status,
       ).toBe('unusable');
     },
   );
   it('reports unconfigured when nothing is set, naming the variable to set', () => {
-    const account = resolveTypeSafeAccount({ config: {}, env: noEnv });
+    const account = resolveTypeSafeAccount({ config: { typesafe: { enabled: true } }, env: noEnv });
     expect(account.status).toBe('unconfigured');
     expect(account.status === 'unconfigured' && account.reason).toContain('TYPESAFE_API_KEY');
   });
 
   it('applies the route endpoint and model when ready', () => {
     const account = resolveTypeSafeAccount({
-      config: { typesafe: { route: 'openrouter' } },
+      config: { typesafe: { enabled: true, route: 'openrouter' } },
       env: { OPENROUTER_API_KEY: 'sk-or-x' },
     });
     expect(account.status).toBe('ready');
@@ -87,7 +96,7 @@ describe('resolveTypeSafeAccount', () => {
 
   it('prefers a configured key over the environment and says so', () => {
     const account = resolveTypeSafeAccount({
-      config: { typesafe: { apiKey: 'from-config' } },
+      config: { typesafe: { enabled: true, apiKey: 'from-config' } },
       env: { TYPESAFE_API_KEY: 'from-env' },
     });
     expect(account.status === 'ready' && account.keySource).toBe('config');
@@ -95,7 +104,9 @@ describe('resolveTypeSafeAccount', () => {
 
   it('keeps an explicit endpoint but does not force a route model onto it', () => {
     const account = resolveTypeSafeAccount({
-      config: { typesafe: { endpoint: 'https://proxy.internal/systemone', apiKey: 'k' } },
+      config: {
+        typesafe: { enabled: true, endpoint: 'https://proxy.internal/systemone', apiKey: 'k' },
+      },
       env: noEnv,
     });
     expect(account.status).toBe('ready');
@@ -109,7 +120,7 @@ describe('resolveTypeSafeAccount', () => {
 
   it('reports unusable — not unconfigured — for a custom route with no endpoint', () => {
     const account = resolveTypeSafeAccount({
-      config: { typesafe: { route: 'custom', apiKey: 'k' } },
+      config: { typesafe: { enabled: true, route: 'custom', apiKey: 'k' } },
       env: noEnv,
     });
     expect(account.status).toBe('unusable');

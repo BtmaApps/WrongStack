@@ -770,7 +770,17 @@
     "tokenSavingMinimal": "Minimale — ottimizzazione di base",
     "tokenSavingLight": "Leggero — riduzione moderata",
     "tokenSavingMedium": "Medio — risparmi significativi",
-    "tokenSavingAggressive": "Aggressivo — superficie diretta e prompt minimi"
+    "tokenSavingAggressive": "Aggressivo — superficie diretta e prompt minimi",
+    "userInstructions": {
+      "heading": "Le tue regole globali (AGENTS.md)",
+      "hint": "Le tue istruzioni per ogni progetto. Entrano nel prompt di sistema prima dell'AGENTS.md del progetto e valgono dal turno successivo.",
+      "placeholder": "# Le mie regole\n- Rispondi in italiano.",
+      "missing": "non ancora creato; il salvataggio lo crea",
+      "save": "Salva",
+      "reload": "Ricarica",
+      "saved": "Salvato.",
+      "discard": "Scartare le modifiche non salvate?"
+    }
   },
   "logs": {
     "logLevelLabel": "Livello di log",
@@ -1188,6 +1198,8 @@
     "resetOverrides": "Cancella le sostituzioni per ruolo"
   },
   "jev": {
+    "enabled": "Abilita Jev",
+    "enabledHint": "Disattivato per impostazione predefinita. La disattivazione blocca tutte le richieste Jev, inclusi strumenti e diagnostica, conservando chiave e opzioni.",
     "description": "Manage the decision provider and see where Jev is used.",
     "loading": "Loading Jev settings…",
     "timeout": "No response from server. Reconnect and retry.",
@@ -1241,6 +1253,7 @@
     "includeChecks": "Include diagnostic requests",
     "selfTest": "Diagnostic",
     "account": {
+      "disabled": "Jev disabilitato",
       "ready": "Account configured",
       "unconfigured": "Account required",
       "unusable": "Account settings invalid"

@@ -1,4 +1,5 @@
 export interface JevSettings {
+  enabled: boolean;
   status: string;
   reason?: string;
   route: string;

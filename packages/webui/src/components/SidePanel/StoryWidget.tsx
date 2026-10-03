@@ -1,4 +1,4 @@
-import { ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -59,10 +59,12 @@ export function StoryWidget({ collapseOnOpen = false }: { collapseOnOpen?: boole
     return bins;
   }, [executions]);
   const peak = Math.max(1, ...bars);
+  const inStory = currentView === 'session-story';
   const open = () => {
-    if (!sessionId) return;
+    if (!sessionId && !inStory) return;
     const ui = useUIStore.getState();
-    ui.setCurrentView('session-story');
+    if (inStory) ui.selectActivity('chat');
+    ui.setCurrentView(inStory ? 'chat' : 'session-story');
     if (collapseOnOpen) ui.setSidebarOpen(false);
   };
   return (
@@ -70,27 +72,34 @@ export function StoryWidget({ collapseOnOpen = false }: { collapseOnOpen?: boole
       <button
         type="button"
         onClick={open}
-        disabled={!sessionId}
-        aria-label={t('activity:storyWidget.open')}
-        aria-pressed={currentView === 'session-story'}
-        title={t('activity:storyWidget.hint')}
+        disabled={!sessionId && !inStory}
+        aria-label={t(inStory ? 'activity:storyWidget.back' : 'activity:storyWidget.open')}
+        title={t(inStory ? 'activity:storyWidget.back' : 'activity:storyWidget.hint')}
         className={cn(
           'group w-full overflow-hidden rounded-xl border border-info/20 bg-gradient-to-br from-info/5 to-primary/5 p-2.5 text-left transition-colors hover:border-info/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info disabled:cursor-default disabled:opacity-50',
           currentView === 'session-story' && 'border-info/50 bg-info/10',
         )}
       >
         <span className="flex items-center gap-2">
-          <ChartNoAxesCombined size={15} className="shrink-0 text-info" />
-          <span className="text-xs font-semibold">Story</span>
+          {inStory ? (
+            <ArrowLeft size={15} className="shrink-0 text-info" />
+          ) : (
+            <ChartNoAxesCombined size={15} className="shrink-0 text-info" />
+          )}
+          <span className="text-xs font-semibold">
+            {inStory ? t('activity:storyWidget.back') : 'Story'}
+          </span>
           <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
             {working && <span className="h-1.5 w-1.5 rounded-full bg-success" />}
             {sessionId
               ? t(working ? 'activity:storyWidget.working' : 'activity:storyWidget.snapshot')
               : t('activity:storyWidget.noSession')}
-            <ArrowUpRight
-              size={12}
-              className="shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-            />
+            {!inStory && (
+              <ArrowUpRight
+                size={12}
+                className="shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              />
+            )}
           </span>
         </span>
         {sessionId && (

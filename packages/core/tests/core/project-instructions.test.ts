@@ -12,6 +12,10 @@ import { Context } from '../../src/core/context.js';
 import {
   queueDirectoryInstructions,
   RootInstructionsCache,
+  readUserInstructions,
+  UserInstructionsCache,
+  userInstructionsFile,
+  writeUserInstructions,
 } from '../../src/core/project-instructions.js';
 import { SYSTEM_BLOCK_SOURCE } from '../../src/core/system-prompt-blocks.js';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
@@ -81,6 +85,88 @@ describe('RootInstructionsCache', () => {
     // Subdirectory files never enter the system prompt.
     const all = [...regions.core, ...regions.session, ...regions.volatile].map((b) => b.text);
     expect(all.join('\n')).not.toContain('EGRET');
+  });
+});
+
+describe('UserInstructionsCache', () => {
+  it('defaults to AGENTS.md under the global root', () => {
+    // vitest.setup.ts points WRONGSTACK_HOME at a temp dir.
+    expect(userInstructionsFile()).toBe(
+      path.join(path.resolve(process.env['WRONGSTACK_HOME']!), 'AGENTS.md'),
+    );
+  });
+
+  it('renders the file unfenced, picks up edits, and drops a removed or blank file', async () => {
+    const file = path.join(root, 'user-AGENTS.md');
+    const cache = new UserInstructionsCache();
+    expect(await cache.load(file)).toBe('');
+    await fs.writeFile(file, 'User rule: OSPREY.\n');
+    const text = await cache.load(file);
+    expect(text).toContain('# User instructions');
+    expect(text).toContain('User rule: OSPREY.');
+    expect(text).not.toContain('project-supplied');
+    await fs.writeFile(file, 'User rule: TERN.\n');
+    const later = new Date(Date.now() + 5_000);
+    await fs.utimes(file, later, later);
+    expect(await cache.load(file)).toContain('User rule: TERN.');
+    await fs.writeFile(file, '  \n');
+    await fs.utimes(file, new Date(Date.now() + 10_000), new Date(Date.now() + 10_000));
+    expect(await cache.load(file)).toBe('');
+    await fs.rm(file);
+    expect(await cache.load(file)).toBe('');
+  });
+
+  it('reaches the system prompt ahead of the project file, also for subagents', async () => {
+    const file = path.join(root, 'user-AGENTS.md');
+    await fs.writeFile(file, 'User rule: OSPREY.\n');
+    for (const subagent of [false, true]) {
+      const builder = new DefaultSystemPromptBuilder({
+        todayIso: '2026-10-03',
+        userInstructionsFile: file,
+      });
+      const regions = await builder.buildRegions({
+        cwd: root,
+        projectRoot: root,
+        tools: [],
+        subagent,
+      });
+      const userIdx = regions.session.findIndex((b) => b.text.includes('OSPREY'));
+      const projectIdx = regions.session.findIndex((b) => b.text.includes('PELICAN'));
+      expect(userIdx).toBeGreaterThanOrEqual(0);
+      expect(userIdx).toBeLessThan(projectIdx);
+      expect(SYSTEM_BLOCK_SOURCE.get(regions.session[userIdx]!)).toBe('user-instructions');
+    }
+    const off = new DefaultSystemPromptBuilder({
+      todayIso: '2026-10-03',
+      userInstructionsFile: false,
+    });
+    const regions = await off.buildRegions({ cwd: root, projectRoot: root, tools: [] });
+    expect(regions.session.some((b) => b.text.includes('OSPREY'))).toBe(false);
+  });
+});
+
+describe('user instructions editor', () => {
+  it('creates the file, saves at the loaded revision, and refuses a stale one', async () => {
+    const file = path.join(root, 'home', '.wrongstack', 'AGENTS.md');
+    const empty = await readUserInstructions(file);
+    expect(empty).toMatchObject({ exists: false, text: '', mtimeMs: null });
+
+    const first = await writeUserInstructions('Rule: ONE.\n', empty.mtimeMs, file);
+    expect(first).toMatchObject({ exists: true, text: 'Rule: ONE.\n' });
+    expect(await fs.readFile(file, 'utf8')).toBe('Rule: ONE.\n');
+
+    // Edited elsewhere after the editor loaded `first`.
+    await fs.writeFile(file, 'Rule: OTHER.\n');
+    const later = new Date(Date.now() + 5_000);
+    await fs.utimes(file, later, later);
+    await expect(writeUserInstructions('Rule: TWO.\n', first.mtimeMs, file)).rejects.toThrow(
+      /changed since it was loaded/,
+    );
+    expect(await fs.readFile(file, 'utf8')).toBe('Rule: OTHER.\n');
+
+    const fresh = await readUserInstructions(file);
+    await writeUserInstructions('Rule: TWO.\n', fresh.mtimeMs, file);
+    expect(await fs.readFile(file, 'utf8')).toBe('Rule: TWO.\n');
   });
 });
 

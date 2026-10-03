@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DefaultConfigStore } from '@wrongstack/core/storage';
@@ -9,6 +9,30 @@ import type { SlashCommandContext } from '../src/slash-commands/command-context.
 import { buildJevCommand } from '../src/slash-commands/jev.js';
 
 describe('/jev', () => {
+  it('persists the master off/on switch without deleting the key or feature choices', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'jev-master-'));
+    try {
+      const file = join(dir, 'config.json');
+      const store = new DefaultConfigStore({
+        version: 1,
+        typesafe: { enabled: true, judgments: { brain: false } },
+      } as Config);
+      await writeFile(file, JSON.stringify(store.get()));
+      const command = buildJevCommand({
+        configStore: store,
+        paths: { profileConfig: () => file },
+      } as unknown as SlashCommandContext);
+      expect((await command.run('off'))?.message).toContain('saved');
+      expect(JSON.parse(await readFile(file, 'utf8')).typesafe).toEqual({
+        enabled: false,
+        judgments: { brain: false },
+      });
+      expect((await command.run('on'))?.message).toContain('saved');
+      expect(store.get().typesafe).toMatchObject({ enabled: true, judgments: { brain: false } });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   it('shows features, settings and activity entry points without exposing a credential', async () => {
     const command = buildJevCommand({
       configStore: new DefaultConfigStore({

@@ -81,7 +81,7 @@ export function extractJsonRpcEnvelopes(text: string): JsonRpcEnvelope[] {
       /* ignore non-JSON event data */
     }
   };
-  for (const raw of text.split('\n')) {
+  for (const raw of text.split(/\r\n|\r|\n/)) {
     const line = raw.replace(/\r$/, '');
     if (line === '') {
       flush(); // blank line ends an SSE event

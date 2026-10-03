@@ -412,6 +412,7 @@ const SOURCE_LABELS: Record<SystemBlockSource | 'other', string> = {
   identity: 'identity (system.md)',
   'tool-usage': 'tool-usage prose',
   environment: 'environment',
+  'user-instructions': 'user instructions (~/.wrongstack/AGENTS.md)',
   'project-instructions': 'project instructions (AGENTS.md)',
   skills: 'skills',
   mode: 'mode',

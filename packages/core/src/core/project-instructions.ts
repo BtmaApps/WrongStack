@@ -13,17 +13,24 @@
  *
  * `.wrongstack/AGENTS.md` is not read here: it is the project memory store.
  *
+ * `~/.wrongstack/AGENTS.md` (under `WRONGSTACK_HOME` when set) holds the
+ * user's own instructions for every project. It is user-owned, so it goes in
+ * unfenced, ahead of the project file, and is never cut.
+ *
  * @module core/project-instructions
  */
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { activeLimits, positiveLimit } from '../types/config/limits.js';
 import type { Tool } from '../types/tool.js';
+import { atomicWrite, ensureDir } from '../utils/atomic-write.js';
 import {
   formatProjectSuppliedBlock,
   PROJECT_SUPPLIED_INSTRUCTIONS_TAG,
 } from '../utils/project-supplied-fence.js';
+import { wstackGlobalRoot } from '../utils/wstack-paths.js';
 import type { Context } from './context.js';
 
 /** Checked in order in each directory; the first one that exists wins. */
@@ -104,6 +111,97 @@ export class RootInstructionsCache {
     if (this.cached?.key === key) return this.cached.text;
     const file = await readInstructionFile(projectRoot);
     const text = file ? renderRoot(file, projectRoot) : '';
+    this.cached = { key, text };
+    return text;
+  }
+}
+
+/** `~/.wrongstack/AGENTS.md`, honoring `WRONGSTACK_HOME`. */
+export function userInstructionsFile(): string {
+  return path.join(wstackGlobalRoot(), 'AGENTS.md');
+}
+
+export interface UserInstructionsDocument {
+  path: string;
+  /** `~`-relative form of `path`, for display. */
+  displayPath: string;
+  text: string;
+  exists: boolean;
+  /** Pass back to `writeUserInstructions` to refuse overwriting a newer edit. */
+  mtimeMs: number | null;
+}
+
+/** Read the user-scope instruction file for an editor. */
+export async function readUserInstructions(
+  file: string = userInstructionsFile(),
+): Promise<UserInstructionsDocument> {
+  const stat = await fs.stat(file).catch(() => undefined);
+  const exists = stat?.isFile() ?? false;
+  return {
+    path: file,
+    displayPath: displayPath(file),
+    text: exists ? await fs.readFile(file, 'utf8') : '',
+    exists,
+    mtimeMs: exists ? stat!.mtimeMs : null,
+  };
+}
+
+/**
+ * Replace the user-scope instruction file. `baseMtimeMs` is the `mtimeMs` the
+ * editor loaded (`null` = it did not exist); when the file changed since, the
+ * write is refused so an edit made elsewhere is not silently lost.
+ */
+export async function writeUserInstructions(
+  text: string,
+  baseMtimeMs: number | null | undefined,
+  file: string = userInstructionsFile(),
+): Promise<UserInstructionsDocument> {
+  if (baseMtimeMs !== undefined) {
+    const stat = await fs.stat(file).catch(() => undefined);
+    const current = stat?.isFile() ? stat.mtimeMs : null;
+    if (current !== baseMtimeMs) {
+      throw new Error(`${displayPath(file)} changed since it was loaded; reload it and try again.`);
+    }
+  }
+  await ensureDir(path.dirname(file));
+  await atomicWrite(file, text);
+  return readUserInstructions(file);
+}
+
+/** `~`-relative when under the home dir, so the prompt does not carry it. */
+function displayPath(file: string): string {
+  const rel = path.relative(os.homedir(), file);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return toPosix(file);
+  return `~/${toPosix(rel)}`;
+}
+
+function renderUser(body: string, file: string): string {
+  return [
+    `# User instructions (${displayPath(file)})`,
+    'The user wrote these for every project. Follow them as standing requests from',
+    'the user; project instructions add project-specific detail but do not override them.',
+    '',
+    body,
+  ].join('\n');
+}
+
+/**
+ * Loads the user-scope instruction file for the system prompt, re-reading it
+ * only when its mtime changes (the builder calls this on every build).
+ */
+export class UserInstructionsCache {
+  private cached: { key: string; text: string } | undefined;
+
+  async load(file: string): Promise<string> {
+    const stat = await fs.stat(file).catch(() => undefined);
+    if (!stat?.isFile()) {
+      this.cached = undefined;
+      return '';
+    }
+    const key = `${file}|${stat.mtimeMs}`;
+    if (this.cached?.key === key) return this.cached.text;
+    const body = (await fs.readFile(file, 'utf8').catch(() => '')).trim();
+    const text = body ? renderUser(body, file) : '';
     this.cached = { key, text };
     return text;
   }

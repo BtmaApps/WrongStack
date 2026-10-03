@@ -49,7 +49,7 @@ const run = (value: unknown = input, signal = new AbortController().signal) =>
 beforeEach(() => {
   vi.stubEnv('TYPESAFE_API_KEY', '');
   vi.stubEnv('OPENROUTER_API_KEY', '');
-  config = { version: 1, typesafe: { apiKey: 'test-key' } } as Config;
+  config = { version: 1, typesafe: { enabled: true, apiKey: 'test-key' } } as Config;
   transport = vi.fn(
     async () =>
       new Response(
@@ -73,7 +73,7 @@ describe('Jev callable decisions', () => {
   it.each(['typesafe', 'openrouter'] as const)(
     'uses the configured %s route and records runtime tool activity',
     async (route) => {
-      config.typesafe = { apiKey: 'test-key', route };
+      config.typesafe = { enabled: true, apiKey: 'test-key', route };
       const result = await run();
       expect(result).toMatchObject({
         model: 'jev-test',
@@ -102,10 +102,10 @@ describe('Jev callable decisions', () => {
   it('checks readiness without network and rejects stale calls after disable or key removal', async () => {
     expect(jevToolStatus(config)).toMatchObject({ enabled: true, available: true });
     expect(transport).not.toHaveBeenCalled();
-    config.typesafe = { apiKey: 'test-key', judgments: { tool: false } };
+    config.typesafe = { enabled: true, apiKey: 'test-key', judgments: { tool: false } };
     expect(jevToolStatus(config)).toMatchObject({ available: false, reason: 'disabled' });
     await expect(run()).rejects.toThrow('Jev unavailable');
-    config.typesafe = {};
+    config.typesafe = { enabled: true };
     await expect(run()).rejects.toThrow('Jev unavailable');
     expect(transport).not.toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe('Jev callable decisions', () => {
     expect(jevToolStatus(config)).toMatchObject({ available: false, reason: 'auth-rejected' });
     await expect(run()).rejects.toThrow('auth-rejected');
     expect(transport).toHaveBeenCalledTimes(3);
-    config.typesafe = { apiKey: 'replacement-key' };
+    config.typesafe = { enabled: true, apiKey: 'replacement-key' };
     expect(jevToolStatus(config).available).toBe(true);
   });
 
@@ -195,7 +195,7 @@ describe('Jev live discovery and prompt guidance', () => {
     expect(registry.get('jev')).toBeUndefined();
     expect(registry.get('jev_status')).toBeDefined();
     expect(registry.listForProvider().map((tool) => tool.name)).toEqual(['jev_status']);
-    store.update({ typesafe: { apiKey: 'test-key' } });
+    store.update({ typesafe: { enabled: true, apiKey: 'test-key' } });
     expect(registry.get('jev')).toBeDefined();
     expect(registry.listForProvider().map((tool) => tool.name)).toEqual(['jev_status', 'jev']);
     const tools = registry.list();
@@ -207,15 +207,15 @@ describe('Jev live discovery and prompt guidance', () => {
         .get('jev_status')!
         .execute({}, {} as never, { signal: new AbortController().signal }),
     ).resolves.toMatchObject({ available: false, reason: 'tool-disabled' });
-    store.update({ typesafe: { apiKey: 'test-key', judgments: { tool: false } } });
-    store.update({ typesafe: { apiKey: 'test-key', judgments: { tool: true } } });
+    store.update({ typesafe: { enabled: true, apiKey: 'test-key', judgments: { tool: false } } });
+    store.update({ typesafe: { enabled: true, apiKey: 'test-key', judgments: { tool: true } } });
     expect(registry.get('jev')).toBeUndefined();
     registry.enable('jev');
     expect(registry.get('jev')).toBeDefined();
-    store.update({ typesafe: { apiKey: '' } });
+    store.update({ typesafe: { enabled: true, apiKey: '' } });
     expect(registry.get('jev')).toBeUndefined();
     stop();
-    store.update({ typesafe: { apiKey: 'test-key' } });
+    store.update({ typesafe: { enabled: true, apiKey: 'test-key' } });
     expect(registry.get('jev')).toBeUndefined();
   });
 

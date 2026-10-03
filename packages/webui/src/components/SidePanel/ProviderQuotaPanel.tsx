@@ -22,7 +22,7 @@ import { useModelsInUse } from '../Quota/use-models-in-use';
 import { useQuotaFeed } from '../Quota/use-quota-feed';
 
 /** The quota section of the chat side panel. */
-export function ProviderQuotaPanel() {
+export function ProviderQuotaPanel({ embedded = false }: { embedded?: boolean }) {
   const { t } = useAppTranslation();
   const { cards, now, refreshing, refresh, wsConnected } = useQuotaFeed();
   const inUse = useModelsInUse();
@@ -31,22 +31,24 @@ export function ProviderQuotaPanel() {
 
   // Calm chrome: with no quota-reporting provider configured there is nothing
   // to read here — the Plan Quota page (activity bar) still explains why.
-  if (!fullChrome && cards.length === 0) return null;
+  if (!fullChrome && cards.length === 0 && !embedded) return null;
 
   return (
-    <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
+    <div className={cn('space-y-1.5 px-3 pb-2.5', !embedded && 'border-b border-border/70 pt-2.5')}>
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-          <Gauge className="h-3 w-3" />
-          {t('activity:quotaPanel.title')}
-        </span>
+        {!embedded && (
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+            <Gauge className="h-3 w-3" />
+            {t('activity:quotaPanel.title')}
+          </span>
+        )}
         <button
           type="button"
           onClick={refresh}
           disabled={!wsConnected || refreshing}
           title={t('activity:quotaPanel.refreshTitle')}
           aria-label={t('activity:quotaPanel.refresh')}
-          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-40"
+          className="ml-auto rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-40"
         >
           <RefreshCw className={cn('h-3 w-3', refreshing && 'animate-spin')} />
         </button>

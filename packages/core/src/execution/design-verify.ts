@@ -12,7 +12,7 @@
  */
 
 import type { DesignKitTokens } from '../types/design-kit.js';
-import { colorToHex, isColorToken } from './design-color.js';
+import { colorToHex, contrastRatio, isColorToken } from './design-color.js';
 
 /**
  * Which design axis a violation belongs to.
@@ -54,6 +54,44 @@ export interface DesignVerifyReport {
    * on a native stack silently reads as "clean" when it means "not checked".
    */
   filesWithNoSignal: number;
+}
+
+// ── WCAG AA token-pair gate ──────────────────────────────────────────────────
+
+/** A readable-text pair whose contrast falls below the WCAG floor. */
+export interface KitContrastIssue {
+  theme: 'light' | 'dark';
+  /** The failing pair: 'fg/bg' (body text) or 'primary/bg' (primary action). */
+  pair: string;
+  ratio: number;
+}
+
+/** The pairs the gate checks — body copy and the primary action on `bg`. */
+const CONTRAST_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['fg', 'bg'],
+  ['primary', 'bg'],
+];
+
+/**
+ * Check a kit's (override-applied) token pairs against the WCAG 2.x AA floor
+ * (4.5:1) for BOTH themes. Pure; unparseable tokens are skipped — the bundled
+ * corpus contract guards their parseability separately. The `design` tool runs
+ * this at use/materialize time so a contrast-breaking override is named before
+ * it ships, and the WebUI gallery can reuse it the same way.
+ */
+export function kitContrastIssues(tokens: DesignKitTokens, floor = 4.5): KitContrastIssue[] {
+  const issues: KitContrastIssue[] = [];
+  for (const theme of ['light', 'dark'] as const) {
+    const set = tokens[theme];
+    if (!set) continue;
+    for (const [a, b] of CONTRAST_PAIRS) {
+      const ratio = contrastRatio(set[a] ?? '', set[b] ?? '');
+      if (ratio !== null && ratio < floor) {
+        issues.push({ theme, pair: `${a}/${b}`, ratio });
+      }
+    }
+  }
+  return issues;
 }
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g;
@@ -253,6 +291,34 @@ function usesNoElevation(tokens: DesignKitTokens): boolean {
   return false;
 }
 
+/**
+ * A project that redefines the STOCK shadow utilities (`--shadow-sm`… in an
+ * `@theme` block — what the capture pipeline records as raw markers) makes
+ * `shadow-lg` & co. resolve to the project's own ramp: flagging them as
+ * "stock Tailwind elevation" fights the project's own system. Kit bases never
+ * define the stock names (kits use `shadow-1…shadow-4`), so the presence of
+ * any stock name in the token values marks a remap. Read from token values —
+ * no kit id, tag list, or file walk needed.
+ */
+function remapsStockElevation(tokens: DesignKitTokens): boolean {
+  const STOCK_SHADOWS = [
+    'shadow-2xs',
+    'shadow-xs',
+    'shadow-sm',
+    'shadow-md',
+    'shadow-lg',
+    'shadow-xl',
+    'shadow-2xl',
+  ];
+  for (const set of [tokens.light, tokens.dark]) {
+    if (!set) continue;
+    for (const name of STOCK_SHADOWS) {
+      if (set[name] !== undefined) return true;
+    }
+  }
+  return false;
+}
+
 function buildPalette(tokens: DesignKitTokens): { hexes: Set<string>; names: string[] } {
   const hexes = new Set<string>();
   const names = new Set<string>();
@@ -283,6 +349,9 @@ export function verifyFiles(
   const hardShadowKit = usesHardShadows(tokens);
   // Kits with no elevation at all need a different message entirely.
   const noElevationKit = usesNoElevation(tokens);
+  // A project that remaps the stock shadow-* utilities via @theme: those
+  // utilities are token-driven, so "stock Tailwind elevation" is not drift.
+  const stockElevationRemapped = remapsStockElevation(tokens);
 
   const violations: DesignViolation[] = [];
   let onPalette = 0;
@@ -382,12 +451,14 @@ export function verifyFiles(
         );
       }
       TW_ELEVATION_RE.lastIndex = 0;
-      for (const m of lineText.matchAll(TW_ELEVATION_RE)) {
-        flag(
-          m[0],
-          "stock Tailwind elevation — use the kit's elevation ramp (shadow-1…shadow-4)",
-          'composition',
-        );
+      if (!stockElevationRemapped) {
+        for (const m of lineText.matchAll(TW_ELEVATION_RE)) {
+          flag(
+            m[0],
+            "stock Tailwind elevation — use the kit's elevation ramp (shadow-1…shadow-4)",
+            'composition',
+          );
+        }
       }
       EMOJI_ICON_RE.lastIndex = 0;
       for (const m of lineText.matchAll(EMOJI_ICON_RE)) {

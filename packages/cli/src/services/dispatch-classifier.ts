@@ -83,7 +83,7 @@ export function makeDispatchClassifier(deps: {
   logger?: (WarnSink & { debug?(message: string): void }) | undefined;
 }): DispatchClassifier {
   const dispatch = deps.config.fleet?.dispatch;
-  if (dispatch?.typesafeClassifier === true) {
+  if (deps.config.typesafe?.enabled === true && dispatch?.typesafeClassifier === true) {
     const account = resolveTypeSafeAccount({
       config: deps.config,
       env: deps.env,

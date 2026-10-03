@@ -81,6 +81,8 @@ export const CLIENT_CONFIGURATION_MESSAGE_TYPES = [
   'system_prompt.presets.delete',
   'system_prompt.presets.validate',
   'system_prompt.presets.preview',
+  'user_instructions.get',
+  'user_instructions.save',
   'tool.disable',
   'tool.enable',
   'tools.list',

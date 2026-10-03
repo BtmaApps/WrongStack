@@ -1,5 +1,6 @@
 import { resolveNativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import type { ProviderConfig } from '@wrongstack/core/types';
+import { endpointCredentialsSuppressed } from './endpoint-credentials.js';
 
 export interface ProviderPreflightCheck {
   name: string;
@@ -29,6 +30,20 @@ export function inspectProviderPreflight(
   );
   const supported = ['amazon-bedrock', 'google-vertex', 'azure', 'azure-cognitive-services'];
   const id = supported.includes(config.type) ? config.type : providerId;
+  if (supported.includes(id) && endpointCredentialsSuppressed(config) && !explicitKey) {
+    return {
+      providerId,
+      native: true,
+      checks: [
+        {
+          name: 'credential',
+          status: 'missing',
+          hint: 'This endpoint suppresses inherited credentials. Configure an explicit provider API key.',
+        },
+      ],
+      requiresConfiguration: true,
+    };
+  }
   const cloud = resolveNativeCloudSettings(config.cloud, env, id);
   if (id === 'amazon-bedrock') {
     if (config.baseUrl && (explicitKey || env['AWS_BEARER_TOKEN_BEDROCK']) && !cloud.region)

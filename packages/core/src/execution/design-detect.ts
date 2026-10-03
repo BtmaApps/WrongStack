@@ -16,6 +16,8 @@
  * the `design` tool — is what keeps per-turn token cost low.
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import type {
   AgentPipelines,
   ToolCallPipelinePayload,
@@ -24,13 +26,19 @@ import type {
 import type { Context } from '../core/context.js';
 import type { Middleware } from '../kernel/pipeline.js';
 import type { TextBlock } from '../types/blocks.js';
-import type { DesignKitLoader, DesignStack, DesignStudioState } from '../types/design-kit.js';
+import type {
+  DesignKitLoader,
+  DesignKitTokens,
+  DesignStack,
+  DesignStudioState,
+} from '../types/design-kit.js';
 import { isDesignStack } from '../types/design-kit.js';
 import type { Request } from '../types/provider.js';
 import { getDesignKitLoader } from './design-kit-loader.js';
 import {
   applyTokenOverrides,
   loadActiveKit,
+  loadCapturedTokens,
   loadProjectDesignRules,
 } from './design-project-store.js';
 import { verifyFiles } from './design-verify.js';
@@ -157,13 +165,61 @@ const FRONTEND_EXT_STACK: { re: RegExp; stack?: DesignStack }[] = [
   { re: /\.html?$/i, stack: 'web' },
   { re: /\.dart$/i, stack: 'flutter' },
   { re: /\.swift$/i, stack: 'swiftui' },
+  { re: /\.kt$/i, stack: 'compose' },
 ];
 
-/** Detect whether a written/edited file path is a frontend file. */
-export function detectFrontendFile(filePath: string): { stack?: DesignStack } | null {
+/**
+ * `.tsx`/`.jsx` are stack-ambiguous: they are the React Native screen
+ * language too. When the project's package.json depends on a RN marker
+ * (react-native / expo / nativewind), those writes scope Design Studio to
+ * `react-native` instead of `web` — the materialized theme shape differs.
+ *
+ * Memoized per projectRoot: dependencies rarely change mid-session, and this
+ * runs on every frontend write. Best-effort — a missing or malformed
+ * package.json simply means "not an RN project" (web stays the default).
+ */
+const RN_MARKER_DEPS = ['react-native', 'expo', 'nativewind'] as const;
+const rnProjectMemo = new Map<string, boolean>();
+
+function isReactNativeProject(projectRoot: string | undefined): boolean {
+  if (!projectRoot) return false;
+  const cached = rnProjectMemo.get(projectRoot);
+  if (cached !== undefined) return cached;
+  let hit = false;
+  try {
+    const pkgPath = path.join(projectRoot, 'package.json');
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      hit = RN_MARKER_DEPS.some((dep) => deps[dep] !== undefined);
+    }
+  } catch {
+    hit = false;
+  }
+  rnProjectMemo.set(projectRoot, hit);
+  return hit;
+}
+
+/**
+ * Detect whether a written/edited file path is a frontend file. Pass
+ * `projectRoot` to resolve stack-ambiguous extensions: in a React Native
+ * project, `.tsx`/`.jsx` writes report `react-native` rather than `web`.
+ */
+export function detectFrontendFile(
+  filePath: string,
+  projectRoot?: string | undefined,
+): { stack?: DesignStack } | null {
   if (!filePath) return null;
   for (const { re, stack } of FRONTEND_EXT_STACK) {
-    if (re.test(filePath)) return stack ? { stack } : {};
+    if (re.test(filePath)) {
+      if (stack === 'web' && /\.(tsx|jsx)$/i.test(filePath) && isReactNativeProject(projectRoot)) {
+        return { stack: 'react-native' };
+      }
+      return stack ? { stack } : {};
+    }
   }
   return null;
 }
@@ -193,7 +249,7 @@ export function makeDesignDetectToolCallMiddleware(): Middleware<ToolCallPipelin
       if (name === 'write' || name === 'edit' || name === 'replace' || name === 'patch') {
         const input = payload.toolUse.input as { path?: unknown } | undefined;
         const p = typeof input?.path === 'string' ? input.path : '';
-        const hit = detectFrontendFile(p);
+        const hit = detectFrontendFile(p, payload.ctx.projectRoot);
         if (hit) activateDesign(payload.ctx, [`file:${p}`], hit.stack);
       }
       return next(payload);
@@ -222,38 +278,47 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
         if (out.result?.is_error) return out;
         const input = out.toolUse.input as { path?: unknown } | undefined;
         const p = typeof input?.path === 'string' ? input.path : '';
-        if (!p || !detectFrontendFile(p)) return out;
+        if (!p || !detectFrontendFile(p, out.ctx.projectRoot)) return out;
 
         const state = getDesignState(out.ctx);
-        if (!state?.activeKit) {
-          // No pinned kit → no palette to verify against, so this write goes out
-          // unchecked. Returning silently is the dangerous shape: zero findings
-          // reads exactly like a clean pass, and the craft rules treat "zero
-          // composition findings" as the floor. Say it once per session — on
-          // every write it would be noise that gets tuned out.
-          if (!out.ctx.meta[UNPINNED_NOTICE_KEY]) {
-            out.ctx.meta[UNPINNED_NOTICE_KEY] = true;
-            out.result.content +=
-              '\n\n⚠️ Design Studio: no kit is pinned, so frontend writes are NOT being ' +
-              'design-checked — this is "unverified", not "clean". Pin one with the `design` ' +
-              "tool for a new design system, or review against the project's existing tokens. " +
-              'Do not replace an established system merely to obtain a scanner score.';
+        const ctx = out.ctx;
+        let tokens: DesignKitTokens | undefined;
+        let basis: string;
+        if (state?.activeKit) {
+          const loader = getDesignKitLoader(ctx.projectRoot);
+          const rawTokens = await loader.readTokens(state.activeKit).catch(() => undefined);
+          if (!rawTokens) return out;
+          const persisted = await loadActiveKit(ctx.projectRoot).catch(() => undefined);
+          tokens = applyTokenOverrides(rawTokens, persisted?.overrides ?? state.overrides);
+          basis = `kit "${state.activeKit}"`;
+        } else {
+          // No kit pinned — fall back to the project's OWN captured tokens
+          // (`design capture`). Without those either, this write goes out
+          // unchecked; returning silently is the dangerous shape: zero
+          // findings reads exactly like a clean pass. Say it once per session.
+          const captured = await loadCapturedTokens(ctx.projectRoot).catch(() => undefined);
+          if (!captured) {
+            if (!out.ctx.meta[UNPINNED_NOTICE_KEY]) {
+              out.ctx.meta[UNPINNED_NOTICE_KEY] = true;
+              out.result.content +=
+                '\n\n⚠️ Design Studio: no kit is pinned, so frontend writes are NOT being ' +
+                'design-checked — this is "unverified", not "clean". Pin one with the `design` ' +
+                "tool for a new design system, run `design {action:\"capture\"}` to check drift " +
+                'against the project\u2019s own tokens, or review manually. Do not replace an ' +
+                'established system merely to obtain a scanner score.';
+            }
+            return out;
           }
-          return out;
+          tokens = captured.tokens;
+          basis = 'captured project tokens';
         }
 
-        const ctx = out.ctx;
-        const { default: fs } = await import('node:fs/promises');
-        const { default: nodePath } = await import('node:path');
+        const fs = await import('node:fs/promises');
+        const nodePath = await import('node:path');
         const abs = nodePath.isAbsolute(p) ? p : nodePath.join(ctx.projectRoot, p);
         const text = await fs.readFile(abs, 'utf8').catch(() => '');
         if (!text) return out;
 
-        const loader = getDesignKitLoader(ctx.projectRoot);
-        const rawTokens = await loader.readTokens(state.activeKit);
-        if (!rawTokens) return out;
-        const persisted = await loadActiveKit(ctx.projectRoot).catch(() => undefined);
-        const tokens = applyTokenOverrides(rawTokens, persisted?.overrides ?? state.overrides);
         const rel = nodePath.relative(ctx.projectRoot, abs);
         const report = verifyFiles(tokens, [{ path: rel, text }]);
         if (report.violations.length === 0) return out;
@@ -267,7 +332,7 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
         // Summarize which axes drifted (color / radius / spacing / …).
         const axes = [...new Set(report.violations.map((v) => v.axis ?? 'color'))].join(', ');
         out.result.content +=
-          `\n\n⚠️ Design Studio (kit "${state.activeKit}"): ${report.violations.length} ` +
+          `\n\n⚠️ Design Studio (${basis}): ${report.violations.length} ` +
           `source finding(s) [${axes}] in ${rel}. Check token drift against the active theme; ` +
           `composition findings are review prompts, not proof of poor design. Keep intentional ` +
           `patterns justified by the brief and inspect the rendered result:\n${top}${more}`;

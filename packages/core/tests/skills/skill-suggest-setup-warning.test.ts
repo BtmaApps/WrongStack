@@ -24,7 +24,7 @@ const loader = {
 
 function deps(config: Record<string, unknown>, logger: { warn: ReturnType<typeof vi.fn> }) {
   return {
-    config: { features: { skills: true }, ...config } as never,
+    config: { typesafe: { enabled: true }, features: { skills: true }, ...config } as never,
     skillLoader: loader,
     logger: logger as never,
     env: {} as NodeJS.ProcessEnv,

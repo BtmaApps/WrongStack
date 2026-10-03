@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { moduleDirFor } from '@wrongstack/persistence';
+import { stripFrontmatter } from '../skills/frontmatter.js';
 import {
   DESIGN_STACKS,
   type DesignKitEntry,
@@ -10,8 +11,9 @@ import {
   type DesignKitTokens,
   type DesignStack,
   isDesignStack,
+  type SkippedKitInfo,
 } from '../types/design-kit.js';
-import { stripFrontmatter } from '../skills/frontmatter.js';
+import { toErrorMessage } from '../utils/error.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
 
 const KIT_FILE = 'KIT.md';
@@ -27,6 +29,13 @@ interface KitFrontmatter {
   tags: string[];
   stacks: DesignStack[];
   themes: string[];
+  /**
+   * True when a `stacks:` key was seen at all (inline or block list). This
+   * distinguishes "omitted" (the all-stacks default applies) from "declared
+   * but every entry invalid" (rejected with an authoring error, never
+   * silently widened to all five stacks).
+   */
+  stacksDeclared?: boolean;
 }
 
 function parseList(value: string): string[] {
@@ -61,16 +70,24 @@ function parseKitFrontmatter(raw: string): KitFrontmatter {
     else if (key === 'version') out.version = v;
   };
   const setList = (key: 'tags' | 'stacks' | 'themes', items: string[]) => {
-    if (key === 'stacks') out.stacks = items.filter(isDesignStack);
-    else out[key] = items;
+    if (key === 'stacks') {
+      out.stacksDeclared = true;
+      out.stacks = items.filter(isDesignStack);
+    } else {
+      out[key] = items;
+    }
   };
   for (const line of lines) {
     // Block-list item under an open list key.
     const bulletMatch = /^\s*-\s+(.*)$/.exec(line);
     if (listKey && bulletMatch) {
       const parsed = parseList(bulletMatch[1] ?? '');
-      if (listKey === 'stacks') out.stacks.push(...parsed.filter(isDesignStack));
-      else out[listKey].push(...parsed);
+      if (listKey === 'stacks') {
+        out.stacksDeclared = true;
+        out.stacks.push(...parsed.filter(isDesignStack));
+      } else {
+        out[listKey].push(...parsed);
+      }
       continue;
     }
     const kvMatch = /^([a-zA-Z_]+):\s*(.*)$/.exec(line);
@@ -145,6 +162,7 @@ export interface DesignKitLoaderOptions {
 export class DefaultDesignKitLoader implements DesignKitLoader {
   private readonly dirs: { dir: string; source: DesignKitManifest['source'] }[];
   private cache?: DesignKitManifest[] | undefined;
+  private skipped: SkippedKitInfo[] = [];
   private readonly bodyCache = new Map<string, string>();
   private readonly tokenCache = new Map<string, DesignKitTokens | undefined>();
   private readonly rawTokenCache = new Map<string, DesignKitTokens | undefined>();
@@ -160,6 +178,7 @@ export class DefaultDesignKitLoader implements DesignKitLoader {
   async list(): Promise<DesignKitManifest[]> {
     if (this.cache) return this.cache;
     const found: DesignKitManifest[] = [];
+    const skipped: SkippedKitInfo[] = [];
     const seen = new Set<string>();
     for (const { dir, source } of this.dirs) {
       let entries: import('node:fs').Dirent[];
@@ -174,9 +193,26 @@ export class DefaultDesignKitLoader implements DesignKitLoader {
         try {
           const raw = await fs.readFile(kitFile, 'utf8');
           const fm = parseKitFrontmatter(raw);
+          // Authoring failures SURFACE instead of silently vanishing from the
+          // menu: a kit folder that loads wrong is reported with a reason.
+          if (!fm.name) {
+            skipped.push({
+              dir: e.name,
+              source,
+              reason: 'KIT.md frontmatter is missing "name"',
+            });
+            continue;
+          }
+          if (fm.stacksDeclared && fm.stacks.length === 0) {
+            skipped.push({
+              dir: e.name,
+              source,
+              reason: `stacks: no valid stack in the declared list (valid: ${DESIGN_STACKS.join(', ')})`,
+            });
+            continue;
+          }
           const id = fm.id ?? e.name;
           const normalizedId = id.toLowerCase();
-          if (!fm.name) continue;
           if (seen.has(normalizedId)) continue;
           seen.add(normalizedId);
           found.push({
@@ -191,13 +227,24 @@ export class DefaultDesignKitLoader implements DesignKitLoader {
             path: kitFile,
             source,
           });
-        } catch {
-          // skip malformed kit
+        } catch (err) {
+          skipped.push({
+            dir: e.name,
+            source,
+            reason: `KIT.md unreadable or malformed: ${toErrorMessage(err)}`,
+          });
         }
       }
     }
+    this.skipped = skipped;
     this.cache = found;
     return found;
+  }
+
+  /** Kit directories that failed to load — authoring feedback, not fatal. */
+  async listSkipped(): Promise<SkippedKitInfo[]> {
+    await this.list();
+    return this.skipped;
   }
 
   /** Selectable kits only (excludes the reserved `_foundations` entry). */
@@ -224,12 +271,16 @@ export class DefaultDesignKitLoader implements DesignKitLoader {
 
   async menuText(): Promise<string> {
     const entries = await this.listEntries();
-    if (entries.length === 0) return '';
+    const skipped = await this.listSkipped();
+    if (entries.length === 0 && skipped.length === 0) return '';
     const lines = ['## Design kits (pick ONE)'];
     for (const e of entries) {
       const stacks = e.stacks.join('/');
       lines.push(`- **${e.id}** — ${e.aesthetic}`);
       lines.push(`  Best for: ${e.bestFor} · Stacks: ${stacks}`);
+    }
+    for (const s of skipped) {
+      lines.push(`- ⚠️ skipped \`${s.dir}\` (${s.source}): ${s.reason}`);
     }
     return lines.join('\n');
   }
@@ -296,6 +347,7 @@ export class DefaultDesignKitLoader implements DesignKitLoader {
 
   invalidateCache(): void {
     this.cache = undefined;
+    this.skipped = [];
     this.bodyCache.clear();
     this.tokenCache.clear();
     this.rawTokenCache.clear();

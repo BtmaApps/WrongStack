@@ -2,7 +2,11 @@ import type { Config } from '../types/config/root.js';
 import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type { SystemOneRequest, SystemOneResult } from '../typesafe/client.js';
-import { resolveTypeSafeJudge, type TypeSafeJudge } from '../typesafe/judgments.js';
+import {
+  isTypeSafeJudgmentEnabled,
+  resolveTypeSafeJudge,
+  type TypeSafeJudge,
+} from '../typesafe/judgments.js';
 
 export type JevToolInput = Pick<SystemOneRequest, 'state' | 'questions'>;
 
@@ -113,7 +117,7 @@ export function validateJevToolInput(input: unknown): string[] {
 }
 
 export function jevToolStatus(config: Pick<Config, 'typesafe'>) {
-  const enabled = config.typesafe?.judgments?.tool !== false;
+  const enabled = isTypeSafeJudgmentEnabled(config, 'tool');
   const judge = resolveTypeSafeJudge({ config, feature: 'tool' });
   return {
     enabled,

@@ -22,11 +22,46 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it('saves the master disable independently while retaining individual feature switches', () => {
+  render(<JevSection />);
+  const requestId = client.send.mock.calls[0]?.[0].payload.requestId;
+  const settings = {
+    enabled: true,
+    status: 'ready',
+    route: 'typesafe',
+    keySource: 'config',
+    endpoint: '',
+    model: 'jev',
+    requestTimeoutMs: 4000,
+    features: { brain: true, tool: true },
+  };
+  act(() => handlers.get('jev.state')?.({ payload: { requestId, settings } }));
+  fireEvent.click(screen.getByLabelText('settings:jev.enabled'));
+  fireEvent.click(screen.getByText('settings:jev.save'));
+  const sent = client.send.mock.calls.at(-1)?.[0];
+  expect(sent.payload.patch).toMatchObject({
+    enabled: false,
+    features: { brain: true, tool: true },
+  });
+  expect(sent.payload.patch).not.toHaveProperty('apiKey');
+  act(() =>
+    handlers.get('jev.state')?.({
+      payload: {
+        requestId: sent.payload.requestId,
+        settings: { ...settings, enabled: false, status: 'disabled' },
+      },
+    }),
+  );
+  expect((screen.getByText('settings:jev.test') as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByText('settings:jev.checkAll') as HTMLButtonElement).disabled).toBe(true);
+});
+
 it('keeps unsaved edits during polling, uses correlated saves and clears submitted secrets', () => {
   render(<JevSection />);
   const requestId = client.send.mock.calls[0]?.[0].payload.requestId;
   const settings = {
     status: 'ready',
+    enabled: true,
     route: 'typesafe',
     keySource: 'config',
     endpoint: 'https://api.typesafe.ai/v1/systemone',
@@ -72,6 +107,7 @@ it('distinguishes blocked features from diagnostic evidence and sends explicit c
   const requestId = client.send.mock.calls[0]?.[0].payload.requestId;
   const settings = {
     status: 'ready',
+    enabled: true,
     route: 'typesafe',
     keySource: 'config',
     endpoint: '',
@@ -150,6 +186,7 @@ it('round-trips the content-logging switch through jev.set', () => {
   const requestId = client.send.mock.calls[0]?.[0].payload.requestId;
   const settings = {
     status: 'ready',
+    enabled: true,
     route: 'typesafe',
     keySource: 'config',
     endpoint: 'https://api.typesafe.ai/v1/systemone',

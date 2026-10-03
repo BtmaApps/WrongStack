@@ -28,6 +28,7 @@ Design Studio activates automatically when the model is building a UI:
 /design foundations           Print the mandatory baseline (responsive/a11y/theming/motion)
 /design set <k=v> …           Override the active kit's colors/tokens
 /design materialize [stack] [path]   Write the active kit's tokens to a real theme file
+/design capture [files…]      Snapshot the project's own token source for kit-less verify
 /design verify                Scan UI files for off-palette colors
 ```
 
@@ -65,6 +66,31 @@ but the model can still drift. Three tools make adherence concrete:
 The same three actions are available to the model via the `design` tool
 (`{action:"set"|"materialize"|"verify"}`) and in the WebUI gallery (per-theme
 color pickers + a **Materialize** button).
+
+## Kit-less verify — `capture` (`/design capture` + the design tool)
+
+Most sessions edit a codebase that already HAS a token system — a shadcn-style
+`:root`/`@theme` CSS file, a `theme.ts`, or Dart `ColorScheme` constants — and
+no kit. `/design capture [files…]` (or `design {action:"capture"}`) snapshots
+those tokens into
+`.design/captured-tokens.json` (values normalized to hex/OKLCH), after which
+`design {action:"verify"}` **and the automatic write-time drift check** run
+against the project's OWN tokens while no kit is pinned:
+
+```
+design {action:"capture"}                                  # conventional-path discovery
+design {action:"capture", files:["src/theme/tokens.css"]}  # explicit source
+design {action:"verify"}                                   # pinned kit, else the capture
+```
+
+Precedence: a pinned kit always wins; if a pinned kit's tokens are unreadable,
+verify reports nothing rather than silently switching basis. Capture is
+line-based best-effort — unparsable values (fonts, lengths, gradients) are
+skipped and reported, never guessed — so re-run it when the token source
+changes. If the token source redefines the stock shadow utilities
+(`--shadow-sm`…`--shadow-2xl`) in an `@theme` block, capture records them and
+`verify` stops flagging `shadow-*` utilities as stock elevation — in such
+projects those utilities are token-driven, not drift.
 
 **Automatic check:** once a kit is pinned, every write/edit to a frontend file
 is scanned in the background — if it introduces off-palette colors, a short
@@ -114,6 +140,9 @@ Each kit folder contains:
   the WebUI/TUI visual pickers).
 
 The reserved id `_foundations` holds the mandatory baseline and is excluded from the menu.
+Malformed kit folders (a missing `name`, or a `stacks:` list with no valid stack) are reported
+with a reason in `design list` and when the `/design` picker loads — instead of silently
+disappearing.
 
 ## Project-local decisions & rules — `.design/`
 
@@ -129,6 +158,7 @@ so it stays out of the repo in any project.
 | `.design/decisions.md` | Append-only log of kit choices: `- <iso> · kit=… stack=… via=tool\|webui\|slash`. |
 | `.design/brief.md` | Product task, content hierarchy, visual direction, references and acceptance checks. Written by the design workflow; the first 6,000 bytes are refreshed in each active UI request, including after a kit change. Longer briefs include an explicit truncation notice. |
 | `.design/review.md` | Workflow-authored evidence of rendered review: route/artifact, viewport, theme, state, corrections and unverified checks. Not automatically generated or treated as proof by the scanner. |
+| `.design/captured-tokens.json` | The project's own token snapshot (`design {action:"capture"}`) — the verify basis when no kit is pinned. |
 
 Picking a kit (via the `design` tool, `/design <kit>`, or the WebUI panel)
 records the choice; `/design off` clears the pin (the decision log is kept).

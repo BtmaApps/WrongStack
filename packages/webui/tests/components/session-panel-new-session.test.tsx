@@ -38,6 +38,7 @@ import {
   useUIStore,
 } from '../../src/stores/index.js';
 import { useLocalPrefs } from '../../src/stores/local-prefs.js';
+import { useSessionPanelLayout } from '../../src/stores/session-panel-layout.js';
 import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 
 function renderPanel() {
@@ -46,6 +47,8 @@ function renderPanel() {
 
 describe('SessionPanel quick actions', () => {
   beforeEach(() => {
+    useSessionPanelLayout.setState({ order: [], collapsed: {} });
+    useHistoryStore.setState({ entries: [] });
     send.mockClear();
     updatePrefs.mockClear();
     switchAutonomy.mockClear();
@@ -189,24 +192,27 @@ describe('SessionPanel quick actions', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm', sessionStatsExpanded: false });
     renderPanel();
 
-    const toggle = screen.getByTestId('session-stats-toggle');
+    const toggle = screen.getByRole('button', { name: 'Session', exact: true });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByText('Messages')).toBeNull();
+    expect(screen.getByText('Messages').closest('[hidden]')).toBeTruthy();
 
     act(() => {
       fireEvent.click(toggle);
     });
     expect(useLocalPrefs.getState().sessionStatsExpanded).toBe(true);
-    expect(screen.getByText('Messages')).toBeTruthy();
+    expect(screen.getByText('Messages').closest('[hidden]')).toBeNull();
     useLocalPrefs.setState({ sessionStatsExpanded: false });
   });
 
-  it('full chrome always shows the session stats grid', () => {
+  it('full chrome starts with stats open and allows collapsing them', () => {
     useLocalPrefs.setState({ chromeLevel: 'full', sessionStatsExpanded: false });
     renderPanel();
 
-    expect(screen.queryByTestId('session-stats-toggle')).toBeNull();
-    expect(screen.getByText('Messages')).toBeTruthy();
+    const toggle = screen.getByRole('button', { name: 'Session', exact: true });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('Messages').closest('[hidden]')).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByText('Messages').closest('[hidden]')).toBeTruthy();
     useLocalPrefs.setState({ chromeLevel: 'calm' });
   });
 
@@ -237,7 +243,7 @@ describe('SessionPanel quick actions', () => {
     renderPanel();
 
     const history = screen.getByText('Older session');
-    const stats = screen.getByTestId('session-stats-toggle');
+    const stats = screen.getByRole('button', { name: 'Session', exact: true });
     // DOCUMENT_POSITION_FOLLOWING (4): the stats toggle comes after history.
     expect(history.compareDocumentPosition(stats) & 4).toBe(4);
   });

@@ -5,6 +5,7 @@ import { LimitsSection } from './LimitsSection';
 import { PluginToggleList } from './PluginToggleList';
 import { PreferenceSelect } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
+import { UserInstructionsSection } from './UserInstructionsSection';
 
 export function ContextSettingsTab({
   syncPref,
@@ -16,6 +17,8 @@ export function ContextSettingsTab({
 
   return (
     <div className="space-y-6">
+      <UserInstructionsSection />
+
       {/* Feature Flags */}
       <div className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">
         <div className="flex items-start gap-3 mb-4">

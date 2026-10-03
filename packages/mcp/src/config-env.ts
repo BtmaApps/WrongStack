@@ -50,7 +50,7 @@ export function expandMcpEnvPlaceholders(
   const missing = new Set<string>();
   const expand = (value: string): string =>
     value.replace(PLACEHOLDER, (_match, name: string, fallback: string | undefined) => {
-      const resolved = env[name];
+      const resolved = Object.hasOwn(env, name) ? env[name] : undefined;
       if (resolved !== undefined && resolved !== '') return resolved;
       if (fallback !== undefined) return fallback;
       missing.add(name);

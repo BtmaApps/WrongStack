@@ -9,17 +9,17 @@
 
 import {
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Circle,
   CircleDot,
   Cpu,
   Crosshair,
   Download,
   Eraser,
+  Gauge,
   History,
   ListTodo,
   MoreHorizontal,
+  PanelsTopLeft,
   Pin,
   Plus,
   Shrink,
@@ -64,6 +64,7 @@ import {
 } from '../ui/dropdown-menu';
 import { WorkspaceDock } from '../WorkspaceDock';
 import { ProviderQuotaPanel } from './ProviderQuotaPanel';
+import { type SessionSection, SessionSections } from './SessionSections';
 
 // ── Formatting helpers ────────────────────────────────────────────────
 
@@ -142,28 +143,6 @@ function StatBox({
       <span className="text-sm font-semibold tabular-nums truncate">{value}</span>
       {sub && <span className="text-[9px] text-muted-foreground/70 truncate">{sub}</span>}
     </div>
-  );
-}
-
-function SectionHeading({
-  icon,
-  label,
-  right,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  right?: React.ReactNode;
-}) {
-  // A <span> (display:flex) rather than a <div> so the heading can also sit
-  // inside the calm-chrome stats toggle <button> as valid phrasing content.
-  return (
-    <span className="flex w-full items-center justify-between">
-      <span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground font-semibold">
-        {icon}
-        {label}
-      </span>
-      {right}
-    </span>
   );
 }
 
@@ -376,7 +355,7 @@ export function SessionPanel() {
   const actionsSection = (
     <>
       {/* ── Quick actions ── */}
-      <div className="grid grid-cols-2 gap-1.5 border-b border-border/70 bg-card/55 px-3 py-2.5">
+      <div className="grid grid-cols-2 gap-1.5 bg-card/55 px-3 pb-2.5">
         {isLoading && (
           <ActionButton
             icon={<Square className="h-3 w-3" />}
@@ -419,90 +398,59 @@ export function SessionPanel() {
   const dockSection = (
     <>
       {/* Workspace controls stay with the session they describe. */}
-      <div className="border-b border-border/70 px-3 py-2.5">
+      <div className="px-3 pb-2.5">
         <WorkspaceDock />
       </div>
     </>
   );
   const statsSection = (
     <>
-      {/* ── Live stats ──
-          Calm chrome folds the grid behind its heading (the same figures sit
-          in the chat header's status row); full chrome always shows it. */}
-      <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
-        {fullChrome ? (
-          <SectionHeading
-            icon={<Cpu className="h-3 w-3" />}
-            label={t('activity:sessionPanel.sessionLabel')}
+      <div className="px-3 pb-2.5">
+        <div className="grid grid-cols-2 gap-1.5">
+          <StatBox label={t('activity:sessionPanel.stats.messages')} value={messages.length} />
+          <StatBox
+            label={t('activity:sessionPanel.stats.elapsed')}
+            value={startedAt ? fmtElapsed(now - startedAt) : '--'}
           />
-        ) : (
-          <button
-            type="button"
-            data-testid="session-stats-toggle"
-            aria-expanded={statsExpanded}
-            onClick={() => localPrefs.set({ sessionStatsExpanded: !statsExpanded })}
-            className="flex w-full items-center justify-between rounded-sm text-left hover:text-foreground"
-          >
-            <SectionHeading
-              icon={<Cpu className="h-3 w-3" />}
-              label={t('activity:sessionPanel.sessionLabel')}
-              right={
-                statsExpanded ? (
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                )
+          <StatBox
+            label={t('activity:sessionPanel.stats.tokens')}
+            value={fmtTok(totalTokens.input + totalTokens.output)}
+            sub={t('activity:sessionPanel.stats.tokensSub', {
+              in: fmtTok(totalTokens.input),
+              out: fmtTok(totalTokens.output),
+            })}
+          />
+          <StatBox label={t('activity:sessionPanel.stats.cost')} value={fmtCost(cost)} />
+          {iteration && (
+            <StatBox
+              label={t('activity:sessionPanel.stats.iteration')}
+              value={iteration.index}
+              sub={
+                iteration.max
+                  ? t('activity:sessionPanel.stats.iterationOf', { max: iteration.max })
+                  : undefined
               }
             />
-          </button>
-        )}
-        {(fullChrome || statsExpanded) && (
-          <div className="grid grid-cols-2 gap-1.5">
-            <StatBox label={t('activity:sessionPanel.stats.messages')} value={messages.length} />
+          )}
+          {sessionAgents.length > 0 && (
             <StatBox
-              label={t('activity:sessionPanel.stats.elapsed')}
-              value={startedAt ? fmtElapsed(now - startedAt) : '--'}
+              label={t('activity:sessionPanel.stats.agents')}
+              value={sessionAgents.length}
+              sub={
+                runningAgents > 0
+                  ? t('activity:sessionPanel.stats.agentsRunning', { count: runningAgents })
+                  : undefined
+              }
             />
-            <StatBox
-              label={t('activity:sessionPanel.stats.tokens')}
-              value={fmtTok(totalTokens.input + totalTokens.output)}
-              sub={t('activity:sessionPanel.stats.tokensSub', {
-                in: fmtTok(totalTokens.input),
-                out: fmtTok(totalTokens.output),
-              })}
-            />
-            <StatBox label={t('activity:sessionPanel.stats.cost')} value={fmtCost(cost)} />
-            {iteration && (
-              <StatBox
-                label={t('activity:sessionPanel.stats.iteration')}
-                value={iteration.index}
-                sub={
-                  iteration.max
-                    ? t('activity:sessionPanel.stats.iterationOf', { max: iteration.max })
-                    : undefined
-                }
-              />
-            )}
-            {sessionAgents.length > 0 && (
-              <StatBox
-                label={t('activity:sessionPanel.stats.agents')}
-                value={sessionAgents.length}
-                sub={
-                  runningAgents > 0
-                    ? t('activity:sessionPanel.stats.agentsRunning', { count: runningAgents })
-                    : undefined
-                }
-              />
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );
   const quotaSection = (
     <>
       {/* ── Subscription plan quota (Codex, MiniMax, Z.AI) ── */}
-      <ProviderQuotaPanel />
+      <ProviderQuotaPanel embedded />
     </>
   );
   const planSection = (
@@ -515,16 +463,7 @@ export function SessionPanel() {
           const pct = Math.round((done / todos.length) * 100);
           const allDone = done === todos.length;
           return (
-            <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
-              <SectionHeading
-                icon={<ListTodo className="h-3 w-3" />}
-                label={t('activity:sessionPanel.plan')}
-                right={
-                  <span className="tabular-nums text-[10px] text-muted-foreground">
-                    {done}/{todos.length}
-                  </span>
-                }
-              />
+            <div className="space-y-1.5 px-3 pb-2.5">
               <div
                 className={cn(
                   'relative h-1.5 w-full overflow-hidden rounded-full bg-muted',
@@ -594,20 +533,7 @@ export function SessionPanel() {
     <>
       {/* ── Pinned answers ── */}
       {pinnedRows.length > 0 && (
-        <div className="space-y-1.5 border-b border-border/70 px-3 py-2.5">
-          <SectionHeading
-            icon={<Pin className="h-3 w-3 text-warning" />}
-            label={t('activity:sessionPanel.pinned')}
-            right={
-              <button
-                type="button"
-                onClick={unpinAll}
-                className="text-[10px] text-muted-foreground hover:text-destructive"
-              >
-                {t('common:action.clear')}
-              </button>
-            }
-          />
+        <div className="space-y-1.5 px-3 pb-2.5">
           <ul className="space-y-1 max-h-48 overflow-y-auto pr-1">
             {pinnedPage.pageItems.map((m) => {
               const preview = m.content.replace(/\s+/g, ' ').slice(0, 80);
@@ -649,7 +575,7 @@ export function SessionPanel() {
   const bugHuntSection = (
     <>
       {bugHuntRun && (
-        <div className="border-b border-primary/25 bg-primary/[0.06] px-3 py-2.5">
+        <div className="bg-primary/[0.06] px-3 pb-2.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
             <Crosshair className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Bug hunt in progress</span>
@@ -665,11 +591,7 @@ export function SessionPanel() {
   const quickSettingsSection = (
     <>
       {/* ── Quick settings — the mid-session knobs ── */}
-      <div className="space-y-1 border-b border-border/70 px-3 py-2.5">
-        <SectionHeading
-          icon={<SlidersHorizontal className="h-3 w-3" />}
-          label={t('activity:sessionPanel.quickSettings')}
-        />
+      <div className="space-y-1 px-3 pb-2.5">
         <QuickToggle
           label={t('activity:sessionPanel.autonomy')}
           title={t('activity:sessionPanel.autonomyTitle')}
@@ -707,24 +629,7 @@ export function SessionPanel() {
         const recent = historyEntries.slice(0, 8);
         if (recent.length === 0) return null;
         return (
-          <div className="space-y-1 border-b border-border/70 px-3 py-2.5">
-            <SectionHeading
-              icon={<History className="h-3 w-3" />}
-              label={t('activity:nav.history', 'History')}
-              right={
-                <button
-                  type="button"
-                  onClick={() => {
-                    const ui = useUIStore.getState();
-                    ui.setCurrentView('sessions');
-                    ui.setSidebarOpen(false);
-                  }}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
-                >
-                  {t('activity:history.openDashboard', 'Open Dashboard')}
-                </button>
-              }
-            />
+          <div className="space-y-1 px-3 pb-2.5">
             <div className={cn('space-y-0.5', fullChrome && 'max-h-40 overflow-y-auto')}>
               {recent.map((entry) => (
                 <button
@@ -761,7 +666,7 @@ export function SessionPanel() {
   // Export / Compact / Clear move into the row's "more" menu with the same
   // handlers and the same disabled rules.
   const calmActionsSection = (
-    <div className="flex items-center gap-1.5 border-b border-border/70 bg-card/55 px-3 py-2.5">
+    <div className="flex items-center gap-1.5 bg-card/55 px-3 pb-2.5">
       <div className="grid flex-1">
         <ActionButton
           icon={<Plus className="h-3 w-3" />}
@@ -821,36 +726,124 @@ export function SessionPanel() {
     </div>
   );
 
+  const sections: SessionSection[] = [
+    {
+      id: 'actions',
+      label: t('activity:sessionLayout.actions'),
+      icon: <Plus size={12} />,
+      content: fullChrome ? actionsSection : calmActionsSection,
+    },
+    {
+      id: 'workspace',
+      label: t('activity:sessionLayout.workspace'),
+      icon: <PanelsTopLeft size={12} />,
+      content: dockSection,
+    },
+    {
+      id: 'stats',
+      label: t('activity:sessionPanel.sessionLabel'),
+      icon: <Cpu size={12} />,
+      content: statsSection,
+      defaultCollapsed: !fullChrome && !statsExpanded,
+      onCollapse: (folded) => localPrefs.set({ sessionStatsExpanded: !folded }),
+    },
+    {
+      id: 'quota',
+      label: t('activity:quotaPanel.title'),
+      icon: <Gauge size={12} />,
+      content: quotaSection,
+    },
+    {
+      id: 'plan',
+      label: t('activity:sessionPanel.plan'),
+      icon: <ListTodo size={12} />,
+      content: planSection,
+      visible: todos.length > 0,
+      right: (
+        <span className="text-[10px] tabular-nums text-muted-foreground">
+          {todos.filter((todo) => todo.status === 'completed').length}/{todos.length}
+        </span>
+      ),
+    },
+    {
+      id: 'pinned',
+      label: t('activity:sessionPanel.pinned'),
+      icon: <Pin size={12} />,
+      content: pinnedSection,
+      visible: pinnedRows.length > 0,
+      right: (
+        <button
+          type="button"
+          onClick={unpinAll}
+          className="text-[10px] text-muted-foreground hover:text-destructive"
+        >
+          {t('common:action.clear')}
+        </button>
+      ),
+    },
+    {
+      id: 'bug-hunt',
+      label: t('activity:sessionLayout.bugHunt'),
+      icon: <Crosshair size={12} />,
+      content: bugHuntSection,
+      visible: Boolean(bugHuntRun),
+    },
+    {
+      id: 'settings',
+      label: t('activity:sessionPanel.quickSettings'),
+      icon: <SlidersHorizontal size={12} />,
+      content: quickSettingsSection,
+    },
+    {
+      id: 'history',
+      label: t('activity:nav.history', 'History'),
+      icon: <History size={12} />,
+      content: historySection,
+      visible: historyEntries.length > 0,
+      right: (
+        <button
+          type="button"
+          onClick={() => {
+            const ui = useUIStore.getState();
+            ui.setCurrentView('sessions');
+            ui.setSidebarOpen(false);
+          }}
+          className="text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          {t('activity:history.openDashboard', 'Open Dashboard')}
+        </button>
+      ),
+    },
+  ];
+  const defaultOrder = fullChrome
+    ? [
+        'actions',
+        'workspace',
+        'stats',
+        'quota',
+        'plan',
+        'pinned',
+        'bug-hunt',
+        'settings',
+        'history',
+      ]
+    : [
+        'actions',
+        'workspace',
+        'plan',
+        'pinned',
+        'history',
+        'stats',
+        'quota',
+        'bug-hunt',
+        'settings',
+      ];
+
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.28)] [scrollbar-gutter:stable]">
-      {fullChrome ? (
-        <>
-          {actionsSection}
-          {dockSection}
-          {statsSection}
-          {quotaSection}
-          {planSection}
-          {pinnedSection}
-          {bugHuntSection}
-          {quickSettingsSection}
-          {historySection}
-        </>
-      ) : (
-        // Calm chrome: live work first (dock, plan, pinned), then the
-        // session history as the panel's main list; the reference figures
-        // (stats, quota) and the mid-session knobs follow.
-        <>
-          {calmActionsSection}
-          {dockSection}
-          {planSection}
-          {pinnedSection}
-          {historySection}
-          {statsSection}
-          {quotaSection}
-          {bugHuntSection}
-          {quickSettingsSection}
-        </>
-      )}
+      <SessionSections
+        sections={defaultOrder.flatMap((id) => sections.filter((section) => section.id === id))}
+      />
     </div>
   );
 }
