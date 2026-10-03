@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { writeFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -13,6 +14,8 @@ const cfg: {
   code: number;
   error?: string | undefined;
   errorCode?: string | undefined;
+  /** Runs inside the faked process: use it to write files the "patch" would have. */
+  onSpawn?: (() => void) | undefined;
 } = {
   stdout: '',
   stderr: '',
@@ -31,6 +34,7 @@ vi.mock('node:child_process', async (orig) => {
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
       process.nextTick(() => {
+        cfg.onSpawn?.();
         if (cfg.error) {
           child.emit('error', Object.assign(new Error(cfg.error), { code: cfg.errorCode }));
           return;
@@ -44,6 +48,7 @@ vi.mock('node:child_process', async (orig) => {
   };
 });
 
+import { hasModifiedPaths } from '@wrongstack/core/types';
 import { patchTool } from '../src/patch.js';
 
 let tmpDir: string;
@@ -54,6 +59,7 @@ beforeEach(async () => {
   cfg.code = 0;
   cfg.error = undefined;
   cfg.errorCode = undefined;
+  cfg.onSpawn = undefined;
 });
 afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
@@ -65,6 +71,43 @@ const opts = () => ({ signal: new AbortController().signal });
 const goodPatch = '--- a/foo.txt\n+++ b/foo.txt\n@@ -1 +1 @@\n-old\n+new';
 
 describe('patchTool (faked patch process)', () => {
+  it('reports files a failed apply left changed, as a typed PartialWriteError', async () => {
+    // `patch --merge` writes git-style conflict markers into the target and
+    // THEN exits non-zero, so the call fails while the working tree is dirtied.
+    await fs.writeFile(path.join(tmpDir, 'foo.txt'), 'old\n');
+    cfg.onSpawn = () => {
+      writeFileSync(
+        path.join(tmpDir, 'foo.txt'),
+        '<<<<<<< original\nold\n=======\nnew\n>>>>>>> patch\n',
+      );
+    };
+    cfg.stderr = 'Hunk #1 FAILED at 1.\n';
+    cfg.code = 1;
+
+    const thrown = await patchTool.execute({ patch: goodPatch }, ctx(), opts()).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(hasModifiedPaths(thrown)).toBe(true);
+    // Relative: the chronicle journal must not carry an absolute home path.
+    expect((thrown as { modifiedPaths?: string[] }).modifiedPaths).toEqual(['foo.txt']);
+    expect((thrown as Error).message).toMatch(/patch failed/);
+  });
+
+  it('does not claim modified paths when a failure wrote nothing', async () => {
+    await fs.writeFile(path.join(tmpDir, 'foo.txt'), 'old\n');
+    cfg.stderr = 'patch: **** Only garbage was found in the patch input.\n';
+    cfg.code = 2;
+
+    const thrown = await patchTool.execute({ patch: goodPatch }, ctx(), opts()).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(hasModifiedPaths(thrown)).toBe(false);
+  });
+
   it('reports the files GNU patch said it patched', async () => {
     cfg.stdout = 'patching file foo.txt\npatching file bar.txt\n';
     cfg.code = 0;

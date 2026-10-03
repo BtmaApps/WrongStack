@@ -309,3 +309,32 @@ describe('diagnoseBashism', () => {
     expect(hint).toContain('Rewrite it in PowerShell syntax and retry.');
   });
 });
+
+describe('looksLikePowerShellExtended — universal GNU short flags', () => {
+  // `-pv` is the canonical GNU flag for tar/cp/rsync (verbose + preserve). The
+  // extended detector used to list the bare short aliases `pv`/`ov` beside the
+  // unambiguous long parameters, so `tar -pv archive.tar` — everyday POSIX
+  // usage that cmd.exe runs natively — was routed into PowerShell, the exact
+  // disruption the detector's conservative contract exists to prevent. Mirrors
+  // the base detector, which deliberately excludes `-f` as "a universal CLI
+  // flag" (`rm -f`, `git checkout -f`).
+  it.each(['tar -pv archive.tar', 'cp -pv a b', 'rsync -pv src dst'])(
+    'does not treat GNU -pv in %s as PowerShell',
+    (cmd) => {
+      expect(looksLikePowerShellExtended(cmd)).toBe(false);
+      expect(looksLikePowerShell(cmd)).toBe(false);
+      expect(pickShell('win32', cmd, envFrom({}))).toBe('cmd');
+    },
+  );
+
+  it('still respects the flag-cluster boundary, so -pvf/-ovf stay cmd', () => {
+    expect(pickShell('win32', 'tar -pvf archive.tar', envFrom({}))).toBe('cmd');
+    expect(pickShell('win32', 'tar -ovf archive.tar', envFrom({}))).toBe('cmd');
+  });
+
+  it('still detects the unambiguous long parameters the aliases shadowed', () => {
+    expect(looksLikePowerShellExtended('Get-Item x -PipelineVariable out')).toBe(true);
+    expect(looksLikePowerShellExtended('Get-Item x -OutVariable out')).toBe(true);
+    expect(looksLikePowerShellExtended('Get-Item x -AsPlainText')).toBe(true);
+  });
+});

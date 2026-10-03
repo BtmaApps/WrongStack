@@ -34,6 +34,7 @@ function pythonProfile(): LanguageProfile {
       'python3',
       'pip',
       'pip3',
+      'pip-audit',
       'poetry',
       'pipenv',
       'uv',
@@ -53,14 +54,18 @@ function pythonProfile(): LanguageProfile {
             })
           : unavailable(ctx, 'syntax', 'Python syntax check requires an explicit target file.');
       },
+      // mypy prints `a.py:4: error: …` without a column unless asked, and the
+      // diagnostics parser reads `file:line:col:` — so every error was lost.
       semantic: async (ctx) =>
-        processPlan(ctx, 'semantic', 'mypy', ['.', '--no-error-summary'], {
+        processPlan(ctx, 'semantic', 'mypy', ['.', '--no-error-summary', '--show-column-numbers'], {
           parser: 'mypy',
           reason: 'Run mypy type checking on the workspace.',
           executesProjectCode: true,
         }),
+      // Ruff's default "full" output (0.12+) puts the location on a separate
+      // ` --> a.py:1:8` line; `concise` is one `a.py:1:8: F401 …` per finding.
       lint: async (ctx) =>
-        processPlan(ctx, 'lint', 'ruff', ['check', '.'], {
+        processPlan(ctx, 'lint', 'ruff', ['check', '--output-format=concise', '.'], {
           parser: 'ruff',
           reason: 'Run the Ruff linter on the workspace.',
         }),
@@ -91,18 +96,36 @@ function pythonProfile(): LanguageProfile {
       build: async (ctx) =>
         unavailable(ctx, 'build', 'Python is interpreted; use semantic or test instead.'),
       'debug-compile': async (ctx) =>
-        processPlan(ctx, 'debug-compile', 'mypy', ['.', '--no-error-summary'], {
-          parser: 'mypy',
-          reason: 'Collect mypy type diagnostics.',
-          executesProjectCode: true,
-        }),
+        processPlan(
+          ctx,
+          'debug-compile',
+          'mypy',
+          ['.', '--no-error-summary', '--show-column-numbers'],
+          {
+            parser: 'mypy',
+            reason: 'Collect mypy type diagnostics.',
+            executesProjectCode: true,
+          },
+        ),
+      // A bare `pip install` refuses ("You must give at least one requirement
+      // to install"); name the requirements file, or the project itself.
       'package-install': async (ctx) =>
-        processPlan(ctx, 'package-install', 'pip', ['install', '--no-cache-dir'], {
-          parser: 'package-text',
-          reason: 'Install dependencies from requirements.',
-          mutating: true,
-          network: true,
-        }),
+        processPlan(
+          ctx,
+          'package-install',
+          'pip',
+          [
+            'install',
+            '--no-cache-dir',
+            ...((await ctx.pathExists('requirements.txt')) ? ['-r', 'requirements.txt'] : ['.']),
+          ],
+          {
+            parser: 'package-text',
+            reason: 'Install dependencies from requirements.',
+            mutating: true,
+            network: true,
+          },
+        ),
       'package-add': async (ctx) => {
         const names = packageNames(ctx);
         return names.length === 0
@@ -124,12 +147,26 @@ function pythonProfile(): LanguageProfile {
               mutating: true,
             });
       },
+      // pip has no `audit` command ("unknown command"), so this never ran. The
+      // auditor is the separate `pip-audit`; bare, it audits whatever Python
+      // environment is active, so point it at the project's requirements (or
+      // the project itself).
       'package-audit': async (ctx) =>
-        processPlan(ctx, 'package-audit', 'pip', ['audit'], {
-          parser: 'pip-audit',
-          reason: 'Audit Python dependencies for vulnerabilities.',
-          network: true,
-        }),
+        processPlan(
+          ctx,
+          'package-audit',
+          'pip-audit',
+          [
+            ...((await ctx.pathExists('requirements.txt')) ? ['-r', 'requirements.txt'] : ['.']),
+            '--format',
+            'json',
+          ],
+          {
+            parser: 'pip-audit',
+            reason: 'Audit Python dependencies for vulnerabilities.',
+            network: true,
+          },
+        ),
       run: async (ctx) => {
         // Try common Python entry points in priority order.
         const entries = ['main.py', 'app.py', '__main__.py', 'manage.py'];
@@ -365,6 +402,41 @@ function rubyProfile(): LanguageProfile {
   };
 }
 
+/** Build directories `cmake --build <dir>` can target, in lookup order. */
+const CMAKE_BUILD_DIRS = Object.freeze(['.', 'build', 'cmake-build-debug', 'out/build']);
+
+/**
+ * C/C++ build. `cmake --build` needs a CONFIGURED build directory (one with a
+ * CMakeCache.txt) — the source root is one only for an in-source build, so
+ * `cmake --build .` failed for the out-of-source norm ("not a CMake build
+ * directory"). No `--target all` either: the Visual Studio generator (the
+ * Windows default) has no such target (ALL_BUILD), and the default target is
+ * already everything. A Makefile project without CMake builds with `make`.
+ */
+async function nativeBuildPlan(
+  ctx: ProfileContext,
+  operation: 'semantic' | 'build',
+  reason: string,
+) {
+  const options = { parser: 'cmake', reason, mutating: true, executesProjectCode: true };
+  if (await ctx.pathExists('CMakeLists.txt')) {
+    for (const dir of CMAKE_BUILD_DIRS) {
+      if (await ctx.pathExists(dir === '.' ? 'CMakeCache.txt' : `${dir}/CMakeCache.txt`)) {
+        return processPlan(ctx, operation, 'cmake', ['--build', dir], options);
+      }
+    }
+    return unavailable(
+      ctx,
+      operation,
+      'The CMake project is not configured yet — run `cmake -S . -B build` first.',
+    );
+  }
+  if ((await ctx.pathExists('Makefile')) || (await ctx.pathExists('makefile'))) {
+    return processPlan(ctx, operation, 'make', [], options);
+  }
+  return unavailable(ctx, operation, 'No CMakeLists.txt or Makefile to build.');
+}
+
 function cProfile(): LanguageProfile {
   return {
     id: 'c',
@@ -381,25 +453,14 @@ function cProfile(): LanguageProfile {
     executables: Object.freeze(['cc', 'gcc', 'clang', 'cmake', 'make']),
     operations: Object.freeze({
       semantic: async (ctx) =>
-        processPlan(ctx, 'semantic', 'cmake', ['--build', '.', '--target', 'all'], {
-          parser: 'cmake',
-          reason: 'Build C project to collect compiler diagnostics.',
-          mutating: true,
-          executesProjectCode: true,
-        }),
+        nativeBuildPlan(ctx, 'semantic', 'Build C project to collect compiler diagnostics.'),
       test: async (ctx) =>
         unavailable(
           ctx,
           'test',
           'C test execution requires a configured test runner (ctest, etc.).',
         ),
-      build: async (ctx) =>
-        processPlan(ctx, 'build', 'cmake', ['--build', '.'], {
-          parser: 'cmake',
-          reason: 'Build the C project.',
-          mutating: true,
-          executesProjectCode: true,
-        }),
+      build: async (ctx) => nativeBuildPlan(ctx, 'build', 'Build the C project.'),
     }),
   };
 }

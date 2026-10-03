@@ -239,10 +239,18 @@ export function looksLikePowerShellExtended(command: string): boolean {
   // PS comment block start <# ... #>
   if (/^\s*<#|#>\s*$/m.test(trimmed)) return true;
 
-  // Common PS-only parameters: -AsPlainText, -PipelineVariable/-pv,
-  // -FilterHashtable, -OutVariable/-ov
+  // Common PS-only parameters: -AsPlainText, -PipelineVariable,
+  // -FilterHashtable, -OutVariable.
+  //
+  // The bare short aliases `-pv`/`-ov` were removed: `-pv` is the canonical
+  // GNU flag for `tar`/`cp`/`rsync` (verbose + preserve), so `tar -pv a.tar`
+  // is everyday POSIX usage that cmd.exe runs natively. Matching it here sent
+  // working cmd.exe work into PowerShell, which is exactly the disruption the
+  // conservative contract above exists to prevent. The unambiguous long
+  // parameters stay; this mirrors the base detector's exclusion of `-f`
+  // ("a universal CLI flag", `rm -f` / `git checkout -f`).
   if (
-    /(?:^|\s)[-//](?:AsPlainText|PipelineVariable|pv|FilterHashtable|OutVariable|ov)(?:\s|=|$)/i.test(
+    /(?:^|\s)[-//](?:AsPlainText|PipelineVariable|FilterHashtable|OutVariable)(?:\s|=|$)/i.test(
       trimmed,
     )
   ) {

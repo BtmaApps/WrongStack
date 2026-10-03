@@ -244,3 +244,40 @@ describe('detectLinter config detection', () => {
     ).rejects.toThrow(/outside project root/);
   });
 });
+
+// Replays of real `biome lint` output (biome 2.5.13, default reporter, captured
+// from a project with one `==` error and two warnings). Biome 2 prints ONE
+// summary line per severity — "Found 1 error." / "Found 2 warnings." — so the
+// warnings must be read from their own line.
+describe('biome 2 summary lines (real output)', () => {
+  const fixture = (name: string) =>
+    fs.readFile(path.join(import.meta.dirname, 'fixtures', 'package-reports', name), 'utf8');
+
+  it('reads errors and warnings from separate summary lines', async () => {
+    spawnStreamMocks.result = {
+      stdout: await fixture('biome-2.5.13-lint-error-and-warnings.txt'),
+      stderr: '',
+      exitCode: 1,
+      truncated: false,
+    };
+    const result = await lintTool.execute({ linter: 'biome' }, makeCtx(tmpDir), makeOpts());
+    expect({ errors: result.errors, warnings: result.warnings }).toEqual({
+      errors: 1,
+      warnings: 2,
+    });
+  });
+
+  it('counts a warnings-only run (no error summary line, exit 0)', async () => {
+    spawnStreamMocks.result = {
+      stdout: await fixture('biome-2.5.13-lint-warnings-only.txt'),
+      stderr: '',
+      exitCode: 0,
+      truncated: false,
+    };
+    const result = await lintTool.execute({ linter: 'biome' }, makeCtx(tmpDir), makeOpts());
+    expect({ errors: result.errors, warnings: result.warnings }).toEqual({
+      errors: 0,
+      warnings: 2,
+    });
+  });
+});

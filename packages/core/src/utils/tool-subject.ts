@@ -64,7 +64,12 @@ function renderSubjectFields(obj: Record<string, unknown>, fields: readonly stri
     if (value === undefined || value === null || value === '' || value === false) continue;
     // Same quote-escaping discipline as renderCommandLine: a raw quote in an
     // unquoted field value must not splice with adjacent subject tokens.
-    const str = String(value).replace(/"/g, '\\"');
+    // An object/array field must render its content: `String()` turned every
+    // one into `[object Object]`, so distinct inputs shared one subject.
+    const str = (typeof value === 'object' ? JSON.stringify(value) : String(value)).replace(
+      /"/g,
+      '\\"',
+    );
     parts.push(`${field}=${/\s/.test(str) ? `"${str}"` : str}`);
   }
   return parts.join(' ');
@@ -80,7 +85,7 @@ export function subjectForToolInput(
   const obj = input as Record<string, unknown>;
   const extra =
     subjectFields && subjectFields.length > 0 ? renderSubjectFields(obj, subjectFields) : '';
-  const withExtra = (base: string): string => (extra ? `${base} ${extra}` : base);
+  const withExtra = (base: string): string => (extra && base ? `${base} ${extra}` : base || extra);
 
   if (subjectKey) {
     const value = obj[subjectKey];
@@ -119,7 +124,7 @@ export function subjectForToolInput(
       // directory: trusting a preview would otherwise silently authorize the
       // actual application (over-grant). Mirror the `command` special-case.
       if (subjectKey === 'directory' && obj['dry_run'] === true) {
-        return `${escapeGlobSubject(value)}:dry-run`;
+        return `${escapeGlobSubject(withExtra(value))}:dry-run`;
       }
       // A dry-run install must not share a subject with a real install of the
       // same packages: trusting a preview would otherwise silently authorize the
@@ -127,15 +132,19 @@ export function subjectForToolInput(
       // in the path-subject branch above, since their subjectKey `files` is a
       // path key.)
       if (subjectKey === 'packages' && obj['dry_run'] === true) {
-        return `${escapeGlobSubject(value)}:dry-run`;
+        return `${escapeGlobSubject(withExtra(value))}:dry-run`;
       }
       // A dry-run scaffold must not share a subject with a real scaffold of the
       // same name (over-grant). `name` is scaffold's subjectKey; no other tool
       // uses it, so this only matches scaffold.
       if (subjectKey === 'name' && obj['dry_run'] === true) {
-        return `${escapeGlobSubject(value)}:dry-run`;
+        return `${escapeGlobSubject(withExtra(value))}:dry-run`;
       }
-      return escapeGlobSubject(value);
+      // `subjectFields` narrow every named-field subject, not just `command`:
+      // without this a tool keyed on `name`/`operation` (project_kit,
+      // language_package) declared its fields and they were silently dropped,
+      // so one "always allow" covered every variation of the call.
+      return escapeGlobSubject(withExtra(value));
     }
   }
 

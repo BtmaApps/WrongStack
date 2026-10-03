@@ -84,6 +84,15 @@ export interface ToolEventMap {
     errorCode?: string | undefined;
     errorSubsystem?: string | undefined;
     errorSeverity?: string | undefined;
+    /**
+     * Files the failing call is KNOWN to have left modified on disk — e.g.
+     * `patch --merge` writing conflict markers. Populated only from a
+     * `PartialWriteError`, where the tool verified each path by reading the
+     * file back. These files are real damage despite the failure, so consumers
+     * that report "what changed" must surface them (as presence, never as line
+     * counts). Absent for a failure that touched nothing.
+     */
+    modifiedPaths?: string[] | undefined;
     /** Kanban task this tool call belongs to, when known. */
     taskId?: string | undefined;
     /** Kanban board this tool call belongs to, when known. */

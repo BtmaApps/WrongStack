@@ -1,0 +1,44 @@
+w.ts:2:1 lint/suspicious/noDebugger  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This is an unexpected use of the debugger statement.
+  
+    1 │ let a = 1;
+  > 2 │ debugger;
+      │ ^^^^^^^^^
+    3 │ export const b = a;
+    4 │ 
+  
+  i Unsafe fix: Remove debugger statement
+  
+    1 1 │   let a = 1;
+    2   │ - debugger;
+    3 2 │   export const b = a;
+    4 3 │   
+  
+
+w.ts:1:1 lint/style/useConst  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This let declares a variable that is only assigned once.
+  
+  > 1 │ let a = 1;
+      │ ^^^
+    2 │ debugger;
+    3 │ export const b = a;
+  
+  i 'a' is never reassigned.
+  
+  > 1 │ let a = 1;
+      │     ^
+    2 │ debugger;
+    3 │ export const b = a;
+  
+  i Safe fix: Use const instead.
+  
+    1   │ - let·a·=·1;
+      1 │ + const·a·=·1;
+    2 2 │   debugger;
+    3 3 │   export const b = a;
+  
+
+Checked 1 file in 5ms. No fixes applied.
+Found 2 warnings.

@@ -1,0 +1,16 @@
+{
+  "is-number": {
+    "current": "6.0.0",
+    "latest": "7.0.0",
+    "wanted": "6.0.0",
+    "isDeprecated": false,
+    "dependencyType": "devDependencies"
+  },
+  "minimist": {
+    "current": "0.0.8",
+    "latest": "1.2.8",
+    "wanted": "0.0.8",
+    "isDeprecated": false,
+    "dependencyType": "dependencies"
+  }
+}

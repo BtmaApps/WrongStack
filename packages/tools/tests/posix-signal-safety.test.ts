@@ -19,7 +19,7 @@ const allowedNegativeKillSources = new Set([
   // group on POSIX; terminateProcessTree() group-kills -child.pid of a child
   // this module itself spawned (taskkill /T on win32). Same pattern as
   // shell-executor.ts.
-  'packages/kanban/src/verification/verification-context.ts',
+  'packages/kanban/src/verification/verification-process.ts',
 ]);
 const allowedDirectSignalSources = new Set([
   'packages/cli/src/slash-commands/session.ts',
@@ -35,7 +35,7 @@ const allowedDirectSignalSources = new Set([
   // Kanban verification SIGKILLs its own detached check-command child (group
   // kill on POSIX, child.kill fallback). Same reviewed pattern as
   // shell-executor.ts.
-  'packages/kanban/src/verification/verification-context.ts',
+  'packages/kanban/src/verification/verification-process.ts',
 ]);
 const negativeProcessKillPattern = /process\.kill\s*\(\s*-/;
 const directProcessSignalPattern = /process\.kill\s*\([^,\n]+,\s*['"]SIG(?:KILL|TERM|INT|HUP)['"]/;

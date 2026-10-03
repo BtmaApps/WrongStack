@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-03T11:52:27.241Z
+**Generated:** 2026-10-03T11:54:05.232Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4332 |
-| Production source lines | 1032377 |
-| Test files | 3963 |
+| Production source lines | 1033407 |
+| Test files | 3964 |
 | Workspace dependency edges | 131 |
 | Relative module edges | 14151 |
 | Non-command slash imports | 0 |
@@ -65,7 +65,7 @@
 | @wrongstack/simpleui | 108 | 87 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 41 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 246 | 288 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 246 | 289 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 450 | 404 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 23 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 619 | 441 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -95,6 +95,7 @@ None.
 |---:|---|
 | 1830 | `packages/core/src/security/yolo-risk.ts` |
 | 1372 | `packages/tools/src/_danger-detect.ts` |
+| 1242 | `packages/tools/src/languages/diagnostics.ts` |
 | 1189 | `packages/vector-memory/src/store.ts` |
 | 1176 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 1064 | `packages/tools/src/codebase-index/writer.ts` |
@@ -142,7 +143,6 @@ None.
 | 894 | `packages/tools/src/bash.ts` |
 | 893 | `packages/sage/src/domain-term-extractor.ts` |
 | 893 | `packages/tools/src/codebase-index/project-server-client.ts` |
-| 889 | `packages/core/src/hq/auth-store.ts` |
 
 ## Exports only tests reference
 

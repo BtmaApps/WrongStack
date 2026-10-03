@@ -214,8 +214,19 @@ export const gitTool = {
       throw new Error(`git: Not in a git repository (within project root ${ctx.projectRoot})`);
     }
 
-    const args = buildArgs(input);
+    let args = buildArgs(input);
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
+
+    // `git fetch <x>` reads x as a REMOTE. `branch` is documented as a branch
+    // name, and `git fetch feature` failed ("'feature' does not appear to be a
+    // git repository") — pull/push already address `origin <branch>`. A value
+    // that names a configured remote still fetches that remote.
+    if (input.command === 'fetch' && input.branch) {
+      const remotes = await runGit(['remote'], gitDir, signal).catch(() => undefined);
+      const names =
+        remotes?.exitCode === 0 ? remotes.stdout.split(/\r?\n/).map((r) => r.trim()) : [];
+      if (!names.includes(input.branch)) args = ['fetch', 'origin', input.branch];
+    }
 
     // For commits, check whether the working tree holds changes this session
     // did not author (a concurrent agent / separate wrongstack process / human).

@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as Core from '@wrongstack/core/coordination';
 import type { ToolProgressEvent } from '@wrongstack/core/types';
+import { subjectForToolInput } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpawnStreamResult } from '../src/_spawn-stream.js';
 import { installTool } from '../src/install.js';
@@ -484,11 +485,107 @@ describe('installTool', () => {
     expect(call.args).toContain('--ignore-scripts');
   });
 
+  // Yarn 2+ (Berry) has no `--ignore-scripts`: real yarn 4.5.3 answers
+  // `Unknown Syntax Error: Unsupported option name ("--ignore-scripts").` and
+  // exits 1, so the scripts-off default must use `--mode=skip-build` instead.
+  describe('yarn 2+ lifecycle-script opt-out', () => {
+    const yarnArgs = async (files: Record<string, string>, input: Record<string, unknown>) => {
+      spawnStreamMock.mockClear();
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'inst-yarn-berry-'));
+      try {
+        for (const [name, content] of Object.entries(files)) {
+          await fs.writeFile(path.join(dir, name), content);
+        }
+        await installTool.execute(input, makeCtx({ cwd: dir, projectRoot: dir }), makeOpts());
+        const call = spawnStreamMock.mock.calls[0]?.[0] as { cmd: string; args: string[] };
+        expect(call.cmd).toBe('yarn');
+        return call.args;
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    };
+    const berryManifest = JSON.stringify({ name: 'b', packageManager: 'yarn@4.5.3' });
+
+    it('uses --mode=skip-build after the subcommand when packageManager declares yarn@4', async () => {
+      const args = await yarnArgs({ 'package.json': berryManifest, 'yarn.lock': '' }, {});
+      expect(args).toEqual(['install', '--mode=skip-build']);
+    });
+
+    it('applies the same opt-out to `yarn add`, keeping --dev', async () => {
+      const args = await yarnArgs(
+        { 'package.json': berryManifest, 'yarn.lock': '' },
+        { packages: 'is-odd', save: 'dev' },
+      );
+      expect(args).toEqual(['add', '--dev', '--mode=skip-build', 'is-odd']);
+    });
+
+    it('treats a .yarnrc.yml as Berry when no packageManager is declared', async () => {
+      const args = await yarnArgs(
+        { 'package.json': '{}', '.yarnrc.yml': 'nodeLinker: node-modules\n', 'yarn.lock': '' },
+        { packages: 'is-odd' },
+      );
+      expect(args).toEqual(['add', '--mode=skip-build', 'is-odd']);
+    });
+
+    it('keeps --ignore-scripts for a declared yarn@1 project', async () => {
+      const args = await yarnArgs(
+        { 'package.json': JSON.stringify({ packageManager: 'yarn@1.22.22' }), 'yarn.lock': '' },
+        { packages: 'is-odd' },
+      );
+      expect(args).toEqual(['--ignore-scripts', 'add', 'is-odd']);
+    });
+
+    it('passes neither flag on Berry when lifecycleScripts: true', async () => {
+      const args = await yarnArgs(
+        { 'package.json': berryManifest, 'yarn.lock': '' },
+        { lifecycleScripts: true },
+      );
+      expect(args).toEqual(['install']);
+    });
+  });
+
   it('executes cleanly when opts parameter is omitted and session is undefined', async () => {
     spawnStreamMock.mockClear();
     const minimalCtx = { cwd: '.', projectRoot: '.' } as any;
     const result = await (installTool.execute as any)({ dry_run: true }, minimalCtx);
     expect(result.exit_code).toBe(0);
     expect(result.dry_run).toBe(true);
+  });
+});
+
+// An approval stored for the default install (scripts off, project-local) used
+// to cover the same packages with lifecycleScripts:true or global:true too —
+// the subject was only `packages`.
+describe('installTool permission subject', () => {
+  const subject = (input: Record<string, unknown>) =>
+    subjectForToolInput(installTool.name, input, installTool.subjectKey, installTool.subjectFields);
+
+  it('keeps the default install subject unchanged', () => {
+    expect(subject({ packages: 'esbuild' })).toBe('esbuild');
+    expect(subject({ packages: 'esbuild', lifecycleScripts: false, global: false })).toBe(
+      'esbuild',
+    );
+  });
+
+  it('does not let a default approval cover running lifecycle scripts', () => {
+    const scripts = subject({ packages: 'esbuild', lifecycleScripts: true });
+    expect(scripts).toBe('esbuild lifecycleScripts=true');
+    expect(scripts).not.toBe(subject({ packages: 'esbuild' }));
+  });
+
+  it('does not let a default approval cover a global install', () => {
+    const global = subject({ packages: 'esbuild', global: true });
+    expect(global).toBe('esbuild global=true');
+    expect(global).not.toBe(subject({ packages: 'esbuild' }));
+  });
+
+  it('keeps the dry-run suffix distinct from the real call', () => {
+    expect(subject({ packages: 'esbuild', dry_run: true, lifecycleScripts: true })).toBe(
+      'esbuild lifecycleScripts=true:dry-run',
+    );
+  });
+
+  it('renders a restore-everything opt-in without a stray separator', () => {
+    expect(subject({ packages: '', lifecycleScripts: true })).toBe('lifecycleScripts=true');
   });
 });

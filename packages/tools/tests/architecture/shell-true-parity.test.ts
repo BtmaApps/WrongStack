@@ -76,7 +76,7 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
       'packages/plugins/tests/lint-gate-platform.test.ts',
       'packages/bench/src/exec-command.ts',
       'packages/core/src/performance/perf-runner.ts',
-      'packages/kanban/src/verification/verification-context.ts',
+      'packages/kanban/src/verification/verification-process.ts',
       'packages/webui-server/src/server/discover-mailbox-bridge.ts',
       'scripts/build-portable.mjs',
       'scripts/coverage-lock.mjs',

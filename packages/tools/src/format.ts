@@ -223,7 +223,10 @@ export const formatTool: Tool<FormatInput, FormatOutput> = {
       args = [input.check ? '--check' : '--write'];
       args.push(...(fileList.length > 0 ? fileList : ['.']));
     } else {
-      args = ['format', input.check ? '--check' : '--write'];
+      // Biome checks unless told to --write; it has no `--check` and refuses
+      // one ("`--check` is not expected in this context") — a check that
+      // never ran then read as files_changed 0.
+      args = ['format', ...(input.check ? [] : ['--write'])];
       if (fileList.length > 0) args.push('--', ...fileList);
     }
 

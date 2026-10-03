@@ -211,13 +211,16 @@ export const lintTool: Tool<LintInput, LintOutput> = {
     const combined = `${result.stdout}\n${result.stderr}`;
     let errors = 0;
     let warnings = 0;
+    // Biome 2 prints one summary line per severity ("Found 1 error." /
+    // "Found 2 warnings."), so a warnings-only run has no error line at all.
     const biomeSummary = combined.match(/Found\s+(\d+)\s+errors?(?:\s+and\s+(\d+)\s+warnings?)?/i);
+    const biomeWarnings = combined.match(/Found\s+(\d+)\s+warnings?\b/i);
     const eslintSummary = combined.match(
       /(\d+)\s+problems?\s+\((\d+)\s+errors?,\s*(\d+)\s+warnings?\)/i,
     );
-    if (biomeSummary) {
-      errors = Number.parseInt(biomeSummary[1] ?? '0', 10);
-      warnings = Number.parseInt(biomeSummary[2] ?? '0', 10);
+    if (biomeSummary || biomeWarnings) {
+      errors = Number.parseInt(biomeSummary?.[1] ?? '0', 10);
+      warnings = Number.parseInt(biomeWarnings?.[1] ?? biomeSummary?.[2] ?? '0', 10);
     } else if (eslintSummary) {
       errors = Number.parseInt(eslintSummary[2] ?? '0', 10);
       warnings = Number.parseInt(eslintSummary[3] ?? '0', 10);

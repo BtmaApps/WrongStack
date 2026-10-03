@@ -290,6 +290,14 @@
       "lines": 1024,
       "relativeImports": 2
     },
+    "packages/tools/src/languages/diagnostics.ts": {
+      "lines": 1242,
+      "relativeImports": 1
+    },
+    "packages/tools/src/languages/profiles/primary.ts": {
+      "lines": 866,
+      "relativeImports": 2
+    },
     "packages/tools/src/pwsh.ts": {
       "lines": 852,
       "relativeImports": 9

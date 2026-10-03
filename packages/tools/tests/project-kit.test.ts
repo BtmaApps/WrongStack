@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { EventBus } from '@wrongstack/core/kernel';
+import { runWithProcessTelemetry } from '@wrongstack/core/observability';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   KIT_DIRECTORY,
@@ -51,6 +53,32 @@ async function fixture() {
     });
   const manifest = JSON.parse(await readFile(path.join(kitDir, 'kit.json'), 'utf8'));
   return { root, ctx, opts, kitDir, revision, run, manifest };
+}
+
+async function cancelAfterChildOutput(f: Awaited<ReturnType<typeof fixture>>, revision: string) {
+  const events = new EventBus();
+  const controller = new AbortController();
+  let observed = false;
+  const off = events.on('process.output', (event) => {
+    if (event.stream !== 'stderr') return;
+    observed = true;
+    controller.abort();
+  });
+  try {
+    const result = await runWithProcessTelemetry(
+      {
+        events,
+        sessionId: 'kit-fixture',
+        toolCallId: 'cancel-fixture',
+        toolName: 'project_kit_run',
+      },
+      () => f.run('verify', {}, revision, controller.signal),
+    );
+    expect(observed).toBe(true);
+    return result;
+  } finally {
+    off();
+  }
 }
 
 describe('Project Kit lifecycle', () => {
@@ -146,18 +174,28 @@ export function run(input, ctx) {
     const f = await fixture();
     f.manifest.timeoutMs = 500;
     await writeFile(path.join(f.kitDir, 'kit.json'), JSON.stringify(f.manifest));
-    await writeFile(path.join(f.kitDir, 'main.mjs'), 'export function run() { while (true) {} }');
+    await writeFile(
+      path.join(f.kitDir, 'main.mjs'),
+      'export function run() { process.stderr.write("ready"); while (true) {} }',
+    );
     const rev = (await loadKit(f.root, 'strings.unique')).revision;
     expect(await f.run('verify', {}, rev)).toMatchObject({ status: 'failed', error: 'Timed out' });
-    const controller = new AbortController();
-    const pending = f.run('verify', {}, rev, controller.signal);
-    setTimeout(() => controller.abort(), 200);
-    expect(await pending).toMatchObject({ status: 'failed', error: 'Cancelled' });
-  }, 15000);
+    // Cancellation is exercised after the child starts, independently of its
+    // timeout. Snapshot I/O and Node startup may exceed 200ms under coverage.
+    f.manifest.timeoutMs = 30_000;
+    await writeFile(path.join(f.kitDir, 'kit.json'), JSON.stringify(f.manifest));
+    const cancellationRevision = (await loadKit(f.root, 'strings.unique')).revision;
+    expect(await cancelAfterChildOutput(f, cancellationRevision)).toMatchObject({
+      status: 'failed',
+      error: 'Cancelled',
+    });
+  }, 45_000);
 
   it('records exitCode and a bounded redacted stderr tail for timed-out and cancelled runs', async () => {
     const f = await fixture();
-    f.manifest.timeoutMs = 500;
+    // This test requires actual stderr evidence, so allow bounded startup
+    // headroom; the separate loop test covers the short timeout contract.
+    f.manifest.timeoutMs = 10_000;
     await writeFile(path.join(f.kitDir, 'kit.json'), JSON.stringify(f.manifest));
     await writeFile(
       path.join(f.kitDir, 'main.mjs'),
@@ -185,10 +223,10 @@ export function run(input, ctx) {
     expect(timedOutRecord?.stderrTail).toBe(timedOut.stderrTail);
     expect(timedOutRecord?.exitCode).toBe(timedOut.exitCode);
 
-    const controller = new AbortController();
-    const pending = f.run('verify', {}, rev, controller.signal);
-    setTimeout(() => controller.abort(), 200);
-    const cancelled = await pending;
+    f.manifest.timeoutMs = 30_000;
+    await writeFile(path.join(f.kitDir, 'kit.json'), JSON.stringify(f.manifest));
+    const cancellationRevision = (await loadKit(f.root, 'strings.unique')).revision;
+    const cancelled = await cancelAfterChildOutput(f, cancellationRevision);
     expect(cancelled.error).toBe('Cancelled');
     expect(cancelled.stderrTail).toContain('GITHUB_TOKEN=[REDACTED]');
     expect((cancelled.stderrTail ?? '').length).toBeLessThanOrEqual(4096);
@@ -197,7 +235,7 @@ export function run(input, ctx) {
     } else {
       expect(cancelled.exitCode === undefined || typeof cancelled.exitCode === 'number').toBe(true);
     }
-  }, 15000);
+  }, 45_000);
 
   it('persists the exit code and a bounded redacted stderr tail when the child dies without a result', async () => {
     const f = await fixture();

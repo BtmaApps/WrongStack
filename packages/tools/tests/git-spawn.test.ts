@@ -83,8 +83,15 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
   it('builds fetch args with and without a branch', async () => {
     await run({ command: 'fetch' });
     expect(capturedArgs).toEqual(['fetch', '--all']);
+    // A configured remote name still fetches that remote (the mock answers
+    // `git remote` with this stdout)…
+    cfg.stdout = 'origin\nupstream\n';
     await run({ command: 'fetch', branch: 'origin' });
     expect(capturedArgs).toEqual(['fetch', 'origin']);
+    // …a branch name fetches that branch from origin (`git fetch feature`
+    // read the branch as a remote and failed).
+    await run({ command: 'fetch', branch: 'feature/x' });
+    expect(capturedArgs).toEqual(['fetch', 'origin', 'feature/x']);
   });
 
   it('builds log args for each format', async () => {

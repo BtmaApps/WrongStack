@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { stripAnsi } from '@wrongstack/core/utils';
 import type {
   LanguageDiagnostic,
   LanguagePackageMutation,
@@ -35,8 +36,14 @@ export function parseLanguageDiagnostics(
       break;
     case 'dotnet-build':
     case 'dotnet-format':
-    case 'dotnet-test':
       diagnostics = parseDotnet(text, workspaceRoot);
+      break;
+    case 'dotnet-test':
+      // A test run can fail to COMPILE (compiler shape) or fail its tests.
+      diagnostics = [
+        ...parseDotnet(text, workspaceRoot),
+        ...parseDotnetTestFailures(text, workspaceRoot),
+      ];
       break;
     case 'go-test':
     case 'go-compiler':
@@ -45,6 +52,28 @@ export function parseLanguageDiagnostics(
       break;
     case 'biome':
       diagnostics = parseBiome(text, workspaceRoot);
+      break;
+    case 'shellcheck':
+      diagnostics = parseShellcheckJson(stdout, workspaceRoot);
+      break;
+    case 'cargo-test':
+      diagnostics = parseCargoTest(text, workspaceRoot);
+      break;
+    case 'pytest':
+      diagnostics = parsePytest(text, workspaceRoot);
+      break;
+    case 'python':
+      diagnostics = parsePythonCompile(text, workspaceRoot);
+      break;
+    case 'deno-test':
+      diagnostics = parseDenoTest(stripAnsi(text), workspaceRoot);
+      break;
+    case 'phpunit':
+      diagnostics = parsePhpUnit(text, workspaceRoot);
+      break;
+    case 'maven':
+    case 'gradle':
+      diagnostics = parseJvmCompiler(text, workspaceRoot);
       break;
     default:
       diagnostics = parseGeneric(text, parser, workspaceRoot);
@@ -168,7 +197,11 @@ function parseCargoJson(text: string, root: string): LanguageDiagnostic[] {
 function parseGo(text: string, root: string): LanguageDiagnostic[] {
   return parseLinePattern(
     text,
-    /^(.*?\.go):(\d+):(\d+):\s*(.+)$/gm,
+    // `go test` reports a failing assertion as `    a_test.go:7: got 2 want 3`
+    // — indented, and without a column (the compiler and vet do give one).
+    // A package that does not type-check makes vet prefix its own name
+    // (`vet.exe: .\b.go:3:23: …`, `vet: ` on unix) — not part of the path.
+    /^\s*(?:vet(?:\.exe)?:\s+)?(.*?\.go):(\d+)(?::(\d+))?:\s*(.+)$/gm,
     root,
     'go',
     (_match, message) => ({ message, severity: /warning/i.test(message) ? 'warning' : 'error' }),
@@ -192,7 +225,9 @@ function parsePhpLint(text: string, root: string): LanguageDiagnostic[] {
 
 function parseDotnet(text: string, root: string): LanguageDiagnostic[] {
   const diagnostics: LanguageDiagnostic[] = [];
-  const regex = /^(.+?)\((\d+),(\d+)\):\s*(error|warning)\s+([A-Z]+\d+):\s*(.+?)(?:\s+\[.+\])?$/gm;
+  // Codes are compiler/analyzer ids (CS1002, IDE0055) — or, from `dotnet
+  // format --verify-no-changes`, digit-less WHITESPACE / FINALNEWLINE / CHARSET.
+  const regex = /^(.+?)\((\d+),(\d+)\):\s*(error|warning)\s+([A-Z]+\d*):\s*(.+?)(?:\s+\[.+\])?$/gm;
   for (const match of text.matchAll(regex)) {
     diagnostics.push({
       severity: match[4] === 'warning' ? 'warning' : 'error',
@@ -206,7 +241,69 @@ function parseDotnet(text: string, root: string): LanguageDiagnostic[] {
   return diagnostics;
 }
 
+/**
+ * Failed tests in `dotnet test` console output (VSTest logger):
+ *   Failed dntest.UnitTest1.Test1 [75 ms]
+ *   Error Message:
+ *    Assert.Equal() Failure: Values differ
+ *   Stack Trace:
+ *      at dntest.UnitTest1.Test1() in D:\…\UnitTest1.cs:line 7
+ * The first stack frame with a source location is where the test failed.
+ */
+function parseDotnetTestFailures(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const failed = /^\s*Failed (\S+) \[[^\]]*\]$/.exec(lines[i]!);
+    if (!failed) continue;
+    let message = '';
+    let location: RegExpExecArray | null = null;
+    for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
+      const line = lines[j]!;
+      if (/^\s*Failed \S+ \[/.test(line)) break;
+      if (!message && /^\s*Error Message:\s*$/.test(line)) {
+        message = lines[j + 1]?.trim() ?? '';
+        continue;
+      }
+      location = / in (.+):line (\d+)\s*$/.exec(line);
+      if (location) break;
+    }
+    diagnostics.push({
+      severity: 'error',
+      code: failed[1]!,
+      message: message || 'Test failed',
+      ...(location
+        ? {
+            file: normalizeDiagnosticPath(location[1]!, root),
+            range: { start: { line: toPositiveInt(location[2]), column: 1 } },
+          }
+        : {}),
+      source: 'dotnet-test',
+    });
+  }
+  return diagnostics;
+}
+
 function parseBiome(text: string, root: string): LanguageDiagnostic[] {
+  // `--reporter=github`: one `::<level> title=<rule>,file=…,line=…,col=…::<msg>`
+  // per finding — the real message and severity. Biome's default reporter puts
+  // both on later lines (`  × Using == may be unsafe…`) under a header that
+  // reads `a.js:2:30 lint/… FIXABLE ━━━…`, so the line regex below took the
+  // decoration as the message and called every finding a warning.
+  const github: LanguageDiagnostic[] = [];
+  const githubRegex =
+    /^::(error|warning|notice) title=([^,]*),file=(.+?),line=(\d+),endLine=\d+,col=(\d+),endColumn=\d+::(.*)$/gm;
+  for (const match of text.matchAll(githubRegex)) {
+    github.push({
+      severity: match[1] === 'notice' ? 'info' : normalizeSeverity(match[1]),
+      ...(match[2] ? { code: match[2] } : {}),
+      message: match[6]!.trim(),
+      file: normalizeDiagnosticPath(match[3]!, root),
+      range: { start: { line: toPositiveInt(match[4]), column: toPositiveInt(match[5]) } },
+      source: 'biome',
+    });
+  }
+  if (github.length > 0) return github;
   const diagnostics: LanguageDiagnostic[] = [];
   const regex = /^(.+?):(\d+):(\d+)\s+(lint\/[^\s]+|format)\s+(.+)$/gm;
   for (const match of text.matchAll(regex)) {
@@ -222,14 +319,318 @@ function parseBiome(text: string, root: string): LanguageDiagnostic[] {
   return diagnostics;
 }
 
+/**
+ * `shellcheck --format=json`: ONE JSON array of
+ * `{file, line, column, level, code, message}` — the generic line regex never
+ * matched it, so every shellcheck finding was dropped. `style` is ShellCheck's
+ * lowest level (below `info`).
+ */
+function parseShellcheckJson(stdout: string, root: string): LanguageDiagnostic[] {
+  const start = stdout.indexOf('[');
+  const end = stdout.lastIndexOf(']');
+  if (start === -1 || end < start) return [];
+  let items: unknown;
+  try {
+    items = JSON.parse(stdout.slice(start, end + 1));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(items)) return [];
+  const diagnostics: LanguageDiagnostic[] = [];
+  for (const item of items as Array<Record<string, unknown>>) {
+    if (typeof item?.['message'] !== 'string') continue;
+    const level = typeof item['level'] === 'string' ? item['level'] : undefined;
+    diagnostics.push({
+      severity: level === 'style' ? 'hint' : normalizeSeverity(level),
+      ...(typeof item['code'] === 'number' ? { code: `SC${item['code']}` } : {}),
+      message: item['message'],
+      ...(typeof item['file'] === 'string'
+        ? { file: normalizeDiagnosticPath(item['file'], root) }
+        : {}),
+      ...(typeof item['line'] === 'number'
+        ? {
+            range: {
+              start: {
+                line: toPositiveInt(String(item['line'])),
+                column: toPositiveInt(String(item['column'] ?? 1)),
+              },
+            },
+          }
+        : {}),
+      source: 'shellcheck',
+    });
+  }
+  return diagnostics;
+}
+
+/**
+ * Human `cargo test` output (it has no JSON mode on stable). Two shapes:
+ * - a failing test: `thread 'tests::boom' (97428) panicked at src\lib.rs:9:17:`
+ *   with the message on the next line (Rust 1.73+), or the older
+ *   `thread 'x' panicked at 'msg', src/lib.rs:9:17`;
+ * - a compile error: `error[E0308]: mismatched types` then ` --> src\lib.rs:1:34`.
+ * The generic `file:line:col:` regex kept the whole "thread '…' panicked at "
+ * prefix inside the file path and never matched the ` --> ` form at all.
+ */
+function parseCargoTest(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const modern = /^thread '([^']*)'(?: \(\d+\))? panicked at (.+?):(\d+):(\d+):$/.exec(line);
+    const legacy = modern
+      ? null
+      : /^thread '([^']*)'(?: \(\d+\))? panicked at '(.*)', (.+?):(\d+):(\d+)$/.exec(line);
+    if (modern || legacy) {
+      const test = (modern ?? legacy)![1]!;
+      const message = modern ? (lines[i + 1]?.trim() ?? '') : legacy![2]!;
+      const [file, ln, col] = modern
+        ? [modern[2]!, modern[3], modern[4]]
+        : [legacy![3]!, legacy![4], legacy![5]];
+      diagnostics.push({
+        severity: 'error',
+        code: test,
+        message: message || 'test panicked',
+        file: normalizeDiagnosticPath(file, root),
+        range: { start: { line: toPositiveInt(ln), column: toPositiveInt(col) } },
+        source: 'cargo-test',
+      });
+      continue;
+    }
+    const header = /^(error|warning)(?:\[(E\d+)\])?: (.+)$/.exec(line);
+    const location = header ? /^\s*--> (.+?):(\d+):(\d+)$/.exec(lines[i + 1] ?? '') : null;
+    if (header && location) {
+      diagnostics.push({
+        severity: normalizeSeverity(header[1]),
+        ...(header[2] ? { code: header[2] } : {}),
+        message: header[3]!.trim(),
+        file: normalizeDiagnosticPath(location[1]!, root),
+        range: {
+          start: { line: toPositiveInt(location[2]), column: toPositiveInt(location[3]) },
+        },
+        source: 'rustc',
+      });
+    }
+  }
+  return diagnostics;
+}
+
+/**
+ * pytest's traceback ends each failure with its location — `test_a.py:6:
+ * AssertionError` (file:line, NO column) — after the `E   …` lines that say
+ * what failed. The generic `file:line:col:` regex matched neither, so a failing
+ * run produced zero diagnostics.
+ */
+function parsePytest(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const location = /^(\S.*?\.py):(\d+): (\w+)$/.exec(lines[i]!);
+    if (!location) continue;
+    // The `E   ` block above the location (past one blank line) carries the
+    // failure text.
+    const explanation: string[] = [];
+    let j = i - 1;
+    while (j >= 0 && lines[j]!.trim() === '') j--;
+    for (; j >= 0 && /^E\s/.test(lines[j]!); j--) {
+      explanation.unshift(lines[j]!.replace(/^E\s+/, ''));
+    }
+    diagnostics.push({
+      severity: 'error',
+      code: location[3]!,
+      message: explanation[0] ?? location[3]!,
+      file: normalizeDiagnosticPath(location[1]!, root),
+      range: { start: { line: toPositiveInt(location[2]), column: 1 } },
+      source: 'pytest',
+    });
+  }
+  return diagnostics;
+}
+
+/**
+ * `python -m py_compile` errors. A traceback-style one:
+ *   File "broken.py", line 1  …  SyntaxError: invalid syntax
+ * and the one-line form CPython uses for indentation errors:
+ *   Sorry: IndentationError: unexpected indent (indent.py, line 2)
+ * Neither has the `file:line:col:` shape the generic parser needs.
+ */
+function parsePythonCompile(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const sorry = /^Sorry: (\w+): (.+) \((.+), line (\d+)\)$/.exec(lines[i]!);
+    if (sorry) {
+      diagnostics.push({
+        severity: 'error',
+        code: sorry[1]!,
+        message: sorry[2]!,
+        file: normalizeDiagnosticPath(sorry[3]!, root),
+        range: { start: { line: toPositiveInt(sorry[4]), column: 1 } },
+        source: 'python',
+      });
+      continue;
+    }
+    const frame = /^\s*File "(.+)", line (\d+)/.exec(lines[i]!);
+    if (!frame) continue;
+    // The error line follows the source excerpt and caret lines.
+    for (let j = i + 1; j < lines.length && j <= i + 4; j++) {
+      const error = /^(\w+(?:Error|Exception|Warning)): (.*)$/.exec(lines[j]!);
+      if (!error) continue;
+      diagnostics.push({
+        severity: 'error',
+        code: error[1]!,
+        message: error[2]!,
+        file: normalizeDiagnosticPath(frame[1]!, root),
+        range: { start: { line: toPositiveInt(frame[2]), column: 1 } },
+        source: 'python',
+      });
+      break;
+    }
+  }
+  return diagnostics;
+}
+
+/**
+ * `deno test` (colour codes already stripped). A failing test is reported as
+ * `bad => ./a_test.ts:2:6` followed by `error: Error: expected 3`; a type error
+ * from the pre-run check as `TS2322 [ERROR]: <message>` with its location on a
+ * later `    at file:///D:/…/b_test.ts:1:7` line. The FAILURES recap repeats
+ * the `name => location` header without an `error:` line and is skipped.
+ */
+function parseDenoTest(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const failure = /^(.+?) => (.+?):(\d+):(\d+)$/.exec(lines[i]!);
+    const error = failure ? /^error: (.+)$/.exec(lines[i + 1] ?? '') : null;
+    if (failure && error) {
+      diagnostics.push({
+        severity: 'error',
+        code: failure[1]!,
+        message: error[1]!,
+        file: normalizeDiagnosticPath(failure[2]!, root),
+        range: { start: { line: toPositiveInt(failure[3]), column: toPositiveInt(failure[4]) } },
+        source: 'deno-test',
+      });
+      continue;
+    }
+    const typeError = /^(TS\d+) \[(ERROR|WARNING)\]: (.+)$/.exec(lines[i]!);
+    if (!typeError) continue;
+    for (let j = i + 1; j < lines.length && j <= i + 6; j++) {
+      const at = /^\s+at (file:\/\/\/.+?):(\d+):(\d+)$/.exec(lines[j]!);
+      if (!at) continue;
+      let file = decodeURIComponent(at[1]!.replace(/^file:\/\/\//, ''));
+      if (!/^[A-Za-z]:/.test(file)) file = `/${file}`;
+      diagnostics.push({
+        severity: typeError[2] === 'WARNING' ? 'warning' : 'error',
+        code: typeError[1]!,
+        message: typeError[3]!,
+        file: normalizeDiagnosticPath(file, root),
+        range: { start: { line: toPositiveInt(at[2]), column: toPositiveInt(at[3]) } },
+        source: 'deno',
+      });
+      break;
+    }
+  }
+  return diagnostics;
+}
+
+/**
+ * PHPUnit's failure/error list:
+ *   1) FooTest::testA
+ *   Failed asserting that 3 is identical to 2.
+ *
+ *   D:\…\tests\FooTest.php:4
+ * The first `<file>.php:<line>` line after the numbered header is the test's
+ * own frame (the location has no column, so the generic parser missed it).
+ */
+function parsePhpUnit(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const header = /^\d+\) (.+)$/.exec(lines[i]!);
+    if (!header) continue;
+    let message = '';
+    for (let j = i + 1; j < lines.length && j <= i + 60; j++) {
+      const line = lines[j]!;
+      if (/^\d+\) /.test(line)) break;
+      const location = /^(.+\.php):(\d+)$/.exec(line.trim());
+      if (location) {
+        diagnostics.push({
+          severity: 'error',
+          code: header[1]!.trim(),
+          message: message || 'Test failed',
+          file: normalizeDiagnosticPath(location[1]!, root),
+          range: { start: { line: toPositiveInt(location[2]), column: 1 } },
+          source: 'phpunit',
+        });
+        break;
+      }
+      if (!message && line.trim()) message = line.trim();
+    }
+  }
+  return diagnostics;
+}
+
+/**
+ * JVM compiler output through Maven or Gradle — none of it has the generic
+ * `file:line:col:` shape:
+ *   Maven:  [ERROR] /D:/…/App.java:[4,13] incompatible types: …
+ *   javac:  D:\…\App.java:4: error: incompatible types: …   (caret line = column)
+ */
+function parseJvmCompiler(text: string, root: string): LanguageDiagnostic[] {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+  const filePath = (raw: string) => {
+    const decoded = raw.startsWith('file://') ? decodeURIComponent(raw.slice(7)) : raw;
+    // Maven and file URLs write a Windows path as `/D:/…`.
+    return normalizeDiagnosticPath(decoded.replace(/^\/([A-Za-z]:[\\/])/, '$1'), root);
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const maven = /^\[(ERROR|WARNING)\] (.+?\.(?:java|kt|scala|groovy)):\[(\d+),(\d+)\] (.+)$/.exec(
+      line,
+    );
+    if (maven) {
+      diagnostics.push({
+        severity: maven[1] === 'WARNING' ? 'warning' : 'error',
+        message: maven[5]!.trim(),
+        file: filePath(maven[2]!),
+        range: { start: { line: toPositiveInt(maven[3]), column: toPositiveInt(maven[4]) } },
+        source: 'javac',
+      });
+      continue;
+    }
+    const javac = /^(.+?\.java):(\d+): (error|warning): (.+)$/.exec(line);
+    if (javac) {
+      // javac echoes the source line, then a caret under the offending column.
+      const caret = lines[i + 2]?.indexOf('^') ?? -1;
+      diagnostics.push({
+        severity: javac[3] === 'warning' ? 'warning' : 'error',
+        message: javac[4]!.trim(),
+        file: filePath(javac[1]!),
+        range: {
+          start: { line: toPositiveInt(javac[2]), column: caret >= 0 ? caret + 1 : 1 },
+        },
+        source: 'javac',
+      });
+      continue;
+    }
+  }
+  return diagnostics;
+}
+
 function parseGeneric(text: string, source: string, root: string): LanguageDiagnostic[] {
   return parseLinePattern(
     text,
-    /^(.+?):(\d+):(\d+):\s*(?:(error|warning|info):\s*)?(.+)$/gm,
+    // gcc/clang attach `note:` lines to an error and say `fatal error:` for a
+    // missing header; outside the alternation, a note became a second ERROR
+    // whose message read "note: …".
+    /^(.+?):(\d+):(\d+):\s*(?:(fatal error|error|warning|info|note):\s*)?(.+)$/gm,
     root,
     source,
     (match, fallback) => ({
-      severity: normalizeSeverity(match[4]),
+      severity: normalizeSeverity(match[4] === 'fatal error' ? 'error' : match[4]),
       message: match[5]?.trim() || fallback,
     }),
   );
@@ -247,19 +648,26 @@ export function parsePackageReports(
   stderr: string,
 ): ParsedPackageReports {
   const text = `${stdout}${stdout && stderr ? '\n' : ''}${stderr}`;
+  // The JSON reports are on stdout. Appending stderr broke every one of them
+  // the moment the tool warned there (`npm warn Unknown project config …`,
+  // composer's TLS notice): the whole-text parse failed and read as "no
+  // vulnerabilities".
+  const json = stdout.trim() ? stdout : text;
   switch (parser) {
     case 'npm-audit':
-      return parseNpmAudit(text);
+      return parseNpmAudit(json);
     case 'npm-outdated':
-      return parseNpmOutdated(text);
+      return parseNpmOutdated(json);
     case 'cargo-audit':
-      return parseCargoAudit(text);
+      return parseCargoAudit(json);
+    case 'pip-audit':
+      return parsePipAudit(json);
     case 'composer-audit':
-      return parseComposerAudit(text);
+      return parseComposerAudit(json);
     case 'composer-outdated':
-      return parseComposerOutdated(text);
+      return parseComposerOutdated(json);
     case 'dotnet-package':
-      return parseDotnetPackage(text);
+      return parseDotnetPackage(json);
     default:
       return { diagnostics: [], vulnerabilities: [], outdated: [] };
   }
@@ -272,12 +680,70 @@ function parseNpmAudit(text: string): ParsedPackageReports {
   try {
     root = JSON.parse(text);
   } catch {
-    return { diagnostics, vulnerabilities: advisories, outdated: [] };
+    root = undefined;
+  }
+  // Yarn 1 `audit --json` is NDJSON: one `{"type":"auditAdvisory","data":
+  // {"advisory":{…}}}` per finding PATH (same advisory repeated), between
+  // warning lines. Yarn 2+ `npm audit --json` is NDJSON too, one
+  // `{"value":pkg,"children":{"ID","Issue","URL","Severity",…}}` per advisory —
+  // and with ONE advisory that is a valid single JSON document. Collect either
+  // into an npm v6-style `advisories` map.
+  const berryDocument =
+    typeof root === 'object' && root !== null && 'value' in root && 'children' in root;
+  if (root === undefined || berryDocument) {
+    const fromLines: Record<string, unknown> = {};
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.includes('"auditAdvisory"') && !line.includes('"children"')) continue;
+      try {
+        const event = JSON.parse(line) as {
+          type?: string;
+          data?: { advisory?: { id?: unknown } };
+          value?: unknown;
+          children?: { ID?: unknown; Issue?: unknown; URL?: unknown; Severity?: unknown };
+        };
+        const advisory = event.data?.advisory;
+        if (event.type === 'auditAdvisory' && advisory) {
+          fromLines[String(advisory.id ?? Object.keys(fromLines).length)] = advisory;
+        } else if (typeof event.value === 'string' && event.children) {
+          const child = event.children;
+          fromLines[String(child.ID ?? `${event.value}-${Object.keys(fromLines).length}`)] = {
+            name: event.value,
+            title: child.Issue,
+            severity: typeof child.Severity === 'string' ? child.Severity.toLowerCase() : undefined,
+            url: child.URL,
+          };
+        }
+      } catch {
+        // not a JSON line
+      }
+    }
+    if (Object.keys(fromLines).length === 0) {
+      return { diagnostics, vulnerabilities: advisories, outdated: [] };
+    }
+    root = { advisories: fromLines };
   }
   const vulnerabilities =
     (root as { vulnerabilities?: Record<string, unknown> })?.vulnerabilities ?? {};
-  const advisoriesRecord =
+  let advisoriesRecord: Record<string, unknown> =
     (root as { advisories?: Record<string, unknown> })?.advisories ?? vulnerabilities;
+  // `bun audit --json` has neither key: it maps each package name to an ARRAY
+  // of advisories (`{"lodash":[{id,url,title,severity,…}]}`).
+  if (
+    root &&
+    typeof root === 'object' &&
+    !('vulnerabilities' in root) &&
+    !('advisories' in root) &&
+    Object.values(root).every(Array.isArray)
+  ) {
+    advisoriesRecord = {};
+    for (const [name, list] of Object.entries(root as Record<string, unknown[]>)) {
+      for (const entry of list) {
+        if (!entry || typeof entry !== 'object') continue;
+        const id = String((entry as { id?: unknown }).id ?? `${name}-${list.indexOf(entry)}`);
+        advisoriesRecord[id] = { ...(entry as object), name };
+      }
+    }
+  }
   for (const [id, value] of Object.entries(advisoriesRecord)) {
     const advisory = value as {
       module_name?: string;
@@ -317,7 +783,21 @@ function parseNpmOutdated(text: string): ParsedPackageReports {
   try {
     payload = JSON.parse(text);
   } catch {
-    return { diagnostics, vulnerabilities: [], outdated };
+    // `bun outdated` ignores --json and prints a box table:
+    // `| minimist        | 0.0.8   | 0.0.8  | 1.2.8  |`, `| is-number (dev) | …`.
+    for (const line of text.split(/\r?\n/)) {
+      const row =
+        /^\|\s*(\S+?)(?:\s+\((dev|optional|peer)\))?\s*\|\s*([^|\s]+)\s*\|\s*([^|\s]+)\s*\|\s*([^|\s]+)\s*\|\s*$/.exec(
+          line,
+        );
+      if (!row || row[1] === 'Package' || /^-+$/.test(row[1]!)) continue;
+      payload[row[1]!] = {
+        current: row[3],
+        wanted: row[4],
+        latest: row[5],
+        type: row[2] === 'dev' ? 'development' : row[2] === 'optional' ? 'optional' : undefined,
+      };
+    }
   }
   for (const [name, info] of Object.entries(payload)) {
     const entry = info as {
@@ -325,6 +805,8 @@ function parseNpmOutdated(text: string): ParsedPackageReports {
       latest?: string;
       wanted?: string;
       type?: string;
+      // pnpm names the manifest section `dependencyType`; npm uses `type`.
+      dependencyType?: string;
       location?: string;
     };
     if (!entry.latest || entry.latest === entry.current) continue;
@@ -332,7 +814,7 @@ function parseNpmOutdated(text: string): ParsedPackageReports {
       name,
       previous: entry.current,
       resolved: entry.latest,
-      kind: mapOutdatedKind(entry.type),
+      kind: mapOutdatedKind(entry.type ?? entry.dependencyType),
     });
     diagnostics.push({
       severity: 'info',
@@ -342,6 +824,39 @@ function parseNpmOutdated(text: string): ParsedPackageReports {
     });
   }
   return { diagnostics, vulnerabilities: [], outdated };
+}
+
+/** `pip-audit --format json`: `{dependencies: [{name, version, vulns: [{id, fix_versions, aliases}]}]}`. */
+function parsePipAudit(text: string): ParsedPackageReports {
+  const diagnostics: LanguageDiagnostic[] = [];
+  const vulnerabilities: LanguagePackageVulnerability[] = [];
+  const document = parseJsonDocument(text) as {
+    dependencies?: Array<{
+      name?: string;
+      version?: string;
+      vulns?: Array<{ id?: string; fix_versions?: string[]; aliases?: string[] }>;
+    }>;
+  } | null;
+  for (const dep of document?.dependencies ?? []) {
+    for (const vuln of dep.vulns ?? []) {
+      if (!dep.name || !vuln.id) continue;
+      const fixedIn = vuln.fix_versions?.[0];
+      vulnerabilities.push({
+        package: dep.name,
+        advisory: vuln.id,
+        // pip-audit reports no severity.
+        severity: 'unknown',
+        ...(fixedIn ? { fixedIn } : {}),
+      });
+      diagnostics.push({
+        severity: 'warning',
+        code: vuln.id,
+        message: `${dep.name} ${dep.version ?? ''} is affected by ${vuln.id}${fixedIn ? ` (fixed in ${fixedIn})` : ''}.`,
+        source: 'pip-audit',
+      });
+    }
+  }
+  return { diagnostics, vulnerabilities, outdated: [] };
 }
 
 function parseCargoAudit(text: string): ParsedPackageReports {
@@ -389,9 +904,56 @@ function parseCargoAudit(text: string): ParsedPackageReports {
   return { diagnostics, vulnerabilities, outdated: [] };
 }
 
+/** The output as one JSON document (stderr noise after it allowed), or null. */
+function parseJsonDocument(text: string): unknown {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
 function parseComposerAudit(text: string): ParsedPackageReports {
   const diagnostics: LanguageDiagnostic[] = [];
   const vulnerabilities: LanguagePackageVulnerability[] = [];
+  // Real `composer audit --format=json` is ONE pretty-printed document
+  // (`{"advisories": {"vendor/pkg": [ … ]}, "abandoned": …}`); no line of it
+  // parses alone, so the per-line reader below found nothing.
+  const document = parseJsonDocument(text) as {
+    advisories?: Record<string, unknown> | unknown[];
+  } | null;
+  if (document?.advisories && typeof document.advisories === 'object') {
+    for (const [pkg, entries] of Object.entries(document.advisories)) {
+      const list = Array.isArray(entries) ? entries : Object.values(entries ?? {});
+      for (const raw of list) {
+        const entry = raw as {
+          advisoryId?: string;
+          packageName?: string;
+          title?: string;
+          cve?: string | null;
+          link?: string;
+          severity?: string | null;
+        };
+        const id = entry.cve ?? entry.advisoryId ?? 'composer-audit';
+        vulnerabilities.push({
+          package: entry.packageName ?? pkg,
+          advisory: entry.title ?? id,
+          severity: mapSeverity(entry.severity ?? undefined),
+          ...(entry.link ? { url: entry.link } : {}),
+        });
+        diagnostics.push({
+          severity: 'warning',
+          code: id,
+          message: entry.title ?? `${entry.packageName ?? pkg} reported by composer audit.`,
+          source: 'composer-audit',
+        });
+      }
+    }
+    return { diagnostics, vulnerabilities, outdated: [] };
+  }
   const lines = text.split(/\r?\n/);
   for (const line of lines) {
     if (!line.trim().startsWith('{')) continue;
@@ -431,7 +993,15 @@ function parseComposerAudit(text: string): ParsedPackageReports {
 function parseComposerOutdated(text: string): ParsedPackageReports {
   const diagnostics: LanguageDiagnostic[] = [];
   const outdated: LanguagePackageMutation[] = [];
-  const lines = text.split(/\r?\n/);
+  // Real `composer outdated --format=json` is ONE document keyed by what was
+  // checked (`{"locked": [...]}` / `{"installed": [...]}`); no single line of
+  // it parses, so the per-line reader below never saw a package.
+  const document = parseJsonDocument(text) as {
+    locked?: unknown[];
+    installed?: unknown[];
+  } | null;
+  const rows = document ? (document.locked ?? document.installed) : undefined;
+  const lines = Array.isArray(rows) ? rows.map((row) => JSON.stringify(row)) : text.split(/\r?\n/);
   for (const line of lines) {
     if (!line.trim().startsWith('{')) continue;
     try {
@@ -474,15 +1044,45 @@ function parseDotnetPackage(text: string): ParsedPackageReports {
     .projects;
   if (!Array.isArray(projects)) return { diagnostics, vulnerabilities, outdated };
   for (const project of projects) {
-    const packages = Array.isArray(project.packages) ? project.packages : [];
+    // The SDK's report nests packages per target framework
+    // (`frameworks[].topLevelPackages[]` / `transitivePackages[]`, keyed `id`);
+    // reading only a flat `packages[]` found nothing in a real report.
+    const frameworks = Array.isArray(project.frameworks)
+      ? (project.frameworks as Array<Record<string, unknown>>)
+      : [];
+    const packages = [
+      ...(Array.isArray(project.packages) ? project.packages : []),
+      ...frameworks.flatMap((framework) => [
+        ...(Array.isArray(framework.topLevelPackages) ? framework.topLevelPackages : []),
+        ...(Array.isArray(framework.transitivePackages) ? framework.transitivePackages : []),
+      ]),
+    ];
     for (const pkg of packages as Array<Record<string, unknown>>) {
-      const name = typeof pkg.name === 'string' ? pkg.name : 'unknown';
+      const name =
+        typeof pkg.id === 'string' ? pkg.id : typeof pkg.name === 'string' ? pkg.name : 'unknown';
       const requested = typeof pkg.requestedVersion === 'string' ? pkg.requestedVersion : undefined;
       const resolved = typeof pkg.resolvedVersion === 'string' ? pkg.resolvedVersion : undefined;
+      const latest = typeof pkg.latestVersion === 'string' ? pkg.latestVersion : undefined;
+      if (latest && resolved && latest !== resolved) {
+        outdated.push({
+          name,
+          ...(requested ? { requested } : {}),
+          previous: resolved,
+          resolved: latest,
+        });
+        diagnostics.push({
+          severity: 'info',
+          code: 'outdated',
+          message: `${name}: ${resolved} → ${latest}`,
+          source: 'dotnet-package',
+        });
+        continue;
+      }
       const vulnerabilitiesRaw = Array.isArray(pkg.vulnerabilities) ? pkg.vulnerabilities : [];
       for (const vuln of vulnerabilitiesRaw as Array<Record<string, unknown>>) {
-        const advisory =
-          typeof vuln.advisoryUrl === 'string' ? vuln.advisoryUrl : 'dotnet-vulnerable';
+        // The SDK spells the field `advisoryurl` (all lower case).
+        const url = vuln.advisoryurl ?? vuln.advisoryUrl;
+        const advisory = typeof url === 'string' ? url : 'dotnet-vulnerable';
         vulnerabilities.push({
           package: name,
           advisory,
@@ -519,7 +1119,11 @@ function parseDotnetPackage(text: string): ParsedPackageReports {
 
 function mapSeverity(value: string | undefined): LanguagePackageVulnerability['severity'] {
   switch (value?.toLowerCase()) {
+    // `critical` is its own level: folded into `high`, every critical
+    // advisory was reported one level low and the callers' `critical`
+    // branches (and the audit tool's "N critical" count) never matched.
     case 'critical':
+      return 'critical';
     case 'high':
       return 'high';
     case 'medium':
@@ -578,7 +1182,11 @@ function normalizeDiagnosticPath(value: string, root: string): string {
 
 function normalizeSeverity(value: string | undefined): LanguageDiagnostic['severity'] {
   if (value === 'warning' || value === 'warn') return 'warning';
-  if (value === 'info' || value === 'note' || value === 'help') return 'info';
+  // rustc closes a failed build with a span-less `failure-note` ("For more
+  // information about this error, try `rustc --explain …`"): a pointer, not a
+  // diagnostic. Read as `error` it inflated every failed cargo build by one.
+  if (value === 'info' || value === 'note' || value === 'help' || value === 'failure-note')
+    return 'info';
   if (value === 'hint') return 'hint';
   return 'error';
 }

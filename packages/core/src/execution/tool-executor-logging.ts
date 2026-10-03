@@ -1,6 +1,6 @@
 import type { Context } from '../core/context.js';
 import type { ToolUseBlock } from '../types/blocks.js';
-import { isWrongStackError } from '../types/errors.js';
+import { hasModifiedPaths, isWrongStackError } from '../types/errors.js';
 import type { ToolExecutorOptions } from '../types/tool-executor.js';
 import { classifyToolError } from './tool-executor-support.js';
 
@@ -58,6 +58,11 @@ export function logToolFailure(
 ): void {
   const { category, retryable, detail } = classifyToolError(err);
   const structured = isWrongStackError(err);
+  // A mutating tool can fail AFTER writing to disk. Persist the confirmed
+  // paths as their own field rather than the whole error object: an error
+  // crossing a JSON seam loses custom fields, and the message text already
+  // names the files for humans.
+  const modifiedPaths = hasModifiedPaths(err) ? err.modifiedPaths : undefined;
   const structuredError = structured
     ? {
         errorCode: err.code,
@@ -77,6 +82,9 @@ export function logToolFailure(
     category,
     retryable,
     ...(detail ? { detail } : {}),
+    // A tool that failed AFTER writing (patch --merge conflict markers) reports
+    // the files it confirmed changed; the failure itself carries no counts.
+    ...(modifiedPaths?.length ? { modifiedPaths } : {}),
     ...structuredError,
     taskId: ctx.currentKanbanTaskId,
     boardId: ctx.currentKanbanBoardId,

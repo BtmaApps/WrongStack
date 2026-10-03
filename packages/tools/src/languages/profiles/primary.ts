@@ -1,3 +1,5 @@
+import { access, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { internalPlan, packageNames, processPlan, unavailable } from '../profile-helpers.js';
 import type { LanguageOperation, LanguageProfile, ProfileContext } from '../types.js';
 
@@ -41,11 +43,65 @@ function scriptPlan(ctx: ProfileContext, operation: string, script: string) {
   });
 }
 
+/** The named packages, or `fallback` when none were given. */
+function orAll(names: readonly string[], fallback: readonly string[]): readonly string[] {
+  return names.length > 0 ? names : fallback;
+}
+
+/** True when the caller opted in to package lifecycle scripts (`allowScripts`). */
+function scriptsAllowed(ctx: ProfileContext): boolean {
+  return ctx.options.allowScripts === true;
+}
+
+/** Plan wording for whether lifecycle scripts run. */
+function scriptsNote(ctx: ProfileContext): string {
+  return scriptsAllowed(ctx)
+    ? 'lifecycle scripts ENABLED (allowScripts)'
+    : 'lifecycle scripts disabled';
+}
+
+/**
+ * The "no lifecycle scripts" argument — none when the caller opted in with
+ * `allowScripts: true`. Yarn 2+ has no `--ignore-scripts` ("Unsupported option
+ * name"); its equivalent is `--mode=skip-build`. Berry is selected by
+ * `packageManager: "yarn@2+"` or a `.yarnrc.yml` in the workspace.
+ */
+async function noScriptsArgs(ctx: ProfileContext, manager: string): Promise<string[]> {
+  if (scriptsAllowed(ctx)) return [];
+  return [
+    manager === 'yarn' && (await isYarnBerry(ctx)) ? '--mode=skip-build' : '--ignore-scripts',
+  ];
+}
+
+/** Composer's spelling of the same opt-out. */
+function composerNoScripts(ctx: ProfileContext): string[] {
+  return scriptsAllowed(ctx) ? [] : ['--no-scripts'];
+}
+
+async function isYarnBerry(ctx: ProfileContext): Promise<boolean> {
+  try {
+    const manifest = JSON.parse(await readFile(join(ctx.workspace.root, 'package.json'), 'utf8'));
+    const major = /^yarn@(\d+)/.exec(String(manifest?.packageManager ?? ''))?.[1];
+    if (major) return Number(major) >= 2;
+  } catch {
+    // no/invalid package.json — fall back to the .yarnrc.yml signal
+  }
+  return access(join(ctx.workspace.root, '.yarnrc.yml')).then(
+    () => true,
+    () => false,
+  );
+}
+
 function nodeExec(ctx: ProfileContext, executable: string, args: readonly string[]) {
   const manager = ctx.workspace.packageManager ?? 'npm';
   if (manager === 'pnpm') return { command: 'pnpm', args: ['exec', executable, ...args] };
   if (manager === 'yarn') return { command: 'yarn', args: ['exec', executable, ...args] };
-  if (manager === 'bun') return { command: 'bun', args: ['x', executable, ...args] };
+  // `bun x` installs a missing binary from the registry (`bun x tsc` would
+  // fetch the unrelated npm package named `tsc`); `--no-install` keeps it to
+  // the project's own bin, like `npx --no-install` below.
+  if (manager === 'bun') {
+    return { command: 'bun', args: ['x', '--no-install', executable, ...args] };
+  }
   return { command: 'npx', args: ['--no-install', executable, ...args] };
 }
 
@@ -84,7 +140,8 @@ function typescriptProfile(): LanguageProfile {
         });
       },
       lint: async (ctx) => {
-        const run = nodeExec(ctx, 'biome', ['lint', '.']);
+        // github reporter: one line per finding with its real severity/message.
+        const run = nodeExec(ctx, 'biome', ['lint', '--reporter=github', '.']);
         return processPlan(ctx, 'lint', run.command, run.args, {
           parser: 'biome',
           reason: 'Run the project-local Biome linter.',
@@ -92,7 +149,9 @@ function typescriptProfile(): LanguageProfile {
         });
       },
       'format-check': async (ctx) => {
-        const run = nodeExec(ctx, 'biome', ['format', '--check', '.']);
+        // `biome format` without --write IS the check; biome has no `--check`
+        // flag and refuses it ("`--check` is not expected in this context").
+        const run = nodeExec(ctx, 'biome', ['format', '--reporter=github', '.']);
         return processPlan(ctx, 'format-check', run.command, run.args, {
           parser: 'biome',
           reason: 'Check formatting with the project-local Biome formatter.',
@@ -128,14 +187,13 @@ function typescriptProfile(): LanguageProfile {
       },
       'package-install': async (ctx) => {
         const manager = ctx.workspace.packageManager ?? 'npm';
-        const args =
-          manager === 'yarn' ? ['install', '--ignore-scripts'] : ['install', '--ignore-scripts'];
+        const args = ['install', ...(await noScriptsArgs(ctx, manager))];
         return processPlan(ctx, 'package-install', manager, args, {
           parser: 'package-text',
-          reason: `Restore declared dependencies with ${manager} and lifecycle scripts disabled.`,
+          reason: `Restore declared dependencies with ${manager} and ${scriptsNote(ctx)}.`,
           mutating: true,
           network: true,
-          executesProjectCode: false,
+          executesProjectCode: scriptsAllowed(ctx),
         });
       },
       'package-add': async (ctx) => {
@@ -143,15 +201,27 @@ function typescriptProfile(): LanguageProfile {
         if (names.length === 0)
           return unavailable(ctx, 'package-add', 'At least one package name is required.');
         const manager = ctx.workspace.packageManager ?? 'npm';
+        // `scope` decides the manifest section: npm/pnpm spell it --save-dev /
+        // --save-optional, yarn/bun --dev / --optional.
+        const scope = ctx.options.packageScope;
+        const savePrefix = manager === 'npm' || manager === 'pnpm' ? '--save-' : '--';
+        const scopeFlags =
+          scope === 'development'
+            ? [`${savePrefix}dev`]
+            : scope === 'optional'
+              ? [`${savePrefix}optional`]
+              : [];
+        const noScripts = await noScriptsArgs(ctx, manager);
         const args =
           manager === 'npm'
-            ? ['install', '--ignore-scripts', ...names]
-            : ['add', '--ignore-scripts', ...names];
+            ? ['install', ...noScripts, ...scopeFlags, ...names]
+            : ['add', ...noScripts, ...scopeFlags, ...names];
         return processPlan(ctx, 'package-add', manager, args, {
           parser: 'package-text',
-          reason: `Add validated packages with ${manager} and lifecycle scripts disabled.`,
+          reason: `Add validated packages with ${manager} and ${scriptsNote(ctx)}.`,
           mutating: true,
           network: true,
+          executesProjectCode: scriptsAllowed(ctx),
         });
       },
       'package-remove': async (ctx) => {
@@ -159,20 +229,28 @@ function typescriptProfile(): LanguageProfile {
         if (names.length === 0)
           return unavailable(ctx, 'package-remove', 'At least one package name is required.');
         const manager = ctx.workspace.packageManager ?? 'npm';
+        const noScripts = await noScriptsArgs(ctx, manager);
         const args =
           manager === 'npm'
-            ? ['uninstall', '--ignore-scripts', ...names]
-            : ['remove', '--ignore-scripts', ...names];
+            ? ['uninstall', ...noScripts, ...names]
+            : ['remove', ...noScripts, ...names];
         return processPlan(ctx, 'package-remove', manager, args, {
           parser: 'package-text',
-          reason: `Remove validated packages with ${manager} and lifecycle scripts disabled.`,
+          reason: `Remove validated packages with ${manager} and ${scriptsNote(ctx)}.`,
           mutating: true,
           network: true,
+          executesProjectCode: scriptsAllowed(ctx),
         });
       },
       'package-audit': async (ctx) => {
         const manager = ctx.workspace.packageManager ?? 'npm';
-        return processPlan(ctx, 'package-audit', manager, ['audit', '--json'], {
+        // Yarn 2+ has no `audit` ("Couldn't find a script named audit"); its
+        // auditor is `yarn npm audit`.
+        const args =
+          manager === 'yarn' && (await isYarnBerry(ctx))
+            ? ['npm', 'audit', '--json']
+            : ['audit', '--json'];
+        return processPlan(ctx, 'package-audit', manager, args, {
           parser: 'npm-audit',
           reason: `Audit dependencies with the detected ${manager} package manager.`,
           network: true,
@@ -237,7 +315,10 @@ const goProfile: LanguageProfile = {
     syntax: async (ctx) => {
       if (!ctx.target)
         return unavailable(ctx, 'syntax', 'Go syntax planning requires a target file.');
-      return processPlan(ctx, 'syntax', 'gofmt', ['-e', '-d', ctx.target], {
+      // `-l`, not `-d`: gofmt -d exits 1 whenever it prints a FORMAT diff, so
+      // valid-but-unformatted code failed the syntax check. With -l a valid
+      // file exits 0 and a syntax error still exits 2 with its diagnostics.
+      return processPlan(ctx, 'syntax', 'gofmt', ['-e', '-l', ctx.target], {
         parser: 'gofmt',
         reason: 'Parse the target and report syntax errors without writing it.',
       });
@@ -322,13 +403,20 @@ const goProfile: LanguageProfile = {
         network: true,
       });
     },
+    // Named modules update only those; without names, every package's deps.
     'package-update': async (ctx) =>
-      processPlan(ctx, 'package-update', 'go', ['get', '-u', './...'], {
-        parser: 'go-module',
-        reason: 'Update dependencies of all Go packages.',
-        mutating: true,
-        network: true,
-      }),
+      processPlan(
+        ctx,
+        'package-update',
+        'go',
+        ['get', '-u', ...orAll(packageNames(ctx), ['./...'])],
+        {
+          parser: 'go-module',
+          reason: 'Update dependencies of all Go packages.',
+          mutating: true,
+          network: true,
+        },
+      ),
   }),
 };
 
@@ -410,23 +498,46 @@ const rustProfile: LanguageProfile = {
         reason: 'Run the Rust workspace entry point.',
         executesProjectCode: true,
       }),
-    'package-install': async (ctx) =>
-      processPlan(ctx, 'package-install', 'cargo', ['fetch', '--locked'], {
-        parser: 'cargo-json',
-        reason: 'Fetch locked Rust dependencies.',
-        mutating: true,
-        network: true,
-      }),
+    // `--locked` pins the fetch to an existing Cargo.lock; with none (a library
+    // that does not commit one) cargo refuses to create it and fetches nothing.
+    'package-install': async (ctx) => {
+      const locked = await ctx.pathExists('Cargo.lock');
+      return processPlan(
+        ctx,
+        'package-install',
+        'cargo',
+        locked ? ['fetch', '--locked'] : ['fetch'],
+        {
+          parser: 'cargo-json',
+          reason: locked
+            ? 'Fetch locked Rust dependencies.'
+            : 'Fetch Rust dependencies (no Cargo.lock yet — cargo resolves and writes one).',
+          mutating: true,
+          network: true,
+        },
+      );
+    },
     'package-add': async (ctx) => {
       const names = packageNames(ctx);
       return names.length === 0
         ? unavailable(ctx, 'package-add', 'At least one crate is required.')
-        : processPlan(ctx, 'package-add', 'cargo', ['add', ...names], {
-            parser: 'cargo-text',
-            reason: 'Add validated Rust crates.',
-            mutating: true,
-            network: true,
-          });
+        : processPlan(
+            ctx,
+            'package-add',
+            'cargo',
+            [
+              'add',
+              ...(ctx.options.packageScope === 'development' ? ['--dev'] : []),
+              ...(ctx.options.packageScope === 'optional' ? ['--optional'] : []),
+              ...names,
+            ],
+            {
+              parser: 'cargo-text',
+              reason: 'Add validated Rust crates.',
+              mutating: true,
+              network: true,
+            },
+          );
     },
     'package-remove': async (ctx) => {
       const names = packageNames(ctx);
@@ -438,13 +549,20 @@ const rustProfile: LanguageProfile = {
             mutating: true,
           });
     },
+    // A bare `cargo update` re-resolves EVERY crate; `-p` limits it to the named ones.
     'package-update': async (ctx) =>
-      processPlan(ctx, 'package-update', 'cargo', ['update'], {
-        parser: 'cargo-text',
-        reason: 'Update the Cargo lockfile.',
-        mutating: true,
-        network: true,
-      }),
+      processPlan(
+        ctx,
+        'package-update',
+        'cargo',
+        ['update', ...packageNames(ctx).flatMap((name) => ['-p', name])],
+        {
+          parser: 'cargo-text',
+          reason: 'Update the Cargo lockfile.',
+          mutating: true,
+          network: true,
+        },
+      ),
     'package-audit': async (ctx) =>
       processPlan(ctx, 'package-audit', 'cargo', ['audit', '--json'], {
         parser: 'cargo-audit',
@@ -501,12 +619,13 @@ const phpProfile: LanguageProfile = {
         ctx,
         'package-install',
         'composer',
-        ['install', '--no-interaction', '--no-scripts'],
+        ['install', '--no-interaction', ...composerNoScripts(ctx)],
         {
           parser: 'composer',
-          reason: 'Restore Composer dependencies without scripts.',
+          reason: `Restore Composer dependencies with ${scriptsNote(ctx)}.`,
           mutating: true,
           network: true,
+          executesProjectCode: scriptsAllowed(ctx),
         },
       ),
     'package-add': async (ctx) => {
@@ -517,12 +636,19 @@ const phpProfile: LanguageProfile = {
             ctx,
             'package-add',
             'composer',
-            ['require', '--no-interaction', '--no-scripts', ...names],
+            [
+              'require',
+              '--no-interaction',
+              ...composerNoScripts(ctx),
+              ...(ctx.options.packageScope === 'development' ? ['--dev'] : []),
+              ...names,
+            ],
             {
               parser: 'composer',
-              reason: 'Add validated Composer packages without scripts.',
+              reason: `Add validated Composer packages with ${scriptsNote(ctx)}.`,
               mutating: true,
               network: true,
+              executesProjectCode: scriptsAllowed(ctx),
             },
           );
     },
@@ -534,11 +660,12 @@ const phpProfile: LanguageProfile = {
             ctx,
             'package-remove',
             'composer',
-            ['remove', '--no-interaction', '--no-scripts', ...names],
+            ['remove', '--no-interaction', ...composerNoScripts(ctx), ...names],
             {
               parser: 'composer',
-              reason: 'Remove validated Composer packages without scripts.',
+              reason: `Remove validated Composer packages with ${scriptsNote(ctx)}.`,
               mutating: true,
+              executesProjectCode: scriptsAllowed(ctx),
             },
           );
     },
@@ -547,22 +674,27 @@ const phpProfile: LanguageProfile = {
         ctx,
         'package-update',
         'composer',
-        ['update', '--no-interaction', '--no-scripts'],
+        ['update', '--no-interaction', ...composerNoScripts(ctx), ...packageNames(ctx)],
         {
           parser: 'composer',
-          reason: 'Update Composer dependencies without scripts.',
+          reason: `Update Composer dependencies with ${scriptsNote(ctx)}.`,
           mutating: true,
           network: true,
+          executesProjectCode: scriptsAllowed(ctx),
         },
       ),
     'package-audit': async (ctx) =>
-      processPlan(ctx, 'package-audit', 'composer', ['audit', '--format=json'], {
+      // `--locked`: audit composer.lock. Plain `composer audit` reads vendor/
+      // and, with only a lock file, skips the audit and exits 0 — clean.
+      processPlan(ctx, 'package-audit', 'composer', ['audit', '--locked', '--format=json'], {
         parser: 'composer-audit',
         reason: 'Audit Composer dependencies.',
         network: true,
       }),
     'package-outdated': async (ctx) =>
-      processPlan(ctx, 'package-outdated', 'composer', ['outdated', '--format=json'], {
+      // `--locked` for the same reason as audit: plain `outdated` reads vendor/
+      // and answers `[]` for a project that is locked but not installed.
+      processPlan(ctx, 'package-outdated', 'composer', ['outdated', '--locked', '--format=json'], {
         parser: 'composer-outdated',
         reason: 'Check outdated Composer dependencies.',
         network: true,

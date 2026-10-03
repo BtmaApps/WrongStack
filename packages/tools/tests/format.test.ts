@@ -129,7 +129,7 @@ describe('formatTool', () => {
     expect(result.fixer).toBe('prettier');
   });
 
-  it('switches to --check argument when check=true is passed', async () => {
+  it('runs biome in check mode (no --write) when check=true is passed', async () => {
     const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
     let receivedArgs: string[] = [];
     spawnStreamMocks.spawnStream.mockImplementation((opts: { args: string[] }) => {
@@ -137,8 +137,8 @@ describe('formatTool', () => {
       return fakeSpawn('')();
     });
     await formatTool.execute({ check: true, fixer: 'biome' }, ctx, makeOpts());
-    expect(receivedArgs).toContain('--check');
-    expect(receivedArgs).not.toContain('--write');
+    // Biome has no `--check` flag (it rejects it); format without --write IS the check.
+    expect(receivedArgs).toEqual(['format']);
   });
 
   it('parses files_checked/files_changed from biome summary lines', async () => {

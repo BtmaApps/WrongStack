@@ -54,6 +54,10 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
   // What gets installed is the subject — installing a package runs its
   // lifecycle scripts, so `express` and `evil-pkg` must not be interchangeable.
   subjectKey: 'packages',
+  // Running lifecycle scripts executes package code, and a global install
+  // writes outside the project: an approval for the default (scripts off,
+  // project-local) install must not cover either.
+  subjectFields: ['lifecycleScripts', 'global'],
   mutating: true,
   riskTier: 'standard',
   icon: 'package',
@@ -226,9 +230,12 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     }
 
     const hasPkgs = pkgList.length > 0;
+    // Yarn 2+ has no `--ignore-scripts` ("Unsupported option name"); its
+    // equivalent is `--mode=skip-build` on the subcommand.
+    const yarnBerry = pkgManager === 'yarn' && (await isYarnBerry(cwd, ctx.projectRoot));
     const args: string[] = [];
     if (input.dry_run) args.push('--dry-run');
-    if (ignoreScripts) args.push('--ignore-scripts');
+    if (ignoreScripts && !yarnBerry) args.push('--ignore-scripts');
     if (pkgManager === 'pnpm') {
       if (hasPkgs) {
         if (input.save === 'dev') args.push('-D');
@@ -248,6 +255,7 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
         // Bare `yarn add` with no packages errors; use `yarn install`.
         args.push('install', ...globalFlag);
       }
+      if (ignoreScripts && yarnBerry) args.push('--mode=skip-build');
     } else {
       args.push('install', ...globalFlag);
       if (hasPkgs) {
@@ -345,6 +353,50 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     yield { type: 'final', output };
   },
 } satisfies Tool<InstallInput, InstallOutput>;
+
+/**
+ * Yarn 2+ ("Berry") is selected by `packageManager: "yarn@2+"` or a
+ * `.yarnrc.yml`; without either, the yarn on PATH runs as Yarn 1 (classic).
+ * Walks from `cwd` up to `stopAt`, nearest declaration wins.
+ */
+async function isYarnBerry(cwd: string, stopAt: string): Promise<boolean> {
+  const { readFile, stat } = await import('node:fs/promises');
+  const { dirname, isAbsolute, relative, resolve, sep } = await import('node:path');
+  let dir = resolve(cwd);
+  const stop = resolve(stopAt);
+  for (;;) {
+    try {
+      const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')) as {
+        packageManager?: unknown;
+      };
+      if (typeof manifest.packageManager === 'string') {
+        const major = /^yarn@(\d+)/.exec(manifest.packageManager)?.[1];
+        if (major) return Number(major) >= 2;
+      }
+    } catch {
+      // no/invalid package.json here — keep looking
+    }
+    if (
+      await stat(join(dir, '.yarnrc.yml')).then(
+        () => true,
+        () => false,
+      )
+    )
+      return true;
+    const parent = dirname(dir);
+    const rel = relative(stop, parent);
+    if (
+      dir === stop ||
+      parent === dir ||
+      rel === '..' ||
+      rel.startsWith(`..${sep}`) ||
+      isAbsolute(rel)
+    ) {
+      return false;
+    }
+    dir = parent;
+  }
+}
 
 /** Last few KB of the package-manager output, for an actionable error message. */
 function failureTail(output: string): string {

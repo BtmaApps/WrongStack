@@ -128,3 +128,53 @@ describe('escapeGlobSubject output is literal under compileGlob grammar', () => 
     expect(matchesTrust([pattern], pattern)).toBe(true);
   });
 });
+
+// `subjectFields` used to be folded in only for `subjectKey: 'command'`. A
+// tool keyed on a plain named field (`project_kit` on `name`,
+// `language_package` on `operation`) declared its fields and they were
+// silently dropped, so one "always allow" covered every variation.
+describe('named-field subjects fold in subjectFields', () => {
+  const kit = (input: Record<string, unknown>) =>
+    subjectForToolInput('project_kit', input, 'name', ['revision', 'action', 'input']);
+
+  it('separates kit actions and revisions', () => {
+    expect(kit({ name: 'kit', revision: 'r1', action: 'run' })).toBe('kit revision=r1 action=run');
+    expect(kit({ name: 'kit', revision: 'r1', action: 'run' })).not.toBe(
+      kit({ name: 'kit', revision: 'r2', action: 'verify' }),
+    );
+  });
+
+  it('renders an object field by content, not as [object Object]', () => {
+    const a = kit({ name: 'kit', action: 'run', input: { values: ['a'] } });
+    const b = kit({ name: 'kit', action: 'run', input: { values: ['b'] } });
+    expect(a).not.toBe(b);
+    expect(a).not.toContain('object Object');
+  });
+
+  it('gives a scripts-enabled package install its own subject, leaving the default alone', () => {
+    const pkg = (input: Record<string, unknown>) =>
+      subjectForToolInput('language_package', input, 'operation', ['allowScripts']);
+    expect(pkg({ operation: 'install' })).toBe('install');
+    expect(pkg({ operation: 'install', allowScripts: true })).toBe('install allowScripts=true');
+  });
+
+  it('keeps a stored rule for the bare subject from matching the narrowed one', () => {
+    const narrowed = subjectForToolInput(
+      'language_package',
+      { operation: 'install', allowScripts: true },
+      'operation',
+      ['allowScripts'],
+    );
+    // A rule stored for the scripts-off subject must not authorize the opt-in.
+    expect(matchesTrust(['install'], narrowed!)).toBe(false);
+    expect(matchesTrust(['install'], 'install')).toBe(true);
+  });
+
+  it('keeps the dry-run suffix when fields are present', () => {
+    expect(
+      subjectForToolInput('scaffold', { name: 'app', dry_run: true, template: 'vite' }, 'name', [
+        'template',
+      ]),
+    ).toBe('app template=vite:dry-run');
+  });
+});

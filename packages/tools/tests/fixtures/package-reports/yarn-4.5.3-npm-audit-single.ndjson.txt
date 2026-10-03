@@ -1,0 +1,1 @@
+{"value":"@babel/traverse","children":{"ID":1117420,"Issue":"Babel vulnerable to arbitrary code execution when compiling specifically crafted malicious code","URL":"https://github.com/advisories/GHSA-67hx-6x53-jw92","Severity":"critical","Vulnerable Versions":"<7.23.2","Tree Versions":["7.22.0"],"Dependents":["b@workspace:."]}}

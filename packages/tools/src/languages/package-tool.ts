@@ -80,7 +80,7 @@ export const languagePackageTool: Tool<LanguagePackageInput, LanguagePackageTool
     'Restore, mutate, audit, or report outdated packages via predefined ecosystem-specific plans.',
   usageHint:
     'Use this instead of the legacy `install`/`audit`/`outdated` tools. The tool detects the workspace, ' +
-    'builds an allowlisted argv plan with lifecycle scripts disabled, runs it, and records manifest/lockfile changes.',
+    'builds an allowlisted argv plan with lifecycle scripts disabled (unless allowScripts), runs it, and records manifest/lockfile changes.',
   selection: {
     doNotUseWhen:
       'You only need to inspect or plan, or need to compile/test/lint without touching dependencies.',
@@ -90,6 +90,9 @@ export const languagePackageTool: Tool<LanguagePackageInput, LanguagePackageTool
   // WS-046: gives permission decisions something to key on.
   // The package operation performed — install/remove are not interchangeable.
   subjectKey: 'operation',
+  // Running lifecycle scripts executes package code: an "always allow
+  // install" granted for the scripts-off default must not cover it.
+  subjectFields: ['allowScripts'],
   mutating: true,
   riskTier: 'destructive',
   capabilities: ['shell.restricted', 'fs.write', 'net.outbound', 'package.install'],
@@ -128,7 +131,7 @@ export const languagePackageTool: Tool<LanguagePackageInput, LanguagePackageTool
       allowScripts: {
         type: 'boolean',
         description:
-          'Opt in to running package lifecycle scripts (preinstall/install/postinstall). Default false.',
+          'Opt in to running package lifecycle scripts (preinstall/install/postinstall) for npm/pnpm/yarn/bun/Composer. Default false.',
       },
     },
     required: ['operation'],

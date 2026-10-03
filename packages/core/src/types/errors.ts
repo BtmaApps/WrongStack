@@ -416,6 +416,54 @@ export class FsError extends WrongStackError {
 }
 
 /**
+ * A mutating tool that FAILED *after* changing files on disk — `patch --merge`
+ * writing git-style conflict markers into the files it could not apply cleanly.
+ *
+ * The call is a failure, so no line-level evidence is attributed to it; yet the
+ * working tree is genuinely dirty and needs manual repair. The confirmed paths
+ * travel as a typed field rather than inside the message text, because only the
+ * tool can report paths it verified by reading each file back after the apply —
+ * the same evidence session rewind uses. Consumers that report "what changed"
+ * (`tool.failed` → chronicle → the Files tab) surface them as a conflict marker,
+ * never as line counts.
+ */
+export class PartialWriteError extends WrongStackError {
+  /** Paths confirmed changed on disk before the failure, relative to the tool's root. */
+  readonly modifiedPaths: string[];
+
+  constructor(opts: {
+    message: string;
+    modifiedPaths: string[];
+    cause?: unknown | undefined;
+  }) {
+    super({
+      message: opts.message,
+      code: ERROR_CODES.TOOL_EXECUTION_FAILED,
+      subsystem: 'tool',
+      severity: 'error',
+      recoverable: false,
+      cause: opts.cause,
+    });
+    this.name = 'PartialWriteError';
+    this.modifiedPaths = [...opts.modifiedPaths];
+  }
+}
+
+/**
+ * Duck-type guard for {@link PartialWriteError} that survives the
+ * cross-package boundary (tools import the class from here, but a thrown
+ * error may cross a serialization seam).
+ */
+export function hasModifiedPaths(err: unknown): err is PartialWriteError {
+  if (err instanceof PartialWriteError) return true;
+  if (typeof err !== 'object' || err === null) return false;
+  const paths = (err as { modifiedPaths?: unknown }).modifiedPaths;
+  return (
+    Array.isArray(paths) && paths.every((value) => typeof value === 'string' && value.length > 0)
+  );
+}
+
+/**
  * HTTP fetch error — thrown when a network request returns a non-OK status.
  * Carries the response status so {@link classifyToolError} can branch on it
  * (429 → transient, 404 → not_found, 401 → permission) without duck-typing

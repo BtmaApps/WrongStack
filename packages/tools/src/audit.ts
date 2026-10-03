@@ -220,14 +220,19 @@ function parseAuditOutput(
   try {
     data = JSON.parse(json) as Record<string, unknown>;
   } catch {
-    return {
-      exit_code: exitCode,
-      vulnerabilities: [],
-      total: 0,
-      summary: 'Could not parse audit output',
-      output: cappedOutput,
-      truncated,
-    };
+    // yarn classic streams NDJSON (`auditAdvisory` lines + an `auditSummary`),
+    // which no single JSON.parse accepts.
+    const yarn = extractYarnClassicAdvisories(json);
+    if (yarn) data = { advisories: yarn };
+    else
+      return {
+        exit_code: exitCode,
+        vulnerabilities: [],
+        total: 0,
+        summary: 'Could not parse audit output',
+        output: cappedOutput,
+        truncated,
+      };
   }
 
   let advisories = extractAdvisories(data);
@@ -279,6 +284,32 @@ function parseAuditOutput(
  * - npm ≤6 and pnpm: `{ advisories: { <id>: { severity, module_name, title, url } } }`
  * - npm ≥7: `{ vulnerabilities: { <pkg>: { severity, via: [...] } }, metadata: {...} }`
  */
+/**
+ * yarn classic NDJSON → the npm v6 `advisories` map. yarn emits one
+ * `auditAdvisory` line per (advisory, dependency path), so lines are keyed by
+ * advisory id. Null when the stream holds no yarn audit records at all.
+ */
+function extractYarnClassicAdvisories(text: string): Record<string, unknown> | null {
+  const advisories: Record<string, unknown> = {};
+  let sawAudit = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let record: { type?: unknown; data?: { advisory?: Record<string, unknown> } };
+    try {
+      record = JSON.parse(line) as typeof record;
+    } catch {
+      continue;
+    }
+    if (record?.type === 'auditSummary') sawAudit = true;
+    if (record?.type !== 'auditAdvisory') continue;
+    sawAudit = true;
+    const advisory = record.data?.advisory;
+    if (!advisory || typeof advisory !== 'object') continue;
+    advisories[String(advisory['id'] ?? Object.keys(advisories).length)] = advisory;
+  }
+  return sawAudit ? advisories : null;
+}
+
 function extractAdvisories(data: Record<string, unknown>): AuditVulnerability[] {
   const advisories: AuditVulnerability[] = [];
 

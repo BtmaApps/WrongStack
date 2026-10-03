@@ -426,6 +426,17 @@ export async function* executePackagePlan(
           : spawned.exitCode === 0
             ? 'passed'
             : 'failed';
+    // Report commands exit non-zero exactly when they HAVE findings (`npm
+    // audit`/`npm outdated` exit 1, pip-audit and cargo audit too). A report
+    // that parsed into findings is a successful run, not a failure to drop.
+    if (
+      status === 'failed' &&
+      spawned.exitCode !== null &&
+      (plan.operation === 'package-audit' || plan.operation === 'package-outdated')
+    ) {
+      const reports = parsePackageReports(plan.parser, spawned.stdout, spawned.stderr);
+      if (reports.vulnerabilities.length > 0 || reports.outdated.length > 0) status = 'passed';
+    }
     error ??= spawned.error;
     const raw = [spawned.stdout, spawned.stderr, spawned.error].filter(Boolean).join('\n');
     run = {

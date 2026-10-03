@@ -3,6 +3,7 @@ import type { Context } from '../../src/core/context.js';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { EventBus } from '../../src/kernel/events.js';
 import type { ToolUseBlock } from '../../src/types/blocks.js';
+import { PartialWriteError } from '../../src/types/errors.js';
 import type { PermissionDecision } from '../../src/types/permission.js';
 import type { Tool, ToolProgressEvent, ToolStreamEvent } from '../../src/types/tool.js';
 
@@ -265,6 +266,63 @@ describe('Tool lifecycle — executeStream', () => {
       retryable: expect.any(Boolean),
     });
     expect(JSON.stringify(failed[0])).not.toContain('secret input');
+  });
+
+  it('forwards confirmed modified paths from a partial-write failure onto tool.failed', async () => {
+    // The event→executor leg of the conflict-damage chain. `patch --merge`
+    // writes conflict markers and throws a PartialWriteError; the chronicle and
+    // Files tab are unreachable unless these paths reach the event payload, and
+    // dropping the field here would leave every other suite green.
+    const events = new EventBus();
+    const failed: unknown[] = [];
+    events.on('tool.failed', (e) => failed.push(e));
+
+    const tool: Tool = {
+      name: 'patcher',
+      description: '',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: true,
+      execute: vi.fn().mockRejectedValue(
+        new PartialWriteError({
+          message: 'patch failed: Hunk #1 FAILED',
+          modifiedPaths: ['src/a.ts', 'src/b.ts'],
+        }),
+      ),
+    };
+
+    const executor = makeExecutor([tool], events);
+    await executor.executeBatch([makeUse('patcher')], makeCtx(), 'sequential');
+
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toMatchObject({
+      name: 'patcher',
+      modifiedPaths: ['src/a.ts', 'src/b.ts'],
+    });
+    // Re-running a patch over conflict-marked files compounds the damage, so a
+    // partial write must never be classified as retryable.
+    expect(failed[0]).toMatchObject({ retryable: false });
+  });
+
+  it('omits modifiedPaths when a failure changed nothing', async () => {
+    const events = new EventBus();
+    const failed: Array<Record<string, unknown>> = [];
+    events.on('tool.failed', (e) => failed.push(e as Record<string, unknown>));
+
+    const tool: Tool = {
+      name: 'plain-fail',
+      description: '',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      execute: vi.fn().mockRejectedValue(new Error('boom')),
+    };
+
+    const executor = makeExecutor([tool], events);
+    await executor.executeBatch([makeUse('plain-fail')], makeCtx(), 'sequential');
+
+    expect(failed).toHaveLength(1);
+    expect('modifiedPaths' in (failed[0] ?? {})).toBe(false);
   });
 
   it('throws when executeStream completes without final event', async () => {

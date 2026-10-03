@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { stripAnsi } from '@wrongstack/core/utils';
 import { spawnStream } from './_spawn-stream.js';
 import { normalizeCommandOutput, safeResolveReal } from './_util.js';
 import { tryLegacyCodeOperation } from './languages/legacy-bridge.js';
@@ -277,7 +278,19 @@ function buildArgs(runner: string, input: TestInput): string[] {
     const files = (Array.isArray(input.files) ? input.files : input.files.split(','))
       .map((f) => f.trim().replace(/\\/g, '/'))
       .filter(Boolean);
-    if (files.length > 0) {
+    if (files.length > 0 && runner === 'vitest') {
+      // vitest (cac) moves everything after `--` out of its filters, so
+      // `vitest run -- a.test.ts` ran the WHOLE suite. Filters go positional;
+      // with no `--` fence, a leading `-` would parse as a flag — refuse it.
+      const flagLike = files.find((f) => f.startsWith('-'));
+      if (flagLike) {
+        throw new ToolValidationError({
+          message: `test: file filter "${flagLike}" may not begin with '-'`,
+          field: 'files',
+        });
+      }
+      args.push(...files);
+    } else if (files.length > 0) {
       args.push('--', ...files);
     }
   }
@@ -317,8 +330,14 @@ function parseResult(
   let failed = 0;
 
   if (runner === 'vitest') {
-    const passedMatch = out.match(/(\d+) passed/);
-    const failedMatch = out.match(/(\d+) failed/);
+    // The summary has a `Test Files  1 failed | 1 passed (2)` line BEFORE
+    // `Tests  1 failed | 3 passed (4)`; reading the first `N passed` in the
+    // output counted FILES. Read the `Tests` line when there is one (colour
+    // codes stripped — vitest paints the label).
+    const plain = stripAnsi(out);
+    const testsLine = /^\s*Tests\s+(.+)$/m.exec(plain)?.[1] ?? plain;
+    const passedMatch = testsLine.match(/(\d+) passed/);
+    const failedMatch = testsLine.match(/(\d+) failed/);
     if (passedMatch?.[1]) passed = Number.parseInt(passedMatch[1], 10);
     if (failedMatch?.[1]) failed = Number.parseInt(failedMatch[1], 10);
     tests_run = passed + failed;

@@ -280,7 +280,7 @@
         "export type { SpecAnalysis, SpecApiEndpoint, Specification, SpecRequirement, SpecSection, SpecSectionType, SpecStatus, SpecTemplate, SpecValidationResult, } from './spec.js';",
         "export type { SystemPromptContributor } from './system-prompt-contributor.js';",
         "export type { UserInputAnswer, UserInputAwaiter, UserInputOption, UserInputQuestion, UserInputQuestionKind, UserInputRequest, UserInputResponse, UserInputTab, } from './user-input.js';",
-        "export { AgentError, ConfigError, ERROR_CODES, FetchError, FsError, isAgentError, isConfigError, isFetchError, isFsError, isParseError, isPluginError, isSddError, isSessionError, isToolError, isToolValidationError, isWrongStackError, ParseError, PluginError, SddError, SessionError, ToolError, ToolValidationError, toWrongStackError, WrongStackError, } from './errors.js';",
+        "export { AgentError, ConfigError, ERROR_CODES, FetchError, FsError, hasModifiedPaths, isAgentError, isConfigError, isFetchError, isFsError, isParseError, isPluginError, isSddError, isSessionError, isToolError, isToolValidationError, isWrongStackError, ParseError, PartialWriteError, PluginError, SddError, SessionError, ToolError, ToolValidationError, toWrongStackError, WrongStackError, } from './errors.js';",
         "export { BUILTIN_PROMPT_CATEGORIES, isBuiltinCategory, PROMPT_CATEGORY_LABELS } from './prompt.js';",
         "export { CHAT_MARKER_SOURCES, isSystemInjectedMessage, projectSessionMarkers, SESSION_MARKER_EVENT_TYPES, SYSTEM_INJECTION_PREFIXES, sessionEventToMarker, } from './session-markers.js';",
         "export { CONTEXT_WINDOW_MODE_PINNED_META_KEY, CONTEXT_WINDOW_MODES, DEFAULT_CONTEXT_WINDOW_MODE_ID, DEPRECATED_CONTEXT_WINDOW_MODE_ALIASES, formatContextWindowModeList, getContextWindowMode, isContextWindowModeId, isContextWindowModeSelectionId, isDeprecatedContextWindowModeId, LARGE_WINDOW_DEEP_MODE_THRESHOLD, listContextWindowModes, normalizeContextWindowModeId, resolveContextWindowPolicy, } from './context-window.js';",
@@ -1534,7 +1534,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 71,
-      "sourceLines": 20547
+      "sourceLines": 20555
     },
     {
       "directory": "extension",
@@ -1576,7 +1576,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4334
+      "sourceLines": 4343
     },
     {
       "directory": "models",
@@ -1702,7 +1702,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15696
+      "sourceLines": 15746
     },
     {
       "directory": "typesafe",
@@ -1716,7 +1716,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 78,
-      "sourceLines": 13578
+      "sourceLines": 13587
     },
     {
       "directory": "vcs",

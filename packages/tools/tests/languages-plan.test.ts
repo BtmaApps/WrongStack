@@ -80,7 +80,8 @@ describe('planLanguageOperation', () => {
     });
     expect(go.status === 'planned' && go.plan).toMatchObject({
       command: 'gofmt',
-      args: ['-e', '-d', goTarget],
+      // -l: gofmt -d exits 1 on a format diff, failing valid-but-unformatted code
+      args: ['-e', '-l', goTarget],
     });
 
     const rust = await planLanguageOperation({

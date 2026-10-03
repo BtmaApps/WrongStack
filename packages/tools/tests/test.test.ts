@@ -190,7 +190,8 @@ describe('buildArgs — the flags that actually reach the runner', () => {
     [
       'vitest files array (normalised separators)',
       { runner: 'vitest', files: ['a.test.ts', 'src\\b.test.ts'] },
-      ['run', '--testTimeout', '30000', '--', 'a.test.ts', 'src/b.test.ts'],
+      // positional: vitest drops filters placed after `--` and runs everything
+      ['run', '--testTimeout', '30000', 'a.test.ts', 'src/b.test.ts'],
     ],
     [
       'mocha files string + timeout',

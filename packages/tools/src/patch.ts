@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { Tool } from '@wrongstack/core/types';
-import { ToolValidationError } from '@wrongstack/core/types';
+import { PartialWriteError, ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv, toErrorMessage } from '@wrongstack/core/utils';
 import { resolveRealInsideRoot, safeResolveReal, sha256hex } from './_util.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
@@ -280,7 +280,19 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
               : '';
           // A failed apply is a failed call. Bookkeeping above already ran, and
           // the message names every file left modified (e.g. conflict markers).
-          throw new Error(`patch failed: ${result.stderr || result.stdout}${partial}`);
+          // When files WERE left modified, carry their confirmed paths as a
+          // typed field: only this tool can report paths it verified by reading
+          // each file back, and downstream "what changed" views need them as
+          // structure, not as prose inside the message.
+          throw touched.length > 0
+            ? new PartialWriteError({
+                message: `patch failed: ${result.stderr || result.stdout}${partial}`,
+                // Relative, like `writeTargets()` and the message above: an
+                // absolute realpath would put the operator's home directory
+                // into the chronicle journal.
+                modifiedPaths: touched.map((p) => path.relative(realRoot, p) || p),
+              })
+            : new Error(`patch failed: ${result.stderr || result.stdout}${partial}`);
         }
         // Dry-run with a non-zero exit: GNU patch --dry-run still exits
         // non-zero when the patch would conflict. Without this branch the code

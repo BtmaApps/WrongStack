@@ -223,13 +223,14 @@ export {
   KNOWN_TOKEN_NAMES,
 } from './design-kit.js';
 export type { ErrorCode, ErrorSeverity, ErrorSubsystem } from './errors.js';
-// ── errors (27 symbols) ──
+// ── errors (28 symbols) ──
 export {
   AgentError,
   ConfigError,
   ERROR_CODES,
   FetchError,
   FsError,
+  hasModifiedPaths,
   isAgentError,
   isConfigError,
   isFetchError,
@@ -242,6 +243,7 @@ export {
   isToolValidationError,
   isWrongStackError,
   ParseError,
+  PartialWriteError,
   PluginError,
   SddError,
   SessionError,

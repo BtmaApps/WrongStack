@@ -79,9 +79,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 319,
+      "files": 320,
       "typeOnly": 149,
-      "runtimeOrMixed": 184
+      "runtimeOrMixed": 185
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -99,9 +99,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/observability": {
-      "files": 11,
+      "files": 12,
       "typeOnly": 0,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 12
     },
     "@wrongstack/core/performance": {
       "files": 1,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1266,
+      "files": 1267,
       "typeOnly": 1120,
-      "runtimeOrMixed": 369
+      "runtimeOrMixed": 370
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 689,
+      "files": 693,
       "typeOnly": 66,
-      "runtimeOrMixed": 655
+      "runtimeOrMixed": 659
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -7604,6 +7604,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tools/tests/project-kit.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/tui/src/app-props.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -8481,6 +8487,12 @@
     {
       "specifier": "@wrongstack/core/observability",
       "file": "packages/tools/src/pwsh.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/observability",
+      "file": "packages/tools/tests/project-kit.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18182,6 +18194,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/patch-spawn.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/tests/pdf-attach-and-image-generate.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -23492,6 +23510,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/languages/diagnostics.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/logs.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23576,6 +23600,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/todo.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23601,6 +23631,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/git.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/install.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/language-package-real-outputs.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
