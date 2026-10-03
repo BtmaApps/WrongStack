@@ -364,6 +364,7 @@ export const changelog: ChangelogEntry[] = [
       'Code Assist starts isolated file and symbol runs; fleet mailbox messages can be composed and replied to in the WebUI',
       'Offline benchmark experiments compare deterministic quality, recorded usage and known cost without changing live routing',
       'Native cloud profiles, read-only provider preflight checks and a two-pane TUI provider quota browser',
+      'Renewable OAuth account sign-in for xAI/Grok, Kimi Code, Meta and ChatGPT plan API, with account-scoped model discovery and coordinated refresh',
       'Session-owned artifact presentation, reorderable sidebar sections and a WCAG AA theme contrast readout',
       'Lifecycle, Council, Kanban, IPC, cache, command execution and token-accounting fixes across the workspace',
     ],

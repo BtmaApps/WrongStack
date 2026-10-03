@@ -169,7 +169,23 @@ function sampleShape(img, g) {
     // sampled. That makes polarity irrelevant: in dark mode the ink is the
     // lightest colour in the box, in light mode the darkest, so ranking by
     // luminance alone silently inverts one of the two themes.
-    const bg = at(img, g.x - 3, cy);
+    // A single pixel beside the label can land on a membership edge. Use
+    // the modal surrounding colour so a crossing line cannot become the
+    // label's supposed backdrop and make canvas pixels look like its ink.
+    const backdropCounts = new Map();
+    const addBackdrop = (x, y) => {
+      const key = at(img, x, y).join(',');
+      backdropCounts.set(key, (backdropCounts.get(key) ?? 0) + 1);
+    };
+    for (let step = 0; step <= 8; step += 1) {
+      const fraction = step / 8;
+      addBackdrop(g.x + g.w * fraction, g.y - 3);
+      addBackdrop(g.x + g.w * fraction, g.y + g.h + 3);
+      addBackdrop(g.x - 3, g.y + g.h * fraction);
+      addBackdrop(g.x + g.w + 3, g.y + g.h * fraction);
+    }
+    const [backdrop] = [...backdropCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const bg = backdrop.split(',').map(Number);
     const ranked = edges.map((p) => ({ p, d: contrast(p, bg) })).sort((a, b) => b.d - a.d);
     // Ink core = the edge pixels furthest from that known backdrop.
     const coreCount = Math.max(1, Math.round(ranked.length * 0.15));
@@ -317,14 +333,11 @@ try {
     }, theme);
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__story_smoke`);
     await page.waitForSelector('svg', { timeout: 15000 });
-    // Screenshot pixels and the subsequently measured glyph boxes must use
-    // identical geometry. Finish entry animations and freeze looping motion.
-    await page.evaluate(() => {
-      for (const animation of document.getAnimations()) {
-        if (animation.effect?.getComputedTiming().iterations === Infinity) animation.pause();
-        else animation.finish();
-      }
-    });
+    await page.waitForFunction(
+      (value) => document.documentElement.classList.contains(value),
+      theme,
+    );
+    await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: path.join(out, `session-story-${theme}.png`), fullPage: true });
 
     results[theme] = await page.evaluate((pairs) => {

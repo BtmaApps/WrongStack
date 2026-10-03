@@ -20,6 +20,7 @@ join the workflow, with lifecycle and policy fixes across the workspace.
 - **Code Assist and fleet mail.** The WebUI starts isolated assistance runs for files and symbols, and composes or replies to typed fleet mailbox messages.
 - **Offline routing and quality experiments.** Benchmark and transcript commands compare deterministic grades, recorded usage, known cost and advisory review evidence without changing live routing.
 - **Provider operations.** Native cloud profiles and read-only preflight diagnostics, plus a structured two-pane `/provider-quota` TUI browser.
+- **Renewable account sign-in.** OAuth flows for xAI/Grok, Kimi Code, Meta and ChatGPT plan API are available across CLI, TUI and WebUI. Account-scoped model discovery and coordinated credential refresh keep saved profiles current across processes.
 - **Session-owned artifacts.** Text, images, diffs and owned live browsers can be presented across WebUI and SimpleUI.
 
 ### Changed
