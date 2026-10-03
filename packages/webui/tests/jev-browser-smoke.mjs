@@ -81,7 +81,9 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__jev_smoke`);
-    const jevTab = page.getByRole('tab', { name: 'Jev', exact: true });
+    if (width < 1024)
+      await page.locator('button[aria-controls="settings-navigation-list"]').click();
+    const jevTab = page.getByRole('tab', { name: 'Jev', exact: true, includeHidden: true });
     await jevTab.click();
     assert.equal(
       await jevTab.getAttribute('aria-selected'),
@@ -89,7 +91,7 @@ try {
       'Jev must remain selected after clicking its Settings tab',
     );
     const tabValues = await page
-      .getByRole('tab')
+      .getByRole('tab', { includeHidden: true })
       .evaluateAll((tabs) => tabs.map((tab) => tab.id.split('-trigger-')[1]));
     assert.equal(
       tabValues.indexOf('jev'),
