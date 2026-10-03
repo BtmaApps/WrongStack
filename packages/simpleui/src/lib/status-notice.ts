@@ -7,6 +7,13 @@ export interface StatusNoticeProjection {
 
 function compactLine(value: unknown, prefix = ''): string {
   const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  // A prefix alone is not a message. Returning it when `value` is absent or
+  // empty made `text || 'fallback'` unreachable — every caller with a prefix
+  // (sessions.list, provider.error, provider.stream_error) rendered a bare
+  // label ("Sessions ·", "Provider ·") instead of its fallback, so a
+  // SUCCESSFUL sessions.list — which the server sends without an `error` field
+  // on every success path — surfaced a spurious error notice.
+  if (!text) return '';
   const combined = `${prefix}${text}`.trim();
   return combined.length > 180 ? `${combined.slice(0, 177)}…` : combined;
 }

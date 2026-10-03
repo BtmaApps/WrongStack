@@ -50,6 +50,8 @@ export {
   formatDeliveryPendingNotice,
   isAutoWakePrompt,
 } from './auto-wake.js';
+export * from './automation.js';
+export * from './automation-portability.js';
 export {
   createSurfaceConnectionState,
   DEFAULT_SURFACE_CONNECTION_CONFIG,

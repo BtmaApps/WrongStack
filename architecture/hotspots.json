@@ -335,7 +335,7 @@
       "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
-      "lines": 898,
+      "lines": 899,
       "relativeImports": 2
     },
     "packages/webui/src/components/AudienceMemoryPanel.tsx": {
@@ -419,7 +419,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 848,
+      "lines": 850,
       "relativeImports": 36
     },
     "apps/desktop/src/main/runtime-manager.ts": {

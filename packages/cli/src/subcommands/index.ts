@@ -24,6 +24,8 @@ export type { SubcommandDeps } from './contracts.js';
 type SubcommandLoader = () => Promise<unknown>;
 
 const loaders: Record<string, SubcommandLoader> = {
+  automation: async () => (await import('./handlers/automation.js')).automationCmd,
+  sandbox: async () => (await import('./handlers/sandbox.js')).sandboxCmd,
   acp: async () => (await import('./handlers/acp.js')).acpCmd,
   init: async () => (await import('./handlers/init.js')).initCmd,
   auth: async () => (await import('./handlers/auth.js')).authCmd,

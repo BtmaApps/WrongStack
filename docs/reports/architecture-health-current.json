@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:59:11.703Z",
+  "generatedAt": "2026-10-03T12:01:24.816Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4360,
-    "testFiles": 3987,
-    "sourceLines": 1039129,
-    "workspaceEdges": 131,
-    "moduleEdges": 14193,
+    "sourceFiles": 4383,
+    "testFiles": 3997,
+    "sourceLines": 1043594,
+    "workspaceEdges": 133,
+    "moduleEdges": 14252,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 974
+    "testOnlyExports": 977
   },
   "errors": [
     "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
@@ -161,8 +161,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 555,
-      "testFiles": 575,
+      "sourceFiles": 558,
+      "testFiles": 577,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -202,7 +202,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 575
+          "testFiles": 577
         }
       ]
     },
@@ -582,15 +582,17 @@
     {
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
-      "sourceFiles": 15,
-      "testFiles": 18,
+      "sourceFiles": 28,
+      "testFiles": 23,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
         "@wrongstack/kanban",
+        "@wrongstack/primitives",
         "@wrongstack/sage",
         "@wrongstack/tools",
-        "@wrongstack/vector-memory"
+        "@wrongstack/vector-memory",
+        "@wrongstack/webui-protocol"
       ],
       "tsconfigs": [
         {
@@ -601,7 +603,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 18
+          "testFiles": 23
         }
       ]
     },
@@ -699,7 +701,7 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 111,
+      "sourceFiles": 113,
       "testFiles": 89,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -851,8 +853,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 636,
-      "testFiles": 452,
+      "sourceFiles": 637,
+      "testFiles": 453,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -875,7 +877,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 452
+          "testFiles": 453
         }
       ]
     },
@@ -906,8 +908,8 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 21,
-      "testFiles": 10,
+      "sourceFiles": 24,
+      "testFiles": 11,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -920,15 +922,15 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 10
+          "testFiles": 11
         }
       ]
     },
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 260,
-      "testFiles": 258,
+      "sourceFiles": 261,
+      "testFiles": 259,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -954,7 +956,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 258
+          "testFiles": 259
         }
       ]
     },
@@ -4809,6 +4811,18 @@
       },
       {
         "file": "packages/cli/tests/subcommands.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/subcommands/automation-credentials.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/subcommands/automation-preview.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13736,6 +13750,24 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/automation-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/automation-result.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/automation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/clipboard-timeout.test.ts",
         "projects": [
           "root-node"
@@ -13761,6 +13793,18 @@
       },
       {
         "file": "packages/runtime/tests/container.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/docker-workspace-environment.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/docker-workspace.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20672,6 +20716,12 @@
         ]
       },
       {
+        "file": "packages/webui-protocol/tests/automation-portability.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-protocol/tests/connection-fsm.test.ts",
         "projects": [
           "root-node"
@@ -20781,6 +20831,12 @@
       },
       {
         "file": "packages/webui-server/tests/auto-healer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/automation-http.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22383,6 +22439,12 @@
       },
       {
         "file": "packages/webui/tests/components/audience-memory-panel.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/automation-view.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -25084,6 +25146,11 @@
       "syntax": "import"
     },
     {
+      "from": "packages/simpleui/src/automation-workspace.tsx",
+      "specifier": "./automation.css",
+      "syntax": "import"
+    },
+    {
       "from": "packages/simpleui/src/main.tsx",
       "specifier": "./styles.css",
       "syntax": "import"
@@ -25091,6 +25158,11 @@
     {
       "from": "packages/webui/src/components/AgentOfficeView.tsx",
       "specifier": "./AgentOfficeView.css",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/webui/src/components/AutomationView.tsx",
+      "specifier": "./automation.css",
       "syntax": "import"
     },
     {
@@ -25629,7 +25701,7 @@
     },
     {
       "file": "packages/webui/src/components/activity-bar/index.tsx",
-      "lines": 898,
+      "lines": 899,
       "relativeImports": 2
     },
     {
@@ -25734,7 +25806,7 @@
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 848,
+      "lines": 850,
       "relativeImports": 36
     },
     {
@@ -25960,14 +26032,14 @@
       "relativeImports": 16
     },
     {
+      "file": "packages/webui/src/components/activity-bar/index.tsx",
+      "lines": 899,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 898,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/webui/src/components/activity-bar/index.tsx",
-      "lines": 898,
-      "relativeImports": 2
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/BrainSection.tsx",
@@ -26523,6 +26595,10 @@
     {
       "file": "packages/cli/src/subcommands/handlers/auth-local-help.ts",
       "name": "renderAuthLocalHelp"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
+      "name": "resolveAutomationCredentials"
     },
     {
       "file": "packages/cli/src/subcommands/handlers/bench-run-help.ts",
@@ -27937,6 +28013,14 @@
       "name": "appendItems"
     },
     {
+      "file": "packages/runtime/src/automation/github.ts",
+      "name": "verifyGitHubSignature"
+    },
+    {
+      "file": "packages/runtime/src/automation/management.ts",
+      "name": "readAutomationArtifact"
+    },
+    {
       "file": "packages/runtime/src/clipboard.ts",
       "name": "MAX_TEXT_BYTES"
     },
@@ -28087,6 +28171,10 @@
     {
       "file": "packages/simpleui/src/agent-chat-pane.tsx",
       "name": "agentConversationEntries"
+    },
+    {
+      "file": "packages/simpleui/src/automation-panel.tsx",
+      "name": "AutomationPanel"
     },
     {
       "file": "packages/simpleui/src/chat-message-list.tsx",
@@ -29323,10 +29411,6 @@
     {
       "file": "packages/webui/src/components/SessionsDashboard.tsx",
       "name": "sessionApiError"
-    },
-    {
-      "file": "packages/webui/src/components/SessionStoryView.tsx",
-      "name": "SessionStoryView"
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/ModelListEditor.tsx",

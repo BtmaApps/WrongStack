@@ -277,6 +277,9 @@
       "LOCAL_FLAG_COLUMN_WIDTH",
       "renderAuthLocalHelp"
     ],
+    "packages/cli/src/subcommands/handlers/automation-credentials.ts": [
+      "resolveAutomationCredentials"
+    ],
     "packages/cli/src/subcommands/handlers/bench-run-help.ts": [
       "BENCH_RUN_BOOLEAN_FLAG_NAMES",
       "BENCH_RUN_FLAGS",
@@ -986,6 +989,12 @@
       "ANSWER_FIELD_MAPPING",
       "appendItems"
     ],
+    "packages/runtime/src/automation/github.ts": [
+      "verifyGitHubSignature"
+    ],
+    "packages/runtime/src/automation/management.ts": [
+      "readAutomationArtifact"
+    ],
     "packages/runtime/src/clipboard.ts": [
       "MAX_TEXT_BYTES"
     ],
@@ -1075,6 +1084,9 @@
     ],
     "packages/simpleui/src/agent-chat-pane.tsx": [
       "agentConversationEntries"
+    ],
+    "packages/simpleui/src/automation-panel.tsx": [
+      "AutomationPanel"
     ],
     "packages/simpleui/src/chat-message-list.tsx": [
       "applyScrollAnchoring",
@@ -1760,9 +1772,6 @@
     ],
     "packages/webui/src/components/SessionsDashboard.tsx": [
       "sessionApiError"
-    ],
-    "packages/webui/src/components/SessionStoryView.tsx": [
-      "SessionStoryView"
     ],
     "packages/webui/src/components/SettingsPanel/ModelListEditor.tsx": [
       "deriveRows"

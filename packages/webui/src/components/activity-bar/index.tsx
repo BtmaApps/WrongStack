@@ -107,6 +107,7 @@ const VIEWS: ViewDef[] = [
   { id: 'memory', icon: <BrainCircuit size={16} />, label: 'Memory' },
   { id: 'sddhub', icon: <Wand2 size={16} />, label: 'SDD' },
   { id: 'project-kit', icon: <PackageOpen size={16} />, label: 'Project Kit' },
+  { id: 'automation', icon: <Rocket size={16} />, label: 'Automations' },
   { id: 'codemap', icon: <Network size={16} />, label: 'CodeMap' },
   { id: 'history', icon: <GitFork size={16} />, label: 'Repository History' },
   { id: 'chronicle', icon: <ChartNoAxesCombined size={16} />, label: 'Chronicle' },

@@ -77,9 +77,12 @@
     "@wrongstack/core": "workspace:*",
     "@wrongstack/governance": "workspace:*",
     "@wrongstack/kanban": "workspace:*",
+    "@wrongstack/primitives": "workspace:*",
     "@wrongstack/sage": "workspace:*",
     "@wrongstack/tools": "workspace:*",
-    "@wrongstack/vector-memory": "workspace:*"
+    "@wrongstack/vector-memory": "workspace:*",
+    "@wrongstack/webui-protocol": "workspace:*",
+    "cron-parser": "^5.10.1"
   },
   "devDependencies": {
     "@types/node": "^26.5.1",

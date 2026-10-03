@@ -1,6 +1,24 @@
 import type { PerSubcommandHelp } from './per-subcommand-help-types.js';
 
 export const helpTable: Record<string, PerSubcommandHelp> = {
+  automation: {
+    name: 'automation',
+    title: 'wstack automation — persistent agent jobs',
+    description:
+      'Manage persistent schedules, signed GitHub intake, isolated runs and run history.',
+    usage:
+      'wstack automation <add|preview|templates|import|export|list|run|enable|disable|cancel|serve|prune> [id] [options]',
+    seeAlso: 'docs/subcommands/automation.md',
+  },
+  sandbox: {
+    name: 'sandbox',
+    title: 'wstack sandbox — isolated Docker execution',
+    description:
+      'Run the full agent in a copied project workspace and retain a patch without editing the host project.',
+    usage:
+      'wstack sandbox docker --image <trusted-image> --prompt <task> [--dry-run] [--env NAME,...] [--provider id] [--model id] [--out directory]',
+    seeAlso: 'docs/subcommands/sandbox.md',
+  },
   init: {
     name: 'init',
     title: 'wstack init — DEPRECATED (use wstack auth)',
@@ -114,10 +132,15 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       'quick-shortcut path for Ollama / vLLM / LM Studio, and a catalog ' +
       'path for the well-known providers.',
     usage:
-      'wstack auth [list|status|remove] [...] | wstack auth <provider> | wstack auth local [...]',
+      'wstack auth [list|status|remove|cloud] [...] | wstack auth <provider> | wstack auth local [...]',
     subcommands: [
       { name: 'list', description: 'List saved providers and key status.' },
       { name: 'status <id>', description: 'Show detail for one provider.' },
+      {
+        name: 'cloud <id>',
+        description:
+          'Read or set native region/project/location/resource routing for a saved profile.',
+      },
       { name: 'remove <id>', description: 'Remove a provider and its keys.' },
       { name: '<provider>', description: 'Add a key for a named provider (--label, --family, …).' },
       {
@@ -409,8 +432,13 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       'strengths/weaknesses (bestFor / avoidFor), sequential live ' +
       'provider/model smoke tests, and real benchmarks against a small ' +
       'prompt suite. Smoke tests use tiny prompts and never print credentials.',
-    usage: 'wstack modeldiag [test|eval] [...]',
+    usage: 'wstack modeldiag [preflight|test|eval] [...]',
     subcommands: [
+      {
+        name: 'preflight [provider-profile]',
+        description:
+          'Check native cloud provider setup without model requests or exposing credential values.',
+      },
       {
         name: '<no subcommand>',
         description: 'Print configured model capabilities, context limits, and recommendations.',
@@ -436,7 +464,7 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       'Run WrongStack against the bundled smoke suite, a local manifest, ' +
       'Aider polyglot, or SWE-bench Verified with deterministic graders. ' +
       'Default `bench run` is the bundled core edit-eval; pass --cell provider/model (or a saved model).',
-    usage: 'wstack bench [run|compare|report|list] [...]',
+    usage: 'wstack bench [run|compare|report|list|mine|review|route|experiment] [...]',
     subcommands: [
       { name: 'run', description: 'Run a suite. Default: bundled smoke + --cell or saved model.' },
       {
@@ -444,6 +472,18 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
         description: 'Diff two finished run directories (fingerprint-aware).',
       },
       { name: 'report <dir>', description: 'Render the Markdown report for a prior run.' },
+      {
+        name: 'review --transcript <file>',
+        description: 'Read-only transcript behavior/compaction evidence; optional --policy.',
+      },
+      {
+        name: 'route <dir> --policy <file>',
+        description: 'Shadow routing recommendations from graded model-matrix evidence.',
+      },
+      {
+        name: 'experiment <a> <b> --dimension compaction|behavior',
+        description: 'Compare paired task/model/attempt runs with explicit experiment provenance.',
+      },
       { name: 'list', description: 'List available suites and the model configs in the catalog.' },
     ],
     seeAlso: 'wstack modeldiag (read-only diagnostics; bench actually runs the model)',

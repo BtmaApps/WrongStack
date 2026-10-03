@@ -70,6 +70,7 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
       { view: 'sddhub', icon: <Wand2 size={15} />, labelKey: 'nav.sddhub' },
       { view: 'intake', icon: <ClipboardList size={15} />, labelKey: 'nav.intake' },
       { view: 'project-kit', icon: <PackageOpen size={15} />, labelKey: 'nav.project-kit' },
+      { view: 'automation', icon: <Rocket size={15} />, labelKey: 'nav.automation' },
     ],
   },
   {

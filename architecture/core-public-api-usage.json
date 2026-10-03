@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 180,
+      "files": 182,
       "typeOnly": 27,
-      "runtimeOrMixed": 156
+      "runtimeOrMixed": 158
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -184,8 +184,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1272,
-      "typeOnly": 1124,
+      "files": 1276,
+      "typeOnly": 1128,
       "runtimeOrMixed": 371
     },
     "@wrongstack/core/types/limits": {
@@ -224,9 +224,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 693,
-      "typeOnly": 66,
-      "runtimeOrMixed": 659
+      "files": 701,
+      "typeOnly": 67,
+      "runtimeOrMixed": 666
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -10303,6 +10303,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/subcommands/handlers/helpers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10664,6 +10670,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/providers/src/openai-codex-stream.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/runtime/src/automation/github.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13939,6 +13951,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/import-claude-code.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15044,6 +15062,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/subcommands.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/subcommands/automation-credentials.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16906,6 +16930,18 @@
       "file": "packages/runtime/src/container.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/runtime/src/credential-reference.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/runtime/src/docker-workspace.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -21883,6 +21919,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/automation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/bench-run-help.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -22040,6 +22088,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/sage.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/sandbox.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -23029,6 +23083,24 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/automation/management.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/automation/service.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/automation/store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/clipboard.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23036,6 +23108,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/container.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/docker-workspace.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -24358,6 +24436,12 @@
       "file": "packages/webui-server/src/server/http-server/api-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 5
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/http-server/automation-handler.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

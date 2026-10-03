@@ -743,6 +743,9 @@ importers:
       '@wrongstack/kanban':
         specifier: workspace:*
         version: link:../kanban
+      '@wrongstack/primitives':
+        specifier: workspace:*
+        version: link:../primitives
       '@wrongstack/sage':
         specifier: workspace:*
         version: link:../sage
@@ -752,6 +755,12 @@ importers:
       '@wrongstack/vector-memory':
         specifier: workspace:*
         version: link:../vector-memory
+      '@wrongstack/webui-protocol':
+        specifier: workspace:*
+        version: link:../webui-protocol
+      cron-parser:
+        specifier: ^5.10.1
+        version: 5.10.1
     devDependencies:
       '@types/node':
         specifier: ^26.5.1
@@ -3757,6 +3766,10 @@ packages:
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
+  cron-parser@5.10.1:
+    resolution: {integrity: sha512-pKRrRagItwk9rGIStcUyMxFX34x56zoX3KDf9HJ4ttwkXIK1qxK63EvXvEDmlxI9AdPJ+Y7TEKRftRlW5eSS7A==}
+    engines: {node: '>=18'}
+
   cross-dirname@0.1.0:
     resolution: {integrity: sha512-+R08/oI0nl3vfPcqftZRpytksBXDzOUveBq/NBVx0sUp1axwzPQrKinNx5yd5sxPu8j1wIy8AfnVQ+5eFdha6Q==}
 
@@ -4674,6 +4687,10 @@ packages:
     resolution: {integrity: sha512-yH1ubCAduho9UR7oJhRXIQXogksRILBiTuZC4/bQIGeB9JOkxMlSuEHyyZpo1Z3S0yWJO2KTSUZbjiNvVxeOUw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
+    engines: {node: '>=12'}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -8056,6 +8073,10 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
+  cron-parser@5.10.1:
+    dependencies:
+      luxon: 3.7.2
+
   cross-dirname@0.1.0:
     optional: true
 
@@ -9083,6 +9104,8 @@ snapshots:
   lucide-react@1.45.0(react@19.3.0):
     dependencies:
       react: 19.3.0
+
+  luxon@3.7.2: {}
 
   lz-string@1.5.0: {}
 

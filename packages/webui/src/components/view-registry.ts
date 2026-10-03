@@ -28,6 +28,7 @@
  */
 import { type ComponentType, lazy } from 'react';
 import type { View } from '@/stores/ui-store';
+const AutomationView = lazy(() => import('./AutomationView').then((module) => ({ default: module.AutomationView })));
 
 // Lazy at module scope: one chunk per view, identical to the previous
 // `ViewRouter` behaviour. Eager entries (chat, settings, context) are not
@@ -44,6 +45,9 @@ const RepositoryHistoryView = lazy(() =>
 );
 const ChronicleDashboard = lazy(() =>
   import('./ChronicleDashboard').then((m) => ({ default: m.ChronicleDashboard })),
+);
+const SessionStoryView = lazy(() =>
+  import('./SessionStoryView').then((module) => ({ default: module.SessionStoryView })),
 );
 const CodeEditor = lazy(() => import('./CodeEditor').then((m) => ({ default: m.CodeEditor })));
 const CodeMap = lazy(() => import('./CodeMap').then((m) => ({ default: m.CodeMap })));
@@ -235,6 +239,12 @@ const VIEW_REGISTRY_STRICT = {
     boundaryNameKey: 'activity:panels.sessionInspect',
     loadingLabelKey: 'activity:panels.sessionInspect',
   },
+  'session-story': {
+    Component: SessionStoryView,
+    wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
+    boundaryNameKey: 'activity:panels.sessions',
+    loadingLabelKey: null,
+  },
   chronicle: {
     Component: ChronicleDashboard,
     wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
@@ -246,6 +256,12 @@ const VIEW_REGISTRY_STRICT = {
     wrapperClassName: 'flex-1 min-h-0 min-w-0 overflow-hidden',
     boundaryNameKey: 'activity:nav.project-kit',
     loadingLabelKey: 'activity:nav.project-kit',
+  },
+  automation: {
+    Component: AutomationView,
+    wrapperClassName: 'flex min-h-0 flex-1 flex-col',
+    boundaryNameKey: 'activity:nav.automation',
+    loadingLabelKey: 'activity:nav.automation',
   },
   intake: {
     Component: RequirementIntakeView,

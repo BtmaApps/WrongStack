@@ -64,6 +64,7 @@ export const VIEWS = [
   'history',
   'sessions',
   'session-inspect',
+  'session-story',
   'setup',
   'skill',
   'mailbox',
@@ -74,6 +75,7 @@ export const VIEWS = [
   'codemap',
   'techstack',
   'project-kit',
+  'automation',
   'chronicle',
   'intake',
   'deadcode',
@@ -154,6 +156,18 @@ export type WorkDashboardTab = 'todos' | 'tasks' | 'plan';
 export interface ActivityBarOrder {
   panels: Activity[];
   views: View[];
+}
+
+/**
+ * Prefill for the mailbox compose dialog, requested from any surface
+ * (MailboxDetailView Reply, command palette, …). MailboxPanel owns the
+ * dialog and consumes + clears the request — see its `openComposeWithPrefill`.
+ */
+export interface MailboxComposeRequest {
+  to?: string | undefined;
+  subject?: string | undefined;
+  /** Message id being replied to — threads the sent payload via `replyTo`. */
+  replyTo?: string | undefined;
 }
 /**
  * Tabs of the global right inspector drawer.
@@ -396,6 +410,15 @@ export interface UIState {
   /** The mailbox message currently shown in the main-area detail view. */
   selectedMailMessage: MailboxMessage | null;
   setSelectedMailMessage: (msg: MailboxMessage | null) => void;
+
+  /**
+   * Cross-surface "open the compose dialog with this prefill" request.
+   * Transient like `promptInsertRequest`: set by one surface, consumed +
+   * cleared by MailboxPanel (which owns the dialog + draft). Never parked
+   * per session and never persisted.
+   */
+  mailboxComposeRequest: MailboxComposeRequest | null;
+  setMailboxComposeRequest: (request: MailboxComposeRequest | null) => void;
 
   /** Active prompt-refinement panel. Set while RefinePanel is shown. Null when no refinement is pending. */
   refinePanel: {

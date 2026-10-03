@@ -1,4 +1,5 @@
 import type * as http from 'node:http';
+import { handleProjectAutomation } from './automation-handler.js';
 import * as v8 from 'node:v8';
 import { sanitizeApiError } from '@wrongstack/core/security';
 import { getSageSurface } from '@wrongstack/sage';
@@ -126,6 +127,13 @@ export async function handleApiRoutes(
     runningJobs: Map<string, AbortController>;
   }>,
 ): Promise<boolean> {
+  if (url.pathname.startsWith('/api/automation/')) {
+    if (requireAccessToken && !accessTokenOk) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+    } else await handleProjectAutomation(req, res, url, deps);
+    return true;
+  }
   if (url.pathname === '/api/project-kit') {
     if (requireAccessToken && !accessTokenOk) {
       res.writeHead(401, { 'Content-Type': 'application/json' });

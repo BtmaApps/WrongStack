@@ -18,3 +18,6 @@ export { type ProbeOptions, type ProbeResult, probeLocalLlm } from './local-llm-
 export * from './pack.js';
 export * from './project-permission-policy.js';
 export * from './vision.js';
+export * from './docker-workspace.js';
+export * from './automation/index.js';
+export * from './credential-reference.js';

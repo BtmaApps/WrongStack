@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.7
+# Reuses the dependency build contract from deploy/hq/Dockerfile.
+ARG NODE_IMAGE=node:22.23.2-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
+FROM ${NODE_IMAGE} AS build
+WORKDIR /workspace
+ENV CI=1
+RUN corepack enable && corepack prepare pnpm@12.3.4 --activate
+COPY . .
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile --ignore-scripts \
+    && pnpm rebuild esbuild
+RUN node scripts/build.mjs --target wrongstack
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm --filter wrongstack deploy --prod --no-optional --ignore-scripts /opt/wrongstack
+
+FROM ${NODE_IMAGE} AS runtime
+USER root
+RUN apt-get update && apt-get install --yes --no-install-recommends git bash ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /workspace \
+    && chown node:node /workspace \
+    && printf '#!/bin/sh\nexec node /opt/wrongstack/dist/index.js "$@"\n' > /usr/local/bin/wstack \
+    && chmod 755 /usr/local/bin/wstack
+COPY --from=build --chown=node:node /opt/wrongstack /opt/wrongstack
+USER node
+WORKDIR /workspace
+CMD ["wstack", "--help"]

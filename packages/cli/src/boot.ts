@@ -104,6 +104,10 @@ export interface BootContext {
  */
 export async function boot(argv: string[]): Promise<BootContext | number> {
   const { flags, positional } = parseArgs(argv);
+  if (positional[0] === 'sandbox') {
+    const { runSandboxCommand } = await import('./subcommands/handlers/sandbox.js');
+    return runSandboxCommand(positional.slice(1), flags, new TerminalRenderer());
+  }
 
   // Self-update is a recovery path: do not require valid user config, provider
   // metadata, or the DI container just to replace the installed CLI package.
