@@ -271,7 +271,6 @@ docs/audit/webui-full-review-2026-09-03.md
 # Note the trailing `/*`: git cannot re-include anything under an excluded
 # DIRECTORY, so `docs/reports/` would make every negation below dead.
 docs/reports/*
-!docs/reports/agent-learning-rl-analysis.md
 !docs/reports/architecture-health-current.json
 !docs/reports/architecture-health-current.md
 !docs/reports/codebase-tools-e2e-followup.json
@@ -280,7 +279,6 @@ docs/reports/*
 !docs/reports/codebase-tools-e2e-proof.ts
 !docs/reports/coverage-matrix-2026-08-29.md
 !docs/reports/modularity-assessment-2026-08-22.md
-!docs/reports/prompt-cache-architecture-review-2026-08-13.md
 !docs/reports/vibe-protocol-architecture-2026-08-15.md
 !docs/reports/vibe-protocol-code-proof.json
 $null
@@ -291,3 +289,23 @@ dist-bin/
 
 config-history/
 ideas.md
+
+# Local competitor research and strategy documents (keep product code tracked).
+/docs/competitive-*/
+/docs/competitors/
+/docs/**/openhands-*.md
+
+# Local Turkish reports and documentation. Git cannot detect document language;
+# use docs/tr/, reports/tr/ or *.tr.md / *.tr.txt for new Turkish documents.
+/docs/tr/
+/reports/tr/
+/docs/**/*.tr.md
+/docs/**/*.tr.txt
+/reports/**/*.tr.md
+/reports/**/*.tr.txt
+/docs/audit/brain-agent-review-2026-10-02.md
+/docs/kanban-database.md
+/docs/tui-themes.md
+/docs/plugin-audit-2026-07-10.md
+/docs/plans/breaking-changes-next-major.md
+/docs/archive/reports/dated-reports/system-audit-2026-07-20.md
