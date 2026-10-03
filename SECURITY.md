@@ -449,6 +449,16 @@ in [HQ command center](#hq-command-center), above.
 
 ## See also
 
+The desktop packaging dependency `http-cache-semantics@4.2.0` has a pinned local
+patch for [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp).
+As of 2026-10-03, the advisory lists no upstream fixed release. The patch refuses
+stale reuse of zero-lifetime responses, including shared-cache cookie responses
+and proxy-revalidation entries. Positive-lifetime public/private caching is
+preserved. The audit exception depends on this patch; the architecture regression
+checks every lockfile resolution and the installed desktop dependency chain.
+Remove the patch and exception together when an upstream fix is adopted. The
+patch may increase network fetches for zero-lifetime cached responses.
+
 - [CHANGELOG.md](CHANGELOG.md) — security-relevant changes by version
 - [README.md](README.md) — usage and configuration
 - [docs/plans/hq-command-center-2026-06.md](docs/plans/hq-command-center-2026-06.md) — HQ command center architecture and phased plan (Access Control section)

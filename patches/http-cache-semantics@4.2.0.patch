@@ -1,0 +1,15 @@
+diff --git a/index.js b/index.js
+--- a/index.js
++++ b/index.js
+@@ -423,6 +423,11 @@
+         // the stored response is either:
+         // fresh, or allowed to be served stale
+         if (this.stale()) {
++            // GHSA-ch52-4w7c-c8xp: zero-lifetime entries must never be reused stale.
++            if (this.maxAge() === 0) {
++                return this._evaluateRequestMissResult(req);
++            }
++
+             // If a value is present, then the client is willing to accept a response that has
+             // exceeded its freshness lifetime by no more than the specified number of seconds
+             const allowsStaleWithoutRevalidation = 'max-stale' in requestCC &&

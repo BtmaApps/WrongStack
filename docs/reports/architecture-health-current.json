@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:40:15.146Z",
+  "generatedAt": "2026-10-03T11:43:50.625Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4317,
-    "testFiles": 3948,
+    "testFiles": 3949,
     "sourceLines": 1029773,
     "workspaceEdges": 131,
     "moduleEdges": 14076,
@@ -251,7 +251,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 974,
-      "testFiles": 879,
+      "testFiles": 880,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -266,7 +266,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 879
+          "testFiles": 880
         }
       ]
     },
@@ -5471,6 +5471,12 @@
       },
       {
         "file": "packages/core/tests/architecture/bump-version-script.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/cache-semantics-patch.test.ts",
         "projects": [
           "root-node"
         ]

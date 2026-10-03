@@ -45,6 +45,12 @@ peerDependencyRules:
 auditConfig:
   ignoreGhsas:
     - GHSA-gv7w-rqvm-qjhr
+    # No upstream release fixes GHSA-ch52-4w7c-c8xp as of 2026-10-03.
+    # The pinned local patch refuses stale reuse when maxAge() is zero.
+    # cache-semantics-patch.test.ts requires the patch, every lockfile resolution,
+    # and the installed dependency used by cacheable-request to remain guarded.
+    # Isolated before/after and compatibility proof: .reports/openhands-third-cache-security.json.
+    - GHSA-ch52-4w7c-c8xp
 allowBuilds:
   # electron-winstaller: arrives transitively with electron-builder (desktop
   # packaging). Its `install` script (`script/select-7z-arch.js`) copies the
@@ -96,7 +102,9 @@ minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@agentclientprotocol/sdk@1.4.0"
   - "@datadog/pprof@5.18.1"
-patchedDependencies: { ink@7.1.1: patches/ink@7.1.1.patch }
+patchedDependencies:
+  ink@7.1.1: patches/ink@7.1.1.patch
+  http-cache-semantics@4.2.0: patches/http-cache-semantics@4.2.0.patch
 # pnpm 12 no longer reads pnpm-specific settings from .npmrc (verified
 # 2026-09-19: `pnpm config get verify-deps-before-run` stayed `undefined` with
 # the key present in .npmrc) — this file is the operative config home.

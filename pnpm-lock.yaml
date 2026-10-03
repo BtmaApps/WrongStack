@@ -115,6 +115,7 @@ overrides:
   wrongstack: link:apps/wrongstack
 
 patchedDependencies:
+  http-cache-semantics@4.2.0: 23180e360017bdb9c5159ef1f3b418941c7ee554381eefbcbffa2e0949557d4f
   ink@7.1.1: 98833c6ca96316becda85f41743be8637119376a3ad48f853cfe449b1f8f5f74
 
 importers:
@@ -7946,7 +7947,7 @@ snapshots:
     dependencies:
       clone-response: 1.0.3
       get-stream: 5.2.0
-      http-cache-semantics: 4.2.0
+      http-cache-semantics: 4.2.0(patch_hash=23180e360017bdb9c5159ef1f3b418941c7ee554381eefbcbffa2e0949557d4f)
       keyv: 4.5.4
       lowercase-keys: 2.0.0
       normalize-url: 6.1.0
@@ -8722,7 +8723,7 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  http-cache-semantics@4.2.0: {}
+  http-cache-semantics@4.2.0(patch_hash=23180e360017bdb9c5159ef1f3b418941c7ee554381eefbcbffa2e0949557d4f): {}
 
   http-proxy-agent@7.0.2(supports-color@7.2.0):
     dependencies:
