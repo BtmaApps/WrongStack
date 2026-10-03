@@ -15,6 +15,29 @@ afterEach(async () =>
 );
 
 describe('domain lifecycle bridge', () => {
+  it('keeps subagent numeric file evidence while redacting the output content', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-worker-stats-'));
+    dirs.push(dir);
+    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
+    const events = new EventBus();
+    const context = createChronicleContext({ installationId: 'i', machineId: 'm' }, 't');
+    const off = wireDomainEventsToChronicle({ events, journal, context });
+    events.emit('subagent.tool_executed', {
+      sessionId: 's',
+      subagentId: 'worker',
+      name: 'read',
+      id: 'r',
+      ok: true,
+      durationMs: 20,
+      input: { path: 'src/a.ts' },
+      output: JSON.stringify({ text: '1→private-file-content', total_lines: 1 }),
+    });
+    const records = await journal.readAll();
+    off();
+    expect(records[0]?.attributes?.fileStats).toEqual({ readLines: 1, totalLines: 1 });
+    expect(records[0]?.scope).toMatchObject({ sessionId: 's', agentId: 'worker' });
+    expect(JSON.stringify(records)).not.toContain('private-file-content');
+  });
   it('captures uncovered domains, scopes identities and redacts prose', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-domain-'));
     dirs.push(dir);

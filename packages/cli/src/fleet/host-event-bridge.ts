@@ -4,6 +4,14 @@ import type { SubagentConfig, TokenCounter, Usage } from '@wrongstack/core/types
 
 const BRIDGE_TEXT_CAP = 360;
 const BRIDGE_OUTPUT_CAP = 4_096;
+/**
+ * A `patch` body is kept (not just its totals) because it is the only
+ * per-file evidence the call ever carries: one call can address several
+ * files, and the aggregate `addedLines`/`removedLines` below cannot be split
+ * back apart once the body is gone. Capped so a multi-MB diff still cannot
+ * cross the fan-out boundary — the same reason every other body is dropped.
+ */
+const BRIDGE_PATCH_CAP = 64 * 1024;
 
 function compactText(value: string, cap = BRIDGE_TEXT_CAP): string {
   return value.length <= cap ? value : `${value.slice(0, cap - 1)}…`;
@@ -18,8 +26,15 @@ function patchDelta(value: string): { addedLines: number; removedLines: number }
   let removedLines = 0;
   const hunkStart = value.indexOf('@@');
   if (hunkStart === -1) return { addedLines, removedLines };
-  for (const line of value.slice(hunkStart).split(/\r?\n/)) {
-    if (line.startsWith('+++') || line.startsWith('---')) continue;
+  const lines = value.slice(hunkStart).split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    // Only a `--- ` line directly followed by `+++ ` is a file header; a
+    // removed `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content.
+    if (line.startsWith('--- ') && lines[index + 1]?.startsWith('+++ ')) {
+      index += 1;
+      continue;
+    }
     if (line.startsWith('+')) addedLines += 1;
     else if (line.startsWith('-')) removedLines += 1;
   }
@@ -90,6 +105,12 @@ export function compactBridgeToolInput(input: unknown): unknown {
   if (oldText !== undefined) compact['oldLines'] = lineCount(oldText);
   if (newText !== undefined) compact['newLines'] = lineCount(newText);
   if (patch !== undefined) {
+    // Unlike every other body, the diff is PRESERVED (bounded): it is the only
+    // per-file evidence the call carries, since one patch can address several
+    // files and the aggregate below cannot be split back apart afterwards.
+    // Downstream file-activity accounting parses it to attribute each file.
+    compact['patch'] = compactText(patch, BRIDGE_PATCH_CAP);
+    if (typeof source['strip'] === 'number') compact['strip'] = source['strip'];
     const delta = patchDelta(patch);
     compact['addedLines'] = delta.addedLines;
     compact['removedLines'] = delta.removedLines;
@@ -231,6 +252,7 @@ export function installSubagentEventBridge(opts: {
       // The subagent counter's own running total, not the leader's.
       usage: tokenCounter ? tokenCounter.total() : e.usage,
       deltaUsage: e.deltaUsage,
+      deltaCost: e.deltaCost,
       cost: e.cost,
     });
   });
@@ -248,6 +270,8 @@ export function installSubagentEventBridge(opts: {
       status?: number | undefined;
       failureKind?: string | undefined;
       retryable?: boolean | undefined;
+      retryScheduled?: boolean | undefined;
+      retryDelayMs?: number | undefined;
       traceId?: string | undefined;
       logicalRequestId?: string | undefined;
       promptManifestId?: string | undefined;
@@ -269,6 +293,8 @@ export function installSubagentEventBridge(opts: {
       status: e.status,
       failureKind: e.failureKind,
       retryable: e.retryable,
+      retryScheduled: e.retryScheduled,
+      retryDelayMs: e.retryDelayMs,
       traceId: e.traceId,
       logicalRequestId: e.logicalRequestId,
       promptManifestId: e.promptManifestId,
@@ -282,6 +308,21 @@ export function installSubagentEventBridge(opts: {
     bridgeAttempt('completed', e),
   );
   const offAttemptFailed = events.on('provider.attempt.failed', (e) => bridgeAttempt('failed', e));
+  const offLoopBridge = events.on('tool.loop_detected', (e) => {
+    hostEvents.emit('subagent.loop_detected', {
+      sessionId: hostSessionId,
+      subagentId: subagentId(),
+      agentName: agentName(),
+      provider: e.ctx.provider.id,
+      model: e.ctx.model,
+      tools: compactText(e.tools),
+      repeatCount: e.repeatCount,
+      iteration: e.iteration,
+      kind: e.kind,
+      action: e.action,
+      scope: e.scope,
+    });
+  });
 
   return () => {
     offToolStartedBridge();
@@ -293,5 +334,6 @@ export function installSubagentEventBridge(opts: {
     offAttemptStarted();
     offAttemptCompleted();
     offAttemptFailed();
+    offLoopBridge();
   };
 }

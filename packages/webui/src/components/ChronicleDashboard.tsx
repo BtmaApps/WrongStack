@@ -135,6 +135,7 @@ export function ChronicleDashboard() {
   useEffect(() => {
     const offQuery = client.on('chronicle.query_result', (message: WSServerMessage) => {
       if (message.type === 'chronicle.query_result') {
+        if (message.payload.requestId?.startsWith('session-story:')) return;
         setEvents(message.payload.events);
         setMeta(message.payload);
         setSummary(message.payload.summary ?? emptySummary);
@@ -150,6 +151,7 @@ export function ChronicleDashboard() {
     });
     const offError = client.on('chronicle.error', (message: WSServerMessage) => {
       if (message.type === 'chronicle.error') {
+        if (message.payload.requestId?.startsWith('session-story:')) return;
         setError(message.payload.message);
         setLoading(false);
       }

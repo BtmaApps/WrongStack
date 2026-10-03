@@ -2,6 +2,20 @@ import type { Context } from '../../core/context.js';
 import type { Usage } from '../../types/provider.js';
 
 export interface AgentEventMap {
+  /** Worker repetition detector, attributed to its host session and selected model. */
+  'subagent.loop_detected': {
+    sessionId?: string | undefined;
+    subagentId: string;
+    agentName?: string | undefined;
+    provider?: string | undefined;
+    model?: string | undefined;
+    tools: string;
+    repeatCount: number;
+    iteration: number;
+    kind?: 'tool' | 'message' | 'mixed' | undefined;
+    action?: 'steer' | 'cut' | undefined;
+    scope?: 'iteration' | 'call' | undefined;
+  };
   /**
    * Fired around a single Agent.run() call. Status trackers use these to
    * measure active-run elapsed time instead of inferring it from iterations.
@@ -470,6 +484,7 @@ export interface AgentEventMap {
     usage: Usage;
     /** Usage contributed by this one accounting call (not cumulative). */
     deltaUsage?: Usage | undefined;
+    deltaCost?: { input: number; output: number; total: number } | undefined;
     cost: { input: number; output: number; total: number };
   };
   /**
@@ -502,6 +517,8 @@ export interface AgentEventMap {
     /** Retry classification; present on `outcome: 'failed'`. */
     failureKind?: string | undefined;
     retryable?: boolean | undefined;
+    retryScheduled?: boolean | undefined;
+    retryDelayMs?: number | undefined;
     traceId?: string | undefined;
     logicalRequestId?: string | undefined;
     promptManifestId?: string | undefined;

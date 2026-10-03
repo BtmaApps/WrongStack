@@ -106,7 +106,11 @@ export function extractTodos(input: string | undefined): TodoItem[] | null {
 export function formatDuration(ms: number | undefined): string {
   if (ms === undefined || !Number.isFinite(ms) || ms < 0) return '';
   if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
+  if (ms < 60_000) {
+    const secs = (ms / 1000).toFixed(ms < 10_000 ? 1 : 0);
+    // 59.5 s rounds to "60": past the unit, so it renders as minutes below.
+    if (Number(secs) < 60) return `${secs}s`;
+  }
   const m = Math.floor(ms / 60_000);
   const s = Math.round((ms % 60_000) / 1000);
   // Math.round(59.5) === 60: a duration in the last 500 ms of a minute must

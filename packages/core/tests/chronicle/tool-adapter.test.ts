@@ -21,13 +21,109 @@ afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
+/**
+ * The journal / bus / context trio every test in this file needs.
+ *
+ * This was six near-identical lines at 19 sites. Beyond the duplicate-code flag,
+ * the copies had drifted: some captured the unsubscribe function and some did
+ * not, some passed a `sessionId` and some did not — so a fix applied to one was
+ * silently absent from the rest. One factory keeps every test on the same shape.
+ *
+ * `label` is the full temp-dir prefix (trailing dash included) and `file` the
+ * journal filename, so a leaked fixture names the test that made it and a test
+ * needing its own journal file can still ask for one.
+ */
+async function makeHarness(
+  label: string,
+  file: string,
+  identity: Parameters<typeof createChronicleContext>[0],
+  scope: string,
+): Promise<{
+  dir: string;
+  journal: ChronicleJournal;
+  events: EventBus;
+  off: () => void;
+}> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), label));
+  tempDirs.push(dir);
+  const journal = new ChronicleJournal({ filePath: path.join(dir, file) });
+  const events = new EventBus();
+  const context = createChronicleContext(identity, scope);
+  return {
+    dir,
+    journal,
+    events,
+    off: wireToolsToChronicle({ events, journal, context, scrubber }),
+  };
+}
+
 describe('wireToolsToChronicle', () => {
+  it('persists loop diagnostics with the model identity without copying the context', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-loop-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm', sessionId: 's' },
+      't',
+    );
+    events.emit('tool.loop_detected', {
+      sessionId: 's',
+      ctx: {
+        agentId: 'a',
+        provider: { id: 'p' },
+        model: 'm',
+        privateField: 'secret-context',
+      } as never,
+      tools: 'read',
+      repeatCount: 3,
+      iteration: 4,
+      action: 'steer',
+    });
+    const records = await journal.readAll();
+    off();
+    expect(records[0]).toMatchObject({
+      eventType: 'tool.loop_detected',
+      scope: { sessionId: 's', agentId: 'a' },
+      runtime: { providerId: 'p', modelId: 'm' },
+      attributes: { repeatCount: 3, action: 'steer' },
+    });
+    expect(JSON.stringify(records)).not.toContain('secret-context');
+  });
+  it('retains compact read line counts even when the result preview is truncated', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-file-stats-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm', sessionId: 's' },
+      't',
+    );
+    events.emit('tool.executed', {
+      sessionId: 's',
+      agentId: 'a',
+      name: 'read',
+      id: 'r',
+      ok: true,
+      durationMs: 20,
+      output: JSON.stringify({
+        text: Array.from({ length: 100 }, (_, i) => `${i + 1}→${'x'.repeat(40)}`).join('\n'),
+        total_lines: 200,
+      }),
+    });
+    const records = await journal.readAll();
+    off();
+    expect(records[0]?.attributes?.fileStats).toEqual({ readLines: 100, totalLines: 200 });
+    // The preview is over budget here, so capPreview returns its summary OBJECT.
+    // `String(object)` is always "[object Object]" — a length check on that can
+    // never fail, which is exactly what this assertion used to assert. Assert
+    // the shape, then the budget on the field that actually carries text.
+    const preview = records[0]?.attributes?.outputPreview;
+    expect(preview).toMatchObject({ truncated: true });
+    const previewText =
+      typeof preview === 'string' ? preview : ((preview as { preview?: string }).preview ?? '');
+    expect(previewText.length).toBeLessThanOrEqual(2048);
+  });
   it('records scrubbed lifecycle data (resource edges are windowed by rollup-adapter.ts, not persisted raw here)', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-tool-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-tool-',
+      'events.jsonl',
       {
         installationId: 'install',
         machineId: 'machine',
@@ -36,7 +132,6 @@ describe('wireToolsToChronicle', () => {
       },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('tool.started', {
       sessionId: 'session',
@@ -88,7 +183,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded.map((event) => event.eventType)).toEqual([
       'tool.started',
@@ -115,12 +210,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records executor failures separately from model-facing tool results', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-tool-failure-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext({ installationId: 'i', machineId: 'm' }, 'trace');
-    wireToolsToChronicle({ events, journal, context, scrubber });
+    const { journal, events, off } = await makeHarness(
+      'chronicle-tool-failure-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
 
     events.emit('tool.failed', {
       name: 'bash',
@@ -145,18 +240,261 @@ describe('wireToolsToChronicle', () => {
       category: 'transient',
       retryable: true,
     });
+    off();
+  });
+
+  it('persists files a failed call had already changed on disk', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-partial-write-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    // A `patch --merge` that wrote conflict markers and then threw.
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-conflict',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 12,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed: conflict',
+      modifiedPaths: ['src/a.ts', 'src/b.ts'],
+    });
+
+    const recorded = await journal.readAll();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]?.attributes).toMatchObject({
+      toolName: 'patch',
+      modifiedPaths: ['src/a.ts', 'src/b.ts'],
+    });
+    // A failure never carries line evidence, only presence.
+    expect(recorded[0]?.attributes?.fileStats).toBeUndefined();
+    off();
+  });
+
+  it('omits modifiedPaths when a failed call touched nothing', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-no-partial-write-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-clean-fail',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 5,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed',
+      modifiedPaths: [],
+    });
+
+    const recorded = await journal.readAll();
+    expect(recorded).toHaveLength(1);
+    expect('modifiedPaths' in (recorded[0]?.attributes ?? {})).toBe(false);
+    off();
+  });
+
+  it('caps modifiedPaths and flags the truncation instead of dropping silently', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-modified-cap-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    // Far more files than the cap allows: a patch naming hundreds must not be
+    // able to dominate one journal record.
+    const paths = Array.from({ length: 500 }, (_, i) => `src/file-${i}.ts`);
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-many',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 9,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed',
+      modifiedPaths: paths,
+    });
+
+    const recorded = await journal.readAll();
+    const modified = recorded[0]?.attributes?.modifiedPaths as string[] | undefined;
+    expect(modified).toHaveLength(64);
+    expect(modified?.[0]).toBe('src/file-0.ts');
+    // Truncation is announced, so no consumer can read the survivors as a
+    // complete manifest of what was damaged.
+    expect(recorded[0]?.attributes?.modifiedPathsTruncated).toBe(true);
+    off();
+  });
+
+  it('does not flag truncation at or below the cap, and scrubs the path strings', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-modified-scrub-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-scrub',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 9,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed',
+      modifiedPaths: ['src/MY_SECRET_dir/a.ts'],
+    });
+
+    const recorded = await journal.readAll();
+    // Paths are operator-supplied text entering a durable journal, so they go
+    // through the same scrubber as tool output.
+    expect(recorded[0]?.attributes?.modifiedPaths).toEqual(['src/MY_[REDACTED]_dir/a.ts']);
+    expect('modifiedPathsTruncated' in (recorded[0]?.attributes ?? {})).toBe(false);
+    off();
+  });
+
+  it('bounds a single very long path by bytes without breaking the scrub step', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-modified-bound-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    // ONE path far past the per-path byte bound. The secret sits inside the
+    // retained prefix, so this only proves the scrub ran over the WHOLE string:
+    // had the byte cut run first, the pattern would see a partial path and
+    // could leave an unredacted fragment behind.
+    const longPath = `src/MY_SECRET/${'seg/'.repeat(300)}tail.ts`;
+    expect(Buffer.byteLength(longPath, 'utf8')).toBeGreaterThan(512);
+
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-bound',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 9,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed',
+      modifiedPaths: [longPath],
+    });
+
+    const recorded = await journal.readAll();
+    const modified = recorded[0]?.attributes?.modifiedPaths as string[] | undefined;
+    expect(modified).toHaveLength(1);
+    const only = modified?.[0] ?? '';
+
+    // Bounded in BYTES, and never over budget once the marker is included.
+    expect(Buffer.byteLength(only, 'utf8')).toBeLessThanOrEqual(512);
+    // A shortened entry must announce itself, or a consumer would resolve the
+    // fragment as though it were a real path.
+    expect(only.endsWith('…')).toBe(true);
+    // The retained prefix is the head of the SCRUBBED path — the scrubber
+    // rewrote MY_SECRET before the cut, so it is NOT a prefix of the raw path.
+    expect(only.startsWith('src/MY_[REDACTED]/')).toBe(true);
+    // The scrub still ran: the secret is gone from the retained prefix.
+    expect(only).toContain('MY_[REDACTED]');
+    expect(only).not.toContain('MY_SECRET/');
+    // No entry was DROPPED, so the count-cap companion flag stays absent — it
+    // means "files went missing", a different fact from "one was shortened".
+    expect('modifiedPathsTruncated' in (recorded[0]?.attributes ?? {})).toBe(false);
+    off();
+  });
+
+  it('cuts a multi-byte path on a codepoint boundary, never mid-character', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-modified-utf8-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    // 3 bytes per character: a naive byte slice would land mid-character and
+    // decode to U+FFFD, which is neither the original path nor the marker.
+    const multibyte = `src/${'界'.repeat(300)}.ts`;
+
+    events.emit('tool.failed', {
+      name: 'patch',
+      id: 'tool-utf8',
+      sessionId: 'session',
+      agentId: 'leader',
+      durationMs: 9,
+      category: ToolErrorCategory.TRANSIENT,
+      retryable: false,
+      detail: 'patch failed',
+      modifiedPaths: [multibyte],
+    });
+
+    const recorded = await journal.readAll();
+    const modified = recorded[0]?.attributes?.modifiedPaths as string[] | undefined;
+    const only = modified?.[0] ?? '';
+    expect(Buffer.byteLength(only, 'utf8')).toBeLessThanOrEqual(512);
+    expect(only).not.toContain('\uFFFD');
+    expect(only.endsWith('…')).toBe(true);
+    off();
+  });
+
+  it('scrubs paths parsed out of a patch diff before persisting them', async () => {
+    const { journal, events, off } = await makeHarness(
+      'chronicle-patchfile-scrub-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
+
+    // `patchFiles[].path` is parsed out of the DIFF the model supplied, so it is
+    // untrusted text on its way into a durable journal — exactly like
+    // `modifiedPaths`, which IS scrubbed. Without this a secret-bearing path
+    // would land in the journal verbatim while the failure-side path was
+    // redacted, an inconsistency between the two records of the same damage.
+    events.emit('tool.executed', {
+      sessionId: 's',
+      agentId: 'a',
+      name: 'patch',
+      id: 'pfs',
+      ok: true,
+      durationMs: 12,
+      input: {
+        patch: [
+          '--- a/src/MY_SECRET_dir/a.ts',
+          '+++ b/src/MY_SECRET_dir/a.ts',
+          '@@ -1 +1,2 @@',
+          '-old',
+          '+new',
+          '+extra',
+          '',
+        ].join('\n'),
+      },
+      output: JSON.stringify({ applied: 1, rejected: 0, files: ['src/MY_SECRET_dir/a.ts'] }),
+    });
+
+    const recorded = await journal.readAll();
+    const fileStats = recorded[0]?.attributes?.fileStats as
+      | { patchFiles?: { path?: string }[] }
+      | undefined;
+    expect(fileStats?.patchFiles?.[0]?.path).toBe('src/MY_[REDACTED]_dir/a.ts');
+    // Line counts are untouched — scrubbing touches the path string only.
+    expect(fileStats?.patchFiles?.[0]).toMatchObject({ addedLines: 2, removedLines: 1 });
+    off();
   });
 
   it('records permission provenance without persisting raw tool arguments', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-permission-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'permission.events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { dir, journal, events, off } = await makeHarness(
+      'chronicle-permission-',
+      'permission.events.jsonl',
       { installationId: 'i', machineId: 'm', projectId: 'p' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('permission.evaluated', {
       sessionId: 'session',
@@ -179,7 +517,7 @@ describe('wireToolsToChronicle', () => {
     const recorded = await journal.readAll();
     const query = await ChronicleQueryEngine.fromDirectory(dir);
     const summary = (await query.query({ eventTypes: ['permission.evaluated'] })).summary;
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({
@@ -205,12 +543,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('truncates output previews exceeding 2048 bytes', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-tool-trunc-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext({ installationId: 'i', machineId: 'm' }, 'trace');
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
+    const { journal, events, off } = await makeHarness(
+      'chronicle-tool-trunc-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
 
     // Generate output exceeding the 2048-byte preview cap
     const largeOutput = 'x'.repeat(3000);
@@ -243,7 +581,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     const preview = recorded[0]?.attributes?.['outputPreview'];
@@ -256,12 +594,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('preserves short output as-is (no truncation)', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-tool-short-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext({ installationId: 'i', machineId: 'm' }, 'trace');
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
+    const { journal, events, off } = await makeHarness(
+      'chronicle-tool-short-',
+      'events.jsonl',
+      { installationId: 'i', machineId: 'm' },
+      'trace',
+    );
 
     events.emit('tool.executed', {
       sessionId: 'session',
@@ -291,7 +629,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     // Short output should be preserved as a plain string
@@ -299,15 +637,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records taskId/boardId in scope and provider/model in runtime on tool.started', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-task-scope-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-task-scope-',
+      'events.jsonl',
       { installationId: 'i', machineId: 'm', sessionId: 'sess' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('tool.started', {
       sessionId: 'sess',
@@ -323,7 +658,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     expect(recorded[0]?.scope).toMatchObject({
@@ -339,15 +674,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records taskId/boardId in scope and provider/model in runtime on tool.executed', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-task-exec-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-task-exec-',
+      'events.jsonl',
       { installationId: 'i', machineId: 'm', sessionId: 'sess' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('tool.executed', {
       sessionId: 'sess',
@@ -381,7 +713,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     expect(recorded[0]?.scope).toMatchObject({ taskId: 'task-99', kanbanBoardId: 'board-7' });
@@ -389,15 +721,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records taskId/boardId/provider/model on tool.failed', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-task-fail-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-task-fail-',
+      'events.jsonl',
       { installationId: 'i', machineId: 'm', sessionId: 'sess' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('tool.failed', {
       name: 'bash',
@@ -415,7 +744,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     expect(recorded[0]?.scope).toMatchObject({ taskId: 'task-77', kanbanBoardId: 'board-7' });
@@ -426,15 +755,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records taskId/boardId/provider/model on permission.evaluated', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-perm-task-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-perm-task-',
+      'events.jsonl',
       { installationId: 'i', machineId: 'm', sessionId: 'sess' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     events.emit('permission.evaluated', {
       sessionId: 'sess',
@@ -454,7 +780,7 @@ describe('wireToolsToChronicle', () => {
     });
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded).toHaveLength(1);
     expect(recorded[0]?.scope).toMatchObject({ taskId: 'task-55', kanbanBoardId: 'board-7' });
@@ -465,15 +791,12 @@ describe('wireToolsToChronicle', () => {
   });
 
   it('records a refused call as denied and an aborted one as cancelled, not failure', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-settlement-'));
-    tempDirs.push(dir);
-    const journal = new ChronicleJournal({ filePath: path.join(dir, 'events.jsonl') });
-    const events = new EventBus();
-    const context = createChronicleContext(
+    const { journal, events, off } = await makeHarness(
+      'chronicle-settlement-',
+      'events.jsonl',
       { installationId: 'i', machineId: 'm', sessionId: 'sess' },
       'trace',
     );
-    const unsubscribe = wireToolsToChronicle({ events, journal, context, scrubber });
 
     const cases = [
       ['denied_by_policy', 'denied'],
@@ -497,7 +820,7 @@ describe('wireToolsToChronicle', () => {
     }
 
     const recorded = await journal.readAll();
-    unsubscribe();
+    off();
 
     expect(recorded.map((e) => e.outcome)).toEqual(cases.map(([, outcome]) => outcome));
     expect(recorded[0]?.attributes).toMatchObject({ settlement: 'denied_by_policy' });

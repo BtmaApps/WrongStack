@@ -23,14 +23,32 @@ describe('compactBridgeToolInput', () => {
     expect(compact['inputLines']).toBe(3);
   });
 
-  it('derives patch line deltas without retaining the patch body', () => {
-    const compact = compactBridgeToolInput({
-      file_path: 'src/x.ts',
-      patch: '@@\n-old\n+new\n+more',
-    }) as Record<string, unknown>;
-    expect(compact['patch']).toBeUndefined();
-    expect(compact['addedLines']).toBe(2);
+  it('preserves the patch body and strip so per-file deltas survive the hop', () => {
+    // The body is the ONLY per-file evidence a patch carries: one call can
+    // address several files and the totals below cannot be split back apart.
+    const patch = '--- a/src/x.ts\n+++ b/src/x.ts\n@@ -1,2 +1,2 @@\n-old\n+new';
+    const compact = compactBridgeToolInput({ patch, strip: 1 }) as Record<string, unknown>;
+    expect(compact['patch']).toBe(patch);
+    expect(compact['strip']).toBe(1);
+    expect(compact['addedLines']).toBe(1);
     expect(compact['removedLines']).toBe(1);
+  });
+
+  it('bounds a huge patch body instead of dropping it', () => {
+    const added = Array.from({ length: 50_000 }, (_, i) => `+line ${i}`);
+    const patch = `--- a/src/x.ts\n+++ b/src/x.ts\n@@ -0,0 +1,50000 @@\n${added.join('\n')}`;
+    const compact = compactBridgeToolInput({ patch }) as Record<string, unknown>;
+    const kept = compact['patch'] as string;
+    expect(kept.length).toBeLessThan(patch.length);
+    expect(kept.length).toBeLessThanOrEqual(64 * 1024);
+    // Truncating the body must not corrupt the totals derived from the full one.
+    expect(compact['addedLines']).toBe(50_000);
+  });
+
+  it('omits strip when the tool supplied no numeric one', () => {
+    const compact = compactBridgeToolInput({ patch: '@@\n-a\n+b' }) as Record<string, unknown>;
+    expect(compact['strip']).toBeUndefined();
+    expect(compact['patch']).toBe('@@\n-a\n+b');
   });
 
   it('caps long path-like strings', () => {
@@ -109,6 +127,46 @@ describe('installSubagentEventBridge', () => {
     expect(executedPayload.output.length).toBeLessThan(huge.length);
     expect(executedPayload.output).not.toBe(huge);
 
+    listeners.get('token.accounted')?.({
+      usage: { input: 500, output: 100 },
+      deltaUsage: { input: 10, output: 5 },
+      cost: { total: 1, input: 0.5, output: 0.5 },
+      deltaCost: { total: 0.01, input: 0.005, output: 0.005 },
+      model: 'm',
+      provider: 'p',
+    });
+    expect(
+      hostEmits.find((event) => event.event === 'subagent.token_accounted')?.payload,
+    ).toMatchObject({ sessionId: 'host-sess', model: 'm', deltaCost: { total: 0.01 } });
+    listeners.get('provider.attempt.failed')?.({
+      attemptId: 'attempt',
+      logicalRequestId: 'request',
+      attempt: 1,
+      model: 'm',
+      providerId: 'p',
+      retryScheduled: true,
+      retryDelayMs: 50,
+    });
+    expect(
+      hostEmits.find((event) => event.event === 'subagent.provider_attempt')?.payload,
+    ).toMatchObject({
+      sessionId: 'host-sess',
+      outcome: 'failed',
+      attemptId: 'attempt',
+      retryScheduled: true,
+      retryDelayMs: 50,
+    });
+
+    listeners.get('tool.loop_detected')?.({
+      ctx: { provider: { id: 'p' }, model: 'm' },
+      tools: 'read',
+      repeatCount: 4,
+      iteration: 10,
+      action: 'steer',
+    });
+    expect(
+      hostEmits.find((event) => event.event === 'subagent.loop_detected')?.payload,
+    ).toMatchObject({ sessionId: 'host-sess', subagentId: 'sa-1', model: 'm', repeatCount: 4 });
     dispose();
     expect(listeners.size).toBe(0);
   });

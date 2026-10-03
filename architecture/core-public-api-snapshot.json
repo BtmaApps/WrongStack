@@ -1520,8 +1520,8 @@
       "directory": "chronicle",
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
-      "sourceFiles": 42,
-      "sourceLines": 11989
+      "sourceFiles": 43,
+      "sourceLines": 12338
     },
     {
       "directory": "coordination",
@@ -1591,7 +1591,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4343
+      "sourceLines": 4360
     },
     {
       "directory": "models",

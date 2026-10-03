@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { EventBus } from '../kernel/events.js';
 import { redactText } from '../utils/redaction.js';
 import type { ChronicleContext } from './context.js';
+import { fileToolStats } from './file-tool-stats.js';
 import type { ChronicleEventSink } from './sink.js';
 import type { ChronicleEventInput, ChronicleOutcome, ChronicleResourceRef } from './types.js';
 
@@ -102,7 +103,15 @@ export function wireDomainEventsToChronicle(options: ChronicleDomainAdapterOptio
           : {}),
       },
       resource: inferResource(record, eventName),
-      attributes: sanitize(record) as Record<string, unknown>,
+      attributes: {
+        ...(sanitize(record) as Record<string, unknown>),
+        ...(eventName === 'subagent.tool_executed' &&
+        record.ok === true &&
+        typeof record.name === 'string' &&
+        typeof record.output === 'string'
+          ? { fileStats: fileToolStats(record.name, record.output, record.input) }
+          : {}),
+      },
       tags: { collector: 'eventbus-domain', family: eventName.split('.')[0] ?? 'unknown' },
     };
     void options.journal.append(input).catch((error) => options.onPersistError?.(error, input));

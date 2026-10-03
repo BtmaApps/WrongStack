@@ -44,12 +44,27 @@ interface MessageBubbleProps {
   message: ChatMessage;
   isFirst?: boolean | undefined;
   isContinuation?: boolean | undefined;
+  /**
+   * Render for observation only: the bubble is shown with the leader's exact
+   * presentation, but every affordance that would act ON the leader's own
+   * conversation is withheld.
+   *
+   * The subagent tabs reuse this component to get pixel-identical reasoning /
+   * message / tool cards, so the presentation is shared while the actions must
+   * not be: Retry, Continue, regenerate and Pin all address the LEADER's lane
+   * (or the global pinned-id list), and a subagent is neither — clicking them
+   * there would resend a prompt into a conversation the user is not looking at.
+   * Copy and the raw/rendered toggle stay, because both are local to the
+   * message being read.
+   */
+  readOnly?: boolean | undefined;
 }
 
 export const MessageBubble = memo(function MessageBubble({
   message,
   isFirst = false,
   isContinuation = false,
+  readOnly = false,
 }: MessageBubbleProps) {
   const { t } = useAppTranslation();
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
@@ -389,8 +404,8 @@ export const MessageBubble = memo(function MessageBubble({
           >
             {isBugHunt ? (
               <div className="min-w-[15rem]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                  <Crosshair className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Crosshair className="h-4 w-4 text-primary" />
                   <span>Proof-Driven Bug Hunter</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -407,8 +422,8 @@ export const MessageBubble = memo(function MessageBubble({
               </div>
             ) : isPerfRun ? (
               <div className="min-w-[15rem]">
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-                  <Gauge className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Gauge className="h-4 w-4 text-primary" />
                   <span>{PERF_RUN_MODE_LABELS[perfRun.mode]}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -485,7 +500,7 @@ export const MessageBubble = memo(function MessageBubble({
                       <span className="ws-reasoning__mark text-sm leading-none" aria-hidden>
                         ✦
                       </span>
-                      <span className="font-semibold uppercase tracking-wide text-primary">
+                      <span className="font-semibold uppercase tracking-wide text-foreground">
                         {t('activity:message.thinkingProcess')}
                       </span>
                       <span className="text-[10px] text-muted-foreground/70">
@@ -566,7 +581,7 @@ export const MessageBubble = memo(function MessageBubble({
                       ) : message.role === 'assistant' && message.isError ? (
                         <>
                           <ErrorBodyWithStack text={message.content} />
-                          {isLatestAssistant && !message.streaming && !isLoading && (
+                          {isLatestAssistant && !readOnly && !message.streaming && !isLoading && (
                             <FailedRunContinue
                               text={message.content}
                               timestamp={message.timestamp}
@@ -617,7 +632,7 @@ export const MessageBubble = memo(function MessageBubble({
             trigger "a run is already in progress" by clicking a suggestion
             mid-run. The <nextsteps> XML is still stripped from content at
             finalize time regardless of this gate. */}
-        {isLatestAssistant && !isLoading && nextSteps.length > 0 && (
+        {isLatestAssistant && !isLoading && !readOnly && nextSteps.length > 0 && (
           <NextStepsBar
             steps={nextSteps}
             yoloMode={yolo}
@@ -747,7 +762,7 @@ export const MessageBubble = memo(function MessageBubble({
               </span>
             </button>
           )}
-          {isUser && !isPromptCard && !editing && !isLoading && (
+          {isUser && !isPromptCard && !editing && !isLoading && !readOnly && (
             <>
               {message.status === 'failed' && (
                 <button
@@ -773,7 +788,7 @@ export const MessageBubble = memo(function MessageBubble({
               )}
             </>
           )}
-          {message.role === 'assistant' && message.content && !message.streaming && (
+          {message.role === 'assistant' && message.content && !message.streaming && !readOnly && (
             <button
               type="button"
               onClick={() => togglePin(message.id)}
@@ -794,7 +809,8 @@ export const MessageBubble = memo(function MessageBubble({
           {(isLatestAssistant || message.isError) &&
             message.content &&
             !message.streaming &&
-            !isLoading && (
+            !isLoading &&
+            !readOnly && (
               <button
                 type="button"
                 onClick={regenerate}

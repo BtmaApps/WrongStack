@@ -1,0 +1,123 @@
+.session-story .story-enter {
+  animation: story-arrive 0.55s ease-out both;
+}
+.session-story .story-card {
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.session-story .story-card:hover {
+  transform: translateY(-3px);
+  border-color: hsl(var(--info) / 0.4);
+  box-shadow: 0 10px 35px hsl(var(--info) / 0.06);
+}
+.session-story .story-draw {
+  animation: story-draw 1s ease-out both;
+}
+.session-story .story-orbit {
+  transform-origin: 320px 240px;
+  animation: story-orbit 70s linear infinite;
+}
+.session-story .story-flow {
+  stroke-dasharray: 5 9;
+  animation: story-flow 1.4s linear infinite;
+}
+.session-story .story-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: story-halo 2.4s ease-out infinite;
+}
+.session-story .story-marker {
+  transition: r 0.2s ease;
+}
+.session-story .story-marker:hover {
+  r: 7;
+}
+.session-story .story-bar {
+  transition:
+    height 0.6s ease,
+    opacity 0.3s ease;
+}
+.session-story .story-cursor {
+  transition:
+    x1 0.18s linear,
+    x2 0.18s linear;
+}
+.session-story .story-meter {
+  transform-box: fill-box;
+  transform-origin: left;
+  animation: story-meter 0.7s ease-out both;
+}
+.session-story .story-beacon {
+  animation: story-beacon 2s ease-in-out infinite;
+}
+@keyframes story-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes story-draw {
+  from {
+    stroke-dasharray: 0 100;
+  }
+  to {
+    stroke-dasharray: var(--story-dash);
+  }
+}
+@keyframes story-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes story-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+@keyframes story-halo {
+  from {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes story-meter {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes story-beacon {
+  50% {
+    opacity: 0.35;
+  }
+}
+.session-story[data-motion="off"] *,
+.session-story[data-motion="off"] *::before,
+.session-story[data-motion="off"] *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: explicit motion opt-out must override decorative effects. */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: explicit motion opt-out must override decorative effects. */
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-story *,
+  .session-story *::before,
+  .session-story *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: honor the operating system accessibility preference. */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: honor the operating system accessibility preference. */
+    transition: none !important;
+  }
+}

@@ -239,9 +239,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/utils/expect-defined": {
-      "files": 13,
+      "files": 15,
       "typeOnly": 0,
-      "runtimeOrMixed": 13
+      "runtimeOrMixed": 15
     },
     "@wrongstack/core/utils/ip-guard": {
       "files": 1,
@@ -24841,6 +24841,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils/expect-defined",
+      "file": "packages/webui/src/components/ChatView/agentTranscriptMessages.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/expect-defined",
       "file": "packages/webui/src/components/ChatView/utils.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24902,6 +24908,12 @@
     {
       "specifier": "@wrongstack/core/utils/expect-defined",
       "file": "packages/webui/src/stores/chat-lanes.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/expect-defined",
+      "file": "packages/webui/tests/components/subagent-chat-tabs.test.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -13,6 +13,7 @@
 
 import {
   Bot,
+  ChartNoAxesCombined,
   ChevronDown,
   History,
   Loader2,
@@ -29,6 +30,7 @@ import { getWSClient } from '@/lib/ws-client';
 import { MAX_OPEN_TABS, useActiveSessionId, useHistoryStore, useSessionTabStore } from '@/stores';
 import { describeSessionActivity } from '@/stores/session-tab-store';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
+import { useUIStore } from '@/stores/ui-store';
 import { confirmModal } from './ConfirmModal';
 import { slotAccent, useTabSummaries } from './SessionTabBar/summaries';
 import { TabMap } from './SessionTabBar/TabMap';
@@ -277,6 +279,17 @@ export function SessionTabBar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1 pl-1">
+        <button
+          type="button"
+          disabled={!currentSessionId}
+          onClick={() => useUIStore.getState().setCurrentView('session-story')}
+          title="Visual story of this session and its subagents"
+          aria-label="Open session story"
+          className="inline-flex h-7 items-center gap-1 rounded px-2 text-[11px] text-info hover:bg-muted disabled:opacity-40"
+        >
+          <ChartNoAxesCombined size={14} />
+          <span className="hidden sm:inline">Story</span>
+        </button>
         <DropdownMenu open={mapOpen} onOpenChange={setMapOpen}>
           <DropdownMenuTrigger asChild>
             <button

@@ -1,0 +1,183 @@
+import { describe, expect, it } from 'vitest';
+import { buildSessionStory } from '../../src/lib/session-story';
+import type { MailboxMessage } from '../../src/stores/mailbox-store';
+import type { SubagentView } from '../../src/stores/types';
+import type { ChronicleEventView } from '../../src/types';
+
+const base = Date.parse('2026-10-02T12:00:00Z');
+const record = (
+  eventId: string,
+  eventType: string,
+  extra: Partial<ChronicleEventView> = {},
+): ChronicleEventView => ({
+  schemaVersion: 1,
+  eventId,
+  eventType,
+  observedAt: new Date(base).toISOString(),
+  persistedAt: new Date(base).toISOString(),
+  sequence: 1,
+  hash: '',
+  previousHash: '',
+  scope: { sessionId: 'tab-a', agentId: 'leader-a' },
+  correlation: {},
+  ...extra,
+});
+const agent = (id: string, sessionId = 'tab-a'): SubagentView => ({
+  id,
+  sessionId,
+  name: id,
+  status: 'completed',
+  iteration: 1,
+  toolCalls: 2,
+  costUsd: 0,
+  ctxPct: 0,
+  ctxTokens: 0,
+  maxContext: 1,
+  extensions: 0,
+  startedAt: base,
+  completedAt: base + 1000,
+  toolLog: [],
+  sparklineBins: [],
+});
+const mail = (id: string, extra: Partial<MailboxMessage> = {}): MailboxMessage => ({
+  id,
+  from: 'worker-a',
+  to: 'leader-a',
+  type: 'note',
+  subject: 'Review done',
+  body: 'Details',
+  priority: 'normal',
+  readBy: {},
+  readByCount: 0,
+  completed: false,
+  timestamp: new Date(base + 100).toISOString(),
+  ...extra,
+});
+
+describe('session story projection', () => {
+  it('counts successful file operations with paired inputs and normalizes Windows paths', () => {
+    const story = buildSessionStory(
+      'tab-a',
+      [
+        record('start', 'tool.started', {
+          correlation: { toolCallId: 'read1' },
+          attributes: { toolName: 'read', input: JSON.stringify({ path: 'D:\\repo\\src\\a.ts' }) },
+        }),
+        record('done', 'tool.executed', {
+          correlation: { toolCallId: 'read1' },
+          outcome: 'success',
+        }),
+        record('again', 'file.observed', {
+          resource: { kind: 'file', id: 'a', path: 'd:/REPO/src/A.ts' },
+        }),
+        record('bad-start', 'tool.started', {
+          correlation: { toolCallId: 'read2' },
+          attributes: { toolName: 'read', input: { path: 'D:/repo/missing.ts' } },
+        }),
+        record('bad-end', 'tool.executed', {
+          correlation: { toolCallId: 'read2' },
+          outcome: 'failure',
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    expect(story.files).toEqual(['src/a.ts']);
+    expect(story.events.find((event) => event.id === 'bad-end')?.path).toBeUndefined();
+  });
+  it('counts unique recorded injected IDs and separates memory write events', () => {
+    const story = buildSessionStory('tab-a', [
+      record('injected', 'memory.injector_run', {
+        attributes: { injected: [{ id: 'm1' }, { id: 'm1' }, { id: 'm2' }] },
+      }),
+      record('saved', 'tool.executed', {
+        outcome: 'success',
+        attributes: { toolName: 'remember' },
+      }),
+      record('failed-save', 'tool.executed', {
+        outcome: 'failure',
+        attributes: { toolName: 'remember' },
+      }),
+      record('foreign', 'memory.injector_run', {
+        scope: { sessionId: 'tab-b' },
+        attributes: { injected: [{ id: 'other' }] },
+      }),
+    ]);
+    expect(story.observedInjectedMemories).toBe(2);
+    expect(story.memoryWrites).toBe(1);
+  });
+  it('includes all owned subagents and excludes other tabs and untagged actors', () => {
+    const story = buildSessionStory(
+      'tab-a',
+      [
+        record('a', 'subagent.spawned', {
+          attributes: { subagentId: 'worker-a', name: 'Worker A', parentAgentId: 'leader-a' },
+        }),
+        record('b', 'tool.executed', { scope: { sessionId: 'tab-b', agentId: 'worker-b' } }),
+        record('c', 'tool.executed', { scope: {} }),
+      ],
+      [
+        agent('worker-a'),
+        agent('worker-b', 'tab-b'),
+        { ...agent('untagged'), sessionId: undefined },
+      ],
+    );
+    expect(story.events.map((event) => event.id)).toEqual(['a']);
+    expect(story.actors.map((actor) => actor.id)).toEqual(['worker-a']);
+    expect(story.actors[0]?.parent).toBe('leader-a');
+  });
+  it('pairs tool IDs, preserves recorded durations, and rejects invalid dates', () => {
+    const story = buildSessionStory('tab-a', [
+      record('start', 'tool.started', { correlation: { toolCallId: 't1' } }),
+      record('end', 'tool.executed', {
+        correlation: { toolCallId: 't1' },
+        durationNs: '500000000',
+      }),
+      record('bad', 'tool.executed', { observedAt: 'bad' }),
+    ]);
+    expect(story.toolCalls).toBe(1);
+    expect(story.events).toHaveLength(2);
+    expect(story.events.find((event) => event.id === 'end')?.durationMs).toBe(500);
+    expect(story.start).toBe(base - 500);
+  });
+  it('uses only explicitly owned incoming/outgoing mail and deduplicates cached IDs', () => {
+    const own = mail('own');
+    const story = buildSessionStory(
+      'tab-a',
+      [],
+      [agent('worker-a')],
+      [
+        own,
+        own,
+        mail('other', { from: 'worker-b', to: 'leader-b', senderSessionId: 'tab-b' }),
+        mail('incoming', { from: 'outside', to: '@session:tab-a' }),
+        mail('unscoped', { from: 'session', to: '*' }),
+      ],
+    );
+    expect(story.events.map((event) => event.id).sort()).toEqual(['mail:incoming', 'mail:own']);
+    expect(story.counts.mail).toBe(2);
+  });
+  it('does not call ordinary activity drift and does not invent missing durations or parents', () => {
+    const story = buildSessionStory('tab-a', [
+      record('drift', 'brain.drift_detected'),
+      record('file', 'file.event', { resource: { kind: 'file', id: 'f', path: 'src/a.ts' } }),
+      record('tool', 'tool.executed'),
+    ]);
+    expect(story.counts.alert).toBe(1);
+    expect(story.files).toEqual(['src/a.ts']);
+    expect(story.events.find((event) => event.id === 'tool')?.durationMs).toBeUndefined();
+    expect(story.actors.every((actor) => actor.parent === undefined)).toBe(true);
+  });
+  it('never projects an empty session ID', () => {
+    expect(
+      buildSessionStory(
+        '',
+        [record('empty', 'tool.executed', { scope: { sessionId: '' } })],
+        [agent('empty', '')],
+        [mail('empty', { senderSessionId: '' })],
+      ).events,
+    ).toEqual([]);
+  });
+});

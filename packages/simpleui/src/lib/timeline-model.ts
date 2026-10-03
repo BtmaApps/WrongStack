@@ -49,16 +49,28 @@ export function isFileEditTool(toolCall: ToolCallInfo): boolean {
 
 /** Count lines added/removed from a unified diff string.
  *  Returns null if the string doesn't look like a diff. */
-function countDiffLines(diff: string): { added: number; removed: number } | null {
+export function countDiffLines(diff: string): { added: number; removed: number } | null {
   const start = diff.indexOf('@@');
   if (start === -1) return null;
   let added = 0;
   let removed = 0;
-  for (const line of diff.slice(start).split('\n')) {
-    if (line.startsWith('+') && !line.startsWith('+++')) added++;
-    else if (line.startsWith('-') && !line.startsWith('---')) removed++;
+  const lines = diff.slice(start).split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (isDiffFileHeader(lines, i)) {
+      i++;
+      continue;
+    }
+    const line = lines[i]!;
+    if (line.startsWith('+')) added++;
+    else if (line.startsWith('-')) removed++;
   }
   return { added, removed };
+}
+
+/** Only a `--- ` line directly followed by `+++ ` is a file header; a removed
+ *  `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content. */
+export function isDiffFileHeader(lines: readonly string[], index: number): boolean {
+  return (lines[index] ?? '').startsWith('--- ') && (lines[index + 1] ?? '').startsWith('+++ ');
 }
 
 /**
@@ -260,14 +272,10 @@ export function aggregateFileEdits(toolCalls: ToolCallInfo[]): {
   let totalRemoved = 0;
 
   for (const f of files) {
-    if (f.diff) {
-      const start = f.diff.indexOf('@@');
-      if (start !== -1) {
-        for (const line of f.diff.slice(start).split('\n')) {
-          if (line.startsWith('+') && !line.startsWith('+++')) totalAdded++;
-          else if (line.startsWith('-') && !line.startsWith('---')) totalRemoved++;
-        }
-      }
+    const counts = f.diff ? countDiffLines(f.diff) : null;
+    if (counts) {
+      totalAdded += counts.added;
+      totalRemoved += counts.removed;
     }
   }
 

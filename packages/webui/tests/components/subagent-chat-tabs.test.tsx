@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { expectDefined } from '@wrongstack/core/utils/expect-defined';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentDetailSection } from '../../src/components/agents/AgentDetailSection.js';
 import {
@@ -240,15 +241,19 @@ describe('subagent chat tabs', () => {
     expect(screen.getByText('AGENTS')).toBeTruthy();
   });
 
-  it('renders the full transcript chat-style with no input controls', async () => {
+  it('renders the full transcript with the leader chat presentation', async () => {
     const agents = new Map([['s1', makeAgent('s1', { name: 'Alpha' })]]);
     const entries = [
       entry({ kind: 'text', content: 'Final answer with **markdown**' }),
       entry({ kind: 'thinking', content: 'pondering the task deeply' }),
-      entry({ kind: 'tool_use', content: '{"path":"a.ts"}', toolName: 'read_file' }),
+      entry({
+        kind: 'tool_use',
+        content: 'read_file({"path":"a.ts"})\n{\n  "path": "a.ts"\n}',
+        toolName: 'read_file',
+      }),
       entry({
         kind: 'tool_result',
-        content: 'file body',
+        content: 'Completed read_file (12ms)\nfile body',
         toolName: 'read_file',
         toolOk: true,
       }),
@@ -267,13 +272,49 @@ describe('subagent chat tabs', () => {
     expect(root.querySelector('textarea')).toBeNull();
     expect(root.querySelector('input')).toBeNull();
 
-    // Every entry kind made it into the log.
+    // Leader-parity contract: the agent's reasoning, replies and tool calls
+    // render through the SAME components the leader screen uses — the
+    // reasoning card, the assistant bubble, and the terminal-ledger tool card.
     await waitFor(() => expect(root.textContent).toContain('Final answer'));
     expect(root.textContent).toContain('pondering the task deeply');
-    expect(root.textContent).toContain('"path":"a.ts"}');
-    expect(root.textContent).toContain('file body');
+    expect(root.textContent).toContain('read_file');
     expect(root.textContent).toContain('provider exploded');
     expect(root.textContent).toContain('iteration 3 complete');
+
+    // The tool result is folded into the SAME card as its call, so a finished
+    // call reads as one completed ledger entry rather than two events.
+    expect(root.textContent).toContain('Succeeded');
+
+    // The card is collapsed exactly as on the leader screen, so the input and
+    // output live behind its expander.
+    const ledger = root.querySelector('.ws-ledger');
+    expect(ledger).not.toBeNull();
+    fireEvent.click(expectDefined(ledger).querySelector('button')!);
+    await waitFor(() => expect(root.textContent).toContain('file body'));
+
+    // A subagent is not the leader's conversation, so the actions that would
+    // act on THAT conversation must not be offered here.
+    expect(root.textContent).not.toContain('Pin');
+    expect(screen.queryByRole('button', { name: /regenerate|retry/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /continue/i })).toBeNull();
+  });
+
+  it('leaves a tool call with no result rendered as in-flight', async () => {
+    const agents = new Map([['s1', makeAgent('s1', { name: 'Alpha' })]]);
+    const entries = [
+      entry({
+        kind: 'tool_use',
+        content: 'bash({"command":"ls"})\n{"command":"ls"}',
+        toolName: 'bash',
+      }),
+    ];
+    useFleetStore.setState({ agents, agentTranscripts: new Map([['s1', entries]]) });
+
+    render(<SubagentTranscriptView agentId="s1" />);
+    const root = screen.getByTestId('subagent-transcript-view');
+
+    // Matches how the leader renders a call whose result has not landed yet.
+    await waitFor(() => expect(root.textContent).toContain('Running'));
   });
 
   it('shows the empty state for an agent without history', () => {

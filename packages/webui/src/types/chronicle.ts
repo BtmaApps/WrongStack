@@ -66,6 +66,7 @@ export interface ChronicleFacetValue {
   count: number;
 }
 export interface ChronicleQueryResult {
+  requestId?: string | undefined;
   events: ChronicleEventView[];
   total: number;
   nextCursor?: string;

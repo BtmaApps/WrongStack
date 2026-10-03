@@ -77,6 +77,35 @@ function harness() {
 }
 
 describe('canonical Chronicle handler family', () => {
+  it('correlates query errors and ignores invalid request IDs', async () => {
+    const { context, call, sent } = harness();
+    call.mockRejectedValue(new Error('Journal unavailable'));
+    await handleChronicleRoute(context, {} as WebSocket, {
+      type: 'chronicle.query',
+      payload: { requestId: 'session-story:error' },
+    });
+    expect(sent[0]).toMatchObject({
+      type: 'chronicle.error',
+      payload: { requestId: 'session-story:error', message: 'Journal unavailable' },
+    });
+    await handleChronicleRoute(context, {} as WebSocket, {
+      type: 'chronicle.query',
+      payload: { requestId: 'x'.repeat(201) },
+    });
+    expect(sent[1]?.payload).not.toHaveProperty('requestId');
+  });
+  it('echoes the request ID for tab-scoped history without changing the journal query', async () => {
+    const { context, call, sent } = harness();
+    await handleChronicleRoute(context, {} as WebSocket, {
+      type: 'chronicle.query',
+      payload: { requestId: 'session-story:a:1', query: { sessionId: 'a', limit: 5000 } },
+    });
+    expect(call).toHaveBeenCalledWith('query', { query: { sessionId: 'a', limit: 5000 } });
+    expect(sent[0]).toMatchObject({
+      type: 'chronicle.query_result',
+      payload: { requestId: 'session-story:a:1' },
+    });
+  });
   it('routes query, facet, facets, and graph through one project access gateway', async () => {
     const { context, call } = harness();
     const ws = {} as WebSocket;

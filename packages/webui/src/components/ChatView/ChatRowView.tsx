@@ -14,6 +14,7 @@ export const ChatRowView = memo(function ChatRowView({
   isFirstRow,
   groupToolCalls,
   sessionId,
+  readOnly = false,
 }: {
   row: ChatRow;
   isLoading: boolean;
@@ -22,6 +23,8 @@ export const ChatRowView = memo(function ChatRowView({
   groupToolCalls: boolean;
   /** The lane this row belongs to — ChatView only renders the active lane. */
   sessionId: string;
+  /** Observation-only rendering (the subagent tabs) — see MessageBubble. */
+  readOnly?: boolean | undefined;
 }) {
   const wrap = cn(
     'mx-auto max-w-6xl w-full px-3 sm:px-5 lg:px-6',
@@ -68,6 +71,7 @@ export const ChatRowView = memo(function ChatRowView({
                 message={it.message}
                 isFirst={it.isFirst}
                 isContinuation={it.isContinuation}
+                readOnly={readOnly}
               />,
             ];
           }
@@ -79,6 +83,7 @@ export const ChatRowView = memo(function ChatRowView({
                 tools={it.tools}
                 defaultOpen={defaultOpen}
                 isContinuation={it.isContinuation}
+                readOnly={readOnly}
               />,
             ];
           }
@@ -88,6 +93,7 @@ export const ChatRowView = memo(function ChatRowView({
               message={tool}
               isFirst={false}
               isContinuation={it.isContinuation}
+              readOnly={readOnly}
             />
           ));
         })}

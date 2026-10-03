@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:58:13.158Z",
+  "generatedAt": "2026-10-03T11:59:11.703Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4346,
-    "testFiles": 3980,
-    "sourceLines": 1035060,
+    "sourceFiles": 4360,
+    "testFiles": 3987,
+    "sourceLines": 1039129,
     "workspaceEdges": 131,
-    "moduleEdges": 14178,
+    "moduleEdges": 14193,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 971
+    "testOnlyExports": 974
   },
   "errors": [
     "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
@@ -253,8 +253,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 980,
-      "testFiles": 883,
+      "sourceFiles": 981,
+      "testFiles": 884,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -269,7 +269,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 883
+          "testFiles": 884
         }
       ]
     },
@@ -851,8 +851,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 623,
-      "testFiles": 446,
+      "sourceFiles": 636,
+      "testFiles": 452,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -875,7 +875,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 446
+          "testFiles": 452
         }
       ]
     },
@@ -5757,6 +5757,12 @@
       },
       {
         "file": "packages/core/tests/chronicle/file-observer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/chronicle/file-tool-stats.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23312,6 +23318,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/session-story-view.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/session-tab-bar.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -23409,6 +23421,12 @@
       },
       {
         "file": "packages/webui/tests/components/slash-routing.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/story-widget.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -24344,7 +24362,25 @@
         ]
       },
       {
+        "file": "packages/webui/tests/lib/session-model-stats.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/lib/session-scoped-send-stamping.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/session-story-stats.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/session-story.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -24525,6 +24561,12 @@
       },
       {
         "file": "packages/webui/tests/lib/zod-jitless-under-csp.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/pure/agent-transcript-messages.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -25107,6 +25149,11 @@
       "syntax": "import"
     },
     {
+      "from": "packages/webui/src/components/SessionStoryView.tsx",
+      "specifier": "./session-story/story-motion.css",
+      "syntax": "import"
+    },
+    {
       "from": "packages/webui/src/components/SettingsPanel/ProviderSavedProfiles.tsx",
       "specifier": "../../../../providers/dist/provider-definitions.js",
       "syntax": "dynamic-import"
@@ -25607,7 +25654,7 @@
     },
     {
       "file": "packages/webui/src/components/MessageBubble/index.tsx",
-      "lines": 813,
+      "lines": 829,
       "relativeImports": 13
     },
     {
@@ -29270,8 +29317,16 @@
       "name": "messageSearchText"
     },
     {
+      "file": "packages/webui/src/components/session-story/StoryInsights.tsx",
+      "name": "observedOverlap"
+    },
+    {
       "file": "packages/webui/src/components/SessionsDashboard.tsx",
       "name": "sessionApiError"
+    },
+    {
+      "file": "packages/webui/src/components/SessionStoryView.tsx",
+      "name": "SessionStoryView"
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/ModelListEditor.tsx",
@@ -29312,6 +29367,10 @@
     {
       "file": "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx",
       "name": "YOLO_CONFIRM_KINDS"
+    },
+    {
+      "file": "packages/webui/src/components/SidePanel/StoryWidget.tsx",
+      "name": "StoryWidget"
     },
     {
       "file": "packages/webui/src/components/SystemHealthChip.tsx",

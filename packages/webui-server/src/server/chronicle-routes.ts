@@ -19,6 +19,13 @@ export interface ChronicleRouteContext {
 const accessCache = new Map<string, ChronicleProjectAccess>();
 const ACCESS_CACHE_MAX_PROJECTS = 8;
 
+function queryRequestId(message: WSClientMessage): string | undefined {
+  if (message.type !== 'chronicle.query' || !message.payload || typeof message.payload !== 'object')
+    return undefined;
+  const id = (message.payload as { requestId?: unknown }).requestId;
+  return typeof id === 'string' && id.length > 0 && id.length <= 200 ? id : undefined;
+}
+
 function defaultChronicleAccess(projectRoot: string): ChronicleProjectAccess {
   let access = accessCache.get(projectRoot);
   if (access) {
@@ -140,13 +147,18 @@ export async function handleChronicleRoute(
     return false;
   }
   try {
+    const requestId = queryRequestId(message);
     const access = ctx.getChronicleAccess?.() ?? defaultChronicleAccess(ctx.getProjectRoot());
     switch (message.type) {
       case 'chronicle.query': {
-        const payload = (message.payload ?? {}) as { query?: ChronicleQuery };
+        const payload = (message.payload ?? {}) as { query?: ChronicleQuery; requestId?: unknown };
+        const result = await access.call('query', { query: payload.query ?? {} });
         ctx.send(ws, {
           type: 'chronicle.query_result',
-          payload: await access.call('query', { query: payload.query ?? {} }),
+          payload: {
+            ...result,
+            ...(requestId ? { requestId } : {}),
+          },
         });
         return true;
       }
@@ -229,9 +241,13 @@ export async function handleChronicleRoute(
         return false;
     }
   } catch (error) {
+    const requestId = queryRequestId(message);
     ctx.send(ws, {
       type: 'chronicle.error',
-      payload: { message: toErrorMessage(error) },
+      payload: {
+        message: toErrorMessage(error),
+        ...(requestId ? { requestId } : {}),
+      },
     });
     return true;
   }

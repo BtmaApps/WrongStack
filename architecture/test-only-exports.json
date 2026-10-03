@@ -1755,8 +1755,14 @@
     "packages/webui/src/components/SearchOverlay.tsx": [
       "messageSearchText"
     ],
+    "packages/webui/src/components/session-story/StoryInsights.tsx": [
+      "observedOverlap"
+    ],
     "packages/webui/src/components/SessionsDashboard.tsx": [
       "sessionApiError"
+    ],
+    "packages/webui/src/components/SessionStoryView.tsx": [
+      "SessionStoryView"
     ],
     "packages/webui/src/components/SettingsPanel/ModelListEditor.tsx": [
       "deriveRows"
@@ -1775,6 +1781,9 @@
     "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx": [
       "LOCKED_YOLO_CONFIRM_KINDS",
       "YOLO_CONFIRM_KINDS"
+    ],
+    "packages/webui/src/components/SidePanel/StoryWidget.tsx": [
+      "StoryWidget"
     ],
     "packages/webui/src/components/SystemHealthChip.tsx": [
       "summarizeSystemHealth"

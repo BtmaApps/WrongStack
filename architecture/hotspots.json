@@ -355,7 +355,7 @@
       "relativeImports": 6
     },
     "packages/webui/src/components/MessageBubble/index.tsx": {
-      "lines": 813,
+      "lines": 829,
       "relativeImports": 13
     },
     "packages/webui/src/components/RepositoryHistoryView.tsx": {

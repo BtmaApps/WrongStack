@@ -15,6 +15,14 @@ Launch it with the canonical `wstack --webui` command. The browser UI and termin
 REPL share the **same** live agent/session, which is useful for pair-programming or
 watching tool output in a richer view.
 
+Click **Story** in the session tab bar for [Session Story](session-story.md):
+parallel subagent timelines, activity density, team branches, replay, file and
+memory evidence, and scoped mail activity for the selected tab.
+Overview, Timeline, Models, Tools, Files, and Team tabs keep the dashboard focused;
+Tools reports measured timings and Files reports operation/line evidence.
+Models compares provider reliability, latency, token/cache/cost coverage, and
+recorded tool/task/verification/loop signals across the leader and subagents.
+
 ## Ports
 
 The Web UI uses a **single shared HTTP/WebSocket port**. The HTTP server serves the

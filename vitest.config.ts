@@ -198,10 +198,40 @@ export default defineConfig({
       // imports, surfacing as phantom Failed Suites. Unanchored on purpose —
       // mirrors live at `.temp_files/<scope>/packages/**/tests/**`.
       '**/.temp_files/**',
-      // WebUI tests require jsdom + globals:true — run separately:
+      // WebUI tests need the jsdom project + globals:true — run separately:
       //   cd packages/webui && pnpm test
       // or: pnpm --filter webui test
-      'packages/webui/**',
+      //
+      // This was a blanket `packages/webui/**`. It is now enumerated per
+      // directory, because `exclude` is additive: a blanket entry can never be
+      // re-opened for one file, and the pure-module cases (the subagent
+      // transcript mapping below) were being dropped from the root gate with
+      // it.
+      //
+      // Exactly ONE directory is left collectible: `tests/pure/**`, which
+      // holds DOM-free, `globals`-free module tests. Measured, not assumed —
+      // re-enabling `tests/lib/**` here pulls in 7 files / 28 tests that
+      // genuinely need jsdom (favicon, terminal-dock, ws-client auth/URL) and
+      // they fail under the root `node` env.
+      //
+      // Contract for `tests/pure/**`: no React render, no store, no
+      // `window`/`document`, and explicit `import { describe } from 'vitest'`
+      // (the root runs with `globals: false`).
+      //
+      // Keep this list in sync when a new webui test directory is added — a
+      // new dir is NOT excluded by default, so it is collected by the root
+      // node env, which is the failure mode to watch for.
+      'packages/webui/tests/components/**',
+      'packages/webui/tests/hooks/**',
+      'packages/webui/tests/stores/**',
+      'packages/webui/tests/lib/**',
+      'packages/webui/tests/integration/**',
+      'packages/webui/tests/server/**',
+      'packages/webui/tests/i18n/**',
+      'packages/webui/tests/helpers/**',
+      'packages/webui/tests/fixtures/**',
+      'packages/webui/tests/setup/**',
+      'packages/webui/tests/types/**',
       // hq-dashboard.test.ts requires jsdom environment which the root
       // forks pool may fail to resolve from the global vitest binary.
       // Run it with the CLI package's dedicated config — a bare standalone

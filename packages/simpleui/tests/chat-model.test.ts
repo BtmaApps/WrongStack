@@ -452,6 +452,25 @@ describe('SimpleUI transient status notices', () => {
     ).toBeNull();
   });
 
+  it('shows no notice for a successful sessions.list', () => {
+    // The server omits `error` on every success path (session-handlers.ts
+    // broadcast + direct reply, start-webui.ts history refresh) and sends it
+    // only from the catch branch. A bare prefix is not a message, so a
+    // completed list must not raise an error banner.
+    expect(projectStatusNotice({ type: 'sessions.list', payload: { sessions: [] } })).toBeNull();
+    expect(
+      projectStatusNotice({
+        type: 'sessions.list',
+        payload: { sessionId: 'abc', sessions: [{ id: 'a' }] },
+      }),
+    ).toBeNull();
+    // A prefixed caller must still fall back rather than render the label alone.
+    expect(projectStatusNotice({ type: 'provider.stream_error', payload: {} })).toEqual({
+      text: 'Provider stream interrupted',
+      tone: 'warning',
+    });
+  });
+
   it('projects session and retryable provider failures onto the compact status line', () => {
     expect(
       projectStatusNotice({
