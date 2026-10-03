@@ -6,4 +6,12 @@
 // See packages/tools/src/tool-summary.ts. To change summary behavior, edit
 // there — a parity test guarantees the HQ browser transcription stays in sync.
 
-export { FALLBACK_HEAD_FIELDS, summarizeToolInput } from '@wrongstack/tools/tool-summary';
+export {
+  FALLBACK_HEAD_FIELDS,
+  summarizeToolInput,
+  TOOLFLOW_LABEL,
+  toolDisplayName,
+  toolFlowInput,
+  toolFlowMetrics,
+  toolFlowMetricsLabel,
+} from '@wrongstack/tools/tool-summary';

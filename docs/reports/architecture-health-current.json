@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:57:16.999Z",
+  "generatedAt": "2026-10-03T11:58:13.158Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4344,
-    "testFiles": 3977,
-    "sourceLines": 1034789,
+    "sourceFiles": 4346,
+    "testFiles": 3980,
+    "sourceLines": 1035060,
     "workspaceEdges": 131,
-    "moduleEdges": 14176,
+    "moduleEdges": 14178,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -700,7 +700,7 @@
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
       "sourceFiles": 111,
-      "testFiles": 88,
+      "testFiles": 89,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -721,7 +721,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 88
+          "testFiles": 89
         }
       ]
     },
@@ -773,8 +773,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 248,
-      "testFiles": 290,
+      "sourceFiles": 249,
+      "testFiles": 291,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -790,7 +790,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 290
+          "testFiles": 291
         }
       ]
     },
@@ -851,8 +851,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 622,
-      "testFiles": 445,
+      "sourceFiles": 623,
+      "testFiles": 446,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -875,7 +875,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 445
+          "testFiles": 446
         }
       ]
     },
@@ -15380,6 +15380,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/toolflow-render.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/transcript-export.test.ts",
         "projects": [
           "root-node"
@@ -17727,6 +17733,12 @@
       },
       {
         "file": "packages/tools/tests/tool-use.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/toolflow-presentation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23517,6 +23529,12 @@
       },
       {
         "file": "packages/webui/tests/components/tool-stats-modal.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/toolflow-settings.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

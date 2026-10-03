@@ -2,6 +2,7 @@ import { expectDefined } from '@wrongstack/core/utils/expect-defined';
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Terminal, XCircle } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
+import { toolDisplayName } from '@/lib/tool-summary';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
 import { MessageBubble } from './MessageBubble';
@@ -19,6 +20,8 @@ interface ToolGroupProps {
    *  group's chrome stitches into the same flow as the surrounding text /
    *  tool items instead of standing alone. */
   isContinuation?: boolean | undefined;
+  /** Observation-only rendering (the subagent tabs) — see MessageBubble. */
+  readOnly?: boolean | undefined;
 }
 
 type ToolGroupFilter = 'all' | 'failed' | 'running';
@@ -41,6 +44,7 @@ export const ToolGroup = memo(function ToolGroup({
   tools,
   defaultOpen = false,
   isContinuation = false,
+  readOnly = false,
 }: ToolGroupProps) {
   const { t } = useAppTranslation();
   const [open, setOpen] = useState(defaultOpen);
@@ -49,7 +53,12 @@ export const ToolGroup = memo(function ToolGroup({
   // Single tool? Render as a normal bubble — grouping overhead is just noise.
   if (tools.length === 1) {
     return (
-      <MessageBubble message={expectDefined(tools[0])} isFirst isContinuation={isContinuation} />
+      <MessageBubble
+        message={expectDefined(tools[0])}
+        isFirst
+        isContinuation={isContinuation}
+        readOnly={readOnly}
+      />
     );
   }
 
@@ -66,7 +75,9 @@ export const ToolGroup = memo(function ToolGroup({
 
   // Show the first few tool names so the user has a hint of what's inside
   // without expanding ("Read, Grep, Bash …").
-  const names = Array.from(new Set(tools.map((t) => t.toolName).filter(Boolean) as string[]));
+  const names = Array.from(
+    new Set(tools.filter((t) => t.toolName).map((t) => toolDisplayName(t.toolName!, t.toolInput))),
+  );
   const preview = names.slice(0, 3).join(', ');
   const more = names.length > 3 ? ` +${names.length - 3}` : '';
 
@@ -181,7 +192,7 @@ export const ToolGroup = memo(function ToolGroup({
             )}
             {filteredTools.length > 0 ? (
               filteredTools.map((tool) => (
-                <MessageBubble key={tool.id} message={tool} isFirst={false} />
+                <MessageBubble key={tool.id} message={tool} isFirst={false} readOnly={readOnly} />
               ))
             ) : (
               <p className="font-mono text-[11px] italic text-muted-foreground">

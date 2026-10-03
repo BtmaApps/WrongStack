@@ -27,6 +27,16 @@ interface Case {
 }
 
 const cases: readonly Case[] = [
+  {
+    label: 'ToolFlow',
+    tool: 'tool_script',
+    input: { script: 'const x = 1;\nreturn x;', description: 'Summarize files', max_calls: 3 },
+  },
+  {
+    label: 'deferred ToolFlow',
+    tool: 'tool_use',
+    input: { tool: 'tool_script', input: { script: 'return 1;' } },
+  },
   // TodoWrite
   {
     label: 'todos mixed',

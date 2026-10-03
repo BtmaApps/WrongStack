@@ -2,6 +2,8 @@
  * Render an at-a-glance "running: …" hint for the status bar. Shows the
  * oldest in-flight tool by name; if more than one, appends "(+N)".
  */
+import { toolDisplayName } from '@wrongstack/tools/tool-summary';
+
 export function renderRunningTools(
   running: ReadonlyMap<string, { name: string; startedAt: number }>,
 ): string {
@@ -13,5 +15,5 @@ export function renderRunningTools(
   if (!oldest) return '';
   const elapsedSec = ((Date.now() - oldest.startedAt) / 1000).toFixed(1);
   const more = running.size > 1 ? ` (+${running.size - 1})` : '';
-  return `running: ${oldest.name} ${elapsedSec}s${more}`;
+  return `running: ${toolDisplayName(oldest.name)} ${elapsedSec}s${more}`;
 }

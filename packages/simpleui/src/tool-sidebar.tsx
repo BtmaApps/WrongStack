@@ -1,3 +1,4 @@
+import { toolDisplayName, toolFlowMetricsLabel } from '@wrongstack/tools/tool-summary';
 import {
   Check,
   ChevronDown,
@@ -217,7 +218,9 @@ export function ToolSidebar({
                   {/* Running & meta tools — compact status line */}
                   {metaCalls.map((call) => (
                     <div className={`tool-sidebar-meta ${call.status}`} key={call.id}>
-                      <span className="tool-sidebar-meta-name">{call.name}</span>
+                      <span className="tool-sidebar-meta-name">
+                        {toolDisplayName(call.name, call.input)}
+                      </span>
                       {call.status === 'running' ? (
                         <LoaderCircle size={11} className="spin" aria-label="Running" />
                       ) : call.status === 'done' ? (
@@ -257,7 +260,7 @@ export function ToolSidebar({
                           ) : (
                             <ChevronRight size={12} aria-hidden="true" />
                           )}
-                          <code>{call.name}</code>
+                          <code>{toolDisplayName(call.name, call.input)}</code>
                           {call.status === 'running' ? (
                             <LoaderCircle size={12} className="spin" aria-label="Running" />
                           ) : call.status === 'done' ? (
@@ -275,6 +278,11 @@ export function ToolSidebar({
                         </button>
                         {isExpanded && (
                           <div className="tool-sidebar-call-detail">
+                            {toolFlowMetricsLabel(call.output) && (
+                              <p role="status" aria-label="ToolFlow measured output">
+                                {toolFlowMetricsLabel(call.output)}
+                              </p>
+                            )}
                             {call.input !== undefined && (
                               <section>
                                 <span>INPUT</span>

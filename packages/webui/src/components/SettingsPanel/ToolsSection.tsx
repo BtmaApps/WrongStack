@@ -3,6 +3,7 @@ import { type ReactElement, useCallback, useEffect, useState } from 'react';
 import { toast } from '@/components/Toaster';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
+import { toolDisplayName } from '@/lib/tool-summary';
 import type { WSServerMessage } from '@/types';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -46,7 +47,7 @@ function ToolRow({
           <StatusDot disabled={tool.disabled} direct={tool.direct} />
           <div className="min-w-0 flex-1">
             <code className="block truncate text-sm font-mono font-semibold" title={tool.name}>
-              {tool.name}
+              {toolDisplayName(tool.name)}
             </code>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Badge variant="outline" className="px-1.5 text-[10px]">
@@ -169,6 +170,7 @@ export function ToolsSection(): ReactElement {
     ? tools.filter(
         (t) =>
           t.name.toLowerCase().includes(filter.toLowerCase()) ||
+          toolDisplayName(t.name).toLowerCase().includes(filter.toLowerCase()) ||
           t.owner.toLowerCase().includes(filter.toLowerCase()),
       )
     : tools;

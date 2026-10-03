@@ -6,6 +6,31 @@ import { DefaultSystemPromptBuilder } from '../../src/core/system-prompt-builder
 import { expandSharedSystemInstructions } from '../../src/utils/instruction-file.js';
 
 describe('shared system contract', () => {
+  it.each(['default', 'lite', 'pro'] as const)(
+    '%s guides ToolFlow according to available tools',
+    async (systemVariant) => {
+      const bundle = await loadInstructionBundle({ systemVariant });
+      const render = (names: string[]) =>
+        renderInstructionLayer(bundle.system?.identity ?? '', {
+          toolNames: new Set(names),
+          tier: 'minimal',
+          subagent: false,
+          strictToolReferences: true,
+        });
+      const direct = render(['tool_script']);
+      expect(direct).toContain('prefer `tool_script`');
+      expect(direct).toContain('tools.describe(name)');
+      expect(direct).toContain('console output also enters context');
+      expect(direct).toContain('keep dependent actions and mutations sequential');
+      const deferred = render(['tool_search', 'tool_use']);
+      expect(deferred).toContain('search for WrongStack ToolFlow through `tool_search`');
+      expect(deferred).not.toContain('tools.describe(name)');
+      const disabled = render([]);
+      expect(disabled).not.toContain('`tool_script`');
+      expect(disabled).not.toContain('tools.describe(name)');
+    },
+  );
+
   it('keeps shared fragments terminal and conditional blocks balanced', () => {
     const dir = new URL('../../instructions/shared/system/', import.meta.url);
     const names = readdirSync(dir);

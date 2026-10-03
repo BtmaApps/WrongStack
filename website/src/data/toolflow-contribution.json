@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUTC": "2026-10-02T08:16:24.827Z",
+  "method": "Real Agent/ToolExecutor with a scripted provider; no live model, timing, tokens or billing measurements",
+  "configuration": {
+    "fixtureReads": 50,
+    "rawDetailCharactersPerRead": 11000,
+    "outputCapBytes": 2000000,
+    "maxContext": 2000000
+  },
+  "measurements": [
+    {
+      "scenario": "sequential",
+      "providerRequests": 51,
+      "fixtureReads": 50,
+      "conversationResults": 50,
+      "toolResultBytes": 551040,
+      "journaledResults": 50,
+      "scriptProducedBytes": null
+    },
+    {
+      "scenario": "batched",
+      "providerRequests": 2,
+      "fixtureReads": 50,
+      "conversationResults": 50,
+      "toolResultBytes": 551040,
+      "journaledResults": 50,
+      "scriptProducedBytes": null
+    },
+    {
+      "scenario": "toolflow",
+      "providerRequests": 2,
+      "fixtureReads": 50,
+      "conversationResults": 1,
+      "toolResultBytes": 120,
+      "journaledResults": 51,
+      "scriptProducedBytes": 120
+    },
+    {
+      "scenario": "deferred",
+      "providerRequests": 2,
+      "fixtureReads": 50,
+      "conversationResults": 1,
+      "toolResultBytes": 184,
+      "journaledResults": 51,
+      "scriptProducedBytes": 120
+    },
+    {
+      "scenario": "discovered",
+      "providerRequests": 3,
+      "fixtureReads": 50,
+      "conversationResults": 2,
+      "toolResultBytes": 1244,
+      "journaledResults": 52,
+      "scriptProducedBytes": 120
+    },
+    {
+      "scenario": "passthrough",
+      "providerRequests": 2,
+      "fixtureReads": 50,
+      "conversationResults": 1,
+      "toolResultBytes": 6438,
+      "journaledResults": 51,
+      "scriptProducedBytes": 552084
+    }
+  ]
+}

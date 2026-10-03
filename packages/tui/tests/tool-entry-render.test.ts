@@ -16,6 +16,25 @@ function renderEntry(entry: HistoryEntry): string {
 }
 
 describe('<Entry /> tool rendering', () => {
+  it.each(['tool_script', 'tool_use'])(
+    'renders ToolFlow identity and measured bytes for %s',
+    (name) => {
+      const input = { script: 'return 1;', description: 'Summarize files' };
+      const result = 'answer\n\n(2 tool calls: read ×2)\n\nToolFlow bytes: 20000 -> 40; calls: 2';
+      const frame = renderEntry({
+        id: 100,
+        kind: 'tool',
+        name,
+        ok: true,
+        durationMs: 10,
+        input: name === 'tool_script' ? input : { tool: 'tool_script', input },
+        output: name === 'tool_script' ? result : JSON.stringify({ tool: 'tool_script', result }),
+      });
+      expect(frame).toContain('WrongStack ToolFlow');
+      expect(frame).toContain('Summarize files');
+      expect(frame).toContain('20000 B');
+    },
+  );
   it('renders semantic grep result rows inside tool entries', () => {
     const frame = renderEntry({
       id: 1,

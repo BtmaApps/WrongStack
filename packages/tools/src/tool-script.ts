@@ -1,5 +1,5 @@
 /**
- * `tool_script` — "code mode": the model writes one short JavaScript program
+ * `tool_script` — WrongStack ToolFlow: the model writes one short JavaScript program
  * that calls tools as async functions, loops over and filters their results,
  * and only the value it returns goes back into the conversation.
  *
@@ -24,6 +24,7 @@ import type { QuickJSContext, QuickJSHandle, QuickJSWASMModule } from 'quickjs-e
 
 export interface ToolScriptInput {
   script: string;
+  description?: string | undefined;
   timeout_ms?: number | undefined;
   max_calls?: number | undefined;
 }
@@ -99,6 +100,7 @@ interface RunState {
   pending: Set<{ dispose(): void; alive: boolean }>;
   enteredAt: number | undefined;
   stopped: string | undefined;
+  toolResultBytes: number;
 }
 
 function callSummary(calls: RunState['calls']): string {
@@ -114,14 +116,16 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
   name: TOOL_SCRIPT_NAME,
   category: 'Meta',
   description:
-    'Run a short JavaScript program that calls tools as async functions and returns only its result.',
+    'WrongStack ToolFlow: run a short JavaScript program that calls tools as async functions and returns only its result.',
   usageHint:
-    'CODE MODE — compose several tool calls in one step:\n\n' +
+    'WRONGSTACK TOOLFLOW — compose several tool calls in one step:\n\n' +
     '- `script` is the body of an async function: use `await`, loops, and `return` the value you want back.\n' +
+    '- Set `description` to a short human-readable purpose shown in the activity history. Await every tool call before returning.\n' +
     '- Call a tool as `await tools.read({ path: "src/a.ts" })` or `await tools.call("codebase-search", { query: "x" })`. ' +
     'Each call returns the tool result as text (JSON.parse it when it is JSON) and throws when the tool fails.\n' +
     '- `Promise.all` runs calls side by side; `console.log` lines come back with the result.\n' +
-    '- Only the returned value enters the conversation, so filter and summarize in the script.\n' +
+    '- `tools.names()` lists the enabled catalog, including deferred tools. `tools.describe(name)` returns the exact input schema and usage guidance without a tool call. Use exact names with `tools.call` for hyphens or reserved names (`call`, `names`, `describe`).\n' +
+    '- The returned value, call summary, measured byte counts, and console output enter the conversation; intermediate tool results do not. Filter and summarize in the script.\n' +
     '- There is no filesystem, network or process access except through tools, and every call is checked and confirmed exactly like a direct call.\n' +
     `- The script stops after ${DEFAULT_TIMEOUT_MS / 1000}s unless you set \`timeout_ms\` (0 = no limit), and when it computes for ${MAX_UNPAUSED_MS / 1000}s without awaiting anything. \`max_calls\` caps its tool calls if you want a cap.`,
   // Running the program touches nothing; every effect is a tool call with its
@@ -138,6 +142,12 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
   inputSchema: {
     type: 'object',
     properties: {
+      description: {
+        type: 'string',
+        maxLength: 200,
+        description:
+          'Short human-readable purpose of this ToolFlow run, shown in activity history.',
+      },
       script: {
         type: 'string',
         description:
@@ -158,6 +168,8 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
   },
 
   async execute(input, ctx, opts) {
+    if (opts.signal.aborted)
+      throw new ToolScriptError('The script was stopped: the run was stopped.');
     const script = typeof input.script === 'string' ? input.script : '';
     if (!script.trim()) throw new ToolScriptError('`script` is empty.');
     const caller = (ctx as { nestedToolCall?: NestedToolCaller | undefined }).nestedToolCall;
@@ -172,11 +184,18 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
     const parentToolUseId = opts.toolUseId ?? `script-${Date.now().toString(36)}`;
     const timeoutMs = scriptTimeout(input.timeout_ms);
     const maxCalls = callLimit(input.max_calls);
-    const toolNames = ctx.tools
-      .map((tool) => tool.name)
-      .filter((name) => name !== TOOL_SCRIPT_NAME);
+    const catalog = (ctx.catalogTools ?? ctx.tools).filter(
+      (tool) => tool.name !== TOOL_SCRIPT_NAME,
+    );
+    const toolNames = catalog.map((tool) => tool.name);
 
     const module = await loadQuickJs();
+    // Another call may have acquired the context while WebAssembly was loading.
+    if (ctx.meta[SCRIPT_RUNNING_META_KEY] === true) {
+      throw new ToolScriptError('A tool script cannot run inside another tool script.');
+    }
+    if (opts.signal.aborted)
+      throw new ToolScriptError('The script was stopped: the run was stopped.');
     ctx.meta[SCRIPT_RUNNING_META_KEY] = true;
     const runtime = module.newRuntime();
     runtime.setMemoryLimit(TOOL_MEMORY_GUARD_BYTES);
@@ -191,8 +210,10 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       pending: new Set(),
       enteredAt: undefined,
       stopped: undefined,
+      toolResultBytes: 0,
     };
     const deadline = timeoutMs === undefined ? undefined : Date.now() + timeoutMs;
+    let finished = false;
     const stop = (reason: string): void => {
       state.stopped ??= reason;
     };
@@ -241,6 +262,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       state.pending.add(entry);
       const settle = (ok: boolean, text: string): void => {
         state.pending.delete(entry);
+        if (finished && state.pending.size === 0) delete ctx.meta[SCRIPT_RUNNING_META_KEY];
         if (!entry.alive || !vm.alive) return;
         const value = ok ? vm.newString(text) : vm.newError(text);
         if (ok) deferred.resolve(value);
@@ -256,7 +278,8 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         queueMicrotask(() =>
           settle(false, `The script reached its limit of ${maxCalls} tool calls.`),
         );
-      } else if (state.stopped) {
+      } else if (state.stopped || opts.signal.aborted) {
+        if (opts.signal.aborted) stop('the run was stopped');
         queueMicrotask(() => settle(false, `The script was stopped: ${state.stopped}.`));
       } else {
         const record = { name, ok: false };
@@ -264,6 +287,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         callIndex += 1;
         caller({ name, input: toolInput, parentToolUseId, index: callIndex }).then(
           (result) => {
+            state.toolResultBytes += new TextEncoder().encode(result.content).length;
             record.ok = !result.isError;
             settle(!result.isError, result.content);
           },
@@ -282,6 +306,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       );
       vm.setProp(toolsObject, 'call', callFn);
       for (const name of toolNames) {
+        if (['call', 'names', 'describe'].includes(name)) continue;
         const fn = vm.newFunction(name, (inputHandle) => {
           const nameHandle = vm.newString(name);
           try {
@@ -305,6 +330,29 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       });
       vm.setProp(toolsObject, 'names', namesFn);
       namesFn.dispose();
+      const describeFn = vm.newFunction('describe', (nameHandle) => {
+        const name = vm.getString(nameHandle);
+        const tool = catalog.find((entry) => entry.name === name);
+        if (!tool)
+          return {
+            error: vm.newError(
+              `No enabled tool named "${name}". Use tools.names() to discover exact names.`,
+            ),
+          };
+        const description = {
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          usageHint: tool.usageHint,
+          permission: tool.permission,
+          mutating: tool.mutating,
+        };
+        return vm.unwrapResult(
+          vm.evalCode(`JSON.parse(${JSON.stringify(JSON.stringify(description))})`),
+        );
+      });
+      vm.setProp(toolsObject, 'describe', describeFn);
+      describeFn.dispose();
       vm.setProp(vm.global, 'tools', toolsObject);
       toolsObject.dispose();
 
@@ -376,6 +424,11 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
       }
       const value = vm.dump(outcome.value);
       outcome.value.dispose();
+      if (state.pending.size > 0) {
+        throw new ToolScriptError(
+          `The script returned with ${state.pending.size} unfinished tool calls. Await every tool call before returning; calls already started keep running. (${callSummary(state.calls)})`,
+        );
+      }
 
       const sections = [render(value), `(${callSummary(state.calls)})`];
       if (state.logs.length > 0) {
@@ -385,11 +438,12 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
             : '';
         sections.push(`console:\n${state.logs.join('\n')}${dropped}`);
       }
-      return sections.join('\n\n');
+      const returned = sections.join('\n\n');
+      return `${returned}\n\nToolFlow bytes: ${state.toolResultBytes} -> ${new TextEncoder().encode(returned).length}; calls: ${state.calls.length}; failed: ${state.calls.filter((call) => !call.ok).length}`;
     } finally {
-      delete ctx.meta[SCRIPT_RUNNING_META_KEY];
+      finished = true;
+      if (state.pending.size === 0) delete ctx.meta[SCRIPT_RUNNING_META_KEY];
       for (const entry of state.pending) entry.dispose();
-      state.pending.clear();
       try {
         vm.dispose();
         runtime.dispose();

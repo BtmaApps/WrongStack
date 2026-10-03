@@ -1,3 +1,4 @@
+import { toolDisplayName, toolFlowMetricsLabel } from '@wrongstack/tools/tool-summary';
 import {
   Brain,
   Check,
@@ -69,6 +70,8 @@ function toolLabel(name: string): string {
       return 'Find files';
     case 'grep':
       return 'Search files';
+    case 'tool_script':
+      return 'WrongStack ToolFlow';
     default:
       return `Run \`${name}\``;
   }
@@ -81,7 +84,10 @@ export const ToolCallEntry = memo(function ToolCallEntry({
   const [expanded, setExpanded] = useState(false);
   const Icon = STATUS_ICON[toolCall.status];
   const fileEdit = extractFileEditMeta(toolCall);
-  const label = toolLabel(toolCall.name);
+  const label =
+    toolDisplayName(toolCall.name, toolCall.input) !== toolCall.name
+      ? toolDisplayName(toolCall.name, toolCall.input)
+      : toolLabel(toolCall.name);
   const time = formatTimestamp(toolCall.ts);
   const isFileEdit = fileEdit !== null;
   // SAGE-injected memory is not tool output. Live results arrive already split
@@ -137,7 +143,7 @@ export const ToolCallEntry = memo(function ToolCallEntry({
               {fileEdit.path.split(/[\\/]/).pop() ?? fileEdit.path}
             </span>
           ) : (
-            <code>{toolCall.name}</code>
+            <code>{toolDisplayName(toolCall.name, toolCall.input)}</code>
           )}
           {isFileEdit && fileEdit.replacements != null && fileEdit.replacements > 0 && (
             <span className="timeline-diff-added">+{fileEdit.replacements}</span>
@@ -170,6 +176,11 @@ export const ToolCallEntry = memo(function ToolCallEntry({
         </button>
 
         {/* Compact SAGE chip always visible when inject happened (TUI parity). */}
+        {toolFlowMetricsLabel(outputBody) && (
+          <p role="status" aria-label="ToolFlow measured output">
+            {toolFlowMetricsLabel(outputBody)}
+          </p>
+        )}
         {!expanded && memoryLines.length > 0 && (
           <div className="timeline-tool-sage-chip" title={memoryLines.join('\n')}>
             <Brain size={10} aria-hidden="true" /> {memoryLines.length} SAGE

@@ -187,7 +187,7 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   tool_use:
     'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
   tool_script:
-    'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
+    'WrongStack ToolFlow: compose repetitive or deterministic dependent tool calls in sandboxed JavaScript, filter or compute over their results, and return compact findings for the next model decision. Call tools as async functions (`await tools.read({...})`, `tools.call(name, input)`). Each call retains validation, permissions, confirmations, and journaling. Prefer direct calls for simple operations or small independent batches. Model context receives the return, call summary, byte diagnostics, and console output, subject to normal preview/artifact handling. Speed and cost depend on the workflow and require separate measurements.',
 };
 
 /**

@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, Clock, Download, Loader2 } from 'lucide-reac
 import { memo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { getToolTooltip, getToolVisual } from '@/lib/tool-icon';
-import { summarizeToolInput } from '@/lib/tool-summary';
+import { summarizeToolInput, toolDisplayName, toolFlowMetricsLabel } from '@/lib/tool-summary';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
 import { diffFromToolInput, ToolDiffView } from '../DiffView';
@@ -103,14 +103,14 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
           )}
         />
         <ToolIcon className="h-3.5 w-3.5 shrink-0" style={{ color: toolColor }} />
-        <span className="font-semibold tracking-tight" style={{ color: toolColor }}>
-          {message.toolName}
+        <span className="font-semibold tracking-tight text-foreground">
+          {toolDisplayName(toolName, message.toolInput)}
         </span>
         <span
           className={cn(
             'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
             status === 'running'
-              ? 'text-warning'
+              ? 'text-foreground'
               : status === 'error'
                 ? 'text-destructive'
                 : 'text-success',
@@ -161,6 +161,16 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
           ) : null}
         </span>
       </button>
+
+      {toolFlowMetricsLabel(message.toolResult) && (
+        <p
+          className="border-t border-border/40 px-2.5 py-1.5 font-mono text-[11px]"
+          role="status"
+          aria-label="ToolFlow measured output"
+        >
+          {toolFlowMetricsLabel(message.toolResult)}
+        </p>
+      )}
 
       {/* ── What image_generate drew, visible without opening the card. ─── */}
       {status === 'ok' && toolName === 'image_generate' && (

@@ -1,5 +1,6 @@
 import { ArrowRight, OctagonX, ShieldCheck, Wrench } from 'lucide-react';
 import { heroTitleFontSize, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
+import { ToolFlowContribution } from '@/components/site/ToolFlowContribution';
 import { TOOL_COUNT, toolCatalog, toolFromSlug, toolSlug } from '@/data/runtime-catalog';
 import { toolDetails } from '@/data/tool-details';
 import { Link, useRouter } from '@/lib/router';
@@ -11,6 +12,7 @@ export function ToolDetailPage() {
   const tool = toolFromSlug(slug);
   if (!tool) return null;
   const detail = toolDetails[tool.name];
+  const displayName = tool.name === 'tool_script' ? 'WrongStack ToolFlow' : tool.name;
   const position = toolCatalog.findIndex((item) => item.name === tool.name) + 1;
   const related = toolCatalog
     .filter((item) => item.category === tool.category && item.name !== tool.name)
@@ -24,8 +26,8 @@ export function ToolDetailPage() {
       <PageHero
         index={`20.${String(position).padStart(2, '0')}`}
         eyebrow={tool.category}
-        title={<span className="font-mono text-brand">{tool.name}</span>}
-        titleFontSize={heroTitleFontSize(tool.name, { mono: true })}
+        title={<span className="font-mono text-brand">{displayName}</span>}
+        titleFontSize={heroTitleFontSize(displayName, { mono: true })}
         description={tool.summary}
         aside={
           <div className="flex flex-wrap gap-2">
@@ -39,14 +41,14 @@ export function ToolDetailPage() {
               {tool.permission}
             </span>
             <span className="rounded-full border border-line bg-card px-3 py-1.5 font-mono text-xs font-black uppercase text-faint">
-              {tool.mutating ? 'mutating' : 'read-only'}
+              {tool.name === 'tool_script' ? 'composer' : tool.mutating ? 'mutating' : 'read-only'}
             </span>
           </div>
         }
       />
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
-        <SectionIntro index="01" eyebrow="Purpose" title={`What ${tool.name} is for.`} />
+        <SectionIntro index="01" eyebrow="Purpose" title={`What ${displayName} is for.`} />
         <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_.72fr]">
           <article className="rounded-2xl border border-line bg-card p-6 sm:p-8">
             <Wrench className="size-5 text-brand" />
@@ -69,12 +71,16 @@ export function ToolDetailPage() {
             <ShieldCheck className="size-6 text-brand" />
             <h2 className="mt-6 text-xl font-black text-fg">Permission contract</h2>
             <p className="mt-4 text-sm leading-7 text-muted">
-              {tool.permission === 'auto'
-                ? 'Runs without an operator prompt: the policy engine classifies it as safe to execute automatically.'
-                : 'Requires operator confirmation before it runs; trust rules and sensitive-path checks refine the decision per call.'}{' '}
-              {tool.mutating
-                ? 'The tool is mutating — its side effects are recorded in the session ledger.'
-                : 'The tool is read-only and leaves no side effects behind.'}
+              {tool.name === 'tool_script'
+                ? 'The composer starts automatically; every nested call separately passes validation, permissions, and any required confirmation.'
+                : tool.permission === 'auto'
+                  ? 'Runs without an operator prompt: the policy engine classifies it as safe to execute automatically.'
+                  : 'Requires operator confirmation before it runs; trust rules and sensitive-path checks refine the decision per call.'}{' '}
+              {tool.name === 'tool_script'
+                ? 'The script has no direct filesystem, network, or process access. Nested tools can mutate files or perform other effects, and their operations remain in the session ledger.'
+                : tool.mutating
+                  ? 'The tool is mutating — its side effects are recorded in the session ledger.'
+                  : 'The tool is read-only and leaves no side effects behind.'}
             </p>
             <Link
               href="/security"
@@ -86,6 +92,8 @@ export function ToolDetailPage() {
           </aside>
         </div>
       </section>
+
+      {tool.name === 'tool_script' && <ToolFlowContribution />}
 
       {orderedParams.length > 0 && (
         <section className="border-y border-line bg-surface">

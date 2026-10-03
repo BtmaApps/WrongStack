@@ -42,6 +42,14 @@ export const FALLBACK_HEAD_FIELDS = [
   'content',
 ] as const;
 
+export {
+  TOOLFLOW_LABEL,
+  toolDisplayName,
+  toolFlowInput,
+  toolFlowMetrics,
+  toolFlowMetricsLabel,
+} from './toolflow-presentation.js';
+
 function clip(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
@@ -95,6 +103,20 @@ export function summarizeToolInput(toolName: string | undefined, input: unknown)
   if (!obj) return clip(String(raw), 120);
 
   const name = (toolName ?? '').toLowerCase();
+
+  if (name === 'tool_use' && obj.tool === 'tool_script')
+    return summarizeToolInput('tool_script', obj.input);
+  if (name === 'tool_script') {
+    const lines =
+      typeof obj.script === 'string' && obj.script.trim()
+        ? obj.script.trim().split(/\r?\n/).length
+        : 0;
+    const purpose =
+      typeof obj.description === 'string' && obj.description.trim()
+        ? `${clip(obj.description.trim(), 80)} · `
+        : '';
+    return `ToolFlow · ${purpose}${lines} script line${lines === 1 ? '' : 's'}${typeof obj.max_calls === 'number' ? ` · max ${obj.max_calls} calls` : ''}`;
+  }
 
   // ---- TodoWrite ----------------------------------------------------
   if (/^todo(_?write)?$|^todos$/.test(name) || Array.isArray(obj.todos)) {
@@ -275,6 +297,8 @@ export const SUMMARIZE_TOOL_INPUT_BROWSER_SRC: string = [
   '  } else if(rawInput && typeof rawInput==="object"){ obj=rawInput; raw=rawInput; }',
   '  if(!obj) return __clip(String(raw),120);',
   '  var n=String(name==null?"":name).toLowerCase();',
+  '  if(n==="tool_use" && obj.tool==="tool_script") return toolInputSummary("tool_script",obj.input);',
+  '  if(n==="tool_script"){ var lines=typeof obj.script==="string" && obj.script.trim() ? obj.script.trim().split(/\\r?\\n/).length : 0; var purpose=typeof obj.description==="string" && obj.description.trim() ? __clip(obj.description.trim(),80)+" · " : ""; return "ToolFlow · "+purpose+lines+" script line"+(lines===1 ? "" : "s")+(typeof obj.max_calls==="number" ? " · max "+obj.max_calls+" calls" : ""); }',
   '  if(/^todo(_?write)?$|^todos$/.test(n) || Array.isArray(obj.todos)){',
   '    var todos=obj.todos||[];',
   '    if(Array.isArray(todos)){',

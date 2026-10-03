@@ -5,6 +5,7 @@
 import type { NestedToolCaller, Tool } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { toolScriptTool } from '../src/tool-script.js';
+import { toolFlowMetrics } from '../src/toolflow-presentation.js';
 
 type Call = Parameters<NestedToolCaller>[0];
 
@@ -12,6 +13,7 @@ function harness(answer: (call: Call) => Promise<{ content: string; isError: boo
   const calls: Call[] = [];
   const ctx = {
     tools: [{ name: 'read' }, { name: 'grep' }, { name: 'codebase-search' }] as Tool[],
+    catalogTools: undefined as Tool[] | undefined,
     meta: {} as Record<string, unknown>,
     nestedToolCall: (async (call) => {
       calls.push(call);
@@ -32,6 +34,92 @@ const echo = async (call: Call) => ({
 });
 
 describe('tool_script', () => {
+  it('discovers deferred schemas inside the VM and calls them through the gate', async () => {
+    const h = harness(echo);
+    h.ctx.catalogTools = [
+      ...h.ctx.tools,
+      {
+        name: 'mcp-report',
+        description: 'Read a report',
+        inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+        usageHint: 'Supply the report ID.',
+        permission: 'confirm',
+        mutating: false,
+        async execute() {
+          return '';
+        },
+      } as Tool,
+    ];
+    const out = await h.run(`
+      const name = tools.names().find(n => n === 'mcp-report');
+      const schema = tools.describe(name);
+      if (schema.inputSchema.required[0] !== 'id' || schema.permission !== 'confirm') throw new Error('wrong schema');
+      if (schema.usageHint !== 'Supply the report ID.') throw new Error('missing guidance');
+      return await tools.call(name, { id: 'r1' });
+    `);
+    expect(out).toContain('mcp-report:{"id":"r1"}');
+    expect(h.calls).toEqual([
+      { name: 'mcp-report', input: { id: 'r1' }, parentToolUseId: 'call_1', index: 1 },
+    ]);
+  });
+
+  it('keeps discovery helpers usable when catalog names collide', async () => {
+    const h = harness(echo);
+    h.ctx.catalogTools = [
+      ...h.ctx.tools,
+      ...['call', 'names', 'describe'].map((name) => ({ name }) as Tool),
+      toolScriptTool,
+    ];
+    const out = await h.run(`
+      if (tools.names().includes('tool_script')) throw new Error('recursive tool exposed');
+      return await Promise.all(['call', 'names', 'describe'].map(n => tools.call(tools.describe(n).name, {})));
+    `);
+    expect(h.calls.map((c) => c.name)).toEqual(['call', 'names', 'describe']);
+    expect(out).toContain('describe:{}');
+    await expect(h.run(`return tools.describe('disabled');`)).rejects.toThrow(
+      'No enabled tool named "disabled"',
+    );
+    expect(h.calls).toHaveLength(3);
+  });
+
+  it('reduces 50 large fixture results to one small answer', async () => {
+    let rawBytes = 0;
+    const h = harness(async (call) => {
+      const content = JSON.stringify({
+        id: (call.input as { id: number }).id,
+        detail: 'RAW_DETAIL_'.repeat(1000),
+      });
+      rawBytes += Buffer.byteLength(content);
+      return { content, isError: false };
+    });
+    const out = await h.run(`
+      let count = 0;
+      let sum = 0;
+      for (let start = 0; start < 50; start += 5) {
+        const results = await Promise.all(Array.from({ length: 5 }, (_, i) => tools.read({ id: start + i })));
+        for (const text of results) { count++; sum += JSON.parse(text).id; }
+      }
+      return { count, sum };
+    `);
+    expect(h.calls).toHaveLength(50);
+    expect(out).toContain('"count": 50');
+    expect(out).toContain('"sum": 1225');
+    expect(out).not.toContain('RAW_DETAIL');
+    expect(rawBytes).toBeGreaterThan(500_000);
+    expect(Buffer.byteLength(out)).toBeLessThan(150);
+    expect(toolFlowMetrics(out)?.toolResultBytes).toBe(rawBytes);
+    expect(toolFlowMetrics(out)?.calls).toBe(50);
+  });
+
+  it('measures UTF-8 returned text including console output without counting the metrics suffix', async () => {
+    const h = harness(async () => ({ content: 'ş🙂', isError: false }));
+    const output = await h.run('await tools.read({}); console.log("ö🙂"); return "ğ🙂";');
+    expect(toolFlowMetrics(output)?.toolResultBytes).toBe(Buffer.byteLength('ş🙂'));
+    expect(toolFlowMetrics(output)?.returnedBytes).toBe(
+      Buffer.byteLength(output.slice(0, output.lastIndexOf('\n\nToolFlow bytes:'))),
+    );
+  });
+
   it('composes tool calls and returns only the final value', async () => {
     const h = harness(echo);
     const out = await h.run(`
@@ -73,6 +161,7 @@ describe('tool_script', () => {
     );
     expect(out).toContain('caught: no such file');
     expect(out).toContain('(1 tool call: read (1 failed))');
+    expect(toolFlowMetrics(out)?.failedCalls).toBe(1);
   });
 
   it('reports an uncaught error with the calls that already ran', async () => {
@@ -166,12 +255,63 @@ describe('tool_script', () => {
   });
 
   it('stops when the run is aborted', async () => {
-    const h = harness(() => new Promise(() => {}));
+    let complete: ((value: { content: string; isError: boolean }) => void) | undefined;
+    const h = harness(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
     const controller = new AbortController();
     const pending = h.run(`await tools.read({ path: 'slow' });`, {}, controller.signal);
     setTimeout(() => controller.abort(), 50);
     await expect(pending).rejects.toThrow('the run was stopped');
-    // The flag is cleared for the next script.
+    // Keep the context locked until already-started effects settle.
+    expect(h.ctx.meta.toolScriptRunning).toBe(true);
+    await expect(h.run('return 1')).rejects.toThrow('inside another tool script');
+    complete?.({ content: 'done', isError: false });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(h.ctx.meta.toolScriptRunning).toBeUndefined();
+  });
+
+  it('starts no calls for an already-aborted run', async () => {
+    const h = harness(echo);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(h.run('await tools.read({});', {}, controller.signal)).rejects.toThrow(
+      'the run was stopped',
+    );
+    expect(h.calls).toHaveLength(0);
+    expect(h.ctx.meta.toolScriptRunning).toBeUndefined();
+  });
+
+  it('rejects unawaited effects and releases the lock only after they settle', async () => {
+    let complete: ((value: { content: string; isError: boolean }) => void) | undefined;
+    const h = harness(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    await expect(h.run('tools.read({}); return "done";')).rejects.toThrow('unfinished tool calls');
+    expect(h.ctx.meta.toolScriptRunning).toBe(true);
+    complete?.({ content: 'done', isError: false });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(h.ctx.meta.toolScriptRunning).toBeUndefined();
+    expect(await h.run('return "recovered";')).toContain('recovered');
+  });
+
+  it('does not run two scripts concurrently on the same context', async () => {
+    const h = harness(async (call) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return echo(call);
+    });
+    const results = await Promise.allSettled([
+      h.run('return await tools.read({});'),
+      h.run('return await tools.read({});'),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(h.calls).toHaveLength(1);
     expect(h.ctx.meta.toolScriptRunning).toBeUndefined();
   });
 

@@ -97,11 +97,18 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
         // input called this filter `tags`. Include category, declared
         // capabilities, and name segments so callers can make a useful
         // semantic selection without already knowing a tool's exact family.
+        // Empty candidates are dropped: `category` is optional and a name can
+        // split into empty segments (`mcp__server__tool`, trailing `_`/`-`),
+        // and the match below is bidirectional — `tag.includes('')` is always
+        // true, so a single empty candidate made the tool match EVERY tag
+        // filter, defeating it entirely.
         const searchableTags = [
           t.category ?? '',
           ...(t.capabilities ?? []),
           ...t.name.split(/[_-]/),
-        ].map((value) => value.toLowerCase());
+        ]
+          .map((value) => value.toLowerCase())
+          .filter((value) => value.length > 0);
         const requestedTags = input.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
         if (
           requestedTags.length > 0 &&

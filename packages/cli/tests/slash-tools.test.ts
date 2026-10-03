@@ -43,6 +43,26 @@ function makeOpts(overrides: Partial<SlashCommandContext> = {}): SlashCommandCon
 }
 
 describe('buildToolsCommand', () => {
+  it('discovers ToolFlow by its product name while preserving the executable name', async () => {
+    const registry = makeRegistry();
+    const listWithOwner = registry.listWithOwner.bind(registry);
+    registry.listWithOwner = () => [
+      ...listWithOwner(),
+      {
+        tool: {
+          name: 'tool_script',
+          description: 'WrongStack ToolFlow',
+          permission: 'auto',
+          mutating: false,
+        } as never,
+        owner: 'system',
+      },
+    ];
+    const cmd = buildToolsCommand(makeOpts({ toolRegistry: registry }));
+    const result = await cmd.run('toolflow');
+    expect(result?.message).toContain('tool_script / ToolFlow');
+    expect(result?.message).not.toContain('bash');
+  });
   it('renders tool list with header and rows', async () => {
     const writeFn = vi.fn();
     const cmd = buildToolsCommand(makeOpts({ renderer: { write: writeFn } as never }));

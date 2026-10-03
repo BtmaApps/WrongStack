@@ -1,3 +1,4 @@
+import { toolDisplayName, toolFlowMetricsLabel } from '@wrongstack/tools/tool-summary';
 import type React from 'react';
 import { useMemo } from 'react';
 import { langFromPath } from '../../highlight.js';
@@ -300,7 +301,7 @@ export function ToolEntry({
       <ToolCard
         glyph={glyph}
         color={color}
-        title={entry.name}
+        title={toolDisplayName(entry.name, entry.input)}
         detail={argSummary || undefined}
         meta={[`${entry.durationMs}ms`, sizeChip].filter(Boolean).join(' · ')}
         ok={entry.ok}
@@ -378,6 +379,9 @@ export function ToolEntry({
           />
         ) : null}
       </ToolCard>
+      {toolFlowMetricsLabel(entry.output) && (
+        <Text dimColor>{toolFlowMetricsLabel(entry.output)}</Text>
+      )}
       {!minimal && showSageMemoryInject !== false ? (
         <SageMemoryBlock sageLines={sageLines} toolName={entry.name} stats={entry.sageStats} />
       ) : null}

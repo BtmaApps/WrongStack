@@ -17,8 +17,10 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
+import { toolFlowInput } from '@/lib/tool-summary';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
+import { ToolFlowOverview } from './ToolFlowOverview.js';
 
 type OverviewKind =
   | 'file'
@@ -482,6 +484,8 @@ function fieldsFor(kind: OverviewKind, input: unknown): Array<[string, string]> 
 /** A compact dashboard card shown before the lossless Details panel. */
 export function ToolCallOverview({ message }: { message: ChatMessage }) {
   const { t } = useAppTranslation();
+  if (toolFlowInput(message.toolName, message.toolInput))
+    return <ToolFlowOverview message={message} />;
   const kind = kindFor(message.toolName);
   const fields = fieldsFor(kind, message.toolInput);
   const result = outputShape(message.toolResult, message.toolOutputBytes, message.toolOutputLines);

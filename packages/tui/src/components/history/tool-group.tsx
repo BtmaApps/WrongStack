@@ -1,4 +1,5 @@
 import { useActiveTheme } from '../../hooks/use-active-theme.js';
+
 /**
  * tool-group — Consecutive same-tool entries grouped under a single header.
  *
@@ -16,6 +17,7 @@ import { useActiveTheme } from '../../hooks/use-active-theme.js';
  * isolated tool entries pass through unchanged.
  */
 
+import { toolDisplayName } from '@wrongstack/tools/tool-summary';
 import type React from 'react';
 import { memo } from 'react';
 import { Box, Text } from '../../ink.js';
@@ -304,7 +306,10 @@ function ToolGroupHeader({
   const safeName = sanitizeTerminalText(name);
   const controlPrefix = VIEW_CONTROL_PREFIX;
   const cardLead = viewMode === 'minimal' ? CARD_LEAD_CLOSED : CARD_LEAD_OPEN;
-  const visibleName = truncateDisplay(safeName, Math.max(1, termWidth - 16 - controlPrefix.length));
+  const visibleName = truncateDisplay(
+    toolDisplayName(safeName),
+    Math.max(1, termWidth - 16 - controlPrefix.length),
+  );
   const fixedHeader = `${controlPrefix}${glyph} ${visibleName}`;
   const tailBudget = Math.max(0, termWidth - displayWidth(fixedHeader) - 10);
   const metaBudget = meta ? Math.min(displayWidth(meta), Math.floor(tailBudget * 0.36)) : 0;

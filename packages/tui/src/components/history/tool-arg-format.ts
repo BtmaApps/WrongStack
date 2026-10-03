@@ -1,3 +1,4 @@
+import { summarizeToolInput, toolFlowInput } from '@wrongstack/tools/tool-summary';
 import { numOf, shortenPath, stringOf, truncMid } from './basic-format.js';
 
 const ARG_BUDGET = 60;
@@ -23,6 +24,7 @@ function fileScopeSummary(files: unknown, fallback?: string | undefined): string
  * Render the most useful single-line description of a tool call's arguments.
  */
 export function formatToolArgs(toolName: string, input: unknown): string {
+  if (toolFlowInput(toolName, input)) return summarizeToolInput(toolName, input);
   if (!input || typeof input !== 'object') return '';
   const obj = input as Record<string, unknown>;
 

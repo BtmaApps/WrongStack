@@ -1,3 +1,4 @@
+import { toolDisplayName } from '@wrongstack/tools/tool-summary';
 import type React from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, Text } from '../ink.js';
@@ -242,7 +243,7 @@ export function ToolsPicker({
                 >
                   {focused ? '› ' : '  '}
                   {statusBadge(item.exposure)}{' '}
-                  <Text bold>{fitCell(item.name, columnWidths.name)}</Text>{' '}
+                  <Text bold>{fitCell(toolDisplayName(item.name), columnWidths.name)}</Text>{' '}
                   <Text dimColor>
                     {fitCell(displayCategory(item.category), columnWidths.category)}{' '}
                     {fitCell(`[${item.owner}]`, columnWidths.owner)} {rwBadge(item.mutating)}{' '}

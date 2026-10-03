@@ -3,7 +3,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinTools } from '../packages/tools/dist/builtin.js';
 import { BUILTIN_TIER_COUNTS } from '../packages/tools/dist/tool-tier.js';
-import { TOOL_TIER_COUNTS, toolCatalog } from '../website/src/data/runtime-catalog.ts';
+import {
+  TOOL_TIER_COUNTS,
+  type ToolCategory,
+  toolCatalog,
+} from '../website/src/data/runtime-catalog.ts';
 import type { ToolDetail, ToolParamDetail } from '../website/src/data/tool-detail-types.ts';
 import { toolDetails } from '../website/src/data/tool-details.ts';
 
@@ -58,8 +62,15 @@ function selectionList(value: string | string[] | undefined): string[] | undefin
 const runtimeByName = new Map(builtinTools.map((tool) => [tool.name, tool]));
 const websiteNames = new Set(toolCatalog.map((tool) => tool.name));
 const runtimeNames = new Set(builtinTools.map((tool) => tool.name));
+/** Explicit categories for newly registered tools; generated output stays writer-owned. */
+const newToolCategories: Readonly<Record<string, ToolCategory>> = {
+  present_artifact: 'Work & state',
+};
+const newEntries = builtinTools
+  .filter((tool) => !websiteNames.has(tool.name) && Object.hasOwn(newToolCategories, tool.name))
+  .map((tool) => ({ name: tool.name, category: newToolCategories[tool.name]! }));
 const missingCategories = builtinTools
-  .filter((tool) => !websiteNames.has(tool.name))
+  .filter((tool) => !websiteNames.has(tool.name) && !Object.hasOwn(newToolCategories, tool.name))
   .map((tool) => tool.name);
 const removedRuntimeTools = toolCatalog
   .filter((tool) => !runtimeNames.has(tool.name))
@@ -80,7 +91,7 @@ if (missingCategories.length || removedRuntimeTools.length) {
   );
   process.exitCode = 1;
 } else {
-  const expectedCatalog = toolCatalog.map((entry) => {
+  const expectedCatalog = [...toolCatalog, ...newEntries].map((entry) => {
     const runtime = runtimeByName.get(entry.name);
     if (!runtime) throw new Error(`Missing runtime tool ${entry.name}`);
     return {

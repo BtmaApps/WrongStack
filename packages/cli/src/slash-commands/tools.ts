@@ -1,5 +1,6 @@
 import type { SlashCommand } from '@wrongstack/core/types';
 import { color, getToolDescriptionMode } from '@wrongstack/core/utils';
+import { toolDisplayName } from '@wrongstack/tools/tool-summary';
 import type { SlashCommandContext } from './command-context.js';
 
 function fit(text: string, width: number): string {
@@ -48,7 +49,9 @@ export function buildToolsCommand(opts: SlashCommandContext): SlashCommand {
       const all = filter
         ? allTools.filter(
             ({ tool, owner }) =>
-              tool.name.toLowerCase().includes(filter) || owner.toLowerCase().includes(filter),
+              tool.name.toLowerCase().includes(filter) ||
+              toolDisplayName(tool.name).toLowerCase().includes(filter) ||
+              owner.toLowerCase().includes(filter),
           )
         : allTools;
       const disabled = reg.listDisabled();
@@ -78,7 +81,7 @@ export function buildToolsCommand(opts: SlashCommandContext): SlashCommand {
         const rw = tool.mutating ? color.yellow(fit('mut', 4)) : color.cyan(fit('ro', 4));
         const status = toolStatus(reg, tool.name);
         return (
-          `  ${fit(tool.name, 28)} ` +
+          `  ${fit(tool.name === 'tool_script' ? 'tool_script / ToolFlow' : tool.name, 28)} ` +
           `${color.dim(fit(`[${owner}]`, 28))} ` +
           `${rw} ` +
           `${color.dim(fit(tool.permission, 8))} ` +

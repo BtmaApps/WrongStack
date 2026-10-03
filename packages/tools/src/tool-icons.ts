@@ -139,6 +139,7 @@ export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
   mode: 'meta',
   tool_search: 'meta',
   tool_use: 'meta',
+  tool_script: 'meta',
   batch_tool_use: 'meta',
   tool_help: 'meta',
   // ── memory ──

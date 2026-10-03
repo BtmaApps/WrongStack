@@ -239,4 +239,46 @@ describe('toolSearchTool', () => {
     const result = await executeToolSearch({ query: 'use the tool with a bar' }, ctx);
     expect(result.tools).toEqual([]);
   });
+
+  // The tags filter matches bidirectionally (`candidate.includes(tag) ||
+  // tag.includes(candidate)`). `tag.includes('')` is always true, so an empty
+  // candidate defeated the filter entirely. Two sources produced one: the
+  // optional `category` via `?? ''`, and names that split into empty segments
+  // — every MCP tool is named `mcp__<server>__<tool>` (core/utils/tool-name.ts).
+  it('excludes a category-less tool that matches none of the requested tags', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'mcp__github__create_issue',
+        description: 'Create an issue on a GitHub repository.',
+        permission: 'confirm',
+        mutating: true,
+      },
+    ]);
+    // Not filesystem, no capabilities, and the name has nothing to do with
+    // either tag — the filter must exclude it.
+    const result = await executeToolSearch({ tags: ['database', 'sql'] }, ctx);
+    expect(result.tools).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  it('excludes a category-less tool with a simple name from a non-matching tag', async () => {
+    const ctx = makeCtx([
+      { name: 'thing', description: 'Does a thing.', permission: 'auto', mutating: false },
+    ]);
+    const result = await executeToolSearch({ tags: ['filesystem'] }, ctx);
+    expect(result.tools).toEqual([]);
+  });
+
+  it('still returns a category-less tool when a tag matches its name segment', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'mcp__github__create_issue',
+        description: 'Create an issue on a GitHub repository.',
+        permission: 'confirm',
+        mutating: true,
+      },
+    ]);
+    const result = await executeToolSearch({ tags: ['github'] }, ctx);
+    expect(result.tools.map((t) => t.name)).toEqual(['mcp__github__create_issue']);
+  });
 });

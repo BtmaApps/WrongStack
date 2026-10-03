@@ -2,6 +2,7 @@ import { Bot, Clock, Layers, TriangleAlert, Wrench, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { getToolVisual } from '@/lib/tool-icon';
+import { toolDisplayName as canonicalToolDisplayName } from '@/lib/tool-summary';
 import { cn } from '@/lib/utils';
 import {
   LEADER_AGENT_KEY,
@@ -64,6 +65,7 @@ function toolDisplayName(name: string): string {
     web_search: 'Web search',
     write: 'Write file',
   };
+  if (name === 'tool_script') return canonicalToolDisplayName(name);
   const normalized = name.toLowerCase();
   const known = knownNames[normalized];
   if (known) return known;
