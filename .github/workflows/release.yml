@@ -289,7 +289,8 @@ jobs:
           cd desktop-assets
           cat DESKTOP-SHA256SUMS-* | sort -k2,2 > DESKTOP-SHA256SUMS
           sha256sum --check DESKTOP-SHA256SUMS
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .id)"
+          # The REST tag lookup omits drafts; gh release view resolves both states.
+          release_id="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json apiUrl --jq '.apiUrl | split("/") | last')"
           gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
             --jq '.[] | [.name, .digest] | @tsv' > "$RUNNER_TEMP/release-asset-digests"
           complete=true
@@ -454,7 +455,8 @@ jobs:
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
           fi
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .id)"
+          # The REST tag lookup omits drafts; gh release view resolves both states.
+          release_id="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json apiUrl --jq '.apiUrl | split("/") | last')"
           gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
             --jq '.[] | [.name, .digest] | @tsv' > "$RUNNER_TEMP/release-asset-digests"
           complete=true

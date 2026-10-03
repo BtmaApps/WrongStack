@@ -70,7 +70,7 @@ required reviewer must approve it before the OIDC credential is minted.
 
 - [ ] The tag points at the exact reviewed release commit
 - [ ] `verify`, `binaries`, `binaries-smoke`, and `github-release` succeeded
-- [ ] The GitHub Release contains all seven `wstack-*` targets, `SHA256SUMS`,
+- [ ] The GitHub Release contains all eight `wstack-*` targets, `SHA256SUMS`,
       `install.sh`, and `install.ps1`
 - [ ] `SHA256SUMS` verifies every uploaded standalone binary
 - [ ] The four Desktop matrix jobs passed package smoke; Desktop assets and

@@ -105,6 +105,12 @@ binary still has to pass the cross-platform smoke.
 | `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
 | `publish-desktop` | merges and verifies package-owned checksum manifests, then attaches Desktop assets to the GitHub Release |
 
+Asset upload jobs resolve the release ID through `gh release view`, which
+supports both drafts and published releases. A pre-existing draft stays a
+draft while verified assets are attached; publish it after reviewing the
+completed uploads. Reruns compare asset names and SHA-256 digests and skip
+uploads that already match.
+
 Targets: `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`,
 `linux-x64-musl`, `linux-arm64-musl`, `darwin-x64`, `darwin-arm64`.
 

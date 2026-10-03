@@ -200,11 +200,18 @@ describe('release workflow (WS-040)', () => {
     expect(callSite).toContain('attestations: write');
   });
 
+  it('resolves draft and published releases before uploading standalone and Desktop assets', () => {
+    const text = withoutComments(release());
+    expect(text).not.toContain('/releases/tags/$RELEASE_TAG');
+    const lookup = `--json apiUrl --jq '.apiUrl | split("/") | last'`;
+    expect(text.split(lookup)).toHaveLength(3);
+  });
+
   it('keeps the operator runbook on the tag-first automated release path', () => {
     const runbook = readFileSync(join(repoRoot, 'docs', 'release.md'), 'utf8');
 
     expect(runbook).toContain('git push origin v0.5.0');
-    expect(runbook).toContain('all seven `wstack-*` targets');
+    expect(runbook).toContain('all eight `wstack-*` targets');
     expect(runbook).toContain('`DESKTOP-SHA256SUMS`');
     expect(runbook).not.toContain('no checked-in release workflow currently does this');
     expect(runbook).not.toContain('Test install: `npm install -g wrongstack');
