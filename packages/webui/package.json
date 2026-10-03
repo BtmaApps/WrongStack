@@ -51,7 +51,10 @@
     "test": "vitest run",
     "test:at-mention-browser": "node tests/at-mention-browser-smoke.mjs",
     "test:user-input-browser": "node tests/user-input-browser-smoke.mjs",
+    "test:mailbox-compose-browser": "node tests/mailbox-compose-browser-smoke.mjs",
     "test:page-scroll-browser": "node tests/page-scroll-browser-smoke.mjs",
+    "test:story-theme-browser": "node tests/story-theme-browser-smoke.mjs",
+    "test:kanban-startup": "node tests/kanban-start-webui-smoke.mjs",
     "test:watch": "vitest",
     "test:coverage": "node ../../scripts/coverage-lock.mjs node ../../scripts/run-vitest-coverage.mjs run --coverage"
   },

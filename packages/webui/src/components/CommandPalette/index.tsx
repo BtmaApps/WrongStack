@@ -10,6 +10,7 @@ import {
   Hash,
   History as HistoryIcon,
   type LucideIcon,
+  Mail,
   Maximize2,
   Monitor,
   Moon,
@@ -139,6 +140,19 @@ export function CommandPalette() {
         icon: Brain,
         keywords: ['memory', 'remember', 'notes', 'Sage'],
         run: () => openMainView('memory'),
+      },
+      {
+        id: 'mailbox-compose',
+        category: 'Command',
+        label: t('commandPalette:cmd.mailboxCompose'),
+        icon: Mail,
+        keywords: ['mailbox', 'compose', 'message', 'mail', 'send', 'agent'],
+        run: () => {
+          // Compose from anywhere: mount the mailbox panel (it owns the
+          // dialog) and post a fresh (empty = no prefill) compose request.
+          showPanel('mailbox');
+          useUIStore.getState().setMailboxComposeRequest({});
+        },
       },
       {
         id: 'context',

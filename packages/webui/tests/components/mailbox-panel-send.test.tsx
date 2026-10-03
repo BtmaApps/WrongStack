@@ -83,4 +83,88 @@ describe('MailboxPanel composer', () => {
 
     expect(screen.getByText(/sent · message-/i)).toBeTruthy();
   });
+
+  it('targets an agent picked from the compose roster', () => {
+    useMailboxStore.setState({
+      agents: [
+        {
+          agentId: 'worker-a1b2c3d4',
+          name: 'Parser Worker',
+          role: 'executor',
+          sessionId: 'sess-1',
+          status: 'running',
+          currentTool: 'bash',
+          lastSeenAt: new Date().toISOString(),
+          online: true,
+        },
+      ],
+    });
+    render(<MailboxPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /compose message/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /worker-a1b2c3d4/i }));
+    expect(screen.getByDisplayValue('worker-a1b2c3d4')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('Message body'), {
+      target: { value: 'Run the parser tests' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    const sent = sends.find((message) => message.type === 'mailbox.send');
+    expect(sent?.payload).toMatchObject({
+      to: 'worker-a1b2c3d4',
+      type: 'note',
+      body: 'Run the parser tests',
+    });
+  });
+
+  it('replies to a message, threading replyTo and the sender', () => {
+    useMailboxStore.setState({
+      messages: [
+        {
+          id: 'mail-0001',
+          from: 'worker-a1b2c3d4',
+          to: 'leader',
+          type: 'result',
+          subject: 'Parser report',
+          body: 'All green.',
+          priority: 'normal',
+          readBy: {},
+          readByCount: 1,
+          completed: false,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+    render(<MailboxPanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
+
+    expect(screen.getByDisplayValue('worker-a1b2c3d4')).toBeTruthy();
+    expect(screen.getByDisplayValue('Re: Parser report')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('Message body'), {
+      target: { value: 'Acknowledged' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    const sent = sends.find((message) => message.type === 'mailbox.send');
+    expect(sent?.payload).toMatchObject({
+      to: 'worker-a1b2c3d4',
+      type: 'note',
+      subject: 'Re: Parser report',
+      body: 'Acknowledged',
+      replyTo: 'mail-0001',
+    });
+  });
+
+  it('sends from the compose dialog with Ctrl+Enter', () => {
+    render(<MailboxPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /compose message/i }));
+    fireEvent.change(screen.getByPlaceholderText('Message body'), {
+      target: { value: 'Keyboard send' },
+    });
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter', ctrlKey: true });
+
+    expect(sends.some((message) => message.type === 'mailbox.send')).toBe(true);
+  });
 });

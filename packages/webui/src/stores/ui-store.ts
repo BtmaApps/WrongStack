@@ -16,6 +16,7 @@ export type {
   DockSection,
   InspectorTab,
   InspectorTarget,
+  MailboxComposeRequest,
   SessionChromeState,
   UIState,
   View,
@@ -117,6 +118,7 @@ export const useUIStore = create<UIState>()(
       chatToolStatsOpen: false,
       chatInputCollapsed: false,
       selectedMailMessage: null,
+      mailboxComposeRequest: null,
       skillsState: defaultSkillsState(),
 
       selectActivity: (activity) =>
@@ -590,6 +592,7 @@ export const useUIStore = create<UIState>()(
           selectedMailMessage,
           ...parkChrome(state, { selectedMailMessage }),
         })),
+      setMailboxComposeRequest: (mailboxComposeRequest) => set({ mailboxComposeRequest }),
     }),
     uiPersistOptions as never,
   ),

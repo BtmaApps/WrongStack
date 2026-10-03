@@ -114,6 +114,7 @@ export function MailboxDetailView({ className }: { className?: string }) {
   const { t } = useAppTranslation();
   const msg = useUIStore((s) => s.selectedMailMessage);
   const setSelectedMailMessage = useUIStore((s) => s.setSelectedMailMessage);
+  const setMailboxComposeRequest = useUIStore((s) => s.setMailboxComposeRequest);
 
   // Clear selectedMailMessage whenever the detail view unmounts (user navigates
   // away via panel switch, keyboard shortcut, command palette, etc.).
@@ -151,6 +152,21 @@ export function MailboxDetailView({ className }: { className?: string }) {
       : recipient.scope === 'project'
         ? t('activity:mailbox.projectScope')
         : t('activity:mailbox.directScope');
+
+  const replyPrefix = t('activity:mailbox.replyPrefix');
+
+  /** Reuse MailboxPanel's prefill contract: post a transient compose request,
+   *  then make sure the panel (which owns the dialog) is mounted — the user
+   *  may have collapsed the sidebar while this detail view stayed open. */
+  function handleReplyCompose() {
+    if (!msg) return;
+    setMailboxComposeRequest({
+      to: msg.from,
+      subject: msg.subject.startsWith(replyPrefix) ? msg.subject : `${replyPrefix}${msg.subject}`,
+      replyTo: msg.id,
+    });
+    showPanel('mailbox');
+  }
 
   return (
     <div
@@ -234,6 +250,15 @@ export function MailboxDetailView({ className }: { className?: string }) {
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={handleReplyCompose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t('activity:mailbox.replyAction')}
+            aria-label={t('activity:mailbox.replyAction')}
+          >
+            <Reply className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={handleClose}
