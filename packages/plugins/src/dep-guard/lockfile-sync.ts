@@ -135,12 +135,44 @@ function npmDeps(text: string): Map<string, string> | null {
 const CARGO_DEP_HEADER =
   /^\[(?:target\.[^\]]+\.)?(?:workspace\.)?(?:dev-|build-)?dependencies(?:\.[^\]]+)?\]$|^\[patch\.[^\]]+\]$|^\[replace\]$/;
 
+/**
+ * Strip a trailing `#` comment from a Cargo TOML line, respecting string
+ * literals. The previous spelling applied a blind `\s+#.*$` regex that also
+ * matched `#` inside a quoted string (e.g. `name = "feature #123"` became
+ * `name = "feature`), collapsing two distinct dep values to identical map
+ * keys and masking drift in `dependencyChange`. The string-aware scan
+ * below only treats `#` as a comment when it sits at the start of the line
+ * or after whitespace AND outside a `"…"` or `'…'` literal.
+ */
+function stripCargoComment(line: string): string {
+  let inString = false;
+  let stringChar = '';
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inString) {
+      // A quote preceded by `\` is escaped per the TOML spec — stay in the
+      // string. Otherwise the quote closes the literal.
+      if (ch === stringChar && line[i - 1] !== '\\') inString = false;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inString = true;
+      stringChar = ch;
+      continue;
+    }
+    if (ch === '#' && (i === 0 || /\s/.test(line[i - 1] ?? ''))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
 /** Every line inside a dependency-bearing TOML table, keyed by its table. */
 function cargoDeps(text: string): Map<string, string> {
   const out = new Map<string, string>();
   let table: string | null = null;
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/\s+#.*$/, '').trim();
+    const line = stripCargoComment(raw).trim();
     if (!line || line.startsWith('#')) continue;
     if (line.startsWith('[')) {
       table = CARGO_DEP_HEADER.test(line) ? line : null;

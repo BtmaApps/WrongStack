@@ -54,6 +54,23 @@ describe('dependencyChange', () => {
     );
   });
 
+  it('detects Cargo drift when a dep value contains # inside a quoted string', () => {
+    // The previous blind `\s+#.*$` strip in cargoDeps collapsed two
+    // distinct dep values (one carrying an inline `#` inside its string,
+    // one carrying a different `#`) to identical map keys and reported
+    // null drift. The string-aware comment stripper preserves `#` inside
+    // `"…"` literals so the diff surfaces.
+    const before = '[dependencies]\nmylib = "abc # first note"\n';
+    const after = '[dependencies]\nmylib = "abc # second note"\n';
+    expect(dependencyChange('cargo', before, after)).not.toBe(null);
+  });
+
+  it('detects Cargo drift when a dep value gains a # tag inside a quoted string', () => {
+    const before = '[dependencies]\nmylib = "abc"\n';
+    const after = '[dependencies]\nmylib = "abc # useful tag"\n';
+    expect(dependencyChange('cargo', before, after)).not.toBe(null);
+  });
+
   it('reads go.mod require blocks and single lines', () => {
     const base = 'module x\n\ngo 1.22\n\nrequire (\n\ta v1.0.0\n)\n';
     expect(dependencyChange('go', base, base.replace('go 1.22', 'go 1.23'))).toBe(null);
