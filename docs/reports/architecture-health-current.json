@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T20:06:25.213Z",
+  "generatedAt": "2026-10-03T20:16:13.207Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,21 +12,19 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4456,
+    "sourceFiles": 4457,
     "testFiles": 4023,
-    "sourceLines": 1050944,
+    "sourceLines": 1050947,
     "workspaceEdges": 133,
-    "moduleEdges": 14516,
+    "moduleEdges": 14518,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 6,
+    "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 977
   },
-  "errors": [
-    "1 unexcepted module cycle(s)"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -507,7 +505,7 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 119,
+      "sourceFiles": 120,
       "testFiles": 106,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -1078,20 +1076,6 @@
           "packages/core/src/types/token-counter.ts",
           "packages/core/src/types/tool.ts"
         ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/providers/src/auto-discover.ts",
-          "packages/providers/src/github-copilot-models.ts",
-          "packages/providers/src/github-copilot.ts",
-          "packages/providers/src/index.ts",
-          "packages/providers/src/oauth/chatgpt-direct.ts",
-          "packages/providers/src/oauth/device-code.ts",
-          "packages/providers/src/oauth/subscription-flows.ts",
-          "packages/providers/src/oauth/subscription-models.ts",
-          "packages/providers/src/subscription-oauth.ts"
-        ]
       }
     ],
     "matchedExceptions": [
@@ -1101,22 +1085,7 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/providers/src/auto-discover.ts",
-          "packages/providers/src/github-copilot-models.ts",
-          "packages/providers/src/github-copilot.ts",
-          "packages/providers/src/index.ts",
-          "packages/providers/src/oauth/chatgpt-direct.ts",
-          "packages/providers/src/oauth/device-code.ts",
-          "packages/providers/src/oauth/subscription-flows.ts",
-          "packages/providers/src/oauth/subscription-models.ts",
-          "packages/providers/src/subscription-oauth.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -25711,8 +25680,8 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 1000,
-      "relativeImports": 75
+      "lines": 981,
+      "relativeImports": 77
     },
     {
       "file": "packages/providers/src/openai-codex.ts",
@@ -25962,11 +25931,6 @@
   ],
   "hotspots": [
     {
-      "file": "packages/providers/src/index.ts",
-      "lines": 1000,
-      "relativeImports": 75
-    },
-    {
       "file": "packages/webui/src/types/client-message.ts",
       "lines": 999,
       "relativeImports": 9
@@ -25990,6 +25954,11 @@
       "file": "packages/mcp/src/registry.ts",
       "lines": 982,
       "relativeImports": 21
+    },
+    {
+      "file": "packages/providers/src/index.ts",
+      "lines": 981,
+      "relativeImports": 77
     },
     {
       "file": "packages/sage/src/project-server.ts",

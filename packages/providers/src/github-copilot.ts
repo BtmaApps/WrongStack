@@ -26,11 +26,11 @@ import {
   copilotBaseUrlFromToken,
   refreshCopilotToken,
 } from './github-copilot-token.js';
-import type { ProviderLiveModel } from './index.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import type { OpenAIStreamState } from './presets/openai.js';
 import { openaiWireFormat } from './presets/openai.js';
+import type { ProviderLiveModel } from './provider-account-types.js';
 import type { WireAdapterStreamOptions } from './wire-adapter.js';
 import { WireFormatProvider } from './wire-format.js';
 

@@ -1,4 +1,4 @@
-import type { ProviderLiveModel } from '../index.js';
+import type { ProviderLiveModel } from '../provider-account-types.js';
 import { oauthRequest, oauthSignal } from './http.js';
 
 /** Account-scoped catalogs, including the public ChatGPT plan catalog's slug/visibility shape. */

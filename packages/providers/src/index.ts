@@ -33,6 +33,7 @@ import { OpenCodeZenProvider } from './opencode.js';
 import { OpenCodeGoProvider } from './opencode-go.js';
 import { lmstudioWireFormat, ollamaWireFormat, vllmWireFormat } from './presets/local-llm.js';
 import { mistralWireFormat } from './presets/mistral.js';
+import type { OAuthRefreshedTokens, ProviderLiveModel } from './provider-account-types.js';
 import {
   projectCompatibleProviderPresets,
   resolveProviderDefinition,
@@ -317,19 +318,7 @@ export interface BuildFactoriesOptions {
   log?: Logger | undefined;
 }
 
-/** Rotated-token payload handed to the OAuth persister after a refresh. */
-export interface OAuthRefreshedTokens {
-  accessToken: string;
-  /** Refresh token — not present for all OAuth families (e.g. GitHub Copilot). Callers who need it already hold it. */
-  refreshToken?: string | undefined;
-  expiresAt: number;
-  /** ChatGPT account id (codex only); undefined for other OAuth families. */
-  accountId?: string | undefined;
-  scope?: string | undefined;
-  idToken?: string | undefined;
-  oauthClientId?: string | undefined;
-  oauthSubject?: string | undefined;
-}
+export type { OAuthRefreshedTokens, ProviderLiveModel } from './provider-account-types.js';
 
 /**
  * Module-level hook so refreshed OAuth tokens (openai-codex, anthropic-oauth, …)
@@ -369,14 +358,6 @@ export function setOAuthTokenPersister(
 let _modelsPersist:
   | ((providerId: string, models: ProviderLiveModel[], source?: ProviderCredentialSource) => void)
   | undefined;
-
-/** One picker-visible model as a provider's live catalog describes it. */
-export interface ProviderLiveModel {
-  id: string;
-  name: string;
-  description?: string | undefined;
-  maxContext?: number | undefined;
-}
 
 export function setProviderModelPersister(
   fn:

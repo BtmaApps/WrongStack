@@ -11,12 +11,12 @@ import { getProxyConfig, rewriteBaseUrl } from '@wrongstack/core/wiring/proxy-re
 import { aggregateStream } from './aggregate.js';
 import { AnthropicProvider } from './anthropic.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
-import type { OAuthRefreshedTokens, ProviderLiveModel } from './index.js';
 import { refreshChatGPTDirect } from './oauth/chatgpt-direct.js';
 import { refreshDeviceSubscription } from './oauth/subscription-flows.js';
 import { fetchSubscriptionModels } from './oauth/subscription-models.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { OpenAIResponsesProvider } from './openai-responses.js';
+import type { OAuthRefreshedTokens, ProviderLiveModel } from './provider-account-types.js';
 import {
   hasSubscriptionRefreshTransaction,
   renewSubscriptionCredential,

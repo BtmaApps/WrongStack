@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { SessionRegistryEntry } from '../../src/session-catalog/session-registry-types.js';
 import { SessionCatalogStore } from '../../src/session-catalog/store.js';
+import { matchesSessionFilter } from '../../src/storage/session-summary.js';
 
 const roots: string[] = [];
 
@@ -410,18 +411,14 @@ describe('SessionCatalogStore', () => {
   // Regression: `titleContains` answered differently depending on which backend
   // served it. This RPC filtered with `json_extract(summary_json,'$.title') LIKE ?`
   // and left the title's case to SQLite, whose LIKE/LOWER fold ASCII ONLY — so a
-  // title holding U+0130 ('İ') could never match a needle folding to ASCII 'i'
-  // ('İstanbul' LIKE '%istanbul%' is false). The in-process filters
-  // (storage/session-summary.ts, storage/session-reader.ts) lowercase the title in
-  // JS and matched. Both sides now go through the `ws_fold` SQL function, which
-  // runs the same toLocaleLowerCase() the JS side uses.
+  // title holding non-ASCII uppercase letters could miss a lowercase needle.
+  // The catalog must agree with the JS filter in every host locale, including
+  // locales where U+0130 folds to two code points rather than plain ASCII 'i'.
   it('titleContains matches a non-ASCII title the way the in-process filters do', async () => {
     const { store } = await fixture();
     store.upsertSummary({
       id: '2026-08-08/sess_dotted_i',
-      // Capital I WITH DOT ABOVE (U+0130), the one code point in the BMP where
-      // toLowerCase() and toLocaleLowerCase() disagree.
-      title: 'İstanbul deploy notes',
+      title: 'İstanbul ÉCOLE deploy notes',
       model: 'm',
       provider: 'p',
       tokenTotal: 0,
@@ -432,10 +429,14 @@ describe('SessionCatalogStore', () => {
     // The control: ASCII titles keep matching on both casings.
     expect(store.listCatalog({ titleContains: 'deploy' })).toHaveLength(1);
 
-    // The contract: the İ-bearing title is found exactly as the JS filters find it.
-    expect(store.listCatalog({ titleContains: 'İstanbul' })).toHaveLength(1);
-    expect(store.listCatalog({ titleContains: 'istanbul' })).toHaveLength(1);
-    expect(store.listCatalog({ titleContains: 'STANBUL' })).toHaveLength(1);
+    // É exercises Unicode folding in both English and Turkish host locales.
+    expect(store.listCatalog({ titleContains: 'école' })).toHaveLength(1);
+    const summary = store.listCatalog({})[0]!;
+    for (const titleContains of ['İstanbul', 'istanbul', 'STANBUL']) {
+      expect(store.listCatalog({ titleContains })).toHaveLength(
+        matchesSessionFilter(summary, { titleContains }) ? 1 : 0,
+      );
+    }
 
     // Still a real substring filter, not a match-everything fallback.
     expect(store.listCatalog({ titleContains: 'zzzz-absent' })).toHaveLength(0);

@@ -1,5 +1,5 @@
 import { COPILOT_HEADERS, copilotBaseUrlFromToken } from './github-copilot-token.js';
-import type { ProviderLiveModel } from './index.js';
+import type { ProviderLiveModel } from './provider-account-types.js';
 
 export interface CopilotModelEntry {
   id?: unknown;

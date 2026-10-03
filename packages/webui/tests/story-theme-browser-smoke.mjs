@@ -317,7 +317,14 @@ try {
     }, theme);
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__story_smoke`);
     await page.waitForSelector('svg', { timeout: 15000 });
-    await page.waitForTimeout(400);
+    // Screenshot pixels and the subsequently measured glyph boxes must use
+    // identical geometry. Finish entry animations and freeze looping motion.
+    await page.evaluate(() => {
+      for (const animation of document.getAnimations()) {
+        if (animation.effect?.getComputedTiming().iterations === Infinity) animation.pause();
+        else animation.finish();
+      }
+    });
     await page.screenshot({ path: path.join(out, `session-story-${theme}.png`), fullPage: true });
 
     results[theme] = await page.evaluate((pairs) => {
