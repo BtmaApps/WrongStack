@@ -9,6 +9,10 @@ import { createGoogleVertexAnthropic } from '@ai-sdk/google-vertex/anthropic';
 import { createGoogleVertexMaas } from '@ai-sdk/google-vertex/maas';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import {
+  type NativeCloudSettings,
+  resolveNativeCloudSettings,
+} from '@wrongstack/core/cloud-provider';
 import type { Capabilities, ModelsDevModel, Provider } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
 import type { LanguageModel } from 'ai';
@@ -45,22 +49,42 @@ export interface NativeCatalogProviderOptions {
   apiKey?: string | undefined;
   baseUrl?: string | undefined;
   headers?: Record<string, string> | undefined;
+  cloud?: NativeCloudSettings | undefined;
   fetchImpl?: typeof fetch | undefined;
 }
 
 /** Bridge native AI SDK providers into WrongStack's canonical Provider stream. */
 export function createNativeCatalogProvider(opts: NativeCatalogProviderOptions): Provider {
+  const cloud = resolveNativeCloudSettings(opts.cloud, process.env, opts.catalogId ?? opts.id);
+  const resolvedOpts = { ...opts, cloud };
+  const endpointEnv = {
+    ...process.env,
+    ...(cloud.region ? { AWS_REGION: cloud.region } : {}),
+    ...(cloud.project ? { GOOGLE_VERTEX_PROJECT: cloud.project } : {}),
+    ...(cloud.location ? { GOOGLE_VERTEX_LOCATION: cloud.location } : {}),
+    ...(cloud.resourceName
+      ? {
+          AZURE_RESOURCE_NAME: cloud.resourceName,
+          AZURE_COGNITIVE_SERVICES_RESOURCE_NAME: cloud.resourceName,
+        }
+      : {}),
+  };
   const models = new Map(opts.models.map((model) => [model.id, model]));
   const sdkCache = new Map<string, (modelId: string) => LanguageModel>();
 
   const resolveModel = (modelId: string): LanguageModel => {
     const model = models.get(modelId);
     const npm = model?.provider?.npm?.toLowerCase() ?? opts.npm;
-    const baseUrl = expandOptionalEndpoint(opts.baseUrl ?? model?.provider?.api, opts.id, modelId);
+    const baseUrl = expandOptionalEndpoint(
+      opts.baseUrl ?? model?.provider?.api,
+      opts.id,
+      modelId,
+      endpointEnv,
+    );
     const cacheKey = `${npm}\u0000${baseUrl ?? ''}`;
     let resolver = sdkCache.get(cacheKey);
     if (!resolver) {
-      resolver = createResolver(npm, baseUrl, opts);
+      resolver = createResolver(npm, baseUrl, resolvedOpts);
       sdkCache.set(cacheKey, resolver);
     }
     return resolver(modelId);
@@ -100,8 +124,8 @@ function createResolver(
         const sdk = createGoogleVertexMaas({
           ...(baseUrl ? { baseURL: baseUrl } : {}),
           ...(opts.headers ? { headers: opts.headers } : {}),
-          ...envSetting('project', 'GOOGLE_VERTEX_PROJECT'),
-          ...envSetting('location', 'GOOGLE_VERTEX_LOCATION'),
+          ...(opts.cloud?.project ? { project: opts.cloud.project } : {}),
+          ...(opts.cloud?.location ? { location: opts.cloud.location } : {}),
         });
         return (modelId) => sdk(modelId);
       }
@@ -120,8 +144,8 @@ function createResolver(
         const sdk = createGoogleVertexAnthropic({
           ...(baseUrl ? { baseURL: baseUrl } : {}),
           ...(opts.headers ? { headers: opts.headers } : {}),
-          ...envSetting('project', 'GOOGLE_VERTEX_PROJECT'),
-          ...envSetting('location', 'GOOGLE_VERTEX_LOCATION'),
+          ...(opts.cloud?.project ? { project: opts.cloud.project } : {}),
+          ...(opts.cloud?.location ? { location: opts.cloud.location } : {}),
         });
         return (modelId) => sdk(modelId);
       }
@@ -137,10 +161,7 @@ function createResolver(
       return (modelId) => sdk(modelId);
     }
     case '@ai-sdk/azure': {
-      const resourceName =
-        (opts.catalogId ?? opts.id) === 'azure-cognitive-services'
-          ? process.env['AZURE_COGNITIVE_SERVICES_RESOURCE_NAME']
-          : process.env['AZURE_RESOURCE_NAME'];
+      const resourceName = opts.cloud?.resourceName;
       const sdk = createAzure({
         ...common,
         ...(resourceName && !baseUrl ? { resourceName } : {}),
@@ -150,7 +171,7 @@ function createResolver(
     case '@ai-sdk/amazon-bedrock': {
       const sdk = createAmazonBedrock({
         ...common,
-        ...envSetting('region', 'AWS_REGION'),
+        ...(opts.cloud?.region ? { region: opts.cloud.region } : {}),
         ...envSetting('accessKeyId', 'AWS_ACCESS_KEY_ID'),
         ...envSetting('secretAccessKey', 'AWS_SECRET_ACCESS_KEY'),
         ...envSetting('sessionToken', 'AWS_SESSION_TOKEN'),
@@ -160,7 +181,7 @@ function createResolver(
     case '@ai-sdk/amazon-bedrock/mantle': {
       const sdk = createBedrockMantle({
         ...common,
-        ...envSetting('region', 'AWS_REGION'),
+        ...(opts.cloud?.region ? { region: opts.cloud.region } : {}),
         ...envSetting('accessKeyId', 'AWS_ACCESS_KEY_ID'),
         ...envSetting('secretAccessKey', 'AWS_SECRET_ACCESS_KEY'),
         ...envSetting('sessionToken', 'AWS_SESSION_TOKEN'),
@@ -170,8 +191,8 @@ function createResolver(
     case '@ai-sdk/google-vertex': {
       const sdk = createGoogleVertex({
         ...common,
-        ...envSetting('project', 'GOOGLE_VERTEX_PROJECT'),
-        ...envSetting('location', 'GOOGLE_VERTEX_LOCATION'),
+        ...(opts.cloud?.project ? { project: opts.cloud.project } : {}),
+        ...(opts.cloud?.location ? { location: opts.cloud.location } : {}),
       });
       return (modelId) => sdk(modelId);
     }
@@ -179,8 +200,8 @@ function createResolver(
       const sdk = createGoogleVertexAnthropic({
         ...(baseUrl ? { baseURL: baseUrl } : {}),
         ...(opts.headers ? { headers: opts.headers } : {}),
-        ...envSetting('project', 'GOOGLE_VERTEX_PROJECT'),
-        ...envSetting('location', 'GOOGLE_VERTEX_LOCATION'),
+        ...(opts.cloud?.project ? { project: opts.cloud.project } : {}),
+        ...(opts.cloud?.location ? { location: opts.cloud.location } : {}),
       });
       return (modelId) => sdk(modelId);
     }
@@ -284,11 +305,12 @@ function expandOptionalEndpoint(
   raw: string | undefined,
   providerId: string,
   modelId: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
 ): string | undefined {
   if (!raw) return undefined;
   const missing = new Set<string>();
   const expanded = raw.replace(/\$\{([^}]+)\}/g, (token, name: string) => {
-    const value = process.env[name];
+    const value = env[name];
     if (!value) {
       missing.add(name);
       return token;

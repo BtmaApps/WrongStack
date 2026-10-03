@@ -1,3 +1,4 @@
+import { cloudFieldsForProvider, parseNativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import { validateProviderBaseUrl } from '@wrongstack/core/tools';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
@@ -179,6 +180,7 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
     ws: WebSocket,
     payload: {
       id: string;
+      cloud?: ProviderConfig['cloud'] | undefined;
       family?: string | undefined;
       baseUrl?: string | undefined;
       envVars?: string[] | undefined;
@@ -210,6 +212,16 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
       if (payload.envVars !== undefined) cfg.envVars = payload.envVars;
       if (payload.models !== undefined) cfg.models = payload.models;
       if (payload.customModels !== undefined) cfg.customModels = payload.customModels;
+      if (payload.cloud !== undefined) {
+        const cloud = parseNativeCloudSettings(payload.cloud);
+        const fields = cloudFieldsForProvider(cfg.type || payload.id);
+        if (
+          !fields.length ||
+          Object.keys(cloud).some((field) => !fields.includes(field as (typeof fields)[number]))
+        )
+          throw new Error('Cloud setting does not apply to this provider');
+        cfg.cloud = cloud;
+      }
       await ctx.saveConfigProviders(providers);
       ctx.sendOperationResult(ws, true, `Updated ${payload.id}`);
       ctx.broadcastSaved(providers);

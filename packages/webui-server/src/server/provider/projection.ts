@@ -1,3 +1,4 @@
+import { parseNativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import { probeLocalLlm } from '@wrongstack/runtime/probe';
@@ -14,6 +15,7 @@ export interface SavedProviderView {
   type?: string | undefined;
   family?: string | undefined;
   baseUrl?: string | undefined;
+  cloud?: ProviderConfig['cloud'] | undefined;
   /** Saved model allowlist, verbatim (undefined / [] both possible). */
   models?: string[] | undefined;
   /** Per-model metadata (display name, output limits, capability overrides). */
@@ -48,6 +50,7 @@ export function projectSavedProviders(
       type: cfg.type,
       family: cfg.family ?? id,
       baseUrl: cfg.baseUrl,
+      ...(cfg.cloud ? { cloud: parseNativeCloudSettings(cfg.cloud) } : {}),
       models,
       customModels: cfg.customModels,
       apiKeys: keys.map((k) => ({

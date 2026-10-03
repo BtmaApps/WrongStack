@@ -965,3 +965,4 @@ export {
   removeProviderFallbackReferences,
   validateProviderConfigShape,
 } from './provider-config-state.js';
+export { inspectProviderPreflight, type ProviderPreflight, type ProviderPreflightCheck } from './preflight.js';

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { parseNativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import { modelsDevModelSchema } from '@wrongstack/core/models';
 import { getAllProviderQuota, withQuotaPace } from '@wrongstack/core/quota';
@@ -46,6 +47,7 @@ export interface ProviderMutationHandlers {
     ws: WebSocket,
     payload: {
       id: string;
+      cloud?: ProviderConfig['cloud'] | undefined;
       family?: string | undefined;
       baseUrl?: string | undefined;
       envVars?: string[] | undefined;
@@ -471,8 +473,15 @@ async function dispatchProviderRoute(
         if (payload[key] !== undefined && typeof payload[key] !== 'string')
           return invalidPayload(ws, msg.type);
       }
+      let cloud: ProviderConfig['cloud'];
+      try {
+        if (payload['cloud'] !== undefined) cloud = parseNativeCloudSettings(payload['cloud']);
+      } catch {
+        return invalidPayload(ws, msg.type);
+      }
       await routes.providerHandlers.handleProviderUpdate(ws, {
         id,
+        cloud,
         family: payload['family'] as string | undefined,
         baseUrl: payload['baseUrl'] as string | undefined,
         envVars,

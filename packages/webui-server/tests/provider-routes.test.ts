@@ -39,6 +39,35 @@ it('echoes the request identity on provider mutation and validation results', as
     payload: { success: false, requestId: 'auth-request' },
   });
 });
+it('validates non-secret cloud settings before forwarding a provider mutation', async () => {
+  const ws = mockWs();
+  const handlers = routes();
+  const update = vi.fn();
+  handlers.providerHandlers.handleProviderUpdate = update;
+  await handleProviderRoute(
+    ws,
+    { type: 'provider.update', payload: { id: 'work', cloud: { region: 'eu-west-1' } } } as never,
+    handlers,
+  );
+  expect(update).toHaveBeenCalledWith(
+    ws,
+    expect.objectContaining({ id: 'work', cloud: { region: 'eu-west-1' } }),
+  );
+  update.mockClear();
+  await handleProviderRoute(
+    ws,
+    {
+      type: 'provider.update',
+      payload: { id: 'work', cloud: { apiKey: 'secret' }, requestId: 'invalid-cloud' },
+    } as never,
+    handlers,
+  );
+  expect(update).not.toHaveBeenCalled();
+  expect(sentMessages(ws).at(-1)).toMatchObject({
+    type: 'key.operation_result',
+    payload: { success: false, requestId: 'invalid-cloud' },
+  });
+});
 
 function mockWs() {
   return {

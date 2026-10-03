@@ -17,6 +17,7 @@ export interface SavedProvider {
   type?: string | undefined;
   family?: string | undefined;
   baseUrl?: string | undefined;
+  cloud?: import('@wrongstack/core/cloud-provider').NativeCloudSettings | undefined;
   /** Saved model allowlist, in the order the user pinned them. */
   models?: string[] | undefined;
   /** Per-model metadata (display name, output limits, capability overrides). */

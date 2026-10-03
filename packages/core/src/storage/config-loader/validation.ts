@@ -7,10 +7,14 @@ import {
 import { ConfigError, ERROR_CODES } from '../../types/errors.js';
 import { HOOK_EVENTS, isHookEvent } from '../../types/hooks.js';
 import type { PartialConfig } from './env-overrides.js';
+import { parseNativeCloudSettings } from '../../cloud-provider.js';
 
 type LogWarn = (msg: string, ctx?: Record<string, unknown>) => void;
 
 export function validateConfigBehavior(cfg: PartialConfig, logWarn: LogWarn): void {
+  for (const provider of Object.values(cfg.providers ?? {})) {
+    if (provider.cloud !== undefined) provider.cloud = parseNativeCloudSettings(provider.cloud);
+  }
   /* v8 ignore start -- defensive: config defaults always seed version:1 before validation */
   if (cfg.version === undefined)
     throw new ConfigError({

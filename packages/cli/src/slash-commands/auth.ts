@@ -1,6 +1,8 @@
+import { CLOUD_FIELDS, type NativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import type { ProviderConfig, SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
 import { activeProfileConfigPath } from '../profile-config-path.js';
+import { providerCloudConfig } from '../provider-cloud-config.js';
 import { activeLabel, loadConfigProviders, normalizeKeys } from '../provider-config-utils.js';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -64,6 +66,7 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
     '  /auth                      Open the interactive key manager (TUI) or show key status',
     '  /auth login                Sign in with a registered provider OAuth strategy',
     '  /auth status <provider>    Show detail for one provider',
+    '  /auth cloud <alias> [region|project|location|resourceName <value>|clear]',
     '  /auth open                 Open the interactive key manager',
     '',
     'In the plain REPL, run `wstack auth` for the full interactive key manager.',
@@ -84,6 +87,41 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
 
       if (!opts.paths?.globalConfig) {
         return { message: `${color.red('Error')} auth not available — config path missing.` };
+      }
+      if (sub === 'cloud') {
+        if (!opts.vault || !parts[1])
+          return {
+            message:
+              'Usage: /auth cloud <saved-provider> [region|project|location|resourceName <value>|clear]',
+          };
+        try {
+          const field = parts[2];
+          if (
+            field &&
+            field !== 'clear' &&
+            (!CLOUD_FIELDS.includes(field as (typeof CLOUD_FIELDS)[number]) ||
+              !parts[3] ||
+              parts.length !== 4)
+          )
+            throw new Error('Choose region, project, location, resourceName or clear');
+          const updates =
+            field === 'clear'
+              ? null
+              : field
+                ? ({ [field]: parts[3] } as NativeCloudSettings)
+                : undefined;
+          const cloud = await providerCloudConfig(
+            parts[1],
+            updates,
+            activeProfileConfigPath(opts.paths, opts.configStore.get()),
+            opts.vault,
+          );
+          return {
+            message: `${parts[1]} cloud settings: ${JSON.stringify(cloud)}${field ? '\nSaved. Re-select the provider or restart to use the new settings.' : ''}`,
+          };
+        } catch (error) {
+          return { message: error instanceof Error ? error.message : 'Cloud configuration failed' };
+        }
       }
 
       // Bare /auth (or /auth open) → open the interactive TUI panel when the

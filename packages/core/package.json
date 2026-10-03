@@ -44,6 +44,10 @@
       "types": "./dist/types/config/limits.d.ts",
       "import": "./dist/types/config/limits.js"
     },
+    "./cloud-provider": {
+      "types": "./dist/cloud-provider.d.ts",
+      "import": "./dist/cloud-provider.js"
+    },
     "./types/session-markers": {
       "types": "./dist/types/session-markers.d.ts",
       "import": "./dist/types/session-markers.js"

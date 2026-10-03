@@ -80,6 +80,45 @@ describe('normalizeOpenAIChatUsage', () => {
       cacheRead: 900,
     });
   });
+
+  // A provider may report usage on more than one chunk. When a later chunk
+  // repeats `prompt_tokens` but omits the cache detail, `cacheRead` is still
+  // retained from the earlier chunk — so `input` has to stay the fresh
+  // remainder. Deducting only the current chunk's cache (zero) re-counted the
+  // whole cached prefix as fresh, full-rate input and broke the disjointness
+  // invariant this module exists to enforce.
+  it('does not re-count the cached prefix as fresh input when a later chunk repeats prompt_tokens without the cache detail', () => {
+    const first = normalizeOpenAIChatUsage(
+      { prompt_tokens: 1000, completion_tokens: 1, cached_tokens: 900 },
+      START,
+    );
+    expect(first).toMatchObject({ input: 100, output: 1, cacheRead: 900 });
+
+    const u = normalizeOpenAIChatUsage({ prompt_tokens: 1000, completion_tokens: 80 }, first);
+
+    expect(u.cacheRead).toBe(900);
+    expect(u.input).toBe(100);
+    expect(u.input + (u.cacheRead ?? 0) + (u.cacheWrite ?? 0)).toBe(1000);
+  });
+
+  it('does not re-count a retained cache write as fresh input either', () => {
+    const first = normalizeOpenAIChatUsage(
+      {
+        prompt_tokens: 2000,
+        completion_tokens: 1,
+        prompt_tokens_details: { cached_tokens: 500, cache_write_tokens: 300 },
+      },
+      START,
+    );
+    expect(first).toMatchObject({ input: 1200, cacheRead: 500, cacheWrite: 300 });
+
+    const u = normalizeOpenAIChatUsage({ prompt_tokens: 2000, completion_tokens: 60 }, first);
+
+    expect(u.cacheRead).toBe(500);
+    expect(u.cacheWrite).toBe(300);
+    expect(u.input).toBe(1200);
+    expect(u.input + (u.cacheRead ?? 0) + (u.cacheWrite ?? 0)).toBe(2000);
+  });
 });
 
 // ── Through a real adapter stream ───────────────────────────────────────────

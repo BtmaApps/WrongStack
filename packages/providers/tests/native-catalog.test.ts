@@ -22,6 +22,57 @@ const request: Request = {
 };
 
 describe('native catalog providers', () => {
+  it('runs two native Azure profiles with independent resources without global env changes', async () => {
+    const urls: string[] = [];
+    const previous = process.env['AZURE_RESOURCE_NAME'];
+    const create = (resourceName: string) =>
+      createNativeCatalogProvider({
+        id: resourceName,
+        catalogId: 'azure',
+        npm: '@ai-sdk/azure',
+        apiKey: 'fixture-key',
+        cloud: { resourceName },
+        capabilities,
+        models: [{ id: 'gpt-5.4', name: 'GPT' }],
+        fetchImpl: (async (input) => {
+          urls.push(String(input));
+          return new Response('{"message":"stop"}', {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          });
+        }) as typeof fetch,
+      });
+    const first = create('profile-one');
+    const second = create('profile-two');
+    await expect(drain(first, { ...request, model: 'gpt-5.4' })).rejects.toThrow();
+    await expect(drain(second, { ...request, model: 'gpt-5.4' })).rejects.toThrow();
+    expect(urls[0]).toContain('profile-one.openai.azure.com');
+    expect(urls[1]).toContain('profile-two.openai.azure.com');
+    expect(process.env['AZURE_RESOURCE_NAME']).toBe(previous);
+  });
+  it('expands catalog endpoints using the explicit profile region', async () => {
+    const urls: string[] = [];
+    const provider = createNativeCatalogProvider({
+      id: 'bedrock-work',
+      catalogId: 'amazon-bedrock',
+      npm: '@ai-sdk/amazon-bedrock',
+      apiKey: 'fixture-key',
+      cloud: { region: 'eu-west-1' },
+      capabilities,
+      models: [
+        { id: 'model', name: 'Model', provider: { api: 'https://bedrock.${AWS_REGION}.example' } },
+      ],
+      fetchImpl: (async (input) => {
+        urls.push(String(input));
+        return new Response('{"message":"stop"}', {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    await expect(drain(provider, { ...request, model: 'model' })).rejects.toThrow();
+    expect(urls[0]).toContain('bedrock.eu-west-1.example');
+  });
   it.each(['@ai-sdk/cohere', '@ai-sdk/azure', '@ai-sdk/amazon-bedrock', '@ai-sdk/google-vertex'])(
     'recognizes %s as a native catalog SDK',
     (npm) => {

@@ -67,6 +67,27 @@ function createMockContext(initialProviders: Record<string, ProviderConfig> = {}
 
   return { ctx, providers, sentMessages, operationResults, broadcastCount };
 }
+it('persists cloud metadata separately from credentials and exposes only routing fields', async () => {
+  const fixture = createMockContext({
+    cloud: { type: 'azure', apiKey: 'private-key' },
+    plain: { type: 'openai' },
+  });
+  const handlers = createProviderCrudHandlers(fixture.ctx);
+  const ws = {} as WebSocket;
+  await handlers.handleProviderUpdate(ws, {
+    id: 'cloud',
+    cloud: { resourceName: 'work-resource' },
+  });
+  expect(fixture.providers.cloud?.cloud).toEqual({ resourceName: 'work-resource' });
+  const projected = projectSavedProviders(fixture.providers);
+  expect(projected.find((provider) => provider.id === 'cloud')?.cloud).toEqual({
+    resourceName: 'work-resource',
+  });
+  expect(JSON.stringify(projected)).not.toContain('private-key');
+  vi.mocked(fixture.ctx.saveConfigProviders).mockClear();
+  await handlers.handleProviderUpdate(ws, { id: 'plain', cloud: { region: 'eu-west-1' } });
+  expect(fixture.ctx.saveConfigProviders).not.toHaveBeenCalled();
+});
 
 describe('Provider Key Handlers', () => {
   const mockWs = {} as WebSocket;

@@ -1,3 +1,4 @@
+import type { NativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import { color } from '@wrongstack/core/utils';
 import { authProfileAliasError } from '@wrongstack/providers';
 import { parseAuthFlags } from '../../arg-parser.js';
@@ -12,6 +13,7 @@ import {
   runOAuthLoginKind,
 } from '../../auth-menu/index.js';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
+import { providerCloudConfig } from '../../provider-cloud-config.js';
 import {
   loadConfigProviders,
   maskedKey,
@@ -63,6 +65,7 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
         '  wstack auth login <strategy> --alias <account>  Sign in to an auth profile',
         '  wstack auth <saved-alias> --label <key-label>  Add a key inside an existing profile',
         '  wstack auth list | status <alias> | remove <alias>',
+        '  wstack auth cloud <alias> [--region|--project|--location|--resource-name <value>] [clear]',
         '',
         'Fallback targets are <auth-profile-alias>/<model-id>; provider type chooses the transport.',
         'Direct flags: --alias, --label, --family, --base-url, --env',
@@ -85,6 +88,40 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
   }
 
   const first = flags.positional[0]!;
+  if (first === 'cloud') {
+    try {
+      const id = flags.positional[1];
+      if (!id)
+        throw new Error(
+          'Usage: wstack auth cloud <saved-provider> [--region value|--project value|--location value|--resource-name value] [clear]',
+        );
+      const updates: NativeCloudSettings = {};
+      for (const [flag, field] of [
+        ['region', 'region'],
+        ['project', 'project'],
+        ['location', 'location'],
+        ['resource-name', 'resourceName'],
+      ] as const) {
+        const value = deps.flags?.[flag];
+        if (value !== undefined && typeof value !== 'string')
+          throw new Error(`--${flag} requires a value`);
+        if (typeof value === 'string') updates[field] = value;
+      }
+      const cloud = await providerCloudConfig(
+        id,
+        flags.positional[2] === 'clear' ? null : Object.keys(updates).length ? updates : undefined,
+        profileConfigPath,
+        deps.vault,
+      );
+      deps.renderer.write(`${JSON.stringify({ provider: id, cloud }, null, 2)}\n`);
+      return 0;
+    } catch (error) {
+      deps.renderer.writeError(
+        error instanceof Error ? error.message : 'Cloud configuration failed',
+      );
+      return 1;
+    }
+  }
 
   // `wstack auth list` / `wstack auth ls` — quick listing
   if (first === 'list' || first === 'ls') {

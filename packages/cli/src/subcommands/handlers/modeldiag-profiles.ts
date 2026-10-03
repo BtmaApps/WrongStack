@@ -103,7 +103,11 @@ export const MODEL_PROFILES: ModelProfile[] = [
 
 export function fmtTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  if (n >= 1000) {
+    const k = (n / 1000).toFixed(1);
+    // 999_950 rounds to "1000.0k" — that is the next unit.
+    return Number(k) < 1000 ? `${k}k` : `${(n / 1_000_000).toFixed(1)}M`;
+  }
   return String(n);
 }
 

@@ -190,9 +190,16 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
     if (u) {
       // Disjoint semantics — see google.ts for rationale.
       const cached = nonNegative(u.cachedContentTokenCount);
-      const promptTotal = nonNegative(u.promptTokenCount, state.usage.input + cached);
+      // The cache read that will actually be REPORTED below. A chunk may
+      // carry `promptTokenCount` without `cachedContentTokenCount`, and the
+      // earlier chunk's cache read is retained on `cacheRead` — so `input`
+      // must deduct the retained value, not this chunk's zero. Deducting the
+      // chunk-local value re-counted the whole cached prefix as fresh input
+      // and broke the disjointness the comment above promises.
+      const retainedCacheRead = cached || state.usage.cacheRead || 0;
+      const promptTotal = nonNegative(u.promptTokenCount, state.usage.input + retainedCacheRead);
       state.usage = {
-        input: Math.max(0, promptTotal - cached),
+        input: Math.max(0, promptTotal - retainedCacheRead),
         output: nonNegative(u.candidatesTokenCount, state.usage.output),
         cacheRead: cached || state.usage.cacheRead,
       };

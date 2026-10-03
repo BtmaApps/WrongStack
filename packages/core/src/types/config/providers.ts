@@ -1,6 +1,7 @@
 import type { ModelsDevModel, WireFamily } from '../models-registry.js';
 import type { Capabilities } from '../provider.js';
 import type { ModelRuntimeConfig } from './runtime.js';
+import type { NativeCloudSettings } from '../../cloud-provider.js';
 
 export interface ProviderApiKey {
   /** Short human-readable label (e.g. "personal", "work", "rate-limit-backup"). */
@@ -53,6 +54,8 @@ export interface ProviderApiKey {
 
 export interface ProviderConfig {
   type: string;
+  /** Explicit per-profile native routing settings take precedence over environment fallbacks. */
+  cloud?: NativeCloudSettings | undefined;
   /**
    * Legacy single-key field. Still honored as a read fallback when `apiKeys`
    * is empty (for configs not yet migrated to multi-key format). After key

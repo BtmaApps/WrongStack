@@ -82,6 +82,23 @@ function checkHasKey(pid: string, config: ModelDiagConfig): boolean {
 export const modeldiagCmd: SubcommandHandler = async (args, deps) => {
   const sub = args[0]?.toLowerCase() || 'full';
 
+  if (sub === 'preflight') {
+    const { inspectProviderPreflight } = await import('@wrongstack/providers');
+    const requested = args[1];
+    const entries = Object.entries(deps.config.providers ?? {}).filter(
+      ([id]) => !requested || id === requested,
+    );
+    const results = entries.map(([id, config]) => inspectProviderPreflight(id, config));
+    deps.renderer.write(
+      `${JSON.stringify({ checks: results, scope: 'configuration presence only; no authenticated model calls' }, null, 2)}\n`,
+    );
+    if (requested && entries.length === 0) {
+      deps.renderer.write(`Provider profile not configured: ${requested}\n`);
+      return 1;
+    }
+    return results.some((result) => result.requiresConfiguration) ? 1 : 0;
+  }
+
   const cacheResult = await readProviders(deps.paths.modelsCache);
   if (!cacheResult.ok) {
     deps.renderer.write(`${cacheResult.message}\n`);

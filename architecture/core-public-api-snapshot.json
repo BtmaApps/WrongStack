@@ -328,6 +328,21 @@
       ]
     },
     {
+      "subpath": "./cloud-provider",
+      "target": {
+        "types": "./dist/cloud-provider.d.ts",
+        "import": "./dist/cloud-provider.js"
+      },
+      "source": "packages/core/src/cloud-provider.ts",
+      "declarations": [
+        "export const CLOUD_FIELDS",
+        "export function cloudFieldsForProvider",
+        "export function parseNativeCloudSettings",
+        "export function resolveNativeCloudSettings",
+        "export interface NativeCloudSettings"
+      ]
+    },
+    {
       "subpath": "./types/session-markers",
       "target": {
         "types": "./dist/types/session-markers.d.ts",
@@ -1681,7 +1696,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 25029
+      "sourceLines": 25033
     },
     {
       "directory": "tasking",
@@ -1702,7 +1717,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15746
+      "sourceLines": 15749
     },
     {
       "directory": "typesafe",

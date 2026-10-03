@@ -4,10 +4,12 @@ import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
+import { ProviderCloudSettings } from './provider-cloud-settings.js';
 
 interface SavedProvider {
   id: string;
   type?: string;
+  cloud?: import('@wrongstack/core/cloud-provider').NativeCloudSettings | undefined;
   apiKeys: { label: string; maskedKey: string; isActive: boolean }[];
 }
 interface Strategy {
@@ -488,6 +490,7 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
             {providers.map((provider) => (
               <article key={provider.id}>
                 <h4>{provider.id}</h4>
+                <ProviderCloudSettings type={provider.type ?? provider.id} cloud={provider.cloud} busy={busy} onSave={cloud => mutate('provider.update', { id: provider.id, cloud })} />
                 <button type="button" onClick={() => setAlias(provider.id)}>
                   Use this alias for sign-in
                 </button>

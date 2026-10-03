@@ -18,6 +18,11 @@
       "typeOnly": 3,
       "runtimeOrMixed": 12
     },
+    "@wrongstack/core/cloud-provider": {
+      "files": 12,
+      "typeOnly": 1,
+      "runtimeOrMixed": 11
+    },
     "@wrongstack/core/coordination": {
       "files": 246,
       "typeOnly": 92,
@@ -179,8 +184,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1267,
-      "typeOnly": 1120,
+      "files": 1270,
+      "typeOnly": 1123,
       "runtimeOrMixed": 370
     },
     "@wrongstack/core/types/limits": {
@@ -2619,6 +2624,78 @@
     {
       "specifier": "@wrongstack/core/chronicle",
       "file": "packages/webui-server/tests/service-actions.gaps.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/cli/src/provider-cloud-config.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/cli/src/slash-commands/auth.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/cli/src/subcommands/handlers/auth.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/providers/src/native-catalog.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/providers/src/preflight.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/simpleui/src/auth-panel.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/simpleui/src/provider-cloud-settings.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui-server/src/server/provider-routes.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui-server/src/server/provider/keys.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui-server/src/server/provider/projection.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui/src/components/SettingsPanel/provider-section-types.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui/src/components/SettingsPanel/ProviderCloudSettings.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13178,6 +13255,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/provider-cloud-config.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/provider-config-utils.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -14732,6 +14815,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/provider-cloud-config.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/provider-config-utils.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16269,6 +16358,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/opencode.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/preflight.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

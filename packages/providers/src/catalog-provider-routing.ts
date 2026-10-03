@@ -60,6 +60,7 @@ export function createCatalogAwareProvider(
       apiKey,
       baseUrl: config.baseUrl,
       headers: config.headers,
+      cloud: config.cloud,
     });
   }
 

@@ -1507,6 +1507,42 @@ describe('Google preset - parseStreamEvent edge cases', () => {
     });
   });
 
+  // Gemini streams `usageMetadata` on more than one chunk, and a later chunk
+  // may repeat `promptTokenCount` while omitting `cachedContentTokenCount`.
+  // `cacheRead` is retained from the earlier chunk, so `input` has to stay the
+  // fresh remainder — deducting the chunk-local (zero) cache count re-counted
+  // the whole cached prefix as fresh, full-rate input.
+  it('keeps usage disjoint when a later chunk repeats promptTokenCount without the cache count', async () => {
+    const events = await collectFromPreset(
+      googleWireFormat,
+      sseBody([
+        JSON.stringify({
+          modelVersion: 'gemini',
+          candidates: [{ content: { role: 'model', parts: [{ text: 'a' }] } }],
+          usageMetadata: {
+            promptTokenCount: 100,
+            candidatesTokenCount: 5,
+            cachedContentTokenCount: 40,
+          },
+        }),
+        JSON.stringify({
+          modelVersion: 'gemini',
+          candidates: [
+            { content: { role: 'model', parts: [{ text: 'b' }] }, finishReason: 'STOP' },
+          ],
+          usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20 },
+        }),
+      ]),
+      'gemini',
+    );
+    const stop = events.find((e) => e.type === 'message_stop');
+    const usage = (stop as { usage: { input: number; output: number; cacheRead: number } }).usage;
+    expect(usage.cacheRead).toBe(40);
+    expect(usage.input).toBe(60);
+    expect(usage.output).toBe(20);
+    expect(usage.input + usage.cacheRead).toBe(100);
+  });
+
   it('handles usageMetadata with only cachedContentTokenCount (no promptTokenCount)', async () => {
     // When promptTokenCount is absent, usage.input should retain prior value or 0
     const events = await collectFromPreset(

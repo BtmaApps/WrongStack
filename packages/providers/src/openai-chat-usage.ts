@@ -65,6 +65,14 @@ export function normalizeOpenAIChatUsage(u: OpenAIChatUsageWire, previous: Usage
       details?.cache_creation_input_tokens ??
       u.cache_creation_input_tokens,
   );
+  // The cache counts that will actually be REPORTED at this stream position.
+  // `cacheRead`/`cacheWrite` retain the previous chunk's value when the
+  // current chunk omits them, so `input` must deduct the retained values too.
+  // Deducting only the current chunk's zeros made a chunk that repeats
+  // `prompt_tokens` without the cache detail re-count the whole cached prefix
+  // as fresh, full-rate input — the double count this module exists to prevent.
+  const retainedCacheRead = cached || previous.cacheRead || 0;
+  const retainedCacheWrite = cacheWrite || previous.cacheWrite || 0;
   const completion = nonNegative(u.completion_tokens, previous.output);
   // Lean endpoints may report only `total_tokens` + `completion_tokens`;
   // prompt = total − completion recovers the input count instead of leaving it
@@ -84,15 +92,15 @@ export function normalizeOpenAIChatUsage(u: OpenAIChatUsageWire, previous: Usage
   // `prompt_tokens`, when present, remains OpenAI's total. A broken gateway
   // reporting cached > total keeps both counters rather than a >100% ratio.
   const promptTotal =
-    hasPromptTotal && cached > reportedPromptTotal
-      ? reportedPromptTotal + cached
+    hasPromptTotal && retainedCacheRead > reportedPromptTotal
+      ? reportedPromptTotal + retainedCacheRead
       : reportedPromptTotal;
   const next: Usage = {
     input:
       cacheMiss ??
       (hasFreshInputDelta
         ? Math.max(0, u.input_tokens ?? 0)
-        : Math.max(0, promptTotal - cached - cacheWrite)),
+        : Math.max(0, promptTotal - retainedCacheRead - retainedCacheWrite)),
     output: completion,
     cacheRead: cached || previous.cacheRead,
   };

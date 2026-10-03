@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:54:05.232Z",
+  "generatedAt": "2026-10-03T11:55:08.723Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4332,
-    "testFiles": 3964,
-    "sourceLines": 1033407,
+    "sourceFiles": 4337,
+    "testFiles": 3969,
+    "sourceLines": 1033946,
     "workspaceEdges": 131,
-    "moduleEdges": 14151,
+    "moduleEdges": 14159,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -161,8 +161,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 553,
-      "testFiles": 572,
+      "sourceFiles": 554,
+      "testFiles": 574,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -202,7 +202,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 572
+          "testFiles": 574
         }
       ]
     },
@@ -253,8 +253,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 979,
-      "testFiles": 882,
+      "sourceFiles": 980,
+      "testFiles": 883,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -269,7 +269,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 882
+          "testFiles": 883
         }
       ]
     },
@@ -517,8 +517,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 108,
-      "testFiles": 100,
+      "sourceFiles": 109,
+      "testFiles": 101,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -531,7 +531,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 100
+          "testFiles": 101
         }
       ]
     },
@@ -699,7 +699,7 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 108,
+      "sourceFiles": 109,
       "testFiles": 87,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -851,8 +851,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 619,
-      "testFiles": 441,
+      "sourceFiles": 620,
+      "testFiles": 442,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -875,7 +875,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 441
+          "testFiles": 442
         }
       ]
     },
@@ -3758,6 +3758,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/provider-cloud-config.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/provider-config-utils.test.ts",
         "projects": [
           "root-node"
@@ -4821,6 +4827,12 @@
       },
       {
         "file": "packages/cli/tests/subcommands/projects.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/subcommands/provider-preflight.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5925,6 +5937,12 @@
       },
       {
         "file": "packages/core/tests/chronicle/tool-daily.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/cloud-provider.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13419,6 +13437,12 @@
       },
       {
         "file": "packages/providers/tests/overlay-invalidation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/preflight.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23030,6 +23054,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/provider-cloud-settings.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/provider-health-section.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -25331,8 +25361,8 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 968,
-      "relativeImports": 71
+      "lines": 969,
+      "relativeImports": 72
     },
     {
       "file": "packages/providers/src/openai-codex.ts",
@@ -25673,8 +25703,8 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 968,
-      "relativeImports": 71
+      "lines": 969,
+      "relativeImports": 72
     },
     {
       "file": "packages/core/src/storage/session-store.ts",
