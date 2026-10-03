@@ -1,19 +1,14 @@
 import type { Agent, Context } from '@wrongstack/core/agent';
-import { type AgentFactory, assignNickname } from '@wrongstack/core/coordination';
+import type { AgentFactory } from '@wrongstack/core/coordination';
 import {
-  GoalAssessor,
-  type GoalAssessResult,
   GoalRunLeaseBusyError,
   GoalRunPersistence,
-  type PhaseExecutionContext,
   type PhaseGraph,
-  PhaseGraphBuilder,
   type PhaseNode,
   PhaseOrchestrator,
   PhaseStore,
   type PhaseTemplate,
   prepareGoalGraphForResume,
-  verifyGoalProject,
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
@@ -26,25 +21,15 @@ import {
   runChimeraReview as delegateRunChimeraReview,
   type GoalPhasePlanningHost,
 } from './goal-phase-planning.js';
+import { type GoalRunHost, startGoalRun } from './goal-run.js';
 import { buildGoalState } from './goal-state.js';
+import {
+  assessGoal,
+  executeGoalTask,
+  type GoalWorkerHost,
+  repairGoalPhase,
+} from './goal-workers.js';
 import { errMessage, sendSerialized } from './ws-utils.js';
-
-/**
- * Derive a short, single-line heading from a (possibly multi-paragraph) goal
- * prompt. Takes the first non-empty line, trims to its first sentence, and caps
- * the length so Goal headers stay readable. The full prompt is preserved
- * separately as the graph description.
- */
-function deriveTitle(goal: string): string {
-  const firstLine = goal
-    .split('\n')
-    .map((l) => l.trim())
-    .find(Boolean);
-  if (!firstLine) return 'Goal';
-  const sentence = firstLine.split(/(?<=[.!?])\s/)[0] ?? firstLine;
-  const trimmed = sentence.length <= 64 ? sentence : `${sentence.slice(0, 63).trimEnd()}…`;
-  return trimmed || 'Goal';
-}
 
 /**
  * List the commits on `branch` since `baseSha` (oldest → newest, the order they
@@ -351,73 +336,7 @@ export class GoalWebSocketHandler {
    * client (unicast) and echoes the client's `seq` for response correlation.
    */
   private async handleAssess(ws: WebSocket, payload?: Record<string, unknown>): Promise<void> {
-    const goal = (payload?.goal as string) || '';
-    const seq = (payload?.seq as number) ?? 0;
-
-    // Abort any prior assessment so its LLM call stops and frees the Agent's
-    // single-flight guard (_runInProgress), allowing this new assessment to
-    // start without waiting. The stale-seq guard below still catches any
-    // race between abort and the new seq being set.
-    this.assessAbort?.abort();
-    this.assessAbort = new AbortController();
-    const signal = this.assessAbort.signal;
-
-    const mySeq = ++this.assessSeq;
-
-    const sendResult = (result: GoalAssessResult) => {
-      // Stale guard: if a newer assessment arrived while this one was running,
-      // discard the response. The client also has its own reqSeq guard.
-      if (mySeq !== this.assessSeq) return;
-      sendSerialized(
-        ws,
-        JSON.stringify({
-          type: 'goal.assess.result',
-          payload: { ...result, reqSeq: seq },
-        }),
-      );
-    };
-
-    if (!goal.trim()) {
-      sendResult({
-        realistic: true,
-        durationClaimed: null,
-        explanation: '',
-        recommendedDuration: null,
-        concerns: [],
-        raw: '',
-        parseFailed: false,
-      });
-      return;
-    }
-
-    try {
-      const assessor = new GoalAssessor({
-        goal,
-        runOnce: async (prompt: string) => {
-          const result = (await this.agent.run(prompt, { signal })) as {
-            status: string;
-            finalText?: string | undefined;
-          };
-          return result.status === 'done' ? (result.finalText ?? '') : '';
-        },
-      });
-      const result = await assessor.assess();
-      sendResult(result);
-    } catch (err: unknown) {
-      // Stale guard: skip logging+response if superseded.
-      if (mySeq !== this.assessSeq) return;
-      this.logger.error(`[Goal] Assessment failed: ${toErrorMessage(err)}`);
-      sendResult({
-        realistic: true,
-        durationClaimed: null,
-        explanation: '',
-        recommendedDuration: null,
-        concerns: [],
-        raw: '',
-        parseFailed: true,
-        parseError: `Assessment error: ${toErrorMessage(err)}`,
-      });
-    }
+    return assessGoal(this.goalWorkerHost(), ws, payload);
   }
 
   private async handleStart(payload?: Record<string, unknown>): Promise<void> {
@@ -523,253 +442,7 @@ export class GoalWebSocketHandler {
     payload?: Record<string, unknown>,
     resumeGraph?: PhaseGraph,
   ): Promise<void> {
-    // The caller sends the operator's full prompt as the goal. We keep it intact
-    // as the graph `description` and derive a short, human-readable `title` for
-    // headers / the board switcher — pasting the whole prompt as the title made
-    // the Goal header unreadable.
-    const goal =
-      resumeGraph?.description ||
-      resumeGraph?.title ||
-      (payload?.goal as string) ||
-      (payload?.title as string) ||
-      'Untitled Project';
-    const title = resumeGraph?.title ?? deriveTitle(goal);
-    const autonomous = resumeGraph?.autonomous ?? (payload?.autonomous as boolean) ?? true;
-    const multiBoard = resumeGraph?.multiBoard ?? (payload?.multiBoard as boolean) ?? false;
-    const verifyTasks =
-      resumeGraph?.verifyTasks ??
-      (payload?.verifyTasks as boolean | undefined) ??
-      process.env['WRONGSTACK_GOAL_VERIFY'] !== '0';
-    const chimeraReview =
-      resumeGraph?.chimeraReview ?? (payload?.chimeraReview as boolean) ?? false;
-
-    // Fresh abort for THIS run, created BEFORE planning so a stop pressed during
-    // the (long) planning turn actually cancels it. Previously the controller was
-    // created only after planning, so a stop while "starting" was a no-op and the
-    // run launched anyway.
-    const runAbort = new AbortController();
-    this.abort = runAbort;
-
-    // Phase plan resolution:
-    //   1. explicit phases in the payload win (caller override);
-    //   2. otherwise the LLM plans phases+todos for the goal;
-    //   3. an unusable plan is rejected before a graph is created.
-    const phases = resumeGraph
-      ? []
-      : Array.isArray(payload?.phases)
-        ? (payload.phases as PhaseTemplate[])
-        : await this.planPhases(goal, runAbort.signal);
-
-    // Stop requested during planning → never launch the orchestrator. The abort
-    // may not have interrupted the in-flight LLM call promptly, so the `stopping`
-    // flag is the authoritative guard for the resolve-after-stop window.
-    if (this.stopping || runAbort.signal.aborted) {
-      this.broadcast({ type: 'goal.stopped', payload: { title } });
-      return;
-    }
-
-    const taskCount = phases.reduce(
-      (count, phase) => count + (phase.taskTemplates?.length ?? 0),
-      0,
-    );
-    if (!resumeGraph && (phases.length === 0 || taskCount === 0)) {
-      this.abort = null;
-      this.runStatus = 'failed';
-      this.broadcast({
-        type: 'goal.error',
-        payload: {
-          message: 'The planner did not produce executable tasks. Refine the goal and try again.',
-        },
-      });
-      return;
-    }
-
-    this.logger.info(`[Goal] Starting: ${title}`);
-
-    // Build the graph up-front so we have a reference for live broadcasts and
-    // persistence *before* the (long-running) build begins.
-    const graph =
-      resumeGraph ??
-      (await new PhaseGraphBuilder({
-        title,
-        description: goal,
-        phases,
-        autonomous,
-        multiBoard,
-        verifyTasks,
-        chimeraReview,
-      }).build());
-    this.graph = graph;
-
-    // Per-phase git-worktree isolation, when enabled and inside a git repo.
-    // The shared agent/context means we can't run phases in parallel here
-    // (we swap a single context.cwd per task), so phases stay sequential —
-    // but each phase still commits + squash-merges back through its own
-    // worktree, and the lifecycle events drive the live swim-lane/DAG view.
-    // Per-run worktree-isolation override from the UI wins; omitted → env default
-    // (disable with WRONGSTACK_GOAL_WORKTREES=0). false → run on the current branch.
-    const useWorktrees = resumeGraph
-      ? resumeGraph.worktrees === true
-      : ((payload?.worktrees as boolean | undefined) ??
-        process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0');
-    this.worktrees = null;
-    this.runBase = null;
-    if (
-      this.events &&
-      this.projectRoot &&
-      useWorktrees &&
-      (await isGitWorkTree(this.projectRoot))
-    ) {
-      this.worktrees = new WorktreeManager({
-        projectRoot: this.projectRoot,
-        events: this.events,
-        sessionId: () => this.context.session?.id,
-      });
-    }
-    if (resumeGraph?.worktrees && !this.worktrees) {
-      throw new Error(
-        'Saved Goal requires its git worktrees, but this project is not a git checkout.',
-      );
-    }
-    if (!resumeGraph) graph.worktrees = Boolean(this.worktrees);
-    await this.persistence.save(graph);
-    // Capture the pre-run base tip so `goal.revert` can git-revert exactly
-    // the commits this run lands on the base branch.
-    if (this.worktrees) {
-      this.runBase = graph.runBase ?? (await this.worktrees.currentBase());
-      graph.runBase = this.runBase ?? undefined;
-      await this.persistence.save(graph);
-    }
-
-    // Last await before launch. A stop during the graph build, worktree setup
-    // or saves above has already released the run lease and told clients the
-    // run stopped; launching now would run it unleased.
-    if (this.stopping || runAbort.signal.aborted) {
-      // A resume sets 'running' after its own awaits, possibly after the stop.
-      this.runStatus = 'stopped';
-      this.broadcast({ type: 'goal.stopped', payload: { title } });
-      return;
-    }
-
-    // Verification hooks — conditionally wired when verifyTasks is enabled.
-    // When active, the orchestrator runs typecheck after each task and triggers
-    // a repair subagent on failure, closing the verify→repair→verify loop.
-    const maybeVerify: {
-      verifyPhase?: PhaseExecutionContext['verifyPhase'];
-      repairPhase?: PhaseExecutionContext['repairPhase'];
-    } = {};
-    if (verifyTasks && this.projectRoot) {
-      maybeVerify.verifyPhase = async (_phase, env) =>
-        verifyGoalProject({
-          cwd: env?.cwd ?? this.projectRoot!,
-          projectRoot: this.projectRoot,
-        });
-      maybeVerify.repairPhase = (phase, failure, attempt, env) =>
-        this.runRepairPhase(phase, failure, attempt, env);
-    }
-
-    const orchestrator = new PhaseOrchestrator({
-      graph,
-      ctx: {
-        executeTask: async (task, phaseId, env, signal) => {
-          this.logger.info(`[Goal] [${phaseId}] Executing: ${task.title}`);
-          const result = await this.executeTaskWithAgent(task, phaseId, env, signal);
-          this.logger.info(`[Goal] [${phaseId}] Completed: ${task.title}`);
-
-          // This host owns one Agent. Await the review before the next task so
-          // the Agent's single-flight guard cannot race a background review.
-          if (chimeraReview) {
-            await this.runChimeraReview(task, phaseId, result, env?.cwd);
-          }
-
-          return result;
-        },
-        ...maybeVerify,
-        verifyGoal:
-          maybeVerify.verifyPhase && this.projectRoot
-            ? async () => {
-                const phase = Array.from(graph.phases.values()).at(-1);
-                if (!phase) return { ok: false, output: 'Goal graph has no phase to verify.' };
-                return maybeVerify.verifyPhase!(phase, { cwd: this.projectRoot });
-              }
-            : undefined,
-        onTaskUpdate: () => {
-          this.persistDetached(graph);
-          this.broadcastState();
-        },
-        onPhaseComplete: (phase) => {
-          this.logger.info(`[Goal] Phase completed: ${phase.name}`);
-          this.persistDetached(graph);
-          this.broadcastState();
-        },
-        onPhaseFail: (phase, error) => {
-          this.logger.error(`[Goal] Phase failed: ${phase.name} — ${error.message}`);
-          this.persistDetached(graph);
-          this.broadcastState();
-        },
-      },
-      worktrees: this.worktrees ?? undefined,
-      autonomous,
-      // Must stay 1: phase tasks run on the single shared context whose cwd we
-      // swap per phase, so parallel phases would race on context.cwd.
-      maxConcurrentPhases: 1,
-      // Sequential within a phase: each todo is a full-tool agent editing the
-      // phase worktree, so running two at once risks concurrent writes.
-      maxConcurrentTasks: 1,
-    });
-    this.orchestrator = orchestrator;
-    this.runStatus = 'running';
-
-    // Start the live broadcast immediately, then run the orchestrator in the
-    // background. Awaiting start() would block until the *entire* build
-    // finishes — the periodic broadcast (below) reads the mutating graph, so
-    // clients see live progress while it runs.
-    this.startBroadcast();
-    this.broadcastState();
-
-    const runPromise = orchestrator.start();
-    this.runPromise = runPromise;
-    void runPromise
-      .then(async () => {
-        if (this.orchestrator !== orchestrator) return;
-        let saveError: string | undefined;
-        try {
-          await this.persistence.save(graph);
-        } catch (err) {
-          saveError = toErrorMessage(err);
-          this.logger.error(`[Goal] Final save failed: ${saveError}`);
-        }
-        if (this.orchestrator !== orchestrator) return;
-        this.stopBroadcast();
-        const failed =
-          graph.failedPhaseIds.length > 0 ||
-          graph.finalVerification?.status === 'failed' ||
-          saveError !== undefined;
-        this.runStatus = failed ? 'failed' : 'completed';
-        this.broadcast(
-          failed
-            ? { type: 'goal.failed', payload: { title, error: saveError } }
-            : { type: 'goal.completed', payload: { title } },
-        );
-        this.broadcastState();
-        this.abort = null;
-        await this.releaseActiveRunLease();
-        if (this.runPromise === runPromise) this.runPromise = null;
-      })
-      .catch(async (err: unknown) => {
-        if (this.orchestrator !== orchestrator) return;
-        this.logger.error(`[Goal] Aborted: ${toErrorMessage(err)}`);
-        await this.persistence.save(graph).catch((saveErr: unknown) => {
-          this.logger.warn(`[Goal] Failed to save aborted run: ${toErrorMessage(saveErr)}`);
-        });
-        if (this.orchestrator !== orchestrator) return;
-        this.runStatus = 'failed';
-        this.stopBroadcast();
-        this.broadcast({ type: 'goal.failed', payload: { title, error: String(err) } });
-        this.abort = null;
-        await this.releaseActiveRunLease();
-        if (this.runPromise === runPromise) this.runPromise = null;
-      });
+    return startGoalRun(this.goalRunHost(), payload, resumeGraph);
   }
 
   /**
@@ -858,75 +531,7 @@ export class GoalWebSocketHandler {
     env?: { cwd?: string | undefined; branch?: string | undefined },
     signal?: AbortSignal | undefined,
   ): Promise<unknown> {
-    // Give the task a human worker identity (reuse a manual assignment if one
-    // exists) so the board shows who is running it; reflect it on the node and
-    // push a live state update before the (long) run begins.
-    if (!task.assignee) {
-      const nick = assignNickname('executor', this.usedNicknames);
-      this.usedNicknames.add(nick.key);
-      task.assignee = nick.display.replace(/\s*\([^)]*\)\s*$/, '');
-      task.updatedAt = Date.now();
-      this.broadcastState();
-    }
-
-    const prompt = `Execute task: ${task.title}\n\nDescription: ${task.description}\nPhase: ${phaseId}\nPriority: ${task.priority}\nType: ${task.type}`;
-    // Combine the orchestrator's per-task signal (fired by stop() or the
-    // task timeout) with the run-wide abort so either cancels the agent run.
-    const runSignal =
-      signal && this.abort?.signal
-        ? AbortSignal.any([this.abort.signal, signal])
-        : (signal ?? this.abort?.signal ?? new AbortController().signal);
-    if (this.taskAgentFactory) {
-      const built = await this.taskAgentFactory({
-        name: `goal-${task.assignee ?? 'executor'}`.slice(0, 48),
-        role: 'executor',
-        cwd: env?.cwd,
-        allowedCapabilities: [
-          'fs.read',
-          'fs.write',
-          'shell.restricted',
-          'shell.exec',
-          'net.outbound',
-          'package.install',
-        ],
-      });
-      try {
-        const result = (await built.agent.run(prompt, { signal: runSignal })) as {
-          status?: string | undefined;
-          finalText?: string | undefined;
-          error?: { message?: string | undefined } | undefined;
-        };
-        if (result.status !== 'done') {
-          throw new Error(
-            result.error?.message ?? `Goal task ended with status "${result.status ?? 'unknown'}"`,
-          );
-        }
-        return result.finalText ?? '';
-      } finally {
-        await built.dispose?.();
-      }
-    }
-
-    // Backward-compatible fallback for embedders that have not supplied a
-    // factory. Sequential execution makes this cwd swap safe, but first-party
-    // CLI/standalone hosts always inject isolated workers.
-    const prevCwd = this.context.cwd;
-    if (env?.cwd) this.context.cwd = env.cwd;
-    try {
-      const result = (await this.agent.run(prompt, { signal: runSignal })) as {
-        status?: string | undefined;
-        finalText?: string | undefined;
-        error?: { message?: string | undefined } | undefined;
-      };
-      if (result.status !== 'done') {
-        throw new Error(
-          result.error?.message ?? `Goal task ended with status "${result.status ?? 'unknown'}"`,
-        );
-      }
-      return result.finalText ?? '';
-    } finally {
-      this.context.cwd = prevCwd;
-    }
+    return executeGoalTask(this.goalWorkerHost(), task, phaseId, env, signal);
   }
 
   private async runRepairPhase(
@@ -935,55 +540,7 @@ export class GoalWebSocketHandler {
     attempt: number,
     env?: { cwd?: string | undefined; branch?: string | undefined },
   ): Promise<void> {
-    const cwd = env?.cwd ?? this.projectRoot ?? this.context.cwd;
-    const prompt = `Fix the verification failures in the project at ${cwd}. Verifier output:\n\n${failure.slice(0, 4000)}\n\nRun the project's configured typecheck/lint scripts to verify the fix. Output the fixed file paths.`;
-    this.logger.info(`[Goal] Repair attempt ${attempt} for phase "${phase.name}" in ${cwd}`);
-    if (this.taskAgentFactory) {
-      const built = await this.taskAgentFactory({
-        name: `goal-repair-${phase.name}`.slice(0, 48),
-        role: 'executor',
-        cwd,
-        allowedCapabilities: [
-          'fs.read',
-          'fs.write',
-          'shell.restricted',
-          'shell.exec',
-          'net.outbound',
-          'package.install',
-        ],
-      });
-      try {
-        const result = (await built.agent.run(prompt, { signal: this.abort?.signal })) as {
-          status?: string | undefined;
-          error?: { message?: string | undefined } | undefined;
-        };
-        if (result.status !== 'done') {
-          throw new Error(
-            result.error?.message ?? `Goal repair ended with status "${result.status}"`,
-          );
-        }
-      } finally {
-        await built.dispose?.();
-      }
-      return;
-    }
-
-    // Compatibility path for embedders without a worker factory.
-    const previousCwd = this.context.cwd;
-    this.context.cwd = cwd;
-    try {
-      const result = (await this.agent.run(prompt, { signal: this.abort?.signal })) as {
-        status?: string | undefined;
-        error?: { message?: string | undefined } | undefined;
-      };
-      if (result.status !== 'done') {
-        throw new Error(
-          result.error?.message ?? `Goal repair ended with status "${result.status}"`,
-        );
-      }
-    } finally {
-      this.context.cwd = previousCwd;
-    }
+    return repairGoalPhase(this.goalWorkerHost(), phase, failure, attempt, env);
   }
 
   /** Run a lightweight chimera-style review before the task is settled. */
@@ -1169,6 +726,122 @@ export class GoalWebSocketHandler {
       },
       get logger() {
         return self.logger;
+      },
+    };
+  }
+
+  private goalRunHost(): GoalRunHost {
+    const self = this;
+    return {
+      get abort() {
+        return self.abort;
+      },
+      set abort(value) {
+        self.abort = value;
+      },
+      planPhases: (...args) => this.planPhases(...args),
+      get stopping() {
+        return self.stopping;
+      },
+      broadcast: (...args) => this.broadcast(...args),
+      get runStatus() {
+        return self.runStatus;
+      },
+      set runStatus(value) {
+        self.runStatus = value;
+      },
+      get logger() {
+        return self.logger;
+      },
+      get graph() {
+        return self.graph;
+      },
+      set graph(value) {
+        self.graph = value;
+      },
+      get worktrees() {
+        return self.worktrees;
+      },
+      set worktrees(value) {
+        self.worktrees = value;
+      },
+      get runBase() {
+        return self.runBase;
+      },
+      set runBase(value) {
+        self.runBase = value;
+      },
+      get events() {
+        return self.events;
+      },
+      get projectRoot() {
+        return self.projectRoot;
+      },
+      get context() {
+        return self.context;
+      },
+      get persistence() {
+        return self.persistence;
+      },
+      runRepairPhase: (...args) => this.runRepairPhase(...args),
+      executeTaskWithAgent: (...args) => this.executeTaskWithAgent(...args),
+      runChimeraReview: (...args) => this.runChimeraReview(...args),
+      persistDetached: (...args) => this.persistDetached(...args),
+      broadcastState: (...args) => this.broadcastState(...args),
+      get orchestrator() {
+        return self.orchestrator;
+      },
+      set orchestrator(value) {
+        self.orchestrator = value;
+      },
+      startBroadcast: (...args) => this.startBroadcast(...args),
+      get runPromise() {
+        return self.runPromise;
+      },
+      set runPromise(value) {
+        self.runPromise = value;
+      },
+      stopBroadcast: (...args) => this.stopBroadcast(...args),
+      releaseActiveRunLease: (...args) => this.releaseActiveRunLease(...args),
+    };
+  }
+
+  private goalWorkerHost(): GoalWorkerHost {
+    const self = this;
+    return {
+      get usedNicknames() {
+        return self.usedNicknames;
+      },
+      broadcastState: (...args) => this.broadcastState(...args),
+      get abort() {
+        return self.abort;
+      },
+      get taskAgentFactory() {
+        return self.taskAgentFactory;
+      },
+      get context() {
+        return self.context;
+      },
+      get agent() {
+        return self.agent;
+      },
+      get projectRoot() {
+        return self.projectRoot;
+      },
+      get logger() {
+        return self.logger;
+      },
+      get assessAbort() {
+        return self.assessAbort;
+      },
+      set assessAbort(value) {
+        self.assessAbort = value;
+      },
+      get assessSeq() {
+        return self.assessSeq;
+      },
+      set assessSeq(value) {
+        self.assessSeq = value;
       },
     };
   }

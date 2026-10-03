@@ -281,7 +281,7 @@ describe('security helpers are wired, not just present', () => {
     const PREEXISTING = new Set([
       'packages/webui-server/src/server/chimera-routes.ts',
       'packages/webui-server/src/server/chronicle-routes.ts', // clamps 4, passes 2 through
-      'packages/webui-server/src/server/embedded-message-router.ts',
+      'packages/webui-server/src/server/embedded-shell-git-routes.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
       'packages/webui-server/src/server/routes.ts',
@@ -318,7 +318,7 @@ describe('security helpers are wired, not just present', () => {
     const listed = [
       'packages/webui-server/src/server/chimera-routes.ts',
       'packages/webui-server/src/server/chronicle-routes.ts',
-      'packages/webui-server/src/server/embedded-message-router.ts',
+      'packages/webui-server/src/server/embedded-shell-git-routes.ts',
       'packages/webui-server/src/server/kanban-orchestration-routes.ts',
       'packages/webui-server/src/server/kanban-task-routes.ts',
       'packages/webui-server/src/server/routes.ts',

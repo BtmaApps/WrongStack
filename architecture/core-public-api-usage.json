@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 359,
-      "typeOnly": 283,
-      "runtimeOrMixed": 97
+      "files": 363,
+      "typeOnly": 286,
+      "runtimeOrMixed": 98
     },
     "@wrongstack/core/agent-catalog": {
       "files": 20,
@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 248,
-      "typeOnly": 95,
-      "runtimeOrMixed": 214
+      "files": 250,
+      "typeOnly": 96,
+      "runtimeOrMixed": 215
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -59,9 +59,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/goal": {
-      "files": 30,
+      "files": 32,
       "typeOnly": 13,
-      "runtimeOrMixed": 29
+      "runtimeOrMixed": 31
     },
     "@wrongstack/core/hooks": {
       "files": 13,
@@ -84,8 +84,8 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 322,
-      "typeOnly": 149,
+      "files": 323,
+      "typeOnly": 150,
       "runtimeOrMixed": 187
     },
     "@wrongstack/core/kernel/events.js": {
@@ -184,9 +184,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1276,
-      "typeOnly": 1128,
-      "runtimeOrMixed": 371
+      "files": 1280,
+      "typeOnly": 1132,
+      "runtimeOrMixed": 374
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -224,9 +224,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 703,
+      "files": 707,
       "typeOnly": 67,
-      "runtimeOrMixed": 668
+      "runtimeOrMixed": 672
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -269,9 +269,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/worktree": {
-      "files": 15,
+      "files": 16,
       "typeOnly": 6,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     }
   },
   "usages": [
@@ -388,6 +388,12 @@
       "file": "packages/cli/src/execute-deps.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/execution-chimera-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -2113,13 +2119,31 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "file": "packages/webui-server/src/server/embedded-message-router-types.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/embedded-provider-routes.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/goal-phase-planning.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/goal-workers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -2836,6 +2860,12 @@
       "file": "packages/cli/src/execution-specialist-trigger.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/execution-webui.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -4003,15 +4033,21 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "file": "packages/webui-server/src/server/embedded-message-router-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
+      "file": "packages/webui-server/src/server/goal-workers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -4927,9 +4963,21 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/webui-server/src/server/goal-state.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/src/server/goal-workers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/goal",
@@ -7969,6 +8017,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -8653,6 +8707,12 @@
     },
     {
       "specifier": "@wrongstack/core/plugin",
+      "file": "packages/cli/src/execution-chimera-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/plugin",
       "file": "packages/cli/src/execution-chimera-review.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8662,12 +8722,6 @@
       "file": "packages/cli/src/execution-specialist-trigger.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/execution.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/plugin",
@@ -10915,7 +10969,7 @@
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "file": "packages/webui-server/src/server/embedded-message-router-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -13016,6 +13070,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/execution-chimera-cascade.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/execution-session-callbacks.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -19369,9 +19429,15 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "file": "packages/webui-server/src/server/embedded-message-router-types.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/embedded-provider-routes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -19411,8 +19477,20 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/goal-state.ts",
       "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/goal-workers.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {
@@ -22801,7 +22879,7 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/mcp/src/client.ts",
+      "file": "packages/mcp/src/client-stdio.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -24265,6 +24343,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/vector-memory/src/store-maintenance.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/vector-memory/src/store-sage-sync.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/vector-memory/src/store.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -24470,6 +24560,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/goal-phase-planning.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/goal-workers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25231,7 +25333,7 @@
     },
     {
       "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/execution.ts",
+      "file": "packages/cli/src/execution-session-callbacks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25288,6 +25390,12 @@
       "file": "packages/sdd/tests/sdd-worktree-integration.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/worktree",
+      "file": "packages/webui-server/src/server/goal-run.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/worktree",

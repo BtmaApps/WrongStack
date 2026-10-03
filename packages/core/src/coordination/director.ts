@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
-import { renderInstructionLayer } from '../core/instruction-template.js';
 import { DirectorStateCheckpoint, type DirectorStateSnapshot } from '../storage/director-state.js';
 import type { BridgeMessage } from '../types/agent-bridge.js';
 import type { Config } from '../types/config.js';
@@ -29,10 +28,15 @@ import type { CollabDebugReport, CollabSessionOptions } from './collab-debug.js'
 import { DirectorBtwNotes } from './director/director-btw-notes.js';
 import { DirectorBudgetPolicy } from './director/director-budget-policy.js';
 import { DirectorCollabController } from './director/director-collab.js';
-import { FleetSpawnBudgetError } from './director/director-errors.js';
-import { DirectorTaskRegistry } from './director/director-task-registry.js';
+import type { DirectorTaskRegistry } from './director/director-task-registry.js';
 import { buildDirectorToolset } from './director/director-toolset.js';
 import { DirectorIdleRetirement } from './director-idle-retirement.js';
+import {
+  type DirectorLifecycleHost,
+  removeDirectorSubagent,
+  shutdownDirector,
+  terminateDirectorSession,
+} from './director-lifecycle.js';
 import {
   type DirectorModelRoutingHost,
   hasExplicitMatrixRoute as delegateHasExplicitMatrixRoute,
@@ -41,39 +45,33 @@ import {
 } from './director-model-routing.js';
 import type { DirectorOptions } from './director-options.js';
 import {
-  composeDirectorPrompt,
-  composeSubagentPrompt,
-  DEFAULT_DIRECTOR_PREAMBLE,
-  DEFAULT_SUBAGENT_BASELINE,
-  rosterSummaryFromConfigs,
-} from './director-prompts.js';
+  type DirectorPromptHost,
+  directorLeaderPrompt,
+  directorSubagentPrompt,
+} from './director-prompt-host.js';
+import { DEFAULT_DIRECTOR_PREAMBLE, DEFAULT_SUBAGENT_BASELINE } from './director-prompts.js';
 import {
   type DirectorSubagentSessionSummary,
   readDirectorSubagentSession,
 } from './director-session.js';
-import { isHumanPinnedSpawn } from './director-spawn-model.js';
+import { admitDirectorSpawn } from './director-spawn-admission.js';
 import { completeDirectorTask } from './director-task-completion.js';
+import { createDirectorTaskRegistry } from './director-task-registry-wiring.js';
 import { FleetBus, type FleetUsage, FleetUsageAggregator } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
-import { type DirectorFleetHost, spawn as fleetSpawn, type ManifestEntry } from './fleet-spawn.js';
+import type { DirectorFleetHost, ManifestEntry } from './fleet-spawn.js';
 import type { ICoordinator } from './icoordinator.js';
 import { InMemoryBridgeTransport } from './in-memory-transport.js';
 import { LargeAnswerStore } from './large-answer-store.js';
 import type { ModelMatrixSource } from './model-matrix.js';
 import { DefaultMultiAgentCoordinator } from './multi-agent-coordinator.js';
 import type { ProviderModelStatusTracker } from './provider-status-tracker.js';
-import {
-  claimSubagentSlot,
-  releaseSubagentSlot,
-  type SubagentSlotClaim,
-} from './session-subagent-models.js';
+import type { SubagentSlotClaim } from './session-subagent-models.js';
 import {
   areSubagentCompanionsAllowedForSession,
   areSubagentsAllowedForSession,
-  lockSessionSubagentPolicyForSession,
 } from './session-subagent-policy.js';
 import { resolveMaxSpawnDepth } from './spawn-budget.js';
-import { nicknameKeyFromDisplay } from './subagent-nicknames.js';
 import {
   type WorktreeTaskStateUpdate,
   wrapSubagentRunnerWithWorktrees,
@@ -85,6 +83,7 @@ export {
   FleetSpawnBudgetError,
   FleetTokenCapError,
 } from './director/director-errors.js';
+
 export type { DirectorOptions, TaskResultNotification } from './director-options.js';
 
 export type { ModelMatrixSource } from './model-matrix.js';
@@ -322,39 +321,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
     );
     this.coordinator.setFleetBus(this.fleet);
     this.fleetManager?.setCoordinator(this.coordinator);
-    this.tasks = new DirectorTaskRegistry({
-      coordinator: this.coordinator,
-      stateCheckpoint: this.stateCheckpoint,
-      isWorkComplete: () => this.workCompleteFlag,
-      dispatchableSubagentIds: () =>
-        this.coordinator
-          .getStatus()
-          .subagents.filter((s) => s.status !== 'stopped')
-          .map((s) => s.id),
-      addTaskToManifest: (subagentId, taskId) => {
-        if (this.fleetManager) {
-          this.fleetManager.addTaskToSubagent(subagentId, taskId);
-          return;
-        }
-        const entry = Director._asManifestEntry(this.manifestEntries.get(subagentId));
-        if (entry && !entry.taskIds.includes(taskId)) entry.taskIds.push(taskId);
-      },
-      recordPendingTask: (taskId, subagentId, description) =>
-        this.fleetManager?.addPendingTask(taskId, subagentId, description),
-      appendSessionEvent: (event) => this.appendSessionEvent(event),
-      // FleetManager owns manifest state when injected. Scheduling the
-      // Director's legacy writer here would race the FleetManager writer
-      // against the same path with Director.manifestEntries (empty in the
-      // delegated path), intermittently replacing live children with [].
-      scheduleManifest: () => {
-        if (this.fleetManager) {
-          this.fleetManager.scheduleManifest();
-        } else {
-          this.scheduleManifest();
-        }
-      },
-      getSubagentMeta: (subagentId) => this.subagentMeta.get(subagentId),
-    });
+    this.tasks = createDirectorTaskRegistry(this);
     this.taskCompletedListener = (payload) => this.handleTaskCompleted(payload);
     this.coordinator.on('task.completed', this.taskCompletedListener);
 
@@ -523,54 +490,27 @@ export class Director implements DirectorFleetHost, ICoordinator {
       cacheWrite?: number | undefined;
     },
   ): Promise<string> {
-    lockSessionSubagentPolicyForSession(policySessionId);
-    if (this.workCompleteFlag) {
-      throw new FleetSpawnBudgetError(
-        'max_spawns',
-        this.maxSpawns,
-        this.spawnCount + 1,
-        'workComplete() has been called — director closed further spawning',
-      );
-    }
-    const config: SubagentConfig = { ...callerConfig };
-    // Session-scoped model plan: take a lane BEFORE resolution so the lane's
-    // target participates in it, and hand the lane to the spawned subagent so
-    // `remove()` can give it back. A spawn that never happens (budget caps,
-    // coordinator refusal) must not strand the lane as permanently busy.
-    const slotClaim = isHumanPinnedSpawn(config)
-      ? undefined
-      : claimSubagentSlot(policySessionId, {
-          role: config.role,
-          // `/setmodel` routing keeps its spawns: a role (or phase) the user
-          // deliberately routed is not a "plain" spawn, so lanes and the
-          // follow-session switch step aside for it. A session role override
-          // still wins — that one names this role AND this session.
-          routed: this.hasExplicitMatrixRoute(config.role),
-        });
-    this.resolveSpawnModel(config, slotClaim);
-    let subagentId: string;
-    try {
-      subagentId = await fleetSpawn(this, config, priceLookup);
-    } catch (err) {
-      slotClaim?.abandon();
-      throw err;
-    }
-    slotClaim?.bind(subagentId);
-    // Per-subagent idle timeout override: if the caller supplied an
-    // `idleTimeoutMs` in the SubagentConfig (e.g. via `spawn_subagent`'s
-    // inputSchema), honor it. Otherwise fall back to the Director-wide
-    // `subagentIdleTimeoutMs`. This lets callers keep spawned slots alive
-    // across the gap between `spawn_subagent` and `assign_task` when the
-    // leader's reasoning time exceeds the default.
-    const perSubagentIdleMs =
-      typeof config.idleTimeoutMs === 'number' &&
-      Number.isFinite(config.idleTimeoutMs) &&
-      config.idleTimeoutMs >= 0
-        ? config.idleTimeoutMs
-        : this.subagentIdleTimeoutMs;
-    this.subagentIdleDelayMs.set(subagentId, perSubagentIdleMs);
-    this.armSubagentIdleRetirement(subagentId, perSubagentIdleMs);
-    return subagentId;
+    const self = this;
+    return admitDirectorSpawn(
+      this,
+      {
+        get workCompleteFlag() {
+          return self.workCompleteFlag;
+        },
+        maxSpawns: this.maxSpawns,
+        get spawnCount() {
+          return self.spawnCount;
+        },
+        hasExplicitMatrixRoute: (role) => this.hasExplicitMatrixRoute(role),
+        resolveSpawnModel: (config, slot) => this.resolveSpawnModel(config, slot),
+        subagentIdleTimeoutMs: this.subagentIdleTimeoutMs,
+        subagentIdleDelayMs: this.subagentIdleDelayMs,
+        armSubagentIdleRetirement: (id, delay) => this.armSubagentIdleRetirement(id, delay),
+      },
+      callerConfig,
+      policySessionId,
+      priceLookup,
+    );
   }
 
   /**
@@ -639,39 +579,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   async shutdown(): Promise<void> {
-    this.clearManifestTimer();
-    if (this.taskCompletedListener) {
-      this.coordinator.off('task.completed', this.taskCompletedListener);
-      this.taskCompletedListener = null;
-    }
-    this.budgetPolicy.dispose();
-    this.idleRetirement.dispose();
-    this.subagentIdleDelayMs.clear();
-    await this.coordinator.stopAll();
-    this.tasks.resolveWaitersOnShutdown();
-    for (const b of this.subagentBridges.values()) {
-      await b.stop().catch((err) => this.logShutdownError('subagent_bridge_stop', err));
-    }
-    this.subagentBridges.clear();
-    await this.bridge.stop().catch((err) => this.logShutdownError('director_bridge_stop', err));
-    if (this.fleetManager) {
-      await this.fleetManager
-        .flushManifest()
-        .catch((err) => this.logShutdownError('fleet_manifest_flush', err));
-      await this.manifestWriteChain.catch(() => undefined);
-    } else if (this.manifestPath) {
-      await this.writeManifest().catch((err) => this.logShutdownError('manifest_write', err));
-    }
-    if (this.stateCheckpoint) {
-      this.stateCheckpoint.setUsage(this.usage.snapshot());
-      await this.stateCheckpoint
-        .flush()
-        .catch((err) => this.logShutdownError('state_checkpoint_flush', err));
-      await this.stateCheckpoint
-        .releaseLock()
-        .catch((err) => this.logShutdownError('state_checkpoint_lock_release', err));
-    }
-    this.largeAnswerStore.clear();
+    return shutdownDirector(this.directorLifecycleHost());
   }
 
   private logShutdownError(phase: string, err: unknown): void {
@@ -765,96 +673,11 @@ export class Director implements DirectorFleetHost, ICoordinator {
    * asked it to stop. This is that ask, scoped to the session that owns them.
    */
   async terminateSession(sessionId: string): Promise<void> {
-    if (!sessionId) return;
-    // Tell session-scoped owners first (the background delegation tracker),
-    // so the `stopped` settlements that follow are attributed to the user.
-    for (const listener of [...this.sessionTerminateListeners]) {
-      try {
-        listener(sessionId);
-      } catch (err) {
-        this.logger?.warn('[director] session terminate listener failed', { err });
-      }
-    }
-    const ids = this.coordinator.subagentIdsForSession(sessionId);
-    if (ids.length === 0) return;
-    await this.coordinator.stopSession(sessionId);
-    for (const id of ids) {
-      void this.remove(id).catch((err) => this.logShutdownError('terminate_session_remove', err));
-    }
+    return terminateDirectorSession(this.directorLifecycleHost(), sessionId);
   }
 
   async remove(subagentId: string): Promise<void> {
-    // Single reclaim gate for every retirement path (idle reap,
-    // retire-on-complete, session terminate, shutdown), so the session's model
-    // lane is freed exactly once and the next spawn can reuse it.
-    releaseSubagentSlot(subagentId);
-    this.clearSubagentIdleRetirement(subagentId);
-    this.subagentIdleDelayMs.delete(subagentId);
-    void this.appendSessionEvent({
-      type: 'agent_stopped',
-      ts: new Date().toISOString(),
-      agentId: subagentId,
-    });
-    await this.coordinator.remove(subagentId);
-
-    const bridge = this.subagentBridges.get(subagentId);
-    if (bridge) {
-      await bridge.stop();
-      this.subagentBridges.delete(subagentId);
-    }
-
-    this.usage.removeSubagent(subagentId);
-
-    if (this.fleetManager) {
-      this.fleetManager.removeSubagent(subagentId);
-    } else {
-      const entry = Director._asManifestEntry(this.manifestEntries.get(subagentId));
-      if (entry?.name) {
-        const nicknameKey = nicknameKeyFromDisplay(entry.name);
-        if (nicknameKey) this.usedNicknames.delete(nicknameKey);
-      }
-    }
-
-    const entryForCleanup = Director._asManifestEntry(this.manifestEntries.get(subagentId));
-    if (entryForCleanup) {
-      this.tasks.removeTasks(entryForCleanup.taskIds);
-      for (const tid of entryForCleanup.taskIds) {
-        this.taskWorktrees.delete(tid);
-      }
-    }
-    // Path-independent reclaim for the default FleetManager path. The block
-    // above only runs on the non-fleet fallback because manifestEntries is
-    // populated solely when !host.fleetManager (fleet-spawn.ts:289); with a
-    // FleetManager injected it is a no-op, so per-task state used to accumulate
-    // for the Director's lifetime:
-    //   - registry descriptions (full task briefs, KB-scale) + owners, one per
-    //     assigned task;
-    //   - taskWorktrees, one WorktreeTaskStateUpdate per worktree task.
-    // The registry's owners index and each worktree update's subagentId are
-    // populated on every path, so prune from both. Idempotent with the
-    // manifest-entry cleanup above (double-delete is a no-op).
-    this.tasks.removeTasksOwnedBy(subagentId);
-    for (const [taskId, update] of this.taskWorktrees) {
-      if (update.subagentId === subagentId) this.taskWorktrees.delete(taskId);
-    }
-    this.budgetPolicy.removeSubagent(subagentId);
-    this.manifestEntries.delete(subagentId);
-    // Drop the per-subagent metadata and price-lookup entries that
-    // FleetManager records at spawn time (fleet-spawn.ts:254 and
-    // fleet-manager.ts:361). When Director runs WITHOUT a fleetManager
-    // (the non-fleet fallback path), these Maps live on the Director
-    // itself and would otherwise accumulate one entry per retired
-    // subagent — same leak FleetManager already fixed internally.
-    //
-    // priceLookups is keyed by `${provider}/${model}` (shared across
-    // subagents using the same model), not by subagentId. Read the
-    // provider/model from subagentMeta so we delete exactly the right
-    // entry instead of guessing or deleting all entries.
-    const meta = this.subagentMeta.get(subagentId);
-    if (meta?.provider && meta.model) {
-      this.priceLookups.delete(`${meta.provider}/${meta.model}`);
-    }
-    this.subagentMeta.delete(subagentId);
+    return removeDirectorSubagent(this.directorLifecycleHost(), subagentId);
   }
 
   private clearSubagentIdleRetirement(subagentId: string): void {
@@ -927,27 +750,11 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   leaderSystemPrompt(basePrompt?: string): string {
-    return composeDirectorPrompt({
-      basePrompt: basePrompt ?? this.coordinator.config.leaderSystemPrompt,
-      directorPreamble: this.directorPreamble,
-      rosterSummary: this.roster ? rosterSummaryFromConfigs(this.roster) : undefined,
-    });
+    return directorLeaderPrompt(this.directorPromptHost(), basePrompt);
   }
 
   subagentSystemPrompt(config: SubagentConfig, taskBrief?: string): string {
-    return composeSubagentPrompt({
-      baseline: renderInstructionLayer(this.subagentBaseline, {
-        toolNames: new Set(config.tools ?? []),
-        tier: 'off',
-        subagent: true,
-        strictToolReferences: true,
-      }),
-      role: config.prompt,
-      task: taskBrief,
-      sharedScratchpad: this.sharedScratchpadPath ?? undefined,
-      skills: config.skillContent,
-      override: config.systemPromptOverride,
-    });
+    return directorSubagentPrompt(this.directorPromptHost(), config, taskBrief);
   }
 
   tools(roster?: Record<string, SubagentConfig>): Tool[] {
@@ -996,6 +803,56 @@ export class Director implements DirectorFleetHost, ICoordinator {
       sessionModel: this.sessionModel,
       statusTracker: this.statusTracker,
       logger: this.logger,
+    };
+  }
+
+  private directorLifecycleHost(): DirectorLifecycleHost {
+    const self = this;
+    return {
+      clearSubagentIdleRetirement: (...args) => this.clearSubagentIdleRetirement(...args),
+      subagentIdleDelayMs: this.subagentIdleDelayMs,
+      appendSessionEvent: (...args) => this.appendSessionEvent(...args),
+      coordinator: this.coordinator,
+      subagentBridges: this.subagentBridges,
+      usage: this.usage,
+      fleetManager: this.fleetManager,
+      manifestEntries: this.manifestEntries,
+      usedNicknames: this.usedNicknames,
+      tasks: this.tasks,
+      taskWorktrees: this.taskWorktrees,
+      budgetPolicy: this.budgetPolicy,
+      subagentMeta: this.subagentMeta,
+      priceLookups: this.priceLookups,
+      clearManifestTimer: (...args) => this.clearManifestTimer(...args),
+      get taskCompletedListener() {
+        return self.taskCompletedListener;
+      },
+      set taskCompletedListener(value) {
+        self.taskCompletedListener = value;
+      },
+      idleRetirement: this.idleRetirement,
+      logShutdownError: (...args) => this.logShutdownError(...args),
+      bridge: this.bridge,
+      get manifestWriteChain() {
+        return self.manifestWriteChain;
+      },
+      manifestPath: this.manifestPath,
+      writeManifest: (...args) => this.writeManifest(...args),
+      stateCheckpoint: this.stateCheckpoint,
+      largeAnswerStore: this.largeAnswerStore,
+      sessionTerminateListeners: this.sessionTerminateListeners,
+      logger: this.logger,
+      remove: (...args) => this.remove(...args),
+    };
+  }
+
+  private directorPromptHost(): DirectorPromptHost {
+    return {
+      coordinator: this.coordinator,
+      directorPreamble: this.directorPreamble,
+      roster: this.roster,
+      subagentBaseline: this.subagentBaseline,
+      sharedScratchpadPath: this.sharedScratchpadPath,
     };
   }
 }

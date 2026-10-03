@@ -22,10 +22,6 @@
       "lines": 904,
       "relativeImports": 38
     },
-    "packages/cli/src/execution.ts": {
-      "lines": 1008,
-      "relativeImports": 47
-    },
     "packages/cli/src/fleet/host.ts": {
       "lines": 922,
       "relativeImports": 26
@@ -75,7 +71,7 @@
       "relativeImports": 11
     },
     "packages/core/src/coordination/director.ts": {
-      "lines": 1002,
+      "lines": 859,
       "relativeImports": 45
     },
     "packages/core/src/coordination/index.ts": {
@@ -130,10 +126,6 @@
       "lines": 902,
       "relativeImports": 9
     },
-    "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1830,
-      "relativeImports": 2
-    },
     "packages/core/src/storage/session-store.ts": {
       "lines": 963,
       "relativeImports": 41
@@ -163,7 +155,7 @@
       "relativeImports": 10
     },
     "packages/mcp/src/client.ts": {
-      "lines": 1000,
+      "lines": 808,
       "relativeImports": 15
     },
     "packages/mcp/src/registry.ts": {
@@ -287,16 +279,8 @@
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/writer.ts": {
-      "lines": 1064,
-      "relativeImports": 28
-    },
-    "packages/tools/src/json.ts": {
-      "lines": 1024,
-      "relativeImports": 2
-    },
-    "packages/tools/src/languages/diagnostics.ts": {
-      "lines": 1242,
-      "relativeImports": 1
+      "lines": 996,
+      "relativeImports": 30
     },
     "packages/tools/src/languages/profiles/primary.ts": {
       "lines": 866,
@@ -305,10 +289,6 @@
     "packages/tools/src/pwsh.ts": {
       "lines": 852,
       "relativeImports": 9
-    },
-    "packages/tools/src/_danger-detect.ts": {
-      "lines": 1372,
-      "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
       "lines": 939,
@@ -329,10 +309,6 @@
     "packages/tui/src/use-app-controller.tsx": {
       "lines": 997,
       "relativeImports": 52
-    },
-    "packages/vector-memory/src/store.ts": {
-      "lines": 1189,
-      "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
       "lines": 899,
@@ -406,13 +382,9 @@
       "lines": 999,
       "relativeImports": 9
     },
-    "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 1003,
-      "relativeImports": 58
-    },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
-      "lines": 1176,
-      "relativeImports": 4
+      "lines": 849,
+      "relativeImports": 6
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
       "lines": 896,

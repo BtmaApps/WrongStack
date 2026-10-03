@@ -58,6 +58,13 @@ import {
   upsertFileConceptWithStatement,
 } from './writer-concepts.js';
 import {
+  clearIndex,
+  deleteFileSymbols,
+  deleteIndexedFile,
+  type IndexDeletionHost,
+  invalidateIncomingIndexRefs,
+} from './writer-deletion.js';
+import {
   findIncomingCallsByName,
   findOutgoingCallsByName,
   findReachableSymbolIds,
@@ -71,8 +78,8 @@ import {
   getSymbolGraphWithStatement,
   getSymbolsByIdsWithStatement,
 } from './writer-graph-reader.js';
-import { inListChunks, padToInBucket, placeholders, resolveIndexDir } from './writer-helpers.js';
-import { allocateSymbolIds, initIndexSchema, NEXT_SYMBOL_ID_KEY } from './writer-init.js';
+import { resolveIndexDir } from './writer-helpers.js';
+import { allocateSymbolIds, initIndexSchema } from './writer-init.js';
 import { optimizeStore } from './writer-maintenance.js';
 import {
   insertSymbolsWithStatement,
@@ -117,6 +124,14 @@ import {
 } from './writer-search.js';
 import type { WriterSearchFilter } from './writer-search-helpers.js';
 import { StorePool } from './writer-store-pool.js';
+import {
+  beginIndexWrite,
+  commitIndexWrite,
+  type IndexTransactionHost,
+  rollbackIndexWrite,
+  runAtomicUpdate,
+  runIndexWrite,
+} from './writer-transactions.js';
 import type { FileVectorRow, VectorHit } from './writer-vectors.js';
 import {
   countFileVectorsWithStatement,
@@ -142,6 +157,7 @@ function secondaryIndexNames(): string[] {
 export { StorePool } from './writer-store-pool.js';
 
 const DB_FILE = 'index.db';
+
 const MAX_STATEMENT_CACHE = 128;
 
 export class IndexStore {
@@ -187,40 +203,15 @@ export class IndexStore {
   }
 
   async runAtomicIndexUpdate<T>(job: () => Promise<T>): Promise<T> {
-    if (this.atomicIndexUpdateActive) return job();
-    this.runWithRetry(() => this.db.exec('BEGIN IMMEDIATE'));
-    this.atomicIndexUpdateActive = true;
-    try {
-      const result = await job();
-      this.db.exec('COMMIT');
-      return result;
-    } catch (error) {
-      try {
-        this.db.exec('ROLLBACK');
-      } catch {
-        /* preserve the indexing failure */
-      }
-      // A BM25 corpus built mid-job read rows the rollback just discarded.
-      this.invalidateBm25();
-      throw error;
-    } finally {
-      this.atomicIndexUpdateActive = false;
-    }
+    return runAtomicUpdate(this.indexTransactionHost(), job);
   }
 
   private beginWriteTransaction(): string | null {
-    if (this.atomicIndexUpdateActive) {
-      const savepoint = `index_write_${++this.writeSavepointSequence}`;
-      this.db.exec(`SAVEPOINT ${savepoint}`);
-      return savepoint;
-    }
-    this.db.exec('BEGIN IMMEDIATE');
-    return null;
+    return beginIndexWrite(this.indexTransactionHost());
   }
 
   private commitWriteTransaction(savepoint: string | null): void {
-    if (savepoint) this.db.exec(`RELEASE SAVEPOINT ${savepoint}`);
-    else this.db.exec('COMMIT');
+    commitIndexWrite(this.indexTransactionHost(), savepoint);
   }
 
   /**
@@ -230,17 +221,7 @@ export class IndexStore {
    * that message used to replace the real error.
    */
   private rollbackWriteTransaction(savepoint: string | null): void {
-    this.invalidateBm25();
-    try {
-      if (savepoint) {
-        this.db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-        this.db.exec(`RELEASE SAVEPOINT ${savepoint}`);
-      } else {
-        this.db.exec('ROLLBACK');
-      }
-    } catch {
-      /* preserve the original failure */
-    }
+    rollbackIndexWrite(this.indexTransactionHost(), savepoint);
   }
 
   private initSchema(): void {
@@ -256,21 +237,10 @@ export class IndexStore {
     this.vectorsAvailable = vectorsAvailable;
   }
 
-  private static readonly NEXT_SYMBOL_ID_KEY = NEXT_SYMBOL_ID_KEY;
   private static readonly MAX_SQL_VARS = 900;
 
   private runWriteTransaction<T>(operation: () => T): T {
-    return this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const result = operation();
-        this.commitWriteTransaction(ownsTransaction);
-        return result;
-      } catch (error) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw error;
-      }
-    });
+    return runIndexWrite(this.indexTransactionHost(), operation);
   }
 
   private allocateSymbolIds(count: number): number {
@@ -282,26 +252,7 @@ export class IndexStore {
   }
 
   private invalidateIncomingRefsForFiles(files: readonly string[]): Set<string> {
-    if (files.length === 0) return new Set();
-    // P4.12: bucketed chunks — a fitting list stays ONE statement pair (IN
-    // duplicates are set semantics); an oversized list ladders within budget.
-    const names: string[] = [];
-    let cursor = 0;
-    for (const take of inListChunks(files.length, IndexStore.MAX_SQL_VARS)) {
-      const bucket = padToInBucket(files.slice(cursor, cursor + take));
-      cursor += take;
-      const ph = placeholders(bucket.length);
-      for (const row of this.stmt(`SELECT DISTINCT name FROM symbols WHERE file IN (${ph})`).all(
-        ...bucket,
-      ) as Array<{ name: string }>) {
-        names.push(row.name);
-      }
-      this.stmt(
-        `UPDATE refs SET to_id = NULL
-         WHERE to_id IN (SELECT id FROM symbols WHERE file IN (${ph}))`,
-      ).run(...bucket);
-    }
-    return new Set(names);
+    return invalidateIncomingIndexRefs(this.indexDeletionHost(), files);
   }
 
   private resolveRefsForNamesUnsafe(names: Iterable<string>): number {
@@ -325,60 +276,11 @@ export class IndexStore {
   }
 
   deleteSymbolsForFile(file: string): void {
-    this.invalidateBm25();
-    this.runWriteTransaction(() => {
-      const affectedNames = this.invalidateIncomingRefsForFiles([file]);
-      if (this.ftsAvailable) {
-        this.stmt(
-          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(file);
-      }
-      if (this.vectorsAvailable) {
-        this.stmt(
-          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(file);
-      }
-      this.stmt(
-        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-      ).run(file);
-      const deletedChanges = Number(
-        this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
-      );
-      this.recordFtsChurn(deletedChanges);
-      this.resolveRefsForNamesUnsafe(affectedNames);
-    });
+    deleteFileSymbols(this.indexDeletionHost(), file);
   }
 
   deleteFile(file: string): void {
-    this.invalidateBm25();
-    this.runWriteTransaction(() => {
-      const affectedNames = this.invalidateIncomingRefsForFiles([file]);
-      if (this.ftsAvailable) {
-        this.stmt(
-          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(file);
-      }
-      if (this.vectorsAvailable) {
-        this.stmt(
-          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(file);
-      }
-      this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
-        file,
-      );
-      // Rank rows go with their symbols and file: left behind, the rank
-      // readers returned deleted files until the next full run.
-      this.stmt(
-        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-      ).run(file);
-      this.stmt('DELETE FROM file_rank WHERE file = ?').run(file);
-      const deletedChanges = Number(
-        this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
-      );
-      this.recordFtsChurn(deletedChanges);
-      this.stmt('DELETE FROM files WHERE file = ?').run(file);
-      this.resolveRefsForNamesUnsafe(affectedNames);
-    });
+    deleteIndexedFile(this.indexDeletionHost(), file);
   }
 
   upsertFile(meta: FileMeta): void {
@@ -593,27 +495,7 @@ export class IndexStore {
   }
 
   clearAll(): void {
-    this.invalidateBm25();
-    this.runWriteTransaction(() => {
-      this.db.exec('DROP TABLE IF EXISTS refs');
-      this.db.exec('DROP TABLE IF EXISTS symbols');
-      this.db.exec('DROP TABLE IF EXISTS files');
-      this.db.exec('DROP TABLE IF EXISTS metadata');
-      if (this.ftsAvailable) this.db.exec('DROP TABLE IF EXISTS symbols_fts');
-      this.db.exec('DROP TABLE IF EXISTS symbol_vectors');
-      this.db.exec('DROP TABLE IF EXISTS symbol_rank');
-      this.db.exec('DROP TABLE IF EXISTS file_rank');
-      this.db.exec('DROP TABLE IF EXISTS file_concepts');
-      this.db.exec('DROP TABLE IF EXISTS subsystems');
-      this.db.exec('DROP TABLE IF EXISTS concept_edges');
-      this.db.exec('DROP TABLE IF EXISTS file_vectors');
-      this.stmtCache.clear();
-      this.initSchema();
-      this.stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)').run(
-        IndexStore.NEXT_SYMBOL_ID_KEY,
-        '1',
-      );
-    });
+    clearIndex(this.indexDeletionHost());
   }
 
   /**
@@ -1053,6 +935,56 @@ export class IndexStore {
       invalidateIncomingRefsForFiles: (...args) => this.invalidateIncomingRefsForFiles(...args),
       resolveRefsForNamesUnsafe: (...args) => this.resolveRefsForNamesUnsafe(...args),
       recordFtsChurn: (...args) => this.recordFtsChurn(...args),
+    };
+  }
+
+  private indexDeletionHost(): IndexDeletionHost {
+    const self = this;
+    return {
+      maxSqlVars: IndexStore.MAX_SQL_VARS,
+      stmt: (...args) => this.stmt(...args),
+      invalidateBm25: (...args) => this.invalidateBm25(...args),
+      runWriteTransaction: (...args) => this.runWriteTransaction(...args),
+      invalidateIncomingRefsForFiles: (...args) => this.invalidateIncomingRefsForFiles(...args),
+      get ftsAvailable() {
+        return self.ftsAvailable;
+      },
+      get vectorsAvailable() {
+        return self.vectorsAvailable;
+      },
+      recordFtsChurn: (...args) => this.recordFtsChurn(...args),
+      resolveRefsForNamesUnsafe: (...args) => this.resolveRefsForNamesUnsafe(...args),
+      get db() {
+        return self.db;
+      },
+      stmtCache: this.stmtCache,
+      initSchema: (...args) => this.initSchema(...args),
+    };
+  }
+
+  private indexTransactionHost(): IndexTransactionHost {
+    const self = this;
+    return {
+      get atomicIndexUpdateActive() {
+        return self.atomicIndexUpdateActive;
+      },
+      set atomicIndexUpdateActive(value) {
+        self.atomicIndexUpdateActive = value;
+      },
+      runWithRetry: (...args) => this.runWithRetry(...args),
+      get db() {
+        return self.db;
+      },
+      invalidateBm25: (...args) => this.invalidateBm25(...args),
+      get writeSavepointSequence() {
+        return self.writeSavepointSequence;
+      },
+      set writeSavepointSequence(value) {
+        self.writeSavepointSequence = value;
+      },
+      beginWriteTransaction: (...args) => this.beginWriteTransaction(...args),
+      commitWriteTransaction: (...args) => this.commitWriteTransaction(...args),
+      rollbackWriteTransaction: (...args) => this.rollbackWriteTransaction(...args),
     };
   }
 }

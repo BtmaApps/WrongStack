@@ -9,11 +9,14 @@ const VERIFIER_SOURCE = readFileSync(
   'utf8',
 );
 const HANDLER_SOURCE = readFileSync(resolve(here, '../src/server/goal-ws-handler.ts'), 'utf8');
+const RUN_SOURCE = readFileSync(resolve(here, '../src/server/goal-run.ts'), 'utf8');
 
 describe('Goal project verifier — shared host hardening', () => {
   it('is the single verifier used by the WebUI Goal host', () => {
-    expect(HANDLER_SOURCE).toContain('verifyGoalProject({');
+    expect(HANDLER_SOURCE).toContain('startGoalRun(this.goalRunHost(), payload, resumeGraph)');
+    expect(RUN_SOURCE).toContain('verifyGoalProject({');
     expect(HANDLER_SOURCE).not.toContain("import('node:child_process')");
+    expect(RUN_SOURCE).not.toContain("import('node:child_process')");
   });
 
   it('uses the hardened cross-platform subprocess contract', () => {

@@ -1,6 +1,5 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
-import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import { MCPCapabilityClient } from './client-capabilities.js';
 import {
   type ClientHttpConnectionHost,
@@ -8,6 +7,12 @@ import {
   connectStreamableHTTP as delegateConnectStreamableHTTP,
 } from './client-http-connection.js';
 import { forceKillTree } from './client-process.js';
+import { type ClientStdioHost, connectStdio, notifyStdio } from './client-stdio.js';
+import {
+  type ClientStdioProtocolHost,
+  receiveStdioData,
+  receiveStdioLine,
+} from './client-stdio-protocol.js';
 import type {
   ExitListener,
   JsonRpcRequest,
@@ -19,25 +24,22 @@ import type {
   MCPResourceUpdatedListener,
   ToolsChangedListener,
 } from './client-types.js';
-import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
-import {
-  type MCPGetPromptResult,
-  type MCPListPromptsResult,
-  type MCPListResourcesResult,
-  type MCPListResourceTemplatesResult,
-  type MCPReadResourceResult,
-  type MCPServerMetadata,
-  parseServerMetadata,
-  resourceUpdatedUri,
+import type {
+  MCPGetPromptResult,
+  MCPListPromptsResult,
+  MCPListResourcesResult,
+  MCPListResourceTemplatesResult,
+  MCPReadResourceResult,
+  MCPServerMetadata,
 } from './protocol.js';
 import { listAllTools, toToolCallResult } from './tool-schema.js';
 import type { SSETransport, StreamableHTTPTransport } from './transport.js';
 import { nextJsonRpcId } from './transport-base.js';
-import { isJsonRpcResult } from './transport-jsonrpc.js';
 
 export { forceKillTree } from './client-process.js';
+
 export { quoteWindowsArg } from './client-protocol-helpers.js';
 
 export type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult };
@@ -47,16 +49,6 @@ export class MCPClient {
     this.requestCapability.bind(this),
     this.requireResourceSubscriptions.bind(this),
   );
-
-  /**
-   * Maximum bytes the rx buffer may accumulate before the connection is
-   * forcefully closed. A well-behaved JSON-RPC server emits newline-delimited
-   * messages that are individually much smaller than this; a server that never
-   * sends a newline would grow the buffer without limit and OOM the process.
-   * 16 MiB is generous for any legitimate single message while bounding the
-   * worst-case memory to a predictable cap.
-   */
-  private static readonly MAX_RX_BUFFER_BYTES = 16 * 1024 * 1024;
 
   private state: ConnectionState = 'idle';
   private child?: ChildProcess | undefined;
@@ -211,162 +203,7 @@ export class MCPClient {
   }
 
   private async connectStdio(): Promise<void> {
-    if (!this.opts.command) {
-      this.state = 'failed';
-      throw new Error('MCP stdio transport requires "command"');
-    }
-
-    // Defense-in-depth: clear any rx state from a previous connect attempt
-    // on this instance. The registry normally creates a fresh client per
-    // (re)connect cycle, but a leftover rxBuffer from a half-initialized
-    // attempt would corrupt JSON-RPC parsing on the new stream.
-    this.rxBuffer = '';
-    this.rxBufferBytes = 0;
-    this.rxDecoder = new StringDecoder('utf8');
-
-    // On Windows, MCP servers are usually launched via `npx`/`npm`/`uvx`,
-    // which resolve to `.cmd` shims. Since the CVE-2024-27980 fix Node refuses
-    // to spawn `.cmd`/`.bat` without a shell (raw spawn throws ENOENT), so the
-    // whole npx-based preset catalog is unusable without a shell. We pass the
-    // full command line as a single string (with each token cmd.exe-quoted) and
-    // `shell: true` — an empty args array avoids the DEP0190 warning that
-    // `shell:true` + an args array triggers. Server command+args come from
-    // config (admin-controlled), not the model, so shell use is not an
-    // injection vector here.
-    // Resolve passthroughEnv: forward explicitly-listed env var names from
-    // the parent process to the child. This lets MCP server presets (GitHub,
-    // Slack, Brave Search, …) get their API tokens without storing them in
-    // config.json or being scrubbed by buildChildEnv()'s secret filter.
-    const extraEnv: Record<string, string> = { ...this.opts.env };
-    if (this.opts.passthroughEnv) {
-      for (const name of this.opts.passthroughEnv) {
-        const val = process.env[name];
-        if (val !== undefined) {
-          extraEnv[name] = val;
-        }
-      }
-    }
-    const isWin = process.platform === 'win32';
-    const rawArgs = this.opts.args ?? [];
-    const spawnEnv = buildChildEnv({ extra: extraEnv });
-    const stdio: ['pipe', 'pipe', 'pipe'] = ['pipe', 'pipe', 'pipe'];
-    // Windows cannot spawn a `.cmd`/`.bat` shim without a shell, but handing the
-    // joined line to `shell: true` made `&`, `|`, `<`, `>` command separators —
-    // and quoteWindowsArg left any argument without whitespace unquoted, so
-    // `--flag=x&calc.exe` chained a second program. MCP `command`/`args` come
-    // from config that the WebUI can write, so this was reachable. Use the
-    // hardened cmd-shim builder instead: explicit `cmd.exe /d /c call`, every
-    // token quoted, metacharacters refused outright (CMDI-005).
-    const child = isWin
-      ? (() => {
-          const shim = buildWin32CmdShimInvocation(this.opts.command, rawArgs);
-          return spawn(shim.command, shim.args, {
-            env: spawnEnv,
-            stdio,
-            ...(this.opts.cwd ? { cwd: this.opts.cwd } : {}),
-            windowsVerbatimArguments: shim.windowsVerbatimArguments,
-            // Without this every MCP server spawned from a console-less host
-            // (WebUI server, scheduled runs) opens a visible console window.
-            windowsHide: true,
-          });
-        })()
-      : spawn(this.opts.command, rawArgs, {
-          env: spawnEnv,
-          stdio,
-          windowsHide: true,
-          ...(this.opts.cwd ? { cwd: this.opts.cwd } : {}),
-        });
-    this.child = child;
-
-    child.stdout?.on('data', (chunk: Buffer) => this.onData(this.rxDecoder.write(chunk)));
-    child.stdout?.on('end', () => {
-      // Flush the decoder's withheld bytes together with any buffered partial
-      // line — a trailing fragment without a newline is still a frame.
-      const tail = this.rxDecoder.end();
-      if (tail) this.onData(tail);
-      if (this.rxBuffer.trim()) {
-        const line = this.rxBuffer.trim();
-        this.rxBuffer = '';
-        this.onLine(line);
-      }
-    });
-    child.stderr?.on('data', () => {
-      // intentionally discard stderr noise from server
-    });
-    child.stdin?.on('error', (err: Error) => {
-      // Pipe failures such as EPIPE are emitted asynchronously by Writable;
-      // the try/catch around stdin.write() cannot intercept them. Always own
-      // the stream error so a child that exits during startup rejects pending
-      // requests instead of surfacing as an uncaught process exception.
-      this.failPending(`MCP "${this.opts.name}" stdin error: ${toErrorMessage(err)}`);
-    });
-    child.on('exit', (code, signal) => {
-      this.state = 'disconnected';
-      // Reject any in-flight JSON-RPC requests — without this, callers
-      // (e.g. callTool during a tool invocation) await forever on a child
-      // that has already gone away.
-      this.failPending(
-        `MCP "${this.opts.name}" child exited (code=${code ?? 'null'} signal=${signal ?? 'null'})`,
-      );
-      for (const listener of this.exitListeners) {
-        try {
-          listener(this.opts.name, code, signal);
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    child.on('error', (err: Error) => {
-      this.state = 'failed';
-      // Spawn/runtime errors (ENOENT, EACCES, ...) can fire *after* the child
-      // handle exists but often without a matching 'exit' event. Without
-      // failing in-flight requests here, callers awaiting the startup
-      // `initialize` (or any tools/call) hang until their timeout instead of
-      // rejecting promptly.
-      this.failPending(`MCP "${this.opts.name}" child error: ${toErrorMessage(err)}`);
-    });
-
-    const initialize = await this.request(
-      'initialize',
-      {
-        protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-        // Client capabilities: elicitation when the host can ask its user.
-        // `tools` is a SERVER capability and never belonged here.
-        capabilities: this.serverRequests.capabilities(),
-        clientInfo: MCP_CONSTANTS.CLIENT_INFO,
-      },
-      typeof this.opts.startupTimeoutMs === 'number' &&
-        Number.isFinite(this.opts.startupTimeoutMs) &&
-        this.opts.startupTimeoutMs > 0
-        ? this.opts.startupTimeoutMs
-        : 10_000,
-    );
-    if (initialize.error) {
-      this.state = 'failed';
-      throw new Error(`MCP initialize failed: ${initialize.error.message}`);
-    }
-    try {
-      this._serverMetadata = parseServerMetadata(initialize.result);
-    } catch (err) {
-      this.state = 'failed';
-      throw new Error(`MCP initialize returned malformed server metadata: ${toErrorMessage(err)}`);
-    }
-    try {
-      await this.notify('notifications/initialized', {});
-    } catch (err) {
-      console.warn(
-        '[MCP] notify("notifications/initialized") failed for "' +
-          this.opts.name +
-          '": ' +
-          toErrorMessage(err),
-      );
-    }
-    const revision = this.toolCatalogRevision;
-    const tools = (await listAllTools((params) => this.request('tools/list', params))) ?? [];
-    if (revision === this.toolCatalogRevision) this._tools = tools;
-    // Cache tools so reconnect can re-register without re-discovering
-    this._toolsCache = this._tools;
-    this.state = 'connected';
+    return connectStdio(this.clientStdioHost());
   }
 
   private async connectSSE(): Promise<void> {
@@ -703,148 +540,15 @@ export class MCPClient {
   }
 
   private async notify(method: string, params: unknown): Promise<void> {
-    if (this._drainPending) {
-      this._lastNotifySkipped = true;
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          event: 'mcp.notify_skipped_backpressure',
-          server: this.opts.name,
-          method,
-          message: 'stdin buffer backpressure (already waiting for drain)',
-          timestamp: new Date().toISOString(),
-        }),
-      );
-      return;
-    }
-    const stdin = this.child?.stdin;
-    if (!stdin || stdin.destroyed === true || stdin.writable === false) {
-      return;
-    }
-    const req = { jsonrpc: '2.0', method, params };
-    const encoded = JSON.stringify(req) + '\n';
-    try {
-      const ok = stdin.write(encoded);
-      if (!ok) {
-        this._drainPending = true;
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            stdin.removeListener?.('drain', onDrain);
-            stdin.removeListener?.('error', onError);
-            this._drainPending = false;
-            reject(new Error(`MCP notify("${method}") drain timeout`));
-          }, 500);
-          const onDrain = () => {
-            clearTimeout(timeout);
-            stdin.removeListener?.('drain', onDrain);
-            stdin.removeListener?.('error', onError);
-            this._drainPending = false;
-            resolve();
-          };
-          const onError = (err: Error) => {
-            clearTimeout(timeout);
-            stdin.removeListener?.('drain', onDrain);
-            stdin.removeListener?.('error', onError);
-            this._drainPending = false;
-            reject(err);
-          };
-          stdin.once?.('drain', onDrain);
-          stdin.once?.('error', onError);
-        });
-      }
-    } catch (err) {
-      throw new Error(`[MCP] notify("${method}") failed: ${toErrorMessage(err)}`);
-    }
+    return notifyStdio(this.clientStdioHost(), method, params);
   }
 
   private onData(s: string): void {
-    this.rxBufferBytes += Buffer.byteLength(s, 'utf8');
-
-    // Guard against a malicious or buggy server that never emits a newline —
-    // without this cap the buffer grows without limit and OOMs the process.
-    if (this.rxBufferBytes > MCPClient.MAX_RX_BUFFER_BYTES) {
-      const truncated = this.rxBufferBytes;
-      this.rxParts = [];
-      this.rxBufferBytes = 0;
-      this.failPending(
-        `MCP "${this.opts.name}" rx buffer overflow (${truncated} bytes without a newline) — closing connection`,
-      );
-      void this.close();
-      return;
-    }
-
-    // The buffered tail never holds a newline, so only the new chunk is searched.
-    let start = 0;
-    let idx = s.indexOf('\n');
-    if (idx === -1) {
-      this.rxParts.push(s);
-      return;
-    }
-    while (idx !== -1) {
-      const head = this.rxParts.length > 0 ? this.rxParts.join('') : '';
-      this.rxParts = [];
-      const line = (head + s.slice(start, idx)).trim();
-      start = idx + 1;
-      if (line) this.onLine(line);
-      idx = s.indexOf('\n', start);
-    }
-    const tail = s.slice(start);
-    this.rxBufferBytes = Buffer.byteLength(tail, 'utf8');
-    if (tail) this.rxParts.push(tail);
+    receiveStdioData(this.clientStdioProtocolHost(), s);
   }
 
   private onLine(line: string): void {
-    let msg: unknown;
-    try {
-      msg = JSON.parse(line);
-    } catch {
-      return;
-    }
-
-    if (typeof msg !== 'object' || msg === null) return;
-    const envelope = msg as Record<string, unknown>;
-    if (envelope['jsonrpc'] !== '2.0') return;
-
-    // A server request is never a response, even if its id collides with one
-    // of our pending calls. Resolve pending calls only after the envelope has
-    // passed the strict response guard below.
-    if (typeof envelope['method'] === 'string') {
-      const id = envelope['id'];
-      if (typeof id === 'number' || typeof id === 'string') {
-        void this.handleServerRequest({
-          jsonrpc: '2.0',
-          id,
-          method: envelope['method'],
-          params: envelope['params'],
-        });
-        return;
-      }
-
-      // Notifications have a `method` but no `id`. The MCP spec defines
-      // list_changed notifications for cache invalidation.
-      if (Object.hasOwn(envelope, 'id')) return;
-      if (envelope['method'] === 'notifications/cancelled') {
-        this.serverRequests.cancel(envelope['params']);
-      } else if (envelope['method'] === 'notifications/tools/list_changed') {
-        void this.handleToolsListChanged();
-      } else if (envelope['method'] === 'notifications/resources/list_changed') {
-        this.emitCapabilityChanged('resources');
-      } else if (envelope['method'] === 'notifications/prompts/list_changed') {
-        this.emitCapabilityChanged('prompts');
-      } else if (envelope['method'] === 'notifications/resources/updated') {
-        const uri = resourceUpdatedUri(envelope['params']);
-        if (uri) this.emitResourceUpdated(uri);
-      }
-      return;
-    }
-
-    if (!isJsonRpcResult(msg)) return;
-    const response = msg as JsonRpcResponse;
-    if (this.pending.has(response.id)) {
-      const entry = this.pending.get(response.id);
-      this.pending.delete(response.id);
-      entry?.resolve(response);
-    }
+    receiveStdioLine(this.clientStdioProtocolHost(), line);
   }
 
   private async handleServerRequest(request: JsonRpcServerRequest): Promise<void> {
@@ -942,9 +646,7 @@ export class MCPClient {
   private clientHttpConnectionHost(): ClientHttpConnectionHost {
     const self = this;
     return {
-      get opts() {
-        return self.opts;
-      },
+      opts: this.opts,
       get state() {
         return self.state;
       },
@@ -988,7 +690,113 @@ export class MCPClient {
       serverRequests: this.serverRequests,
     };
   }
+
+  private clientStdioHost(): ClientStdioHost {
+    const self = this;
+    return {
+      opts: this.opts,
+      get state() {
+        return self.state;
+      },
+      set state(value) {
+        self.state = value;
+      },
+      get rxBuffer() {
+        return self.rxBuffer;
+      },
+      set rxBuffer(value) {
+        self.rxBuffer = value;
+      },
+      get rxBufferBytes() {
+        return self.rxBufferBytes;
+      },
+      set rxBufferBytes(value) {
+        self.rxBufferBytes = value;
+      },
+      get rxDecoder() {
+        return self.rxDecoder;
+      },
+      set rxDecoder(value) {
+        self.rxDecoder = value;
+      },
+      get child() {
+        return self.child;
+      },
+      set child(value) {
+        self.child = value;
+      },
+      onData: (...args) => this.onData(...args),
+      onLine: (...args) => this.onLine(...args),
+      failPending: (...args) => this.failPending(...args),
+      exitListeners: this.exitListeners,
+      request: (...args) => this.request(...args),
+      serverRequests: this.serverRequests,
+      get _serverMetadata() {
+        return self._serverMetadata;
+      },
+      set _serverMetadata(value) {
+        self._serverMetadata = value;
+      },
+      notify: (...args) => this.notify(...args),
+      get toolCatalogRevision() {
+        return self.toolCatalogRevision;
+      },
+      get _tools() {
+        return self._tools;
+      },
+      set _tools(value) {
+        self._tools = value;
+      },
+      get _toolsCache() {
+        return self._toolsCache;
+      },
+      set _toolsCache(value) {
+        self._toolsCache = value;
+      },
+      get _drainPending() {
+        return self._drainPending;
+      },
+      set _drainPending(value) {
+        self._drainPending = value;
+      },
+      get _lastNotifySkipped() {
+        return self._lastNotifySkipped;
+      },
+      set _lastNotifySkipped(value) {
+        self._lastNotifySkipped = value;
+      },
+    };
+  }
+
+  private clientStdioProtocolHost(): ClientStdioProtocolHost {
+    const self = this;
+    return {
+      get rxBufferBytes() {
+        return self.rxBufferBytes;
+      },
+      set rxBufferBytes(value) {
+        self.rxBufferBytes = value;
+      },
+      get rxParts() {
+        return self.rxParts;
+      },
+      set rxParts(value) {
+        self.rxParts = value;
+      },
+      failPending: (...args) => this.failPending(...args),
+      opts: this.opts,
+      close: (...args) => this.close(...args),
+      onLine: (...args) => this.onLine(...args),
+      handleServerRequest: (...args) => this.handleServerRequest(...args),
+      serverRequests: this.serverRequests,
+      handleToolsListChanged: (...args) => this.handleToolsListChanged(...args),
+      emitCapabilityChanged: (...args) => this.emitCapabilityChanged(...args),
+      emitResourceUpdated: (...args) => this.emitResourceUpdated(...args),
+      pending: this.pending,
+    };
+  }
 }
+
 export type {
   MCPClientOptions,
   MCPListChangedListener,

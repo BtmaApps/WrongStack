@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T15:29:27.463Z",
+  "generatedAt": "2026-10-03T16:20:32.016Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4398,
+    "sourceFiles": 4444,
     "testFiles": 4015,
-    "sourceLines": 1047773,
+    "sourceLines": 1049087,
     "workspaceEdges": 133,
-    "moduleEdges": 14312,
+    "moduleEdges": 14458,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 982
+    "testOnlyExports": 977
   },
   "errors": [],
   "packageCycles": [],
@@ -149,7 +149,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 559,
+      "sourceFiles": 562,
       "testFiles": 579,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -241,7 +241,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 983,
+      "sourceFiles": 993,
       "testFiles": 886,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -378,7 +378,7 @@
     {
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
-      "sourceFiles": 47,
+      "sourceFiles": 49,
       "testFiles": 54,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -763,7 +763,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 249,
+      "sourceFiles": 269,
       "testFiles": 291,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -818,7 +818,7 @@
     {
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
-      "sourceFiles": 14,
+      "sourceFiles": 18,
       "testFiles": 23,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -917,7 +917,7 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 264,
+      "sourceFiles": 271,
       "testFiles": 263,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -25406,11 +25406,6 @@
       "relativeImports": 38
     },
     {
-      "file": "packages/cli/src/execution.ts",
-      "lines": 1008,
-      "relativeImports": 47
-    },
-    {
       "file": "packages/cli/src/fleet/host.ts",
       "lines": 922,
       "relativeImports": 26
@@ -25472,7 +25467,7 @@
     },
     {
       "file": "packages/core/src/coordination/director.ts",
-      "lines": 1002,
+      "lines": 859,
       "relativeImports": 45
     },
     {
@@ -25541,11 +25536,6 @@
       "relativeImports": 9
     },
     {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1830,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/core/src/storage/session-store.ts",
       "lines": 963,
       "relativeImports": 41
@@ -25582,7 +25572,7 @@
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 1000,
+      "lines": 808,
       "relativeImports": 15
     },
     {
@@ -25737,18 +25727,8 @@
     },
     {
       "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 1064,
-      "relativeImports": 28
-    },
-    {
-      "file": "packages/tools/src/json.ts",
-      "lines": 1024,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/tools/src/languages/diagnostics.ts",
-      "lines": 1242,
-      "relativeImports": 1
+      "lines": 996,
+      "relativeImports": 30
     },
     {
       "file": "packages/tools/src/languages/profiles/primary.ts",
@@ -25759,11 +25739,6 @@
       "file": "packages/tools/src/pwsh.ts",
       "lines": 852,
       "relativeImports": 9
-    },
-    {
-      "file": "packages/tools/src/_danger-detect.ts",
-      "lines": 1372,
-      "relativeImports": 0
     },
     {
       "file": "packages/tui/src/app-action-type.ts",
@@ -25789,11 +25764,6 @@
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 997,
       "relativeImports": 52
-    },
-    {
-      "file": "packages/vector-memory/src/store.ts",
-      "lines": 1189,
-      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/components/activity-bar/index.tsx",
@@ -25886,14 +25856,9 @@
       "relativeImports": 9
     },
     {
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
-      "lines": 1003,
-      "relativeImports": 58
-    },
-    {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 1176,
-      "relativeImports": 4
+      "lines": 849,
+      "relativeImports": 6
     },
     {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
@@ -25918,61 +25883,6 @@
   ],
   "hotspots": [
     {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1830,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/tools/src/_danger-detect.ts",
-      "lines": 1372,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/tools/src/languages/diagnostics.ts",
-      "lines": 1242,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/vector-memory/src/store.ts",
-      "lines": 1189,
-      "relativeImports": 3
-    },
-    {
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "lines": 1176,
-      "relativeImports": 4
-    },
-    {
-      "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 1064,
-      "relativeImports": 28
-    },
-    {
-      "file": "packages/tools/src/json.ts",
-      "lines": 1024,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/cli/src/execution.ts",
-      "lines": 1008,
-      "relativeImports": 47
-    },
-    {
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
-      "lines": 1003,
-      "relativeImports": 58
-    },
-    {
-      "file": "packages/core/src/coordination/director.ts",
-      "lines": 1002,
-      "relativeImports": 45
-    },
-    {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 1000,
-      "relativeImports": 15
-    },
-    {
       "file": "packages/webui/src/types/client-message.ts",
       "lines": 999,
       "relativeImports": 9
@@ -25981,6 +25891,11 @@
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 997,
       "relativeImports": 52
+    },
+    {
+      "file": "packages/tools/src/codebase-index/writer.ts",
+      "lines": 996,
+      "relativeImports": 30
     },
     {
       "file": "packages/sage/src/sqlite-store.ts",
@@ -26166,6 +26081,56 @@
       "file": "packages/tools/src/codebase-index/project-server-client.ts",
       "lines": 893,
       "relativeImports": 8
+    },
+    {
+      "file": "packages/core/src/hq/auth-store.ts",
+      "lines": 889,
+      "relativeImports": 9
+    },
+    {
+      "file": "packages/core/src/models/fallback-suggest.ts",
+      "lines": 888,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/core/src/coordination/collab-debug.ts",
+      "lines": 886,
+      "relativeImports": 11
+    },
+    {
+      "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
+      "lines": 886,
+      "relativeImports": 4
+    },
+    {
+      "file": "packages/tui/src/reducers/settings-values.ts",
+      "lines": 885,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/primitives/src/regex-guard.ts",
+      "lines": 878,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "lines": 873,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/tools/src/languages/profiles/primary.ts",
+      "lines": 866,
+      "relativeImports": 2
+    },
+    {
+      "file": "packages/tui/src/components/settings-picker.tsx",
+      "lines": 864,
+      "relativeImports": 12
+    },
+    {
+      "file": "packages/core/src/chronicle/project-server.ts",
+      "lines": 863,
+      "relativeImports": 19
     }
   ],
   "testOnlyExports": [
@@ -27414,18 +27379,6 @@
       "name": "hotp"
     },
     {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "name": "COMMAND_STRING_FLAGS"
-    },
-    {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "name": "HALT_LAUNCHER_VALUE_FLAGS"
-    },
-    {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "name": "pathLooksInsideProject"
-    },
-    {
       "file": "packages/core/src/skills/github-fetcher.ts",
       "name": "githubFetcherCoverage"
     },
@@ -28488,14 +28441,6 @@
     {
       "file": "packages/telegram/src/telemetry.ts",
       "name": "TelegramTelemetry"
-    },
-    {
-      "file": "packages/tools/src/_danger-detect.ts",
-      "name": "ARGV_LAUNCHERS"
-    },
-    {
-      "file": "packages/tools/src/_danger-detect.ts",
-      "name": "unwrapArgvLaunchers"
     },
     {
       "file": "packages/tools/src/_output-diet.ts",

@@ -53,20 +53,28 @@ async function constructionSites(): Promise<Map<string, number>> {
 describe('leader auto-wake controller ownership', () => {
   it('is constructed only by the CLI execution branches, once each', async () => {
     const sites = await constructionSites();
-    expect(Object.fromEntries(sites)).toEqual({ 'cli/src/execution.ts': 2 });
+    expect(Object.fromEntries(sites)).toEqual({
+      'cli/src/execution.ts': 1,
+      'cli/src/execution-webui.ts': 1,
+    });
   });
 
   it('constructs one controller in the TUI branch and one in the exclusive WebUI branch', async () => {
     const source = await fs.readFile(path.join(PACKAGES, 'cli/src/execution.ts'), 'utf8');
+    const webuiSource = await fs.readFile(
+      path.join(PACKAGES, 'cli/src/execution-webui.ts'),
+      'utf8',
+    );
     const webuiBranch = source.indexOf("} else if (executionMode === 'webui') {");
     expect(webuiBranch).toBeGreaterThan(0);
     const constructions = [...source.matchAll(CONSTRUCT)].map((m) => m.index ?? -1);
-    expect(constructions).toHaveLength(2);
+    expect(constructions).toHaveLength(1);
     expect(constructions[0]).toBeLessThan(webuiBranch);
-    expect(constructions[1]).toBeGreaterThan(webuiBranch);
+    expect(source.indexOf('code = await runExecutionWebui(deps)')).toBeGreaterThan(webuiBranch);
+    expect([...webuiSource.matchAll(CONSTRUCT)]).toHaveLength(1);
     // Both are disposed when their branch ends.
     expect(source).toContain('leaderAutoWake.dispose()');
-    expect(source).toContain('webuiLeaderAutoWake.dispose()');
+    expect(webuiSource).toContain('webuiLeaderAutoWake.dispose()');
   });
 
   it('the WebUI server binds the controller it is handed', async () => {
