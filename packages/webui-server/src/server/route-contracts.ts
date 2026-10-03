@@ -7,6 +7,7 @@ import type {
 } from '@wrongstack/core/execution';
 import type { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
 import type { Container, EventBus } from '@wrongstack/core/kernel';
+import type { AgentFactory } from '@wrongstack/core/coordination';
 import type { DefaultModeStore } from '@wrongstack/core/models';
 import type { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import type { SkillInstaller } from '@wrongstack/core/skills';
@@ -29,6 +30,7 @@ import type { WebSocket, WebSocketServer } from 'ws';
 import type { AutonomyRouteHandlers } from './autonomy-routes.js';
 import type { BrainRouteHandlers } from './brain-routes.js';
 import type { ChimeraRouteHandlers } from './chimera-routes.js';
+import type { CodeAssistRouteHandlers } from './code-assist-routes.js';
 import type { CollaborationWebSocketHandler } from './collaboration-ws-handler.js';
 import type { CustomModeStore } from './custom-context-modes.js';
 import type { GoalRouteHandlers } from './goal-routes.js';
@@ -163,6 +165,11 @@ export interface WebuiDeps {
   httpPort: number;
   wssPrimary: WebSocketServer;
   wssSecondary: WebSocketServer | null;
+  /**
+   * Shared isolated-worker factory. Consumed by the Code Assist routes so an
+   * "Ask AI" run gets a throwaway agent instead of a new session.
+   */
+  subagentFactory: AgentFactory;
   /** Per-feature WS handlers (goal, specs, sdd-board, sdd-wizard, …). */
   goalHandler: GoalWebSocketHandler;
   specsHandler: SpecsWebSocketHandler;
@@ -238,6 +245,7 @@ export interface AllRoutes {
   autonomyRoutes: AutonomyRouteHandlers;
   shellGitRoutes: ShellGitRouteHandlers;
   chimeraRoutes: ChimeraRouteHandlers;
+  codeAssistRoutes: CodeAssistRouteHandlers;
   mailboxRoutes: MailboxRouteHandlers;
   mcpRoutes: McpRouteHandlers;
   brainRoutes: BrainRouteHandlers;

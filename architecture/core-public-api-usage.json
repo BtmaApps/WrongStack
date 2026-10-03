@@ -24,8 +24,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/coordination": {
-      "files": 246,
-      "typeOnly": 92,
+      "files": 248,
+      "typeOnly": 95,
       "runtimeOrMixed": 214
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 321,
+      "files": 322,
       "typeOnly": 149,
-      "runtimeOrMixed": 186
+      "runtimeOrMixed": 187
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -224,9 +224,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 701,
+      "files": 702,
       "typeOnly": 67,
-      "runtimeOrMixed": 666
+      "runtimeOrMixed": 667
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3949,6 +3949,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/src/server/code-assist-routes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/src/server/collab/collab-context.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -4040,7 +4046,7 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/src/server/route-contracts.ts",
-      "typeOnly": 1,
+      "typeOnly": 2,
       "runtimeOrMixed": 0
     },
     {
@@ -4106,6 +4112,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/tests/brain-routes.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/code-assist-routes.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -8108,6 +8120,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/backend-services.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/code-assist-routes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -24272,6 +24290,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/client-presence.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/code-assist-routes.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

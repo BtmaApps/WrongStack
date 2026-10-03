@@ -786,6 +786,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     projectCtx: routeContexts.projectsCtx,
     mailboxRoutes: routeContexts.mailboxRoutes,
     chimeraRoutes: routeContexts.chimeraRoutes,
+    codeAssistRoutes: routeContexts.codeAssistRoutes,
     sessionCtx: routeContexts.sessionsCtx,
     conversationCtx: routeContexts.connectionCtx,
     goalHandler,

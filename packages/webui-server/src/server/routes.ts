@@ -40,6 +40,10 @@ import { patchConfig } from './boot.js';
 import type { BrainHandlerContext } from './brain-handlers.js';
 import { type BrainRouteHandlers, createBrainRouteHandlers } from './brain-routes.js';
 import { type ChimeraRouteHandlers, createChimeraRouteHandlers } from './chimera-routes.js';
+import {
+  type CodeAssistRouteHandlers,
+  createCodeAssistRouteHandlers,
+} from './code-assist-routes.js';
 import { handleConfigDoctor } from './config-doctor.js';
 import { computeConfigPrefUpdates } from './config-pref-updates.js';
 import { emitFallbackChoice } from './fallback-choice.js';
@@ -688,6 +692,16 @@ export function buildRoutes(
     log: (message) => deps.logger.warn(message),
   });
 
+  // Code Assist ("Ask AI" panel on File Manager / Code Atlas). Each run is a
+  // throwaway isolated agent, so this never creates or swaps a session and
+  // never appears in the user's session list.
+  const codeAssistRoutes: CodeAssistRouteHandlers = createCodeAssistRouteHandlers({
+    subagentFactory: deps.subagentFactory,
+    projectRoot: () => state.getProjectRoot(),
+    send,
+    log: (message) => deps.logger.warn(message),
+  });
+
   // ---- MCP route (handleMcpRoute) ----
   // Issue #31 follow-on (after #118 PR 0 baseline, #119 prefs extraction).
   // Each callback delegates to the matching handleMcpXxx in mcp-handlers.ts
@@ -769,6 +783,7 @@ export function buildRoutes(
     autonomyRoutes,
     shellGitRoutes,
     chimeraRoutes,
+    codeAssistRoutes,
     mailboxRoutes,
     mcpRoutes,
     brainRoutes,

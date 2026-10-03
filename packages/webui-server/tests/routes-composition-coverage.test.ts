@@ -106,6 +106,7 @@ describe('buildRoutes composition', () => {
       'autonomyRoutes',
       'shellGitRoutes',
       'chimeraRoutes',
+      'codeAssistRoutes',
       'mailboxRoutes',
       'mcpRoutes',
       'brainRoutes',

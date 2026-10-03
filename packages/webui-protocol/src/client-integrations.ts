@@ -50,6 +50,8 @@ export const CLIENT_EXTENSION_MESSAGE_TYPES = [
   'chimera.report.transition',
   'chimera.reports.list',
   'chimera.reports.query',
+  'code.assist.abort',
+  'code.assist.run',
   'mcp.add',
   'mcp.auth.login',
   'mcp.auth.logout',

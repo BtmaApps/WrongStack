@@ -52,6 +52,16 @@ export {
 } from './auto-wake.js';
 export * from './automation.js';
 export * from './automation-portability.js';
+export type {
+  CodeAssistDelta,
+  CodeAssistMutatingPreset,
+  CodeAssistPreset,
+  CodeAssistResult,
+  CodeAssistRunRequest,
+  CodeAssistStarted,
+  CodeAssistTarget,
+} from './code-assist.js';
+export { codeAssistAllowsEdits } from './code-assist.js';
 export {
   createSurfaceConnectionState,
   DEFAULT_SURFACE_CONNECTION_CONFIG,

@@ -461,6 +461,7 @@ export function createMessageDispatcher(
       prefs: routes.prefsRoutes,
       brain: routes.brainRoutes,
       chimera: routes.chimeraRoutes,
+      codeAssist: routes.codeAssistRoutes,
       worklist: worklistRoutes,
       process: processRoutes,
       host: hostRoutes,

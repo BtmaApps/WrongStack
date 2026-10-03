@@ -13,6 +13,7 @@ import type { BrainHandlerContext } from './brain-handlers.js';
 import { type BrainRouteHandlers, createBrainRouteHandlers } from './brain-routes.js';
 import type { ChimeraRouteHandlers } from './chimera-routes.js';
 import type { ClientTransportRouteHandlers } from './client-transport-routes.js';
+import type { CodeAssistRouteHandlers } from './code-assist-routes.js';
 import { handleCodebaseIndexServerControl } from './codebase-index-server-control.js';
 import { createToolLspCompletionSource, handleCompletionRequest } from './completion-handlers.js';
 import type { CompletionRouteHandlers } from './completion-routes.js';
@@ -162,6 +163,12 @@ export interface EmbeddedMessageRouterDeps {
    * never receives report-list answers instead of failing to boot.
    */
   chimeraRoutes?: ChimeraRouteHandlers | undefined;
+  /**
+   * Code Assist ("Ask AI") routes. Optional for the same back-compat reason as
+   * `chimeraRoutes`: an older CLI host that predates this family still boots,
+   * it just never answers `code.assist.run` (it falls through to `onUnknown`).
+   */
+  codeAssistRoutes?: CodeAssistRouteHandlers | undefined;
   goalHandler: GoalWebSocketHandler;
   specsHandler: SpecsWebSocketHandler;
   sddBoardHandler: SddBoardWebSocketHandler;
@@ -182,6 +189,18 @@ export type EmbeddedMessageRouter = (
   client: unknown,
   message: WSClientMessage,
 ) => Promise<void>;
+
+/**
+ * Stand-in used when a host predates the Code Assist family. The family still
+ * CLAIMS `code.assist.run` in the dispatcher chain (it is registered, not
+ * optional, so ordering stays stable), so this must consume the message rather
+ * than let it fall through to `onUnknown` — a silent no-op is the right
+ * behaviour for a host that has no subagent factory to run it with.
+ */
+const inertCodeAssistRoutes: CodeAssistRouteHandlers = {
+  run: async () => {},
+  abort: async () => {},
+};
 
 export function createEmbeddedMessageRouter(
   deps: EmbeddedMessageRouterDeps,
@@ -865,6 +884,7 @@ export function createEmbeddedMessageRouter(
       prefs,
       brain,
       chimera: deps.chimeraRoutes,
+      codeAssist: deps.codeAssistRoutes ?? inertCodeAssistRoutes,
       worklist,
       process: processRoutes,
       host,

@@ -23,6 +23,12 @@ interface CodeMapRelationInspectorProps {
   onLocateActivity: (activity: FileActivity) => void;
   onToggleRelation: (key: string) => void;
   onSelectNode: (node: GraphNodeData) => void;
+  /**
+   * Pinned to the bottom of the aside, above nothing and below the scrolling
+   * relation list. Used by the "Ask AI" panel so it shares this 326px column
+   * instead of adding a third one beside the tree and this inspector.
+   */
+  footer?: React.ReactNode;
 }
 
 export function CodeMapRelationInspector({
@@ -41,6 +47,7 @@ export function CodeMapRelationInspector({
   onLocateActivity,
   onToggleRelation,
   onSelectNode,
+  footer,
 }: CodeMapRelationInspectorProps): React.ReactElement {
   const { t } = useAppTranslation();
   return (
@@ -119,6 +126,7 @@ export function CodeMapRelationInspector({
           />
         </div>
       )}
+      {footer}
     </aside>
   );
 }

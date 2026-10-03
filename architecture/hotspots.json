@@ -51,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 909,
+      "lines": 910,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
@@ -346,9 +346,13 @@
       "lines": 833,
       "relativeImports": 0
     },
+    "packages/webui/src/components/CodeMap.tsx": {
+      "lines": 811,
+      "relativeImports": 13
+    },
     "packages/webui/src/components/FileExplorer.tsx": {
-      "lines": 851,
-      "relativeImports": 7
+      "lines": 862,
+      "relativeImports": 8
     },
     "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts": {
       "lines": 847,
@@ -403,8 +407,8 @@
       "relativeImports": 9
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 983,
-      "relativeImports": 57
+      "lines": 1003,
+      "relativeImports": 58
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 1176,

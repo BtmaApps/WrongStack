@@ -28,6 +28,11 @@ export {
 export type { BrainRouteHandlers } from './brain-routes.js';
 export { createBrainRouteHandlers, handleBrainRoute } from './brain-routes.js';
 export {
+  type CodeAssistRouteHandlers,
+  createCodeAssistRouteHandlers,
+  handleCodeAssistRoute,
+} from './code-assist-routes.js';
+export {
   type ChimeraReportDetail,
   type ChimeraReportSummary,
   type ChimeraRouteHandlers,

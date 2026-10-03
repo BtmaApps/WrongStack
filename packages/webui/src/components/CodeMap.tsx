@@ -52,6 +52,7 @@ import {
   SEARCH_DEBOUNCE_MS,
   SEARCH_VIRTUALIZE_THRESHOLD,
 } from './CodeMapConfig';
+import { CodeAssistPanel } from './CodeAssistPanel';
 import { CodeMapHeader } from './CodeMapHeader';
 import { LiveAgentsHud, LiveControlBar } from './CodeMapLiveOverlay';
 import { CodeMapRelationInspector } from './CodeMapRelationInspector';
@@ -66,6 +67,7 @@ import {
   type GraphNodeData,
   type GraphRefType,
   layoutGraph,
+  relativeFilePath,
   normalizedPath,
   relationItems,
   scopeKey,
@@ -769,6 +771,22 @@ function CodeMapInner(): React.ReactElement {
             })
           }
           onSelectNode={handleSelectNode}
+          footer={
+            <CodeAssistPanel
+              target={
+                selectedNode && selectedNode.kind !== 'package'
+                  ? {
+                      filePath: relativeFilePath(selectedNode),
+                      // A symbol node is the whole point of Code Atlas:
+                      // anchoring to it is what makes "explain this" precise.
+                      ...(selectedNode.kind === 'symbol' ? { symbol: selectedNode.label } : {}),
+                      ...(selectedNode.line !== undefined ? { line: selectedNode.line } : {}),
+                    }
+                  : null
+              }
+              className="max-h-[55%] shrink-0"
+            />
+          }
         />
       </div>
 

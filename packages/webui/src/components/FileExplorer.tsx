@@ -30,6 +30,7 @@ import {
   RenamePromptModal,
 } from './FileExplorer/FileExplorerModals.js';
 import { confirmModal } from './ConfirmModal';
+import { CodeAssistPanel } from './CodeAssistPanel';
 import { TreeRow } from './FileExplorer/TreeRow.js';
 import {
   collectAllFiles,
@@ -547,16 +548,17 @@ export function FileExplorer() {
     setFocusedIdx((i) => (i === -1 && rows.length > 0 ? 0 : i));
   }, [rows.length]);
 
-  if (showSpinner) {
-    return (
-      <div className="flex items-center justify-center h-full py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      {/* Spinner is a SIBLING branch, not an early return: an early return
+          unmounts the whole subtree, which tore the "Ask AI" panel down on
+          every tree reload and killed any in-flight analysis. */}
+      {showSpinner ? (
+        <div className="flex items-center justify-center h-full py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
       {error && (
         <div className="flex shrink-0 items-center gap-1.5 px-2 py-1 border-b border-destructive/30 bg-destructive/5 text-[10px] text-destructive">
           <span className="truncate flex-1 min-w-0">
@@ -845,6 +847,15 @@ export function FileExplorer() {
           onConfirm={handleConfirmRename}
         />
       )}
+        </>
+      )}
+
+      {/* Kept OUTSIDE the spinner/tree branch above: it must survive a tree
+          reload, or an in-flight analysis is aborted by its own unmount. */}
+      <CodeAssistPanel
+        target={activeFilePath ? { filePath: activeFilePath } : null}
+        className="max-h-[46%] shrink-0"
+      />
     </div>
   );
 }

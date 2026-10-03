@@ -22,6 +22,7 @@ import {
   type BrainHandlerContext,
   type CustomModeStore,
   createChimeraRouteHandlers,
+  createCodeAssistRouteHandlers,
   createMailboxRouteHandlers,
   type DesignContext,
   type EmbeddedAgentConfigContext,
@@ -383,6 +384,23 @@ export function createWebuiRouteContexts({
     log: (m) => console.warn(m),
   });
 
+  // Code Assist ("Ask AI" panel on File Manager / Code Atlas). Reuses the SAME
+  // per-task factory the SDD wizard and goal workers already run on, so an
+  // analysis gets a throwaway agent rather than a new session. Omitted when
+  // the host has no factory: the embedded router then falls back to an inert
+  // handler that claims the message instead of failing the boot.
+  const codeAssistRoutes = opts.sddSubagentFactory
+    ? createCodeAssistRouteHandlers({
+        subagentFactory: opts.sddSubagentFactory,
+        projectRoot: () =>
+          opts.projectRoot ??
+          (opts.agent.ctx as { projectRoot?: string | undefined }).projectRoot ??
+          process.cwd(),
+        send,
+        log: (m: string) => console.warn(m),
+      })
+    : undefined;
+
   const sessionsCtx: EmbeddedSessionContext = {
     opts,
     buildSessionStart: (overrides) => buildSessionStartPayload(overrides),
@@ -447,6 +465,7 @@ export function createWebuiRouteContexts({
     projectsCtx,
     mailboxRoutes,
     chimeraRoutes,
+    codeAssistRoutes,
     sessionsCtx,
     connectionCtx,
   };

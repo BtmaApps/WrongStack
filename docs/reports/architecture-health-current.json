@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T12:02:19.813Z",
+  "generatedAt": "2026-10-03T12:03:22.546Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4386,
-    "testFiles": 3999,
-    "sourceLines": 1044180,
+    "sourceFiles": 4390,
+    "testFiles": 4001,
+    "sourceLines": 1045279,
     "workspaceEdges": 133,
-    "moduleEdges": 14260,
+    "moduleEdges": 14271,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 977
+    "testOnlyExports": 978
   },
   "errors": [
     "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
@@ -853,7 +853,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 637,
+      "sourceFiles": 638,
       "testFiles": 453,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -908,8 +908,8 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 24,
-      "testFiles": 11,
+      "sourceFiles": 25,
+      "testFiles": 12,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -922,15 +922,15 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 11
+          "testFiles": 12
         }
       ]
     },
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 261,
-      "testFiles": 259,
+      "sourceFiles": 263,
+      "testFiles": 260,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -956,7 +956,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 259
+          "testFiles": 260
         }
       ]
     },
@@ -20752,6 +20752,12 @@
         ]
       },
       {
+        "file": "packages/webui-protocol/tests/management-request-contracts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-protocol/tests/message-catalogs.test.ts",
         "projects": [
           "root-node"
@@ -20921,6 +20927,12 @@
       },
       {
         "file": "packages/webui-server/tests/client-transport-routes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/code-assist-routes.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25358,7 +25370,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 909,
+      "lines": 910,
       "relativeImports": 22
     },
     {
@@ -25727,9 +25739,14 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/webui/src/components/CodeMap.tsx",
+      "lines": 811,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/webui/src/components/FileExplorer.tsx",
-      "lines": 851,
-      "relativeImports": 7
+      "lines": 862,
+      "relativeImports": 8
     },
     {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
@@ -25798,8 +25815,8 @@
     },
     {
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
-      "lines": 983,
-      "relativeImports": 57
+      "lines": 1003,
+      "relativeImports": 58
     },
     {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
@@ -25869,6 +25886,11 @@
       "relativeImports": 47
     },
     {
+      "file": "packages/webui-server/src/server/embedded-message-router.ts",
+      "lines": 1003,
+      "relativeImports": 58
+    },
+    {
       "file": "packages/core/src/coordination/director.ts",
       "lines": 1002,
       "relativeImports": 45
@@ -25887,11 +25909,6 @@
       "file": "packages/sage/src/sqlite-store.ts",
       "lines": 992,
       "relativeImports": 42
-    },
-    {
-      "file": "packages/webui-server/src/server/embedded-message-router.ts",
-      "lines": 983,
-      "relativeImports": 57
     },
     {
       "file": "packages/mcp/src/registry.ts",
@@ -25995,7 +26012,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 909,
+      "lines": 910,
       "relativeImports": 22
     },
     {
@@ -29231,6 +29248,10 @@
     {
       "file": "packages/webui-server/src/server/chimera-routes.ts",
       "name": "isPendingChimeraReport"
+    },
+    {
+      "file": "packages/webui-server/src/server/code-assist-routes.ts",
+      "name": "parseCodeAssistRunRequest"
     },
     {
       "file": "packages/webui-server/src/server/codemap-cache.ts",

@@ -8,6 +8,7 @@ import {
   type ClientTransportRouteHandlers,
   handleClientTransportRoute,
 } from './client-transport-routes.js';
+import { type CodeAssistRouteHandlers, handleCodeAssistRoute } from './code-assist-routes.js';
 import { type CompletionRouteHandlers, handleCompletionRoute } from './completion-routes.js';
 import { type ContentRouteContext, handleContentRoute } from './content-routes.js';
 import { type ConversationRouteHandlers, handleConversationRoute } from './conversation-routes.js';
@@ -52,6 +53,7 @@ export interface RouteFamilyTable {
   worklist: WorklistRouteHandlers;
   process: ProcessRouteHandlers;
   host: HostRouteHandlers;
+  codeAssist: CodeAssistRouteHandlers;
   clientTransport: ClientTransportRouteHandlers;
   conversation: ConversationRouteHandlers;
   completion: CompletionRouteHandlers;
@@ -100,6 +102,7 @@ export function createRouteFamilyDispatcher(
     if (await handleWorklistRoute(ws, message, routes.worklist)) return;
     if (await handleProcessRoute(ws, message, routes.process)) return;
     if (await handleHostRoute(ws, message, routes.host)) return;
+    if (await handleCodeAssistRoute(ws, message, routes.codeAssist)) return;
     if (await handleClientTransportRoute(ws, message, routes.clientTransport)) return;
     if (await handleConversationRoute(ws, message, routes.conversation)) return;
     if (await handleCompletionRoute(ws, message, routes.completion)) return;

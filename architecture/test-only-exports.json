@@ -1663,6 +1663,9 @@
     "packages/webui-server/src/server/chimera-routes.ts": [
       "isPendingChimeraReport"
     ],
+    "packages/webui-server/src/server/code-assist-routes.ts": [
+      "parseCodeAssistRunRequest"
+    ],
     "packages/webui-server/src/server/codemap-cache.ts": [
       "codemapGraphCacheChars",
       "codemapGraphCacheSize"
