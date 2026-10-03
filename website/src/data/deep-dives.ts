@@ -671,17 +671,17 @@ export const featureDeepDives: Record<string, FeatureDeepDive> = {
   },
   'brain-council': {
     promise:
-      'High-risk autonomous decisions can receive independent multi-provider scrutiny before the runtime acts or escalates to a human.',
+      'Risky decisions can receive a multi-model panel, with a Judge for contested votes and explicit escalation when a critical panel cannot resolve.',
     mechanism: [
       {
         title: 'Gate by risk',
-        body: 'The live autonomy ceiling and the Council minimum-risk threshold decide whether the panel convenes for a request.',
+        body: 'Ledger guard, exact replay, rules and policy run first. The live risk ceiling then gates model decisions; eligible lower-risk option requests can use Jev System One before Council or LLM.',
         code: 'decision.risk ≥ council.minRisk',
       },
       {
-        title: 'Collect independent votes',
-        body: 'Executor, skeptic, auditor or custom seats evaluate the same exact option ids in parallel without seeing peer rationales.',
-        code: 'Promise.allSettled(voters)',
+        title: 'Vote, then deliberate',
+        body: 'The first round hides peer votes. By default a second round shows earlier ballots as quoted data. Executor, skeptic, auditor or custom seats may revise on new evidence; early veto or cancellation can stop sooner.',
+        code: 'round 1 → quoted ballots → round 2',
       },
       {
         title: 'Apply quorum and veto',
@@ -694,25 +694,37 @@ export const featureDeepDives: Record<string, FeatureDeepDive> = {
         code: 'Σ option weight > approval fraction',
       },
       {
-        title: 'Send close calls to a judge',
-        body: 'A separate judge sees all rationales for ties or weak pluralities; without a valid judgment the Council asks for human input.',
-        code: 'tie | weak plurality → judge | ask_human',
+        title: 'Keep the Council Judge',
+        body: 'The Judge reads panel rationales for ties or votes below the approval threshold. An explicit model wins when available; auto prefers an unseated model but may reuse a voter. Jev System One is a separate typed decision tier.',
+        code: 'tie | below threshold → Council Judge',
+      },
+      {
+        title: 'Escalate unresolved critical choices',
+        body: 'Missing quorum or an unusable Judge result cannot become a critical single-model approval. Interactive mode asks through a human form; headless mode uses terminal policy. High-risk abstentions retain their bounded LLM fallback.',
+        code: 'critical abstention → human | terminal policy',
       },
       {
         title: 'Learn from the ledger',
         body: 'A project-local decision ledger records decisions and observed outcomes, then supplies a digest for similar later choices.',
         code: 'brain-ledger.jsonl → decision digest',
       },
+      {
+        title: 'Apply settings across surfaces',
+        body: 'CLI/TUI and standalone WebUI share the runtime chain and live mode, monitor, ledger and trace controls. Human replies match their request and session. Delayed Monitor verdicts are discarded when their triggering evidence becomes stale.',
+        code: 'live config → shared runtime → correlated forms',
+      },
     ],
     operatorNotes: [
-      'Use models or providers with genuinely different failure modes for meaningful diversity.',
-      'A Council abstention never silently approves; the outer escalation tier resolves it.',
+      'Choose different model/provider failure modes deliberately; persona labels and diversity warnings do not guarantee independent judgments.',
+      'Check the effective Judge and whether it is also a voter. Quorum failure and veto do not call the Judge.',
+      'Defaults are headless, 120 seconds for human timeout, and an adaptive risk ceiling based on the effective panel; explicit settings take precedence.',
+      'Tier counts identify the final resolver, not billed attempts. Earlier failed calls remain visible in traces.',
       'Council governance complements tool permissions and does not override explicit deny rules.',
     ],
     signals: [
       { label: 'Resolution', value: 'quorum → veto → majority → judge' },
       { label: 'Default quorum', value: '50% of seats' },
-      { label: 'Default timeout', value: '15s per seat' },
+      { label: 'Default rounds', value: '2 · Judge when needed' },
     ],
   },
   customization: {

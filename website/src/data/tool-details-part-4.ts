@@ -510,4 +510,25 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
       'Entry-point discovery handles root + workspace packages, including pnpm-workspace.yaml packages block and build-output/bin entries mapped back to source.',
     ],
   },
+  present_artifact: {
+    longDescription:
+      'Present an existing project text file, raster image, unified diff, or an owned live browser session. Graphical surfaces use read-only previews or their file viewer. The request is scoped to the current session and does not change contents.',
+    params: [
+      {
+        name: 'browserSessionId',
+        type: 'string',
+        description: 'Existing live browser session opened by this agent in this conversation.',
+      },
+      {
+        name: 'path',
+        type: 'string',
+        description: 'Existing file relative to the project root.',
+      },
+      {
+        name: 'title',
+        type: 'string',
+        description: 'Short label for the result.',
+      },
+    ],
+  },
 };

@@ -327,6 +327,14 @@ Full flag and subcommand reference: [`docs/cli-reference.md`](docs/cli-reference
 Plain `wstack` on a TTY opens a launch menu; add `--no-menu` to go straight to the
 REPL. See [WebUI](docs/webui.md) for the browser surface details.
 
+The WebUI's **Story** button opens [Session Story](docs/session-story.md): a visual
+timeline of the selected tab and its subagents, with activity charts, team
+branches, replay, and recorded file, memory, and mail evidence.
+Its dashboard tabs expose measured tool averages/P95 and file read/edit/write
+counts, with recorded source and diff line statistics where available.
+The Models tab compares provider/model reliability, measured latency and spend,
+and recorded work/quality signals across the leader and its subagents.
+
 **SimpleUI** is a full, independent chat surface (Vite + React), not a
 stripped WebUI. It reuses the same WebSocket backend but ships its own bundle,
 with a sticky composer, `@`-file picker, streaming markdown + syntax highlighting,
@@ -349,6 +357,24 @@ substring search, local semantic ranking, content-hash invalidation, symbol and
 call-graph navigation, and bounded parser workers for large repositories. Full map:
 [reference → tools](docs/reference.md#built-in-tools-67).
 
+**[WrongStack ToolFlow](docs/toolflow.md)** composes repeated or dependent tool
+calls in sandboxed JavaScript and returns the findings needed for the next
+decision. Intermediate results stay out of model context; each call keeps its
+permission checks and session record. WebUI, TUI, and SimpleUI show the run's
+purpose, call count, failure count, and measured output bytes.
+
+In a reproducible 50-read fixture using the real Agent/ToolExecutor and a
+scripted provider, batched direct calls send **551,040 bytes in 50 result blocks**;
+ToolFlow sends **120 bytes in one result block** (over 99.9% less result text).
+Both use **two provider requests**, including the final answer. Sequential direct
+calls use 51; discovering ToolFlow first adds a request. These are fixture result
+bytes and request counts, not live-model speed, token, or billing measurements.
+Use ToolFlow when you can filter or compute a small answer inside the script;
+use direct calls for simple operations and small independent batches. Returning
+raw data still relies on the executor's ordinary preview/artifact handling.
+See the [comparison and reproduction guide](docs/toolflow.md#measured-contribution)
+and the [generated measurement snapshot](website/src/data/toolflow-contribution.json).
+
 Every tool is registered and callable at every setting. How many are *described*
 to the model on each request depends on the token-saving tier: the default trims
 that to a working set and keeps the rest one `tool_search` away, so a long
@@ -357,10 +383,25 @@ session does not pay for every schema on every turn. Set
 
 ### Autonomy & goals
 
+`wstack automation` runs persistent scheduled or signed GitHub jobs in copied
+Docker workspaces. WebUI and SimpleUI manage jobs, versioned templates and
+portable definitions, and show structured results with usage, known estimated
+cost and read-only patches. `present_artifact` presents text, images, diffs and
+owned live browsers. See [automation](docs/subcommands/automation.md),
+[artifact presentation](docs/present-artifact.md),
+[offline quality experiments](docs/subcommands/bench-experiments.md) and
+[cloud routing profiles](docs/subcommands/provider-cloud.md).
+
 `/goal` locks a verifiable contract and the eternal / parallel engines run until
 it's done, surfacing a live stage chip (`⟳ DECIDE` / `⚡ EXECUTE` / `◎ REFLECT`).
 The **Brain** governs risky decisions with deterministic rules, decision traces,
 quality gates, and circuit breaking.
+Its optional Jev System One tier handles bounded lower-risk choices; high-risk
+questions can reach a multi-model Council. The Council **Judge** still resolves
+ties or below-threshold votes. Critical Council failure escalates without a
+single-model fallback. CLI/TUI and standalone WebUI share this chain and live
+settings; interactive decisions use the existing human-input form. See
+[Brain controls and Judge behavior](docs/slash/brain.md).
 
 ### Multi-agent fleet + Director
 

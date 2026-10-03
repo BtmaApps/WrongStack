@@ -4,6 +4,7 @@ import {
   GitBranch,
   GraduationCap,
   Layers3,
+  type LucideIcon,
   MemoryStick,
   MessageSquareMore,
   Network,
@@ -16,7 +17,6 @@ import {
   Settings2,
   ShieldCheck,
   SquareTerminal,
-  type LucideIcon,
   Workflow,
 } from 'lucide-react';
 
@@ -31,6 +31,22 @@ export type Feature = {
 };
 
 export const featureStories: Feature[] = [
+  {
+    slug: 'persistent-automation',
+    eyebrow: 'Automation',
+    title: 'Reviewable agent jobs beyond the chat session',
+    summary:
+      'Manage scheduled and signed GitHub jobs from WebUI or SimpleUI, run them in copied Docker workspaces, and inspect structured results and patches.',
+    details: [
+      'Calendar schedules, event filters and frozen queued definitions',
+      'Versioned templates and portable definitions with credential references',
+      'Duration, token usage and explicitly known estimated cost',
+      'Read-only image, diff and owned live-browser presentation',
+      'Existing bench tools provide shadow routing and paired quality experiments',
+    ],
+    icon: Workflow,
+    accent: 'blue',
+  },
   {
     slug: 'tool-execution',
     eyebrow: 'Execution',
@@ -291,12 +307,12 @@ export const featureStories: Feature[] = [
     eyebrow: 'Multi-model governance',
     title: 'A Brain Council can deliberate before high-risk autonomy',
     summary:
-      'Multiple model seats with distinct personas, weights and optional veto rights can resolve risky decisions by quorum, majority or a separate judge.',
+      'Model seats deliberate with persona lenses, weights and optional vetoes. The Council Judge resolves ties or below-threshold votes; unresolved critical panels escalate.',
     details: [
-      'Executor, auditor, skeptic and strategist perspectives',
-      'Configurable minimum risk, quorum and weighted votes',
-      'Veto seats can refuse unsafe proposals outright',
-      'A persistent ledger feeds prior outcomes into later decisions',
+      'Rules, exact replay and optional Jev before eligible model decisions',
+      'Two voting rounds by default; Judge called only when needed',
+      'Critical panel failure escalates without a single-model fallback',
+      'Shared live settings, human forms, outcome ledger and decision traces',
     ],
     icon: BrainCircuit,
     accent: 'red',

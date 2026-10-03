@@ -18,7 +18,6 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | Read the architectural decision history | [ADRs](#architecture-decision-records-adrs) |
 | Configure runtime behavior | [configuration.md](configuration.md) |
 | Compare all official plugins at a glance | [feature-matrix.md](feature-matrix.md) |
-| Review plugin defaults, risks, findings, and roadmap | [plugin-audit-2026-07-10.md](plugin-audit-2026-07-10.md) |
 | Understand the release gates (`release:check` + `prepublishOnly`) | [release-process.md](release-process.md) |
 | Debug a problem | [troubleshooting.md](troubleshooting.md) |
 | Understand the security posture / report a vulnerability | [SECURITY.md](../SECURITY.md) |
@@ -40,7 +39,6 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [mcp-server.md](mcp-server.md) | MCP server architecture: stdio / SSE / streamable-HTTP transports | Read when working on `packages/mcp/` |
 | [director-architecture.md](director-architecture.md) | Multi-agent Director orchestration: phase-based pipeline, brain handoff, autonomy levels | Read when working on `packages/core/src/coordination/` |
 | [kanban-architecture.md](kanban-architecture.md) | Project-scoped multi-kanban architecture: storage, queue semantics, TaskGraph bridge, Director/fleet dispatch, managed lifecycle, completion verification, and the execution-time security boundary | Read when working on `packages/kanban/`, the `kanban` tool, Kanban CLI/TUI/WebUI surfaces, or `tools.kanbanGovernance` |
-| [kanban-database.md](kanban-database.md) | Kanban persistence layer end to end: `_kanban.sqlite` tables, why each column exists, document-internal relationships, cross-system links (SDD, HQ, governance, session mirror), and consistency invariants | Read before changing the Kanban schema, storage backend, IPC protocol, or any persisted Kanban type |
 | [kanban-contract-graph.md](kanban-contract-graph.md) | Goodhart-safe objective, impact, guardrail, risk, and verification graph for autonomous coding tasks | Read before changing contract-graph types, completion enforcement, or autonomous Kanban instructions |
 | [kanban-workbench.md](kanban-workbench.md) | Bounded cross-board Now, Next, Blocked, Review, alerts, and shared WebUI/TUI/SimpleUI visibility | Read before changing global Kanban navigation, work-surface projections, or task-flow presentation |
 | [kanban-orchestration-contract.md](kanban-orchestration-contract.md) | Canonical task/assignment lifecycle contract for Kanban-backed LLM, Director, subagent, review, and recovery work | Read before changing Kanban queue semantics, assignment lifecycle, stale recovery, or orchestration prompts |
@@ -50,6 +48,12 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [collab-debug.md](collab-debug.md) | 3-agent parallel collab-debug flow (BugHunter + RefactorPlanner + Critic) | Read when working on `/collab debug` |
 | [yolo-mode.md](yolo-mode.md) | YOLO mode: risk classifier, permission policy, audit log | Read when working on `/yolo` or the security layer |
 | [hooks.md](hooks.md) | Hooks runner: cross-cutting events, shell hooks, plugin integration | Read when adding a hook trigger or working on `/hooks` |
+| [present-artifact.md](present-artifact.md) | Session-scoped artifact presentation and editor preservation | Read when changing tool result presentation |
+| [subcommands/sandbox.md](subcommands/sandbox.md) | Isolated Docker execution, source snapshots and patch artifacts | Read when running autonomous work in a container |
+| [subcommands/automation.md](subcommands/automation.md) | Persistent jobs, GitHub intake, credential references and run lifecycle | Read when managing scheduled or event-driven agent work |
+| [subcommands/bench-experiments.md](subcommands/bench-experiments.md) | Offline routing, behavior review and paired compaction experiments | Read when measuring changes to existing agent behavior |
+| [subcommands/provider-cloud.md](subcommands/provider-cloud.md) | Native cloud routing settings per saved provider profile | Read when configuring Bedrock, Vertex or Azure aliases |
+| [subcommands/provider-preflight.md](subcommands/provider-preflight.md) | Read-only native provider setup diagnostics | Read before diagnosing cloud credential chains |
 | [skills.md](skills.md) | Skill system: SKILL.md format, skill loader, registry | Read when working on `packages/core/src/skills/` |
 | [codebase-index-calls.md](codebase-index-calls.md) | Incoming/outgoing calls tools: ref-graph caller/callee lookup, 7-layer dispatch, edit→index pipeline, impact analysis | Read when working on `codebase-incoming-calls`/`codebase-outgoing-calls` or the index dispatch stack |
 | [sage/SYSTEM-REPORT.md](sage/SYSTEM-REPORT.md) | SAGE long-term memory end to end: SQLite schema, IPC project server, injection middleware, tools, MCP, CLI/TUI/WebUI/SimpleUI surfaces | **Read first** before changing memory storage, inject policy, `/memory`, MemoryManager, or `sage-mcp` |
@@ -68,7 +72,6 @@ How to add new things. Each guide is self-contained — read the one for the sur
 | [provider-author-guide.md](provider-author-guide.md) | How to add a new LLM provider: declarative `WireFormatConfig` path (preferred) or imperative `WireAdapter` subclass | Adding a new provider to `packages/providers/src/presets/` |
 | [help-modules.md](help-modules.md) | How to write a dedicated help module for a subcommand: the `customBody` delegation pattern, single-source-of-truth flag list, parser integration, byte-for-byte parity test | Adding help to a deep subcommand (e.g. `wstack <sub> <deep> --help`) |
 | [plugin-management.md](plugin-management.md) | How the plugin management commands work (`wstack plugin list`, `add`, `enable`, etc.) | Working on the plugin-management surface |
-| [plugin-audit-2026-07-10.md](plugin-audit-2026-07-10.md) | Audit of 73 managed first-party rows (core, suite catalog, and bridges) | Reviewing plugin policy or planning follow-up work |
 
 ### Style guide
 
@@ -155,7 +158,6 @@ ADRs capture significant architectural decisions, the alternatives considered, a
 | Location | What it covers |
 |---|---|
 | [plans/](plans/) | Active, implementation-oriented plans. Keep status, owner, and last-verified date in every plan. |
-| [competitive-roadmap-2026-2027/](competitive-roadmap-2026-2027/) | Product strategy and roadmap proposals. |
 | [specs/](specs/) | Spec-driven-development contracts and acceptance criteria. |
 | [notes/](notes/) | Short-lived working notes; promote durable guidance to a maintained document. |
 | [archive/](archive/) | Superseded architecture documents, completed work items, dated reports, audits, and release snapshots. |

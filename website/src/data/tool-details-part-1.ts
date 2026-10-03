@@ -65,8 +65,14 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
   },
   tool_script: {
     longDescription:
-      'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
+      'WrongStack ToolFlow: compose repetitive or deterministic dependent tool calls in sandboxed JavaScript, filter or compute over their results, and return compact findings for the next model decision. Call tools as async functions (`await tools.read({...})`, `tools.call(name, input)`). Each call retains validation, permissions, confirmations, and journaling. Prefer direct calls for simple operations or small independent batches. Model context receives the return, call summary, byte diagnostics, and console output, subject to normal preview/artifact handling. Speed and cost depend on the workflow and require separate measurements.',
     params: [
+      {
+        name: 'description',
+        type: 'string',
+        description:
+          'Short human-readable purpose of this ToolFlow run, shown in activity history.',
+      },
       {
         name: 'script',
         type: 'string',

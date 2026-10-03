@@ -87,11 +87,11 @@ export const commandDetailsPart2: CommandDetailMap = {
     purpose:
       'Inspect the decision arbiter, ask it a question, or set its risk ceiling — the Brain governs high-stakes fleet decisions.',
     behavior:
-      'The Brain agent evaluates risky fleet actions (spawning, tool approval escalation, worktree creation) against configurable risk thresholds. `/brain` shows current settings. `/brain ask "..."` queries the Brain for a decision recommendation. `/brain risk <level>` sets the risk ceiling.',
+      'The Brain shares rules, exact replay, optional Jev System One, Council and a bounded LLM pool across CLI/TUI and standalone WebUI. The Council Judge resolves ties or below-threshold votes; unresolved critical panels escalate without a single-model fallback. `/brain` shows the effective panel and Judge. `/brain ask "..."` requests a decision, and `/brain risk <level>` changes the model autonomy ceiling.',
     before:
       'Understand the Brain role in your fleet. It acts as a safety gate, not a replacement for your judgment.',
     during:
-      'Brain queries return a decision with reasoning. Risk level changes apply immediately to future decisions.',
+      'Queries resolve to an answer, denial or escalation. Interactive mode uses a correlated human form; headless mode applies terminal policy. Risk, monitor, ledger and trace controls apply live. `/brain stats` counts resolving tiers; traces show attempts and usage.',
     after:
       'Monitor Brain decisions in the fleet event log. Adjust the risk ceiling if it is too conservative or permissive.',
   },

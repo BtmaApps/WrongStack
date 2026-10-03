@@ -2,13 +2,13 @@ import type { CommandDetailMap } from './command-detail-types';
 
 export const commandDetailsPart3: CommandDetailMap = {
   '/auth': {
-    purpose: 'Open the API-key status dashboard — view, add, and verify provider authentication.',
+    purpose: 'Manage saved provider credentials and native cloud routing profiles.',
     behavior:
-      'The command displays all configured API keys (masked), their providers, last validation status, and expiration dates. You can add new keys, re-validate existing ones, and remove expired keys. Keys are stored encrypted with AES-256-GCM per machine.',
+      '`/auth` opens the TUI credential panel or shows saved key status in the plain REPL. `/auth cloud <alias> region|project|location|resourceName <value>` changes the applicable native routing field; `clear` restores environment fallbacks. WebUI saved profiles and SimpleUI credentials expose the same settings. Existing keys stay encrypted in the active machine profile.',
     before:
-      'Have your API keys ready. Keys are never displayed in full — only the last 4 characters are shown.',
-    during: 'The dashboard prints key status. Validation makes a test request to the provider API.',
-    after: 'Remove unused or expired keys. Re-validate keys that show an unknown status.',
+      'Choose an existing saved alias for cloud settings. Credentials and routing fields are managed separately.',
+    during: 'Cloud configuration validates and persists routing metadata without making a model request.',
+    after: 'Re-select the provider or restart to construct it with the new settings. Preflight checks setup presence; a live model test verifies account access.',
   },
 
   '/working_dir': {

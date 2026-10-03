@@ -327,12 +327,12 @@ export function HomePage() {
                 'Run wstack remote against a Linux or macOS host. The agent and tools stay there; its WebUI reaches you over SSH.',
               ],
               [
-                'Tools working together',
-                'Use tool_script to combine and parallelize tool calls in sandboxed JavaScript, with permission checks on every call.',
+                'WrongStack ToolFlow',
+                'Compose tools. Return answers. Filter and compute inside a sandboxed script, then return the small result needed for the next decision. Every call keeps its permission checks.',
               ],
               [
                 'Keep work in view',
-                'Watch the live browser, keep hidden terminals running, and resume shared prompt queues with their attachments.',
+                'Watch the live browser and keep hidden terminals running. Open Story in a WebUI tab for parallel subagent timelines, team branches, replay, and recorded file, memory, and mail evidence.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
@@ -341,6 +341,14 @@ export function HomePage() {
                 </span>
                 <h3 className="mt-6 text-lg font-black tracking-[-0.025em] text-fg">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">{body}</p>
+                {title === 'WrongStack ToolFlow' && (
+                  <Link
+                    href="/tools/tool-script"
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand"
+                  >
+                    See the measured contribution <ArrowRight className="size-4" />
+                  </Link>
+                )}
               </Reveal>
             ))}
           </div>

@@ -580,7 +580,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
         name: 'allowScripts',
         type: 'boolean',
         description:
-          'Opt in to running package lifecycle scripts (preinstall/install/postinstall). Default false.',
+          'Opt in to running package lifecycle scripts (preinstall/install/postinstall) for npm/pnpm/yarn/bun/Composer. Default false.',
       },
     ],
     doNotUseWhen: [

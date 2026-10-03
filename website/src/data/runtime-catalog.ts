@@ -31,7 +31,7 @@ export const toolCatalog = [
   {
     name: 'tool_script',
     summary:
-      'Run one short JavaScript program that calls tools as async functions (`await tools.read({...})`, `tools.call(name, input)`), loops over and filters their results, and returns only the final value. Use it to collapse a chain of dependent or repetitive tool calls into one step; every call it makes is checked and confirmed like a direct call.',
+      'WrongStack ToolFlow: compose repetitive or deterministic dependent tool calls in sandboxed JavaScript, filter or compute over their results, and return compact findings for the next model decision. Call tools as async functions (`await tools.read({...})`, `tools.call(name, input)`). Each call retains validation, permissions, confirmations, and journaling. Prefer direct calls for simple operations or small independent batches. Model context receives the return, call summary, byte diagnostics, and console output, subject to normal preview/artifact handling. Speed and cost depend on the workflow and require separate measurements.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -571,6 +571,14 @@ export const toolCatalog = [
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
+  },
+  {
+    name: 'present_artifact',
+    summary:
+      'Present an existing project text file, raster image, unified diff, or an owned live browser session. Graphical surfaces use read-only previews or their file viewer. The request is scoped to the current session and does not change contents.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Work & state',
   },
 ] as const;
 
@@ -1392,9 +1400,9 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 70,
-  minimal: 27,
-  light: 27,
-  medium: 50,
-  aggressive: 27,
+  off: 71,
+  minimal: 28,
+  light: 28,
+  medium: 51,
+  aggressive: 28,
 } as const;
