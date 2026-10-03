@@ -20,8 +20,10 @@ import type { SlashCommandContext } from './command-context.js';
 function fmtAge(at: number): string {
   const s = Math.max(0, Math.round((Date.now() - at) / 1000));
   if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  return `${Math.round(s / 3600)}h ago`;
+  // Promote at the rounding boundary: 59m50s is "1h ago", not "60m ago".
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.max(1, Math.round(s / 3600))}h ago`;
 }
 
 const NO_SUPERVISOR_MSG =

@@ -221,30 +221,83 @@ const GIT_OP_RE = new RegExp(
   'g',
 );
 const GIT_SWITCH_RE = new RegExp(
-  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(?:checkout|switch)\s+([^;&|\n]*)`,
+  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(checkout|switch)\s+([^;&|\n]*)`,
   'g',
 );
 
-function detectGitOpsInCommand(command: string): GitCommandMatch[] {
+/**
+ * Whether `name` is a branch `git checkout <name>` would switch to: a local
+ * branch, or a remote-tracking one checkout DWIM-creates a local branch from.
+ */
+async function isCheckoutBranch(
+  name: string,
+  cwd: string | undefined,
+  signal: AbortSignal,
+): Promise<boolean> {
+  try {
+    await runGit(['show-ref', '--verify', '--quiet', `refs/heads/${name}`], cwd, signal);
+    return true;
+  } catch (err) {
+    if (signal.aborted) throw err;
+  }
+  try {
+    const remote = await runGit(
+      ['for-each-ref', '--count=1', '--format=%(refname)', `refs/remotes/*/${name}`],
+      cwd,
+      signal,
+    );
+    return remote.trim().length > 0;
+  } catch (err) {
+    if (signal.aborted) throw err;
+    return false;
+  }
+}
+
+/**
+ * A plain `git checkout <x>` (no -b/-c/--orphan) is a branch switch only when
+ * `<x>` IS a branch: `git checkout src/app.ts` restores a file and leaves HEAD
+ * where it was. Reading every such target as a branch let
+ * `git checkout src/app.ts && git commit -am x` on main be judged against a
+ * "branch" named src/app.ts — and commit to main unblocked. `git switch`
+ * never restores files, so its target needs no check.
+ */
+async function detectGitOpsInCommand(
+  command: string,
+  isBranch: (name: string) => Promise<boolean>,
+): Promise<GitCommandMatch[]> {
   const cmd = command.trim();
   const snippet = cmd.slice(0, 120);
-  const events: Array<{ at: number; op?: GitCommandMatch['type']; to?: string }> = [];
+  const events: Array<{
+    at: number;
+    op?: GitCommandMatch['type'];
+    to?: string;
+    verify?: boolean;
+  }> = [];
   for (const m of cmd.matchAll(GIT_OP_RE)) {
     events.push({ at: m.index ?? 0, op: m[1] as GitCommandMatch['type'] });
   }
   for (const m of cmd.matchAll(GIT_SWITCH_RE)) {
-    const args = (m[1] ?? '').trim().split(/\s+/).filter(Boolean);
+    const args = (m[2] ?? '').trim().split(/\s+/).filter(Boolean);
     if (args.includes('--')) continue;
     const create = args.findIndex((a) => /^(?:-[bBcC]|--orphan)$/.test(a));
     const target = create >= 0 ? args[create + 1] : args.find((a) => !a.startsWith('-'));
-    if (target) events.push({ at: m.index ?? 0, to: target.replace(/^['"]|['"]$/g, '') });
+    if (target) {
+      events.push({
+        at: m.index ?? 0,
+        to: target.replace(/^['"]|['"]$/g, ''),
+        verify: m[1] === 'checkout' && create < 0,
+      });
+    }
   }
+  // Only a command that also commits/pushes/merges needs its switches resolved.
+  if (!events.some((e) => e.op)) return [];
   events.sort((a, b) => a.at - b.at);
   const ops: GitCommandMatch[] = [];
   let onBranch: string | undefined;
   for (const e of events) {
-    if (e.to !== undefined) onBranch = e.to;
-    else if (e.op) ops.push({ type: e.op, snippet, onBranch });
+    if (e.to !== undefined) {
+      if (!e.verify || (await isBranch(e.to))) onBranch = e.to;
+    } else if (e.op) ops.push({ type: e.op, snippet, onBranch });
   }
   return ops;
 }
@@ -362,7 +415,9 @@ const plugin: Plugin = {
           inp['command'] ?? inp['CommandLine'] ?? inp['cmd'] ?? inp['script'] ?? inp['input'];
         const command = typeof rawCmd === 'string' ? rawCmd : undefined;
         if (typeof command !== 'string') return;
-        gitOps = detectGitOpsInCommand(command);
+        gitOps = await detectGitOpsInCommand(command, (name) =>
+          isCheckoutBranch(name, cwd, runtime.signal),
+        );
       }
 
       // Ops the config does not block — or none at all — let it through.

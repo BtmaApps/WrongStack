@@ -87,7 +87,7 @@ describe('TelegramOutbox HTML-mode escaping', () => {
     expect(calls[0]!.text).toBe(RAW);
   });
 
-  it('does not apply HTML escaping in MarkdownV2 mode (separate contract)', async () => {
+  it('applies MarkdownV2 escaping, not HTML escaping, in MarkdownV2 mode', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
       api: () => api as any,
@@ -97,7 +97,9 @@ describe('TelegramOutbox HTML-mode escaping', () => {
 
     await outbox.sendMessage(999, RAW);
 
-    expect(calls[0]!.text).toBe(RAW);
+    // `>` is reserved in MarkdownV2 (an unescaped one fails the send); `<` and
+    // `&` are not, and no HTML entities are introduced.
+    expect(calls[0]!.text).toBe('Deploy check: if a < b && c \\> d then & halt');
     expect(calls[0]!.opts).toMatchObject({ parseMode: 'MarkdownV2' });
   });
 

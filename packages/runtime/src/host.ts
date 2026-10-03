@@ -7,6 +7,7 @@ import type {
   ToolRegistry,
 } from '@wrongstack/core/registry';
 import type { PluginAPI, SessionWriter } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WrongStackPack } from './pack.js';
 
 export interface RuntimeHost {
@@ -155,7 +156,7 @@ export async function applyWrongStackPack(
       try {
         await pack.teardown(opts.api);
       } catch (teardownErr) {
-        const detail = teardownErr instanceof Error ? teardownErr.message : String(teardownErr);
+        const detail = toErrorMessage(teardownErr);
         process.emitWarning(
           `Pack teardown after setup failure failed: ${detail}`,
           'PackRollbackWarning',
@@ -210,7 +211,7 @@ export async function applyWrongStackPacks(
     for (let i = applied.length - 1; i >= 0; i--) {
       const mounted = applied[i]!;
       await mounted.teardown().catch((teardownErr) => {
-        const detail = teardownErr instanceof Error ? teardownErr.message : String(teardownErr);
+        const detail = toErrorMessage(teardownErr);
         process.emitWarning(
           `Pack teardown during error rollback failed: ${detail}`,
           'PackRollbackWarning',

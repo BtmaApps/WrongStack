@@ -45,10 +45,13 @@ async function getChangedFiles(
     const statusCode = record.slice(0, 2).trim();
     const filePath = record.slice(3);
     // A rename/copy record is followed by its source path.
-    if (statusCode.includes('R') || statusCode.includes('C')) i++;
+    const renamed = statusCode.includes('R') || statusCode.includes('C');
+    if (renamed) i++;
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
-    } else if (statusCode.includes('M')) {
+    } else if (statusCode.includes('M') || renamed) {
+      // A staged rename (`R `) is how `git mv` + edits shows up — git reports
+      // the move, not an `M`, yet the destination's content is what changed.
       files.push({ path: filePath, status: 'modified' });
     }
   }

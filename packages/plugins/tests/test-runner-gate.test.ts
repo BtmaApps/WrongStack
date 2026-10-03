@@ -99,7 +99,12 @@ vi.mock('node:child_process', () => ({
   execFile: mockExecFile,
 }));
 vi.mock('node:fs', () => ({ existsSync: vi.fn(() => true) }));
-vi.mock('node:fs/promises', () => ({ access: vi.fn(() => Promise.resolve()) }));
+vi.mock('node:fs/promises', () => ({
+  access: vi.fn(() => Promise.resolve()),
+  // No vitest report file: these mocks print the JSON on stdout (pre-5 vitest).
+  readFile: vi.fn(() => Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))),
+  unlink: vi.fn(() => Promise.resolve()),
+}));
 
 const testRunnerGatePlugin = (await import('../src/test-runner-gate')).default;
 

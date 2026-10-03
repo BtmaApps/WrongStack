@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:43:50.625Z",
+  "generatedAt": "2026-10-03T11:46:15.338Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,14 +12,14 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4317,
+    "sourceFiles": 4318,
     "testFiles": 3949,
-    "sourceLines": 1029773,
+    "sourceLines": 1030219,
     "workspaceEdges": 131,
-    "moduleEdges": 14076,
+    "moduleEdges": 14082,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 8,
+    "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 974
@@ -32,7 +32,10 @@
     "ARCH-CYCLE-TYPE-12: exception expired on 2026-10-01",
     "ARCH-CYCLE-TYPE-14: exception expired on 2026-10-01",
     "ARCH-CYCLE-TYPE-29: exception expired on 2026-10-01",
-    "ARCH-CYCLE-TYPE-31: exception expired on 2026-10-01"
+    "ARCH-CYCLE-TYPE-31: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-30: exception no longer matches an active cycle",
+    "ARCH-CYCLE-TYPE-14: exception no longer matches an active cycle",
+    "ARCH-CYCLE-TYPE-31: exception no longer matches an active cycle"
   ],
   "packageCycles": [],
   "coreAreas": {
@@ -605,7 +608,7 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 123,
+      "sourceFiles": 124,
       "testFiles": 124,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -1014,13 +1017,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/cli/src/subcommands/handlers/audit.ts",
-          "packages/cli/src/subcommands/index.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/core/src/coordination/agents/agent-prompts.ts",
           "packages/core/src/coordination/agents/index.ts",
           "packages/core/src/coordination/agents/phase1-discovery.ts",
@@ -1078,17 +1074,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/core/src/index.ts",
-          "packages/core/src/plugins/prompts-plugin.ts",
-          "packages/core/src/plugins/skills-plugin.ts",
-          "packages/core/src/plugins/sync-plugin.ts",
-          "packages/core/src/tools/mcp-control.ts",
-          "packages/core/src/tools/mcp-use.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/core/src/types/blocks.ts",
           "packages/core/src/types/context.ts",
           "packages/core/src/types/conversation-state.ts",
@@ -1101,14 +1086,6 @@
           "packages/core/src/types/token-counter.ts",
           "packages/core/src/types/tool.ts"
         ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/sage/src/middleware/tool-call-memory-retrieval.ts",
-          "packages/sage/src/middleware/tool-call-memory-trace.ts",
-          "packages/sage/src/middleware/tool-call-memory.ts"
-        ]
       }
     ],
     "matchedExceptions": [
@@ -1116,10 +1093,7 @@
       "ARCH-CYCLE-TYPE-09",
       "ARCH-CYCLE-TYPE-11",
       "ARCH-CYCLE-TYPE-12",
-      "ARCH-CYCLE-TYPE-14",
-      "ARCH-CYCLE-TYPE-29",
-      "ARCH-CYCLE-TYPE-30",
-      "ARCH-CYCLE-TYPE-31"
+      "ARCH-CYCLE-TYPE-29"
     ],
     "unexcepted": []
   },
@@ -25122,7 +25096,7 @@
     },
     {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "lines": 974,
+      "lines": 976,
       "relativeImports": 18
     },
     {
@@ -25157,8 +25131,8 @@
     },
     {
       "file": "packages/core/src/plugins/skills-plugin.ts",
-      "lines": 827,
-      "relativeImports": 14
+      "lines": 828,
+      "relativeImports": 15
     },
     {
       "file": "packages/core/src/security/secret-vault.ts",
@@ -25167,7 +25141,7 @@
     },
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1827,
+      "lines": 1830,
       "relativeImports": 2
     },
     {
@@ -25226,6 +25200,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/plugins/src/accessibility-auditor/index.ts",
+      "lines": 828,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",
       "lines": 906,
       "relativeImports": 1
@@ -25252,7 +25231,7 @@
     },
     {
       "file": "packages/plugins/src/test-runner-gate/index.ts",
-      "lines": 906,
+      "lines": 930,
       "relativeImports": 1
     },
     {
@@ -25529,7 +25508,7 @@
   "hotspots": [
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 1827,
+      "lines": 1830,
       "relativeImports": 2
     },
     {
@@ -25599,7 +25578,7 @@
     },
     {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "lines": 974,
+      "lines": 976,
       "relativeImports": 18
     },
     {
@@ -25651,6 +25630,11 @@
       "file": "packages/core/src/types/provider.ts",
       "lines": 933,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/plugins/src/test-runner-gate/index.ts",
+      "lines": 930,
+      "relativeImports": 1
     },
     {
       "file": "packages/sage/src/sqlite-store-search.ts",
@@ -25709,11 +25693,6 @@
     },
     {
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",
-      "lines": 906,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/plugins/src/test-runner-gate/index.ts",
       "lines": 906,
       "relativeImports": 1
     },

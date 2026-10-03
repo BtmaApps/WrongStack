@@ -31,7 +31,7 @@ import {
   type ModelsRegistry,
 } from '@wrongstack/core/types';
 import { createTypeSafeCriterionJudge, resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
-import type { WstackPaths } from '@wrongstack/core/utils';
+import { toErrorMessage, type WstackPaths } from '@wrongstack/core/utils';
 import { setKanbanCriterionJudge } from '@wrongstack/kanban';
 import { createProjectSageMemoryPort, isSqliteAvailable } from '@wrongstack/sage';
 import {
@@ -157,7 +157,7 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
         ?.catch((error: unknown) => {
           logger.warn('Session archive-idle failed', {
             event: 'session_store.archive_idle_failed',
-            message: error instanceof Error ? error.message : String(error),
+            message: toErrorMessage(error),
           });
         });
     }

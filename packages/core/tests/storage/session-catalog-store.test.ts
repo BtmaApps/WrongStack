@@ -391,6 +391,7 @@ describe('SessionCatalogStore', () => {
         model: 'page-model',
         provider: 'page-provider',
         tokenTotal: i,
+        startedAt: `2026-08-08T0${i}:00:00.000Z`,
         lastActivityAt: `2026-08-08T0${i}:00:00.000Z`,
       });
     }
@@ -403,6 +404,41 @@ describe('SessionCatalogStore', () => {
     // The contract: 0 and negative are an empty page, never a 1-row page.
     expect(store.listCatalog({ limit: 0 })).toEqual([]);
     expect(store.listCatalog({ limit: -1 })).toEqual([]);
+    store.close();
+  });
+
+  // Regression: `titleContains` answered differently depending on which backend
+  // served it. This RPC filtered with `json_extract(summary_json,'$.title') LIKE ?`
+  // and left the title's case to SQLite, whose LIKE/LOWER fold ASCII ONLY — so a
+  // title holding U+0130 ('İ') could never match a needle folding to ASCII 'i'
+  // ('İstanbul' LIKE '%istanbul%' is false). The in-process filters
+  // (storage/session-summary.ts, storage/session-reader.ts) lowercase the title in
+  // JS and matched. Both sides now go through the `ws_fold` SQL function, which
+  // runs the same toLocaleLowerCase() the JS side uses.
+  it('titleContains matches a non-ASCII title the way the in-process filters do', async () => {
+    const { store } = await fixture();
+    store.upsertSummary({
+      id: '2026-08-08/sess_dotted_i',
+      // Capital I WITH DOT ABOVE (U+0130), the one code point in the BMP where
+      // toLowerCase() and toLocaleLowerCase() disagree.
+      title: 'İstanbul deploy notes',
+      model: 'm',
+      provider: 'p',
+      tokenTotal: 0,
+      startedAt: '2026-08-08T00:00:00.000Z',
+      lastActivityAt: '2026-08-08T00:00:00.000Z',
+    });
+
+    // The control: ASCII titles keep matching on both casings.
+    expect(store.listCatalog({ titleContains: 'deploy' })).toHaveLength(1);
+
+    // The contract: the İ-bearing title is found exactly as the JS filters find it.
+    expect(store.listCatalog({ titleContains: 'İstanbul' })).toHaveLength(1);
+    expect(store.listCatalog({ titleContains: 'istanbul' })).toHaveLength(1);
+    expect(store.listCatalog({ titleContains: 'STANBUL' })).toHaveLength(1);
+
+    // Still a real substring filter, not a match-everything fallback.
+    expect(store.listCatalog({ titleContains: 'zzzz-absent' })).toHaveLength(0);
     store.close();
   });
 

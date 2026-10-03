@@ -108,12 +108,36 @@ function toForwardSlashes(p: string): string {
   return p.split(sep).join('/').replaceAll('\\', '/');
 }
 
-/** Inner pattern of a single-`*`/`?` glob (no anchors) over path parts. */
+// Inner pattern of a gitignore glob (no anchors) over path parts. `*`/`?` stay
+// inside one segment; gitignore's double star crosses them: a leading `**/`
+// (any leading directories, or none), an inner `/**/` (zero or more
+// directories) and a trailing `/**` (everything inside). Reading it as two
+// single-segment stars left `**/dist/` or `a/**/b` "uncovered", and the guard
+// appended a duplicate line to a .gitignore that already ignored the file.
 function globToSource(glob: string): string {
-  return glob
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\?/g, '[^/]');
+  let out = '';
+  let i = 0;
+  while (i < glob.length) {
+    if (glob.startsWith('**/', i) && (i === 0 || glob[i - 1] === '/')) {
+      out += '(?:.*/)?';
+      i += 3;
+      continue;
+    }
+    if (glob.startsWith('/**', i) && i + 3 === glob.length) {
+      out += '/.*';
+      i += 3;
+      continue;
+    }
+    const ch = glob[i]!;
+    if (ch === '*') {
+      out += '[^/]*';
+      while (glob[i] === '*') i++;
+      continue;
+    }
+    out += ch === '?' ? '[^/]' : ch.replace(/[.+^${}()|[\]\\]/, '\\$&');
+    i++;
+  }
+  return out;
 }
 
 /** Convert a single-`*`/`?` glob into an anchored RegExp over path parts. */

@@ -2,6 +2,7 @@
  * Tests for chronicle/project-server-client.ts — isChronicleProjectServerAvailable
  * and ChronicleRemoteJournal batching logic with a mocked client.
  */
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -72,11 +73,17 @@ function makeMockClient() {
 }
 
 function makeJournalOpts(overrides: Record<string, unknown> = {}) {
+  // Absolute, cwd-independent roots: `path.resolve('.')` / `path.resolve('.state')`
+  // pointed at the runner's launch directory, so these opts described a
+  // different project on disk under `pnpm --filter` (cwd=packages/core) than
+  // from the repo root. Nothing here is written to disk — the client is mocked —
+  // but the fixture should not name a real cwd-relative path.
+  const stateRoot = path.join(os.tmpdir(), 'chronicle-project-server-client-test', '.state');
   return {
-    projectRoot: path.resolve('.'),
-    globalRoot: path.resolve('.state'),
+    projectRoot: os.tmpdir(),
+    globalRoot: stateRoot,
     projectId: 'project',
-    projectDir: path.resolve('.state', 'project'),
+    projectDir: path.join(stateRoot, 'project'),
     workspaceId: 'workspace',
     batchWindowMs: 10,
     maxPending: 100,

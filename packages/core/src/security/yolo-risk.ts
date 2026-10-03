@@ -226,10 +226,13 @@ function haltFlagAlt(flags: readonly string[]): string {
   return `(?:${alts})\\s+${HALT_LAUNCHER_VALUE}|`;
 }
 
+// The bare numeric operand is a duration or priority — fractional included:
+// GNU timeout takes `1.5m` / `.5`, and an integer-only operand left
+// `timeout 1.5m shutdown -h now` unclassified (no YOLO confirmation).
 const HALT_LAUNCHER_PREFIX = `(?:${[...HALT_LAUNCHER_VALUE_FLAGS]
   .map(
     ([name, flags]) =>
-      `(?:${name}\\b(?:\\s+(?:${haltFlagAlt(flags)}-[^\\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\\s]*|\\d+[smhd]?))*\\s+)`,
+      `(?:${name}\\b(?:\\s+(?:${haltFlagAlt(flags)}-[^\\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\\s]*|(?:\\d+(?:\\.\\d*)?|\\.\\d+)[smhd]?))*\\s+)`,
   )
   .join('|')}){0,8}`;
 

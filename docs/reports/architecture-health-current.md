@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-03T11:43:50.625Z
+**Generated:** 2026-10-03T11:46:15.338Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,14 +8,14 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4317 |
-| Production source lines | 1029773 |
+| Production source files | 4318 |
+| Production source lines | 1030219 |
 | Test files | 3949 |
 | Workspace dependency edges | 131 |
-| Relative module edges | 14076 |
+| Relative module edges | 14082 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 8 |
+| Type-inclusive module cycles | 5 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 4 |
 
@@ -29,6 +29,9 @@
 - ARCH-CYCLE-TYPE-14: exception expired on 2026-10-01
 - ARCH-CYCLE-TYPE-29: exception expired on 2026-10-01
 - ARCH-CYCLE-TYPE-31: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-30: exception no longer matches an active cycle
+- ARCH-CYCLE-TYPE-14: exception no longer matches an active cycle
+- ARCH-CYCLE-TYPE-31: exception no longer matches an active cycle
 
 ## Workspace packages
 
@@ -55,7 +58,7 @@
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 15 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
-| @wrongstack/sage | 123 | 124 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 124 | 124 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
@@ -81,19 +84,16 @@ None.
 ### Type-inclusive
 
 - packages/cli/src/fleet/host.ts ↔ packages/cli/src/fleet/routing.ts
-- packages/cli/src/subcommands/handlers/audit.ts ↔ packages/cli/src/subcommands/index.ts
 - packages/core/src/coordination/agents/agent-prompts.ts ↔ packages/core/src/coordination/agents/index.ts ↔ packages/core/src/coordination/agents/phase1-discovery.ts ↔ packages/core/src/coordination/agents/phase2-planning.ts ↔ packages/core/src/coordination/agents/phase3-build.ts ↔ packages/core/src/coordination/agents/phase3-wave1-platform.ts ↔ packages/core/src/coordination/agents/phase3-wave2-meta.ts ↔ packages/core/src/coordination/agents/phase4-verify.ts ↔ packages/core/src/coordination/agents/phase5-review.ts ↔ packages/core/src/coordination/agents/phase6-domain.ts ↔ packages/core/src/coordination/agents/phase7-knowledge.ts ↔ packages/core/src/coordination/agents/phase8-delivery.ts ↔ packages/core/src/coordination/agents/phase8-wave3-products.ts ↔ packages/core/src/coordination/agents/phase9-meta.ts ↔ packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts ↔ packages/core/src/coordination/agents/project-agent-auto-optimize.ts ↔ packages/core/src/coordination/agents/project-agent-identity.ts ↔ packages/core/src/coordination/agents/project-agent-optimizer.ts ↔ packages/core/src/coordination/dispatcher.ts ↔ packages/core/src/coordination/fleet.ts ↔ packages/core/src/coordination/multi-agent-coordinator.ts ↔ packages/core/src/execution/parallel-eternal-engine.ts ↔ packages/core/src/types/autonomy.ts ↔ packages/core/src/types/index.ts
 - packages/core/src/coordination/brain-telemetry.ts ↔ packages/core/src/coordination/brain.ts ↔ packages/core/src/kernel/events.ts ↔ packages/core/src/kernel/events/brain-events.ts ↔ packages/core/src/kernel/events/session-events.ts
 - packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/types/plugin.ts
-- packages/core/src/index.ts ↔ packages/core/src/plugins/prompts-plugin.ts ↔ packages/core/src/plugins/skills-plugin.ts ↔ packages/core/src/plugins/sync-plugin.ts ↔ packages/core/src/tools/mcp-control.ts ↔ packages/core/src/tools/mcp-use.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session-events.ts ↔ packages/core/src/types/session-storage.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
-- packages/sage/src/middleware/tool-call-memory-retrieval.ts ↔ packages/sage/src/middleware/tool-call-memory-trace.ts ↔ packages/sage/src/middleware/tool-call-memory.ts
 
 ## Largest production files
 
 | Lines | File |
 |---:|---|
-| 1827 | `packages/core/src/security/yolo-risk.ts` |
+| 1830 | `packages/core/src/security/yolo-risk.ts` |
 | 1372 | `packages/tools/src/_danger-detect.ts` |
 | 1189 | `packages/vector-memory/src/store.ts` |
 | 1176 | `packages/webui-server/src/server/goal-ws-handler.ts` |
@@ -107,7 +107,7 @@ None.
 | 983 | `packages/webui-server/src/server/embedded-message-router.ts` |
 | 982 | `packages/mcp/src/registry.ts` |
 | 980 | `packages/sage/src/project-server.ts` |
-| 974 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 968 | `packages/providers/src/index.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
 | 960 | `packages/webui/src/types/client-message.ts` |
@@ -118,6 +118,7 @@ None.
 | 936 | `packages/providers/src/openai-codex.ts` |
 | 935 | `packages/simpleui/src/settings-panel.tsx` |
 | 933 | `packages/core/src/types/provider.ts` |
+| 930 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 930 | `packages/sage/src/sqlite-store-search.ts` |
 | 926 | `packages/cli/src/auth-menu/panel-service.ts` |
 | 924 | `packages/webui/src/hooks/ws-handlers.ts` |
@@ -130,7 +131,6 @@ None.
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 907 | `packages/mcp/src/server.ts` |
 | 906 | `packages/plugins/src/duplicate-code-detector/index.ts` |
-| 906 | `packages/plugins/src/test-runner-gate/index.ts` |
 | 904 | `packages/cli/src/cli-main.ts` |
 | 903 | `packages/sage/src/sqlite-store-hygiene.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |

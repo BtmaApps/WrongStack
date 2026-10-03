@@ -28,7 +28,8 @@ function samePath(a: string, b: string): boolean {
 
 function isInside(child: string, parent: string): boolean {
   const rel = path.relative(path.resolve(parent), path.resolve(child));
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  // `..tools/app` is a directory inside `parent`, not a parent traversal.
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
 /** Parse `git worktree list --porcelain` output. */

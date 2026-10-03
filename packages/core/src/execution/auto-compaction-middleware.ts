@@ -671,6 +671,8 @@ export class AutoCompactionMiddleware {
         ts: new Date().toISOString(),
         before: report.before,
         after: report.after,
+        fullRequestTokensBefore: report.fullRequestTokensBefore,
+        fullRequestTokensAfter: report.fullRequestTokensAfter,
         level: pressure.level,
         aggressive,
         reductions: report.reductions?.map((r) => ({ phase: r.phase, saved: r.saved })),

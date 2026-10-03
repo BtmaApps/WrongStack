@@ -171,7 +171,11 @@ export interface GraphSubscription {
 export interface NodeFilter {
   type?: NodeType;
   category?: FactCategory;
+  /** Fact severity. Only fact nodes carry one. */
+  severity?: FactNode['severity'];
   status?: GoalStatus | ChangeStatus;
+  /** Goal priority. Only goal nodes carry one. */
+  priority?: GoalPriority;
   tags?: string[];
   assignee?: string;
   discoveredBy?: string;
@@ -370,7 +374,7 @@ export class KnowledgeGraph {
     return this.getAll({ type: 'goal', ...filter } as NodeFilter) as GoalNode[];
   }
 
-  getFacts(filter?: Partial<{ category: FactCategory; severity: string }>): FactNode[] {
+  getFacts(filter?: Partial<{ category: FactCategory; severity: FactNode['severity'] }>): FactNode[] {
     return this.getAll({ type: 'fact', ...filter } as NodeFilter) as FactNode[];
   }
 
@@ -522,10 +526,12 @@ export class KnowledgeGraph {
   private _matches(node: GraphNode, f: NodeFilter): boolean {
     if (f.type && node.type !== f.type) return false;
     if (f.category && (node as FactNode).category !== f.category) return false;
+    if (f.severity && (node as FactNode).severity !== f.severity) return false;
     if (f.status) {
       if (node.type === 'goal' && (node as GoalNode).status !== f.status) return false;
       if (node.type === 'change' && (node as ChangeNode).status !== f.status) return false;
     }
+    if (f.priority && (node as GoalNode).priority !== f.priority) return false;
     if (f.assignee && (node as GoalNode).assignee !== f.assignee) return false;
     if (f.discoveredBy && (node as FactNode).discoveredBy !== f.discoveredBy) return false;
     if (f.proposedBy && (node as ChangeNode).proposedBy !== f.proposedBy) return false;

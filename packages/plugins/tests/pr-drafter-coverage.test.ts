@@ -8,7 +8,12 @@ import { rm } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const prDrafterPlugin = (await import('../src/pr-drafter/index.js')).default;
-const TEST_OUTPUT_DIR = '.temp_files/pr-drafter-coverage';
+// Scoped to THIS process. `beforeEach`/`afterEach` recursively delete this
+// directory, so a fixed path let two overlapping runs of this suite destroy
+// each other's state mid-test — most visibly the `blocker` file that
+// 'pr_draft tool throws when the draft cannot be written' relies on to inject
+// a write failure. The pid suffix keeps concurrent passes independent.
+const TEST_OUTPUT_DIR = `.temp_files/pr-drafter-coverage-${process.pid}`;
 const TEST_OUTPUT_PATH = `${TEST_OUTPUT_DIR}/draft.md`;
 
 interface MockApi {
@@ -99,6 +104,16 @@ afterEach(async () => {
 });
 
 describe('pr-drafter coverage', () => {
+  // Regression guard for the contention-bound flake: this suite was green solo
+  // but failed under two CONCURRENT passes, because beforeEach/afterEach
+  // recursively delete TEST_OUTPUT_DIR and a fixed path let one pass delete the
+  // other's `blocker` file — the injected write failure — mid-test. The real
+  // end-to-end proof is a two-process run; this asserts the structural
+  // invariant that makes concurrent passes independent.
+  it('scopes TEST_OUTPUT_DIR to this process so concurrent passes cannot collide', () => {
+    expect(TEST_OUTPUT_DIR).toContain(String(process.pid));
+  });
+
   it('pr_draft tool returns error when disabled', async () => {
     const api = makeApi({ extensions: { 'pr-drafter': { enabled: false } } });
     prDrafterPlugin.setup(api as never);

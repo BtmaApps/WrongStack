@@ -370,6 +370,37 @@ describe('JsonlReportStore.addNote', () => {
     expect(note!.fromLifecycle).toBe('open');
     expect(note!.toLifecycle).toBe('open');
   });
+
+  it('keeps the completed lifecycle when a note is added afterwards', async () => {
+    // The record line is frozen at creation and `transition` only appends a
+    // `__reportEvent`, so the current lifecycle must be materialized from the
+    // last NON-`note_added` event. Deriving it from the single latest event
+    // instead made any note the last write revert the report to "open".
+    const store = new JsonlReportStore(dir);
+    await store.persist({
+      id: 'n2',
+      sessionId: 's',
+      agentId: 'a',
+      reviewerModel: 'm',
+      source: 'chimera',
+      reviewStatus: 'success',
+      files: [],
+      counts: { critical: 0, high: 0, medium: 0, low: 0 },
+      totalFindings: 0,
+      unparseableCount: 0,
+      rawText: '',
+    });
+    await store.transition('n2', 'completed', { id: 'leader', kind: 'operator' });
+
+    await store.addNote('n2', { id: 'leader', kind: 'operator' }, 'verified against the diff');
+
+    expect((await store.get('n2'))!.lifecycle).toBe('completed');
+
+    // The same value must drive the status filter, or a completed report drops
+    // out of every completed-only view.
+    const completed = await store.list({ statuses: ['completed'] });
+    expect(completed.map((r) => r.id)).toContain('n2');
+  });
 });
 
 // ── Store: list + filter ──────────────────────────────────────────
@@ -486,6 +517,39 @@ describe('JsonlReportStore.compact', () => {
 
     const fetched = await store.get('c2');
     expect(fetched).not.toBeNull();
+  });
+
+  it('folds old events without discarding the lifecycle-determining event', async () => {
+    // The stored record's lifecycle is frozen at creation, so the current value
+    // is materialized from `__reportEvent` rows. Folding keeps the newest old
+    // event — but when a `note_added` was newer than the lifecycle move, that
+    // dropped the lifecycle event and the report silently reverted to "open".
+    // A non-terminal report is used so retention cannot remove it first.
+    const store = new JsonlReportStore(dir);
+    await store.persist({
+      id: 'c3',
+      sessionId: 's',
+      agentId: 'a',
+      reviewerModel: 'm',
+      source: 'chimera',
+      reviewStatus: 'success',
+      files: [],
+      counts: { critical: 0, high: 0, medium: 0, low: 0 },
+      totalFindings: 0,
+      unparseableCount: 0,
+      rawText: '',
+    });
+    await store.transition('c3', 'actioned', { id: 'op', kind: 'operator' });
+    await store.addNote('c3', { id: 'op', kind: 'operator' }, 'operator note');
+    expect((await store.get('c3'))!.lifecycle).toBe('actioned');
+
+    // Age every event past maxAgeMs=0 so the real fold path runs.
+    await new Promise((r) => setTimeout(r, 15));
+    const result = await store.compact({ maxAgeMs: 0 });
+    expect(result.removed).toBe(0);
+    expect(result.removedNonTerminal).toBe(0);
+
+    expect((await store.get('c3'))!.lifecycle).toBe('actioned');
   });
 });
 

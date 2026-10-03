@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DefaultSessionReader } from '../../src/storage/session-reader.js';
+import { matchesSessionFilter } from '../../src/storage/session-summary.js';
 import type { SessionEvent } from '../../src/types/session.js';
 
 // Covers the across-all-sessions search filters, the search limit cutoff, the
@@ -32,6 +33,59 @@ function makeReader(summaries: FakeSummary[], eventsById: Record<string, Session
 }
 
 describe('session-reader — extra coverage', () => {
+  // Round-51 bug-hunter regression: the reader's inline title filter used
+  // toLowerCase() while the canonical matchesSessionFilter uses
+  // toLocaleLowerCase(). 'İ' (U+0130) is the one code point below U+2000 where
+  // those differ, so the SAME query returned different rows depending on
+  // whether the store exposed listFiltered. Both inline filters now delegate
+  // to the canonical matcher, so this pins that they cannot drift again.
+  it('title folding matches the canonical matcher for a decomposed İ needle', async () => {
+    const reader = makeReader(
+      [
+        {
+          id: 'dotted',
+          title: 'İstanbul deploy notes',
+          startedAt: '2026-02-01T00:00:00Z',
+          provider: 'anthropic',
+          model: 'opus',
+          tokenTotal: 500,
+        },
+      ],
+      {
+        dotted: [
+          { type: 'user_input', ts, content: 'run the deploy' },
+          {
+            type: 'llm_response',
+            ts,
+            content: [{ type: 'text', text: 'deploying' }],
+            stopReason: 'end_turn',
+            usage: { input: 0, output: 0 },
+          },
+        ],
+      },
+    );
+
+    // 'i' + U+0307 — the decomposed form that IME composition and
+    // cross-platform copy/paste produce.
+    const decomposed = 'i̇stanbul';
+    const hits = await reader.search({ query: '' }, undefined, {
+      titleContains: decomposed,
+    });
+    const keep = matchesSessionFilter(
+      {
+        title: 'İstanbul deploy notes',
+        startedAt: '2026-02-01T00:00:00Z',
+        provider: 'anthropic',
+        model: 'opus',
+        tokenTotal: 500,
+      } as never,
+      { titleContains: decomposed },
+    );
+
+    // The reader must agree with the canonical matcher, whichever it is.
+    expect(hits.length > 0).toBe(keep);
+  });
+
   it('applies sessionQuery filters when searching across all sessions', async () => {
     const summaries: FakeSummary[] = [
       {

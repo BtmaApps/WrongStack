@@ -7,10 +7,14 @@ export interface ModelRef {
 /** Parse `model`, `provider/model`, or `provider model`. */
 export function parseModelRef(ref: string): ModelRef {
   const trimmed = ref.trim();
+  // `provider model` where the model id has its own slash
+  // (`openrouter anthropic/claude-x`): the first slash belongs to the model.
+  const spaced = /^([^\s/]+)\s+([^\s/].*)$/.exec(trimmed);
+  if (spaced) return { provider: spaced[1], model: spaced[2]!.trim() };
   const slash = trimmed.indexOf('/');
   if (slash !== -1) {
     return {
-      provider: trimmed.slice(0, slash) || undefined,
+      provider: trimmed.slice(0, slash).trim() || undefined,
       model: trimmed.slice(slash + 1).trim(),
     };
   }

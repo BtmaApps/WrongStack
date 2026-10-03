@@ -60,9 +60,12 @@ function leaderId(opts: SlashCommandContext): { id: string; base: string } {
 
 function fmtAge(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return `${Math.max(0, Math.round(ms / 1000))}s ago`;
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  return `${Math.round(ms / 3_600_000)}h ago`;
+  // Promote at the rounding boundary: 59.7s is "1m ago", not "60s ago".
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(ms / 60_000);
+  if (m < 60) return `${Math.max(1, m)}m ago`;
+  return `${Math.max(1, Math.round(ms / 3_600_000))}h ago`;
 }
 
 const STATUS_COLOR: Record<MailboxAgentStatus['status'], (s: string) => string> = {

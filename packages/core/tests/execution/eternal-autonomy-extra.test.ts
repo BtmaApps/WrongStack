@@ -420,7 +420,7 @@ describe('EternalAutonomyEngine — brainstorm DONE + brain consultation', () =>
     expect((engine as never as { stopRequested: boolean }).stopRequested).toBe(false);
   });
 
-  it('stops (trusts the heuristic) when the brain asks the human, and journals prior work', async () => {
+  it('keeps the goal active when the brain asks the human', async () => {
     // Seed a journal entry so consultBrainForDone's recent-work map runs.
     const g = await loadGoal(goalPath);
     g!.journal.push({
@@ -434,11 +434,11 @@ describe('EternalAutonomyEngine — brainstorm DONE + brain consultation', () =>
     const { engine } = await runBrainstormDone({
       brain: { decide: async () => ({ type: 'ask_human', prompt: 'unsure' }) },
     });
-    // ask_human is neither deny nor a complete-answer → consultBrainForDone returns true → stop.
-    expect((engine as never as { stopRequested: boolean }).stopRequested).toBe(true);
+    // Uncertainty is not completion approval.
+    expect((engine as never as { stopRequested: boolean }).stopRequested).toBe(false);
   });
 
-  it('trusts the heuristic when the brain decide() throws', async () => {
+  it('keeps the goal active when the brain decide() throws', async () => {
     const { engine } = await runBrainstormDone({
       brain: {
         decide: async () => {
@@ -446,7 +446,7 @@ describe('EternalAutonomyEngine — brainstorm DONE + brain consultation', () =>
         },
       },
     });
-    expect((engine as never as { stopRequested: boolean }).stopRequested).toBe(true);
+    expect((engine as never as { stopRequested: boolean }).stopRequested).toBe(false);
   });
 });
 

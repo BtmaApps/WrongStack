@@ -826,9 +826,9 @@ export class EternalAutonomyEngine {
         // never stop on prose.
         return decision.optionId === 'goal_complete';
       }
-      return true;
+      return false;
     } catch {
-      return true;
+      return false;
     }
   }
 

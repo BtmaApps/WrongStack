@@ -31,7 +31,9 @@
  */
 
 import { execFile } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { access, readFile, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join } from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
 import { buildWin32CmdShimInvocation, resolveWin32Command } from '@wrongstack/tools/win32';
@@ -465,8 +467,20 @@ async function runTests(
   // table (e.g. "--reporter=json"). execFile wants its own argv
   // element — split spaces too.
   const trailing = trailingFlag.split(/\s+/).filter(Boolean);
+  // Vitest 5's json reporter no longer prints to stdout: without an output
+  // file it writes `.vitest/json/output.json` and logs one line, so stdout
+  // never parsed and every run fell to the text fallback as a PASS. Ask for
+  // the report in a file we own (`--outputFile.json`, long supported) and
+  // read it back.
+  const reportFile =
+    runner.name === 'vitest'
+      ? join(tmpdir(), `wrongstack-test-gate-${randomBytes(6).toString('hex')}.json`)
+      : undefined;
+  if (reportFile) trailing.push(`--outputFile.json=${reportFile}`);
   const fullArgs = [...cmdArgs, ...trailing];
   let stdout = '';
+  // A runner exits non-zero for a failing run; text output alone cannot tell.
+  let exitedNonZero = false;
   try {
     const { stdout: out } = await new Promise<{ stdout: string; stderr: string }>(
       (resolve, reject) => {
@@ -495,10 +509,20 @@ async function runTests(
     stdout = out;
   } catch (err: unknown) {
     const e = err as { stdout?: string; killed?: boolean };
-    if (e.killed) return null; // timeout
-    // vitest exits non-zero when tests fail — stdout has the JSON.
+    if (e.killed) {
+      if (reportFile) await unlink(reportFile).catch(() => undefined);
+      return null; // timeout
+    }
+    exitedNonZero = true;
+    // vitest exits non-zero when tests fail — the report still holds the JSON.
     if (e.stdout) stdout = e.stdout;
-    else return null;
+    else if (!reportFile) return null;
+  }
+  if (reportFile) {
+    const report = await readFile(reportFile, 'utf-8').catch(() => undefined);
+    await unlink(reportFile).catch(() => undefined);
+    if (report !== undefined) stdout = report;
+    else if (!stdout) return null;
   }
 
   try {
@@ -566,7 +590,7 @@ async function runTests(
     const passed = passedMatch ? Number.parseInt(passedMatch[1]!, 10) : 0;
     const failed = failedMatch ? Number.parseInt(failedMatch[1]!, 10) : 0;
     return {
-      passed: failed === 0,
+      passed: failed === 0 && !exitedNonZero,
       testCount: passed + failed,
       failCount: failed,
       duration: `${passed} passed, ${failed} failed`,

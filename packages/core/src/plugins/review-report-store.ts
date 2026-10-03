@@ -399,15 +399,29 @@ export class JsonlReportStore implements ReportStore {
           continue;
         }
 
-        // Fold old events into a single marker per report.
+        // Fold old events down to bound the file. The current lifecycle is
+        // materialized from the last NON-`note_added` event (the stored record
+        // is frozen at creation), so keeping only the newest old event could
+        // discard the one that determines it whenever a note was newer — the
+        // report then silently reverted to its creation-time value. Retain the
+        // newest old event AND the newest old lifecycle event.
         const oldEvents = entry.events.filter(
           (ev) => now - new Date(ev.timestamp).getTime() > maxAge,
         );
         if (oldEvents.length > 1) {
-          eventsFolded += oldEvents.length - 1;
-          const newestOld = oldEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0]!;
+          // `oldEvents` is in file (append) order, so the newest lifecycle event
+          // must be picked from the newest-first view — scanning the raw array
+          // would return the OLDEST one and resurrect the creation-time value.
+          const newestFirst = [...oldEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+          const newestOld = newestFirst[0]!;
+          const newestOldLifecycle = newestFirst.find((ev) => ev.eventType !== 'note_added');
+          const survivors =
+            newestOldLifecycle && newestOldLifecycle.id !== newestOld.id
+              ? [newestOldLifecycle, newestOld]
+              : [newestOld];
+          eventsFolded += oldEvents.length - survivors.length;
           entry.events = [
-            newestOld,
+            ...survivors.sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
             ...entry.events.filter((ev) => now - new Date(ev.timestamp).getTime() <= maxAge),
           ];
         }
@@ -493,10 +507,17 @@ export class JsonlReportStore implements ReportStore {
   private _materialize(entry: { report: ReviewReport; events: ReviewReportEvent[] }): ReviewReport {
     if (entry.events.length === 0) return { ...entry.report };
     const sorted = [...entry.events].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    const latest = sorted[sorted.length - 1]!;
-    // Only lifecycle-affecting events override the materialized status.
-    if (latest.eventType !== 'note_added') {
-      return { ...entry.report, lifecycle: latest.toLifecycle };
+    // A `note_added` event is an annotation, not a transition, so the current
+    // lifecycle comes from the LAST LIFECYCLE event. Checking only whether the
+    // single latest event is a note discarded every earlier real transition —
+    // and because the stored record's lifecycle is frozen at creation
+    // (`transition` only appends an event, it never rewrites the record), a
+    // completed report that had a note added afterwards read back as "open".
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const event = sorted[i]!;
+      if (event.eventType !== 'note_added') {
+        return { ...entry.report, lifecycle: event.toLifecycle };
+      }
     }
     return { ...entry.report };
   }

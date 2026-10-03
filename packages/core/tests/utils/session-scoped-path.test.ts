@@ -1,9 +1,13 @@
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sessionScopedPath } from '../../src/utils/session-scoped-path.js';
 
 describe('sessionScopedPath', () => {
-  const dir = path.resolve('tmp-sessions');
+  // Absolute so the fixture cannot drift with the runner's cwd: this suite is
+  // run both from the repo root and from `packages/core` (`pnpm --filter`),
+  // and `path.resolve('tmp-sessions')` named a different directory in each.
+  const dir = path.join(os.tmpdir(), 'session-scoped-path-test', 'tmp-sessions');
 
   it('resolves normal session IDs and sidecar suffixes', () => {
     const p = sessionScopedPath(dir, '2026-08-29/sess_01J', '.annotations.json');

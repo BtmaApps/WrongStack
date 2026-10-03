@@ -6,7 +6,7 @@ export const toolsCmd: SubcommandHandler = async (_args, deps) => {
   if (!reg) return 0;
   for (const { tool, owner } of reg.listWithOwner())
     deps.renderer.write(
-      `  ${tool.name.padEnd(28)} ${color.dim(`[${owner}]`)} ${tool.permission}\n`,
+      `  ${(tool.name === 'tool_script' ? 'tool_script / ToolFlow' : tool.name).padEnd(28)} ${color.dim(`[${owner}]`)} ${tool.permission}\n`,
     );
   return 0;
 };

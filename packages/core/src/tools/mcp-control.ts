@@ -1,4 +1,3 @@
-import type { Config, JSONSchema, MCPServerConfig, Tool } from '../index.js';
 /**
  * `mcp_control` — LLM-driven MCP server lifecycle management.
  *
@@ -14,6 +13,8 @@ import type { Config, JSONSchema, MCPServerConfig, Tool } from '../index.js';
  */
 import { allServers, resolveMcpServerConfig } from '../infrastructure/mcp-servers.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import type { Config, MCPServerConfig } from '../types/config.js';
+import type { JSONSchema, Tool } from '../types/tool.js';
 import { readJsonObjectFile, setJsonPath, updateJsonObjectFile } from '../utils/config-json.js';
 import { toErrorMessage } from '../utils/error.js';
 import { expectDefined } from '../utils/expect-defined.js';

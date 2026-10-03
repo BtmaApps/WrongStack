@@ -1,13 +1,14 @@
 import * as path from 'node:path';
-import { expectDefined } from '../utils/expect-defined.js';
-import { toErrorMessage } from '../utils/error.js';
+import type { Context } from '../core/context.js';
+import { ALL_SYNC_CATEGORIES, CloudSync } from '../storage/cloud-sync.js';
+import type { ConfigStore, SyncCategory, SyncConfig } from '../types/config.js';
 import type { Plugin } from '../types/plugin.js';
-import type { SlashCommand, Context } from '../index.js';
-import type { SyncCategory, SyncConfig } from '../types/config.js';
-import { CloudSync, ALL_SYNC_CATEGORIES } from '../storage/cloud-sync.js';
-import type { WstackPaths } from '../utils/wstack-paths.js';
-import type { ConfigStore } from '../types/config.js';
+import type { SlashCommand } from '../types/slash-command.js';
 import { atomicWrite } from '../utils/atomic-write.js';
+import { toErrorMessage } from '../utils/error.js';
+import { expectDefined } from '../utils/expect-defined.js';
+import type { WstackPaths } from '../utils/wstack-paths.js';
+
 interface SyncPluginOptions {
   paths?: WstackPaths | undefined;
   configStore?: ConfigStore | undefined;

@@ -1,13 +1,20 @@
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveChronicleRuntimeLocation } from '../../src/chronicle/index.js';
 
+// Absolute, cwd-independent fixture root. A `path.resolve('tmp', …)` here
+// silently re-pointed itself at whatever directory the runner was launched
+// from (repo root vs `packages/core` under `pnpm --filter`), so the same suite
+// described a different project on disk depending on the invocation.
+const GLOBAL_ROOT = path.join(os.tmpdir(), 'chronicle-identity-test', '.wrongstack');
+
 describe('resolveChronicleRuntimeLocation', () => {
   it('returns stable opaque IDs and a UTC daily project partition', () => {
     const input = {
-      globalRoot: path.resolve('tmp', '.wrongstack'),
+      globalRoot: GLOBAL_ROOT,
       projectId: 'project-abc',
-      projectDir: path.resolve('tmp', '.wrongstack', 'projects', 'abc'),
+      projectDir: path.join(GLOBAL_ROOT, 'projects', 'abc'),
       now: new Date('2026-07-18T23:59:59.000Z'),
     };
     const first = resolveChronicleRuntimeLocation(input);

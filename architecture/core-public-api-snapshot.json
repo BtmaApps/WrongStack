@@ -1513,14 +1513,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 209,
-      "sourceLines": 58649
+      "sourceLines": 58656
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 64,
-      "sourceLines": 15048
+      "sourceLines": 15063
     },
     {
       "directory": "design",
@@ -1534,7 +1534,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 70,
-      "sourceLines": 20490
+      "sourceLines": 20492
     },
     {
       "directory": "extension",
@@ -1569,7 +1569,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 2013
+      "sourceLines": 2061
     },
     {
       "directory": "kernel",
@@ -1618,7 +1618,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9526
+      "sourceLines": 9550
     },
     {
       "directory": "prompts",
@@ -1653,14 +1653,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 26,
-      "sourceLines": 10088
+      "sourceLines": 10091
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5387
+      "sourceLines": 5419
     },
     {
       "directory": "skills",
@@ -1681,7 +1681,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 25039
+      "sourceLines": 25027
     },
     {
       "directory": "tasking",
@@ -1695,14 +1695,14 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 23,
-      "sourceLines": 4552
+      "sourceLines": 4553
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15675
+      "sourceLines": 15677
     },
     {
       "directory": "typesafe",
@@ -1737,7 +1737,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 6,
-      "sourceLines": 1388
+      "sourceLines": 1389
     }
   ]
 }

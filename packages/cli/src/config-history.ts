@@ -322,7 +322,24 @@ async function readIndex(
 ): Promise<HistoryIndex> {
   try {
     const raw = await fs.readFile(historyIndexPath(homeFn, targetConfigPath), 'utf8');
-    return JSON.parse(raw) as HistoryIndex;
+    const parsed: unknown = JSON.parse(raw);
+    // `as HistoryIndex` was an unchecked type assertion: it only covered a
+    // PARSE failure, so valid JSON of the wrong shape came back typed as an
+    // index and consumers then assumed `entries` was an array —
+    // `idx.entries.unshift` threw in appendHistory, and listHistory returned
+    // undefined despite its declared Promise<HistoryIndex['entries']>. The
+    // catch below already treats an untrustworthy index as "use the safe
+    // empty default"; a shape failure is equally untrustworthy and now takes
+    // the same path. Entries without a string `id` are dropped: nothing can
+    // address their file, and keeping them would target `undefined.json`.
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as HistoryIndex).entries)) {
+      const entries = (parsed as HistoryIndex).entries.filter(
+        (e): e is HistoryIndex['entries'][number] =>
+          e !== null && typeof e === 'object' && typeof (e as { id?: unknown }).id === 'string',
+      );
+      return { version: 1, entries };
+    }
+    return { version: 1, entries: [] };
   } catch {
     return { version: 1, entries: [] };
   }
@@ -509,11 +526,17 @@ export async function getHistoryEntry(
   homeFn: HomeDirFn = defaultHomeDir,
   targetConfigPath?: string,
 ): Promise<HistoryEntry | null> {
+  const dir = historyDir(homeFn, targetConfigPath);
+  const filePath = path.join(dir, `${id}.json`);
+  // An id addresses exactly ONE file inside the entries dir. `path.join`
+  // normalises `..`, so a traversing id (`../../secret`) resolved outside that
+  // dir — turning a config-history lookup into an arbitrary-file read, and via
+  // restoreFromHistory (which writes reviveSecrets(entry.snapshotMasked) to
+  // config.json) into arbitrary config injection. `assertSafeToDelete` already
+  // enforces the same rule on the delete path; this is its read-side twin.
+  if (path.dirname(path.resolve(filePath)) !== path.resolve(dir)) return null;
   try {
-    const raw = await fs.readFile(
-      path.join(historyDir(homeFn, targetConfigPath), `${id}.json`),
-      'utf8',
-    );
+    const raw = await fs.readFile(filePath, 'utf8');
     return JSON.parse(raw) as HistoryEntry;
   } catch {
     return null;

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildProgressiveSkillManifestText } from '../../src/core/system-prompt-skill-bodies.js';
 import { DefaultSkillLoader } from '../../src/execution/skill-loader.js';
@@ -37,7 +38,10 @@ describe('skill lifecycle audit regressions', () => {
     expect((await command.run('reload', {} as never))?.message).toContain('Reloaded 1 skills');
   });
   it('validates every bundled skill against the authoring contract', async () => {
-    const bundled = path.resolve('packages/core/skills');
+    // Repo-root-relative, but anchored on this file's URL: the package-filter
+    // script runs with cwd = packages/core, where a cwd-relative resolve points
+    // at a directory that does not exist.
+    const bundled = fileURLToPath(new URL('../../../../packages/core/skills/', import.meta.url));
     const failures: string[] = [];
     for (const entry of await fs.readdir(bundled, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;

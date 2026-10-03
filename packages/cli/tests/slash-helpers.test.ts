@@ -316,7 +316,7 @@ describe('slash-commands/helpers — detectProjectFacts', () => {
     await writeFile(path.join(tmp, 'pyproject.toml'), '[project]\nname="x"\n');
     const facts = await detectProjectFacts(tmp);
     expect(facts.test).toBe('pytest .');
-    expect(facts.lint).toBe('ruff check .');
+    expect(facts.lint).toBe('ruff check --output-format=concise .');
     expect(facts.hints).toContain('python');
   });
 

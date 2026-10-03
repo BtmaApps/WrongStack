@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
+import { type GraphNode, KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
 
 let dir: string;
 let kg: KnowledgeGraph;
@@ -24,6 +24,20 @@ const fact = (over: Record<string, unknown> = {}) =>
     discoveredBy: 'a1',
     key: 'k',
     related: [],
+    ...over,
+  }) as never;
+
+const goal = (over: Record<string, unknown> = {}) =>
+  ({
+    type: 'goal',
+    title: 'g',
+    description: 'd',
+    status: 'pending',
+    priority: 'medium',
+    assignee: 'a1',
+    tags: [],
+    createdBy: 'a1',
+    createdAt: 'now',
     ...over,
   }) as never;
 
@@ -120,6 +134,51 @@ describe('knowledge-graph — extra coverage', () => {
     expect(kg.getAll({ proposedBy: 'proposer-1' })).toHaveLength(1);
     expect(kg.getAll({ tags: ['ui'] })).toHaveLength(1);
     expect(kg.getAll({ tags: ['none'] })).toHaveLength(0);
+  });
+
+  it('keeps the type-index fast path in agreement with _matches on combined filters', async () => {
+    // `getAll` narrows candidates through the `type:` index when a type filter is
+    // present and falls back to a full scan when it is not. Both paths then run the
+    // SAME `_matches` predicate, so a combined filter must select the same nodes
+    // either way — and must actually narrow, not silently drop one of its fields.
+    await kg.add(fact({ subject: 'sec-critical', category: 'security', severity: 'critical' }));
+    await kg.add(fact({ subject: 'sec-low', category: 'security', severity: 'low' }));
+    await kg.add(fact({ subject: 'bug-critical', category: 'bug', severity: 'critical' }));
+    await kg.add(fact({ subject: 'bug-low', category: 'bug', severity: 'low' }));
+    await kg.add(goal({ title: 'g-high', priority: 'high' }));
+    await kg.add(goal({ title: 'g-low', priority: 'low' }));
+
+    // `severity` is fact-only and `priority` is goal-only, so each is read behind
+    // an `in` guard instead of a cast: neither may leak across node types.
+    const subjects = (nodes: GraphNode[]) =>
+      nodes.map((n) => ('subject' in n ? n.subject : '')).sort();
+    const titles = (nodes: GraphNode[]) => nodes.map((n) => ('title' in n ? n.title : '')).sort();
+
+    // Both halves apply: exactly one node matches category AND severity.
+    expect(subjects(kg.getAll({ category: 'security', severity: 'critical' }))).toEqual([
+      'sec-critical',
+    ]);
+    // Either half alone keeps two — proof the other half is applied, not ignored.
+    expect(kg.getAll({ type: 'fact', category: 'security' })).toHaveLength(2);
+    expect(kg.getAll({ type: 'fact', severity: 'critical' })).toHaveLength(2);
+
+    // Fast path (type-indexed) and full scan must agree node-for-node.
+    expect(subjects(kg.getAll({ type: 'fact', category: 'security', severity: 'critical' }))).toEqual(
+      subjects(kg.getAll({ category: 'security', severity: 'critical' })),
+    );
+
+    // A severity-only filter must not reach goals, which carry no severity.
+    expect(subjects(kg.getAll({ severity: 'critical' }))).toEqual([
+      'bug-critical',
+      'sec-critical',
+    ]);
+
+    // Same agreement on the goal side, and for status + priority together.
+    expect(titles(kg.getAll({ priority: 'high' }))).toEqual(['g-high']);
+    expect(titles(kg.getAll({ type: 'goal', status: 'pending', priority: 'high' }))).toEqual([
+      'g-high',
+    ]);
+    expect(kg.getAll({ type: 'goal', status: 'pending' })).toHaveLength(2);
   });
 
   it('snapshot returns nodes and subscription count', async () => {

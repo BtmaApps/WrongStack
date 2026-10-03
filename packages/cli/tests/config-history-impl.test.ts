@@ -34,6 +34,91 @@ const profileRoot = () => path.join(wsRoot(), 'profiles', 'default');
 const cfgPath = () => path.join(profileRoot(), 'config.json');
 const lastPath = () => path.join(profileRoot(), 'config.json.last');
 
+describe('getHistoryEntry path containment', () => {
+  // Round-52 bug-hunter regression: `id` was interpolated into
+  // `path.join(historyDir(...), `${id}.json`)` with no containment check, and
+  // path.join normalises `..`. A traversing id therefore escaped the entries
+  // dir — an arbitrary-file read via `config history --id`, and via
+  // restoreFromHistory (which writes reviveSecrets(entry.snapshotMasked) to
+  // config.json) an arbitrary config injection. assertSafeToDelete already
+  // enforced the same rule on the delete path; this is its read-side twin.
+  it('refuses an id that traverses out of the history entries dir', async () => {
+    await fs.writeFile(cfgPath(), JSON.stringify({ v: 1 }));
+    await appendHistory({ a: 1 }, { a: 2 }, 'seed', homeFn);
+    const entriesDir = path.join(profileRoot(), 'config.history', 'entries');
+    await fs.mkdir(entriesDir, { recursive: true });
+    // A file that lives OUTSIDE entries/ — no valid id can name it.
+    const outside = path.join(profileRoot(), 'config.history', 'outside.json');
+    await fs.writeFile(
+      outside,
+      JSON.stringify({ id: 'x', timestamp: '2026-01-01T00:00:00.000Z', description: 'outside' }),
+    );
+
+    expect(await getHistoryEntry('../outside', homeFn, cfgPath())).toBeNull();
+    expect(await getHistoryEntry('../../../etc/passwd', homeFn, cfgPath())).toBeNull();
+  });
+
+  it('still resolves a legitimate id', async () => {
+    await fs.writeFile(cfgPath(), JSON.stringify({ v: 1 }));
+    const id = await appendHistory({ a: 1 }, { a: 2 }, 'legit', homeFn);
+    expect((await getHistoryEntry(id, homeFn, cfgPath()))?.description).toBe('legit');
+  });
+});
+
+describe('readIndex shape validation', () => {
+  // Round-53 bug-hunter regression: readIndex returned
+  // `JSON.parse(raw) as HistoryIndex` — an unchecked TYPE ASSERTION covering
+  // only a PARSE failure. Valid JSON of the wrong shape came back typed as an
+  // index, so appendHistory threw `TypeError: ... reading 'unshift'` at
+  // `idx.entries.unshift`, and listHistory returned undefined despite its
+  // declared Promise<HistoryIndex['entries']>. Worse, appendHistory writes the
+  // snapshot file BEFORE the index update, so the throw orphaned that file —
+  // never indexed, later swept as an orphan. The module's own catch already
+  // treated an untrusted index as "use the safe empty default"; a shape
+  // failure is equally untrustworthy and now takes that same path.
+  const idxPath = () => path.join(profileRoot(), 'config.history', 'index.json');
+  const seedIndex = async (contents: string) => {
+    await fs.mkdir(path.dirname(idxPath()), { recursive: true });
+    await fs.writeFile(idxPath(), contents);
+  };
+
+  it('treats a valid-JSON/wrong-shape index as the safe empty default', async () => {
+    await fs.writeFile(cfgPath(), JSON.stringify({ v: 1 }));
+    await seedIndex('{"version":1}'); // parses fine; no `entries` key at all
+
+    expect(await listHistory(homeFn)).toEqual([]);
+    // Must complete, not throw — and the new entry must be indexable.
+    const id = await appendHistory({ a: 1 }, { a: 2 }, 'after malformed', homeFn);
+    expect(typeof id).toBe('string');
+    expect((await listHistory(homeFn)).map((e) => e.id)).toContain(id);
+  });
+
+  it('drops entries that are not objects with a string id', async () => {
+    await fs.writeFile(cfgPath(), JSON.stringify({ v: 1 }));
+    await seedIndex(
+      JSON.stringify({
+        version: 1,
+        entries: [null, 'nope', { noId: true }, { id: 'good', timestamp: 't', description: 'd' }],
+      }),
+    );
+
+    const listed = await listHistory(homeFn);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.id).toBe('good');
+  });
+
+  it('still reads a well-formed index unchanged', async () => {
+    await fs.writeFile(cfgPath(), JSON.stringify({ v: 1 }));
+    await seedIndex(
+      JSON.stringify({
+        version: 1,
+        entries: [{ id: 'abc', timestamp: '2026-01-01T00:00:00.000Z', description: 'real' }],
+      }),
+    );
+    expect((await listHistory(homeFn)).map((e) => e.description)).toEqual(['real']);
+  });
+});
+
 describe('backupCurrent', () => {
   it('is a no-op when config.json does not exist', async () => {
     await backupCurrent(homeFn);

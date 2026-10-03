@@ -219,9 +219,9 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/utils": {
-      "files": 686,
-      "typeOnly": 66,
-      "runtimeOrMixed": 652
+      "files": 687,
+      "typeOnly": 65,
+      "runtimeOrMixed": 654
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -22797,8 +22797,14 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/container.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

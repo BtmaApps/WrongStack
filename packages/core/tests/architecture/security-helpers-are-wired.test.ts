@@ -120,6 +120,7 @@ describe('security helpers are wired, not just present', () => {
     // TOTP code, a stored hash — or is the shared helper itself.
     const ALLOWED = new Set([
       'packages/primitives/src/timing-safe.ts', // the single definition
+      'packages/runtime/src/automation/github.ts', // GitHub webhook HMAC digest, not a bearer token
       'packages/core/src/security/totp.ts', // TOTP codes + recovery-code hashes
       'packages/cli/src/hq-server/auth.ts', // signed session-cookie HMAC
       'packages/core/src/hq/auth-passwords.ts', // password hash comparison extracted from auth-store

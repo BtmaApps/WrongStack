@@ -59,8 +59,11 @@ export interface SessionEndedLike {
 
 /** Compact human duration: `42s`, `3m`, `1.5h`. */
 export function fmtDuration(ms: number): string {
-  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  // Promote on the ROUNDED value: 59.5 s is "1m", not "60s"; 59.5 min is "1.0h".
+  const secs = Math.round(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `${mins}m`;
   return `${(ms / 3_600_000).toFixed(1)}h`;
 }
 

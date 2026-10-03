@@ -4,12 +4,13 @@ import {
   areSubagentsAllowed,
   setSessionSubagentPolicy,
 } from '../coordination/session-subagent-policy.js';
+import type { Context } from '../core/context.js';
 import { DefaultPromptLoader, renderPrompt } from '../execution/prompt-loader.js';
-import type { Context, SlashCommand } from '../index.js';
 import { DefaultPromptStore, migratePromptEntry } from '../storage/prompt-store.js';
 import { PromptUsageStore } from '../storage/prompt-usage-store.js';
 import type { Plugin } from '../types/plugin.js';
 import type { PromptEntry, PromptLoader, PromptVariable } from '../types/prompt.js';
+import type { SlashCommand } from '../types/slash-command.js';
 import { expectDefined } from '../utils/expect-defined.js';
 import {
   readBundledInstructionText,

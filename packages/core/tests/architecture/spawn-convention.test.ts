@@ -117,7 +117,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'core/src/coordination/mailbox-project-server-client.ts': REASON_TRUSTED_DAEMON,
   'sage/src/project-server-client.ts': REASON_TRUSTED_DAEMON,
   'kanban/src/server/client.ts': REASON_TRUSTED_DAEMON,
-  'kanban/src/verification/verification-context.ts': REASON_TRUSTED_DAEMON,
+  'kanban/src/verification/verification-process.ts': REASON_TRUSTED_DAEMON,
   'governance/src/daemon-launcher.ts': REASON_TRUSTED_DAEMON,
   'tools/src/codebase-index/project-server-launch.ts': REASON_TRUSTED_DAEMON,
   'tools/src/process-registry.ts': REASON_TRUSTED_DAEMON,

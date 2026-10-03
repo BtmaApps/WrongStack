@@ -76,7 +76,7 @@ export const auditCmd: SubcommandHandler = async (args, deps) => {
 async function listAudits(
   log: ToolAuditLog,
   dir: string,
-  deps: import('../index.js').SubcommandDeps,
+  deps: import('../contracts.js').SubcommandDeps,
 ): Promise<number> {
   // Sidecar files end in .audit.jsonl. They sit next to their session
   // JSONL — flat at the root for legacy ids, inside a date-shard dir for

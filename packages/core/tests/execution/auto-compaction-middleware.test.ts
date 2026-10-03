@@ -1231,6 +1231,8 @@ describe('AutoCompactionMiddleware', () => {
     expect(event.type).toBe('compaction');
     expect(event.before).toBe(1000);
     expect(event.after).toBe(800);
+    expect(event.fullRequestTokensBefore).toBe(1000);
+    expect(event.fullRequestTokensAfter).toBe(800);
     expect(event.level).toBe('hard');
     expect(typeof event.ts).toBe('string');
   });

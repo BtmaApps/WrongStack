@@ -185,11 +185,13 @@ const CMD_BOUNDARY = String.raw`(?:^|[;&|(){}\n\r]\s*)`;
  * manager has to sit at a command boundary, and `sudo ` is not one.
  *
  * Each launcher may carry flags, env assignments and a numeric operand
- * (`timeout 60 npm i x`). The three inner alternatives are mutually exclusive
+ * (`timeout 60 npm i x`) — fractional too: GNU timeout takes `1.5m` / `.5`,
+ * and an integer-only operand left `timeout 1.5m npm i x` unparsed (no check
+ * ran at all). The three inner alternatives are mutually exclusive
  * by first character and none can begin a launcher word, so the nesting
  * cannot fork the parse; the run is bounded at 4.
  */
-const LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env|xargs)\b(?:\s+(?:-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,4}`;
+const LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env|xargs)\b(?:\s+(?:-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|(?:\d+(?:\.\d*)?|\.\d+)[smhd]?))*\s+){0,4}`;
 const MANAGER_PREFIX = String.raw`(?:[^\s;&|(){}]+[\\/])?`;
 
 /**

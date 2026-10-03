@@ -57,9 +57,11 @@ export async function gitStatus(root: string): Promise<string> {
         if (!sawBranchLine) {
           sawBranchLine = true;
           // A repository with no commit yet reads `## No commits yet on main`
-          // (older git: `## Initial commit on main`).
+          // (older git: `## Initial commit on main`). The name ends at the
+          // `...upstream` separator or a space — not at the first `.`: git
+          // forbids `..` in a ref name but not `.`, so `release/1.2` is valid.
           branch =
-            line.match(/^## (?:No commits yet on |Initial commit on )?([^\s.]+)/)?.[1] ??
+            line.match(/^## (?:No commits yet on |Initial commit on )?(.+?)(?:\.\.\.|\s|$)/)?.[1] ??
             'detached';
           return;
         }

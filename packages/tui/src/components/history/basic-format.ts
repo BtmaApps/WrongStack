@@ -29,21 +29,29 @@ function collapse(s: string, max: number): string {
 export function fmtTok(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return '0';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  if (n >= 1000) {
+    const k = (n / 1000).toFixed(n >= 10_000 ? 0 : 1);
+    // 999_500 rounds to "1000k" — that is the next unit.
+    return Number(k) < 1000 ? `${k}k` : `${(n / 1_000_000).toFixed(1)}M`;
+  }
   return String(n);
 }
 
 export function fmtDuration(ms: number): string {
   const safeMs = Number.isFinite(ms) && ms > 0 ? ms : 0;
   if (safeMs < 1000) return `${safeMs}ms`;
-  if (safeMs < 60_000) return `${(safeMs / 1000).toFixed(1)}s`;
+  // 59.95 s and up would print "60.0s"; render those as the minute they round to.
+  if (safeMs < 59_950) return `${(safeMs / 1000).toFixed(1)}s`;
+  if (safeMs < 60_000) return '1m0s';
   const totalSec = Math.floor(safeMs / 1000);
   return `${Math.floor(totalSec / 60)}m${totalSec % 60}s`;
 }
 
 export function fmtBytes(n: number): string {
   if (n < 1024) return `${n}B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
+  // Promote on the rounded value: 1_048_575 B is "1.0MB", not "1024.0KB".
+  const kb = (n / 1024).toFixed(1);
+  if (Number(kb) < 1024) return `${kb}KB`;
   return `${(n / (1024 * 1024)).toFixed(1)}MB`;
 }
 

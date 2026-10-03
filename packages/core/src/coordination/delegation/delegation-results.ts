@@ -1,5 +1,6 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { activeLimits, positiveLimit } from '../../types/config/limits.js';
 import type { TaskResult } from '../../types/multi-agent.js';
 import { safeParse } from '../../utils/safe-json.js';
 import { formatSubagentStructuredReport } from '../subagent-result-tool.js';
@@ -8,7 +9,6 @@ import type {
   DelegationRuntimeOptions,
   SubagentPartial,
 } from './delegation-types.js';
-import { activeLimits, positiveLimit } from '../../types/config/limits.js';
 
 /**
  * Per-kind orchestrator hint. Returned alongside the structured error so the
@@ -78,10 +78,11 @@ export function hintForKind(
 export function buildDelegateSummary(role: string | undefined, result: TaskResult): string {
   const roleLabel = role ?? 'subagent';
   const ms = result.durationMs;
+  // Round first, then pick the unit, so 59.7s is "1m" and 59m50s "1.0h" (never "60s"/"60m").
   const duration =
-    ms < 60_000
+    Math.round(ms / 1000) < 60
       ? `${Math.round(ms / 1000)}s`
-      : ms < 3_600_000
+      : Math.round(ms / 60_000) < 60
         ? `${Math.round(ms / 60_000)}m`
         : `${(ms / 3_600_000).toFixed(1)}h`;
 

@@ -1,8 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Context } from '../core/context.js';
 import { capSkillBody, stripFrontmatter } from '../core/system-prompt-skill-text.js';
-import type { Context, SlashCommand } from '../index.js';
 import { FOREIGN_SKILL_TOOLS, securityScoreToTier } from '../skills/foreign-sources.js';
 import { validateSkillDocument, validateSkillName } from '../skills/frontmatter.js';
 import { githubDirectAdapter } from '../skills/registry/github-direct-adapter.js';
@@ -22,6 +22,7 @@ import {
 import { SkillInstaller } from '../skills/skill-installer.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SkillLoader } from '../types/skill.js';
+import type { SlashCommand } from '../types/slash-command.js';
 import { color } from '../utils/color.js';
 import { toErrorMessage } from '../utils/error.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';

@@ -56,6 +56,31 @@ export class DefaultTokenCounter implements TokenCounter {
   private lastCacheRead = 0;
   private lastCacheWrite = 0;
 
+  /**
+   * Provider usage crosses an untrusted response boundary, and `typeof x ===
+   * 'number'` admits NaN/Infinity. A single non-finite field poisons every
+   * accumulator permanently — `NaN + finite === NaN`, and `currentRequestTokens()`
+   * then feeds `eternal-autonomy.ts` a `total / maxCtx >= threshold` comparison
+   * that is false for ANY ceiling, silently disabling the context-pressure
+   * compaction gate. Same invariant the token-throttle and token-budget
+   * wrappers normalize at this boundary (2026-09-12); this core accumulator was
+   * missed. Non-finite normalizes to 0 so a malformed response contributes
+   * nothing rather than corrupting the session.
+   */
+  private static finiteUsage(usage: Usage): Usage {
+    const n = (v: number | undefined): number | undefined =>
+      v === undefined ? undefined : Number.isFinite(v) ? v : 0;
+    return {
+      ...usage,
+      input: n(usage.input) ?? 0,
+      output: n(usage.output) ?? 0,
+      cacheRead: n(usage.cacheRead),
+      cacheWrite: n(usage.cacheWrite),
+      cacheWrite5m: n(usage.cacheWrite5m),
+      cacheWrite1h: n(usage.cacheWrite1h),
+    };
+  }
+
   constructor(
     opts: {
       registry?: ModelsRegistry | undefined;
@@ -76,7 +101,8 @@ export class DefaultTokenCounter implements TokenCounter {
     this.sessionId = sessionId;
   }
 
-  account(usage: Usage, model?: string, providerId = this.currentProviderId()): void {
+  account(rawUsage: Usage, model?: string, providerId = this.currentProviderId()): void {
+    const usage = DefaultTokenCounter.finiteUsage(rawUsage);
     const eventSessionId = this.currentSessionId();
     this.input += usage.input;
     this.output += usage.output;
@@ -108,8 +134,8 @@ export class DefaultTokenCounter implements TokenCounter {
     const priceKey = providerId && model ? `${providerId}\0${model}` : undefined;
     const price = priceKey ? this.priceCache.get(priceKey) : undefined;
     if (price) {
-      this.applyPrice(usage, price);
-      this.emitAccounted(eventSessionId, model, providerId, usage);
+      const deltaCost = this.applyPrice(usage, price);
+      this.emitAccounted(eventSessionId, model, providerId, usage, deltaCost);
       return;
     }
 
@@ -123,15 +149,16 @@ export class DefaultTokenCounter implements TokenCounter {
       void this.registry
         .getModel(providerId, model)
         .then((m) => {
+          let deltaCost: { input: number; output: number; total: number } | undefined;
           if (m) {
             const p = priceFromModel(m);
             this.priceCache.set(priceKey!, p);
-            this.applyPrice(usage, p);
+            deltaCost = this.applyPrice(usage, p);
           }
           // Token totals are authoritative even when pricing is unresolved.
           // Emit after the lookup settles so live UIs update for unknown models
           // without double-emitting when pricing is resolved.
-          this.emitAccounted(eventSessionId, model, providerId, usage);
+          this.emitAccounted(eventSessionId, model, providerId, usage, deltaCost);
         })
         .catch(() => {
           // Emit so observability tooling can detect unknown models.
@@ -151,7 +178,8 @@ export class DefaultTokenCounter implements TokenCounter {
   }
 
   /** Synchronous variant for code paths that have already resolved the model. */
-  accountWithModel(usage: Usage, resolved: ResolvedModel): void {
+  accountWithModel(rawUsage: Usage, resolved: ResolvedModel): void {
+    const usage = DefaultTokenCounter.finiteUsage(rawUsage);
     const eventSessionId = this.currentSessionId();
     this.input += usage.input;
     this.output += usage.output;
@@ -182,8 +210,8 @@ export class DefaultTokenCounter implements TokenCounter {
       this.priceCache.delete(keys[0] ?? '');
     }
     this.priceCache.set(`${resolved.providerId}\0${resolved.modelId}`, price);
-    this.applyPrice(usage, price);
-    this.emitAccounted(eventSessionId, resolved.modelId, resolved.providerId, usage);
+    const deltaCost = this.applyPrice(usage, price);
+    this.emitAccounted(eventSessionId, resolved.modelId, resolved.providerId, usage, deltaCost);
   }
 
   total(): Usage {
@@ -265,6 +293,7 @@ export class DefaultTokenCounter implements TokenCounter {
     model?: string,
     providerId = this.currentProviderId(),
     deltaUsage?: Usage,
+    deltaCost?: { input: number; output: number; total: number },
   ): void {
     const agentId = this.currentAgentId();
     this.events?.emit('token.accounted', {
@@ -272,6 +301,7 @@ export class DefaultTokenCounter implements TokenCounter {
       ...(agentId ? { agentId } : {}),
       usage: this.total(),
       ...(deltaUsage ? { deltaUsage: { ...deltaUsage } } : {}),
+      ...(deltaCost ? { deltaCost } : {}),
       cost: {
         input: this.costInput,
         output: this.costOutput,
@@ -343,7 +373,12 @@ export class DefaultTokenCounter implements TokenCounter {
     this.cacheByProvider.set(key, current);
   }
 
-  private applyPrice(usage: Usage, price: PriceEntry): void {
+  private applyPrice(
+    usage: Usage,
+    price: PriceEntry,
+  ): { input: number; output: number; total: number } | undefined {
+    const beforeInput = this.costInput;
+    const beforeOutput = this.costOutput;
     if (price.input) this.costInput += (usage.input / 1_000_000) * price.input;
     if (price.output) this.costOutput += (usage.output / 1_000_000) * price.output;
     // Adapters report cache tokens OUTSIDE `usage.input`, so a cache count
@@ -375,6 +410,19 @@ export class DefaultTokenCounter implements TokenCounter {
     if (cacheWrite1h && write1hRate) {
       this.costInput += (cacheWrite1h / 1_000_000) * write1hRate;
     }
+    const known = (tokens: number | undefined, rate: number | undefined) =>
+      !tokens || (rate !== undefined && Number.isFinite(rate) && rate >= 0);
+    if (
+      !known(usage.input, price.input) ||
+      !known(usage.output, price.output) ||
+      !known(usage.cacheRead, cacheReadRate) ||
+      !known(cacheWrite5m, write5mRate) ||
+      !known(cacheWrite1h, write1hRate)
+    )
+      return undefined;
+    const input = this.costInput - beforeInput;
+    const output = this.costOutput - beforeOutput;
+    return { input, output, total: input + output };
   }
 }
 

@@ -19,6 +19,65 @@ const deepseekChat: ResolvedModel = {
 } as ResolvedModel;
 
 describe('DefaultTokenCounter', () => {
+  it('preserves per-call cost attribution when model price lookups settle out of order', async () => {
+    const events = new EventBus();
+    const seen: Array<{ model?: string | undefined; deltaCost?: { total: number } | undefined }> =
+      [];
+    events.on('token.accounted', (event) => seen.push(event));
+    let resolveOne!: (value: ResolvedModel) => void;
+    let resolveTwo!: (value: ResolvedModel) => void;
+    const registry = {
+      getModel: vi.fn(
+        (_provider: string, model: string) =>
+          new Promise<ResolvedModel>((resolve) => {
+            if (model === m1.modelId) resolveOne = resolve;
+            else resolveTwo = resolve;
+          }),
+      ),
+    } as unknown as ModelsRegistry;
+    const tc = new DefaultTokenCounter({ events, registry });
+    tc.account({ input: 1000, output: 100 }, m1.modelId, m1.providerId);
+    tc.account({ input: 1000, output: 100 }, deepseekChat.modelId, deepseekChat.providerId);
+    resolveTwo(deepseekChat);
+    await Promise.resolve();
+    resolveOne(m1);
+    await Promise.resolve();
+    expect(seen[0]?.model).toBe(deepseekChat.modelId);
+    expect(seen[0]?.deltaCost?.total).toBeCloseTo(0.000168);
+    expect(seen[1]?.model).toBe(m1.modelId);
+    expect(seen[1]?.deltaCost?.total).toBeCloseTo(0.0045);
+  });
+  it('emits per-call costs across model changes instead of the cumulative actor cost', () => {
+    const events = new EventBus();
+    const seen: Array<{
+      model?: string | undefined;
+      deltaCost?: { total: number } | undefined;
+      cost: { total: number };
+    }> = [];
+    events.on('token.accounted', (event) => seen.push(event));
+    const tc = new DefaultTokenCounter({ events });
+    tc.accountWithModel({ input: 1000, output: 100 }, m1);
+    tc.accountWithModel({ input: 1000, output: 100 }, deepseekChat);
+    expect(seen[0]?.deltaCost?.total).toBeCloseTo(0.0045);
+    expect(seen[1]?.deltaCost?.total).toBeCloseTo(0.000168);
+    expect(seen[1]?.cost.total).toBeCloseTo(0.004668);
+    expect(seen[1]?.model).toBe('deepseek-chat');
+  });
+  it('omits per-call cost when a required price is unavailable but preserves genuine free pricing', () => {
+    const events = new EventBus();
+    const seen: Array<{ deltaCost?: { total: number } | undefined }> = [];
+    events.on('token.accounted', (event) => seen.push(event));
+    const tc = new DefaultTokenCounter({ events });
+    tc.account({ input: 10, output: 5 }, 'unknown');
+    tc.accountWithModel({ input: 10, output: 5 }, { ...m1, cost: { input: 3 } } as ResolvedModel);
+    tc.accountWithModel({ input: 10, output: 5 }, {
+      ...m1,
+      cost: { input: 0, output: 0 },
+    } as ResolvedModel);
+    expect(seen[0]?.deltaCost).toBeUndefined();
+    expect(seen[1]?.deltaCost).toBeUndefined();
+    expect(seen[2]?.deltaCost?.total).toBe(0);
+  });
   it('totals tokens without a registry', () => {
     const tc = new DefaultTokenCounter();
     tc.account({ input: 10, output: 5 }, 'm');
@@ -458,5 +517,58 @@ describe('DefaultTokenCounter', () => {
     expect(tc.currentRequestTokens().cacheWrite).toBe(3);
     // total() is unchanged — only the snapshot was overridden
     expect(tc.total().input).toBe(10);
+  });
+
+  // Provider usage arrives from `agent-response.ts` straight off the provider
+  // response, so it is untrusted: `typeof x === 'number'` admits NaN/Infinity.
+  // A single non-finite field poisons every accumulator permanently
+  // (`NaN + finite === NaN`), and `currentRequestTokens()` then feeds
+  // `eternal-autonomy.ts` a `total / maxCtx >= threshold` comparison that is
+  // false for ANY ceiling, silently disabling the context-pressure compaction
+  // gate. The token-throttle and token-budget wrappers normalize the same
+  // boundary; this core accumulator must too.
+  it('does not let non-finite provider usage poison the session totals', () => {
+    const tc = new DefaultTokenCounter();
+    tc.account({ input: 1000, output: 200 });
+    tc.account({ input: Number.NaN, output: 10 });
+    expect(Number.isFinite(tc.total().input)).toBe(true);
+    expect(Number.isFinite(tc.total().output)).toBe(true);
+  });
+
+  it('recovers usable totals after an Infinity usage response', () => {
+    const tc = new DefaultTokenCounter();
+    tc.account({ input: Number.POSITIVE_INFINITY, output: 0 });
+    tc.account({ input: 1000, output: 200 });
+    expect(Number.isFinite(tc.total().input)).toBe(true);
+    expect(Number.isFinite(tc.total().output)).toBe(true);
+  });
+
+  it('keeps the per-request context-pressure sum comparable to a ceiling', () => {
+    // Mirrors the comparison eternal-autonomy.ts makes against maxContext.
+    const tc = new DefaultTokenCounter();
+    tc.account({ input: 1000, output: 200 });
+    tc.account({ input: Number.NaN, output: 0 });
+    const used = tc.currentRequestTokens();
+    const total = used.input + used.cacheRead + used.cacheWrite;
+    expect(Number.isNaN(total)).toBe(false);
+    expect(Number.isFinite(total / 200_000)).toBe(true);
+  });
+
+  it('normalizes non-finite cache fields on the synchronous path too', () => {
+    const tc = new DefaultTokenCounter();
+    tc.accountWithModel(
+      { input: 10, output: 5, cacheRead: Number.NaN, cacheWrite: Number.POSITIVE_INFINITY },
+      m1,
+    );
+    expect(Number.isFinite(tc.total().cacheRead)).toBe(true);
+    expect(Number.isFinite(tc.total().cacheWrite)).toBe(true);
+    expect(Number.isFinite(tc.estimateCost().total)).toBe(true);
+  });
+
+  it('preserves finite usage exactly (guards against a zero-everything "fix")', () => {
+    const tc = new DefaultTokenCounter();
+    tc.account({ input: 1000, output: 200, cacheRead: 300, cacheWrite: 20 });
+    tc.account({ input: 500, output: 100 });
+    expect(tc.total()).toMatchObject({ input: 1500, output: 300, cacheRead: 300, cacheWrite: 20 });
   });
 });

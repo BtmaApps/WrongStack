@@ -30,6 +30,7 @@
  * the existing child-process lifecycle tests in packages/kanban/tests.
  */
 
+import { type FSWatcher, watch as watchFs } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as net from 'node:net';
 import * as os from 'node:os';
@@ -59,21 +60,68 @@ export async function waitForMetadataFile<T extends Record<string, unknown>>(
   );
 }
 
-/** Poll until the metadata file is gone (daemon removed it on stop). */
-export async function waitForMetadataRemoval(
+/**
+ * Wait until the metadata file is gone (the daemon removed it on stop).
+ *
+ * Event-driven, NOT a `sleep()` poll. The daemon under test reaches its stop
+ * through REAL timers: the session-catalog daemon arms a silent-client
+ * `setInterval` with a hard 1 s floor (`Math.max(1_000, silentClientMs / 4)`),
+ * a 250 ms disconnected idle arm, and a 500 ms force-destroy. A timer-based
+ * observer therefore competes with the very thing it measures — under
+ * full-suite load both the daemon's timers and this loop's `sleep(25)` are
+ * delayed by the same starved event loop, so the observer's cost grows exactly
+ * when the subject is slowest. `fs.watch` is an OS notification, not a timer,
+ * so detection is prompt and costs no event-loop turns.
+ *
+ * The bound is still a timeout, and a DIRECTORY watch is used rather than a
+ * file watch: the daemon's own atomic replace is visible to a file watch but
+ * not reliably to a directory watch on every platform, whereas a directory
+ * watch reports both the create and the delete of a single entry.
+ */
+export function waitForMetadataRemoval(
   metadataPath: string,
   timeoutMs = 15_000,
 ): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
+  return new Promise<void>((resolve, reject) => {
+    const dir = path.dirname(metadataPath);
+    const base = path.basename(metadataPath);
+    let watcher: FSWatcher | undefined;
+    let settled = false;
+
+    const finish = (error?: Error): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      watcher?.close();
+      if (error) reject(error);
+      else resolve();
+    };
+
+    // One bounded deadline replaces the unbounded poll.
+    const timer = setTimeout(() => {
+      finish(new Error(`daemon metadata was never removed at ${metadataPath} within ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    // The file may already be gone before the watcher arms; a fast shutdown
+    // must not park until the timeout.
+    void fs
+      .stat(metadataPath)
+      .then(() => undefined)
+      .catch(() => finish());
+
     try {
-      await fs.stat(metadataPath);
-      await sleep(25);
-    } catch {
-      return;
+      watcher = watchFs(dir, (_event, filename) => {
+        if (filename != null && path.basename(String(filename)) !== base) return;
+        // Confirm rather than trust the event: only ENOENT means "gone".
+        void fs
+          .stat(metadataPath)
+          .then(() => undefined)
+          .catch(() => finish());
+      });
+    } catch (error) {
+      finish(error as Error);
     }
-  }
-  throw new Error(`daemon metadata was never removed at ${metadataPath} within ${timeoutMs}ms`);
+  });
 }
 
 /** Poll until the endpoint refuses new connections (listener closed). */

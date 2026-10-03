@@ -3,7 +3,6 @@ import type { EventBus, Middleware } from '@wrongstack/core/kernel';
 import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { checkInjectionValidity } from '../retrieval/validity-checks.js';
-import type { Sage } from '../types.js';
 import type { InjectionTracker } from './injection-tracker.js';
 import { MemoryInjectorAgent } from './memory-injector-agent.js';
 import {
@@ -91,73 +90,9 @@ export interface SageToolCallMiddlewareOptions {
   events?: EventBus | undefined;
 }
 
-export interface SageRetrieverLike {
-  retrieveForPath(opts: {
-    path: string;
-    limit?: number;
-    includeAncestors?: boolean;
-    includeStatuses?: Sage['status'][];
-    includeAudienceScoped?: boolean;
-    sessionId?: string | undefined;
-    includeAllSessions?: boolean | undefined;
-  }): Promise<Sage[]>;
-  searchSage(
-    query: string,
-    opts?: {
-      limit?: number;
-      includeAudienceScoped?: boolean;
-      requireAllTerms?: boolean;
-      sessionId?: string | undefined;
-      includeAllSessions?: boolean | undefined;
-      vectorRecall?: import('../types.js').VectorRecallProvider | undefined;
-      vectorRecallWeight?: number | undefined;
-      vectorCandidateLimit?: number | undefined;
-      vectorRecallThreshold?: number | undefined;
-      vectorRecallMinScore?: number | undefined;
-    },
-  ): Promise<Sage[]>;
-  /**
-   * Rich variant of `searchSage` returning per-channel scores. Optional
-   * on the structural retriever — only ports that can produce the
-   * augmented breakdown (in-process SqliteMemoryPort, the wrapped
-   * vector-augmented port) implement it. The explainer tools call this
-   * when present and fall back to `searchSage` otherwise.
-   */
-  searchSageWithBreakdown?(
-    query: string,
-    opts?: {
-      limit?: number;
-      includeAudienceScoped?: boolean;
-      requireAllTerms?: boolean;
-      sessionId?: string | undefined;
-      includeAllSessions?: boolean | undefined;
-      vectorRecall?: import('../types.js').VectorRecallProvider | undefined;
-      vectorRecallWeight?: number | undefined;
-      vectorCandidateLimit?: number | undefined;
-      vectorRecallThreshold?: number | undefined;
-      vectorRecallMinScore?: number | undefined;
-    },
-  ): Promise<import('../retrieval/vector-augment.js').VectorAugmentHit[]>;
-  findRelatedSage?(
-    memoryIds: string[],
-    opts?: {
-      limit?: number;
-      maxDepth?: number;
-      includeStatuses?: Sage['status'][];
-      includeAudienceScoped?: boolean;
-      sessionId?: string | undefined;
-      includeAllSessions?: boolean | undefined;
-    },
-  ): Promise<Sage[]>;
-  verifyForPaths?(paths: string[], signal?: AbortSignal): Promise<unknown>;
-  recordInjection?(memoryIds: string[], trigger: string, sessionId?: string): void | Promise<void>;
-  recordUse?(memoryIds: string[], source: string, sessionId?: string): void | Promise<void>;
-}
+import type { SageRetrieverLike } from './tool-call-memory-types.js';
 
-export type SageSearchLike = Pick<
-  SageRetrieverLike,
-  'searchSage' | 'searchSageWithBreakdown' | 'recordInjection' | 'recordUse'
->;
+export type { SageRetrieverLike, SageSearchLike } from './tool-call-memory-types.js';
 
 const DEFAULT_MAX_HINTS = 8;
 const DEFAULT_MAX_CHARS = 2800;

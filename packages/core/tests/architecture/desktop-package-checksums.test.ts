@@ -2,11 +2,23 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DESKTOP_CHECKSUM_MANIFEST,
   writeDesktopChecksums,
 } from '../../../../scripts/lib/desktop-package-checksums.mjs';
+
+/**
+ * Repo root resolved from this file's own URL rather than `process.cwd()`.
+ *
+ * The package script `pnpm --filter @wrongstack/core test` runs the suite with
+ * cwd = `packages/core` (`--root ../..` repoints vitest's root, not the cwd), so
+ * a cwd-relative read of a repo-root fixture ENOENTs there while passing from the
+ * repo root — the same test, two opposite verdicts. Anchoring on
+ * `import.meta.url` makes the workflow pins hold under both invocations.
+ */
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 
 const scratchDirs: string[] = [];
 
@@ -48,8 +60,8 @@ describe('Desktop release checksum manifest', () => {
 
   it('keeps Desktop workflow upload and release verification on the package-owned manifest', async () => {
     const [desktopWorkflow, releaseWorkflow] = await Promise.all([
-      readFile('.github/workflows/desktop.yml', 'utf8'),
-      readFile('.github/workflows/release.yml', 'utf8'),
+      readFile(join(REPO_ROOT, '.github/workflows/desktop.yml'), 'utf8'),
+      readFile(join(REPO_ROOT, '.github/workflows/release.yml'), 'utf8'),
     ]);
 
     expect(desktopWorkflow).toContain('.temp_files/package-desktop-stage/release/');

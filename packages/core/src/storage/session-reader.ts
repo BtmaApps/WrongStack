@@ -18,6 +18,13 @@ import {
   scrubPersistedSessionEvent,
   scrubPersistedSessionSummary,
 } from './session-read-scrubber.js';
+// The two inline title/summary filters below used to re-implement this
+// predicate with `toLowerCase()` while the canonical matcher used
+// `toLocaleLowerCase()`. 'İ' (U+0130) is the one code point below U+2000 where
+// those differ — toLowerCase() yields 'i' + U+0307, toLocaleLowerCase() 'i' —
+// so the SAME query returned different rows depending on whether the store
+// exposed `listFiltered`. Delegating here keeps one implementation.
+import { matchesSessionFilter } from './session-summary.js';
 
 /**
  * L2-A: read-only view over a `SessionStore` with query, replay, search,
@@ -66,16 +73,7 @@ export class DefaultSessionReader implements SessionReader {
       });
     } else {
       const fetched = await this.store.list(q.limit ? Math.max(q.limit, 100) : 1000);
-      const titleNeedle = q.titleContains?.toLowerCase();
-      raw = fetched.filter((s) => {
-        if (q.since && s.startedAt < q.since) return false;
-        if (q.until && s.startedAt > q.until) return false;
-        if (q.provider && s.provider !== q.provider) return false;
-        if (q.model && s.model !== q.model) return false;
-        if (q.minTokens !== undefined && s.tokenTotal < q.minTokens) return false;
-        if (titleNeedle && !s.title.toLowerCase().includes(titleNeedle)) return false;
-        return true;
-      });
+      raw = fetched.filter((s) => matchesSessionFilter(s, q));
     }
     const out: SessionSummaryLite[] = raw.map((rawSummary) => {
       const s = scrubPersistedSessionSummary(rawSummary, this.secretScrubber);
@@ -139,17 +137,7 @@ export class DefaultSessionReader implements SessionReader {
         });
       } else {
         sessions = await this.store.list(1000);
-        const titleNeedle = sessionQuery?.titleContains?.toLowerCase();
-        sessions = sessions.filter((s) => {
-          if (sessionQuery?.since && s.startedAt < sessionQuery.since) return false;
-          if (sessionQuery?.until && s.startedAt > sessionQuery.until) return false;
-          if (sessionQuery?.provider && s.provider !== sessionQuery.provider) return false;
-          if (sessionQuery?.model && s.model !== sessionQuery.model) return false;
-          if (sessionQuery?.minTokens !== undefined && s.tokenTotal < sessionQuery.minTokens)
-            return false;
-          if (titleNeedle && !s.title.toLowerCase().includes(titleNeedle)) return false;
-          return true;
-        });
+        if (sessionQuery) sessions = sessions.filter((s) => matchesSessionFilter(s, sessionQuery));
       }
       ids = sessions.map((s) => s.id);
     }

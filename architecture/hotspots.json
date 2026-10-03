@@ -95,7 +95,7 @@
       "relativeImports": 16
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
-      "lines": 974,
+      "lines": 976,
       "relativeImports": 18
     },
     "packages/core/src/execution/brain-runtime.ts": {
@@ -123,15 +123,15 @@
       "relativeImports": 0
     },
     "packages/core/src/plugins/skills-plugin.ts": {
-      "lines": 827,
-      "relativeImports": 14
+      "lines": 828,
+      "relativeImports": 15
     },
     "packages/core/src/security/secret-vault.ts": {
       "lines": 902,
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1827,
+      "lines": 1830,
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
@@ -178,6 +178,10 @@
       "lines": 907,
       "relativeImports": 2
     },
+    "packages/plugins/src/accessibility-auditor/index.ts": {
+      "lines": 828,
+      "relativeImports": 1
+    },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
       "lines": 906,
       "relativeImports": 1
@@ -199,7 +203,7 @@
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {
-      "lines": 906,
+      "lines": 930,
       "relativeImports": 1
     },
     "packages/primitives/src/regex-ambiguity.ts": {

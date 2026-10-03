@@ -26,11 +26,39 @@ import {
   MAX_PAGE,
 } from './store-schema.js';
 
+/**
+ * Connections already carrying `ws_fold`. Registering a function twice on one
+ * connection is wasteful at best, and the guard keeps this a single Set lookup
+ * on the hot query path.
+ */
+const foldedConnections = new WeakSet<DatabaseSync>();
+
+/**
+ * Case-folding that agrees with the in-process filters.
+ *
+ * SQLite's `LIKE` — and its `LOWER()` — fold ASCII only, so a title holding a
+ * non-ASCII letter could never match a needle that folds to ASCII: `'İstanbul'
+ * LIKE '%istanbul%'` is false, while the JS filters
+ * (`session-summary.ts`, `session-reader.ts`) lowercase the title in JS and match.
+ * Same query, different rows, depending on which backend served it. Because
+ * `LOWER()` is ASCII-only too, the fix has to be a real function rather than
+ * more SQL: `ws_fold` runs the same `toLocaleLowerCase()` the JS side uses, so
+ * the catalog path filters identically.
+ */
+function ensureUnicodeFold(db: DatabaseSync): void {
+  if (foldedConnections.has(db)) return;
+  db.function('ws_fold', (value: unknown) =>
+    value === null || value === undefined ? null : String(value).toLocaleLowerCase(),
+  );
+  foldedConnections.add(db);
+}
+
 export function listCatalogRecords(
   db: DatabaseSync,
   criteria: SessionCatalogListArgs = {},
   catalogRecord: (row: CatalogRow) => CatalogSessionRecord,
 ): CatalogSessionRecord[] {
+  ensureUnicodeFold(db);
   const requestedLimit = criteria.limit ?? 100;
   if (!Number.isFinite(requestedLimit)) throw new TypeError('Invalid session catalog limit');
   // Floor at 0, NOT 1: `clampListLimit` (storage/session-store/list-sessions.ts)
@@ -78,7 +106,11 @@ export function listCatalogRecords(
     values.push(criteria.minTokens);
   }
   if (criteria.titleContains) {
-    clauses.push(`${jsonText('title')} LIKE ? ESCAPE '\\'`);
+    // Both sides go through `ws_fold`, so the catalog filter agrees with
+    // `matchesSessionFilter` (storage/session-summary.ts) on non-ASCII titles.
+    // The needle keeps its `toLocaleLowerCase()`; SQLite's own LOWER() stays out
+    // of this because it folds ASCII only and would reintroduce the mismatch.
+    clauses.push(`ws_fold(${jsonText('title')}) LIKE ? ESCAPE '\\'`);
     values.push(literalLike(criteria.titleContains.toLocaleLowerCase()));
   }
   const where = clauses.length > 0 ? ` WHERE ${clauses.join(' AND ')}` : '';

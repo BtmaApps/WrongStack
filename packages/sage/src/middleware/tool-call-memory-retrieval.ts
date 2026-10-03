@@ -5,14 +5,14 @@ import {
 } from '../retrieval/relevance.js';
 import { normalizeTextKey } from '../store-helpers.js';
 import type { Sage } from '../types.js';
-import type { SageRetrieverLike } from './tool-call-memory.js';
 import { contextualInjectionScore, MIN_RELATION_STRENGTH } from './tool-call-memory-scoring.js';
 import type { ExtractedTriggerContext } from './tool-call-memory-triggers.js';
 import { isMutationTrigger } from './tool-call-memory-triggers.js';
+import type { SageRetrieverLike } from './tool-call-memory-types.js';
 
-// One retriever contract: `tool-call-memory.ts` owns it. A second,
+// One retriever contract: `tool-call-memory-types.ts` owns it. A second,
 // independently-edited copy used to live here.
-export type { SageRetrieverLike } from './tool-call-memory.js';
+export type { SageRetrieverLike } from './tool-call-memory-types.js';
 
 export interface RetrievedMemory {
   memory: Sage;

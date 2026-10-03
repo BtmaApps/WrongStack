@@ -52,11 +52,24 @@ export function ecosystemOf(manager: string): Ecosystem | null {
   return null;
 }
 
-/** An exact version the install pins, or null for a range / a tag / none. */
-export function exactVersion(version: string | null): string | null {
+/**
+ * An exact version the install pins, or null for a range / a tag / none.
+ * What counts as a pin is the manager's grammar, not the digits: pip's
+ * `==4.2` is exactly 4.2, but npm's `lodash@4` / `@4.17` is a range (npm
+ * installs the newest 4.x), and cargo's `smallvec@1.0.0` is a caret
+ * requirement (cargo locks the newest 1.x) — only `=1.0.0` pins it. Asking
+ * OSV about the literal `4` / `1.0.0` reported advisories of a version that
+ * is never installed.
+ */
+export function exactVersion(version: string | null, ecosystem: Ecosystem): string | null {
   if (!version) return null;
-  const v = version.trim().replace(/^=+/, '');
-  return /^\d+(?:\.\d+){0,3}(?:[-+.][0-9A-Za-z.-]+)?$/.test(v) ? v : null;
+  const raw = version.trim();
+  const v = raw.replace(/^=+/, '');
+  if (ecosystem === 'PyPI') {
+    return /^\d+(?:\.\d+){0,3}(?:[-+.][0-9A-Za-z.-]+)?$/.test(v) ? v : null;
+  }
+  if (ecosystem === 'crates.io' && !raw.startsWith('=')) return null;
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(v) ? v : null;
 }
 
 /** The name the registry knows: pip extras (`requests[socks]`) are not part of it. */
@@ -237,7 +250,8 @@ export async function checkPackage(
         detail: `"${name}" was first published ${days === 0 ? 'today' : `${days} day(s) ago`}`,
       });
     }
-    const version = exactVersion(pkg.version) ?? (pkg.version === null ? meta.latest : null);
+    const version =
+      exactVersion(pkg.version, ecosystem) ?? (pkg.version === null ? meta.latest : null);
     if (opts.vulnerabilityCheck && version) {
       const advisories = await fetchAdvisories(name, ecosystem, version, opts);
       if ('error' in advisories) {

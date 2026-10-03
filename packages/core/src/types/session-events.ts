@@ -233,6 +233,8 @@ type SessionEventVariant =
       ts: string;
       before: number;
       after: number;
+      fullRequestTokensBefore?: number | undefined;
+      fullRequestTokensAfter?: number | undefined;
       /** Pressure level that triggered the compaction. */
       level?: 'warn' | 'soft' | 'hard' | undefined;
       aggressive?: boolean | undefined;

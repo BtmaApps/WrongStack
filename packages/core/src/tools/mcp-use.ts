@@ -1,6 +1,6 @@
-import type { JSONSchema, ToolRegistry } from '../index.js';
+import type { ToolRegistry } from '../registry/tool-registry.js';
 import { ToolCapabilities } from '../security/capabilities.js';
-import type { Tool } from '../types/tool.js';
+import type { JSONSchema, Tool } from '../types/tool.js';
 import {
   GOVERNED_TOOL_EXECUTOR_META_KEY,
   type GovernedToolExecutor,

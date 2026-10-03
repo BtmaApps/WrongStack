@@ -96,6 +96,16 @@ export function truncateForTelegram(text: string, maxLen = 4000): string {
 }
 
 /**
+ * Escape text for Telegram's MarkdownV2 parse mode. The Bot API requires every
+ * `_ * [ ] ( ) ~ \` > # + - = | { } . !` (and `\` itself) outside an entity to
+ * be backslash-escaped; one bare `.` makes sendMessage fail with "can't parse
+ * entities". Mirrors the HTML mode, which escapes the whole text as literal.
+ */
+export function escapeMarkdownV2(text: string): string {
+  return text.replace(/[\\_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+}
+
+/**
  * Escape HTML special chars for Telegram's HTML parse mode.
  */
 export function escapeHtml(text: string): string {

@@ -436,8 +436,7 @@ describe('KnowledgeGraph', () => {
       expect(agent1Goals[0]!.title).toBe('G1');
     });
 
-    it('getGoals accepts priority filter parameter', async () => {
-      // Note: _matches doesn't filter by priority internally - callers must filter post-query
+    it('getGoals filters by priority', async () => {
       const graph = new KnowledgeGraph(tempDir);
 
       await graph.add({
@@ -469,9 +468,9 @@ describe('KnowledgeGraph', () => {
         children: [],
       } as Omit<GoalNode, 'id'>);
 
-      // Parameter accepted (all goals returned since _matches doesn't filter by priority)
       const goals = graph.getGoals({ priority: 'critical' });
-      expect(goals.length).toBeGreaterThan(0);
+      expect(goals).toHaveLength(1);
+      expect(goals[0]?.title).toBe('G1');
     });
   });
 
@@ -670,8 +669,7 @@ describe('KnowledgeGraph', () => {
       expect(facts).toHaveLength(1);
     });
 
-    it('getFacts accepts severity filter parameter', async () => {
-      // Note: _matches doesn't filter by severity internally - callers must filter post-query
+    it('getFacts filters by severity', async () => {
       const graph = new KnowledgeGraph(tempDir);
 
       await graph.add({
@@ -699,9 +697,9 @@ describe('KnowledgeGraph', () => {
         related: [],
       } as Omit<FactNode, 'id'>);
 
-      // Parameter accepted (all facts returned since _matches doesn't filter by severity)
       const facts = graph.getFacts({ severity: 'critical' });
-      expect(facts.length).toBeGreaterThan(0);
+      expect(facts).toHaveLength(1);
+      expect(facts[0]?.subject).toBe('F1');
     });
   });
 

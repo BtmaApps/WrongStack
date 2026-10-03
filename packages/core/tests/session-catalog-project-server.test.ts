@@ -245,8 +245,18 @@ describe('Session Catalog project server IPC', () => {
       expect(await client.nextFrame()).toMatchObject({ type: 'response', id: 2, ok: true });
       client.socket.destroy();
 
-      await waitForMetadataRemoval(metadataPath, 2_000);
-      await waitForEndpointClosed(endpoint, 2_000);
+      // Bounds must clear the daemon's OWN worst-case stop path, which is
+      // larger than it looks: `scheduleIdleStop` arms `hasLiveLease ? 5_000 :
+      // emptyIdleMs` (project-server.ts:592-599), and if the release has not
+      // landed in SQLite when the socket close handler runs, the lease is
+      // still listed and the daemon waits 5 s — then up to 1 s of drain grace
+      // and 500 ms of force-destroy before the metadata is removed LAST. The
+      // old 2_000 bound was below that chain, so a slow worker could exceed it
+      // while the daemon behaved correctly. The property under test is that
+      // exit happened WITHOUT the 60 s idle timer set above, so any bound under
+      // ~60_000 keeps that distinction intact.
+      await waitForMetadataRemoval(metadataPath);
+      await waitForEndpointClosed(endpoint);
     } finally {
       if (previousIdle === undefined) delete process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'];
       else process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'] = previousIdle;

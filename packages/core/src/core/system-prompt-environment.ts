@@ -30,12 +30,21 @@ export interface EnvironmentSectionContext {
 
 const MAX_ENVIRONMENT_CACHE_ENTRIES = 16;
 
+/**
+ * The user's calendar date, `YYYY-MM-DD`. `toISOString()` is the UTC date:
+ * east of Greenwich the model was told yesterday's date until UTC midnight.
+ */
+function localDateIso(now: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export async function buildEnvironment(
   ctx: BuildContext,
   env: EnvironmentSectionContext,
 ): Promise<string> {
   const modelCapabilities = env.modelCapabilities;
-  const today = env.todayIso ?? new Date().toISOString().slice(0, 10);
+  const today = env.todayIso ?? localDateIso(new Date());
   const cacheKey = [
     ctx.projectRoot,
     ctx.provider ?? '',
