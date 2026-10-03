@@ -142,6 +142,30 @@ function compareRegistryVersions(left: string, right: string): number {
   return compareVersions(left.replace(/^v/i, ''), right.replace(/^v/i, ''));
 }
 
+/**
+ * Packagist reports `license` as an array (`["MIT"]`), a choice between
+ * licenses per Composer's schema — an SPDX `OR`. Passed through raw, the
+ * array reached `assessLicense`, whose `.trim()` threw and failed the whole
+ * enrich phase for every PHP project.
+ */
+function composerLicense(value: unknown): string | undefined {
+  if (typeof value === 'string') return value.trim() || undefined;
+  if (!Array.isArray(value)) return undefined;
+  const ids = value.filter((id): id is string => typeof id === 'string' && id.trim() !== '');
+  if (ids.length === 0) return undefined;
+  return ids.length === 1 ? ids[0] : `(${ids.join(' OR ')})`;
+}
+
+/**
+ * The Go module proxy protocol's case-encoding: every uppercase letter becomes
+ * `!` + its lowercase form (`github.com/BurntSushi/toml` →
+ * `github.com/!burnt!sushi/toml`). Sent raw, every module with a capital in its
+ * path answered 404 and was classified private/unresolved.
+ */
+function goProxyEscape(module: string): string {
+  return module.replace(/[A-Z]/g, (c) => `!${c.toLowerCase()}`);
+}
+
 // ── Per-ecosystem parsers ──────────────────────────────────────────────────
 
 /**
@@ -198,7 +222,13 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
       const info = json.info as Record<string, unknown> | undefined;
       return {
         latestStable: (info?.version as string) ?? undefined,
-        license: (info?.license as string) ?? undefined,
+        // PEP 639 metadata carries the SPDX id in `license_expression` and
+        // leaves `license` null (django, pillow, flask-cors): reading only
+        // `license` reported them unlicensed.
+        license:
+          [info?.license_expression, info?.license].find(
+            (value): value is string => typeof value === 'string' && value.trim() !== '',
+          ) ?? undefined,
         deprecated: (info?.deprecated as boolean) ?? undefined,
         yanked: undefined,
         retrievedAt: new Date().toISOString(),
@@ -212,10 +242,19 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
     path: (name: string) => `/api/v1/crates/${name}`,
     parser: (json: Record<string, unknown>): RegistryEntry => {
       const crate = json.crate as Record<string, unknown> | undefined;
+      const latestStable =
+        (crate?.max_stable_version as string) ?? (crate?.max_version as string) ?? undefined;
+      // crates.io has no crate-level license: it lives on each entry of
+      // `versions` (serde: "MIT OR Apache-2.0"). Reading `crate.license`
+      // reported every crate as unlicensed.
+      const versions = Array.isArray(json.versions)
+        ? (json.versions as Array<Record<string, unknown>>)
+        : [];
+      const latestEntry = versions.find((entry) => entry?.num === latestStable);
+      const license = typeof latestEntry?.license === 'string' ? latestEntry.license : undefined;
       return {
-        latestStable:
-          (crate?.max_stable_version as string) ?? (crate?.max_version as string) ?? undefined,
-        license: (crate?.license as string) ?? undefined,
+        latestStable,
+        license: license?.trim() || undefined,
         deprecated: undefined, // crates.io doesn't have deprecation
         yanked: undefined,
         retrievedAt: new Date().toISOString(),
@@ -226,7 +265,7 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
 
   golang: {
     host: 'proxy.golang.org',
-    path: (module: string) => `/${module}/@latest`,
+    path: (module: string) => `/${goProxyEscape(module)}/@latest`,
     parser: (json: Record<string, unknown>, module: string): RegistryEntry => {
       return {
         latestStable: (json.Version as string) ?? undefined,
@@ -234,42 +273,25 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
         deprecated: undefined,
         yanked: undefined,
         retrievedAt: new Date().toISOString(),
-        source: `https://proxy.golang.org/${module}/@latest`,
+        source: `https://proxy.golang.org/${goProxyEscape(module)}/@latest`,
       };
     },
   },
 
   nuget: {
     host: 'api.nuget.org',
-    path: (name: string) => {
-      const lower = name.toLowerCase();
-      return `/v3/registration5-semver1/${lower}/index.json`;
-    },
+    // The flat-container index lists every version in one response. The
+    // registration index it replaces pages a package with many versions into
+    // `lower`/`upper` stubs with no inline versions (AWSSDK.Core: 24 pages,
+    // Serilog: 10 pages each ending in a prerelease), which left those
+    // packages with no latest version at all.
+    path: (name: string) => `/v3-flatcontainer/${name.toLowerCase()}/index.json`,
     parser: (json: Record<string, unknown>, name: string): RegistryEntry => {
-      // NuGet V3 registration index has items with catalog entries
-      const items = json.items as Array<Record<string, unknown>> | undefined;
+      const versions = Array.isArray(json.versions) ? (json.versions as unknown[]) : [];
       let latestStable: string | undefined;
-
-      if (items && items.length > 0) {
-        // Items are ordered; look through all items for the latest stable version
-        for (const item of items) {
-          const itemItems = item.items as Array<Record<string, unknown>> | undefined;
-          if (itemItems && Array.isArray(itemItems)) {
-            for (const entry of itemItems) {
-              const catalogEntry = entry.catalogEntry as Record<string, unknown> | undefined;
-              if (catalogEntry?.version) {
-                const ver = catalogEntry.version as string;
-                // Prefer non-prerelease
-                if (!latestStable || (!ver.includes('-') && latestStable.includes('-'))) {
-                  latestStable = ver;
-                } else if (!ver.includes('-') && !latestStable.includes('-')) {
-                  // Both stable — take greater
-                  if (compareRegistryVersions(ver, latestStable) > 0) latestStable = ver;
-                }
-              }
-            }
-          }
-        }
+      for (const ver of versions) {
+        if (typeof ver !== 'string' || ver.includes('-') || !/^\d+(\.\d+)*$/.test(ver)) continue;
+        if (!latestStable || compareRegistryVersions(ver, latestStable) > 0) latestStable = ver;
       }
 
       return {
@@ -278,7 +300,7 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
         deprecated: undefined,
         yanked: undefined,
         retrievedAt: new Date().toISOString(),
-        source: `https://api.nuget.org/v3/registration5-semver1/${name.toLowerCase()}/index.json`,
+        source: `https://api.nuget.org/v3-flatcontainer/${name.toLowerCase()}/index.json`,
       };
     },
   },
@@ -316,7 +338,7 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
 
       return {
         latestStable,
-        license: (latest.license as string) ?? undefined,
+        license: composerLicense(latest.license),
         deprecated: (latest.deprecated as boolean) ?? undefined,
         yanked: (latest.abandoned as boolean) ?? undefined,
         retrievedAt: new Date().toISOString(),

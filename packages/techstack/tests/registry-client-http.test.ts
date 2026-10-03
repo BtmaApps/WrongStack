@@ -401,7 +401,12 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
       mockGet(
         200,
         JSON.stringify({
-          crate: { max_stable_version: '1.2.3', license: 'MIT', name: 'serde' },
+          // crates.io carries no crate-level license; it is per version.
+          crate: { max_stable_version: '1.2.3', name: 'serde' },
+          versions: [
+            { num: '1.3.0-rc.1', license: 'Apache-2.0' },
+            { num: '1.2.3', license: 'MIT' },
+          ],
         }),
       ),
     );
@@ -424,22 +429,7 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
 
   it('parses NuGet V3 JSON for nuget ecosystem', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockedHttpsGet.mockImplementation(
-      mockGet(
-        200,
-        JSON.stringify({
-          items: [
-            {
-              items: [
-                {
-                  catalogEntry: { version: '6.0.0' },
-                },
-              ],
-            },
-          ],
-        }),
-      ),
-    );
+    mockedHttpsGet.mockImplementation(mockGet(200, JSON.stringify({ versions: ['6.0.0'] })));
 
     const entry = await lookupRegistry('nuget', 'Newtonsoft.Json');
     expect(entry).toBeDefined();
@@ -449,19 +439,7 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
   it('prefers non-prerelease versions in NuGet parser', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockedHttpsGet.mockImplementation(
-      mockGet(
-        200,
-        JSON.stringify({
-          items: [
-            {
-              items: [
-                { catalogEntry: { version: '7.0.0-preview.1' } },
-                { catalogEntry: { version: '6.0.0' } },
-              ],
-            },
-          ],
-        }),
-      ),
+      mockGet(200, JSON.stringify({ versions: ['6.0.0', '7.0.0-preview.1'] })),
     );
 
     const entry = await lookupRegistry('nuget', 'Some.Package');
@@ -472,19 +450,7 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
   it('orders multi-digit NuGet versions numerically', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockedHttpsGet.mockImplementation(
-      mockGet(
-        200,
-        JSON.stringify({
-          items: [
-            {
-              items: [
-                { catalogEntry: { version: '10.0.0' } },
-                { catalogEntry: { version: '9.0.0' } },
-              ],
-            },
-          ],
-        }),
-      ),
+      mockGet(200, JSON.stringify({ versions: ['10.0.0', '9.0.0'] })),
     );
 
     const entry = await lookupRegistry('nuget', 'Versioned.Package');

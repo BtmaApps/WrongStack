@@ -1759,7 +1759,8 @@ describe('TechStack 100% Coverage Suite', () => {
         stdout: '',
         stderr: '',
       }));
-      expect(resGoNoVulns.evidence.detail).toContain('govulncheck: no vulnerabilities found');
+      // Exit 1 is a govulncheck error, not a clean scan.
+      expect(resGoNoVulns.evidence.detail).toContain('govulncheck exited with code 1');
       const resGoExitErr = await runGoVulncheck('/fake/dir', async () => ({
         status: 2,
         stdout: '',
@@ -1807,17 +1808,7 @@ describe('TechStack 100% Coverage Suite', () => {
       vi.spyOn(httpFetch, 'requestWithRetry').mockResolvedValueOnce({
         statusCode: 200,
         headers: {},
-        body: JSON.stringify({
-          items: [
-            {
-              items: [
-                { catalogEntry: { version: '1.0.0' } },
-                { catalogEntry: { version: '1.1.0' } },
-                { catalogEntry: { version: '2.0.0-beta' } },
-              ],
-            },
-          ],
-        }),
+        body: JSON.stringify({ versions: ['1.0.0', '1.1.0', '2.0.0-beta'] }),
       });
       const nugetRes = await lookupRegistry('nuget', 'Newtonsoft.Json');
       expect(nugetRes?.latestStable).toBe('1.1.0');

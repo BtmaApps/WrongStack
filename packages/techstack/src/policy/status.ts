@@ -14,7 +14,7 @@
  * @see docs/specs/techstack-sdd.md §7, R8, R9
  */
 
-import type { DependencyObservation, DependencyStatus, Evidence } from '../types.js';
+import type { DependencyObservation, DependencyStatus, EcosystemId, Evidence } from '../types.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -135,7 +135,13 @@ function isSimpleConstraint(constraint: string): boolean {
     constraint.startsWith('~') ||
     constraint.startsWith('>=') ||
     constraint.startsWith('>') ||
-    isValidSemver(constraint)
+    // A bare upper bound (`<2`, `<=3.0.0`) or an npm hyphen range — both
+    // decided by {@link exceedsDeclaredUpperBound}.
+    constraint.startsWith('<') ||
+    hyphenRangeUpperBound(constraint) !== undefined ||
+    isValidSemver(constraint) ||
+    // An exact pin spelled with an operator: Python `==2.31.0`, npm `=2.31.0`.
+    /^={1,3}\s*\d+\.\d+\.\d+/.test(constraint)
   );
 }
 
@@ -147,13 +153,24 @@ function isSimpleConstraint(constraint: string): boolean {
  * - ^ means compatible (major must match)
  * - ~ means approximately (minor must match)
  * - >= means compatible if major matches
- * - an exact pin is a manifest constraint, not a compatibility one — still
- *   only breaking on a major bump
+ * - an exact pin is a manifest constraint, not a compatibility one — breaking
+ *   only across the SemVer compatibility axis (major, or the minor of a 0.x)
+ * - an explicit upper bound (`>=2.0,<2.32`, `>=1.0.0 <2.0.0`, `<3`) is the
+ *   author's own compatibility statement and decides before any of the above:
+ *   breaking exactly when the latest version falls outside it
  */
-function isBreakingUpgrade(locked: string, latestStable: string, constraint?: string): boolean {
+function isBreakingUpgrade(
+  locked: string,
+  latestStable: string,
+  constraint?: string,
+  ecosystem?: EcosystemId,
+): boolean {
   const constraintNorm = constraint?.trim() ?? '';
   locked = normalizeVersion(locked);
   latestStable = normalizeVersion(latestStable);
+
+  const exceedsUpperBound = exceedsDeclaredUpperBound(latestStable, constraintNorm, ecosystem);
+  if (exceedsUpperBound !== undefined) return exceedsUpperBound;
 
   // Get major versions
   const lockedMajor = locked.split('.')[0];
@@ -166,15 +183,7 @@ function isBreakingUpgrade(locked: string, latestStable: string, constraint?: st
   // `^0.0.3` on a patch change. A major-only comparison reported
   // 0.2.x → 0.3.0 as a SAFE upgrade even though the range excludes it (the
   // same package's `caretUpper`/`satisfiesRange` encode the correct rule).
-  if (constraintNorm.startsWith('^')) {
-    if (lockedMajor !== latestMajor) return true;
-    if (lockedMajor !== '0') return false;
-    const [, lockedMinor = '', lockedPatch = ''] = locked.split('.');
-    const [, latestMinor = '', latestPatch = ''] = latestStable.split('.');
-    if (lockedMinor !== latestMinor) return true;
-    if (lockedMinor !== '0') return false;
-    return lockedPatch !== latestPatch;
-  }
+  if (constraintNorm.startsWith('^')) return crossesCompatibilityAxis(locked, latestStable);
 
   // `~` — approximately equivalent, breaking if minor changes (and we have it)
   if (constraintNorm.startsWith('~')) {
@@ -190,8 +199,107 @@ function isBreakingUpgrade(locked: string, latestStable: string, constraint?: st
     return lockedMajor !== latestMajor;
   }
 
-  // Exact pin (`"biome": "2.5.3"`).
-  return lockedMajor !== latestMajor;
+  // Exact pin (`"biome": "2.5.3"`) — or Cargo's bare requirement, which IS a
+  // caret (`rand = "0.8.5"` means ^0.8.5). Same compatibility axis as `^`:
+  // 2.5.3 → 2.6.0 stays safe, but 0.8.5 → 0.9.2 is breaking — a major-only
+  // check called every 0.x minor bump a safe upgrade.
+  return crossesCompatibilityAxis(locked, latestStable);
+}
+
+/**
+ * Whether `latestStable` lies above an upper bound written in the constraint
+ * (`<V` exclusive, `<=V` inclusive; several are ANDed, as in `>=2.0,<2.32` or
+ * `>=1.0.0 <2.0.0`), or the right side of an npm hyphen range (`A - B`).
+ * `undefined` when the constraint declares no upper bound, is an OR-range
+ * (`||`, where one clause's bound does not bind the others), or a bound is not
+ * a comparable version — the caller then falls back to the SemVer heuristic.
+ */
+function exceedsDeclaredUpperBound(
+  latestStable: string,
+  constraint: string,
+  ecosystem?: EcosystemId,
+): boolean | undefined {
+  if (constraint.includes('||')) return undefined;
+  const bounds: Array<{ version: string; inclusive: boolean }> = [];
+  for (const [, inclusive, version] of constraint.matchAll(
+    /<(=?)\s*v?(\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?)/g,
+  )) {
+    bounds.push(
+      inclusive === '='
+        ? inclusivePartialBound(version!, ecosystem)
+        : { version: version!, inclusive: false },
+    );
+  }
+  const hyphenBound = hyphenRangeUpperBound(constraint);
+  if (hyphenBound) bounds.push(hyphenBound);
+  if (bounds.length === 0) return undefined;
+  try {
+    return bounds.some(({ version, inclusive }) => {
+      const cmp = compareVersions(latestStable, version);
+      return inclusive ? cmp > 0 : cmp >= 0;
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Ecosystems whose resolver reads a PARTIAL inclusive bound as "anything in
+ * that release line": `<=2.32` is `<2.33.0-0` and `<=2` is `<3.0.0-0`. Checked
+ * against npm 11.11's semver 7.7.4 and real cargo 1.93 (`itoa = "<=1.0"`
+ * resolves 1.0.18). PEP 440 does NOT (pip 26.2.1: `2.32.1 in <=2.32` is False),
+ * and ecosystems not verified here keep that literal reading too.
+ */
+const PARTIAL_INCLUSIVE_ROUNDS_UP: ReadonlySet<EcosystemId> = new Set(['npm', 'rust']);
+
+/** `<=V`, with a partial `V` widened to its release line where the ecosystem does that. */
+function inclusivePartialBound(
+  version: string,
+  ecosystem: EcosystemId | undefined,
+): { version: string; inclusive: boolean } {
+  const partial = /^(\d+)(?:\.(\d+))?$/.exec(version);
+  if (!partial || !ecosystem || !PARTIAL_INCLUSIVE_ROUNDS_UP.has(ecosystem)) {
+    return { version, inclusive: true };
+  }
+  const [, major, minor] = partial;
+  return minor === undefined
+    ? { version: `${BigInt(major!) + 1n}.0.0-0`, inclusive: false }
+    : { version: `${major}.${BigInt(minor) + 1n}.0-0`, inclusive: false };
+}
+
+/**
+ * Upper bound of an npm hyphen range `A - B` (whitespace around the `-` is what
+ * separates it from a prerelease dash). A full `B` is inclusive (`<=B`); a
+ * partial one rounds up the way npm's semver does: `1.2.3 - 2.3` is `<2.4.0-0`
+ * and `1.2.3 - 2` is `<3.0.0-0`.
+ */
+function hyphenRangeUpperBound(
+  constraint: string,
+): { version: string; inclusive: boolean } | undefined {
+  const match =
+    /^v?\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z.-]+)?\s+-\s+v?(\d+)(?:\.(\d+))?(?:\.(\d+)(-[0-9A-Za-z.-]+)?)?$/.exec(
+      constraint,
+    );
+  if (!match) return undefined;
+  const [, major, minor, patch, prerelease] = match;
+  if (patch !== undefined) {
+    return { version: `${major}.${minor}.${patch}${prerelease ?? ''}`, inclusive: true };
+  }
+  if (minor !== undefined) {
+    return { version: `${major}.${BigInt(minor) + 1n}.0-0`, inclusive: false };
+  }
+  return { version: `${BigInt(major!) + 1n}.0.0-0`, inclusive: false };
+}
+
+/** True when the upgrade changes the leftmost non-zero component (SemVer §4). */
+function crossesCompatibilityAxis(locked: string, latestStable: string): boolean {
+  const [lockedMajor = '', lockedMinor = '', lockedPatch = ''] = locked.split('.');
+  const [latestMajor = '', latestMinor = '', latestPatch = ''] = latestStable.split('.');
+  if (lockedMajor !== latestMajor) return true;
+  if (lockedMajor !== '0') return false;
+  if (lockedMinor !== latestMinor) return true;
+  if (lockedMinor !== '0') return false;
+  return lockedPatch !== latestPatch;
 }
 
 // ── Main classification function ───────────────────────────────────────────
@@ -206,7 +314,11 @@ function isBreakingUpgrade(locked: string, latestStable: string, constraint?: st
  * @returns The classified DependencyStatus.
  */
 export function classifyStatus(
-  dep: Pick<DependencyObservation, 'name' | 'sourceType' | 'status' | 'locked' | 'requested'>,
+  dep: Pick<DependencyObservation, 'name' | 'sourceType' | 'status' | 'locked' | 'requested'> & {
+    // Partial `<=` bounds read differently per ecosystem; optional so callers
+    // without it keep the literal (PEP 440-style) reading.
+    readonly ecosystem?: EcosystemId | undefined;
+  },
   registryData?: RegistryStatusData,
   advisoryData?: AdvisoryStatusData,
 ): DependencyStatus {
@@ -266,7 +378,7 @@ export function classifyStatus(
         // locked < latestStable
         const constraint = dep.requested;
         if (constraint && isSimpleConstraint(constraint)) {
-          const breaking = isBreakingUpgrade(locked, latestStable, constraint);
+          const breaking = isBreakingUpgrade(locked, latestStable, constraint, dep.ecosystem);
           return breaking ? 'update_available_breaking' : 'update_available_safe';
         }
         // No constraint or complex constraint — conservative: assume safe

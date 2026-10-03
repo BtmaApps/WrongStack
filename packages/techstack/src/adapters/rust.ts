@@ -8,6 +8,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
 import { parseRange, satisfiesRange } from '../policy/resolver.js';
 import { constructPurl } from '../registry/purl.js';
 import type {
@@ -126,17 +127,27 @@ function extractTomlDeps(sectionLines: string[]): Array<{
   name: string;
   version: string | undefined;
   sourceType: 'registry' | 'path' | 'git';
+  /** Inherited from the workspace root (`workspace = true`). */
+  workspace?: boolean;
 }> {
   const deps: Array<{
     name: string;
     version: string | undefined;
     sourceType: 'registry' | 'path' | 'git';
+    workspace?: boolean;
   }> = [];
   for (const raw of joinLogicalEntries(sectionLines)) {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
     const entry = parseTomlKeyValue(line);
     if (!entry) continue;
+
+    // Dotted-key inheritance: `regex.workspace = true`.
+    const dotted = /^(.+)\.workspace$/.exec(entry.key);
+    if (dotted && entry.value.trim() === 'true') {
+      deps.push({ name: dotted[1]!, version: undefined, sourceType: 'registry', workspace: true });
+      continue;
+    }
 
     // Check if it's an inline table: serde = { version = "1.0", features = [...] }
     const tableMatch = entry.value.match(/^\{\s*(.*?)\s*\}$/);
@@ -150,7 +161,13 @@ function extractTomlDeps(sectionLines: string[]): Array<{
         : /\bpath\s*=/.test(inner)
           ? 'path'
           : 'registry';
-      deps.push({ name, version: versionMatch?.[1], sourceType });
+      const workspace = /\bworkspace\s*=\s*true\b/.test(inner);
+      deps.push({
+        name,
+        version: versionMatch?.[1],
+        sourceType,
+        ...(workspace ? { workspace } : {}),
+      });
       continue;
     }
 
@@ -268,6 +285,27 @@ function pickLockedVersion(
   }
 }
 
+/**
+ * The nearest directory at or above `start` (bounded by `stopAt`) whose
+ * Cargo.toml declares `[workspace]`.
+ */
+function findCargoWorkspaceRoot(start: string, stopAt: string | undefined): string | undefined {
+  const ceiling = stopAt ? resolvePath(stopAt) : undefined;
+  let dir = resolvePath(start);
+  for (;;) {
+    try {
+      const manifest = readFileSync(resolveIn(dir, 'Cargo.toml'), 'utf-8');
+      if (/^\s*\[workspace\]\s*$/m.test(manifest)) return dir;
+    } catch {
+      // No manifest here — keep walking.
+    }
+    if (!ceiling || dir === ceiling) return undefined;
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
+
 // ── Scope mapping ─────────────────────────────────────────────────────────
 
 function scopeForCargoSection(section: string): DependencyScope {
@@ -314,8 +352,32 @@ export class RustAdapter implements EcosystemAdapter {
 
     const manifestEv = manifestEvidence(fullManifestPath);
 
+    // A workspace member has neither its own Cargo.lock nor the versions it
+    // inherits (`serde = { workspace = true }`): both live with the workspace
+    // root manifest. Reading only the member directory left every member
+    // dependency unlocked and every inherited one versionless.
+    const workspaceRootDir = findCargoWorkspaceRoot(root, options.projectRoot);
+    const inherited = new Map<
+      string,
+      { version: string | undefined; sourceType: 'registry' | 'path' | 'git' }
+    >();
+    if (workspaceRootDir) {
+      try {
+        const rootManifest = readFileSync(resolveIn(workspaceRootDir, 'Cargo.toml'), 'utf-8');
+        for (const section of parseTomlSections(rootManifest)) {
+          if (section.name !== 'workspace.dependencies') continue;
+          for (const dep of extractTomlDeps(section.lines)) inherited.set(dep.name, dep);
+        }
+      } catch {
+        // Unreadable root manifest — inherited deps stay versionless.
+      }
+    }
+
     // Find lockfile
-    const cargoLockPath = resolveIn(root, 'Cargo.lock');
+    const cargoLockPath =
+      fileExists(resolveIn(root, 'Cargo.lock')) || !workspaceRootDir
+        ? resolveIn(root, 'Cargo.lock')
+        : resolveIn(workspaceRootDir, 'Cargo.lock');
     let lockVersions = new Map<string, string[]>();
     let lockEv: Evidence | undefined;
     try {
@@ -348,14 +410,21 @@ export class RustAdapter implements EcosystemAdapter {
       const scope = scopeForCargoSection(matchedScope);
       const deps = extractTomlDeps(section.lines);
 
-      for (const dep of deps) {
-        if (seen.has(dep.name)) continue;
-        seen.add(dep.name);
+      for (const declared of deps) {
+        if (seen.has(declared.name)) continue;
+        seen.add(declared.name);
+        const base = declared.workspace ? inherited.get(declared.name) : undefined;
+        const dep = base
+          ? { ...declared, version: declared.version ?? base.version, sourceType: base.sourceType }
+          : declared;
 
         // Cargo.lock can hold several instances of one crate name; pick the one
         // this dependency's requirement actually selects, not the highest.
+        // Without a lock entry only an exact `=x.y.z` pin names a version; the
+        // requirement itself (`1`, `=0.3.20`) used to become `locked` and the purl.
         const candidates = lockVersions.get(dep.name) ?? [];
-        const locked = pickLockedVersion(candidates, dep.version) ?? dep.version;
+        const exactPin = /^=\s*(\d+\.\d+\.\d+\S*)$/.exec(dep.version?.trim() ?? '')?.[1];
+        const locked = pickLockedVersion(candidates, dep.version) ?? exactPin;
         if (locked) seenInstances.add(`${dep.name}@${locked}`);
         const isRegistry = dep.sourceType === 'registry';
 

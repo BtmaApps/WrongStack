@@ -216,6 +216,111 @@ describe('classifyStatus — version comparison', () => {
   });
 });
 
+const classify = (requested: string, locked: string, latestStable: string) =>
+  classifyStatus(makeDep({ requested, locked }), { latestStable });
+
+// A pin spelled with an operator — Python's `==2.31.0`, the requirements.txt
+// norm — is the same manifest statement as a bare `2.31.0`. It used to read as
+// a "complex constraint, assume safe", so a major bump looked safe.
+describe('classifyStatus — operator-spelled exact pins', () => {
+  it.each([
+    ['==2.31.0', '2.31.0', '3.0.0', 'update_available_breaking'],
+    ['== 2.31.0', '2.31.0', '3.0.0', 'update_available_breaking'],
+    ['=1.2.3', '1.2.3', '2.0.0', 'update_available_breaking'],
+    ['==0.8.5', '0.8.5', '0.9.0', 'update_available_breaking'],
+    ['==2.31.0', '2.31.0', '2.32.3', 'update_available_safe'],
+    // A wildcard pin is still not "simple": unchanged conservative answer.
+    ['==2.*', '2.31.0', '3.0.0', 'update_available_safe'],
+  ])('%s: %s → %s is %s', (requested, locked, latest, expected) => {
+    expect(classify(requested, locked, latest)).toBe(expected);
+  });
+});
+
+// An explicit upper bound is the author's own compatibility statement, so it
+// decides — not the major-version heuristic. `>=2.0,<2.32` (PEP 440) used to
+// call 2.31.0 → 2.32.3 safe because the major did not change.
+describe('classifyStatus — declared upper bounds', () => {
+  it.each([
+    ['>=2.0,<2.32', '2.31.0', '2.32.3', 'update_available_breaking'],
+    ['>=2.0,<2.32', '2.31.0', '2.31.9', 'update_available_safe'],
+    ['>=2.0, <2.32', '2.31.0', '2.32.0', 'update_available_breaking'],
+    ['>=1.0.0 <2.0.0', '1.2.0', '2.0.0', 'update_available_breaking'],
+    ['< 2.0.0', '1.0.0', '2.0.0', 'update_available_breaking'],
+    // A wide range allows a major bump the heuristic alone would flag.
+    ['>=1.0,<3.0', '1.5.0', '2.1.0', 'update_available_safe'],
+    // `<=` includes the bound itself.
+    ['<=2.32', '2.31.0', '2.32.0', 'update_available_safe'],
+    ['<=2.32', '2.31.0', '2.32.1', 'update_available_breaking'],
+    // A bare upper bound is now a recognised constraint.
+    ['<3', '2.1.0', '3.0.0', 'update_available_breaking'],
+    ['<3', '2.1.0', '2.9.0', 'update_available_safe'],
+    // npm's "below the next major prerelease" idiom.
+    ['<3.0.0-0', '2.9.0', '3.0.0', 'update_available_breaking'],
+  ])('%s: %s → %s is %s', (requested, locked, latest, expected) => {
+    expect(classify(requested, locked, latest)).toBe(expected);
+  });
+
+  it('leaves an OR-range to the heuristic: one clause bound does not bind the others', () => {
+    expect(classify('^1.2.0 || ^2.0.0', '1.2.0', '2.1.0')).toBe('update_available_breaking');
+  });
+
+  it('leaves a lower-bound-only range to the heuristic', () => {
+    expect(classify('>=2.0', '2.31.0', '2.32.0')).toBe('update_available_safe');
+    expect(classify('>=2.0', '2.31.0', '3.0.0')).toBe('update_available_breaking');
+  });
+});
+
+// npm hyphen ranges: `A - B` is `>=A <=B`, and a partial B rounds up
+// (`1.2.3 - 2.3` is `<2.4.0-0`). Expected values are npm semver 7.7.4's
+// `satisfies(latest, range)`. Starting with a version, the range used to be
+// judged as an exact pin by the major-version heuristic.
+describe('classifyStatus — npm hyphen ranges', () => {
+  it.each([
+    ['1.2.3 - 1.4', '1.3.0', '1.5.0', 'update_available_breaking'],
+    ['1.2.3 - 1.4.2', '1.3.0', '1.4.3', 'update_available_breaking'],
+    ['1.2.3 - 1.4.2', '1.3.0', '1.4.2', 'update_available_safe'],
+    ['1.2.3 - 2.3', '1.5.0', '2.3.9', 'update_available_safe'],
+    ['1.2.3 - 2.3', '1.5.0', '2.4.0', 'update_available_breaking'],
+    ['1 - 2', '1.2.3', '2.9.9', 'update_available_safe'],
+    ['1 - 2', '1.2.3', '3.0.0', 'update_available_breaking'],
+    ['1.2 - 1.8', '1.3.0', '1.9.0', 'update_available_breaking'],
+    ['v1.0.0 - v1.9.9', '1.2.3', '2.0.0', 'update_available_breaking'],
+  ])('%s: %s → %s is %s', (requested, locked, latest, expected) => {
+    expect(classify(requested, locked, latest)).toBe(expected);
+  });
+
+  it('does not read a prerelease dash as a hyphen range', () => {
+    expect(classify('1.2.3-beta', '1.2.3-beta', '1.2.3')).toBe('update_available_safe');
+  });
+});
+
+// A PARTIAL inclusive bound is ecosystem-specific: npm (semver 7.7.4) and Cargo
+// (real cargo 1.93 resolves `itoa = "<=1.0"` to 1.0.18) read `<=2.32` as the
+// whole 2.32 line; PEP 440 (pip 26.2.1 packaging) excludes 2.32.1.
+describe('classifyStatus — partial inclusive bounds per ecosystem', () => {
+  const inEcosystem = (ecosystem: string, requested: string, locked: string, latest: string) =>
+    classifyStatus(makeDep({ requested, locked, ecosystem }), { latestStable: latest });
+
+  it.each([
+    ['npm', '<=2.32', '2.31.0', '2.32.1', 'update_available_safe'],
+    ['npm', '<=2.32', '2.31.0', '2.33.0', 'update_available_breaking'],
+    ['npm', '<=2', '1.0.0', '2.33.0', 'update_available_safe'],
+    ['npm', '<=2', '1.0.0', '3.0.0', 'update_available_breaking'],
+    ['rust', '<=1.0', '1.0.0', '1.0.18', 'update_available_safe'],
+    ['rust', '<=1.0', '1.0.0', '1.1.0', 'update_available_breaking'],
+    ['python', '<=2.32', '2.31.0', '2.32.0', 'update_available_safe'],
+    ['python', '<=2.32', '2.31.0', '2.32.1', 'update_available_breaking'],
+    // A full version is inclusive everywhere.
+    ['npm', '<=2.32.0', '2.31.0', '2.32.1', 'update_available_breaking'],
+  ])('%s %s: %s → %s is %s', (ecosystem, requested, locked, latest, expected) => {
+    expect(inEcosystem(ecosystem, requested, locked, latest)).toBe(expected);
+  });
+
+  it('keeps the literal reading when the ecosystem is unknown', () => {
+    expect(classify('<=2.32', '2.31.0', '2.32.1')).toBe('update_available_breaking');
+  });
+});
+
 // ── Helper factory tests ───────────────────────────────────────────────────
 
 describe('privateOrUnresolvedStatus', () => {

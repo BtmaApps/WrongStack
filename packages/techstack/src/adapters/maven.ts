@@ -77,6 +77,28 @@ function parsePomDependencies(xml: string): MavenDependency[] {
       properties.set('project.parent.groupId', parentGroup);
     }
   }
+  // The project's own coordinates, read from top-level tags only (the parent,
+  // dependency, build and profile sections carry groupId/version tags of their
+  // own). Multi-module builds pin sibling modules with `${project.version}` /
+  // `${project.groupId}`; left unresolved they became the literal coordinate
+  // `${project.groupId}:app-core@${project.version}`. Both inherit from the
+  // parent when the project omits them, as Maven does.
+  const projectLevel = xml
+    .replace(/<parent>[\s\S]*?<\/parent>/g, '')
+    .replace(
+      /<(dependencyManagement|dependencies|build|reporting|profiles|properties)>[\s\S]*?<\/\1>/g,
+      '',
+    );
+  const projectGroup = xmlTagValue(projectLevel, 'groupId') ?? properties.get('parent.groupId');
+  const projectVersion = xmlTagValue(projectLevel, 'version') ?? properties.get('parent.version');
+  if (projectGroup) {
+    properties.set('project.groupId', projectGroup);
+    properties.set('pom.groupId', projectGroup);
+  }
+  if (projectVersion) {
+    properties.set('project.version', projectVersion);
+    properties.set('pom.version', projectVersion);
+  }
 
   const managed = new Map<string, string>();
   const managementBlock =
@@ -85,17 +107,23 @@ function parsePomDependencies(xml: string): MavenDependency[] {
   for (const managementMatch of managementBlock.matchAll(managementRegex)) {
     const block = managementMatch[1];
     if (!block) continue;
-    const groupId = xmlTagValue(block, 'groupId');
+    const rawGroupId = xmlTagValue(block, 'groupId');
+    const groupId =
+      rawGroupId === undefined ? undefined : resolveProperties(rawGroupId, properties);
     const artifactId = xmlTagValue(block, 'artifactId');
     const version = xmlTagValue(block, 'version');
     if (groupId && artifactId && version) managed.set(`${groupId}:${artifactId}`, version);
   }
 
-  const directXml = xml.replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/g, '');
+  // `<build>`/`<reporting>` hold PLUGIN dependencies (a plugin's own classpath),
+  // not the project's: inventorying them listed ant-contrib as a runtime dep.
+  const directXml = xml.replace(/<(dependencyManagement|build|reporting)>[\s\S]*?<\/\1>/g, '');
   const depRegex = /<dependency>\s*([\s\S]*?)<\/dependency>/g;
   for (const match of directXml.matchAll(depRegex)) {
     const block = match[1]!;
-    const groupId = xmlTagValue(block, 'groupId');
+    const rawGroupId = xmlTagValue(block, 'groupId');
+    const groupId =
+      rawGroupId === undefined ? undefined : resolveProperties(rawGroupId, properties);
     const artifactId = xmlTagValue(block, 'artifactId');
     const rawVersion =
       xmlTagValue(block, 'version') ??

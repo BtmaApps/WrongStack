@@ -52,6 +52,12 @@ function parseVersionCatalog(content: string): Map<string, string> {
       const version = /^["']([^"']+)["']/.exec(value)?.[1];
       if (version) versions.set(key, version);
     } else if (section === 'libraries') {
+      // String notation is the shortest valid form: `guava = "g:a:v"`.
+      const notation = /^["']([^"':]+:[^"':]+(?::[^"']+)?)["']\s*$/.exec(value)?.[1];
+      if (notation) {
+        libraries.set(key.replace(/[-_]/g, '.'), notation);
+        continue;
+      }
       const module =
         /\bmodule\s*=\s*["']([^"']+)["']/.exec(value)?.[1] ??
         (() => {
@@ -62,8 +68,10 @@ function parseVersionCatalog(content: string): Map<string, string> {
       if (!module) continue;
       const version = /\bversion\s*=\s*["']([^"']+)["']/.exec(value)?.[1];
       const ref = /\bversion\.ref\s*=\s*["']([^"']+)["']/.exec(value)?.[1];
+      // Gradle turns `-`, `_` and `.` in an alias into accessor separators:
+      // `commons_lang` is `libs.commons.lang`.
       libraries.set(
-        key.replace(/-/g, '.'),
+        key.replace(/[-_]/g, '.'),
         `${module}:${version ?? (ref ? (versions.get(ref) ?? '') : '')}`.replace(/:$/, ''),
       );
     }
@@ -91,11 +99,13 @@ function parseGradleManifest(
     });
   }
 
+  // Kotlin DSL calls `implementation(libs.x)`; Groovy also allows the
+  // parenthesis-free `implementation libs.x`, which real Gradle resolves too.
   const aliasRegex =
-    /\b(implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly)\s*\(\s*libs\.([\w.]+)\s*\)/g;
+    /\b(implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly)(?:\s*\(\s*libs\.([\w.]+)\s*\)|\s+libs\.([\w.]+))/g;
   for (const match of content.matchAll(aliasRegex)) {
     const configuration = match[1];
-    const alias = match[2];
+    const alias = match[2] ?? match[3];
     if (!configuration || !alias) continue;
     const coordinate = catalog.get(alias);
     if (!coordinate) continue;

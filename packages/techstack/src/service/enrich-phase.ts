@@ -12,8 +12,12 @@ import {
   type RegistryEntry,
   RegistryNotFoundError,
 } from '../registry/client.js';
+import { parsePurl } from '../registry/purl.js';
 import type { DependencyObservation, EcosystemId, Evidence, Finding, Snapshot } from '../types.js';
 import { createFindingForStatus } from './finding-factory.js';
+
+/** Ecosystems whose registry lookup carries no license data at all. */
+const LICENSE_BLIND_ECOSYSTEMS: ReadonlySet<string> = new Set(['golang', 'nuget', 'pub']);
 
 export interface EnrichOptions {
   readonly online?: boolean | undefined;
@@ -87,15 +91,23 @@ export async function runEnrichPhase(
               ],
             };
       }
-      let advisoryStatus: AdvisoryStatusData | undefined;
+      // Per purl, not per name: a vulnerable `minimist@0.0.8` in one
+      // workspace must not mark a patched `minimist@1.2.8` vulnerable.
+      const advisoryByPurl = new Map<string, AdvisoryStatusData>();
       try {
+        // Only purls that pin a version: asked about a bare `pkg:npm/react`,
+        // OSV returns every advisory ever filed for the package, which marked
+        // an unlocked `react: ^19` vulnerable over react 0.x XSS advisories.
         const purls = dependencies
           .filter((dependency) => dependency.name === name)
-          .flatMap((dependency) => (dependency.purl ? [dependency.purl] : []));
+          .flatMap((dependency) =>
+            dependency.purl && parsePurl(dependency.purl)?.version ? [dependency.purl] : [],
+          );
         if (purls.length > 0) {
           const result = await queryOsvBatch(purls, { signal: options.signal });
-          if ([...result.advisories.values()].some((items) => items.length > 0)) {
-            advisoryStatus = { hasAdvisory: true, evidence: [result.evidence] };
+          for (const [purl, items] of result.advisories) {
+            if (items.length > 0)
+              advisoryByPurl.set(purl, { hasAdvisory: true, evidence: [result.evidence] });
           }
         }
       } catch {
@@ -103,6 +115,7 @@ export async function runEnrichPhase(
       }
       for (const dependency of dependencies) {
         if (dependency.name !== name) continue;
+        const advisoryStatus = dependency.purl ? advisoryByPurl.get(dependency.purl) : undefined;
         const status = classifyStatus(dependency, registryStatus, advisoryStatus);
         const evidence: Evidence[] = [
           ...dependency.evidence,
@@ -121,7 +134,13 @@ export async function runEnrichPhase(
         });
         if (status !== 'current' && status !== 'local_path' && status !== 'git_dependency')
           findings.push(createFindingForStatus(dependency.id, status));
-        const licenseFinding = createLicenseFinding(dependency.id, dependency.name, license);
+        // A registry that never publishes licenses says nothing about the
+        // package's license; "No license declared" at confidence 1.0 was
+        // raised for every Go, NuGet and pub dependency.
+        const licenseFinding =
+          license === undefined && LICENSE_BLIND_ECOSYSTEMS.has(ecosystem)
+            ? null
+            : createLicenseFinding(dependency.id, dependency.name, license);
         if (licenseFinding) findings.push(licenseFinding);
       }
     }

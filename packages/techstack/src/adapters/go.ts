@@ -98,8 +98,18 @@ function parseGoMod(content: string): GoRequireStmt[] {
   return deps;
 }
 
-function parseGoReplacements(content: string): Map<string, 'path' | 'git'> {
-  const replacements = new Map<string, 'path' | 'git'>();
+/**
+ * `replace` targets. A local directory is a path dependency; a module at a
+ * version (`=> golang.org/x/net v0.30.0`, a fork `=> github.com/me/x v1.2.3`)
+ * is still a REGISTRY module — the one actually built — not a git dependency.
+ */
+type GoReplacement =
+  | { kind: 'path' }
+  | { kind: 'git' }
+  | { kind: 'module'; modulePath: string; version: string };
+
+function parseGoReplacements(content: string): Map<string, GoReplacement> {
+  const replacements = new Map<string, GoReplacement>();
   let inBlock = false;
   for (const raw of content.split('\n')) {
     const line = raw.trim();
@@ -112,14 +122,21 @@ function parseGoReplacements(content: string): Map<string, 'path' | 'git'> {
       continue;
     }
     const candidate = inBlock ? line : line.startsWith('replace ') ? line.slice(8).trim() : '';
-    const match = candidate.match(/^(\S+)(?:\s+v\S+)?\s+=>\s+(\S+)/);
+    const match = candidate.match(/^(\S+)(?:\s+v\S+)?\s+=>\s+(\S+)(?:\s+(v\S+))?/);
     if (!match) continue;
     const modulePath = match[1];
     const target = match[2];
     if (!modulePath || !target) continue;
     const local =
       target.startsWith('.') || target.startsWith('/') || /^[A-Za-z]:[\\/]/.test(target);
-    replacements.set(modulePath, local ? 'path' : 'git');
+    replacements.set(
+      modulePath,
+      local
+        ? { kind: 'path' }
+        : match[3]
+          ? { kind: 'module', modulePath: target, version: cleanGoVersion(match[3]) }
+          : { kind: 'git' },
+    );
   }
   return replacements;
 }
@@ -228,8 +245,13 @@ export class GoAdapter implements EcosystemAdapter {
       // lowest-first, so reading it back returned an OLDER version than the same
       // manifest requires, and the purl built from it sent every OSV query to the
       // wrong component.
-      const locked = req.version;
       const replacement = replacements.get(req.modulePath);
+      // A version replacement is what gets built: its module and version are
+      // the identity to check, not the `require` line it overrides.
+      const replacedModule = replacement?.kind === 'module' ? replacement : undefined;
+      const locked = replacedModule ? replacedModule.version : req.version;
+      const replacementKind =
+        replacement?.kind === 'path' || replacement?.kind === 'git' ? replacement.kind : undefined;
 
       // Go module paths work like: github.com/gorilla/mux
       //
@@ -242,7 +264,9 @@ export class GoAdapter implements EcosystemAdapter {
       // encoding the package's own `parsePurlEcosystem` cannot resolve, so the
       // identity handed to the SBOM and to every per-purl OSV query was
       // unrecognisable.
-      const purl = replacement ? undefined : constructPurl('go', req.modulePath, locked);
+      const purl = replacementKind
+        ? undefined
+        : constructPurl('go', replacedModule?.modulePath ?? req.modulePath, locked);
 
       const evidence: Evidence[] = [manifestEv];
       if (lockEv && lockVersions.has(req.modulePath)) evidence.push(lockEv);
@@ -253,15 +277,15 @@ export class GoAdapter implements EcosystemAdapter {
         ...(purl ? { purl } : {}),
         ecosystem: 'go',
         name: req.modulePath,
-        sourceType: replacement ?? 'registry',
+        sourceType: replacementKind ?? 'registry',
         direct,
         scope,
         requested: req.version,
         ...(locked ? { locked } : {}),
         status:
-          replacement === 'path'
+          replacementKind === 'path'
             ? 'local_path'
-            : replacement === 'git'
+            : replacementKind === 'git'
               ? 'git_dependency'
               : 'current',
         evidence,

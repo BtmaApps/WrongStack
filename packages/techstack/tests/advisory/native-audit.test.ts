@@ -278,32 +278,59 @@ describe('runCargoAudit', () => {
 describe('runGoVulncheck', () => {
   it('parses govulncheck JSON output', async () => {
     const { runGoVulncheck } = await import('../../src/advisory/native-audit.js');
+    // `govulncheck -json ./...` streams one object per message (real shape).
     mockResult(
-      JSON.stringify({
-        vulns: [
-          {
+      [
+        { config: { scanner_name: 'govulncheck' } },
+        {
+          osv: {
             id: 'GO-2024-1',
-            osv: 'CVE-2024-1',
-            module_path: 'golang.org/x/crypto',
-            details: 'SSH server vulnerability',
-            fixed_version: '0.20.0',
+            summary: 'SSH server vulnerability',
+            aliases: ['CVE-2024-1'],
           },
-        ],
-      }),
+        },
+        // module-level only (no function in the trace): informational
+        {
+          finding: {
+            osv: 'GO-2024-1',
+            fixed_version: 'v0.20.0',
+            trace: [{ module: 'golang.org/x/crypto', version: 'v0.1.0' }],
+          },
+        },
+        {
+          finding: {
+            osv: 'GO-2024-1',
+            fixed_version: 'v0.20.0',
+            trace: [
+              {
+                module: 'golang.org/x/crypto',
+                package: 'golang.org/x/crypto/ssh',
+                function: 'NewServerConn',
+              },
+            ],
+          },
+        },
+      ]
+        .map((message) => JSON.stringify(message, null, 2))
+        .join('\n'),
     );
     const result = await runGoVulncheck('/fake');
     expect(result.advisories).toHaveLength(1);
+    expect(result.advisories[0]!.id).toBe('GO-2024-1');
+    expect(result.advisories[0]!.aliases).toEqual(['CVE-2024-1']);
     expect(result.advisories[0]!.packageName).toBe('golang.org/x/crypto');
     expect(result.advisories[0]!.severity).toBe('high');
-    expect(result.advisories[0]!.fixVersion).toBe('0.20.0');
+    expect(result.advisories[0]!.fixVersion).toBe('v0.20.0');
   });
 
-  it('handles status 1 (no vulns)', async () => {
+  // govulncheck exits 1 on an error, never for "no vulnerabilities".
+  it('reports status 1 as a failed scan, not a clean one', async () => {
     const { runGoVulncheck } = await import('../../src/advisory/native-audit.js');
-    mockResult('', 1);
+    mockResult('', 1, 'govulncheck: loading packages: boom');
     const result = await runGoVulncheck('/fake');
     expect(result.advisories).toHaveLength(0);
-    expect(result.evidence.detail).toContain('no vulnerabilities');
+    expect(result.evidence.detail).not.toContain('no vulnerabilities');
+    expect(result.evidence.detail).toContain('exited with code 1');
   });
 });
 
@@ -330,7 +357,9 @@ describe('runComposerAudit', () => {
     expect(result.advisories).toHaveLength(1);
     expect(result.advisories[0]!.packageName).toBe('vendor/pkg');
     expect(result.advisories[0]!.severity).toBe('high');
-    expect(result.advisories[0]!.fixVersion).toBe('ABC-123');
+    // composer's report has no fixed version; `link` is the advisory URL, and
+    // its last segment (`ABC-123`) used to be passed off as one.
+    expect(result.advisories[0]!.fixVersion).toBeUndefined();
   });
 
   it('handles composer audit error exit', async () => {

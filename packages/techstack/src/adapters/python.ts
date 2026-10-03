@@ -116,11 +116,23 @@ function extractTomlArray(sectionLines: string[], key: string): string[] {
 }
 
 function parsePep508(spec: string): { name: string; constraint: string | undefined } {
-  let s = spec.trim();
+  // Environment markers (`; python_version < "3.10"`) are not part of the
+  // version constraint.
+  let s = spec.split(';')[0]!.trim();
   s = s.replace(/\[.*?\]/g, '');
+  // A PEP 508 direct reference (`name @ https://…`) names the package but
+  // carries no registry constraint.
+  const direct = /^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*@/.exec(s);
+  if (direct) return { name: direct[1]!, constraint: undefined };
   const match = s.match(/^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*(.*)$/);
   if (!match) return { name: s, constraint: undefined };
-  return { name: match[1]!, constraint: match[2]?.trim() || undefined };
+  // PEP 508 allows the version spec in parentheses — Poetry 2 writes
+  // `requests (>=2.0,<3.0)`; the parentheses are not part of the constraint.
+  const constraint = match[2]
+    ?.trim()
+    .replace(/^\((.*)\)$/, '$1')
+    .trim();
+  return { name: match[1]!, constraint: constraint || undefined };
 }
 
 // ── pyproject.toml parser (PEP 621) ───────────────────────────────────────
@@ -156,6 +168,21 @@ function parsePyprojectDeps(
       }
     }
 
+    // PEP 735 dependency groups — where `uv add --dev` writes
+    // (`[dependency-groups]` / `dev = ["pytest==8.3.3"]`). Entries are PEP 508
+    // strings; `{ include-group = "…" }` tables are not dependencies.
+    if (section.name === 'dependency-groups') {
+      for (const line of section.lines) {
+        const groupMatch = line.trim().match(/^([a-zA-Z0-9_.-]+)\s*=\s*\[/);
+        if (!groupMatch) continue;
+        for (const spec of extractTomlArray(section.lines, groupMatch[1]!)) {
+          if (spec.startsWith('{')) continue;
+          const { name, constraint } = parsePep508(spec);
+          if (name) deps.push({ name, constraint, scope: 'development' });
+        }
+      }
+    }
+
     if (
       section.name === 'tool.poetry.dependencies' ||
       section.name.startsWith('tool.poetry.group.')
@@ -185,13 +212,23 @@ function parseRequirementsTxt(
 ): Array<{ name: string; constraint: string | undefined }> {
   const deps: Array<{ name: string; constraint: string | undefined }> = [];
   for (const raw of content.split('\n')) {
-    const line = raw.trim();
+    // An inline comment needs whitespace before `#` (`pkg==1  # why`); a bare
+    // `#` inside a URL fragment (`#egg=`) is not one.
+    const line = raw.replace(/\s+#.*$/, '').trim();
     if (!line || line.startsWith('#') || line.startsWith('-')) continue;
+    // URLs, VCS references and local paths are valid requirement lines but no
+    // registry package: they became dependencies named "git", "https" or
+    // "./vendor/lib".
+    if (NON_REGISTRY_REQUIREMENT.test(line)) continue;
     const { name, constraint } = parsePep508(line);
     if (name) deps.push({ name, constraint });
   }
   return deps;
 }
+
+/** `git+https://…`, `https://…/x.whl`, `./lib`, `../lib`, `/abs`, `C:\x`, `.`, `x.whl`. */
+const NON_REGISTRY_REQUIREMENT =
+  /^(?:[a-z][a-z0-9+.-]*:\/\/|(?:git|hg|svn|bzr)\+|\.{1,2}(?:[\\/]|$)|[\\/]|[a-z]:[\\/]|\S+\.(?:whl|zip|tar\.gz|tgz)$)/i;
 
 // ── Pipfile parser ────────────────────────────────────────────────────────
 
@@ -221,7 +258,8 @@ function parseRequirementsLockVersions(content: string): Map<string, string> {
   for (const raw of content.split('\n')) {
     const line = raw.trim();
     if (!line || line.startsWith('#') || line.startsWith('-')) continue;
-    const match = line.match(/^([a-zA-Z0-9][a-zA-Z0-9._-]*)\s*==\s*([^\s;]+)/);
+    // Extras sit between the name and the pin (`Django[argon2]==4.2.0`).
+    const match = line.match(/^([a-zA-Z0-9][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*==\s*([^\s;#]+)/);
     if (match?.[1] && match[2]) versions.set(normalizePkgName(match[1]), match[2]);
   }
   return versions;

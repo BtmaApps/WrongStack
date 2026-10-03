@@ -70,6 +70,9 @@ function cargoSeverity(s: string): NativeAdvisory['severity'] {
 /**
  * Run npm audit in the given workspace directory and parse JSON output.
  */
+/** npm answered with its own `{error}` object instead of an audit report. */
+class NpmAuditFailure extends Error {}
+
 export async function runNpmAudit(
   workspaceRoot: string,
   runner: AuditCommandRunner = defaultAuditCommandRunner,
@@ -82,6 +85,15 @@ export async function runNpmAudit(
     // npm audit exits 0 if no vulns, 1 if vulns found, 2 if error
     try {
       const json = JSON.parse(result.stdout || '{}');
+      // npm reports its own failure (ENOLOCK in a yarn/pnpm/bun project, a
+      // registry error) as exit 1 + `{error}` — the same status as "found
+      // vulnerabilities". Parsed as a report, it read as a clean audit.
+      const failure = json.error as { code?: unknown; summary?: unknown } | undefined;
+      if (failure && typeof failure === 'object') {
+        throw new NpmAuditFailure(
+          `npm audit failed (${String(failure.code ?? 'error')}): ${String(failure.summary ?? '')}`,
+        );
+      }
       const vulnerabilities = json.vulnerabilities as
         | Record<string, Record<string, unknown>>
         | undefined;
@@ -132,13 +144,26 @@ export async function runNpmAudit(
 
       const metadata = json.metadata as Record<string, unknown> | undefined;
       if (metadata) {
+        // npm >= 7 nests both: `vulnerabilities: {critical: 1, …, total: 1}` and
+        // `dependencies: {prod, dev, …, total}` (npm 6 had a bare count and
+        // `totalDependencies`). Interpolated raw they read "[object Object]".
+        const total = (value: unknown): string =>
+          typeof value === 'number'
+            ? String(value)
+            : value &&
+                typeof value === 'object' &&
+                typeof (value as { total?: unknown }).total === 'number'
+              ? String((value as { total: number }).total)
+              : 'unknown';
         detailLines = [
-          `Total vulnerabilities: ${(metadata.vulnerabilities as string) ?? 'unknown'}`,
-          `Total dependencies: ${(metadata.totalDependencies as string) ?? 'unknown'}`,
+          `Total vulnerabilities: ${total(metadata.vulnerabilities)}`,
+          `Total dependencies: ${total(metadata.totalDependencies ?? metadata.dependencies)}`,
         ];
       }
-    } catch {
-      detailLines = ['Failed to parse npm audit JSON output'];
+    } catch (error) {
+      detailLines = [
+        error instanceof NpmAuditFailure ? error.message : 'Failed to parse npm audit JSON output',
+      ];
     }
   } else {
     detailLines = [`npm audit exited with code ${result.status}`];
@@ -286,47 +311,91 @@ function parseCargoAuditOutput(result: AuditCommandResult): NativeAuditResult {
  * Output is JSON with vulnerabilities in the format:
  * { vulns: [{ id, details, osv, ... }] }
  */
+/** Split concatenated (pretty-printed) JSON objects into values. */
+function parseJsonObjectStream(text: string): unknown[] {
+  const values: unknown[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}' && depth > 0) {
+      depth--;
+      if (depth === 0) values.push(JSON.parse(text.slice(start, i + 1)));
+    }
+  }
+  if (depth !== 0) throw new Error('truncated JSON stream');
+  return values;
+}
+
 export async function runGoVulncheck(
   workspaceRoot: string,
   runner: AuditCommandRunner = defaultAuditCommandRunner,
 ): Promise<NativeAuditResult> {
-  const result = await runner('govulncheck', ['-json'], workspaceRoot);
+  // Without a package pattern govulncheck refuses to run ("no package patterns
+  // provided", exit 2), so this audit never produced a result.
+  const result = await runner('govulncheck', ['-json', './...'], workspaceRoot);
   const advisories: NativeAdvisory[] = [];
   let detailLines: string[] = [];
 
   if (result.status === 0 || result.status === 3) {
-    // govulncheck exits 3 when vulnerabilities found
+    // govulncheck exits 3 when vulnerabilities found (text mode; -json exits 0)
     try {
-      const json = JSON.parse(result.stdout || '{}');
-      const vulns = json.vulns as Array<Record<string, unknown>> | undefined;
-
-      if (vulns) {
-        for (const v of vulns) {
-          const osv = v.osv as string | undefined;
-
-          advisories.push({
-            id: (v.id as string) ?? osv ?? 'unknown',
-            packageName: (v.package as string) ?? (v.module_path as string) ?? '',
-            severity: 'high', // govulncheck doesn't provide CVSS — default to high
-            summary: (v.details as string) ?? (v.description as string) ?? osv ?? 'No summary',
-            fixVersion: (v.fixed_version as string) ?? undefined,
-            url: (v.url as string) ?? undefined,
-            aliases: osv ? [osv] : [],
-          });
-        }
+      // `-json` is a STREAM of objects — {config}, {SBOM}, {progress}, {osv},
+      // {finding} — not one document: a single JSON.parse always failed.
+      const messages = parseJsonObjectStream(result.stdout ?? '') as Array<{
+        osv?: { id?: string; summary?: string; details?: string; aliases?: string[] };
+        finding?: {
+          osv?: string;
+          fixed_version?: string;
+          trace?: Array<{ module?: string; package?: string; function?: string }>;
+        };
+      }>;
+      const osvById = new Map(
+        messages.flatMap((m) => (m.osv?.id ? [[m.osv.id, m.osv] as const] : [])),
+      );
+      const seen = new Set<string>();
+      for (const { finding } of messages) {
+        // Only findings whose trace reaches a function are ones the code
+        // calls — govulncheck's own "affected" verdict; module-level findings
+        // are informational.
+        const frame = finding?.trace?.[0];
+        if (!finding?.osv || !frame?.function || seen.has(finding.osv)) continue;
+        seen.add(finding.osv);
+        const osv = osvById.get(finding.osv);
+        advisories.push({
+          id: finding.osv,
+          packageName: frame.module ?? frame.package ?? '',
+          severity: 'high', // govulncheck doesn't provide CVSS — default to high
+          summary: osv?.summary ?? osv?.details ?? finding.osv,
+          fixVersion: finding.fixed_version,
+          url: `https://pkg.go.dev/vuln/${finding.osv}`,
+          aliases: osv?.aliases ?? [],
+        });
       }
     } catch {
       detailLines = ['Failed to parse govulncheck JSON output'];
     }
-  } else if (result.status === 1) {
-    detailLines = ['govulncheck: no vulnerabilities found'];
   } else {
+    // Exit 1 is an error (bad pattern, load failure) — it used to read as
+    // "no vulnerabilities found", a clean verdict from a scan that never ran.
     detailLines = [`govulncheck exited with code ${result.status}: ${result.stderr}`];
   }
 
   const evidence: Evidence = {
     kind: 'audit',
-    source: 'govulncheck -json',
+    source: 'govulncheck -json ./...',
     retrievedAt: new Date().toISOString(),
     detail: detailLines.join('\n') || `Found ${advisories.length} advisories`,
   };
@@ -343,7 +412,15 @@ export async function runComposerAudit(
   workspaceRoot: string,
   runner: AuditCommandRunner = defaultAuditCommandRunner,
 ): Promise<NativeAuditResult> {
-  const result = await runner('composer', ['audit', '--format=json'], workspaceRoot);
+  // `--locked`: audit composer.lock, not vendor/. Plain `composer audit` reads
+  // the INSTALLED packages; with only a lock file it prints "No packages -
+  // skipping audit." on stderr, exits 0 with empty stdout, and that read as a
+  // clean audit.
+  const result = await runner(
+    'composer',
+    ['audit', '--locked', '--format=json', '--no-interaction'],
+    workspaceRoot,
+  );
   const advisories: NativeAdvisory[] = [];
   let detailLines: string[] = [];
 
@@ -362,7 +439,9 @@ export async function runComposerAudit(
               packageName: pkg,
               severity: npmSeverity((adv.severity as string) ?? 'medium'),
               summary: (adv.title as string) ?? (adv.description as string) ?? 'No summary',
-              fixVersion: adv.link ? (adv.link as string).split('/').pop() : undefined,
+              // composer's report carries no fixed version: `link` is the
+              // advisory URL, whose last segment (`GHSA-…`) is not a version.
+              fixVersion: undefined,
               url: (adv.link as string) ?? undefined,
               aliases: (adv.cve as string) ? [adv.cve as string] : [],
             });
@@ -378,7 +457,7 @@ export async function runComposerAudit(
 
   const evidence: Evidence = {
     kind: 'audit',
-    source: 'composer audit --format=json',
+    source: 'composer audit --locked --format=json',
     retrievedAt: new Date().toISOString(),
     detail: detailLines.join('\n') || `Found ${advisories.length} advisories`,
   };
@@ -389,15 +468,28 @@ export async function runComposerAudit(
 // ── dotnet package audit ───────────────────────────────────────────────────
 
 /**
- * Run `dotnet package audit` in the given workspace directory.
- * .NET 8+ supports `dotnet package audit --format json`.
+ * Run the .NET vulnerability report in the given workspace directory:
+ * `dotnet list package --vulnerable --include-transitive --format json`.
  */
+/** One package row of `dotnet list package --vulnerable --format json`. */
+interface DotnetListedPackage {
+  id?: string;
+  resolvedVersion?: string;
+  vulnerabilities?: Array<{ severity?: string; advisoryurl?: string }>;
+}
+
 export async function runDotnetAudit(
   workspaceRoot: string,
   runner: AuditCommandRunner = defaultAuditCommandRunner,
 ): Promise<NativeAuditResult> {
-  // Try new --format first, fall back to default output
-  const result = await runner('dotnet', ['package', 'audit', '--format', 'json'], workspaceRoot);
+  // The SDK has no `dotnet package audit` ("'audit' was not matched", exit 1),
+  // so this audit never reported anything. The vulnerability report is
+  // `dotnet list package --vulnerable` (JSON since SDK 7.0.200).
+  const result = await runner(
+    'dotnet',
+    ['list', 'package', '--vulnerable', '--include-transitive', '--format', 'json'],
+    workspaceRoot,
+  );
   const advisories: NativeAdvisory[] = [];
   let detailLines: string[] = [];
 
@@ -406,9 +498,46 @@ export async function runDotnetAudit(
       const json = JSON.parse(result.stdout || '{}');
       const vulnerabilities = json.vulnerabilities as Record<string, unknown> | undefined;
       const packages = json.packages as Record<string, Array<Record<string, unknown>>> | undefined;
+      const projects = json.projects as
+        | Array<{
+            frameworks?: Array<{
+              topLevelPackages?: DotnetListedPackage[];
+              transitivePackages?: DotnetListedPackage[];
+            }>;
+          }>
+        | undefined;
 
-      // Two possible shapes (different .NET SDK versions)
-      if (vulnerabilities) {
+      if (Array.isArray(projects)) {
+        // `dotnet list package --vulnerable --format json`: projects →
+        // frameworks → top-level/transitive packages → vulnerabilities.
+        const seen = new Set<string>();
+        for (const framework of projects.flatMap((project) => project.frameworks ?? [])) {
+          for (const pkg of [
+            ...(framework.topLevelPackages ?? []),
+            ...(framework.transitivePackages ?? []),
+          ]) {
+            for (const vuln of pkg.vulnerabilities ?? []) {
+              const url = vuln.advisoryurl;
+              const key = `${pkg.id}@${pkg.resolvedVersion}|${url}`;
+              if (!pkg.id || seen.has(key)) continue;
+              seen.add(key);
+              const ghsa =
+                typeof url === 'string'
+                  ? /GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}/i.exec(url)?.[0]
+                  : undefined;
+              advisories.push({
+                id: ghsa ?? url ?? `nuget-${pkg.id}`,
+                packageName: pkg.id,
+                severity: npmSeverity(vuln.severity ?? 'info'),
+                summary: `${pkg.id} ${pkg.resolvedVersion ?? ''} is vulnerable`.trim(),
+                fixVersion: undefined,
+                url,
+                aliases: [],
+              });
+            }
+          }
+        }
+      } else if (vulnerabilities) {
         // Flat shape: { vulnerabilities: [{ packageName, severity, advisoryUrl, ... }] }
         const vulnList = Array.isArray(vulnerabilities)
           ? (vulnerabilities as Array<Record<string, unknown>>)
@@ -442,15 +571,17 @@ export async function runDotnetAudit(
         }
       }
     } catch {
-      detailLines = ['Failed to parse dotnet package audit JSON output'];
+      detailLines = ['Failed to parse dotnet list package JSON output'];
     }
   } else {
-    detailLines = [`dotnet package audit exited with code ${result.status}: ${result.stderr}`];
+    detailLines = [
+      `dotnet list package --vulnerable exited with code ${result.status}: ${result.stderr}`,
+    ];
   }
 
   const evidence: Evidence = {
     kind: 'audit',
-    source: 'dotnet package audit --format json',
+    source: 'dotnet list package --vulnerable --include-transitive --format json',
     retrievedAt: new Date().toISOString(),
     detail: detailLines.join('\n') || `Found ${advisories.length} advisories`,
   };

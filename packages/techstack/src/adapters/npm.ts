@@ -61,6 +61,8 @@ async function detectLockfile(workspaceDir: string, stopAt?: string): Promise<Lo
     { file: 'pnpm-lock.yaml', kind: 'pnpm' },
     { file: 'package-lock.json', kind: 'npm' },
     { file: 'yarn.lock', kind: 'yarn' },
+    // bun ≥ 1.2 writes the text `bun.lock`; `bun.lockb` is the older binary form.
+    { file: 'bun.lock', kind: 'bun' },
     { file: 'bun.lockb', kind: 'bun' },
   ];
 
@@ -238,6 +240,83 @@ function parseNpmLockVersions(lockContent: string): Map<string, string[]> {
   return versions;
 }
 
+/** Name and range of a yarn lock key spec (`minimist@^1.2.0`, `@a/b@npm:^2`). */
+function splitYarnSpec(spec: string): { name: string; range: string } | undefined {
+  const at = spec.indexOf('@', spec.startsWith('@') ? 1 : 0);
+  if (at <= 0) return undefined;
+  return { name: spec.slice(0, at), range: spec.slice(at + 1).replace(/^npm:/, '') };
+}
+
+/**
+ * Parse yarn.lock — classic v1 (`version "1.2.3"`) and berry (`version: 1.2.3`).
+ * Each block header lists the specs it resolves (`"a@^1", a@~1.2:`), so the
+ * direct dependency `a: ^1` resolves through `specs.get('a@^1')`.
+ */
+function parseYarnLockVersions(lockContent: string): {
+  versions: Map<string, string[]>;
+  specs: Map<string, string>;
+} {
+  const versions = new Map<string, string[]>();
+  const specs = new Map<string, string>();
+  let current: Array<{ name: string; range: string }> = [];
+  for (const line of lockContent.split(/\r?\n/)) {
+    if (!line.trim() || line.startsWith('#')) continue;
+    if (!/^\s/.test(line) && line.trimEnd().endsWith(':')) {
+      current = line
+        .trimEnd()
+        .slice(0, -1)
+        .split(',')
+        .map((spec) => splitYarnSpec(spec.trim().replace(/^"|"$/g, '')))
+        .filter((spec): spec is { name: string; range: string } => spec !== undefined);
+      continue;
+    }
+    const version = /^\s+version:?\s+"?([^"\s]+)"?\s*$/.exec(line)?.[1];
+    if (!version || current.length === 0) continue;
+    for (const { name, range } of current) {
+      // berry lists the project's own workspaces (`app@workspace:.`, version
+      // `0.0.0-use.local`) and local links beside registry packages.
+      if (/^(?:workspace|link|portal|file):/.test(range)) continue;
+      specs.set(`${name}@${range}`, version);
+      const existing = versions.get(name);
+      if (!existing) versions.set(name, [version]);
+      else if (!existing.includes(version)) existing.push(version);
+    }
+    current = [];
+  }
+  return { versions, specs };
+}
+
+/**
+ * Parse bun's text lockfile (`bun.lock`, JSON with trailing commas). Its
+ * `packages` map is keyed by install path (`minimist`, `parent/minimist`);
+ * the first array element is `name@version`.
+ */
+function parseBunLockVersions(lockContent: string): {
+  versions: Map<string, string[]>;
+  hoisted: Map<string, string>;
+} {
+  const versions = new Map<string, string[]>();
+  const hoisted = new Map<string, string>();
+  try {
+    const lock = JSON.parse(lockContent.replace(/,(\s*[}\]])/g, '$1')) as {
+      packages?: Record<string, unknown>;
+    };
+    for (const [key, entry] of Object.entries(lock.packages ?? {})) {
+      const ident = Array.isArray(entry) ? entry[0] : undefined;
+      if (typeof ident !== 'string') continue;
+      const spec = splitYarnSpec(ident);
+      if (!spec || !/^\d/.test(spec.range)) continue;
+      const existing = versions.get(spec.name);
+      if (!existing) versions.set(spec.name, [spec.range]);
+      else if (!existing.includes(spec.range)) existing.push(spec.range);
+      if (key === spec.name) hoisted.set(spec.name, spec.range);
+    }
+  } catch {
+    // Malformed lockfile — return empty maps
+  }
+  return { versions, hoisted };
+}
+
 function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
   const versions = new Map<string, string[]>();
   let inPackages = false;
@@ -293,6 +372,21 @@ interface PnpmLockParse {
 const PNPM_LOCK_CACHE_CAPACITY = 4;
 const pnpmLockCache = new Map<string, { mtimeMs: number; size: number; parse: PnpmLockParse }>();
 
+/**
+ * pnpm that manages its own version (`packageManager`) writes the lockfile as
+ * two YAML documents: an env document (`importers: .: packageManagerDependencies:
+ * pnpm`, `packages: @pnpm/exe.*`) and then the project lockfile. The importer
+ * parser stops after the first `importers:` block, so it read pnpm's own entry
+ * and every project dependency came out unlocked. Keep the last document that
+ * declares importers — the project's.
+ */
+function projectLockDocument(content: string): string {
+  const documents = content.split(/^---[ \t]*\r?$/m);
+  if (documents.length < 2) return content;
+  const withImporters = documents.filter((doc) => /^importers:/m.test(doc));
+  return withImporters.at(-1) ?? content;
+}
+
 async function loadPnpmLockParse(path: string): Promise<PnpmLockParse | undefined> {
   let mtimeMs: number;
   let size: number;
@@ -311,7 +405,7 @@ async function loadPnpmLockParse(path: string): Promise<PnpmLockParse | undefine
     return cached.parse;
   }
   try {
-    const content = await readFile(path, 'utf-8');
+    const content = projectLockDocument(await readFile(path, 'utf-8'));
     const parse: PnpmLockParse = {
       importers: parsePnpmImporters(content),
       allVersions: parsePnpmAllVersions(content),
@@ -434,6 +528,39 @@ export class NpmAdapter implements EcosystemAdapter {
       } catch {
         // ignore
       }
+    } else if (
+      lockInfo.kind === 'yarn' ||
+      (lockInfo.kind === 'bun' && lockInfo.path.endsWith('.lock'))
+    ) {
+      // Both were detected and then never read: every yarn/bun dependency had
+      // no resolved version, so it reached OSV without one.
+      try {
+        const lockContent = await readFile(lockInfo.path, 'utf-8');
+        const requestedByName = {
+          ...pkg.optionalDependencies,
+          ...pkg.peerDependencies,
+          ...pkg.devDependencies,
+          ...pkg.dependencies,
+        };
+        if (lockInfo.kind === 'yarn') {
+          const { versions, specs } = parseYarnLockVersions(lockContent);
+          for (const [name, requested] of Object.entries(requestedByName)) {
+            const version = specs.get(`${name}@${String(requested).replace(/^npm:/, '')}`);
+            if (version) resolvedVersions.set(name, version);
+          }
+          for (const [k, v] of versions) allLockVersions.set(k, v);
+        } else {
+          const { versions, hoisted } = parseBunLockVersions(lockContent);
+          for (const name of Object.keys(requestedByName)) {
+            const version = hoisted.get(name);
+            if (version) resolvedVersions.set(name, version);
+          }
+          for (const [k, v] of versions) allLockVersions.set(k, v);
+        }
+        if (allLockVersions.size > 0) lockEv = lockfileEvidence(lockInfo.path);
+      } catch {
+        // ignore
+      }
     }
 
     // Process each dependency section
@@ -450,16 +577,25 @@ export class NpmAdapter implements EcosystemAdapter {
       if (!section.deps) continue;
       const scope = scopeForSection(section.name);
 
-      for (const [name, requested] of Object.entries(section.deps)) {
-        const dedupKey = `${name}`;
+      for (const [key, manifestSpec] of Object.entries(section.deps)) {
+        const dedupKey = `${key}`;
         if (seen.has(dedupKey)) continue;
         seen.add(dedupKey);
 
+        // An npm alias (`"typescript5": "npm:typescript@5.9.3"`) installs
+        // `typescript`; pnpm locks it as `typescript@5.9.3`. Read verbatim it
+        // became `pkg:npm/typescript5@typescript%405.9.3`, a package that does
+        // not exist. Describe the package actually installed.
+        const alias = /^npm:((?:@[^/@]+\/)?[^@]+)(?:@(.*))?$/.exec(manifestSpec);
+        const name = alias ? alias[1]! : key;
+        const requested = alias ? (alias[2] ?? '*') : manifestSpec;
         const isRegistry = isRegistrySpec(requested);
         const status = statusForSpec(requested);
 
         // Resolve locked version from lockfile
-        const locked = resolvedVersions.get(name);
+        const lockedRaw = resolvedVersions.get(key);
+        const locked =
+          alias && lockedRaw?.startsWith(`${name}@`) ? lockedRaw.slice(name.length + 1) : lockedRaw;
 
         // Build PURL for registry deps
         const purl =
@@ -473,7 +609,8 @@ export class NpmAdapter implements EcosystemAdapter {
         if (lockEv && locked) evidence.push(lockEv);
 
         observations.push({
-          id: `dep-${workspace.id}-${name}`,
+          // The manifest key keeps two aliases of one package distinct.
+          id: `dep-${workspace.id}-${key}`,
           workspaceId: workspace.id,
           ...(purl ? { purl } : {}),
           ecosystem: 'npm' as const,

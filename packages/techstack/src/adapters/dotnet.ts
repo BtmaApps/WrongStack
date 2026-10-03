@@ -8,7 +8,7 @@
  */
 
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, EcosystemId, Evidence, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
@@ -51,10 +51,50 @@ function parseCsproj(content: string): CsprojPackageRef[] {
     const parsedAttributes = parseXmlAttributes(attributes);
     const name = parsedAttributes.get('Include');
     if (!name) continue;
-    const version = parsedAttributes.get('Version') ?? xmlTagValue(body, 'Version');
+    // `VersionOverride` is Central Package Management's per-project override.
+    const version =
+      parsedAttributes.get('Version') ??
+      parsedAttributes.get('VersionOverride') ??
+      xmlTagValue(body, 'Version') ??
+      xmlTagValue(body, 'VersionOverride');
     refs.push({ name, version });
   }
   return refs;
+}
+
+/**
+ * Central Package Management: with `ManagePackageVersionsCentrally`, a
+ * PackageReference carries no Version — it comes from `<PackageVersion
+ * Include="X" Version="1.2.3" />` in the nearest `Directory.Packages.props`
+ * (MSBuild walks up from the project). Without it, a fresh clone (no
+ * gitignored obj/project.assets.json) reported every CPM dependency with no
+ * version, so no advisory lookup ever ran. Keys are lowercased: NuGet ids are
+ * case-insensitive.
+ */
+async function readCentralPackageVersions(projectDir: string): Promise<Map<string, string>> {
+  const versions = new Map<string, string>();
+  let dir = resolve(projectDir);
+  for (;;) {
+    let content: string | undefined;
+    try {
+      content = await readFile(join(dir, 'Directory.Packages.props'), 'utf-8');
+    } catch {
+      // keep walking up
+    }
+    if (content !== undefined) {
+      const regex = /<PackageVersion\b([^>]*?)(?:\/>|>([\s\S]*?)<\/PackageVersion>)/gi;
+      for (const match of content.matchAll(regex)) {
+        const attributes = parseXmlAttributes(match[1] ?? '');
+        const name = attributes.get('Include');
+        const version = attributes.get('Version') ?? xmlTagValue(match[2] ?? '', 'Version');
+        if (name && version) versions.set(name.toLowerCase(), version);
+      }
+      return versions;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return versions;
+    dir = parent;
+  }
 }
 
 /**
@@ -91,6 +131,26 @@ function parseProjectAssetsJson(content: string): Map<string, string> {
   return versions;
 }
 
+/**
+ * Parse NuGet's `packages.lock.json`:
+ * `{ dependencies: { "<tfm>": { "<id>": { type, requested, resolved } } } }`.
+ * Project references carry no `resolved` and are skipped.
+ */
+function parseNuGetPackagesLock(content: string): Map<string, string> {
+  const versions = new Map<string, string>();
+  const json = JSON.parse(content) as {
+    dependencies?: Record<string, Record<string, { type?: string; resolved?: string }>>;
+  };
+  for (const frameworkDeps of Object.values(json.dependencies ?? {})) {
+    for (const [name, entry] of Object.entries(frameworkDeps ?? {})) {
+      if (typeof entry?.resolved === 'string' && !versions.has(name)) {
+        versions.set(name, entry.resolved);
+      }
+    }
+  }
+  return versions;
+}
+
 // ── Adapter ────────────────────────────────────────────────────────────────
 
 export class DotNetAdapter implements EcosystemAdapter {
@@ -104,14 +164,22 @@ export class DotNetAdapter implements EcosystemAdapter {
     const root = workspaceRoot(workspace, options);
     const seen = new Set<string>();
 
-    // Find .csproj file via readdirSync
-    let csprojPath: string | undefined;
-    try {
-      const files = await readdir(root);
-      const csproj = files.find((f) => f.endsWith('.csproj'));
-      if (csproj) csprojPath = join(root, csproj);
-    } catch {
-      // Can't read directory
+    // The project file: C# `.csproj`, but also F# `.fsproj` / VB `.vbproj` —
+    // discovery hands an `.fsproj` workspace to this adapter, and looking for
+    // `.csproj` alone inventoried an F# project as empty.
+    const isProjectFile = (f: string) => /\.(?:cs|fs|vb)proj$/i.test(f);
+    const manifestProject = workspace.manifests.find(isProjectFile);
+    let csprojPath: string | undefined = manifestProject
+      ? resolve(root, manifestProject)
+      : undefined;
+    if (!csprojPath) {
+      try {
+        const files = await readdir(root);
+        const project = files.find(isProjectFile);
+        if (project) csprojPath = join(root, project);
+      } catch {
+        // Can't read directory
+      }
     }
 
     if (!csprojPath) return [];
@@ -127,6 +195,9 @@ export class DotNetAdapter implements EcosystemAdapter {
 
     // Parse PackageReferences
     const refs = parseCsproj(csprojContent);
+    const centralVersions = refs.some((ref) => !ref.version)
+      ? await readCentralPackageVersions(root)
+      : new Map<string, string>();
 
     // Read the NuGet restore graph for locked versions. NuGet writes it to
     // `<project>/obj/project.assets.json`; probing only the workspace root meant
@@ -151,6 +222,25 @@ export class DotNetAdapter implements EcosystemAdapter {
         // Try the next known location.
       }
     }
+    // No restore graph (obj/ is gitignored, so a fresh clone has none): the
+    // COMMITTED NuGet lockfile still pins every resolved version. It was
+    // discovered as the workspace lockfile and never read, so a floating
+    // `12.*` reference had no version at all while the lockfile said 12.0.3.
+    if (!lockEv) {
+      const nugetLockCandidates = [
+        ...workspace.lockfiles.filter((f) => f.endsWith('packages.lock.json')),
+        join(root, 'packages.lock.json'),
+      ];
+      for (const candidate of nugetLockCandidates) {
+        try {
+          lockVersions = parseNuGetPackagesLock(await readFile(candidate, 'utf-8'));
+          lockEv = lockfileEvidence(candidate);
+          break;
+        } catch {
+          // Try the next known location.
+        }
+      }
+    }
 
     for (const ref of refs) {
       if (seen.has(ref.name)) continue;
@@ -165,7 +255,7 @@ export class DotNetAdapter implements EcosystemAdapter {
       // is present (the pre-existing obj/-path fix only made the graph
       // reachable; this keeps the fallback from reporting a constraint). The
       // declaration itself is always surfaced as `requested` below.
-      const declared = ref.version;
+      const declared = ref.version ?? centralVersions.get(ref.name.toLowerCase());
       const locked =
         lockVersions.get(ref.name) ??
         (declared && isConcreteVersion(declared) ? declared : undefined);
@@ -190,7 +280,7 @@ export class DotNetAdapter implements EcosystemAdapter {
         sourceType: 'registry',
         direct: true,
         scope: 'runtime',
-        ...(ref.version ? { requested: ref.version } : {}),
+        ...(declared ? { requested: declared } : {}),
         ...(locked ? { locked } : {}),
         status: 'current',
         evidence,
