@@ -14,6 +14,25 @@ import {
 } from './lib/architecture-health.mjs';
 
 const args = new Set(process.argv.slice(2));
+const baselineScopeArg = [...args].find((arg) => arg.startsWith('--baseline-files='));
+const baselineScope = baselineScopeArg
+  ? new Set(baselineScopeArg.slice('--baseline-files='.length).split(','))
+  : undefined;
+if (
+  baselineScope &&
+  (!args.has('--write-hotspot-baseline') ||
+    [...baselineScope].some(
+      (file) =>
+        !/^(?:packages|apps)\/.+\.tsx?$/.test(file) ||
+        file.split('/').includes('..') ||
+        !existsSync(path.join(process.cwd(), file)),
+    ))
+) {
+  console.error(
+    '--baseline-files requires --write-hotspot-baseline and existing package/app source paths.',
+  );
+  process.exit(2);
+}
 const supported = new Set([
   '--json',
   '--print-hotspot-baseline',
@@ -23,7 +42,7 @@ const supported = new Set([
   '--write-hotspot-baseline',
 ]);
 for (const arg of args) {
-  if (!supported.has(arg)) {
+  if (!supported.has(arg) && arg !== baselineScopeArg) {
     console.error(`Unknown argument: ${arg}`);
     process.exit(2);
   }
@@ -63,6 +82,19 @@ for (const item of report.testOnlyExports) {
 const testOnlyExportBaseline = { schemaVersion: 1, files: testOnlyExportFiles };
 
 if (args.has('--write-hotspot-baseline')) {
+  // A shared checkout may contain unrelated drift. Refresh only measurements
+  // explicitly owned by this maintenance operation; never fabricate counts.
+  if (baselineScope) {
+    const mergeScope = (previous, current) =>
+      Object.fromEntries(
+        [
+          ...Object.entries(previous).filter(([file]) => !baselineScope.has(file)),
+          ...Object.entries(current).filter(([file]) => baselineScope.has(file)),
+        ].sort(([a], [b]) => a.localeCompare(b)),
+      );
+    hotspotBaseline.files = mergeScope(hotspots.files, hotspotBaseline.files);
+    testOnlyExportBaseline.files = mergeScope(testOnlyExports.files, testOnlyExportBaseline.files);
+  }
   await writeFile(
     path.join(repoRoot, 'architecture/hotspots.json'),
     `${JSON.stringify(hotspotBaseline, null, 2)}\n`,

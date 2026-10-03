@@ -55,7 +55,8 @@
       "id": "webui-jsdom",
       "config": "packages/webui/vitest.config.ts",
       "cwd": "packages/webui",
-      "includePrefixes": ["packages/webui/tests/"]
+      "includePrefixes": ["packages/webui/tests/"],
+      "excludeFiles": ["packages/webui/tests/pure/agent-transcript-messages.test.ts"]
     },
     {
       "id": "cli-hq-jsdom",
@@ -67,6 +68,7 @@
       "id": "root-node",
       "config": "vitest.config.ts",
       "cwd": ".",
+      "exactFiles": ["packages/webui/tests/pure/agent-transcript-messages.test.ts"],
       "includePrefixes": ["packages/", "apps/"],
       "excludePrefixes": ["packages/webui/tests/"],
       "excludeFiles": [

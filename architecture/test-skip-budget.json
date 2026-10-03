@@ -72,6 +72,11 @@
       "fingerprint": "07183e30819b9cfe"
     },
     {
+      "file": "packages/cli/tests/wrongtrace-gate.live.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "bc732f7e132831e5"
+    },
+    {
       "file": "packages/core/tests/chronicle/metrics-store-sqlite-source.test.ts",
       "kind": "skipIf",
       "fingerprint": "1b4c70186dfe382c"
@@ -325,6 +330,11 @@
       "file": "packages/providers/tests/codex-websocket-live.test.ts",
       "kind": "skipIf",
       "fingerprint": "c2ed14c85c62574d"
+    },
+    {
+      "file": "packages/runtime/tests/wrongtrace-light-subagent-gate.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "ba7105d6a613c08d"
     },
     {
       "file": "packages/sage/tests/agent-anchor.test.ts",
@@ -835,6 +845,11 @@
       "file": "packages/webui-server/tests/terminal-ws-handler.test.ts",
       "kind": "skipIf",
       "fingerprint": "95af6b679e2ca767"
+    },
+    {
+      "file": "packages/webui-server/tests/wrongtrace-webui-gate.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "dfcfaa2f1bf75b6f"
     },
     {
       "file": "packages/wrongtrace/src/__tests__/client.test.ts",

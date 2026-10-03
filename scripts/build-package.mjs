@@ -60,6 +60,7 @@ const coreEntries = entryMap([
   // Limit bounds, dependency-free, so the browser Settings panel validates
   // against the same table as the server.
   'src/types/config/limits.ts',
+  'src/cloud-provider.ts',
   'src/types/session-markers.ts',
   'src/types/session-timeline.ts',
   'src/utils/index.ts',
@@ -174,6 +175,7 @@ const toolEntries = entryMap([
   'src/tool-summary.ts',
   'src/tool-diff.ts',
   'src/next-steps.ts',
+  'src/artifact-presentation.ts',
   'src/auto-proceed-loop-guard.ts',
   'src/win32.ts',
   'src/e2e.ts',
