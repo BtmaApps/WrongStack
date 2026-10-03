@@ -211,6 +211,12 @@ export class SubscriptionOAuthProvider implements Provider {
     return this.credential.apiKey;
   }
 
+  /** Catalog probes use the same renewal and durable host transaction as inference. */
+  async refreshAccountCredential(opts: { signal: AbortSignal }): Promise<ProviderApiKey> {
+    await this.coordinator.ensureFreshToken(opts.signal);
+    return { ...this.credential };
+  }
+
   async refreshContextLimit(
     model: string,
     opts: { signal: AbortSignal },

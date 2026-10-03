@@ -78,6 +78,42 @@ describe('DefaultTokenCounter', () => {
     expect(seen[1]?.deltaCost).toBeUndefined();
     expect(seen[2]?.deltaCost?.total).toBe(0);
   });
+  it('emits a deltaCost that matches the running cost when the write-rate fallback charges but the cache-read rate is missing', () => {
+    // Regression guard for the applyPrice asymmetry flagged in the r1
+    // proof-driven hunt: the documented write-rate fallback
+    // (price.cacheWrite ?? price.input) charges cacheWrite tokens even
+    // when price.cacheRead is undefined, so costInput advances inside
+    // applyPrice. The subsequent `known(...)` check returns undefined
+    // because cacheRead has no rate; the emitter must STILL surface a
+    // deltaCost equal to what it charged, so dispatch-singleshot.ts
+    // does not misclassify a priced call as `unknownPrice`.
+    //
+    // m1 is the project fixture (cost: { input: 3, output: 15,
+    // cache_read: 0.3, cache_write: 3 }); we drop the cacheRead side
+    // here to land the missing-rate path while keeping m1's pricing
+    // shape for the rest of the rates.
+    const events = new EventBus();
+    const seen: Array<{
+      cost: { total: number };
+      deltaCost?: { input: number; output: number; total: number };
+    }> = [];
+    events.on('token.accounted', (event) => seen.push(event));
+    const tc = new DefaultTokenCounter({ events });
+    const noCacheRead = { ...m1, cost: { input: 3, output: 15, cache_write: 3 } } as ResolvedModel;
+    tc.accountWithModel(
+      { input: 1_000_000, output: 0, cacheWrite: 1_000_000 },
+      noCacheRead,
+    );
+    // Sanity: the write-rate fallback charged $3 for the cacheWrite
+    // tokens at the input rate ($3/M * 1M). Plus the input itself:
+    // 1M input * $3/M = $3. Running cost.total = $6.
+    expect(tc.estimateCost().total).toBeCloseTo(6, 6);
+    const event = seen[0];
+    expect(event).toBeDefined();
+    expect(event?.cost.total).toBeCloseTo(6, 6);
+    // The contract: cost.total and deltaCost must agree.
+    expect(event?.deltaCost?.total).toBeCloseTo(6, 6);
+  });
   it('totals tokens without a registry', () => {
     const tc = new DefaultTokenCounter();
     tc.account({ input: 10, output: 5 }, 'm');

@@ -5,6 +5,7 @@ import type {
   ModelsDevProvider,
   ProviderConfig,
 } from '@wrongstack/core/types';
+import { ProviderError } from '@wrongstack/core/types';
 import { fetchCopilotModels } from './github-copilot-models.js';
 import { copilotBaseUrlFromToken } from './github-copilot-token.js';
 import {
@@ -14,6 +15,7 @@ import {
   codexModelsUrl,
 } from './oauth/codex-protocol.js';
 import { extractAccountId } from './openai-codex-account.js';
+import { matchesActiveProviderCredential } from './provider-credential-state.js';
 import { projectCompatibleProviderPresets } from './provider-definitions.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
 import { SUBSCRIPTION_ENDPOINTS, SubscriptionOAuthProvider } from './subscription-oauth.js';
@@ -114,6 +116,10 @@ export interface DiscoveryTarget {
   copilotCatalog?: boolean | undefined;
   modelsUrl?: string | undefined;
   headers?: Record<string, string> | undefined;
+  /** Renew account credentials before a catalog request; may update the cache identity. */
+  prepareApiKey?: ((fetchImpl: typeof fetch) => Promise<string>) | undefined;
+  /** Fence results if the selected account changes during discovery. */
+  isCurrent?: (() => boolean) | undefined;
 }
 
 /** Active API key from a ProviderConfig (mirrors the provider factory's resolver). */
@@ -174,7 +180,7 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
       const identity = createHash('sha256')
         .update(active.refreshToken ?? active.apiKey)
         .digest('hex');
-      out.push({
+      const target: DiscoveryTarget = {
         id,
         cfg,
         baseUrl,
@@ -186,7 +192,38 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
         copilotCatalog: copilot,
         modelsUrl,
         headers,
-      });
+      };
+      if (strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) {
+        let source = { ...active };
+        const isCurrent = () =>
+          matchesActiveProviderCredential(cfg, {
+            label: source.label,
+            accessToken: source.apiKey,
+            refreshToken: source.refreshToken,
+          });
+        target.isCurrent = isCurrent;
+        target.prepareApiKey = async (fetchImpl) => {
+          const provider = new SubscriptionOAuthProvider({
+            id,
+            credential: source,
+            baseUrl,
+            fetchImpl,
+          });
+          const renewed = await provider.refreshAccountCredential({
+            signal: AbortSignal.timeout(8_000),
+          });
+          if (!isCurrent()) throw new Error('Selected OAuth account changed during discovery.');
+          cfg.apiKeys = cfg.apiKeys?.map((key) => (key.label === source.label ? renewed : key));
+          source = renewed;
+          target.apiKey = renewed.apiKey;
+          const identity = createHash('sha256')
+            .update(renewed.refreshToken ?? renewed.apiKey)
+            .digest('hex');
+          target.cacheKey = `${id}\u0000${baseUrl}\u0000${identity}`;
+          return renewed.apiKey;
+        };
+      }
+      out.push(target);
       continue;
     }
     const preset = presets[id] ?? (cfg.type ? presets[cfg.type] : undefined);
@@ -227,6 +264,9 @@ export interface DiscoverOptions {
   accountCatalog?: boolean | undefined;
   copilotCatalog?: boolean | undefined;
   modelsUrl?: string | undefined;
+  prepareApiKey?: DiscoveryTarget['prepareApiKey'];
+  /** Safe diagnostic categories only; response bodies and credentials are never reported. */
+  onFailure?: ((reason: string) => void) | undefined;
 }
 
 /**
@@ -415,12 +455,27 @@ export async function discoverOpenAICompatibleModels(
   opts: DiscoverOptions,
 ): Promise<ModelsDevProvider | undefined> {
   const fetchImpl = opts.fetchImpl ?? fetch;
+  let apiKey = opts.apiKey;
+  if (opts.prepareApiKey) {
+    try {
+      apiKey = await opts.prepareApiKey(fetchImpl);
+    } catch (error) {
+      const status = error instanceof ProviderError ? error.status : undefined;
+      opts.onFailure?.(
+        `OAuth credential renewal failed${status ? ` (HTTP ${status})` : ''}; check account sign-in`,
+      );
+      return undefined;
+    }
+  }
   const base = opts.baseUrl.replace(/\/+$/, '');
   if (opts.copilotCatalog) {
     const live = opts.apiKey
       ? await fetchCopilotModels(opts.apiKey, undefined, fetchImpl)
       : undefined;
-    if (live === undefined) return undefined;
+    if (live === undefined) {
+      opts.onFailure?.('account model catalog request failed');
+      return undefined;
+    }
     return {
       id: providerId,
       name: opts.providerName ?? providerId,
@@ -457,12 +512,17 @@ export async function discoverOpenAICompatibleModels(
       method: 'GET',
       headers: {
         accept: 'application/json',
-        ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}),
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         ...opts.headers,
       },
       signal: controller.signal,
     });
-    if (!res.ok) return undefined;
+    if (!res.ok) {
+      opts.onFailure?.(
+        `HTTP ${res.status}${res.status === 401 || res.status === 403 ? '; check account credentials and permissions' : ''}`,
+      );
+      return undefined;
+    }
     const json = (await res.json()) as { data?: unknown; models?: unknown } | unknown;
     const list = Array.isArray(json)
       ? json
@@ -471,7 +531,10 @@ export async function discoverOpenAICompatibleModels(
         : Array.isArray((json as { models?: unknown })?.models)
           ? (json as { models: unknown[] }).models
           : undefined;
-    if (!list) return undefined;
+    if (!list) {
+      opts.onFailure?.('invalid model catalog response');
+      return undefined;
+    }
     const models: Record<string, ModelsDevModel> = {};
     for (const raw of list) {
       if (opts.accountCatalog && raw && typeof raw === 'object') {
@@ -486,7 +549,10 @@ export async function discoverOpenAICompatibleModels(
       );
       if (mapped) models[mapped.id] = mapped;
     }
-    if (Object.keys(models).length === 0 && !opts.accountCatalog) return undefined;
+    if (Object.keys(models).length === 0 && !opts.accountCatalog) {
+      opts.onFailure?.('model catalog contains no compatible models');
+      return undefined;
+    }
     return {
       id: providerId,
       name: opts.providerName ?? providerId,
@@ -496,7 +562,14 @@ export async function discoverOpenAICompatibleModels(
       env: [],
       models,
     };
-  } catch {
+  } catch (error) {
+    opts.onFailure?.(
+      controller.signal.aborted
+        ? 'model catalog request timed out'
+        : error instanceof SyntaxError
+          ? 'invalid JSON model catalog response'
+          : 'model catalog network request failed',
+    );
     return undefined;
   } finally {
     if (timer) clearTimeout(timer);

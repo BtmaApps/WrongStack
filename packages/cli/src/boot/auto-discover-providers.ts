@@ -43,89 +43,100 @@ export async function discoverAndMergeProviders(opts: {
   let cacheDirty = false;
 
   await Promise.all(
-    targets.map(
-      async ({
+    targets.map(async (target) => {
+      const previousCacheKey = target.cacheKey;
+      const {
         id,
         cfg,
         baseUrl,
         apiKey,
-        cacheKey,
         modelDiscoveryPath,
         modelDiscoveryAuthoritative,
         accountCatalog,
         copilotCatalog,
         modelsUrl,
         headers,
-      }) => {
-        const provider = await discoverOpenAICompatibleModels(id, {
-          baseUrl,
-          apiKey,
-          headers: { ...cfg.headers, ...headers },
-          accountCatalog,
-          copilotCatalog,
-          modelsUrl,
-          providerName: id,
-          modelDiscoveryPath,
-          fetchImpl: opts.fetchImpl,
-        });
-        if (provider) {
-          if (accountCatalog) cfg.models = Object.keys(provider.models);
-          const fetchedAt = new Date().toISOString();
-          cache[cacheKey] = { fetchedAt, provider };
-          cacheDirty = true;
-          if (modelDiscoveryAuthoritative) {
-            opts.registry.mergeOverlay(
-              { [id]: provider },
-              { observedAt: fetchedAt, authoritativeProviderIds: [id] },
-            );
-          } else {
-            opts.registry.mergeOverlay({ [id]: provider });
-          }
-          opts.logger?.info(
-            `auto-discovered ${Object.keys(provider.models).length} models for "${id}" from ${baseUrl}`,
-          );
-          return;
-        }
-        // Fetch failed — fall back to the last cached list, if any.
-        const cached = cache[cacheKey];
-        if (cached) {
-          if (accountCatalog) cfg.models = Object.keys(cached.provider.models);
-          if (modelDiscoveryAuthoritative) {
-            opts.registry.mergeOverlay(
-              { [id]: cached.provider },
-              { observedAt: cached.fetchedAt, authoritativeProviderIds: [id] },
-            );
-          } else {
-            opts.registry.mergeOverlay({ [id]: cached.provider });
-          }
-          opts.logger?.warn(
-            `auto-discovery for "${id}" failed; using ${
-              Object.keys(cached.provider.models).length
-            } cached models from ${cached.fetchedAt}`,
+        prepareApiKey,
+      } = target;
+      let failureReason = 'model catalog request failed';
+      const provider = await discoverOpenAICompatibleModels(id, {
+        baseUrl,
+        apiKey,
+        headers: { ...cfg.headers, ...headers },
+        accountCatalog,
+        copilotCatalog,
+        modelsUrl,
+        providerName: id,
+        modelDiscoveryPath,
+        fetchImpl: opts.fetchImpl,
+        prepareApiKey,
+        onFailure: (reason) => {
+          failureReason = reason;
+        },
+      });
+      if (target.isCurrent && !target.isCurrent()) return;
+      const { cacheKey } = target;
+      if (provider) {
+        if (accountCatalog) cfg.models = Object.keys(provider.models);
+        const fetchedAt = new Date().toISOString();
+        cache[cacheKey] = { fetchedAt, provider };
+        cacheDirty = true;
+        if (modelDiscoveryAuthoritative) {
+          opts.registry.mergeOverlay(
+            { [id]: provider },
+            { observedAt: fetchedAt, authoritativeProviderIds: [id] },
           );
         } else {
-          if (accountCatalog) {
-            cfg.models = [];
-            opts.registry.mergeOverlay(
-              {
-                [id]: {
-                  id,
-                  name: id,
-                  npm: '@ai-sdk/openai-compatible',
-                  api: baseUrl,
-                  env: [],
-                  models: {},
-                },
+          opts.registry.mergeOverlay({ [id]: provider });
+        }
+        opts.logger?.info(
+          `auto-discovered ${Object.keys(provider.models).length} models for "${id}" from ${baseUrl}`,
+        );
+        return;
+      }
+      // Fetch failed — fall back to the last cached list, if any.
+      const cached = cache[cacheKey] ?? cache[previousCacheKey];
+      if (cached) {
+        if (cacheKey !== previousCacheKey) {
+          cache[cacheKey] = cached;
+          cacheDirty = true;
+        }
+        if (accountCatalog) cfg.models = Object.keys(cached.provider.models);
+        if (modelDiscoveryAuthoritative) {
+          opts.registry.mergeOverlay(
+            { [id]: cached.provider },
+            { observedAt: cached.fetchedAt, authoritativeProviderIds: [id] },
+          );
+        } else {
+          opts.registry.mergeOverlay({ [id]: cached.provider });
+        }
+        opts.logger?.warn(
+          `auto-discovery for "${id}" failed; using ${
+            Object.keys(cached.provider.models).length
+          } cached models from ${cached.fetchedAt} (${failureReason})`,
+        );
+      } else {
+        if (accountCatalog) {
+          cfg.models = [];
+          opts.registry.mergeOverlay(
+            {
+              [id]: {
+                id,
+                name: id,
+                npm: '@ai-sdk/openai-compatible',
+                api: baseUrl,
+                env: [],
+                models: {},
               },
-              { authoritativeProviderIds: [id] },
-            );
-          }
-          opts.logger?.warn(
-            `auto-discovery for "${id}" failed and no cache available (server at ${baseUrl} unreachable?)`,
+            },
+            { authoritativeProviderIds: [id] },
           );
         }
-      },
-    ),
+        opts.logger?.warn(
+          `auto-discovery for "${id}" failed and no cache available (${failureReason}; catalog at ${baseUrl})`,
+        );
+      }
+    }),
   );
 
   if (cacheDirty) {

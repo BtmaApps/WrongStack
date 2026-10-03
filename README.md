@@ -540,6 +540,8 @@ and Antigravity. Browse with `wstack models`. See
 Account model choices come from the provider's live account catalog and an
 account-specific cache. Empty or unavailable catalogs never create hardcoded
 model choices; generic catalogs only enrich IDs already known to the account.
+ChatGPT plan API, Kimi, xAI and Meta discovery renew expiring account tokens
+before fetching models and report the cause when discovery fails.
 
 **Bring your own endpoint.** Beyond the catalog, you can point WrongStack at *any*
 OpenAI-compatible endpoint: **local models** via one-command presets for

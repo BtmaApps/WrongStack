@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   discoverOpenAICompatibleModels,
   mapCompatibleModel,
@@ -314,6 +314,50 @@ describe('discoverOpenAICompatibleModels', () => {
       }) as never as typeof fetch,
     });
     expect(provider).toBeUndefined();
+  });
+});
+
+describe('discovery failure diagnostics', () => {
+  it.each([
+    [() => new Response('private server text', { status: 403 }), 'HTTP 403'],
+    [() => new Response('not-json'), 'invalid JSON'],
+    [() => Response.json({ error: 'private server text' }), 'invalid model catalog'],
+    [() => Response.json({ data: [] }), 'no compatible models'],
+  ])('reports a safe cause for a failed catalog request', async (response, reason) => {
+    const onFailure = vi.fn();
+    const result = await discoverOpenAICompatibleModels('custom', {
+      baseUrl: 'https://catalog.test/v1',
+      apiKey: 'private-access',
+      onFailure,
+      fetchImpl: async () => response(),
+    });
+    expect(result).toBeUndefined();
+    expect(onFailure).toHaveBeenCalledWith(expect.stringContaining(reason));
+    expect(onFailure.mock.calls.flat().join(' ')).not.toMatch(/private/);
+  });
+
+  it('distinguishes a timeout from a network failure', async () => {
+    const onFailure = vi.fn();
+    await discoverOpenAICompatibleModels('custom', {
+      baseUrl: 'https://catalog.test/v1',
+      timeoutMs: 5,
+      onFailure,
+      fetchImpl: async (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), {
+            once: true,
+          });
+        }),
+    });
+    expect(onFailure).toHaveBeenLastCalledWith('model catalog request timed out');
+    await discoverOpenAICompatibleModels('custom', {
+      baseUrl: 'https://catalog.test/v1',
+      onFailure,
+      fetchImpl: async () => {
+        throw new Error('private transport detail');
+      },
+    });
+    expect(onFailure).toHaveBeenLastCalledWith('model catalog network request failed');
   });
 });
 

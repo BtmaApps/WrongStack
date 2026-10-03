@@ -186,7 +186,7 @@
     "@wrongstack/core/types": {
       "files": 1290,
       "typeOnly": 1141,
-      "runtimeOrMixed": 377
+      "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -16299,7 +16299,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/auto-discover.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",

@@ -14,6 +14,11 @@ WrongStack's TUI (Terminal User Interface) is an interactive, full-screen render
 
 The TUI presents a multi-region terminal layout:
 
+The main chat column and sidebar each keep the terminal's current height.
+When the composer or a picker grows, history clips inside the main column;
+the sidebar's title and top border stay anchored. Startup also rechecks the
+terminal size after subscribing to resize events, covering changes during mount.
+
 ```
 ╭──────────────────────────────────────────────────────────────────────╮
 │  ◆ WrongStack  // TERMINAL AI ENGINE          ● READY v0.287.0      │

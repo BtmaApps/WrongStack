@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T20:46:52.389Z",
+  "generatedAt": "2026-10-03T21:37:27.472Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4457,
-    "testFiles": 4023,
-    "sourceLines": 1050947,
+    "sourceFiles": 4458,
+    "testFiles": 4025,
+    "sourceLines": 1051085,
     "workspaceEdges": 133,
-    "moduleEdges": 14518,
+    "moduleEdges": 14521,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -787,8 +787,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 450,
-      "testFiles": 409,
+      "sourceFiles": 451,
+      "testFiles": 411,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -811,7 +811,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 409
+          "testFiles": 411
         }
       ]
     },
@@ -18646,6 +18646,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/history-viewport-size-sync.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/hit-test.test.ts",
         "projects": [
           "root-node"
@@ -19637,6 +19643,12 @@
       },
       {
         "file": "packages/tui/tests/sidebar-sizing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/sidebar-top-anchor.test.tsx",
         "projects": [
           "root-node"
         ]

@@ -50,6 +50,12 @@ wstack auth login chatgpt-api --alias personal-chatgpt
 These entries also appear in the TUI auth panel and WebUI provider settings.
 Existing API keys stay available; choosing a key selects its own auth method.
 
+CLI/TUI and WebUI startup renew expiring tokens for these account flows before
+fetching the model catalog, using the same encrypted-config transaction as
+inference. Token rotation preserves the account's cached catalog; another account
+cannot reuse it. Discovery warnings identify HTTP/auth, renewal, timeout, network,
+or response-format failures instead of assuming the server is unreachable.
+
 - **xAI:** device authorization at `auth.x.ai`, then renewable Bearer access
   to the public Responses endpoint. The login uses a public native-client ID;
   provider eligibility must be verified on the account actually used.

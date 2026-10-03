@@ -30,6 +30,55 @@ describe('model-auto-discovery', () => {
     }
   });
 
+  it('forwards account renewal and caches using its rotated identity', async () => {
+    const target = {
+      id: 'account',
+      cfg: {},
+      baseUrl: 'https://catalog.test/v1',
+      apiKey: 'expired',
+      cacheKey: 'old-identity',
+      prepareApiKey: vi.fn(async () => {
+        target.cacheKey = 'renewed-identity';
+        return 'renewed';
+      }),
+    };
+    mocks.resolveDiscoveryTargets.mockReturnValue([target]);
+    mocks.discoverOpenAICompatibleModels.mockImplementationOnce(async (_id, options) => {
+      await options.prepareApiKey(options.fetchImpl);
+      return { id: 'account', models: { live: { id: 'live' } } };
+    });
+    await discoverAndMergeWebuiProviders({
+      config: {} as never,
+      registry: { mergeOverlay: vi.fn() },
+      cacheDir: tmpDir,
+    });
+    expect(target.prepareApiKey).toHaveBeenCalledOnce();
+    const cache = JSON.parse(
+      await fs.readFile(path.join(tmpDir, 'discovered-models-cache.json'), 'utf8'),
+    );
+    expect(cache['renewed-identity'].provider.models.live.id).toBe('live');
+    expect(cache['old-identity']).toBeUndefined();
+  });
+
+  it('reports catalog HTTP errors without exposing the response or assuming an outage', async () => {
+    mocks.resolveDiscoveryTargets.mockReturnValue([
+      { id: 'account', cfg: {}, baseUrl: 'https://catalog.test/v1', cacheKey: 'account' },
+    ]);
+    mocks.discoverOpenAICompatibleModels.mockImplementationOnce(async (_id, options) => {
+      options.onFailure('HTTP 401; check account credentials and permissions');
+      return undefined;
+    });
+    const warn = vi.fn();
+    await discoverAndMergeWebuiProviders({
+      config: {} as never,
+      registry: { mergeOverlay: vi.fn() },
+      cacheDir: tmpDir,
+      logger: { warn } as never,
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 401'));
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('unreachable');
+  });
+
   it('bails out early if registry does not implement OverlayRegistry', async () => {
     mocks.resolveDiscoveryTargets.mockReturnValue([
       { id: 'target-1', cfg: {}, baseUrl: 'http://localhost:11434', apiKey: '', cacheKey: 'key-1' },
@@ -99,13 +148,17 @@ describe('model-auto-discovery', () => {
       logger,
     });
 
-    expect(mocks.discoverOpenAICompatibleModels).toHaveBeenCalledWith('ollama', {
-      baseUrl: 'http://localhost:11434',
-      apiKey: 'key',
-      headers: { 'X-Custom': '1' },
-      providerName: 'ollama',
-      fetchImpl: undefined,
-    });
+    expect(mocks.discoverOpenAICompatibleModels).toHaveBeenCalledWith(
+      'ollama',
+      expect.objectContaining({
+        baseUrl: 'http://localhost:11434',
+        apiKey: 'key',
+        headers: { 'X-Custom': '1' },
+        providerName: 'ollama',
+        fetchImpl: undefined,
+        onFailure: expect.any(Function),
+      }),
+    );
 
     expect(registry.mergeOverlay).toHaveBeenCalledWith({ ollama: fakeProvider });
     expect(logger.info).toHaveBeenCalledWith(

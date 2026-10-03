@@ -289,6 +289,11 @@ export function ProvidersPage() {
                 Read OAuth token storage and refresh details
               </ExternalDoc>
             </div>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              ChatGPT plan API, Kimi, xAI and Meta account catalogs renew expiring tokens before
+              startup discovery. Cached model lists survive token rotation, and discovery warnings
+              show the cause when a catalog request fails.
+            </p>
           </div>
         </div>
       </section>

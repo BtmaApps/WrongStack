@@ -6,6 +6,7 @@ import {
   rewriteBaseUrl,
 } from '@wrongstack/core/wiring/proxy-rewrite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { discoverOpenAICompatibleModels, resolveDiscoveryTargets } from '../src/auto-discover.js';
 import { makeProviderFromConfig } from '../src/index.js';
 import { resetSharedOAuthRefreshState } from '../src/oauth-refresh-coordinator.js';
 import { applyProviderOAuthRefresh } from '../src/provider-credential-state.js';
@@ -55,6 +56,37 @@ afterEach(() => {
 });
 
 describe('subscription OAuth inference', () => {
+  it('persists startup discovery renewal through the host transaction before using the token', async () => {
+    const initial = credential('kimi', true);
+    const durable = { plan: { type: 'kimi-for-coding', apiKeys: [{ ...initial }] } };
+    const saved = { type: 'kimi-for-coding', apiKeys: [{ ...initial }] };
+    const mutate = vi.fn(
+      async (mutator: (providers: Record<string, ProviderConfig>) => Promise<void>) => {
+        await mutator(durable);
+      },
+    );
+    setSubscriptionRefreshTransaction(createSubscriptionRefreshTransaction(mutate));
+    const [target] = resolveDiscoveryTargets({ providers: { plan: saved } } as never);
+    const result = await discoverOpenAICompatibleModels('plan', {
+      baseUrl: target!.baseUrl,
+      prepareApiKey: target!.prepareApiKey,
+      fetchImpl: async (input, init) => {
+        if (String(input).endsWith('/token'))
+          return Response.json({
+            access_token: 'new-access',
+            refresh_token: 'new-refresh',
+            expires_in: 3600,
+          });
+        expect(durable.plan.apiKeys[0]!.apiKey).toBe('new-access');
+        expect(new Headers(init?.headers).get('authorization')).toBe('Bearer new-access');
+        return Response.json({ data: [{ id: 'account-model' }] });
+      },
+    });
+    expect(result?.models['account-model']).toBeDefined();
+    expect(mutate).toHaveBeenCalledOnce();
+    expect(durable.plan.apiKeys[0]!.refreshToken).toBe('new-refresh');
+    expect(saved.apiKeys[0]!.apiKey).toBe('new-access');
+  });
   it.each([
     ['xai', 'https://api.x.ai/v1', 'responses'],
     ['meta', 'https://api.meta.ai/v1', 'responses'],

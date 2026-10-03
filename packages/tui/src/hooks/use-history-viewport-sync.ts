@@ -1,7 +1,7 @@
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { historyViewportRows } from '../hit-test.js';
-import { type DOMElement, measureElement } from '../ink.js';
+import { type DOMElement, measureElement, useStdout } from '../ink.js';
 
 export function useHistoryViewportSync(input: {
   stdoutRows: number | undefined;
@@ -24,10 +24,12 @@ export function useHistoryViewportSync(input: {
   statusBarRows: number;
 } {
   const { stdoutRows, viewportRows, setViewportRows } = input;
+  const { stdout } = useStdout();
+  const stream = stdout ?? process.stdout;
   const bottomRegionRef = useRef<DOMElement | null>(null);
   const statusBarWrapRef = useRef<DOMElement | null>(null);
   const belowStatusBarRef = useRef<DOMElement | null>(null);
-  const [termRows, setTermRows] = useState(stdoutRows ?? 24);
+  const [termRows, setTermRows] = useState(stream.rows ?? stdoutRows ?? 24);
   const [statusBarRows, setStatusBarRows] = useState(2);
 
   useEffect(() => {
@@ -35,12 +37,15 @@ export function useHistoryViewportSync(input: {
     // viewport measurement has to see the new row count before the panels that
     // lay out inside it react, and the shared hook subscribes with `on`.
     // Ordering is the reason this copy exists.
-    const handleResize = () => setTermRows(process.stdout.rows ?? 24);
-    process.stdout.prependListener('resize', handleResize);
+    const handleResize = () => setTermRows(stream.rows ?? 24);
+    stream.prependListener('resize', handleResize);
+    // A resize can happen between the first frame and this subscription.
+    // Re-read after subscribing so the root never retains an outdated height.
+    handleResize();
     return () => {
-      process.stdout.off('resize', handleResize);
+      stream.off('resize', handleResize);
     };
-  }, []);
+  }, [stream]);
 
   useLayoutEffect(() => {
     const node = bottomRegionRef.current;

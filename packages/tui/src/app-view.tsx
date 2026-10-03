@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect } from 'react';
+import { AppMainColumn } from './app-main-column.js';
 import { AppStatusRegion } from './app-status-region.js';
 import {
   buildSidebarOpenFlags,
@@ -217,7 +218,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
           justifyContent="flex-end"
         >
           <Box flexDirection="row" width={termCols} flexShrink={0} overflowX="hidden">
-            <Box flexDirection="column" flexShrink={0} width={mainColumnWidth} overflowX="hidden">
+            <AppMainColumn width={mainColumnWidth} rows={runtime.termRows}>
               {inspectContent && state.inspectOverlay ? (
                 <InspectOverlay
                   title={inspectContent.title}
@@ -316,7 +317,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   />
                 </MonitorViewportProvider>
               </Box>
-            </Box>
+            </AppMainColumn>
             <AppViewSidebar
               host={host}
               runtime={runtime}
