@@ -3,6 +3,7 @@ import { parseNextSteps, projectNextStepsToolInput } from '@wrongstack/tools/nex
 import { projectChatMessage, projectToolMessage } from '@wrongstack/webui-protocol';
 import { toWireImages } from '@/components/ChatInput/image-attachments';
 import { toast } from '@/components/Toaster';
+import { presentArtifactResult } from '@/lib/artifact-presentation';
 import { buildBugHuntContinuation, buildBugHuntMessage } from '@/lib/bug-hunt-message';
 import { playCompletionChime, playPermissionChime } from '@/lib/chime';
 import { setFaviconStatus } from '@/lib/favicon';
@@ -266,6 +267,7 @@ export function handleToolExecuted(msg: WSServerMessage) {
   pipeViz(msg);
   const payload = projectToolMessage(msg);
   if (payload?.kind !== 'executed') return;
+  presentArtifactResult(payload.name, payload.ok, payload.output, chat.sessionId);
   if (payload.name === 'nextsteps' && payload.id) {
     const lane = laneNextSteps(chat.sessionId);
     const steps = lane.get(payload.id) ?? [];

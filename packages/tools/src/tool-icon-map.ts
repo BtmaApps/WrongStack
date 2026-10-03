@@ -46,6 +46,7 @@ export type ToolIconId =
  * use their surface-owned icon mappings.
  */
 export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
+  present_artifact: 'document',
   // File operations
   read: 'file',
   write: 'file',

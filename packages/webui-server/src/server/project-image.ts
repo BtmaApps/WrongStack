@@ -142,8 +142,16 @@ export async function handleFilesImage(
   projectRoot: string,
 ): Promise<void> {
   const sessionId = messageSessionId(msg as { payload?: unknown });
+  const rawRequestId = (msg as { payload?: { requestId?: unknown } })?.payload?.requestId;
+  const requestId =
+    typeof rawRequestId === 'string' && /^[\w:.-]{1,128}$/.test(rawRequestId)
+      ? rawRequestId
+      : undefined;
   const reply = (payload: Record<string, unknown>) =>
-    send(ws, { type: 'files.image', payload: withSessionEcho(payload, sessionId) });
+    send(ws, {
+      type: 'files.image',
+      payload: withSessionEcho({ ...payload, ...(requestId ? { requestId } : {}) }, sessionId),
+    });
   let filePath: string;
   try {
     ({ filePath } = validatedPayload<FilesImagePayload>(msg, 'files.image'));

@@ -1,4 +1,5 @@
 import { toast } from '@/components/Toaster';
+import { consumeArtifactRead } from '@/lib/artifact-presentation';
 import { getWSClient } from '@/lib/ws-client';
 import { messageSessionId } from '@/lib/ws-client-utils';
 import { activeSessionLaneId, useFileStore, useSessionStore, useUIStore } from '@/stores';
@@ -102,6 +103,7 @@ export function handleFilesTree(msg: WSServerMessage) {
 }
 
 export function handleFilesRead(msg: WSServerMessage) {
+  if (consumeArtifactRead(msg.payload as Record<string, unknown>)) return;
   const p = msg.payload as {
     filePath: string;
     content: string;

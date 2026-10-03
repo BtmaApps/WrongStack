@@ -13,7 +13,8 @@ import {
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
+import { onPresentArtifact } from './lib/artifact-presentation.js';
+import { dispatchSimplePanel, onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -32,6 +33,7 @@ interface FileNode {
 }
 
 interface FileExplorerProps {
+  sessionId?: string | null | undefined;
   socketRef: React.RefObject<SimpleSocket | null>;
 }
 
@@ -205,7 +207,7 @@ function ChevronRight({ size }: { size: number }) {
   );
 }
 
-export function FileExplorer({ socketRef }: FileExplorerProps) {
+export function FileExplorer({ socketRef, sessionId }: FileExplorerProps) {
   const [open, setOpen] = useState(false);
   const [fileListOpen, setFileListOpen] = useState(defaultFileListOpen);
   const [tree, setTree] = useState<FileNode[] | null>(null);
@@ -223,6 +225,9 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
+  const presentedRef = useRef(new Set<string>());
+  const currentSessionRef = useRef(sessionId);
+  currentSessionRef.current = sessionId;
   useFocusTrap(dialogRef, open);
   // In-flight tree/content/save requests. A new request (or an unmount)
   // cancels the previous one so a stale timer can't later fire setState
@@ -307,10 +312,11 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
       }
 
       pendingContentRef.current?.cancel();
+      const ownerSession = currentSessionRef.current;
       const handle = socketRequest({
         socket,
         sendType: 'files.read',
-        payload: { filePath },
+        payload: { filePath, ...(ownerSession ? { sessionId: ownerSession } : {}) },
         expectType: 'files.read',
         accept: (frame) => {
           const returned = frame.payload as { filePath?: unknown } | undefined;
@@ -322,6 +328,7 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
         if (pendingContentRef.current !== handle) return;
         pendingContentRef.current = null;
         setContentLoading(false);
+        if (currentSessionRef.current !== ownerSession) return;
         if (!payload) return; // timed out — null content renders the failure note
         if (typeof payload['content'] === 'string') {
           setFileContent(payload['content']);
@@ -332,7 +339,7 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
         }
       });
     },
-    [socketRef],
+    [socketRef, sessionId],
   );
 
   const handleSelectFile = useCallback(
@@ -342,6 +349,42 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
       loadFileContent(path);
     },
     [loadFileContent],
+  );
+
+  useEffect(
+    () =>
+      onPresentArtifact((artifact) => {
+        if (artifact.kind && artifact.kind !== 'text') return;
+        if (artifact.sessionId !== sessionId || presentedRef.current.has(artifact.id)) return;
+        presentedRef.current.add(artifact.id);
+        if (presentedRef.current.size > 128)
+          presentedRef.current.delete(presentedRef.current.values().next().value!);
+        if (isEditing && editedContent !== fileContent) return;
+        if (
+          [...document.querySelectorAll('[aria-modal="true"]')].some(
+            (element) =>
+              element !== dialogRef.current && element.getAttribute('aria-hidden') !== 'true',
+          )
+        )
+          return;
+        dispatchSimplePanel('open-file-explorer');
+        setOpen(true);
+        setFileListOpen(defaultFileListOpen());
+        if (artifact.path !== selectedPath) handleSelectFile(artifact.path);
+        else if (fileContent === null) loadFileContent(artifact.path);
+        if (!tree) loadTree();
+      }),
+    [
+      sessionId,
+      isEditing,
+      editedContent,
+      fileContent,
+      selectedPath,
+      handleSelectFile,
+      loadFileContent,
+      tree,
+      loadTree,
+    ],
   );
 
   const handleSave = useCallback(() => {

@@ -71,6 +71,7 @@ export const TOOL_ICON_CONFIG: Record<ToolIconId, { color: string }> = {
  * tool plus the aliases models commonly emit.
  */
 export const TOOL_ICON_MAP: Record<string, ToolIconId> = {
+  present_artifact: 'document',
   // ── file IO ──
   read: 'file',
   cat: 'file',

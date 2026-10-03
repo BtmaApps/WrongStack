@@ -246,16 +246,20 @@ export async function handleFilesRead(
   projectRoot: string,
 ): Promise<void> {
   const sessionId = messageSessionId(msg as { payload?: unknown });
+  const rawRequestId = (msg as { payload?: { requestId?: unknown } })?.payload?.requestId;
+  const requestId =
+    typeof rawRequestId === 'string' && /^[\w:.-]{1,128}$/.test(rawRequestId)
+      ? rawRequestId
+      : undefined;
+  const echo = (payload: Record<string, unknown>) =>
+    withSessionEcho({ ...payload, ...(requestId ? { requestId } : {}) }, sessionId);
   let filePath: string;
   try {
     ({ filePath } = validatedPayload<FilesReadPayload>(msg, 'files.read'));
   } catch {
     send(ws, {
       type: 'files.read',
-      payload: withSessionEcho(
-        { filePath: '', content: '', error: 'Malformed request' },
-        sessionId,
-      ),
+      payload: echo({ filePath: '', content: '', error: 'Malformed request' }),
     });
     return;
   }
@@ -270,7 +274,7 @@ export async function handleFilesRead(
   } catch {
     send(ws, {
       type: 'files.read',
-      payload: withSessionEcho({ filePath, content: '', error: 'Forbidden' }, sessionId),
+      payload: echo({ filePath, content: '', error: 'Forbidden' }),
     });
     return;
   }
@@ -281,7 +285,7 @@ export async function handleFilesRead(
     if (stat.size > MAX_READ_BYTES) {
       send(ws, {
         type: 'files.read',
-        payload: withSessionEcho({ filePath, content: '', tooLarge: true }, sessionId),
+        payload: echo({ filePath, content: '', tooLarge: true }),
       });
       return;
     }
@@ -289,18 +293,18 @@ export async function handleFilesRead(
     if (buf.includes(0)) {
       send(ws, {
         type: 'files.read',
-        payload: withSessionEcho({ filePath, content: '', binary: true }, sessionId),
+        payload: echo({ filePath, content: '', binary: true }),
       });
       return;
     }
     send(ws, {
       type: 'files.read',
-      payload: withSessionEcho({ filePath, content: buf.toString('utf8') }, sessionId),
+      payload: echo({ filePath, content: buf.toString('utf8') }),
     });
   } catch (err) {
     send(ws, {
       type: 'files.read',
-      payload: withSessionEcho({ filePath, content: '', error: errMessage(err) }, sessionId),
+      payload: echo({ filePath, content: '', error: errMessage(err) }),
     });
   }
 }

@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 179,
+      "files": 180,
       "typeOnly": 27,
-      "runtimeOrMixed": 155
+      "runtimeOrMixed": 156
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -184,9 +184,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1271,
+      "files": 1272,
       "typeOnly": 1124,
-      "runtimeOrMixed": 370
+      "runtimeOrMixed": 371
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -10771,6 +10771,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/tools/src/present-artifact.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/tools/tests/mutating-tools-readonly-parity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18081,6 +18087,12 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/plan.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/present-artifact.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {

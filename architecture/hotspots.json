@@ -254,9 +254,13 @@
       "lines": 805,
       "relativeImports": 3
     },
+    "packages/simpleui/src/file-explorer.tsx": {
+      "lines": 809,
+      "relativeImports": 5
+    },
     "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 833,
-      "relativeImports": 19
+      "lines": 847,
+      "relativeImports": 20
     },
     "packages/simpleui/src/settings-panel.tsx": {
       "lines": 935,
@@ -372,6 +376,10 @@
     },
     "packages/webui/src/components/SidePanel/SkillsList.tsx": {
       "lines": 803,
+      "relativeImports": 0
+    },
+    "packages/webui/src/hooks/ws-handlers/chat-handlers.ts": {
+      "lines": 800,
       "relativeImports": 0
     },
     "packages/webui/src/hooks/ws-handlers.ts": {

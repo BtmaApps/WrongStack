@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:56:12.837Z",
+  "generatedAt": "2026-10-03T11:57:16.999Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4338,
-    "testFiles": 3971,
-    "sourceLines": 1034069,
+    "sourceFiles": 4344,
+    "testFiles": 3977,
+    "sourceLines": 1034789,
     "workspaceEdges": 131,
-    "moduleEdges": 14160,
+    "moduleEdges": 14176,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -699,8 +699,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 109,
-      "testFiles": 87,
+      "sourceFiles": 111,
+      "testFiles": 88,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -721,7 +721,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 87
+          "testFiles": 88
         }
       ]
     },
@@ -773,8 +773,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 246,
-      "testFiles": 289,
+      "sourceFiles": 248,
+      "testFiles": 290,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -790,7 +790,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 289
+          "testFiles": 290
         }
       ]
     },
@@ -851,8 +851,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 620,
-      "testFiles": 442,
+      "sourceFiles": 622,
+      "testFiles": 445,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -875,7 +875,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 442
+          "testFiles": 445
         }
       ]
     },
@@ -928,7 +928,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 260,
-      "testFiles": 257,
+      "testFiles": 258,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -954,7 +954,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 257
+          "testFiles": 258
         }
       ]
     },
@@ -15062,6 +15062,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/artifact-presentation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/auth-panel.test.tsx",
         "projects": [
           "root-node"
@@ -17313,6 +17319,12 @@
       },
       {
         "file": "packages/tools/tests/posix-signal-safety.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/present-artifact.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20738,6 +20750,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/artifact-file-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/audit-high-risk-regressions.test.ts",
         "projects": [
           "root-node"
@@ -22340,6 +22358,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/artifact-preview.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/audience-memory-panel.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -23348,6 +23372,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/simple-artifact-preview.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/skills-create-modal.test.ts",
         "projects": [
           "webui-jsdom"
@@ -24027,6 +24057,12 @@
       },
       {
         "file": "packages/webui/tests/lib/agent-status.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/artifact-presentation.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -25427,9 +25463,14 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/simpleui/src/file-explorer.tsx",
+      "lines": 809,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/simpleui/src/lib/message-handler.ts",
-      "lines": 833,
-      "relativeImports": 19
+      "lines": 847,
+      "relativeImports": 20
     },
     {
       "file": "packages/simpleui/src/settings-panel.tsx",
@@ -25574,6 +25615,11 @@
     {
       "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
       "lines": 803,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
+      "lines": 800,
       "relativeImports": 0
     },
     {

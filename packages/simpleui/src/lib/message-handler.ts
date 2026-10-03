@@ -17,6 +17,7 @@ export { normalizeContextLoad } from './context-load.js';
  *   );
  */
 
+import { parseArtifactPresentation } from '@wrongstack/tools/artifact-presentation';
 import {
   isFinalTurnStopReason,
   type projectNextStepsToolInput,
@@ -27,6 +28,7 @@ import {
   formatDeliveryPendingNotice,
   projectChatMessage,
   projectFleetMessage,
+  projectToolMessage,
 } from '@wrongstack/webui-protocol';
 import { projectFallbackPending } from '../fallback-modal.js';
 import type { AgentMode, ModelDescriptor, ServerMessage, SimpleSubagent } from '../types.js';
@@ -38,6 +40,7 @@ import {
   projectCompletedAgentText,
   stampAgentUpdates,
 } from './agent-model.js';
+import { dispatchPresentArtifact } from './artifact-presentation.js';
 import {
   boundSimpleChatText,
   contentToText,
@@ -551,6 +554,17 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'tool.executed': {
+        const tool = projectToolMessage(message);
+        if (
+          tool?.kind === 'executed' &&
+          tool.name === 'present_artifact' &&
+          tool.ok &&
+          payload['sessionId'] === sessionIdRef.current
+        ) {
+          const artifact = parseArtifactPresentation(tool.output);
+          if (artifact && artifact.sessionId === sessionIdRef.current)
+            dispatchPresentArtifact(artifact);
+        }
         handleToolExecuted(
           message,
           nextStepsByToolId,

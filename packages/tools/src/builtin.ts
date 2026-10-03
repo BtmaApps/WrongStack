@@ -39,6 +39,7 @@ import { logsTool } from './logs.js';
 import { outdatedTool } from './outdated.js';
 import { patchTool } from './patch.js';
 import { planTool } from './plan.js';
+import { presentArtifactTool } from './present-artifact.js';
 import { projectKitRunTool, projectKitTool } from './project-kit.js';
 import { pwshTool } from './pwsh.js';
 import { readTool } from './read.js';
@@ -65,6 +66,7 @@ import { writeTool } from './write.js';
  * guidance as directly exposed tools.
  */
 export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  present_artifact: presentArtifactTool.description,
   project_kit: projectKitTool.description,
   project_kit_run: projectKitRunTool.description,
   browser_open:
@@ -236,6 +238,7 @@ export const OFF_ONLY_TOOLS: Tool[] = [...browserTools, e2ePlanTool];
  *   tool_search, tool_use                      — reach the withheld catalog
  */
 export const TIER1_TOOLS: Tool[] = [
+  presentArtifactTool,
   projectKitTool,
   readTool,
   writeTool,
@@ -315,6 +318,7 @@ export const TIER2_TOOLS: Tool[] = [
 export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool];
 
 const rawBuiltinTools: Tool[] = [
+  presentArtifactTool,
   projectKitTool,
   projectKitRunTool,
   toolScriptTool,

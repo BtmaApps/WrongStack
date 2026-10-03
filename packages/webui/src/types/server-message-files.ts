@@ -30,6 +30,7 @@ export type WSFilesGitServerMessage =
   | {
       type: 'files.read';
       payload: {
+        requestId?: string | undefined;
         filePath: string;
         content: string;
         /** Server refused content: NUL byte detected (see handleFilesRead). */
@@ -44,6 +45,7 @@ export type WSFilesGitServerMessage =
       /** A project image as a data URL (see `lib/project-image.ts`). */
       type: 'files.image';
       payload: {
+        requestId?: string | undefined;
         filePath: string;
         dataUrl?: string | undefined;
         bytes?: number | undefined;

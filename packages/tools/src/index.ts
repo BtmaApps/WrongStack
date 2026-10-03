@@ -1,4 +1,5 @@
 export { mapWithConcurrency } from './_concurrency.js';
+export { type PresentArtifactInput, presentArtifactTool } from './present-artifact.js';
 export {
   type DangerAssessment,
   type DangerLevel,

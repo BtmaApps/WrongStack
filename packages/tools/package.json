@@ -16,6 +16,10 @@
   "types": "./dist/index.d.ts",
   "sideEffects": false,
   "exports": {
+    "./artifact-presentation": {
+      "types": "./dist/artifact-presentation.d.ts",
+      "import": "./dist/artifact-presentation.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

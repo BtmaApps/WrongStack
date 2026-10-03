@@ -12,6 +12,7 @@ import { type LiveBrowserSession, useLiveBrowserSessions } from '@/hooks/use-liv
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
+import { presentedBrowserId } from '@/lib/artifact-presentation';
 import { cn } from '@/lib/utils';
 import { useActiveSessionId } from '@/stores';
 
@@ -37,6 +38,16 @@ export function BrowserLivePane(): React.ReactElement {
   const { t } = useAppTranslation();
   const sessions = useLiveBrowserSessions();
   const [selectedId, setSelectedId] = useState<string | undefined>();
+  const sessionId = useActiveSessionId();
+  useEffect(() => {
+    setSelectedId(presentedBrowserId(sessionId));
+    const select = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId: string; id: string }>).detail;
+      if (detail?.sessionId === sessionId) setSelectedId(detail.id);
+    };
+    window.addEventListener('wrongstack:present-browser', select);
+    return () => window.removeEventListener('wrongstack:present-browser', select);
+  }, [sessionId]);
   const selected: LiveBrowserSession | undefined =
     sessions.find((s) => s.id === selectedId) ?? sessions[0];
 
