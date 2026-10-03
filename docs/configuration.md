@@ -1668,14 +1668,24 @@ extension, then a hard stop at the deadline).
 
 The Brain is the authority layer between the agents and you. Every autonomous
 subsystem routes its blocking decisions through it. Questions descend a ladder,
-cheapest tier first, and stop at the first tier that can answer:
+stopping at the first terminal decision:
 
 ```
-rules → policy/heuristics → cache → council → single LLM → escalation
+ledger guard → cache → rules → policy → risk gate → Jev System One
+  → Council (with Judge when needed) → heuristics / single LLM → escalation
 ```
 
-Everything above `council` is free. `/brain stats` reports how the traffic
-actually split — that number, not the model choice, is what governs Brain cost.
+Rules, policy, cache and the ledger guard do not call a model. Jev, Council and
+the LLM pool can. `/brain stats` reports the final resolving tier; earlier failed
+model attempts may still cost tokens. Trace events expose attempts and usage.
+
+CLI/TUI and standalone WebUI use the same runtime. Product defaults fill missing
+settings: `headless`, a 120-second human timeout, your `fallbackModels` pool,
+and an adaptive ceiling of `all` when an effective Council exists or `high`
+without one. Explicit settings win; the inferred risk ceiling is not persisted
+as an explicit permission. `off` disables model tiers, leaving deterministic
+and escalation policy active. Interactive mode uses the shared user-input form;
+timeout `0` waits indefinitely, while reset restores the host's 120-second default.
 
 ```jsonc
 {
@@ -1793,7 +1803,8 @@ All default `true`; each is independently switchable.
 
 `blockedResolvedMarkers` replaces the resolution vocabulary
 (`["resolved","fixed","merged",…]`). Entries are matched as whole words and are
-regex-**escaped**, so it is a word list, not a pattern.
+regex-**escaped**, so it is a word list, not a pattern. Negated or unresolved
+evidence such as "not fixed" does not establish that a blocker was resolved.
 
 ### `brain.llm` — quality gate for the single-model tier
 
@@ -1814,14 +1825,32 @@ regex-**escaped**, so it is a word list, not a pattern.
 `denyIsTerminal` exists because the tier reports three different things as
 `deny`: a dead pool, an unparseable response, and a model that genuinely
 refused. `when-decided` makes only the real refusal terminal.
+The refusal contract is `{"type":"deny","reason":"...","confidence":0.9}`.
+Each pool attempt is parsed and quality-checked before success: malformed,
+uncertain or low-confidence responses can try the next model rather than
+silently ending the fallback loop. They count as circuit failures.
 
 The circuit breaker matters more than it looks: without it a dead pool costs
-`models.length × decisionTimeoutMs` on **every** decision, forever.
+another bounded timeout sweep on every decision. The pool's total attempt
+budget is at most three per-call timeouts; it is not unlimited with pool length.
+
+### Jev System One — optional typed decisions
+
+With an available Jev account and `typesafe.judgments.brain` enabled, option
+requests can use typed Choice plus Noul evidence sufficiency before Council/LLM.
+At least two options are required, within the live risk ceiling and below the
+Council floor (at most medium when no panel is available). Defaults are Choice
+confidence 0.75, selected-option probability 0.70, decidable probability 0.40
+and a four-second timeout. Missing credentials, resolver failure, timeout or
+insufficient evidence defers. This TypeSafe judge is separate from the Council
+Judge; see [Jev settings](jev-settings-and-activity.md).
 
 ### `brain.council` — multi-LLM panel
 
 Convened for questions at or above `minRisk` (default `high`). Quorum, veto and
-weighted majority are pure deterministic maths; only ties reach a judge model.
+weighted majority are deterministic. The Council Judge remains part of the
+panel: it runs for ties or when winning weight fails to strictly exceed
+`approval × cast weight`. It does not bypass missing quorum or a veto.
 
 ```jsonc
 {
@@ -1846,6 +1875,19 @@ weighted majority are pure deterministic maths; only ties reach a judge model.
 ```
 
 A same-model "council" agrees with itself; `distinctness` surfaces that.
+
+An explicit `judge` takes precedence when it resolves. Auto selection prefers
+an unseated pool model, then falls back to a pool model or voter; status exposes
+the effective Judge and whether it is also a voter. Separate role does not
+guarantee independent model/provider. Generic free-text Council questions can
+use the Judge to reconcile distinct stances.
+
+Brain panels deliberate twice by default (`deliberationRounds: 2`); later rounds
+see earlier ballots as quoted data. Early veto or cancellation can stop before
+all calls. A usable earlier round can survive a failed later round; the resolved
+event carries the selected votes. A critical panel that abstains or fails,
+including Judge failure, escalates without falling back to one LLM. High-risk
+abstention retains its LLM fallback. Council answers and denials are terminal.
 
 **Decision lenses.** Six ship built in: `executor` (progress), `skeptic`
 (risk, veto by default), `auditor` (cost/evidence), `security` (trust
@@ -1912,10 +1954,14 @@ reports.
 { "brain": { "cache": { "enabled": false, "ttlMs": 300000, "maxEntries": 200 } } }
 ```
 
-Only `council`/`llm` verdicts are cached — deterministic tiers are already free
+Only `system-one`/`council`/`llm` verdicts are cached — deterministic tiers are already free
 and `ask_human` is a request for input, not a verdict. A decision the ledger
 later observes to have **failed** is evicted, so the cache cannot cement a bad
 call.
+Question and context preserve exact dates, numbers and quoted whitespace;
+session, risk, fallback, escalation permission and full option meanings also
+participate in the key. Applying settings invalidates the cache, including
+pending publications from the prior configuration.
 
 ### `brain.trace` — replayable decision log
 
@@ -1940,6 +1986,9 @@ evaluation fixtures via `brainTraceToEvaluationCase()`.
 `content: "none"` still records models, timings, tokens, vote ids and
 quorum/veto — enough to answer "what is the LLM doing" without storing any
 production text.
+Enable/disable, path, content policy and open-record cap apply live. A path or
+content-policy change drops unfinished old records; already queued rows retain
+their original destination.
 
 ### `brain.ledger` — outcome memory + deterministic guard
 
@@ -1959,6 +2008,12 @@ production text.
 Records each decision and correlates it with its real-world outcome. Once the
 last N approvals of a decision group all ended in observed failures, the guard
 denies outright — no model call. A later success lifts it automatically.
+Memory cap and intervention retry window apply live without discarding pending
+correlations. Interventions and run completions correlate by session and signal
+kind; another session's outcome cannot close them. `ledger: null` restores the
+enabled default, and `enabled` requires a boolean. Production coordinator task
+outcomes also feed its recorded selection decisions; these are observed hints,
+not model training or proof of semantic correctness.
 
 ### `brain.monitor` — self-activation
 
@@ -1976,7 +2031,7 @@ Watches the event bus for distress signals and consults the Brain proactively.
       "errorStormWindowMs": 60000,
       "stallMs": 300000,             // 0 disables
       "stallCheckIntervalMs": 30000,
-      "fileChurnThreshold": 5,
+      "fileChurnThreshold": 20,
       "fileChurnWindowMs": 600000,
       "fileEditTools": ["edit", "write", "patch"],
       "cooldownMs": 120000
@@ -1992,8 +2047,11 @@ adding a `brain.rules` entry matching `source: "system"`.
 `fileEditTools` **replaces** the built-in list — set it if your edit tools are
 named differently, or the churn signal will never fire for them.
 
-The monitor is constructed at boot, so `monitor` changes apply on the next
-session; every other `brain` field applies live.
+Monitor settings apply live. Changes restart its listeners and invalidate old
+consultations while retaining cooldowns. Delayed decisions are discarded after
+stop/disable/retune, tool recovery, run completion, resumed stalled work or
+expiry of the captured error/churn window. Active tools suppress stall detection;
+normal incremental edit frequency alone does not prove an edit/revert loop.
 
 **Security:** `brain` is on the in-project config deny list — a repo-committed
 `.wrongstack/config.json` cannot raise the autonomy ceiling, switch the Brain

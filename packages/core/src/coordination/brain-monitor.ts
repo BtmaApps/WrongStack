@@ -24,10 +24,10 @@
  *     but does not by itself prove edit/revert oscillation.
  *
  * Decision contract: every consultation offers [steer | continue] with
- * fallback `continue`, at `medium` risk. Degradation is safe by design:
+ * fallback `ask_human`, at `medium` risk. Degradation is safe by design:
  *   - tiered brain with an LLM layer → a real judgement call, with the
  *     LLM's rationale becoming the steer text;
- *   - policy-only brain → fallback `continue` → observe, never interfere.
+ *   - policy-only brain → human escalation or terminal deny → no automatic steer.
  *
  * Every engagement (whether or not it intervened) emits
  * `brain.intervention` for the TUI/WebUI surfaces, and is rate-limited by
@@ -39,6 +39,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrainInterventionKind, EventBus } from '../kernel/events.js';
 import type { BrainArbiter, BrainDecision, BrainDecisionRequest } from './brain.js';
+import { editedPaths } from './brain-monitor-paths.js';
 
 export type { BrainInterventionKind };
 
@@ -175,42 +176,6 @@ export const DEFAULT_FILE_EDIT_TOOLS: readonly string[] = [
 ];
 
 /**
- * One spelling per file, so `./src/a.ts`, `src\a.ts` and `src/a.ts` count as
- * the same file's edits. Windows paths are case-insensitive, so they are
- * compared lowercased there. Relative and absolute spellings of one file are
- * still two keys: resolving them needs the session's cwd, which the event
- * does not carry.
- */
-function churnPathKey(path: string, platform: NodeJS.Platform = process.platform): string {
-  let key = path.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
-  while (key.startsWith('./')) key = key.slice(2);
-  return platform === 'win32' ? key.toLowerCase() : key;
-}
-
-/**
- * The files a file-editing call changed: the tool's declared write targets
- * (the files inside a `patch` diff, which no input key names), else the
- * path in its input.
- */
-function editedPaths(
-  input: unknown,
-  writeTargets: readonly string[] | undefined,
-): Array<{ key: string; path: string }> {
-  const out = new Map<string, string>();
-  const add = (path: unknown) => {
-    if (typeof path !== 'string' || path.length === 0) return;
-    const key = churnPathKey(path);
-    if (!out.has(key)) out.set(key, path);
-  };
-  for (const target of writeTargets ?? []) add(target);
-  if (out.size === 0 && input && typeof input === 'object') {
-    const r = input as Record<string, unknown>;
-    add(r['file_path'] ?? r['path'] ?? r['filePath'] ?? r['file']);
-  }
-  return [...out].map(([key, path]) => ({ key, path }));
-}
-
-/**
  * Everything the monitor accumulates while watching ONE session.
  *
  * These used to be flat instance fields, which made every counter project-wide:
@@ -223,6 +188,8 @@ function editedPaths(
  */
 interface SessionSignalState {
   failStreaks: Map<string, number>;
+  toolRecoveries: Map<string, object>;
+  runEpoch: number;
   errorTimestamps: number[];
   editTimestamps: Map<string, number[]>;
   /** Per-kind engagement cooldown. One session's steer must not mute another's. */
@@ -268,6 +235,8 @@ export class BrainMonitor {
   private fileEditTools!: ReadonlySet<string>;
   /** True while the watchers are attached; guards against double-subscribing. */
   private running = false;
+  /** Invalidates every pending consultation on stop or reconfiguration. */
+  private generation = 0;
   /**
    * HOST INTENT: set by `start()`, cleared by `stop()`. Distinct from
    * `running`, which is whether anything is currently attached — a monitor the
@@ -296,6 +265,8 @@ export class BrainMonitor {
       this.pruneIdleSessions();
       state = {
         failStreaks: new Map(),
+        toolRecoveries: new Map(),
+        runEpoch: 0,
         errorTimestamps: [],
         editTimestamps: new Map(),
         lastEngagedAt: new Map(),
@@ -449,6 +420,7 @@ export class BrainMonitor {
         this.trackFileChurn(state, e.sessionId, e.name, e.ok, e.input, e.writeTargets);
         if (!this.signals.toolFailureStreak) return;
         if (e.ok) {
+          if (state.engaging) state.toolRecoveries.set(e.name, {});
           state.failStreaks.delete(e.name);
           return;
         }
@@ -456,7 +428,10 @@ export class BrainMonitor {
         state.failStreaks.set(e.name, streak);
         if (streak >= this.toolFailureStreak) {
           state.failStreaks.delete(e.name);
+          const toolName = e.name;
+          const recovery = state.toolRecoveries.get(toolName);
           void this.engage('tool_failure_streak', e.sessionId, {
+            stillRelevant: () => state.toolRecoveries.get(toolName) === recovery,
             question: `The tool "${e.name}" has failed ${streak} times in a row. Should the agent be steered to a different approach?`,
             context: [
               `Tool: ${e.name}`,
@@ -470,6 +445,38 @@ export class BrainMonitor {
       }),
     );
 
+    // Run ownership invalidates every signal, even with the stall watchdog off.
+    this.unsubscribers.push(
+      this.opts.events.on('agent.run.started', (e) => {
+        // Ignore subagent run events — only track the leader's runs
+        const lsid = this.resolveLeaderSessionId();
+        if (lsid && e.sessionId && e.sessionId !== lsid) return;
+        const state = this.stateFor(e.sessionId);
+        state.activeRuns += 1;
+        state.lastProgressAt = Date.now();
+      }),
+      // `agent.run.completed` is the only terminator. `Agent.run` emits it on
+      // every exit path — the success path and, unconditionally, the catch
+      // path — and emits `agent.run.error` *in addition* when a run fails
+      // (`core/agent.ts:302` then `:310`). Decrementing on both meant one
+      // failed run subtracted two, and the `Math.max(0, …)` clamp hid it
+      // instead of letting the counter go visibly negative.
+      //
+      // The effect was that the watchdog below stopped watching: with two
+      // concurrent runs where one fails, `activeRuns` reaches 0 while a run
+      // is still live, and the stall check returns early on every tick.
+      this.opts.events.on('agent.run.completed', (e) => {
+        const lsid = this.resolveLeaderSessionId();
+        if (lsid && e.sessionId && e.sessionId !== lsid && !this.bySession.has(e.sessionId)) return;
+        const state = this.stateFor(e.sessionId);
+        state.activeRuns = Math.max(0, state.activeRuns - 1);
+        if (state.activeRuns === 0) {
+          state.activeTools.clear();
+          state.runEpoch++;
+        }
+      }),
+    );
+
     // ── Agent-stall watchdog ─────────────────────────────────────────────
     if (this.stallMs > 0 && this.signals.agentStall) {
       this.unsubscribers.push(
@@ -479,31 +486,6 @@ export class BrainMonitor {
           const state = this.stateFor(e.sessionId);
           state.activeTools.add(e.id);
           state.lastProgressAt = Date.now();
-        }),
-        this.opts.events.on('agent.run.started', (e) => {
-          // Ignore subagent run events — only track the leader's runs
-          const lsid = this.resolveLeaderSessionId();
-          if (lsid && e.sessionId && e.sessionId !== lsid) return;
-          const state = this.stateFor(e.sessionId);
-          state.activeRuns += 1;
-          state.lastProgressAt = Date.now();
-        }),
-        // `agent.run.completed` is the only terminator. `Agent.run` emits it on
-        // every exit path — the success path and, unconditionally, the catch
-        // path — and emits `agent.run.error` *in addition* when a run fails
-        // (`core/agent.ts:302` then `:310`). Decrementing on both meant one
-        // failed run subtracted two, and the `Math.max(0, …)` clamp hid it
-        // instead of letting the counter go visibly negative.
-        //
-        // The effect was that the watchdog below stopped watching: with two
-        // concurrent runs where one fails, `activeRuns` reaches 0 while a run
-        // is still live, and the stall check returns early on every tick.
-        this.opts.events.on('agent.run.completed', (e) => {
-          const lsid = this.resolveLeaderSessionId();
-          if (lsid && e.sessionId && e.sessionId !== lsid) return;
-          const state = this.stateFor(e.sessionId);
-          state.activeRuns = Math.max(0, state.activeRuns - 1);
-          if (state.activeRuns === 0) state.activeTools.clear();
         }),
         this.opts.events.on('iteration.started', (e) => {
           const lsid = this.resolveLeaderSessionId();
@@ -552,10 +534,14 @@ export class BrainMonitor {
           (t) => now - t <= this.errorStormWindowMs,
         );
         if (state.errorTimestamps.length >= this.errorStormCount) {
+          const evidence = state.errorTimestamps;
           const count = state.errorTimestamps.length;
           state.errorTimestamps = [];
           const message = e.err instanceof Error ? e.err.message : String(e.err);
           void this.engage('error_storm', e.sessionId, {
+            stillRelevant: () =>
+              evidence.filter((t) => Date.now() - t <= this.errorStormWindowMs).length >=
+              this.errorStormCount,
             question: `${count} errors occurred within ${Math.round(this.errorStormWindowMs / 1000)}s (phase: ${e.phase}). Should the agent be steered before more work is wasted?`,
             context: `Latest error: ${message.slice(0, 400)}`,
           });
@@ -576,6 +562,7 @@ export class BrainMonitor {
    * re-tuning cannot be used to bypass the engagement rate limit.
    */
   private detach(): void {
+    this.generation++;
     this.running = false;
     for (const off of this.unsubscribers) off();
     this.unsubscribers.length = 0;
@@ -583,11 +570,13 @@ export class BrainMonitor {
     // preserved so re-tuning cannot be used to bypass the rate limit.
     for (const state of this.bySession.values()) {
       state.failStreaks.clear();
+      state.toolRecoveries.clear();
       state.errorTimestamps = [];
       state.editTimestamps.clear();
       state.activeRuns = 0;
       state.activeTools.clear();
       state.lastProgressAt = 0;
+      state.engaging = false;
     }
     if (this.stallTimer) {
       clearInterval(this.stallTimer);
@@ -629,6 +618,9 @@ export class BrainMonitor {
     if (stamps.length >= this.fileChurnThreshold) {
       state.editTimestamps.delete(key);
       void this.engage('file_churn', sessionId, {
+        stillRelevant: () =>
+          stamps.filter((t) => Date.now() - t <= this.fileChurnWindowMs).length >=
+          this.fileChurnThreshold,
         question: `The file "${path}" has been edited ${stamps.length} times within ${Math.round(this.fileChurnWindowMs / 60_000)} minutes. Edit frequency alone does not establish an edit/revert loop; incremental implementation can legitimately require many edits. Is there independent evidence of repeated reversals or lack of progress that warrants steering? Otherwise, let the agent continue.`,
         context: [
           `File: ${path}`,
@@ -656,9 +648,11 @@ export class BrainMonitor {
   private async engage(
     kind: BrainInterventionKind,
     sessionId: string | undefined,
-    input: { question: string; context: string },
+    input: { question: string; context: string; stillRelevant?: () => boolean },
   ): Promise<void> {
     const state = this.stateFor(sessionId);
+    const generation = this.generation;
+    const runEpoch = state.runEpoch;
     const progressAtEngagement = state.lastProgressAt;
     // Rate limits, PER SESSION: a per-kind cooldown plus never more than one
     // engagement in flight for that session (an LLM-backed brain call takes
@@ -735,7 +729,10 @@ export class BrainMonitor {
           state.activeRuns === 0 ||
           state.activeTools.size > 0 ||
           state.lastProgressAt !== progressAtEngagement);
-      const intervened = !staleStall && (await this.maybeIntervene(kind, request, decision));
+      if (generation !== this.generation || !this.running || !this.enabled) return;
+      const staleSignal =
+        staleStall || state.runEpoch !== runEpoch || input.stillRelevant?.() === false;
+      const intervened = !staleSignal && (await this.maybeIntervene(kind, request, decision));
       this.opts.events.emit('brain.intervention', {
         sessionId: request.sessionId,
         kind,
@@ -747,7 +744,10 @@ export class BrainMonitor {
     } catch {
       // The monitor must never destabilize the host it protects.
     } finally {
-      state.engaging = false;
+      if (generation === this.generation) {
+        state.engaging = false;
+        state.toolRecoveries.clear();
+      }
     }
   }
 

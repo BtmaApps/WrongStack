@@ -139,8 +139,9 @@ const scenarios: Scenario[] = [
     votes: { executor: 'hold' },
     rationales: { executor: 'The cleanup is reversible, but quorum is not available.' },
     outcome: 'abstained',
-    verdict: 'Ask human',
-    rationale: 'Only 1 / 4 seats returned; the 50% quorum requirement was not met.',
+    verdict: 'Deny in headless mode',
+    rationale:
+      'Only 1 / 4 seats returned. Missing quorum skips the Judge; critical escalation has no single-model fallback and terminal policy denies this request.',
   },
 ];
 
@@ -202,7 +203,7 @@ function outcomeStyle(outcome: CouncilOutcome) {
     icon: CircleAlert,
     frame: 'border-brand-2/25 bg-brand-2/[0.07]',
     iconTone: 'text-brand-2',
-    label: 'ask_human',
+    label: 'deny · terminal policy',
   };
 }
 
@@ -269,12 +270,13 @@ export function BrainCouncilDemo() {
               <BrainCircuit className="size-4" /> Council decision graph
             </div>
             <h2 className="mt-4 max-w-3xl text-3xl font-black leading-[1.04] tracking-[-0.03em] sm:text-5xl">
-              One risky choice. Independent minds.
+              One risky choice. Seats and a Judge.
             </h2>
           </div>
           <p className="max-w-2xl text-base leading-7 text-zinc-400 lg:justify-self-end">
-            Watch provider-diverse seats vote without seeing each other, then pass through quorum,
-            veto, weighted majority and—only for a close call—a separate judge.
+            This example uses one voting round, provider-diverse seats and a separate Judge. Quorum
+            and veto come first; tied or below-threshold votes reach the Judge. Production panels
+            default to two rounds and may reuse a voter as Judge.
           </p>
         </div>
 
@@ -291,7 +293,7 @@ export function BrainCouncilDemo() {
                 <div className="mt-1 flex items-center gap-2 font-mono text-xs text-zinc-600">
                   <span className="uppercase">risk / {scenario.risk}</span>
                   <span>·</span>
-                  <span>timeout / 15s per seat</span>
+                  <span>example / 1 round · 15s per seat</span>
                 </div>
               </div>
             </div>
@@ -394,7 +396,7 @@ export function BrainCouncilDemo() {
                     Independent voting seats
                   </span>
                   <p className="mt-1 text-xs text-zinc-600">
-                    Rationales remain sealed until every seat settles.
+                    This first round hides peer ballots; later configured rounds share them.
                   </p>
                 </div>
                 <span className="flex items-center gap-1.5 font-mono text-xs text-zinc-600">

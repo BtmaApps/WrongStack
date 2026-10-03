@@ -81,14 +81,13 @@ describe('brain-runtime apply() validation', () => {
 
   // ── humanTimeoutMs ─────────────────────────────────────────────────────
 
-  it('rejects non-positive humanTimeoutMs', () => {
+  it('rejects negative humanTimeoutMs and permits zero for indefinite waiting', () => {
     const r = rt();
     expect(() => r.apply({ humanTimeoutMs: -1 }, { persist: false })).toThrow(
       'Invalid humanTimeoutMs',
     );
-    expect(() => r.apply({ humanTimeoutMs: 0 }, { persist: false })).toThrow(
-      'Invalid humanTimeoutMs',
-    );
+    r.apply({ humanTimeoutMs: 0 }, { persist: false });
+    expect(r.getHumanTimeoutMs()).toBe(0);
   });
 
   it('clears humanTimeoutMs with null', () => {

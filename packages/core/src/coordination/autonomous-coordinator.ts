@@ -74,6 +74,7 @@ export class AutonomousCoordinator {
   readonly consensus: ConsensusProtocol;
   readonly changes: ChangeManager;
   readonly brain: AutonomousBrain;
+  private readonly decisionByGoal = new Map<string, string>();
 
   private readonly selfAgentId: string;
   private readonly fleet?: FleetBus | undefined;
@@ -146,6 +147,8 @@ export class AutonomousCoordinator {
 
     // ── Brain ─────────────────────────────────────────────────────────
     this.brain = new AutonomousBrain({
+      arbiter: opts.arbiter,
+      sessionId: opts.sessionId,
       llmProvider: opts.llmProvider,
       graph: this.graph,
       fleet: this.fleet ?? undefined,
@@ -247,8 +250,9 @@ export class AutonomousCoordinator {
           break;
         }
 
+        const decisionId = randomUUID();
         const decision = await this.brain.decideAuto({
-          id: randomUUID(),
+          id: decisionId,
           source: 'system',
           decisionType: 'prioritize_goals',
           question: `What should we work on next? Open goals: ${dispatchable.map((g) => g.title).join(', ')}`,
@@ -283,6 +287,7 @@ export class AutonomousCoordinator {
         if (decision.optionId) {
           const goalNode = optionToGoal(this.graph, decision.optionId);
           if (goalNode) {
+            this.decisionByGoal.set(goalNode.id, decisionId);
             await this._processGoal(goalNode.id);
           }
         }
@@ -375,6 +380,7 @@ export class AutonomousCoordinator {
    */
   dispose(): void {
     this.stop();
+    this.decisionByGoal.clear();
     for (const off of this.unsubs.splice(0)) {
       try {
         off();
@@ -529,6 +535,7 @@ export class AutonomousCoordinator {
 
   private async _completeTask(taskId: string, result: string): Promise<void> {
     await this.auction.complete(taskId, result);
+    this.recordDecisionOutcome(taskId, 'success');
     if (this.dag.getNode(taskId)) {
       this.dag.complete(taskId, result);
     }
@@ -586,10 +593,18 @@ export class AutonomousCoordinator {
   }
 
   private _recordTaskFailed(taskId: string, error: string): void {
+    this.recordDecisionOutcome(taskId, 'failure');
     if (this.dag.getNode(taskId)) {
       this.dag.fail(taskId, error);
     }
     this._emit({ type: 'goal:failed', goalId: taskId, text: error });
+  }
+
+  private recordDecisionOutcome(taskId: string, outcome: 'success' | 'failure'): void {
+    const decisionId = this.decisionByGoal.get(taskId);
+    if (!decisionId) return;
+    this.decisionByGoal.delete(taskId);
+    this.brain.recordOutcome(decisionId, outcome);
   }
 
   private async _handlePendingChange(change: {

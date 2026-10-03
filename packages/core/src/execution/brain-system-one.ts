@@ -36,7 +36,7 @@ export interface SystemOneBrainTierOptions {
   minConfidence?: number | undefined;
   /** Minimum probability of the chosen option. Default 0.7. */
   minProbability?: number | undefined;
-  /** Minimum "the state is enough to decide" Noul. Default 0.6. */
+  /** Minimum "the state is enough to decide" Noul. Default 0.4. */
   minDecidable?: number | undefined;
   timeoutMs?: number | undefined;
   getDecisionDigest?: ((request: BrainDecisionRequest) => string | undefined) | undefined;
@@ -173,9 +173,9 @@ export function createSystemOneBrainTier(opts: SystemOneBrainTierOptions): Syste
 
   return {
     async decide(request) {
-      const judge = opts.getJudge();
-      if (!judge) return null;
       try {
+        const judge = opts.getJudge();
+        if (!judge) return null;
         const probe = await probeSystemOneBrain(judge, request, {
           digest: opts.getDecisionDigest?.(request),
           timeoutMs: opts.timeoutMs,

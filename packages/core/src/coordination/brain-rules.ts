@@ -388,7 +388,9 @@ export interface RuleBrainArbiterOptions {
  * Deterministic rule tier. Sits in front of the policy tier so a configured
  * rule can settle a question before any of the tiers that cost tokens.
  */
-export function createRuleBrainArbiter(opts: RuleBrainArbiterOptions): BrainArbiter {
+export function createRuleBrainArbiter(opts: RuleBrainArbiterOptions): BrainArbiter & {
+  peekDecision(request: BrainDecisionRequest): { decision: BrainDecision; ruleId: string } | null;
+} {
   const hitTimestamps = new Map<string, number[]>();
 
   const rateLimiter: BrainRuleRateLimiter = {
@@ -400,12 +402,14 @@ export function createRuleBrainArbiter(opts: RuleBrainArbiterOptions): BrainArbi
   };
 
   return {
+    peekDecision: (request) => evaluateBrainRules(opts.getRules(), request, rateLimiter),
     async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
       const startedAt = Date.now();
       const hit = evaluateBrainRules(opts.getRules(), request, rateLimiter);
       if (hit) {
         const now = Date.now();
-        const stamps = (hitTimestamps.get(hit.ruleId) ?? []).filter((t) => now - t <= 300_000);
+        const windowMs = opts.getRules().find((rule) => rule.id === hit.ruleId)?.windowMs ?? 60_000;
+        const stamps = (hitTimestamps.get(hit.ruleId) ?? []).filter((t) => now - t <= windowMs);
         stamps.push(now);
         hitTimestamps.set(hit.ruleId, stamps);
 

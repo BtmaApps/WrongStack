@@ -34,6 +34,23 @@ Login reads the credential through the surface's masked secret prompt; never put
 it in slash-command arguments. Jev is a decision provider and remains separate
 from chat model selection.
 
+## Brain System One and the Council Judge
+
+The Brain's optional Jev **System One** tier uses typed Choice and Noul judgments
+over the supplied evidence. It can settle requests with at least two options,
+within the live autonomy ceiling and below the Council floor (at most medium
+without a panel). Missing/unavailable accounts, timeout, resolver failure or
+insufficient confidence defer to the remaining Brain chain. The default timeout
+is four seconds; account request settings still apply to the underlying client.
+
+The **Council Judge** is a separate chat-model role selected by
+`brain.council.judge` or derived from the Brain model pool. It reads Council
+rationales for tied or below-threshold votes, or synthesizes distinct free-text
+stances. Disabling `/jev feature brain` does not remove the Council Judge.
+For critical Brain requests, an unresolved Council or Judge failure escalates
+without a single-model fallback; high-risk fallback remains available.
+See [Brain controls](slash/brain.md#the-judge-is-still-part-of-council).
+
 ## Agent-callable decisions
 
 With an account configured, the `tool` feature exposes `jev` alongside `llm`

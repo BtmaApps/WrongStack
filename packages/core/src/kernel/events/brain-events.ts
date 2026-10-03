@@ -43,6 +43,8 @@ export interface BrainEventMap {
      * and the human's actual answer never lands in the record.
      */
     pending?: boolean | undefined;
+    /** The existing user-input form owns the prompt UI when true. */
+    structured?: boolean | undefined;
   };
   'brain.human_answered': {
     sessionId?: string | undefined;
@@ -267,6 +269,8 @@ export interface BrainEventMap {
     usage: Usage;
     /** Usage contributed by this one accounting call (not cumulative). */
     deltaUsage?: Usage | undefined;
+    /** This accounting call's estimated cost; absent when required prices are unknown. */
+    deltaCost?: { input: number; output: number; total: number } | undefined;
     cost: { input: number; output: number; total: number };
     /** Provider id that produced this usage (e.g. 'anthropic'), when known. */
     provider?: string | undefined;

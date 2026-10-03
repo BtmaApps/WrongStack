@@ -40,7 +40,9 @@ export function selectLiveAgents(
 
 export function fmtTokens(n: number): string {
   if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  const k = (n / 1000).toFixed(1);
+  // 999_950 rounds to "1000.0k" — that is the next unit.
+  if (n < 1_000_000 && Number(k) < 1000) return `${k}k`;
   return `${(n / 1_000_000).toFixed(1)}M`;
 }
 

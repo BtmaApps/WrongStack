@@ -145,7 +145,7 @@ describe('explainBrainDecision', () => {
     const req = makeRequest({ risk: 'high' });
     const ctx: BrainExplainContext = {
       council: { enabled: true, minRisk: 'high' },
-      maxAutoRisk: 'medium',
+      maxAutoRisk: 'high',
     };
 
     const explanation = explainBrainDecision(req, ctx);

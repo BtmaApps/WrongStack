@@ -18,8 +18,9 @@
  */
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
-import type { LLMProvider } from '@wrongstack/core/coordination';
+import type { BrainArbiter, LLMProvider } from '@wrongstack/core/coordination';
 import { AutonomousCoordinator, type Director, type Mailbox } from '@wrongstack/core/coordination';
+import { completeBrainLlm, parseOptionDecision } from '@wrongstack/core/execution';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import type { TuiRuntimeState } from './tui-runtime-state.js';
@@ -31,6 +32,7 @@ interface CoordinatorSetupContext {
   events: EventBus;
   /** The agent's Context — provides provider, model, session id, transcript path. */
   context: Context;
+  brain?: BrainArbiter | undefined;
   /** Resolved WrongStack paths — used for session-dir resolution. */
   wpaths: WstackPaths;
   /** The mailbox — cast to the core Mailbox interface for the coordinator. */
@@ -110,40 +112,20 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
             `Risk: ${prompt.risk}\n\n` +
             'Reply with ONLY the JSON object.',
         };
-        const resp = await context.provider.complete(
+        const text = await completeBrainLlm(
+          { provider: context.provider, model: context.model },
           {
-            model: context.model,
-            system: sysPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: [userPrompt],
-              },
-            ],
-            temperature: 0,
+            system: sysPrompt.map((block) => block.text).join('\n'),
+            user: userPrompt.text,
+            timeoutMs: 45_000,
+            signal: context.signal,
+            responseFormat: { type: 'json_object' },
           },
-          { signal: context.signal },
         );
-        const text = resp.content
-          .filter(
-            (b): b is { type: 'text'; text: string } => (b as { type?: string }).type === 'text',
-          )
-          .map((b) => b.text)
-          .join('\n')
-          .trim();
-        // Parse the JSON, tolerate code fences.
-        const cleaned = text
-          .replace(/^```(?:json)?\s*/i, '')
-          .replace(/```$/, '')
-          .trim();
-        try {
-          const parsed = JSON.parse(cleaned) as { optionId?: string; rationale?: string };
-          const optId = parsed.optionId ?? prompt.options[0]?.id ?? '';
-          return { optionId: optId, rationale: parsed.rationale ?? '' };
-        } catch {
-          // Fallback: pick the first option.
-          return { optionId: prompt.options[0]?.id ?? '', rationale: text };
-        }
+        const parsed = parseOptionDecision(text, prompt.options);
+        if (parsed?.type !== 'answer' || !parsed.optionId)
+          throw new Error('Coordinator returned no exact offered option id.');
+        return { optionId: parsed.optionId, rationale: parsed.rationale ?? '' };
       },
     };
 
@@ -156,6 +138,8 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
       selfAgentId: `leader@${context.session.id ?? 'unknown'}`,
       selfAgentName: 'Leader',
       llmProvider,
+      arbiter: ctx.brain,
+      sessionId: context.session.id,
       onCoordinatorEvent: (event) => {
         for (const fn of state.coordinatorEvents) fn(event);
       },

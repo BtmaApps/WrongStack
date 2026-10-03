@@ -87,13 +87,21 @@ export class BrainCircuitBreaker {
    * probes, or an outage would still cost the full timeout on every one.
    */
   shouldAttempt(): boolean {
+    if (!this.canAttempt()) return false;
     if (!this.enabled) return true;
     const state = this.state();
     if (state === 'closed') return true;
-    if (state === 'open') return false;
-    if (this.probeInFlight) return false;
     this.probeInFlight = true;
     return true;
+  }
+
+  /** Inspect eligibility without claiming the half-open probe. */
+  canAttempt(): boolean {
+    return (
+      !this.enabled ||
+      this.state() === 'closed' ||
+      (this.state() === 'half_open' && !this.probeInFlight)
+    );
   }
 
   recordSuccess(targetLabel?: string): void {

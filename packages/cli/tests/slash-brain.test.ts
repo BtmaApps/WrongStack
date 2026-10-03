@@ -584,6 +584,7 @@ describe('/brain slash command', () => {
         ...over,
       };
       const runtime: BrainRuntime = {
+        dispose: vi.fn(),
         arbiter: { decide: vi.fn() },
         getMode: () => snapshot.mode,
         getMaxAutoRisk: () => snapshot.maxAutoRisk,

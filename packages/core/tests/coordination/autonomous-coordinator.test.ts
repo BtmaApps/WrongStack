@@ -482,6 +482,7 @@ describe('AutonomousCoordinator', () => {
         onCoordinatorEvent: (event) => events.push(event),
       });
 
+      const recordOutcome = vi.spyOn(coordinator.brain, 'recordOutcome');
       await coordinator.run({ goal: 'fix null pointer bug', maxIterations: 2 });
       expect(director._assignCalls.length).toBeGreaterThan(0);
       const assignedTask = director._assignCalls[0]!.task;
@@ -503,6 +504,8 @@ describe('AutonomousCoordinator', () => {
         events.some((event) => event.type === 'goal:failed' && event.goalId === assignedTask.id),
       ).toBe(false);
       expect(coordinator.dag.getNode(assignedTask.id)?.status).toBe('done');
+      expect(recordOutcome).toHaveBeenCalledWith(expect.any(String), 'success');
+      expect(coordinator.graph.get(recordOutcome.mock.calls[0]![0])?.type).toBe('decision');
       expect(
         coordinator.graph.getGoals({ status: 'done' }).some((goal) => goal.id === assignedTask.id),
       ).toBe(true);

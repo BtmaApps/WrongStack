@@ -244,6 +244,8 @@ export interface BrainApplyResult {
 }
 
 export interface BrainRuntime {
+  /** Release runtime-owned cache watchers and telemetry subscriptions. */
+  dispose(): void;
   /** STABLE arbiter handle — the inner tier chain swaps on `apply`. */
   arbiter: BrainArbiter;
   getMode(): BrainEscalationMode;

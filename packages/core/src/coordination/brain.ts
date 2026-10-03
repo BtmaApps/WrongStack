@@ -8,6 +8,7 @@
  */
 
 import type { EventBus } from '../kernel/events.js';
+import type { UserInputAwaiter } from '../types/user-input.js';
 import {
   type BrainHeuristicsConfig,
   isBlockedResolved,
@@ -125,6 +126,8 @@ export class ObservableBrainArbiter implements BrainArbiter {
 }
 
 interface BrainDecisionQueueOptions {
+  /** Structured forms use the existing user input transport when supplied. */
+  userInputAwaiter?: UserInputAwaiter | undefined;
   /** Safety fallback if the human never answers. Default: no timeout. */
   timeoutMs?: number | undefined;
   /**
@@ -140,6 +143,7 @@ interface BrainDecisionQueueOptions {
  * ask-human event, then resolves when the TUI emits `brain.human_answered`.
  */
 export class BrainDecisionQueue {
+  private disposed = false;
   private readonly pending = new Map<
     string,
     {
@@ -148,6 +152,7 @@ export class BrainDecisionQueue {
       /** When the human was asked — the start of the `human`/`terminal` step. */
       askedAt: number;
       timer?: ReturnType<typeof setTimeout> | undefined;
+      formAbort: AbortController;
     }
   >();
   private readonly offAnswer: () => void;
@@ -159,7 +164,20 @@ export class BrainDecisionQueue {
     this.offAnswer = this.events.on('brain.human_answered', (answer) => {
       const pending = this.pending.get(answer.id);
       if (!pending) return;
+      if (
+        answer.sessionId !== undefined &&
+        pending.request.sessionId !== undefined &&
+        answer.sessionId !== pending.request.sessionId
+      )
+        return;
+      if (
+        !answer.deny &&
+        pending.request.options?.length &&
+        !pending.request.options.some((option) => option.id === answer.optionId)
+      )
+        return;
       this.pending.delete(answer.id);
+      pending.formAbort.abort();
       if (pending.timer) clearTimeout(pending.timer);
       markDecisionTier(pending.request, 'human');
       if (answer.deny) {
@@ -193,6 +211,9 @@ export class BrainDecisionQueue {
   }
 
   async requestHumanDecision(request: BrainDecisionRequest): Promise<BrainDecision> {
+    if (this.disposed) return { type: 'deny', reason: 'Brain decision queue disposed.' };
+    if (this.pending.has(request.id))
+      return { type: 'deny', reason: 'A Brain decision with this id is already pending.' };
     const ask: BrainDecision = {
       type: 'ask_human',
       prompt: formatHumanPrompt(request),
@@ -206,10 +227,12 @@ export class BrainDecisionQueue {
         resolve: (decision: BrainDecision) => void;
         askedAt: number;
         timer?: ReturnType<typeof setTimeout> | undefined;
-      } = { request, resolve, askedAt };
+        formAbort: AbortController;
+      } = { request, resolve, askedAt, formAbort: new AbortController() };
       if (this.opts.timeoutMs && this.opts.timeoutMs > 0) {
         entry.timer = setTimeout(() => {
           this.pending.delete(request.id);
+          entry.formAbort.abort();
           // Nobody answered — this resolves through the terminal policy, not
           // through human authority.
           markDecisionTier(request, 'terminal');
@@ -245,14 +268,65 @@ export class BrainDecisionQueue {
       decision: ask,
       at: Date.now(),
       pending: true,
+      ...(this.opts.userInputAwaiter ? { structured: true } : {}),
     });
+    const entry = this.pending.get(request.id);
+    if (entry && this.opts.userInputAwaiter) {
+      void this.opts
+        .userInputAwaiter(
+          {
+            id: request.id,
+            title: 'Brain decision',
+            description: request.context,
+            tabs: [
+              {
+                id: 'brain',
+                label: 'Decision',
+                questions: [
+                  {
+                    id: 'decision',
+                    prompt: request.question,
+                    required: true,
+                    kind: request.options?.length ? 'single_select' : 'text',
+                    options: request.options?.map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                      description: option.consequence,
+                    })),
+                  },
+                ],
+              },
+            ],
+          },
+          { signal: entry.formAbort.signal, sessionId: request.sessionId },
+        )
+        .then((response) => {
+          if (!response || this.pending.get(request.id) !== entry) return;
+          const answer = response.answers.find((item) => item.questionId === 'decision');
+          if (answer?.delegated) return;
+          this.events.emit('brain.human_answered', {
+            id: request.id,
+            sessionId: request.sessionId,
+            deny: response.status === 'cancelled',
+            optionId: answer?.selectedOptionIds[0],
+            text: answer?.text,
+            at: Date.now(),
+          });
+        })
+        .catch(() => {
+          /* The queue timeout remains authoritative. */
+        });
+    }
     return pending;
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     this.offAnswer();
     for (const [id, pending] of this.pending) {
       if (pending.timer) clearTimeout(pending.timer);
+      pending.formAbort.abort();
       pending.resolve({ type: 'deny', reason: 'Brain decision queue disposed.' });
       this.pending.delete(id);
     }
@@ -351,10 +425,7 @@ export class EscalationRoutingBrainArbiter implements BrainArbiter {
   async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
     const decision = await this.inner.decide(request);
     if (decision.type !== 'ask_human') return decision;
-    if (request.allowHumanEscalation === false) {
-      return terminalPolicyDecision(request, this.getTerminalPolicy?.() ?? 'conservative');
-    }
-    if (this.getMode() === 'interactive' && this.queue) {
+    if (request.allowHumanEscalation !== false && this.getMode() === 'interactive' && this.queue) {
       return this.queue.requestHumanDecision(request);
     }
     const startedAt = Date.now();
@@ -422,78 +493,93 @@ export class DefaultBrainArbiter implements BrainArbiter {
     };
   }
 
-  async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
-    const recommended = request.options?.find((option) => option.recommended);
-    if (this.heuristics.lowRiskAutoAnswer && request.risk === 'low' && recommended) {
-      markDecisionTier(request, 'heuristic');
-      return {
-        type: 'answer',
-        optionId: recommended.id,
-        text: recommended.label,
-        rationale: 'Low-risk request with an explicit recommended option.',
-      };
-    }
-
-    // Blocked dependency explicitly resolved → continue. Uses the shared
-    // heuristic from brain-heuristics.ts (same pattern as quickDecide in
-    // autonomy-brain.ts). Requires the caller to have declared continue safe
-    // AND explicit resolution evidence in the context. Skips option-bearing
-    // requests (options are control-plane input demanding a structured
-    // choice, not a keyword guess — same discipline as quickDecide).
-    if (
-      this.heuristics.blockedResolved &&
-      !request.options?.length &&
-      request.fallback === 'continue' &&
-      request.context
-    ) {
-      if (
-        isBlockedResolved(
-          request.question.toLowerCase(),
-          request.context.toLowerCase(),
-          this.heuristics.blockedResolvedMarkers,
-        )
-      ) {
-        markDecisionTier(request, 'heuristic');
+  /** Pure policy inspection, shared by runtime and explain. */
+  evaluate(request: BrainDecisionRequest): {
+    decision: BrainDecision;
+    tier: 'policy' | 'heuristic';
+  } {
+    let tier: 'policy' | 'heuristic' = 'policy';
+    const decide = (): BrainDecision => {
+      const recommended = request.options?.find((option) => option.recommended);
+      if (this.heuristics.lowRiskAutoAnswer && request.risk === 'low' && recommended) {
+        tier = 'heuristic';
         return {
           type: 'answer',
-          text: 'Blocker resolved. Continue with the previously blocked work.',
-          rationale: 'Heuristic: blocking dependency explicitly resolved — resuming.',
+          optionId: recommended.id,
+          text: recommended.label,
+          rationale: 'Low-risk request with an explicit recommended option.',
         };
       }
-    }
 
-    // Fallback semantics. A `continue` answer here is only PROVISIONAL (the
-    // tiered arbiter forwards it to the LLM tier), and `ask_human` is always
-    // handed onward, so both marks get overwritten by whichever tier actually
-    // resolves. Marking anyway keeps the policy visible when no later tier
-    // takes over.
-    markDecisionTier(request, 'policy');
-    switch (request.fallback) {
-      case 'deny':
-        return {
-          type: 'deny',
-          reason: `Brain could not safely decide: ${request.question}`,
-        };
-      case 'continue':
-        return {
-          type: 'answer',
-          text: 'Continue with the caller default.',
-          rationale: 'No safe Brain decision was available; request fallback is continue.',
-        };
-      case 'ask_human':
-        return {
-          type: 'ask_human',
-          prompt: formatHumanPrompt(request),
-          options: request.options,
-          rationale: 'Decision requires human authority or lacks a safe automatic option.',
-        };
-      default:
-        // Runtime safety: deserialized or unknown fallback defaults to deny
-        return {
-          type: 'deny',
-          reason: `Brain could not safely decide (unknown fallback: ${String(request.fallback)}): ${request.question}`,
-        };
-    }
+      // Blocked dependency explicitly resolved → continue. Uses the shared
+      // heuristic from brain-heuristics.ts (same pattern as quickDecide in
+      // autonomy-brain.ts). Requires the caller to have declared continue safe
+      // AND explicit resolution evidence in the context. Skips option-bearing
+      // requests (options are control-plane input demanding a structured
+      // choice, not a keyword guess — same discipline as quickDecide).
+      if (
+        this.heuristics.blockedResolved &&
+        !request.options?.length &&
+        request.fallback === 'continue' &&
+        request.context
+      ) {
+        if (
+          isBlockedResolved(
+            request.question.toLowerCase(),
+            request.context.toLowerCase(),
+            this.heuristics.blockedResolvedMarkers,
+          )
+        ) {
+          tier = 'heuristic';
+          return {
+            type: 'answer',
+            text: 'Blocker resolved. Continue with the previously blocked work.',
+            rationale: 'Heuristic: blocking dependency explicitly resolved — resuming.',
+          };
+        }
+      }
+
+      // Fallback semantics. A `continue` answer here is only PROVISIONAL (the
+      // tiered arbiter forwards it to the LLM tier), and `ask_human` is always
+      // handed onward, so both marks get overwritten by whichever tier actually
+      // resolves. Marking anyway keeps the policy visible when no later tier
+      // takes over.
+      tier = 'policy';
+      switch (request.fallback) {
+        case 'deny':
+          return {
+            type: 'deny',
+            reason: `Brain could not safely decide: ${request.question}`,
+          };
+        case 'continue':
+          return {
+            type: 'answer',
+            text: 'Continue with the caller default.',
+            rationale: 'No safe Brain decision was available; request fallback is continue.',
+          };
+        case 'ask_human':
+          return {
+            type: 'ask_human',
+            prompt: formatHumanPrompt(request),
+            options: request.options,
+            rationale: 'Decision requires human authority or lacks a safe automatic option.',
+          };
+        default:
+          // Runtime safety: deserialized or unknown fallback defaults to deny
+          return {
+            type: 'deny',
+            reason: `Brain could not safely decide (unknown fallback: ${String(request.fallback)}): ${request.question}`,
+          };
+      }
+    };
+    const decision = decide();
+    return { decision, tier };
+  }
+
+  async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
+    const result = this.evaluate(request);
+    markDecisionTier(request, result.tier);
+    return result.decision;
   }
 }
 

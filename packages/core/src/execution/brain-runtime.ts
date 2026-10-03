@@ -47,6 +47,10 @@ import type { BrainConfig, BrainCouncilVoterConfig, BrainModelEntry } from '../t
 import { createTieredBrainArbiter } from './autonomy-brain.js';
 import { assembleBrainTiers } from './brain-chain.js';
 import { BrainCircuitBreaker } from './brain-circuit.js';
+import { hasAdaptiveBrainRisk, hasBrainProductDefaults } from './brain-runtime-defaults.js';
+
+export { type BrainDefaultsContext, resolveBrainConfigDefaults } from './brain-runtime-defaults.js';
+
 import { createBrainPersistenceQueue } from './brain-persistence.js';
 import {
   AUTO_RISK_LEVELS,
@@ -124,51 +128,6 @@ function compactVoter(voter: BrainCouncilVoterConfig): string | BrainCouncilVote
   return { ...voter };
 }
 
-export interface BrainDefaultsContext {
-  /** The session's fallback chain (`config.fallbackModels`) — seeds the default pool. */
-  fallbackModels?: readonly string[] | undefined;
-}
-
-/**
- * Product defaults for hosts that want a minimum-human Brain out of the box
- * (CLI/TUI wiring and the standalone WebUI server both apply this before
- * `createBrainRuntime`). Only FILLS GAPS — every explicitly configured field
- * wins, so existing `config.brain` blocks are untouched by updates.
- *
- *   - `models`  → the user's own `fallbackModels` chain (never hardcoded
- *     model ids; every install has different providers). With ≥2 entries the
- *     council auto-derives from the pool, so multi-model users get a council
- *     by default.
- *   - `mode`    → 'headless': decisions never block on a human; the terminal
- *     policy (safe default / deny) is the escalation of last resort.
- *   - `maxAutoRisk` → adaptive: 'all' when a council can convene (critical
- *     questions get a multi-model panel), otherwise 'high' (critical
- *     questions resolve via the conservative terminal policy instead of a
- *     single unchecked model).
- *   - `humanTimeoutMs` → 120s: if the user explicitly switches back to
- *     'interactive', an unanswered prompt still auto-resolves instead of
- *     hanging an unattended run forever. Set `humanTimeoutMs: 0` to restore
- *     the legacy wait-indefinitely behavior.
- *
- * NOTE deliberately NOT persisted anywhere — resolved at boot, so existing
- * users pick these up on update without any config migration/write.
- */
-export function resolveBrainConfigDefaults(
-  brain: BrainConfig | undefined,
-  ctx: BrainDefaultsContext = {},
-): BrainConfig {
-  const cfg: BrainConfig = { ...(brain ?? {}) };
-  if (cfg.models === undefined && ctx.fallbackModels && ctx.fallbackModels.length > 0) {
-    cfg.models = [...ctx.fallbackModels];
-  }
-  const seatCount = cfg.council?.voters?.length ?? cfg.models?.length ?? 0;
-  const councilLikely = cfg.council?.enabled ?? seatCount >= 2;
-  if (cfg.mode === undefined) cfg.mode = 'headless';
-  if (cfg.maxAutoRisk === undefined) cfg.maxAutoRisk = councilLikely ? 'all' : 'high';
-  if (cfg.humanTimeoutMs === undefined) cfg.humanTimeoutMs = 120_000;
-  return cfg;
-}
-
 /** Lenient boot-time normalization: bad entries are dropped, not fatal. */
 function normalizeInitial(config: BrainConfig | undefined): BrainConfig {
   const cfg: BrainConfig = { ...(config ?? {}) };
@@ -202,6 +161,7 @@ function normalizeInitial(config: BrainConfig | undefined): BrainConfig {
 
 export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
   let cfg: BrainConfig = normalizeInitial(opts.initialConfig);
+  let adaptiveRisk = hasAdaptiveBrainRisk(opts.initialConfig);
   let poolLabels: string[] = [];
   let councilLabels: string[] = [];
   let judgeLabel: string | undefined;
@@ -209,17 +169,21 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
   let circuit: BrainCircuitBreaker | undefined;
   let decisionCache: BrainDecisionCache | undefined;
   let compiledRules: CompiledBrainRule[] = [];
+  let peekRule: ReturnType<typeof createRuleBrainArbiter>['peekDecision'] | undefined;
   let ruleErrors: string[] = [];
   let current: BrainArbiter;
+  let disposed = false;
+  const effectiveMaxAutoRisk = () =>
+    adaptiveRisk ? (councilLabels.length > 0 ? 'all' : 'high') : (cfg.maxAutoRisk ?? 'medium');
+  const effectiveHumanTimeout = () =>
+    cfg.humanTimeoutMs ?? (hasBrainProductDefaults(opts.initialConfig) ? 120_000 : undefined);
   const persistConfig = createBrainPersistenceQueue(opts.persist);
   const tierCounter = new BrainTierCounter();
-  if (opts.events) {
-    opts.events.on('brain.tier_transition', (e) => {
-      if (e.terminal) {
-        tierCounter.record(e.tier);
-      }
-    });
-  }
+  const offTierStats = opts.events?.on('brain.tier_transition', (e) => {
+    if (e.terminal) {
+      tierCounter.record(e.tier);
+    }
+  });
 
   // Digest + streak wrappers check the host's live ledger enablement per call
   // so a ledger toggle takes effect without re-plumbing.
@@ -253,7 +217,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
     const tiered = createTieredBrainArbiter({
       policy: new DefaultBrainArbiter({ heuristics: cfg.heuristics }),
       autonomous: tiers.autonomous,
-      getMaxAutoRisk: () => cfg.maxAutoRisk ?? 'medium',
+      getMaxAutoRisk: effectiveMaxAutoRisk,
       council: tiers.council,
       getCouncilMinRisk: tiers.getCouncilMinRisk,
       // Product default 'when-decided', not the bare-API 'never': the tier
@@ -281,14 +245,16 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
     const compileResult = compileBrainRules(cfg.rules);
     compiledRules = compileResult.rules;
     ruleErrors = compileResult.errors;
-    const ruled: BrainArbiter =
+    const ruleArbiter =
       compiledRules.length > 0
         ? createRuleBrainArbiter({
             inner: tiered,
             getRules: () => compiledRules,
             events: opts.events,
           })
-        : tiered;
+        : undefined;
+    peekRule = ruleArbiter?.peekDecision;
+    const ruled: BrainArbiter = ruleArbiter ?? tiered;
 
     // Decision cache wraps the tiers but stays INSIDE the ledger guard: a
     // guard denial must always be evaluated against the live failure
@@ -346,7 +312,9 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       next.humanTimeoutMs =
         patch.humanTimeoutMs === null
           ? undefined
-          : requirePositiveMs(patch.humanTimeoutMs, 'humanTimeoutMs');
+          : patch.humanTimeoutMs === 0
+            ? 0
+            : requirePositiveMs(patch.humanTimeoutMs, 'humanTimeoutMs');
     }
     if (patch.models !== undefined) {
       next.models = patch.models === null ? undefined : patch.models.map(normalizeEntry);
@@ -601,7 +569,11 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
         next.ledger = undefined;
       } else {
         const l = { ...(next.ledger ?? {}) };
-        if (patch.ledger.enabled !== undefined) l.enabled = patch.ledger.enabled;
+        if (patch.ledger.enabled !== undefined) {
+          if (typeof patch.ledger.enabled !== 'boolean')
+            throw new Error('Invalid ledger.enabled: expected a boolean');
+          l.enabled = patch.ledger.enabled;
+        }
         if (patch.ledger.autoDenyAfterFailures !== undefined) {
           const n = patch.ledger.autoDenyAfterFailures;
           if (n !== null && (!Number.isInteger(n) || n < 0)) {
@@ -641,11 +613,11 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
     const voters = (councilCfg?.voters ?? []).map((v) => normalizeVoter(v));
     return {
       mode: cfg.mode ?? 'interactive',
-      maxAutoRisk: cfg.maxAutoRisk ?? 'medium',
+      maxAutoRisk: effectiveMaxAutoRisk(),
       models: (cfg.models ?? []).map((m) => normalizeEntry(m)),
       strategy: cfg.strategy ?? 'fallback',
       decisionTimeoutMs: cfg.decisionTimeoutMs,
-      humanTimeoutMs: cfg.humanTimeoutMs,
+      humanTimeoutMs: effectiveHumanTimeout(),
       council: {
         enabled: councilLabels.length > 0,
         configured: councilCfg?.enabled,
@@ -713,7 +685,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       councilLabels: [...councilLabels],
       judgeLabel,
       judgeIsVoter,
-      usingSessionModel: (cfg.models ?? []).length === 0,
+      usingSessionModel: poolLabels.length === 0,
       tierStats: tierCounter.snapshot(),
     };
   }
@@ -721,7 +693,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
   function getConfig(): BrainConfig {
     const out: BrainConfig = {};
     if (cfg.mode !== undefined) out.mode = cfg.mode;
-    if (cfg.maxAutoRisk !== undefined) out.maxAutoRisk = cfg.maxAutoRisk;
+    if (!adaptiveRisk && cfg.maxAutoRisk !== undefined) out.maxAutoRisk = cfg.maxAutoRisk;
     if (cfg.models?.length) out.models = cfg.models.map((m) => compactEntry(normalizeEntry(m)));
     if (cfg.strategy !== undefined) out.strategy = cfg.strategy;
     if (cfg.decisionTimeoutMs !== undefined) out.decisionTimeoutMs = cfg.decisionTimeoutMs;
@@ -766,21 +738,36 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
   }
 
   return {
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      offTierStats?.();
+      decisionCache?.stop();
+    },
     arbiter: {
-      decide: (request) => current.decide(request),
+      async decide(request) {
+        if (disposed) return { type: 'deny', reason: 'Brain runtime disposed.' };
+        const decision = await current.decide(request);
+        return disposed ? { type: 'deny', reason: 'Brain runtime disposed.' } : decision;
+      },
     },
     getMode: () => cfg.mode ?? 'interactive',
-    getMaxAutoRisk: () => cfg.maxAutoRisk ?? 'medium',
-    getHumanTimeoutMs: () => cfg.humanTimeoutMs,
+    getMaxAutoRisk: effectiveMaxAutoRisk,
+    getHumanTimeoutMs: effectiveHumanTimeout,
     getSnapshot,
     getConfig,
     apply(patch, applyOpts) {
+      if (disposed) throw new Error('Brain runtime disposed.');
       const { next, rebuildNeeded } = mergePatch(patch);
+      if (patch.maxAutoRisk !== undefined) adaptiveRisk = false;
       cfg = next;
       // Ledger enablement is host-owned state — toggle it BEFORE rebuilding
       // so the guard wrap sees the new value.
-      if (patch.ledger && patch.ledger.enabled !== undefined) {
-        opts.ledger?.setEnabled(patch.ledger.enabled);
+      if (
+        patch.ledger !== undefined &&
+        (patch.ledger === null || patch.ledger.enabled !== undefined)
+      ) {
+        opts.ledger?.setEnabled(patch.ledger?.enabled ?? true);
       }
       if (rebuildNeeded) rebuild();
       else decisionCache?.clear();
@@ -791,13 +778,26 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       return { snapshot, persisted };
     },
     explain(request: BrainDecisionRequest): BrainDecisionExplanation {
+      let systemOneEnabled = false;
+      if ((request.options?.length ?? 0) > 1) {
+        try {
+          const judge = opts.getSystemOneJudge?.();
+          systemOneEnabled = judge !== undefined && judge.unavailableReason === undefined;
+        } catch {
+          /* An unavailable account defers, as in real arbitration. */
+        }
+      }
       return explainBrainDecision(request, {
         ledger: opts.ledger,
         ledgerAutoDenyAfterFailures: cfg.ledger?.autoDenyAfterFailures,
         cache: decisionCache,
         rules: compiledRules,
+        peekRule,
+        systemOneEnabled,
+        llmCircuitOpen: circuit ? !circuit.canAttempt() : false,
+        llmDenyIsTerminal: cfg.llm?.denyIsTerminal ?? 'when-decided',
         heuristics: cfg.heuristics,
-        maxAutoRisk: cfg.maxAutoRisk,
+        maxAutoRisk: effectiveMaxAutoRisk(),
         council: {
           enabled: councilLabels.length > 0,
           minRisk: cfg.council?.minRisk ?? 'high',

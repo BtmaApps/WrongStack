@@ -54,6 +54,7 @@ const MAX_BRAIN_LOG_ENTRIES = 20;
 export function subscribeBrainDecisionLog(
   // biome-ignore lint/suspicious/noExplicitAny: dynamic event name dispatch — typed EventBus<E> cannot match a `string` parameter without erasure.
   events: any,
+  getMaxEntries: () => number = () => MAX_BRAIN_LOG_ENTRIES,
 ): {
   brainLog: BrainDecisionEntry[];
   pushBrainLog: (entry: BrainDecisionEntry) => void;
@@ -71,7 +72,8 @@ export function subscribeBrainDecisionLog(
   const tierCounter = new BrainTierCounter();
   const pushBrainLog = (entry: BrainDecisionEntry): void => {
     brainLog.push(entry);
-    if (brainLog.length > MAX_BRAIN_LOG_ENTRIES) brainLog.shift();
+    const maxEntries = getMaxEntries();
+    if (brainLog.length > maxEntries) brainLog.splice(0, brainLog.length - maxEntries);
   };
 
   const subscribe = (name: string, handler: (payload: unknown) => void): void => {

@@ -92,8 +92,10 @@ export function brainDecisionKey(source: string | undefined, question: string): 
 function fmtAge(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  return `${Math.round(s / 3600)}h ago`;
+  // Promote at the rounding boundary: 59m50s is "1h ago", not "60m ago".
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.max(1, Math.round(s / 3600))}h ago`;
 }
 
 export interface LedgerGuardBrainArbiterOptions {
@@ -183,14 +185,23 @@ export class BrainDecisionLedger {
   private writesSinceRotateCheck = 0;
   private dirReady = false;
 
-  private readonly maxMemoryEntries: number;
-  private readonly retryWindowMs: number;
+  private maxMemoryEntries: number;
+  private retryWindowMs: number;
   private readonly now: () => number;
 
   constructor(private readonly opts: BrainDecisionLedgerOptions) {
     this.maxMemoryEntries = opts.maxMemoryEntries ?? 500;
     this.retryWindowMs = opts.interventionRetryWindowMs ?? 10 * 60_000;
     this.now = opts.now ?? Date.now;
+  }
+
+  /** Retune bookkeeping without discarding pending outcome correlations. */
+  reconfigure(
+    settings: Pick<BrainDecisionLedgerOptions, 'maxMemoryEntries' | 'interventionRetryWindowMs'>,
+  ): void {
+    this.maxMemoryEntries = settings.maxMemoryEntries ?? 500;
+    this.retryWindowMs = settings.interventionRetryWindowMs ?? 10 * 60_000;
+    this.pruneEntries();
   }
 
   /**
@@ -254,25 +265,27 @@ export class BrainDecisionLedger {
         if (!e.intervened) return;
         // A same-kind re-engagement inside the retry window means the
         // previous steer did not fix the underlying problem.
-        const prev = this.lastInterventionByKind.get(e.kind);
+        const sessionId = e.sessionId ?? e.request.sessionId;
+        const interventionKey = JSON.stringify([sessionId, e.kind]);
+        const prev = this.lastInterventionByKind.get(interventionKey);
         if (prev && e.at - prev.at <= this.retryWindowMs) {
           this.recordOutcome(
             prev.requestId,
             'failure',
             `same signal (${e.kind}) re-triggered ${fmtAge(e.at - prev.at).replace(' ago', ' later')}`,
-            e.sessionId,
+            sessionId,
           );
         }
-        this.lastInterventionByKind.set(e.kind, {
+        this.lastInterventionByKind.set(interventionKey, {
           requestId: e.request.id,
           at: e.at,
-          sessionId: e.sessionId,
+          sessionId,
         });
       }),
       // ── Outcome correlation: agent run completion ─────────────────────
       events.on('agent.run.completed', (e) => {
         for (const [kind, entry] of [...this.lastInterventionByKind.entries()]) {
-          if (entry.sessionId && e.sessionId && entry.sessionId !== e.sessionId) continue;
+          if (entry.sessionId !== e.sessionId) continue;
           this.lastInterventionByKind.delete(kind);
           if (e.status === 'done') {
             this.recordOutcome(
@@ -450,6 +463,11 @@ export class BrainDecisionLedger {
 
   private record(entry: BrainLedgerEntry): void {
     this.entries.push(entry);
+    this.pruneEntries();
+    this.append(entry);
+  }
+
+  private pruneEntries(): void {
     if (this.entries.length > this.maxMemoryEntries) {
       // Collect requestIds from the evicted entries so we can prune
       // outcomeByRequest entries whose decision has been forgotten.
@@ -471,7 +489,6 @@ export class BrainDecisionLedger {
         }
       }
     }
-    this.append(entry);
   }
 
   private append(entry: BrainLedgerEntry): void {

@@ -91,6 +91,7 @@ export async function completeBrainLlm(
     user: string;
     timeoutMs: number;
     maxTokens?: number | undefined;
+    responseFormat?: ResponseFormat | undefined;
     signal?: AbortSignal | undefined;
   },
 ): Promise<string> {
@@ -261,6 +262,73 @@ export function parseOptionDecision(
   };
 }
 
+function parseLlmVerdict(
+  request: BrainDecisionRequest,
+  text: string,
+  truncated: boolean,
+  maxTokens: number | undefined,
+  quality: { rejectUncertain: boolean; minConfidence: number } | undefined,
+): BrainDecision {
+  const withTruncation = (reason: string) =>
+    truncated
+      ? `${reason} (response truncated at ${maxTokens === undefined ? "the model's output ceiling" : `maxTokens=${maxTokens}`})`
+      : reason;
+  const minConfidence = quality?.minConfidence ?? 0;
+  const confidence = extractConfidence(text);
+  if (minConfidence > 0 && confidence !== undefined && confidence < minConfidence) {
+    return markDenyKind(
+      {
+        type: 'deny',
+        reason: `Autonomy Brain reported confidence ${confidence} below the ${minConfidence} floor.`,
+      },
+      'unparseable',
+    );
+  }
+  const candidate = text
+    .trim()
+    .replace(/^```(?:json)?\s*\r?\n([\s\S]*?)\r?\n?```$/i, '$1')
+    .trim();
+  const refusal = safeParse<{ type?: unknown; reason?: unknown }>(candidate, 16_384);
+  if (
+    refusal.ok &&
+    refusal.value?.type === 'deny' &&
+    typeof refusal.value.reason === 'string' &&
+    refusal.value.reason.trim()
+  ) {
+    return markDenyKind({ type: 'deny', reason: refusal.value.reason.trim() }, 'refused');
+  }
+  if (request.options?.length) {
+    const parsed = parseOptionDecision(text, request.options);
+    return (
+      parsed ??
+      markDenyKind(
+        {
+          type: 'deny',
+          reason: withTruncation('Autonomy Brain returned no exact valid option id.'),
+        },
+        'unparseable',
+      )
+    );
+  }
+  const envelope = parseFreeTextDecision(text);
+  if ((quality?.rejectUncertain ?? true) && !envelope) {
+    return markDenyKind(
+      {
+        type: 'deny',
+        reason: withTruncation('Autonomy Brain returned no usable decision (empty or declined).'),
+      },
+      'unparseable',
+    );
+  }
+  return {
+    type: 'answer',
+    text:
+      envelope?.decision ||
+      (request.fallback === 'continue' ? 'Continue execution.' : 'Denied by autonomy policy.'),
+    rationale: envelope?.rationale ?? envelope?.decision ?? undefined,
+  };
+}
+
 export async function llmDecide(
   request: BrainDecisionRequest,
   targets: BrainLlmTarget[],
@@ -280,8 +348,7 @@ export async function llmDecide(
   const overallBudgetMs = timeoutMs * Math.min(targets.length, BRAIN_LLM_MAX_BUDGETED_ATTEMPTS);
   const deadline = Date.now() + overallBudgetMs;
 
-  let text: string | null = null;
-  let truncated = false;
+  let lastInvalid: BrainDecision | undefined;
   let deadlineHit = false;
   for (const [attempt, target] of targets.entries()) {
     const remaining = deadline - Date.now();
@@ -303,9 +370,12 @@ export async function llmDecide(
         // models ignore. Providers without the field drop it harmlessly.
         responseFormat: { type: 'json_object' },
       });
-      text = result.text;
-      truncated = isTruncated(result.stopReason);
-      circuit?.recordSuccess(target.label ?? target.model);
+      const text = result.text;
+      const truncated = isTruncated(result.stopReason);
+      const verdict = parseLlmVerdict(request, text, truncated, effectiveMaxTokens, quality);
+      const usable = verdict.type === 'answer' || readLlmDenyKind(verdict) === 'refused';
+      if (usable) circuit?.recordSuccess(target.label ?? target.model);
+      else circuit?.recordFailure(target.label ?? target.model);
       trace?.events.emit('brain.llm_call', {
         sessionId: request.sessionId,
         requestId: request.id,
@@ -326,7 +396,8 @@ export async function llmDecide(
         ...(result.usage ? { usage: result.usage } : {}),
         at: Date.now(),
       });
-      break;
+      if (usable) return verdict;
+      lastInvalid = verdict;
     } catch (err) {
       circuit?.recordFailure(target.label ?? target.model);
       trace?.events.emit('brain.llm_call', {
@@ -345,7 +416,7 @@ export async function llmDecide(
     }
   }
 
-  if (text === null) {
+  if (!lastInvalid) {
     return markDenyKind(
       {
         type: 'deny',
@@ -357,65 +428,5 @@ export async function llmDecide(
     );
   }
 
-  // A truncated response is a BUDGET problem, not a model that refused. Say
-  // so in the deny reason, or the same symptom reads as an unparseable
-  // response forever - the council learned this as `withTruncationNote`.
-  const withTruncation = (reason: string): string =>
-    truncated
-      ? `${reason} (response truncated at ${effectiveMaxTokens === undefined ? "the model's output ceiling" : `maxTokens=${effectiveMaxTokens}`})`
-      : reason;
-
-  const minConfidence = quality?.minConfidence ?? 0;
-  const rejectUncertain = quality?.rejectUncertain ?? true;
-  const confidence = extractConfidence(text);
-  const belowConfidence =
-    minConfidence > 0 && confidence !== undefined && confidence < minConfidence;
-
-  if (request.options?.length) {
-    const parsed = parseOptionDecision(text, request.options);
-    if (parsed && !belowConfidence) {
-      return parsed;
-    }
-    return markDenyKind(
-      {
-        type: 'deny',
-        reason: belowConfidence
-          ? `Autonomy Brain reported confidence ${confidence} below the ${minConfidence} floor.`
-          : withTruncation('Autonomy Brain returned no exact valid option id.'),
-      },
-      'unparseable',
-    );
-  }
-
-  const envelope = parseFreeTextDecision(text);
-  // The confidence floor is its OWN gate. It used to be evaluated only inside
-  // the `rejectUncertain` branch, so turning the uncertainty gate off also
-  // turned `minConfidence` off for optionless requests - while option-bearing
-  // requests kept enforcing it. Two independent knobs sharing one condition.
-  if (belowConfidence) {
-    return markDenyKind(
-      {
-        type: 'deny',
-        reason: `Autonomy Brain reported confidence ${confidence} below the ${minConfidence} floor.`,
-      },
-      'unparseable',
-    );
-  }
-  if (rejectUncertain && !envelope) {
-    return markDenyKind(
-      {
-        type: 'deny',
-        reason: withTruncation('Autonomy Brain returned no usable decision (empty or declined).'),
-      },
-      'unparseable',
-    );
-  }
-
-  return {
-    type: 'answer',
-    text:
-      envelope?.decision ||
-      (request.fallback === 'continue' ? 'Continue execution.' : 'Denied by autonomy policy.'),
-    rationale: envelope?.rationale ?? envelope?.decision ?? undefined,
-  };
+  return lastInvalid;
 }

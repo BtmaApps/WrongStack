@@ -22,11 +22,11 @@ import { cn } from '@/lib/utils';
 import type { BrainDecisionData, ChatMessage } from '@/stores';
 
 /**
- * Tiers that reached a verdict without a provider call. Mirrors core's
+ * Deterministic final resolving tiers. Earlier unsuccessful tiers may have called a provider. Mirrors core's
  * `DETERMINISTIC_BRAIN_TIERS`; a literal here so the browser bundle takes no
  * runtime dependency on core.
  */
-const FREE_BRAIN_TIERS = new Set([
+const DETERMINISTIC_BRAIN_TIERS = new Set([
   'rule',
   'policy',
   'heuristic',
@@ -344,13 +344,13 @@ export const BrainDecisionCard = memo(function BrainDecisionCard({
               {/* Tier Badge — which layer of the ladder actually decided.
                   It used to render only as a FALLBACK for `source`, which is
                   always present, so the tier was never visible; the handler
-                  did not populate it either. A council call and a free rule
+                  did not populate it either. A council verdict and a rule
                   hit looked identical in the transcript. */}
               {tier ? (
                 <span
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border shadow-2xs font-mono',
-                    FREE_BRAIN_TIERS.has(tier)
+                    DETERMINISTIC_BRAIN_TIERS.has(tier)
                       ? 'border-border bg-muted/50 text-muted-foreground'
                       : 'border-primary/40 bg-primary/10 text-primary',
                   )}

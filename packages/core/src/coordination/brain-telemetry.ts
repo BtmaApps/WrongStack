@@ -56,7 +56,7 @@ export type BrainDecisionTier =
   | 'terminal'
   | 'human';
 
-/** Tiers that did NOT cost a provider call. */
+/** Tiers that settle deterministically; earlier failed tiers may have called a provider. */
 export const DETERMINISTIC_BRAIN_TIERS: ReadonlySet<BrainDecisionTier> = new Set<BrainDecisionTier>(
   ['rule', 'policy', 'heuristic', 'cache', 'ledger-guard', 'terminal'],
 );
@@ -77,7 +77,7 @@ export function readDecisionTier(request: BrainDecisionRequest): BrainDecisionTi
   return tierByRequest.get(request);
 }
 
-/** True when the decision was reached without any provider call. */
+/** True when the final resolving tier is deterministic. */
 export function isDeterministicTier(tier: BrainDecisionTier | undefined): boolean {
   return tier !== undefined && DETERMINISTIC_BRAIN_TIERS.has(tier);
 }
@@ -88,9 +88,9 @@ export interface BrainTierStats {
   byTier: Partial<Record<BrainDecisionTier, number>>;
   /** Total decisions counted (including ones with no recorded tier). */
   total: number;
-  /** Decisions reached without any provider call. */
+  /** Decisions resolved by deterministic tiers; this is not a token-cost metric. */
   deterministic: number;
-  /** Decisions that cost at least one provider call (`council` + `llm`). */
+  /** Decisions resolved by model tiers (`council`, `llm`, `system-one`). */
   llmBacked: number;
   /** Decisions whose tier was never recorded. */
   unattributed: number;
@@ -122,7 +122,7 @@ export class BrainTierCounter {
     for (const [tier, count] of this.counts) {
       byTier[tier] = count;
       if (DETERMINISTIC_BRAIN_TIERS.has(tier)) deterministic += count;
-      else if (tier === 'council' || tier === 'llm') llmBacked += count;
+      else if (tier === 'council' || tier === 'llm' || tier === 'system-one') llmBacked += count;
     }
     return {
       byTier,

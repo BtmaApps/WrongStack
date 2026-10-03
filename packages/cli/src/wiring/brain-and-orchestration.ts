@@ -217,9 +217,22 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
   // permits production decision content on disk. Kept in its own file — the
   // ledger's bounded ring powers the learning loop and must not be diluted
   // by high-volume per-call rows.
-  const traceCfg = brainCfg?.trace;
   let brainTrace: BrainTraceRecorder | undefined;
-  if (traceCfg?.enabled === true) {
+  const applyTrace = (traceCfg: NonNullable<Config['brain']>['trace']): void => {
+    if (traceCfg?.enabled !== true) {
+      void brainTrace?.stop();
+      brainTrace = undefined;
+      return;
+    }
+    const settings = {
+      filePath: traceCfg.path ?? join(wpaths.projectDir, 'brain-trace.jsonl'),
+      content: traceCfg.content,
+      maxOpenRecords: traceCfg.maxOpenRecords,
+    };
+    if (brainTrace) {
+      brainTrace.reconfigure(settings);
+      return;
+    }
     brainTrace = new BrainTraceRecorder({
       events,
       filePath: traceCfg.path ?? join(wpaths.projectDir, 'brain-trace.jsonl'),
@@ -227,18 +240,21 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
       maxOpenRecords: traceCfg.maxOpenRecords,
     });
     brainTrace.start();
-    teardownHandlers.push(() => {
-      void brainTrace?.stop();
-    });
-  }
+  };
+  applyTrace(brainCfg?.trace);
+  teardownHandlers.push(() => {
+    void brainTrace?.stop();
+  });
 
   // Shared queue options object: BrainDecisionQueue keeps the REFERENCE, so
   // mutating timeoutMs in onApplied makes `/brain human-timeout` live. Do
   // not replace this with a defensive copy in the queue.
   const queueOpts = {
     timeoutMs: brainCfg?.humanTimeoutMs,
+    userInputAwaiter: (...args: Parameters<NonNullable<typeof context.userInputAwaiter>>) =>
+      context.userInputAwaiter?.(...args) ?? Promise.resolve(undefined),
     onTimeout: (request: Parameters<typeof terminalPolicyDecision>[0]) =>
-      terminalPolicyDecision(request, brainCfg?.terminalPolicy),
+      terminalPolicyDecision(request, brainRuntime.getSnapshot().terminalPolicy),
   };
   const brainQueue = new BrainDecisionQueue(events, queueOpts);
 
@@ -301,6 +317,9 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
       // onApplied runs for EVERY Brain setting — `/brain risk` must not reset
       // the monitor's in-flight failure streaks.
       brainMonitor?.reconfigure(snapshot.monitor);
+      brainLedger?.reconfigure(snapshot.ledger);
+      applyTrace(brainRuntime.getConfig().trace);
+      brainLog.splice(0, Math.max(0, brainLog.length - snapshot.decisionLogMaxEntries));
     },
   });
 
@@ -308,6 +327,7 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
   // (`/brain risk|mode`, the TUI panel, the WebUI brain.risk handler)
   // assigns `brainSettings.maxAutoRisk/mode` — the accessors route those
   // through runtime.apply(), which live-applies AND persists.
+  teardownHandlers.push(() => brainRuntime.dispose());
   const brainSettings: BrainRuntimeSettings = {
     get maxAutoRisk() {
       return brainRuntime.getMaxAutoRisk();
@@ -349,7 +369,7 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
     brainLog,
     getTierStats: brainTierStats,
     dispose: disposeBrainLog,
-  } = subscribeBrainDecisionLog(events);
+  } = subscribeBrainDecisionLog(events, () => brainRuntime.getSnapshot().decisionLogMaxEntries);
   teardownHandlers.push(disposeBrainLog);
 
   // NOTE: setupHqTelemetry() is called here in cli-main.ts between

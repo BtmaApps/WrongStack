@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 354,
-      "typeOnly": 279,
+      "files": 355,
+      "typeOnly": 280,
       "runtimeOrMixed": 96
     },
     "@wrongstack/core/agent-catalog": {
@@ -19,9 +19,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 244,
+      "files": 245,
       "typeOnly": 91,
-      "runtimeOrMixed": 211
+      "runtimeOrMixed": 213
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/execution": {
-      "files": 73,
+      "files": 75,
       "typeOnly": 19,
-      "runtimeOrMixed": 70
+      "runtimeOrMixed": 72
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 317,
+      "files": 318,
       "typeOnly": 149,
-      "runtimeOrMixed": 182
+      "runtimeOrMixed": 183
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -124,8 +124,8 @@
       "runtimeOrMixed": 45
     },
     "@wrongstack/core/registry": {
-      "files": 146,
-      "typeOnly": 63,
+      "files": 147,
+      "typeOnly": 64,
       "runtimeOrMixed": 86
     },
     "@wrongstack/core/replay": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1264,
-      "typeOnly": 1118,
+      "files": 1265,
+      "typeOnly": 1119,
       "runtimeOrMixed": 369
     },
     "@wrongstack/core/types/limits": {
@@ -214,13 +214,13 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 24,
+      "files": 26,
       "typeOnly": 7,
-      "runtimeOrMixed": 18
+      "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 687,
-      "typeOnly": 65,
+      "files": 688,
+      "typeOnly": 66,
       "runtimeOrMixed": 654
     },
     "@wrongstack/core/utils/child-env": {
@@ -2036,6 +2036,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -3442,7 +3448,7 @@
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/tui-coordinator-setup.test.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3818,6 +3824,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -4155,6 +4167,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/boot/system-prompt-builder.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/boot/tui-coordinator-setup.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -4505,6 +4523,12 @@
       "file": "packages/tui/src/use-controller-key-pipeline.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -7742,6 +7766,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -9723,6 +9753,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/tui/tests/use-queue-manager.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18938,9 +18974,15 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -20318,6 +20360,12 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20331,6 +20379,12 @@
     {
       "specifier": "@wrongstack/core/typesafe",
       "file": "packages/webui-server/src/server/jev-routes.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/webui-server/tests/backend-services.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -23873,6 +23927,12 @@
       "file": "packages/vector-memory/src/store.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/backend-brain.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

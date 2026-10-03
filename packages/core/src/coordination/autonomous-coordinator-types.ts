@@ -1,6 +1,7 @@
 import type { EventBus } from '../kernel/events.js';
 import type { Logger } from '../types/logger.js';
 import type { LLMProvider } from './autonomous-brain.js';
+import type { BrainArbiter } from './brain.js';
 import type { Director } from './director.js';
 import type { FleetBus } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
@@ -40,6 +41,8 @@ export interface AutonomousCoordinatorOptions {
   mailbox?: Mailbox | undefined;
   events?: EventBus | undefined;
   llmProvider: LLMProvider;
+  arbiter?: BrainArbiter | undefined;
+  sessionId?: string | undefined;
   /** Disable self-improvement. Default: false. */
   disableSelfImprove?: boolean;
   /** Max concurrent subagents. Default: 5. */

@@ -65,7 +65,15 @@ export function isBlockedResolved(
   markers: RegExp = BLOCKED_RESOLVED_MARKERS,
 ): boolean {
   return (
-    question.includes('blocked') && !COMPETING_ALTERNATIVE.test(question) && markers.test(context)
+    question.includes('blocked') &&
+    !COMPETING_ALTERNATIVE.test(question) &&
+    // A resolution keyword is evidence only without a competing unresolved
+    // state. Do not turn "not fixed", "never completed" or "still failing"
+    // into an assertion that a dependency has been resolved.
+    !/\b(?:not|never|isn't|isnt|wasn't|wasnt|hasn't|hasnt|haven't|havent|cannot|can't|cant|unresolved|unavailable)\b|\bstill\s+(?:blocked|failing|broken|pending)\b/i.test(
+      context,
+    ) &&
+    markers.test(context)
   );
 }
 

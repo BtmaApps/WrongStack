@@ -6,6 +6,30 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useBrainEvents } from '../src/hooks/use-brain-events.js';
 
 describe('useBrainEvents', () => {
+  it('uses the structured form surface without opening a duplicate Brain prompt', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch, () => 'A'));
+    act(() =>
+      events.emit('brain.decision_ask_human', {
+        sessionId: 'A',
+        request: {
+          id: 'form',
+          source: 'system',
+          question: 'Pick',
+          risk: 'medium',
+          fallback: 'ask_human',
+        },
+        decision: { type: 'ask_human', prompt: 'Pick' },
+        pending: true,
+        structured: true,
+        at: 1,
+      }),
+    );
+    expect(dispatch.mock.calls.some(([action]) => action.type === 'brainPromptSet')).toBe(false);
+    expect(dispatch.mock.calls.some(([action]) => action.type === 'brainStatus')).toBe(true);
+    unmount();
+  });
   afterEach(() => {
     vi.useRealTimers();
   });

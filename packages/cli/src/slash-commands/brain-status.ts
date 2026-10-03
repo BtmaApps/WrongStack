@@ -26,8 +26,10 @@ import type { SlashCommandContext } from './command-context.js';
 export function fmtAge(at: number): string {
   const s = Math.max(0, Math.round((Date.now() - at) / 1000));
   if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  return `${Math.round(s / 3600)}h ago`;
+  // Promote at the rounding boundary: 59m50s is "1h ago", not "60m ago".
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.max(1, Math.round(s / 3600))}h ago`;
 }
 
 export function formatBrainStatus(opts: SlashCommandContext): string {
@@ -111,7 +113,7 @@ export function formatBrainStats(opts: SlashCommandContext): string {
       // The set lives in core next to the tier union: a hand-copied list here
       // silently mis-buckets every tier added upstream.
       if ((DETERMINISTIC_BRAIN_TIERS as ReadonlySet<string>).has(tier)) free += n;
-      else if (tier === 'llm' || tier === 'council') paid += n;
+      else if (tier === 'llm' || tier === 'council' || tier === 'system-one') paid += n;
     }
   }
   const lines = [color.bold('Brain decision tiers'), ''];

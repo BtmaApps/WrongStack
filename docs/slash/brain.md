@@ -4,63 +4,61 @@
 
 Inspects and steers the session's **Brain** — the decision layer that sits
 between the agents and the human. Every autonomous subsystem (Director,
-Goal orchestrator, Eternal engine, BrainMonitor) routes its blocking
+Goal orchestrator, Eternal engine, BrainMonitor and production coordinator) routes its blocking
 decisions through one shared Brain instance, bound at
 `TOKENS.BrainArbiter`.
 
 ```
 /brain                  Status: autonomy ceiling + recent decisions
 /brain status           Same
-/brain stats            Per-tier decision counts — how often a model is actually called
+/brain stats            Per-tier decision counts — which tier resolved each decision
 /brain risk <level>     Set the autonomy ceiling: off | low | medium | high | all
 /brain ask <question>   Consult the Brain directly for a decision
 ```
 
 ## How the Brain decides — the tier ladder
 
-Cheapest first; each tier only runs when the one above declined.
+Each request stops at its first terminal decision. The runtime order is:
 
-1. **Rules** (`brain.rules`) — a configured deterministic table, matched on
-   source / risk band / fallback / offered options / question+context
-   patterns. First match wins; a rule whose action is `defer` explicitly
-   hands the request to the next tier. Costs nothing.
-2. **Policy** (`DefaultBrainArbiter`) — built-in deterministic behaviour.
-   Low-risk requests with a recommended option are answered instantly;
-   safe fallbacks (`continue`/`deny`) resolve without any LLM call. The
-   pattern heuristics behind it are individually switchable via
-   `brain.heuristics` (see `/brain heuristics`).
-3. **Cache** (`brain.cache`, off by default) — replays a previous
-   council/LLM verdict for an identical repeated question. Deterministic
-   tiers are never cached, and a decision the ledger later observes to
-   have FAILED is evicted.
-4. **Council** (`brain.council`) — a multi-LLM panel for questions at or
-   above the council floor. Quorum, veto and weighted majority are
-   resolved by pure deterministic maths; only ties reach a judge model.
-5. **LLM** (`createAutonomyBrain`) — the single-model tier, within the
-   live ceiling. Sees the live provider/model, so `/setmodel` switches
-   apply immediately. Guarded by a quality gate (`/brain llm`) and a
-   circuit breaker so a dead pool stops costing a full timeout sweep on
-   every decision.
-6. **Escalation** — in `interactive` mode an actual prompt; in `headless`
-   mode the terminal policy (`/brain escalation`) resolves it without a
-   human.
+1. **Ledger guard** — denies groups with repeated observed failures.
+2. **Cache** (off by default) — replays an identical Jev, Council or LLM
+   verdict. Question, context, session, options and policy inputs keep their
+   exact meaning; observed failure evicts the verdict.
+3. **Rules** — first configured match wins; `defer` continues the chain.
+4. **Policy** — deterministic low-risk recommendations and caller fallbacks.
+   `deny` is terminal; an optionless `continue` may receive model evaluation.
+5. **Risk gate** — the live ceiling controls eligibility for all model tiers.
+6. **Jev System One** — optional typed Choice plus decidability check for
+   at least two offered options below the Council floor. Failure or weak
+   evidence defers; this is separate from the Council Judge.
+7. **Council** — a panel at or above its risk floor, using quorum, veto,
+   weighted majority and, when needed, a Judge.
+8. **Autonomy** — deterministic heuristics, then a bounded LLM pool if needed.
+   Invalid or low-quality responses try another model within the total budget.
+9. **Escalation** — a structured human form in `interactive` mode, or the
+   terminal policy in `headless` mode.
 
-`/brain stats` shows how the traffic actually split, which is the number
-to watch: every decision resolved above tier 4 is free.
+`/brain stats` counts the **final resolving tier**, not provider attempts or
+cost. A terminal decision may follow unsuccessful model calls; inspect the
+trace for attempts and reported token usage.
 
 ## The autonomy ceiling (`/brain risk`)
 
 | Level | Behaviour |
 |-------|-----------|
-| `off` | LLM tier disabled — everything the policy can't answer goes to you |
+| `off` | Model tiers disabled; unresolved questions use human or terminal escalation |
 | `low` | LLM auto-decides only low-risk questions |
-| `medium` | LLM auto-decides low + medium (default) |
+| `medium` | Model tiers may auto-decide low + medium |
 | `high` | LLM auto-decides low + medium + high |
-| `all` | LLM auto-decides everything, including critical |
+| `all` | Model tiers may auto-decide through critical; critical Council failure still escalates |
 
 The ceiling is read on **every** decision, so changes take effect
-immediately — including for decisions already queued by background
-engines.
+immediately for subsequent decisions. Product defaults are `headless`, a
+120-second human timeout, and an adaptive ceiling: `all` with an effective
+Council, `high` without one. Explicit risk settings take precedence; saving an
+unrelated setting does not persist the inferred ceiling as an explicit grant.
+Set the human timeout to `0` to wait indefinitely; resetting it restores the
+product default.
 
 ## Self-activation (BrainMonitor)
 
@@ -70,6 +68,8 @@ EventBus for distress signals and engages the Brain proactively:
 - **Tool-failure streak** — the same tool failing 3× consecutively
   (streak resets on success).
 - **Error storm** — 4+ `error` events within a 60-second window.
+- **Agent stall** — an active run without progress for five minutes, with no
+  tool still running. A long-running tool is legitimate activity.
 - **File churn** — 20 successful edits to the same file within 10 minutes.
   Edit count alone does not prove an edit/revert loop; the Brain is asked
   to let the agent continue unless independent evidence warrants steering.
@@ -84,9 +84,14 @@ Every engagement — intervening or not —
 emits a `brain.intervention` event and is rate-limited by a 120-second
 per-signal cooldown.
 
-Without an LLM tier (ceiling `off`, or no provider), the monitor degrades
-safely: the policy resolves the `continue` fallback and the Brain observes
-without interfering.
+The default monitor request offers `steer` and `continue` without a recommended
+option. An unavailable model does not implicitly authorize steering: unresolved
+requests escalate, and the conservative headless policy denies. `observe`
+never steers; `steer` is an explicit deterministic policy.
+
+Monitor settings apply live. Stopping, disabling or retuning invalidates pending
+consultations. A delayed verdict cannot steer after the run ended, a failed tool
+recovered, stalled work resumed, or the captured error/churn window expired.
 
 ## Making the Brain cheaper and more predictable
 
@@ -101,12 +106,31 @@ Every knob below is live-editable and persists to the active profile config.
 /brain llm uncertain on               # "I don't know" is not an answer
 /brain llm confidence 0.6             # reject low-confidence verdicts
 /brain llm breaker 3 60000            # skip a dead pool after 3 failures
-/brain cache on                       # replay repeated council/LLM verdicts
+/brain cache on                       # replay identical Jev/council/LLM verdicts
 /brain escalation deny-all            # headless escalations never auto-approve
 /brain monitor policy observe         # record signals, never steer (no model call)
 ```
 
 ## Steering the council
+
+### The Judge is still part of Council
+
+For option questions, quorum is checked first, then veto and weighted majority.
+The Judge is called when votes tie **or** the winning weight does not strictly
+exceed `approval × cast weight`. It sees the panel's rationales and selects an
+offered option or refuses all options. A decisive majority, veto and missing quorum
+do not call it. Generic free-text Council calls can also use it to synthesize
+different stances.
+
+`brain.council.judge` explicitly selects its model. Auto selection prefers a
+pool model outside the voter seats; when none exists it can reuse a voter.
+Status reports the effective Judge and `judgeIsVoter`; auto does not guarantee
+an independent model. Jev's TypeSafe judge is a separate lower-risk tier.
+
+A critical Council abstention or failure, including an unusable Judge response,
+goes to human/terminal escalation without a single-model fallback. For high-risk
+abstentions the existing LLM fallback remains. Council answers and denials are
+terminal.
 
 The council is the most expensive tier — one provider call *per seat* — so
 every knob is reachable from the command line, the TUI `/brain` panel and the
@@ -130,12 +154,13 @@ WebUI settings section alike.
 
 By default a panel votes **twice**. Round 1 is independent — no seat sees any
 other. In round 2 every seat is shown the other seats' ballots, including its
-own, and votes again; only the final round is tallied. A seat that missed a
+own, and votes again. A usable prior round can be retained if a later one fails;
+the resolved event contains the selected round's votes. A seat that missed a
 consequence another lens caught can revise on it.
 
-The cost is linear and unconditional: two rounds means **two provider calls per
-seat on every council decision**, not only contested ones. `/brain council
-rounds 1` restores the single-round panel.
+The call budget grows with rounds: two rounds allow two calls per seat plus one
+Judge call if needed. Early veto, cancellation or timeout can stop sooner.
+`/brain council rounds 1` restores the single-round panel.
 
 The trade is independence for information, and it is not free — models converge
 on a stated majority whether or not the majority brought an argument. Three
@@ -213,9 +238,9 @@ tokens and vote ids.
 | `brain.council_resolved` | Quorum/veto/majority resolution + judge usage |
 
 `brain.decision_*` carries a `tier` field (`rule`, `policy`, `heuristic`,
-`cache`, `ledger-guard`, `council`, `llm`, `terminal`, `human`) so surfaces
-can distinguish a free decision from one that cost a provider call —
-that is what `/brain stats` counts.
+`cache`, `ledger-guard`, `system-one`, `council`, `llm`, `terminal`, `human`)
+identifying the resolving tier. Earlier attempts remain visible in trace
+events; this field alone does not measure cost.
 
 `/brain status` shows the last 20 decisions for the session.
 
@@ -223,9 +248,12 @@ that is what `/brain stats` counts.
 
 `/brain` works in the WebUI chat too (same subcommands), implemented over
 WebSocket messages (`brain.status` / `brain.risk` / `brain.ask`). The
-standalone WebUI server runs its own Brain instance — policy → LLM only;
-without a human-escalation prompt, `ask_human` decisions surface as
-`brain.event` messages and the caller's fallback applies.
+standalone WebUI server assembles the same shared runtime chain, including Jev,
+Council and its Judge when configured. Mode, timeout, terminal policy, monitor,
+ledger and trace settings apply live. Interactive escalations use the existing
+user-input form protocol; TUI avoids a duplicate Brain modal. Responses are
+correlated to the request and session, and unoffered option ids are rejected.
+Timeout or disposal closes the form. HQ observes the same events.
 
 ## Related
 

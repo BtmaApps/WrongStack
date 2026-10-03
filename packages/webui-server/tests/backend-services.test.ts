@@ -9,6 +9,12 @@ const brainMonitorOptions = vi.hoisted(
       intervene: (input: { subject: string; body: string; sessionId?: string }) => Promise<void>;
     }>,
 );
+const brainHostInstances = vi.hoisted(() => ({
+  routers: [] as unknown[][],
+  traces: [] as any[],
+  queues: [] as any[],
+  ledgers: [] as any[],
+}));
 
 vi.mock('@wrongstack/core/agent', () => ({
   createEventUserInputAwaiter: vi.fn(() => vi.fn(async () => undefined)),
@@ -20,27 +26,55 @@ vi.mock('@wrongstack/core/agent', () => ({
     }
   },
 }));
+vi.mock('@wrongstack/core/typesafe', () => ({ resolveTypeSafeJudge: vi.fn(() => undefined) }));
 
 vi.mock('@wrongstack/core/coordination', () => ({
   BrainDecisionLedger: class {
+    constructor(public options: any) {
+      brainHostInstances.ledgers.push(this);
+    }
     start = vi.fn(async () => undefined);
     stop = vi.fn(async () => undefined);
+    reconfigure = vi.fn();
     failureStreakFor = vi.fn(() => 0);
     digestFor = vi.fn(() => undefined);
   },
+  BrainDecisionQueue: class {
+    constructor(
+      _events: unknown,
+      public options: any,
+    ) {
+      brainHostInstances.queues.push(this);
+    }
+    dispose = vi.fn();
+  },
+  BrainTraceRecorder: class {
+    constructor(public options: any) {
+      brainHostInstances.traces.push(this);
+    }
+    start = vi.fn();
+    stop = vi.fn(async () => undefined);
+    reconfigure = vi.fn();
+  },
+  terminalPolicyDecision: vi.fn(() => ({ type: 'deny', reason: 'terminal' })),
   BrainMonitor: class {
     constructor(options: (typeof brainMonitorOptions)[number]) {
       brainMonitorOptions.push(options);
     }
     start = vi.fn();
     reconfigure = vi.fn();
+    stop = vi.fn();
   },
   CollaborationBus: class {
     onInjectionConsumed = vi.fn(() => () => undefined);
   },
   collabInjectMiddleware: vi.fn(() => ({ name: 'collab-inject', handler: vi.fn() })),
   collabPauseMiddleware: vi.fn(() => ({ name: 'collab-pause', handler: vi.fn() })),
-  EscalationRoutingBrainArbiter: class {},
+  EscalationRoutingBrainArbiter: class {
+    constructor(...options: unknown[]) {
+      brainHostInstances.routers.push(options);
+    }
+  },
   getSharedProjectMailbox: vi.fn(() => ({ send: vi.fn(async () => undefined) })),
   mailboxSessionTag: vi.fn(() => 'tag'),
   ObservableBrainArbiter: class {},
@@ -70,6 +104,10 @@ vi.mock('@wrongstack/core/execution', () => ({
   },
   createBrainRuntime: vi.fn(() => ({
     arbiter: { decide: vi.fn() },
+    getMode: vi.fn(() => 'headless'),
+    getSnapshot: vi.fn(() => ({ terminalPolicy: 'conservative', decisionLogMaxEntries: 20 })),
+    getConfig: vi.fn(() => ({})),
+    dispose: vi.fn(),
     getMaxAutoRisk: vi.fn(() => 'medium'),
     apply: vi.fn(() => ({ persisted: Promise.resolve() })),
   })),
@@ -154,9 +192,10 @@ vi.mock('../src/server/model-catalog.js', () => ({
 }));
 
 import { getSharedProjectMailbox, mailboxSessionTag } from '@wrongstack/core/coordination';
-import { createStrategyCompactor } from '@wrongstack/core/execution';
+import { createBrainRuntime, createStrategyCompactor } from '@wrongstack/core/execution';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { CONTEXT_WINDOW_MODE_PINNED_META_KEY } from '@wrongstack/core/types';
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
 import { createAgentServices } from '../src/server/backend-services.js';
 import { resolveProviderModelMetadata } from '../src/server/model-catalog.js';
@@ -255,9 +294,67 @@ function makeInput(): any {
 }
 
 describe('createAgentServices', () => {
+  it('resolves the Brain Jev account from the latest host config', async () => {
+    const input = makeInput();
+    await createAgentServices(input);
+    input.config = { ...input.config, typesafe: { judgments: { brain: false } } };
+    vi.mocked(createBrainRuntime).mock.calls.at(-1)![0].getSystemOneJudge!();
+    expect(resolveTypeSafeJudge).toHaveBeenLastCalledWith(
+      expect.objectContaining({ config: input.config, feature: 'brain' }),
+    );
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     brainMonitorOptions.length = 0;
+    for (const values of Object.values(brainHostInstances)) values.length = 0;
+  });
+
+  it('routes live escalation settings and retunes queue ledger and trace on applied config', async () => {
+    const services = await createAgentServices(makeInput());
+    const runtimeOptions = vi.mocked(createBrainRuntime).mock.calls.at(-1)![0];
+    const runtime = services.brainRuntime;
+    const router = brainHostInstances.routers.at(-1)!;
+    expect(router[1]).toBe(brainHostInstances.queues.at(-1));
+    vi.mocked(runtime.getMode).mockReturnValue('interactive');
+    vi.mocked(runtime.getSnapshot).mockReturnValue({
+      mode: 'interactive',
+      terminalPolicy: 'deny-all',
+      decisionLogMaxEntries: 3,
+    } as never);
+    expect((router[2] as () => string)()).toBe('interactive');
+    expect((router[3] as () => string)()).toBe('deny-all');
+    runtimeOptions.ledger!.setEnabled(true);
+    vi.mocked(runtime.getConfig).mockReturnValue({
+      trace: { enabled: true, path: '/tmp/brain-first.jsonl', content: 'none' },
+    });
+    const snapshot = {
+      monitor: {},
+      humanTimeoutMs: 7,
+      decisionLogMaxEntries: 3,
+      ledger: { maxMemoryEntries: 12, interventionRetryWindowMs: 9 },
+    } as never;
+    runtimeOptions.onApplied!(snapshot);
+    expect(brainHostInstances.queues.at(-1).options.timeoutMs).toBe(7);
+    expect(brainHostInstances.queues.at(-1).options.userInputAwaiter).toBeDefined();
+    expect(brainHostInstances.ledgers.at(-1).reconfigure).toHaveBeenCalledWith({
+      maxMemoryEntries: 12,
+      interventionRetryWindowMs: 9,
+    });
+    const trace = brainHostInstances.traces.at(-1);
+    expect(trace.options).toMatchObject({ filePath: '/tmp/brain-first.jsonl', content: 'none' });
+    expect(trace.start).toHaveBeenCalledOnce();
+    vi.mocked(runtime.getConfig).mockReturnValue({
+      trace: { enabled: true, path: '/tmp/brain-next.jsonl', content: 'redacted' },
+    });
+    runtimeOptions.onApplied!(snapshot);
+    expect(trace.reconfigure).toHaveBeenCalledWith(
+      expect.objectContaining({ filePath: '/tmp/brain-next.jsonl', content: 'redacted' }),
+    );
+    vi.mocked(runtime.getConfig).mockReturnValue({ trace: { enabled: false } });
+    runtimeOptions.onApplied!(snapshot);
+    expect(trace.stop).toHaveBeenCalledOnce();
+    services.disposeRealtimeHandlers();
+    expect(runtime.dispose).toHaveBeenCalledOnce();
   });
 
   it('does not attribute ownerless monitor events or steers to the foreground tab', async () => {

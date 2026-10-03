@@ -143,6 +143,9 @@ export interface EscalationDecision {
 // ── AutonomousBrain implementation ────────────────────────────────────────
 
 export interface AutonomousBrainOptions {
+  /** Production hosts reuse the shared Brain policy, Jev and council ladder. */
+  arbiter?: BrainArbiter | undefined;
+  sessionId?: string | undefined;
   /** The LLM provider for making decisions */
   llmProvider: LLMProvider;
   graph: KnowledgeGraph;
@@ -197,6 +200,8 @@ export class AutonomousBrain implements BrainArbiter {
   // Fleet bus for emitting decisions — null-safe, no-op if not provided
   private readonly fleetBus?: FleetBus | undefined;
   private readonly llmProvider: LLMProvider;
+  private readonly arbiter: BrainArbiter | undefined;
+  private readonly sessionId: string | undefined;
   private readonly maxRetries: number;
   private readonly consensusRiskThreshold: BrainRisk;
   private readonly consensus: AutonomousBrainOptions['consensus'];
@@ -218,6 +223,8 @@ export class AutonomousBrain implements BrainArbiter {
     this.graph = opts.graph;
     this.fleetBus = opts.fleet ?? undefined;
     this.llmProvider = opts.llmProvider;
+    this.arbiter = opts.arbiter;
+    this.sessionId = opts.sessionId;
     this.maxRetries = opts.maxRetries ?? 3;
     this.consensusRiskThreshold = opts.consensusRiskThreshold ?? 'high';
     this.consensus = opts.consensus;
@@ -261,14 +268,41 @@ export class AutonomousBrain implements BrainArbiter {
     let result: { optionId: string; rationale: string };
 
     try {
-      result = await this.llmProvider.decide(prompt);
+      if (this.arbiter) {
+        const decision = await this.arbiter.decide({
+          id,
+          sessionId: this.sessionId,
+          source: request.source,
+          question,
+          context: [
+            prompt.context,
+            history.length ? `Previous decisions: ${JSON.stringify(history)}` : '',
+            ...(hints ?? []),
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+          options,
+          risk,
+          fallback: 'ask_human',
+        });
+        if (decision.type !== 'answer') return decision;
+        result = { optionId: decision.optionId ?? '', rationale: decision.rationale ?? '' };
+      } else result = await this.llmProvider.decide(prompt);
     } catch (err) {
       // Fallback: pick the recommended option or deny
       const recommended = options.find((o) => o.recommended);
-      if (recommended && risk === 'low') {
+      if (!this.arbiter && recommended && risk === 'low') {
         return { type: 'answer', optionId: recommended.id, text: recommended.label };
       }
       return { type: 'deny', reason: `Brain LLM failed: ${String(err)}` };
+    }
+
+    if (
+      !result ||
+      typeof result.optionId !== 'string' ||
+      !options.some((option) => option.id === result.optionId)
+    ) {
+      return { type: 'deny', reason: 'Brain returned no exact offered option id.' };
     }
 
     // Record the decision in the knowledge graph (fire-and-forget for perf).
@@ -625,6 +659,7 @@ export class AutonomousBrain implements BrainArbiter {
     context?: string;
   }): Promise<DecisionNode> {
     const node = (await this.graph.add({
+      id: input.id,
       type: 'decision',
       decisionType: input.decisionType as DecisionNode['decisionType'],
       question: input.question,

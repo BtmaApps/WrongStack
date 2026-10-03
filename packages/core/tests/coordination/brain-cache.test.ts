@@ -97,20 +97,20 @@ describe('brainCacheKey', () => {
     expect(brainCacheKey(a)).not.toBe(brainCacheKey(c));
   });
 
-  it('normalizes volatile elapsed counters and timestamps in context', () => {
+  it('preserves elapsed counters and timestamps as potential decision evidence', () => {
     const a = req({ context: 'Active runs: 1\nIdle for: 301s\nStall threshold: 300s' });
     const b = req({ context: 'Active runs: 1\nIdle for: 305s\nStall threshold: 300s' });
-    expect(brainCacheKey(a)).toBe(brainCacheKey(b));
+    expect(brainCacheKey(a)).not.toBe(brainCacheKey(b));
 
     const withTime1 = req({ context: '2026-09-19T14:10:00.000Z - Task waiting on resource' });
     const withTime2 = req({ context: '2026-09-19T14:12:35.123Z - Task waiting on resource' });
-    expect(brainCacheKey(withTime1)).toBe(brainCacheKey(withTime2));
+    expect(brainCacheKey(withTime1)).not.toBe(brainCacheKey(withTime2));
   });
 
-  it('normalizes multi-space, tabs and surrounding whitespace in question', () => {
+  it('preserves whitespace in question because it may be quoted evidence', () => {
     const a = req({ question: 'Should we extend the budget?' });
     const b = req({ question: '  Should  we   extend   the budget? \n' });
-    expect(brainCacheKey(a)).toBe(brainCacheKey(b));
+    expect(brainCacheKey(a)).not.toBe(brainCacheKey(b));
   });
 });
 

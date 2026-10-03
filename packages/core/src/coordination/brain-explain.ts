@@ -15,17 +15,11 @@ import type {
   BrainRisk,
   BrainTerminalPolicy,
 } from './brain.js';
-import { BRAIN_RISK_LEVELS, terminalPolicyDecision } from './brain.js';
+import { DefaultBrainArbiter, terminalPolicyDecision } from './brain.js';
 import type { BrainDecisionCache } from './brain-cache.js';
-import {
-  type BrainHeuristicsConfig,
-  isBlockedResolved,
-  isContinuePing,
-  isDeadlockWithFailedWork,
-  isRetryExhausted,
-  resolveBrainHeuristics,
-} from './brain-heuristics.js';
-import { type BrainAutoRisk, resolveRiskCeiling } from './brain-risk.js';
+import type { BrainHeuristicsConfig } from './brain-heuristics.js';
+import { evaluateQuickBrainDecision } from './brain-quick-decision.js';
+import { type BrainAutoRisk, brainTierEligibility } from './brain-risk.js';
 import type { CompiledBrainRule } from './brain-rules.js';
 import { applyRule, ruleMatches } from './brain-rules.js';
 
@@ -41,6 +35,12 @@ export interface BrainExplainContext {
   ledgerAutoDenyAfterFailures?: number | undefined;
   cache?: Pick<BrainDecisionCache, 'isEnabled' | 'peek'> | undefined;
   rules?: readonly CompiledBrainRule[] | undefined;
+  peekRule?:
+    | ((request: BrainDecisionRequest) => { decision: BrainDecision; ruleId: string } | null)
+    | undefined;
+  systemOneEnabled?: boolean | undefined;
+  llmCircuitOpen?: boolean | undefined;
+  llmDenyIsTerminal?: 'never' | 'when-decided' | 'always' | undefined;
   heuristics?: BrainHeuristicsConfig | undefined;
   maxAutoRisk?: BrainAutoRisk | BrainRisk | undefined;
   council?:
@@ -58,6 +58,9 @@ export type BrainDecisionTierName =
   | 'cache'
   | 'rule'
   | 'heuristic'
+  | 'policy'
+  | 'system-one'
+  | 'llm'
   | 'risk_gate'
   | 'terminal';
 
@@ -75,7 +78,7 @@ export interface BrainDecisionExplanation {
     settledDeterministically: boolean;
     resolvingTier?: BrainDecisionTierName | undefined;
     decision?: BrainDecision | undefined;
-    nextTierIfNotSettled?: 'council' | 'autonomous_llm' | 'ask_human' | undefined;
+    nextTierIfNotSettled?: 'council' | 'autonomous_llm' | 'system-one' | 'ask_human' | undefined;
     reason: string;
   };
 }
@@ -93,7 +96,7 @@ export function explainBrainDecision(
   if (ctx.ledger?.isEnabled() && ctx.ledger.failureStreakFor) {
     const streak = ctx.ledger.failureStreakFor(request);
     const threshold = ctx.ledgerAutoDenyAfterFailures ?? 3;
-    if (streak >= threshold) {
+    if (threshold > 0 && streak >= threshold) {
       const decision: BrainDecision = {
         type: 'deny',
         reason:
@@ -174,7 +177,9 @@ export function explainBrainDecision(
       }
     }
     if (matchedRule) {
-      const decision = applyRule(matchedRule, request);
+      const decision = ctx.peekRule
+        ? ctx.peekRule(request)?.decision
+        : applyRule(matchedRule, request);
       if (decision) {
         steps.push({
           tier: 'rule',
@@ -213,178 +218,86 @@ export function explainBrainDecision(
     });
   }
 
-  // 4. Deterministic Heuristics Stage
-  const heuristics = resolveBrainHeuristics(ctx.heuristics);
-  const recommended = request.options?.find((o) => o.recommended);
-
-  if (heuristics.lowRiskAutoAnswer && request.risk === 'low' && recommended) {
-    const decision: BrainDecision = {
-      type: 'answer',
-      optionId: recommended.id,
-      text: recommended.label,
-      rationale: 'Low-risk request with an explicit recommended option.',
-    };
-    steps.push({
-      tier: 'heuristic',
-      status: 'settled',
-      reason: 'Low-risk heuristic matched: auto-answering with caller-recommended option.',
-      decision,
-    });
+  // The same policy evaluation and eligibility functions drive the real ladder.
+  const policy = new DefaultBrainArbiter({ heuristics: ctx.heuristics }).evaluate(request);
+  const provisional =
+    policy.decision.type === 'answer' &&
+    policy.decision.optionId === undefined &&
+    request.fallback === 'continue';
+  const settle = (
+    tier: BrainDecisionTierName,
+    decision: BrainDecision,
+    reason: string,
+  ): BrainDecisionExplanation => {
+    steps.push({ tier, status: 'settled', reason, decision });
     return {
       request,
       steps,
-      verdict: {
-        settledDeterministically: true,
-        resolvingTier: 'heuristic',
-        decision,
-        reason: 'Settled deterministically by lowRiskAutoAnswer heuristic.',
-      },
+      verdict: { settledDeterministically: true, resolvingTier: tier, decision, reason },
     };
+  };
+  if (policy.decision.type !== 'ask_human' && !provisional) {
+    return settle(policy.tier, policy.decision, 'The default policy resolved this request.');
   }
-
-  // Options are control-plane choices; heuristics do not override explicit options
-  if (!request.options?.length) {
-    const q = request.question.toLowerCase();
-    const c = (request.context ?? '').toLowerCase();
-
-    if (
-      heuristics.blockedResolved &&
-      request.fallback === 'continue' &&
-      request.context &&
-      isBlockedResolved(q, c, heuristics.blockedResolvedMarkers)
-    ) {
-      const decision: BrainDecision = {
-        type: 'answer',
-        text: 'Blocker resolved. Continue with the previously blocked work.',
-        rationale: 'Heuristic: blocking dependency explicitly resolved — resuming.',
-      };
-      steps.push({
-        tier: 'heuristic',
-        status: 'settled',
-        reason: 'Blocked-resolved heuristic matched: blocking dependency resolved.',
-        decision,
-      });
-      return {
-        request,
-        steps,
-        verdict: {
-          settledDeterministically: true,
-          resolvingTier: 'heuristic',
-          decision,
-          reason: 'Settled deterministically by blockedResolved heuristic.',
-        },
-      };
-    }
-
-    if (heuristics.deadlockSkip && request.context && isDeadlockWithFailedWork(q, c)) {
-      const decision: BrainDecision = {
-        type: 'answer',
-        text: 'Skip deadlocked tasks and continue with remaining work. Failed tasks will be reported in the final summary.',
-        rationale:
-          'Heuristic: deadlocked tasks blocked by failed dependencies — skipping unblocks remaining work.',
-      };
-      steps.push({
-        tier: 'heuristic',
-        status: 'settled',
-        reason: 'Deadlock-skip heuristic matched: deadlocked work skipped.',
-        decision,
-      });
-      return {
-        request,
-        steps,
-        verdict: {
-          settledDeterministically: true,
-          resolvingTier: 'heuristic',
-          decision,
-          reason: 'Settled deterministically by deadlockSkip heuristic.',
-        },
-      };
-    }
-
-    if (heuristics.retryExhausted && request.context && isRetryExhausted(q, c)) {
-      const decision: BrainDecision = {
-        type: 'answer',
-        text: 'Mark as failed and move on. Note the failure for the final report.',
-        rationale: 'Heuristic: retries exhausted — continuing would waste resources.',
-      };
-      steps.push({
-        tier: 'heuristic',
-        status: 'settled',
-        reason: 'Retry-exhausted heuristic matched: stopping exhausted retries.',
-        decision,
-      });
-      return {
-        request,
-        steps,
-        verdict: {
-          settledDeterministically: true,
-          resolvingTier: 'heuristic',
-          decision,
-          reason: 'Settled deterministically by retryExhausted heuristic.',
-        },
-      };
-    }
-
-    if (heuristics.continuePing && request.fallback === 'continue' && isContinuePing(q)) {
-      const decision: BrainDecision = {
-        type: 'answer',
-        text: 'Continue execution. Do not stop.',
-        rationale: 'Heuristic: autonomy mode — continue until all work is complete.',
-      };
-      steps.push({
-        tier: 'heuristic',
-        status: 'settled',
-        reason: 'Continue-ping heuristic matched: auto-continuing heartbeat ping.',
-        decision,
-      });
-      return {
-        request,
-        steps,
-        verdict: {
-          settledDeterministically: true,
-          resolvingTier: 'heuristic',
-          decision,
-          reason: 'Settled deterministically by continuePing heuristic.',
-        },
-      };
-    }
-  }
-
   steps.push({
-    tier: 'heuristic',
+    tier: 'policy',
     status: 'passed',
-    reason: 'No deterministic heuristics matched.',
+    reason: provisional
+      ? 'Caller continuation is provisional; subsequent tiers may decide.'
+      : 'Policy requires escalation.',
   });
-
-  // 5. Risk Gate & Qualification Stage
-  const maxRiskLevel = resolveRiskCeiling(ctx.maxAutoRisk as BrainAutoRisk | undefined);
-  const reqRiskLevel = BRAIN_RISK_LEVELS[request.risk] ?? 1;
-  const councilEnabled = ctx.council?.enabled ?? false;
-  const councilMinRisk = ctx.council?.minRisk ?? 'high';
-  const councilMinLevel = BRAIN_RISK_LEVELS[councilMinRisk] ?? 2;
-
-  const councilEligible = councilEnabled && reqRiskLevel >= councilMinLevel;
-  const autoEligible = reqRiskLevel <= maxRiskLevel;
-
-  let nextTier: 'council' | 'autonomous_llm' | 'ask_human';
+  const eligible = brainTierEligibility(
+    request,
+    ctx.maxAutoRisk,
+    ctx.council?.enabled ?? false,
+    ctx.council?.minRisk ?? 'high',
+  );
+  let nextTier: 'council' | 'autonomous_llm' | 'system-one' | 'ask_human';
   let nextReason: string;
-
-  if (councilEligible) {
-    nextTier = 'council';
-    nextReason = `Request risk "${request.risk}" meets council floor "${councilMinRisk}": eligible for Multi-LLM Council.`;
-  } else if (autoEligible) {
-    nextTier = 'autonomous_llm';
-    nextReason = `Request risk "${request.risk}" is within maxAutoRisk "${String(ctx.maxAutoRisk ?? 'medium')}": eligible for Autonomous LLM pool.`;
-  } else {
+  if (!eligible.autonomous) {
+    if (policy.decision.type !== 'ask_human')
+      return settle(
+        policy.tier,
+        policy.decision,
+        'Autonomy is outside the ceiling; the caller policy resolves this request.',
+      );
     nextTier = 'ask_human';
-    nextReason = `Request risk "${request.risk}" exceeds maxAutoRisk "${String(ctx.maxAutoRisk ?? 'medium')}" and council is not eligible: requires escalation.`;
+    nextReason = `Request risk "${request.risk}" exceeds maxAutoRisk "${ctx.maxAutoRisk ?? 'medium'}".`;
+  } else if (eligible.systemOne && ctx.systemOneEnabled) {
+    nextTier = 'system-one';
+    nextReason =
+      'Jev may settle this option request; insufficient evidence defers to the remaining ladder.';
+  } else if (eligible.council) {
+    nextTier = 'council';
+    nextReason = 'Request is within the autonomy ceiling and meets the council risk floor.';
+  } else {
+    const heuristic = evaluateQuickBrainDecision(request, ctx.heuristics);
+    if (heuristic)
+      return settle('heuristic', heuristic, 'The autonomous heuristic resolved this request.');
+    if (ctx.llmCircuitOpen) {
+      if (ctx.llmDenyIsTerminal === 'always')
+        return settle(
+          'llm',
+          {
+            type: 'deny',
+            reason: 'Autonomy Brain LLM tier is circuit-broken after repeated failures.',
+          },
+          'The configured denial policy makes the circuit-broken result terminal.',
+        );
+      if (policy.decision.type !== 'ask_human')
+        return settle(
+          policy.tier,
+          policy.decision,
+          'The LLM pool is circuit-broken; the caller policy resolves this request.',
+        );
+      nextTier = 'ask_human';
+      nextReason = 'The LLM pool is circuit-broken and cannot be consulted.';
+    } else {
+      nextTier = 'autonomous_llm';
+      nextReason = 'Request is eligible for the autonomous LLM pool.';
+    }
   }
-
-  steps.push({
-    tier: 'risk_gate',
-    status: 'passed',
-    reason: nextReason,
-  });
+  steps.push({ tier: 'risk_gate', status: 'passed', reason: nextReason });
 
   // 6. Terminal Escalation Stage (Headless Mode Simulation)
   if (

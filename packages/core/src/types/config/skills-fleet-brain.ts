@@ -233,7 +233,7 @@ export interface FleetConfig {
    * Explore Companion — state-triggered background codebase explorer behind
    * the leader. Watches the leader's in-progress work state and assigns
    * read-only exploration probes to a resident `explore-companion`
-   * subagent; findings return via mailbox. Default enabled.
+   * subagent; findings return via same-session notes. Default enabled.
    */
   exploreCompanion?: ExploreCompanionConfig | undefined;
   /** Roster-agent self-learning: capture → optimize → per-skill addenda. */
@@ -319,6 +319,25 @@ export interface ExploreCompanionConfig {
   maxPending?: number | undefined;
   /** Mailbox poll interval for explicit asks (ms). Default 5000. */
   pollIntervalMs?: number | undefined;
+  /** Per-signal switches. Omitted signals stay enabled for compatibility. */
+  signals?:
+    | {
+        editUnreadFile?: boolean | undefined;
+        searchZeroHits?: boolean | undefined;
+        unfamiliarRead?: boolean | undefined;
+        todoInProgress?: boolean | undefined;
+        errorSymbol?: boolean | undefined;
+        mailboxAsk?: boolean | undefined;
+      }
+    | undefined;
+  /** Discard queued automatic probes older than this. Default 120000. Explicit asks survive. */
+  maxProbeAgeMs?: number | undefined;
+  /** Hard host deadline per probe, including assignment. Default 120000. */
+  probeTimeoutMs?: number | undefined;
+  /** Runtime tool-call ceiling for each probe. Default 32. */
+  maxToolCallsPerProbe?: number | undefined;
+  /** Maximum characters forwarded to the leader per result. Default 4000. */
+  maxFindingsChars?: number | undefined;
 }
 
 /**

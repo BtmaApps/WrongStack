@@ -256,14 +256,23 @@ export class BrainTraceRecorder {
   private pendingWriteBytes = 0;
   private static readonly MAX_PENDING_WRITES = 1_000;
   private static readonly MAX_PENDING_WRITE_BYTES = 8 * 1024 * 1024;
-  private dirReady = false;
+  private readyDirectory: string | undefined;
 
-  private readonly content: BrainTraceContentMode;
-  private readonly maxOpenRecords: number;
+  private content: BrainTraceContentMode;
+  private maxOpenRecords: number;
 
   constructor(private readonly opts: BrainTraceRecorderOptions) {
     this.content = opts.content ?? 'full';
     this.maxOpenRecords = opts.maxOpenRecords ?? 200;
+  }
+
+  reconfigure(settings: Omit<BrainTraceRecorderOptions, 'events'>): void {
+    const content = settings.content ?? 'full';
+    if (this.opts.filePath !== settings.filePath || this.content !== content) this.open.clear();
+    this.opts.filePath = settings.filePath;
+    this.content = content;
+    this.maxOpenRecords = settings.maxOpenRecords ?? 200;
+    this.evictOverflow();
   }
 
   start(): void {
@@ -473,15 +482,16 @@ export class BrainTraceRecorder {
     }
     this.pendingWriteCount += 1;
     this.pendingWriteBytes += bytes;
+    const filePath = this.opts.filePath;
     this.writeChain = this.writeChain
       .then(async () => {
-        if (!this.dirReady) {
-          await mkdir(dirname(this.opts.filePath), { recursive: true });
-          this.dirReady = true;
+        if (this.readyDirectory !== dirname(filePath)) {
+          await mkdir(dirname(filePath), { recursive: true });
+          this.readyDirectory = dirname(filePath);
         }
         // WS-035: under `content: 'full'` every trace row holds the question and
         // context verbatim. Create owner-only.
-        await appendFile(this.opts.filePath, line, { encoding: 'utf8', mode: SECRET_FILE_MODE });
+        await appendFile(filePath, line, { encoding: 'utf8', mode: SECRET_FILE_MODE });
       })
       .catch(() => {
         // Tracing is best-effort — it must never destabilize the host.

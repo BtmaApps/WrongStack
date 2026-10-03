@@ -28,19 +28,21 @@ import {
   type BrainDecisionRequest,
 } from '../coordination/brain.js';
 
-import { type BrainAutoRisk, resolveRiskCeiling } from '../coordination/brain-risk.js';
+import {
+  type BrainAutoRisk,
+  brainTierEligibility,
+  resolveRiskCeiling,
+} from '../coordination/brain-risk.js';
 
 export { type BrainAutoRisk, resolveRiskCeiling } from '../coordination/brain-risk.js';
 
+import type { BrainHeuristicsConfig } from '../coordination/brain-heuristics.js';
+import { evaluateQuickBrainDecision } from '../coordination/brain-quick-decision.js';
 import {
-  type BrainHeuristicsConfig,
-  isBlockedResolved,
-  isContinuePing,
-  isDeadlockWithFailedWork,
-  isRetryExhausted,
-  resolveBrainHeuristics,
-} from '../coordination/brain-heuristics.js';
-import { markDecisionTier } from '../coordination/brain-telemetry.js';
+  type BrainDecisionTier,
+  markDecisionTier,
+  readDecisionTier,
+} from '../coordination/brain-telemetry.js';
 import type { EventBus } from '../kernel/events.js';
 import type { Provider } from '../types/provider.js';
 import {
@@ -195,7 +197,7 @@ export interface TieredBrainArbiterOptions {
 export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): BrainArbiter {
   const trace = (
     request: BrainDecisionRequest,
-    tier: 'policy' | 'system-one' | 'council' | 'llm',
+    tier: BrainDecisionTier,
     outcome: 'answer' | 'deny' | 'ask_human' | 'error' | 'skipped',
     terminal: boolean,
     startedAt: number,
@@ -217,12 +219,13 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
     async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
       const policyAt = Date.now();
       const policyDecision = await opts.policy.decide(request);
+      const policyTier = readDecisionTier(request) ?? 'policy';
       const provisionalContinue =
         policyDecision.type === 'answer' &&
         policyDecision.optionId === undefined &&
         request.fallback === 'continue';
       if (policyDecision.type !== 'ask_human' && !provisionalContinue) {
-        trace(request, 'policy', policyDecision.type, true, policyAt);
+        trace(request, policyTier, policyDecision.type, true, policyAt);
         return policyDecision;
       }
       trace(
@@ -236,9 +239,13 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
           : 'policy escalated',
       );
 
-      const ceilingLevel = resolveRiskCeiling(opts.getMaxAutoRisk?.() ?? 'medium');
-      const requestLevel = RISK_LEVELS[request.risk] ?? 2;
-      if (requestLevel > ceilingLevel) {
+      const eligible = brainTierEligibility(
+        request,
+        opts.getMaxAutoRisk?.() ?? 'medium',
+        !!opts.council,
+        opts.getCouncilMinRisk?.() ?? 'high',
+      );
+      if (!eligible.autonomous) {
         trace(
           request,
           'llm',
@@ -247,14 +254,15 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
           policyAt,
           `risk ${request.risk} exceeds the autonomy ceiling`,
         );
+        if (policyDecision.type !== 'ask_human')
+          trace(request, policyTier, policyDecision.type, true, policyAt);
         return policyDecision;
       }
 
       if (opts.systemOne && request.options && request.options.length > 1) {
         const floor = opts.council ? (opts.getCouncilMinRisk?.() ?? 'high') : 'high';
-        const floorLevel = RISK_LEVELS[floor] ?? 2;
         const systemOneAt = Date.now();
-        if (requestLevel < floorLevel) {
+        if (eligible.systemOne) {
           const decision = await opts.systemOne.decide(request);
           if (decision) {
             markDecisionTier(request, 'system-one');
@@ -275,9 +283,7 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
       }
 
       if (opts.council) {
-        const floor = opts.getCouncilMinRisk?.() ?? 'high';
-        const floorLevel = RISK_LEVELS[floor] ?? 2;
-        if (requestLevel >= floorLevel) {
+        if (eligible.council) {
           const councilAt = Date.now();
           try {
             const councilDecision = await opts.council.decide(request);
@@ -287,6 +293,7 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
               return councilDecision;
             }
             trace(request, 'council', 'ask_human', false, councilAt, 'council abstained');
+            if (request.risk === 'critical') return councilDecision;
           } catch (err) {
             trace(
               request,
@@ -296,6 +303,13 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
               councilAt,
               err instanceof Error ? err.message : String(err),
             );
+            if (request.risk === 'critical') {
+              return {
+                type: 'ask_human',
+                prompt: `Critical council decision could not be resolved: ${request.question}`,
+                options: request.options,
+              };
+            }
           }
         } else {
           trace(
@@ -311,19 +325,23 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
 
       if (!opts.autonomous) {
         trace(request, 'llm', 'skipped', false, policyAt, 'no LLM tier configured');
+        if (policyDecision.type !== 'ask_human')
+          trace(request, policyTier, policyDecision.type, true, policyAt);
         return policyDecision;
       }
       const llmAt = Date.now();
       try {
         const llmDecision = await opts.autonomous.decide(request);
         if (llmDecision.type === 'answer') {
-          trace(request, 'llm', 'answer', true, llmAt);
+          trace(request, readDecisionTier(request) ?? 'llm', 'answer', true, llmAt);
           return llmDecision;
         }
         if (llmDecision.type === 'deny') {
           const policy = opts.getDenyIsTerminal?.() ?? 'never';
           const kind = readLlmDenyKind(llmDecision);
-          const terminal = policy === 'always' || (policy === 'when-decided' && kind === undefined);
+          const terminal =
+            policy === 'always' ||
+            (policy === 'when-decided' && (kind === undefined || kind === 'refused'));
           if (terminal) {
             markDecisionTier(request, 'llm');
             trace(request, 'llm', 'deny', true, llmAt, `denyIsTerminal: ${policy}`);
@@ -341,7 +359,9 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
           err instanceof Error ? err.message : String(err),
         );
       }
-      markDecisionTier(request, 'policy');
+      markDecisionTier(request, policyTier);
+      if (policyDecision.type !== 'ask_human')
+        trace(request, policyTier, policyDecision.type, true, policyAt);
       return policyDecision;
     },
   };
@@ -462,54 +482,7 @@ export function formatDecisionSummary(
  */
 export function quickDecide(
   request: BrainDecisionRequest,
-  heuristics?: BrainHeuristicsConfig | undefined,
+  heuristics?: BrainHeuristicsConfig,
 ): BrainDecision | null {
-  if (request.options?.length) return null;
-
-  const h = resolveBrainHeuristics(heuristics);
-  const q = request.question.toLowerCase();
-  const ctx = request.context?.toLowerCase() ?? '';
-
-  if (h.deadlockSkip && isDeadlockWithFailedWork(q, ctx)) {
-    return {
-      type: 'answer',
-      text: 'Skip deadlocked tasks and continue with remaining work. Failed tasks will be reported in the final summary.',
-      rationale:
-        'Heuristic: deadlocked tasks blocked by failed dependencies — skipping unblocks remaining work.',
-    };
-  }
-
-  if (h.retryExhausted && isRetryExhausted(q, ctx)) {
-    return {
-      type: 'answer',
-      text: 'Mark as failed and move on. Note the failure for the final report.',
-      rationale: 'Heuristic: retries exhausted — continuing would waste resources.',
-    };
-  }
-
-  if (
-    h.blockedResolved &&
-    request.fallback === 'continue' &&
-    isBlockedResolved(q, ctx, h.blockedResolvedMarkers)
-  ) {
-    return {
-      type: 'answer',
-      text: 'Blocker resolved. Continue with the previously blocked work.',
-      rationale: 'Heuristic: blocking dependency explicitly resolved — resuming.',
-    };
-  }
-
-  if (q.includes('goal complete') || q.includes('mission complete')) {
-    return null;
-  }
-
-  if (h.continuePing && request.fallback === 'continue' && isContinuePing(q)) {
-    return {
-      type: 'answer',
-      text: 'Continue execution. Do not stop.',
-      rationale: 'Heuristic: autonomy mode — continue until all work is complete.',
-    };
-  }
-
-  return null;
+  return evaluateQuickBrainDecision(request, heuristics);
 }

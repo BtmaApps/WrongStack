@@ -1512,8 +1512,8 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 209,
-      "sourceLines": 58656
+      "sourceFiles": 211,
+      "sourceLines": 58845
     },
     {
       "directory": "core",
@@ -1533,8 +1533,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 70,
-      "sourceLines": 20492
+      "sourceFiles": 71,
+      "sourceLines": 20547
     },
     {
       "directory": "extension",
@@ -1576,7 +1576,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 21,
-      "sourceLines": 4330
+      "sourceLines": 4334
     },
     {
       "directory": "models",
@@ -1702,7 +1702,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15677
+      "sourceLines": 15696
     },
     {
       "directory": "typesafe",

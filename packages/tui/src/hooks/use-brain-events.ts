@@ -92,6 +92,7 @@ export function useBrainEvents(
         };
         decision: BrainDecision;
         tier?: string | undefined;
+        structured?: boolean | undefined;
       };
       const key = requestKey(p.request.id, p.sessionId ?? p.request.sessionId);
       const council = history ? councilTraces.get(key) : undefined;
@@ -107,7 +108,7 @@ export function useBrainEvents(
         risk: p.request.risk,
         summary: decision,
       });
-      if (status === 'ask_human') {
+      if (status === 'ask_human' && !p.structured) {
         const prompt: NonNullable<State['brainPrompt']> = {
           requestId: p.request.id,
           source: p.request.source,

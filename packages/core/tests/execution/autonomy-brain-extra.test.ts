@@ -646,20 +646,17 @@ describe('single-LLM tier — call shape and budgets', () => {
       targets: ['a', 'b', 'c', 'd', 'e'].map(hangingTarget),
       decisionTimeoutMs: 30,
     });
-    const d = await brain.decide(llmReq());
-
-    expect(d.type).toBe('deny');
-    expect(d.type === 'deny' && d.reason).toContain('decision budget');
-    // The cap is wall clock (deadline = 3 x per-call timeout), so the exact
-    // attempt where the walk stops is scheduler-dependent: AbortSignal.timeout
-    // and the Date.now() budget check run on different clocks. Under load the
-    // abort callback and the next deadline check can consume enough scheduler
-    // time to stop after the second attempt; with a fresh scheduler a fourth
-    // attempt can start just before the deadline and abort immediately.
-    // Anything from two through four is consistent with the wall-clock cap.
-    expect(attempted.length).toBeGreaterThanOrEqual(2);
-    expect(attempted.length).toBeLessThan(5);
-    expect(attempted).toEqual(['a', 'b', 'c', 'd'].slice(0, attempted.length));
+    vi.useFakeTimers();
+    try {
+      const pending = brain.decide(llmReq());
+      await vi.runAllTimersAsync();
+      const d = await pending;
+      expect(d.type).toBe('deny');
+      expect(d.type === 'deny' && d.reason).toContain('decision budget');
+      expect(attempted).toEqual(['a', 'b', 'c']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

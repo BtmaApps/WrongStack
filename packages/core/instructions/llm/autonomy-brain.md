@@ -59,6 +59,13 @@ Without options:
 If no responsible optionless decision can be made:
 {"decision":"insufficient evidence","rationale":"<specific missing evidence>","confidence":0}
 
+If the proposed action must be refused on concrete evidence and no listed
+refusal option represents that verdict:
+{"type":"deny","reason":"<one evidence-based sentence>","confidence":<0..1>}
+
+A refusal is a completed decision. Insufficient evidence is uncertainty; do
+not claim that the action is unsafe merely because evidence is missing.
+
 `confidence` estimates correctness given only the supplied evidence. Do not
 inflate it. Output no preamble, analysis, implementation steps, or code fences.
 

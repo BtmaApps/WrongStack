@@ -32,7 +32,6 @@ import {
   type ProjectSwitchContext,
   switchProjectInPlace as switchProjectInPlaceExtracted,
 } from './boot/tui-project-switch.js';
-import { createHqFleetControl } from './hq-fleet-control.js';
 import type { TuiRuntimeState } from './boot/tui-runtime-state.js';
 import {
   getSDDContext as getSDDContextExtracted,
@@ -53,6 +52,7 @@ import { finalizeExecutionCleanup } from './execution-cleanup.js';
 import { createKanbanDispatchHandler } from './execution-kanban-dispatch.js';
 import { createReplFleetCallbacks } from './execution-repl-fleet-callbacks.js';
 import { FleetStatusLine } from './fleet-statusline.js';
+import { createHqFleetControl } from './hq-fleet-control.js';
 import { createSubagentModelsPanelHost } from './subagent-models/panel-service.js';
 import { createTuiResumeCallback } from './tui-resume-callback.js';
 
@@ -405,7 +405,6 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
 
       const goalWiring = wireGoal(events);
       const subscribeGoal = goalWiring.subscribe;
-
       const coordinatorEvents = new Set<(event: CoordinatorEvent) => void>();
       state.coordinatorEvents = coordinatorEvents;
       const autonomousCoordinationEnabled = config.features.autonomousCoordination !== false;
@@ -414,6 +413,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
             state,
             events,
             context,
+            brain,
             wpaths,
             mailbox,
             director,

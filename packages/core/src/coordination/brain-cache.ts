@@ -63,24 +63,11 @@ export interface BrainCacheStats {
 }
 
 /**
- * Strip high-churn volatile tokens from request context for cache keying:
- * - Elapsed / idle / duration timers (e.g. "Idle for: 312s", "Duration: 45ms", "waited 10s")
- * - Dynamic ISO / epoch timestamps
- *
- * This allows repeated monitor engagements and recurring status checks to hit
- * the cache instead of busting it on trivial second-by-second drift, while
- * preserving concrete domain details, file paths, error messages, and status codes.
+ * Preserve context verbatim. Dates, durations, identifiers and quoted whitespace
+ * can all be evidence; similarity normalization belongs only in the ledger.
  */
 export function normalizeContextForCache(context: string | undefined): string | undefined {
-  if (!context) return undefined;
-  return context
-    .replace(
-      /\b(?:idle|waited|elapsed|duration)(?:\s+for)?\s*:?\s*\d+(?:\.\d+)?\s*(?:s|ms|m|sec|min|seconds|minutes)\b/gi,
-      '<elapsed>',
-    )
-    .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\b/g, '<timestamp>')
-    .replace(/\b1\d{12}\b/g, '<epoch>')
-    .trim();
+  return context;
 }
 
 /**
@@ -96,7 +83,7 @@ export function brainCacheKey(request: BrainDecisionRequest): string {
   return JSON.stringify([
     request.sessionId,
     request.source,
-    request.question.trim().replace(/\s+/g, ' '),
+    request.question,
     normalizeContextForCache(request.context),
     request.risk,
     request.fallback,
@@ -106,7 +93,7 @@ export function brainCacheKey(request: BrainDecisionRequest): string {
 }
 
 /** Tiers whose decisions cost a provider call and are therefore worth caching. */
-const CACHEABLE_TIERS = new Set(['council', 'llm']);
+const CACHEABLE_TIERS = new Set(['council', 'llm', 'system-one']);
 // In-flight decisions from before a settings change cannot repopulate the cache.
 const cacheGenerations = new WeakMap<BrainDecisionCache, number>();
 

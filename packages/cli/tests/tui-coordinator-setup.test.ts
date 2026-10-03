@@ -39,7 +39,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function harness(director: Record<string, unknown> | null) {
+function harness(
+  director: Record<string, unknown> | null,
+  brain?: import('@wrongstack/core/coordination').BrainArbiter,
+) {
   const listeners = new Set<(...args: unknown[]) => void>();
   const off = vi.fn();
   const state = {
@@ -49,6 +52,7 @@ function harness(director: Record<string, unknown> | null) {
   const controller: Record<string, unknown> = {};
   const stopSetter = vi.fn();
   const result = setupAutonomousCoordinator({
+    brain,
     state: state as never,
     events: {
       onPattern: vi.fn((_name, listener) => {
@@ -77,6 +81,13 @@ function harness(director: Record<string, unknown> | null) {
 }
 
 describe('setupAutonomousCoordinator', () => {
+  it('passes the shared Brain and owning session to the coordinator', () => {
+    const brain = { decide: vi.fn() };
+    const { result } = harness({ fleet: {}, fleetManager: {} }, brain);
+    const coordinator = result.ensure() as unknown as { options: Record<string, unknown> };
+    expect(coordinator.options.arbiter).toBe(brain);
+    expect(coordinator.options.sessionId).toBe('session-1');
+  });
   it('waits for a Director and cleans up its lifecycle listener', () => {
     const { result, off } = harness(null);
     expect(result.ensure()).toBeNull();
@@ -113,7 +124,7 @@ describe('setupAutonomousCoordinator', () => {
     expect(listener).toHaveBeenCalledWith({ type: 'updated' });
   });
 
-  it('populates controller callbacks and tolerates invalid LLM JSON', async () => {
+  it('populates controller callbacks and rejects an unoffered LLM option', async () => {
     const director = { fleet: {}, fleetManager: {} };
     const { result, controller } = harness(director);
     const coordinator = result.ensure() as unknown as {
@@ -164,6 +175,6 @@ describe('setupAutonomousCoordinator', () => {
         options: [{ id: 'first', label: 'First' }],
         risk: 'low',
       }),
-    ).resolves.toMatchObject({ optionId: 'b' });
+    ).rejects.toThrow('no exact offered option');
   });
 });
