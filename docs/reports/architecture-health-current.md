@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-01T23:33:37.942Z
+**Generated:** 2026-10-03T11:40:15.146Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -21,7 +21,14 @@
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-30: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-09: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-11: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-12: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-14: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-29: exception expired on 2026-10-01
+- ARCH-CYCLE-TYPE-31: exception expired on 2026-10-01
 
 ## Workspace packages
 

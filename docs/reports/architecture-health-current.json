@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-01T23:33:37.942Z",
+  "generatedAt": "2026-10-03T11:40:15.146Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -24,7 +24,16 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 974
   },
-  "errors": [],
+  "errors": [
+    "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-30: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-09: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-11: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-12: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-14: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-29: exception expired on 2026-10-01",
+    "ARCH-CYCLE-TYPE-31: exception expired on 2026-10-01"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
