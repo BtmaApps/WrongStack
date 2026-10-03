@@ -36,6 +36,10 @@ const sharedResolve = {
     // these suites imported ../../src/server/* before the PR-018b extraction.
     '@wrongstack/webui-server': path.resolve(__dirname, '../../packages/webui-server/src'),
     '@wrongstack/tools/tool-diff': path.resolve(__dirname, '../../packages/tools/src/tool-diff.ts'),
+    '@wrongstack/tools/tool-summary': path.resolve(
+      __dirname,
+      '../../packages/tools/src/tool-summary.ts',
+    ),
     '@wrongstack/tools/tool-icons': path.resolve(
       __dirname,
       '../../packages/tools/src/tool-icons.ts',
@@ -43,6 +47,10 @@ const sharedResolve = {
     '@wrongstack/tools/next-steps': path.resolve(
       __dirname,
       '../../packages/tools/src/next-steps.ts',
+    ),
+    '@wrongstack/tools/artifact-presentation': path.resolve(
+      __dirname,
+      '../../packages/tools/src/artifact-presentation.ts',
     ),
     '@wrongstack/tools/auto-proceed-loop-guard': path.resolve(
       __dirname,
@@ -94,7 +102,12 @@ export default defineConfig({
           setupFiles: ['tests/setup/i18n-deferred.ts'],
           include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
           // Keep the two projects disjoint: server suites belong to node.
-          exclude: ['tests/server/**', '**/node_modules/**', '**/dist/**'],
+          exclude: [
+            'tests/server/**',
+            'tests/pure/agent-transcript-messages.test.ts',
+            '**/node_modules/**',
+            '**/dist/**',
+          ],
           globals: true,
           testTimeout: 30_000,
           hookTimeout: 30_000,

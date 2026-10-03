@@ -1,4 +1,9 @@
 import type {
+  CodeAssistDelta,
+  CodeAssistResult,
+  CodeAssistStarted,
+} from '@wrongstack/webui-protocol';
+import type {
   ChronicleFacet,
   ChronicleFacetValue,
   ChronicleGraphResult,
@@ -145,8 +150,8 @@ import type {
   WSAuthOAuthStatus,
   WSCatalogModelSearchResult,
   WSCompletionResult,
-  WSFallbackSuggestions,
   WSDiagGet,
+  WSFallbackSuggestions,
   WSFilesList,
   WSKeyOperationResult,
   WSModelSwitchResult,
@@ -165,11 +170,34 @@ import type {
   WSTodosUpdated,
 } from './system.js';
 
+/** `code.assist.started` — the server accepted the run and is starting the agent. */
+export interface WSCodeAssistStarted {
+  type: 'code.assist.started';
+  payload: CodeAssistStarted;
+}
+
+/** `code.assist.delta` — one streamed chunk of assistant text. */
+export interface WSCodeAssistDelta {
+  type: 'code.assist.delta';
+  payload: CodeAssistDelta;
+}
+
+/** `code.assist.result` — the terminal frame for a run. */
+export interface WSCodeAssistResult {
+  type: 'code.assist.result';
+  payload: CodeAssistResult;
+}
+
 export type WSServerMessage =
   | WSQueueState
   | WSQueueDrained
   | WSSessionStart
   | WSSessionEnd
+  // Code Assist ("Ask AI"). Deliberately NOT session-scoped: these belong to
+  // a throwaway analysis agent, not to any session the user can see.
+  | WSCodeAssistStarted
+  | WSCodeAssistDelta
+  | WSCodeAssistResult
   | WSTextDelta
   | WSThinkingDelta
   | WSToolUseStart
@@ -278,7 +306,7 @@ export type WSServerMessage =
     }
   | { type: 'chronicle.graph_result'; payload: ChronicleGraphResult }
   | { type: 'chronicle.metrics_result'; payload: ChronicleMetricsResultPayload }
-  | { type: 'chronicle.error'; payload: { message: string } }
+  | { type: 'chronicle.error'; payload: { message: string; requestId?: string | undefined } }
   | WSSessionsList
   | WSSessionInspect
   | WSProviderCatalog

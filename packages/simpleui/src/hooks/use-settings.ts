@@ -1,5 +1,10 @@
 import { type RefObject, useCallback, useRef, useState } from 'react';
-import { type AutonomyMode, DEFAULT_PREFS, type SimplePrefs } from '../lib/prefs-model.js';
+import {
+  type AutonomyMode,
+  DEFAULT_PREFS,
+  type SimplePrefs,
+  type SubagentModelPlan,
+} from '../lib/prefs-model.js';
 import type { SimpleSocket } from '../lib/ws.js';
 
 export interface UseSettingsOptions {
@@ -126,12 +131,49 @@ function shallowEqualPrefs(a: SimplePrefs, b: SimplePrefs): boolean {
     'refinerModel',
     'refinerFallbackProfile',
     'fallbackProfiles',
+    // `subagentModelPlan` is a resettable, user-editable pref (resetPrefs
+    // restores it and it rides in the durable prefs.update payload), so it
+    // belongs here — omitting it left `isAtDefaults` true after the plan was
+    // edited, permanently disabling the panel's "Reset to defaults" button.
+    'subagentModelPlan',
     'tgPollIntervalSec',
     'tgChatId',
   ];
   for (const key of keys) {
     const av = a[key];
     const bv = b[key];
+    if (key === 'subagentModelPlan') {
+      // Object-valued like fallbackProfiles, and `parsePrefs` allocates a NEW
+      // plan object on every `prefs.updated` frame — so `!==` would report
+      // "not at defaults" forever after the first server echo, re-enabling the
+      // reset button with nothing changed. Compare structurally instead.
+      const aPlan = av as SubagentModelPlan;
+      const bPlan = bv as SubagentModelPlan;
+      if (
+        aPlan.enabled !== bPlan.enabled ||
+        aPlan.lock !== bPlan.lock ||
+        aPlan.followSessionModel !== bPlan.followSessionModel
+      ) {
+        return false;
+      }
+      const aSlots = aPlan.slots ?? [];
+      const bSlots = bPlan.slots ?? [];
+      if (aSlots.length !== bSlots.length) return false;
+      for (let i = 0; i < aSlots.length; i++) {
+        const aSlot = aSlots[i] ?? {};
+        const bSlot = bSlots[i] ?? {};
+        if (
+          aSlot.provider !== bSlot.provider ||
+          aSlot.model !== bSlot.model ||
+          aSlot.tier !== bSlot.tier ||
+          aSlot.fallbackProfile !== bSlot.fallbackProfile ||
+          aSlot.label !== bSlot.label
+        ) {
+          return false;
+        }
+      }
+      continue;
+    }
     if (key === 'fallbackProfiles') {
       // fallbackProfiles is a Record<string, string[]> — compare via keys+values.
       const aMap = av as Record<string, string[]>;

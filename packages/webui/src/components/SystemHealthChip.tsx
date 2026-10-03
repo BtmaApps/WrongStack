@@ -276,11 +276,18 @@ export function SystemHealthChip({
           className={cn(
             'relative inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs transition-colors hover:bg-accent/60',
             tone === 'ok' && 'text-muted-foreground hover:text-foreground',
-            tone === 'warning' && 'bg-warning/10 text-warning',
-            tone === 'destructive' && 'bg-destructive/10 text-destructive',
+            tone === 'warning' && 'bg-warning/15 text-foreground',
+            tone === 'destructive' && 'bg-destructive/15 text-foreground',
           )}
         >
-          <Activity className="h-3.5 w-3.5" aria-hidden />
+          <Activity
+            className={cn(
+              'h-3.5 w-3.5',
+              tone === 'warning' && 'text-warning',
+              tone === 'destructive' && 'text-destructive',
+            )}
+            aria-hidden
+          />
           {issues > 0 ? <span className="tabular-nums font-medium">{issues}</span> : null}
         </button>
       </DropdownMenuTrigger>

@@ -189,8 +189,14 @@ function extractChange(input: Record<string, unknown>): ActivityChange | undefin
   const patch = typeof input['patch'] === 'string' ? input['patch'] : undefined;
   if (patch) {
     const lines = patch.split(/\r?\n/);
-    const addedLines = lines.filter((line) => line.startsWith('+') && !line.startsWith('+++'));
-    const removedLines = lines.filter((line) => line.startsWith('-') && !line.startsWith('---'));
+    // Only a `--- ` line directly followed by `+++ ` is a file header; a
+    // removed `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content.
+    const isHeader = (index: number): boolean =>
+      (lines[index]?.startsWith('--- ') && lines[index + 1]?.startsWith('+++ ')) ||
+      (lines[index]?.startsWith('+++ ') && lines[index - 1]?.startsWith('--- ')) ||
+      false;
+    const addedLines = lines.filter((line, index) => line.startsWith('+') && !isHeader(index));
+    const removedLines = lines.filter((line, index) => line.startsWith('-') && !isHeader(index));
     return {
       added: addedLines.length,
       removed: removedLines.length,

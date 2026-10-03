@@ -1,4 +1,14 @@
 {
+  "storyWidget": {
+    "open": "Apri Story della sessione",
+    "hint": "Apri la dashboard della sessione. Il riepilogo mostra le chiamate agli strumenti conservate dell'agente principale e i worker noti di questa scheda; le barre mostrano gli inizi delle chiamate registrati.",
+    "working": "Attivo",
+    "snapshot": "Riepilogo",
+    "noSession": "Seleziona sessione",
+    "calls": "chiamate",
+    "workers": "worker",
+    "age": "Tempo trascorso dall'inizio di questa sessione"
+  },
   "projectKit": {
     "subtitle": "Strumenti riutilizzabili per questo progetto.",
     "refresh": "Aggiorna",
@@ -47,6 +57,7 @@
     "examples": "Esempi di verifica"
   },
   "nav": {
+    "automation": "Automazioni",
     "project-kit": "Project Kit",
     "chat": "Sessione",
     "agents": "Agenti",
@@ -261,6 +272,14 @@
     "onlineCount": "{{count}} online",
     "messages": "Messaggi",
     "compose": "Scrivi messaggio",
+    "composeDescription": "Invia un messaggio tipizzato a un agente, a un leader o a tutta la flotta.",
+    "searchAgents": "Cerca agenti…",
+    "noAgentsFound": "Nessun agente corrisponde alla ricerca.",
+    "noAgentsRegistered": "Nessun agente ancora registrato.",
+    "specificRecipientRequired": "Assegnazioni e correzioni richiedono un destinatario specifico.",
+    "replyAction": "Rispondi",
+    "replyPrefix": "Re: ",
+    "ctrlEnterHint": "Ctrl+Invio per inviare",
     "recipient": "Destinatario",
     "messageType": "Tipo",
     "audience": "Destinatari",

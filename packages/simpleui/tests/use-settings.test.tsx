@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type UseSettingsResult, useSettings } from '../src/hooks/use-settings.js';
-import { DEFAULT_PREFS } from '../src/lib/prefs-model.js';
+import { DEFAULT_PREFS, parsePrefs } from '../src/lib/prefs-model.js';
 import type { SimpleSocket } from '../src/lib/ws.js';
 
 /**
@@ -128,6 +128,89 @@ describe('useSettings — updatePrefs', () => {
     expect(captured.current?.prefs.showTabTitle).toBe(false);
     expect(captured.current?.isAtDefaults).toBe(false);
     expect(socket.sends).toEqual([{ type: 'prefs.update', payload: { showTabTitle: false } }]);
+
+    roots.push(root);
+  });
+});
+
+describe('useSettings — isAtDefaults coverage', () => {
+  // Round-6: `subagentModelPlan` is a resettable pref — resetPrefs spreads
+  // DEFAULT_PREFS (so the plan IS restored) and keeps it in the durable
+  // prefs.update payload — but it was missing from shallowEqualPrefs' key
+  // list. Omitting a key breaks isAtDefaults, and the panel disables its
+  // "Reset to defaults" button on `isAtDefaults`, so editing only the
+  // subagent model plan left the button permanently disabled.
+  it('flags isAtDefaults=false when only the subagent model plan changes', () => {
+    const captured: Captured = { current: null };
+    const socket = makeSocketStub();
+    const root = renderProbe(captured, socket);
+
+    expect(captured.current?.isAtDefaults).toBe(true);
+
+    act(() => {
+      captured.current?.updatePrefs({
+        subagentModelPlan: {
+          ...DEFAULT_PREFS.subagentModelPlan,
+          slots: [{ provider: 'anthropic', model: 'claude-opus-4' }],
+        },
+      });
+    });
+
+    expect(captured.current?.prefs.subagentModelPlan.slots).toHaveLength(1);
+    // Must be false — the plan is a user-editable, resettable pref.
+    expect(
+      captured.current?.isAtDefaults,
+      "FAIL: editing subagentModelPlan left isAtDefaults=true, so the panel's " +
+        '"Reset to defaults" button stays disabled and the plan cannot be reset.',
+    ).toBe(false);
+
+    roots.push(root);
+  });
+
+  it('returns to isAtDefaults=true after resetPrefs restores the plan', () => {
+    const captured: Captured = { current: null };
+    const socket = makeSocketStub();
+    const root = renderProbe(captured, socket);
+
+    act(() => {
+      captured.current?.updatePrefs({
+        subagentModelPlan: {
+          ...DEFAULT_PREFS.subagentModelPlan,
+          slots: [{ provider: 'anthropic', model: 'claude-opus-4' }],
+        },
+      });
+    });
+    expect(captured.current?.isAtDefaults).toBe(false);
+
+    act(() => {
+      captured.current?.resetPrefs();
+    });
+
+    // Control: the plan was actually restored, so the equality must hold.
+    expect(captured.current?.prefs.subagentModelPlan).toEqual(DEFAULT_PREFS.subagentModelPlan);
+    expect(captured.current?.isAtDefaults).toBe(true);
+
+    roots.push(root);
+  });
+
+  it('stays at isAtDefaults=true after a server echo of the SAME defaults', () => {
+    // Guard against a reference-comparison fix: `parsePrefs` runs
+    // `parseSubagentModelPlan`, which allocates a NEW plan object on every
+    // `prefs.updated` frame. A `!==` compare against DEFAULT_PREFS would then
+    // report "not at defaults" forever once the server echoes, re-enabling the
+    // reset button with nothing actually changed.
+    const captured: Captured = { current: null };
+    const socket = makeSocketStub();
+    const root = renderProbe(captured, socket);
+
+    act(() => {
+      captured.current?.setPrefs(parsePrefs({ ...DEFAULT_PREFS }));
+    });
+
+    // Same content, different object identity — must still compare equal.
+    expect(captured.current?.prefs.subagentModelPlan).not.toBe(DEFAULT_PREFS.subagentModelPlan);
+    expect(captured.current?.prefs.subagentModelPlan).toEqual(DEFAULT_PREFS.subagentModelPlan);
+    expect(captured.current?.isAtDefaults).toBe(true);
 
     roots.push(root);
   });

@@ -1,4 +1,14 @@
 {
+  "storyWidget": {
+    "open": "Session Story öffnen",
+    "hint": "Sitzungsdashboard öffnen. Die Übersicht zeigt gespeicherte Tool-Aufrufe des Hauptagenten und bekannte Worker dieses Tabs; Balken zeigen aufgezeichnete Aufrufstarts.",
+    "working": "Aktiv",
+    "snapshot": "Übersicht",
+    "noSession": "Sitzung auswählen",
+    "calls": "Aufrufe",
+    "workers": "Worker",
+    "age": "Zeit seit Beginn dieser Sitzung"
+  },
   "projectKit": {
     "subtitle": "Wiederverwendbare Werkzeuge für dieses Projekt.",
     "refresh": "Aktualisieren",
@@ -47,6 +57,7 @@
     "examples": "Prüfbeispiele"
   },
   "nav": {
+    "automation": "Automatisierungen",
     "project-kit": "Project Kit",
     "chat": "Sitzung",
     "agents": "Agents",
@@ -261,6 +272,14 @@
     "onlineCount": "{{count}} online",
     "messages": "Nachrichten",
     "compose": "Nachricht verfassen",
+    "composeDescription": "Sende eine typisierte Nachricht an einen Agenten, einen Leader oder die gesamte Flotte.",
+    "searchAgents": "Agenten suchen…",
+    "noAgentsFound": "Keine Agenten entsprechen deiner Suche.",
+    "noAgentsRegistered": "Noch keine Agenten registriert.",
+    "specificRecipientRequired": "Zuweisungen und Steuerungen benötigen einen konkreten Empfänger.",
+    "replyAction": "Antworten",
+    "replyPrefix": "Aw: ",
+    "ctrlEnterHint": "Ctrl+Enter zum Senden",
     "recipient": "Empfänger",
     "messageType": "Typ",
     "audience": "Zielgruppe",

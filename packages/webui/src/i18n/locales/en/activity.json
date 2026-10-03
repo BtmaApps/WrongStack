@@ -1,4 +1,14 @@
 {
+  "storyWidget": {
+    "open": "Open session Story",
+    "hint": "Open the session dashboard. Snapshot shows retained leader tool calls and known workers for this tab; bars show recorded call starts.",
+    "working": "Working",
+    "snapshot": "Snapshot",
+    "noSession": "Select a session",
+    "calls": "calls",
+    "workers": "workers",
+    "age": "Time since this session started"
+  },
   "projectKit": {
     "subtitle": "Reusable tools, built for this project.",
     "refresh": "Refresh",
@@ -47,6 +57,7 @@
     "examples": "Verification examples"
   },
   "nav": {
+    "automation": "Automations",
     "project-kit": "Project Kit",
     "chat": "Session",
     "agents": "Agents",
@@ -269,6 +280,14 @@
     "onlineCount": "{{count}} online",
     "messages": "Messages",
     "compose": "Compose message",
+    "composeDescription": "Send a typed message to an agent, a leader, or the whole fleet.",
+    "searchAgents": "Search agents…",
+    "noAgentsFound": "No agents match your search.",
+    "noAgentsRegistered": "No agents registered yet.",
+    "specificRecipientRequired": "Assignments and steers need a specific recipient.",
+    "replyAction": "Reply",
+    "replyPrefix": "Re: ",
+    "ctrlEnterHint": "Ctrl+Enter to send",
     "recipient": "Recipient",
     "messageType": "Type",
     "audience": "Audience",

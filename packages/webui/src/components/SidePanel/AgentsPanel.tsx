@@ -203,7 +203,7 @@ export function AgentsPanel() {
           className={cn(
             'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
             filter === opt.value
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary/10 text-foreground'
               : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
           )}
         >

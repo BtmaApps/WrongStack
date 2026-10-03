@@ -307,6 +307,59 @@ describe('resume loading reducer flow', () => {
     expect(state.entries).toHaveLength(2);
   });
 
+  it('re-arms the context chip on resume completion', () => {
+    // `replaceHistory` is only dispatched on a session resume, so every bump
+    // it performs is a resume-driven re-arm. The statusline and `/context` read
+    // `contextChipVersion` as an invalidation key (see use-statusbar-view-model)
+    // and re-derive their numbers from `agent.ctx`; without the bump they keep
+    // rendering whatever they last drew, which after a resume is the value for
+    // the conversation the user just left. The bump is deliberately
+    // UNconditional — `ctxTokens`/`ctxMaxTokens` are written only when a
+    // snapshot arrives, but the chip must be invalidated either way, or it
+    // keeps showing the previous session's tokens.
+    const base = createTestState();
+    expect(base.contextChipVersion).toBe(0);
+
+    const withSnapshot = reducer(base, {
+      type: 'replaceHistory',
+      entries: [],
+      nextId: 1,
+      contextSnapshot: { tokens: 500, maxContext: 2000 },
+    });
+    expect(withSnapshot.leader.ctxTokens).toBe(500);
+    expect(withSnapshot.contextChipVersion).toBe(1);
+
+    const withoutSnapshot = reducer(base, {
+      type: 'replaceHistory',
+      entries: [],
+      nextId: 1,
+    });
+    expect(withoutSnapshot.leader.ctxTokens).toBeUndefined();
+    expect(withoutSnapshot.contextChipVersion).toBe(1);
+  });
+
+  it('re-arms the context chip on a second resume after the first already bumped it', () => {
+    // A counter that only ever fired once would leave every resume after the
+    // first rendering stale numbers, which is the failure the monotonic key
+    // exists to prevent.
+    const base = createTestState();
+    const first = reducer(base, {
+      type: 'replaceHistory',
+      entries: [],
+      nextId: 1,
+      contextSnapshot: { tokens: 500, maxContext: 2000 },
+    });
+    const second = reducer(first, {
+      type: 'replaceHistory',
+      entries: [],
+      nextId: 1,
+      contextSnapshot: { tokens: 750, maxContext: 4096 },
+    });
+
+    expect(second.leader.ctxTokens).toBe(750);
+    expect(second.contextChipVersion).toBe(2);
+  });
+
   it('rejects a second start while a load is already in flight', () => {
     // The picker lock (resumeInFlightRef) and the F10 sessions-panel lock
     // (sessionsResumeInFlightRef) are independent refs: a resume started from

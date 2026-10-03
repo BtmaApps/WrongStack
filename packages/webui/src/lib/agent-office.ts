@@ -105,8 +105,15 @@ function lineCount(value: string): number {
 function patchDelta(value: string): { added: number; removed: number } | null {
   let added = 0;
   let removed = 0;
-  for (const line of value.split(/\r?\n/)) {
-    if (line.startsWith('+++') || line.startsWith('---')) continue;
+  const lines = value.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    // Only a `--- ` line directly followed by `+++ ` is a file header; a
+    // removed `-- comment` (`--- comment`) or an added `++i` (`+++i`) is content.
+    if (line.startsWith('--- ') && lines[index + 1]?.startsWith('+++ ')) {
+      index += 1;
+      continue;
+    }
     if (line.startsWith('+')) added += 1;
     if (line.startsWith('-')) removed += 1;
   }

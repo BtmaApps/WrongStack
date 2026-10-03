@@ -403,7 +403,7 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 960,
+      "lines": 997,
       "relativeImports": 9
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {

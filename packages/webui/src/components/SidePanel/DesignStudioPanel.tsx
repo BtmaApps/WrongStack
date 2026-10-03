@@ -169,8 +169,8 @@ export function DesignStudioPanel({ className }: { className?: string }) {
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-sm font-semibold truncate">{kit.name}</h3>
                     {isActive && (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase text-primary">
-                        <Check className="w-3 h-3" /> {t('activity:design.active')}
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold uppercase text-foreground">
+                        <Check className="w-3 h-3 text-primary" /> {t('activity:design.active')}
                       </span>
                     )}
                   </div>

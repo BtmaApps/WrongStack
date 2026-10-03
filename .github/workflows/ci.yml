@@ -860,6 +860,26 @@ jobs:
           PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Rendered theme contrast audit (light + dark)
+        # Decodes the rendered PNGs and measures real painted pixels against
+        # their real backdrops, per WCAG role: text 4.5:1 (1.4.3), stroke 3:1
+        # (1.4.11), with inactive (1.4.3) and aria-hidden decorative graphics
+        # exempted. Reuses the Chromium installed above. Exits non-zero when
+        # either theme reports a failing row, so a token regression fails the
+        # job rather than printing a table nobody reads.
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+        run: pnpm --filter @wrongstack/webui test:story-theme-browser
+
+      - name: Upload theme audit screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (Node 24 runtime, pinned 2026-09-06)
+        with:
+          name: story-theme-screenshots-${{ github.sha }}
+          path: .temp_files/story-theme/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Run WebUI smoke
         env:
           PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright

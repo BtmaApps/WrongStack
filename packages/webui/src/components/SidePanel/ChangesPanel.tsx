@@ -21,14 +21,16 @@ import { type GitChangedFile, useConfigStore, useGitChangesStore, useUIStore } f
 import { confirmModal } from '../ConfirmModal';
 import { WorktreesPanel } from './WorktreesPanel';
 
-/** Visual treatment for each git status letter. */
+/** Visual treatment for each git status letter. Warning letters use a tint
+ *  chip + foreground text — warning-as-text measured 2.97:1 on light theme,
+ *  below the 4.5:1 gate enforced by the browser smoke. */
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  M: { label: 'M', cls: 'text-warning' },
+  M: { label: 'M', cls: 'rounded bg-warning/15 px-0.5 text-foreground' },
   A: { label: 'A', cls: 'text-success' },
   D: { label: 'D', cls: 'text-destructive' },
-  R: { label: 'R', cls: 'text-info' },
-  C: { label: 'C', cls: 'text-info' },
-  U: { label: 'U', cls: 'text-warning' },
+  R: { label: 'R', cls: 'rounded bg-info/15 px-0.5 text-foreground' },
+  C: { label: 'C', cls: 'rounded bg-info/15 px-0.5 text-foreground' },
+  U: { label: 'U', cls: 'rounded bg-warning/15 px-0.5 text-foreground' },
   '?': { label: 'U', cls: 'text-muted-foreground' },
 };
 
@@ -82,7 +84,7 @@ function FileRow({
         title={file.path}
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
       >
-        <span className={cn('w-3 shrink-0 text-center font-mono font-bold', meta?.cls)}>
+        <span className={cn('w-3.5 shrink-0 text-center font-mono font-bold', meta?.cls)}>
           {meta?.label}
         </span>
         <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden">
@@ -300,7 +302,7 @@ export function ChangesPanel() {
           className={cn(
             'h-6 rounded px-2 text-[11px] font-medium transition-colors',
             changesPanelTab === 'changes'
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary/10 text-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           )}
         >
@@ -312,7 +314,7 @@ export function ChangesPanel() {
           className={cn(
             'h-6 rounded px-2 text-[11px] font-medium transition-colors',
             changesPanelTab === 'worktrees'
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary/10 text-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           )}
         >
@@ -405,7 +407,7 @@ export function ChangesPanel() {
                 {/* Staged Group */}
                 {stagedFiles.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <span>Staged Changes ({stagedFiles.length})</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -474,7 +476,7 @@ export function ChangesPanel() {
                 type="button"
                 onClick={handleCommit}
                 disabled={stagedFiles.length === 0 || !commitMessage.trim() || committing}
-                className="w-full h-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="w-full h-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium transition-colors hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed shadow-sm"
               >
                 {committing ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

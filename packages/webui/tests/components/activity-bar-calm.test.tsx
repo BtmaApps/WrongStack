@@ -17,6 +17,13 @@ const NOT_IN_LAUNCHER = new Set([
   'setup',
   'session-inspect',
   'refresh-debug',
+  // Session Story is a drill-down, not a bar view: it is opened from the
+  // session tab bar and the side-panel StoryWidget, both of which call
+  // setCurrentView('session-story') directly. It has no launcher entry and
+  // deliberately no bar icon — adding one would put a second, competing
+  // entry point on the bar for a view the user reaches from where they
+  // already are.
+  'session-story',
 ]);
 
 /** Mirrors the (module-private) calm bar size in activity-bar/index.tsx. */

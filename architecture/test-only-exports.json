@@ -1085,9 +1085,6 @@
     "packages/simpleui/src/agent-chat-pane.tsx": [
       "agentConversationEntries"
     ],
-    "packages/simpleui/src/automation-panel.tsx": [
-      "AutomationPanel"
-    ],
     "packages/simpleui/src/chat-message-list.tsx": [
       "applyScrollAnchoring",
       "CHAT_WINDOW_SIZE"
@@ -1793,9 +1790,6 @@
     "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx": [
       "LOCKED_YOLO_CONFIRM_KINDS",
       "YOLO_CONFIRM_KINDS"
-    ],
-    "packages/webui/src/components/SidePanel/StoryWidget.tsx": [
-      "StoryWidget"
     ],
     "packages/webui/src/components/SystemHealthChip.tsx": [
       "summarizeSystemHealth"

@@ -262,7 +262,7 @@ export function NotificationMenu({
               {t('toasts:menu.title', { defaultValue: 'Notifications' })}
             </span>
             {unreadCount > 0 ? (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary tabular-nums">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-foreground tabular-nums">
                 {unreadCount} {t('toasts:menu.tabUnread', { defaultValue: 'Unread' }).toLowerCase()}
               </span>
             ) : null}

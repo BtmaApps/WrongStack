@@ -1549,7 +1549,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 71,
-      "sourceLines": 20555
+      "sourceLines": 20570
     },
     {
       "directory": "extension",
@@ -1717,7 +1717,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15749
+      "sourceLines": 15756
     },
     {
       "directory": "typesafe",

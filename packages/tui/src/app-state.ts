@@ -262,7 +262,17 @@ export type State = PanelState & {
     currentRound: number;
     totalRounds?: number | undefined;
   } | null;
-  /** Incremented on /clear so the context chip re-reads from agent.ctx tokens. */
+  /**
+   * Monotonic re-arm key for the context chip: the statusline and `/context`
+   * read it so they can re-derive their numbers instead of keeping whatever
+   * they last rendered.
+   *
+   * Bumped by `resetContextChip` (dialogs.ts), by `/clear`, and on BOTH
+   * /resume completion branches — with a `contextSnapshot` (reducers/composer.ts)
+   * and without one. The no-snapshot branch still bumps so the chip stops
+   * showing the previous session's tokens rather than sitting on a value that
+   * described a conversation the user already left.
+   */
   contextChipVersion: number;
   /** Live fleet state: per-subagent entries from FleetBus events. Keyed by subagentId. */
   fleet: Record<string, FleetEntry>;

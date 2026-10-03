@@ -18,6 +18,7 @@
     "help": "Slash-Befehle anzeigen",
     "tools": "Tools auflisten",
     "memory": "Memory anzeigen",
+    "mailboxCompose": "Mailbox-Nachricht verfassen",
     "skills": "Skills auflisten",
     "diag": "Laufzeitdiagnose",
     "stats": "Sitzungsstatistik (Token, Cache, Kosten)",

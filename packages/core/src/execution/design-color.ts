@@ -56,10 +56,25 @@ function parseComponent(s: string, percentIsFraction: boolean): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Parse a hue angle: bare number or `145deg`. */
+/** Degrees per CSS `<angle>` unit; a bare number is degrees. */
+const ANGLE_UNIT_DEGREES: Record<string, number> = {
+  '': 1,
+  deg: 1,
+  grad: 0.9,
+  rad: 180 / Math.PI,
+  turn: 360,
+};
+
+/**
+ * Parse a hue angle into degrees: bare number, `145deg`, `200grad`,
+ * `3.14rad` or `0.5turn`. `parseFloat` alone stopped at the unit and read
+ * `0.5turn` as 0.5°. An unknown unit is not a hue.
+ */
 function parseAngle(s: string): number | null {
-  s = s.trim().replace(/deg$/i, '');
-  const n = Number.parseFloat(s);
+  const m = /^([-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?)([a-z]*)$/i.exec(s.trim());
+  const factor = m ? ANGLE_UNIT_DEGREES[m[2]!.toLowerCase()] : undefined;
+  if (!m || factor === undefined) return null;
+  const n = Number.parseFloat(m[1]!) * factor;
   return Number.isFinite(n) ? n : null;
 }
 

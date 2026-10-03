@@ -1,3 +1,4 @@
+import type { CodeAssistPreset } from '@wrongstack/webui-protocol';
 import type { BrainConfigPatchWire } from './brain.js';
 import type { ChronicleFacet, ChronicleMetricsView, ChronicleQuery } from './chronicle.js';
 import type {
@@ -417,6 +418,7 @@ export type WSClientMessageCore =
       type: 'provider.update';
       payload: {
         id: string;
+        cloud?: import('@wrongstack/core/cloud-provider').NativeCloudSettings | undefined;
         family?: string | undefined;
         baseUrl?: string | undefined;
         envVars?: string[] | undefined;
@@ -582,7 +584,10 @@ export type WSClientMessageCore =
       payload: { serviceId: string; action?: 'shutdown' | 'restart' };
     }
   | { type: 'chronicle.status' }
-  | { type: 'chronicle.query'; payload: { query?: ChronicleQuery | undefined } }
+  | {
+      type: 'chronicle.query';
+      payload: { query?: ChronicleQuery | undefined; requestId?: string | undefined };
+    }
   | {
       type: 'chronicle.facet';
       payload: {
@@ -632,8 +637,14 @@ export type WSClientMessageCore =
       type: 'files.tree';
       payload: ({ path?: string | undefined } | Record<string, never>) & SessionScopedPayload;
     }
-  | { type: 'files.read'; payload: { filePath: string } & SessionScopedPayload }
-  | { type: 'files.image'; payload: { filePath: string } & SessionScopedPayload }
+  | {
+      type: 'files.read';
+      payload: { filePath: string; requestId?: string | undefined } & SessionScopedPayload;
+    }
+  | {
+      type: 'files.image';
+      payload: { filePath: string; requestId?: string | undefined } & SessionScopedPayload;
+    }
   | {
       type: 'files.skeleton';
       payload: {
@@ -955,5 +966,31 @@ export type WSClientMessageCore =
         autoSwitch?: boolean | undefined;
       };
     }
+  // ── Code Assist (File Manager / Code Atlas "Ask AI") ─────────────────────────
+  // Ephemeral, one-shot analysis runs. Deliberately NOT session-scoped and
+  // NOT routed through `session.new`: the server answers from a throwaway
+  // isolated agent so the panel never hijacks the foreground session.
+  | {
+      type: 'code.assist.run';
+      payload: {
+        requestId: string;
+        /** Project-relative POSIX path the analysis is anchored to. */
+        filePath: string;
+        /** Optional symbol (function/class/method) name inside `filePath`. */
+        symbol?: string | undefined;
+        /** Line the user was looking at, when known. */
+        line?: number | undefined;
+        /** Which predefined check to run. */
+        preset: CodeAssistPreset;
+        /** Free-form question; only used by the `custom` preset. */
+        question?: string | undefined;
+        /**
+         * Allow the agent to edit files. Defaults to false — analysis presets
+         * are read-only, and mutating runs are opt-in from the panel.
+         */
+        allowEdits?: boolean | undefined;
+      };
+    }
+  | { type: 'code.assist.abort'; payload: { requestId: string } }
   | { type: 'webui.shutdown' };
 export type WSClientMessage = WSClientMessageCore;

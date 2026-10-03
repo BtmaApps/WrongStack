@@ -18,6 +18,7 @@
     "help": "Slash komutlarını göster",
     "tools": "Araçları listele",
     "memory": "Belleği göster",
+    "mailboxCompose": "Posta kutusu mesajı oluştur",
     "skills": "Becerileri listele",
     "diag": "Çalışma zamanı tanılamaları",
     "stats": "Oturum istatistikleri (token, önbellek, maliyet)",

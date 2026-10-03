@@ -29,6 +29,7 @@ import { ChangesPanel } from './ChangesPanel';
 import { DesignStudioPanel } from './DesignStudioPanel';
 import { SessionPanel } from './SessionPanel';
 import { SkillsList } from './SkillsList';
+import { StoryWidget } from './StoryWidget';
 
 export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | undefined }) {
   const activeActivity = useUIStore((s) => s.activeActivity);
@@ -134,6 +135,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
         </div>
 
         {/* Panel body — routed by activity */}
+        <StoryWidget collapseOnOpen={isOverlay} />
         <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
           {activeActivity === 'chat' && <SessionPanel />}
           {activeActivity === 'agents' && (

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T12:04:21.930Z",
+  "generatedAt": "2026-10-03T12:05:24.272Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4391,
-    "testFiles": 4002,
-    "sourceLines": 1045717,
+    "testFiles": 4004,
+    "sourceLines": 1045968,
     "workspaceEdges": 133,
-    "moduleEdges": 14272,
+    "moduleEdges": 14293,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 978
+    "testOnlyExports": 976
   },
   "errors": [
     "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
@@ -800,7 +800,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 450,
-      "testFiles": 405,
+      "testFiles": 407,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -823,7 +823,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 405
+          "testFiles": 407
         }
       ]
     },
@@ -19426,6 +19426,18 @@
         ]
       },
       {
+        "file": "packages/tui/tests/settings-open-sidebar-hydration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/settings-open-slash-sidebar-hydration.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/settings-overflow-24x80.test.tsx",
         "projects": [
           "root-node"
@@ -25816,7 +25828,7 @@
     },
     {
       "file": "packages/webui/src/types/client-message.ts",
-      "lines": 960,
+      "lines": 997,
       "relativeImports": 9
     },
     {
@@ -25912,6 +25924,11 @@
       "relativeImports": 52
     },
     {
+      "file": "packages/webui/src/types/client-message.ts",
+      "lines": 997,
+      "relativeImports": 9
+    },
+    {
       "file": "packages/sage/src/sqlite-store.ts",
       "lines": 992,
       "relativeImports": 42
@@ -25940,11 +25957,6 @@
       "file": "packages/core/src/storage/session-store.ts",
       "lines": 963,
       "relativeImports": 41
-    },
-    {
-      "file": "packages/webui/src/types/client-message.ts",
-      "lines": 960,
-      "relativeImports": 9
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
@@ -28208,10 +28220,6 @@
       "name": "agentConversationEntries"
     },
     {
-      "file": "packages/simpleui/src/automation-panel.tsx",
-      "name": "AutomationPanel"
-    },
-    {
       "file": "packages/simpleui/src/chat-message-list.tsx",
       "name": "applyScrollAnchoring"
     },
@@ -29490,10 +29498,6 @@
     {
       "file": "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx",
       "name": "YOLO_CONFIRM_KINDS"
-    },
-    {
-      "file": "packages/webui/src/components/SidePanel/StoryWidget.tsx",
-      "name": "StoryWidget"
     },
     {
       "file": "packages/webui/src/components/SystemHealthChip.tsx",

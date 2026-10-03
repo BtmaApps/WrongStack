@@ -293,9 +293,9 @@ export function AgentDetailSection({
                 e.stopPropagation();
                 onOpenInspector();
               }}
-              className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-foreground hover:underline transition-colors"
             >
-              <ExternalLink className="h-2.5 w-2.5" />
+              <ExternalLink className="h-2.5 w-2.5 text-primary" />
               {t('activity:agents.openInspector')}
             </button>
           )}
@@ -313,9 +313,9 @@ export function AgentDetailSection({
               ui.setSubagentChatFocus(agent.id, agent.sessionId);
               ui.setCurrentView('chat');
             }}
-            className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+            className="flex items-center gap-1 text-[10px] text-foreground hover:underline transition-colors"
           >
-            <MessageSquare className="h-2.5 w-2.5" />
+            <MessageSquare className="h-2.5 w-2.5 text-primary" />
             {t('activity:agents.openChat')}
           </button>
         </div>

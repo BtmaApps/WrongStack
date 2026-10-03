@@ -18,6 +18,7 @@
     "help": "Mostra i comandi slash",
     "tools": "Elenca gli strumenti",
     "memory": "Mostra la memoria",
+    "mailboxCompose": "Scrivi un messaggio nella casella di posta",
     "skills": "Elenca le skill",
     "diag": "Diagnostica di runtime",
     "stats": "Statistiche di sessione (token, cache, costo)",

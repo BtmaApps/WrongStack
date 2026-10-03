@@ -161,9 +161,9 @@ export function WorktreesPanel(): React.ReactElement {
                   ? t('activity:worktrees.cleanOrphansTitle')
                   : t('activity:worktrees.liveBusyTitle')
               }
-              className="inline-flex items-center gap-1 rounded bg-warning px-1.5 py-0.5 text-[11px] font-medium text-primary-foreground hover:bg-warning/90 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/15 px-1.5 py-0.5 text-[11px] font-medium text-foreground hover:bg-warning/25 disabled:opacity-50"
             >
-              <Eraser className="h-3 w-3" /> {t('activity:worktrees.cleanOrphans')}
+              <Eraser className="h-3 w-3 text-warning" /> {t('activity:worktrees.cleanOrphans')}
             </button>
           )}
           <button
@@ -231,12 +231,7 @@ export function WorktreesPanel(): React.ReactElement {
                   >
                     {shortBranch(row.branch)}
                   </span>
-                  <span
-                    className={cn(
-                      'shrink-0 text-[10px] uppercase',
-                      STATUS_TINT[row.status] ?? 'text-muted-foreground',
-                    )}
-                  >
+                  <span className="shrink-0 rounded bg-muted/60 px-1 text-[10px] font-semibold uppercase text-foreground">
                     {row.status}
                   </span>
                 </div>
@@ -293,7 +288,7 @@ export function WorktreesPanel(): React.ReactElement {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Act>
                   {row.live && (
-                    <span className="ml-1 text-[10px] text-warning">
+                    <span className="ml-1 rounded bg-warning/15 px-1 text-[10px] font-medium text-foreground">
                       {t('activity:worktrees.live')}
                     </span>
                   )}

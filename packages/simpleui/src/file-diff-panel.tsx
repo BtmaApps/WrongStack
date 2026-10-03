@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
+import { isDiffFileHeader } from './lib/timeline-model.js';
 import type { SimpleSocket } from './lib/ws.js';
 import type { FileEditMeta } from './types.js';
 
@@ -20,12 +21,15 @@ function diffLines(diff: string): { kind: 'add' | 'remove' | 'context' | 'hunk';
   const start = diff.indexOf('@@');
   if (start === -1) return [{ kind: 'context', text: diff }];
   const lines: { kind: 'add' | 'remove' | 'context' | 'hunk'; text: string }[] = [];
-  for (const line of diff.slice(start).replace(/\r\n/g, '\n').split('\n')) {
+  const raw = diff.slice(start).replace(/\r\n/g, '\n').split('\n');
+  for (let i = 0; i < raw.length; i++) {
+    const line = raw[i]!;
     if (line.startsWith('@@')) lines.push({ kind: 'hunk', text: line });
-    else if (line.startsWith('+') && !line.startsWith('+++'))
-      lines.push({ kind: 'add', text: line });
-    else if (line.startsWith('-') && !line.startsWith('---'))
-      lines.push({ kind: 'remove', text: line });
+    else if (isDiffFileHeader(raw, i)) {
+      lines.push({ kind: 'context', text: line }, { kind: 'context', text: raw[i + 1]! });
+      i++;
+    } else if (line.startsWith('+')) lines.push({ kind: 'add', text: line });
+    else if (line.startsWith('-')) lines.push({ kind: 'remove', text: line });
     else lines.push({ kind: 'context', text: line });
   }
   return lines;

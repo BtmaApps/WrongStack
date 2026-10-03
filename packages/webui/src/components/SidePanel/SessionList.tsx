@@ -511,7 +511,7 @@ export function SessionList({
                                           {displayName(entry)}
                                         </div>
                                         {entry.isCurrent ? (
-                                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
                                             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                                             {t('activity:sessions.activeTab', {
                                               defaultValue: 'Active Tab',

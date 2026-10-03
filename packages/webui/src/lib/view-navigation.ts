@@ -24,6 +24,7 @@ export type MainView =
   | 'codemap'
   | 'techstack'
   | 'project-kit'
+  | 'automation'
   | 'chronicle'
   | 'prompts'
   | 'chimera'
@@ -36,6 +37,7 @@ export type MainView =
 export type UnlistedView =
   | 'sessions'
   | 'session-inspect'
+  | 'session-story'
   | 'setup'
   | 'context'
   | 'debug'

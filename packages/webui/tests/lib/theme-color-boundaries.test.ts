@@ -2,29 +2,91 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const srcRoot = path.resolve(import.meta.dirname, '../../src');
+/**
+ * Every themed package whose `src` tree must stay free of hardcoded colors.
+ *
+ * `simpleui` is a separate design system with its own token names — its danger
+ * voice is the full-color `--danger`, not webui's HSL-triple `--destructive` —
+ * so it is scanned by the same rules but exempted separately below. Both
+ * packages own files with identical relative paths (`automation.css`), which is
+ * why allowlist keys are `<package>/<path-relative-to-that-package's-src>`.
+ */
+const SCAN_ROOTS = [
+  { package: 'webui', root: path.resolve(import.meta.dirname, '../../src') },
+  { package: 'simpleui', root: path.resolve(import.meta.dirname, '../../../simpleui/src') },
+] as const;
 
 /**
- * These files render into isolated color systems rather than the themed WebUI.
+ * These files render into isolated color systems rather than a themed surface.
  * Keep this list exact and documented; do not add broad directories or globs.
+ * The staleness test below fails if a listed file loses its violations, so an
+ * exemption cannot silently outlive the reason it was granted.
  */
-const ISOLATED_COLOR_SURFACES = new Set([
-  'components/CommandPalette/export-utils.ts', // Standalone exported HTML document.
-  'components/DesignGalleryView.tsx', // Previews arbitrary user-selected design-kit tokens.
-  'components/KanbanContractGraphDashboard.tsx', // Rendered SVG contract graph nodes.
-  'components/KanbanContractGraphView.ts', // Graph canvas node colors and canvas backgrounds.
-  'components/KanbanWorkbench.tsx', // Kanban status badge highlights.
-  'components/RepositoryHistoryView.tsx', // Git topology graph lanes and branch/tag badge tones.
-  'components/SetupScreen/ProviderKeyCard.tsx', // QR encoder requires explicit dark/light colors.
-  'components/TerminalPanel.tsx', // xterm owns a complete terminal ANSI palette.
-  'components/vector-memory-panel/index.tsx', // Data-viz heatmap: similarity scores map to an inline grayscale+blue-tint HSL ramp independent of the theme.
-  'components/monaco-theme.ts', // Monaco owns a complete editor/syntax palette.
-  'hooks/ws-handlers/brain-handlers.ts', // Council graph color serialized for the separate renderer; extracted from misc-handlers.
-  'hooks/ws-handlers/misc-handlers.ts', // Serializes graph colors received by a separate renderer.
-  'lib/favicon.ts', // Generates a self-contained SVG favicon data URL.
-  'lib/palettes.ts', // Defines the literal two-color swatches shown by the palette picker.
-  'lib/tool-icon.ts', // Maps externally supplied icon colors to stable color names.
-  'syntax-highlight.css', // Highlight.js owns paired light/dark syntax colors.
+const ISOLATED_COLOR_SURFACES = new Map<string, string>([
+  // ---- webui ----
+  ['webui/components/CommandPalette/export-utils.ts', 'Standalone exported HTML document.'],
+  ['webui/components/DesignGalleryView.tsx', 'Previews arbitrary user-selected design-kit tokens.'],
+  [
+    'webui/components/KanbanContractGraphDashboard.tsx',
+    'Rendered SVG contract graph nodes.',
+  ],
+  ['webui/components/KanbanContractGraphView.ts', 'Graph canvas node colors and canvas backgrounds.'],
+  ['webui/components/KanbanWorkbench.tsx', 'Kanban status badge highlights.'],
+  [
+    'webui/components/RepositoryHistoryView.tsx',
+    'Git topology graph lanes and branch/tag badge tones.',
+  ],
+  ['webui/components/SetupScreen/ProviderKeyCard.tsx', 'QR encoder requires explicit dark/light colors.'],
+  ['webui/components/TerminalPanel.tsx', 'xterm owns a complete terminal ANSI palette.'],
+  [
+    'webui/components/vector-memory-panel/index.tsx',
+    'Data-viz heatmap: similarity scores map to an inline grayscale+blue-tint HSL ramp independent of the theme.',
+  ],
+  ['webui/components/monaco-theme.ts', 'Monaco owns a complete editor/syntax palette.'],
+  [
+    'webui/hooks/ws-handlers/brain-handlers.ts',
+    'Council graph color serialized for the separate renderer; extracted from misc-handlers.',
+  ],
+  [
+    'webui/hooks/ws-handlers/misc-handlers.ts',
+    'Serializes graph colors received by a separate renderer.',
+  ],
+  ['webui/lib/favicon.ts', 'Generates a self-contained SVG favicon data URL.'],
+  [
+    'webui/lib/palettes.ts',
+    'Defines the literal two-color swatches shown by the palette picker.',
+  ],
+  [
+    'webui/lib/tool-icon.ts',
+    'Maps externally supplied icon colors to stable color names.',
+  ],
+  ['webui/syntax-highlight.css', 'Highlight.js owns paired light/dark syntax colors.'],
+
+  // ---- simpleui ----
+  // Mirrors the webui `index.css` exemption: this file *is* the palette. Every
+  // hex in it is a token definition (--bg, --text, --danger, --accent, …), and
+  // the surface rules below resolve against the variables it declares.
+  ['simpleui/styles.css', 'Declares the simpleui palette tokens; its literals ARE the tokens.'],
+  // Same role as webui/lib/palettes.ts — the swatch data behind the picker.
+  ['simpleui/lib/palettes.ts', 'Defines the literal swatches shown by the simpleui palette picker.'],
+  // Same role as webui/syntax-highlight.css — a highlighter owns paired
+  // light/dark syntax colors rather than theme tokens.
+  [
+    'simpleui/lib/markdown-highlighter.ts',
+    'Markdown highlighter owns paired light/dark syntax colors, not theme tokens.',
+  ],
+  // Same role as webui/components/vector-memory-panel — data-viz series colors
+  // map to a fixed scale that is not the surface palette.
+  [
+    'simpleui/artifact-preview.tsx',
+    'Artifact preview renders build/tool status series from a fixed status ramp, not theme tokens.',
+  ],
+  // A modal scrim is intentionally alpha-blended neutral in both themes, so it
+  // has no theme token to reference; the surface beneath it still does.
+  [
+    'simpleui/automation.css',
+    'Automation modal scrim is a fixed-alpha neutral; the surfaces beneath it use tokens.',
+  ],
 ]);
 
 const NAMED_TAILWIND_PALETTE =
@@ -45,10 +107,17 @@ const COLOR_RULES: readonly ColorRule[] = [
   { name: 'hardcoded numeric hsl/hsla color', pattern: NUMERIC_HSL_COLOR },
 ];
 
-function webUiSourceFiles(directory: string): string[] {
+/** Resolve `<package>/<rel>` to an absolute path, or undefined if unknown. */
+function resolveSurface(key: string): string | undefined {
+  const root = SCAN_ROOTS.find((entry) => key.startsWith(`${entry.package}/`));
+  if (!root) return undefined;
+  return path.join(root.root, key.slice(root.package.length + 1));
+}
+
+function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const absolutePath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return webUiSourceFiles(absolutePath);
+    if (entry.isDirectory()) return sourceFiles(absolutePath);
     return /\.(?:ts|tsx|css)$/.test(entry.name) ? [absolutePath] : [];
   });
 }
@@ -133,18 +202,14 @@ describe('WebUI theme color boundaries', () => {
   });
 
   it('keeps isolated color-surface exceptions explicit, valid, and necessary', () => {
-    const sourceFiles = new Map(
-      webUiSourceFiles(srcRoot).map((file) => [
-        path.relative(srcRoot, file).replaceAll('\\', '/'),
-        file,
-      ]),
+    const missing = [...ISOLATED_COLOR_SURFACES.keys()].filter(
+      (key) => !resolveSurface(key),
     );
-    const missing = [...ISOLATED_COLOR_SURFACES].filter((file) => !sourceFiles.has(file));
-    const unnecessary = [...ISOLATED_COLOR_SURFACES].filter((file) => {
-      const absolutePath = sourceFiles.get(file);
+    const unnecessary = [...ISOLATED_COLOR_SURFACES.keys()].filter((key) => {
+      const absolutePath = resolveSurface(key);
       return (
         absolutePath !== undefined &&
-        colorViolations(file, readFileSync(absolutePath, 'utf8')).length === 0
+        colorViolations(key, readFileSync(absolutePath, 'utf8')).length === 0
       );
     });
 
@@ -153,11 +218,15 @@ describe('WebUI theme color boundaries', () => {
   });
 
   it('uses semantic theme tokens instead of hardcoded or named palette colors', () => {
-    const violations = webUiSourceFiles(srcRoot).flatMap((file) => {
-      const relativePath = path.relative(srcRoot, file).replaceAll('\\', '/');
-      if (relativePath === 'index.css' || ISOLATED_COLOR_SURFACES.has(relativePath)) return [];
-      return colorViolations(relativePath, readFileSync(file, 'utf8'));
-    });
+    const violations = SCAN_ROOTS.flatMap(({ package: pkg, root }) =>
+      sourceFiles(root).flatMap((file) => {
+        const relative = `${pkg}/${path.relative(root, file).replaceAll('\\', '/')}`;
+        // index.css is exempt by name in webui; simpleui's equivalent
+        // (styles.css) is allowlisted above with a documented reason.
+        if (relative === 'webui/index.css' || ISOLATED_COLOR_SURFACES.has(relative)) return [];
+        return colorViolations(relative, readFileSync(file, 'utf8'));
+      }),
+    );
 
     expect(violations).toEqual([]);
   });

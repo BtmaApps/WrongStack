@@ -183,12 +183,27 @@ export async function handleGitCommitDetail(
   const cwd = projectRoot || undefined;
   try {
     const git = makeGit(cwd);
-    const [metaRaw, statsRaw] = await Promise.all([
-      git(['show', '--no-patch', `--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%B`, hash]),
-      git(['diff-tree', '--no-commit-id', '--numstat', '-z', '-r', '-M', '--root', hash]),
+    const metaRaw = await git([
+      'show',
+      '--no-patch',
+      `--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%B`,
+      hash,
     ]);
     const [fullHash = hash, parents = '', author = '', email = '', authoredAt = '', ...bodyParts] =
       metaRaw.trim().split(HISTORY_FIELD);
+    // Diff against the FIRST parent explicitly — the same base the per-file
+    // view (handleGitCommitFileDiff) shows. `diff-tree <commit>` alone prints
+    // nothing for a merge, so every merge commit listed zero changed files.
+    const firstParent = parents.split(' ').find(Boolean);
+    const statsRaw = await git([
+      'diff-tree',
+      '--no-commit-id',
+      '--numstat',
+      '-z',
+      '-r',
+      '-M',
+      ...(firstParent ? [firstParent, hash] : ['--root', hash]),
+    ]);
     const parsedFiles = parseCommitNumstat(statsRaw);
     const prefix = await currentRepoPrefix(projectRoot);
     const scopedFiles = prefix

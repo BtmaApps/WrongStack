@@ -244,8 +244,10 @@ export function ContextBar({
           </span>
         ))}
       </span>
-      <span className="font-bold tracking-tight">{pctText}</span>
-      {tokenText && <span className="tabular-nums opacity-80">{tokenText}</span>}
+      {/* Severity rides on the icon, bg tint and bar glyphs — the numeric
+          readout stays foreground: success-as-text measured 3.89:1 on dark. */}
+      <span className="font-bold tracking-tight text-foreground">{pctText}</span>
+      {tokenText && <span className="tabular-nums opacity-80 text-foreground">{tokenText}</span>}
       {cacheActive && cache ? (
         <span
           className="ml-1 inline-flex items-center gap-1 text-[10px] font-mono tabular-nums text-success"
@@ -361,12 +363,7 @@ export function ContextFillBar({
       {/* Zone icon */}
       <ZoneIcon className={cn('h-3 w-3 shrink-0 transition-colors', getTextColor(clamped))} />
 
-      <span
-        className={cn(
-          'text-[11px] font-mono tabular-nums font-bold tracking-tight transition-colors',
-          getTextColor(clamped),
-        )}
-      >
+      <span className="text-[11px] font-mono tabular-nums font-bold tracking-tight transition-colors text-foreground">
         {pctText}
       </span>
       {tokenText && (

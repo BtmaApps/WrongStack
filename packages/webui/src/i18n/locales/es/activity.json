@@ -1,4 +1,14 @@
 {
+  "storyWidget": {
+    "open": "Abrir Story de la sesión",
+    "hint": "Abrir el panel de la sesión. El resumen muestra llamadas a herramientas del agente principal y workers conocidos de esta pestaña; las barras muestran inicios de llamadas registrados.",
+    "working": "Activo",
+    "snapshot": "Resumen",
+    "noSession": "Seleccionar sesión",
+    "calls": "llamadas",
+    "workers": "workers",
+    "age": "Tiempo desde el inicio de esta sesión"
+  },
   "projectKit": {
     "subtitle": "Herramientas reutilizables para este proyecto.",
     "refresh": "Actualizar",
@@ -47,6 +57,7 @@
     "examples": "Ejemplos de verificación"
   },
   "nav": {
+    "automation": "Automatizaciones",
     "project-kit": "Project Kit",
     "chat": "Sesión",
     "agents": "Agentes",
@@ -261,6 +272,14 @@
     "onlineCount": "{{count}} en línea",
     "messages": "Mensajes",
     "compose": "Redactar mensaje",
+    "composeDescription": "Envía un mensaje tipado a un agente, a un líder o a toda la flota.",
+    "searchAgents": "Buscar agentes…",
+    "noAgentsFound": "Ningún agente coincide con tu búsqueda.",
+    "noAgentsRegistered": "Aún no hay agentes registrados.",
+    "specificRecipientRequired": "Las asignaciones y las correcciones requieren un destinatario concreto.",
+    "replyAction": "Responder",
+    "replyPrefix": "Re: ",
+    "ctrlEnterHint": "Ctrl+Enter para enviar",
     "recipient": "Destinatario",
     "messageType": "Tipo",
     "audience": "Audiencia",

@@ -18,6 +18,7 @@
     "help": "Show slash commands",
     "tools": "List tools",
     "memory": "Show memory",
+    "mailboxCompose": "Compose mailbox message",
     "skills": "List skills",
     "diag": "Runtime diagnostics",
     "stats": "Session stats (tokens, cache, cost)",

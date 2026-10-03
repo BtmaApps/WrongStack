@@ -1,5 +1,6 @@
 import { Clock, FileEdit, Minus, Plus } from 'lucide-react';
 import { memo } from 'react';
+import { countDiffLines } from './lib/timeline-model.js';
 import type { FileEditMeta } from './types.js';
 
 interface FileEditEntryProps {
@@ -45,17 +46,10 @@ export const FileEditEntry = memo(function FileEditEntry({
   const hasDiff = !!edit.diff;
 
   // Count added/removed lines from the diff for the stats badges
-  let added = 0;
-  let removed = 0;
-  if (edit.diff) {
-    const start = edit.diff.indexOf('@@');
-    if (start !== -1) {
-      for (const line of edit.diff.slice(start).split('\n')) {
-        if (line.startsWith('+') && !line.startsWith('+++')) added++;
-        else if (line.startsWith('-') && !line.startsWith('---')) removed++;
-      }
-    }
-  }
+  const { added, removed } = (edit.diff ? countDiffLines(edit.diff) : null) ?? {
+    added: 0,
+    removed: 0,
+  };
 
   const label = opLabel(edit);
 

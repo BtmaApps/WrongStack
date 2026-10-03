@@ -14,6 +14,34 @@ const HIGHLIGHT_STYLES = `
 ::highlight(chat-search-active) { background-color: hsl(var(--primary) / 0.85); color: hsl(var(--primary-foreground)); }
 `;
 
+/**
+ * Lowercase `text` one code point at a time, remembering where each folded
+ * code unit came from. Lowercasing can change length — `'İ'.toLowerCase()` is
+ * `'i̇'` (two units) — so an index found in `text.toLowerCase()` is NOT an
+ * index into `text`: every highlight after an `İ` was shifted, and one shifted
+ * past the node end made `Range.setEnd` throw IndexSizeError.
+ */
+export function foldWithOffsets(text: string): {
+  folded: string;
+  start: number[];
+  end: number[];
+} {
+  let folded = '';
+  const start: number[] = [];
+  const end: number[] = [];
+  let index = 0;
+  for (const char of text) {
+    const lower = char.toLowerCase();
+    for (let k = 0; k < lower.length; k++) {
+      start.push(index);
+      end.push(index + char.length);
+    }
+    folded += lower;
+    index += char.length;
+  }
+  return { folded, start, end };
+}
+
 export function messageSearchText(m: ChatMessage): string {
   if (m.thinkingLog) {
     return [m.content, m.thinkingLog.text].filter(Boolean).join('\n');
@@ -113,7 +141,7 @@ export function SearchOverlay() {
       clear();
       return;
     }
-    const lcQuery = q.toLowerCase();
+    const lcQuery = foldWithOffsets(q).folded;
     const allRanges: Range[] = [];
     const activeRanges: Range[] = [];
     const activeId = hits[activeHit];
@@ -125,14 +153,15 @@ export function SearchOverlay() {
       while (node) {
         const text = node.nodeValue ?? '';
         if (text.length > 0) {
-          const lc = text.toLowerCase();
+          const { folded: lc, start, end } = foldWithOffsets(text);
           let from = 0;
           while (from <= lc.length - lcQuery.length) {
             const at = lc.indexOf(lcQuery, from);
             if (at === -1) break;
             const range = document.createRange();
-            range.setStart(node, at);
-            range.setEnd(node, at + lcQuery.length);
+            // Folded offsets mapped back onto the node's own text.
+            range.setStart(node, start[at]!);
+            range.setEnd(node, end[at + lcQuery.length - 1]!);
             allRanges.push(range);
             if (isActive) activeRanges.push(range);
             from = at + lcQuery.length;

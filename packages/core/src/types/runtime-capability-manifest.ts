@@ -40,6 +40,13 @@ const PLAYWRIGHT_ALIASES = {
 } as const;
 
 export const RUNTIME_CAPABILITY_MANIFEST = [
+  { id: 'artifact.present', pack: 'core', exposure: 'direct', tools: ['present_artifact'] },
+  {
+    id: 'tools.compose',
+    pack: 'development',
+    exposure: 'on-demand',
+    tools: ['tool_script'],
+  },
   {
     id: 'project-kit.discover',
     pack: 'core',

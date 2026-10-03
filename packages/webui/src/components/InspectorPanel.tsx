@@ -131,7 +131,7 @@ export function InspectorTrigger({
         <span
           className={cn(
             'min-w-4 px-1 text-center text-[10px] font-semibold tabular-nums',
-            badge > 0 ? 'bg-primary/15 text-primary' : 'text-muted-foreground',
+            badge > 0 ? 'bg-primary/15 text-foreground' : 'text-muted-foreground',
           )}
         >
           {badge > 99 ? '99+' : badge}
@@ -454,7 +454,7 @@ function TaskInspectorContent({
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-muted-foreground uppercase">{task.id}</span>
-          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary uppercase">
+          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-foreground uppercase">
             {task.columnId || 'todo'}
           </span>
         </div>
@@ -591,7 +591,7 @@ function FleetTabContent({
               className={cn(
                 'rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors',
                 filter === opt.value
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary/10 text-foreground'
                   : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
               )}
             >
@@ -621,7 +621,7 @@ function FleetTabContent({
             <button
               type="button"
               onClick={() => setFilter('all')}
-              className="mt-1 text-[11px] text-primary hover:underline"
+              className="mt-1 text-[11px] text-foreground hover:underline"
             >
               {t('activity:agents.emptyFilteredClear')}
             </button>
@@ -709,7 +709,7 @@ function AgentsTabContent({
               className={cn(
                 'shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] transition-colors',
                 agent.id === selectedAgent?.id
-                  ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
+                  ? 'bg-primary/15 text-foreground ring-1 ring-primary/40'
                   : 'hover:bg-accent text-muted-foreground',
               )}
               title={

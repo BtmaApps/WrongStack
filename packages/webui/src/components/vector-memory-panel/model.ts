@@ -186,6 +186,12 @@ export async function searchVectorMemory(
     { credentials: 'include' },
   );
   if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    if (isRecord(body) && body.code === 'EMBEDDING_PROVIDER_UNAVAILABLE') {
+      throw new Error(
+        'Vector memory embedding provider unavailable. Ensure the optional @huggingface/transformers backend is installed and the model can load, then retry.',
+      );
+    }
     throw new Error(`search failed: HTTP ${response.status}`);
   }
   return parseSearchResponse(await response.json());

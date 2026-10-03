@@ -1,4 +1,14 @@
 {
+  "storyWidget": {
+    "open": "Oturum Story ekranını aç",
+    "hint": "Oturum dashboard'unu aç. Özet, bu sekmenin eldeki lider tool çağrılarını ve bilinen worker'larını gösterir; çubuklar kaydedilmiş çağrı başlangıçlarıdır.",
+    "working": "Çalışıyor",
+    "snapshot": "Özet",
+    "noSession": "Oturum seç",
+    "calls": "çağrı",
+    "workers": "worker",
+    "age": "Oturumun başlamasından beri geçen süre"
+  },
   "projectKit": {
     "subtitle": "Bu projeye özel, tekrar kullanılabilir araçlar.",
     "refresh": "Yenile",
@@ -47,6 +57,7 @@
     "examples": "Doğrulama örnekleri"
   },
   "nav": {
+    "automation": "Otomasyonlar",
     "project-kit": "Project Kit",
     "chat": "Oturum",
     "agents": "Vekiller",
@@ -261,6 +272,14 @@
     "onlineCount": "{{count}} çevrimiçi",
     "messages": "Mesajlar",
     "compose": "Mesaj oluştur",
+    "composeDescription": "Bir ajana, lidere veya tüm filoya tipli bir mesaj gönder.",
+    "searchAgents": "Ajan ara…",
+    "noAgentsFound": "Aramanla eşleşen ajan yok.",
+    "noAgentsRegistered": "Henüz kayıtlı ajan yok.",
+    "specificRecipientRequired": "Görev ataması ve yön düzeltmesi belirli bir alıcı gerektirir.",
+    "replyAction": "Yanıtla",
+    "replyPrefix": "Yn: ",
+    "ctrlEnterHint": "Göndermek için Ctrl+Enter",
     "recipient": "Alıcı",
     "messageType": "Tür",
     "audience": "Kitle",

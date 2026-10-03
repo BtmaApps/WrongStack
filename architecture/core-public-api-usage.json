@@ -19,9 +19,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/cloud-provider": {
-      "files": 12,
+      "files": 13,
       "typeOnly": 1,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
       "files": 248,
@@ -2696,6 +2696,12 @@
     {
       "specifier": "@wrongstack/core/cloud-provider",
       "file": "packages/webui/src/components/SettingsPanel/ProviderCloudSettings.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/cloud-provider",
+      "file": "packages/webui/src/types/client-message.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

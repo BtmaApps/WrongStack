@@ -3,6 +3,7 @@
 export type { BugHuntRun } from './bug-hunt-run-store.js';
 export { useBugHuntRunStore } from './bug-hunt-run-store.js';
 export { useChatStore } from './chat-store.js';
+export { useChimeraHubStore } from './chimera-hub-store.js';
 export type { ChimeraReportNotice } from './chimera-reports-store.js';
 export { useChimeraReportsStore } from './chimera-reports-store.js';
 export type { ActivityType, FileActivity } from './codemap-activity-store.js';
@@ -10,6 +11,7 @@ export {
   extractActivitiesFromMessage,
   useCodemapActivityStore,
 } from './codemap-activity-store.js';
+export { useCodemapIndexStore } from './codemap-index-store.js';
 export type { ConfigState } from './config-store.js';
 export { useConfigStore } from './config-store.js';
 export type {
@@ -24,6 +26,7 @@ export type {
   VoteValue,
 } from './coordinator-monitor-store.js';
 export { useCoordinatorMonitorStore } from './coordinator-monitor-store.js';
+export { useContextEditorStore } from './context-editor-store.js';
 export type { CouncilPanelEntry } from './council-log-store.js';
 export {
   isCouncilPanelAdverse,
@@ -69,6 +72,13 @@ export { type KanbanResultPayload, useKanbanStore } from './kanban-store.js';
 export { useLocalPrefs } from './local-prefs.js';
 export type { MailboxAgent, MailboxMessage } from './mailbox-store.js';
 export { selectUnreadCount, useMailboxStore } from './mailbox-store.js';
+export type {
+  MemoryInjectorTrace,
+  MemoryInjectorTraceMemory,
+} from './memory-injector-store.js';
+export { useMemoryInjectorTraceStore } from './memory-injector-store.js';
+export type { MemoryLifecycleAction } from './memory-lifecycle-store.js';
+export { useMemoryLifecycleStore } from './memory-lifecycle-store.js';
 export type { ClientCounts, CurrentSessionStats, MailActivity } from './monitor-store.js';
 export { useMonitorStore } from './monitor-store.js';
 export type {
@@ -104,6 +114,19 @@ export {
   type ProviderHealthState,
   useProviderStatusStore,
 } from './provider-status-store.js';
+export { useRestoreTabsStore } from './restore-tabs-store.js';
+export {
+  formatResumeBytes,
+  resumeProgressPercent,
+  resumeStageLabel,
+  useResumeProgressStore,
+} from './resume-progress-store.js';
+export {
+  formatReviewMessage,
+  scopedComments,
+  useReviewStore,
+} from './review-store.js';
+export type { ReviewComment } from './review-store.js';
 export {
   type SddBoardFeedEntry,
   type SddBoardSnapshotUI,
@@ -118,6 +141,10 @@ export {
   type SddWizardSnapshot,
   useSddWizardStore,
 } from './sdd-wizard-store.js';
+export {
+  ensureInspectHandlerInstalled,
+  useSessionInspectStore,
+} from './session-inspect-store.js';
 /** The lane pointer — the single answer to "which tab is in front". */
 export { activeSessionLaneId, useActiveSessionId } from './session-lanes.js';
 export { memorySessionSnapshots, useSessionStore } from './session-store.js';
@@ -138,6 +165,10 @@ export {
   type SpecListItem,
   useSpecsStore,
 } from './specs-store.js';
+export {
+  systemPromptCurrent,
+  useSystemPromptStore,
+} from './system-prompt-store.js';
 export {
   type TechStackAnalyzeDepth,
   type TechStackApplyPlanResult,
@@ -161,6 +192,11 @@ export {
   type TechStackWorkspace,
   useTechStackStore,
 } from './techstack-store.js';
+export {
+  noteTerminalOutput,
+  useTerminalStripStore,
+} from './terminal-strip-store.js';
+export type { TerminalSummary } from './terminal-strip-store.js';
 export {
   bucketSuccessRatio,
   LEADER_AGENT_KEY,

@@ -83,7 +83,11 @@ describe('ActivityBar responsive overflow (full / browser WebUI)', () => {
       'memory',
       'sddhub',
       'project-kit',
-      'codemap',
+      // `automation` enters the ordered view list at this width and takes the
+      // last visible slot, pushing `codemap` into the overflow menu. Characterise
+      // the real split rather than appending: slot count here is fixed by
+      // calculateDesktopActivityCapacity(800), not by the number of views.
+      'automation',
     ]);
     // Agent Roster is a primary surface — it must stay visible, not fall
     // into the "…" overflow menu (regression guard for the VIEWS reorder).

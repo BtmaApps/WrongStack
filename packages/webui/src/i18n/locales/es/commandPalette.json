@@ -18,6 +18,7 @@
     "help": "Mostrar comandos slash",
     "tools": "Listar herramientas",
     "memory": "Mostrar memoria",
+    "mailboxCompose": "Redactar mensaje de buzón",
     "skills": "Listar habilidades",
     "diag": "Diagnóstico en tiempo de ejecución",
     "stats": "Estadísticas de sesión (tokens, caché, costo)",

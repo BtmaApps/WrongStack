@@ -106,7 +106,26 @@ vi.stubGlobal(
 
 import type { SharedMemorySearch } from '../../src/components/MemoryManager/sharedSearch.js';
 import { VectorMemoryPanel } from '../../src/components/vector-memory-panel/index.js';
-import { previewText } from '../../src/components/vector-memory-panel/model.js';
+import { previewText, searchVectorMemory } from '../../src/components/vector-memory-panel/model.js';
+
+describe('vector search provider errors', () => {
+  it('explains the typed provider failure without exposing server details', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(503, {
+        code: 'EMBEDDING_PROVIDER_UNAVAILABLE',
+        detail: 'internal error',
+      }),
+    );
+    await expect(searchVectorMemory('sage')).rejects.toThrow(
+      'Ensure the optional @huggingface/transformers backend is installed',
+    );
+  });
+
+  it('preserves HTTP errors for non-JSON failures', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('Unavailable', { status: 503 }));
+    await expect(searchVectorMemory('sage')).rejects.toThrow('search failed: HTTP 503');
+  });
+});
 
 const alphaToggle = () => screen.getByRole('button', { name: /0\.912\s*alpha summary/ });
 

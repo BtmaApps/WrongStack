@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-03T12:04:21.930Z
+**Generated:** 2026-10-03T12:05:24.272Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4391 |
-| Production source lines | 1045717 |
-| Test files | 4002 |
+| Production source lines | 1045968 |
+| Test files | 4004 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14272 |
+| Relative module edges | 14293 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -66,7 +66,7 @@
 | @wrongstack/techstack | 51 | 41 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 249 | 291 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 450 | 405 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 450 | 407 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 23 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 639 | 454 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 49 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -105,13 +105,13 @@ None.
 | 1002 | `packages/core/src/coordination/director.ts` |
 | 1000 | `packages/mcp/src/client.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
+| 997 | `packages/webui/src/types/client-message.ts` |
 | 992 | `packages/sage/src/sqlite-store.ts` |
 | 982 | `packages/mcp/src/registry.ts` |
 | 980 | `packages/sage/src/project-server.ts` |
 | 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 969 | `packages/providers/src/index.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
-| 960 | `packages/webui/src/types/client-message.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
 | 946 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
@@ -146,7 +146,7 @@ None.
 
 ## Exports only tests reference
 
-- 978 runtime exports are referenced by tests and by no other production file.
+- 976 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

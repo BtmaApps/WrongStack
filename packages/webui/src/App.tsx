@@ -42,6 +42,7 @@ import { UserInputDialog } from './components/UserInputDialog';
 import { ViewRouter } from './components/ViewRouter';
 import { WorkbenchTopbar } from './components/WorkbenchTopbar';
 import { WorkspaceDockInspector } from './components/WorkspaceDock';
+import { ArtifactPreview } from './components/ArtifactPreview';
 import { useSystemPromptStore } from './stores/system-prompt-store';
 
 // Per-view lazy imports live in `./components/view-registry.ts`, which is the
@@ -394,6 +395,7 @@ function AppInner() {
       <QuickModelSwitcher />
       <FallbackModal />
       <Toaster />
+      <ArtifactPreview />
     </div>
   );
 }

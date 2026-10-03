@@ -60,8 +60,8 @@ import { WorktreeOrphans } from './WorktreeOrphans';
 
 const CHIP_TONES: Record<DockSection, { active: string; idle: string }> = {
   goal: {
-    active: 'bg-primary/12 border-primary/40 text-primary shadow-sm',
-    idle: 'text-primary/80 hover:bg-primary/10',
+    active: 'bg-primary/12 border-primary/40 text-foreground shadow-sm',
+    idle: 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
   },
   'goal-state': {
     active: 'bg-destructive/10 border-destructive/35 text-destructive shadow-sm',
@@ -72,20 +72,20 @@ const CHIP_TONES: Record<DockSection, { active: string; idle: string }> = {
     idle: 'text-success/80 hover:bg-success/10',
   },
   work: {
-    active: 'bg-warning/12 border-warning/35 text-warning shadow-sm',
-    idle: 'text-warning/80 hover:bg-warning/10',
+    active: 'bg-warning/12 border-warning/35 text-foreground shadow-sm',
+    idle: 'text-muted-foreground hover:bg-warning/10 hover:text-foreground',
   },
   worktrees: {
-    active: 'bg-info/12 border-info/35 text-info shadow-sm',
-    idle: 'text-info/80 hover:bg-info/10',
+    active: 'bg-info/12 border-info/35 text-foreground shadow-sm',
+    idle: 'text-muted-foreground hover:bg-info/10 hover:text-foreground',
   },
   collab: {
     active: 'bg-accent border-primary/25 text-accent-foreground shadow-sm',
     idle: 'text-muted-foreground hover:bg-muted/60',
   },
   browser: {
-    active: 'bg-info/12 border-info/35 text-info shadow-sm',
-    idle: 'text-info/80 hover:bg-info/10',
+    active: 'bg-info/12 border-info/35 text-foreground shadow-sm',
+    idle: 'text-muted-foreground hover:bg-info/10 hover:text-foreground',
   },
 };
 

@@ -1,5 +1,7 @@
 import type { ComponentProps } from 'react';
 import { AuthPanel } from './auth-panel.js';
+import { AutomationPanel } from './automation-panel.js';
+import { ArtifactPreview } from './artifact-preview.js';
 import { BrainPanel } from './brain-panel.js';
 import { CommandPalette } from './command-palette.js';
 import { ContextBreakdownModal } from './context-breakdown-modal.js';
@@ -107,6 +109,7 @@ export function SessionModals(props: SessionModalsProps) {
 
   return (
     <>
+      <ArtifactPreview socketRef={socketRef} sessionId={sessionId} />
       <CommandPalette
         open={commandPaletteOpen}
         context={{
@@ -122,7 +125,7 @@ export function SessionModals(props: SessionModalsProps) {
       <UtilityDock fileChangeCount={fileChangeCount} onOpenFileChanges={onOpenFileChanges} />
       <MemoryDrawer socketRef={socketRef} />
       <AuthPanel socketRef={socketRef} />
-      <FileExplorer socketRef={socketRef} />
+      <FileExplorer socketRef={socketRef} sessionId={sessionId} />
       <PromptLibrary onRecall={onRecallPrompt} />
       <BrainPanel socketRef={socketRef} />
       <VectorMemoryPanel />
@@ -179,6 +182,9 @@ export function SessionModals(props: SessionModalsProps) {
       )}
 
       {!outageDismissed && <ServerOutageOverlay outage={outage} onDismiss={onDismissOutage} />}
+      <ErrorBoundary>
+        <AutomationPanel projectRoot={session?.cwd} sessionId={sessionId ?? undefined} />
+      </ErrorBoundary>
     </>
   );
 }
