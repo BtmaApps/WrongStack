@@ -110,6 +110,7 @@ const EXPECTED_REGISTRATION_ORDER = [
   'tier',
   'profile',
   'provider-status',
+  'provider-quota',
   'memory',
   'worktree',
   'git',

@@ -33,8 +33,11 @@ export function ResourceMenu({
 }: ResourceMenuProps): React.ReactElement {
   const items = filterResourceMenuItems(snapshot, filter);
   const longest = items.reduce((value, item) => Math.max(value, Array.from(item.label).length), 0);
-  const listWidth = Math.max(30, Math.min(54, longest + 9));
-  const split = columns >= listWidth + 43 && items.length > 0;
+  const quota = snapshot.id === 'provider-quota';
+  const listWidth = quota
+    ? Math.max(18, Math.min(28, Math.floor(columns * 0.28)))
+    : Math.max(30, Math.min(54, longest + 9));
+  const split = columns >= (quota ? 40 : listWidth + 43) && items.length > 0;
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: items.length,
     selected,
@@ -45,7 +48,7 @@ export function ResourceMenu({
   const safeSelected = Math.max(0, Math.min(selected, items.length - 1));
   const focused = items[safeSelected];
   const visible = items.slice(start, end);
-  const nameWidth = Math.max(1, listWidth - 9);
+  const nameWidth = Math.max(1, listWidth - (quota ? 8 : 9));
 
   const list = (
     <Box
@@ -59,7 +62,11 @@ export function ResourceMenu({
         ━━ {snapshot.title} {filter ? `· ${items.length}/${snapshot.items.length}` : ''} ━━
       </Text>
       <Text color={theme.textMuted} wrap="truncate-end">
-        {filtering ? `Esc clear · Enter done · filter: ${filter}` : 'Esc · ↑↓ · / · Enter action'}
+        {filtering
+          ? `Esc clear · Enter done · filter: ${filter}`
+          : quota
+            ? 'Esc · ↑↓ · / · r'
+            : 'Esc · ↑↓ · / · Enter action'}
       </Text>
       {hasAbove ? <Text color={theme.textMuted}> … {start} more above</Text> : null}
       {visible.map((item, offset) => {
@@ -104,6 +111,19 @@ export function ResourceMenu({
     </Box>
   );
 
+  // Even a very narrow terminal must expose the selected provider's reading.
+  if (quota && !split && focused) {
+    return (
+      <MonitorViewportProvider value={{ columns, rows: maxRows ?? 16 }}>
+        <ResourceDetail
+          key={focused.id}
+          item={focused}
+          subtitle="Esc close · ↑↓ provider · r refresh"
+          maxRows={maxRows}
+        />
+      </MonitorViewportProvider>
+    );
+  }
   if (!split || !focused) return list;
   return (
     <Box flexDirection="row">

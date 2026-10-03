@@ -370,6 +370,12 @@ export function routeSettingsOverlayKey(
     showModelReasoning: config.showModelReasoning ?? false,
     toolResultViewMode: config.toolResultViewMode ?? 'normal',
     showAgentSwarmPanel: coerceAgentSwarmMode(config.showAgentSwarmPanel),
+    // Hydrate the right-sidebar master switch from the persisted config.
+    // Omitting it made the reducer's `action.showSidebar ?? true` fall back to
+    // ON, so a user who had run `/sidebar off` saw the sidebar reappear the
+    // moment they opened the picker — and the next auto-save persisted the
+    // flipped value, silently undoing their own setting.
+    showSidebar: config.showSidebar ?? true,
     // Migrate the legacy `showAgentSwarmPanel: 'sidebar'` tri-state into
     // the new per-panel `panelPositions.fleet` map so users with old
     // configs don't lose their sidebar routing. The legacy field governed

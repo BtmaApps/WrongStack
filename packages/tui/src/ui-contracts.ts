@@ -292,6 +292,7 @@ export type ResourceMenuId =
   | 'tier'
   | 'profile'
   | 'provider-status'
+  | 'provider-quota'
   | 'memory'
   | 'worktree'
   | 'git';

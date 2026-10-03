@@ -5,12 +5,12 @@ import { registerSlashCommandLifecycle } from '../slash-command-lifecycle.js';
 import type { TuiSlashCommandOptions } from './tui-slash-command-options.js';
 
 /**
- * Resource-domain slash commands (/skill, the seven operational resource-menu
- * browsers fallback/tier/profile/provider-status/memory/worktree/git, and
+ * Resource-domain slash commands (/skill, operational resource-menu
+ * browsers fallback/tier/profile/provider-status/provider-quota/memory/worktree/git, and
  * cron/prompts), moved verbatim from useTuiSlashCommands (decomposition
- * Phase 2 — docs/decomposition-plan.md). Registers at pinned positions
- * 12–21 (tests/slash-registration-enumeration.test.ts), between the session
- * slice's 'mid' part (10–11) and the settings slice's 'appearance' part (22).
+ * Phase 2 — docs/decomposition-plan.md). Registration order is pinned by
+ * tests/slash-registration-enumeration.test.ts, between the session slice's
+ * 'mid' part and the settings slice's 'appearance' part.
  */
 export function useResourceSlashCommands(deps: TuiSlashCommandOptions): void {
   const { slashRegistry, skillLoader, getResourceMenu, dispatch, openPromptPicker } = deps;
@@ -63,6 +63,7 @@ export function useResourceSlashCommands(deps: TuiSlashCommandOptions): void {
       'tier',
       'profile',
       'provider-status',
+      'provider-quota',
       'memory',
       'worktree',
       'git',
@@ -82,6 +83,8 @@ export function useResourceSlashCommands(deps: TuiSlashCommandOptions): void {
               if (args.trim())
                 return original?.run(args, ctx) ?? { message: `/${name} is unavailable.` };
               try {
+                // Use the canonical account reads, but keep their text dump out of history.
+                if (name === 'provider-quota') await original?.run('', ctx);
                 const snapshot = await getResourceMenu(name);
                 dispatch({ type: 'resourceMenuOpen', snapshot });
                 return { message: undefined };

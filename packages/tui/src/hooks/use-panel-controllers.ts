@@ -204,6 +204,14 @@ export function usePanelControllers({
       showModelReasoning: s.showModelReasoning ?? false,
       toolResultViewMode: s.toolResultViewMode ?? 'normal',
       showAgentSwarmPanel: coerceAgentSwarmMode(s.showAgentSwarmPanel),
+      // Hydrate the right-sidebar master switch from the persisted config.
+      // Omitting it made the reducer's `action.showSidebar ?? true` fall back
+      // to ON, so a user who had run `/sidebar off` saw the sidebar reappear
+      // the moment they opened the picker — and the next auto-save persisted
+      // the flipped value, silently undoing their own setting. The Ctrl+S
+      // path in `overlay-key-router.ts` had the identical omission; the two
+      // `settingsOpen` dispatch sites must stay in lock-step.
+      showSidebar: s.showSidebar ?? true,
       // Migrate the legacy `showAgentSwarmPanel: 'sidebar'` tri-state into
       // the new per-panel `panelPositions.fleet` map so users with old
       // configs don't lose their sidebar routing. The legacy field

@@ -124,9 +124,9 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 46,
+      "files": 48,
       "typeOnly": 1,
-      "runtimeOrMixed": 45
+      "runtimeOrMixed": 47
     },
     "@wrongstack/core/registry": {
       "files": 147,
@@ -184,8 +184,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1270,
-      "typeOnly": 1123,
+      "files": 1271,
+      "typeOnly": 1124,
       "runtimeOrMixed": 370
     },
     "@wrongstack/core/types/limits": {
@@ -8827,7 +8827,19 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/cli/src/tui-provider-quota-menu.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/cli/tests/slash-openai-quota.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/cli/tests/tui-provider-quota-menu.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13970,6 +13982,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/tui-provider-quota-menu.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:55:08.723Z",
+  "generatedAt": "2026-10-03T11:56:12.837Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4337,
-    "testFiles": 3969,
-    "sourceLines": 1033946,
+    "sourceFiles": 4338,
+    "testFiles": 3971,
+    "sourceLines": 1034069,
     "workspaceEdges": 131,
-    "moduleEdges": 14159,
+    "moduleEdges": 14160,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -161,8 +161,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 554,
-      "testFiles": 574,
+      "sourceFiles": 555,
+      "testFiles": 575,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -202,7 +202,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 574
+          "testFiles": 575
         }
       ]
     },
@@ -798,7 +798,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 450,
-      "testFiles": 404,
+      "testFiles": 405,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -821,7 +821,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 404
+          "testFiles": 405
         }
       ]
     },
@@ -4953,6 +4953,12 @@
       },
       {
         "file": "packages/cli/tests/tui-project-switch-identity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tui-provider-quota-menu.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18993,6 +18999,12 @@
       },
       {
         "file": "packages/tui/tests/prompt-refinement-start.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/provider-quota-panel.test.tsx",
         "projects": [
           "root-node"
         ]

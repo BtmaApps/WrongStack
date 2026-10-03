@@ -1,11 +1,12 @@
 import { readdir } from 'node:fs/promises';
-import { leaderTierPolicy, resolveTier } from '@wrongstack/core/coordination';
 import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { leaderTierPolicy, resolveTier } from '@wrongstack/core/coordination';
 import type { ConfigStore, MemoryPort } from '@wrongstack/core/types';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { readJsonObjectFile } from '@wrongstack/core/utils';
 import type { ResourceMenuId, ResourceMenuItem, ResourceMenuSnapshot } from '@wrongstack/tui';
 import { runGit } from './services/run-git.js';
+import { providerQuotaMenu } from './tui-provider-quota-menu.js';
 
 interface TuiResourceMenuContext {
   configStore: ConfigStore;
@@ -28,6 +29,8 @@ export function createTuiResourceMenuGetter(
         return profileMenu(ctx.configStore, ctx.paths);
       case 'provider-status':
         return providerStatusMenu(ctx.statusTracker);
+      case 'provider-quota':
+        return providerQuotaMenu(ctx.configStore.get().providers);
       case 'memory':
         return memoryMenu(ctx.memoryStore);
       case 'worktree':
