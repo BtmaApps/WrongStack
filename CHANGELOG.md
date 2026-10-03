@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.31] — 2026-10-03
+
+ToolFlow brings compact tool orchestration to the existing execution gate, and
+Session Story makes the selected session's recorded work visible. Persistent
+Docker automation, isolated Code Assist runs and offline quality experiments
+join the workflow, with lifecycle and policy fixes across the workspace.
+
+### Added
+
+- **WrongStack ToolFlow.** Compose repeated or dependent tool calls in sandboxed JavaScript, keeping each call's permission checks and session record. WebUI, TUI and SimpleUI show the run's purpose, call and failure counts, and measured output bytes. In the scripted-provider 50-read fixture, model-visible result text falls from 551,040 bytes in 50 blocks to 120 bytes in one block; both batched paths still use two provider requests. This measures fixture output, not live-model speed or billing.
+- **Session Story and model dashboards.** A selected-tab timeline, activity charts, replay, team branches and recorded tool, file, memory and mail evidence make session and subagent work inspectable. Model comparisons show recorded reliability, latency, spend and work signals; missing evidence remains unknown.
+- **Persistent automation.** Scheduled and signed GitHub jobs run in independent Docker source snapshots, with CLI, WebUI and SimpleUI controls, versioned templates, portable definitions, structured results and reviewable patches.
+- **Code Assist and fleet mail.** The WebUI starts isolated assistance runs for files and symbols, and composes or replies to typed fleet mailbox messages.
+- **Offline routing and quality experiments.** Benchmark and transcript commands compare deterministic grades, recorded usage, known cost and advisory review evidence without changing live routing.
+- **Provider operations.** Native cloud profiles and read-only preflight diagnostics, plus a structured two-pane `/provider-quota` TUI browser.
+- **Session-owned artifacts.** Text, images, diffs and owned live browsers can be presented across WebUI and SimpleUI.
+
+### Changed
+
+- **WebUI navigation and display.** Session sidebar sections fold and reorder with saved layout preferences. Feature navigation, settings hydration and theme contrast are aligned, with a WCAG AA contrast readout.
+- **Installers at wrongstack.com.** Standalone install scripts are served at `wrongstack.com/install.sh` and `wrongstack.com/install.ps1` alongside the GitHub release assets.
+
+### Fixed
+
+- **Companion and Council lifecycle.** Explore Companion triggers, queues, budgets and late-result publication are bounded; Brain Council decisions, live settings and lifecycle guards agree across surfaces.
+- **Coordination and persistence.** Kanban assignment, completion and session mirrors retain their integrity; IPC ownership, prompt persistence, plugin guards and token accounting are hardened. Agent roster publication cannot resurrect a closing lease, and roster cache identity follows content.
+- **Tools and diagnostics.** Package and native audit output is normalized, command execution and advisory policy are hardened, and only one circuit-breaker probe enters a half-open circuit.
+- **Evidence and tests.** Goal completion markers are anchored, session-recap tool calls are counted once, and session sidebar tests use valid accessible-role query options.
+- **Cache lifetime.** Responses with zero cache lifetime cannot be reused as stale responses.
+
 ## [1.0.30] — 2026-10-01
 
 A provider-account release. Every provider sold on a plan or a prepaid balance

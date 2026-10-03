@@ -41,7 +41,7 @@ describe('session sidebar sections', () => {
       return <button type="button">Live action</button>;
     }
     const view = render(<SessionSections sections={[{ ...sections[1]!, content: <Live /> }]} />);
-    const toggle = screen.getByRole('button', { name: 'Workspace', exact: true });
+    const toggle = screen.getByRole('button', { name: 'Workspace' });
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByRole('button', { name: 'Live action' })).toBeNull();
@@ -55,7 +55,7 @@ describe('session sidebar sections', () => {
     await useSessionPanelLayout.persist.rehydrate();
     render(<SessionSections sections={[{ ...sections[1]!, content: <Live /> }]} />);
     expect(screen.queryByRole('button', { name: 'Live action' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Workspace', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace' }));
     expect(screen.getByRole('button', { name: 'Live action' })).toBeTruthy();
   });
 
@@ -124,11 +124,11 @@ describe('session sidebar sections', () => {
     await act(async () => useSessionPanelLayout.persist.rehydrate());
     render(<SessionSections sections={sections} />);
     expect(order()).toEqual(['stats', 'actions', 'workspace']);
-    expect(
-      screen.getByRole('button', { name: 'Stats', exact: true }).getAttribute('aria-expanded'),
-    ).toBe('false');
-    expect(
-      screen.getByRole('button', { name: 'Actions', exact: true }).getAttribute('aria-expanded'),
-    ).toBe('true');
+    expect(screen.getByRole('button', { name: 'Stats' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Actions' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
   });
 });

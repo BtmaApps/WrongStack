@@ -353,9 +353,24 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.31',
+    date: '2026-10-03',
+    latest: true,
+    tagline: 'ToolFlow, visual Session Story, and persistent Docker automation',
+    highlights: [
+      'ToolFlow composes tools in sandboxed JavaScript with per-call permission checks and compact results across WebUI, TUI and SimpleUI',
+      'Session Story adds selected-tab timelines, replay, team branches and recorded model, tool, file, memory and mail evidence',
+      'Persistent automation runs scheduled and signed GitHub jobs in independent Docker snapshots with reviewable patches',
+      'Code Assist starts isolated file and symbol runs; fleet mailbox messages can be composed and replied to in the WebUI',
+      'Offline benchmark experiments compare deterministic quality, recorded usage and known cost without changing live routing',
+      'Native cloud profiles, read-only provider preflight checks and a two-pane TUI provider quota browser',
+      'Session-owned artifact presentation, reorderable sidebar sections and a WCAG AA theme contrast readout',
+      'Lifecycle, Council, Kanban, IPC, cache, command execution and token-accounting fixes across the workspace',
+    ],
+  },
+  {
     version: '1.0.30',
     date: '2026-10-01',
-    latest: true,
     tagline: 'Plan quota and balances for every metered provider, and a calmer WebUI',
     highlights: [
       'Plan windows for Claude, ChatGPT, Copilot, Antigravity, Z.AI, MiniMax, Kimi Code, OpenCode, OpenRouter and OmniRoute; prepaid balances for DeepSeek, Moonshot and SiliconFlow',

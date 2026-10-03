@@ -51,27 +51,25 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.30
+### What's new in 1.0.31
 
-- **Know what is left of every plan.** Claude, ChatGPT, Copilot, Antigravity,
-  Z.AI / BigModel, MiniMax, Kimi Code, OpenCode, OpenRouter and OmniRoute
-  report their plan windows, and DeepSeek, Moonshot and SiliconFlow their
-  prepaid balance — in the statusline, the TUI sidebar and a WebUI quota page,
-  read from account endpoints that spend nothing. Any other provider can
-  declare a `quotaEndpoint`. See [`/provider-quota`](docs/slash/provider-quota.md).
-- **Vendor account planes.** `/zai-plan` shows the GLM Coding Plan the way the
-  official client does; MiniMax routes by host with per-model thinking and real
-  reset waits; ChatGPT (Codex) shows its quota before the first turn and
-  truncates tool output by the model's published policy.
-- **A calmer WebUI.** The workbench opens in a `calm` density that folds status
-  into one health chip and moves secondary controls into menus; `full` keeps
-  the previous screen exactly.
-- **Fallback suggestions** from the models.dev catalog of the providers you
-  have configured, and project agents that drop learned notes citing files
-  that no longer exist.
-- **Several dozen semantic fixes** from a long audit pass: resume of
-  interrupted parallel tool calls, multi-byte chunk boundaries, locale-sensitive
-  offsets, plugin output parsing and secret redaction among them.
+- **[ToolFlow](docs/toolflow.md)** composes repeated or dependent tool calls in
+  sandboxed JavaScript, preserves each call's permission checks and returns
+  compact findings. WebUI, TUI and SimpleUI show the run and its measured output.
+- **[Session Story](docs/session-story.md)** visualizes the selected tab and its
+  subagents with timelines, replay, team branches and recorded model, tool,
+  file, memory and mail evidence.
+- **[Persistent automation](docs/subcommands/automation.md)** runs scheduled or
+  signed GitHub jobs in independent Docker snapshots, with portable job
+  definitions, versioned templates and reviewable patches.
+- **WebUI Code Assist and fleet mail:** isolated file and symbol assistance,
+  typed mailbox composition and replies, saved sidebar ordering and theme
+  contrast readouts.
+- **[Offline quality experiments](docs/subcommands/bench-experiments.md),
+  [native cloud profiles](docs/subcommands/provider-cloud.md)** and a structured
+  two-pane [`/provider-quota`](docs/slash/provider-quota.md) TUI browser.
+- **Lifecycle and policy fixes** across Explore Companion, Brain Council,
+  Kanban, IPC ownership, tools, caches and token accounting.
 
 See the complete [release notes](CHANGELOG.md).
 

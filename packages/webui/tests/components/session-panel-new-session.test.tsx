@@ -192,7 +192,7 @@ describe('SessionPanel quick actions', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm', sessionStatsExpanded: false });
     renderPanel();
 
-    const toggle = screen.getByRole('button', { name: 'Session', exact: true });
+    const toggle = screen.getByRole('button', { name: 'Session' });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByText('Messages').closest('[hidden]')).toBeTruthy();
 
@@ -208,7 +208,7 @@ describe('SessionPanel quick actions', () => {
     useLocalPrefs.setState({ chromeLevel: 'full', sessionStatsExpanded: false });
     renderPanel();
 
-    const toggle = screen.getByRole('button', { name: 'Session', exact: true });
+    const toggle = screen.getByRole('button', { name: 'Session' });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByText('Messages').closest('[hidden]')).toBeNull();
     fireEvent.click(toggle);
@@ -243,7 +243,7 @@ describe('SessionPanel quick actions', () => {
     renderPanel();
 
     const history = screen.getByText('Older session');
-    const stats = screen.getByRole('button', { name: 'Session', exact: true });
+    const stats = screen.getByRole('button', { name: 'Session' });
     // DOCUMENT_POSITION_FOLLOWING (4): the stats toggle comes after history.
     expect(history.compareDocumentPosition(stats) & 4).toBe(4);
   });
