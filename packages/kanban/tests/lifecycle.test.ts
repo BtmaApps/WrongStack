@@ -997,6 +997,7 @@ describe('end-to-end managed lifecycle validation paths', () => {
     const { board, cardId } = await managedBoardWithCard();
     await updateTask(tmpDir, board.id, cardId, {
       ...fullDetails(),
+      childTaskIds: [],
       successCriteria: [{ id: 'c1', description: 'All green', type: 'manual', status: 'passed' }],
     });
     await transitionTask(tmpDir, board.id, cardId, {

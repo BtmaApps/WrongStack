@@ -82,10 +82,10 @@ describe('areDependenciesMet / findBlockedTasks edges', () => {
     expect(areDependenciesMet(boardData!, t!.task.id)).toBe(true);
   });
 
-  it('returns true when task not found', async () => {
+  it('returns false when task not found', async () => {
     const board = await createBoard(tmpDir, { title: 'Dep test 2' });
     const boardData = await readBoard(tmpDir, board.id);
-    expect(areDependenciesMet(boardData!, 'nonexistent')).toBe(true);
+    expect(areDependenciesMet(boardData!, 'nonexistent')).toBe(false);
   });
 
   it('returns empty array for findBlockedTasks when task not found', async () => {

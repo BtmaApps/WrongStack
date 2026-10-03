@@ -35,7 +35,8 @@ export function getDependencyReadinessIssues(
   if (!task?.dependsOn?.length) return [];
   const issues: KanbanDependencyReadinessIssue[] = [];
   for (const dependencyId of task.dependsOn) {
-    const dependency = findTask(board, dependencyId);
+    // Prefixes are caller convenience, not the identity of persisted edges.
+    const dependency = board.tasks.find((candidate) => candidate.id === dependencyId);
     if (!dependency) {
       issues.push({ dependencyId, status: 'missing' });
     } else if (dependency.status !== 'completed') {
@@ -112,5 +113,6 @@ export function dependencyIncompleteMessage(
  * Accepts either a full task id or a unique prefix (delegated to `findTask`).
  */
 export function areDependenciesMet(board: KanbanBoard, taskId: string): boolean {
-  return getDependencyReadinessIssues(board, taskId).length === 0;
+  const task = findTask(board, taskId);
+  return task !== undefined && getDependencyReadinessIssues(board, task).length === 0;
 }

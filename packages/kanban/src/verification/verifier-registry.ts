@@ -74,7 +74,7 @@ export class VerifierRegistry {
       // failed manual check flows through as-is; anything unresolved is
       // 'skipped' so the report stays honest about what was actually verified.
       const passThrough =
-        check.status === 'passed'
+        check.status === 'passed' && (effectiveType === 'manual' || effectiveType === 'review')
           ? ('passed' as const)
           : check.status === 'failed'
             ? ('failed' as const)

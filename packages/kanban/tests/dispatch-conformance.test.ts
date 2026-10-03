@@ -419,7 +419,6 @@ describe('cross-surface dispatch conformance', () => {
 
       const beforeBoard = await getBoard(tmpDir, boardId);
       const beforeTask = beforeBoard!.tasks.find((t) => t.id === taskId)!;
-      const _beforeExpiry = beforeTask.assignment?.leaseExpiresAt;
 
       // Wait a moment so the heartbeat timestamp changes.
       await new Promise((r) => setTimeout(r, 10));

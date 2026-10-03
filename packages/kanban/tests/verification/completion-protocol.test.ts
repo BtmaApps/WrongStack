@@ -247,6 +247,63 @@ describe('verifyTaskCompletion', () => {
     expect(result.report.subtasks!.completed).toBe(1);
   });
 
+  // A child's stored `verificationReport` is a cache, not a verdict about the
+  // CURRENT tree. verifySubtasks used to short-circuit on it ("only recurse if
+  // not already verified") and hand the parent that cached verdict without
+  // re-running a single child check; ff1f19d9f then made verifyTaskCompletion
+  // persist by default, so every standalone child verification writes a cache
+  // the next parent verification silently consumes. A child whose criterion has
+  // since stopped holding therefore still counted as 'passed' and carried the
+  // parent — and the card — to Done. A 'passed' verdict is only evidence about
+  // the state of the tree right now, the same bar verifier-registry.ts applies
+  // to escalation criteria. The seed above stays valid precisely because that
+  // child has no criteria to re-verify; this case is the one that broke.
+  it("does not reuse a child's stale cached verdict when that child's criterion now fails", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'kanban-verify-stale-child-'));
+    roots.push(root);
+    const { createBoard, addTask, addCheckToTask, updateTask, getBoard } = await import(
+      '../helpers/session-manager.js'
+    );
+    const fs = await import('node:fs/promises');
+
+    const board = await createBoard(root, { title: 'Test' });
+    const child = await addTask(root, board.id, { title: 'Child' });
+    if (!child) throw new Error('Failed to add child task');
+    const parent = await addTask(root, board.id, { title: 'Parent', atomic: true });
+    if (!parent) throw new Error('Failed to add parent task');
+    await updateTask(root, board.id, parent.task.id, { childTaskIds: [child.task.id] });
+
+    // The child asserts a real file exists.
+    await fs.writeFile(join(root, 'evidence.txt'), 'present\n', 'utf8');
+    await addCheckToTask(root, board.id, child.task.id, {
+      description: 'The marker file exists',
+      type: 'file_exists',
+      notes: 'evidence.txt',
+    });
+
+    // Verify the child while its evidence exists. This persists a 'passed'
+    // verdict onto the card.
+    const first = await verifyTaskCompletion(root, board.id, child.task.id);
+    expect(first.report.verdict).toBe('passed');
+    const stored = (await getBoard(root, board.id))?.tasks.find((t) => t.id === child.task.id);
+    expect(stored?.verificationReport?.verdict).toBe('passed');
+
+    // The evidence the criterion depends on disappears.
+    await fs.rm(join(root, 'evidence.txt'));
+
+    // Non-persisting re-read proves the cached verdict is now stale, without
+    // overwriting the cache the parent is about to consult.
+    const fresh = await verifyTaskCompletion(root, board.id, child.task.id, { persist: false });
+    expect(fresh.report.verdict).not.toBe('passed');
+
+    // The parent must be re-verified against reality, not against the cache.
+    const result = await verifyTaskCompletion(root, board.id, parent.task.id, {
+      persist: false,
+    });
+    expect(result.report.verdict).not.toBe('passed');
+    expect(result.report.subtasks!.failed).toBe(1);
+  });
+
   // Nothing upstream guarantees `childTaskIds` is acyclic: `splitTask` is safe
   // because it mints fresh ids, but `syncTaskGraphIntoBoard` copies
   // `node.children` straight through and a board file is ordinary project data.

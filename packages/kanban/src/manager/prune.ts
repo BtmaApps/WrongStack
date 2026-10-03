@@ -1,10 +1,8 @@
 import type { KanbanTask } from '../types.js';
 import { deleteBoard, listBoardSummaries, mutateBoard, readBoard, writeBoard } from '../storage.js';
 import {
-  areDependenciesMet,
   nowIso,
   stampAtomicityAssessment,
-  syncTaskColumnForStatus,
 } from './_internal.js';
 
 /**
@@ -106,11 +104,25 @@ export async function compactSessionMirrorBoard(
     }
     const now = nowIso();
     for (const task of affectedTasks) {
+      // Re-stamp only. The atomicity assessment is a pure function of the
+      // card's own shape (childCount, dependencyCount, successCriteriaCount,
+      // …), so recomputing it after the card lost a reference keeps a DERIVED
+      // value honest.
+      //
+      // Do NOT flip `blocked` -> `ready` here. `affectedTasks` only means "this
+      // card lost a reference to something dropped" — which says nothing about
+      // why the card is blocked. A card an operator blocked, or one held by a
+      // park or a review, satisfies `areDependenciesMet` (it simply has no
+      // unmet dependsOn), so the old branch rewrote it to 'ready' and moved it
+      // out of the blocked column — and since isTaskReadyForWork accepts
+      // ['pending','ready'], deliberately blocked work became claimable again
+      // as a side effect of a size-bounding sweep, with nothing recording why.
+      //
+      // The branch also cannot serve the case it appears written for: a blocked
+      // card's `dependsOn` entries are protected from dropping by
+      // `retainedDependencies` above, so the drop never edits a blocked card's
+      // dependsOn and a dependency-resolved card never even reaches this loop.
       stampAtomicityAssessment(board, task);
-      if (task.status === 'blocked' && areDependenciesMet(board, task.id)) {
-        task.status = 'ready';
-        syncTaskColumnForStatus(board, task, task.columnId);
-      }
       task.updatedAt = now;
     }
     board.updatedAt = now;

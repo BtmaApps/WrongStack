@@ -382,21 +382,10 @@ export async function handleKanbanLifecycleAction(
           !taskBefore.verificationReport &&
           (taskBefore.atomic || Boolean(taskBefore.successCriteria?.length))
         ) {
-          const preGate = await verifyTaskCompletion(projectRoot, input.boardId, taskBefore.id, {
-            persist: false,
-          });
-          preGateSaved = Boolean(
-            await updateTask(
-              projectRoot,
-              input.boardId,
-              taskBefore.id,
-              {
-                verificationReport: preGate.report,
-                successCriteria: preGate.task.successCriteria,
-              },
-              eventContext,
-            ),
-          );
+          // The verifier persists under its captured revision fence. A separate
+          // updateTask after a non-persisting run could overwrite a newer edit.
+          await verifyTaskCompletion(projectRoot, input.boardId, taskBefore.id);
+          preGateSaved = true;
         }
       }
       const preGateNote = preGateSaved

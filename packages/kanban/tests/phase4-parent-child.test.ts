@@ -48,7 +48,7 @@ function fullDetails() {
     dueDate: '2026-08-01T00:00:00.000Z',
     assignee: 'agent-1',
     labels: ['release'],
-    childTaskIds: ['child-1'],
+    childTaskIds: [],
     successCriteria: [
       { id: 'c1', description: 'Pass', type: 'manual' as const, status: 'pending' as const },
     ],
@@ -122,7 +122,7 @@ async function fillChildDetailsAndAdvanceToTodo(boardId: string, childId: string
     assignee: 'agent-1',
     dueDate: '2026-08-01T00:00:00.000Z',
     labels: ['child'],
-    childTaskIds: ['grandchild-1'],
+    childTaskIds: [],
     successCriteria: [{ id: 'cc', description: 'Child done', type: 'manual', status: 'pending' }],
   });
   await transitionTask(tmpDir, boardId, childId, {

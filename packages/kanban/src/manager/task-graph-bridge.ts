@@ -42,6 +42,7 @@ export async function createBoardFromTaskGraph(
   graph: TaskGraph,
   options: CreateKanbanBoardFromTaskGraphOptions = {},
 ): Promise<{ board: KanbanBoard; taskIdMap: Map<string, string> }> {
+  assertAcyclicParentRelationships(graph);
   assertDeclaredRequirementCoverage(graph);
   const board = createBoardObject({
     title: requireNonBlank(options.title ?? graph.title, 'Kanban board title'),
@@ -133,6 +134,7 @@ export async function syncBoardFromTaskGraph(
   updatedTaskIds: string[];
   archivedTaskIds: string[];
 } | null> {
+  assertAcyclicParentRelationships(graph);
   assertDeclaredRequirementCoverage(graph);
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     if (board.lifecycle?.mode === 'managed') {
@@ -204,6 +206,42 @@ export async function syncBoardFromTaskGraph(
   });
 
   return updated ? { board: updated.board, ...updated.result } : null;
+}
+
+/** Validate before filtering/publishing: a parent cycle hides every executable leaf. */
+function assertAcyclicParentRelationships(graph: TaskGraph): void {
+  const children = new Map<string, Set<string>>();
+  const incoming = new Map(Array.from(graph.nodes.keys(), (id) => [id, 0]));
+  const add = (parent: string, child: string) => {
+    // Partial imports may intentionally refer to nodes outside this slice.
+    if (!graph.nodes.has(parent) || !graph.nodes.has(child)) return;
+    const links = children.get(parent) ?? new Set<string>();
+    if (links.has(child)) return;
+    links.add(child);
+    children.set(parent, links);
+    incoming.set(child, (incoming.get(child) ?? 0) + 1);
+  };
+  for (const node of graph.nodes.values()) {
+    if (node.parentId) add(node.parentId, node.id);
+    for (const child of node.children ?? []) add(node.id, child);
+  }
+  const ready = Array.from(incoming)
+    .filter(([, count]) => count === 0)
+    .map(([id]) => id);
+  let visited = 0;
+  while (ready.length) {
+    const id = ready.pop()!;
+    visited++;
+    for (const child of children.get(id) ?? []) {
+      const remaining = (incoming.get(child) ?? 0) - 1;
+      incoming.set(child, remaining);
+      if (remaining === 0) ready.push(child);
+    }
+  }
+  if (visited !== graph.nodes.size)
+    throw new Error(
+      'Kanban parent/child cycle detected in the source task graph. Correct the hierarchy before importing or synchronizing.',
+    );
 }
 
 function assertDeclaredRequirementCoverage(graph: TaskGraph): void {

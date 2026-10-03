@@ -33,7 +33,19 @@ export class GitDiffPlugin implements VerifierPlugin {
       // not JSON
     }
 
-    const diff = await context.diffSince();
+    let diff: Awaited<ReturnType<VerificationContext['diffSince']>>;
+    try {
+      diff = await context.diffSince();
+    } catch (error) {
+      return {
+        checkId: check.id,
+        description: check.description,
+        type: check.type,
+        status: 'error',
+        evidence: {},
+        error: `Git diff could not be verified: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
     const status = await context.gitStatus();
 
     let status_: 'passed' | 'failed' = 'passed';
@@ -45,7 +57,7 @@ export class GitDiffPlugin implements VerifierPlugin {
     }
 
     // Check if changes exist at all
-    if (diff.length === 0 && status.clean) {
+    if (diff.length === 0) {
       status_ = 'failed';
       errors.push('No file changes detected since the task started.');
     }

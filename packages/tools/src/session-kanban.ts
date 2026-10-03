@@ -1,3 +1,25 @@
+import {
+  boardKey,
+  cleanupEmptySessionKanbanBoards,
+  cleanupSessionKanbanBoardIfEmpty,
+  enqueueBoardWork,
+  ensureSessionKanbanBoard,
+  isOwnedSessionBoard,
+  MIRROR_DISABLED_ENV,
+  releaseActiveSessionBoard,
+  retainActiveSessionBoard,
+  sessionBoardTags,
+  sessionIdFromTags,
+} from './session-kanban-boards.js';
+
+export {
+  cleanupEmptySessionKanbanBoards,
+  cleanupSessionKanbanBoard,
+  cleanupSessionKanbanBoardIfEmpty,
+  ensureSessionKanbanBoard,
+  SESSION_KANBAN_COLUMNS,
+} from './session-kanban-boards.js';
+
 import { type FSWatcher, watch } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import type { Context, TodoItem } from '@wrongstack/core/agent';
@@ -8,19 +30,13 @@ import type { TaskItem } from '@wrongstack/core/utils';
 import {
   bridgeKanbanSupervisor,
   compactSessionMirrorBoard,
-  createBoard,
-  DEFAULT_COLUMNS,
   getBoard,
   getKanbanOrchestrationSnapshot,
   type KanbanBoard,
-  type KanbanColumn,
   type KanbanTask,
-  listBoards,
   pruneSessionBoards,
-  removeBoard,
   syncBoardFromTaskGraph,
   touchKanbanPresence,
-  updateBoard,
 } from '@wrongstack/kanban';
 import {
   planFileToSerializedGraph,
@@ -50,42 +66,6 @@ export {
   todosNeedingSessionMirror,
 } from './session-kanban-sync.js';
 
-const SESSION_BOARD_TAG = 'session-work';
-const MIRROR_DISABLED_ENV = 'WRONGSTACK_KANBAN_TASK_MIRROR';
-
-/**
- * Days after archiving before a session board is deleted outright.
- *
- * Unset by default: a session mirror archives after a week and then stays,
- * because the archive is the surviving record of what a session did. That is
- * also why archives accumulate with no ceiling — set this when you would
- * rather have the ceiling than the history. `0` or an unparseable value is
- * treated as unset.
- */
-const PURGE_AFTER_ARCHIVE_DAYS_ENV = 'WRONGSTACK_KANBAN_ARCHIVE_PURGE_DAYS';
-
-function sessionBoardRetention(): {
-  mode: 'archive_after_ttl';
-  ttlMs: number;
-  purgeAfterArchiveMs?: number;
-} {
-  const raw = Number.parseFloat(process.env[PURGE_AFTER_ARCHIVE_DAYS_ENV] ?? '');
-  const purgeDays = Number.isFinite(raw) && raw > 0 ? raw : undefined;
-  return {
-    mode: 'archive_after_ttl' as const,
-    ttlMs: 7 * 24 * 60 * 60 * 1000,
-    ...(purgeDays !== undefined
-      ? { purgeAfterArchiveMs: Math.round(purgeDays * 24 * 60 * 60 * 1000) }
-      : {}),
-  };
-}
-
-export const SESSION_KANBAN_COLUMNS: KanbanColumn[] = DEFAULT_COLUMNS.map((column) => ({
-  ...column,
-}));
-
-const boardQueue = new Map<string, Promise<void>>();
-const boardEnsures = new Map<string, Promise<KanbanBoard>>();
 type PendingMirror = {
   projectRoot: string;
   sessionId: string;
@@ -101,11 +81,6 @@ const mirrorFailures = new Map<
 >();
 const bindings = new WeakMap<Context, () => void>();
 const suppressedTodoMirrors = new WeakSet<Context>();
-const activeSessionBoards = new Map<string, number>();
-
-function boardKey(projectRoot: string, sessionId: string): string {
-  return `${projectRoot}\0${sessionId}`;
-}
 
 function mirrorKey(
   projectRoot: string,
@@ -151,200 +126,6 @@ function completedReconciliationGraph(
         }
       : {}),
   };
-}
-
-function sessionTag(sessionId: string): string {
-  return `session:${sessionId}`;
-}
-
-function sessionBoardTitle(sessionId: string): string {
-  const leaf = sessionId.split(/[\\/]/).filter(Boolean).pop() ?? sessionId;
-  return `Session ${leaf.slice(0, 12)}`;
-}
-
-function sessionBoardTags(sessionId: string): string[] {
-  return ['session', SESSION_BOARD_TAG, sessionTag(sessionId)];
-}
-
-function sessionIdFromTags(tags: readonly string[] | undefined): string | null {
-  const tag = tags?.find((candidate) => candidate.startsWith('session:'));
-  return tag?.slice('session:'.length) || null;
-}
-
-function isOwnedSessionBoard(tags: readonly string[] | undefined): boolean {
-  return Boolean(tags?.includes(SESSION_BOARD_TAG) && sessionIdFromTags(tags));
-}
-
-function retainActiveSessionBoard(projectRoot: string, sessionId: string): void {
-  const key = boardKey(projectRoot, sessionId);
-  activeSessionBoards.set(key, (activeSessionBoards.get(key) ?? 0) + 1);
-}
-
-function releaseActiveSessionBoard(projectRoot: string, sessionId: string): void {
-  const key = boardKey(projectRoot, sessionId);
-  const remaining = (activeSessionBoards.get(key) ?? 0) - 1;
-  if (remaining > 0) activeSessionBoards.set(key, remaining);
-  else activeSessionBoards.delete(key);
-}
-
-function isSessionBoardActive(projectRoot: string, sessionId: string): boolean {
-  return (activeSessionBoards.get(boardKey(projectRoot, sessionId)) ?? 0) > 0;
-}
-
-function sameColumns(columns: readonly KanbanColumn[]): boolean {
-  return (
-    columns.length === SESSION_KANBAN_COLUMNS.length &&
-    columns.every((column, index) => column.id === SESSION_KANBAN_COLUMNS[index]?.id)
-  );
-}
-
-export async function ensureSessionKanbanBoard(
-  projectRoot: string | undefined,
-  sessionId: string,
-): Promise<KanbanBoard | null> {
-  if (!projectRoot || !sessionId || process.env[MIRROR_DISABLED_ENV] === '0') return null;
-  const key = boardKey(projectRoot, sessionId);
-  const inFlight = boardEnsures.get(key);
-  if (inFlight) return inFlight;
-
-  const promise = (async () => {
-    const summary = (await listBoards(projectRoot)).find((board) =>
-      board.tags?.includes(sessionTag(sessionId)),
-    );
-    let board = summary ? await getBoard(projectRoot, summary.id) : null;
-    if (!board) {
-      return createBoard(projectRoot, {
-        title: sessionBoardTitle(sessionId),
-        description: 'Live session work: todos, tasks, and plan items.',
-        tags: sessionBoardTags(sessionId),
-        columns: SESSION_KANBAN_COLUMNS,
-        generatedBy: `session-kanban:${sessionId}`,
-        kind: 'session_mirror' as const,
-        retention: sessionBoardRetention(),
-      });
-    }
-
-    if (!sameColumns(board.columns) || !board.tags?.includes(SESSION_BOARD_TAG)) {
-      board =
-        (await updateBoard(projectRoot, board.id, {
-          title: sessionBoardTitle(sessionId),
-          description: 'Live session work: todos, tasks, and plan items.',
-          tags: [...new Set([...(board.tags ?? []), ...sessionBoardTags(sessionId)])],
-          columns: SESSION_KANBAN_COLUMNS,
-        })) ?? board;
-    }
-    return board;
-  })();
-
-  boardEnsures.set(key, promise);
-  try {
-    return await promise;
-  } finally {
-    boardEnsures.delete(key);
-  }
-}
-
-function enqueueBoardWork<T>(
-  projectRoot: string,
-  sessionId: string,
-  work: () => Promise<T>,
-): Promise<T> {
-  const key = boardKey(projectRoot, sessionId);
-  const previous = boardQueue.get(key) ?? Promise.resolve();
-  const result = previous.catch(() => undefined).then(work);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  boardQueue.set(key, tail);
-  void tail.then(() => {
-    if (boardQueue.get(key) === tail) boardQueue.delete(key);
-  });
-  return result;
-}
-
-async function removeEmptySessionBoard(
-  projectRoot: string,
-  boardId: string,
-  sessionId: string,
-): Promise<string | null> {
-  return enqueueBoardWork(projectRoot, sessionId, async () => {
-    if (isSessionBoardActive(projectRoot, sessionId)) return null;
-    const board = await getBoard(projectRoot, boardId);
-    if (!board || board.tasks.length > 0 || !isOwnedSessionBoard(board.tags)) return null;
-    if (sessionIdFromTags(board.tags) !== sessionId) return null;
-    return (await removeBoard(projectRoot, board.id)) ? board.id : null;
-  });
-}
-
-async function removeOwnedSessionBoard(
-  projectRoot: string,
-  boardId: string,
-  sessionId: string,
-): Promise<string | null> {
-  return enqueueBoardWork(projectRoot, sessionId, async () => {
-    if (isSessionBoardActive(projectRoot, sessionId)) return null;
-    const board = await getBoard(projectRoot, boardId);
-    if (!board || !isOwnedSessionBoard(board.tags)) return null;
-    if (sessionIdFromTags(board.tags) !== sessionId) return null;
-    return (await removeBoard(projectRoot, board.id)) ? board.id : null;
-  });
-}
-
-export async function cleanupSessionKanbanBoard(
-  projectRoot: string | undefined,
-  sessionId: string,
-): Promise<string[]> {
-  if (!projectRoot || !sessionId || process.env[MIRROR_DISABLED_ENV] === '0') return [];
-  if (isSessionBoardActive(projectRoot, sessionId)) return [];
-  const candidates = (await listBoards(projectRoot)).filter(
-    (board) => isOwnedSessionBoard(board.tags) && sessionIdFromTags(board.tags) === sessionId,
-  );
-  const removed = await Promise.all(
-    candidates.map((board) => removeOwnedSessionBoard(projectRoot, board.id, sessionId)),
-  );
-  return removed.filter((boardId): boardId is string => Boolean(boardId));
-}
-
-export async function cleanupSessionKanbanBoardIfEmpty(
-  projectRoot: string | undefined,
-  sessionId: string,
-): Promise<string[]> {
-  if (!projectRoot || !sessionId || process.env[MIRROR_DISABLED_ENV] === '0') return [];
-  if (isSessionBoardActive(projectRoot, sessionId)) return [];
-  const candidates = (await listBoards(projectRoot)).filter(
-    (board) =>
-      board.taskCount === 0 &&
-      isOwnedSessionBoard(board.tags) &&
-      sessionIdFromTags(board.tags) === sessionId,
-  );
-  const removed = await Promise.all(
-    candidates.map((board) => removeEmptySessionBoard(projectRoot, board.id, sessionId)),
-  );
-  return removed.filter((boardId): boardId is string => Boolean(boardId));
-}
-
-export async function cleanupEmptySessionKanbanBoards(
-  projectRoot: string | undefined,
-  activeSessionId = '',
-): Promise<string[]> {
-  if (!projectRoot || process.env[MIRROR_DISABLED_ENV] === '0') return [];
-  const candidates = (await listBoards(projectRoot)).flatMap((board) => {
-    const ownerSessionId = sessionIdFromTags(board.tags);
-    return board.taskCount === 0 &&
-      isOwnedSessionBoard(board.tags) &&
-      ownerSessionId &&
-      ownerSessionId !== activeSessionId &&
-      !isSessionBoardActive(projectRoot, ownerSessionId)
-      ? [{ boardId: board.id, sessionId: ownerSessionId }]
-      : [];
-  });
-  const removed = await Promise.all(
-    candidates.map(({ boardId, sessionId }) =>
-      removeEmptySessionBoard(projectRoot, boardId, sessionId),
-    ),
-  );
-  return removed.filter((boardId): boardId is string => Boolean(boardId));
 }
 
 async function projectGraph(
@@ -625,6 +406,8 @@ export function attachSessionKanbanMirror(context: Context): () => void {
   const existing = bindings.get(context);
   if (existing) return existing;
 
+  let detached = false;
+  let watcherGeneration = 0;
   const attachedProjectRoot = context.projectRoot ?? '';
   let registeredSessionId = '';
   const syncActiveSessionRegistration = () => {
@@ -635,7 +418,7 @@ export function attachSessionKanbanMirror(context: Context): () => void {
       releaseActiveSessionBoard(attachedProjectRoot, registeredSessionId);
       fireAndForget(
         'cleanup-board',
-        cleanupSessionKanbanBoard(attachedProjectRoot, registeredSessionId),
+        cleanupSessionKanbanBoardIfEmpty(attachedProjectRoot, registeredSessionId),
       );
     }
     registeredSessionId = currentSessionId;
@@ -665,50 +448,74 @@ export function attachSessionKanbanMirror(context: Context): () => void {
       (typeof metaBoardId === 'string' && metaBoardId ? metaBoardId : '')
     );
   };
+  const isCurrent = (id: string, boardId: string, generation: number) =>
+    !detached &&
+    generation === watcherGeneration &&
+    sessionId() === id &&
+    activeManagedBoardId() === boardId &&
+    (context.projectRoot ?? '') === attachedProjectRoot;
+  const stopBoardWatcher = () => {
+    unsubscribeBoardEvents?.();
+    unsubscribeBoardEvents = null;
+    if (boardTimer) clearTimeout(boardTimer);
+    boardTimer = null;
+    if (presenceTimer) clearInterval(presenceTimer);
+    presenceTimer = null;
+    watchedBoardId = '';
+  };
   const refreshFiles = async () => {
     const id = sessionId();
-    if (!id) return;
+    const generation = watcherGeneration;
+    const managedBoardId = activeManagedBoardId();
+    if (!id || detached) return;
     const planPath = context.meta['plan.path'];
+    const taskPath = context.meta['task.path'];
     if (typeof planPath === 'string' && planPath) {
       const plan = await loadPlan(planPath);
-      if (plan) await projectSessionPlanToKanban(context.projectRoot, plan.items, id);
+      if (!isCurrent(id, managedBoardId, generation) || context.meta['plan.path'] !== planPath)
+        return;
+      if (plan) await projectSessionPlanToKanban(attachedProjectRoot, plan.items, id);
     }
-    const taskPath = context.meta['task.path'];
+    if (!isCurrent(id, managedBoardId, generation)) return;
     if (typeof taskPath === 'string' && taskPath) {
       const tasks = await loadTasks(taskPath);
-      if (tasks) await projectSessionTasksToKanban(context.projectRoot, tasks.tasks, id);
+      if (!isCurrent(id, managedBoardId, generation) || context.meta['task.path'] !== taskPath)
+        return;
+      if (tasks) await projectSessionTasksToKanban(attachedProjectRoot, tasks.tasks, id);
     }
   };
 
   const refreshBoard = async () => {
-    if (!watchedBoardId) return;
-    const board = await getBoard(context.projectRoot, watchedBoardId);
-    if (!board) return;
+    const boardId = watchedBoardId;
+    const id = sessionId();
+    const managedBoardId = activeManagedBoardId();
+    const generation = watcherGeneration;
+    if (!boardId || detached) return;
+    const board = await getBoard(attachedProjectRoot, boardId);
+    if (!board || !isCurrent(id, managedBoardId, generation) || watchedBoardId !== boardId) return;
     deliverKanbanManagementReview(context, board);
     if (board.lifecycle?.mode === 'managed') applyManagedKanbanBoardToTodos(context, board);
     else applySessionKanbanBoardToTodos(context, board);
   };
 
   const configureBoardWatcher = async () => {
+    if (detached) return;
+    const generation = ++watcherGeneration;
     const id = sessionId();
     const managedBoardId = activeManagedBoardId();
+    stopBoardWatcher();
     const board = managedBoardId
-      ? await getBoard(context.projectRoot, managedBoardId)
+      ? await getBoard(attachedProjectRoot, managedBoardId)
       : id
-        ? await ensureSessionKanbanBoard(context.projectRoot, id)
+        ? await ensureSessionKanbanBoard(attachedProjectRoot, id)
         : null;
-    if (!board) return;
-    if (board.id === watchedBoardId) {
-      await refreshBoard();
-      return;
-    }
-    unsubscribeBoardEvents?.();
-    unsubscribeBoardEvents = null;
+    if (!board || !isCurrent(id, managedBoardId, generation)) return;
     watchedBoardId = board.id;
     try {
       unsubscribeBoardEvents = bridgeKanbanSupervisor(
-        context.projectRoot,
+        attachedProjectRoot,
         (event) => {
+          if (!isCurrent(id, managedBoardId, generation)) return;
           const data = event.data as { boardId?: string } | undefined;
           if (data?.boardId !== board.id) return;
           if (boardTimer) clearTimeout(boardTimer);
@@ -717,11 +524,13 @@ export function attachSessionKanbanMirror(context: Context): () => void {
         { autoReconnect: true, reconnectDelayMs: 1_000 },
       );
       const touchPresence = () =>
-        touchKanbanPresence(context.projectRoot, board.id, {
-          sessionId: id,
-          agentId: context.agentId,
-          agentName: context.agentName,
-        });
+        isCurrent(id, managedBoardId, generation)
+          ? touchKanbanPresence(attachedProjectRoot, board.id, {
+              sessionId: id,
+              agentId: context.agentId,
+              agentName: context.agentName,
+            })
+          : Promise.resolve(null);
       fireAndForget('touch-presence', touchPresence());
       if (presenceTimer) clearInterval(presenceTimer);
       presenceTimer = setInterval(() => fireAndForget('touch-presence', touchPresence()), 60_000);
@@ -734,6 +543,7 @@ export function attachSessionKanbanMirror(context: Context): () => void {
   };
 
   const configureWatcher = () => {
+    if (detached) return;
     const planPath = context.meta['plan.path'];
     const taskPath = context.meta['task.path'];
     const candidate =
@@ -742,12 +552,14 @@ export function attachSessionKanbanMirror(context: Context): () => void {
         : typeof taskPath === 'string' && taskPath
           ? dirname(taskPath)
           : '';
-    if (!candidate || candidate === watchedDir) return;
+    if (candidate === watchedDir) return;
     watcher?.close();
     watcher = null;
     watchedDir = candidate;
+    if (!candidate) return;
     try {
       watcher = watch(candidate, { persistent: false }, (_event, filename) => {
+        if (detached || watchedDir !== candidate) return;
         const name = filename?.toString();
         const currentPlanPath = context.meta['plan.path'];
         const currentTaskPath = context.meta['task.path'];
@@ -765,6 +577,7 @@ export function attachSessionKanbanMirror(context: Context): () => void {
   };
 
   const unsubscribe = context.state.onChange((change) => {
+    if (detached) return;
     if (change.kind === 'todos_replaced' && !suppressedTodoMirrors.has(context)) {
       const snapshot = change.completedSnapshot ?? change.todos;
       const unbound = todosNeedingSessionMirror(snapshot, activeManagedBoardId());
@@ -791,18 +604,19 @@ export function attachSessionKanbanMirror(context: Context): () => void {
   fireAndForget('configure-watcher', configureBoardWatcher());
 
   const detach = () => {
+    if (detached) return;
+    detached = true;
+    watcherGeneration++;
     unsubscribe();
     if (timer) clearTimeout(timer);
-    if (boardTimer) clearTimeout(boardTimer);
-    if (presenceTimer) clearInterval(presenceTimer);
     watcher?.close();
-    unsubscribeBoardEvents?.();
+    stopBoardWatcher();
     bindings.delete(context);
     if (attachedProjectRoot && registeredSessionId) {
       releaseActiveSessionBoard(attachedProjectRoot, registeredSessionId);
       fireAndForget(
         'cleanup-board',
-        cleanupSessionKanbanBoard(attachedProjectRoot, registeredSessionId),
+        cleanupSessionKanbanBoardIfEmpty(attachedProjectRoot, registeredSessionId),
       );
       registeredSessionId = '';
     }
@@ -817,10 +631,12 @@ export async function rebindSessionKanbanTask(
   const sessionId = context.session?.id;
   if (!sessionId || !context.projectRoot) return null;
   if (context.currentKanbanTaskId) return null;
+  const projectRoot = context.projectRoot;
+  const initialBoardId = context.currentKanbanBoardId;
 
   let best: { boardId: string; taskId: string; lastSeenAt: string } | undefined;
   try {
-    const snapshot = await getKanbanOrchestrationSnapshot(context.projectRoot);
+    const snapshot = await getKanbanOrchestrationSnapshot(projectRoot);
     const nowMs = Date.now();
     for (const result of snapshot.running) {
       const assignment = result.task.assignment;
@@ -841,6 +657,13 @@ export async function rebindSessionKanbanTask(
     return null;
   }
   if (!best) return null;
+  if (
+    context.session?.id !== sessionId ||
+    context.projectRoot !== projectRoot ||
+    context.currentKanbanTaskId ||
+    context.currentKanbanBoardId !== initialBoardId
+  )
+    return null;
   context.setCurrentKanbanTask?.(best.taskId, best.boardId);
   return { boardId: best.boardId, taskId: best.taskId };
 }

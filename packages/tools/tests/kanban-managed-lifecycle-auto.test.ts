@@ -189,7 +189,7 @@ describe('kanban mark_assignment — managed lifecycle auto-transition', () => {
     // criteria, but auto-accept defers because they are still 'pending'.
     expect(result.task?.lifecycle?.currentStage).toBe('review');
     expect(result.message).toContain('Card advanced to review');
-    expect(result.message).toContain('Auto-accept to Done deferred');
+    expect(result.message).toContain('Verification verdict: needs_human');
   });
 
   it('safe: does not advance completed card when stage is not running', async () => {

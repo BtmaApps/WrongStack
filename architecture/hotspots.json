@@ -162,10 +162,6 @@
       "lines": 911,
       "relativeImports": 10
     },
-    "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 890,
-      "relativeImports": 3
-    },
     "packages/mcp/src/client.ts": {
       "lines": 1000,
       "relativeImports": 15
@@ -297,10 +293,6 @@
     "packages/tools/src/pwsh.ts": {
       "lines": 852,
       "relativeImports": 9
-    },
-    "packages/tools/src/session-kanban.ts": {
-      "lines": 921,
-      "relativeImports": 5
     },
     "packages/tools/src/_danger-detect.ts": {
       "lines": 1372,

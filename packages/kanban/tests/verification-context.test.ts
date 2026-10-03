@@ -166,7 +166,11 @@ describe('VerificationContext command security', () => {
 
     expect(result).toMatchObject({ passed: 3, failed: 0, skipped: 1 });
     expect(invocation.entry).toBe(pathToFileURL(runnerEntry).href);
-    expect(invocation.argv).toEqual(['run', pattern, '--reporter=json']);
+    // Vitest 5 writes the json report to a file unless told where: the report
+    // path is the last argument; a runner that prints to stdout still parses.
+    expect(invocation.argv.slice(0, 3)).toEqual(['run', pattern, '--reporter=json']);
+    expect(invocation.argv[3]).toMatch(/^--outputFile\.json=.+\.json$/);
+    expect(invocation.argv).toHaveLength(4);
   });
 
   it('accepts counter-only JSON after unrelated objects', { timeout: 5000 }, async () => {

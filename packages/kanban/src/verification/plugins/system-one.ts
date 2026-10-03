@@ -79,9 +79,13 @@ export class SystemOneVerifierPlugin implements VerifierPlugin {
     return checkType === 'agent' && installed !== undefined;
   }
 
-  /** A status a person already set is theirs; never re-judge it. */
+  /** Human-set status is not re-judged; automated outcomes must be refreshed. */
   accepts(check: KanbanCheck): boolean {
-    return check.status !== 'passed' && check.status !== 'failed';
+    return (
+      (check.status !== 'passed' && check.status !== 'failed') ||
+      check.checkedBy === 'agent' ||
+      check.checkedBy === 'system'
+    );
   }
 
   async verify(

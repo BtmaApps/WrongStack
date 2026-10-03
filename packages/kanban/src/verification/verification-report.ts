@@ -21,6 +21,8 @@ export interface VerificationReportBuilderInput {
   taskTitle: string;
   boardId: string;
   checks: KanbanVerificationCheckResult[];
+  /** Captured by the orchestrator before loading inputs and executing checks. */
+  startedAt?: string | undefined;
   fileScope?: KanbanVerificationFileScope | undefined;
   subtasks?: KanbanVerificationSubtasks | undefined;
   attachments?: KanbanVerificationAttachment[] | undefined;
@@ -30,6 +32,8 @@ export interface VerificationReportBuilderInput {
   leaseId?: string | undefined;
   /** Board revision at verification time, if available. */
   taskRevision?: number | undefined;
+  inputFingerprint?: string | undefined;
+  subtaskInputFingerprint?: string | undefined;
   /** Git baseline snapshot captured for the file-scope diff, if any. */
   baseline?: KanbanVerificationBaseline | undefined;
   /**
@@ -43,21 +47,22 @@ export interface VerificationReportBuilderInput {
 /**
  * Build a KanbanVerificationReport from individual check results.
  * Computes the overall verdict automatically:
- *  - passed:    all checks passed or skipped, file scope matches, all subtasks
+ *  - passed:    all checks passed, file scope matches, all subtasks
  *               COMPLETED (a failed subtask fails the parent — see below)
  *  - failed:    any check failed, or any subtask failed
- *  - needs_human: any check had an error or needs escalation
+ *  - needs_human: any check had an error or was skipped
  *  - incomplete: subtasks exist but are not all completed/failed
  */
 export function buildVerificationReport(
   input: VerificationReportBuilderInput,
 ): KanbanVerificationReport {
-  const startedAt = new Date().toISOString();
+  const startedAt = input.startedAt ?? new Date().toISOString();
   const completedAt = new Date().toISOString();
 
   const checks = input.checks;
   const hasFailed = checks.some((c) => c.status === 'failed');
   const hasError = checks.some((c) => c.status === 'error');
+  const hasSkipped = checks.some((c) => c.status === 'skipped');
   // A failed subtask must fail the parent. `subtasks.failed` used to be
   // written and never READ: verifySubtasks counts every child exactly once
   // (completed + failed === total, always), so the incomplete branch below
@@ -77,7 +82,7 @@ export function buildVerificationReport(
 
   let verdict: Verdict;
   if (hasFailed || hasFailedSubtasks || hasFileScopeMismatch) verdict = 'failed';
-  else if (hasError) verdict = 'needs_human';
+  else if (hasError || hasSkipped) verdict = 'needs_human';
   else if (hasIncompleteSubtasks) verdict = 'incomplete';
   else verdict = 'passed';
 
@@ -107,6 +112,10 @@ export function buildVerificationReport(
     ...(input.attempt !== undefined ? { attempt: input.attempt } : {}),
     ...(input.leaseId !== undefined ? { leaseId: input.leaseId } : {}),
     ...(input.taskRevision !== undefined ? { taskRevision: input.taskRevision } : {}),
+    ...(input.inputFingerprint !== undefined ? { inputFingerprint: input.inputFingerprint } : {}),
+    ...(input.subtaskInputFingerprint !== undefined
+      ? { subtaskInputFingerprint: input.subtaskInputFingerprint }
+      : {}),
     ...(input.baseline !== undefined ? { baseline: input.baseline } : {}),
     ...(coveredCheckIds !== undefined ? { coveredCheckIds } : {}),
   };

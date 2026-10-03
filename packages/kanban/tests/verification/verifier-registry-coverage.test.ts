@@ -5,13 +5,13 @@
  * - GitDiffPlugin: git diff verification with expectedFiles, min/max changes
  */
 import { describe, expect, it } from 'vitest';
-import { VerifierRegistry } from '../../src/verification/verifier-registry.js';
-import { TestPlugin } from '../../src/verification/plugins/test.js';
+import type { KanbanCheck, KanbanTask } from '../../src/types.js';
 import { GitDiffPlugin } from '../../src/verification/plugins/git-diff.js';
 import { MetricPlugin } from '../../src/verification/plugins/metric.js';
-import type { KanbanCheck, KanbanTask } from '../../src/types.js';
+import { TestPlugin } from '../../src/verification/plugins/test.js';
 import type { VerificationContext } from '../../src/verification/verification-context.js';
 import type { VerifierPlugin } from '../../src/verification/verifier-plugin.js';
+import { VerifierRegistry } from '../../src/verification/verifier-registry.js';
 
 function makeCheck(overrides: Partial<KanbanCheck> = {}): KanbanCheck {
   return {
@@ -137,7 +137,7 @@ describe('VerifierRegistry', () => {
     expect(result.error).toContain('No verifier plugin');
   });
 
-  it('verify passes through manually passed status for unknown type', async () => {
+  it('verify refuses a passed flag for an unknown type without a verifier', async () => {
     const reg = new VerifierRegistry();
     const result = await reg.verify(
       makeCheck({
@@ -147,9 +147,8 @@ describe('VerifierRegistry', () => {
       }),
       makeContext(),
     );
-    expect(result.status).toBe('passed');
-    expect(result.evidence.manual).toBe(true);
-    expect(result.evidence.checkedBy).toBe('reviewer');
+    expect(result.status).toBe('skipped');
+    expect(result.error).toContain('No verifier plugin');
   });
 
   it('verify passes through manually failed status for unknown type', async () => {
@@ -166,7 +165,7 @@ describe('VerifierRegistry', () => {
     const reg = new VerifierRegistry();
     const result = await reg.verify(
       makeCheck({
-        type: 'unknown_type' as KanbanCheck['type'],
+        type: 'manual',
         status: 'passed',
         checkedAt: '2026-01-01',
       }),

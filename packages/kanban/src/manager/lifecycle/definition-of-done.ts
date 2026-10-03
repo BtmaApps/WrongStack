@@ -4,7 +4,8 @@ import type {
   KanbanTaskTransitionCheckInput,
   KanbanTaskTransitionInput,
 } from '../../types-operations.js';
-import { nowIso } from '../_internal.js';
+import { subtaskInputFingerprint, taskInputFingerprint } from '../../verification/task-inputs.js';
+import { nowIso } from '../basic-helpers.js';
 
 export function hasText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -28,6 +29,53 @@ export function validateDefinitionOfDone(
   const requireCriteria = options.requireCriteria !== false;
   const checks = task.successCriteria ?? [];
   const effectiveReport = report ?? task.verificationReport;
+  if (effectiveReport) {
+    const ownershipMismatch =
+      effectiveReport.taskId !== task.id ||
+      (options.board !== undefined && effectiveReport.boardId !== options.board.id) ||
+      (effectiveReport.leaseId !== undefined &&
+        effectiveReport.leaseId !== task.assignment?.leaseId) ||
+      (effectiveReport.attempt !== undefined &&
+        effectiveReport.attempt !== task.assignment?.attempt);
+    if (ownershipMismatch) {
+      issues.push({
+        code: 'review-evidence-missing',
+        field: 'verificationReport',
+        message:
+          'Verification belongs to a different task, board, lease or attempt. Re-run verification for the current card.',
+      });
+    }
+    if (
+      effectiveReport.inputFingerprint !== undefined &&
+      effectiveReport.inputFingerprint !== taskInputFingerprint(task)
+    ) {
+      issues.push({
+        code: 'review-evidence-missing',
+        field: 'verificationReport',
+        message:
+          'The task or executable acceptance criteria changed after verification. Re-run verification for the current definition.',
+      });
+    }
+    if (effectiveReport.verdict !== 'passed') {
+      issues.push({
+        code: 'acceptance-criteria-incomplete',
+        field: 'verificationReport',
+        message: `Task verification verdict is "${effectiveReport.verdict}". Only "passed" allows Done.`,
+      });
+    }
+    if (
+      effectiveReport.subtaskInputFingerprint !== undefined &&
+      (!options.board ||
+        effectiveReport.subtaskInputFingerprint !== subtaskInputFingerprint(options.board, task))
+    ) {
+      issues.push({
+        code: 'review-evidence-missing',
+        field: 'verificationReport',
+        message:
+          'Descendant task definitions, ownership or acceptance changed after parent verification. Re-run parent verification against the current board.',
+      });
+    }
+  }
 
   const coveredByVerifier = new Set(effectiveReport?.coveredCheckIds ?? []);
   const currentCriterionIds = new Set(checks.map((check) => check.id));
@@ -61,6 +109,47 @@ export function validateDefinitionOfDone(
     noCurrentFailures &&
     checks.every((check) => currentCriterionIds.has(check.id));
 
+  const unverifiedExecutable = checks.filter((check) => {
+    const needsVerifier =
+      (check.type !== 'manual' && check.type !== 'review') ||
+      (check.escalation !== undefined && check.escalation !== 'none');
+    if (!needsVerifier) return false;
+    return (
+      effectiveReport?.verdict !== 'passed' ||
+      !fingerprintMatches ||
+      !effectiveReport.checks.some(
+        (result) => result.checkId === check.id && result.status === 'passed',
+      ) ||
+      (effectiveReport.coveredCheckIds !== undefined && !coveredByVerifier.has(check.id))
+    );
+  });
+  if (unverifiedExecutable.length) {
+    issues.push({
+      code: 'acceptance-criteria-incomplete',
+      field: 'successCriteria',
+      message: `Executable acceptance criteria need passing verifier evidence for their current inputs (${unverifiedExecutable.map((check) => check.id).join(', ')}). Run verify_completion; manually setting a passed flag does not execute a check.`,
+    });
+  }
+  if (
+    task.expectedFileChanges?.length &&
+    (!effectiveReport?.fileScope?.scopeMatches ||
+      !task.expectedFileChanges.every((expected) =>
+        effectiveReport.fileScope!.files.some(
+          (actual) =>
+            actual.expected &&
+            actual.path.replaceAll('\\', '/') === expected.path.replaceAll('\\', '/') &&
+            actual.operation === expected.operation,
+        ),
+      ))
+  ) {
+    issues.push({
+      code: 'review-evidence-missing',
+      field: 'verificationReport',
+      message:
+        'The declared file contract requires a matching file-scope verification report. Run verify_completion with the pre-work baseline.',
+    });
+  }
+
   if (requireCriteria && !checks.length) {
     issues.push({
       code: 'acceptance-criteria-incomplete',
@@ -91,13 +180,6 @@ export function validateDefinitionOfDone(
       field: 'verificationReport',
       message:
         'Atomic tasks require a completed verification report (run verify_completion) before Done.',
-    });
-  }
-  if (task.atomic && effectiveReport?.verdict !== 'passed') {
-    issues.push({
-      code: 'acceptance-criteria-incomplete',
-      field: 'verificationReport',
-      message: `Atomic task verification verdict is "${effectiveReport?.verdict ?? 'missing'}". Only "passed" allows Done.`,
     });
   }
   return issues;

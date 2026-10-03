@@ -41,8 +41,18 @@ export async function syncSessionSource(
   remove = false,
 ): Promise<void> {
   if (!ctx.context) return;
-  const update = await applySessionKanbanTaskToSource(ctx.context, task, { remove });
-  const sessionId = ctx.context.session?.id ?? '';
+  const context = ctx.context;
+  const sessionId = context.session?.id ?? '';
+  const projectRoot = context.projectRoot;
+  const requestProjectRoot = ctx.projectRoot;
+  const update = await applySessionKanbanTaskToSource(context, task, { remove });
+  if (
+    ctx.context !== context ||
+    context.session?.id !== sessionId ||
+    context.projectRoot !== projectRoot ||
+    ctx.projectRoot !== requestProjectRoot
+  )
+    return;
   if (update.todos)
     ctx.broadcast?.({ type: 'todos.updated', payload: { sessionId, todos: update.todos } });
   if (update.tasks)

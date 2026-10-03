@@ -40,6 +40,50 @@ describe('kanban-store', () => {
     });
   });
 
+  it.each(['kanban.get', 'kanban.task.transition'])(
+    'does not replace newer board state with a delayed %s snapshot',
+    (type) => {
+      const current = { ...board('b1', [task('t1', 'Current')]), revision: 8 };
+      useKanbanStore.setState({ activeBoardId: 'b1', activeBoard: current });
+      const old = { ...board('b1', [task('t1', 'Old')]), revision: 7 };
+      useKanbanStore
+        .getState()
+        .handleResult(type, { success: true, data: type === 'kanban.get' ? old : { board: old } });
+      expect(useKanbanStore.getState().activeBoard?.revision).toBe(8);
+      expect(useKanbanStore.getState().activeBoard?.tasks[0]?.title).toBe('Current');
+    },
+  );
+
+  it('does not rewind task details with a delayed verification completion', () => {
+    const current = { ...task('t1', 'Current'), updatedAt: '2026-10-02T12:00:02Z' };
+    const old = { ...task('t1', 'Old'), updatedAt: '2026-10-02T12:00:01Z' };
+    useKanbanStore.setState({
+      activeBoardId: 'b1',
+      activeBoard: board('b1', [current]),
+      verificationActivity: { 'b1:t1': { startedAt: 1 } },
+    });
+    useKanbanStore.getState().handleResult('kanban.task.verification_completed', {
+      success: true,
+      data: { boardId: 'b1', task: old },
+    });
+    expect(useKanbanStore.getState().activeBoard?.tasks[0]?.title).toBe('Current');
+    expect(useKanbanStore.getState().verificationActivity['b1:t1']).toBeUndefined();
+  });
+
+  it('clears the exact verification spinner when execution fails', () => {
+    useKanbanStore.setState({
+      verificationActivity: { 'b1:t1': { startedAt: 1 }, 'b1:t2': { startedAt: 2 } },
+    });
+    useKanbanStore.getState().handleResult('kanban.task.verification_completed', {
+      success: false,
+      error: 'Stale verification; retry',
+      data: { boardId: 'b1', taskId: 't1' },
+    });
+    expect(useKanbanStore.getState().verificationActivity['b1:t1']).toBeUndefined();
+    expect(useKanbanStore.getState().verificationActivity['b1:t2']).toBeDefined();
+    expect(useKanbanStore.getState().error).toBe('Stale verification; retry');
+  });
+
   it('updates active board summaries when task results arrive', () => {
     const active = board('b1');
     useKanbanStore.setState({

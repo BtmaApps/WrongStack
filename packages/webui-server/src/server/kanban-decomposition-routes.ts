@@ -4,7 +4,6 @@ import {
   type KanbanDecompositionSubtask,
   listBoards,
   resolveDecompositionProposal,
-  updateTask,
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
 import { recordKanbanVerificationEvidence } from '@wrongstack/tools';
@@ -124,27 +123,16 @@ async function handleTaskVerification(
   });
   try {
     const verResult = await verifyTaskCompletion(ctx.projectRoot, boardId, taskId);
-    const persisted = await updateTask(
-      ctx.projectRoot,
-      boardId,
-      taskId,
-      {
-        verificationReport: verResult.report,
-        successCriteria: verResult.task.successCriteria,
-      },
-      activityContext(ctx, 'webui'),
-    );
-    const freshTask =
-      persisted?.tasks.find((candidate) => candidate.id === verResult.task.id) ?? verResult.task;
+    // The protocol already persisted report and criteria under a revision
+    // fence. A second mutation could restore old inputs over a concurrent edit.
+    const freshTask = verResult.task;
     if (ctx.context) recordKanbanVerificationEvidence(ctx.context, verResult.report);
     ok(ws, type, { boardId, task: freshTask });
     ctx.broadcast?.({
       type: 'kanban.task.verification_completed',
       payload: { success: true, data: { boardId, task: freshTask } },
     });
-    if (persisted) {
-      ctx.broadcast?.(kanbanBoardMessage(persisted));
-    }
+    ctx.broadcast?.(kanbanBoardMessage(verResult.board));
   } catch (err) {
     ctx.broadcast?.({
       type: 'kanban.task.verification_completed',

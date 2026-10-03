@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 355,
-      "typeOnly": 280,
+      "files": 358,
+      "typeOnly": 283,
       "runtimeOrMixed": 96
     },
     "@wrongstack/core/agent-catalog": {
@@ -164,9 +164,9 @@
       "runtimeOrMixed": 28
     },
     "@wrongstack/core/storage": {
-      "files": 137,
+      "files": 138,
       "typeOnly": 35,
-      "runtimeOrMixed": 133
+      "runtimeOrMixed": 134
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -219,9 +219,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 688,
+      "files": 689,
       "typeOnly": 66,
-      "runtimeOrMixed": 654
+      "runtimeOrMixed": 655
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1724,6 +1724,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/session-kanban-integrity.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/session-kanban-mailbox.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1731,6 +1737,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/session-kanban-management.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/session-kanban-source-integrity.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -2373,6 +2385,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/kanban-management-roundtrip.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/kanban-source-integrity.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -11847,6 +11865,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/tools/src/todo.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/tools/tests/session-kanban-source-integrity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -22869,6 +22893,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/container.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/governance-mutation-snapshot-bridge.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

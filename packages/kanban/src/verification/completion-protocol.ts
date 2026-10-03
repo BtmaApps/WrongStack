@@ -20,6 +20,8 @@
 // re-exports this file — importing the barrel would form a module cycle
 // (manager.ts ↔ verification/completion-protocol.ts) that check:architecture flags.
 import { getBoard } from '../manager/boards.js';
+import { assertAcceptedContractUnchanged } from '../manager/lifecycle/accepted-contract.js';
+import { STALE_WRITE_PREFIX, StaleWriteError } from '../manager/lifecycle-error.js';
 import { findTask } from '../manager/task-lookup.js';
 import { mutateBoard } from '../storage.js';
 import type {
@@ -34,6 +36,11 @@ import type {
 } from '../types.js';
 import { commandAllowlistFromEnv } from './command-security.js';
 import { createDefaultRegistry } from './plugins/index.js';
+import {
+  subtaskInputFingerprint,
+  taskInputFingerprint,
+  verificationStateFingerprint,
+} from './task-inputs.js';
 import { type TreeSnapshot, VerificationContext } from './verification-context.js';
 import { buildVerificationReport } from './verification-report.js';
 import type { VerifierRegistry } from './verifier-registry.js';
@@ -63,6 +70,8 @@ export interface VerifyTaskCompletionResult {
   task: KanbanTask;
   /** The full verification report. */
   report: KanbanVerificationReport;
+  /** Input/ownership state before checks ran; independent of routine board writes. */
+  inputStateFingerprint?: string | undefined;
 }
 
 /**
@@ -129,6 +138,7 @@ async function runVerifyTaskCompletion(
   options: VerifyTaskCompletionOptions,
   path: Set<string>,
 ): Promise<VerifyTaskCompletionResult> {
+  const startedAt = new Date().toISOString();
   const registry = options.registry ?? createDefaultRegistry();
 
   // Load the board (we'll mutate it to persist the report)
@@ -136,14 +146,15 @@ async function runVerifyTaskCompletion(
   if (!board) throw new Error(`Board not found: ${boardId}`);
   const task = findTaskInBoard(board, taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
+  const inputStateFingerprint = verificationStateFingerprint(board, task);
 
   const context = new VerificationContext({
     projectRoot,
     board,
     task,
-    snapshot: options.snapshot,
+    snapshot: options.snapshot ?? task.assignment?.verificationBaseline,
     // Operator-widened command allowlist, e.g.
-    // WRONGSTACK_KANBAN_VERIFIER_COMMANDS=+tsc enables typecheck command
+    // WRONGSTACK_KANBAN_VERIFIER_COMMANDS=tsc enables typecheck command
     // checks. The hard blocklist always keeps precedence.
     commandAllowlist: commandAllowlistFromEnv(process.env),
   });
@@ -151,7 +162,7 @@ async function runVerifyTaskCompletion(
   // Phase 1: Recursively verify subtasks (when atomic)
   let subtaskReport: KanbanVerificationSubtasks | undefined;
   if (task.atomic && task.childTaskIds?.length) {
-    subtaskReport = await verifySubtasks(projectRoot, board, task, registry, options, path);
+    subtaskReport = await verifySubtasks(projectRoot, board, task, options, path);
     // If any child failed, we can still run parent checks but the
     // overall verdict will reflect it.
   }
@@ -181,9 +192,12 @@ async function runVerifyTaskCompletion(
     taskId: task.id,
     taskTitle: task.title,
     boardId: board.id,
+    inputFingerprint: taskInputFingerprint(task),
     checks: checkResults,
+    startedAt,
     fileScope,
     subtasks: subtaskReport,
+    ...(subtaskReport ? { subtaskInputFingerprint: subtaskInputFingerprint(board, task) } : {}),
     attachments: collectAttachments(checkResults),
     // Bind the report to the assignment/attempt/revision that produced the
     // verified work, and to the git baseline the file-scope diff was measured
@@ -248,7 +262,17 @@ async function runVerifyTaskCompletion(
   if (options.persist !== false) {
     const updated = await mutateBoard(projectRoot, boardId, (b) => {
       const targetTask = b.tasks.find((t) => t.id === task.id);
-      if (!targetTask) return null;
+      if (!targetTask) throw new Error(`Task not found: ${task.id}`);
+      if (verificationStateFingerprint(b, targetTask) !== inputStateFingerprint) {
+        throw new StaleWriteError(
+          `${STALE_WRITE_PREFIX}: board ${boardId} changed during verification. Re-run verification against the current task.`,
+        );
+      }
+      assertAcceptedContractUnchanged(b, targetTask, {
+        ...targetTask,
+        successCriteria: updatedTask.successCriteria,
+        verificationReport: report,
+      });
       if (updatedTask.successCriteria) {
         targetTask.successCriteria = updatedTask.successCriteria.map((c) => ({ ...c }));
       }
@@ -262,15 +286,42 @@ async function runVerifyTaskCompletion(
         board: updated.board,
         task: updated.result,
         report,
+        inputStateFingerprint,
       };
     }
+    throw new Error(`Board not found: ${boardId}`);
   }
 
-  // Return in-memory updated state (when persist is false or board mutated externally)
+  // A non-persisting pre-check must not hand a caller stale acceptance evidence.
+  const current = await getBoard(projectRoot, boardId);
+  if (!current) throw new Error(`Board not found: ${boardId}`);
+  const currentTask = current.tasks.find((t) => t.id === task.id);
+  if (!currentTask) throw new Error(`Task not found: ${task.id}`);
+  if (verificationStateFingerprint(current, currentTask) !== inputStateFingerprint) {
+    throw new StaleWriteError(
+      `${STALE_WRITE_PREFIX}: board ${boardId} changed during verification. Re-run verification against the current task.`,
+    );
+  }
   return {
-    board: { ...board, tasks: board.tasks.map((t) => (t.id === task.id ? updatedTask : t)) },
-    task: updatedTask,
+    board: {
+      ...current,
+      tasks: current.tasks.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              successCriteria: updatedTask.successCriteria,
+              verificationReport: report,
+            }
+          : t,
+      ),
+    },
+    task: {
+      ...currentTask,
+      successCriteria: updatedTask.successCriteria,
+      verificationReport: report,
+    },
     report,
+    inputStateFingerprint,
   };
 }
 
@@ -281,7 +332,6 @@ async function verifySubtasks(
   projectRoot: string,
   board: KanbanBoard,
   parentTask: KanbanTask,
-  registry: VerifierRegistry,
   options: VerifyTaskCompletionOptions,
   path: Set<string>,
 ): Promise<KanbanVerificationSubtasks> {
@@ -290,7 +340,7 @@ async function verifySubtasks(
   const childVerdicts: KanbanVerificationSubtasks['children'] = [];
 
   for (const childId of childIds) {
-    const child = findTaskInBoard(board, childId);
+    const child = board.tasks.find((candidate) => candidate.id === childId);
     if (child) {
       children.push(child);
     } else {
@@ -306,46 +356,33 @@ async function verifySubtasks(
   let failed = childVerdicts.length;
 
   for (const child of children) {
-    // Recursively verify
-    let report: KanbanVerificationReport | undefined;
-
-    // Only recurse if not already verified
-    if (child.verificationReport) {
-      report = child.verificationReport;
-    } else if (child.atomic && child.childTaskIds?.length) {
-      // Nested atomic — recurse
-      const childResult = await verifyTaskCompletionGuarded(
-        projectRoot,
-        board.id,
-        child.id,
-        { ...options, persist: false },
-        path,
-      );
-      report = childResult.report;
-    } else {
-      // Simple child — run checks
-      const ctx = new VerificationContext({
-        projectRoot,
-        board,
-        task: child,
-        commandAllowlist: commandAllowlistFromEnv(process.env),
-      });
-      const checkResults: KanbanVerificationCheckResult[] = [];
-
-      if (child.successCriteria?.length) {
-        await ctx.captureSnapshot();
-        for (const check of child.successCriteria) {
-          checkResults.push(await registry.verify(check, ctx));
-        }
-      }
-
-      report = buildVerificationReport({
-        taskId: child.id,
-        taskTitle: child.title,
-        boardId: board.id,
-        checks: checkResults,
-      });
-    }
+    // Always verify the child against the CURRENT tree. A stored
+    // `child.verificationReport` used to short-circuit this loop ("only recurse
+    // if not already verified"), which handed the parent a verdict of any age,
+    // produced against any prior state of the work, without re-running a single
+    // one of that child's checks. ff1f19d9f then made verifyTaskCompletion
+    // persist by default, so every standalone child verification writes a cache
+    // that the next parent verification silently consumes: a child whose
+    // criterion has since stopped holding still counted as 'passed' and carried
+    // the parent — and therefore the card — to Done. A 'passed' verdict is only
+    // evidence about the state of the tree right now, which is the same bar the
+    // escalation gate applies in verifier-registry.ts. The other two branches
+    // already re-verify (one recursively, one by re-running the checks), so
+    // dropping the cache makes the three cases consistent.
+    // Every child gets the full protocol, including file scope, baseline and
+    // ownership. A checks-only shortcut omitted the child's file contract.
+    const childResult = await verifyTaskCompletionGuarded(
+      projectRoot,
+      board.id,
+      child.id,
+      {
+        ...options,
+        snapshot: child.assignment?.verificationBaseline ?? options.snapshot,
+        persist: false,
+      },
+      path,
+    );
+    const report = childResult.report;
 
     if (report.verdict === 'passed') completed++;
     else failed++;
@@ -388,12 +425,12 @@ async function verifyFileScope(
   // Check expected files
   for (const exp of expected) {
     const actual = changedPaths.get(exp.path.replaceAll('\\', '/'));
-    const found = actual !== undefined;
-    if (!found) scopeMatches = false;
+    const matches = actual !== undefined && actual.operation === exp.operation;
+    if (!matches) scopeMatches = false;
     files.push({
       path: exp.path,
-      operation: exp.operation,
-      expected: found,
+      operation: (actual?.operation ?? exp.operation) as 'create' | 'modify' | 'delete',
+      expected: matches,
       linesChanged: actual?.linesChanged ?? 0,
     });
   }

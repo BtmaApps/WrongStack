@@ -87,7 +87,17 @@ export function parseGoalState(raw: Record<string, unknown> | null): GoalState |
             ? {
                 id: `d${i}`,
                 text: d,
-                status: /^\[[x✓]\]|✅|\(done\)/i.test(d) ? ('done' as const) : ('pending' as const),
+                // The done marker must sit at the START of the text. `|` binds loosest,
+                // so the previous `/^\[[x✓]\]|✅|\(done\)/i` parsed as
+                // `(^\[[x✓]\])|(✅)|(\(done\))` — `^` guarded only the FIRST branch, so
+                // ✅ / (done) matched ANYWHERE and a pending deliverable like
+                // "Add the ✅ badge" was reported complete. Grouping the alternatives
+                // under a single `^` fixes that and stays position-anchored: leading
+                // whitespace still means NOT done (pinned by goal-store.test.ts,
+                // which expects '  [x] partial  ' to be pending).
+                status: /^(?:\[[x✓]\]|✅|\(done\))/i.test(d)
+                  ? ('done' as const)
+                  : ('pending' as const),
               }
             : (d as GoalDeliverable),
         )

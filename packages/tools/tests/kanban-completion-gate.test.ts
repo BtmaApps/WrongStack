@@ -12,8 +12,8 @@ import {
 } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
-import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 
 /** Session that owns the board events these tests write. */
 const TEST_CONTEXT_SESSION_ID = '2026-08-26/sess_01TESTTOOLSCONTEXT0000000';
@@ -144,7 +144,7 @@ describe('kanban tool — universal completion gate', () => {
       dueDate: '2026-08-01T00:00:00.000Z',
       assignee: 'worker',
       labels: ['managed'],
-      childTaskIds: ['child-1'],
+      childTaskIds: [],
       successCriteria: [{ id: 'c1', description: 'Pass', type: 'manual', status: 'passed' }],
     });
     await assignTask(dir, board.id, added!.task.id, {

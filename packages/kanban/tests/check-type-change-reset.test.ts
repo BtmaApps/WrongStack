@@ -72,20 +72,20 @@ describe('updateCheckOnTask type-change status reset', () => {
     expect(check.checkedAt).toBeDefined();
   });
 
-  it('keeps the persisted status when the type does not change', async () => {
+  it('resets the persisted status when the assertion description changes', async () => {
     const { boardId, taskId, checkId } = await failedCommandCheck();
     await updateCheckOnTask(tmpDir, boardId, taskId, checkId, {
       description: 'Runs the full typecheck',
     });
     const check = (await taskOf(boardId, taskId)).successCriteria!.find((c) => c.id === checkId)!;
-    expect(check.status).toBe('failed');
-    expect(check.checkedAt).toBeDefined();
+    expect(check.status).toBe('pending');
+    expect(check.checkedAt).toBeUndefined();
   });
 
-  it('does not reset when patching the same type it already has', async () => {
+  it('resets when executable notes change even if the type stays the same', async () => {
     const { boardId, taskId, checkId } = await failedCommandCheck();
     await updateCheckOnTask(tmpDir, boardId, taskId, checkId, { type: 'command', notes: 'tsc -v' });
     const check = (await taskOf(boardId, taskId)).successCriteria!.find((c) => c.id === checkId)!;
-    expect(check.status).toBe('failed');
+    expect(check.status).toBe('pending');
   });
 });

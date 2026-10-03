@@ -280,7 +280,8 @@ function addRequiredDetailIssues(
       managed ? 'Add at least one label' : 'Add labels or tags',
     );
   }
-  if (!hasTextItem(task.childTaskIds) && (managed || !hasMeaningfulSubtask(task.subtasks))) {
+  const requiresChildren = managed ? task.atomic === true : !hasMeaningfulSubtask(task.subtasks);
+  if (requiresChildren && !hasTextItem(task.childTaskIds)) {
     pushIssue(
       issues,
       task,

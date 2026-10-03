@@ -185,6 +185,7 @@ describe('auditKanbanBoard — code coverage', () => {
 
   it('requires authoritative managed detail fields instead of legacy substitutes', () => {
     const t = task('t1', {
+      atomic: true,
       dueDate: NOW.toISOString(),
       labels: undefined,
       childTaskIds: undefined,
@@ -221,6 +222,7 @@ describe('auditKanbanBoard — code coverage', () => {
 
   it('rejects malformed managed details instead of accepting non-empty containers', () => {
     const t = task('t1', {
+      atomic: true,
       dueDate: 'not-a-date',
       labels: ['   '],
       childTaskIds: [''],

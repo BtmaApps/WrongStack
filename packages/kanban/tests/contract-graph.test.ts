@@ -221,7 +221,7 @@ describe('Kanban contract graph', () => {
     const added = await addTask(tmpDir, board.id, { title: 'Finish real work' });
     await addCheckToTask(tmpDir, board.id, added!.task.id, {
       description: 'Requested behavior is verified',
-      type: 'test',
+      type: 'manual',
       status: 'passed',
     });
     await configureContractGraph(tmpDir, board.id, 'strict');

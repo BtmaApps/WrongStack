@@ -1299,11 +1299,6 @@
       "__clearSearchCache",
       "__getSearchCacheSizeForTest"
     ],
-    "packages/tools/src/session-kanban.ts": [
-      "cleanupEmptySessionKanbanBoards",
-      "cleanupSessionKanbanBoard",
-      "cleanupSessionKanbanBoardIfEmpty"
-    ],
     "packages/tools/src/tool-diff.ts": [
       "DIFF_LINE_SAFETY_CAP",
       "TOOL_DIFF_BROWSER_SRC"

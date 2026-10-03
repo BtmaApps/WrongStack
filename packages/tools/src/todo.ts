@@ -307,6 +307,12 @@ async function synchronizeManagedKanban(
     // board projection reverts the todo because the card never reached
     // completed/review. start_task handles backlog→todo→running atomically.
     const stage = task.lifecycle?.currentStage;
+    if (stage === 'review') {
+      warnings.push(
+        `"${item.content}" is in Review awaiting acceptance; the worker result was already recorded. Verify or accept the card through Kanban before marking it Done.`,
+      );
+      continue;
+    }
     if (stage === 'backlog' || stage === 'todo') {
       const started = await execute({
         action: 'start_task',

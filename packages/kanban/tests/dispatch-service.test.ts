@@ -45,10 +45,6 @@ function managedLifecycle() {
   };
 }
 
-function _nowIso(): string {
-  return '2026-08-01T00:00:00.000Z';
-}
-
 const FUTURE = '2026-12-01T00:00:00.000Z';
 
 // ── Reserve ──────────────────────────────────────────────────────────

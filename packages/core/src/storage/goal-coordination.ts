@@ -1,4 +1,5 @@
 import type { BrainArbiter } from '../coordination/brain.js';
+import { completionPercent } from '../types/task-graph.js';
 import { boardStore } from './board-store-port.js';
 import type { EventBus } from './event-bus-port.js';
 import { findGoalBoardByTag, findGoalKanbanBoard, type GoalFileWithKanban } from './goal-kanban.js';
@@ -112,7 +113,7 @@ export function recomputeGoalProgress(goal: GoalFile): GoalFile {
   const deliverables = goal.deliverables ?? [];
   if (deliverables.length === 0) return goal;
   const done = deliverables.filter(isGoalDeliverableComplete).length;
-  const progress = Math.round((done / deliverables.length) * 100);
+  const progress = completionPercent(done, deliverables.length);
   return recordProgress(goal, progress, `${done}/${deliverables.length} deliverables complete`);
 }
 

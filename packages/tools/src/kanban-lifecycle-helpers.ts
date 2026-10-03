@@ -16,8 +16,16 @@ export async function syncContextTask(
   if (!ctx?.state || !task) return;
   try {
     await applySessionKanbanTaskToSource(ctx, task, options);
-  } catch {
-    // best-effort sync
+  } catch (error) {
+    throw conflict(
+      `The Kanban card changed, but its session source could not be synchronized: ${error instanceof Error ? error.message : String(error)}`,
+      {
+        retryable: false,
+        committed:
+          'The Kanban mutation already succeeded. Repair the session source before repeating the mutation.',
+        cause: error,
+      },
+    );
   }
 }
 

@@ -49,12 +49,14 @@ export interface KanbanVerificationReport {
    * re-frame an old verdict.
    */
   taskRevision?: number | undefined;
+  /** Hash of the task/criterion inputs exercised by this run, excluding outcomes. */
+  inputFingerprint?: string | undefined;
+  /** Descendant contracts and accepted state that the parent run verified. */
+  subtaskInputFingerprint?: string | undefined;
   /**
-   * Git baseline captured for the file-scope diff. The eventual goal is to
-   * capture this at dispatch/claim time (before the worker touches files)
-   * rather than at verification time; for now it records whichever snapshot
-   * the VerificationContext held when the report was built, preserving the
-   * prior behaviour while making the binding explicit and queryable.
+   * Git baseline used for the file-scope diff. Assignments with file-scope
+   * contracts capture it before entering Running. Older/manual invocations
+   * can supply an explicit snapshot; other checks may capture at verification.
    */
   baseline?: KanbanVerificationBaseline | undefined;
   /**

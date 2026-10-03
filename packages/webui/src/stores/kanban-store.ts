@@ -123,10 +123,30 @@ export const useKanbanStore = create<KanbanState>()((set, get) => ({
   setQueueHealth: (health) => set({ queueHealth: health }),
   handleResult: (type, payload) => {
     if (!payload.success) {
+      if (type === 'kanban.task.verification_completed') {
+        const ref = payload.data as { boardId?: string; taskId?: string } | undefined;
+        if (ref?.boardId && ref.taskId) {
+          const verificationActivity = { ...get().verificationActivity };
+          delete verificationActivity[`${ref.boardId}:${ref.taskId}`];
+          set({ verificationActivity });
+        }
+      }
       set({ loading: false, error: payload.error ?? 'Kanban request failed' });
       return;
     }
     const data = payload.data;
+    const incomingBoard = isBoardEnvelope(data) ? data.board : isBoard(data) ? data : null;
+    const currentBoard = get().activeBoard;
+    if (
+      incomingBoard &&
+      currentBoard?.id === incomingBoard.id &&
+      currentBoard.revision !== undefined &&
+      incomingBoard.revision !== undefined &&
+      incomingBoard.revision < currentBoard.revision
+    ) {
+      set({ loading: false, error: null });
+      return;
+    }
     if ((type === 'kanban.supervisor.status' || type === 'kanban.supervisor.audit') && data) {
       set({
         supervisorSnapshot: data as KanbanSupervisorSnapshot,
@@ -457,6 +477,8 @@ function upsertSummary(
 }
 
 function upsertTask(board: KanbanBoard, task: KanbanTask): KanbanBoard {
+  const current = board.tasks.find((candidate) => candidate.id === task.id);
+  if (current && Date.parse(task.updatedAt) < Date.parse(current.updatedAt)) return board;
   const tasks = board.tasks.some((candidate) => candidate.id === task.id)
     ? board.tasks.map((candidate) => (candidate.id === task.id ? task : candidate))
     : [...board.tasks, task];

@@ -69,14 +69,26 @@ describe('SystemOneVerifierPlugin', () => {
     expect((await createDefaultRegistry().verify(check(), context([]))).status).toBe('skipped');
   });
 
-  it('never overrides a status a person already set', async () => {
+  it('does not re-judge a preset status or invent verification from it', async () => {
     const judge = vi.fn(async () => ({ probability: 0.01 }));
     setKanbanCriterionJudge(() => judge);
     const result = await createDefaultRegistry().verify(
       check({ status: 'passed', checkedBy: 'human' }),
       context(['a.ts']),
     );
-    expect(result.status).toBe('passed');
+    expect(result.status).toBe('skipped');
     expect(judge).not.toHaveBeenCalled();
+  });
+
+  it('re-runs a previous automated verdict against current evidence', async () => {
+    const judge = vi.fn(async () => ({ probability: 0.99 }));
+    setKanbanCriterionJudge(() => judge);
+    const result = await createDefaultRegistry().verify(
+      check({ status: 'passed', checkedBy: 'agent' }),
+      context(['a.ts']),
+    );
+    expect(result.status).toBe('passed');
+    expect(judge).toHaveBeenCalledTimes(1);
+    expect(result.backingRefs?.[0]?.path).toBe('a.ts');
   });
 });

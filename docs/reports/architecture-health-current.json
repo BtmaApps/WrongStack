@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T11:50:12.836Z",
+  "generatedAt": "2026-10-03T11:51:23.623Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4324,
-    "testFiles": 3952,
-    "sourceLines": 1030895,
+    "sourceFiles": 4332,
+    "testFiles": 3963,
+    "sourceLines": 1031697,
     "workspaceEdges": 131,
-    "moduleEdges": 14098,
+    "moduleEdges": 14150,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 974
+    "testOnlyExports": 971
   },
   "errors": [
     "ARCH-CYCLE-TYPE-05: exception expired on 2026-10-01",
@@ -162,7 +162,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 553,
-      "testFiles": 571,
+      "testFiles": 572,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -202,7 +202,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 571
+          "testFiles": 572
         }
       ]
     },
@@ -321,8 +321,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 95,
-      "testFiles": 76,
+      "sourceFiles": 102,
+      "testFiles": 82,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -336,7 +336,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 76
+          "testFiles": 82
         }
       ]
     },
@@ -773,8 +773,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 245,
-      "testFiles": 286,
+      "sourceFiles": 246,
+      "testFiles": 288,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -790,7 +790,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 286
+          "testFiles": 288
         }
       ]
     },
@@ -928,7 +928,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 260,
-      "testFiles": 255,
+      "testFiles": 257,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -954,7 +954,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 255
+          "testFiles": 257
         }
       ]
     },
@@ -3363,6 +3363,12 @@
       },
       {
         "file": "packages/cli/tests/kanban-hq-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/kanban-managed-leaf-audit.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10904,6 +10910,18 @@
         ]
       },
       {
+        "file": "packages/kanban/tests/assignment-baseline-concurrency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/assignment-time-integrity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban/tests/atomic-write.test.ts",
         "projects": [
           "root-node"
@@ -10965,6 +10983,12 @@
       },
       {
         "file": "packages/kanban/tests/client-request-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/compact-session-mirror.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11168,6 +11192,12 @@
         ]
       },
       {
+        "file": "packages/kanban/tests/relationship-integrity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban/tests/requirement-coverage.test.ts",
         "projects": [
           "root-node"
@@ -11264,6 +11294,12 @@
         ]
       },
       {
+        "file": "packages/kanban/tests/verification/concurrent-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban/tests/verification/criterion-input-preserved.test.ts",
         "projects": [
           "root-node"
@@ -11325,6 +11361,12 @@
       },
       {
         "file": "packages/kanban/tests/verification/plugins/test.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/verification/verification-integrity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17450,6 +17492,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/session-kanban-integrity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/session-kanban-mailbox.test.ts",
         "projects": [
           "root-node"
@@ -17457,6 +17505,12 @@
       },
       {
         "file": "packages/tools/tests/session-kanban-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/session-kanban-source-integrity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21134,7 +21188,19 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/kanban-run-mirror-integrity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/kanban-run-mirror.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/kanban-source-integrity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25198,11 +25264,6 @@
       "relativeImports": 10
     },
     {
-      "file": "packages/kanban/src/verification/verification-context.ts",
-      "lines": 890,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/mcp/src/client.ts",
       "lines": 1000,
       "relativeImports": 15
@@ -25366,11 +25427,6 @@
       "file": "packages/tools/src/pwsh.ts",
       "lines": 852,
       "relativeImports": 9
-    },
-    {
-      "file": "packages/tools/src/session-kanban.ts",
-      "lines": 921,
-      "relativeImports": 5
     },
     {
       "file": "packages/tools/src/_danger-detect.ts",
@@ -25670,11 +25726,6 @@
       "relativeImports": 26
     },
     {
-      "file": "packages/tools/src/session-kanban.ts",
-      "lines": 921,
-      "relativeImports": 5
-    },
-    {
       "file": "packages/kanban/src/server/project-server.ts",
       "lines": 911,
       "relativeImports": 10
@@ -25768,6 +25819,11 @@
       "file": "packages/tools/src/codebase-index/project-server-client.ts",
       "lines": 893,
       "relativeImports": 8
+    },
+    {
+      "file": "packages/core/src/hq/auth-store.ts",
+      "lines": 889,
+      "relativeImports": 9
     }
   ],
   "testOnlyExports": [
@@ -28282,18 +28338,6 @@
     {
       "file": "packages/tools/src/search.ts",
       "name": "__getSearchCacheSizeForTest"
-    },
-    {
-      "file": "packages/tools/src/session-kanban.ts",
-      "name": "cleanupEmptySessionKanbanBoards"
-    },
-    {
-      "file": "packages/tools/src/session-kanban.ts",
-      "name": "cleanupSessionKanbanBoard"
-    },
-    {
-      "file": "packages/tools/src/session-kanban.ts",
-      "name": "cleanupSessionKanbanBoardIfEmpty"
     },
     {
       "file": "packages/tools/src/tool-diff.ts",

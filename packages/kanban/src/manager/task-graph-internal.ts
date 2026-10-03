@@ -27,14 +27,17 @@ export function taskGraphStatusToKanbanStatus(status: TaskStatus): KanbanTaskSta
 }
 
 export function kanbanStatusToTaskGraphStatus(task: KanbanTask): TaskStatus {
-  if (task.assignment?.status === 'running') return 'in_progress';
-  if (task.assignment?.status === 'failed') return 'failed';
-  if (task.status === 'ready' || task.status === 'archived') return 'pending';
-  if (task.status === 'in_progress') return 'in_progress';
+  // Accepted/held card state owns the projection; stale worker telemetry may
+  // only supplement a pending/ready card, never reopen or resume held work.
   if (task.status === 'completed') return 'completed';
   if (task.status === 'review') return 'review';
   if (task.status === 'blocked') return 'blocked';
   if (task.status === 'failed') return 'failed';
+  if (task.status === 'archived') return 'pending';
+  if (task.assignment?.status === 'running') return 'in_progress';
+  if (task.assignment?.status === 'failed') return 'failed';
+  if (task.status === 'ready') return 'pending';
+  if (task.status === 'in_progress') return 'in_progress';
   return 'pending';
 }
 

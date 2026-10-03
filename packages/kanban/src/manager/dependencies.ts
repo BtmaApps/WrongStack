@@ -40,6 +40,8 @@ import {
   tasksInChain,
   uniqueStrings,
 } from './_internal.js';
+import { cloneAssignmentConfiguration } from './assignment-configuration.js';
+import { assertAcceptedContractUnchanged } from './lifecycle/accepted-contract.js';
 import { archiveManagedTask, initializeAndValidateManagedTask } from './lifecycle.js';
 import { searchKanban } from './serialization.js';
 
@@ -97,14 +99,14 @@ export async function splitTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const parent = findTask(board, taskId);
     if (!parent) return null;
+    const acceptedParent = structuredClone(parent);
     assertManagementWrite(board, [parent], eventContext);
     const titles = input.titles.map((title) => requireNonBlank(title, 'Kanban split task title'));
     if (!titles.length) throw new Error('splitTask requires at least one child title.');
     const requestedColumnId = input.columnId ?? parent.columnId;
     const columnId = existingColumnId(board, requestedColumnId);
     if (!columnId) throw new Error(`Column not found: ${requestedColumnId}`);
-    const childColumnId =
-      board.lifecycle?.mode === 'managed' ? board.lifecycle.columns.backlog : columnId;
+    const childColumnId = columnForNewWork(board, parent, columnId, input.columnId);
     const children: KanbanTask[] = [];
     const startOrder = nextTaskOrder(board, childColumnId);
     for (let index = 0; index < titles.length; index++) {
@@ -133,7 +135,7 @@ export async function splitTask(
           ? { assignee: parent.assignee }
           : {}),
         ...(input.inheritAssignment === true && parent.assignment !== undefined
-          ? { assignment: { ...parent.assignment } }
+          ? { assignment: cloneAssignmentConfiguration(parent.assignment) }
           : {}),
         ...(input.inheritLabels !== false && parent.labels !== undefined
           ? { labels: [...parent.labels] }
@@ -162,6 +164,7 @@ export async function splitTask(
       ...(parent.childTaskIds ?? []),
       ...children.map((t) => t.id),
     ]);
+    assertAcceptedContractUnchanged(board, acceptedParent, parent);
     const now = nowIso();
     parent.updatedAt = now;
     if (input.atomic === true) parent.atomic = true;
@@ -205,8 +208,7 @@ export async function mergeTasks(
     const requestedColumnId = input.targetColumnId ?? sourceTasks[0]?.columnId;
     const columnId = existingColumnId(board, requestedColumnId);
     if (!columnId) throw new Error(`Column not found: ${input.targetColumnId ?? ''}`);
-    const mergedColumnId =
-      board.lifecycle?.mode === 'managed' ? board.lifecycle.columns.backlog : columnId;
+    const mergedColumnId = columnForNewWork(board, sourceTasks[0]!, columnId, input.targetColumnId);
     const dependencies = uniqueStrings(
       sourceTasks.flatMap((task) => task.dependsOn ?? []).filter((depId) => !sourceIds.has(depId)),
     );
@@ -244,7 +246,7 @@ export async function mergeTasks(
         ? { assignee: sourceTasks[0].assignee }
         : {}),
       ...(input.preserveAssignment === true && sourceTasks[0]?.assignment !== undefined
-        ? { assignment: { ...sourceTasks[0].assignment } }
+        ? { assignment: cloneAssignmentConfiguration(sourceTasks[0].assignment) }
         : {}),
       successCriteria: sourceTasks.flatMap((task) => cloneChecks(task.successCriteria ?? [])),
       goalMetrics: sourceTasks.flatMap((task) => cloneGoalMetrics(task.goalMetrics ?? [])),
@@ -274,6 +276,19 @@ export async function mergeTasks(
   });
   if (updated?.result && event) await emitKanbanEvent(projectRoot, event);
   return updated?.result ? { board: updated.board, ...updated.result } : null;
+}
+
+/** Keep newly derived work out of a predecessor's running/review/terminal stage. */
+function columnForNewWork(
+  board: KanbanBoard,
+  source: KanbanTask,
+  fallback: string,
+  requested: string | undefined,
+): string {
+  if (board.lifecycle?.mode === 'managed') return board.lifecycle.columns.backlog;
+  if (requested !== undefined || source.status === 'pending' || source.status === 'ready')
+    return fallback;
+  return existingColumnId(board, 'backlog') ?? fallback;
 }
 
 function mergeTaskBoundaries(tasks: readonly KanbanTask[]): KanbanBoundaryPolicy | undefined {

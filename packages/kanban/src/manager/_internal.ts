@@ -25,7 +25,6 @@ import {
 } from './task-column-helpers.js';
 import { findTask } from './task-lookup.js';
 import { areDependenciesMet } from './task-readiness.js';
-export { areDependenciesMet } from './task-readiness.js';
 
 export {
   isoFromTimestamp,
@@ -77,7 +76,6 @@ export {
   placeTaskInColumn,
   syncTaskColumnForStatus,
 } from './task-column-helpers.js';
-
 export {
   applyTaskPatch,
   cloneChecks,
@@ -104,6 +102,7 @@ export {
   taskToTaskGraphNode,
 } from './task-graph-internal.js';
 export { findTask } from './task-lookup.js';
+export { areDependenciesMet } from './task-readiness.js';
 
 export function buildAssignment(input: AssignKanbanTaskInput): KanbanAgentAssignment {
   return {
@@ -147,7 +146,8 @@ export async function claimReadyTaskOnBoard(
         : board.tasks.filter((task) => isTaskReadyForWork(board, task)).sort(compareTasksForWork);
       const task = candidates.find(
         (candidate) =>
-          isTaskReadyForWork(board, candidate) && managedLifecycleStage(board, candidate) === 'todo',
+          isTaskReadyForWork(board, candidate) &&
+          managedLifecycleStage(board, candidate) === 'todo',
       );
       if (!task) {
         const stageBlocked = candidates.length > 0;
@@ -410,27 +410,4 @@ export function normalizeAllColumnTaskOrders(board: KanbanBoard): void {
   for (const column of board.columns) normalizeColumnTaskOrders(board, column.id);
 }
 
-/**
- * Staleness window for queued/running assignments that carry NO lease stamp
- * ('running_no_lease'). A live agent heartbeats well inside this; ten
- * minutes of total silence with no lease to expire means the owner is gone.
- * Deliberately generous — recovery of a live claim is worse than a late
- * recovery of a dead one.
- */
-export const STAMPLESS_ASSIGNMENT_STALE_MS = 10 * 60 * 1000;
-
-export function isAssignmentStale(
-  assignment: KanbanAgentAssignment | undefined,
-  now: string,
-): boolean {
-  if (!assignment || (assignment.status !== 'queued' && assignment.status !== 'running')) {
-    return false;
-  }
-  const leaseExpired = assignment.leaseExpiresAt !== undefined && assignment.leaseExpiresAt <= now;
-  const lastSignalAt = assignment.heartbeatAt ?? assignment.claimedAt;
-  const stamplessAndSilent =
-    assignment.leaseExpiresAt === undefined &&
-    (lastSignalAt === undefined ||
-      new Date(now).getTime() - new Date(lastSignalAt).getTime() >= STAMPLESS_ASSIGNMENT_STALE_MS);
-  return leaseExpired || stamplessAndSilent;
-}
+export { isAssignmentStale, STAMPLESS_ASSIGNMENT_STALE_MS } from './assignment-staleness.js';

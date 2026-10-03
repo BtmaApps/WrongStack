@@ -8,7 +8,6 @@ import {
   resolveAutoAccept,
   stripLifecycleIssues,
   transitionTask,
-  updateTask,
   updateTaskAssignment,
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
@@ -161,22 +160,15 @@ export async function handleKanbanAssignmentAction(
 
             if (hasCriteria) {
               try {
-                const verResult = await verifyTaskCompletion(projectRoot, board.id, input.taskId, {
-                  persist: false,
-                });
+                const verResult = await verifyTaskCompletion(projectRoot, board.id, input.taskId);
                 if (verResult.report) {
                   recordKanbanVerificationEvidence(ctx, verResult.report);
                 }
-                await updateTask(
-                  projectRoot,
-                  board.id,
-                  input.taskId,
-                  {
-                    verificationReport: verResult.report,
-                    successCriteria: verResult.task.successCriteria,
-                  },
-                  eventContext,
-                );
+                transitionResult = {
+                  ...transitionResult,
+                  board: verResult.board,
+                  task: verResult.task,
+                };
 
                 const verdict = verResult.report.verdict;
                 if (verdict === 'passed' && !resolveAutoAccept(board)) {

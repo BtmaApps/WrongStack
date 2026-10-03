@@ -137,6 +137,7 @@ describe('kanban.task.verify route', () => {
       type: 'manual',
       status: 'passed',
     });
+    const beforeVerification = await getBoard(tmpDir, board.id);
     const { ws, sent } = makeWs();
     const { ctx, broadcasts } = makeCtx();
     await handleKanbanRoute(
@@ -154,6 +155,7 @@ describe('kanban.task.verify route', () => {
 
     const persisted = await getBoard(tmpDir, board.id);
     expect(persisted!.tasks[0]?.verificationReport?.verdict).toBe('passed');
+    expect(persisted!.revision).toBe((beforeVerification!.revision ?? 0) + 1);
   });
 });
 

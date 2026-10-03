@@ -193,6 +193,17 @@ describe('parseGoalState — deliverables parsing', () => {
     ['in progress', 'pending'],
     ['not done', 'pending'],
     ['[ ] unchecked', 'pending'],
+    // Round-5: the marker is a PREFIX by contract. `goal-coordination.ts` is the
+    // authoritative producer/consumer pair — `isGoalDeliverableComplete` tests the
+    // anchored DONE_PREFIX and `applyGoalDeliverableCompletions` only ever WRITES
+    // `✅ ${item}`. The parser's predicate `/^\[[x✓]\]|✅|\(done\)/i` parses as
+    // `(^\[[x✓]\])|(✅)|(\(done\))` because `|` binds loosest, so `^` guards only
+    // the FIRST alternative and ✅ / (done) matched ANYWHERE in the text.
+    ['Add the ✅ badge to the sidebar', 'pending'],
+    ['Rename the (done) flag in config', 'pending'],
+    ['Implement the ✅ state helper', 'pending'],
+    // Control: `[x]` was always anchored, so a mid-string box was already pending.
+    ['Fix checkbox [x] rendering in list rows', 'pending'],
   ])('status detection: %s → %s', (text, expectedStatus) => {
     const result = parseGoalState({ goal: 'T', deliverables: [text] });
     expect(result!.deliverables![0].status).toBe(expectedStatus);

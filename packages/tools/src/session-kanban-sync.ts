@@ -25,10 +25,11 @@ function sourceStatus(task: KanbanTask): TaskStatus {
   return 'pending';
 }
 
-export function todoStatus(task: KanbanTask): TodoItem['status'] {
+function todoStatus(task: KanbanTask): TodoItem['status'] {
   const status = sourceStatus(task);
   if (status === 'completed') return 'completed';
-  if (status === 'review' && task.assignment?.status === 'completed') return 'completed';
+  // A completed assignment is worker output, not reviewer acceptance.
+  // Review remains open until the card itself reaches completed.
   if (status === 'in_progress' || status === 'review') return 'in_progress';
   return 'pending';
 }
@@ -323,6 +324,8 @@ export async function applySessionKanbanTaskToSource(
 ): Promise<SessionKanbanSourceUpdate> {
   const originId = task.origin?.taskId;
   const graphId = task.origin?.graphId ?? '';
+  const ownerSessionId = context.session?.id;
+  const ownerProjectRoot = context.projectRoot;
 
   // Session graph IDs carry the source owner. A shared board can be edited
   // from another session, but that must never rewrite the acting session's
@@ -333,9 +336,19 @@ export async function applySessionKanbanTaskToSource(
   }
 
   const isTodoOrigin = task.origin?.system === 'session-todo' || graphId.startsWith('todo:');
+  const isPlanOrigin = task.origin?.system === 'session-plan' || graphId.startsWith('plan:');
+  const isTaskOrigin =
+    task.origin?.system === 'session-task' ||
+    task.origin?.system === 'session' ||
+    graphId.startsWith('session:');
   const targetTodo = context.todos?.find(
     (todo) =>
-      (isTodoOrigin && originId !== undefined && todo.id === originId) ||
+      (isTodoOrigin &&
+        originId !== undefined &&
+        todo.id === originId &&
+        !todo.promotedFromPlan &&
+        !todo.promotedFromTask &&
+        (!todo.kanbanTaskId || todo.kanbanTaskId === task.id)) ||
       todo.kanbanTaskId === task.id ||
       ((!task.origin || isTodoOrigin) &&
         todo.id === task.id &&
@@ -343,36 +356,43 @@ export async function applySessionKanbanTaskToSource(
         !todo.promotedFromTask),
   );
 
-  if (isTodoOrigin || targetTodo) {
-    const matchedId = targetTodo?.id ?? originId;
-    if (matchedId) {
-      const mappedStatus = todoStatus(task);
-      const next = options.remove
-        ? context.todos.filter((todo) => todo.id !== matchedId)
-        : context.todos.map((todo) =>
-            todo.id === matchedId
-              ? {
-                  ...todo,
-                  content: task.title,
-                  status: mappedStatus,
-                  kanbanTaskId: task.id,
-                }
-              : todo,
-          );
-      suppressedTodoMirrors.add(context);
-      try {
-        context.state.replaceTodos(next);
-      } finally {
-        suppressedTodoMirrors.delete(context);
-      }
-      return { source: 'todo', todos: [...context.todos] };
+  const reflectTodo = (): TodoItem[] | undefined => {
+    if (
+      !targetTodo ||
+      context.session?.id !== ownerSessionId ||
+      context.projectRoot !== ownerProjectRoot ||
+      !context.todos.includes(targetTodo)
+    )
+      return undefined;
+    const mappedStatus = todoStatus(task);
+    const next = options.remove
+      ? context.todos.filter((todo) => todo !== targetTodo)
+      : context.todos.map((todo) =>
+          todo === targetTodo
+            ? {
+                ...todo,
+                content: task.title,
+                status: mappedStatus,
+                kanbanTaskId: task.id,
+              }
+            : todo,
+        );
+    suppressedTodoMirrors.add(context);
+    try {
+      context.state.replaceTodos(next);
+    } finally {
+      suppressedTodoMirrors.delete(context);
     }
+    return [...context.todos];
+  };
+  if (isTodoOrigin || (!isPlanOrigin && !isTaskOrigin && targetTodo)) {
+    return { source: 'todo', todos: reflectTodo() ?? [...context.todos] };
   }
 
   if (!originId) return { source: null };
 
   const id = context.session?.id ?? '';
-  if (task.origin?.system === 'session-plan' || graphId.startsWith('plan:')) {
+  if (isPlanOrigin) {
     const planPath = context.meta['plan.path'];
     if (typeof planPath !== 'string' || !planPath) {
       throw new Error(
@@ -402,14 +422,11 @@ export async function applySessionKanbanTaskToSource(
               : item,
           ),
     }));
-    return { source: 'plan', plan };
+    const todos = reflectTodo();
+    return { source: 'plan', plan, ...(todos ? { todos } : {}) };
   }
 
-  if (
-    task.origin?.system === 'session-task' ||
-    task.origin?.system === 'session' ||
-    graphId.startsWith('session:')
-  ) {
+  if (isTaskOrigin) {
     const taskPath = context.meta['task.path'];
     if (typeof taskPath !== 'string' || !taskPath) {
       throw new Error(
@@ -433,7 +450,8 @@ export async function applySessionKanbanTaskToSource(
               : item,
           ),
     }));
-    return { source: 'task', tasks };
+    const todos = reflectTodo();
+    return { source: 'task', tasks, ...(todos ? { todos } : {}) };
   }
 
   return { source: null };

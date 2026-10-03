@@ -6,7 +6,8 @@ import type {
   KanbanTaskQueueClassification,
 } from '../types.js';
 import type { KanbanSearchResult } from '../types-operations.js';
-import { areDependenciesMet } from './task-readiness.js';
+import { isLeaseExpired } from './assignment-staleness.js';
+import { getDependencyReadinessIssues } from './task-readiness.js';
 
 export interface ClassifyTaskForQueueOptions {
   now?: string | undefined;
@@ -67,7 +68,7 @@ function classifyQueueBucket(
       reasons.push('Running assignment is missing lease metadata.');
       return classification('running_no_lease', reasons, { claimable: false, managedStage });
     }
-    if (assignment.leaseExpiresAt <= now) {
+    if (isLeaseExpired(assignment.leaseExpiresAt, now)) {
       reasons.push('Running assignment lease has expired.');
       return classification('running_expired', reasons, { claimable: false, managedStage });
     }
@@ -83,7 +84,7 @@ function classifyQueueBucket(
   }
 
   if (assignment?.status === 'queued' || assignment?.status === 'assigned') {
-    if (assignment.leaseExpiresAt && assignment.leaseExpiresAt <= now) {
+    if (isLeaseExpired(assignment.leaseExpiresAt, now)) {
       reasons.push(`${assignment.status} assignment lease has expired.`);
       return classification('queued_expired', reasons, { claimable: false, managedStage });
     }
@@ -104,7 +105,7 @@ function classifyQueueBucket(
     });
   }
 
-  const dependenciesMet = areDependenciesMet(board, task.id);
+  const dependenciesMet = getDependencyReadinessIssues(board, task).length === 0;
   if (!dependenciesMet) {
     reasons.push('Task has unmet dependencies.');
     return classification('dependency_blocked', reasons, { claimable: false, managedStage });

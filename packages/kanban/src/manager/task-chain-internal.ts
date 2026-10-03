@@ -1,6 +1,7 @@
 import type { KanbanBoard, KanbanGoalMetric, KanbanTask } from '../types.js';
 import { nowIso, slugify, uniqueStrings } from './basic-helpers.js';
 import { hasDependencyPath } from './dependency-helpers.js';
+import { assertAcceptedContractUnchanged } from './lifecycle/accepted-contract.js';
 import { findTask } from './task-lookup.js';
 
 export function resolveTaskRefs(board: KanbanBoard, taskRefs: readonly string[]): KanbanTask[] {
@@ -43,7 +44,9 @@ export function addDependencyToTask(
   if (hasDependencyPath(board, dependency.id, task.id)) {
     throw new Error(`Adding dependency ${dependency.id} would create a dependency cycle.`);
   }
-  task.dependsOn = uniqueStrings([...(task.dependsOn ?? []), dependency.id]);
+  const dependsOn = uniqueStrings([...(task.dependsOn ?? []), dependency.id]);
+  assertAcceptedContractUnchanged(board, task, { ...task, dependsOn });
+  task.dependsOn = dependsOn;
 }
 
 export function setChainMetadata(
@@ -107,7 +110,9 @@ export function rewireDependents(
       ...task.dependsOn.filter((depId) => !fromSet.has(depId)),
       ...toTaskIds.filter((depId) => depId !== task.id),
     ];
-    task.dependsOn = normalizeDependencyIds(board, task.id, uniqueStrings(nextDependsOn));
+    const dependsOn = normalizeDependencyIds(board, task.id, uniqueStrings(nextDependsOn));
+    assertAcceptedContractUnchanged(board, task, { ...task, dependsOn });
+    task.dependsOn = dependsOn;
     if (task.dependsOn.length === 0) delete task.dependsOn;
     task.updatedAt = nowIso();
   }

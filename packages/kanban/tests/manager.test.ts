@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as internalModule from '../src/manager/_internal.js';
 import type { KanbanBoard, KanbanEventContext } from '../src/types.js';
-import type { ClaimKanbanTaskInput } from '../src/types-operations.js';
+import type { ClaimKanbanTaskInput, ReleaseKanbanTaskClaimInput } from '../src/types-operations.js';
 import { CURRENT_KANBAN_VERSION } from '../src/types-operations.js';
 import {
   addCheckToTask,
@@ -200,6 +200,7 @@ describe('managed Kanban Agent lifecycle', () => {
     const created = await addTask(tmpDir, board.id, {
       title: 'Managed task',
       ...completeDetails(),
+      childTaskIds: [],
     });
     const todo = await transitionTask(tmpDir, board.id, created!.task.id, {
       to: 'todo',
@@ -1544,6 +1545,51 @@ describe('releaseTaskClaim', () => {
     expect(found?.assignment).toBeUndefined();
     expect(found?.status).toBe('pending');
     expect(found?.notes?.some((n) => n.content.includes('Worker timed out'))).toBe(true);
+  });
+
+  // The declared ReleaseKanbanTaskClaimInput['status'] union is a compile-time
+  // claim only: `releaseTaskClaim` is an IPC-allow-listed domain operation
+  // (project-server.ts#domainCall decodes wire args and spreads them into the
+  // handler unvalidated) and the WebUI release route asserts
+  // `payload.status as 'pending'|'ready'|'blocked'` without checking it. An
+  // out-of-union status therefore reaches the release mutation at runtime, and
+  // the card must still honour applyCompletedAtForStatus: a completed task
+  // ALWAYS carries completedAt. Commit 5031a6246 removed that repair on the
+  // strength of the type union alone, which left a self-contradictory card
+  // (status 'completed', no completion stamp) that taskToTaskGraphNode then
+  // exports without a completedAt.
+  it('stamps completedAt when a release lands the card in status completed (out-of-union status)', async () => {
+    const board = await makeBoard();
+    const task = await addTask(tmpDir, board.id, { title: 'Release to completed' });
+    await assignTask(tmpDir, board.id, task!.task.id, { agentId: 'bot' });
+
+    await releaseTaskClaim(tmpDir, board.id, task!.task.id, {
+      status: 'completed',
+    } as unknown as ReleaseKanbanTaskClaimInput);
+
+    const updated = await getBoard(tmpDir, board.id);
+    const found = updated!.tasks.find((t) => t.id === task!.task.id);
+    expect(found?.status).toBe('completed');
+    // The invariant under test: completed implies a completion timestamp.
+    expect(found?.completedAt).toEqual(expect.any(String));
+  });
+
+  it('clears completedAt when a release lands the card in a non-completed status', async () => {
+    const board = await makeBoard();
+    const task = await addTask(tmpDir, board.id, { title: 'Release to blocked' });
+    await assignTask(tmpDir, board.id, task!.task.id, { agentId: 'bot' });
+
+    await releaseTaskClaim(tmpDir, board.id, task!.task.id, {
+      status: 'blocked',
+      reason: 'operator reset',
+    });
+
+    const updated = await getBoard(tmpDir, board.id);
+    const found = updated!.tasks.find((t) => t.id === task!.task.id);
+    expect(found?.status).toBe('blocked');
+    expect(found?.assignment).toBeUndefined();
+    // Control for the case above: the stamp must be REMOVED, never left stale.
+    expect(found?.completedAt).toBeUndefined();
   });
 });
 

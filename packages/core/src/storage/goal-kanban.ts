@@ -14,6 +14,7 @@
  *   formatGoalKanbanChoicePrompt()                      → string (selection screen)
  */
 
+import { completionPercent } from '../types/task-graph.js';
 import { color } from '../utils/color.js';
 import { boardStore, tryBoardStore } from './board-store-port.js';
 import type { GoalFile } from './goal-store.js';
@@ -225,7 +226,7 @@ export function formatGoalKanbanPreview(
     }
   }
   if (typeof goalFile.progress === 'undefined' && totalDeliverables > 0) {
-    const pct = Math.round((doneDeliverables / totalDeliverables) * 100);
+    const pct = completionPercent(doneDeliverables, totalDeliverables);
     const filled = Math.round(pct / 5);
     const empty = 20 - filled;
     const bar = (pct > 0 ? color.green('█'.repeat(filled)) : '') + color.dim('░'.repeat(empty));

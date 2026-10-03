@@ -8,11 +8,11 @@
  * - file scope, subtasks, and attachments are rendered
  */
 import { describe, expect, it } from 'vitest';
+import type { KanbanVerificationCheckResult } from '../../src/types.js';
 import {
   buildVerificationReport,
   renderVerificationReportMarkdown,
 } from '../../src/verification/verification-report.js';
-import type { KanbanVerificationCheckResult } from '../../src/types.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -152,7 +152,7 @@ describe('buildVerificationReport', () => {
     expect(report.verdict).toBe('needs_human');
   });
 
-  it('legacy contract: returns passed when all checks are skipped', () => {
+  it('requires human resolution when all checks are skipped', () => {
     const report = buildVerificationReport({
       taskId: 't1',
       taskTitle: 'Test task',
@@ -160,10 +160,10 @@ describe('buildVerificationReport', () => {
       checks: [skippedCheck('c1'), skippedCheck('c2')],
     });
 
-    expect(report.verdict).toBe('passed');
+    expect(report.verdict).toBe('needs_human');
   });
 
-  it('returns passed when checks are mix of passed and skipped', () => {
+  it('requires human resolution when any acceptance check was skipped', () => {
     const report = buildVerificationReport({
       taskId: 't1',
       taskTitle: 'Test task',
@@ -171,7 +171,7 @@ describe('buildVerificationReport', () => {
       checks: [passedCheck('c1'), skippedCheck('c2')],
     });
 
-    expect(report.verdict).toBe('passed');
+    expect(report.verdict).toBe('needs_human');
   });
 
   it('returns incomplete when subtasks exist but not all are completed', () => {

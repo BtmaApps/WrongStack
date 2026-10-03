@@ -31,6 +31,7 @@ import {
   type KanbanAgentRunStatus,
   type KanbanBoard,
   type KanbanTask,
+  type KanbanVerificationCheckResult,
   listBoards,
   syncBoardFromTaskGraph,
   updateTaskAssignment,
@@ -110,6 +111,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   // Projections currently running — awaited by `flush()`.
   const inFlight = new Set<Promise<void>>();
+  const activeByKey = new Map<string, Promise<void>>();
 
   const mapKey = (engine: Engine, key: string) => `${engine}:${key}`;
 
@@ -118,11 +120,14 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     const fn = pending.get(k);
     pending.delete(k);
     if (!fn) return;
-    const p = fn()
+    const p = (activeByKey.get(k) ?? Promise.resolve())
+      .then(fn)
       .catch((err) => log(`[KanbanRunMirror] ${k}: ${errMsg(err)}`))
       .finally(() => {
         inFlight.delete(p);
+        if (activeByKey.get(k) === p) activeByKey.delete(k);
       });
+    activeByKey.set(k, p);
     inFlight.add(p);
   }
 
@@ -260,7 +265,6 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     const k = mapKey('sdd', runId);
     const stamp = sddStamp(snapshot);
     if (stamps.get(k) === stamp) return;
-    stamps.set(k, stamp);
 
     const runTitle = snapshot.title || `SDD ${runId}`;
     const columns = snapshot.columns ?? [];
@@ -297,6 +301,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
         };
         await projectSddSlice(boardId, runId, slice, tags);
       }
+      stamps.set(k, stamp);
       return;
     }
 
@@ -304,6 +309,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     const tags = ['sdd', `run:${runId}`, `graph:${snapshot.graphId}`];
     const boardId = await resolveBoardId('sdd', runId, runTitle, tags, [`run:${runId}`]);
     await projectSddSlice(boardId, runId, snapshot, tags);
+    stamps.set(k, stamp);
   }
 
   /** Sync structure + live assignment + verification for one SDD board slice. */
@@ -340,7 +346,31 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
         const kt = byOrigin.get(t.id);
         if (!kt) continue;
         const verdict = t.verificationState === 'passed' ? 'passed' : 'failed';
-        if (kt.verificationReport?.verdict === verdict) continue;
+        const checks: KanbanVerificationCheckResult[] = [
+          {
+            checkId: `sdd-gate-${t.id}`,
+            description: t.verificationCommand
+              ? `SDD completion gate: ${t.verificationCommand}`
+              : 'SDD completion gate (command / acceptance-criteria verification)',
+            type: 'command',
+            status: verdict,
+            evidence: {
+              source: 'sdd-run',
+              runId,
+              ...(t.verificationDetail ? { detail: t.verificationDetail } : {}),
+              ...(t.completedAt !== undefined ? { completedAt: t.completedAt } : {}),
+              attempt: t.retries,
+            },
+            ...(verdict === 'failed' && t.verificationDetail
+              ? { error: t.verificationDetail }
+              : {}),
+          },
+        ];
+        if (
+          kt.verificationReport?.taskTitle === kt.title &&
+          JSON.stringify(kt.verificationReport.checks) === JSON.stringify(checks)
+        )
+          continue;
         const attached = await attachVerificationReport(
           projectRoot,
           boardId,
@@ -349,24 +379,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
             taskId: kt.id,
             taskTitle: kt.title,
             boardId,
-            checks: [
-              {
-                checkId: `sdd-gate-${t.id}`,
-                description: t.verificationCommand
-                  ? `SDD completion gate: ${t.verificationCommand}`
-                  : 'SDD completion gate (command / acceptance-criteria verification)',
-                type: 'command',
-                status: verdict,
-                evidence: {
-                  source: 'sdd-run',
-                  runId,
-                  ...(t.verificationDetail ? { detail: t.verificationDetail } : {}),
-                },
-                ...(verdict === 'failed' && t.verificationDetail
-                  ? { error: t.verificationDetail }
-                  : {}),
-              },
-            ],
+            checks,
           }),
         );
         if (attached) final = attached;
@@ -385,7 +398,6 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     const k = mapKey('goal', graphId);
     const stamp = goalStamp(state);
     if (stamps.get(k) === stamp) return;
-    stamps.set(k, stamp);
 
     const runTitle = state.title || `Goal ${graphId}`;
     const phases = state.phases ?? [];
@@ -417,6 +429,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
       const final = await overlayAssignments(boardId, live, board);
       await publish(final);
     }
+    stamps.set(k, stamp);
   }
 
   // ── Wiring ───────────────────────────────────────────────────────────────
@@ -628,18 +641,15 @@ function assignmentUnchanged(
 // ── stamps / misc ────────────────────────────────────────────────────────────
 
 function sddStamp(s: SddBoardSnapshot): string {
-  return s.tasks
-    .map(
-      (t) =>
-        `${t.id}:${t.displayStatus}:${t.agentName ?? ''}:${t.retries}:${t.model ?? ''}:${t.verificationState ?? ''}:${t.verificationDetail ?? ''}:${t.verificationCommand ?? ''}`,
-    )
-    .join('|');
+  return JSON.stringify([
+    buildTaskGraphFromSddSnapshot(s),
+    s.columns ?? [],
+    s.tasks.map((task) => [task.id, desiredAssignmentFromSdd(task)]),
+  ]);
 }
 
 function goalStamp(state: GoalState): string {
-  return (state.phases ?? [])
-    .flatMap((p) => (p.tasks ?? []).map((t) => `${t.id}:${t.status}:${t.assignee ?? ''}`))
-    .join('|');
+  return JSON.stringify([state.title, state.phases ?? []]);
 }
 
 function originKey(taskId: string, phaseId?: string): string {

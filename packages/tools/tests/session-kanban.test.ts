@@ -34,6 +34,7 @@ import {
   projectSessionPlanToKanban,
   projectSessionTasksToKanban,
   projectSessionTodosToKanban,
+  settleSessionKanbanBackgroundWork,
   takeSessionMirrorFailure,
   taskFileToSerializedGraph,
   todoListToSerializedGraph,
@@ -489,7 +490,7 @@ describe('unified session kanban', () => {
     expect(remainingIds.has(populated!.id)).toBe(true);
   });
 
-  it('keeps an attached session board until detach, then removes the populated mirror', async () => {
+  it('retains populated session history on detach until explicit cleanup or retention', async () => {
     const board = await projectSessionTodosToKanban(
       dir,
       [{ id: 'todo-1', content: 'Tactical work', status: 'completed' }],
@@ -508,6 +509,8 @@ describe('unified session kanban', () => {
     expect(await getBoard(dir, board!.id)).not.toBeNull();
 
     detach();
+    await settleSessionKanbanBackgroundWork();
+    expect((await getBoard(dir, board!.id))?.tasks[0]?.status).toBe('completed');
     await cleanupSessionKanbanBoard(dir, 'live-session');
     expect(await getBoard(dir, board!.id)).toBeNull();
   });

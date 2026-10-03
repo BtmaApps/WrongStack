@@ -161,6 +161,14 @@ function validateParentChildGate(
   issues: KanbanLifecycleValidationIssue[],
 ): void {
   if (!task.childTaskIds?.length) return;
+  const missing = task.childTaskIds.filter((id) => !board.tasks.some((child) => child.id === id));
+  if (missing.length) {
+    issues.push({
+      code: 'parent-child-incomplete',
+      field: 'childTaskIds',
+      message: `Parent task cannot reach Done: child tasks are missing (${missing.join(', ')}). Resolve the child references before acceptance.`,
+    });
+  }
   const incompleteChildren = task.childTaskIds
     .map((childId) => findTask(board, childId))
     .filter((child): child is KanbanTask => Boolean(child))

@@ -1,4 +1,5 @@
 import type { KanbanAgentRunStatus, KanbanRetryPolicy } from './task-policy-types.js';
+import type { KanbanVerificationBaseline } from './verification-types.js';
 
 /**
  * How an agent assigned to a task obtains its primary model.
@@ -145,6 +146,8 @@ export interface KanbanAgentAssignment {
   dispatchedAt?: string | undefined;
   completedAt?: string | undefined;
   leaseId?: string | undefined;
+  /** Captured before this attempt starts editing; reused by completion verification. */
+  verificationBaseline?: KanbanVerificationBaseline | undefined;
   claimedAt?: string | undefined;
   heartbeatAt?: string | undefined;
   leaseExpiresAt?: string | undefined;

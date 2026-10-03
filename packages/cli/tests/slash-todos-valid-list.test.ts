@@ -52,6 +52,37 @@ describe('buildTodosCommand valid-list drift', () => {
     }
   });
 
+  // Round 39: the Valid list omitted four subcommands the switch IMPLEMENTS as
+  // real cases — `list` (L54, with `show`), `complete` (L102, with `done`),
+  // `complete-all` (L83, with `done-all`) and `delete` (L130, with `remove`/`rm`).
+  // A typo'd subcommand therefore advertised a list contradicting the real surface.
+  const IMPLEMENTED_ALIASES = ['list', 'complete', 'complete-all', 'delete'] as const;
+
+  it('advertises every implemented subcommand, including the four omitted aliases', async () => {
+    const cmd = buildTodosCommand(emptyCtx({ context: makeCtx() as never }));
+    const message = (await cmd.run('frobnicate'))?.message ?? '';
+    for (const name of IMPLEMENTED_ALIASES) {
+      expect(message, `Valid list must advertise implemented subcommand "${name}"`).toContain(name);
+    }
+  });
+
+  it.each(IMPLEMENTED_ALIASES)('%s is implemented, not a phantom entry', async (name) => {
+    // Proves each advertised alias really is a live switch case: the Valid list
+    // must describe the dispatcher's actual surface, not invented names.
+    // The argument is required: `complete`/`delete` reject a bare alias with
+    // their branch's own Usage line, which would look like a dead branch here.
+    const ctx = makeCtx([
+      { id: 't1', content: 'alpha', status: 'pending' },
+      { id: 't2', content: 'beta', status: 'pending' },
+    ]);
+    const cmd = buildTodosCommand(emptyCtx({ context: ctx as never }));
+    const message = (await cmd.run(`${name} 1`))?.message ?? '';
+    // Every alias maps onto one of the four real branches; none may fall through
+    // to the unknown-subcommand default.
+    expect(message).not.toContain('Unknown subcommand');
+    expect(message).not.toMatch(/^Usage:/);
+  });
+
   it('rm is not just advertised — it removes a todo by 1-based index', async () => {
     const ctx = makeCtx([{ id: 't1', content: 'first', status: 'pending' }]);
     const cmd = buildTodosCommand(emptyCtx({ context: ctx as never }));

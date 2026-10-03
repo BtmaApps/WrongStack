@@ -9,7 +9,7 @@
  * @module goal/phase-orchestrator-queries
  */
 import type { TaskTracker } from '../tasking/index.js';
-import type { TaskNode } from '../types/task-graph.js';
+import { completionPercent, type TaskNode } from '../types/task-graph.js';
 import type { PhaseGraph, PhaseNode, PhaseProgress } from './types.js';
 
 /** Resolves (and memoizes) the TaskTracker backing a phase's task graph. */
@@ -140,7 +140,7 @@ export function getProgress(graph: PhaseGraph, trackerFor: TrackerLookup): Phase
     completed,
     failed,
     skipped,
-    percentComplete: totalPhases > 0 ? Math.min(100, Math.round((done / totalPhases) * 100)) : 0,
+    percentComplete: completionPercent(done, totalPhases),
     totalTasks,
     completedTasks,
     failedTasks,

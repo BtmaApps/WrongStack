@@ -146,7 +146,24 @@ export function buildTodosCommand(opts: SlashCommandContext): SlashCommand {
               message:
                 unknownSubcommand(
                   cmd,
-                  ['show', 'clear', 'add', 'done', 'done-all', 'remove', 'rm'],
+                  // Every subcommand the switch above actually implements,
+                  // including the `list`/`complete`/`complete-all`/`delete`
+                  // aliases. Omitting them made a typo'd subcommand advertise
+                  // a Valid list that contradicted the dispatcher's own surface
+                  // (valid-list drift convention: implemented => listed).
+                  [
+                    'show',
+                    'list',
+                    'clear',
+                    'add',
+                    'done',
+                    'complete',
+                    'done-all',
+                    'complete-all',
+                    'remove',
+                    'delete',
+                    'rm',
+                  ],
                   'todos',
                 ) +
                 '\n\nRelated: /plan (session-persistent roadmap) | /tasks (structured tasks with priorities)',

@@ -16,6 +16,8 @@ import {
   type UpdateKanbanTaskInput,
 } from '../types-operations.js';
 import { clearGateRefusals } from '../verification/refusal-budget.js';
+import { checkInputFingerprint, taskInputFingerprint } from '../verification/task-inputs.js';
+import { cloneAssignmentConfiguration } from './assignment-configuration.js';
 import { nowIso, requireNonBlank, statusForColumn, uniqueStrings } from './basic-helpers.js';
 import { normalizeChainMetadata, normalizeDependencyIds } from './task-chain-internal.js';
 import {
@@ -133,7 +135,12 @@ export function cloneTaskForBoard(
       ? { assignee: source.assignee }
       : {}),
     ...(source.assignment !== undefined && options.preserveAssignment === true
-      ? { assignment: { ...source.assignment } }
+      ? {
+          assignment:
+            board.lifecycle?.mode === 'managed'
+              ? cloneAssignmentConfiguration(source.assignment)
+              : { ...source.assignment },
+        }
       : {}),
     ...(source.dependsOn !== undefined && options.preserveDependencies === true
       ? { dependsOn: [...source.dependsOn] }
@@ -160,7 +167,15 @@ export function cloneTaskForBoard(
     ...(source.retryPolicy !== undefined ? { retryPolicy: source.retryPolicy } : {}),
     ...(source.costCeilingUsd !== undefined ? { costCeilingUsd: source.costCeilingUsd } : {}),
     ...(source.successCriteria !== undefined
-      ? { successCriteria: source.successCriteria.map((check) => ({ ...check, id: randomUUID() })) }
+      ? {
+          successCriteria: source.successCriteria.map((check) => ({
+            ...check,
+            id: randomUUID(),
+            ...(board.lifecycle?.mode === 'managed'
+              ? { status: 'pending' as const, checkedAt: undefined, checkedBy: undefined }
+              : {}),
+          })),
+        }
       : {}),
     ...(source.goalMetrics !== undefined
       ? { goalMetrics: cloneGoalMetrics(source.goalMetrics) }
@@ -187,7 +202,7 @@ export function cloneTaskForBoard(
     ...(source.expectedFileChanges !== undefined
       ? { expectedFileChanges: [...source.expectedFileChanges] }
       : {}),
-    ...(source.verificationReport !== undefined
+    ...(source.verificationReport !== undefined && board.lifecycle?.mode !== 'managed'
       ? { verificationReport: { ...source.verificationReport } }
       : {}),
     ...(source.atomicityAssessment !== undefined
@@ -220,6 +235,8 @@ export function applyTaskPatch(
   const previousChildIds = (task.childTaskIds ?? []).join(',');
   const previousEstimatedHours = task.estimatedHours;
   const previousExpectedFileChanges = JSON.stringify(task.expectedFileChanges);
+  const previousVerificationInput = taskInputFingerprint(task);
+  const previousChecks = new Map((task.successCriteria ?? []).map((check) => [check.id, check]));
   const previousDependsOn = JSON.stringify(task.dependsOn);
   const previousCriteriaFingerprint = (task.successCriteria ?? [])
     .map((c) => `${c.type}:${c.description}`)
@@ -309,7 +326,14 @@ export function applyTaskPatch(
     if (input.costCeilingUsd === null) delete task.costCeilingUsd;
     else task.costCeilingUsd = input.costCeilingUsd;
   }
-  if (input.successCriteria !== undefined) task.successCriteria = input.successCriteria;
+  if (input.successCriteria !== undefined) {
+    task.successCriteria = input.successCriteria.map((check) => {
+      const previous = previousChecks.get(check.id);
+      return previous && checkInputFingerprint(previous) !== checkInputFingerprint(check)
+        ? { ...check, status: 'pending' as const, checkedAt: undefined, checkedBy: undefined }
+        : { ...check };
+    });
+  }
   if (input.goalMetrics !== undefined) task.goalMetrics = input.goalMetrics;
   if (input.links !== undefined) task.links = input.links;
   if (input.lifecycle !== undefined) {
@@ -342,6 +366,17 @@ export function applyTaskPatch(
     } else {
       task.verificationReport = { ...input.verificationReport };
     }
+  }
+  if (
+    taskInputFingerprint(task) !== previousVerificationInput &&
+    input.verificationReport === undefined &&
+    // Run mirrors own their external evidence; local display/decomposition
+    // metadata must not erase it when their completion gate is explicitly off.
+    (task.verificationReport?.inputFingerprint !== undefined ||
+      board.lifecycle?.mode === 'managed' ||
+      board.completionGate?.enforcement !== 'off')
+  ) {
+    delete task.verificationReport;
   }
   if (input.atomicityAssessment !== undefined) {
     if (input.atomicityAssessment === null) delete task.atomicityAssessment;
@@ -391,7 +426,13 @@ export function applyTaskPatch(
 }
 
 export function cloneChecks(checks: readonly KanbanCheck[]): KanbanCheck[] {
-  return checks.map((check) => ({ ...check, id: randomUUID() }));
+  return checks.map((check) => ({
+    ...check,
+    id: randomUUID(),
+    status: 'pending',
+    checkedBy: undefined,
+    checkedAt: undefined,
+  }));
 }
 
 export function cloneGoalMetrics(metrics: readonly KanbanGoalMetric[]): KanbanGoalMetric[] {

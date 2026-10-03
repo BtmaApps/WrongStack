@@ -27,7 +27,9 @@ import {
   syncTaskColumnForStatus,
 } from '../manager/_internal.js';
 import { getBoard } from '../manager/boards.js';
+import { assertAcceptedContractUnchanged } from '../manager/lifecycle/accepted-contract.js';
 import { validateDefinitionOfDone } from '../manager/lifecycle.js';
+import { STALE_WRITE_PREFIX, StaleWriteError } from '../manager/lifecycle-error.js';
 import { mutateBoard } from '../storage.js';
 import type {
   KanbanBoard,
@@ -40,6 +42,7 @@ import type {
 import type { KanbanLifecycleValidationIssue } from '../types-operations.js';
 import { applyGateRefusal, clearGateRefusals } from './completion-park.js';
 import { verifyTaskCompletion } from './completion-protocol.js';
+import { verificationStateFingerprint } from './task-inputs.js';
 import type { VerifierRegistry } from './verifier-registry.js';
 
 export interface CompletionGateOptions {
@@ -58,6 +61,10 @@ export interface CompletionGateResult {
   verdict: KanbanVerificationReport['verdict'] | 'skipped';
   report?: KanbanVerificationReport | undefined;
   issues: KanbanLifecycleValidationIssue[];
+  /** Revision whose task and gate policy supplied this decision. */
+  boardRevision?: number | undefined;
+  /** Task/relations/policy state that supplied this decision. */
+  inputStateFingerprint?: string | undefined;
 }
 
 /**
@@ -102,6 +109,7 @@ export async function enforceCompletionGate(
   if (!board) throw new Error(`Board not found: ${boardId}`);
   const task = findTask(board, taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
+  const inputStateFingerprint = verificationStateFingerprint(board, task);
 
   const requestedEnforcement = options.enforcement ?? resolveGateEnforcement(board);
   // Managed lifecycle completion is always gated. A caller-level override may
@@ -111,13 +119,25 @@ export async function enforceCompletionGate(
       ? 'strict'
       : requestedEnforcement;
   if (enforcement === 'off') {
-    return { allowed: true, enforcement, verdict: 'skipped', issues: [] };
+    return {
+      allowed: true,
+      enforcement,
+      verdict: 'skipped',
+      issues: [],
+      boardRevision: board.revision ?? 0,
+      inputStateFingerprint,
+    };
   }
 
   const result = await verifyTaskCompletion(projectRoot, boardId, task.id, {
     ...(options.registry !== undefined ? { registry: options.registry } : {}),
     persist: false,
   });
+  if (result.inputStateFingerprint !== inputStateFingerprint) {
+    throw new StaleWriteError(
+      `${STALE_WRITE_PREFIX}: board ${boardId} changed before verification. Re-run the completion gate.`,
+    );
+  }
   const issues = validateDefinitionOfDone(result.task, result.report, {
     // Soft mode lets criterion-less tasks complete quietly; strict demands
     // explicit acceptance criteria, matching the managed Done contract.
@@ -125,14 +145,22 @@ export async function enforceCompletionGate(
     board,
   });
   const allowed = result.report.verdict === 'passed' && issues.length === 0;
-  return { allowed, enforcement, verdict: result.report.verdict, report: result.report, issues };
+  return {
+    allowed,
+    enforcement,
+    verdict: result.report.verdict,
+    report: result.report,
+    issues,
+    boardRevision: board.revision ?? 0,
+    inputStateFingerprint,
+  };
 }
 
 /**
  * Idempotently attach an externally produced verification report to a task
  * (e.g. the kanban run mirror translating an SDD run's completion-gate
- * outcome). Skips the write when an equivalent report (same verdict and
- * completion timestamp) is already present. Never changes task status —
+ * outcome). Skips the write only when the complete report is equivalent.
+ * Never changes task status —
  * mirrored boards own their status via sync.
  */
 export async function attachVerificationReport(
@@ -144,13 +172,12 @@ export async function attachVerificationReport(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
-    if (
-      task.verificationReport?.verdict === report.verdict &&
-      task.verificationReport.completedAt === report.completedAt
-    ) {
+    const incoming = { ...report, taskId: task.id, boardId: board.id };
+    if (JSON.stringify(task.verificationReport) === JSON.stringify(incoming)) {
       return false;
     }
-    task.verificationReport = { ...report, taskId: task.id, boardId: board.id };
+    assertAcceptedContractUnchanged(board, task, { ...task, verificationReport: incoming });
+    task.verificationReport = incoming;
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
     return true;
@@ -206,6 +233,15 @@ export async function finalizeTaskCompletion(
     // Managed cards advance only through transitionTask. Completion callers may
     // persist assignment results, but cannot project lifecycle stages here.
     if (board.lifecycle?.mode === 'managed') return null;
+    if (
+      gate.inputStateFingerprint !== undefined &&
+      verificationStateFingerprint(board, task) !== gate.inputStateFingerprint
+    ) {
+      throw new StaleWriteError(
+        `${STALE_WRITE_PREFIX}: board ${boardId} changed after verification. Re-run the completion gate.`,
+      );
+    }
+    if (task.status === 'archived') return null;
     const previousColumnId = task.columnId;
     const now = nowIso();
 

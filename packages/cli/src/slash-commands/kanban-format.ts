@@ -61,7 +61,11 @@ export function formatBoardList(boards: KanbanBoardSummary[]): string {
   if (!boards.length) return DIM('No kanban boards yet. Use /kanban create <title> to start one.');
   const lines: string[] = [HEADING(`Kanban Boards (${boards.length})`), ''];
   for (const b of boards) {
-    const pct = b.taskCount > 0 ? Math.round((b.completedTaskCount / b.taskCount) * 100) : 0;
+    // 199/200 is not "100% done": only a finished board rounds up to 100.
+    const pct =
+      b.completedTaskCount >= b.taskCount
+        ? 100
+        : Math.min(99, Math.round((b.completedTaskCount / b.taskCount) * 100));
     const progress = b.taskCount > 0 ? ` ${pct}% done` : ' empty';
     lines.push(
       `  ${LABEL(b.id.slice(0, 8))}  ${VALUE(b.title)}  ${DIM(`${b.columnCount} cols · ${b.taskCount} tasks${progress}`)}`,

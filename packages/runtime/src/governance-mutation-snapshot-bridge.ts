@@ -1,6 +1,7 @@
 import type { AgentPipelines, ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { WorkspaceCheckpointRef } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import type { GovernanceRuntimeWorkspaceSnapshotResult } from './governance-bootstrap.js';
 
 export const MAX_PENDING_GOVERNANCE_MUTATION_SNAPSHOTS = 64;
@@ -85,7 +86,7 @@ export function createGovernanceMutationSnapshotBridge(input: {
       })
       .catch((error) => {
         warnOnce('governance: post-mutation workspace snapshot failed open', {
-          message: error instanceof Error ? error.message : String(error),
+          message: toErrorMessage(error),
         });
       })
       .finally(() => {
