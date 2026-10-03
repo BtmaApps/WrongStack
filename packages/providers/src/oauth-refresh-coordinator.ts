@@ -130,7 +130,7 @@ export interface RefreshHooks<TTokens, TPayload> {
    * `this.access = derived.accessToken`). Called inside the single-flight
    * slot, exactly once per actual refresh.
    */
-  applyTokens: (derived: DerivedTokens) => void;
+  applyTokens: (derived: DerivedTokens, tokens: TTokens) => void;
 
   /**
    * Map the upstream's token shape into the host's payload shape. Called
@@ -270,7 +270,7 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
       this.refreshKey = refreshKey;
       if (Date.now() < derived.expiresAt - this.refreshSkewMs) {
         this.expiresAt = derived.expiresAt;
-        this.hooks.applyTokens(derived);
+        this.hooks.applyTokens(derived, adopted);
         return adopted;
       }
     }
@@ -297,7 +297,7 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
     }
     this.expiresAt = derived.expiresAt;
     if (derived.refreshKey) this.refreshKey = derived.refreshKey;
-    this.hooks.applyTokens(derived);
+    this.hooks.applyTokens(derived, tokens);
     // Only the instance that ran the exchange persists it; joiners received
     // the very same tokens.
     if (leader) this.hooks.onRefresh?.(this.hooks.formatPayload(tokens, derived));

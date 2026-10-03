@@ -207,7 +207,7 @@ export function parseProviderErrorBody(rawText: string): ProviderErrorBody {
     const m = stringOf(errField['message']) ?? extractDetail(errField['detail']);
     const code = stringOf(errField['code']);
     if (t) body.type = t;
-    if (code && code !== t) body.code = code;
+    if (code) body.code = code;
     if (m) body.message = m;
   } else if (typeof errField === 'string') {
     body.message = errField;

@@ -26,6 +26,60 @@ beforeEach(() => {
 });
 
 describe('OAuth account UI', () => {
+  it('shows the new registry flows and starts the selected account method', () => {
+    const handlers = new Map<string, (message: WSServerMessage) => void>();
+    const startOAuth = vi.fn();
+    const ws = {
+      on: (type: string, fn: (message: WSServerMessage) => void) => {
+        handlers.set(type, fn);
+        return () => handlers.delete(type);
+      },
+      listOAuthProviders: vi.fn(),
+      startOAuth,
+      cancelOAuth: vi.fn(),
+    } as unknown as WrongStackWebSocketClient;
+    render(<OAuthLoginSection ws={ws} />);
+    act(() =>
+      handlers.get('auth.oauth.providers')?.({
+        type: 'auth.oauth.providers',
+        payload: {
+          providers: [
+            {
+              id: 'xai',
+              providerId: 'xai',
+              label: 'xAI / Grok',
+              interactionTypes: ['device_code'],
+            },
+            {
+              id: 'kimi',
+              providerId: 'kimi-for-coding',
+              label: 'Kimi Code',
+              interactionTypes: ['device_code'],
+            },
+            {
+              id: 'meta',
+              providerId: 'meta',
+              label: 'Meta / Muse',
+              interactionTypes: ['device_code'],
+            },
+            {
+              id: 'chatgpt-api',
+              providerId: 'openai-chatgpt',
+              label: 'Continue with ChatGPT',
+              interactionTypes: ['browser'],
+            },
+          ],
+        },
+      }),
+    );
+    expect(screen.getByText('Continue with ChatGPT')).toBeTruthy();
+    expect(screen.queryByText('settings:oauth.termsWarning')).toBeNull();
+    const buttons = screen.getAllByText('settings:oauth.signIn');
+    for (const [index, id] of ['xai', 'kimi', 'meta', 'chatgpt-api'].entries()) {
+      fireEvent.click(buttons[index]!);
+      expect(startOAuth).toHaveBeenLastCalledWith(id);
+    }
+  });
   it('groups arbitrary aliases by provider metadata and cancels sign-in on unmount', () => {
     const handlers = new Map<string, (message: WSServerMessage) => void>();
     const startOAuth = vi.fn();

@@ -2,18 +2,45 @@ import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { scrubErrorText } from '../security/error-sanitize.js';
+import type { ToolUseBlock } from '../types/blocks.js';
 import { activeLimits, positiveLimit } from '../types/config/limits.js';
 import { FetchError, ToolValidationError, WrongStackError } from '../types/errors.js';
-import type { ToolErrorCategory } from '../types/tool.js';
+import type { SecretScrubber } from '../types/secret-scrubber.js';
+import type { Tool, ToolErrorCategory } from '../types/tool.js';
 import { ToolErrorCategory as ToolErrorCategoryEnum } from '../types/tool.js';
 import type { ToolExecutorOptions } from '../types/tool-executor.js';
 import { MALFORMED_ARG_MARKERS } from '../types/tool-markers.js';
+import { toErrorMessage } from '../utils/error.js';
 import { expectDefined } from '../utils/expect-defined.js';
+import { prepareProgrammaticOutput } from '../utils/tool-programmatic-output.js';
 import { wstackGlobalRoot } from '../utils/wstack-paths.js';
 
 const TOOL_OUTPUT_ARTIFACT_THRESHOLD_BYTES = 24 * 1024;
 const TOOL_OUTPUT_ARTIFACT_PREVIEW_BYTES = 6 * 1024;
 const TOOL_OUTPUT_ARTIFACT_OMISSION = '\n…[artifact middle omitted]…\n';
+
+/** Canonical data is opt-in and prepared only after the tool body settled. */
+export function toolProgrammaticOutput(
+  tool: Tool,
+  use: ToolUseBlock,
+  output: unknown,
+  scrubber: SecretScrubber,
+): { value: unknown } | undefined {
+  if (use._resultFormat !== 'data' || !tool.outputSchema) return undefined;
+  try {
+    return {
+      value: prepareProgrammaticOutput(
+        tool.programmaticOutput ? tool.programmaticOutput(output, use.input) : output,
+        tool.outputSchema,
+        scrubber,
+      ),
+    };
+  } catch (error) {
+    throw new Error(
+      `${toErrorMessage(error)}. The tool already executed; inspect existing effects before retrying a mutation.`,
+    );
+  }
+}
 
 export function clampTimeoutMs(timeoutMs: number, maxTimeoutMs: number): number {
   const fallback = 300_000;

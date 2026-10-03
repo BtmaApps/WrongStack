@@ -36,7 +36,16 @@ wstack auth login chatgpt
 wstack auth login claude
 wstack auth login copilot
 wstack auth login openrouter
+wstack auth login antigravity
+wstack auth login xai
+wstack auth login kimi
+wstack auth login meta
+wstack auth login chatgpt-api
 ```
+
+For account sign-ins, model choices come from the signed-in account's live
+catalog. Cached choices are scoped to that account; no hardcoded model names
+or generic API-provider lists are substituted when discovery is unavailable.
 
 Accepted login aliases are:
 
@@ -44,6 +53,14 @@ Accepted login aliases are:
 - Claude: `claude`, `anthropic`, `claude-pro`, `claude-max`, `anthropic-oauth`, `max`.
 - GitHub Copilot: `copilot`, `github`, `github-copilot`, `gh`.
 - OpenRouter: `openrouter`, `openrouter-login`, `openrouter-oauth`.
+- xAI/Grok: `xai`, `grok`, `xai-oauth`.
+- Kimi Code: `kimi`, `kimi-code`, `kimi-coding`, `kimi-for-coding`.
+- Meta: `meta`, `muse`, `meta-oauth`.
+- ChatGPT plan API: `chatgpt-api`, `chatgpt-direct`, `openai-chatgpt`. This uses
+  public Responses with a separate grant; `chatgpt` still means legacy Codex.
+
+All four new flows use the existing account aliases, vault, TUI picker, and WebUI
+settings. See [OAuth sign-in](../oauth-signin.md) for endpoints and renewal behavior.
 
 ### Direct (flag-based)
 ```

@@ -28,10 +28,14 @@ export function applyProviderAuthOutcome(
   if (!provider.type || provider.type === providerId) provider.type = outcome.providerId;
   provider.family = outcome.family;
   if (!provider.baseUrl && outcome.baseUrl) provider.baseUrl = outcome.baseUrl;
-  if (outcome.models.length > 0) provider.models = [...outcome.models];
-  const keys = [...(provider.apiKeys ?? [])].filter(
-    (entry) => entry.label !== outcome.credential.label,
-  );
+  if (outcome.credential.authMethod === 'oauth' || outcome.models.length > 0)
+    provider.models = [...outcome.models];
+  const savedKeys = provider.apiKeys?.length
+    ? provider.apiKeys
+    : provider.apiKey
+      ? [{ label: 'default', apiKey: provider.apiKey, createdAt: new Date().toISOString() }]
+      : [];
+  const keys = [...savedKeys].filter((entry) => entry.label !== outcome.credential.label);
   keys.push({ ...outcome.credential });
   provider.apiKeys = keys;
   provider.activeKey = outcome.credential.label;

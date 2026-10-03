@@ -8,7 +8,7 @@ import { expectDefined } from '../utils/expect-defined.js';
  */
 
 import type { TextBlock } from '../types/blocks.js';
-import { WrongStackError, ERROR_CODES } from '../types/errors.js';
+import { ERROR_CODES, WrongStackError } from '../types/errors.js';
 import type { Logger } from '../types/logger.js';
 import type { SystemPromptContributor } from '../types/system-prompt-contributor.js';
 import type {
@@ -22,8 +22,17 @@ import type {
   OnErrorHook,
   ProviderRunnerFn,
 } from './extension-points.js';
+
+interface ExtensionRegistration {
+  extension: AgentExtension;
+  order: number;
+  previous?: ExtensionRegistration;
+  removed?: boolean;
+}
 export class ExtensionRegistry {
   private readonly extensions: AgentExtension[] = [];
+  private readonly registrations = new Map<string, ExtensionRegistration>();
+  private nextRegistrationOrder = 0;
   private readonly promptContributors: SystemPromptContributor[] = [];
   private log: Logger | undefined;
 
@@ -38,9 +47,14 @@ export class ExtensionRegistry {
    * block, before the mode and plan blocks.
    */
   registerSystemPromptContributor(c: SystemPromptContributor): () => void {
-    this.promptContributors.push(c);
+    // A distinct carrier keeps equal contributor functions independently owned.
+    const registered: SystemPromptContributor = Object.assign(
+      (ctx: Parameters<SystemPromptContributor>[0]) => c(ctx),
+      c,
+    );
+    this.promptContributors.push(registered);
     return () => {
-      const idx = this.promptContributors.indexOf(c);
+      const idx = this.promptContributors.indexOf(registered);
       if (idx >= 0) this.promptContributors.splice(idx, 1);
     };
   }
@@ -89,8 +103,34 @@ export class ExtensionRegistry {
         context: { extension: ext.name },
       });
     }
+    const registration: ExtensionRegistration = {
+      extension: ext,
+      order: this.nextRegistrationOrder++,
+    };
+    this.registrations.set(ext.name, registration);
     this.extensions.push(ext);
-    return () => this.unregister(ext.name);
+    return () => {
+      if (registration.removed) return;
+      registration.removed = true;
+      if (this.registrations.get(ext.name) !== registration) return;
+      const index = this.extensions.indexOf(ext);
+      if (index >= 0) this.extensions.splice(index, 1);
+      let previous = registration.previous;
+      while (previous?.removed) previous = previous.previous;
+      if (previous) {
+        this.registrations.set(ext.name, previous);
+        const position = this.extensions.findIndex(
+          (entry) => (this.registrations.get(entry.name)?.order ?? Infinity) > previous.order,
+        );
+        this.extensions.splice(
+          position < 0 ? this.extensions.length : position,
+          0,
+          previous.extension,
+        );
+      } else {
+        this.registrations.delete(ext.name);
+      }
+    };
   }
 
   /**
@@ -103,6 +143,15 @@ export class ExtensionRegistry {
     return this.register(ext);
   }
 
+  /** Temporarily replace an extension; cleanup restores only surviving previous registrations. */
+  registerOrReplaceScoped(ext: AgentExtension): () => void {
+    const previous = this.registrations.get(ext.name);
+    const dispose = this.registerOrReplace(ext);
+    const registration = this.registrations.get(ext.name)!;
+    if (previous) registration.previous = previous;
+    return dispose;
+  }
+
   /**
    * Unregister an extension by name. Returns true if found.
    */
@@ -110,6 +159,7 @@ export class ExtensionRegistry {
     const idx = this.extensions.findIndex((e) => e.name === name);
     if (idx === -1) return false;
     this.extensions.splice(idx, 1);
+    this.registrations.delete(name);
     return true;
   }
 
@@ -132,6 +182,7 @@ export class ExtensionRegistry {
    */
   clear(): void {
     this.extensions.length = 0;
+    this.registrations.clear();
     this.promptContributors.length = 0;
   }
 

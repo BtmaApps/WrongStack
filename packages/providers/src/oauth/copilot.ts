@@ -9,6 +9,7 @@
  */
 
 import { FetchError, ParseError, type ProviderApiKey } from '@wrongstack/core/types';
+import { fetchCopilotModels } from '../github-copilot-models.js';
 import { copilotBaseUrlFromToken, refreshCopilotToken } from '../github-copilot-token.js';
 import type { BeginOAuthDeps, OAuthLoginOutcome, OAuthSession } from './types.js';
 
@@ -21,9 +22,7 @@ const COPILOT_HEADERS: Record<string, string> = {
   'Editor-Plugin-Version': 'copilot-chat/0.35.0',
   'Copilot-Integration-Id': 'vscode-chat',
 };
-const COPILOT_API_VERSION = '2026-06-01';
 export const COPILOT_PROVIDER_ID = 'github-copilot';
-const DEFAULT_COPILOT_MODELS = ['gpt-4o'];
 
 interface DeviceCode {
   device_code: string;
@@ -164,60 +163,7 @@ async function pollForGitHubToken(device: DeviceCode, signal: AbortSignal): Prom
   });
 }
 
-interface CopilotModelEntry {
-  id?: unknown;
-  is_chat_default?: unknown;
-  is_chat_fallback?: unknown;
-  vendor?: unknown;
-  supported_endpoints?: unknown;
-  policy?: { state?: unknown } | undefined;
-  capabilities?: { type?: unknown; supports?: { tool_calls?: unknown } | undefined } | undefined;
-}
-
-/** Whether a Copilot `/models` entry is a chat model drivable over this wire. */
-export function isUsableCopilotChatModel(item: CopilotModelEntry): boolean {
-  if (typeof item.id !== 'string' || item.id.length === 0) return false;
-  const cap = item.capabilities;
-  if (cap?.type !== 'chat') return false;
-  if (cap.supports?.tool_calls !== true) return false;
-  const eps = item.supported_endpoints;
-  if (Array.isArray(eps) && !eps.includes('/chat/completions')) return false;
-  if (item.policy?.state === 'disabled') return false;
-  if (item.vendor === 'Experimental') return false;
-  return true;
-}
-
-function copilotModelRank(item: CopilotModelEntry): number {
-  if (item.is_chat_default === true) return 0;
-  if (item.is_chat_fallback === true) return 1;
-  return 2;
-}
-
-async function fetchCopilotModels(copilotToken: string, signal?: AbortSignal): Promise<string[]> {
-  try {
-    const base = copilotBaseUrlFromToken(copilotToken);
-    const res = await fetch(`${base}/models`, {
-      headers: {
-        accept: 'application/json',
-        authorization: `Bearer ${copilotToken}`,
-        'X-GitHub-Api-Version': COPILOT_API_VERSION,
-        ...COPILOT_HEADERS,
-      },
-      signal: signal
-        ? AbortSignal.any([signal, AbortSignal.timeout(8_000)])
-        : AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { data?: CopilotModelEntry[] } | null;
-    const data = json?.data;
-    if (!Array.isArray(data)) return [];
-    const usable = data.filter(isUsableCopilotChatModel);
-    usable.sort((a, b) => copilotModelRank(a) - copilotModelRank(b));
-    return usable.map((m) => m.id as string);
-  } catch {
-    return [];
-  }
-}
+export { isUsableCopilotChatModel } from '../github-copilot-models.js';
 
 export async function beginCopilotLogin(
   _deps: BeginOAuthDeps | undefined,
@@ -253,7 +199,7 @@ export async function beginCopilotLogin(
         }
         const copilot = await refreshCopilotToken(githubToken, ac.signal);
         const fetched = await fetchCopilotModels(copilot.token, ac.signal);
-        const models = fetched.length > 0 ? fetched : DEFAULT_COPILOT_MODELS;
+        const models = fetched?.map((model) => model.id) ?? [];
         const apiKey: ProviderApiKey = {
           label: 'oauth-default',
           apiKey: copilot.token,

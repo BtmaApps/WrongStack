@@ -154,6 +154,23 @@ Use `onEvent` instead of `events.on(...)` when you want the listener to
 disappear with the plugin. Use raw `events.on` only when you need to
 explicitly unsubscribe yourself in `teardown`.
 
+Registrations made through `api.tools`, `api.providers`, `api.providerAuth`,
+`api.slashCommands`, `api.extensions`, `api.registerSystemPromptContributor`, and
+`api.onConfigChange` are owned by that plugin lifetime. Shutdown and setup
+rollback drain them even if `teardown` throws. Cleanup acts on exact registrations,
+preserves newer independent replacements, and restores surviving earlier scoped
+provider/auth/command/extension overrides. A tool wrapper is recomposed against
+the surviving underlying tool when an inner wrapper unloads, so wrappers must be
+pure decorators; start timers and external work in `setup`, not in the wrapper
+factory. A failed recomposition removes the tool rather than retaining unloaded
+code. The host rejects registration after unload and discards prompt contributions
+that finish after unload.
+
+Direct writes through raw registries, `container`, or `events` keep their existing
+ownership contracts. External resources still require plugin-owned cancellation
+and teardown. This lifecycle ownership does not grant additional tool or provider
+mutation permissions.
+
 ### `api.llm` — LLM access for plugins
 
 Plugins can call the LLM without ever touching API keys. Production CLI

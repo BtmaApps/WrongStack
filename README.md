@@ -136,9 +136,9 @@ See the complete [release notes](CHANGELOG.md).
 - 🏠 **Local & custom endpoints.** One-command presets for **Ollama / vLLM / LM
   Studio**, plus any custom `baseUrl` or **OmniRoute**-style gateway; run fully
   on localhost.
-- 🔑 **Sign in with a subscription.** Authenticate with a **ChatGPT (Codex)**,
-  **Claude Pro/Max** (for extra usage credits), or **GitHub Copilot** account
-  over OAuth, *alongside* API keys.
+- 🔑 **Sign in with an account.** ChatGPT plan API and legacy Codex, Claude,
+  GitHub Copilot, xAI/Grok, Kimi Code, Meta, OpenRouter, and Antigravity auth
+  run alongside API keys. Access and billing follow the selected provider's grant.
 - 🔀 **Per-role model routing.** Assign different providers/models per role or
   phase, with automatic **fallback chains** when a model is overloaded.
 - 🔐 **Locked down where it counts.** Encrypted secrets and a permission policy
@@ -370,6 +370,10 @@ ToolFlow sends **120 bytes in one result block** (over 99.9% less result text).
 Both use **two provider requests**, including the final answer. Sequential direct
 calls use 51; discovering ToolFlow first adds a request. These are fixture result
 bytes and request counts, not live-model speed, token, or billing measurements.
+Use `tools.data(name, input)` for validated structured results from tools with an
+output schema, including built-in read, grep and glob. Existing text calls remain
+available; file content reads expose `raw_text` with truncation metadata.
+
 Use ToolFlow when you can filter or compute a small answer inside the script;
 use direct calls for simple operations and small independent batches. Returning
 raw data still relies on the executor's ordinary preview/artifact handling.
@@ -529,9 +533,13 @@ single-purpose capabilities, each auditable and individually disableable. See
 ### Providers & subscription sign-in
 
 Providers span several API-key wire families, plus OAuth sign-in with ChatGPT
-(Codex), Claude Pro/Max (for extra usage credits), and GitHub Copilot accounts —
-usable alongside API keys. Browse with `wstack models`. See
+plan API, legacy Codex, Claude, Copilot, xAI/Grok, Kimi Code, Meta, OpenRouter,
+and Antigravity. Browse with `wstack models`. See
 [OAuth sign-in](docs/oauth-signin.md).
+
+Account model choices come from the provider's live account catalog and an
+account-specific cache. Empty or unavailable catalogs never create hardcoded
+model choices; generic catalogs only enrich IDs already known to the account.
 
 **Bring your own endpoint.** Beyond the catalog, you can point WrongStack at *any*
 OpenAI-compatible endpoint: **local models** via one-command presets for

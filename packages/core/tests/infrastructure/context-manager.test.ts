@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   contextManagerTool,
   createContextManagerTool,
 } from '../../src/infrastructure/context-manager.js';
+import { stampCompactionReport } from '../../src/utils/compaction-result-state.js';
 
 const makeCtx = (messages: any[] = []) =>
   ({
@@ -19,6 +20,34 @@ const makeCtx = (messages: any[] = []) =>
   }) as any;
 
 describe('createContextManagerTool', () => {
+  it('does not clear file tracking for an obsolete compaction result', async () => {
+    const ctx = makeCtx([{ role: 'user', content: 'context '.repeat(20) }]);
+    ctx.session = { id: 'original' };
+    ctx.clearFileTracking = vi.fn();
+    const tool = createContextManagerTool({
+      minCompactThreshold: 1,
+      compactor: {
+        async compact(context) {
+          const report = stampCompactionReport(
+            {
+              before: 100,
+              after: 20,
+              fullRequestTokensBefore: 100,
+              fullRequestTokensAfter: 20,
+              reductions: [{ phase: 'summary', saved: 80 }],
+            },
+            context as never,
+          );
+          ctx.session = { id: 'replacement' };
+          return report;
+        },
+      },
+    });
+    await expect(
+      tool.execute({ action: 'compact' }, ctx, { signal: new AbortController().signal }),
+    ).rejects.toThrow('discarded');
+    expect(ctx.clearFileTracking).not.toHaveBeenCalled();
+  });
   it('has correct metadata', () => {
     const tool = createContextManagerTool();
     expect(tool.name).toBe('context_manager');

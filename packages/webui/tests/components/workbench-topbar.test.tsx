@@ -343,12 +343,16 @@ describe('Office shortcut and visible runtime version', () => {
   });
 
   it('retains the update hint and does not invent a version before the backend reports it', () => {
-    useSessionStore.setState({ latestVersion: '1.0.32', updateAvailable: true });
+    useSessionStore.setState({
+      appVersion: '2.3.4',
+      latestVersion: '2.3.5',
+      updateAvailable: true,
+    });
     const view = renderTopbar();
     expect(
       screen
         .getAllByTestId('topbar-version')
-        .every((badge) => badge.getAttribute('title')?.includes('v1.0.31 → v1.0.32')),
+        .every((badge) => badge.getAttribute('title')?.includes('v2.3.4 → v2.3.5')),
     ).toBe(true);
     view.unmount();
     useSessionStore.setState({ appVersion: '', latestVersion: '', updateAvailable: false });

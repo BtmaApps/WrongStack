@@ -1,4 +1,4 @@
-import { CODEX_MODELS, isKeylessLocalProvider } from '@wrongstack/core/models';
+import { isKeylessLocalProvider } from '@wrongstack/core/models';
 import type { ProviderFactory } from '@wrongstack/core/registry';
 import type {
   Logger,
@@ -28,6 +28,7 @@ import {
   isCompatibilityQuirks,
   OpenAICompatibleProvider,
 } from './openai-compatible.js';
+import { OpenAIResponsesProvider } from './openai-responses.js';
 import { OpenCodeZenProvider } from './opencode.js';
 import { OpenCodeGoProvider } from './opencode-go.js';
 import { lmstudioWireFormat, ollamaWireFormat, vllmWireFormat } from './presets/local-llm.js';
@@ -36,6 +37,7 @@ import {
   projectCompatibleProviderPresets,
   resolveProviderDefinition,
 } from './provider-definitions.js';
+import { SUBSCRIPTION_ENDPOINTS, SubscriptionOAuthProvider } from './subscription-oauth.js';
 import { createWireFormatFactory } from './wire-format.js';
 import { isZaiHost, withZaiAccountPlane, ZaiMessagesProvider, zaiWireContract } from './zai.js';
 
@@ -246,6 +248,10 @@ export {
   setStreamTimeoutDefaults,
   streamTimeoutDefaults,
 } from './stream-timeouts.js';
+export {
+  createSubscriptionRefreshTransaction,
+  setSubscriptionRefreshTransaction,
+} from './subscription-refresh-store.js';
 export { contentFromAnthropic } from './tool-format/from-anthropic.js';
 export { contentFromOpenAI, type OpenAIChoice } from './tool-format/from-openai.js';
 export { toolsToAnthropic } from './tool-format/to-anthropic.js';
@@ -319,6 +325,10 @@ export interface OAuthRefreshedTokens {
   expiresAt: number;
   /** ChatGPT account id (codex only); undefined for other OAuth families. */
   accountId?: string | undefined;
+  scope?: string | undefined;
+  idToken?: string | undefined;
+  oauthClientId?: string | undefined;
+  oauthSubject?: string | undefined;
 }
 
 /**
@@ -600,14 +610,18 @@ function makeProvider(
   factoryType: string = p.id,
   instanceId: string = p.id,
 ): Provider {
-  return attachAccountQuotaReporting(buildProvider(p, cfg, factoryType, instanceId), {
+  const provider = buildProvider(p, cfg, factoryType, instanceId);
+  return attachAccountQuotaReporting(provider, {
     providerId: instanceId,
     type: factoryType,
     baseUrl: cfg.baseUrl ?? p.apiBase,
-    apiKey:
-      resolveActiveKey(cfg) ??
-      readFromEnv(Array.isArray(cfg.envVars) ? cfg.envVars : p.envVars) ??
-      '',
+    get apiKey() {
+      return provider instanceof SubscriptionOAuthProvider
+        ? provider.accountQuotaToken
+        : (resolveActiveKey(cfg) ??
+            readFromEnv(Array.isArray(cfg.envVars) ? cfg.envVars : p.envVars) ??
+            '');
+    },
     managementToken: cfg.managementToken,
     quotaEndpoint: cfg.quotaEndpoint,
   });
@@ -635,6 +649,22 @@ function buildProvider(
   // envVars falls back to the preset.
   const envVars = Array.isArray(cfg.envVars) ? cfg.envVars : p.envVars;
   const explicitApiKey = resolveActiveKey(cfg);
+  const account = resolveActiveKeyEntry(cfg);
+  if (account?.oauthStrategyId && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, account.oauthStrategyId)) {
+    return new SubscriptionOAuthProvider({
+      id,
+      credential: account,
+      baseUrl: cfg.baseUrl,
+      headers: cfg.headers,
+      ...oauthPersistenceCallbacks(id, cfg, account.apiKey),
+      onModels: (models, credential) =>
+        _modelsPersist?.(id, models, {
+          label: credential.label,
+          accessToken: credential.apiKey,
+          refreshToken: credential.refreshToken,
+        }),
+    });
+  }
   const catalogAware = createCatalogAwareProvider({
     provider: p,
     instanceId: id,
@@ -664,6 +694,14 @@ function buildProvider(
     });
   }
   const baseUrl = cfg.baseUrl ?? p.apiBase;
+  if (factoryType === 'meta' && apiKey) {
+    return new OpenAIResponsesProvider({
+      id,
+      apiKey,
+      baseUrl: baseUrl ?? 'https://api.meta.ai/v1',
+      headers: cfg.headers,
+    });
+  }
 
   if (!family || family === 'unsupported') {
     if (family === 'unsupported') {
@@ -842,7 +880,7 @@ function buildProvider(
           githubToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
-        onRefresh: oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)).onRefresh,
+        ...oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)),
       });
     }
     case 'google-antigravity': {
@@ -910,21 +948,10 @@ export function makeProviderFromConfig(id: string, cfg: ProviderConfig): Provide
   return makeProvider(synthetic, cfg, cfg.type ?? id);
 }
 
-/**
- * Resolve the model list for a config-only Provider. The saved `cfg.models`
- * allowlist wins when non-empty, but an empty/absent allowlist must NOT yield
- * an empty picker for OAuth / subscription families whose canonical model list
- * is known offline — otherwise deleting the models from config (or a fresh
- * login that hasn't persisted an allowlist yet) leaves the provider showing
- * zero models. For `openai-codex` (ChatGPT sign-in) we fall back to the
- * canonical `CODEX_MODELS` catalog so the provider is always populated.
- */
+/** Saved account snapshots seed config-only providers; an absent list stays unknown. */
 function seedConfigModels(cfg: ProviderConfig): Array<{ id: string; name: string }> {
   const saved = cfg.models ?? [];
   if (saved.length > 0) return saved.map((m) => ({ id: m, name: m }));
-  if (cfg.family === 'openai-codex' || cfg.type === 'openai-codex') {
-    return CODEX_MODELS.map((m) => ({ id: m.id, name: m.name }));
-  }
   return [];
 }
 
@@ -959,10 +986,14 @@ function validateQuirks(providerId: string, quirks: unknown): CompatibilityQuirk
 }
 
 export {
+  inspectProviderPreflight,
+  type ProviderPreflight,
+  type ProviderPreflightCheck,
+} from './preflight.js';
+export {
   authProfileAliasError,
   clearStaleProviderDefaults,
   ProviderConfigSnapshots,
   removeProviderFallbackReferences,
   validateProviderConfigShape,
 } from './provider-config-state.js';
-export { inspectProviderPreflight, type ProviderPreflight, type ProviderPreflightCheck } from './preflight.js';

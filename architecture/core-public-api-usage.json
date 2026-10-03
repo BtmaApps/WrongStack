@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 363,
-      "typeOnly": 286,
+      "files": 364,
+      "typeOnly": 287,
       "runtimeOrMixed": 98
     },
     "@wrongstack/core/agent-catalog": {
@@ -49,9 +49,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
-      "files": 75,
+      "files": 79,
       "typeOnly": 19,
-      "runtimeOrMixed": 72
+      "runtimeOrMixed": 76
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -94,9 +94,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/models": {
-      "files": 39,
+      "files": 38,
       "typeOnly": 10,
-      "runtimeOrMixed": 30
+      "runtimeOrMixed": 29
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 182,
+      "files": 185,
       "typeOnly": 27,
-      "runtimeOrMixed": 158
+      "runtimeOrMixed": 161
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -184,9 +184,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1280,
-      "typeOnly": 1132,
-      "runtimeOrMixed": 374
+      "files": 1290,
+      "typeOnly": 1141,
+      "runtimeOrMixed": 377
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -224,9 +224,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 707,
+      "files": 709,
       "typeOnly": 67,
-      "runtimeOrMixed": 672
+      "runtimeOrMixed": 674
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -264,9 +264,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
-      "files": 18,
+      "files": 20,
       "typeOnly": 3,
-      "runtimeOrMixed": 18
+      "runtimeOrMixed": 20
     },
     "@wrongstack/core/worktree": {
       "files": 16,
@@ -2437,6 +2437,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/setup-events.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -4399,6 +4405,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/slash-commands/compact.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/slash-commands/goal-refiner.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -4556,6 +4568,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/tests/slash-commands.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/tests/slash-compact.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -4747,6 +4765,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/src/server/session-context-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -4766,6 +4790,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/webui-server/tests/backend-services.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8425,12 +8455,6 @@
     },
     {
       "specifier": "@wrongstack/core/models",
-      "file": "packages/providers/src/oauth/codex-models.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/models",
       "file": "packages/providers/tests/capabilities.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10772,6 +10796,24 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/providers/src/openai-codex-stream.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/providers/tests/fixtures/subscription-refresh-worker.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/providers/tests/subscription-oauth-runtime.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/providers/tests/subscription-refresh-processes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16387,6 +16429,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/oauth/chatgpt-direct.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/oauth/chatgpt.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -16417,7 +16465,25 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/oauth/device-code.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/oauth/http.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/oauth/openrouter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/oauth/subscription-flows.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16603,6 +16669,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/subscription-oauth.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/subscription-refresh-store.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/thinking-signer.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -16718,6 +16796,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/catalog-routed.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/chatgpt-direct-auth.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16994,6 +17078,24 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/streaming.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/subscription-device-auth.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/subscription-oauth-runtime.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/subscription-refresh-processes.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -23083,6 +23185,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/providers/src/oauth/chatgpt-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/providers/src/openai-codex-stream.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23168,6 +23276,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/providers/tests/factories.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/providers/tests/fixtures/subscription-refresh-worker.mjs",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -25273,7 +25387,19 @@
     },
     {
       "specifier": "@wrongstack/core/wiring/proxy-rewrite",
+      "file": "packages/providers/src/subscription-oauth.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/wiring/proxy-rewrite",
       "file": "packages/providers/tests/proxy-upstream.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/wiring/proxy-rewrite",
+      "file": "packages/providers/tests/subscription-oauth-runtime.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

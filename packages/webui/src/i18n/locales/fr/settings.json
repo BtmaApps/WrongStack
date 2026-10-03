@@ -360,6 +360,8 @@
     "newAccount": "Nouveau compte",
     "aliasPlaceholder": "ex. {{default}}",
     "guidance": {
+      "meta": "Meta détermine les conditions d’accès et de facturation de la clé Model API créée ; la connexion seule ne garantit pas l’accès à un abonnement.",
+      "chatgpt-api": "Autorisez l’utilisation du forfait ChatGPT dans le navigateur. Les modèles et limites dépendent du compte ChatGPT sélectionné.",
       "claude": "Cette connexion sert à un usage complémentaire : elle se connecte avec votre compte Claude et enregistre l'identifiant comme son propre fournisseur anthropic-oauth, en plus des fournisseurs que vous utilisez déjà.\n\nPour consommer plutôt votre abonnement Claude, lancez OmniRoute comme proxy, connectez-y votre compte Claude, puis ajoutez OmniRoute comme fournisseur ici."
     }
   },

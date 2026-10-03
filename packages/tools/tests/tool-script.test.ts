@@ -2,14 +2,14 @@
  * `tool_script`: a JavaScript program composing tool calls, run in QuickJS
  * with no access to anything but the agent's tool gate.
  */
-import type { NestedToolCaller, Tool } from '@wrongstack/core/types';
+import type { NestedToolCaller, NestedToolCallResult, Tool } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { toolScriptTool } from '../src/tool-script.js';
 import { toolFlowMetrics } from '../src/toolflow-presentation.js';
 
 type Call = Parameters<NestedToolCaller>[0];
 
-function harness(answer: (call: Call) => Promise<{ content: string; isError: boolean }>) {
+function harness(answer: (call: Call) => Promise<NestedToolCallResult>) {
   const calls: Call[] = [];
   const ctx = {
     tools: [{ name: 'read' }, { name: 'grep' }, { name: 'codebase-search' }] as Tool[],
@@ -34,6 +34,35 @@ const echo = async (call: Call) => ({
 });
 
 describe('tool_script', () => {
+  it('returns structured values only through the explicit data helper and keeps text calls compatible', async () => {
+    const h = harness(async () => ({
+      content: 'formatted preview',
+      isError: false,
+      data: { files: ['a.ts'], truncated: false },
+    }));
+    h.ctx.catalogTools = [
+      { ...h.ctx.tools[0]!, name: 'data', outputSchema: { type: 'object' } } as Tool,
+    ];
+    const output = await h.run(`
+      if (!tools.describe('data').outputSchema) throw new Error('missing schema');
+      const data = await tools.data('data', {});
+      const text = await tools.call('data', {});
+      return { first: data.files[0], text };
+    `);
+    expect(output).toContain('"first": "a.ts"');
+    expect(output).toContain('"text": "formatted preview"');
+    expect(h.calls[0]?.resultFormat).toBe('data');
+    expect(h.calls[1]?.resultFormat).toBeUndefined();
+  });
+
+  it('transfers scalar null without confusing it with missing structured data', async () => {
+    const h = harness(async () => ({ content: 'null', isError: false, data: null }));
+    expect(await h.run('return (await tools.data("read", {})) === null;')).toContain('true');
+    const legacy = harness(echo);
+    await expect(legacy.run('return await tools.data("read", {});')).rejects.toThrow(
+      'did not supply structured output',
+    );
+  });
   it('discovers deferred schemas inside the VM and calls them through the gate', async () => {
     const h = harness(echo);
     h.ctx.catalogTools = [

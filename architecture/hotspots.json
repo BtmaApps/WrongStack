@@ -99,8 +99,8 @@
       "relativeImports": 20
     },
     "packages/core/src/execution/eternal-autonomy.ts": {
-      "lines": 863,
-      "relativeImports": 10
+      "lines": 865,
+      "relativeImports": 11
     },
     "packages/core/src/execution/prompt-enhancer.ts": {
       "lines": 818,
@@ -203,8 +203,8 @@
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
-      "lines": 969,
-      "relativeImports": 72
+      "lines": 1000,
+      "relativeImports": 75
     },
     "packages/providers/src/openai-codex.ts": {
       "lines": 936,

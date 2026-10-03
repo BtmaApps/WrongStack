@@ -15,9 +15,10 @@
  * base URL from each new token. The API-key `openai` family is untouched.
  */
 
-import type { Capabilities, Request } from '@wrongstack/core/types';
+import type { Capabilities, ProviderContextLimit, Request } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { capabilitiesForFamily } from './family-capabilities.js';
+import { fetchCopilotModels } from './github-copilot-models.js';
 import { reportCopilotQuota } from './github-copilot-quota.js';
 import {
   COPILOT_HEADERS,
@@ -25,6 +26,7 @@ import {
   copilotBaseUrlFromToken,
   refreshCopilotToken,
 } from './github-copilot-token.js';
+import type { ProviderLiveModel } from './index.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import type { OpenAIStreamState } from './presets/openai.js';
@@ -59,6 +61,7 @@ export interface GitHubCopilotProviderOptions {
   capabilities?: Partial<Capabilities> | undefined;
   streamOpts?: WireAdapterStreamOptions | undefined;
   onRefresh?: ((creds: { accessToken: string; expiresAt: number }) => void) | undefined;
+  onModels?: ((models: ProviderLiveModel[]) => void) | undefined;
   refreshFn?:
     | ((githubToken: string, signal?: AbortSignal) => Promise<CopilotTokenResult>)
     | undefined;
@@ -71,6 +74,10 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
   private copilotToken: string;
   private readonly githubToken: string | undefined;
   private apiBase: string;
+  private models: ProviderLiveModel[] | undefined;
+  private modelsRetryAt = 0;
+  private modelsRefresh: Promise<void> | undefined;
+  private readonly onModels: GitHubCopilotProviderOptions['onModels'];
   /** Guards against two overlapping background quota reads after a retry. */
   private quotaReportInFlight = false;
   private readonly refreshFn: (
@@ -95,6 +102,7 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
     this.copilotToken = opts.credentials.copilotToken;
     this.githubToken = opts.credentials.githubToken;
     this.apiBase = apiBase;
+    this.onModels = opts.onModels;
     this.refreshFn = opts.refreshFn ?? refreshCopilotToken;
     this.refreshCoordinator = new OAuthRefreshCoordinator<
       CopilotTokenResult,
@@ -200,6 +208,30 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
 
   protected override buildUrl(_req: Request): string {
     return `${this.apiBase.replace(/\/+$/, '')}/chat/completions`;
+  }
+
+  async refreshContextLimit(
+    model: string,
+    opts: { signal: AbortSignal },
+  ): Promise<ProviderContextLimit | undefined> {
+    await this.ensureFreshToken(opts.signal);
+    if (Date.now() >= this.modelsRetryAt) {
+      this.modelsRefresh ??= (async () => {
+        const token = this.copilotToken;
+        const models = await fetchCopilotModels(token, opts.signal, this.fetchImpl);
+        if (token !== this.copilotToken) return;
+        this.modelsRetryAt = Date.now() + (models === undefined ? 5000 : 5 * 60_000);
+        if (models !== undefined) {
+          this.models = models;
+          this.onModels?.(models);
+        }
+      })().finally(() => {
+        this.modelsRefresh = undefined;
+      });
+      await this.modelsRefresh;
+    }
+    const match = this.models?.find((entry) => entry.id === model);
+    return match?.maxContext ? { maxContext: match.maxContext, source: 'provider' } : undefined;
   }
 
   /**

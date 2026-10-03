@@ -32,17 +32,22 @@ export interface SlashCommandRegistryOptions {
   readonly onNotice?: SlashCommandNotice;
 }
 
+interface CommandRegistration {
+  cmd: SlashCommand;
+  owner: string;
+  official: boolean;
+}
+
 export class SlashCommandRegistry {
+  private readonly scopedPrevious = new WeakMap<object, CommandRegistration>();
+  private readonly removedRegistrations = new WeakSet<object>();
   /**
    * Every key maps to the command it routes to. A key is a *built-in alias*
    * when its owner is `core` and it is not that command's own `name` — that
    * relation is what `isCoreOwnedAlias` re-derives, so no extra flag is
    * stored for it.
    */
-  private readonly cmds = new Map<
-    string,
-    { cmd: SlashCommand; owner: string; official: boolean }
-  >();
+  private readonly cmds = new Map<string, CommandRegistration>();
 
   /** Host sink for refusal notices; undefined keeps stderr as the surface. */
   private readonly onNotice: SlashCommandNotice | undefined;
@@ -167,6 +172,37 @@ export class SlashCommandRegistry {
       // Every plugin — official or external — is reachable under its namespace.
       this.registerNamespaced(cmd, owner, official);
     }
+  }
+
+  /** Undo only this registration's exact keys, restoring surviving earlier overrides. */
+  registerScoped(
+    cmd: SlashCommand,
+    owner = 'core',
+    opts?: { official?: boolean | undefined; bare?: boolean | undefined },
+  ): () => void {
+    const before = new Map(this.cmds);
+    this.register(cmd, owner, opts);
+    const written = [...this.cmds]
+      .filter(([key, entry]) => before.get(key) !== entry)
+      .map(([key, entry]) => ({ key, entry, previous: before.get(key) }));
+    for (const { entry, previous } of written) {
+      if (previous) this.scopedPrevious.set(entry, previous);
+    }
+    let disposed = false;
+    return () => {
+      if (disposed) return;
+      disposed = true;
+      for (const { key, entry, previous: prior } of written) {
+        this.removedRegistrations.add(entry);
+        if (this.cmds.get(key) !== entry) continue;
+        let previous = prior;
+        while (previous && this.removedRegistrations.has(previous)) {
+          previous = this.scopedPrevious.get(previous);
+        }
+        if (previous) this.cmds.set(key, previous);
+        else this.cmds.delete(key);
+      }
+    };
   }
 
   /**

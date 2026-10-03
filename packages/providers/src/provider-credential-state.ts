@@ -45,6 +45,10 @@ type RefreshedCredential = {
   refreshToken?: string | undefined;
   expiresAt: number;
   accountId?: string | undefined;
+  scope?: string | undefined;
+  idToken?: string | undefined;
+  oauthClientId?: string | undefined;
+  oauthSubject?: string | undefined;
 };
 
 function credentialKeys(config: ProviderConfig): ProviderApiKey[] {
@@ -82,6 +86,10 @@ export function applyProviderOAuthRefresh(
   if (creds.refreshToken !== undefined) key.refreshToken = creds.refreshToken;
   key.expiresAt = new Date(creds.expiresAt).toISOString();
   if (creds.accountId) key.accountId = creds.accountId;
+  if (creds.scope !== undefined) key.scope = creds.scope;
+  if (creds.idToken !== undefined) key.idToken = creds.idToken;
+  if (creds.oauthClientId !== undefined) key.oauthClientId = creds.oauthClientId;
+  if (creds.oauthSubject !== undefined) key.oauthSubject = creds.oauthSubject;
   config.apiKeys = keys;
   delete config.apiKey;
   if (!keys.some((key) => key.label === config.activeKey)) config.activeKey = keys[0]!.label;

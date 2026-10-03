@@ -610,6 +610,7 @@
         "export { buildGoalPreamble } from './goal-preamble.js';",
         "export { buildRecoveryStrategies, DEFAULT_RECOVERY_STRATEGIES, DefaultErrorHandler, type RecoveryStrategy, } from './error-handler.js';",
         "export { buildRefinerContextSections, DEFAULT_REFINER_RETRY_FEEDBACK, type EnhanceFailureKind, enhanceUserPrompt, gatedEnhancerReasoning, isValidEnglishRefinement, normalizedEqual, parseBilingualEnhancement, recentTextTurns, shouldEnhance, } from './prompt-enhancer.js';",
+        "export { compactionReportStillCurrent } from './compaction-result-state.js';",
         "export { createSystemOneBrainTier, probeSystemOneBrain, type SystemOneBrainProbe, type SystemOneBrainTier, type SystemOneBrainTierOptions, systemOneBrainSettles, } from './brain-system-one.js';",
         "export { installSubagentAutoCompaction } from './subagent-compaction.js';",
         "export { nextEnhanceTimeout, resolveConfiguredRefinerRef, resolveEnhanceFallbackRef, } from './enhance-recovery.js';",
@@ -1537,7 +1538,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 64,
-      "sourceLines": 15185
+      "sourceLines": 15200
     },
     {
       "directory": "design",
@@ -1551,14 +1552,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 72,
-      "sourceLines": 21308
+      "sourceLines": 21330
     },
     {
       "directory": "extension",
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin/extension contract",
       "sourceFiles": 3,
-      "sourceLines": 445
+      "sourceLines": 496
     },
     {
       "directory": "goal",
@@ -1586,7 +1587,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 2061
+      "sourceLines": 2067
     },
     {
       "directory": "kernel",
@@ -1600,7 +1601,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 14,
-      "sourceLines": 3989
+      "sourceLines": 3844
     },
     {
       "directory": "notifications",
@@ -1628,7 +1629,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
       "sourceFiles": 8,
-      "sourceLines": 2645
+      "sourceLines": 2724
     },
     {
       "directory": "plugins",
@@ -1656,7 +1657,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
       "sourceFiles": 5,
-      "sourceLines": 1292
+      "sourceLines": 1432
     },
     {
       "directory": "replay",
@@ -1719,7 +1720,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15769
+      "sourceLines": 15794
     },
     {
       "directory": "typesafe",
@@ -1732,8 +1733,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 78,
-      "sourceLines": 13588
+      "sourceFiles": 80,
+      "sourceLines": 13728
     },
     {
       "directory": "vcs",

@@ -61,6 +61,8 @@ export interface ProviderAuthSession {
 /** Host services intentionally exposed to authentication strategies. */
 export interface ProviderAuthBeginDeps {
   modelsRegistry?: ModelsRegistry | undefined;
+  /** Selected account for explicit reauthorization; a new account omits this. */
+  credential?: ProviderApiKey | undefined;
 }
 
 /** Executable login strategy. Credential persistence remains a host responsibility. */

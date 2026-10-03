@@ -49,7 +49,7 @@ interface ProviderMeta {
 }
 
 function providerIcon(id: string) {
-  if (id === 'chatgpt') return <Sparkles className="h-5 w-5" />;
+  if (id === 'chatgpt' || id === 'chatgpt-api') return <Sparkles className="h-5 w-5" />;
   if (id === 'claude') return <Bot className="h-5 w-5" />;
   if (id === 'copilot') return <Code2 className="h-5 w-5" />;
   return <User className="h-5 w-5" />;
@@ -209,10 +209,6 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
-        <p className="text-xs leading-5 text-warning">{t('settings:oauth.termsWarning')}</p>
-      </div>
-
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
         {providers.map((meta) => {
           const st = states[meta.id] ?? { phase: 'idle' };
@@ -269,6 +265,11 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
                   strategy registry's English `notes` otherwise. Wrapped, so it
                   may be several sentences. Shown above the flow detail so it is
                   read before the user starts a sign-in, not after. */}
+              {['chatgpt', 'claude', 'copilot'].includes(meta.id) && (
+                <p className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3 text-xs leading-5 text-warning">
+                  {t('settings:oauth.termsWarning')}
+                </p>
+              )}
               {guidanceParagraphs.length > 0 && (
                 <div className="mt-3 space-y-1.5 border-t pt-3 text-xs leading-5 text-muted-foreground">
                   {guidanceParagraphs.map((note) => (

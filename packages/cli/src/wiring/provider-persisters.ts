@@ -2,10 +2,12 @@ import type { Config, Logger, SecretVault } from '@wrongstack/core/types';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import {
   applyProviderOAuthRefresh,
+  createSubscriptionRefreshTransaction,
   matchesActiveProviderCredential,
   setAccountQuotaReporting,
   setOAuthTokenPersister,
   setProviderModelPersister,
+  setSubscriptionRefreshTransaction,
 } from '@wrongstack/providers';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import { mutateConfigProviders } from '../provider-config-utils.js';
@@ -38,6 +40,11 @@ export function installProviderPersisters(args: {
   // own (Kimi Code, OpenCode Go, OpenRouter). Host-only: a library consumer
   // never makes an account call it did not ask for.
   setAccountQuotaReporting(true);
+  setSubscriptionRefreshTransaction(
+    createSubscriptionRefreshTransaction((mutator) =>
+      mutateConfigProviders(profileConfigPath, args.vault, mutator),
+    ),
+  );
 
   setOAuthTokenPersister((providerId, creds, source) => {
     void mutateConfigProviders(profileConfigPath, args.vault, (all) => {
@@ -56,7 +63,6 @@ export function installProviderPersisters(args: {
   // rolls out to the account. The provider publishes it off the catalog probe
   // it already makes at request boundaries, so this costs no extra request.
   setProviderModelPersister((providerId, models, source) => {
-    if (models.length === 0) return;
     void mutateConfigProviders(profileConfigPath, args.vault, (all) => {
       const p = all[providerId];
       if (!p) return;

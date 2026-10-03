@@ -19,6 +19,7 @@ import { recordToolOutputEvidence } from '../utils/context-evidence.js';
 import { toErrorMessage } from '../utils/error.js';
 import { capSageLines, splitSageOutputBlock } from '../utils/sage-output-block.js';
 import { sizeSignals, truncateForEvent } from '../utils/tool-output-serializer.js';
+import { programmaticOutput } from '../utils/tool-programmatic-output.js';
 import type { AgentInternals } from './agent-internals.js';
 import { confirmObserverCount } from './confirm-observers.js';
 import { resolveEventSessionId } from './context.js';
@@ -64,7 +65,7 @@ export interface AgentToolHandler {
   }>;
   executeSingleWithDecision(
     tool: Tool,
-    use: { id: string; name: string; input: unknown },
+    use: { id: string; name: string; input: unknown; _resultFormat?: 'data' | undefined },
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ result: ToolResultBlock; durationMs: number }>;
 }
@@ -72,7 +73,7 @@ export interface AgentToolHandler {
 export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
   async function executeSingleWithDecision(
     tool: Tool,
-    use: { id: string; name: string; input: unknown },
+    use: { id: string; name: string; input: unknown; _resultFormat?: 'data' | undefined },
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ result: ToolResultBlock; durationMs: number }> {
     const start = Date.now();
@@ -89,6 +90,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
           id: use.id,
           name: use.name,
           input: use.input as Record<string, unknown>,
+          ...(use._resultFormat ? { _resultFormat: use._resultFormat } : {}),
         },
         a.ctx,
         a.perIterationOutputCapBytes,
@@ -478,6 +480,9 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
                   id: result.toolUseId,
                   name: tool.name,
                   input: result.input,
+                  ...(useById.get(result.toolUseId)?._resultFormat
+                    ? { _resultFormat: 'data' as const }
+                    : {}),
                 },
                 result.preToolContext,
               )
@@ -632,6 +637,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       type: 'tool_use',
       id: `${call.parentToolUseId}~${call.index}`,
       name: call.name,
+      ...(call.resultFormat ? { _resultFormat: call.resultFormat } : {}),
       input: (call.input && typeof call.input === 'object' ? call.input : {}) as Record<
         string,
         unknown
@@ -650,6 +656,15 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     await a.extensions.runAfterToolExecution(a.ctx, outputs);
     const result = resultsForMessage[0];
     if (!result) return { content: `Tool "${call.name}" was not run.`, isError: true };
+    if (call.resultFormat === 'data' && !result.is_error) {
+      const data = programmaticOutput(result);
+      if (!data)
+        return {
+          content: `Structured output for "${call.name}" is unavailable after result policies; inspect tools.call output. The tool already ran, so do not repeat a mutation.`,
+          isError: true,
+        };
+      return { content: String(result.content), isError: false, data: data.value };
+    }
     return { content: String(result.content), isError: !!result.is_error };
   };
   a.ctx.nestedToolCall = runNestedToolCall;

@@ -38,6 +38,38 @@ function metadata(strategy: ProviderAuthStrategy): ProviderAuthStrategyMetadata 
 export class ProviderAuthRegistry {
   private readonly strategies = new Map<string, ProviderAuthStrategy>();
   private readonly aliases = new Map<string, string>();
+  private readonly scopedPrevious = new WeakMap<ProviderAuthStrategy, ProviderAuthStrategy>();
+  private readonly removedRegistrations = new WeakSet<ProviderAuthStrategy>();
+
+  /** Own one exact strategy and its aliases, including temporary first-party overrides. */
+  registerScoped(strategy: ProviderAuthStrategy): () => void {
+    const id = normalize(strategy.id);
+    const prior = this.strategies.get(id);
+    this.register(strategy);
+    const entry = this.strategies.get(id)!;
+    if (prior) this.scopedPrevious.set(entry, prior);
+    return () => {
+      if (this.removedRegistrations.has(entry)) return;
+      this.removedRegistrations.add(entry);
+      if (this.strategies.get(id) !== entry) return;
+      let previous = prior;
+      while (previous && this.removedRegistrations.has(previous)) {
+        previous = this.scopedPrevious.get(previous);
+      }
+      this.unregister(id);
+      if (!previous) return;
+      const aliases = [previous.id, ...(previous.aliases ?? [])];
+      for (const alias of aliases) {
+        if (this.aliases.has(alias)) {
+          throw new Error(
+            `Cannot restore provider auth strategy "${id}": alias "${alias}" was replaced`,
+          );
+        }
+      }
+      this.strategies.set(id, previous);
+      for (const alias of aliases) this.aliases.set(alias, id);
+    };
+  }
 
   register(strategy: ProviderAuthStrategy): void {
     const id = requireId(strategy.id, 'Provider auth strategy id');

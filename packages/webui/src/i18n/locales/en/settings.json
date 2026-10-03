@@ -414,6 +414,8 @@
     "newAccount": "New account",
     "aliasPlaceholder": "e.g. {{default}}",
     "guidance": {
+      "meta": "Meta controls eligibility and billing for the minted Model API key; sign-in alone does not guarantee subscription access.",
+      "chatgpt-api": "Authorize ChatGPT plan usage in the browser. Models and limits come from the selected ChatGPT account.",
       "claude": "This login is for extra usage: it signs in with your Claude account and saves the credential as its own anthropic-oauth provider, alongside the providers you already use.\n\nTo spend your Claude subscription instead, run OmniRoute as a proxy, sign in with your Claude account on OmniRoute, then add OmniRoute as a provider here."
     }
   },

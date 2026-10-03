@@ -1,19 +1,24 @@
 import type { ProviderConfig } from '@wrongstack/core/types';
 import {
   applyProviderOAuthRefresh,
+  createSubscriptionRefreshTransaction,
   matchesActiveProviderCredential,
   setAccountQuotaReporting,
   setOAuthTokenPersister,
   setProviderModelPersister,
+  setSubscriptionRefreshTransaction,
 } from '@wrongstack/providers';
 
 /** Standalone hosts must persist rotations as well as interactive login outcomes. */
 export function installWebuiProviderPersisters(args: {
-  mutate: (mutator: (providers: Record<string, ProviderConfig>) => void) => Promise<void>;
+  mutate: (
+    mutator: (providers: Record<string, ProviderConfig>) => void | Promise<void>,
+  ) => Promise<void>;
   warn: (message: string) => void;
 }): void {
   // Post-turn plan-quota reads (Kimi Code, OpenCode Go, OpenRouter); host-only.
   setAccountQuotaReporting(true);
+  setSubscriptionRefreshTransaction(createSubscriptionRefreshTransaction(args.mutate));
   setOAuthTokenPersister((id, creds, source) => {
     void args
       .mutate((providers) => {
@@ -26,7 +31,6 @@ export function installWebuiProviderPersisters(args: {
       );
   });
   setProviderModelPersister((id, models, source) => {
-    if (!models.length) return;
     void args
       .mutate((providers) => {
         const provider = Object.hasOwn(providers, id) ? providers[id] : undefined;

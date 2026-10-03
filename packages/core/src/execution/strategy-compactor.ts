@@ -11,7 +11,10 @@ import type { ContextWindowPolicy } from '../types/context-window.js';
 import type { Message } from '../types/messages.js';
 import type { TypeSafeJudge } from '../typesafe/judgments.js';
 import { toErrorMessage } from '../utils/index.js';
-import { compactionReportStillCurrent } from './compaction-result-state.js';
+import {
+  compactionReportStillCurrent,
+  markStaleCompactionReport,
+} from './compaction-result-state.js';
 import { HybridCompactor } from './compactor.js';
 import { IntelligentCompactor } from './intelligent-compactor.js';
 import type { OneShotOrchestrator } from './one-shot-llm.js';
@@ -140,7 +143,9 @@ class JournaledCompactor implements Compactor {
   async compact(ctx: Context, compactOpts: CompactOptions = {}): Promise<CompactReport> {
     await this.notify((observer) => observer.before?.(ctx, compactOpts));
     const report = await this.compactJournaled(ctx, compactOpts);
+    if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return report;
     await this.notify((observer) => observer.after?.(ctx, compactOpts, report));
+    if (!compactionReportStillCurrent(report, ctx)) return markStaleCompactionReport(report);
     return report;
   }
 
@@ -175,7 +180,8 @@ class JournaledCompactor implements Compactor {
     const report = await this.inner.compact(ctx, compactOpts);
     // Session selection may change while a selector/summarizer is pending.
     // Never journal the old operation into the newly selected transcript.
-    if (ctx.session !== sessionBefore || !compactionReportStillCurrent(report, ctx)) return report;
+    if (ctx.session !== sessionBefore || !compactionReportStillCurrent(report, ctx))
+      return markStaleCompactionReport(report);
     const changed =
       state.revision !== revisionBefore ||
       report.reductions.some((reduction) => reduction.saved > 0) ||
@@ -206,6 +212,8 @@ class JournaledCompactor implements Compactor {
         }),
       );
     }
+    if (ctx.session !== sessionBefore || !compactionReportStillCurrent(report, ctx))
+      return markStaleCompactionReport(report);
     return report;
   }
 }

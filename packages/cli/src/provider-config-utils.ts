@@ -178,7 +178,10 @@ function queueConfigMutation<T>(mutate: () => Promise<T>): Promise<T> {
 export async function mutateConfigProviders(
   configPath: string,
   vault: SecretVault,
-  mutator: (providers: Record<string, ProviderConfig>, config: Record<string, unknown>) => void,
+  mutator: (
+    providers: Record<string, ProviderConfig>,
+    config: Record<string, unknown>,
+  ) => void | Promise<void>,
   profileConfigPath?: string,
 ): Promise<void> {
   await queueConfigMutation(() =>
@@ -227,7 +230,7 @@ export async function mutateConfigProviders(
         decrypted['model'],
         typeof decrypted['provider'] === 'string' ? providers[decrypted['provider']] : undefined,
       ]);
-      mutator(providers, decrypted);
+      await mutator(providers, decrypted);
       for (const id of previousProviderIds) {
         if (!Object.hasOwn(providers, id)) removeProviderFallbackReferences(decrypted, id);
       }

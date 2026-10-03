@@ -6,8 +6,14 @@ import type {
   WireFamily,
 } from '@wrongstack/core/types';
 import { createAntigravityAuthStrategy } from './antigravity.js';
+import { createChatGPTDirectAuthStrategy } from './chatgpt-direct.js';
 import { beginOAuthLogin } from './legacy.js';
 import { createOpenRouterAuthStrategy } from './openrouter.js';
+import {
+  createKimiAuthStrategy,
+  createMetaAuthStrategy,
+  createXaiAuthStrategy,
+} from './subscription-flows.js';
 import type { BeginOAuthDeps, OAuthLoginOutcome, OAuthSession } from './types.js';
 
 function adaptOutcome(outcome: OAuthLoginOutcome): ProviderAuthOutcome {
@@ -89,6 +95,10 @@ export const BUILTIN_PROVIDER_AUTH_STRATEGIES: readonly ProviderAuthStrategy[] =
   },
   createOpenRouterAuthStrategy(),
   createAntigravityAuthStrategy(),
+  createXaiAuthStrategy(),
+  createKimiAuthStrategy(),
+  createMetaAuthStrategy(),
+  createChatGPTDirectAuthStrategy(),
 ];
 
 export function registerBuiltinProviderAuthStrategies(registry: ProviderAuthRegistry): void {

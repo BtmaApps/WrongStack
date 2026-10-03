@@ -101,86 +101,44 @@ describe('resolveProviderModelList', () => {
     });
   });
 
-  it('enriches openai-codex ids with canonical name + description (no catalog)', () => {
-    const list = resolveProviderModelList(['gpt-5.6-sol', 'gpt-5.4-mini'], undefined);
-    expect(list).toEqual([
-      {
-        id: 'gpt-5.6-sol',
-        name: 'GPT-5.6 Sol',
-        description: 'Latest frontier agentic coding model.',
-        capabilities: [],
-        provenance: { primary: 'user-config', sources: ['user-config'] },
-      },
-      {
-        id: 'gpt-5.4-mini',
-        name: 'GPT-5.4 Mini',
-        description: 'Small, fast, and cost-efficient model for simpler coding tasks.',
-        capabilities: [],
-        provenance: { primary: 'user-config', sources: ['user-config'] },
-      },
+  it('keeps account membership exact and enriches only IDs returned for that account', () => {
+    const source = catalog([
+      catalogModel({ id: 'account-fresh', name: 'Account fresh', limit: { context: 321000 } }),
+      catalogModel({ id: 'catalog-only' }),
+    ]);
+    const sibling = catalog([catalogModel({ id: 'sibling-only' })]);
+    const list = resolveProviderModelList(
+      ['account-fresh'],
+      source,
+      'account-alias',
+      sibling,
+      true,
+    );
+    expect(list.map((model) => model.id)).toEqual(['account-fresh']);
+    expect(list[0]).toMatchObject({ name: 'Account fresh', contextWindow: 321000 });
+    expect(resolveProviderModelList([], source, 'account-alias', sibling, true)).toEqual([]);
+  });
+
+  it('uses an ID as its name when account metadata is unavailable', () => {
+    expect(resolveProviderModelList(['account-fresh'], undefined, 'openai-codex')).toEqual([
+      { id: 'account-fresh', name: 'account-fresh', capabilities: [] },
     ]);
   });
-
-  it('layers the codex description onto a catalog hit for the same id', () => {
-    const list = resolveProviderModelList(
-      ['gpt-5.6-sol'],
-      catalog([
-        catalogModel({ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol', limit: { context: 400000 } }),
-      ]),
-    );
-    expect(list[0]).toMatchObject({
-      id: 'gpt-5.6-sol',
-      name: 'GPT-5.6 Sol',
-      contextWindow: 400000,
-      description: 'Latest frontier agentic coding model.',
-    });
-  });
-
   it('returns an empty list (never an error) for an unknown provider with no allowlist', () => {
     expect(resolveProviderModelList(undefined, undefined)).toEqual([]);
     expect(resolveProviderModelList([], undefined)).toEqual([]);
   });
 
-  it('falls back to the canonical codex list for openai-codex when config + catalog are empty', () => {
-    // User deleted cfg.models AND the models.dev/overlay catalog is unavailable
-    // (e.g. offline). The provider must still surface the ChatGPT sign-in models.
-    const list = resolveProviderModelList([], undefined, 'openai-codex');
-    expect(list.map((m) => m.id)).toEqual([
-      'gpt-6.1-sol',
-      'gpt-6-astra',
-      'gpt-6-sol',
-      'gpt-6-luna',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-      'gpt-5.3-codex-spark',
-    ]);
-    expect(list[0]).toMatchObject({
-      id: 'gpt-6.1-sol',
-      name: 'GPT-6.1 Sol',
-      description: 'Latest workhorse model for coding and everyday work.',
-      capabilities: [],
-    });
+  it('does not invent an offline Codex list or merge generic catalogs into an empty account', () => {
+    expect(resolveProviderModelList([], undefined, 'openai-codex')).toEqual([]);
+    expect(
+      resolveProviderModelList(
+        undefined,
+        catalog([catalogModel({ id: 'generic-model' })]),
+        'openai-codex',
+      ),
+    ).toEqual([]);
   });
-
-  it('falls back to the codex list for openai-codex when the catalog has zero models', () => {
-    const list = resolveProviderModelList(undefined, catalog([]), 'openai-codex');
-    expect(list.map((m) => m.id)).toEqual([
-      'gpt-6.1-sol',
-      'gpt-6-astra',
-      'gpt-6-sol',
-      'gpt-6-luna',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-      'gpt-5.3-codex-spark',
-    ]);
-  });
-
   it('does not synthesize codex models for non-codex providers', () => {
     expect(resolveProviderModelList([], undefined, 'openai')).toEqual([]);
     expect(resolveProviderModelList([], catalog([]), 'openai')).toEqual([]);

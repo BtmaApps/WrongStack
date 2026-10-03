@@ -55,6 +55,56 @@ describe('discoverAndMergeProviders', () => {
     await fs.rm(cacheDir, { recursive: true, force: true });
   });
 
+  it('replaces OAuth account lists with live IDs, clears authoritative empty catalogs and never reuses another account cache', async () => {
+    const saved = {
+      type: 'github-copilot',
+      family: 'github-copilot' as const,
+      models: ['stale'],
+      apiKeys: [
+        {
+          label: 'personal',
+          apiKey: 'token',
+          refreshToken: 'account-a',
+          authMethod: 'oauth' as const,
+          createdAt: '',
+        },
+      ],
+    };
+    const config = cfgWith({ account: saved });
+    const reg = fakeRegistry();
+    const live = async () =>
+      Response.json({
+        data: [
+          {
+            id: 'account-new',
+            model_picker_enabled: true,
+            capabilities: { type: 'chat', supports: { tool_calls: true } },
+          },
+        ],
+      });
+    await discoverAndMergeProviders({ config, registry: reg as never, cacheDir, fetchImpl: live });
+    expect(saved.models).toEqual(['account-new']);
+    expect(reg.mergeOptions[0]).toMatchObject({ authoritativeProviderIds: ['account'] });
+    await discoverAndMergeProviders({
+      config,
+      registry: reg as never,
+      cacheDir,
+      fetchImpl: async () => Response.json({ data: [] }),
+    });
+    expect(saved.models).toEqual([]);
+    expect(reg.merged.at(-1)?.account?.models).toEqual({});
+    saved.apiKeys[0]!.refreshToken = 'account-b';
+    saved.models = ['foreign'];
+    await discoverAndMergeProviders({
+      config,
+      registry: reg as never,
+      cacheDir,
+      fetchImpl: async () => new Response('', { status: 503 }),
+    });
+    expect(saved.models).toEqual([]);
+    expect(reg.merged.at(-1)?.account?.models).toEqual({});
+  });
+
   it('discovers + merges the omniroute preset provider (baseUrl from preset)', async () => {
     const reg = fakeRegistry();
     await discoverAndMergeProviders({

@@ -451,11 +451,9 @@ describe('openai-codex-oauth.ts — pure helpers', () => {
     expect(parseCodexInput('   ')).toEqual({});
   });
 
-  it('fallback model helpers return the canonical Codex list', () => {
-    expect(fallbackCodexModelIds().length).toBeGreaterThan(0);
-    expect(filterCurrentCodexModelIds(['nope', fallbackCodexModelIds()[0]!])).toEqual([
-      fallbackCodexModelIds()[0],
-    ]);
+  it('legacy fallback helpers cannot invent account model IDs', () => {
+    expect(fallbackCodexModelIds()).toEqual([]);
+    expect(filterCurrentCodexModelIds(['catalog-model'])).toEqual([]);
     expect(isCodexCatalogModel({ family: 'gpt-codex' })).toBe(true);
     expect(isCodexCatalogModel({ family: 'openai' })).toBe(false);
     expect(isCodexCatalogModel({})).toBe(false);
@@ -475,8 +473,8 @@ describe('openai-codex-oauth.ts — pure helpers', () => {
     await expect(fetchCodexModels('t')).resolves.toEqual([]);
   });
 
-  it('resolveCodexModels tiers: live backend, catalog, then fallback', async () => {
-    const current = fallbackCodexModelIds()[0]!;
+  it('resolveCodexModels uses live account data and never substitutes a generic catalog', async () => {
+    const current = 'account-current';
     const registry: ModelsRegistry = {
       getProvider: vi.fn(async () => undefined),
     } as never as ModelsRegistry;
@@ -494,9 +492,7 @@ describe('openai-codex-oauth.ts — pure helpers', () => {
         ],
       })),
     } as never as ModelsRegistry;
-    await expect(resolveCodexModels(withCatalog, Promise.resolve('tok'))).resolves.toEqual([
-      current,
-    ]);
+    await expect(resolveCodexModels(withCatalog, Promise.resolve('tok'))).resolves.toEqual([]);
 
     routes = [];
     route('backend-api/codex/models', () => new Response(null, { status: 500 }));
@@ -528,9 +524,7 @@ describe('openai-codex-oauth.ts — pure helpers', () => {
 describe('openai-codex-oauth.ts — runCodexOAuthLogin flow', () => {
   function codexRoutes(over: Record<string, unknown> = {}): void {
     route('auth.openai.com/oauth/token', () => jsonResponse(tokenBody(over)));
-    route('backend-api/codex/models', () =>
-      jsonResponse({ data: fallbackCodexModelIds().map((id) => ({ id })) }),
-    );
+    route('backend-api/codex/models', () => jsonResponse({ data: [{ id: 'account-live' }] }));
   }
 
   it('signs in via the real loopback callback and saves OAuth tokens', async () => {
@@ -1121,7 +1115,7 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(logs.some((l) => l.includes('Signed in with GitHub Copilot'))).toBe(true);
   });
 
-  it('falls back to gpt-4o when no usable models are discovered', async () => {
+  it('keeps an empty model list when no account models are discovered', async () => {
     copilotRoutes({ data: [{ id: 'embed-x', capabilities: { type: 'embeddings' } }] });
     const { configPath, vault, registry } = await setup();
     const { deps } = depsFor(configPath, vault, registry);
@@ -1131,7 +1125,7 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(
       (raw.providers as Record<string, Record<string, unknown> | undefined>)['github-copilot']
         ?.models,
-    ).toEqual(['gpt-4o']);
+    ).toEqual([]);
   });
 
   it('surfaces a device-code failure', async () => {
@@ -1186,7 +1180,7 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(logs.some((l) => l.includes('Login cancelled.'))).toBe(true);
   });
 
-  it('handles a 500 models response (empty list → gpt-4o fallback)', async () => {
+  it('handles a 500 models response (empty account list)', async () => {
     copilotRoutes(undefined, () => new Response(null, { status: 500 }));
     const { configPath, vault, registry } = await setup();
     const { deps } = depsFor(configPath, vault, registry);
@@ -1196,10 +1190,10 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(
       (raw.providers as Record<string, Record<string, unknown> | undefined>)['github-copilot']
         ?.models,
-    ).toEqual(['gpt-4o']);
+    ).toEqual([]);
   });
 
-  it('handles a non-array models payload (empty list → gpt-4o fallback)', async () => {
+  it('handles a non-array models payload (empty account list)', async () => {
     copilotRoutes({ foo: 1 });
     const { configPath, vault, registry } = await setup();
     const { deps } = depsFor(configPath, vault, registry);
@@ -1209,10 +1203,10 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(
       (raw.providers as Record<string, Record<string, unknown> | undefined>)['github-copilot']
         ?.models,
-    ).toEqual(['gpt-4o']);
+    ).toEqual([]);
   });
 
-  it('handles the models fetch throwing (empty list → gpt-4o fallback)', async () => {
+  it('handles the models fetch throwing (empty account list)', async () => {
     copilotRoutes(undefined, () => {
       throw new Error('net down');
     });
@@ -1224,7 +1218,7 @@ describe('github-copilot-oauth.ts — runCopilotOAuthLogin flow', () => {
     expect(
       (raw.providers as Record<string, Record<string, unknown> | undefined>)['github-copilot']
         ?.models,
-    ).toEqual(['gpt-4o']);
+    ).toEqual([]);
   });
 
   it('floats the default/fallback chat models to the front of the saved list', async () => {

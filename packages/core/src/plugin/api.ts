@@ -182,7 +182,53 @@ export class DefaultPluginAPI implements PluginAPI {
     this.config = init.config;
     this.configStore = init.configStore;
     this.log = init.log.child({ plugin: owner });
-    this.extensions = init.extensions ?? new ExtensionRegistry();
+    const extensions = init.extensions ?? new ExtensionRegistry();
+    this.extensions = new Proxy(extensions, {
+      get: (target, key) => {
+        if (
+          key === 'register' ||
+          key === 'registerOrReplace' ||
+          key === 'registerOrReplaceScoped'
+        ) {
+          return (extension: Parameters<ExtensionRegistry['register']>[0]) => {
+            this.assertActive();
+            return this.ownRegistration(
+              key === 'register'
+                ? target.register(extension)
+                : target.registerOrReplaceScoped(extension),
+            );
+          };
+        }
+        if (key === 'registerSystemPromptContributor') {
+          return (contributor: SystemPromptContributor) => {
+            this.assertActive();
+            const guarded = Object.assign(
+              async (context: Parameters<SystemPromptContributor>[0]) => {
+                if (this.lifetime.signal.aborted) return [];
+                const blocks = await contributor(context);
+                return this.lifetime.signal.aborted ? [] : blocks;
+              },
+              contributor,
+            );
+            return this.ownRegistration(target.registerSystemPromptContributor(guarded));
+          };
+        }
+        if (key === 'unregister') {
+          return (name: string) => {
+            this.assertActive();
+            return target.unregister(name);
+          };
+        }
+        if (key === 'clear') {
+          return () => {
+            this.assertActive();
+            target.clear();
+          };
+        }
+        const value = Reflect.get(target, key, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
     this.session = init.sessionWriter ?? noopSession;
     this.metrics = init.metricsSink ? scopedMetrics(init.metricsSink, owner) : noopMetrics;
     this.modelsRegistry = init.modelsRegistry;
@@ -273,7 +319,8 @@ export class DefaultPluginAPI implements PluginAPI {
     };
     this.tools = {
       register: (t: Tool) => {
-        tr.register(t, owner);
+        this.assertActive();
+        this.ownRegistration(tr.registerScoped(t, owner));
         // When a host restricts the direct provider surface (token-saving
         // tiers, `features.tokenSavingMode !== 'off'`), plugin-registered
         // tools must still reach the LLM — otherwise plugins load and their
@@ -284,12 +331,14 @@ export class DefaultPluginAPI implements PluginAPI {
         tr.exposeToProvider(t.name);
       },
       unregister: (name: string) => {
+        this.assertActive();
         assertCanMutateTool(name, 'unregister');
         return tr.unregister(name);
       },
       wrap: (name: string, wrapper: ToolWrapper) => {
+        this.assertActive();
         assertCanMutateTool(name, 'wrap');
-        tr.wrap(name, wrapper, owner);
+        this.ownRegistration(tr.wrapScoped(name, wrapper, owner));
       },
       get: (name: string) => tr.get(name),
       list: () => tr.list(),
@@ -322,11 +371,13 @@ export class DefaultPluginAPI implements PluginAPI {
 
     this.providers = {
       register: (f: ProviderFactory) => {
+        this.assertActive();
         assertCanMutateProvider(f.type, 'replace');
-        pr.register(f);
+        this.ownRegistration(pr.registerScoped(f));
         providerTypesIOwn.add(f.type);
       },
       unregister: (type: string) => {
+        this.assertActive();
         assertCanMutateProvider(type, 'unregister');
         providerTypesIOwn.delete(type);
         return pr.unregister(type);
@@ -349,11 +400,13 @@ export class DefaultPluginAPI implements PluginAPI {
     };
     this.providerAuth = {
       register: (strategy) => {
+        this.assertActive();
         assertCanMutateProviderAuth(strategy.id, 'replace');
-        authRegistry.register(strategy);
+        this.ownRegistration(authRegistry.registerScoped(strategy));
         authStrategiesIOwn.add(strategy.id.trim().toLowerCase());
       },
       unregister: (id) => {
+        this.assertActive();
         assertCanMutateProviderAuth(id, 'unregister');
         const resolved = authRegistry.resolveId(id);
         if (resolved) authStrategiesIOwn.delete(resolved);
@@ -428,7 +481,8 @@ export class DefaultPluginAPI implements PluginAPI {
     this.slashCommands = scr
       ? {
           register: (cmd, opts) => {
-            scr.register(cmd, owner, { official, bare: opts?.bare });
+            this.assertActive();
+            this.ownRegistration(scr.registerScoped(cmd, owner, { official, bare: opts?.bare }));
             // The registry always indexes a plugin command under its
             // `owner:name` namespaced form and may also index its bare name.
             // Record both candidate forms so callers can legitimately request
@@ -440,6 +494,7 @@ export class DefaultPluginAPI implements PluginAPI {
             }
           },
           unregister: (name) => {
+            this.assertActive();
             if (!official && !commandsIOwn.has(name) && scr.get(name) !== undefined) {
               throw new Error(
                 `Plugin "${owner}" may not unregister slash command "${name}" — it was not registered by this plugin.`,
@@ -465,30 +520,53 @@ export class DefaultPluginAPI implements PluginAPI {
   }
 
   onEvent<K extends EventName>(event: K, handler: Listener<K>): () => void {
+    this.assertActive();
     const off = this.events.on(event, handler);
     this.pluginCleanupFns.push(off);
     return off;
   }
 
   onPattern(pattern: string, handler: (event: string, payload: unknown) => void): () => void {
+    this.assertActive();
     const off = this.events.onPattern(pattern, handler);
     this.pluginCleanupFns.push(off);
     return off;
   }
 
   emitCustom(event: string, payload: unknown): void {
+    this.assertActive();
     this.events.emitCustom(event, payload);
   }
 
   onConfigChange(handler: (next: Readonly<Config>, prev: Readonly<Config>) => void): () => void {
+    this.assertActive();
     if (!this.configStore) return () => {};
-    return this.configStore.watch(handler as (next: unknown, prev: unknown) => void);
+    return this.ownRegistration(
+      this.configStore.watch(handler as (next: unknown, prev: unknown) => void),
+    );
+  }
+
+  private assertActive(): void {
+    if (this.lifetime.signal.aborted) throw new Error(`Plugin "${this.ownerName}" unloaded`);
+  }
+
+  private ownRegistration(cleanup: () => void): () => void {
+    let active = true;
+    const dispose = () => {
+      if (!active) return;
+      active = false;
+      const index = this.pluginCleanupFns.indexOf(dispose);
+      if (index >= 0) this.pluginCleanupFns.splice(index, 1);
+      cleanup();
+    };
+    this.pluginCleanupFns.push(dispose);
+    return dispose;
   }
 
   /** Called by the plugin loader when uninstalling the plugin. */
   drainCleanup(): void {
     this.lifetime.abort(new Error(`Plugin "${this.ownerName}" unloaded`));
-    for (const fn of this.pluginCleanupFns.splice(0)) {
+    for (const fn of this.pluginCleanupFns.splice(0).reverse()) {
       try {
         fn();
       } catch {
@@ -512,6 +590,7 @@ export class DefaultPluginAPI implements PluginAPI {
     hook: InProcessHook,
     options?: import('../types/hooks.js').HookRegistrationOptions | undefined,
   ): () => void {
+    this.assertActive();
     if (!this.hookRegistry) return () => {};
     const off = this.hookRegistry.registerInProcess(event, matcher, hook, this.ownerName, options);
     this.pluginCleanupFns.push(off);

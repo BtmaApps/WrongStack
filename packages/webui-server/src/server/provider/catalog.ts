@@ -29,6 +29,9 @@ async function resolveEnrichedModels(
   config: ProviderConfig | undefined,
 ) {
   const provider = await resolveProviderCatalogForModels(modelsRegistry, providerId, config);
+  const active =
+    config?.apiKeys?.find((key) => key.label === config.activeKey) ?? config?.apiKeys?.[0];
+  const accountOwned = active?.authMethod === 'oauth';
   const siblingCatalogKey = config?.family ?? providerId;
   const siblingId = SIBLING_CATALOG[siblingCatalogKey];
   const sibling =
@@ -40,8 +43,10 @@ async function resolveEnrichedModels(
     provider,
     config?.type ?? providerId,
     sibling,
+    accountOwned,
   );
-  if (models.length === 0 && config?.baseUrl) models = await probeModelDescriptors(config);
+  if (!accountOwned && models.length === 0 && config?.baseUrl)
+    models = await probeModelDescriptors(config);
   // Reasoning-effort vocabulary straight from the in-memory catalog
   // objects (already normalized by the registry — no extra lookups).
   // Sibling-catalog models (e.g. openai ids listed for openai-codex) are

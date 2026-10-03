@@ -1,26 +1,7 @@
-/**
- * Codex model discovery — the 3-tier resolution chain, in one place.
- *
- * Split from `./codex-protocol.ts` on purpose: this module imports the
- * `CODEX_MODELS` catalog, and the runtime provider needs the protocol (to
- * refresh a token) without paying for the catalog. Keeping them apart means
- * `../openai-codex.ts` can import one and not the other.
- *
- * Resolution order — the live backend is authoritative, the catalog is the
- * offline answer, and the inline list is the never-happens floor:
- *
- *  1. **Live backend** — `GET <baseUrl>/codex/models`; account-aware and
- *     authoritative, retaining every picker-visible id returned to that user.
- *  2. **models.dev catalog** — the `openai` provider's models whose `family`
- *     is `gpt-codex` / `gpt-codex-spark`, filtered the same way.
- *  3. **Inline fallback** — {@link FALLBACK_CODEX_MODELS}, derived from core's
- *     `CODEX_MODELS`. Only reachable on a fresh install with no network.
- *
- * @module oauth/codex-models
- */
+/** Account-aware Codex model discovery. No generic or bundled model fallback. */
 
 import { randomUUID } from 'node:crypto';
-import { CODEX_MODELS } from '@wrongstack/core/models';
+
 import type { ModelsRegistry } from '@wrongstack/core/types';
 import { extractAccountId } from '../openai-codex-account.js';
 import {
@@ -33,13 +14,8 @@ import {
 /** Model-listing request timeout. Short: this is best-effort enrichment. */
 const MODELS_TIMEOUT_MS = 8_000;
 
-/**
- * Recommended Codex models for ChatGPT sign-in. Derived from `CODEX_MODELS` in
- * core, the single source of truth for Codex id/name/description.
- */
-export const FALLBACK_CODEX_MODELS: ReadonlyArray<{ id: string; name: string }> = CODEX_MODELS.map(
-  (m) => ({ id: m.id, name: m.name }),
-);
+/** @deprecated Account model discovery has no bundled fallback. */
+export const FALLBACK_CODEX_MODELS: ReadonlyArray<{ id: string; name: string }> = [];
 
 /** Families in the models.dev catalog that indicate Responses-API compatibility. */
 export const CODEX_CATALOG_FAMILIES = new Set(['gpt-codex', 'gpt-codex-spark']);
@@ -68,8 +44,7 @@ export function isCodexCatalogModel(model: { family?: string | undefined }): boo
 
 /**
  * Fetch the account's available Codex model ids live from the ChatGPT backend.
- * Best-effort: returns `[]` on any failure so login still succeeds and the
- * caller falls through to the catalog or the inline list.
+ * Returns `[]` on failure without inventing account model IDs.
  */
 export async function fetchCodexModels(
   accessToken: string,
@@ -130,21 +105,14 @@ export async function fetchCodexModels(
   }
 }
 
-/**
- * Resolve the available Codex model ids through the 3-tier chain documented at
- * the top of this module.
- *
- * @param modelsRegistry - optional; tier 2 is skipped when absent.
- * @param accessToken - accepted as a promise so a caller can start the request
- *   before the token has settled.
- */
+/** Resolve only the authenticated account catalog. The registry argument is retained for API compatibility. */
 export async function resolveCodexModels(
-  modelsRegistry: ModelsRegistry | undefined,
+  _modelsRegistry: ModelsRegistry | undefined,
   accessToken: string | Promise<string>,
   baseUrl?: string | undefined,
   signal?: AbortSignal,
 ): Promise<string[]> {
-  // Tier 1 — live backend
+  // Only the authenticated backend decides which models exist for this account.
   const token = typeof accessToken === 'string' ? accessToken : await accessToken;
   // The authenticated backend is account- and rollout-aware. Do not intersect
   // its answer with the bundled fallback: doing that hid every newly rolled
@@ -152,23 +120,5 @@ export async function resolveCodexModels(
   const live = await fetchCodexModels(token, baseUrl, signal);
   if (live.length > 0) return live;
 
-  // Tier 2 — models.dev catalog (best-effort; registry is optional)
-  if (modelsRegistry) {
-    try {
-      const openaiProvider = await modelsRegistry.getProvider('openai');
-      if (openaiProvider) {
-        const catalog = openaiProvider.models
-          .filter(isCodexCatalogModel)
-          .map((m) => m.id)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0);
-        const currentCatalog = filterCurrentCodexModelIds(catalog);
-        if (currentCatalog.length > 0) return currentCatalog;
-      }
-    } catch {
-      /* catalog unavailable — fall through to tier 3 */
-    }
-  }
-
-  // Tier 3 — inline fallback
-  return fallbackCodexModelIds();
+  return [];
 }

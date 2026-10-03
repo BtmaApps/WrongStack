@@ -8,11 +8,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { globTool } from '../../../tools/src/glob.js';
+import { grepTool } from '../../../tools/src/grep.js';
 import { readTool } from '../../../tools/src/read.js';
 import { toolScriptTool } from '../../../tools/src/tool-script.js';
 import { toolSearchTool } from '../../../tools/src/tool-search.js';
 import { toolUseTool } from '../../../tools/src/tool-use.js';
 import { Agent, createDefaultPipelines } from '../../src/core/agent.js';
+import type { ToolCallPipelinePayload } from '../../src/core/agent-types.js';
 import { Context } from '../../src/core/context.js';
 import { DefaultErrorHandler } from '../../src/execution/error-handler.js';
 import { DefaultRetryPolicy } from '../../src/execution/retry-policy.js';
@@ -21,6 +24,7 @@ import { DefaultLogger } from '../../src/infrastructure/logger.js';
 import { DefaultTokenCounter } from '../../src/infrastructure/token-counter.js';
 import { Container } from '../../src/kernel/container.js';
 import { EventBus } from '../../src/kernel/events.js';
+import type { NextFn } from '../../src/kernel/pipeline.js';
 import { TOKENS } from '../../src/kernel/tokens.js';
 import { ProviderRegistry } from '../../src/registry/provider-registry.js';
 import { ToolRegistry } from '../../src/registry/tool-registry.js';
@@ -112,12 +116,13 @@ async function buildAgent(
     projectRoot: tmp,
     model: 'test-model',
   });
+  const pipelines = createDefaultPipelines();
   const agent = new Agent({
     container,
     tools: registry,
     providers: new ProviderRegistry(),
     events,
-    pipelines: createDefaultPipelines(),
+    pipelines,
     context: ctx,
     maxIterations: limits.maxIterations ?? 10,
     toolExecutor: new ToolExecutor(registry, {
@@ -140,7 +145,7 @@ async function buildAgent(
           ? { settlement: (e as { settlement?: string }).settlement }
           : {}),
       }));
-  return { agent, events, ctx, journal, registry };
+  return { agent, events, ctx, journal, registry, pipelines };
 }
 
 const turn = {
@@ -150,6 +155,175 @@ const turn = {
 const done = { content: [{ type: 'text' as const, text: 'ok' }], stopReason: 'end_turn' as const };
 
 describe('a tool call made from inside a tool', () => {
+  it('refuses declined, invalid and unsupported structured requests without executing their bodies', async () => {
+    const execute = vi.fn(async () => ({ count: 1 }));
+    const structured: Tool = {
+      ...tool('structured', 'confirm'),
+      inputSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer' } },
+        required: ['count'],
+      },
+      outputSchema: { type: 'object' },
+      execute,
+    };
+    const unsupported = { ...tool('legacy', 'auto'), execute };
+    const script = `let refused = 0; for (const [name, input] of [['structured', {}], ['structured', {count: 1}], ['legacy', {}]]) {
+      try { await tools.data(name, input); } catch { refused++; }
+    } return { refused };`;
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'data-refusals', name: 'tool_script', input: { script } },
+        ],
+        stopReason: 'tool_use',
+      },
+      done,
+    ]);
+    const { agent, ctx, events } = await buildAgent(provider, [
+      structured,
+      unsupported,
+      toolScriptTool,
+    ]);
+    events.on('tool.confirm_needed', (event) => event.resolve('no'));
+    await agent.run('Check refusals');
+    expect(execute).not.toHaveBeenCalled();
+    expect(JSON.stringify(ctx.messages)).toContain('refused');
+    expect(JSON.stringify(ctx.messages)).toContain('3');
+  });
+
+  it('does not retry a mutation whose declared output contract fails', async () => {
+    const execute = vi.fn(async () => ({ count: 'invalid' }));
+    const structured: Tool = {
+      ...tool('structured', 'auto'),
+      mutating: true,
+      outputSchema: { type: 'object', properties: { count: { type: 'integer' } } },
+      execute,
+    };
+    const script = `try { await tools.data('structured', {}); } catch (error) { return error.message; }`;
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'data-invalid-output', name: 'tool_script', input: { script } },
+        ],
+        stopReason: 'tool_use',
+      },
+      done,
+    ]);
+    const { agent, ctx, events } = await buildAgent(provider, [structured, toolScriptTool]);
+    events.on('tool.confirm_needed', (event) => event.resolve('yes'));
+    await agent.run('Run once');
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(ctx.messages)).toContain('outputSchema');
+  });
+  it('reads actual file JSON and search metadata through structured ToolFlow without parsing display headers', async () => {
+    const script = `
+      const file = await tools.data('read', { path: 'package.json' });
+      if (file.truncated || file.raw_text === undefined) throw new Error('not full content');
+      const manifest = JSON.parse(file.raw_text);
+      const listing = await tools.data('glob', { pattern: '*.json' });
+      const matches = await tools.data('grep', { pattern: 'fixture-root', path: 'package.json' });
+      return { name: manifest.name, files: listing.files.length, hits: matches.count };
+    `;
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'structured-files', name: 'tool_script', input: { script } },
+        ],
+        stopReason: 'tool_use',
+      },
+      done,
+    ]);
+    const { agent, ctx, journal } = await buildAgent(provider, [
+      readTool,
+      globTool,
+      grepTool,
+      toolScriptTool,
+    ]);
+    await fs.writeFile(
+      path.join(ctx.cwd, 'package.json'),
+      JSON.stringify({ name: 'fixture-root', details: 'RAW_PRIVATE_DETAILS' }),
+    );
+    await agent.run('Inspect manifest');
+    const output = ctx.messages
+      .flatMap((message) => (Array.isArray(message.content) ? message.content : []))
+      .filter((block) => block.type === 'tool_result');
+    expect(output).toHaveLength(1);
+    expect(output[0]?.content).toContain('"name": "fixture-root"');
+    expect(output[0]?.content).toContain('"files": 1');
+    expect(output[0]?.content).toContain('"hits": 1');
+    expect(output[0]?.content).not.toContain('RAW_PRIVATE_DETAILS');
+    expect(journal().filter((event) => event.type === 'tool_result')).toHaveLength(4);
+  });
+
+  it('keeps confirmation, redaction and journal behavior on structured nested calls', async () => {
+    const execute = vi.fn(async () => ({ count: 7, secret: 'sk-' + 'X'.repeat(40) }));
+    const structured: Tool = {
+      ...tool('structured', 'confirm'),
+      outputSchema: {
+        type: 'object',
+        required: ['count'],
+        properties: { count: { type: 'integer' }, secret: { type: 'string' } },
+      },
+      execute,
+    };
+    const script = `const result = await tools.data('structured', {}); return { count: result.count, redacted: !result.secret.includes('XXXX') };`;
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'structured-confirm', name: 'tool_script', input: { script } },
+        ],
+        stopReason: 'tool_use',
+      },
+      done,
+    ]);
+    const { agent, ctx, events, journal } = await buildAgent(provider, [
+      structured,
+      toolScriptTool,
+    ]);
+    events.on('tool.confirm_needed', (event) => event.resolve('yes'));
+    await agent.run('Inspect structured value');
+    expect(execute).toHaveBeenCalledTimes(1);
+    const serialized = JSON.stringify(ctx.messages);
+    expect(serialized).toContain('redacted');
+    expect(serialized).toContain('true');
+    expect(serialized).not.toContain('X'.repeat(40));
+    expect(
+      journal().find((event) => event.id === 'structured-confirm~1' && event.type === 'tool_result')
+        ?.settlement,
+    ).toBe('completed');
+  });
+
+  it('refuses structured access after a content-changing result policy without re-executing the tool', async () => {
+    const execute = vi.fn(async () => ({ privateValue: 'not-for-programs' }));
+    const structured: Tool = {
+      ...tool('structured', 'auto'),
+      outputSchema: { type: 'object' },
+      execute,
+    };
+    const script = `try { await tools.data('structured', {}); return 'leaked'; } catch (error) { return error.message; }`;
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'structured-policy', name: 'tool_script', input: { script } },
+        ],
+        stopReason: 'tool_use',
+      },
+      done,
+    ]);
+    const { agent, ctx, pipelines } = await buildAgent(provider, [structured, toolScriptTool]);
+    pipelines.toolCall.use({
+      name: 'redact-result',
+      async handler(input: ToolCallPipelinePayload, next: NextFn<ToolCallPipelinePayload>) {
+        if (input.toolUse.name === 'structured') input.result.content = '[redacted by policy]';
+        return next(input);
+      },
+    });
+    await agent.run('Inspect result');
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(ctx.messages)).toContain('unavailable after result policies');
+    expect(JSON.stringify(ctx.messages)).not.toContain('not-for-programs');
+  });
   it('compares sequential, batched, direct, deferred, discovered and passthrough ToolFlow contributions', async () => {
     const fixture: Tool<{ id: number }, string> = {
       name: 'fixture_read',

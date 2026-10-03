@@ -80,16 +80,24 @@ export async function discoverAndMergeWebuiProviders(opts: {
         cacheKey,
         modelDiscoveryPath,
         modelDiscoveryAuthoritative,
+        accountCatalog,
+        copilotCatalog,
+        modelsUrl,
+        headers,
       }) => {
         const provider = await discoverOpenAICompatibleModels(id, {
           baseUrl,
           apiKey,
-          headers: cfg.headers,
+          headers: { ...cfg.headers, ...headers },
+          accountCatalog,
+          copilotCatalog,
+          modelsUrl,
           providerName: id,
           ...(modelDiscoveryPath ? { modelDiscoveryPath } : {}),
           fetchImpl: opts.fetchImpl,
         });
         if (provider) {
+          if (accountCatalog) cfg.models = Object.keys(provider.models);
           const fetchedAt = new Date().toISOString();
           cache[cacheKey] = { fetchedAt, provider };
           cacheDirty = true;
@@ -114,6 +122,7 @@ export async function discoverAndMergeWebuiProviders(opts: {
           cacheDirty = true;
         }
         if (cached) {
+          if (accountCatalog) cfg.models = Object.keys(cached.provider.models);
           if (modelDiscoveryAuthoritative) {
             registry.mergeOverlay(
               { [id]: cached.provider },
@@ -128,6 +137,22 @@ export async function discoverAndMergeWebuiProviders(opts: {
             } cached models from ${cached.fetchedAt}`,
           );
         } else {
+          if (accountCatalog) {
+            cfg.models = [];
+            registry.mergeOverlay(
+              {
+                [id]: {
+                  id,
+                  name: id,
+                  npm: '@ai-sdk/openai-compatible',
+                  api: baseUrl,
+                  env: [],
+                  models: {},
+                },
+              },
+              { authoritativeProviderIds: [id] },
+            );
+          }
           opts.logger?.warn?.(
             `auto-discovery for "${id}" failed and no cache available (server at ${baseUrl} unreachable?)`,
           );

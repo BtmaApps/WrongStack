@@ -124,7 +124,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
     '- Call a tool as `await tools.read({ path: "src/a.ts" })` or `await tools.call("codebase-search", { query: "x" })`. ' +
     'Each call returns the tool result as text (JSON.parse it when it is JSON) and throws when the tool fails.\n' +
     '- `Promise.all` runs calls side by side; `console.log` lines come back with the result.\n' +
-    '- `tools.names()` lists the enabled catalog, including deferred tools. `tools.describe(name)` returns the exact input schema and usage guidance without a tool call. Use exact names with `tools.call` for hyphens or reserved names (`call`, `names`, `describe`).\n' +
+    '- `tools.names()` lists the enabled catalog, including deferred tools. `tools.describe(name)` returns input/output schemas and usage guidance without a tool call. `tools.data(name, input)` returns validated structured JSON for tools declaring outputSchema; inspect that schema first. Existing tools.call/name calls still return text. Use exact names with tools.call for hyphens or reserved names (`call`, `data`, `names`, `describe`).\n' +
     '- The returned value, call summary, measured byte counts, and console output enter the conversation; intermediate tool results do not. Filter and summarize in the script.\n' +
     '- There is no filesystem, network or process access except through tools, and every call is checked and confirmed exactly like a direct call.\n' +
     `- The script stops after ${DEFAULT_TIMEOUT_MS / 1000}s unless you set \`timeout_ms\` (0 = no limit), and when it computes for ${MAX_UNPAUSED_MS / 1000}s without awaiting anything. \`max_calls\` caps its tool calls if you want a cap.`,
@@ -246,7 +246,11 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
     };
 
     let callIndex = 0;
-    const callTool = (nameHandle: QuickJSHandle, inputHandle: QuickJSHandle | undefined) => {
+    const callTool = (
+      nameHandle: QuickJSHandle,
+      inputHandle: QuickJSHandle | undefined,
+      resultFormat?: 'data',
+    ) => {
       const name = vm.getString(nameHandle);
       const toolInput = inputHandle === undefined ? {} : vm.dump(inputHandle);
       const deferred = vm.newPromise();
@@ -260,11 +264,24 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         },
       };
       state.pending.add(entry);
-      const settle = (ok: boolean, text: string): void => {
+      const settle = (ok: boolean, text: string, data?: { value: unknown }): void => {
         state.pending.delete(entry);
         if (finished && state.pending.size === 0) delete ctx.meta[SCRIPT_RUNNING_META_KEY];
         if (!entry.alive || !vm.alive) return;
-        const value = ok ? vm.newString(text) : vm.newError(text);
+        let value: QuickJSHandle;
+        try {
+          value =
+            ok && data
+              ? vm.unwrapResult(
+                  vm.evalCode(`JSON.parse(${JSON.stringify(JSON.stringify(data.value))})`),
+                )
+              : ok
+                ? vm.newString(text)
+                : vm.newError(text);
+        } catch {
+          ok = false;
+          value = vm.newError('Structured tool output could not be transferred into ToolFlow.');
+        }
         if (ok) deferred.resolve(value);
         else deferred.reject(value);
         value.dispose();
@@ -285,11 +302,29 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         const record = { name, ok: false };
         state.calls.push(record);
         callIndex += 1;
-        caller({ name, input: toolInput, parentToolUseId, index: callIndex }).then(
+        caller({
+          name,
+          input: toolInput,
+          parentToolUseId,
+          index: callIndex,
+          ...(resultFormat ? { resultFormat } : {}),
+        }).then(
           (result) => {
             state.toolResultBytes += new TextEncoder().encode(result.content).length;
             record.ok = !result.isError;
-            settle(!result.isError, result.content);
+            if (resultFormat && !result.isError && !Object.hasOwn(result, 'data')) {
+              record.ok = false;
+              settle(
+                false,
+                `Tool "${name}" did not supply structured output. The tool already ran; do not repeat mutations.`,
+              );
+            } else {
+              settle(
+                !result.isError,
+                result.content,
+                resultFormat && !result.isError ? { value: result.data } : undefined,
+              );
+            }
           },
           (err: unknown) => settle(false, err instanceof Error ? err.message : String(err)),
         );
@@ -305,8 +340,13 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
         callTool(nameHandle, inputHandle),
       );
       vm.setProp(toolsObject, 'call', callFn);
+      const dataFn = vm.newFunction('data', (nameHandle, inputHandle) =>
+        callTool(nameHandle, inputHandle, 'data'),
+      );
+      vm.setProp(toolsObject, 'data', dataFn);
+      dataFn.dispose();
       for (const name of toolNames) {
-        if (['call', 'names', 'describe'].includes(name)) continue;
+        if (['call', 'data', 'names', 'describe'].includes(name)) continue;
         const fn = vm.newFunction(name, (inputHandle) => {
           const nameHandle = vm.newString(name);
           try {
@@ -343,6 +383,7 @@ export const toolScriptTool: Tool<ToolScriptInput, string> = {
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
           usageHint: tool.usageHint,
           permission: tool.permission,
           mutating: tool.mutating,

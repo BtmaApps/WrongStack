@@ -128,6 +128,47 @@ async function readPdf(
 }
 
 export const readTool: Tool<ReadInput, ReadOutput> = {
+  outputSchema: {
+    type: 'object',
+    properties: {
+      text: { type: 'string', description: 'Existing numbered or diagnostic read text.' },
+      raw_text: {
+        type: 'string',
+        description:
+          'Unnumbered UTF-8 content for actual content reads only. Absent for summary, cached diagnostics and non-text reads. Check truncated before parsing.',
+      },
+      total_lines: { type: 'integer', minimum: 0 },
+      encoding: { type: 'string' },
+      truncated: { type: 'boolean' },
+      cached: { type: 'boolean' },
+      note: { type: 'string' },
+      symbols: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            kind: { type: 'string' },
+            line: { type: 'integer' },
+            col: { type: 'integer' },
+            signature: { type: 'string' },
+          },
+          required: ['name', 'kind', 'line', 'col', 'signature'],
+        },
+      },
+    },
+    required: ['text', 'total_lines', 'encoding', 'truncated'],
+  },
+  programmaticOutput(output, input) {
+    if (output.encoding !== 'utf8' || input.mode === 'summary' || output.cached) return output;
+    const lines = output.text.split('\n');
+    if (output.text !== '' && !lines.every((line) => /^\s*\d+→/.test(line))) return output;
+    return {
+      ...output,
+      raw_text:
+        output.text === '' ? '' : lines.map((line) => line.replace(/^\s*\d+→/, '')).join('\n'),
+    };
+  },
   name: 'read',
   category: 'Filesystem',
   description:

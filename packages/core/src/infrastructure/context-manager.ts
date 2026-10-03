@@ -2,6 +2,7 @@ import type { Context } from '../core/context.js';
 import type { Compactor } from '../types/compactor.js';
 import type { Message } from '../types/messages.js';
 import type { Tool } from '../types/tool.js';
+import { compactionReportStillCurrent } from '../utils/compaction-result-state.js';
 import { repairToolUseAdjacency } from '../utils/message-invariants.js';
 import { estimateMessageTokens, estimateRequestTokens } from '../utils/token-estimate.js';
 
@@ -295,6 +296,11 @@ export function createContextManagerTool(
           }
 
           const report = await opts.compactor.compact(ctx, { trigger: 'tool' });
+          if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) {
+            throw new Error(
+              'Context changed or the run stopped while compacting; the earlier result was discarded.',
+            );
+          }
           ctx.clearFileTracking();
 
           // When ctx.state is not wired, the compactor's replaceMessages calls are

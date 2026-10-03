@@ -1,4 +1,5 @@
 import type { Context } from '@wrongstack/core/agent';
+import { createStrategyCompactor } from '@wrongstack/core/execution';
 import type { Provider } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import { buildCompactCommand } from '../src/slash-commands/compact.js';
@@ -37,6 +38,30 @@ const baseReport = {
 };
 
 describe('/compact slash command', () => {
+  it('does not publish tokens from a report belonging to a replaced session', async () => {
+    const original = createStrategyCompactor();
+    const setCurrentRequestTokens = vi.fn();
+    const compact: NonNullable<SlashCommandContext['compactor']>['compact'] = async (
+      context,
+      options,
+    ) => {
+      const report = await original.compact(context, options);
+      context.session = { id: 'replacement' } as Context['session'];
+      return report;
+    };
+    const options = makeCtx({ compact });
+    const context = makeFakeContext({
+      messages: [],
+      state: { revision: 0 } as never,
+      session: { id: 'original' } as never,
+      tokenCounter: { setCurrentRequestTokens } as never,
+    });
+    const result = await buildCompactCommand(options).run('', context);
+    expect(result?.message).toContain('discarded');
+    expect(setCurrentRequestTokens).not.toHaveBeenCalled();
+    expect(context.lastRequestTokens).toBeUndefined();
+    expect(options.renderer.writeInfo).not.toHaveBeenCalled();
+  });
   it('exposes metadata', () => {
     const cmd = buildCompactCommand(makeCtx());
     expect(cmd.name).toBe('compact');

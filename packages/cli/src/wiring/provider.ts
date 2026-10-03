@@ -13,11 +13,6 @@ import {
   withCatalogCapabilities,
 } from '@wrongstack/providers';
 import { registerBuiltinProviderAuthStrategies } from '@wrongstack/providers/oauth';
-import {
-  fallbackCodexProviderModels,
-  filterCurrentCodexModelIds,
-  isCodexCatalogModel,
-} from '../auth-menu/openai-codex-oauth.js';
 import { resolveProviderCfgWithProxy } from './provider-runtime.js';
 
 interface ProviderSetupResult {
@@ -66,36 +61,12 @@ export async function setupProvider(params: {
       // or any user-defined provider with an explicit `family`. Synthesize a
       // ResolvedProvider from config so boot proceeds (the actual transport is
       // still built below via makeProviderFromConfig / the registry).
-      // When the saved config carries no models but the family is one of
-      // the OAuth/subscription wire families, seed with the canonical
-      // model list so the provider shows up in pickers and the WebUI.
+      // Only saved account model IDs seed a config-only provider.
       const family = savedProviderCfg.family;
       const savedModels = savedProviderCfg.models;
       let models: Array<{ id: string; name: string }>;
       if (savedModels && savedModels.length > 0) {
         models = savedModels.map((m) => ({ id: m, name: m }));
-      } else if (family === 'openai-codex') {
-        // Resolve from the models.dev catalog: pick all models with
-        // family=gpt-codex* under the `openai` provider. When the
-        // catalog is unavailable, fall back to the documented defaults.
-        const openaiProvider = await modelsRegistry.getProvider('openai').catch(() => undefined);
-        if (openaiProvider) {
-          const catalogById = new Map(
-            openaiProvider.models
-              .filter(isCodexCatalogModel)
-              .map((m) => [m.id, { id: m.id, name: m.name }] as const),
-          );
-          const catalogModels = filterCurrentCodexModelIds(catalogById.keys())
-            .map((id) => catalogById.get(id))
-            .filter((m): m is { id: string; name: string } => Boolean(m));
-          if (catalogModels.length > 0) {
-            models = catalogModels;
-          } else {
-            models = fallbackCodexProviderModels();
-          }
-        } else {
-          models = fallbackCodexProviderModels();
-        }
       } else {
         models = [];
       }

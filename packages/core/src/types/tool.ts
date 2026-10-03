@@ -149,6 +149,14 @@ export interface Tool<I = unknown, O = unknown> {
   /** Optional category for grouping in help lists and system prompts. */
   category?: string | undefined;
   inputSchema: JSONSchema;
+  /**
+   * Optional canonical JSON output contract for tools.data(name, input) in ToolFlow.
+   * The executor validates and scrubs the value before exposing it. Text calls
+   * retain their existing serializer, preview and budget behavior.
+   */
+  outputSchema?: JSONSchema | undefined;
+  /** Pure projection for structured callers; defaults to the execute result. */
+  programmaticOutput?(output: O, input: I): unknown;
   permission: Permission;
   mutating: boolean;
   /**

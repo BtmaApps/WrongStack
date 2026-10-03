@@ -20,6 +20,7 @@ import {
 } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
 import { copilotBaseUrlFromToken, refreshCopilotToken } from '@wrongstack/providers';
+import { fetchCopilotModels as fetchAccountCopilotModels } from '@wrongstack/providers/oauth';
 import {
   mutateConfigProviders,
   normalizeKeys,
@@ -38,7 +39,6 @@ const COPILOT_HEADERS: Record<string, string> = {
   'Editor-Plugin-Version': 'copilot-chat/0.35.0',
   'Copilot-Integration-Id': 'vscode-chat',
 };
-const COPILOT_API_VERSION = '2026-06-01';
 export const COPILOT_PROVIDER_ID = 'github-copilot';
 
 interface DeviceCode {
@@ -151,77 +151,10 @@ export async function pollForGitHubToken(device: DeviceCode, signal: AbortSignal
 }
 
 /** Shape of the fields we read from a `/models` entry (everything optional). */
-interface CopilotModelEntry {
-  id?: unknown;
-  model_picker_enabled?: unknown;
-  is_chat_default?: unknown;
-  is_chat_fallback?: unknown;
-  vendor?: unknown;
-  supported_endpoints?: unknown;
-  policy?: { state?: unknown } | undefined;
-  capabilities?: { type?: unknown; supports?: { tool_calls?: unknown } | undefined } | undefined;
-}
+export { isUsableCopilotChatModel } from '@wrongstack/providers/oauth';
 
-/**
- * Decide whether a Copilot `/models` entry is a chat model we can actually
- * drive over this provider's wire.
- *
- * The provider POSTs to `…/chat/completions`, so the discriminators are:
- *   - `capabilities.type === 'chat'` — drops embeddings and completion-only ids.
- *   - `capabilities.supports.tool_calls` — the agent loop needs tool calling.
- *   - `supported_endpoints` (when present) must include `/chat/completions`.
- *     This is the key fix: `/responses`-only ids (the `*-picker` router models,
- *     `gpt-5.4-mini-free-auto`, `mai-code-1-flash*`) advertise themselves in the
- *     model picker but 400 on `/chat/completions`. Absent field ⇒ legacy chat
- *     model (gpt-4o, gpt-4.1) ⇒ allowed.
- *   - `policy.state !== 'disabled'` — disabled means the user hasn't enabled the
- *     model in their GitHub Copilot settings; calling it would 403.
- *   - `vendor !== 'Experimental'` — drops internal previews (trajectory-compaction).
- */
-export function isUsableCopilotChatModel(item: CopilotModelEntry): boolean {
-  if (typeof item.id !== 'string' || item.id.length === 0) return false;
-  const cap = item.capabilities;
-  if (cap?.type !== 'chat') return false;
-  if (cap.supports?.tool_calls !== true) return false;
-  const eps = item.supported_endpoints;
-  if (Array.isArray(eps) && !eps.includes('/chat/completions')) return false;
-  if (item.policy?.state === 'disabled') return false;
-  if (item.vendor === 'Experimental') return false;
-  return true;
-}
-
-/** Fetch the user's usable Copilot chat-model ids (best-effort, never throws). */
-async function fetchCopilotModels(copilotToken: string, signal: AbortSignal): Promise<string[]> {
-  try {
-    const base = copilotBaseUrlFromToken(copilotToken);
-    const res = await fetch(`${base}/models`, {
-      headers: {
-        accept: 'application/json',
-        authorization: `Bearer ${copilotToken}`,
-        'X-GitHub-Api-Version': COPILOT_API_VERSION,
-        ...COPILOT_HEADERS,
-      },
-      signal: AbortSignal.any([signal, AbortSignal.timeout(8_000)]),
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { data?: CopilotModelEntry[] } | null;
-    const data = json?.data;
-    if (!Array.isArray(data)) return [];
-    const usable = data.filter(isUsableCopilotChatModel);
-    // Float the provider's own default/fallback chat model to the front so the
-    // saved list's first entry is a sane `--model` default.
-    usable.sort((a, b) => copilotModelRank(a) - copilotModelRank(b));
-    return usable.map((m) => m.id as string);
-  } catch {
-    return [];
-  }
-}
-
-/** Lower rank sorts first: chat default, then fallback, then everything else. */
-function copilotModelRank(item: CopilotModelEntry): number {
-  if (item.is_chat_default === true) return 0;
-  if (item.is_chat_fallback === true) return 1;
-  return 2;
+async function fetchCopilotModels(token: string, signal: AbortSignal): Promise<string[]> {
+  return (await fetchAccountCopilotModels(token, signal))?.map((model) => model.id) ?? [];
 }
 
 export interface CopilotLoginOptions {
@@ -287,10 +220,12 @@ export async function runCopilotOAuthLogin(
     if (!saved) return 1;
 
     deps.renderer.write(color.green('\n  ✓ Signed in with GitHub Copilot!\n'));
-    const modelHint = models[0] ?? 'gpt-4o';
+    const modelHint = models[0];
     deps.renderer.writeInfo(
       `  Saved as provider ${color.bold(providerId)}${models.length ? ` (${models.length} models)` : ''}.\n` +
-        `  Use: ${color.bold(`wstack --provider ${providerId} --model ${modelHint}`)} "<task>"\n` +
+        (modelHint
+          ? `  Use: ${color.bold(`wstack --provider ${providerId} --model ${modelHint}`)} "<task>"\n`
+          : '  No usable account models were returned. Refresh the account catalog before selecting a model.\n') +
         color.dim('  The Copilot token refreshes automatically.\n'),
     );
     return 0;
@@ -336,8 +271,7 @@ async function saveCopilotTokens(
         const p: ProviderConfig = existing ? { ...existing } : { type: providerId };
         p.family = 'github-copilot';
         if (!p.baseUrl) p.baseUrl = copilotBaseUrlFromToken(copilotToken);
-        if (models.length > 0) p.models = models;
-        else if (!p.models || p.models.length === 0) p.models = ['gpt-4o'];
+        p.models = [...models];
         const keys = normalizeKeys(p).filter((k) => k.label !== entry.label);
         keys.push(entry);
         writeKeysBack(p, keys);

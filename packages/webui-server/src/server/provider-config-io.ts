@@ -36,7 +36,7 @@ function globalRootForConfigPath(configPath: string): string {
 export async function mutateSavedProviders(
   configPath: string,
   vault: SecretVault,
-  mutate: (providers: Record<string, ProviderConfig>) => void,
+  mutate: (providers: Record<string, ProviderConfig>) => void | Promise<void>,
 ): Promise<void> {
   const write = writeChain.then(() =>
     withFileLock(configPath, async () => {
@@ -52,7 +52,7 @@ export async function mutateSavedProviders(
       const decrypted = decryptConfigSecretsForRewrite(config, vault);
       const providers = (decrypted['providers'] ?? {}) as Record<string, ProviderConfig>;
       const before = JSON.stringify(providers);
-      mutate(providers);
+      await mutate(providers);
       if (JSON.stringify(providers) === before) return;
       decrypted['providers'] = providers;
       await backupConfigFile(configPath, { globalRoot: globalRootForConfigPath(configPath) });

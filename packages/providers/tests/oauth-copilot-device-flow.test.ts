@@ -189,7 +189,7 @@ describe('beginCopilotLogin — polling', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(pollTimes).toHaveLength(2);
     expect(pollTimes[1]! - start).toBe(7_000);
-    await expect(outcome).resolves.toMatchObject({ models: ['gpt-4o'] });
+    await expect(outcome).resolves.toMatchObject({ models: [] });
   });
 
   it('defaults the poll interval to 5s when GitHub omits it', async () => {
@@ -254,7 +254,7 @@ describe('beginCopilotLogin — polling', () => {
     await expect(session.waitForCompletion()).resolves.toBeNull();
   });
 
-  it('falls back to gpt-4o when the models endpoint yields no usable chat model', async () => {
+  it('returns no invented models when the account endpoint yields no usable chat model', async () => {
     installFetch({
       device: DEVICE,
       polls: [{ json: { access_token: 'gho_x' } }],
@@ -263,7 +263,7 @@ describe('beginCopilotLogin — polling', () => {
     const session = await beginCopilotLogin(undefined);
     const outcome = session.waitForCompletion();
     await vi.advanceTimersByTimeAsync(1_000);
-    await expect(outcome).resolves.toMatchObject({ models: ['gpt-4o'] });
+    await expect(outcome).resolves.toMatchObject({ models: [] });
   });
 
   it('propagates a Copilot token exchange failure', async () => {

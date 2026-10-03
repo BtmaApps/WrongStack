@@ -23,6 +23,14 @@ const DEFAULT_IGNORE: ReadonlySet<string> = new Set(DEFAULT_WALK_IGNORE_DIRS);
 const WALK_CONCURRENCY = 16;
 
 export const globTool: Tool<GlobInput, GlobOutput> = {
+  outputSchema: {
+    type: 'object',
+    properties: {
+      files: { type: 'array', items: { type: 'string' } },
+      truncated: { type: 'boolean' },
+    },
+    required: ['files', 'truncated'],
+  },
   name: 'glob',
   category: 'Filesystem',
   description:

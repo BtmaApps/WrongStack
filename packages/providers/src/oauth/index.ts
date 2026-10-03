@@ -6,6 +6,7 @@
  * — that is the caller's job.
  */
 
+export { fetchCopilotModels } from '../github-copilot-models.js';
 export { extractAccountId } from '../openai-codex-account.js';
 export {
   type AntigravityAuthClient,
@@ -21,6 +22,7 @@ export {
   createBuiltinProviderAuthRegistry,
   registerBuiltinProviderAuthStrategies,
 } from './builtin-strategies.js';
+export { createChatGPTDirectAuthStrategy } from './chatgpt-direct.js';
 export { buildClaudeAuthorizeUrl, CLAUDE_PROVIDER_ID } from './claude.js';
 export {
   CODEX_CATALOG_FAMILIES,
@@ -74,6 +76,11 @@ export {
   parseAuthorizationInput,
   startLoopbackServer,
 } from './shared.js';
+export {
+  createKimiAuthStrategy,
+  createMetaAuthStrategy,
+  createXaiAuthStrategy,
+} from './subscription-flows.js';
 export type {
   BeginOAuthDeps,
   OAuthKind,

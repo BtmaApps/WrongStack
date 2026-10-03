@@ -360,6 +360,8 @@
     "newAccount": "Nuovo account",
     "aliasPlaceholder": "es. {{default}}",
     "guidance": {
+      "meta": "Meta determina l’accesso e la fatturazione della chiave Model API generata; il solo accesso non garantisce l’utilizzo di un abbonamento.",
+      "chatgpt-api": "Autorizza l’utilizzo del piano ChatGPT nel browser. Modelli e limiti dipendono dall’account ChatGPT selezionato.",
       "claude": "Questo accesso serve per un utilizzo aggiuntivo: accede con il tuo account Claude e salva la credenziale come provider anthropic-oauth separato, insieme ai provider che già usi.\n\nPer utilizzare invece il tuo abbonamento Claude, avvia OmniRoute come proxy, accedi con il tuo account Claude su OmniRoute e poi aggiungi OmniRoute come provider qui."
     }
   },

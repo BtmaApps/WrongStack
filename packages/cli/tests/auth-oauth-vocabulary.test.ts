@@ -9,6 +9,14 @@ import { resolveOAuthKind } from '../src/auth-menu/oauth-menu.js';
  * again.
  */
 describe('resolveOAuthKind', () => {
+  it.each([
+    ['grok', 'xai'],
+    ['kimi-coding', 'kimi'],
+    ['muse', 'meta'],
+    ['chatgpt-direct', 'chatgpt-api'],
+  ])('maps %s to the new %s strategy', (alias, strategy) => {
+    expect(resolveOAuthKind(alias)).toBe(strategy);
+  });
   it('maps every ChatGPT spelling both surfaces used to accept', () => {
     for (const alias of ['chatgpt', 'openai', 'codex', 'codex-cli', 'openai-codex']) {
       expect(resolveOAuthKind(alias)).toBe('chatgpt');
@@ -44,6 +52,6 @@ describe('resolveOAuthKind', () => {
     expect(resolveOAuthKind('')).toBeUndefined();
     expect(resolveOAuthKind('   ')).toBeUndefined();
     expect(resolveOAuthKind('gemini')).toBeUndefined();
-    expect(resolveOAuthKind('9')).toBeUndefined();
+    expect(resolveOAuthKind('999')).toBeUndefined();
   });
 });

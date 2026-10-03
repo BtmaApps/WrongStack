@@ -17,6 +17,7 @@ import type { MultiAgentConfig, SubagentConfig, TaskResult } from '../types/mult
 import { toErrorMessage } from '../utils/error.js';
 import { expectDefined } from '../utils/expect-defined.js';
 import { sleep } from '../utils/sleep.js';
+import { compactionReportStillCurrent } from './compaction-result-state.js';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -636,6 +637,7 @@ export class ParallelEternalEngine {
     if (!shouldRun) return;
 
     const report = await compactor.compact(ctx, { aggressive: false });
+    if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
     this.iterationsSinceCompact = 0;
     await this.appendIterationEntry({
       source: 'manual',

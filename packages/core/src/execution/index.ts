@@ -66,6 +66,7 @@ export {
   type SystemOneBrainTierOptions,
   systemOneBrainSettles,
 } from './brain-system-one.js';
+export { compactionReportStillCurrent } from './compaction-result-state.js';
 export { type CompactorOptions, HybridCompactor } from './compactor.js';
 export {
   COUNCIL_REFUSE_OPTION_ID,

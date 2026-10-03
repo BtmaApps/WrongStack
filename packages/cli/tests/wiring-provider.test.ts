@@ -162,7 +162,7 @@ describe('setupProvider', () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
-  it('seeds openai-codex with the current Codex fallback models when no saved list exists', async () => {
+  it('keeps Codex model membership empty when no account catalog exists', async () => {
     const out = await setupProvider({
       config: fakeConfig({
         provider: 'openai-codex',
@@ -180,21 +180,10 @@ describe('setupProvider', () => {
       logger: fakeLogger(),
     });
 
-    expect(out.resolvedProvider?.models.map((m) => m.id)).toEqual([
-      'gpt-6.1-sol',
-      'gpt-6-astra',
-      'gpt-6-sol',
-      'gpt-6-luna',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-      'gpt-5.3-codex-spark',
-    ]);
+    expect(out.resolvedProvider?.models.map((m) => m.id)).toEqual([]);
   });
 
-  it('filters openai-codex catalog seeding to current Codex models', async () => {
+  it('does not seed a Codex account from generic API models', async () => {
     const getProvider = vi.fn(async (id: string) => {
       if (id === 'openai') {
         return {
@@ -230,13 +219,7 @@ describe('setupProvider', () => {
       logger: fakeLogger(),
     });
 
-    expect(out.resolvedProvider?.models.map((m) => m.id)).toEqual([
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-    ]);
+    expect(out.resolvedProvider?.models.map((m) => m.id)).toEqual([]);
   });
 
   it('throws UNSUPPORTED_PROVIDER when family is unsupported and no override', async () => {

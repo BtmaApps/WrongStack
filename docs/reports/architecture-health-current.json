@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T16:20:32.016Z",
+  "generatedAt": "2026-10-03T20:06:25.213Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,21 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4444,
-    "testFiles": 4015,
-    "sourceLines": 1049087,
+    "sourceFiles": 4456,
+    "testFiles": 4023,
+    "sourceLines": 1050944,
     "workspaceEdges": 133,
-    "moduleEdges": 14458,
+    "moduleEdges": 14516,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 5,
+    "typeModuleCycles": 6,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 977
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -150,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 562,
-      "testFiles": 579,
+      "testFiles": 580,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -190,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 579
+          "testFiles": 580
         }
       ]
     },
@@ -241,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 993,
-      "testFiles": 886,
+      "sourceFiles": 995,
+      "testFiles": 888,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -257,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 886
+          "testFiles": 888
         }
       ]
     },
@@ -505,8 +507,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 109,
-      "testFiles": 101,
+      "sourceFiles": 119,
+      "testFiles": 106,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -519,7 +521,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 101
+          "testFiles": 106
         }
       ]
     },
@@ -1076,6 +1078,20 @@
           "packages/core/src/types/token-counter.ts",
           "packages/core/src/types/tool.ts"
         ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/providers/src/auto-discover.ts",
+          "packages/providers/src/github-copilot-models.ts",
+          "packages/providers/src/github-copilot.ts",
+          "packages/providers/src/index.ts",
+          "packages/providers/src/oauth/chatgpt-direct.ts",
+          "packages/providers/src/oauth/device-code.ts",
+          "packages/providers/src/oauth/subscription-flows.ts",
+          "packages/providers/src/oauth/subscription-models.ts",
+          "packages/providers/src/subscription-oauth.ts"
+        ]
       }
     ],
     "matchedExceptions": [
@@ -1085,7 +1101,22 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/providers/src/auto-discover.ts",
+          "packages/providers/src/github-copilot-models.ts",
+          "packages/providers/src/github-copilot.ts",
+          "packages/providers/src/index.ts",
+          "packages/providers/src/oauth/chatgpt-direct.ts",
+          "packages/providers/src/oauth/device-code.ts",
+          "packages/providers/src/oauth/subscription-flows.ts",
+          "packages/providers/src/oauth/subscription-models.ts",
+          "packages/providers/src/subscription-oauth.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -2573,6 +2604,12 @@
       },
       {
         "file": "packages/cli/tests/event-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/execution-adapters.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8662,6 +8699,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/plugin/registration-lifetime.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/plugin/teardown-capability.test.ts",
         "projects": [
           "root-node"
@@ -10673,6 +10716,12 @@
       },
       {
         "file": "packages/core/tests/utils/tool-output-serializer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/tool-programmatic-output.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13150,6 +13199,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/chatgpt-direct-auth.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/cloudflare-ai-gateway.test.ts",
         "projects": [
           "root-node"
@@ -13187,6 +13242,12 @@
       },
       {
         "file": "packages/providers/tests/connection-warmup.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/copilot-live-catalog.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13613,6 +13674,24 @@
       },
       {
         "file": "packages/providers/tests/streaming.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/subscription-device-auth.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/subscription-oauth-runtime.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/subscription-refresh-processes.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25502,8 +25581,8 @@
     },
     {
       "file": "packages/core/src/execution/eternal-autonomy.ts",
-      "lines": 863,
-      "relativeImports": 10
+      "lines": 865,
+      "relativeImports": 11
     },
     {
       "file": "packages/core/src/execution/prompt-enhancer.ts",
@@ -25632,8 +25711,8 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 969,
-      "relativeImports": 72
+      "lines": 1000,
+      "relativeImports": 75
     },
     {
       "file": "packages/providers/src/openai-codex.ts",
@@ -25883,6 +25962,11 @@
   ],
   "hotspots": [
     {
+      "file": "packages/providers/src/index.ts",
+      "lines": 1000,
+      "relativeImports": 75
+    },
+    {
       "file": "packages/webui/src/types/client-message.ts",
       "lines": 999,
       "relativeImports": 9
@@ -25916,11 +26000,6 @@
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 976,
       "relativeImports": 18
-    },
-    {
-      "file": "packages/providers/src/index.ts",
-      "lines": 969,
-      "relativeImports": 72
     },
     {
       "file": "packages/core/src/storage/session-store.ts",
@@ -26123,14 +26202,14 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/core/src/execution/eternal-autonomy.ts",
+      "lines": 865,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/tui/src/components/settings-picker.tsx",
       "lines": 864,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/core/src/chronicle/project-server.ts",
-      "lines": 863,
-      "relativeImports": 19
     }
   ],
   "testOnlyExports": [

@@ -10,6 +10,7 @@ import {
   type ProviderErrorKind,
 } from '../types/provider.js';
 import { defaultContextOutputReserve } from '../utils/context-budget.js';
+import { compactionReportStillCurrent } from './compaction-result-state.js';
 import { NETWORK_ERR_RE } from './regex-patterns.js';
 
 /**
@@ -64,8 +65,14 @@ export function buildRecoveryStrategies(opts?: {
             // (captured for the pre-compaction array) is stale — drop it so the
             // retry's pre-flight estimates the compacted array afresh until the
             // next response re-anchors.
-            ctx.lastRealInputTokens = undefined;
-            if (report.after < report.before) {
+            if (!ctx.signal?.aborted && compactionReportStillCurrent(report, ctx)) {
+              ctx.lastRealInputTokens = undefined;
+            }
+            if (
+              !ctx.signal?.aborted &&
+              compactionReportStillCurrent(report, ctx) &&
+              report.after < report.before
+            ) {
               return { action: 'retry', reason: 'context_compacted' };
             }
           } catch {

@@ -90,9 +90,16 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
 
       // The modelsRegistry is passed through verbatim (undefined keeps the
       // engine's registry-free mode; memory-pinned).
+      const strategy = registry.resolveId(kind) === 'chatgpt-api' ? registry.get(kind) : undefined;
+      const saved =
+        strategy?.id === 'chatgpt-api'
+          ? (await ctx.loadConfigProviders())[customProviderId ?? strategy.providerId]
+          : undefined;
+      const credential =
+        saved?.apiKeys?.find((key) => key.label === saved.activeKey) ?? saved?.apiKeys?.[0];
       const session = await registry.begin(
         kind,
-        { modelsRegistry: ctx.deps.modelsRegistry },
+        { modelsRegistry: ctx.deps.modelsRegistry, ...(credential ? { credential } : {}) },
         attempt.signal,
       );
       if (attempts.get(kind) !== attempt || attempt.signal.aborted) {

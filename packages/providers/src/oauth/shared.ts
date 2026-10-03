@@ -121,7 +121,7 @@ export function callbackHtml(ok: boolean, message: string): string {
 
 export interface LoopbackServer {
   /** Resolves with `{ code, state }`, or null if cancelled / failed to bind. */
-  waitForCode(): Promise<{ code: string; state: string } | null>;
+  waitForCode(): Promise<{ code: string; state: string; clientId?: string } | null>;
   close(): void;
   /** True when the server bound to a callback port; false means all ports were busy. */
   readonly bound: boolean;
@@ -149,17 +149,20 @@ export interface LoopbackOptions {
  */
 export function startLoopbackServer(opts: LoopbackOptions): Promise<LoopbackServer> {
   const { port, fallbackPorts = [], host, path, expectedState, signal } = opts;
-  let resolveCode: (v: { code: string; state: string } | null) => void = () => {};
+  let resolveCode: (v: { code: string; state: string; clientId?: string } | null) => void =
+    () => {};
   let detachAbort = (): void => {};
-  const codePromise = new Promise<{ code: string; state: string } | null>((resolve) => {
-    let settled = false;
-    resolveCode = (v) => {
-      if (settled) return;
-      settled = true;
-      detachAbort();
-      resolve(v);
-    };
-  });
+  const codePromise = new Promise<{ code: string; state: string; clientId?: string } | null>(
+    (resolve) => {
+      let settled = false;
+      resolveCode = (v) => {
+        if (settled) return;
+        settled = true;
+        detachAbort();
+        resolve(v);
+      };
+    },
+  );
 
   const server: Server = createServer((req, res) => {
     // One-shot server: every response is the last one this socket will carry.
@@ -218,7 +221,10 @@ export function startLoopbackServer(opts: LoopbackOptions): Promise<LoopbackServ
     }
     res.statusCode = 200;
     res.end(callbackHtml(true, 'You can close this window and return to WrongStack.'));
-    server.close(() => resolveCode({ code, state: state ?? '' }));
+    const clientId = url.searchParams.get('client_id');
+    server.close(() =>
+      resolveCode({ code, state: state ?? '', ...(clientId ? { clientId } : {}) }),
+    );
   });
 
   /**

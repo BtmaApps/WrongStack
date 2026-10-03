@@ -84,7 +84,10 @@ export function ToolFlowContribution() {
         <p className="mt-6 text-sm leading-7 text-muted">
           Use direct calls for simple operations and small independent batches. Use ToolFlow for
           filtering, joins, counts, or deterministic dependent calls. Inspect an existing Project
-          Kit for reusable project operations.
+          Kit for reusable project operations. Read, grep, and glob also support validated
+          structured results through
+          <code> tools.data(name, input)</code>, so scripts can use fields and truncation metadata
+          directly. Existing text calls remain available.
         </p>
         <a
           href={`${repoUrl}/blob/main/docs/toolflow.md#measured-contribution`}

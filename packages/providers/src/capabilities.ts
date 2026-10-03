@@ -66,6 +66,7 @@ export const SIBLING_CATALOG_BY_FAMILY: Partial<Record<WireFamily, string>> = {
  */
 export const CATALOG_ALIAS_BY_PROVIDER_TYPE: Partial<Record<string, string>> = {
   'ai-gateway': 'vercel',
+  'openai-chatgpt': 'openai',
 };
 
 /**

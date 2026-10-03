@@ -1,7 +1,7 @@
+import type { NativeCloudSettings } from '../../cloud-provider.js';
 import type { ModelsDevModel, WireFamily } from '../models-registry.js';
 import type { Capabilities } from '../provider.js';
 import type { ModelRuntimeConfig } from './runtime.js';
-import type { NativeCloudSettings } from '../../cloud-provider.js';
 
 export interface ProviderApiKey {
   /** Short human-readable label (e.g. "personal", "work", "rate-limit-backup"). */
@@ -31,6 +31,14 @@ export interface ProviderApiKey {
   tokenType?: string | undefined;
   /** OAuth scope string (e.g. "openai.models.read openai.models.use"). */
   scope?: string | undefined;
+  /** Provider-specific renewable auth flow; kept with this account, not its wire family. */
+  oauthStrategyId?: string | undefined;
+  /** Issued public OAuth client ID for this account registration. */
+  oauthClientId?: string | undefined;
+  /** Verified OIDC subject. Never inferred from an unverified access token. */
+  oauthSubject?: string | undefined;
+  /** Retained OIDC token for reauthorization hints; encrypted by SecretVault. */
+  idToken?: string | undefined;
   /**
    * ChatGPT account id, extracted from the OAuth access-token JWT
    * (`https://api.openai.com/auth`.chatgpt_account_id). Sent as the

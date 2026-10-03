@@ -1,3 +1,5 @@
+import type { Context } from '@wrongstack/core/agent';
+import { createStrategyCompactor } from '@wrongstack/core/execution';
 import { describe, expect, it, vi } from 'vitest';
 import type WebSocket from 'ws';
 import { createSessionHandlers } from '../src/server/session-handlers.js';
@@ -45,7 +47,7 @@ function mkContext(id: string, messageCount: number) {
   };
 }
 
-function harness() {
+function harness(staleCompact = false) {
   const contexts = {
     sess_front: mkContext('sess_front', 2),
     sess_bg: mkContext('sess_bg', 7),
@@ -69,6 +71,11 @@ function harness() {
       ({
         compact: async (target: { session?: { id?: string } }) => {
           compacted.push(target.session?.id ?? '?');
+          if (staleCompact) {
+            const report = await createStrategyCompactor().compact(target as Context);
+            target.session = { id: 'replaced-session' };
+            return report;
+          }
           return { before: 100, after: 40 };
         },
       }) as never,
@@ -102,6 +109,16 @@ function harness() {
 }
 
 describe('context operations act on the requesting tab', () => {
+  it('refuses an obsolete compaction report instead of publishing success into the requesting lane', async () => {
+    const h = harness(true);
+    await h.handlers.compactContext(ws, {
+      type: 'context.compact',
+      payload: { sessionId: 'sess_bg' },
+    });
+    expect(h.sent.some((message) => message.type === 'context.compacted')).toBe(false);
+    expect(JSON.stringify(h.sent)).toContain('discarded');
+    expect(h.contexts.sess_front.session.id).toBe('sess_front');
+  });
   it('compacts the named session, not the runtime’s', async () => {
     const h = harness();
 

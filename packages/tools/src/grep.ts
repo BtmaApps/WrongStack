@@ -58,6 +58,16 @@ function isInsideDefaultIgnoredDirectory(target: string, root: string): boolean 
 }
 
 export const grepTool: Tool<GrepInput, GrepOutput> = {
+  outputSchema: {
+    type: 'object',
+    properties: {
+      matches: { type: 'array', items: { type: 'string' } },
+      count: { type: 'integer', minimum: 0 },
+      truncated: { type: 'boolean' },
+      used: { type: 'string', enum: ['rg', 'native'] },
+    },
+    required: ['matches', 'count', 'truncated', 'used'],
+  },
   name: 'grep',
   category: 'Search',
   description:

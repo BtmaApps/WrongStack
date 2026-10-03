@@ -114,6 +114,8 @@ export interface ConversationJournalQueueApi {
 export interface NestedToolCallResult {
   content: string;
   isError: boolean;
+  /** Validated, scrubbed canonical JSON, present only for a successful data request. */
+  data?: unknown;
 }
 
 /**
@@ -127,6 +129,7 @@ export type NestedToolCaller = (call: {
   input: unknown;
   parentToolUseId: string;
   index: number;
+  resultFormat?: 'data' | undefined;
 }) => Promise<NestedToolCallResult>;
 
 export interface AgentContext extends RunEnv {

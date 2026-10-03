@@ -30,20 +30,33 @@ finishes normally.
 
 `tools.names()` lists the enabled executable catalog, including tools whose
 schemas are deferred. `tools.describe(name)` returns a tool's exact input schema,
+its optional structured `outputSchema`,
 description, usage guidance, permission, and mutation flag inside the VM without
 executing a tool. Use these to build correct arguments; do not guess schemas.
 
 Call a tool with `await tools.read(input)` or `await tools.call(name, input)`.
-Names containing hyphens and the reserved helper names `call`, `names`, and
+Names containing hyphens and the reserved helper names `call`, `data`, `names`, and
 `describe` use `tools.call`. Results are text; parse JSON only for tools that
 return JSON. Failures throw and can be handled with `try`/`catch`.
 
+`await tools.data(name, input)` opts into validated, secret-scrubbed JSON for
+tools declaring `outputSchema`. Built-in `read`, `grep`, and `glob` support it.
+Existing text calls keep their current behavior. The executor runs the same
+validation, permission, confirmation, hook, journal, and session gate once;
+unsupported tools are rejected before execution. Structured values stay local
+to the script and are not copied into provider blocks or journals.
+Validation uses WrongStack's existing supported JSON Schema subset.
+
+For a UTF-8 content read, `raw_text` contains unnumbered text. Check
+`truncated` and that `raw_text` exists before parsing. Summary reads, cached
+diagnostics, and non-text reads may omit it; inspect `text`, `cached`, `encoding`,
+and `note` rather than treating a diagnostic as file content. Structured search
+results also expose their own truncation flags.
+
 For example, set `description` to "Summarize package versions" and supply this
-as the `script` input after checking the read schema. The gate renders the
-built-in read result as a `read:` header and `N→content` lines, rather than a
-raw JSON object. Extract those lines and check truncation before parsing a JSON
-file. This recipe is checked against real temporary manifest
-files through the built-in read tool and Agent gate.
+as the `script` input after checking the read input/output schemas. Structured
+results avoid parsing the display header and line numbers. This route is checked
+against a real temporary manifest through the built-in tools and Agent gate.
 Two files keep the recipe short; direct batching is also suitable for this small
 case. Extend the pattern when many files or large metadata need reduction.
 
@@ -51,12 +64,11 @@ case. Extend the pattern when many files or large metadata need reduction.
 const paths = ['package.json', 'packages/tools/package.json'];
 const findings = await Promise.all(paths.map(async path => {
   try {
-    const text = await tools.read({ path });
-    const numbered = text.split(/\r?\n/).filter(line => /^\d+→/.test(line));
-    if (!numbered.length || /\btruncated=true\b/.test(text.split('\n')[0])) {
+    const file = await tools.data('read', { path });
+    if (file.truncated || file.raw_text === undefined) {
       throw new Error('Incomplete file');
     }
-    const manifest = JSON.parse(numbered.map(line => line.replace(/^\d+→/, '')).join('\n'));
+    const manifest = JSON.parse(file.raw_text);
     return { path, name: manifest.name, version: manifest.version };
   } catch (error) {
     return { path, error: error.message };
@@ -70,6 +82,18 @@ sequential. Bound concurrency for large batches. Avoid logging raw results:
 console output also reaches the model.
 Nested tool results can themselves be previews with artifact paths. Read or
 grep those artifacts selectively rather than parsing a preview as complete JSON.
+
+Structured output has an 8 MiB serialized limit, a 64-level nesting limit, and
+a 250,000-value limit. It rejects cycles, non-finite numbers, sparse arrays,
+accessors, and non-JSON values. Absent optional object fields are omitted.
+Content-changing result policies invalidate access to the earlier structured
+value. If transfer, output validation, or a result policy fails after execution,
+the tool may already have applied effects: inspect those effects before retrying
+a mutation. Data access never causes an automatic second execution.
+
+ToolFlow's byte diagnostics still measure rendered tool-result text and returned
+script text. They do not count the execution-local canonical JSON transfer and
+do not establish token, billing, or latency savings for structured mode.
 
 The tool is directly available in the medium and off tiers. Other tiers can
 discover it with `tool_search` and invoke it with `tool_use` when enabled.

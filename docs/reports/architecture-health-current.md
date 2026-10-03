@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-03T16:20:32.016Z
+**Generated:** 2026-10-03T20:06:25.213Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,20 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4444 |
-| Production source lines | 1049087 |
-| Test files | 4015 |
+| Production source files | 4456 |
+| Production source lines | 1050944 |
+| Test files | 4023 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14458 |
+| Relative module edges | 14516 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 5 |
+| Type-inclusive module cycles | 6 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 4 |
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- 1 unexcepted module cycle(s)
 
 ## Workspace packages
 
@@ -29,10 +29,10 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 45 | 51 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
-| @wrongstack/cli | 562 | 579 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 562 | 580 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 993 | 886 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 995 | 888 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 44 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 40 | 31 | @wrongstack/persistence |
 | @wrongstack/kanban | 102 | 82 | @wrongstack/persistence, @wrongstack/primitives |
@@ -44,7 +44,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 9 | 10 | — |
-| @wrongstack/providers | 109 | 101 | @wrongstack/core |
+| @wrongstack/providers | 119 | 106 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 23 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
@@ -78,11 +78,13 @@ None.
 - packages/core/src/coordination/brain-telemetry.ts ↔ packages/core/src/coordination/brain.ts ↔ packages/core/src/kernel/events.ts ↔ packages/core/src/kernel/events/brain-events.ts ↔ packages/core/src/kernel/events/session-events.ts
 - packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/types/plugin.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session-events.ts ↔ packages/core/src/types/session-storage.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
+- packages/providers/src/auto-discover.ts ↔ packages/providers/src/github-copilot-models.ts ↔ packages/providers/src/github-copilot.ts ↔ packages/providers/src/index.ts ↔ packages/providers/src/oauth/chatgpt-direct.ts ↔ packages/providers/src/oauth/device-code.ts ↔ packages/providers/src/oauth/subscription-flows.ts ↔ packages/providers/src/oauth/subscription-models.ts ↔ packages/providers/src/subscription-oauth.ts
 
 ## Largest production files
 
 | Lines | File |
 |---:|---|
+| 1000 | `packages/providers/src/index.ts` |
 | 999 | `packages/webui/src/types/client-message.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
 | 996 | `packages/tools/src/codebase-index/writer.ts` |
@@ -90,7 +92,6 @@ None.
 | 982 | `packages/mcp/src/registry.ts` |
 | 980 | `packages/sage/src/project-server.ts` |
 | 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
-| 969 | `packages/providers/src/index.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
 | 946 | `packages/acp/src/client/acp-session.ts` |
@@ -131,8 +132,8 @@ None.
 | 878 | `packages/primitives/src/regex-guard.ts` |
 | 873 | `packages/webui/src/lib/fonts.ts` |
 | 866 | `packages/tools/src/languages/profiles/primary.ts` |
+| 865 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 864 | `packages/tui/src/components/settings-picker.tsx` |
-| 863 | `packages/core/src/chronicle/project-server.ts` |
 
 ## Exports only tests reference
 

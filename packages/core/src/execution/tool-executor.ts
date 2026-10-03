@@ -37,6 +37,7 @@ import {
 } from '../types/tool-executor.js';
 import { toErrorMessage } from '../utils/error.js';
 import { createToolOutputSerializer } from '../utils/tool-output-serializer.js';
+import { rememberProgrammaticOutput } from '../utils/tool-programmatic-output.js';
 import { resolveToolResultRenderMode } from '../utils/tool-result-render-mode.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { toolErrorResult } from './tool-error-taxonomy.js';
@@ -51,6 +52,7 @@ import {
   classifyToolError,
   hashPermissionInput,
   maybePersistLargeToolOutput,
+  toolProgrammaticOutput,
 } from './tool-executor-support.js';
 
 export { classifyToolError } from './tool-executor-support.js';
@@ -386,11 +388,13 @@ export class ToolExecutor {
           );
         }
 
-        let producedText = await this.produceToolOutput(tool, use, ctx, budget);
+        const produced = await this.produceToolOutput(tool, use, ctx, budget);
+        let producedText = produced.text;
         if (preToolContext?.contextAs === 'inline') {
           producedText = `${producedText}\n\n${preToolContext.text}`;
         }
         let { block: result, bytes } = this.settleToolOutput(tool, use, producedText, budget);
+        if (produced.data) rememberProgrammaticOutput(result, produced.data.value);
         budget -= bytes;
         await queueDirectoryInstructions(tool, use.input, ctx);
         if (preToolContext?.contextAs === 'separate') {
@@ -623,17 +627,19 @@ export class ToolExecutor {
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ block: ToolResultBlock; bytes: number }> {
     return this.withGovernedExecutionBridge(ctx, async () => {
-      let text: string;
+      let produced: Awaited<ReturnType<ToolExecutor['produceToolOutput']>>;
       try {
-        text = await this.produceToolOutput(tool, use, ctx, budget);
+        produced = await this.produceToolOutput(tool, use, ctx, budget);
       } catch (err) {
         await this.toolSkipped(tool, use, ctx, toErrorMessage(err));
         throw err;
       }
+      let text = produced.text;
       if (preToolContext?.contextAs === 'inline') {
         text = `${text}\n\n${preToolContext.text}`;
       }
       const settled = this.settleToolOutput(tool, use, text, budget);
+      if (produced.data) rememberProgrammaticOutput(settled.block, produced.data.value);
       await queueDirectoryInstructions(tool, use.input, ctx);
       if (preToolContext?.contextAs === 'separate') {
         ctx.pendingPostToolContext = ctx.pendingPostToolContext
@@ -695,7 +701,12 @@ export class ToolExecutor {
     use: ToolUseBlock,
     ctx: Context,
     budgetHint: number,
-  ): Promise<string> {
+  ): Promise<{ text: string; data?: { value: unknown } }> {
+    if (use._resultFormat === 'data' && !tool.outputSchema) {
+      throw new Error(
+        `Tool "${tool.name}" does not declare structured output; use tools.call instead`,
+      );
+    }
     this.opts.events?.emit('tool.started', {
       sessionId: resolveEventSessionId(ctx),
       ...(ctx.traceId ? { traceId: ctx.traceId } : {}),
@@ -715,11 +726,13 @@ export class ToolExecutor {
     });
     this.opts.renderer?.writeToolCall(tool.name, use.input);
     const output = await this.runWithTimeout(tool, use.input, ctx.signal, ctx, use.id);
+    const data = toolProgrammaticOutput(tool, use, output, this.opts.secretScrubber);
     const text = this.serializer.serialize(output, { toolName: tool.name, input: use.input, tool });
     const scrubbed = this.opts.secretScrubber.scrub(text);
-    return tool.preserveFullOutput
+    const content = tool.preserveFullOutput
       ? scrubbed
-      : maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
+      : await maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
+    return { text: content, ...(data ? { data } : {}) };
   }
 
   private settleToolOutput(

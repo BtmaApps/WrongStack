@@ -27,6 +27,10 @@ describe('built-in provider auth strategies', () => {
       'copilot',
       'openrouter',
       'antigravity',
+      'xai',
+      'kimi',
+      'meta',
+      'chatgpt-api',
     ]);
     expect(registry.resolveId('openai-codex')).toBe('chatgpt');
     expect(registry.resolveId('anthropic-oauth')).toBe('claude');
@@ -85,7 +89,7 @@ describe('applyProviderAuthOutcome', () => {
     expect(applied.providerId).toBe('work');
     expect(applied.provider.type).toBe('openrouter');
     expect(applied.provider.baseUrl).toBe('https://custom.test/v1');
-    expect(applied.provider.models).toEqual(['curated']);
+    expect(applied.provider.models).toEqual([]);
     expect(applied.provider.apiKey).toBeUndefined();
     expect(applied.provider.activeKey).toBe('oauth-default');
     expect(applied.provider.apiKeys?.map((entry) => entry.label)).toEqual([

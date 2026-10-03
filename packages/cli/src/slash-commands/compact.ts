@@ -1,3 +1,4 @@
+import { compactionReportStillCurrent } from '@wrongstack/core/execution';
 import type { SlashCommand } from '@wrongstack/core/types';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -26,6 +27,12 @@ export function buildCompactCommand(opts: SlashCommandContext): SlashCommand {
       }
       const aggressive = args.trim() === 'aggressive';
       const report = await opts.compactor.compact(ctx, { aggressive, trigger: 'manual' });
+      if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) {
+        const message =
+          'Context changed or the run stopped while compacting; the earlier result was discarded.';
+        opts.renderer.writeWarning(message);
+        return { message };
+      }
 
       // Update token stash and token counter so the TUI/REPL context bar
       // reflects the post-compaction size immediately (no API request was made).

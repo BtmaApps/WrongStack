@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { ConversationState } from '../../src/core/conversation-state.js';
+import { compactionReportStillCurrent } from '../../src/execution/compaction-result-state.js';
 import { createStrategyCompactor } from '../../src/execution/strategy-compactor.js';
 import type { Message } from '../../src/types/messages.js';
 import type { Provider } from '../../src/types/provider.js';
@@ -178,6 +179,29 @@ function ownedJournalContext(
 }
 
 describe('compaction snapshot writer ownership', () => {
+  it('marks the report stale when the session changes during the durability flush', async () => {
+    const next = {
+      id: 'next',
+      append: vi.fn(async () => undefined),
+      flush: vi.fn(async () => undefined),
+    } as unknown as Context['session'];
+    const first = {
+      id: 'first',
+      append: vi.fn(async () => undefined),
+      flush: vi.fn(async () => undefined),
+    } as unknown as Context['session'];
+    const ctx = ownedJournalContext(manyTurns(), first);
+    first.flush = async () => {
+      ctx.session = next;
+    };
+    const after = vi.fn();
+    const compactor = createStrategyCompactor({ preserveK: 3 });
+    compactor.observe?.({ after });
+    const report = await compactor.compact(ctx, { aggressive: true });
+    expect(compactionReportStillCurrent(report, ctx)).toBe(false);
+    expect(after).not.toHaveBeenCalled();
+    expect(next.append).not.toHaveBeenCalled();
+  });
   it('journals an active run through its pinned writer', async () => {
     const liveAppend = vi.fn(async () => undefined);
     const pinnedAppend = vi.fn(async () => undefined);

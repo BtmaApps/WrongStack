@@ -13,6 +13,7 @@ import {
 import { toErrorMessage } from '../utils/error.js';
 import { sleep } from '../utils/sleep.js';
 import { formatDecisionSummary } from './autonomy-brain.js';
+import { compactionReportStillCurrent } from './compaction-result-state.js';
 import {
   brainstormTask as delegateBrainstormTask,
   buildDirective as delegateBuildDirective,
@@ -522,6 +523,7 @@ export class EternalAutonomyEngine {
     if (!shouldRun) return;
 
     const report = await compactor.compact(ctx, { aggressive });
+    if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
     this.iterationsSinceCompact = 0;
     // Journal the compaction event so users see it in /goal journal.
     const saved = report.before - report.after;

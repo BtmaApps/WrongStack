@@ -267,11 +267,13 @@ export async function runCodexOAuthLogin(
     const saved = await saveCodexTokens(deps, providerId, tokens, accountId, models);
     if (!saved) return 1;
 
-    const modelHint = models[0] ?? 'gpt-6-astra';
+    const modelHint = models[0];
     deps.renderer.write(color.green('\n  ✓ Signed in with ChatGPT!\n'));
     deps.renderer.writeInfo(
       `  Saved as provider ${color.bold(providerId)}${models.length > 0 ? ` (${models.length} models)` : ''}.\n` +
-        `  Use: ${color.bold(`wstack --provider ${providerId} --model ${modelHint}`)} "<task>"\n` +
+        (modelHint
+          ? `  Use: ${color.bold(`wstack --provider ${providerId} --model ${modelHint}`)} "<task>"\n`
+          : '  No account models were returned. Refresh the account catalog before selecting a model.\n') +
         color.dim('  Tokens refresh automatically before they expire.\n'),
     );
     return 0;
@@ -322,8 +324,7 @@ async function saveCodexTokens(
         const p: ProviderConfig = existing ? { ...existing } : { type: providerId };
         p.family = 'openai-codex';
         if (!p.baseUrl) p.baseUrl = CODEX_BASE_URL;
-        // The caller populates `models` from the live backend or the fallback
-        // constant. Always overwrite — the backend is authoritative.
+        // Replace membership with the authenticated account response, including empty lists.
         p.models = [...models];
 
         const keys = normalizeKeys(p).filter((k) => k.label !== entry.label);

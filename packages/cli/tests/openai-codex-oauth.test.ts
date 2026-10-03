@@ -372,7 +372,7 @@ describe('resolveCodexModels', () => {
     ]);
   });
 
-  it('uses Codex-family models from the catalog when live discovery is unavailable', async () => {
+  it('does not substitute a generic catalog for an unavailable account catalog', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('Forbidden', { status: 403 })),
@@ -400,18 +400,10 @@ describe('resolveCodexModels', () => {
       ),
     } as never as ModelsRegistry;
 
-    await expect(resolveCodexModels(registry, 'test-token')).resolves.toEqual([
-      'gpt-6-astra',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-      'gpt-5.3-codex-spark',
-    ]);
+    await expect(resolveCodexModels(registry, 'test-token')).resolves.toEqual([]);
   });
 
-  it('falls back to the seeded Codex model list when live discovery and catalog miss', async () => {
+  it('returns no invented model IDs when account discovery fails', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('Forbidden', { status: 403 })),
@@ -420,18 +412,7 @@ describe('resolveCodexModels', () => {
       getProvider: vi.fn(async () => undefined),
     } as never as ModelsRegistry;
 
-    await expect(resolveCodexModels(registry, 'test-token')).resolves.toEqual([
-      'gpt-6.1-sol',
-      'gpt-6-astra',
-      'gpt-6-sol',
-      'gpt-6-luna',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-      'gpt-5.4-mini',
-      'gpt-5.3-codex-spark',
-    ]);
+    await expect(resolveCodexModels(registry, 'test-token')).resolves.toEqual([]);
   });
 });
 

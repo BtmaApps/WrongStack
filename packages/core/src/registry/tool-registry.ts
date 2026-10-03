@@ -42,8 +42,17 @@ function matchToolPattern(pattern: string, name: string): boolean {
  */
 export type ToolWrapper = (tool: Tool) => Tool;
 
+interface ToolRegistration {
+  tool: Tool;
+  owner: string;
+  previous?: ToolRegistration;
+  wrapper?: ToolWrapper;
+  wrapperOwner?: string;
+  removed?: boolean;
+}
+
 export class ToolRegistry {
-  private readonly tools = new Map<string, { tool: Tool; owner: string }>();
+  private readonly tools = new Map<string, ToolRegistration>();
   private readonly descriptionModes = new Map<string, ToolDescriptionMode>();
   /**
    * Disabled tool names plus the audit-trail metadata explaining WHY each
@@ -133,6 +142,57 @@ export class ToolRegistry {
     this._stampDefTokens(stored);
     this.tools.set(tool.name, { tool: stored, owner });
     this._version++;
+  }
+
+  /** Registration owned by one lifetime. Cleanup never removes a newer independent registration. */
+  registerScoped(tool: Tool, owner = 'core'): () => void {
+    this.register(tool, owner);
+    return this.removeRegistration(tool.name, this.tools.get(tool.name)!);
+  }
+
+  private removeRegistration(name: string, registration: ToolRegistration): () => void {
+    return () => {
+      if (registration.removed) return;
+      registration.removed = true;
+      const layers: ToolRegistration[] = [];
+      let current = this.tools.get(name);
+      let found = false;
+      while (current) {
+        layers.push(current);
+        if (current === registration) found = true;
+        current = current.previous;
+      }
+      if (!found) return;
+      let base: ToolRegistration | undefined;
+      for (const layer of layers.reverse()) {
+        if (layer.removed) continue;
+        if (!layer.wrapper) {
+          base = layer;
+          continue;
+        }
+        if (!base) continue;
+        let wrapped: Tool;
+        try {
+          wrapped = this._prepareForStorage(
+            layer.wrapper(applyToolDescriptionModeToTool(base.tool, 'extend')),
+          );
+        } catch (error) {
+          // A broken surviving decorator must not leave unloaded code callable.
+          this.tools.delete(name);
+          this._version++;
+          throw error;
+        }
+        wrapped._estDefTokens = undefined;
+        this._stampDefTokens(wrapped);
+        layer.tool = wrapped;
+        layer.owner = `${base.owner}+${layer.wrapperOwner}`;
+        layer.previous = base;
+        base = layer;
+      }
+      if (base) this.tools.set(name, base);
+      else this.tools.delete(name);
+      this._version++;
+    };
   }
 
   /**
@@ -235,8 +295,20 @@ export class ToolRegistry {
     // The wrapper may have changed name/description/inputSchema — recompute.
     wrapped._estDefTokens = undefined;
     this._stampDefTokens(wrapped);
-    this.tools.set(name, { tool: wrapped, owner: `${entry.owner}+${owner}` });
+    this.tools.set(name, {
+      tool: wrapped,
+      owner: `${entry.owner}+${owner}`,
+      previous: entry,
+      wrapper,
+      wrapperOwner: owner,
+    });
     this._version++;
+  }
+
+  /** Scoped wrappers must be pure tool decorators: removal can recompose surviving layers. */
+  wrapScoped(name: string, wrapper: ToolWrapper, owner = 'core'): () => void {
+    this.wrap(name, wrapper, owner);
+    return this.removeRegistration(name, this.tools.get(name)!);
   }
 
   setDescriptionMode(name: string, mode: ToolDescriptionMode): boolean {
@@ -254,7 +326,7 @@ export class ToolRegistry {
     const stored = applyToolDescriptionModeToTool(entry.tool, normalized);
     stored._estDefTokens = undefined;
     this._stampDefTokens(stored);
-    this.tools.set(name, { ...entry, tool: stored });
+    entry.tool = stored;
     this._version++;
     return true;
   }

@@ -372,6 +372,72 @@ describe('todo-listener plugin', () => {
       expect(api.mailbox?.send).toHaveBeenCalledTimes(2);
     });
 
+    it('reserves the cooldown while a broadcast is still in flight', async () => {
+      const api = createMockAPI({ withMailbox: true, enabled: true });
+      api.config.extensions = { 'todo-listener': { enabled: true, cooldownMs: 60_000 } };
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      api.mailbox!.send.mockImplementation(async () => {
+        await blocked;
+        return { id: 'msg-1' };
+      });
+      todoListenerPlugin.setup(api as never);
+      const hook = getHook(api);
+
+      const first = hook({
+        toolName: 'todo',
+        toolInput: { todos: [{ id: 'a', content: 'one', status: 'pending' }] },
+        toolResult: { content: 'ok', isError: false },
+      });
+      await Promise.resolve();
+      const second = hook({
+        toolName: 'todo',
+        toolInput: { todos: [{ id: 'b', content: 'two', status: 'pending' }] },
+        toolResult: { content: 'ok', isError: false },
+      });
+      await Promise.resolve();
+      release();
+      await Promise.all([first, second]);
+
+      expect(api.mailbox?.send).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows overlapping broadcasts when cooldownMs is zero', async () => {
+      const api = createMockAPI({ withMailbox: true, enabled: true });
+      api.config.extensions = {
+        'todo-listener': { enabled: true, broadcastOnChange: false, cooldownMs: 0 },
+      };
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      api.mailbox!.send.mockImplementation(async () => {
+        await blocked;
+        return { id: 'msg-1' };
+      });
+      todoListenerPlugin.setup(api as never);
+      const hook = getHook(api);
+
+      const first = hook({
+        toolName: 'todo',
+        toolInput: { todos: [{ id: 'a', content: 'one', status: 'pending' }] },
+        toolResult: { content: 'ok', isError: false },
+      });
+      await Promise.resolve();
+      const second = hook({
+        toolName: 'todo',
+        toolInput: { todos: [{ id: 'b', content: 'two', status: 'pending' }] },
+        toolResult: { content: 'ok', isError: false },
+      });
+      await Promise.resolve();
+      release();
+      await Promise.all([first, second]);
+
+      expect(api.mailbox?.send).toHaveBeenCalledTimes(2);
+    });
+
     it('records errorCount when mailbox.send throws', async () => {
       const api = createMockAPI({ withMailbox: true, enabled: true });
       api.mailbox!.send.mockRejectedValue(new Error('mailbox write failed'));

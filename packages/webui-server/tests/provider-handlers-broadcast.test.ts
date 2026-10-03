@@ -300,55 +300,53 @@ describe('createProviderHandlers saved-provider broadcasts', () => {
     expect(broadcast).not.toHaveBeenCalled();
   });
 
-  it('uses the OAuth family sibling catalog for custom provider model lists', async () => {
-    mockLoadSavedProviders.mockResolvedValueOnce({
-      'custom-claude': {
-        type: 'anthropic-oauth',
-        family: 'anthropic-oauth',
-        models: [],
-      },
-    } satisfies Record<string, ProviderConfig>);
-    const getProvider = vi.fn(async (id: string): Promise<ResolvedProvider | undefined> => {
-      if (id === 'anthropic-oauth') {
-        return { id, name: id, family: 'anthropic-oauth', envVars: [], models: [] };
-      }
-      if (id === 'anthropic') {
-        return {
-          id,
-          name: id,
-          family: 'anthropic',
-          envVars: [],
-          models: [{ id: 'claude-sonnet-4', name: 'Claude Sonnet 4' }],
-        };
-      }
-      return undefined;
-    });
-    const getModel = vi.fn(async () => undefined);
-    const ws = mockWs();
-    const modelsRegistry = makeModelsRegistry({ getProvider, getModel });
-    const { handlers } = makeHandlers({ modelsRegistry });
+  it.each([{ savedModels: [] }, { savedModels: ['account-only-model'] }])(
+    'preserves the OAuth account model snapshot $savedModels without adding sibling catalog models',
+    async ({ savedModels }) => {
+      mockLoadSavedProviders.mockResolvedValueOnce({
+        'custom-claude': {
+          type: 'anthropic-oauth',
+          family: 'anthropic-oauth',
+          models: savedModels,
+        },
+      } satisfies Record<string, ProviderConfig>);
+      const getProvider = vi.fn(async (id: string): Promise<ResolvedProvider | undefined> => {
+        if (id === 'anthropic-oauth') {
+          return { id, name: id, family: 'anthropic-oauth', envVars: [], models: [] };
+        }
+        if (id === 'anthropic') {
+          return {
+            id,
+            name: id,
+            family: 'anthropic',
+            envVars: [],
+            models: [{ id: 'claude-sonnet-4', name: 'Claude Sonnet 4' }],
+          };
+        }
+        return undefined;
+      });
+      const getModel = vi.fn(async () => undefined);
+      const ws = mockWs();
+      const modelsRegistry = makeModelsRegistry({ getProvider, getModel });
+      const { handlers } = makeHandlers({ modelsRegistry });
 
-    await handlers.handleProviderModels(ws, 'custom-claude');
+      await handlers.handleProviderModels(ws, 'custom-claude');
 
-    expect(getProvider).toHaveBeenCalledWith('anthropic-oauth');
-    expect(getProvider).toHaveBeenCalledWith('anthropic');
-    const sent = ws.send.mock.calls.map(
-      ([raw]) => JSON.parse(String(raw)) as Record<string, unknown>,
-    );
-    const message = sent.find((item) => item.type === 'provider.models');
-    expect(message).toEqual({
-      type: 'provider.models',
-      payload: {
-        provider: 'custom-claude',
-        models: [
-          expect.objectContaining({
-            id: 'claude-sonnet-4',
-            name: 'Claude Sonnet 4',
-          }),
-        ],
-      },
-    });
-  });
+      expect(getProvider).toHaveBeenCalledWith('anthropic-oauth');
+      expect(getProvider).toHaveBeenCalledWith('anthropic');
+      const sent = ws.send.mock.calls.map(
+        ([raw]) => JSON.parse(String(raw)) as Record<string, unknown>,
+      );
+      const message = sent.find((item) => item.type === 'provider.models');
+      expect(message).toEqual({
+        type: 'provider.models',
+        payload: {
+          provider: 'custom-claude',
+          models: savedModels.map((id) => expect.objectContaining({ id, name: id })),
+        },
+      });
+    },
+  );
 
   it('omits disabled models from the provider model picker projection', async () => {
     mockLoadSavedProviders.mockResolvedValueOnce({

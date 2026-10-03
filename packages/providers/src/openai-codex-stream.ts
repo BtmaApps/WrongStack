@@ -142,6 +142,7 @@ export async function* parseOpenAIResponsesStream(
   // or `[DONE]`) is seen. If the stream closes without one after we started,
   // the response was cut mid-stream and must surface as retryable.
   let sawTerminal = false;
+  let sawTerminalEnvelope = false;
 
   // Server id of the reasoning item currently streaming, so its encrypted
   // payload can be paired with it when the item closes.
@@ -388,10 +389,16 @@ export async function* parseOpenAIResponsesStream(
       // frame queue on it; without a case here the parser then reported the
       // finished response as truncated (retryable 599) and dropped its usage.
       case 'response.done': {
+        sawTerminalEnvelope = true;
         const resp = evt['response'] as { status?: string; usage?: ResponsesUsage } | undefined;
         if (evt['type'] === 'response.done' && resp?.status === 'failed') {
           const errorBody = parseProviderErrorBody(JSON.stringify(evt));
-          const status = responseFailureStatus(errorBody.type, errorBody.message);
+          const status = responseFailureStatus(
+            errorBody.type,
+            errorBody.message,
+            undefined,
+            errorBody.code,
+          );
           const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
           const kind = classifyProviderError(status, errorBody, rawMessage);
           throw new ProviderError(
@@ -453,7 +460,12 @@ export async function* parseOpenAIResponsesStream(
         const response = evt['response'] as Record<string, unknown> | undefined;
         const statusCode =
           typeof response?.['status_code'] === 'number' ? response['status_code'] : undefined;
-        const status = responseFailureStatus(errorBody.type, errorBody.message, statusCode);
+        const status = responseFailureStatus(
+          errorBody.type,
+          errorBody.message,
+          statusCode,
+          errorBody.code,
+        );
         const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
         const kind = classifyProviderError(status, errorBody, rawMessage);
         const body = scrubProviderErrorBody(errorBody);
@@ -466,7 +478,7 @@ export async function* parseOpenAIResponsesStream(
     }
   }
 
-  if (started && !sawTerminal) {
+  if ((started && !sawTerminal) || (options.requireTerminalEnvelope && !sawTerminalEnvelope)) {
     // Output arrived, then the stream closed with no `response.completed` and
     // no `[DONE]` — cut mid-stream. Retryable rather than a synthetic end_turn.
     throw new ProviderError(
@@ -484,6 +496,8 @@ export async function* parseOpenAIResponsesStream(
 
 /** Optional hooks for {@link parseOpenAIResponsesStream}. */
 export interface ResponsesStreamOptions {
+  /** Public ChatGPT plan requests require an explicit terminal Responses envelope. */
+  requireTerminalEnvelope?: boolean | undefined;
   /** Maps a WebSocket-wrapped HTTP failure frame onto the provider's HTTP error. */
   onWrappedHttpError?: WrappedHttpErrorHandler | undefined;
   /** The served model from transport headers the parser never sees (HTTP, WS handshake). */
@@ -540,8 +554,25 @@ function responseFailureStatus(
   type: string | undefined,
   message: string | undefined,
   statusCode?: number,
+  code?: string,
 ): number {
   if (statusCode !== undefined) return statusCode;
+  // Streaming errors may have no HTTP status; preserve the documented plan error semantics.
+  if (code === 'subscription_sharing_usage_limit_exceeded') return 429;
+  if (
+    code === 'subscription_sharing_usage_unavailable' ||
+    code === 'subscription_sharing_user_unavailable'
+  )
+    return 503;
+  if (
+    code === 'subscription_sharing_user_not_eligible' ||
+    code === 'subscription_sharing_route_not_supported' ||
+    code === 'chatpass_v2_scope_not_authorized' ||
+    code === 'chatpass_v2_invalid_authorization_context'
+  )
+    return 403;
+  if (code === 'subscription_sharing_invalid_user') return 401;
+  if (code === 'subscription_sharing_unsupported_capability') return 400;
   const text = `${type ?? ''}\n${message ?? ''}`;
   if (/rate.?limit/i.test(text)) return 429;
   if (/insufficient.quota|quota.exhausted/i.test(text)) return 402;

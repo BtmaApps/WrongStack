@@ -150,6 +150,13 @@ export interface OAuthProvider {
 /** First-class subscription providers authenticated through a browser/device flow. */
 export const oauthProviders: OAuthProvider[] = [
   {
+    id: 'openai-chatgpt',
+    name: 'ChatGPT plan API',
+    description:
+      'Continue with ChatGPT, authorize plan usage, and select models available to your account.',
+    command: 'wstack auth login chatgpt-api',
+  },
+  {
     id: 'openai-codex',
     name: 'ChatGPT (Codex)',
     description: 'Use ChatGPT Codex subscription access after a single browser sign-in.',
@@ -164,8 +171,40 @@ export const oauthProviders: OAuthProvider[] = [
   {
     id: 'github-copilot',
     name: 'GitHub Copilot',
-    description: 'GitHub device flow with self-refreshing access to Copilot chat models.',
+    description:
+      'GitHub device sign-in with account-discovered chat models, visibility filtering, and automatic token renewal.',
     command: 'wstack auth login copilot',
+  },
+  {
+    id: 'xai',
+    name: 'xAI / Grok',
+    description: 'Device sign-in with renewable account credentials for the Responses API.',
+    command: 'wstack auth login xai',
+  },
+  {
+    id: 'kimi-for-coding',
+    name: 'Kimi Code',
+    description: 'Device sign-in to Kimi Code alongside subscription API keys.',
+    command: 'wstack auth login kimi',
+  },
+  {
+    id: 'meta',
+    name: 'Meta / Muse',
+    description:
+      'Device sign-in and renewable Model API keys; Meta controls account eligibility and billing.',
+    command: 'wstack auth login meta',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    description: 'Browser sign-in that mints a user-controlled API key.',
+    command: 'wstack auth login openrouter',
+  },
+  {
+    id: 'google-antigravity',
+    name: 'Google Antigravity',
+    description: 'Google OAuth with a configured client and account project bootstrap.',
+    command: 'wstack auth login antigravity',
   },
 ];
 

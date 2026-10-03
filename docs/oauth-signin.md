@@ -1,8 +1,8 @@
 # Sign in with a subscription (OAuth)
 
-WrongStack ships four interactive provider-auth strategies. Three authenticate
-vendor **subscriptions**; OpenRouter uses OAuth to mint a user-controlled API
-key:
+WrongStack ships nine interactive provider-auth strategies. Account access,
+subscription eligibility, and billing depend on the grant returned by the provider.
+OpenRouter mints an API key; Meta exchanges identity for a renewable Model API key.
 
 | Sign-in | Subscription | Wire family (provider id) | Endpoint |
 |---|---|---|---|
@@ -10,6 +10,11 @@ key:
 | **Sign in with Claude** | Claude Pro / Max | `anthropic-oauth` | `api.anthropic.com` (Messages API) |
 | **Sign in with GitHub Copilot** | GitHub Copilot | `github-copilot` | Copilot proxy (OpenAI Chat Completions) |
 | **Sign in with OpenRouter** | OpenRouter account | `openrouter` | `openrouter.ai/api/v1` (OpenAI-compatible) |
+| **Continue with ChatGPT** | Authorized ChatGPT plan usage | `openai` (`openai-chatgpt`) | `api.openai.com/v1/responses` |
+| **Sign in with xAI/Grok** | Eligible Grok/X account | `openai-compatible` (`xai`, Responses transport) | `api.x.ai/v1/responses` |
+| **Sign in with Kimi Code** | Kimi Code account | `anthropic` (`kimi-for-coding`) | `api.kimi.com/coding/v1/messages` |
+| **Sign in with Meta** | Meta Model API account | `openai-compatible` (`meta`, Responses transport) | `api.meta.ai/v1/responses` |
+| **Sign in with Antigravity** | Google account with configured OAuth client | `google-antigravity` | Cloud Code bootstrap and inference |
 
 This is an **orthogonal credential layer** — it sits *next to* the API-key
 provider system, it doesn't replace it. The ~110 API-key providers pulled from
@@ -20,17 +25,87 @@ select like any other.
 ---
 
 > [!WARNING]
-> **Using a subscription outside its official client is a Terms-of-Service gray
+> **For legacy Codex, Claude, and Copilot flows, using a subscription outside its official client is a Terms-of-Service gray
 > area and can get your account rate-limited, suspended, or banned.** These flows
 > present WrongStack to the vendor backend the way each official client does
 > (Codex CLI / Claude Code / Copilot Chat), but that does **not** make it
-> sanctioned. The supported, sanctioned path for programmatic use is an **API
-> key**. Sign in with a subscription only if you accept that risk for your own
-> account. WrongStack ships this as a convenience, with no warranty — you are
-> responsible for your account. OpenRouter's API-key authorization flow is
+> sanctioned. The API-key path is available for programmatic use. OpenAI also
+> documents the separate **ChatGPT plan API** flow below. Use provider-specific
+> access and billing rules rather than assuming all OAuth tokens spend a subscription.
+> Legacy client compatibility does not establish account eligibility or billing.
+> OpenRouter's API-key authorization flow is
 > documented by OpenRouter and is not one of these subscription-token flows.
 
 ---
+
+## New account flows
+
+```bash
+wstack auth login xai --alias personal-grok
+wstack auth login kimi --alias personal-kimi
+wstack auth login meta --alias personal-meta
+wstack auth login chatgpt-api --alias personal-chatgpt
+```
+
+These entries also appear in the TUI auth panel and WebUI provider settings.
+Existing API keys stay available; choosing a key selects its own auth method.
+
+- **xAI:** device authorization at `auth.x.ai`, then renewable Bearer access
+  to the public Responses endpoint. The login uses a public native-client ID;
+  provider eligibility must be verified on the account actually used.
+- **Kimi:** device authorization at `auth.kimi.com`, refresh-token renewal,
+  and the existing Anthropic-compatible Kimi Code endpoint. The official
+  `https://api.kimi.ai/coding/v1` endpoint is also accepted for an international
+  account; set the provider base URL to it. OAuth tokens are restricted to
+  these two official Kimi Code endpoints.
+- **Meta:** device authorization at `auth.meta.com`; exchange the identity token
+  at `api.meta.ai/muse-code/key`. Renewal re-mints the Model API key rather than
+  using an ordinary refresh grant. A rejected identity session requires sign-in.
+  Meta documents Muse subscription credentials as intended for Muse Code;
+  do not assume a minted key grants subscription billing in WrongStack.
+- **ChatGPT plan API:** separate from `wstack auth login chatgpt` (legacy Codex).
+  New registrations use `dynamic_agent_client` with `agent_name_hint=WrongStack`
+  and a stable per-host ID in `~/.wrongstack/chatgpt-host-id`. The account's issued
+  client ID, verified OIDC subject, ID token, scope and rotating tokens are kept
+  with its credential in the existing vault. Reauthorization of the same alias
+  reuses that registration. ID-token signature, issuer, audience, expiry and
+  nonce are verified before replacing credentials. Inference requires the granted
+  `chatgpt.tokens.use.direct` scope, uses `store:false` / `stream:true`, and lists
+  account-visible models from `GET https://api.openai.com/v1/models`.
+  Local tools are grouped in the `wrongstack` namespace. The preview route rejects
+  sampling controls and `max_output_tokens`, so these fields are omitted; a
+  configured request output cap cannot be enforced by that endpoint.
+
+The four new flows serialize token exchange and persistence under the host's
+existing encrypted-config file lock. CLI and standalone WebUI re-read the account
+while holding that lock, adopt an already-rotated token, and preserve other keys
+and the selected key. Embedded WebUI uses the CLI host. Library consumers without
+a persistence host retain process-local renewal.
+
+When WrongProxy is enabled and reachable, these four flows also accept the
+host's exact rewritten route to their official API endpoint. Startup, model
+switches, and account aliases use this same validation. An arbitrary proxy
+address or a changed upstream is rejected; OAuth token renewal stays direct.
+
+Account-authenticated model pickers use the account's live API catalog.
+Copilot honors picker visibility, policy and supported inference endpoints;
+its server-selected default is retained even when alternate selection is
+disabled. Internal or hidden fallback models are excluded. No model ID is
+invented when discovery fails. CLI and WebUI keep an account-specific cache
+of actual successful responses; another account cannot inherit that cache.
+An authoritative empty response clears previous model choices. Generic
+models.dev and curated catalogs may enrich known IDs but do not add models
+to an OAuth account. Copilot refreshes runtime model/context metadata at most
+once per five minutes, with a short retry cooldown after unavailable probes.
+
+References: [OpenAI registration](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
+[OpenAI inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference),
+[Meta subscriptions](https://dev.meta.ai/docs/muse-code/subscriptions),
+and [Pi's device protocols](https://github.com/earendil-works/pi/tree/4c6fb7cfe8c538a668726f6f8b3554098c39faee/packages/ai/src/auth/oauth).
+
+Protocol fixtures cover login, cancellation, renewal, inference wires, identity
+validation and two real processes sharing a rotation. These are not live provider
+account or subscription-billing evidence.
 
 ## How it works
 
@@ -51,7 +126,7 @@ select like any other.
 - **Encrypted at rest.** The access/refresh tokens are stored in
   the active profile config under `providers.<id>`, encrypted with your
   per-machine key (`~/.wrongstack/.key`, AES-256-GCM) like every other secret.
-- **Client fidelity.** Each provider sends the User-Agent / beta / app headers of
+- **Legacy client fidelity.** Legacy subscription adapters send the User-Agent / beta / app headers of
   the corresponding official client so the subscription backend accepts the
   request. This is a documented gray area, **not** an undetectable disguise (see
   the warning above).
@@ -76,9 +151,9 @@ wstack auth login openrouter  # Sign in with OpenRouter → provider openrouter
 After login, select the provider/model like any other:
 
 ```bash
-wstack --provider openai-codex   --model gpt-6-astra      "explain this repo"
-wstack --provider anthropic-oauth --model claude-opus-4-8 "find the bug in src/auth.ts"
-wstack --provider github-copilot  --model gpt-4o          "write tests for utils.ts"
+wstack --provider openai-codex --model <account-model-id> "explain this repo"
+wstack --provider anthropic-oauth --model <account-model-id> "find the bug in src/auth.ts"
+wstack --provider github-copilot --model <account-model-id> "write tests for utils.ts"
 ```
 
 …or pick them from the TUI `/model` picker — OAuth providers appear in the list
@@ -98,8 +173,8 @@ wstack auth login chatgpt
 - **Provider id:** `openai-codex` · **Endpoint:** `https://chatgpt.com/backend-api/codex`
   (the Responses API, not `chat/completions`).
 - **Models:** fetched from the authenticated account's `/codex/models`
-  endpoint; the bundled catalog is only an offline fallback.
-- **Use:** `wstack --provider openai-codex --model gpt-6-astra "<task>"`
+  endpoint; no bundled or generic model list is substituted.
+- **Use:** choose an account model in `/model`, or pass its returned ID with `--model`.
 - **Requires** a ChatGPT **Plus / Pro / Team** plan with Codex access. A plain
   free account will authenticate but be rejected at request time.
 

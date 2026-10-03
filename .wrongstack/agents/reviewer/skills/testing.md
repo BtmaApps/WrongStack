@@ -1,12 +1,12 @@
-## Design-tool guards (`packages/tools`, `packages/core`)
+## Design-tool path guards (`packages/tools`, `packages/core`)
 
-- Read `resolveReal` in `packages/tools/src/design.ts` before flagging any ENOENT hard-fail in the design tool's path guards: it walks up parents on ENOENT and falls back to `path.resolve`, so a not-yet-existing capture/verify/materialize path cannot crash `assertProjectRelative` or `out` materialization — never report that as a defect.
-- Treat design-verify kit-vs-capture precedence exactly as `resolveVerifyTokens` defines it in `packages/core/src/execution/design-project-store.ts`: a pinned-but-unreadable kit returns `undefined`. Flag any change that falls back to `.design/captured-tokens.json` instead.
+- Read `resolveReal` in `packages/tools/src/design.ts` before flagging any ENOENT hard-fail in the path guards: it walks up parents on ENOENT and falls back to `path.resolve`, so not-yet-existing capture/verify/materialize paths cannot crash `assertProjectRelative` or `out` materialization — never report that as a defect.
+- Judge design-verify kit-vs-capture precedence only by `resolveVerifyTokens` in `packages/core/src/execution/design-project-store.ts`: a pinned-but-unreadable kit returns `undefined`; it never falls back to `.design/captured-tokens.json`.
 
 ## Provider env isolation (`packages/providers`)
 
-- Judge tests claiming "without global env changes" against the live env-layering mechanism, never the test text: `endpointEnv` (~line 57 in `packages/providers/src/native-catalog.ts`) must remain a per-provider spread copy of `process.env` overlaid with profile-scoped `AZURE_RESOURCE_NAME`, `AWS_REGION`, `GOOGLE_VERTEX_*` — a copy, not a mutation. These tests pass via real per-closure isolation; any regression to writing `process.env` directly, or to env-fallback precedence, breaks a concrete URL `toContain` assertion — flag it as a defect.
+- Verify "without global env changes" claims against the live mechanism, not the test text: `endpointEnv` (~line 57 in `packages/providers/src/native-catalog.ts`) must remain a per-provider spread copy of `process.env` plus profile-scoped `AZURE_RESOURCE_NAME`/`AWS_REGION`/`GOOGLE_VERTEX_*` — a copy, not a mutation. These tests pass via real per-closure isolation; any regression to writing `process.env` or to env-fallback precedence breaks a concrete URL `toContain` assertion.
 
 ## Verdicts
 
-- Emit `{ "findings": [] }` only when every check above passes; otherwise list each concrete defect as a finding.
+- Emit `{ "findings": [] }` only when every check above passes; otherwise list each concrete defect — a false ENOENT finding, a capture fallback, or an env mutation — as its own finding.

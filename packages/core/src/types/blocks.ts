@@ -38,6 +38,8 @@ export function isVolatileSystemBlock(block: TextBlock): boolean {
 }
 
 export interface ToolUseBlock {
+  /** Host-only nested execution choice; never included in provider schemas or journals. */
+  _resultFormat?: 'data' | undefined;
   type: 'tool_use';
   id: string;
   name: string;

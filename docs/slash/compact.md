@@ -4,6 +4,12 @@
 
 `/compact` runs the configured compactor to summarize older conversation turns and reclaim token budget. This is a proactive manual compaction; automatic compaction also runs through the `contextWindow` pipeline when thresholds are crossed.
 
+If the session/history/provider/model changes while compaction is awaiting work,
+or the run stops, an obsolete result is discarded. CLI/TUI, WebUI, the context
+manager tool, overflow recovery and autonomy flows use the same report-validity
+check before reporting success or updating counters. The journaled compactor also
+revalidates ownership after its durability flush.
+
 ## Options
 
 | Usage | Effect |

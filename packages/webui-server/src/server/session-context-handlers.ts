@@ -2,6 +2,7 @@
  * Session context route handlers: clear, debug, compact, repair, and context editor.
  */
 
+import { compactionReportStillCurrent } from '@wrongstack/core/execution';
 import { DEFAULT_CONTEXT_WINDOW_MODE_ID } from '@wrongstack/core/types';
 import { repairToolUseAdjacency } from '@wrongstack/core/utils';
 import {
@@ -143,6 +144,14 @@ export function createSessionContextHandlers(
         const counter = target.tokenCounter ?? ctx.tokenCounter;
         const beforeUsage = counter.total();
         const report = await compactor.compact(target, { aggressive, trigger: 'manual' });
+        if (target.signal?.aborted || !compactionReportStillCurrent(report, target)) {
+          result(
+            ws,
+            false,
+            'Context changed or the run stopped while compacting; the earlier result was discarded.',
+          );
+          return;
+        }
         const afterUsage = counter.total();
         const before =
           typeof report.before === 'number'

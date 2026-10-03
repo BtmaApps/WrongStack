@@ -51,7 +51,7 @@ interface ListenerState {
   lastMessageId: string | null;
   /** Hash of the last payload, so identical broadcasts are suppressed. */
   lastPayloadHash: string;
-  /** Timestamp of the last broadcast, for cooldown enforcement. */
+  /** Timestamp reserved by the latest broadcast attempt, for cooldown enforcement. */
   lastBroadcastAt: number;
   /** Hook handle for teardown. */
   hookUnregister: null | (() => void);
@@ -309,19 +309,25 @@ const plugin: Plugin = {
         priority: 'normal',
       };
 
+      const previousBroadcastAt = state.lastBroadcastAt;
+      if (cfg.cooldownMs > 0) state.lastBroadcastAt = now;
+
       try {
         const result = (await mailbox.send(sendInput)) as MailboxMessage | { id?: string };
         const id = (result as { id?: string }).id ?? null;
         state.sentCount += 1;
         state.lastMessageId = id;
         state.lastPayloadHash = hash;
-        state.lastBroadcastAt = now;
+        state.lastBroadcastAt = Math.max(state.lastBroadcastAt, now);
         api.log.info(`todo-listener: broadcast todo update`, {
           count: payload.count,
           inProgress: payload.inProgress?.id ?? null,
           messageId: id,
         });
       } catch (err) {
+        if (cfg.cooldownMs > 0 && state.lastBroadcastAt === now) {
+          state.lastBroadcastAt = previousBroadcastAt;
+        }
         state.errorCount += 1;
         api.log.warn('todo-listener: mailbox.send failed', {
           error: err instanceof Error ? err.message : String(err),

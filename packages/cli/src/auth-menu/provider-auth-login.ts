@@ -5,6 +5,7 @@ import {
   createBuiltinProviderAuthRegistry,
 } from '@wrongstack/providers/oauth';
 import { mutateConfigProviders } from '../provider-config-utils.js';
+import { loadProviders } from './helpers.js';
 import { openBrowser } from './loopback-server.js';
 import type { AuthMenuDeps } from './types.js';
 
@@ -66,9 +67,15 @@ export async function runProviderAuthLogin(
       color.bold(`\n  Sign in with ${strategy.label}`) +
         color.dim(` → ${opts.providerId ?? strategy.providerId}\n`),
     );
+    const saved =
+      strategy.id === 'chatgpt-api'
+        ? (await loadProviders(deps))[opts.providerId ?? strategy.providerId]
+        : undefined;
+    const credential =
+      saved?.apiKeys?.find((key) => key.label === saved.activeKey) ?? saved?.apiKeys?.[0];
     session = await registry.begin(
       strategy.id,
-      { modelsRegistry: deps.modelsRegistry },
+      { modelsRegistry: deps.modelsRegistry, ...(credential ? { credential } : {}) },
       controller.signal,
     );
 

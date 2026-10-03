@@ -11,6 +11,10 @@ import {
   registerLockfileSync,
 } from '../src/dep-guard/lockfile-sync.js';
 
+// These integration cases start several real Git processes. Match the root
+// suite's spawn-heavy timeout policy when this package config runs them directly.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
+
 const pkg = (deps: Record<string, string>, extra: Record<string, unknown> = {}) =>
   `${JSON.stringify({ name: 'x', version: '1.0.0', dependencies: deps, ...extra }, null, 2)}\n`;
 
@@ -91,7 +95,7 @@ describe('findLockfileDrift', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(dir, { recursive: true, force: true });
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
   });
 
   it('flags a dependency change committed without the lockfile', async () => {
@@ -138,7 +142,7 @@ describe('findLockfileDrift', () => {
     try {
       expect(await findLockfileDrift(outside)).toBeNull();
     } finally {
-      await fs.rm(outside, { recursive: true, force: true });
+      await fs.rm(outside, { recursive: true, force: true, maxRetries: 3 });
     }
     // beforeEach made the root commit: a manifest with dependencies, nothing to compare to.
     expect(await findLockfileDrift(dir)).toBeNull();

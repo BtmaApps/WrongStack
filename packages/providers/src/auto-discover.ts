@@ -1,11 +1,22 @@
+import { createHash } from 'node:crypto';
 import type {
   Config,
   ModelsDevModel,
   ModelsDevProvider,
   ProviderConfig,
 } from '@wrongstack/core/types';
+import { fetchCopilotModels } from './github-copilot-models.js';
+import { copilotBaseUrlFromToken } from './github-copilot-token.js';
+import {
+  CODEX_CLIENT_VERSION,
+  CODEX_ORIGINATOR,
+  CODEX_USER_AGENT,
+  codexModelsUrl,
+} from './oauth/codex-protocol.js';
+import { extractAccountId } from './openai-codex-account.js';
 import { projectCompatibleProviderPresets } from './provider-definitions.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
+import { SUBSCRIPTION_ENDPOINTS, SubscriptionOAuthProvider } from './subscription-oauth.js';
 
 /**
  * Auto-discovery of an OpenAI-compatible server's model catalog.
@@ -27,6 +38,9 @@ import { redirectSafeFetch } from './redirect-safe-fetch.js';
 /** One entry from a `/v1/models` response. Only the fields we read are typed. */
 interface CompatibleModelEntry {
   id?: unknown;
+  slug?: unknown;
+  display_name?: unknown;
+  visibility?: unknown;
   name?: unknown;
   description?: unknown;
   context_length?: unknown;
@@ -36,6 +50,7 @@ interface CompatibleModelEntry {
   max_tokens?: unknown;
   /** Vercel AI Gateway names the context window this way. */
   context_window?: unknown;
+  max_context_window?: unknown;
   input_modalities?: unknown;
   output_modalities?: unknown;
   /** Vercel AI Gateway nests both directions under one object. */
@@ -95,6 +110,10 @@ export interface DiscoveryTarget {
   cacheKey: string;
   modelDiscoveryPath?: string | undefined;
   modelDiscoveryAuthoritative?: boolean | undefined;
+  accountCatalog?: boolean | undefined;
+  copilotCatalog?: boolean | undefined;
+  modelsUrl?: string | undefined;
+  headers?: Record<string, string> | undefined;
 }
 
 /** Active API key from a ProviderConfig (mirrors the provider factory's resolver). */
@@ -123,6 +142,53 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
   const presets = projectCompatibleProviderPresets();
   const out: DiscoveryTarget[] = [];
   for (const [id, cfg] of Object.entries(config.providers ?? {})) {
+    const active = cfg.apiKeys?.find((key) => key.label === cfg.activeKey) ?? cfg.apiKeys?.[0];
+    const strategy = active?.oauthStrategyId;
+    if (
+      active?.authMethod === 'oauth' &&
+      ((strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) ||
+        ['github-copilot', 'openai-codex', 'anthropic-oauth'].includes(cfg.family ?? cfg.type))
+    ) {
+      const copilot = cfg.family === 'github-copilot';
+      const codex = cfg.family === 'openai-codex';
+      let baseUrl = cfg.baseUrl;
+      let modelsUrl: string | undefined;
+      let headers: Record<string, string> | undefined;
+      if (strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) {
+        try {
+          new SubscriptionOAuthProvider({ id, credential: active, baseUrl });
+        } catch {
+          continue;
+        }
+        baseUrl ??= SUBSCRIPTION_ENDPOINTS[strategy];
+      } else if (copilot) {
+        baseUrl = copilotBaseUrlFromToken(active.apiKey);
+      } else if (codex) {
+        modelsUrl = `${codexModelsUrl(baseUrl)}?client_version=${encodeURIComponent(CODEX_CLIENT_VERSION)}`;
+        headers = { originator: CODEX_ORIGINATOR, 'user-agent': CODEX_USER_AGENT };
+        const accountId = active.accountId ?? extractAccountId(active.apiKey);
+        if (accountId) headers['chatgpt-account-id'] = accountId;
+      }
+      if (!baseUrl) continue;
+      const modelDiscoveryPath = strategy === 'xai' ? 'language-models' : undefined;
+      const identity = createHash('sha256')
+        .update(active.refreshToken ?? active.apiKey)
+        .digest('hex');
+      out.push({
+        id,
+        cfg,
+        baseUrl,
+        apiKey: active.apiKey,
+        cacheKey: `${id}\u0000${baseUrl}\u0000${identity}`,
+        modelDiscoveryPath,
+        modelDiscoveryAuthoritative: true,
+        accountCatalog: true,
+        copilotCatalog: copilot,
+        modelsUrl,
+        headers,
+      });
+      continue;
+    }
     const preset = presets[id] ?? (cfg.type ? presets[cfg.type] : undefined);
     const enabled = cfg.autoDiscoverModels ?? preset?.autoDiscover ?? false;
     if (!enabled) continue;
@@ -158,6 +224,9 @@ export interface DiscoverOptions {
   /** Abort the fetch after this many ms (default 8000). 0 disables. */
   timeoutMs?: number | undefined;
   fetchImpl?: typeof fetch | undefined;
+  accountCatalog?: boolean | undefined;
+  copilotCatalog?: boolean | undefined;
+  modelsUrl?: string | undefined;
 }
 
 /**
@@ -245,7 +314,8 @@ function asStringArray(v: unknown): string[] | undefined {
 /** Map one `/v1/models` entry to a `ModelsDevModel`. Returns undefined when the
  *  entry has no usable id. */
 export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel | undefined {
-  const id = typeof entry.id === 'string' ? entry.id : undefined;
+  const rawId = entry.slug ?? entry.id;
+  const id = typeof rawId === 'string' ? rawId : undefined;
   if (!id) return undefined;
 
   // A gateway lists far more than chat models — embeddings, image, speech,
@@ -270,6 +340,7 @@ export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel 
     inputModalities ? inputModalities.includes('image') : undefined,
   );
   const context =
+    asPosInt(entry.max_context_window) ??
     asPosInt(entry.context_length) ??
     asPosInt(entry.context_window) ??
     asPosInt(entry.max_input_tokens) ??
@@ -298,7 +369,12 @@ export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel 
 
   const model: ModelsDevModel = {
     id,
-    name: typeof entry.name === 'string' && entry.name ? entry.name : id,
+    name:
+      typeof entry.display_name === 'string'
+        ? entry.display_name
+        : typeof entry.name === 'string' && entry.name
+          ? entry.name
+          : id,
     // Only assert what the source actually stated — see `asTriBool`.
     ...(toolCall !== undefined ? { tool_call: toolCall } : {}),
     ...(reasoning !== undefined ? { reasoning } : {}),
@@ -340,8 +416,33 @@ export async function discoverOpenAICompatibleModels(
 ): Promise<ModelsDevProvider | undefined> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const base = opts.baseUrl.replace(/\/+$/, '');
+  if (opts.copilotCatalog) {
+    const live = opts.apiKey
+      ? await fetchCopilotModels(opts.apiKey, undefined, fetchImpl)
+      : undefined;
+    if (live === undefined) return undefined;
+    return {
+      id: providerId,
+      name: opts.providerName ?? providerId,
+      npm: '@ai-sdk/openai-compatible',
+      api: base,
+      env: [],
+      models: Object.fromEntries(
+        live.map((model) => [
+          model.id,
+          {
+            id: model.id,
+            name: model.name,
+            tool_call: true,
+            ...(model.maxContext ? { limit: { context: model.maxContext } } : {}),
+          },
+        ]),
+      ),
+    };
+  }
   const modelPath = (opts.modelDiscoveryPath ?? 'models').replace(/^\/+/, '');
-  const url = /\/v\d+$/i.test(base) ? `${base}/${modelPath}` : `${base}/v1/${modelPath}`;
+  const url =
+    opts.modelsUrl ?? (/\/v\d+$/i.test(base) ? `${base}/${modelPath}` : `${base}/v1/${modelPath}`);
   const timeoutMs = opts.timeoutMs ?? 8000;
   const controller = new AbortController();
   const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
@@ -373,10 +474,19 @@ export async function discoverOpenAICompatibleModels(
     if (!list) return undefined;
     const models: Record<string, ModelsDevModel> = {};
     for (const raw of list) {
-      const mapped = mapCompatibleModel((raw ?? {}) as CompatibleModelEntry);
+      if (opts.accountCatalog && raw && typeof raw === 'object') {
+        const visibility = (raw as CompatibleModelEntry).visibility;
+        if (visibility !== undefined && visibility !== 'list') continue;
+      }
+      const entry = (raw ?? {}) as CompatibleModelEntry;
+      // Kimi's account catalog uses "model" as an entity tag, not a task
+      // class. Preserve actual modality filtering rather than hiding every ID.
+      const mapped = mapCompatibleModel(
+        opts.accountCatalog && entry.type === 'model' ? { ...entry, type: undefined } : entry,
+      );
       if (mapped) models[mapped.id] = mapped;
     }
-    if (Object.keys(models).length === 0) return undefined;
+    if (Object.keys(models).length === 0 && !opts.accountCatalog) return undefined;
     return {
       id: providerId,
       name: opts.providerName ?? providerId,

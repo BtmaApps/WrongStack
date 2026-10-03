@@ -21,6 +21,8 @@ const KIND_BY_ERROR_CODE: Readonly<Record<string, CodeKind>> = {
   // ChatGPT backend: the plan does not include Codex at all. Retrying is
   // pointless; another provider may still serve the request.
   usage_not_included: 'quota_exhausted',
+  // A documented per-app ChatGPT plan allowance, not a transient burst limit.
+  subscription_sharing_usage_limit_exceeded: 'quota_exhausted',
   server_is_overloaded: 'overloaded',
   slow_down: 'rate_limit',
   context_length_exceeded: 'context_overflow',

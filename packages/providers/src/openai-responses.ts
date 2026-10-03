@@ -24,6 +24,12 @@ export interface OpenAIResponsesProviderOptions {
   fetchImpl?: typeof fetch | undefined;
   capabilities?: Partial<Capabilities> | undefined;
   streamOpts?: WireAdapterStreamOptions | undefined;
+  /** Explicit state retention policy for public subscription Responses requests. */
+  store?: boolean | undefined;
+  /** Retain encrypted reasoning for stateless ChatGPT plan requests. */
+  replayReasoning?: boolean | undefined;
+  /** Apply the public ChatGPT plan route's supported fields and tool namespace contract. */
+  chatGPTPlan?: boolean | undefined;
 }
 
 /**
@@ -36,11 +42,16 @@ export class OpenAIResponsesProvider extends WireAdapter {
   override readonly capabilities: Capabilities;
 
   private readonly extraHeaders?: Record<string, string> | undefined;
+  private readonly responseOptions: Pick<
+    OpenAIResponsesProviderOptions,
+    'store' | 'replayReasoning' | 'chatGPTPlan'
+  >;
 
   constructor(opts: OpenAIResponsesProviderOptions) {
     super(opts.apiKey, opts.baseUrl, opts.fetchImpl, opts.streamOpts);
     this.id = opts.id;
     this.extraHeaders = opts.headers;
+    this.responseOptions = opts;
     this.capabilities = capabilitiesForFamily('openai', opts.capabilities);
   }
 
@@ -95,8 +106,12 @@ export class OpenAIResponsesProvider extends WireAdapter {
     const body: Record<string, unknown> = {
       model: req.model,
       stream: true,
-      input: messagesToResponsesInput(req.messages),
+      input: messagesToResponsesInput(req.messages, {
+        includeReasoning: this.responseOptions.replayReasoning,
+      }),
     };
+    if (this.responseOptions.store !== undefined) body['store'] = this.responseOptions.store;
+    if (this.responseOptions.replayReasoning) body['include'] = ['reasoning.encrypted_content'];
     if (instructions) body['instructions'] = instructions;
     if (req.tools && req.tools.length > 0) {
       body['tools'] = toolsToResponses(req.tools);
@@ -114,6 +129,29 @@ export class OpenAIResponsesProvider extends WireAdapter {
       body['reasoning'] = { effort, summary: 'auto' };
     }
     applyPromptCacheKey(body, req, ctx.capabilities);
+    if (this.responseOptions.chatGPTPlan) {
+      // https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations
+      // The plan route does not accept sampling or output-cap parameters.
+      delete body['max_output_tokens'];
+      delete body['temperature'];
+      delete body['top_p'];
+      if (Array.isArray(body['tools'])) {
+        body['tools'] = [
+          {
+            type: 'namespace',
+            name: 'wrongstack',
+            description: 'WrongStack tools executed by the local agent.',
+            tools: body['tools'],
+          },
+        ];
+      }
+      const choice = body['tool_choice'];
+      if (choice && typeof choice === 'object')
+        body['tool_choice'] = { ...choice, namespace: 'wrongstack' };
+      for (const item of body['input'] as Record<string, unknown>[]) {
+        if (item['type'] === 'function_call') item['namespace'] = 'wrongstack';
+      }
+    }
     return body;
   }
 
@@ -121,7 +159,9 @@ export class OpenAIResponsesProvider extends WireAdapter {
     body: ReadableStream<Uint8Array> | NodeJS.ReadableStream | null,
     fallbackModel: string,
   ): AsyncIterable<StreamEvent> {
-    return parseOpenAIResponsesStream(body, fallbackModel, this.id);
+    return parseOpenAIResponsesStream(body, fallbackModel, this.id, undefined, undefined, {
+      requireTerminalEnvelope: this.responseOptions.chatGPTPlan === true,
+    });
   }
 
   protected override translateError(
