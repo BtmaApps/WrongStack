@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-03T12:01:24.816Z
+**Generated:** 2026-10-03T12:02:19.813Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4383 |
-| Production source lines | 1043594 |
-| Test files | 3997 |
+| Production source files | 4386 |
+| Production source lines | 1044180 |
+| Test files | 3999 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14252 |
+| Relative module edges | 14260 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -38,8 +38,8 @@
 | Package | Sources | Tests | Workspace dependencies |
 |---|---:|---:|---|
 | @wrongstack/acp | 45 | 51 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/bench | 27 | 55 | @wrongstack/core |
-| @wrongstack/cli | 558 | 577 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/bench | 29 | 56 | @wrongstack/core |
+| @wrongstack/cli | 559 | 578 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 981 | 884 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |

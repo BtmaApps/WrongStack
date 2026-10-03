@@ -122,6 +122,20 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
   const startedAt = Date.now();
   const before = tokenCounter.total();
   const costBefore = tokenCounter.estimateCost().total;
+  let accountedInput = 0;
+  let accountedOutput = 0;
+  let unknownPrice = false;
+  let observedPrice = false;
+  const stopUsage = ctx.events?.on('token.accounted', (event) => {
+    if (event.sessionId !== agent.ctx?.session?.id) return;
+    const delta = event.deltaUsage;
+    if (!delta) return;
+    accountedInput += delta.input;
+    accountedOutput += delta.output;
+    if (event.deltaCost) observedPrice = true;
+    else if (delta.input || delta.output || delta.cacheRead || delta.cacheWrite)
+      unknownPrice = true;
+  });
   // `--json-schema`, normalized to inline JSON at boot.
   const schema =
     typeof flags['json-schema'] === 'string'
@@ -143,6 +157,7 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
       }
     }
   } finally {
+    stopUsage?.();
     stopStream?.();
     budget?.dispose();
     process.off('SIGINT', onSigint);
@@ -160,6 +175,13 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
     output: after.output - before.output,
     iterations: result.iterations,
     cost: costAfter - costBefore,
+    costSource:
+      !unknownPrice &&
+      observedPrice &&
+      accountedInput === after.input - before.input &&
+      accountedOutput === after.output - before.output
+        ? 'catalog-estimate'
+        : 'unknown',
     elapsedMs: Date.now() - startedAt,
   };
   // A run that finished but never produced schema-valid JSON is a failure for

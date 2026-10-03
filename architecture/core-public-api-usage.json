@@ -84,9 +84,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 320,
+      "files": 321,
       "typeOnly": 149,
-      "runtimeOrMixed": 185
+      "runtimeOrMixed": 186
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -7010,6 +7010,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/single-shot-budget.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/single-shot-usage-source.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

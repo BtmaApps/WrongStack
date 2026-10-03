@@ -180,6 +180,7 @@ function parseOutputJson(stdout: string): Omit<RawRun, 'elapsedMs' | 'exitCode'>
       tokensIn: num(usage['input']),
       tokensOut: num(usage['output']),
       costUsd: num(usage['cost']),
+      costSource: usage['costSource'] === 'catalog-estimate' ? 'catalog-estimate' : 'unknown',
     };
     // The CLI reports *why* the loop failed in `error`. Dropping it left a
     // `failed` row in the report with no diagnosis at all.

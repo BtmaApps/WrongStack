@@ -106,6 +106,7 @@ export interface RawRun {
   tokensIn: number;
   tokensOut: number;
   costUsd: number;
+  costSource?: 'catalog-estimate' | 'unknown' | undefined;
   elapsedMs: number;
   /** Process exit code (null when killed by timeout). */
   exitCode: number | null;
@@ -134,6 +135,7 @@ export interface TaskResult {
   tools: ToolMetrics;
   /** Present only for real-transcript trace evaluation cases. */
   traceEval?: TraceEvalResult | undefined;
+  qualityReview?: ReturnType<typeof import('./quality-review.js').reviewTranscript> | undefined;
 }
 
 /** Tool-level metrics derived from the session log (model-free). */

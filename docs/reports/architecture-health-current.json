@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T12:01:24.816Z",
+  "generatedAt": "2026-10-03T12:02:19.813Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4383,
-    "testFiles": 3997,
-    "sourceLines": 1043594,
+    "sourceFiles": 4386,
+    "testFiles": 3999,
+    "sourceLines": 1044180,
     "workspaceEdges": 133,
-    "moduleEdges": 14252,
+    "moduleEdges": 14260,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -140,8 +140,8 @@
     {
       "name": "@wrongstack/bench",
       "dir": "packages/bench",
-      "sourceFiles": 27,
-      "testFiles": 55,
+      "sourceFiles": 29,
+      "testFiles": 56,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -154,15 +154,15 @@
         {
           "path": "packages/bench/tsconfig.test.json",
           "error": null,
-          "testFiles": 55
+          "testFiles": 56
         }
       ]
     },
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 558,
-      "testFiles": 577,
+      "sourceFiles": 559,
+      "testFiles": 578,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -202,7 +202,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 577
+          "testFiles": 578
         }
       ]
     },
@@ -1781,6 +1781,12 @@
       },
       {
         "file": "packages/bench/tests/predictions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/quality-experiments.test.ts",
         "projects": [
           "root-node"
         ]
@@ -4115,6 +4121,12 @@
       },
       {
         "file": "packages/cli/tests/single-shot-budget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/single-shot-usage-source.test.ts",
         "projects": [
           "root-node"
         ]

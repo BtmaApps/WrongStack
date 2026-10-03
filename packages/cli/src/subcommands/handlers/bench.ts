@@ -32,6 +32,7 @@ import {
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import { CLI_VERSION } from '../../version.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
+import { benchExperimentCommand, readBenchReviewPolicy } from './bench-experiments.js';
 import { resolveBenchRunConfig } from './bench-run-config.js';
 
 /**
@@ -49,6 +50,10 @@ export const benchCmd: SubcommandHandler = async (args, deps) => {
   const sub = args[0];
   const rest = args.slice(1);
   switch (sub) {
+    case 'review':
+    case 'route':
+    case 'experiment':
+      return benchExperimentCommand(sub, rest, deps);
     case 'run':
       return benchRun(rest, deps);
     case 'report':
@@ -75,6 +80,9 @@ function printUsage(deps: SubcommandDeps): void {
       '  mine     Copy a real session transcript and draft trace-eval cases',
       '  report   Re-render report.md from a finished run directory',
       '  list     Show available suites and configured model cells',
+      '  review   Review a transcript with advisory behavior/compaction evidence',
+      '  route    Recommend models in shadow mode from a finished run and category policy',
+      '  experiment Compare paired behavior/compaction runs on an identical corpus',
       '',
       color.dim('Examples:'),
       color.dim('  wstack bench run --cell anthropic/claude-sonnet-4-6,openai/gpt-5.4'),
@@ -118,6 +126,16 @@ async function resolveWstackEntry(): Promise<string> {
 }
 
 async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> {
+  let reviewPolicy: Awaited<ReturnType<typeof readBenchReviewPolicy>> | undefined;
+  try {
+    if (flagStr(deps, 'review-policy'))
+      reviewPolicy = await readBenchReviewPolicy(
+        path.resolve(deps.cwd, flagStr(deps, 'review-policy')!),
+      );
+  } catch (error) {
+    deps.renderer.writeError(toErrorMessage(error));
+    return 1;
+  }
   const suiteId = flagStr(deps, 'suite') ?? 'core';
   const limitRaw = flagStr(deps, 'limit');
   const limit = limitRaw ? Math.max(1, Number.parseInt(limitRaw, 10)) : undefined;
@@ -240,6 +258,7 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
       suite,
       grade,
       config,
+      reviewPolicy,
       cliVersion: CLI_VERSION,
       toolNames,
       toolManifestHash,

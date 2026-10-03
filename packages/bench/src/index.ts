@@ -28,6 +28,7 @@ export {
   SMOKE_CONFIG_DEFAULTS,
 } from './config.js';
 export { type ExecResult, execCommand } from './exec-command.js';
+export * from './experiments.js';
 export {
   computeHarnessFingerprint,
   computeStableJsonHash,
@@ -48,6 +49,7 @@ export {
   type Sandbox,
 } from './isolation.js';
 export { type RunBenchmarkOptions, runBenchmark, runFailureReason } from './orchestrate.js';
+export * from './quality-review.js';
 export { readResultsJsonl, readRunDir, readSummary, writeJsonArtifacts } from './report/json.js';
 export {
   renderComparisonMarkdown,

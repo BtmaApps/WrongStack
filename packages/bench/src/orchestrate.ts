@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { aggregateAll } from './aggregate.js';
 import { computeHarnessFingerprint } from './fingerprint.js';
 import { cleanupSandbox, createSandbox, prepareWorkdir } from './isolation.js';
+import { type QualityReviewPolicy, reviewTranscript } from './quality-review.js';
 import { mapWithConcurrency, runWstack } from './runner.js';
-import { readToolMetrics } from './session-metrics.js';
+import { readSessionLogEvents, readToolMetrics } from './session-metrics.js';
 import { evaluateTraceEval } from './trace-eval.js';
 import type {
   BenchConfig,
@@ -24,6 +26,7 @@ export interface RunBenchmarkOptions {
     timeoutMs: number;
   }) => Promise<GradeResult>;
   config: BenchConfig;
+  reviewPolicy?: QualityReviewPolicy | undefined;
   cliVersion: string;
   /** Tool names available to the agent — folded into the fingerprint. */
   toolNames: string[];
@@ -74,6 +77,7 @@ export interface RunBenchmarkOptions {
  * fingerprint-stamped report.
  */
 export async function runBenchmark(opts: RunBenchmarkOptions): Promise<BenchReport> {
+  if (opts.reviewPolicy) reviewTranscript([], '0'.repeat(64), opts.reviewPolicy);
   const progress = opts.onProgress ?? (() => {});
   const nowFn = opts.now ?? (() => new Date().toISOString());
 
@@ -227,6 +231,16 @@ export async function runBenchmark(opts: RunBenchmarkOptions): Promise<BenchRepo
       const result: TaskResult = { taskId: task.id, cell, run, grade, tools };
       if (repeats > 1) result.attempt = attempt;
       if (traceEval) result.traceEval = traceEval;
+      if (opts.reviewPolicy) {
+        const events = await readSessionLogEvents({ homeDir: sandbox.homeDir, workdir });
+        if (events.length)
+          result.qualityReview = reviewTranscript(
+            events,
+            createHash('sha256').update(JSON.stringify(events)).digest('hex'),
+            opts.reviewPolicy,
+            'event-array',
+          );
+      }
       if (opts.onResult) {
         try {
           await opts.onResult(result);
