@@ -23,6 +23,13 @@ import type { GoalFile } from './goal-store.js';
 
 const GOAL_BOARD_TAG_PREFIX = 'goal:';
 
+// Done/in-progress markers are PREFIXES (canonical DONE_PREFIX in
+// goal-coordination.ts). The alternation must stay grouped under one '^':
+// with `^\[[x✓]\]|✅|\(done\)` the ^ binds only to the first alternative, so
+// ✅/(done)/🔄 appearing mid-string in a pending deliverable is misread as a
+// marker.
+const DONE_ITEM_PREFIX = /^(?:\[[x✓]\]|✅|\(done\))/i;
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -79,7 +86,7 @@ export async function createGoalKanbanBoard(
   if (goalFile.deliverables && goalFile.deliverables.length > 0) {
     for (let index = 0; index < goalFile.deliverables.length; index++) {
       const d = goalFile.deliverables[index]!;
-      const cleaned = d.replace(/^\[[x✓]\]|✅|\(done\)\s*/i, '').trim();
+      const cleaned = d.replace(/^(?:\[[x✓]\]|✅|\(done\))\s*/i, '').trim();
       if (cleaned) {
         await store
           .addTask(
@@ -178,14 +185,16 @@ export function formatGoalKanbanPreview(
 
   // ── Deliverables as kanban columns ──
   const deliverables = goalFile.deliverables ?? [];
-  const doneDeliverables = deliverables.filter((d) => /^\[[x✓]\]|✅|\(done\)/i.test(d)).length;
+  const doneDeliverables = deliverables.filter((d) => DONE_ITEM_PREFIX.test(d)).length;
   const totalDeliverables = deliverables.length;
 
   if (totalDeliverables > 0) {
     // Backlog section (todo items)
-    const backlog = deliverables.filter((d) => !/^\[[x✓]\]|✅|\(done\)|🔄|in.progress/i.test(d));
-    const inProgress = deliverables.filter((d) => /🔄|in.progress/i.test(d));
-    const done = deliverables.filter((d) => /^\[[x✓]\]|✅|\(done\)/i.test(d));
+    const backlog = deliverables.filter(
+      (d) => !/^(?:\[[x✓]\]|✅|\(done\)|🔄|in.progress)/i.test(d),
+    );
+    const inProgress = deliverables.filter((d) => /^(?:🔄|in.progress)/i.test(d));
+    const done = deliverables.filter((d) => DONE_ITEM_PREFIX.test(d));
 
     const renderColumn = (
       title: string,
@@ -199,7 +208,7 @@ export function formatGoalKanbanPreview(
       }
       lines.push(`  ${accent(color.bold(`${icon} ${title} (${items.length})`))}`);
       for (const item of items) {
-        const cleaned = item.replace(/^\[[x✓]\]|✅|\(done\)|🔄|in.progress\s*/gi, '').trim();
+        const cleaned = item.replace(/^(?:\[[x✓]\]|✅|\(done\)|🔄|in.progress)\s*/gi, '').trim();
         lines.push(`    ○ ${cleaned}`);
       }
     };

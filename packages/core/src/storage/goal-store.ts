@@ -441,7 +441,9 @@ export function formatGoal(goal: GoalFile, journalLimit = 10): string {
     lines.push('');
     lines.push(color.bold('Deliverables:'));
     for (const d of goal.deliverables) {
-      const done = /^\[[x✓]\]|✅|\(done\)/i.test(d);
+      // Done markers are prefixes (see DONE_PREFIX in goal-coordination.ts);
+      // ✅/(done) appearing mid-string must not mark the deliverable done.
+      const done = /^(?:\[[x✓]\]|✅|\(done\))/i.test(d);
       const marker = done ? color.green('✓') : color.dim('○');
       lines.push('  ' + marker + ' ' + d);
     }

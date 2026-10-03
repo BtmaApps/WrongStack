@@ -456,7 +456,14 @@ const plugin: Plugin = {
               ? (v as { name: string }).name
               : undefined;
         const toolName = nameOf(rawTool) ?? nameOf(p?.name) ?? eventName;
-        bumpToolCount(toolName);
+        // Count each INVOCATION once: a single call emits tool.started +
+        // progress×N + completed + executed, and non-call events
+        // (tool.confirm_resolved, tool.loop_detected) also match this
+        // wildcard — bumping on every event inflated the recap's
+        // "N tool calls" several-fold and polluted uniqueTools with
+        // event-name phantoms. tool.started fires exactly once per
+        // invocation attempt.
+        if (eventName === 'tool.started') bumpToolCount(toolName);
         // Commit tracking. Core emits `tool.started` / `tool.completed` /
         // `tool.failed` — there is no `tool.result` event (the previous
         // subscription here could never fire, so commits were never

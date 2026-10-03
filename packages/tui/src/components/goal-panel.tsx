@@ -108,7 +108,10 @@ export function GoalPanel({
           ? 'green'
           : 'red';
   const deliverables = goal.deliverables ?? [];
-  const isDone = (text: string) => /^\[[x✓]\]|✅|\(done\)/i.test(text);
+  // Done markers are prefixes (canonical DONE_PREFIX in core
+  // goal-coordination.ts) — keep the alternation grouped under one '^' so
+  // ✅/(done) appearing mid-string stays pending.
+  const isDone = (text: string) => /^(?:\[[x✓]\]|✅|\(done\))/i.test(text);
   const doneDeliverables = deliverables.filter(isDone).length;
   const deliverableLimit = Math.max(1, size.contentRows - 7);
   const deliverableWindow = panelWindow(deliverables.length, selectedDeliverable, deliverableLimit);

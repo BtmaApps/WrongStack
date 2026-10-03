@@ -231,7 +231,10 @@ function renderGoalProgressHeader(goal: GoalSummary): React.ReactElement | null 
   if (!displayGoal) return null;
 
   const deliverables = goal.deliverables ?? [];
-  const doneDeliverables = deliverables.filter((d) => /^\[[x✓]\]|✅|\(done\)/i.test(d)).length;
+  // Done markers are prefixes (canonical DONE_PREFIX in core
+  // goal-coordination.ts) — keep the alternation grouped under one '^' so
+  // ✅/(done) appearing mid-string stays pending.
+  const doneDeliverables = deliverables.filter((d) => /^(?:\[[x✓]\]|✅|\(done\))/i.test(d)).length;
   const pct =
     typeof goal.progress === 'number'
       ? goal.progress

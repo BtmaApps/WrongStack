@@ -129,6 +129,15 @@ describe('goal-store', () => {
     expect(out).toContain('tests red');
   });
 
+  it('formatGoal marks deliverables done only for prefix markers', () => {
+    const goal = emptyGoal('Mission X');
+    goal.deliverables = ['✅ Ship v1', 'Migrate the (done) callback'];
+    const out = formatGoal(goal);
+    expect(out).toContain('Migrate the (done) callback');
+    expect((out.match(/✓/g) ?? []).length).toBe(1);
+    expect((out.match(/○/g) ?? []).length).toBe(1);
+  });
+
   it('goalFilePath resolves to the canonical per-project goal path (same as resolveWstackPaths.projectGoal)', () => {
     const p = goalFilePath('/projects/foo');
     const expected = resolveWstackPaths({ projectRoot: '/projects/foo' }).projectGoal;

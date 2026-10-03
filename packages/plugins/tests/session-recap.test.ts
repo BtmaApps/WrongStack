@@ -196,7 +196,7 @@ describe('session-recap plugin', () => {
       expect(health.message).toContain('0 token');
     });
 
-    it('counts tool events whose `tool` field is a Tool object (tool.confirm_needed)', async () => {
+    it('tolerates odd `tool` field shapes without throwing; only invocations count', async () => {
       // Regression: `tool.confirm_needed` carries the whole Tool, not its name.
       // The handler called `.startsWith` on it and the EventBus logged
       // "toolName.startsWith is not a function" on every approval prompt.
@@ -224,7 +224,9 @@ describe('session-recap plugin', () => {
       const health = (await sessionRecapPlugin.health!()) as unknown as {
         metrics: { toolCalls: number };
       };
-      expect(health.metrics.toolCalls).toBe(3);
+      // Only the `tool.started` invocation counts: an approval prompt
+      // (tool.confirm_needed) and non-invocation events are not calls.
+      expect(health.metrics.toolCalls).toBe(1);
     });
   });
 
@@ -715,5 +717,107 @@ describe('session-recap: commit counting over real core tool events', () => {
     const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { body: string };
     const recap = JSON.parse(sendArg.body) as { commits: number };
     expect(recap.commits).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression (post-hunt): tool-call counting counts INVOCATIONS, not bus
+// events. A single invocation emits tool.started + progress×N +
+// tool.completed + tool.executed (ToolEventMap in
+// packages/core/src/kernel/events/tool-events.ts), and non-invocation
+// events (tool.confirm_resolved, tool.loop_detected) also match the
+// `tool.*` wildcard — counting every event inflated the recap's
+// "N tool calls" subject and tools.totalCalls several-fold and polluted
+// uniqueTools with event-name phantoms.
+// ---------------------------------------------------------------------------
+
+describe('session-recap: tool-call counting over real core tool events', () => {
+  function getToolEvents(api: PluginAPI): (eventName: string, payload: unknown) => void {
+    const call = vi.mocked(api.onPattern).mock.calls.find((c) => c?.[0] === 'tool.*');
+    if (!call?.[1]) throw new Error('tool.* handler not registered');
+    return call[1] as (eventName: string, payload: unknown) => void;
+  }
+
+  async function publishedRecap(api: PluginAPI): Promise<{
+    subject: string;
+    tools: { totalCalls: number; uniqueTools: number };
+  }> {
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as {
+      subject: string;
+      body: string;
+    };
+    return {
+      subject: sendArg.subject,
+      ...(JSON.parse(sendArg.body) as { tools: { totalCalls: number; uniqueTools: number } }),
+    };
+  }
+
+  it('counts one streaming invocation once (started + progress×2 + completed + executed)', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    // Real emission sequence for ONE streaming bash invocation, then ONE
+    // non-streaming read invocation: exactly 2 tool calls total.
+    toolEvents('tool.started', { name: 'bash', id: 'tu_a', input: { command: 'ls' } });
+    toolEvents('tool.progress', { name: 'bash', id: 'tu_a', event: { message: 'running' } });
+    toolEvents('tool.progress', {
+      name: 'bash',
+      id: 'tu_a',
+      event: { message: 'still running' },
+    });
+    toolEvents('tool.completed', { name: 'bash', id: 'tu_a', durationMs: 5, outputChars: 10 });
+    toolEvents('tool.executed', { name: 'bash', id: 'tu_a', durationMs: 5, ok: true, output: 'x' });
+    toolEvents('tool.started', { name: 'read', id: 'tu_b', input: { path: 'x' } });
+    toolEvents('tool.completed', { name: 'read', id: 'tu_b', durationMs: 1, outputChars: 2 });
+
+    const recap = await publishedRecap(api);
+    expect(recap.tools.totalCalls).toBe(2);
+    expect(recap.tools.uniqueTools).toBe(2);
+    expect(recap.subject).toContain('2 tool calls');
+  });
+
+  it('does not count non-invocation tool.* events as calls or tools', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    toolEvents('tool.started', { name: 'read', id: 'tu_c', input: {} });
+    toolEvents('tool.completed', { name: 'read', id: 'tu_c' });
+    // Neither payload carries `tool`/`name` — they must not become tools.
+    toolEvents('tool.loop_detected', {
+      tools: 'bash,read',
+      repeatCount: 3,
+      iteration: 2,
+      ctx: {},
+    });
+    toolEvents('tool.confirm_resolved', {
+      toolUseId: 'tu_c',
+      toolName: 'read',
+      decision: 'yes',
+      source: 'user',
+    });
+
+    const recap = await publishedRecap(api);
+    expect(recap.tools.totalCalls).toBe(1);
+    expect(recap.tools.uniqueTools).toBe(1);
+    expect(recap.subject).toContain('1 tool call');
+  });
+
+  it('counts a failed invocation once (attempted call)', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    toolEvents('tool.started', { name: 'bash', id: 'tu_f', input: {} });
+    toolEvents('tool.failed', {
+      name: 'bash',
+      id: 'tu_f',
+      durationMs: 3,
+      category: 'execution',
+      retryable: false,
+    });
+
+    const recap = await publishedRecap(api);
+    expect(recap.tools.totalCalls).toBe(1);
+    expect(recap.tools.uniqueTools).toBe(1);
   });
 });

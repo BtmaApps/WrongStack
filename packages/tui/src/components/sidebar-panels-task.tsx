@@ -414,7 +414,10 @@ export function GoalPanelSidebar({
     Math.max(0, typeof goal?.progress === 'number' ? goal.progress : 0),
   );
   const deliverables = goal?.deliverables ?? [];
-  const doneCount = deliverables.filter((d) => /^\[[x✓]\]|✅|\(done\)/i.test(d)).length;
+  // Done markers are prefixes (canonical DONE_PREFIX in core
+  // goal-coordination.ts) — keep the alternation grouped under one '^' so
+  // ✅/(done) appearing mid-string stays pending (badge count + row state).
+  const doneCount = deliverables.filter((d) => /^(?:\[[x✓]\]|✅|\(done\))/i.test(d)).length;
   return (
     <SidebarPanelFrame
       accent={theme.brand}
@@ -482,7 +485,7 @@ export function GoalPanelSidebar({
             <EmptyState message="no deliverables" innerWidth={bodyWidth} />
           ) : (
             deliverables.slice(0, 6).map((d, i) => {
-              const done = /^\[[x✓]\]|✅|\(done\)/i.test(d);
+              const done = /^(?:\[[x✓]\]|✅|\(done\))/i.test(d);
               return (
                 <SidebarWorklistRow
                   key={i}

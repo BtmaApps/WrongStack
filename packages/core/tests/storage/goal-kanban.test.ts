@@ -142,6 +142,15 @@ describe('createGoalKanbanBoard', () => {
     const callArgs = mockCreateBoard.mock.calls[0]?.[1] as { title: string };
     expect(callArgs.title.length).toBeLessThan(100);
   });
+
+  it('seeds titles verbatim except for stripped done-marker prefixes', async () => {
+    const goal = makeGoal({
+      deliverables: ['Add ✅ badges to the report', '✅ Design schema', 'Write tests'],
+    });
+    await createGoalKanbanBoard('/project', goal, '2026-08-26/sess_01TESTGOALKANBAN00000000');
+    const titles = mockAddTask.mock.calls.map((call) => (call[2] as { title: string }).title);
+    expect(titles).toEqual(['Add ✅ badges to the report', 'Design schema', 'Write tests']);
+  });
 });
 
 describe('findGoalKanbanBoard', () => {
@@ -214,6 +223,26 @@ describe('formatGoalKanbanPreview', () => {
     const output = formatGoalKanbanPreview(goal);
     expect(output).toContain('Done');
     expect(output).toContain('1/2 deliverables complete');
+  });
+
+  it('keeps a mid-string ✅ deliverable pending (done markers are prefixes)', () => {
+    const goal = makeGoal({
+      deliverables: ['Mention ✅ in the changelog', 'Write tests'],
+    });
+    const output = formatGoalKanbanPreview(goal);
+    expect(output).toContain('0/2 deliverables complete');
+    expect(output).toContain('Backlog (2)');
+    expect(output).not.toContain('1/2 deliverables complete');
+  });
+
+  it('classifies only prefix 🔄 / in-progress markers as In Progress', () => {
+    const goal = makeGoal({
+      deliverables: ['🔄 Sketch the API', 'Document the in-progress retry ladder', 'Write tests'],
+    });
+    const output = formatGoalKanbanPreview(goal);
+    expect(output).toContain('0/3 deliverables complete');
+    expect(output).toContain('In Progress (1)');
+    expect(output).toContain('Backlog (2)');
   });
 
   it('shows progress bar when progress is set', () => {
