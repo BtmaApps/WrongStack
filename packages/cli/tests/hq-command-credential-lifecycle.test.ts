@@ -21,7 +21,7 @@ import {
   mutateHqAuthFile,
   writeHqAuthFile,
 } from '@wrongstack/core/hq';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { credentialMayAnswer } from '../src/hq-server/routes/command-handlers.js';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';
@@ -38,6 +38,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const ws of sockets.splice(0)) ws.terminate();
   if (handle) {
     await handle.close();
@@ -312,6 +313,10 @@ describe('credentials that expire while a socket is open', () => {
 
   it('rejects a token-backed cookie session after the token expires', async () => {
     const TOKEN = 'browser-expiring-0123456789';
+    // Move the authentication clock explicitly; real network/timers keep running.
+    // A short wall-clock TTL could expire before login during workspace coverage.
+    let now = Date.now();
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
     await writeHqAuthFile(dataDir, {
       version: HQ_AUTH_FILE_VERSION,
       updatedAt: new Date().toISOString(),
@@ -321,7 +326,7 @@ describe('credentials that expire while a socket is open', () => {
           id: 'expiring',
           token: TOKEN,
           createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 1_500).toISOString(),
+          expiresAt: new Date(now + 60_000).toISOString(),
         },
       ],
     });
@@ -339,7 +344,7 @@ describe('credentials that expire while a socket is open', () => {
     const before = await fetch(`${baseUrl}/api/snapshot`, { headers: { Cookie: cookie } });
     expect(before.status).toBe(200);
 
-    await new Promise((r) => setTimeout(r, 1_700));
+    now += 60_001;
     const after = await fetch(`${baseUrl}/api/snapshot`, { headers: { Cookie: cookie } });
     expect(after.status).toBe(401);
   });

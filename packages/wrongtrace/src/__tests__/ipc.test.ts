@@ -400,6 +400,69 @@ describe('createWrongTraceClient() IPC-first routing', () => {
     expect(httpCalls).toBe(0);
   });
 
+  it("unlockFile over IPC honours the daemon's ok:false refusal instead of fabricating ok:true", async () => {
+    // Regression pin: the pipe shares the daemon's lock store, so it can
+    // answer with a domain-level refusal (ok:false + owner/expires_at — the
+    // same body HTTP returns on 409). The IPC branch used to return a literal
+    // `ok: true` for ANY result envelope, so a refused unlock looked
+    // successful: hooks.ts postToolUse then emitted a `lock-released` event
+    // for a release the daemon never performed, and callers branching on
+    // `ok` to decide wait-vs-takeover lost the conflict.
+    const server = startRpcServer((_method, params, id) =>
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          file_path: params.path,
+          ok: false,
+          status: 'conflict',
+          owner: 'peer-agent',
+          owner_run_id: 'run-42',
+          reason: 'active refactor',
+          locked_at: '2026-08-24T18:40:00Z',
+          expires_at: '2026-08-24T18:55:00Z',
+        },
+      }),
+    );
+    servers.push(server);
+
+    globalThis.fetch = healthFetch(server.path, () => ({}));
+
+    const wt = await createWrongTraceClient({ baseUrl: 'http://localhost:3444' });
+    const res = await wt.unlockFile('src/auth.ts');
+
+    expect(res).not.toBeNull();
+    expect(res?.ok).toBe(false);
+    expect(res?.status).toBe('conflict');
+    // Conflict metadata must survive the IPC normalization, exactly as it
+    // does over HTTP.
+    expect(res?.owner).toBe('peer-agent');
+    expect(res?.owner_run_id).toBe('run-42');
+    expect(res?.expires_at).toBe('2026-08-24T18:55:00Z');
+  });
+
+  it('unlockFile over IPC still defaults to ok:true when the daemon omits ok', async () => {
+    // Control: the documented legacy pipe shape carries no `ok` at all
+    // ({file_path, status}). Reaching the IPC branch already means the method
+    // answered — a JSON-RPC error envelope resolves {result:null} — so an
+    // absent `ok` must stay a successful unlock.
+    const server = startRpcServer((_method, params, id) =>
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        result: { file_path: params.path, status: 'unlocked' },
+      }),
+    );
+    servers.push(server);
+
+    globalThis.fetch = healthFetch(server.path, () => ({}));
+
+    const wt = await createWrongTraceClient({ baseUrl: 'http://localhost:3444' });
+    const res = await wt.unlockFile('src/auth.ts');
+
+    expect(res).toEqual({ ok: true, path: 'src/auth.ts', status: 'unlocked' });
+  });
+
   it('unlockFile falls back to HTTP when the pipe answers with an error envelope', async () => {
     const server = startRpcServer((method, _params, id) =>
       JSON.stringify({

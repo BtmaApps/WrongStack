@@ -29,11 +29,25 @@ import {
 
 const PROBE = `__cli_gate_probe_${Date.now()}__`;
 
+/**
+ * Probe `/api/health` once, at module load, so a live-daemon suite can never
+ * report green while the daemon is absent. Previously every test did
+ * `if (!wt.isAvailable) return;` and the run exited 0 — a green run silently
+ * meant "offline" and the lock paths were never exercised. Now an offline run
+ * reports these tests SKIPPED, which Vitest counts distinctly from passed.
+ */
+const DAEMON_UP = (await getWrongTrace()).isAvailable;
+if (!DAEMON_UP) {
+  console.warn(
+    '[wrongtrace-gate.live] daemon offline — live lock assertions are SKIPPED, not verified',
+  );
+}
+
 afterAll(() => {
   resetWrongTraceGate();
 });
 
-describe('CLI wrongtrace-gate (live daemon)', () => {
+describe.skipIf(!DAEMON_UP)('CLI wrongtrace-gate (live daemon)', () => {
   it('gate warms up; records whether the daemon is reachable for this run', async () => {
     const wt = await getWrongTrace();
     if (!wt.isAvailable) {
@@ -76,39 +90,50 @@ describe('CLI wrongtrace-gate (live daemon)', () => {
       return;
     }
 
-    await wt.lockFile(PROBE, 'held by a peer', {
-      owner: 'peer-agent',
-      ttlSeconds: 60,
-    });
+    try {
+      await wt.lockFile(PROBE, 'held by a peer', {
+        owner: 'peer-agent',
+        ttlSeconds: 60,
+      });
 
-    const blocked = await preflightFileEdit(PROBE);
-    expect(blocked.kind).toBe('blocked');
-    if (blocked.kind === 'blocked') {
-      expect(blocked.risk.band).toBe('locked');
-      expect(blocked.risk.reasons.join(' ')).toContain('peer-agent');
+      const blocked = await preflightFileEdit(PROBE);
+      expect(blocked.kind).toBe('blocked');
+      if (blocked.kind === 'blocked') {
+        expect(blocked.risk.band).toBe('locked');
+        expect(blocked.risk.reasons.join(' ')).toContain('peer-agent');
+      }
+
+      await wt.unlockFile(PROBE);
+      const allowed = await preflightFileEdit(PROBE);
+      expect(allowed.kind).toBe('allow');
+    } finally {
+      // A failed assertion used to leave the peer lock on the daemon for its
+      // full TTL, where it would deny a real edit to the same path. Unlock
+      // here as well as inline: unlockFile is idempotent.
+      await wt.unlockFile(PROBE);
     }
-
-    await wt.unlockFile(PROBE);
-    const allowed = await preflightFileEdit(PROBE);
-    expect(allowed.kind).toBe('allow');
   });
 
   it("a conflicting withFileLock runs the body without stealing the peer's lock", async () => {
     const wt = await getWrongTrace();
     if (!wt.isAvailable) return;
 
-    await wt.lockFile(PROBE, 'held by a peer', { owner: 'peer-agent', ttlSeconds: 60 });
+    try {
+      await wt.lockFile(PROBE, 'held by a peer', { owner: 'peer-agent', ttlSeconds: 60 });
 
-    // Second claimant: conflict body (ok:false) — gate must NOT force-take.
-    const result = await withFileLock(PROBE, 'conflicting claim', async () => 'ran-unlocked', {
-      owner: 'second-agent',
-    });
-    expect(result).toBe('ran-unlocked');
+      // Second claimant: conflict body (ok:false) — gate must NOT force-take.
+      const result = await withFileLock(PROBE, 'conflicting claim', async () => 'ran-unlocked', {
+        owner: 'second-agent',
+      });
+      expect(result).toBe('ran-unlocked');
 
-    // Peer's lock survives untouched.
-    const held = (await wt.listLocks()).find((l) => l.path === PROBE);
-    expect(held?.owner).toBe('peer-agent');
-
-    await wt.unlockFile(PROBE);
+      // Peer's lock survives untouched.
+      const held = (await wt.listLocks()).find((l) => l.path === PROBE);
+      expect(held?.owner).toBe('peer-agent');
+    } finally {
+      // Without this, any failing assertion above left the peer lock on the
+      // daemon for its full TTL, where it would deny a real edit to PROBE.
+      await wt.unlockFile(PROBE);
+    }
   });
 });

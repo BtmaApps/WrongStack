@@ -21,6 +21,20 @@ import { afterAll, describe, expect, it } from 'vitest';
 const PROBE = `__webui_gate_probe_${Date.now()}__`;
 const SESSION = 'webui-gate-focused-test';
 
+/**
+ * Probe `/api/health` once, at module load. The offline branches below used
+ * to `return` quietly, so an offline run exited green and proved only the
+ * fail-open contract — the lock paths were never exercised. Offline is now
+ * reported as SKIPPED, which Vitest counts distinctly from passed, so green
+ * always means the live deny/allow/claim/release paths actually ran.
+ */
+const DAEMON_UP = (await getWrongTrace()).isAvailable;
+if (!DAEMON_UP) {
+  console.warn(
+    '[wrongtrace-webui-gate] daemon offline — live lock assertions are SKIPPED, not verified',
+  );
+}
+
 function buildWebuiStyleRunner(): HookRunner {
   // Mirrors backend-services.ts registration: same events, matcher, owner,
   // and the same per-runner PAIR factory (not the legacy standalone
@@ -46,7 +60,7 @@ afterAll(() => {
   resetWrongTraceGate();
 });
 
-describe('standalone WebUI WrongTrace gate (executor-path contract)', () => {
+describe.skipIf(!DAEMON_UP)('standalone WebUI WrongTrace gate (executor-path contract)', () => {
   it('denies an edit while another owner holds the lock', async () => {
     const wt = await getWrongTrace();
     const runner = buildWebuiStyleRunner();
@@ -75,16 +89,23 @@ describe('standalone WebUI WrongTrace gate (executor-path contract)', () => {
     const env = { cwd: process.cwd() };
 
     const pre = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
-    expect(pre.block).toBeFalsy();
+    try {
+      expect(pre.block).toBeFalsy();
 
-    if (!wt.isAvailable) return;
+      if (!wt.isAvailable) return;
 
-    const locks = await wt.listLocks();
-    const held = locks.find((l) => l.path === PROBE);
-    // The lock must actually be claimed; `if (held)` let a missing claim pass.
-    expect(held?.owner).toBe(`wrongstack:${SESSION}`);
+      const locks = await wt.listLocks();
+      const held = locks.find((l) => l.path === PROBE);
+      // The lock must actually be claimed; `if (held)` let a missing claim pass.
+      expect(held?.owner).toBe(`wrongstack:${SESSION}`);
+    } finally {
+      // preToolUse has already claimed the lock with the hooks' default 900s
+      // TTL, so a failing assertion above used to strand it on the daemon
+      // where it would deny a real edit to PROBE. postToolUse is the
+      // production release path — run it unconditionally.
+      await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
+    }
 
-    await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     const after = (await wt.listLocks()).filter((l) => l.path === PROBE);
     expect(after).toHaveLength(0);
   });

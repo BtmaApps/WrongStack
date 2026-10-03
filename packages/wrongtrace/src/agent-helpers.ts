@@ -207,13 +207,12 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
     : Array.isArray(r.edges)
       ? r.edges
       : [];
+  // `rawTotal` and `r.total_collisions` are the SAME property on the SAME
+  // object (r is just friction re-typed), so this was a duplicate check whose
+  // second arm could never be taken once the first was false — dead code that
+  // pinned the package's 100% branch threshold below 100%. One read suffices.
   const rawTotal = (friction as { total_collisions?: unknown }).total_collisions;
-  const total =
-    typeof rawTotal === 'number'
-      ? rawTotal
-      : typeof r.total_collisions === 'number'
-        ? r.total_collisions
-        : edges.length;
+  const total = typeof rawTotal === 'number' ? rawTotal : edges.length;
   if (total === 0) return empty;
 
   // Find top pair by total conflict_count across both directions.
@@ -239,7 +238,7 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
   // correct unit. Percentages are clamped to [0,100] so a self-thrash
   // collision sum bigger than the daemon's windowed total renders 100%,
   // never 1433%.
-  const collisionUnits = typeof rawTotal === 'number' || typeof r.total_collisions === 'number';
+  const collisionUnits = typeof rawTotal === 'number';
   const selfThrash = edges.reduce((acc, e) => {
     const isSelf = e.is_self_thrash ?? e.author_model === e.overwriter_model;
     if (!isSelf) return acc;

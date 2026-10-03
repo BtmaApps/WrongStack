@@ -301,16 +301,39 @@ export async function createWrongTraceClient(
       // locks. Shape differs from HTTP: {file_path, status} with no `ok`,
       // normalized here to the HTTP contract.
       if (ipc.isWired) {
-        const viaIpc = await ipc.call<{ file_path?: string; path?: string; status?: string }>(
-          'guardrail/unlock',
-          { path },
-        );
+        const viaIpc = await ipc.call<{
+          ok?: boolean;
+          file_path?: string;
+          path?: string;
+          status?: string;
+          owner?: string;
+          owner_run_id?: string;
+          reason?: string;
+          locked_at?: string;
+          expires_at?: string;
+        }>('guardrail/unlock', { path });
         if (viaIpc.result) {
-          return {
-            ok: true,
-            path: viaIpc.result.path ?? viaIpc.result.file_path ?? path,
-            status: viaIpc.result.status ?? 'unlocked',
+          // The pipe shares the daemon's lock store, so it CAN answer with a
+          // domain-level refusal (ok:false + owner/expires_at, the same body
+          // HTTP returns on 409). A JSON-RPC `error` envelope already resolves
+          // {result:null}, so reaching here means the method answered — but
+          // "answered" is not "unlocked": honour the daemon's own `ok` when it
+          // supplies one, and forward the conflict fields so callers can still
+          // decide wait-vs-takeover. Sibling reportTelemetry normalizes the
+          // same way; hardcoding `ok: true` reported releases that never
+          // happened and made the IPC lock path silently drop peer locks.
+          const r = viaIpc.result;
+          const result: WrongTraceLockResult = {
+            ok: r.ok ?? true,
+            path: r.path ?? r.file_path ?? path,
+            status: r.status ?? 'unlocked',
           };
+          if (typeof r.owner === 'string') result.owner = r.owner;
+          if (typeof r.owner_run_id === 'string') result.owner_run_id = r.owner_run_id;
+          if (typeof r.reason === 'string') result.reason = r.reason;
+          if (typeof r.locked_at === 'string') result.locked_at = r.locked_at;
+          if (typeof r.expires_at === 'string') result.expires_at = r.expires_at;
+          return result;
         }
       }
       const body: WrongTraceUnlockRequest = { path };

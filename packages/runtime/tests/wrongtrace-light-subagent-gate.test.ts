@@ -30,6 +30,20 @@ import { makeLightSubagentFactory } from '../src/index.js';
 const PROBE = `__runtime_light_gate_probe_${Date.now()}__`;
 const SESSION = 'runtime-light-subagent-gate-test';
 
+/**
+ * Probe `/api/health` once, at module load. The offline branches below used
+ * to `return` quietly, so an offline run exited green and proved only the
+ * fail-open contract — the lock paths were never exercised. Offline is now
+ * reported as SKIPPED, which Vitest counts distinctly from passed, so green
+ * always means the live deny/allow/claim/release paths actually ran.
+ */
+const DAEMON_UP = (await getWrongTrace()).isAvailable;
+if (!DAEMON_UP) {
+  console.warn(
+    '[runtime-light-subagent-gate] daemon offline — live lock assertions are SKIPPED, not verified',
+  );
+}
+
 /** WrongTrace-only runner identical to backend-services.ts → SDD-wizard deps. */
 function buildSddStyleRunner(): HookRunner {
   const hooks = createWrongTraceHookPair(() => SESSION);
@@ -196,7 +210,10 @@ afterAll(() => {
   resetWrongTraceGate();
 });
 
-describe('runtime light-subagent WrongTrace gate (SDD-path threading contract)', () => {
+// Daemon-independent wiring contract. Deliberately kept OUT of the skipIf
+// describe below so it still runs — and still proves the threading contract —
+// when the daemon is offline.
+describe('runtime light-subagent factory threading (no daemon required)', () => {
   it('threads the hookRunner into a spawned light subagent', async () => {
     const runner = buildSddStyleRunner();
     const factory = makeLightSubagentFactory(makeFactoryDeps(runner));
@@ -206,7 +223,10 @@ describe('runtime light-subagent WrongTrace gate (SDD-path threading contract)',
     // Mirror light-subagent-factory.test.ts isolation expectations — the
     // factory accepted the hookRunner, so construction succeeded with it.
   });
+});
 
+// Live-daemon contract — skipped (visibly) when the daemon is offline.
+describe.skipIf(!DAEMON_UP)('runtime light-subagent WrongTrace gate (SDD-path)', () => {
   it('denies an edit while another owner holds the lock (through the runner)', async () => {
     const wt = await getWrongTrace();
     const runner = buildSddStyleRunner();
@@ -235,16 +255,23 @@ describe('runtime light-subagent WrongTrace gate (SDD-path threading contract)',
     const env = { cwd: process.cwd() };
 
     const pre = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
-    expect(pre.block).toBeFalsy();
+    try {
+      expect(pre.block).toBeFalsy();
 
-    if (!wt.isAvailable) return;
+      if (!wt.isAvailable) return;
 
-    const locks = await wt.listLocks();
-    const held = locks.find((l) => l.path === PROBE);
-    // The lock must actually be claimed; `if (held)` let a missing claim pass.
-    expect(held?.owner).toBe(`wrongstack:${SESSION}`);
+      const locks = await wt.listLocks();
+      const held = locks.find((l) => l.path === PROBE);
+      // The lock must actually be claimed; `if (held)` let a missing claim pass.
+      expect(held?.owner).toBe(`wrongstack:${SESSION}`);
+    } finally {
+      // preToolUse has already claimed the lock with the hooks' default 900s
+      // TTL, so a failing assertion above used to strand it on the daemon
+      // where it would deny a real edit to PROBE. postToolUse is the
+      // production release path — run it unconditionally.
+      await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
+    }
 
-    await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     const after = (await wt.listLocks()).filter((l) => l.path === PROBE);
     expect(after).toHaveLength(0);
   });

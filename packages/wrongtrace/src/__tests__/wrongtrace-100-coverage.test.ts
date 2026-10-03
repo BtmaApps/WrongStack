@@ -527,6 +527,48 @@ describe('wrongtrace 100% coverage suite', () => {
       expect(typeof preHook).toBe('function');
       expect(typeof postHook).toBe('function');
 
+      // The block below is coverage-only — it exercises targetPathOf's key
+      // extraction and asserts nothing about the returned verdicts. It must
+      // NOT reach a real daemon, which happens on any developer machine
+      // running `wrongtrace`:
+      //   * getFileHealth is IPC-first with a 5s read timeout, so 8 real
+      //     round-trips put this case at ~4.5-5.0s against the default 5s
+      //     testTimeout — the source of the intermittent failure;
+      //   * preToolUse ACQUIRES a real lock per path, leaving 'single.ts',
+      //     'first.ts' and 'some/dir' locked on the daemon for the full 900s
+      //     TTL after every suite run.
+      // Serve it from an in-memory fake daemon instead. `socket_path: ''` keeps
+      // IPC unwired, and the friction edges deliberately carry no
+      // file_path/files, so this reproduces exactly the agent-helpers/hooks
+      // branches the live daemon used to supply as a side effect (notably the
+      // `return false` fallback at agent-helpers.ts:146) — with no I/O. A bare
+      // "connection refused" stub would be faster still but leaves that line
+      // uncovered and breaks the 100% gate.
+      globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+        const u = new URL(String(input));
+        const json = (body: unknown) =>
+          new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        if (u.pathname === '/api/health') return json({ ok: true, status: 'ok', socket_path: '' });
+        if (u.pathname === '/api/file/health') {
+          return json({
+            path: u.searchParams.get('path') ?? '',
+            health_score: 90,
+            is_fragile: false,
+            is_locked: false,
+            recent_thrashing_count: 0,
+          });
+        }
+        if (u.pathname === '/api/metrics/friction') {
+          return json({ edges: [{ author_model: 'a', overwriter_model: 'b' }] });
+        }
+        if (u.pathname === '/api/guardrail/lock') return json({ ok: true });
+        if (u.pathname === '/api/guardrail/unlock') return json({ ok: true });
+        return json({});
+      }) as typeof fetch;
+
       const { preToolUse, postToolUse } = createWrongTraceHookPair(() => 's1');
       await preToolUse({ toolName: 'edit', toolInput: { files: 'single.ts' } });
       await preToolUse({ toolName: 'edit', toolInput: { files: ['first.ts', 'second.ts'] } });
