@@ -19,9 +19,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 245,
-      "typeOnly": 91,
-      "runtimeOrMixed": 213
+      "files": 246,
+      "typeOnly": 92,
+      "runtimeOrMixed": 214
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 318,
+      "files": 319,
       "typeOnly": 149,
-      "runtimeOrMixed": 183
+      "runtimeOrMixed": 184
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1265,
-      "typeOnly": 1119,
+      "files": 1266,
+      "typeOnly": 1120,
       "runtimeOrMixed": 369
     },
     "@wrongstack/core/types/limits": {
@@ -3275,6 +3275,12 @@
       "file": "packages/cli/tests/fleet/explore-companion-registry.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -6789,6 +6795,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14433,6 +14445,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

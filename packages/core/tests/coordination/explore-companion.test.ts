@@ -1,11 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { EventBus, type TrackedAgentSnapshot } from '../../src/kernel/events.js';
-import type {
-  Mailbox,
-  MailboxAckInput,
-  MailboxMessage,
-  MailboxQuery,
-} from '../../src/coordination/mailbox-types.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { agentPrompt } from '../../src/coordination/agents/agent-prompts.js';
 import {
   buildProbeTaskText,
   DEFAULT_EXPLORE_COMPANION_AGENT_ID,
@@ -14,12 +8,18 @@ import {
   type ExploreProbe,
 } from '../../src/coordination/explore-companion.js';
 import {
+  applyRosterBudget,
   EXPLORE_COMPANION_TOOLS,
   FLEET_ROSTER,
-  applyRosterBudget,
 } from '../../src/coordination/fleet.js';
+import type {
+  Mailbox,
+  MailboxAckInput,
+  MailboxMessage,
+  MailboxQuery,
+} from '../../src/coordination/mailbox-types.js';
+import { EventBus, type TrackedAgentSnapshot } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
-import { agentPrompt } from '../../src/coordination/agents/agent-prompts.js';
 
 const LEADER_SESSION = 'sess-leader';
 const SUB_SESSION = 'sess-subagent';
@@ -34,6 +34,11 @@ interface Harness {
   clock: { now: number };
   companion: ExploreCompanion;
 }
+
+const companions: ExploreCompanion[] = [];
+afterEach(() => {
+  for (const companion of companions.splice(0)) companion.stop();
+});
 
 function makeMessage(overrides: Partial<MailboxMessage>): MailboxMessage {
   return {
@@ -93,6 +98,7 @@ function makeHarness(
     ...overrides,
   });
   companion.start();
+  companions.push(companion);
   return { events, probes, acks, clock, companion };
 }
 
@@ -129,6 +135,42 @@ function agentSnapshot(id: string, todos: TrackedAgentSnapshot['todos']): Tracke
 }
 
 describe('ExploreCompanion trigger mapping', () => {
+  it('still records reads when unfamiliar-read probes are disabled', async () => {
+    const h = makeHarness({ signals: { unfamiliarRead: false } });
+    toolExecuted(h.events, { name: 'read', input: { path: 'src/a.ts' } });
+    toolExecuted(h.events, { name: 'edit', input: { path: './src/a.ts' } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
+
+  it.each([
+    ['grep', { matches: [], count: 0, truncated: false, used: 'rg' }],
+    ['codebase-search', { results: [], total: 0, query: 'FleetConfig' }],
+  ])('recognizes real %s zero-hit JSON output', async (name, output) => {
+    const h = makeHarness();
+    toolExecuted(h.events, {
+      name,
+      input: { query: 'FleetConfig' },
+      output: JSON.stringify(output),
+    });
+    await flush();
+    expect(h.probes[0]?.source).toBe('search_zero_hits');
+  });
+
+  it('uses patch writeTargets even when input has no single path', async () => {
+    const h = makeHarness();
+    h.events.emit('tool.executed', {
+      id: 'patch-proof',
+      name: 'patch',
+      ok: true,
+      durationMs: 1,
+      sessionId: LEADER_SESSION,
+      input: { patch: 'diff' },
+      writeTargets: ['src/a.ts', 'src/b.ts'],
+    });
+    await flush();
+    expect(h.probes.map((p) => p.hint?.file)).toEqual(['src/a.ts', 'src/b.ts']);
+  });
   it('edit on a file the leader never read → map-file probe with file hint', async () => {
     const h = makeHarness();
     toolExecuted(h.events, { name: 'edit', input: { path: 'src/a.ts' } });
@@ -317,6 +359,32 @@ describe('ExploreCompanion session filtering', () => {
 });
 
 describe('ExploreCompanion cooldown and queue bounds', () => {
+  it('stop drops queued work even when an assignment finishes later', async () => {
+    let finish!: () => void;
+    const onProbe = vi.fn(async () => {
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      return { subagentId: 'r', taskId: 't' };
+    });
+    const h = makeHarness({ onProbe });
+    toolExecuted(h.events, { input: { path: 'src/a.ts' } });
+    toolExecuted(h.events, { input: { path: 'src/b.ts' } });
+    h.companion.stop();
+    finish();
+    await flush();
+    expect(onProbe).toHaveBeenCalledTimes(1);
+    expect(h.companion.pendingCount()).toBe(0);
+  });
+
+  it('successive partial reconfiguration preserves earlier signal choices', async () => {
+    const h = makeHarness();
+    h.companion.reconfigure({ signals: { unfamiliarRead: false } });
+    h.companion.reconfigure({ cooldownMs: 100 });
+    toolExecuted(h.events, { name: 'read', input: { path: 'src/a.ts' } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
   it('same subject within cooldownMs is skipped; after cooldown it re-probes', async () => {
     const h = makeHarness({ cooldownMs: 1_000 });
     toolExecuted(h.events, { name: 'edit', input: { path: 'src/a.ts' } });

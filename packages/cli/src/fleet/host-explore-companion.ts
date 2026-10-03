@@ -11,8 +11,8 @@
  * FIRST probe (never eagerly — an idle session pays nothing) and holds a
  * stable subagent id so subsequent probes reuse it. When the resident is
  * gone (removed/reaped/never spawned), the next probe spawns a fresh one.
- * Probes are `assignInternal`ed, never awaited — the leader is never
- * blocked, and internal tasks stay out of the leader-visible task surface
+ * Probes are `assignInternal`ed off the leader's path; the observer waits
+ * for completion before dispatching another. Internal tasks stay out of the task surface
  * (same treatment as shadow passes). When the resident `submit_result`s,
  * this host posts a same-session `session.note` so the leader folds the
  * findings at its next iteration. Mailbox stays the durable cross-session
@@ -28,25 +28,14 @@ import {
   type Director,
   ExploreCompanion,
   type ExploreCompanionOptions,
+  type ExploreProbe,
   formatSubagentStructuredReport,
   getSharedProjectMailbox,
   mailboxSessionTag,
   postSessionNote,
 } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
-import type { SubagentConfig, TaskResult } from '@wrongstack/core/types';
-
-/** Config block for the explore-companion host wiring (FleetConfig.exploreCompanion). */
-interface HostExploreCompanionConfig {
-  /** Kill switch. Default true. */
-  enabled?: boolean | undefined;
-  /** Min gap between probes on the same subject (ms). Default 120_000. */
-  cooldownMs?: number | undefined;
-  /** Pending probe queue cap. Default 8. */
-  maxPending?: number | undefined;
-  /** Mailbox poll interval for explicit asks (ms). Default 5_000. */
-  pollIntervalMs?: number | undefined;
-}
+import type { FleetConfig, SubagentConfig, TaskResult } from '@wrongstack/core/types';
 
 interface HostExploreCompanionInput {
   director: Director;
@@ -54,8 +43,25 @@ interface HostExploreCompanionInput {
   sessionId: string;
   mailboxProjectDir: string;
   roster: Record<string, SubagentConfig>;
-  config?: HostExploreCompanionConfig | undefined;
+  config?: FleetConfig['exploreCompanion'];
   companionsAllowed?: (() => boolean) | undefined;
+  projectRoot?: string | undefined;
+  scrub?: ((text: string) => string) | undefined;
+}
+
+interface ActiveProbe {
+  probe: ExploreProbe;
+  taskId: string;
+  subagentId?: string;
+  done: Promise<void>;
+  resolve: () => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+function positive(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1
+    ? Math.floor(value)
+    : fallback;
 }
 
 export function createHostExploreCompanion(
@@ -69,27 +75,62 @@ export function createHostExploreCompanion(
   const template = roster[DEFAULT_EXPLORE_COMPANION_AGENT_ID];
 
   let residentId: string | undefined;
+  let active: ActiveProbe | undefined;
+  let stopped = false;
+  let retiring: Promise<void> = Promise.resolve();
+  const probeTimeoutMs = positive(config?.probeTimeoutMs, 120_000);
+  const maxToolCalls = positive(config?.maxToolCallsPerProbe, 32);
+  const maxFindingsChars = positive(config?.maxFindingsChars, 4_000);
+
+  const retire = (id: string): void => {
+    if (residentId === id) residentId = undefined;
+    retiring = Promise.all([retiring, director.terminate(id).catch(() => {})]).then(() => {});
+  };
+  const settle = (job: ActiveProbe, terminate = false): void => {
+    if (active !== job) return;
+    active = undefined;
+    clearTimeout(job.timer);
+    if (terminate && job.subagentId) retire(job.subagentId);
+    job.resolve();
+  };
 
   /** Spawn (or reuse) the resident companion and return its subagent id. */
-  const ensureResident = async (): Promise<string> => {
-    if (input.companionsAllowed?.() === false) {
+  const ensureResident = async (job: ActiveProbe): Promise<string> => {
+    await retiring;
+    if (stopped || active !== job || input.companionsAllowed?.() === false) {
       throw new Error('Subagent companions are disabled for this session.');
     }
     if (residentId) {
-      const alive = director.status().subagents.some((s) => s.id === residentId);
+      const alive = director
+        .status()
+        .subagents.some(
+          (s) => s.id === residentId && (s.status === 'idle' || s.status === 'running'),
+        );
       if (alive) return residentId;
-      residentId = undefined;
+      retire(residentId);
+      await retiring;
+      if (stopped || active !== job)
+        throw new Error('Explore Companion stopped during retirement.');
     }
     if (!template) throw new Error('explore-companion role missing from roster');
     const subagentId = await director.spawnCompanion({
       ...template,
-      id: `explore-companion-${sessionTag}`,
+      // Unique incarnation: late removal of an old resident cannot remove
+      // its replacement, including after a registry eviction/recreation.
+      id: `explore-companion-${sessionTag}-${randomUUID().slice(0, 8)}`,
       name: 'Explore Companion',
       // The resident belongs to the conversation it explores for. Without the
       // stamp the coordinator files it under the host's own session, and every
       // WebUI tab but the first would see its companion's activity in tab 1.
       originSessionId: sessionId,
+      timeoutMs: Math.min(positive(template.timeoutMs, probeTimeoutMs), probeTimeoutMs),
+      maxToolCalls: Math.min(positive(template.maxToolCalls, maxToolCalls), maxToolCalls),
+      maxIterations: Math.min(positive(template.maxIterations, maxToolCalls), maxToolCalls),
     });
+    if (stopped || active !== job || input.companionsAllowed?.() === false) {
+      retire(subagentId);
+      throw new Error('Explore Companion stopped during spawn.');
+    }
     residentId = subagentId;
     return subagentId;
   };
@@ -100,15 +141,47 @@ export function createHostExploreCompanion(
     leaderSessionId: sessionId,
     leaderAgentId: 'leader',
     onProbe: async (probe) => {
-      const subagentId = await ensureResident();
       const taskId = randomUUID();
-      await director.assignInternal({
-        id: taskId,
-        description: buildProbeTaskText(probe),
-        subagentId,
+      let resolve!: () => void;
+      const done = new Promise<void>((finish) => {
+        resolve = finish;
       });
-      return { subagentId, taskId };
+      const job: ActiveProbe = {
+        probe,
+        taskId,
+        done,
+        resolve,
+        timer: setTimeout(() => settle(job, true), probeTimeoutMs),
+      };
+      job.timer.unref?.();
+      active = job;
+      const execute = async (): Promise<void> => {
+        const subagentId = await ensureResident(job);
+        if (active !== job || stopped || input.companionsAllowed?.() === false) {
+          retire(subagentId);
+          return;
+        }
+        job.subagentId = subagentId;
+        const text = buildProbeTaskText(probe);
+        await director.assignInternal({
+          id: taskId,
+          description: input.scrub ? input.scrub(text) : text,
+          subagentId,
+        });
+        await done;
+      };
+      try {
+        // Completion owns the flight slot. Assignment/spawn never block the
+        // leader, and even a hung adapter releases this slot at the deadline.
+        await Promise.race([execute(), done]);
+        return { subagentId: job.subagentId ?? '', taskId };
+      } finally {
+        settle(job, true);
+      }
     },
+    projectRoot: input.projectRoot,
+    signals: config?.signals,
+    maxProbeAgeMs: config?.maxProbeAgeMs,
     cooldownMs: config?.cooldownMs,
     maxPending: config?.maxPending,
     pollIntervalMs: config?.pollIntervalMs,
@@ -117,19 +190,38 @@ export function createHostExploreCompanion(
 
   const companion = new ExploreCompanion(options);
   const offCompleted = director.on('task.completed', ({ result }) => {
-    if (result.subagentId !== residentId) return;
-    forwardExploreFindings({
-      result,
-      from: options.companionAgentId ?? `${DEFAULT_EXPLORE_COMPANION_AGENT_ID}@${sessionTag}`,
-      sessionId,
-      events,
-    });
+    const job = active;
+    if (!job || result.taskId !== job.taskId || result.subagentId !== job.subagentId) return;
+    try {
+      if (
+        !stopped &&
+        companion.isRunning() &&
+        input.companionsAllowed?.() !== false &&
+        result.status === 'success'
+      ) {
+        forwardExploreFindings({
+          result,
+          from: options.companionAgentId ?? `${DEFAULT_EXPLORE_COMPANION_AGENT_ID}@${sessionTag}`,
+          sessionId,
+          events,
+          probe: job.probe,
+          maxChars: maxFindingsChars,
+          scrub: input.scrub,
+        });
+      }
+    } finally {
+      settle(job, result.status !== 'success');
+    }
   });
   const stopWatching = companion.stop.bind(companion);
   Object.assign(companion, {
     stop(): void {
+      if (stopped) return;
+      stopped = true;
       offCompleted();
       stopWatching();
+      if (active) settle(active, true);
+      else if (residentId) retire(residentId);
     },
   });
   companion.start();
@@ -141,25 +233,35 @@ function forwardExploreFindings(input: {
   from: string;
   sessionId: string;
   events: EventBus;
+  probe: ExploreProbe;
+  maxChars: number;
+  scrub?: ((text: string) => string) | undefined;
 }): void {
-  const { result, from, sessionId, events } = input;
-  const raw = result.report
-    ? formatSubagentStructuredReport(result.report)
-    : typeof result.result === 'string'
-      ? result.result
-      : undefined;
-  if (!raw?.trim()) return;
+  const { result, from, sessionId, events, probe, maxChars } = input;
   try {
+    const raw = result.report
+      ? formatSubagentStructuredReport(result.report)
+      : typeof result.result === 'string'
+        ? result.result
+        : undefined;
+    if (!raw?.trim()) return;
+    const subject = `[explore] ${probe.source}: ${probe.subject}`;
     postSessionNote({
       sessionId,
       from,
       to: 'leader',
       kind: 'result',
-      subject: '[explore]',
-      body: raw,
+      subject: (input.scrub ? input.scrub(subject) : subject).slice(0, 180),
+      body: boundedFindings(input.scrub ? input.scrub(raw) : raw, maxChars),
       events,
     });
   } catch {
     // Forwarding must never disturb the leader or the resident.
   }
+}
+
+function boundedFindings(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const suffix = '\n[Explore result truncated]';
+  return text.slice(0, Math.max(0, maxChars - suffix.length)) + suffix.slice(0, maxChars);
 }

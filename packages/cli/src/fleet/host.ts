@@ -335,6 +335,8 @@ export class MultiAgentHost {
               mailboxProjectDir: this.mailboxProjectDir(),
               roster: this.roster,
               config: config.fleet?.exploreCompanion,
+              projectRoot: this.deps.projectRoot,
+              scrub: (text) => this.deps.secretScrubber.scrub(text),
               // Companion gate, not the general one: a Bug Hunter round runs
               // solo but keeps its read-only companions.
               companionsAllowed: () => areSubagentCompanionsAllowedForSession(sessionId),

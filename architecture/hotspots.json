@@ -27,7 +27,7 @@
       "relativeImports": 47
     },
     "packages/cli/src/fleet/host.ts": {
-      "lines": 920,
+      "lines": 922,
       "relativeImports": 26
     },
     "packages/cli/src/picker.ts": {
