@@ -290,3 +290,76 @@ describe('release scripts (WS-040)', () => {
     expect(localIds).not.toContain('test:e2e');
   });
 });
+
+describe('website CI and Pages verification', () => {
+  function jobBlock(text: string, name: string): string {
+    const marker = `\n  ${name}:\n`;
+    const start = text.indexOf(marker);
+    expect(start, `workflow must contain the ${name} job`).toBeGreaterThan(-1);
+    return text.slice(start + marker.length).split(/\n {2}[\w-]+:\n/)[0]!;
+  }
+
+  it('runs website compilation and tests in their existing CI jobs after workspace install', () => {
+    const ci = withoutComments(read('ci.yml'));
+    for (const [job, command] of [
+      ['typecheck', 'pnpm --filter wrongstack-website typecheck:tests'],
+      ['test', 'pnpm --filter wrongstack-website test'],
+    ] as const) {
+      const block = jobBlock(ci, job);
+      const install = block.indexOf('run: pnpm install --frozen-lockfile --ignore-scripts');
+      const check = block.indexOf(`run: ${command}`);
+      expect(install).toBeGreaterThan(-1);
+      expect(check).toBeGreaterThan(install);
+    }
+  });
+
+  it('verifies Pages with workspace dependencies in a separate read-only job', () => {
+    const verify = jobBlock(withoutComments(read('pages.yml')), 'website-checks');
+    expect(verify).toMatch(/^ {4}permissions:\n {6}contents: read$/m);
+    expect(verify).not.toMatch(/(?:contents|pages|id-token):\s*write/);
+    expect(verify).not.toMatch(/continue-on-error:|^ {4}if:/m);
+    expect(verify).toContain('cache: pnpm');
+    const install = verify.indexOf('run: pnpm install --frozen-lockfile --ignore-scripts');
+    const rebuild = verify.indexOf('run: pnpm rebuild ');
+    const typecheck = verify.indexOf('run: pnpm --filter wrongstack-website typecheck:tests');
+    const tests = verify.indexOf('run: pnpm --filter wrongstack-website test');
+    expect(install).toBeGreaterThan(-1);
+    expect(rebuild).toBeGreaterThan(install);
+    expect(typecheck).toBeGreaterThan(rebuild);
+    expect(tests).toBeGreaterThan(typecheck);
+    expect(verify).not.toContain('working-directory: website');
+    expect(verify).not.toContain('npm ci');
+  });
+
+  it('blocks Pages build and deployment until verification succeeds', () => {
+    const pages = withoutComments(read('pages.yml'));
+    expect(jobBlock(pages, 'build')).toMatch(/^ {4}needs: website-checks$/m);
+    const deploy = jobBlock(pages, 'deploy');
+    expect(deploy).toMatch(/^ {4}needs: build$/m);
+    expect(deploy).toContain('pages: write');
+    expect(deploy).toContain('id-token: write');
+    expect(deploy).toContain('name: github-pages');
+  });
+
+  it('preserves the standalone npm artifact build and deployment permission boundary', () => {
+    const pages = withoutComments(read('pages.yml'));
+    const build = jobBlock(pages, 'build');
+    expect(build).toMatch(/^ {4}permissions:\n {6}contents: read$/m);
+    expect(build).not.toMatch(/(?:pages|id-token):\s*write/);
+    expect(build).toContain('cache-dependency-path: website/package-lock.json');
+    expect(build).toMatch(/working-directory: website\n\s+run: npm ci --ignore-scripts/);
+    expect(build).toMatch(/working-directory: website\n\s+run: npm audit --audit-level=moderate/);
+    expect(build).toMatch(/working-directory: website\n\s+run: npm run build/);
+    expect(build).toContain('path: website/dist');
+    expect(build).not.toContain('pnpm install');
+    expect(pages).toMatch(/^permissions:\n {2}contents: read$/m);
+    expect(pages).toContain('cancel-in-progress: false');
+  });
+
+  it('triggers Pages when the workspace verification dependency inputs change', () => {
+    const triggers = withoutComments(read('pages.yml')).split('\njobs:')[0]!;
+    for (const path of ['website/**', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+      expect(triggers).toContain(`- '${path}'`);
+    }
+  });
+});

@@ -105,4 +105,50 @@ describe('bump-version script', () => {
     expect(bumpRun.status).toBe(0);
     expect(manifestVersions(fixture)).toEqual(['9.9.10', '9.9.10', '9.9.10']);
   });
+
+  it('runs the protocol writer after manifest updates for both set and patch', () => {
+    fixture = makeFixture();
+    const protocol = join(fixture.root, 'packages', 'webui-protocol');
+    mkdirSync(protocol, { recursive: true });
+    const manifest = join(protocol, 'package.json');
+    writeFileSync(manifest, JSON.stringify({ name: '@fixture/protocol', version: '0.0.1' }));
+    fixture.manifestPaths.push(manifest);
+    writeFileSync(
+      join(fixture.root, 'scripts', 'generate-protocol-schema.mjs'),
+      `
+      import { readFileSync, writeFileSync } from 'node:fs';
+      const version = JSON.parse(readFileSync('packages/webui-protocol/package.json')).version;
+      writeFileSync('writer-output.json', JSON.stringify({ version }));
+    `,
+    );
+    for (const [args, expected] of [
+      [['set', '2.3.4'], '2.3.4'],
+      [['patch'], '2.3.5'],
+    ] as const) {
+      const result = fixture.run([...args]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(manifestVersions(fixture)).toEqual(Array(4).fill(expected));
+      expect(JSON.parse(readFileSync(join(fixture.root, 'writer-output.json'), 'utf8'))).toEqual({
+        version: expected,
+      });
+    }
+  });
+
+  it('reports a generator failure instead of claiming the bump is complete', () => {
+    fixture = makeFixture();
+    const protocol = join(fixture.root, 'packages', 'webui-protocol');
+    mkdirSync(protocol, { recursive: true });
+    writeFileSync(join(protocol, 'package.json'), JSON.stringify({ version: '0.0.1' }));
+    writeFileSync(
+      join(fixture.root, 'scripts', 'generate-protocol-schema.mjs'),
+      'process.exit(7);',
+    );
+    const result = fixture.run(['patch']);
+    expect(result.status).toBe(7);
+    expect(result.stderr).toContain(
+      'manifests were updated, but protocol schema regeneration failed',
+    );
+    expect(result.stdout).not.toContain('Version bumped');
+    expect(manifestVersions(fixture)).toEqual(['0.0.2', '0.0.2', '0.0.2']);
+  });
 });

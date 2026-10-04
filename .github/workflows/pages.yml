@@ -10,6 +10,10 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      # Workspace-owned tooling supplies the website verification dependencies.
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       # wrongstack.com/install.{sh,ps1} are emitted from these at build time.
       - 'scripts/install/install.sh'
       - 'scripts/install/install.ps1'
@@ -40,7 +44,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Test tooling belongs to the workspace. Keep its pnpm install isolated from
+  # the standalone npm dependency tree that produces the deployed artifact.
+  website-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Match CI's reviewed native set; do not execute arbitrary install scripts.
+      - name: Rebuild reviewed native dependencies
+        run: pnpm rebuild electron-winstaller esbuild node-pty
+
+      - name: TypeCheck (website tests)
+        run: pnpm --filter wrongstack-website typecheck:tests
+
+      - name: Test (website)
+        run: pnpm --filter wrongstack-website test
+
   build:
+    needs: website-checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -51,8 +88,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # The website is a standalone npm project (its own package-lock.json), not
-      # part of the pnpm workspace — so it builds with npm, cached on its lockfile.
+      # Keep the deployed artifact on its standalone npm lockfile. Workspace
+      # test dependencies are installed only in the separate website-checks job.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
         with:
           node-version: 22
@@ -61,9 +98,8 @@ jobs:
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0 (Node 24 runtime, pinned 2026-09-06)
 
-      # `--ignore-scripts`: the website tree is outside the pnpm workspace, so
-      # root `onlyBuiltDependencies` does not gate its install scripts, and
-      # `pnpm audit` in ci.yml does not cover these packages either (WS-014).
+      # `--ignore-scripts`: pnpm's lifecycle allowlist does not govern this npm
+      # install. Audit the standalone production lockfile separately (WS-014).
       - name: Install dependencies
         working-directory: website
         run: npm ci --ignore-scripts

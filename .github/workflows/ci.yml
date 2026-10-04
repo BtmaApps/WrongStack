@@ -161,6 +161,9 @@ jobs:
         # require the same review bar documented at the top of that file.
         run: pnpm rebuild electron-winstaller esbuild node-pty
 
+      - name: TypeCheck (website tests)
+        run: pnpm --filter wrongstack-website typecheck:tests
+
       # Build first so cross-package type declarations exist. Several packages
       # (e.g. @wrongstack/kanban) import workspace deps like
       # @wrongstack/persistence whose `types` resolve to dist/*.d.ts, which do
@@ -380,6 +383,9 @@ jobs:
         # Same reviewed set as pnpm-workspace.yaml allowBuilds. Additions here
         # require the same review bar documented at the top of that file.
         run: pnpm rebuild electron-winstaller esbuild node-pty
+
+      - name: Test (website)
+        run: pnpm --filter wrongstack-website test
 
       # Download verified build artifacts so workspace dist/ folders exist
       # before the coverage run. Without this, 257+ test files that import
@@ -913,7 +919,7 @@ jobs:
           HOME="$E2E_HOME" \
           E2E_PROVIDER=ci-e2e \
           E2E_MODEL=ci-e2e-model \
-            npx playwright test e2e/smoke.spec.ts --reporter=list
+            npx playwright test e2e/smoke.spec.ts e2e/focus-ring.spec.ts --reporter=list
 
       - name: Upload Playwright report on failure
         if: failure()

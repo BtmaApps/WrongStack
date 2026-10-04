@@ -37,6 +37,8 @@ git diff --stat
 - [ ] Root, every workspace package/app manifest, and website version surfaces
       were updated by the bump script; use its reported manifest count rather
       than a hard-coded package total
+- [ ] The bump script regenerated WebUI protocol schemas with the official writer;
+      `node scripts/generate-protocol-schema.mjs --check` passes
 - [ ] `website/package-lock.json`, `website/src/lib/utils.ts`, and `website/index.html` contain the intended website version
 - [ ] CHANGELOG.md has a new dated release section; do not rewrite older release entries
 

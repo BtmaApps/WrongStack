@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -204,6 +205,23 @@ for (const path of manifests) {
 }
 
 const websiteUpdated = updateWebsite(newVersion);
+
+// Schemas include the package version. Use their canonical writer rather than
+// patching generated JSON, and do not report success if regeneration failed.
+if (existsSync(resolve(repoRoot, 'packages/webui-protocol/package.json'))) {
+  const generated = spawnSync(
+    process.execPath,
+    [resolve(repoRoot, 'scripts/generate-protocol-schema.mjs')],
+    { cwd: repoRoot, stdio: 'inherit', windowsHide: true },
+  );
+  if (generated.status !== 0) {
+    console.error(
+      'error: manifests were updated, but protocol schema regeneration failed. ' +
+        'Fix the generator failure and rerun scripts/generate-protocol-schema.mjs before releasing.',
+    );
+    process.exit(generated.status ?? 1);
+  }
+}
 
 console.log(
   `Version ${type === 'set' ? 'set' : 'bumped'} to ${newVersion} across ${manifests.length} package(s)` +
