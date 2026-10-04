@@ -258,6 +258,11 @@ pnpm release:verify   # confirm every working-tree version is live on npm
 
 Versioning uses `pnpm version:patch` (or `version:minor` / `version:major`) and conventional-commit-based semver bumps.
 
+The lockstep bump also runs the official WebUI protocol schema generator after
+updating manifests, keeping generated schema version metadata aligned. A generator
+failure exits nonzero even though the manifest versions have already changed;
+repair the failure and rerun `node scripts/generate-protocol-schema.mjs` before release.
+
 ### Why the publish is ordered
 
 `pnpm publish -r` sorts topologically but publishes concurrently, so the

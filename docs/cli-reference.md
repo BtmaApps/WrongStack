@@ -28,8 +28,15 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--token-saving-mode` | Trim the tool surface and prompt to reduce token cost. |
 | `--system-pro` | Use `system-pro.md` instead of `system.md` for the baseline system prompt in this launch. Equivalent to `--system-prompt pro`. |
 | `--system-lite` | Use the compact `system-lite.md` baseline for this launch. Equivalent to `--system-prompt lite`. |
-| `--system-prompt default\|lite\|pro` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`, including profile/project instruction overrides. |
+| `--system-scout` | Use the general-purpose Scout identity (`system-scout.md`) for this launch: a small direct tool set (files, shell, web, todo, memory) with the rest of the catalog reached through `tool_search` / `tool_use`. Equivalent to `--system-prompt scout`. |
+| `--system-prompt default\|lite\|pro\|scout` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`; `scout` uses `system-scout.md` and the Scout tool surface, including profile/project instruction overrides. |
 Run `wstack --help` for the authoritative, version-specific flag list.
+
+TUI startup keeps routine console logs, HQ connection warnings, and dependency
+warnings off the screen, including `quick` and TUI selection from the launch
+menu. Diagnostics follow the configured log level in `wrongstack.log`.
+Startup errors and selection prompts stay visible. Choosing REPL preserves
+normal console diagnostics.
 
 ---
 

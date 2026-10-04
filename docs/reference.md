@@ -93,7 +93,7 @@ mode prompt overrides conflicting baseline defaults.
 
 ---
 
-## Bundled skills (36)
+## Bundled skills (37)
 
 Skills are auto-activating capability packs matched on their trigger sentence.
 The bundle covers debugging, code review, codebase navigation, verification

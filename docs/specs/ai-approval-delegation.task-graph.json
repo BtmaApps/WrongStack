@@ -1,0 +1,57 @@
+{
+  "spec": "ai-approval-delegation",
+  "plan": "docs/competitive-roadmap-2026-2027/29-ai-approval-delegation.md",
+  "generated": "2026-10-04",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Decision contract + audit event types (allow/deny/escalate, provenance approvals_reviewer)",
+      "dependsOn": [],
+      "status": "pending"
+    },
+    {
+      "id": "T2",
+      "title": "Reviewer Brain tier member + autonomy.approvalsReviewer flag (default off, fail-closed)",
+      "dependsOn": ["T1"],
+      "status": "pending"
+    },
+    {
+      "id": "T3",
+      "title": "Eligibility classifier over DestructiveKind/permission metadata (destructive kinds never delegated)",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T4",
+      "title": "Rate/cost caps + outage timeout fail-closed escalation",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T5",
+      "title": "/brain visibility + TUI/WebUI rendering + per-session stats",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T6",
+      "title": "Replay eval corpus (>=200 prompts) with false-allow <2% gate test",
+      "dependsOn": ["T3"],
+      "status": "pending"
+    },
+    {
+      "id": "T7",
+      "title": "In-project config: add autonomy.approvalsReviewer to KNOWN_DENIED_IN_PROJECT + tests",
+      "dependsOn": ["T3"],
+      "status": "pending"
+    },
+    {
+      "id": "T8",
+      "title": "Docs: precedence matrix, autonomy-ceiling interaction, rollout plan",
+      "dependsOn": ["T5", "T6"],
+      "status": "pending"
+    }
+  ],
+  "criticalPath": ["T1", "T2", "T3", "T6"],
+  "parallelGroups": [["T4", "T5"], ["T7"]]
+}

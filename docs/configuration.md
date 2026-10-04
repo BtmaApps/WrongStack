@@ -123,7 +123,7 @@ boundary while preserving encrypted credential material.
 | `favoriteModels` | `string[]` | `[]` | User-curated model refs prioritized by pickers and smart fallback derivation. |
 | `favoriteModelsOnly` | `boolean` | `false` | Restrict the **auto-derived** smart-default fallback chain to `favoriteModels`. **Explicit** settings are always honored as written — this includes `fallbackModels`, `fallbackProfiles`, and matrix model-only entries (`agent_model_assign` with `model=...`, no `profile=...`). The smart-default chain is at most as strict as the matrix model-only mode: the matrix already requires favorites whenever `favoriteModels` is non-empty (via `isFavoriteRef`), regardless of this toggle. The toggle only narrows the auto-derivation path, and only when `favoriteModels` is non-empty — an empty `favoriteModels` list means the smart default falls back to including every usable provider/model pair. Toggle with `/fallback fav only on\|off`. |
 | `modelRuntime` | `object` | — | Runtime request controls for the leader/default request path: reasoning, prompt-cache TTL, and gated generation parameters. |
-| `systemPrompt` | `object` | `{ "variant": "default" }` | Baseline system prompt selection. `variant: "default"` loads `system.md`; `variant: "lite"` loads the compact `system-lite.md`; `variant: "pro"` loads `system-pro.md`. Overridden for one launch by `--system-pro`, `--system-lite`, or `--system-prompt default\|lite\|pro`. |
+| `systemPrompt` | `object` | `{ "variant": "default" }` | Baseline system prompt selection. `variant: "default"` loads `system.md`; `variant: "lite"` loads the compact `system-lite.md`; `variant: "pro"` loads `system-pro.md`; `variant: "scout"` loads the general-purpose `system-scout.md` with a small direct tool surface. Overridden for one launch by `--system-pro`, `--system-lite`, `--system-scout`, or `--system-prompt default\|lite\|pro\|scout`. |
 | `modelMatrix` | `Record<string, ModelMatrixEntry>` | — | Per-role/phase/`*` subagent routing matrix. Entries can override provider/model/fallback profile and role-specific runtime controls. |
 | `fleet` | `FleetConfig` | — | Fleet budgets, supervision, worktrees, peer awareness, and subagent lifecycle. User config only; stripped from in-project config. |
 | `brain` | `BrainConfig` | — | Decision layer: autonomy ceiling, deterministic rules, heuristics, LLM quality gate + circuit breaker, council, decision cache, replay trace, ledger, monitor. See [`brain`](#brain--decision-layer-autonomy-rules-council-trace). User config only; stripped from in-project config. |
@@ -304,7 +304,14 @@ The host system prompt normally loads the baseline identity/instructions from
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `variant` | `"default" \| "lite" \| "pro"` | `"default"` | `default` loads `system.md`; `lite` loads the compact `system-lite.md`; `pro` loads `system-pro.md`. |
+| `variant` | `"default" \| "lite" \| "pro" \| "scout"` | `"default"` | `default` loads `system.md`; `lite` loads the compact `system-lite.md`; `pro` loads `system-pro.md`; `scout` loads `system-scout.md`. |
+
+Lite, Standard and Pro select the amount of coding guidance; they expose the
+same tools for a given `features.tokenSavingMode`. Scout additionally selects
+a per-conversation direct tool surface. Provider `maxTools` limits are applied
+before tool guidance is rendered, so the prompt describes the tools actually
+sent while the enabled catalog remains discoverable. Tools registered during
+a run become available to discovery and nested invocation during that run.
 
 In WebUI, open **System Prompt → Manage custom presets** to copy a bundled
 variant into an editable profile preset. Presets live under the active
@@ -322,15 +329,57 @@ separately. Each preset records the bundled source it was copied from, so the
 editor can show both versions after a package update; reviewing the new source
 does not silently overwrite the customized text.
 
-`lite` is a genuine reduction, not a rewording — it drops whole sections of
-`system.md`, including **Tool output trust boundary**, **Tool coordination**,
-and **The cost ladder**. Choose it to save context, not as a default.
+`lite` uses compact coding guidance, retaining the shared intent, evidence,
+architecture and tracking rules and treating tool output as evidence rather
+than instruction. Standard and Pro provide more detailed guidance. This
+identity selection does not change the available tools.
+
+`scout` is a different identity rather than a smaller one: a general-purpose
+agent (research, writing, files, shell, automation) instead of a coding one. It
+also narrows the tools sent on each request to a fixed set — `tool_search`,
+`tool_use`, `clarify`, `read`, `write`, `edit`, `bash`, `exec`, `pwsh`, `search`,
+`fetch`, `read_url_content`, `todo`, memory, `skill`, and the delegation tools
+(`delegate`, `spawn_subagent`, `assign_task`, `await_tasks`, `roll_up`,
+`terminate_subagent`) — regardless of
+`features.tokenSavingMode`. Every other tool, MCP tools included, stays
+registered and is found with `tool_search` and called with `tool_use`. The
+surface is per conversation, so a WebUI tab on Scout does not shrink the other
+tabs. If either discovery gateway is explicitly disabled or restricted, Scout
+exposes the remaining enabled catalog directly; disables, restrictions, and
+solo policy still apply. Project Kit discovery guidance remains present even
+when its schema is deferred. Workers dispatched from a Scout session get the Scout identity too,
+without the leader-only parts, so a research or writing worker does not start
+as a coding agent; its role prompt supplies the specialist guidance.
+
+Scout is required to split decomposable work: when a task has independent
+parts, or a part matches a roster specialist, it delegates those parts (roster
+roles first) and works on its own share in parallel instead of doing everything
+alone. A solo session policy still wins — the delegation tools are dropped from
+the request and Scout does the work itself. Each `delegate` call asks for approval unless the
+permission policy already allows it.
+
+`/scout-stats` compares Scout with the other variants from session journals:
+tool discovery (empty searches, found-then-used calls) and delegation share.
+See [docs/slash/scout-stats.md](slash/scout-stats.md).
+
+Scout also learns which deferred tools a project keeps reaching for: every
+successful `tool_use` call is appended (tool name and time only) to
+`scout-tool-use.jsonl` in the global project directory. At session start,
+tools called at least 3 times in the last 30 days — at most 5 — join the direct
+surface for that whole session; the list never changes mid-session, so the
+prompt cache stays valid. Spawn-capable tools are still withheld from a solo
+session.
+
+Launched from a folder that is not a project (no manifest, no
+`.wrongstack/AGENTS.md`, no git), the startup menu preselects Scout. Choosing it
+there applies to that launch only; the saved profile default is unchanged.
 
 CLI flags override this setting for one launch:
 
 ```bash
 wstack --system-pro
 wstack --system-lite
+wstack --system-scout
 wstack --system-prompt pro
 wstack --system-prompt lite
 wstack --system-prompt default
@@ -2105,6 +2154,8 @@ When unset, git's own configuration applies (default behavior). Manage at runtim
 |---|---|
 | `<PROVIDER>_API_KEY` | API key for the provider (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`). |
 | `WRONGSTACK_LOG_LEVEL` | Override log level (`error`, `warn`, `info`, `debug`, `trace`). |
+| `WEBUI_VERBOSE` / `WRONGSTACK_WEBUI_VERBOSE` | Set `1` to bypass the compact WebUI/SimpleUI terminal dashboard and keep full append-only console output. By default, visible logs and finished workers expire after 30 seconds. Non-TTY output also bypasses the dashboard. |
+| `WEBUI_LOGS` | Set `1` to include informational logs in the CLI WebUI/SimpleUI host's bounded terminal log window. Warnings and errors are visible by default. |
 | `WRONGSTACK_FETCH_ALLOW_PRIVATE` | Set `1` to allow localhost/private IPs in the `fetch` tool. |
 | `WRONGSTACK_BASH_ENV_PASSTHROUGH` | Set `1` to disable the bash-tool env allowlist (legacy unsafe mode). |
 | `WRONGSTACK_CHILD_ENV_PASSTHROUGH` | Set `1` to opt back to old child-process env behavior. |
@@ -2470,12 +2521,21 @@ SQLite is the only runtime backend and needs no engine configuration. On first o
 
 ### Retrieval tuning
 
-By default, SAGE memory waits for a relevant tool call and appends a bounded
-hint block to that tool result. It does not add memory to every ordinary turn.
+By default, SAGE memory waits for a relevant tool call and carries a bounded
+hint block as provider memory evidence. It does not add memory to every ordinary turn.
 The Memory Injector expands direct matches through file/symbol/package/command
 relationships and measures current context pressure before choosing its budget.
 Defaults are up to 8 diverse hints / 2800 characters at normal pressure,
 shrinking safely near the context ceiling.
+
+Retained tool-memory evidence is re-read from the store before every provider
+request and after tool calls, including `memory_update` and `memory_verify`.
+Corrections refresh the text, revision and dates; archived, deleted, superseded,
+stale, never-inject and no-longer-visible records leave the retained block.
+Refreshing retained evidence does not count as another injection or reset the
+once-per-session usefulness credit. `anchorVerified` is the date rendered from
+the store's `lastVerifiedAt`, not a separate verification field or verdict.
+The memory fence escapes quotes and markup so stored text cannot close it.
 
 What actually earns an injection is **evidence about the thing the tool
 touched**, not word overlap:

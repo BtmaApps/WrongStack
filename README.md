@@ -6,21 +6,20 @@
 
 **A free, open-source AI coding agent that gets better at _your_ codebase over time. It reads code, runs tools, and coordinates specialist agents — with durable memory, visible permission boundaries, and no subscription required.**
 
-[![npm](https://img.shields.io/npm/v/wrongstack?style=flat-square&color=0b7285&label=npm)](https://www.npmjs.com/package/wrongstack)
-[![downloads](https://img.shields.io/npm/dm/wrongstack?style=flat-square&color=0b7285)](https://www.npmjs.com/package/wrongstack)
-[![node](https://img.shields.io/badge/node-%E2%89%A5%2022.19-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![tests](https://img.shields.io/badge/tests-passing-2f9e44?style=flat-square)](#status)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![open source](https://img.shields.io/badge/open%20source-yes-ff3154?style=flat-square)](https://github.com/WrongStack/WrongStack)
 
+---
+
+macOS / Linux — one self-contained binary, no Node.js needed
 ```bash
-# macOS / Linux — one self-contained binary, no Node.js needed
 curl -fsSL https://wrongstack.com/install.sh | sh
 ```
 
+Windows
 ```powershell
-# Windows
 irm https://wrongstack.com/install.ps1 | iex
 ```
 
@@ -38,7 +37,7 @@ plugins, and a provider catalog pulled live from
 [models.dev](https://models.dev) — all on top of a compact, swappable kernel.
 
 The coding loop compares completed tool results when detecting repetition.
-With the LSP plugin and hooks enabled, successful file edits include bounded,
+With the LSP plugin and hooks enabled, successful single and bulk file edits include bounded,
 version-bound diagnostics or an explicit unverified notice. Research briefs
 preserve API/version evidence and unresolved questions. See [agent feedback](docs/agent-feedback.md).
 
@@ -329,6 +328,10 @@ Full flag and subcommand reference: [`docs/cli-reference.md`](docs/cli-reference
 
 Plain `wstack` on a TTY opens a launch menu; add `--no-menu` to go straight to the
 REPL. See [WebUI](docs/webui.md) for the browser surface details.
+
+WebUI and SimpleUI keep their host terminal compact: repeated warnings share
+one row, logs and finished workers disappear after 30 seconds, and live worker
+rows fit the terminal. Use `WEBUI_VERBOSE=1` for full console output.
 
 The WebUI's **Story** button opens [Session Story](docs/session-story.md): a visual
 timeline of the selected tab and its subagents, with activity charts, team
