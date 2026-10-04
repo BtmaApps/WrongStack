@@ -233,6 +233,8 @@ function labelForEvent(e: SessionEvent): string {
       return `Skill done: ${e.skillName}`;
     case 'agent_session_linked':
       return `Agent ${e.agentId} → session ${e.agentSessionId}`;
+    case 'sandbox_audit':
+      return `Sandbox ${e.event} on ${e.tool}`;
     default: {
       // Exhaustiveness check — fires typecheck error if a new event
       // kind is added without a case here. The `never` cast silences
@@ -358,6 +360,8 @@ function detailForEvent(e: SessionEvent): string {
       return `at ${e.skillName}`;
     case 'agent_session_linked':
       return e.agentSessionId;
+    case 'sandbox_audit':
+      return e.event;
     default: {
       // Exhaustiveness check — fires typecheck error if a new SessionEvent
       // kind is added without a label case here.

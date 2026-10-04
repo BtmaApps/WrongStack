@@ -61,6 +61,16 @@ export interface GroupingResult {
   hasAnyActivity: boolean;
 }
 
+function isMailboxMessage(value: unknown): value is HqMailboxMessageSummary {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const message = value as Record<string, unknown>;
+  return (
+    typeof message.mailId === 'string' &&
+    typeof message.messageId === 'string' &&
+    typeof message.timestamp === 'string'
+  );
+}
+
 function isMailboxSnapshot(payload: unknown): payload is HqMailboxSnapshotPayload {
   if (typeof payload !== 'object' || payload === null) return false;
   const v = payload as Record<string, unknown>;
@@ -80,7 +90,12 @@ function isMailboxEvent(payload: unknown): payload is HqMailboxEventPayload {
   return (
     typeof v.mailboxId === 'string' &&
     typeof v.action === 'string' &&
-    (v.message === undefined || typeof v.message === 'object')
+    (v.message === undefined || isMailboxMessage(v.message)) &&
+    (v.agent === undefined ||
+      (v.agent !== null &&
+        typeof v.agent === 'object' &&
+        !Array.isArray(v.agent) &&
+        typeof (v.agent as Record<string, unknown>).agentId === 'string'))
   );
 }
 
@@ -172,6 +187,7 @@ export function groupMailboxEvents(
     g.mailboxId = snap.mailboxId;
     g.scope = snap.scope;
     for (const message of snap.messages) {
+      if (!isMailboxMessage(message)) continue;
       g.messages.push({
         message,
         source: 'snapshot',

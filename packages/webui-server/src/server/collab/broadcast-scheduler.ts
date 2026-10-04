@@ -25,7 +25,9 @@ export class CollabBroadcastScheduler {
   ensure(): void {
     if (this.interval) return;
     this.interval = setInterval(() => {
+      const interval = this.interval;
       for (const sessionId of this.registry.sessionIds()) {
+        if (this.interval !== interval) return;
         if (this.fingerprints.get(sessionId) === this.registry.stateFingerprint(sessionId)) {
           continue;
         }

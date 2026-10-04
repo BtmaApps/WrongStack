@@ -69,8 +69,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 157,
-      "typeOnly": 93,
+      "files": 158,
+      "typeOnly": 94,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -6043,6 +6043,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/mailbox-live.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/mailbox-nested-shapes.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

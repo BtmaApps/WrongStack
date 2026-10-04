@@ -95,9 +95,11 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
   let approvals: ApprovalRegistry | undefined;
   let stopApprovalBridge: (() => void) | undefined;
   let closed = false;
+  let generation = 0;
 
   const register = async (): Promise<string | null> => {
     if (!deps.projectRoot) return null;
+    const registrationGeneration = ++generation;
     try {
       const projectRoot = deps.projectRoot;
       const projectName = path.basename(projectRoot);
@@ -130,6 +132,7 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
         capabilities,
         ...(onCommand ? { onCommand } : {}),
         onConnect: (publisher) => {
+          if (registrationGeneration !== generation) return;
           activePublisher = publisher;
           stopApprovalBridge?.();
           stopApprovalBridge = undefined;
@@ -175,24 +178,25 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
         },
       });
 
-      clientId = `webui@${crypto.randomUUID().slice(0, 8)}`;
+      const registeredClientId = `webui@${crypto.randomUUID().slice(0, 8)}`;
+      clientId = registeredClientId;
       closed = false;
       await nextMailbox.registerClient({
-        clientId,
+        clientId: registeredClientId,
         sessionId: deps.getSessionId(),
         name: `WebUI [${projectName}]`,
         source: 'webui',
         pid: process.pid,
       });
 
-      if (closed) {
-        nextMailbox.deregisterClient(clientId!).catch(() => undefined);
+      if (closed || registrationGeneration !== generation) {
+        nextMailbox.deregisterClient(registeredClientId).catch(() => undefined);
         return null;
       }
 
       heartbeatTimer = setInterval(() => {
         nextMailbox
-          .clientHeartbeat({ clientId: clientId!, sessionId: deps.getSessionId() })
+          .clientHeartbeat({ clientId: registeredClientId, sessionId: deps.getSessionId() })
           .catch(() => undefined);
       }, CLIENT_HEARTBEAT_MS);
       heartbeatTimer.unref();
@@ -202,17 +206,18 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
       // set is unchanged.
       syncTimer = setInterval(() => sessionTelemetry?.sync(), SESSION_SYNC_MS);
       syncTimer.unref();
-      return clientId;
+      return registeredClientId;
     } catch {
       // A half-registered host is worse than none: the HQ connection and its
       // session telemetry were already up, so HQ listed a `session.summary`
       // client whose reconcile timer never started. Tear it all down.
-      unregister();
+      if (registrationGeneration === generation) unregister();
       return null;
     }
   };
 
   const unregister = (): void => {
+    generation++;
     closed = true;
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = null;

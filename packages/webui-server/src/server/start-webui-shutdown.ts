@@ -157,5 +157,8 @@ export function setupWebuiShutdown(options: {
       await unregisterInstance(process.pid, path.dirname(options.globalConfigPath));
     },
   });
-  return unregister;
+  return () => {
+    unregister();
+    releaseSalvage();
+  };
 }

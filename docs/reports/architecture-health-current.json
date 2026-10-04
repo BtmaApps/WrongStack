@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:02:18.459Z",
+  "generatedAt": "2026-10-04T15:03:18.396Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4479,
-    "testFiles": 4059,
-    "sourceLines": 1053974,
+    "testFiles": 4065,
+    "sourceLines": 1054016,
     "workspaceEdges": 133,
     "moduleEdges": 14584,
     "nonCommandSlashImports": 0,
@@ -878,7 +878,7 @@
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
       "sourceFiles": 126,
-      "testFiles": 49,
+      "testFiles": 50,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -894,7 +894,7 @@
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 49
+          "testFiles": 50
         }
       ]
     },
@@ -902,7 +902,7 @@
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
       "sourceFiles": 25,
-      "testFiles": 12,
+      "testFiles": 13,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -915,7 +915,7 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 12
+          "testFiles": 13
         }
       ]
     },
@@ -923,7 +923,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 271,
-      "testFiles": 263,
+      "testFiles": 267,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -949,7 +949,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 263
+          "testFiles": 267
         }
       ]
     },
@@ -20969,6 +20969,12 @@
         ]
       },
       {
+        "file": "packages/webui-hq/tests/mailbox-nested-shapes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/tests/mailbox-time.test.ts",
         "projects": [
           "root-node"
@@ -21054,6 +21060,12 @@
       },
       {
         "file": "packages/webui-protocol/tests/decoder.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-protocol/tests/frame-resume-invalid-payload.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21239,6 +21251,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/client-presence-stale-registration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/client-transport-routes.test.ts",
         "projects": [
           "root-node"
@@ -21252,6 +21270,12 @@
       },
       {
         "file": "packages/webui-server/tests/codebase-index-server-control.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/codebase-indexing-disposed.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21276,6 +21300,12 @@
       },
       {
         "file": "packages/webui-server/tests/codemap-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/collab-broadcast-stop.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22404,6 +22434,12 @@
       },
       {
         "file": "packages/webui-server/tests/shell-open.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/shutdown-registration-disposal.test.ts",
         "projects": [
           "root-node"
         ]

@@ -89,7 +89,7 @@ describe('setupWebuiShutdown', () => {
       globalConfigPath: 'D:/home/.wrongstack/config.json',
     });
 
-    expect(result).toBe(unregister);
+    expect(result).toEqual(expect.any(Function));
     expect(registered?.servers).toEqual([primary, companion, expect.anything(), secondary]);
     await registered?.flushSession();
     await registered?.onPreShutdown();

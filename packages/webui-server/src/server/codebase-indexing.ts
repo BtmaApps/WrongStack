@@ -38,6 +38,7 @@ interface WebUICodebaseIndexing {
 
 export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): WebUICodebaseIndexing {
   const idx: IndexingConfig | undefined = deps.config.indexing;
+  let disposed = false;
 
   const indexDir =
     typeof deps.context.meta['codebaseIndexDir'] === 'string'
@@ -86,6 +87,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
         eventType: 'rename' | 'change',
         now: number,
       ): Promise<void> => {
+        if (disposed) return;
         let operation: 'delete' | 'edit' = 'edit';
         if (eventType === 'rename') {
           try {
@@ -94,6 +96,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
             operation = 'delete';
           }
         }
+        if (disposed) return;
         deps.events?.emit('file.activity', {
           filePath: path.normalize(abs),
           operation,
@@ -105,6 +108,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
       watcher = watchProjectTree(
         deps.projectRoot,
         ({ eventType, filename }) => {
+          if (disposed) return;
           if (!filename) return;
           const rel = filename;
           if (isIgnored(rel)) return;
@@ -143,6 +147,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
   }
 
   function enqueueFile(filePath: string): void {
+    if (disposed) return;
     if (!idx || (!idx.onEdit && !idx.watchExternal)) return;
     const abs = path.isAbsolute(filePath)
       ? path.normalize(filePath)
@@ -171,6 +176,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
   let wasIndexing = false;
   let publishedGeneration: number | undefined;
   const unsubscribeIndexState = onIndexStateChange((state) => {
+    if (disposed) return;
     const generation = state.server?.activity?.generation;
     const published = generation === undefined || generation !== publishedGeneration;
     if (!state.indexing && generation !== undefined) publishedGeneration = generation;
@@ -188,6 +194,7 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
 
   return {
     onFileWritten(filePath) {
+      if (disposed) return;
       const abs = path.isAbsolute(filePath)
         ? path.normalize(filePath)
         : path.resolve(deps.projectRoot, filePath);
@@ -204,6 +211,8 @@ export function setupWebUICodebaseIndexing(deps: WebUICodebaseIndexingDeps): Web
       if (idx?.onEdit) enqueueFile(abs);
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
       unsubscribeIndexState();
       lastWatcherEvent.clear();
       try {

@@ -217,6 +217,9 @@ export class FrameResume<T extends SequencedFrame & { type: string }> {
 
   /** `session.frames_resumed`: one tab's catch-up is over. */
   onFramesResumed(msg: T): void {
+    if (msg.payload === null || typeof msg.payload !== 'object' || Array.isArray(msg.payload)) {
+      return;
+    }
     const sessionId = (msg.payload as { sessionId?: unknown }).sessionId;
     if (typeof sessionId === 'string') this.apply(this.gate.finishResume(sessionId));
     // Every tab caught up: nothing left to give up on. A live timer would also
