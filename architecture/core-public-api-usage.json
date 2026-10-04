@@ -79,9 +79,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 51,
+      "files": 52,
       "typeOnly": 6,
-      "runtimeOrMixed": 50
+      "runtimeOrMixed": 51
     },
     "@wrongstack/core/kernel": {
       "files": 324,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1294,
-      "typeOnly": 1145,
+      "files": 1296,
+      "typeOnly": 1147,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -6315,6 +6315,12 @@
       "file": "packages/cli/tests/subcommand-mcp.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 4
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/cli/tests/tui-startup-output.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/infrastructure",
@@ -13092,6 +13098,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/boot/tui-startup-output.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/boot/tui-theme-adapter.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -14389,6 +14401,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/wiring/controllers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/wiring/director-announcement.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

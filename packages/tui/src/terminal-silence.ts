@@ -12,8 +12,8 @@ const origConsoleDebug = console.debug;
 const origConsoleInfo = console.info;
 const origConsoleTable = console.table;
 const origConsoleTrace = console.trace;
-const origStderrWrite = process.stderr.write.bind(process.stderr);
-const origStdoutWrite = process.stdout.write.bind(process.stdout);
+const origStderrWrite = process.stderr.write;
+const origStdoutWrite = process.stdout.write;
 
 const consoleNoop = (..._args: unknown[]): void => {};
 const stderrNoop = ((

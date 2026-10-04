@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:53:19.567Z",
+  "generatedAt": "2026-10-04T14:54:18.731Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4473,
-    "testFiles": 4042,
-    "sourceLines": 1052426,
+    "sourceFiles": 4474,
+    "testFiles": 4044,
+    "sourceLines": 1052603,
     "workspaceEdges": 133,
-    "moduleEdges": 14556,
+    "moduleEdges": 14557,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 564,
-      "testFiles": 582,
+      "sourceFiles": 565,
+      "testFiles": 584,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 582
+          "testFiles": 584
         }
       ]
     },
@@ -2401,6 +2401,12 @@
       },
       {
         "file": "packages/cli/tests/cli-main-helpers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/cli-tui-startup-output.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5035,6 +5041,12 @@
       },
       {
         "file": "packages/cli/tests/tui-settings-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tui-startup-output.test.ts",
         "projects": [
           "root-node"
         ]

@@ -1,7 +1,7 @@
 import { buildDirectorToolset, FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import { registerCanonicalHostTools } from '@wrongstack/runtime/tool-registration';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ensureDirectorAndAnnounce } from '../../src/wiring/director-announcement.js';
 
 /**
@@ -66,6 +66,23 @@ describe('boot tool surface', () => {
     registry.exposeToProvider('define_subagent');
 
     await expect(ensureDirectorAndAnnounce(makeArgs(registry))).resolves.not.toBeNull();
+  });
+
+  it('keeps roster and fleet paths in the log file during TUI startup while still exposing tools', async () => {
+    const registry = seedCanonicalHost();
+    const writeInfo = vi.fn();
+    const info = vi.fn();
+    await ensureDirectorAndAnnounce({
+      ...makeArgs(registry),
+      flags: { tui: true },
+      renderer: { writeInfo },
+      logger: { info },
+    });
+    expect(writeInfo).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith('  manifest   → D:/manifest', {
+      event: 'tui.startup.director',
+    });
+    expect(registry.listForProvider().some((tool) => tool.name === 'spawn_subagent')).toBe(true);
   });
 
   it('puts the fleet orchestration tools in front of the model', async () => {

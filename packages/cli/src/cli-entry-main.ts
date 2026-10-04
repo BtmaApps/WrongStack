@@ -23,6 +23,7 @@
  * pins both halves of that contract.
  */
 import { parseArgs } from './arg-parser.js';
+import { shouldCaptureTuiStartup, startTuiStartupOutput } from './boot/tui-startup-output.js';
 import { applyNodeEnvDefault, applySessionShellDefault } from './preflight.js';
 
 export async function main(argv: string[]): Promise<number> {
@@ -54,12 +55,26 @@ export async function main(argv: string[]): Promise<number> {
     if (earlyExit !== null) return earlyExit;
   }
 
-  const { initializeCli } = await import('./cli-context.js');
-  const cliCtx = await initializeCli(argv);
-  // A number means a short-circuit flag or a subcommand already ran to
-  // completion; the interactive stack is never touched.
-  if (typeof cliCtx === 'number') return cliCtx;
+  const parsed = parseArgs(argv);
+  const startupOutput = startTuiStartupOutput(
+    shouldCaptureTuiStartup(parsed.flags, parsed.positional),
+  );
+  try {
+    const { initializeCli } = await import('./cli-context.js');
+    const cliCtx = await initializeCli(argv);
+    // A number means a short-circuit flag or a subcommand already ran to
+    // completion; the interactive stack is never touched.
+    if (typeof cliCtx === 'number') return cliCtx;
 
-  const { runInteractive } = await import('./cli-main.js');
-  return runInteractive(cliCtx);
+    if (cliCtx.flags['tui'] === true && cliCtx.flags['no-tui'] !== true) {
+      startupOutput.acceptTui(cliCtx.logger);
+    } else {
+      startupOutput.stop();
+    }
+
+    const { runInteractive } = await import('./cli-main.js');
+    return await runInteractive(cliCtx);
+  } finally {
+    startupOutput.stop();
+  }
 }

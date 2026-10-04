@@ -1,6 +1,7 @@
 import type { Director } from '@wrongstack/core/coordination';
 import { FLEET_ROSTER } from '@wrongstack/core/coordination';
 import type { ToolRegistry } from '@wrongstack/core/registry';
+import type { Logger } from '@wrongstack/core/types';
 import type { MultiAgentHost } from '../fleet/host.js';
 
 /**
@@ -9,7 +10,7 @@ import type { MultiAgentHost } from '../fleet/host.js';
  * Verbatim extraction of the cli-main.ts director block: resolves the Director
  * from the multi-agent host, restores any fleet checkpoint state, registers
  * the roster tools, and prints the mode announcement (short line for browser
- * surfaces, full paths for the terminal; budget summary only when resuming
+ * surfaces, full paths for REPL and the TUI log file; budget summary only when resuming
  * from a checkpoint so fresh starts stay quiet).
  *
  * Returns the resolved Director (or null when Director mode is disabled) so
@@ -20,6 +21,7 @@ export async function ensureDirectorAndAnnounce(args: {
   /** Fleet checkpoint restored from the resumed session, if any. */
   priorFleetState: Parameters<Director['setCheckpointState']>[0] | undefined;
   renderer: { writeInfo(msg: string): void };
+  logger?: Pick<Logger, 'info'> | undefined;
   toolRegistry: ToolRegistry;
   flags: Record<string, unknown>;
   /** Fleet paths are optional in DirectorAutonomyResult; the announcement prints them verbatim. */
@@ -39,6 +41,14 @@ export async function ensureDirectorAndAnnounce(args: {
     sharedScratchpadPath,
     subagentSessionsRoot,
   } = args;
+
+  const report =
+    flags.tui === true &&
+    flags['no-tui'] !== true &&
+    flags.webui !== true &&
+    flags.simpleui !== true
+      ? (message: string) => args.logger?.info(message, { event: 'tui.startup.director' })
+      : (message: string) => renderer.writeInfo(message);
 
   const director = await multiAgentHost.ensureDirector();
   if (director) {
@@ -61,31 +71,29 @@ export async function ensureDirectorAndAnnounce(args: {
     toolRegistry.exposeToProvider(directorToolNames);
     const browserSurface = flags.webui === true || flags.simpleui === true;
     if (browserSurface) {
-      renderer.writeInfo(
-        `Director mode enabled (${Object.keys(FLEET_ROSTER).length} roles) → ${fleetRoot}`,
-      );
+      report(`Director mode enabled (${Object.keys(FLEET_ROSTER).length} roles) → ${fleetRoot}`);
     } else {
-      renderer.writeInfo(`Director mode enabled. Roster: ${Object.keys(FLEET_ROSTER).join(', ')}`);
-      renderer.writeInfo(`  fleet root → ${fleetRoot}`);
-      renderer.writeInfo(`  manifest   → ${manifestPath}`);
-      renderer.writeInfo(`  scratchpad → ${sharedScratchpadPath}`);
-      renderer.writeInfo(`  subagents  → ${subagentSessionsRoot}`);
+      report(`Director mode enabled. Roster: ${Object.keys(FLEET_ROSTER).join(', ')}`);
+      report(`  fleet root → ${fleetRoot}`);
+      report(`  manifest   → ${manifestPath}`);
+      report(`  scratchpad → ${sharedScratchpadPath}`);
+      report(`  subagents  → ${subagentSessionsRoot}`);
     }
     if (priorFleetState) {
       const budget = multiAgentHost.budgetView();
       const fmt = (n: number) => (Number.isFinite(n) ? String(n) : '∞');
-      renderer.writeInfo(
+      report(
         `  fleet budget → ${budget.usedSpawns}/${fmt(budget.maxSpawns)} spawns used` +
           ` (${fmt(budget.remainingSpawns)} remaining; maxConcurrent ${budget.maxConcurrent})`,
       );
       if (budget.ceilingMismatch && budget.checkpointMaxSpawns !== undefined) {
-        renderer.writeInfo(
+        report(
           `  ⚠ checkpoint maxSpawns was ${budget.checkpointMaxSpawns}; live ceiling is ${fmt(budget.maxSpawns)}`,
         );
       }
     }
   } else {
-    renderer.writeInfo(`Running without Director — fleet orchestration tools disabled.`);
+    report(`Running without Director — fleet orchestration tools disabled.`);
   }
   return director;
 }
