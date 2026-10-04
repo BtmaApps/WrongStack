@@ -148,7 +148,8 @@ async function mapBound<T, R>(
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   if (items.length === 0) return results;
-  const safeLimit = Math.max(1, Math.min(limit, items.length));
+  const normalizedLimit = Number.isNaN(limit) ? DEFAULT_MAX_CONCURRENCY : Math.floor(limit);
+  const safeLimit = Math.max(1, Math.min(normalizedLimit, items.length));
   let nextIndex = 0;
   const workerCount = Math.min(safeLimit, items.length);
   const runners: Promise<void>[] = [];

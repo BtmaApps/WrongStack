@@ -343,7 +343,9 @@ export class ACPSession {
   private opContext(): ACPSessionOpContext {
     const self = this;
     return {
-      closed: this.closed,
+      get closed() {
+        return self.closed;
+      },
       get sessionId() {
         return self.sessionId;
       },
@@ -834,8 +836,7 @@ export class ACPSession {
       // prompt() returns and what the replay history is built from. Only drop
       // when the update explicitly names a DIFFERENT session, so a
       // non-conformant update that omits sessionId is still handled as before.
-      const updateSessionId = (msg.params as { sessionId?: unknown } | null | undefined)
-        ?.sessionId;
+      const updateSessionId = (msg.params as { sessionId?: unknown } | null | undefined)?.sessionId;
       if (typeof updateSessionId === 'string' && updateSessionId !== this.sessionId) return;
       handleAcpSessionUpdate(msg, this.scratch, (event) => this.emitProgress(event));
       return;

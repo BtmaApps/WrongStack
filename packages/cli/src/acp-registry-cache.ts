@@ -38,7 +38,7 @@ export async function loadCachedAcpRegistry(paths: WstackPaths): Promise<LoadedA
     const raw = await fs.readFile(acpRegistryCachePath(paths), 'utf8');
     const env = JSON.parse(raw) as CacheEnvelope;
     if (!Array.isArray(env.agents)) return null;
-    const byId: AcpLiveCatalog = {};
+    const byId: AcpLiveCatalog = Object.create(null);
     for (const a of env.agents) {
       if (!a?.id || !a.acp?.command) continue;
       byId[a.id] = {

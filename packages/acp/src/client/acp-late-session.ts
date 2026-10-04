@@ -19,22 +19,24 @@ export function cancelLateAcpSession(
             // Plain Error, not kind:'aborted' — the wire hung, nobody aborted.
             reject(new Error('late session/cancel send timed out'));
           }, LATE_CANCEL_SEND_TIMEOUT_MS);
-          Promise.resolve(
-            transport.send({
-              jsonrpc: '2.0',
-              method: 'session/cancel',
-              params: { sessionId: lateId },
-            } as never as ACPMessage),
-          ).then(
-            () => {
-              clearTimeout(timer);
-              resolve();
-            },
-            (sendErr: unknown) => {
-              clearTimeout(timer);
-              reject(sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
-            },
-          );
+          Promise.resolve()
+            .then(() =>
+              transport.send({
+                jsonrpc: '2.0',
+                method: 'session/cancel',
+                params: { sessionId: lateId },
+              } as never as ACPMessage),
+            )
+            .then(
+              () => {
+                clearTimeout(timer);
+                resolve();
+              },
+              (sendErr: unknown) => {
+                clearTimeout(timer);
+                reject(sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
+              },
+            );
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

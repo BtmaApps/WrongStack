@@ -242,7 +242,10 @@ export async function runAcpBench(opts: AcpBenchOptions): Promise<AcpBenchResult
   const timeoutMs = opts.timeoutMs ?? 60_000;
   const checkFs = opts.checkFs ?? false;
   const marker = opts.marker ?? randomMarker();
-  const concurrency = Math.max(1, opts.concurrency ?? 2);
+  const requestedConcurrency = opts.concurrency ?? 2;
+  const concurrency = Number.isNaN(requestedConcurrency)
+    ? 2
+    : Math.max(1, Math.floor(requestedConcurrency));
 
   // Dedup, preserve order.
   const seen = new Set<string>();

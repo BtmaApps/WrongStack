@@ -115,7 +115,7 @@ function toACPInputSchema(src: unknown): ACPInputSchema {
 
   // Recursively convert properties
   if (s.properties && typeof s.properties === 'object') {
-    const props: Record<string, ACPInputSchema> = {};
+    const props: Record<string, ACPInputSchema> = Object.create(null);
     for (const [k, v] of Object.entries(s.properties as Record<string, unknown>)) {
       props[k] = toACPInputSchema(v);
     }

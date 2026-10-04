@@ -49,6 +49,7 @@ export async function executeLoadSession(
     await ctx.closeSession();
   }
 
+  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
   ctx.resetScratch();
   const servers = filterMcpServers(ctx.agentCapabilities, mcpServers ?? ctx.opts.mcpServers);
   const id = ctx.allocId();
@@ -60,6 +61,7 @@ export async function executeLoadSession(
   if (isJsonRpcError(result)) {
     throw new ACPSessionError('prompt_failed', `session/load failed: ${result.message}`, result);
   }
+  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
   ctx.setSessionId(sessionId);
 }
 
@@ -80,6 +82,7 @@ export async function executeResumeSession(
     await ctx.closeSession();
   }
 
+  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
   const servers = filterMcpServers(ctx.agentCapabilities, mcpServers ?? ctx.opts.mcpServers);
   const id = ctx.allocId();
   const result = await ctx.sendRequest(id, 'session/resume', {
@@ -90,6 +93,7 @@ export async function executeResumeSession(
   if (isJsonRpcError(result)) {
     throw new ACPSessionError('prompt_failed', `session/resume failed: ${result.message}`, result);
   }
+  if (ctx.closed) throw new ACPSessionError('closed', 'session is closed');
   ctx.setSessionId(sessionId);
 }
 

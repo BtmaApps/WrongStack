@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:57:00.351Z
+**Generated:** 2026-10-04T14:57:52.127Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4479 |
-| Production source lines | 1053873 |
-| Test files | 4052 |
+| Production source lines | 1053925 |
+| Test files | 4053 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14584 |
 | Non-command slash imports | 0 |
@@ -28,7 +28,7 @@
 
 | Package | Sources | Tests | Workspace dependencies |
 |---|---:|---:|---|
-| @wrongstack/acp | 45 | 51 | @wrongstack/core, @wrongstack/primitives |
+| @wrongstack/acp | 45 | 52 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
 | @wrongstack/cli | 566 | 586 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
@@ -94,7 +94,7 @@ None.
 | 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
-| 946 | `packages/acp/src/client/acp-session.ts` |
+| 947 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/core/src/types/provider.ts` |
 | 939 | `packages/tui/src/app-action-type.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |

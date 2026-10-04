@@ -130,20 +130,25 @@ export class ACPSessionStore {
     const tmp = `${target}.${process.pid}.${Date.now()}.${++this.writeSeq}.tmp`;
     let renamed = false;
     try {
-      await fsp.writeFile(
-        tmp,
-        JSON.stringify({
-          id: state.id,
-          cwd: state.cwd,
-          modeId: state.modeId,
-          configOptions: state.configOptions,
-          createdAt: state.createdAt,
-          updatedAt: state.updatedAt,
-          title: state.title,
-          ...(history && history.length > 0 ? { history } : {}),
-        }),
-        'utf8',
-      );
+      const data = JSON.stringify({
+        id: state.id,
+        cwd: state.cwd,
+        modeId: state.modeId,
+        configOptions: state.configOptions,
+        createdAt: state.createdAt,
+        updatedAt: state.updatedAt,
+        title: state.title,
+        ...(history && history.length > 0 ? { history } : {}),
+      });
+      try {
+        await fsp.writeFile(tmp, data, 'utf8');
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+        // Recover once when the memoized directory disappeared between saves.
+        this.initialized = false;
+        await this.init();
+        await fsp.writeFile(tmp, data, 'utf8');
+      }
       await fsp.rename(tmp, target);
       renamed = true;
     } finally {
@@ -174,17 +179,17 @@ export class ACPSessionStore {
   /** List all persisted sessions. */
   async list(): Promise<Array<{ id: string; updatedAt: string }>> {
     // Fast path: read the small sidecar index instead of every session
-    // file. Rebuilds on first call if the index is missing or stale.
-    const indexEntries = await this.readIndex();
-    if (indexEntries !== null) {
-      return indexEntries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    }
-    // Slow path fallback: scan the directory and rebuild the index for
-    // next time. The rebuild runs OUTSIDE the chain (this method is a
-    // public read, not a writer) — see the field doc on `indexChain`.
-    const sessions = await this.scanForSessions();
-    void this.writeIndex(sessions).catch(() => undefined);
-    return sessions;
+    // file. Serialize fallback rebuilds with save/delete index mutations
+    // so an older directory snapshot cannot overwrite their updates.
+    return this.withIndexLock(async () => {
+      const indexEntries = await this.readIndex();
+      if (indexEntries !== null) {
+        return indexEntries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      }
+      const sessions = await this.scanForSessions();
+      await this.writeIndex(sessions).catch(() => undefined);
+      return sessions;
+    });
   }
 
   /**
@@ -211,7 +216,12 @@ export class ACPSessionStore {
       try {
         const data = await fsp.readFile(path.join(this.dir, file), 'utf8');
         const parsed = JSON.parse(data) as { id?: string; updatedAt?: string };
-        if (parsed.id) {
+        if (
+          parsed &&
+          typeof parsed.id === 'string' &&
+          parsed.id !== '' &&
+          (parsed.updatedAt === undefined || typeof parsed.updatedAt === 'string')
+        ) {
           sessions.push({ id: parsed.id, updatedAt: parsed.updatedAt ?? '' });
         }
       } catch {
@@ -303,17 +313,8 @@ export class ACPSessionStore {
     await this.withIndexLock(async () => {
       const entries = await this.readIndex();
       if (entries === null) {
-        // No index yet — fall back to a full scan. NOTE: `list()`'s own
-        // rebuild (line 193) bypasses this chain, so routing the fallback
-        // through `list()` from *inside* the lock would deadlock. Instead
-        // we do an inline scan and write directly; the chain still
-        // serializes save/delete updates among themselves, and the
-        // tmp-file `writeSeq` suffix keeps same-millisecond writes from
-        // colliding on disk. A concurrent chained delete that lands after
-        // this fallback rebuild can still resurrect the deleted entry in
-        // `index.json` until its own write runs — accepted because the
-        // per-session JSON file is the source of truth and `list()`
-        // filters by file presence on every call.
+        // Scan directly: calling list() while already holding the index
+        // lock would wait on our own operation and deadlock.
         const sessions = await this.scanForSessions();
         try {
           await this.writeIndex(sessions);

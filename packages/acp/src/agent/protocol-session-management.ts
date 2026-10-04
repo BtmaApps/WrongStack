@@ -65,6 +65,11 @@ export async function handleSessionNewOp(
   }
   const skipped: string[] = [];
   const mcpServers = parseMcpServers(p.mcpServers, (reason) => skipped.push(reason));
+  // cwd validation yields; another request may have filled the last slot.
+  if (ctx.sessions.size >= ctx.maxSessions) {
+    await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
+    return false;
+  }
   const sessionId = `sess_${ctx.allocId()}`;
   const now = new Date().toISOString();
   const state: SessionState = {
@@ -124,6 +129,10 @@ export async function handleSessionLoadOp(
   if (!existing && sessionId && ctx.store) {
     const persisted = await ctx.store.load(sessionId);
     if (persisted) {
+      // Another cold load may have published this id while the read waited.
+      if (ctx.sessions.has(sessionId)) {
+        return handleSessionLoadOp(ctx, id, params, replayHistory);
+      }
       if (ctx.sessions.size >= ctx.maxSessions) {
         await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
         return false;
@@ -142,6 +151,13 @@ export async function handleSessionLoadOp(
       // none does the persisted (or default) cwd apply.
       const candidateCwd = loadCwd ?? persisted.cwd ?? ctx.defaultCwd;
       const restoredCwd = (await resolveSessionCwd(candidateCwd)) ?? ctx.defaultCwd;
+      if (ctx.sessions.has(sessionId)) {
+        return handleSessionLoadOp(ctx, id, params, replayHistory);
+      }
+      if (ctx.sessions.size >= ctx.maxSessions) {
+        await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
+        return false;
+      }
       const restored: SessionState = {
         id: sessionId,
         cwd: restoredCwd,
@@ -256,6 +272,10 @@ export async function handleSessionForkOp(
     }
     forkCwd = resolved;
   }
+  if (ctx.sessions.get(sourceId) !== source) {
+    await ctx.sendError(id, -32000, `session not found: ${sourceId}`);
+    return false;
+  }
   const forkSkipped: string[] = [];
   const forkRequested = parseMcpServers(p.mcpServers, (reason) => forkSkipped.push(reason));
   // A fork inherits the source session's servers unless the client names its
@@ -263,6 +283,10 @@ export async function handleSessionForkOp(
   // would silently change what the agent can do mid-conversation.
   const forkMcpServers = forkRequested.length > 0 ? forkRequested : source.mcpServers;
 
+  if (ctx.sessions.size >= ctx.maxSessions) {
+    await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
+    return false;
+  }
   const now = new Date().toISOString();
   const sessionId = `sess_${ctx.allocId()}`;
   const forked: SessionState = {

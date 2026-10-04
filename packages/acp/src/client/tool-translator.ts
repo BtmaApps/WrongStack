@@ -153,20 +153,34 @@ export class ToolTranslator {
     args: Record<string, unknown>,
     callId: string | number = crypto.randomUUID(),
   ): Promise<ACPToolCallResponse> {
-    await transport.send({
-      jsonrpc: '2.0',
-      method: 'tools/call',
-      id: callId,
-      params: { name, arguments: args },
-    } as never as ACPMessage);
-
+    if (this.pending.has(callId)) throw new Error(`Tool call id ${callId} is already pending`);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(callId);
         reject(new Error(`Tool call ${name} timed out after ${this.opts.totalTimeoutMs}ms`));
       }, this.opts.totalTimeoutMs);
 
-      this.pending.set(callId, { resolve, reject, timeout });
+      const pending = { resolve, reject, timeout };
+      // Register before sending: a local transport can reply synchronously.
+      this.pending.set(callId, pending);
+      const failSend = (err: unknown): void => {
+        if (this.pending.get(callId) !== pending) return;
+        clearTimeout(timeout);
+        this.pending.delete(callId);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      };
+      try {
+        transport
+          .send({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            id: callId,
+            params: { name, arguments: args },
+          } as never as ACPMessage)
+          .catch(failSend);
+      } catch (err) {
+        failSend(err);
+      }
     });
   }
 

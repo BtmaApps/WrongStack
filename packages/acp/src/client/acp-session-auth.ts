@@ -24,10 +24,12 @@ export interface AcpSessionAuthHost {
   authenticate: (methodId: string) => Promise<void>;
   opts: ACPSessionOptions;
 }
+function ensureOpen(host: AcpSessionAuthHost): void {
+  if (host.state === 'closed') throw new ACPSessionError('closed', 'session is closed');
+}
+
 export async function authenticate(host: AcpSessionAuthHost, methodId: string): Promise<void> {
-  if (host.state === 'closed') {
-    throw new ACPSessionError('closed', 'session is closed');
-  }
+  ensureOpen(host);
   if (host.state !== 'ready' && host.state !== 'authenticated') {
     throw new ACPSessionError(
       'protocol_error',
@@ -53,13 +55,12 @@ export async function authenticate(host: AcpSessionAuthHost, methodId: string): 
   if (isJsonRpcError(result)) {
     throw new ACPSessionError('auth_failed', `authenticate failed: ${result.message}`, result);
   }
+  ensureOpen(host);
   host.state = 'authenticated';
 }
 
 export async function logout(host: AcpSessionAuthHost): Promise<void> {
-  if (host.state === 'closed') {
-    throw new ACPSessionError('closed', 'session is closed');
-  }
+  ensureOpen(host);
   if (!host.agentCapabilities.auth?.logout) {
     throw new ACPSessionError(
       'unsupported_capability',
@@ -72,6 +73,7 @@ export async function logout(host: AcpSessionAuthHost): Promise<void> {
   if (isJsonRpcError(result)) {
     throw new ACPSessionError('logout_failed', `logout failed: ${result.message}`, result);
   }
+  ensureOpen(host);
   host.state = 'ready';
 }
 
