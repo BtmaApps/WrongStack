@@ -65,6 +65,36 @@ describe('sandbox choke point — no-config-no-change equivalence', () => {
     }
   });
 
+  it('wrapped bash streams identically to raw bash (enforced, policy-only)', async () => {
+    configureSandboxPolicy({ mode: 'enforced', tier: 'workspace-write' });
+    const sb = await mkSandbox();
+    try {
+      const collect = async (tool: typeof bashTool) => {
+        const events: unknown[] = [];
+        for await (const event of tool.executeStream?.(
+          { command: 'echo stream-equivalence' },
+          sb.ctx,
+          {
+            signal: newSignal(),
+          },
+        ) ?? []) {
+          events.push(event);
+        }
+        return events;
+      };
+      const finalOf = (events: unknown[]) =>
+        events.find((e) => (e as { type?: string }).type === 'final') as
+          | { output?: { output?: string; exit_code?: number } }
+          | undefined;
+      const rawFinal = finalOf(await collect(bashTool));
+      const wrappedFinal = finalOf(await collect(wrap(bashTool)));
+      expect(wrappedFinal?.output?.exit_code).toBe(rawFinal?.output?.exit_code);
+      expect(wrappedFinal?.output?.output ?? '').toContain('stream-equivalence');
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
   it('wrapped git preserves metadata and behaves identically to raw git', async () => {
     configureSandboxPolicy({ mode: 'enforced', tier: 'workspace-write' });
     const sb = await mkSandbox();

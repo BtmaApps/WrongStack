@@ -1243,10 +1243,15 @@
       "declarations": [
         "export * from './types.js';",
         "export type { SandboxAuditRecord, SandboxExpansionApprover } from './audit.js';",
+        "export { buildContainerRoute, containerSandboxBackend, resetContainerRunnerCache, } from './backends/container.js';",
+        "export { buildWindowsAclPlan, buildWindowsRoute, createWindowsNativeSandboxBackend, windowsNativeSandboxBackend, } from './backends/windows-native.js';",
+        "export { clearSandboxAgentOverrides, forgetSandboxAgentOverride, getSandboxAgentOverride, resolveSandboxConfigForAgent, sandboxTierForAgent, setSandboxAgentOverride, } from './agent-overrides.js';",
         "export { clearSandboxAuditLog, emitSandboxDenied, getSandboxAuditLog, requestSandboxExpansion, setSandboxAuditEvents, setSandboxExpansionApprover, } from './audit.js';",
         "export { configureSandboxPolicy, getResolvedSandboxConfig, resetSandboxPolicy } from './manager.js';",
         "export { createPolicySandboxApprover } from './approver.js';",
+        "export { createSandboxBrowserTierGate } from './browser-rule.js';",
         "export { createSandboxExecWrapper } from './wrap.js';",
+        "export { defaultWindowsHelperRunner, runHelperRoute } from './windows-helper.js';",
         "export { policyOnlySandboxBackend } from './backends/policy-only.js';"
       ]
     },
@@ -1550,7 +1555,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 217,
-      "sourceLines": 59380
+      "sourceLines": 59386
     },
     {
       "directory": "core",
@@ -1689,8 +1694,8 @@
       "directory": "sandbox",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused sandbox implementation",
-      "sourceFiles": 7,
-      "sourceLines": 452
+      "sourceFiles": 12,
+      "sourceLines": 1077
     },
     {
       "directory": "security",
@@ -1725,7 +1730,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 110,
-      "sourceLines": 25228
+      "sourceLines": 25233
     },
     {
       "directory": "tasking",
@@ -1746,7 +1751,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15831
+      "sourceLines": 15839
     },
     {
       "directory": "typesafe",

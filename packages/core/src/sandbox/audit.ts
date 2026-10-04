@@ -54,6 +54,9 @@ function record(
  * Best-effort session-journal record (plan 28 AC3): mirrors a sandbox audit
  * event into the session JSONL when a context is available. Never throws —
  * the journal must not block the agent loop.
+ *
+ * Deliberately ignores `session.auditLevel`: these are security audit records
+ * whose volume is bounded by the exec-family call rate, not per-turn chatter.
  */
 export async function recordSandboxSessionEvent(
   ctx: SandboxExpansionCtx | undefined,

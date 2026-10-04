@@ -33,6 +33,8 @@ export interface SandboxConfig {
   /** Additional paths (absolute or project-relative) writable in `workspace-write` tier. */
   writableRoots: string[];
   backend: SandboxBackendId;
+  /** Container image for the `container` backend (T4). In-project-denied (RCE class). */
+  image?: string | undefined;
 }
 
 /** Frozen defaults: `mode: 'off'` means no behavioral change for any host. */
@@ -46,6 +48,14 @@ export const DEFAULT_SANDBOX_CONFIG: Readonly<SandboxConfig> = Object.freeze({
 /** One exec-family call as seen by the choke point. */
 export interface SandboxExecCall {
   readonly tool: string;
+  /**
+   * T7/T5.1: the PER-AGENT resolved config the choke point routed with —
+   * backends must gate on this instead of re-reading the process-global
+   * policy, so a tightening override can never fail-open (chimera HIGH,
+   * 2026-10-04). Omitted by direct backend callers; those fall back to the
+   * global policy.
+   */
+  readonly config?: SandboxConfig;
 }
 
 export type SandboxDecision =
@@ -59,9 +69,37 @@ export type SandboxDecision =
       }>;
     };
 
+export interface SandboxRouteRequest {
+  /** Which exec-family tool the input came from (`bash` = shell form, `exec`/`pwsh` = argv form). */
+  tool: string;
+  kind: 'shell' | 'argv';
+  command?: string;
+  argv?: string[];
+  cwd?: string | undefined;
+}
+
+export interface SandboxRoute {
+  command?: string;
+  argv?: string[];
+}
+
 export interface SandboxBackend {
   readonly id: SandboxBackendId;
   enforceExec(call: SandboxExecCall): Promise<SandboxDecision>;
+  /**
+   * T4 spawn-routing: rewrite a bash/exec input into the backend's contained
+   * form (`docker run …`). Return `undefined` for `full-access`, unroutable
+   * shapes, or backends without routing (policy-only).
+   */
+  routeExec?(request: SandboxRouteRequest, config: SandboxConfig): SandboxRoute | undefined;
+  /**
+   * T5.1: optional spawn-helper hook. Runs after `routeExec` produced a
+   * route and may return a transformed route (e.g. the payload wrapped in a
+   * restricted-token launcher); `void`/`undefined` keeps the original route.
+   * The helper closes over whatever plan it needs (ACL grants, integrity
+   * policy) — the choke point only routes.
+   */
+  applyHelper?(route: SandboxRoute): Promise<SandboxRoute | void>;
 }
 
 /** The deny arm of SandboxDecision — what denials, audit events, and expansion requests carry. */
@@ -107,5 +145,6 @@ export function resolveSandboxConfig(raw?: Partial<SandboxConfig> | undefined): 
     tier: pick(raw?.tier, SANDBOX_TIERS, 'tier', DEFAULT_SANDBOX_CONFIG.tier),
     writableRoots: [...roots],
     backend: pick(raw?.backend, SANDBOX_BACKEND_IDS, 'backend', DEFAULT_SANDBOX_CONFIG.backend),
+    image: typeof raw?.image === 'string' && raw.image.trim() !== '' ? raw.image.trim() : undefined,
   };
 }

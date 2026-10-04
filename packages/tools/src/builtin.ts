@@ -1,4 +1,4 @@
-import { createSandboxExecWrapper } from '@wrongstack/core/sandbox';
+import { createSandboxBrowserTierGate, createSandboxExecWrapper } from '@wrongstack/core/sandbox';
 import type { Tool } from '@wrongstack/core/types';
 import { auditTool } from './audit.js';
 import { bashTool } from './bash.js';
@@ -68,6 +68,7 @@ import { writeTool } from './write.js';
  * policy runtime-toggleable without rebuilding the registry.
  */
 const sandboxWrap = createSandboxExecWrapper();
+const browserTierGate = createSandboxBrowserTierGate();
 const sandboxedBashTool = sandboxWrap(bashTool);
 const sandboxedExecTool = sandboxWrap(execTool);
 const sandboxedGitTool = sandboxWrap(gitTool);
@@ -218,7 +219,7 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
  * tools this list exists to withhold.
  */
 export const OPTIONAL_TOOLS: Tool[] = [
-  ...browserTools,
+  ...browserTools.map((tool) => browserTierGate(tool)),
   e2ePlanTool,
   installTool,
   auditTool,
@@ -231,7 +232,10 @@ export const OPTIONAL_TOOLS: Tool[] = [
  * is off. Keeping this set explicit prevents newly registered built-ins from
  * becoming off-only merely because somebody forgot to classify them.
  */
-export const OFF_ONLY_TOOLS: Tool[] = [...browserTools, e2ePlanTool];
+export const OFF_ONLY_TOOLS: Tool[] = [
+  ...browserTools.map((tool) => browserTierGate(tool)),
+  e2ePlanTool,
+];
 
 /**
  * Tier 1 (Token Saving) tool set — the absolute minimum for useful work.
@@ -337,7 +341,7 @@ const rawBuiltinTools: Tool[] = [
   projectKitTool,
   projectKitRunTool,
   toolScriptTool,
-  ...browserTools,
+  ...browserTools.map((tool) => browserTierGate(tool)),
   e2ePlanTool,
   readTool,
   readUrlContentTool,

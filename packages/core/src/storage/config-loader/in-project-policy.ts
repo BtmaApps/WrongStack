@@ -258,6 +258,11 @@ const IN_PROJECT_DENIED_PATHS: ReadonlyArray<{ path: string; reason: string }> =
   },
   { path: 'tools.exec.danger', reason: 'Weakens the destructive-command banner.' },
   {
+    path: 'tools.sandbox.image',
+    reason:
+      'Pins the container image the sandbox executes; a repo-committed value is an arbitrary-code vector (RCE class).',
+  },
+  {
     // Plan 28 (exec-family sandbox). `tools.sandbox.mode` and `tools.sandbox.tier`
     // are intentionally ALLOWED from a project config: they can only tighten
     // containment, never widen it. The two leaves below can.

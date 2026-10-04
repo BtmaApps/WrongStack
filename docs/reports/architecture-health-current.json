@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:06:42.858Z",
+  "generatedAt": "2026-10-04T18:00:02.929Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4479,
-    "testFiles": 4072,
-    "sourceLines": 1054132,
+    "sourceFiles": 4484,
+    "testFiles": 4077,
+    "sourceLines": 1054780,
     "workspaceEdges": 133,
-    "moduleEdges": 14585,
+    "moduleEdges": 14609,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -246,8 +246,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1008,
-      "testFiles": 897,
+      "sourceFiles": 1013,
+      "testFiles": 901,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -262,7 +262,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 897
+          "testFiles": 901
         }
       ]
     },
@@ -769,7 +769,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 269,
-      "testFiles": 296,
+      "testFiles": 297,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -785,7 +785,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 296
+          "testFiles": 297
         }
       ]
     },
@@ -9029,6 +9029,18 @@
         ]
       },
       {
+        "file": "packages/core/tests/sandbox/agent-overrides.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/container.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/sandbox/sandbox-audit.test.ts",
         "projects": [
           "root-node"
@@ -9042,6 +9054,18 @@
       },
       {
         "file": "packages/core/tests/sandbox/sandbox-expansion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/windows-native-integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/windows-native.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17837,6 +17861,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/sandbox-integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/search-cache-ttl.test.ts",
         "projects": [
           "root-node"
@@ -25834,8 +25864,8 @@
     },
     {
       "file": "packages/core/src/coordination/director.ts",
-      "lines": 859,
-      "relativeImports": 45
+      "lines": 861,
+      "relativeImports": 46
     },
     {
       "file": "packages/core/src/coordination/index.ts",

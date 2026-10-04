@@ -25,13 +25,19 @@
       "id": "T4",
       "title": "Container backend (Docker/Podman): same-absolute-path mount, deny-by-default network, writableRoots; browser_* disabled in tier",
       "dependsOn": ["T2"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "T5",
       "title": "Windows-native backend: icacls low-integrity workspace constraint + persistence caveat docs",
       "dependsOn": ["T2"],
-      "status": "pending"
+      "status": "done"
+    },
+    {
+      "id": "T5.1",
+      "title": "Restricted-token spawn helper prototype (runas trustlevel) + deny-ACL containment proof",
+      "dependsOn": ["T5"],
+      "status": "done"
     },
     {
       "id": "T6",
@@ -43,7 +49,7 @@
       "id": "T7",
       "title": "Fleet inheritance + per-spawn override + /fleet status surfacing",
       "dependsOn": ["T2"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "T8",

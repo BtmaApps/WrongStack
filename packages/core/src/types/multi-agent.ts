@@ -1,4 +1,5 @@
 import type { SubagentBudget } from '../coordination/subagent-budget.js';
+import type { SandboxConfig } from '../sandbox/types.js';
 import type { AgentBridge, BridgeMessage } from './agent-bridge.js';
 import type { ModelRuntimeConfig } from './config.js';
 
@@ -48,6 +49,13 @@ export interface SubagentConfig {
   preemptFraction?: number | undefined;
   /** Stable capability ids resolved to the host's concrete tool surface. */
   capabilities?: string[] | undefined;
+  /**
+   * Plan 28 T7 — per-spawn sandbox policy override, merged over the leader's
+   * (process-global) tier for THIS subagent only (keyed by the spawned
+   * `ctx.agentId`); dropped when the subagent is removed. Unspecified
+   * fields inherit the leader's tier (AC5 inheritance).
+   */
+  sandbox?: Partial<SandboxConfig> | undefined;
   tools?: string[] | undefined;
   /**
    * Tools to explicitly disable for this subagent. These tools will be

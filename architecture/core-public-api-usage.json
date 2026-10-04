@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 7,
+      "files": 8,
       "typeOnly": 0,
-      "runtimeOrMixed": 7
+      "runtimeOrMixed": 8
     },
     "@wrongstack/core/security": {
       "files": 185,
@@ -10231,6 +10231,12 @@
     {
       "specifier": "@wrongstack/core/sandbox",
       "file": "packages/tools/tests/sandbox-equivalence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/tools/tests/sandbox-integration.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

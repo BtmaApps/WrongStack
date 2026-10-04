@@ -46,6 +46,12 @@ const coreEntries = entryMap([
   'src/kernel/index.ts',
   'src/core/index.ts',
   'src/statusline/index.ts',
+  // Plan 28: the exec-sandbox tier contract ships as its own subpath
+  // (@wrongstack/core/sandbox) so tools and hosts import it without the core
+  // barrel. Without this entry only .d.ts lands in dist and RUNTIME
+  // resolution of the subpath fails (tests resolve it through vitest aliases
+  // and silently hide the gap).
+  'src/sandbox/index.ts',
   // The provider-neutral quota store. Its own entry for the same reason as
   // statusline: status surfaces read it without pulling in the `core` barrel.
   'src/quota/index.ts',

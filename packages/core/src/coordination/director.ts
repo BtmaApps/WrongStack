@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
+import { forgetSandboxAgentOverride } from '../sandbox/agent-overrides.js';
 import { DirectorStateCheckpoint, type DirectorStateSnapshot } from '../storage/director-state.js';
 import type { BridgeMessage } from '../types/agent-bridge.js';
 import type { Config } from '../types/config.js';
@@ -677,6 +678,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   async remove(subagentId: string): Promise<void> {
+    forgetSandboxAgentOverride(subagentId);
     return removeDirectorSubagent(this.directorLifecycleHost(), subagentId);
   }
 

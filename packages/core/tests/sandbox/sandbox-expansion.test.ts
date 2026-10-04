@@ -103,6 +103,64 @@ describe('sandbox expansion flow (plan 28 T6)', () => {
   });
 });
 
+function streamTool(): Tool<{ v: number }, { v: number }> {
+  return {
+    name: 'stub-stream',
+    description: 'stub',
+    permission: 'confirm',
+    mutating: false,
+    execute: async (input: { v: number }) => ({ v: input.v }),
+    executeStream: async function* (input: { v: number }) {
+      yield { type: 'log', text: 'start' };
+      yield { type: 'final', output: { v: input.v } };
+    },
+  } as unknown as Tool<{ v: number }, { v: number }>;
+}
+
+async function drain(gen: AsyncGenerator<unknown>): Promise<unknown[]> {
+  const out: unknown[] = [];
+  for await (const event of gen) out.push(event);
+  return out;
+}
+
+describe('sandbox streaming enforcement (plan 28 — choke point covers executeStream)', () => {
+  it('passes the stream through untouched while mode is off', async () => {
+    resetSandboxPolicy(); // file-level beforeEach enforces; this test pins the off-mode delta
+    const events = await drain(
+      createSandboxExecWrapper({ backend: denyBackend })(streamTool()).executeStream?.(
+        { v: 7 },
+        undefined as never,
+        { signal: new AbortController().signal } as never,
+      ) as AsyncGenerator<unknown>,
+    );
+    expect(events.length).toBe(2);
+  });
+
+  it('throws before the first event under a denying backend, without an approver', async () => {
+    configureSandboxPolicy({ mode: 'enforced', tier: 'workspace-write' });
+    const gen = createSandboxExecWrapper({ backend: denyBackend })(streamTool()).executeStream?.(
+      { v: 7 },
+      undefined as never,
+      { signal: new AbortController().signal } as never,
+    ) as AsyncGenerator<unknown>;
+    await expect(gen.next()).rejects.toThrow(SandboxDeniedError);
+  });
+
+  it('elevates and streams through when the approver grants', async () => {
+    configureSandboxPolicy({ mode: 'enforced', tier: 'workspace-write' });
+    setSandboxExpansionApprover(async () => ({ granted: true, decidedBy: 'test' }));
+    const events = await drain(
+      createSandboxExecWrapper({ backend: denyBackend })(streamTool()).executeStream?.(
+        { v: 7 },
+        undefined as never,
+        { signal: new AbortController().signal } as never,
+      ) as AsyncGenerator<unknown>,
+    );
+    expect(events.length).toBe(2);
+    expect(getSandboxAuditLog().some((r) => r.kind === 'sandbox.expansion_outcome')).toBe(true);
+  });
+});
+
 describe('createPolicySandboxApprover (plan 28 T6)', () => {
   it('grants only on an explicit allow verdict', async () => {
     const allow = createPolicySandboxApprover({

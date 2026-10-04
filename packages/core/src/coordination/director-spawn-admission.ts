@@ -1,3 +1,4 @@
+import { setSandboxAgentOverride } from '../sandbox/agent-overrides.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
 import { FleetSpawnBudgetError } from './director/director-errors.js';
 import { isHumanPinnedSpawn } from './director-spawn-model.js';
@@ -61,6 +62,9 @@ export async function admitDirectorSpawn(
     throw err;
   }
   slotClaim?.bind(subagentId);
+  // Plan 28 T7 — a per-spawn sandbox override takes effect for THIS subagent
+  // (ctx.agentId-keyed) and is dropped by Director.remove().
+  if (config.sandbox) setSandboxAgentOverride(subagentId, config.sandbox);
   // Per-subagent idle timeout override: if the caller supplied an
   // `idleTimeoutMs` in the SubagentConfig (e.g. via `spawn_subagent`'s
   // inputSchema), honor it. Otherwise fall back to the Director-wide
