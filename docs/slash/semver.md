@@ -14,7 +14,8 @@ With a mode argument it applies the bump:
 
 1. Updates **every** manifest that shares the repo version. If the repo has
    `scripts/bump-version.mjs` (the lockstep entry point — root + all
-   workspace packages + website files), the plugin delegates to it. Otherwise
+   workspace packages + website files + generated protocol schema version metadata),
+   the plugin delegates to it and includes those generated files in its commit scope. Otherwise
    it writes the root `package.json` plus every `packages/*/package.json`
    and `apps/*/package.json` it finds.
 2. Commits exactly the files it touched (`chore: bump version to <X>`).

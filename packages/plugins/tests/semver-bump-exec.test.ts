@@ -37,7 +37,7 @@ vi.mock('node:fs', async (o) => ({
 vi.mock('node:fs/promises', async (o) => ({
   ...(await o()),
   access: vi.fn(async (p: string) => {
-    if (!fsm.existsSync(p)) throw new Error('ENOENT');
+    if (!fsm.existsSync(p)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   }),
   readFile: vi.fn(async (p: string, encoding?: string) => fsm.readFileSync(p, encoding)),
   readdir: vi.fn(async (p: string, options?: { withFileTypes?: boolean }) =>
@@ -286,6 +286,81 @@ describe('semver_bump', () => {
     const { tools } = setup();
     await expect(tools.semver_bump!.execute({ part: 'patch' })).rejects.toThrow(
       /bump script failed/,
+    );
+  });
+
+  it('includes generated protocol schemas in the lockstep bump commit scope', async () => {
+    let bumped = false;
+    cp.behavior.mockImplementation((bin: string, args: string[]) => {
+      if (bin === 'git') return gitHandler(args);
+      bumped = true;
+      return '';
+    });
+    fsm.existsSync.mockImplementation((p: string) => {
+      const s = String(p).replaceAll('\\', '/');
+      return (
+        s.endsWith('package.json') ||
+        s.endsWith('bump-version.mjs') ||
+        s.endsWith('website/src/data/content.ts') ||
+        s.endsWith('schema/ws-core.schema.json') ||
+        s.endsWith('schema/openapi.json') ||
+        s.endsWith('website/index.html')
+      );
+    });
+    fsm.readFileSync.mockImplementation((p: string) => {
+      const s = String(p).replaceAll('\\', '/');
+      if (s.endsWith('website/index.html')) return '<html>unrelated pending edit</html>';
+      const generated = s.includes('/schema/') || s.endsWith('website/src/data/content.ts');
+      return JSON.stringify({ version: generated && bumped ? '1.2.4' : '1.2.3' });
+    });
+    const { tools } = setup({ autoTag: false });
+    const result = await tools.semver_bump!.execute({ part: 'patch' });
+    expect(result.ok).toBe(true);
+    const staged = cp.behavior.mock.calls.find(
+      ([bin, args]) => bin === 'git' && args[0] === 'add',
+    )?.[1] as string[];
+    const committed = cp.behavior.mock.calls.find(
+      ([bin, args]) => bin === 'git' && args[0] === 'commit',
+    )?.[1] as string[];
+    for (const suffix of [
+      'schema/ws-core.schema.json',
+      'schema/openapi.json',
+      'website/src/data/content.ts',
+    ]) {
+      expect(staged.some((arg) => arg.replaceAll('\\', '/').endsWith(suffix))).toBe(true);
+      expect(committed.some((arg) => arg.replaceAll('\\', '/').endsWith(suffix))).toBe(true);
+    }
+    expect(committed).toContain('--only');
+    expect(staged.some((arg) => arg.replaceAll('\\', '/').endsWith('website/index.html'))).toBe(
+      false,
+    );
+  });
+
+  it('does not commit when a regenerated file cannot be read for staging', async () => {
+    let bumped = false;
+    cp.behavior.mockImplementation((bin: string, args: string[]) => {
+      if (bin === 'git') return gitHandler(args);
+      bumped = true;
+      return '';
+    });
+    fsm.existsSync.mockImplementation(
+      (p: string) =>
+        String(p).endsWith('package.json') ||
+        String(p).endsWith('bump-version.mjs') ||
+        String(p).endsWith('ws-core.schema.json'),
+    );
+    fsm.readFileSync.mockImplementation((p: string) => {
+      if (bumped && String(p).endsWith('ws-core.schema.json')) {
+        throw Object.assign(new Error('generated file unreadable'), { code: 'EACCES' });
+      }
+      return JSON.stringify({ version: '1.2.3' });
+    });
+    const { tools } = setup();
+    await expect(tools.semver_bump!.execute({ part: 'patch' })).rejects.toThrow(
+      'generated file unreadable',
+    );
+    expect(cp.behavior.mock.calls.some(([bin, args]) => bin === 'git' && args[0] === 'add')).toBe(
+      false,
     );
   });
 

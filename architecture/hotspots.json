@@ -191,7 +191,7 @@
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {
-      "lines": 845,
+      "lines": 871,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {

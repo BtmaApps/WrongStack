@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:46:55.570Z
+**Generated:** 2026-10-04T14:48:24.296Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4460 |
-| Production source lines | 1051391 |
+| Production source lines | 1051417 |
 | Test files | 4029 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14529 |
@@ -130,9 +130,9 @@ None.
 | 885 | `packages/tui/src/reducers/settings-values.ts` |
 | 878 | `packages/primitives/src/regex-guard.ts` |
 | 873 | `packages/webui/src/lib/fonts.ts` |
+| 871 | `packages/plugins/src/semver-bump/index.ts` |
 | 866 | `packages/tools/src/languages/profiles/primary.ts` |
 | 865 | `packages/core/src/execution/eternal-autonomy.ts` |
-| 864 | `packages/tui/src/components/settings-picker.tsx` |
 
 ## Exports only tests reference
 

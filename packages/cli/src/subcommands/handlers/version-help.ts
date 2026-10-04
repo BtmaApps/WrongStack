@@ -89,7 +89,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['--provider <id> --model <id>', 'Provider and model for this run'],
       ['--fallback-model <a,b,...>', 'Models to fall back to when the primary is unavailable'],
       ['--effort <level>', 'Reasoning effort: none|minimal|low|medium|high|xhigh|max'],
-      ['--system-prompt lite|pro|default', 'Bundled system-prompt variant'],
+      ['--system-prompt lite|pro|scout|default', 'Bundled system-prompt variant'],
       [
         '--append-system-prompt <text> | --append-system-prompt-file <path>',
         'Add instructions to the host agent prompt for this run',

@@ -446,6 +446,25 @@ const plugin: Plugin = {
         hasBumpScript = false;
       }
       if (hasBumpScript) {
+        const generatedPaths = [
+          'website/package.json',
+          'website/package-lock.json',
+          'website/src/lib/utils.ts',
+          'website/src/data/content.ts',
+          'website/index.html',
+          'packages/webui-protocol/schema/ws-core.schema.json',
+          'packages/webui-protocol/schema/openapi.json',
+        ].map((rel) => join(root, rel));
+        const readGenerated = async (p: string): Promise<string | undefined> => {
+          try {
+            return await readFile(p, 'utf-8');
+          } catch (err) {
+            const code = (err as NodeJS.ErrnoException).code;
+            if (code === 'ENOENT' || code === 'ENOTDIR') return undefined;
+            throw err;
+          }
+        };
+        const before = await Promise.all(generatedPaths.map(readGenerated));
         try {
           await runCommand(
             process.execPath,
@@ -455,14 +474,21 @@ const plugin: Plugin = {
         } catch (err: unknown) {
           throw new Error(`bump script failed: ${toErrorMessage(err)}`, { cause: err });
         }
-        for (const rel of ['package.json', 'package-lock.json', 'src/lib/utils.ts', 'index.html']) {
-          const p = join(root, 'website', rel);
-          try {
-            await access(p);
-            changed.push(p);
-          } catch {
-            /* absent */
+        for (const [index, p] of generatedPaths.entries()) {
+          const after = await readGenerated(p);
+          if (after === undefined) {
+            // Absent both before and after: never tracked in this checkout.
+            // Present before but missing after: the script deleted a file it
+            // was expected to regenerate — surface it instead of silently
+            // dropping the deletion from the version commit.
+            if (before[index] !== undefined) {
+              throw new Error(
+                `bump script deleted a generated file it was expected to regenerate: ${p}`,
+              );
+            }
+            continue;
           }
+          if (after !== before[index]) changed.push(p);
         }
       } else {
         // Two-phase: parse and re-serialise EVERY manifest before writing
