@@ -87,7 +87,7 @@ function touchBucket(
   record: Record<string, ToolStatsBucket>,
   key: string,
 ): { record: Record<string, ToolStatsBucket>; bucket: ToolStatsBucket } {
-  const existing = record[key];
+  const existing = Object.hasOwn(record, key) ? record[key] : undefined;
   if (existing) return { record, bucket: existing };
   const fresh = emptyBucket();
   return { record: { ...record, [key]: fresh }, bucket: fresh };
@@ -97,7 +97,7 @@ function upsertSession(
   sessions: Record<string, ToolStatsSession>,
   sessionId: string,
 ): { sessions: Record<string, ToolStatsSession>; session: ToolStatsSession } {
-  const existing = sessions[sessionId];
+  const existing = Object.hasOwn(sessions, sessionId) ? sessions[sessionId] : undefined;
   if (existing) return { sessions, session: existing };
   const created = emptySession(sessionId);
   return { sessions: { ...sessions, [sessionId]: created }, session: created };
@@ -189,7 +189,7 @@ export const useToolStatsStore = create<ToolStatsState>((set) => ({
     }),
   resetSession: (sessionId) =>
     set((state) => {
-      if (!(sessionId in state.sessions)) return state;
+      if (!Object.hasOwn(state.sessions, sessionId)) return state;
       const next = { ...state.sessions };
       delete next[sessionId];
       return { sessions: next };

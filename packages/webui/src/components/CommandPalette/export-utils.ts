@@ -1,5 +1,5 @@
-import { useChatStore, useSessionStore } from '@/stores';
 import type { ChatMessage } from '@/stores';
+import { useChatStore, useSessionStore } from '@/stores';
 
 function formatThinkingDuration(message: ChatMessage): string {
   const log = message.thinkingLog;
@@ -10,7 +10,8 @@ function formatThinkingDuration(message: ChatMessage): string {
 }
 
 function markdownFence(text: string): string {
-  const longest = Math.max(3, ...Array.from(text.matchAll(/`+/g), (m) => m[0].length + 1));
+  let longest = 3;
+  for (const match of text.matchAll(/`+/g)) longest = Math.max(longest, match[0].length + 1);
   return '`'.repeat(longest);
 }
 

@@ -126,13 +126,19 @@ export const useProviderQuotaStore = create<ProviderQuotaState>((set) => ({
         if (!raw || typeof raw !== 'object') continue;
         const o = raw as Partial<QuotaRefreshOutcome>;
         if (typeof o.providerId !== 'string' || typeof o.ok !== 'boolean') continue;
-        next[o.providerId] = {
+        const outcome = {
           providerId: o.providerId,
           vendor: typeof o.vendor === 'string' ? o.vendor : '',
           ok: o.ok,
           throttled: o.throttled === true,
           at,
         };
+        Object.defineProperty(next, o.providerId, {
+          value: outcome,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
       }
       return { refreshes: next };
     }),

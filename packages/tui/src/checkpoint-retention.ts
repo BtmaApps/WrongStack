@@ -27,6 +27,10 @@ interface CheckpointBudget {
   maxBytes?: number | undefined;
 }
 
+function clampBudget(value: number): number {
+  return Number.isNaN(value) ? 1 : Math.max(1, Math.floor(value));
+}
+
 function entryBytes(entry: CheckpointEntry): number {
   try {
     return Buffer.byteLength(JSON.stringify(entry), 'utf8');
@@ -50,8 +54,8 @@ export function retainCheckpoints(
   checkpoints: CheckpointEntry[],
   budget: CheckpointBudget = {},
 ): CheckpointEntry[] {
-  const maxEntries = Math.max(1, Math.floor(budget.maxEntries ?? TUI_CHECKPOINTS_MAX_ENTRIES));
-  const maxBytes = Math.max(1, Math.floor(budget.maxBytes ?? TUI_CHECKPOINTS_MAX_BYTES));
+  const maxEntries = clampBudget(budget.maxEntries ?? TUI_CHECKPOINTS_MAX_ENTRIES);
+  const maxBytes = clampBudget(budget.maxBytes ?? TUI_CHECKPOINTS_MAX_BYTES);
 
   let keepFrom = checkpoints.length;
   let retainedBytes = 0;

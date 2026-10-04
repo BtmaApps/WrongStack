@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:04:14.314Z",
+  "generatedAt": "2026-10-04T15:05:05.807Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4479,
-    "testFiles": 4065,
-    "sourceLines": 1054102,
+    "testFiles": 4070,
+    "sourceLines": 1054118,
     "workspaceEdges": 133,
     "moduleEdges": 14585,
     "nonCommandSlashImports": 0,
@@ -793,7 +793,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 451,
-      "testFiles": 412,
+      "testFiles": 413,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -816,7 +816,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 412
+          "testFiles": 413
         }
       ]
     },
@@ -847,7 +847,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 645,
-      "testFiles": 458,
+      "testFiles": 462,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -870,7 +870,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 458
+          "testFiles": 462
         }
       ]
     },
@@ -18341,6 +18341,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/checkpoint-nan-budget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/checkpoint-retention.test.ts",
         "projects": [
           "root-node"
@@ -22937,6 +22943,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/chat-rows-calendar-day.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/chat-rows.test.ts",
         "projects": [
           "webui-jsdom"
@@ -23130,6 +23142,12 @@
       },
       {
         "file": "packages/webui/tests/components/execution-settings-limits.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/export-many-backticks.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -25331,6 +25349,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/stores/quota-refresh-own-keys.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/stores/review-store.test.ts",
         "projects": [
           "webui-jsdom"
@@ -25416,6 +25440,12 @@
       },
       {
         "file": "packages/webui/tests/stores/techstack-store.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/stores/tool-stats-owned-keys.test.ts",
         "projects": [
           "webui-jsdom"
         ]

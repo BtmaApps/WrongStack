@@ -44,7 +44,8 @@ const dayKey = (ts: number): string => {
 function dayLabel(ts: number, now: number): string {
   const d = new Date(ts);
   const today = new Date(now);
-  const yest = new Date(now - 86_400_000);
+  const yest = new Date(now);
+  yest.setDate(yest.getDate() - 1);
   if (dayKey(ts) === dayKey(today.getTime())) return 'Today';
   if (dayKey(ts) === dayKey(yest.getTime())) return 'Yesterday';
   return d.toLocaleDateString(undefined, {

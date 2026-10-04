@@ -169,6 +169,60 @@ describe('subagent chat tabs', () => {
     expect(screen.queryByRole('tab', { name: /Alpha/ })).toBeNull();
   });
 
+  // Regression guard for the blocking a11y finding: the close affordance was a
+  // `span role="button" tabIndex={-1}` nested in the tab (a real <button>
+  // inside a <button> is invalid HTML, so the span stood in). tabIndex={-1}
+  // put it OUT of the tab order entirely, which is why the suite above only
+  // ever fireEvent.click()ed it and nothing caught the keyboard gap. It is now
+  // a native <button>, and the tab hosting it is a focusable `role="tab"`.
+  it('keeps the tab close affordance keyboard-reachable', () => {
+    const agents = new Map<string, SubagentView>([
+      ['ldr', makeAgent('ldr', { name: 'Main' })],
+      ['s1', makeAgent('s1', { name: 'Alpha', status: 'completed' })],
+      ['s2', makeAgent('s2', { name: 'Beta' })], // running — never closable
+    ]);
+    useFleetStore.setState({
+      agents,
+      leaderId: 'ldr',
+      agentTranscripts: new Map([['s1', [entry({ kind: 'status', content: 'done' })]]]),
+    });
+
+    render(<AgentTabs />);
+
+    const close = screen.getAllByTestId('agent-tab-close')[0]!;
+
+    // A native <button> is in the tab order by default: no `tabindex`
+    // override, and .tabIndex resolves to 0 rather than -1.
+    expect(close.tagName).toBe('BUTTON');
+    expect(close.getAttribute('tabindex')).toBeNull();
+    expect((close as HTMLElement).tabIndex).toBe(0);
+    expect((close as HTMLButtonElement).disabled).toBe(false);
+    // Keyboard/AT users need a name for the action, not just a glyph.
+    expect(close.getAttribute('aria-label')).toBeTruthy();
+
+    // The hosting tab is itself focusable, so Tab can walk tab → close.
+    const tab = close.closest('[role="tab"]')!;
+    expect((tab as HTMLElement).tabIndex).toBe(0);
+
+    // Enter on the CLOSE button must not bubble into the tab's own Enter
+    // handler and select the agent while removing it.
+    fireEvent.keyDown(close, { key: 'Enter' });
+    expect(useUIStore.getState().subagentChatFocusId).toBeNull();
+
+    // The tab itself is keyboard-activatable (it is a div, not a button, so
+    // nothing activates it for free any more).
+    fireEvent.keyDown(tab, { key: 'Enter' });
+    expect(useUIStore.getState().subagentChatFocusId).toBe('s1');
+
+    // Space activates it too — move away first so this is a real transition,
+    // not an idempotent re-selection of the already-focused tab.
+    fireEvent.click(screen.getByRole('tab', { name: /Beta/ }));
+    expect(useUIStore.getState().subagentChatFocusId).toBe('s2');
+
+    fireEvent.keyDown(tab, { key: ' ' });
+    expect(useUIStore.getState().subagentChatFocusId).toBe('s1');
+  });
+
   it('keeps the bar structural with a large fleet: inline budget, +9 trigger, summary pill intact', () => {
     const agents = new Map<string, SubagentView>([
       ['ldr', makeAgent('ldr', { name: 'Main' })],

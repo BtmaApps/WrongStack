@@ -65,12 +65,24 @@ function SubagentTabButton({
 }) {
   const meta = TAB_LED[agent.status] ?? TAB_LED.stopped;
   return (
-    <button
-      type="button"
+    // A `div` + `role="tab"` (not a `<button>`) so the close affordance below can
+    // be a REAL focusable button: nesting a button inside a button is invalid
+    // HTML, which is why this used to be a `span role="button" tabIndex={-1}` —
+    // unreachable by Tab. Mirrors the pattern SessionTabBar already uses.
+    <div
       role="tab"
+      tabIndex={0}
       aria-selected={active}
       title={agent.description ? taskBriefPreview(agent.description, 180) : agent.name}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        // The nested close button handles its own Enter/Space; without this
+        // guard its keydown bubbles here and opens the tab while closing.
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        onOpen();
+      }}
       className={cn(
         'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors border',
         active
@@ -84,10 +96,8 @@ function SubagentTabButton({
       />
       <span className="max-w-[10rem] truncate">{agent.name}</span>
       {onRemove && (
-        // biome-ignore lint/a11y/useSemanticElements: nested in a <button>/menu item; a real <button> here is invalid HTML.
-        <span
-          role="button"
-          tabIndex={-1}
+        <button
+          type="button"
           data-testid="agent-tab-close"
           aria-label={removeLabel}
           title={removeLabel}
@@ -95,18 +105,12 @@ function SubagentTabButton({
             e.stopPropagation();
             onRemove();
           }}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter' && e.key !== ' ') return;
-            e.preventDefault();
-            e.stopPropagation();
-            onRemove();
-          }}
           className="-mr-0.5 flex shrink-0 items-center rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:bg-destructive/15 hover:text-destructive"
         >
           <X className="h-2.5 w-2.5" aria-hidden="true" />
-        </span>
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
