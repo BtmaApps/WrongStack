@@ -37,6 +37,12 @@ wstack --simpleui --open
 
 The server binds to `127.0.0.1:3466` by default.
 
+The host terminal uses the same compact dashboard as WebUI: repeated warnings
+share one row, visible logs and finished workers disappear after 30 seconds,
+and active workers appear first within the terminal's height. Session history
+remains available in the browser. Set `WEBUI_VERBOSE=1` for full console output
+or `WEBUI_LOGS=1` to include informational messages in the recent-log window.
+
 ## Development (hot-reload)
 
 During UI development, the Vite dev server serves the frontend on port 3466,

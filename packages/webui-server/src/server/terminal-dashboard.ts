@@ -16,14 +16,15 @@
  *     the scrollback. `setSessions` is fingerprint-gated: identical rows
  *     never rewrite the panel.
  *
- *   - **An ordered log stream above the panel.** Every forwarded
- *     `console.*` line erases the panel, prints with a `HH:MM:SS LEVEL`
- *     prefix, then redraws the panel — a log line can never land mid-panel.
+ *   - **A bounded log window above the panel.** Forwarded `console.*`
+ *     lines use a `HH:MM:SS LEVEL` prefix and expire after 30 seconds.
+ *     Long/multiline messages fit on one terminal row.
  *     Structured JSON lines (the `{level,event,message,…}` shape the log
  *     shims emit) are rendered as readable single lines.
  *
- *   - **Noise control.** Identical consecutive lines collapse into one
- *     `↑ previous line repeated N×` notice, and `quiet` mode keeps
+ *   - **Noise control.** Repeated visible messages update one row with a
+ *     count. Finished agents expire after 30 seconds, leader stats share
+ *     the session row, and agent rows fit within the viewport. `quiet` keeps
  *     `log/info/debug` chatter out of the terminal entirely (ring-buffered
  *     for a failure dump) while `warn/error` still flow — the contract the
  *     CLI host's quiet surface used to own.
@@ -32,7 +33,7 @@
  * output and log collectors keep the complete append-only log.
  */
 
-import { format } from 'node:util';
+import { format, stripVTControlCharacters } from 'node:util';
 
 /** Minimal console surface the dashboard can wrap (injectable for tests). */
 export interface DashboardConsoleTarget {
@@ -47,6 +48,7 @@ export interface DashboardConsoleTarget {
 export interface DashboardStdout {
   isTTY?: boolean | undefined;
   columns?: number | undefined;
+  rows?: number | undefined;
   write(chunk: string): void;
 }
 
@@ -77,6 +79,8 @@ export interface DashboardAgentRow {
   startedAt?: number | undefined;
   /** Final elapsed time for completed agents. */
   durationMs?: number | undefined;
+  /** Epoch ms when the agent entered a terminal status. */
+  finishedAt?: number | undefined;
 }
 
 export interface TerminalDashboardOptions {
@@ -100,6 +104,10 @@ export interface TerminalDashboardOptions {
   maxRows?: number | undefined;
   /** Max visible log lines kept above the live status tree. */
   maxLogRows?: number | undefined;
+  /** Visible logs and finished agents expire even when the host is idle. */
+  logRetentionMs?: number | undefined;
+  finishedAgentRetentionMs?: number | undefined;
+  maxAgentRows?: number | undefined;
   now?: (() => number) | undefined;
 }
 
@@ -112,7 +120,7 @@ export interface TerminalDashboard {
   recent(): readonly string[];
   /** Redraw the status panel in place. No-op when the rows are unchanged. */
   setSessions(rows: readonly DashboardSessionRow[]): void;
-  /** Erase the panel, flush pending notices, restore the console. Idempotent. */
+  /** Erase the panel, stop the refresh timer, restore the console. Idempotent. */
   stop(): void;
 }
 
@@ -139,7 +147,9 @@ const ALL_LEVELS = [...MUTED_LEVELS, 'warn', 'error'] as const;
 type Level = (typeof ALL_LEVELS)[number];
 
 const DEFAULT_MAX_ROWS = 4;
-const DEFAULT_MAX_LOG_ROWS = 6;
+const DEFAULT_MAX_LOG_ROWS = 3;
+const DEFAULT_MAX_AGENT_ROWS = 3;
+const DEFAULT_RETENTION_MS = 30_000;
 const DEFAULT_BUFFER_LINES = 200;
 
 export function isWebUIVerboseEnv(env: Record<string, string | undefined> = process.env): boolean {
@@ -182,6 +192,20 @@ function truncate(plain: string, maxWidth: number): string {
 function compactStatus(status: string): string {
   const normalized = status.trim().toUpperCase();
   return normalized || 'UNKNOWN';
+}
+
+export function isFinishedAgentStatus(status: string): boolean {
+  return [
+    'completed',
+    'success',
+    'done',
+    'failed',
+    'error',
+    'stopped',
+    'cancelled',
+    'canceled',
+    'aborted',
+  ].includes(status.trim().toLowerCase());
 }
 
 function formatIteration(iteration: DashboardAgentRow['iteration']): string {
@@ -283,10 +307,15 @@ export function renderSessionPanelLines(
     maxRows?: number | undefined;
     width?: number | undefined;
     now?: number | undefined;
+    maxAgentRows?: number | undefined;
+    finishedAgentRetentionMs?: number | undefined;
+    maxLines?: number | undefined;
   },
 ): string[] {
-  const width = Math.max(40, Math.min(options.width ?? 100, 200));
+  const width = Math.max(1, options.width ?? 100);
   const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
+  const maxAgentRows = options.maxAgentRows ?? DEFAULT_MAX_AGENT_ROWS;
+  const retentionMs = options.finishedAgentRetentionMs ?? DEFAULT_RETENTION_MS;
   const now = options.now ?? Date.now();
   const runningCount = rows.filter((r) => r.isRunning).length;
   const agentCount =
@@ -294,17 +323,28 @@ export function renderSessionPanelLines(
 
   const headerLeft = [options.title, options.url].filter(Boolean).join(' · ');
   const headerRight = `${runningCount}/${rows.length} running · ${agentCount} agent${agentCount === 1 ? '' : 's'}`;
-  const headerBody = ` ${headerLeft}  ${headerRight} `;
+  const headerBody = ` ${truncate(headerLeft, Math.max(1, width - headerRight.length - 7))}  ${headerRight} `;
   const fill = Math.max(0, width - headerBody.length - 3);
   const header = `──${headerBody}${'─'.repeat(fill)}`;
 
-  const lines: string[] = [header];
+  const lines: string[] = [truncate(header, width)];
   if (rows.length === 0) {
-    lines.push('  no open sessions');
+    lines.push(truncate('  no open sessions', width));
     return lines;
   }
 
-  const shown = rows.slice(0, maxRows);
+  const shown = [...rows]
+    .sort(
+      (a, b) =>
+        Number(b.isRunning || b.runningSubagents > 0) -
+        Number(a.isRunning || a.runningSubagents > 0),
+    )
+    .slice(0, maxRows);
+  // Reserve one row per session and an overflow notice before spending space on agents.
+  let agentBudget = Math.max(
+    0,
+    (options.maxLines ?? Infinity) - 1 - shown.length - Number(rows.length > shown.length),
+  );
   for (const [rowIndex, row] of shown.entries()) {
     // The FULL session id, not a prefix. This panel is how a user connects a
     // tab in the browser to a journal on disk — for `--resume`, for `/rewind`,
@@ -323,19 +363,43 @@ export function renderSessionPanelLines(
     if (row.totalSubagents > 0) {
       segments.push(`sub ${row.runningSubagents}/${row.totalSubagents}`);
     }
+    const leader = row.agents?.find((agent) => agent.id === 'leader');
+    if (leader?.toolCalls) segments.push(`tools ${leader.toolCalls}`);
     const isLastSession = rowIndex === shown.length - 1 && rows.length <= shown.length;
     const sessionPrefix = isLastSession ? '  `-- ' : '  |-- ';
     lines.push(truncate(`${sessionPrefix}${segments.join('  ')}`, width));
-    const agents = row.agents ?? [];
+    const eligible = (row.agents ?? []).filter(
+      (agent) =>
+        agent.id !== 'leader' &&
+        (!isFinishedAgentStatus(agent.status) ||
+          (agent.finishedAt !== undefined && now - agent.finishedAt < retentionMs)),
+    );
+    eligible.sort(
+      (a, b) =>
+        Number(isFinishedAgentStatus(a.status)) - Number(isFinishedAgentStatus(b.status)) ||
+        (b.finishedAt ?? 0) - (a.finishedAt ?? 0),
+    );
+    const limit = Math.min(maxAgentRows, agentBudget);
+    const hasOverflow = eligible.length > limit;
+    const agents = eligible.slice(0, Math.max(0, limit - Number(hasOverflow)));
+    agentBudget -= agents.length + Number(hasOverflow && limit > 0);
     for (const [agentIndex, agent] of agents.entries()) {
-      const isLastAgent = agentIndex === agents.length - 1;
+      const isLastAgent = agentIndex === agents.length - 1 && !hasOverflow;
       const branchPad = isLastSession ? '      ' : '  |   ';
       const agentPrefix = `${branchPad}${isLastAgent ? '`-- ' : '|-- '}`;
       lines.push(renderAgentLine(agent, agentPrefix, width, now));
     }
+    if (hasOverflow && limit > 0) {
+      lines.push(
+        truncate(
+          `${isLastSession ? '      ' : '  |   '}\`-- +${eligible.length - agents.length} more agents (${options.title})`,
+          width,
+        ),
+      );
+    }
   }
   if (rows.length > shown.length) {
-    lines.push(`  +${rows.length - shown.length} more sessions`);
+    lines.push(truncate(`  +${rows.length - shown.length} more sessions`, width));
   }
   return lines;
 }
@@ -378,6 +442,11 @@ export function startTerminalDashboard(options: TerminalDashboardOptions = {}): 
   const bufferLines = Math.max(1, Math.trunc(options.bufferLines ?? DEFAULT_BUFFER_LINES));
   const maxRows = Math.max(1, Math.trunc(options.maxRows ?? DEFAULT_MAX_ROWS));
   const maxLogRows = Math.max(1, Math.trunc(options.maxLogRows ?? DEFAULT_MAX_LOG_ROWS));
+  const logRetentionMs = Math.max(0, options.logRetentionMs ?? DEFAULT_RETENTION_MS);
+  const finishedAgentRetentionMs = Math.max(
+    0,
+    options.finishedAgentRetentionMs ?? DEFAULT_RETENTION_MS,
+  );
   const nowFn = options.now ?? (() => Date.now());
   const title = options.title ?? 'WebUI';
 
@@ -400,12 +469,7 @@ export function startTerminalDashboard(options: TerminalDashboardOptions = {}): 
   let frameHeight = 0;
   let frameFingerprint = '';
   let lastRows: readonly DashboardSessionRow[] = [];
-  const visibleLogLines: string[] = [];
-
-  // Repeat-collapse streak, shared by every forwarded level.
-  let lastLine: string | null = null;
-  let lastEmit: ((...args: unknown[]) => void) | null = null;
-  let repeats = 0;
+  const visibleLogs: { level: Level; text: string; at: number; count: number }[] = [];
 
   const write = (chunk: string): void => {
     if (writeFailed) return;
@@ -425,15 +489,35 @@ export function startTerminalDashboard(options: TerminalDashboardOptions = {}): 
   };
 
   const drawFrame = (rows: readonly DashboardSessionRow[]): void => {
+    const now = nowFn();
+    for (let i = visibleLogs.length - 1; i >= 0; i--) {
+      if (now - visibleLogs[i]!.at >= logRetentionMs) visibleLogs.splice(i, 1);
+    }
+    // Leave room for the trailing cursor and separation line. Avoid scrolling
+    // an owned frame off-screen, where cursor-up can no longer erase it.
+    const height = Math.max(1, (stdout.rows ?? 24) - 2);
+    const width = Math.max(1, (stdout.columns ?? 100) - 1);
+    const logLimit = Math.min(maxLogRows, Math.max(0, height - 3));
+    const logRows = logLimit > 0 ? visibleLogs.slice(-logLimit) : [];
+    const visibleLogLines = logRows.map((entry) => {
+      const tag = levelTag(entry.level);
+      const repeat = entry.count > 1 ? `×${entry.count} ` : '';
+      const body = truncate(`${hhmmss(entry.at)} ${tag.text} ${repeat}${entry.text}`, width);
+      return `${tag.color}${body}${ANSI.reset}`;
+    });
+    const panelBudget = height - visibleLogLines.length;
     const panel = renderSessionPanelLines(rows, {
       title,
       ...(options.getUrl ? { url: options.getUrl() } : {}),
-      maxRows,
-      ...(stdout.columns ? { width: stdout.columns } : {}),
-      now: nowFn(),
+      maxRows: Math.min(maxRows, Math.max(1, panelBudget - 2)),
+      width,
+      now,
+      maxAgentRows: options.maxAgentRows,
+      finishedAgentRetentionMs,
+      maxLines: panelBudget,
     });
-    const lines = [...visibleLogLines, ...panel.map(colorizePanelLine)];
-    const fingerprint = [...visibleLogLines, ...panel].join('\n');
+    const lines = [...visibleLogLines, ...panel.map(colorizePanelLine)].slice(0, height);
+    const fingerprint = lines.join('\n');
     if (fingerprint === frameFingerprint && frameHeight > 0) return;
     clearFrame();
     // The leading blank line separates the owned frame from any boot output
@@ -443,64 +527,44 @@ export function startTerminalDashboard(options: TerminalDashboardOptions = {}): 
     frameFingerprint = fingerprint;
   };
 
-  const pushVisibleLogLines = (lines: string[]): void => {
-    for (const line of lines) visibleLogLines.push(line);
-    while (visibleLogLines.length > maxLogRows) visibleLogLines.shift();
-  };
-
-  const flushRepeats = (): void => {
-    if (repeats === 0 || !lastEmit) return;
-    const count = repeats;
-    repeats = 0;
-    lastEmit = null;
-    lastLine = null;
-    pushVisibleLogLines([
-      `${ANSI.dim}${hhmmss(nowFn())}  ↑ previous line repeated ${count}×${ANSI.reset}`,
-    ]);
-    drawFrame(lastRows);
-  };
-
-  const writeLogLine = (level: Level, text: string): void => {
-    const tag = levelTag(level);
-    const stamp = `${ANSI.dim}${hhmmss(nowFn())} ${tag.color}${tag.text}${ANSI.reset} `;
-    const textLines = text.split(/\r?\n/);
-    const [head = '', ...rest] = textLines;
-    pushVisibleLogLines([
-      `${stamp}${head}`,
-      ...rest.map((line) => `${ANSI.dim}         ${ANSI.reset}${line}`),
-    ]);
-    // Keep the stats visible after every line: the bounded log window and
-    // tree repaint together, so old visible logs disappear instead of growing
-    // the CLI surface.
-    drawFrame(lastRows);
-  };
-
   const emit = (level: Level, args: unknown[]): void => {
-    if (quiet && (MUTED_LEVELS as readonly string[]).includes(level)) {
-      mutedCount += 1;
-      muted.push(format(...args));
-      if (muted.length > bufferLines) muted.shift();
-      return;
-    }
     const raw = format(...args);
-    // A structured record carries its OWN level — a `{level:'error'}` line
-    // emitted via console.log must still show as ERROR.
-    const structured = prettifyStructuredLine(raw, true);
+    // Respect the record's severity before applying quiet-mode filtering.
+    const structured = prettifyStructuredLine(raw, false);
     const effectiveLevel: Level =
       structured && (ALL_LEVELS as readonly string[]).includes(structured.level)
         ? (structured.level as Level)
         : level;
-    const text = structured ? structured.text : raw;
-    if (text === lastLine) {
-      repeats += 1;
+    if (quiet && (MUTED_LEVELS as readonly string[]).includes(effectiveLevel)) {
+      mutedCount += 1;
+      muted.push(raw);
+      if (muted.length > bufferLines) muted.shift();
       return;
     }
-    flushRepeats();
-    lastLine = text;
-    lastEmit = originals[level];
-    writeLogLine(effectiveLevel, text);
+    const text = stripVTControlCharacters(structured ? structured.text : raw)
+      .replace(/\s+/g, ' ')
+      .trim();
+    const at = nowFn();
+    const duplicate = visibleLogs.findIndex(
+      (entry) =>
+        entry.level === effectiveLevel && entry.text === text && at - entry.at < logRetentionMs,
+    );
+    const entry =
+      duplicate >= 0
+        ? visibleLogs.splice(duplicate, 1)[0]!
+        : { level: effectiveLevel, text, at, count: 0 };
+    entry.at = at;
+    entry.count += 1;
+    visibleLogs.push(entry);
+    while (visibleLogs.length > maxLogRows) visibleLogs.shift();
+    drawFrame(lastRows);
   };
 
+  // Expire logs and finished agents even with no events or active sessions.
+  const refreshTimer = setInterval(() => {
+    if (!stopped && !writeFailed && frameHeight > 0) drawFrame(lastRows);
+  }, 1_000);
+  refreshTimer.unref();
   for (const level of ALL_LEVELS) {
     const wrapper = (...args: unknown[]): void => {
       if (stopped) {
@@ -522,20 +586,13 @@ export function startTerminalDashboard(options: TerminalDashboardOptions = {}): 
     setSessions: (rows) => {
       if (stopped || writeFailed) return;
       lastRows = rows;
-      flushRepeats();
       drawFrame(rows);
     },
     stop: () => {
       if (stopped) return;
       stopped = true;
+      clearInterval(refreshTimer);
       clearFrame();
-      const pendingRepeats = repeats;
-      repeats = 0;
-      lastLine = null;
-      lastEmit = null;
-      if (pendingRepeats > 0) {
-        originals['log'](`  ↑ previous line repeated ${pendingRepeats}×`);
-      }
       for (const level of ALL_LEVELS) {
         if (target[level] === wrappers[level]) target[level] = originals[level];
       }

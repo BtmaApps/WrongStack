@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 const createHttpServer = vi.hoisted(() => vi.fn(() => ({}) as never));
@@ -82,7 +83,7 @@ describe('standalone frontend dist last-resort fallback', () => {
   } as const;
 
   /** The path the legacy guess resolves to from this module's own location. */
-  const legacyGuess = (): string => path.resolve('packages', 'webui-server', 'dist');
+  const legacyGuess = (): string => fileURLToPath(new URL('../dist', import.meta.url));
 
   beforeEach(() => {
     root = mkdtempSync(path.join(tmpdir(), 'ws-legacy-guess-'));

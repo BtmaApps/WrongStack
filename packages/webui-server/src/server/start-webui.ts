@@ -13,6 +13,7 @@ import { startOtlpExport } from '@wrongstack/core/observability';
 import { createCompatibilityTrustBoundary } from '@wrongstack/core/security';
 import type { Config } from '@wrongstack/core/types';
 import { expectDefined, startSharedHeapWatchdog } from '@wrongstack/core/utils';
+import { hasSubscriptionRefreshTransaction } from '@wrongstack/providers';
 import { ensureSessionShell } from '@wrongstack/tools';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import { createAgentServices } from './backend-services.js';
@@ -151,7 +152,14 @@ export async function startWebUI(
   ): Promise<void> => updateGlobalConfigImpl(prefHelperDeps, configWriteLock, mutate, errorLabel);
 
   console.log('[WebUI] Config loaded:', config.provider ?? '(none)', '/', config.model ?? '(none)');
-  if (!opts.services) {
+  // Rotated OAuth tokens must reach disk before any discovery below can renew
+  // a credential (see the invalid_grant root cause). Standalone hosts always
+  // install. A host injecting pre-built `services` normally installed its own
+  // persisters — skip only when such a subscription-refresh transaction is
+  // already present; an injected host that forgot them still gets one here,
+  // because a renewal without it rotates the refresh token, drops the rotated
+  // value, and every later renewal fails with invalid_grant.
+  if (!opts.services || !hasSubscriptionRefreshTransaction()) {
     installWebuiProviderPersisters({
       mutate: (mutator) => mutateSavedProviders(profileConfigPath, vault, mutator),
       warn: (message) => logger.warn(message),
@@ -729,6 +737,7 @@ export async function startWebUI(
   });
 
   const { terminalDashboard, stopLiveStatusLogger } = setupWebuiTerminalLogging({
+    surface: opts.surface,
     wsHost: wsHost ?? '127.0.0.1',
     httpPort,
     accessToken,

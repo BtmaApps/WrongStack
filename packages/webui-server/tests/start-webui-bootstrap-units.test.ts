@@ -163,29 +163,38 @@ vi.mock('../src/server/webui-status-logger.js', () => ({
 }));
 
 describe('start-webui-logging: setupWebuiTerminalLogging', () => {
-  it('configures dashboard and status logger', () => {
-    const clients = new Map();
-    clients.set('ws1', { sessionId: 's1', sessionIds: new Set(['s2']) });
-    const logging = setupWebuiTerminalLogging({
-      wsHost: '127.0.0.1',
-      httpPort: 8080,
-      accessToken: 'token123',
-      publicUrl: 'http://pub.example.com',
-      events: { on: vi.fn(), off: vi.fn(), emit: vi.fn() } as never,
-      clients: clients as never,
-      state: {
-        getSession: () => ({ id: 's1' }),
-        getConfig: () => ({ provider: 'prov', model: 'mod' }),
-        isRunActive: () => false,
-      } as never,
-      deps: {
-        peekAgent: () => undefined,
-      } as never,
-    });
-    expect(logging.terminalDashboard).toBeDefined();
-    expect(typeof logging.stopLiveStatusLogger).toBe('function');
-    logging.stopLiveStatusLogger();
-  });
+  it.each([undefined, 'simpleui'] as const)(
+    'configures dashboard and status logger for %s',
+    async (surface) => {
+      const { startTerminalDashboard } = await import('../src/server/terminal-dashboard.js');
+      const { startWebUILiveStatusLogger } = await import('../src/server/webui-status-logger.js');
+      const clients = new Map();
+      clients.set('ws1', { sessionId: 's1', sessionIds: new Set(['s2']) });
+      const logging = setupWebuiTerminalLogging({
+        surface,
+        wsHost: '127.0.0.1',
+        httpPort: 8080,
+        accessToken: 'token123',
+        publicUrl: 'http://pub.example.com',
+        events: { on: vi.fn(), off: vi.fn(), emit: vi.fn() } as never,
+        clients: clients as never,
+        state: {
+          getSession: () => ({ id: 's1' }),
+          getConfig: () => ({ provider: 'prov', model: 'mod' }),
+          isRunActive: () => false,
+        } as never,
+        deps: {
+          peekAgent: () => undefined,
+        } as never,
+      });
+      expect(logging.terminalDashboard).toBeDefined();
+      expect(typeof logging.stopLiveStatusLogger).toBe('function');
+      const title = surface === 'simpleui' ? 'SimpleUI' : 'WebUI';
+      expect(vi.mocked(startTerminalDashboard).mock.lastCall?.[0]?.title).toBe(title);
+      expect(vi.mocked(startWebUILiveStatusLogger).mock.lastCall?.[0]?.title).toBe(title);
+      logging.stopLiveStatusLogger();
+    },
+  );
 
   it('handles empty activeIds falling back to currentId in getSessionList', async () => {
     const { startWebUILiveStatusLogger } = await import('../src/server/webui-status-logger.js');

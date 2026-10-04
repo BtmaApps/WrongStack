@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TerminalDashboard } from '../src/server/terminal-dashboard.js';
 import {
   buildSessionRows,
@@ -21,7 +21,45 @@ const SESSIONS = [
   { id: 'sess_def456', model: 'glm-5.3', provider: 'zai', isRunning: false },
 ];
 
+afterEach(() => vi.useRealTimers());
+
 describe('startWebUILiveStatusLogger', () => {
+  it('stamps terminal statuses once and clears the stamp when an agent resumes', () => {
+    vi.useFakeTimers();
+    let clock = 100_000;
+    const events = new EventEmitter();
+    const dashboard = fakeDashboard();
+    const stop = startWebUILiveStatusLogger({
+      events,
+      dashboard,
+      getSessionList: () => SESSIONS,
+      now: () => clock,
+      debounceMs: 1,
+    });
+    events.emit('subagent.spawned', { subagentId: 'worker', sessionId: 'sess_abc123' });
+    events.emit('agent.status_changed', {
+      agentId: 'worker',
+      status: 'stopped',
+      sessionId: 'sess_abc123',
+    });
+    vi.advanceTimersByTime(1);
+    expect(dashboard.setSessions.mock.lastCall?.[0][0].agents[1].finishedAt).toBe(100_000);
+    clock = 110_000;
+    events.emit('subagent.task_completed', {
+      subagentId: 'worker',
+      status: 'success',
+      sessionId: 'sess_abc123',
+    });
+    expect(dashboard.setSessions.mock.lastCall?.[0][0].agents[1].finishedAt).toBe(100_000);
+    events.emit('agent.status_changed', {
+      agentId: 'worker',
+      status: 'running',
+      sessionId: 'sess_abc123',
+    });
+    vi.advanceTimersByTime(1);
+    expect(dashboard.setSessions.mock.lastCall?.[0][0].agents[1].finishedAt).toBeUndefined();
+    stop();
+  });
   it('feeds merged session rows to the dashboard panel', async () => {
     const events = new EventEmitter();
     const dashboard = fakeDashboard(true);
@@ -330,6 +368,13 @@ describe('buildSessionRows', () => {
 });
 
 describe('formatSessionRowsBlock', () => {
+  it('labels SimpleUI status output for redirected and verbose terminals', () => {
+    const rows = buildSessionRows(SESSIONS, new Map(), new Map(), new Map());
+    expect(formatSessionRowsBlock(rows, 'SimpleUI')).toContain('[SimpleUI Live Status]');
+    expect(formatSessionRowsBlock([], 'SimpleUI')).toBe(
+      '[SimpleUI Live Status] No active sessions.',
+    );
+  });
   it('renders the append-only block for non-TTY output', () => {
     const rows = buildSessionRows(SESSIONS, new Map(), new Map(), new Map());
     const block = formatSessionRowsBlock(rows);

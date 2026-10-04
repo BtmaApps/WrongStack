@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DashboardStdout } from '../src/server/terminal-dashboard.js';
 import {
@@ -37,10 +38,115 @@ function lastChunk(stdout: { chunks: string[] }): string {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('startTerminalDashboard', () => {
+  it.each(['WebUI', 'SimpleUI'])(
+    '%s expires warnings and finished agents after 30 seconds while idle',
+    (title) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(100_000);
+      const stdout = fakeStdout();
+      const target = fakeConsole();
+      const dashboard = startTerminalDashboard({ stdout, consoleTarget: target, title });
+      dashboard.setSessions([
+        {
+          id: 'idle-session',
+          provider: 'p',
+          model: 'm',
+          isRunning: false,
+          runningSubagents: 1,
+          totalSubagents: 2,
+          agents: [
+            {
+              id: 'finished',
+              label: 'Reviewer',
+              provider: 'p',
+              model: 'm',
+              status: 'success',
+              toolCalls: 3,
+              finishedAt: 100_000,
+            },
+            {
+              id: 'active',
+              label: 'Worker',
+              provider: 'p',
+              model: 'm',
+              status: 'running',
+              toolCalls: 1,
+            },
+          ],
+        },
+      ]);
+      target.warn('HQ unavailable');
+      target.warn('HQ unavailable');
+      expect(lastChunk(stdout)).toContain('×2');
+      expect(lastChunk(stdout)).toContain('Reviewer');
+      vi.advanceTimersByTime(29_000);
+      expect(lastChunk(stdout)).toContain('HQ unavailable');
+      vi.advanceTimersByTime(1_000);
+      const frame = lastChunk(stdout);
+      expect(frame).not.toContain('HQ unavailable');
+      expect(frame).not.toContain('Reviewer');
+      expect(frame).toContain('Worker');
+      expect(frame).toContain('IDLE');
+      expect(frame).toContain(title);
+      target.warn('HQ unavailable');
+      expect(lastChunk(stdout)).not.toContain('×');
+      dashboard.stop();
+    },
+  );
+
+  it('keeps structured warnings visible in quiet mode regardless of console method', () => {
+    const stdout = fakeStdout();
+    const target = fakeConsole();
+    const dashboard = startTerminalDashboard({ stdout, consoleTarget: target, quiet: true });
+    target.log(
+      JSON.stringify({
+        level: 'warn',
+        event: 'hq.publisher.connect_failed',
+        message: 'HQ unavailable',
+      }),
+    );
+    expect(lastChunk(stdout)).toContain('HQ unavailable');
+    expect(dashboard.mutedCount).toBe(0);
+    dashboard.stop();
+  });
+
+  it('fits long multi-line logs and large fleets into a small terminal frame', () => {
+    const stdout = fakeStdout();
+    stdout.columns = 50;
+    stdout.rows = 12;
+    const target = fakeConsole();
+    const dashboard = startTerminalDashboard({ stdout, consoleTarget: target, now: () => 100_000 });
+    dashboard.setSessions(
+      Array.from({ length: 8 }, (_, i) => ({
+        id: `session-${i}`,
+        provider: 'p',
+        model: 'm',
+        isRunning: true,
+        runningSubagents: 20,
+        totalSubagents: 20,
+        agents: Array.from({ length: 20 }, (_, j) => ({
+          id: `worker-${j}`,
+          label: 'Worker',
+          provider: 'p',
+          model: 'm',
+          status: 'running',
+          toolCalls: 1,
+        })),
+      })),
+    );
+    target.warn(`hq.publisher.connect_failed ${'failure details '.repeat(50)}\nsecond line`);
+    const lines = stripVTControlCharacters(lastChunk(stdout)).trim().split('\n');
+    expect(lines.length).toBeLessThanOrEqual(10);
+    for (const line of lines) expect(line.length).toBeLessThan(50);
+    expect(lines.join('\n')).toContain('more sessions');
+    expect(lines.join('\n')).toContain('more agents');
+    dashboard.stop();
+  });
   it('leaves non-TTY console output untouched', () => {
     const stdout = fakeStdout(false);
     const target = fakeConsole();
@@ -148,7 +254,7 @@ describe('startTerminalDashboard', () => {
     expect(text).toContain('IDLE');
     expect(text).toContain('iter 2/10');
     expect(text).toContain('sub 1/3');
-    expect(text).toContain('leader:leader');
+    expect(text).not.toContain('leader:leader');
     expect(text).toContain('reviewer:sub_a');
     expect(text).toContain('tools 4');
 
@@ -269,7 +375,7 @@ describe('startTerminalDashboard', () => {
     dashboard.stop();
   });
 
-  it('collapses a repeated warning into a single trailing notice', () => {
+  it('collapses repeated warnings into one row, including interleaved duplicates', () => {
     const stdout = fakeStdout();
     const target = fakeConsole();
     const originalWarn = target.warn;
@@ -279,16 +385,18 @@ describe('startTerminalDashboard', () => {
     target.warn('watcher restart failed');
     target.warn('watcher restart failed');
     target.warn('watcher restart failed');
-    // Only the first occurrence reaches the stream; the streak is pending.
-    expect(outputText(stdout).match(/watcher restart failed/g)?.length).toBe(1);
-
     target.warn('a different problem');
-    expect(outputText(stdout)).toContain('previous line repeated 2×');
+    target.warn('watcher restart failed');
+    const frame = lastChunk(stdout);
+    expect(frame.match(/watcher restart failed/g)).toHaveLength(1);
+    expect(frame).toContain('×4');
+    expect(frame).not.toContain('previous line repeated');
     expect(originalWarn).not.toHaveBeenCalled();
     dashboard.stop();
   });
 
-  it('flushes a pending repeat notice on stop and restores every wrapped method', () => {
+  it('clears the refresh timer on stop and restores every wrapped method', () => {
+    vi.useFakeTimers();
     const stdout = fakeStdout();
     const target = fakeConsole();
     const originals = { ...target };
@@ -299,12 +407,11 @@ describe('startTerminalDashboard', () => {
     dashboard.stop();
 
     expect(target).toEqual(originals);
-    // The flushed notice goes through the ORIGINAL console, not the panel stream.
-    expect(originals.log).toHaveBeenCalledWith('  ↑ previous line repeated 1×');
-
-    // Idempotent: a second stop neither re-flushes nor re-wraps.
+    const writes = stdout.chunks.length;
+    vi.advanceTimersByTime(60_000);
+    expect(stdout.chunks).toHaveLength(writes);
     dashboard.stop();
-    expect(originals.log).toHaveBeenCalledTimes(1);
+    expect(originals.log).not.toHaveBeenCalled();
   });
 
   it('renders structured JSON lines as readable single lines', () => {
@@ -341,6 +448,62 @@ describe('renderSessionPanelLines', () => {
     runningSubagents: 0,
     totalSubagents: 0,
   };
+
+  it.each(['WebUI', 'SimpleUI'])(
+    '%s hides old terminal statuses, prioritizes active workers and bounds agent rows',
+    (title) => {
+      const statuses = [
+        'success',
+        'completed',
+        'done',
+        'failed',
+        'error',
+        'stopped',
+        'cancelled',
+        'canceled',
+        'aborted',
+      ];
+      const agents = statuses.map((status, i) => ({
+        id: `old-${i}`,
+        label: 'Old',
+        provider: 'p',
+        model: 'm',
+        status,
+        toolCalls: 1,
+        finishedAt: 0,
+      }));
+      agents.push(
+        ...Array.from({ length: 6 }, (_, i) => ({
+          id: `active-${i}`,
+          label: 'Active',
+          provider: 'p',
+          model: 'm',
+          status: 'running',
+          toolCalls: 1,
+          finishedAt: 0,
+        })),
+      );
+      const lines = renderSessionPanelLines(
+        [
+          {
+            id: 'session',
+            provider: 'p',
+            model: 'm',
+            isRunning: true,
+            runningSubagents: 6,
+            totalSubagents: agents.length,
+            agents,
+          },
+        ],
+        { title, now: 30_000 },
+      );
+      expect(lines).toHaveLength(5);
+      expect(lines.join('\n')).not.toContain('Old');
+      expect(lines.join('\n')).toContain('Active');
+      expect(lines.at(-1)).toContain('+4 more agents');
+      expect(lines.at(-1)).toContain(`(${title})`);
+    },
+  );
 
   it('shows header counts, session rows and the +N overflow line', () => {
     const rows = Array.from({ length: 8 }, (_, i) => ({
@@ -381,8 +544,8 @@ describe('renderSessionPanelLines', () => {
 
     const lines = renderSessionPanelLines(rows, { title: 'WebUI', width: 200, now: 1_000 });
 
-    expect(lines[1]).toContain('sess_01M0TK9K2VYES2B6CSVM0XHHNB');
-    expect(lines[2]).toContain('sess_01M0SGN4R8AJZ7J2BPFQXC2JXF');
+    expect(lines[1]).toContain('sess_01M0SGN4R8AJZ7J2BPFQXC2JXF');
+    expect(lines[2]).toContain('sess_01M0TK9K2VYES2B6CSVM0XHHNB');
   });
 
   it('shows an empty-state line when no sessions are open', () => {
@@ -417,7 +580,7 @@ describe('renderSessionPanelLines', () => {
     expect(lines[1]).toContain('sub 2/5');
   });
 
-  it('renders a session tree with leader and subagent table rows', () => {
+  it('shows leader statistics on the session row and recent finished subagents underneath', () => {
     const lines = renderSessionPanelLines(
       [
         {
@@ -449,6 +612,7 @@ describe('renderSessionPanelLines', () => {
               iteration: { index: 2 },
               toolCalls: 5,
               durationMs: 30_000,
+              finishedAt: 150_000,
             },
           ],
         },
@@ -457,13 +621,12 @@ describe('renderSessionPanelLines', () => {
     );
 
     expect(lines[1]).toContain('`-- sess_abc');
-    expect(lines[2]).toContain('|-- leader:leader');
-    expect(lines[2]).toContain('iter 3/9');
-    expect(lines[2]).toContain('tools 7');
-    expect(lines[3]).toContain('`-- reviewer:sub_revi');
-    expect(lines[3]).toContain('openai/gpt-5.3-codex');
-    expect(lines[3]).toContain('tools 5');
-    expect(lines[3]).toContain('30s');
+    expect(lines[1]).toContain('iter 3/9');
+    expect(lines[1]).toContain('tools 7');
+    expect(lines[2]).toContain('`-- reviewer:sub_revi');
+    expect(lines[2]).toContain('openai/gpt-5.3-codex');
+    expect(lines[2]).toContain('tools 5');
+    expect(lines[2]).toContain('30s');
   });
 
   it('truncates rows to the terminal width', () => {

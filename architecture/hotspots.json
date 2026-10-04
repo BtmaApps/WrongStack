@@ -399,7 +399,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 850,
+      "lines": 859,
       "relativeImports": 36
     },
     "apps/desktop/src/main/runtime-manager.ts": {

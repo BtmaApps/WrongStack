@@ -30,6 +30,25 @@ its grip. The grip also supports ↑/↓ keys, and arrow buttons work on touch
 screens. Section order and open/closed choices persist in this browser.
 Collapsing a section keeps its live workspace subscriptions mounted.
 
+## Host terminal
+
+The WebUI and SimpleUI host terminal keeps a compact status panel in place.
+Leader statistics share the session row. Active workers appear first, with at
+most three child rows per session (including any overflow notice), further
+limited by terminal height. Finished, stopped, cancelled, and failed workers
+disappear from this panel 30 seconds after finishing; their session history
+remains available in the browser.
+
+At most three recent log messages appear above the panel. Repeated messages
+update one row with a count, long messages fit on one line, and each message
+disappears 30 seconds after its latest occurrence, even while all sessions are
+idle. This also applies to HQ connection warnings.
+
+`WEBUI_LOGS=1` includes informational logs in the CLI host's recent-message
+window. `WEBUI_VERBOSE=1` (or `WRONGSTACK_WEBUI_VERBOSE=1`) restores full,
+append-only console output. Redirected/non-TTY output also retains the full
+console stream.
+
 ## Ports
 
 The Web UI uses a **single shared HTTP/WebSocket port**. The HTTP server serves the

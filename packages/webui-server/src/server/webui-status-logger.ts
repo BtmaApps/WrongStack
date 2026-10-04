@@ -18,6 +18,7 @@ import type {
   DashboardSessionRow,
   TerminalDashboard,
 } from './terminal-dashboard.js';
+import { isFinishedAgentStatus } from './terminal-dashboard.js';
 
 interface EventBusLike {
   on(event: string, listener: (...args: unknown[]) => void): unknown;
@@ -41,9 +42,11 @@ interface SubagentRecord {
   toolCalls: number;
   startedAt?: number | undefined;
   durationMs?: number | undefined;
+  finishedAt?: number | undefined;
 }
 
 export interface WebUILiveStatusLoggerOptions {
+  title?: string | undefined;
   events: EventBusLike;
   getSessionList: () => StatusSessionInfo[];
   /** The terminal dashboard that owns the fixed panel. */
@@ -100,6 +103,7 @@ export function buildSessionRows(
         toolCalls: sub.toolCalls ?? 0,
         ...(sub.startedAt !== undefined ? { startedAt: sub.startedAt } : {}),
         ...(sub.durationMs !== undefined ? { durationMs: sub.durationMs } : {}),
+        ...(sub.finishedAt !== undefined ? { finishedAt: sub.finishedAt } : {}),
       })),
     ];
     return {
@@ -126,8 +130,11 @@ export function buildSessionRows(
 }
 
 /** Compact append-only block for non-TTY output (log files, pipes). */
-export function formatSessionRowsBlock(rows: readonly DashboardSessionRow[]): string {
-  if (rows.length === 0) return '[WebUI Live Status] No active sessions.';
+export function formatSessionRowsBlock(
+  rows: readonly DashboardSessionRow[],
+  title = 'WebUI',
+): string {
+  if (rows.length === 0) return `[${title} Live Status] No active sessions.`;
   const runningCount = rows.filter((r) => r.isRunning).length;
   const agents = runningCount + rows.reduce((sum, r) => sum + Math.max(0, r.runningSubagents), 0);
   const lines = rows.map((row) => {
@@ -152,7 +159,7 @@ export function formatSessionRowsBlock(rows: readonly DashboardSessionRow[]): st
       .join('\n');
     return [`  ├── ${parts.join(' ')}`, agentLines].filter(Boolean).join('\n');
   });
-  return `[WebUI Live Status] ${rows.length} session${rows.length === 1 ? '' : 's'} | ${agents} running agent${agents === 1 ? '' : 's'}\n${lines.join('\n')}`;
+  return `[${title} Live Status] ${rows.length} session${rows.length === 1 ? '' : 's'} | ${agents} running agent${agents === 1 ? '' : 's'}\n${lines.join('\n')}`;
 }
 
 export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions): () => void {
@@ -200,7 +207,7 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
       dashboard.setSessions(rows);
       return;
     }
-    const block = formatSessionRowsBlock(rows);
+    const block = formatSessionRowsBlock(rows, options.title);
     if (block === lastBlock) return;
     lastBlock = block;
     console.log(`\n${block}\n`);
@@ -229,6 +236,15 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
       sessionSubagents.set(sessionId, map);
     }
     return map;
+  };
+
+  const setSubagentStatus = (sub: SubagentRecord, status: string): void => {
+    sub.status = status;
+    if (isFinishedAgentStatus(status)) {
+      sub.finishedAt ??= now();
+    } else {
+      delete sub.finishedAt;
+    }
   };
 
   const onAgentSpawned = (ev: unknown): void => {
@@ -273,14 +289,14 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
     if (data.sessionId && sessionSubagents.has(data.sessionId)) {
       const sub = sessionSubagents.get(data.sessionId)?.get(agentId);
       if (sub) {
-        sub.status = data.status || 'unknown';
+        setSubagentStatus(sub, data.status || 'unknown');
         if (data.agentName) sub.role = data.agentName;
       }
     } else {
       for (const map of sessionSubagents.values()) {
         const sub = map.get(agentId);
         if (sub) {
-          sub.status = data.status || 'unknown';
+          setSubagentStatus(sub, data.status || 'unknown');
           if (data.agentName) sub.role = data.agentName;
           break;
         }
@@ -321,7 +337,7 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
     const sub = ensureSubagentMap(data.sessionId).get(agentId);
     if (sub) {
       sub.toolCalls += 1;
-      sub.status = 'running';
+      setSubagentStatus(sub, 'running');
       if (data.agentName) sub.role = data.agentName;
     }
     requestEmit();
@@ -354,7 +370,7 @@ export function startWebUILiveStatusLogger(options: WebUILiveStatusLoggerOptions
     if (!data.subagentId || !data.sessionId) return;
     const sub = ensureSubagentMap(data.sessionId).get(data.subagentId);
     if (!sub) return;
-    sub.status = data.status || 'completed';
+    setSubagentStatus(sub, data.status || 'completed');
     if (typeof data.iterations === 'number') sub.iteration = { index: data.iterations };
     if (typeof data.toolCalls === 'number') sub.toolCalls = data.toolCalls;
     if (typeof data.durationMs === 'number') sub.durationMs = data.durationMs;

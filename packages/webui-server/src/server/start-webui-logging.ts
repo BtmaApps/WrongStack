@@ -6,6 +6,7 @@ import { startWebUILiveStatusLogger } from './webui-status-logger.js';
 import { buildWebUIAccessUrl } from './ws-utils.js';
 
 export function setupWebuiTerminalLogging(params: {
+  surface?: 'webui' | 'simpleui' | undefined;
   wsHost: string;
   httpPort: number;
   accessToken: string;
@@ -19,9 +20,10 @@ export function setupWebuiTerminalLogging(params: {
   stopLiveStatusLogger: () => void;
 } {
   const { wsHost, httpPort, accessToken, publicUrl, events, clients, state, deps } = params;
+  const title = params.surface === 'simpleui' ? 'SimpleUI' : 'WebUI';
 
   const terminalDashboard = startTerminalDashboard({
-    title: 'WebUI',
+    title,
     getUrl: () =>
       buildWebUIAccessUrl({
         host: wsHost,
@@ -32,6 +34,7 @@ export function setupWebuiTerminalLogging(params: {
   });
 
   const stopLiveStatusLogger = startWebUILiveStatusLogger({
+    title,
     events,
     dashboard: terminalDashboard,
     getSessionList: () => {

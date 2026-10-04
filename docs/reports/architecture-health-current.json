@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:03:18.396Z",
+  "generatedAt": "2026-10-04T15:04:14.314Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,9 +14,9 @@
     "packages": 37,
     "sourceFiles": 4479,
     "testFiles": 4065,
-    "sourceLines": 1054016,
+    "sourceLines": 1054102,
     "workspaceEdges": 133,
-    "moduleEdges": 14584,
+    "moduleEdges": 14585,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -26202,7 +26202,7 @@
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 850,
+      "lines": 859,
       "relativeImports": 36
     },
     {
