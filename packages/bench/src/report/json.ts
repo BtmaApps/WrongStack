@@ -49,8 +49,9 @@ export async function readResultsJsonl(outDir: string): Promise<TaskResult[]> {
   let raw: string;
   try {
     raw = await fs.readFile(path.join(outDir, 'results.jsonl'), 'utf8');
-  } catch {
-    return [];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') return [];
+    throw error;
   }
   const rows: TaskResult[] = [];
   for (const line of raw.split('\n')) {
