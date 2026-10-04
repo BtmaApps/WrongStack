@@ -24,7 +24,13 @@ const SEPARATOR = String.fromCharCode(10);
 const handlerRoot = path.resolve(import.meta.dirname, '../../src/hooks');
 
 function handlerFiles(): string[] {
-  const files = [path.join(handlerRoot, 'ws-handlers.ts')];
+  const files = readdirSync(handlerRoot, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        (/^ws-(?:.+-)?handlers\.ts$/.test(entry.name) || entry.name === 'ws-reply-lanes.ts'),
+    )
+    .map((entry) => path.join(handlerRoot, entry.name));
   const dir = path.join(handlerRoot, 'ws-handlers');
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isFile() && entry.name.endsWith('.ts')) files.push(path.join(dir, entry.name));
@@ -100,7 +106,9 @@ describe('WS handlers route by session, never to the tab in front', () => {
         source,
       );
       if (!writesChat) continue;
-      expect(source, path.basename(file)).toMatch(/\bchatFor\b|\bactiveChatLane\b|\bchatLane\s*\(/);
+      expect(source, path.basename(file)).toMatch(
+        /\bchatFor\b|\bactiveChatLane\b|\bchatLane\s*\(|\breplyLane\b/,
+      );
     }
   });
 });

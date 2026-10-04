@@ -17,7 +17,6 @@ import {
   useSpecsStore,
 } from '@/stores';
 import { useCodemapIndexStore } from '@/stores/codemap-index-store';
-import { activeSessionLane, type SessionLaneActions } from '@/stores/session-lanes';
 import type { WSGoalAssessResult, WSServerMessage } from '@/types';
 import {
   handleMemoryList,
@@ -28,8 +27,8 @@ import {
   handleMemorySageRecover,
   handleMemorySageRemember,
   handleMemorySageUpdate,
-  replyLane,
 } from './ws-memory-handlers.js';
+import { replyLane, replyMeta } from './ws-reply-lanes.js';
 
 export {
   handleMemoryList,
@@ -80,11 +79,6 @@ export type { WSServerMessage } from '@/types';
 
 export function handleSessionEnd() {
   useConfigStore.getState().setWsConnected(false);
-}
-
-/** Session-accounting twin of `replyLane`. */
-function replyMeta(msg: WSServerMessage): SessionLaneActions {
-  return sessionFor(msg) ?? activeSessionLane();
 }
 
 // ── Info / misc handlers ──

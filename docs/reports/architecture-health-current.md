@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T21:43:51.362Z
+**Generated:** 2026-10-04T21:58:33.459Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4572 |
-| Production source lines | 1058451 |
+| Production source files | 4573 |
+| Production source lines | 1058450 |
 | Test files | 4097 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14996 |
+| Relative module edges | 14998 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 281 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 460 | 413 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 668 | 464 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 669 | 464 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 50 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 272 | 267 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -85,7 +85,7 @@ None.
 |---:|---|
 | 958 | `packages/tools/src/codebase-index/writer.ts` |
 | 955 | `packages/mcp/src/registry.ts` |
-| 894 | `packages/tui/src/use-app-controller.tsx` |
+| 895 | `packages/tui/src/use-app-controller.tsx` |
 | 891 | `packages/cli/src/cli-main.ts` |
 | 881 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 880 | `packages/core/src/storage/session-store.ts` |

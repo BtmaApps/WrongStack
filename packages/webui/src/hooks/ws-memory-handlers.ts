@@ -1,16 +1,5 @@
-import { chatFor } from '@/lib/ws-client-utils';
-import { activeChatLane, type ChatLaneActions } from '@/stores/chat-lanes';
 import type { WSServerMessage } from '@/types';
-
-/**
- * Command replies (`/tools`, `/memory`, `/doctor`, `/stats`, …) belong to the
- * tab that issued the command. When the server names the session we honour it;
- * an unnamed reply lands in the tab in front, which is the only tab that could
- * have typed the command.
- */
-export function replyLane(msg: WSServerMessage): ChatLaneActions {
-  return chatFor(msg) ?? activeChatLane();
-}
+import { replyLane } from './ws-reply-lanes.js';
 
 export function handleMemoryList(msg: WSServerMessage) {
   const p = msg.payload as { text: string; error?: string | undefined };

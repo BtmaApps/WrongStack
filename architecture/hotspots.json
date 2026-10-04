@@ -227,7 +227,7 @@
       "relativeImports": 12
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 894,
+      "lines": 895,
       "relativeImports": 43
     },
     "packages/webui/src/components/ChatView/CouncilDecisionCard.tsx": {

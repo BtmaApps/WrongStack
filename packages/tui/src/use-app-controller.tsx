@@ -47,6 +47,7 @@ import { useControllerPanelHooks } from './use-controller-panel-hooks.js';
 
 export function useAppController(props: AppProps) {
   const controllerProps = resolveControllerProps(props);
+  const { getDirector } = controllerProps;
   const secretInputController = controllerProps.secretInputController;
   const pendingUserInput = usePendingUserInput(controllerProps.events);
   const { exit } = useApp();
@@ -286,8 +287,8 @@ export function useAppController(props: AppProps) {
   const { displayThinkingWord } = activity;
 
   const liveDirector = useCallback(
-    (): Director | null => controllerProps.getDirector?.() ?? controllerProps.director,
-    [controllerProps.getDirector, controllerProps.director],
+    (): Director | null => getDirector?.() ?? controllerProps.director,
+    [getDirector, controllerProps.director],
   );
 
   const clearPendingConfirms = useCallback(() => {

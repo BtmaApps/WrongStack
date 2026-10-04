@@ -46,7 +46,10 @@ const SRC = path.resolve(here, '..', '..', 'src');
  * webui-protocol, which the SDK shares; the WebUI re-exports it.
  */
 const DECLARATIONS = [
-  path.join(SRC, 'types/client-message.ts'),
+  ...fs
+    .readdirSync(path.join(SRC, 'types'))
+    .filter((file) => /^client-message(?:-.+)?\.ts$/.test(file))
+    .map((file) => path.join(SRC, 'types', file)),
   path.join(SRC, 'types/protocol-core.ts'),
   path.resolve(SRC, '../../webui-protocol/src/conversation-core.ts'),
 ];
