@@ -138,6 +138,9 @@ export class SpecStore {
    * the same containment `task-graph-store.ts:134-145` applies to its ids.
    */
   private filePath(id: string): string {
+    if (typeof id === 'string' && id.toLowerCase() === '_index') {
+      throw new Error(`Invalid spec id: ${JSON.stringify(id)}`);
+    }
     if (typeof id !== 'string' || id.length === 0 || id.length > 200 || /[\0/\\]/.test(id)) {
       throw new Error(`Invalid spec id: ${JSON.stringify(id)}`);
     }

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:59:37.829Z
+**Generated:** 2026-10-04T15:00:30.837Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4479 |
-| Production source lines | 1053955 |
-| Test files | 4055 |
+| Production source lines | 1053963 |
+| Test files | 4056 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14584 |
 | Non-command slash imports | 0 |
@@ -51,7 +51,7 @@
 | @wrongstack/runtime | 28 | 23 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
 | @wrongstack/sage | 125 | 125 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
-| @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
+| @wrongstack/sdd | 39 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
 | @wrongstack/simpleui | 113 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 42 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |

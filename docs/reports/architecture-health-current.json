@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:59:37.829Z",
+  "generatedAt": "2026-10-04T15:00:30.837Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4479,
-    "testFiles": 4055,
-    "sourceLines": 1053955,
+    "testFiles": 4056,
+    "sourceLines": 1053963,
     "workspaceEdges": 133,
     "moduleEdges": 14584,
     "nonCommandSlashImports": 0,
@@ -650,7 +650,7 @@
       "name": "@wrongstack/sdd",
       "dir": "packages/sdd",
       "sourceFiles": 39,
-      "testFiles": 40,
+      "testFiles": 41,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -666,7 +666,7 @@
         {
           "path": "packages/sdd/tsconfig.test.json",
           "error": null,
-          "testFiles": 40
+          "testFiles": 41
         }
       ]
     },
@@ -14964,6 +14964,12 @@
       },
       {
         "file": "packages/sdd/tests/requirement-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sdd/tests/reserved-index-id.test.ts",
         "projects": [
           "root-node"
         ]

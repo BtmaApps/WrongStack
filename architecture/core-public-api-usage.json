@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1303,
-      "typeOnly": 1154,
+      "files": 1304,
+      "typeOnly": 1155,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -17881,6 +17881,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/sdd/tests/requirement-coverage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sdd/tests/reserved-index-id.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

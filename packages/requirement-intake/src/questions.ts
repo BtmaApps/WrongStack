@@ -59,7 +59,9 @@ export function buildInitialQuestions(
 ): IntakeQuestion[] {
   const known = new Set((input.knownFields ?? []).map((field) => field.trim()));
   return catalog.map((template, index) => {
-    const answeredByInput = FIELD_TO_INPUT_PROPERTY[template.field]?.(input) ?? false;
+    const answeredByInput = Object.hasOwn(FIELD_TO_INPUT_PROPERTY, template.field)
+      ? (FIELD_TO_INPUT_PROPERTY[template.field]?.(input) ?? false)
+      : false;
     const skipped = answeredByInput || known.has(template.field);
     return makeQuestion(template, index, skipped);
   });

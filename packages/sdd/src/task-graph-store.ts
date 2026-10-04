@@ -132,6 +132,9 @@ export class TaskGraphStore implements TaskStore {
    * already applies to board ids.
    */
   private filePath(id: string): string {
+    if (typeof id === 'string' && id.toLowerCase() === '_index') {
+      throw new Error(`Invalid task-graph id: ${JSON.stringify(id)}`);
+    }
     if (typeof id !== 'string' || id.length === 0 || id.length > 200 || /[\0]/.test(id)) {
       throw new Error(`Invalid task-graph id: ${JSON.stringify(id)}`);
     }
