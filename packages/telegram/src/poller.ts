@@ -157,13 +157,16 @@ export class Poller {
     }, delay);
   }
   async poll(): Promise<void> {
+    const epoch = this.chainEpoch;
+    const signal = this.controller.signal;
     try {
       const updates = await this.api().getUpdates({
         offset: this.offset,
         timeoutSeconds: 10,
         deadlineMs: 15_000,
-        signal: this.controller.signal,
+        signal,
       });
+      if (epoch !== this.chainEpoch || signal.aborted) return;
       this._conflictStreak = 0;
       for (const upd of updates) {
         if (upd.update_id < this.offset) continue;
@@ -202,6 +205,7 @@ export class Poller {
       }
       if (this.offsetStore && updates.length > 0) void this.saveOffset();
     } catch (err) {
+      if (epoch !== this.chainEpoch || signal.aborted) return;
       if (err instanceof TelegramNetworkError && err.aborted) return;
       if (err instanceof TelegramBotApiError && err.errorCode === 409) {
         this._conflictStreak++;

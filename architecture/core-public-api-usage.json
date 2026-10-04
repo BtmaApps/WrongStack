@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1304,
-      "typeOnly": 1155,
+      "files": 1305,
+      "typeOnly": 1156,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -18181,6 +18181,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/telegram/tests/unit/poll-lock-write-failures.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/telegram/tests/unit/poller-stale-completion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

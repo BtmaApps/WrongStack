@@ -69,6 +69,7 @@ export class PollLock {
     if (this._held) return true;
 
     const existing = this.readLock();
+    if (existing === undefined) return false;
     if (existing && !this.isStale(existing)) return false;
 
     const now = Date.now();
@@ -100,6 +101,7 @@ export class PollLock {
 
     // Slow path: file exists but may be stale. Check again before attempting takeover.
     const fresh = this.readLock();
+    if (fresh === undefined) return false;
     if (fresh && !this.isStale(fresh)) return false;
 
     // Take over stale lock atomically via temp file + rename (never blind unlink).
@@ -182,9 +184,14 @@ export class PollLock {
     }
   }
 
-  private readLock(): LockFilePayload | null {
+  private readLock(): LockFilePayload | null | undefined {
+    let raw: string;
     try {
-      const raw = readFileSync(this.lockPath, 'utf8');
+      raw = readFileSync(this.lockPath, 'utf8');
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === 'ENOENT' ? null : undefined;
+    }
+    try {
       const parsed = JSON.parse(raw) as LockFilePayload;
       if (typeof parsed.id !== 'string' || typeof parsed.pid !== 'number') return null;
       // A non-finite heartbeatAt makes `Date.now() - heartbeatAt` NaN, and

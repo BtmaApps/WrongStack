@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T15:00:30.837Z
+**Generated:** 2026-10-04T15:01:26.977Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4479 |
-| Production source lines | 1053963 |
-| Test files | 4056 |
+| Production source lines | 1053974 |
+| Test files | 4058 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14584 |
 | Non-command slash imports | 0 |
@@ -55,7 +55,7 @@
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
 | @wrongstack/simpleui | 113 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 42 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
-| @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
+| @wrongstack/telegram | 27 | 40 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 269 | 295 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 451 | 412 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 24 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
