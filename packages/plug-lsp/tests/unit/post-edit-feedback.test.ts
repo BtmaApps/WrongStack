@@ -84,6 +84,89 @@ async function fixture() {
 }
 
 describe('same-call post-edit LSP feedback', () => {
+  it('does not begin analysis after the originating session leaves', async () => {
+    const f = await fixture();
+    f.leave();
+    expect(await f.run()).toBeUndefined();
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('does not invent a target when single-file metadata is absent', async () => {
+    const f = await fixture();
+    expect(await f.run({ ...f.input, toolInput: {} })).toBeUndefined();
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('ignores a replace preview with no modified-file metadata', async () => {
+    const f = await fixture();
+    expect(
+      await f.run({ ...f.input, toolName: 'replace', toolInput: { files: '*.ts' } }),
+    ).toBeUndefined();
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('does not offer bulk feedback without a configured language server', async () => {
+    const f = await fixture();
+    f.registry.list = () => [];
+    expect(await f.run({ ...f.input, toolName: 'patch', toolInput: {} })).toBeUndefined();
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('reports omitted bulk scope even with an empty returned file list', async () => {
+    const f = await fixture();
+    const output = await f.run({
+      ...f.input,
+      toolName: 'patch',
+      toolInput: {},
+      toolResult: {
+        content: 'patched',
+        isError: false,
+        modifiedPaths: [],
+        modifiedPathsOmitted: 2,
+      },
+    });
+    expect(output?.additionalContext).toContain('2 additional file scope entries not checked');
+    expect(output?.additionalContext).toContain('Verified file(s): 0');
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('stops analysis if the session leaves while resolving its server', async () => {
+    const f = await fixture();
+    f.registry.findForPath = async () => {
+      f.leave();
+      return f.server;
+    };
+    expect(await f.run()).toBeUndefined();
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('marks a file removed before document tracking as unverified', async () => {
+    const f = await fixture();
+    await fs.unlink(f.file);
+    const output = await f.run();
+    expect(output?.additionalContext).toContain('file not verified');
+    expect(output?.additionalContext).not.toContain('No LSP diagnostics');
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('marks a document lost immediately after opening as unverified', async () => {
+    const f = await fixture();
+    vi.spyOn(f.tracker, 'get').mockReturnValue(null);
+    const output = await f.run();
+    expect(output?.additionalContext).toContain('file not verified');
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('bounds the server identity in feedback without dropping file verification', async () => {
+    const f = await fixture();
+    f.cfg.diagnosticsWaitMs = 1000;
+    Object.defineProperty(f.server, 'name', { value: 'typescript'.repeat(30) });
+    const output = await f.run();
+    expect(output?.additionalContext).toContain('…".');
+    expect(output?.additionalContext).not.toContain(f.server.name);
+    expect(output?.additionalContext).toContain('Verified file(s): 1');
+  });
+
   it('checks deduplicated bulk-write paths even when result text is spooled', async () => {
     const f = await fixture();
     f.cfg.diagnosticsWaitMs = 1000;

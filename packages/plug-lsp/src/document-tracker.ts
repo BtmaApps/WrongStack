@@ -135,12 +135,7 @@ export class DocumentTracker {
         text = knownText;
       } else {
         const read = await this.readTrackable(absPath, 'file');
-        if (
-          read === null ||
-          generation !== this.generation ||
-          !this.isCurrentDocumentOperation(absPath, operation)
-        )
-          return false;
+        if (read === null) return false;
         text = read;
       }
       if (generation !== this.generation || !this.isCurrentDocumentOperation(absPath, operation))

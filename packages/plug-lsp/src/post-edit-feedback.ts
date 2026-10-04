@@ -48,7 +48,7 @@ export function createPostEditFeedback(
       : typeof target === 'string'
         ? [target]
         : [];
-    if (bulk && !targets) {
+    if (!targets) {
       if (input.toolName === 'replace' && args?.dry_run !== false) return;
       if (deps.registry.list().length === 0) return;
       return {
@@ -58,7 +58,7 @@ export function createPostEditFeedback(
       };
     }
     const files = [
-      ...new Set((targets ?? []).map((file) => resolveInputPath(file, { cwd: input.cwd }))),
+      ...new Set(targets.map((file) => resolveInputPath(file, { cwd: input.cwd }))),
     ].filter((file) => {
       const language = deps.registry.languageIdForPath(file);
       return language && deps.registry.list().some((s) => s.config.languages.includes(language));

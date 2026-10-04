@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-04T17:12:56.059Z; skill=codebase-navigation; applied=15; wins=15; skipped=70; skippedWins=70 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T17:12:56.059Z; skill=codebase-navigation; applied=15; wins=15; skipped=75; skippedWins=75 -->
 - **Never treat a `codebase-search` hit for an ignored-scope scratch script as a caller — index coverage stops at the ignore boundary, so name matches (e.g. `Probe2` in `packages/simpleui/tests/`) are collisions. Close callers of `.temp_files/*.ps1` probes with a filename-stem repo-wide grep plus a body-token control (e.g. grep the C# class name like `SaferProbe` in `.temp_files/`); if zero, callers are manual-only by construction, since `Add-Type`/P/Invoke probes import no project code. Identify a probe's role by grepping its Win32 API symbol in tracked scope (`SaferCreateLevel` → `packages/core/src/sandbox/windows-helper.ts`) instead of reading around.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `codebase-search`
@@ -17,7 +17,7 @@
   - *How:* `SaferCreateLevel`
   - *How:* `packages/core/src/sandbox/windows-helper.ts`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-04T18:51:34.226Z; skill=codebase-navigation; applied=1; wins=1; skipped=34; skippedWins=34 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T18:51:34.226Z; skill=codebase-navigation; applied=1; wins=1; skipped=39; skippedWins=39 -->
 - **When documenting a config key's in-project trust status in `docs/configuration.md`, diff the prose lists ("In-project config trust boundary", ~) against the code tables in `packages/core/src/storage/config-loader/in-project-policy.ts` (`IN_PROJECT_ALLOWED_KEYS`, `KNOWN_DENIED_IN_PROJECT`, `IN_PROJECT_DENIED_PATHS`) — the doc lists are hand-maintained and drift (e.g. all three `tools.sandbox.*` denied paths were missing while code enforced them). Treat the code table as source of truth, never the doc.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `docs/configuration.md`
@@ -29,7 +29,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:29:01.311Z; skill=codebase-navigation; applied=16; wins=16; skipped=61; skippedWins=61 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:29:01.311Z; skill=codebase-navigation; applied=16; wins=16; skipped=66; skippedWins=66 -->
 - **Always map test-file blast radius through collectors and gates, not call graphs: leaf `*.test.ts` files have no exports or importers, so check package `vitest.config.ts` + root `vitest.config.ts` `include` patterns, `tsconfig.test.json` via the package `typecheck` script, and coverage `include`/thresholds (e.g. `packages/cli/vitest.config.ts`) — weakened assertions can fail coverage gates even when no code imports the test. Watch for CWD-relative scratch roots like `path.resolve('../../.temp_files')` in CLI fleet tests, which assume vitest CWD = package root.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `*.test.ts`
@@ -40,7 +40,7 @@
   - *How:* `packages/cli/vitest.config.ts`
   - *How:* `path.resolve('../../.temp_files')`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T18:56:28.463Z; skill=codebase-navigation; applied=3; wins=3; skipped=30; skippedWins=30 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T18:56:28.463Z; skill=codebase-navigation; applied=3; wins=3; skipped=35; skippedWins=35 -->
 - **Always resolve `packages/cli/src/slash-commands/mcp-utils.ts` to its real target before mapping MCP command surfaces — it is a deprecated re-export of `packages/cli/src/services/mcp-management.ts` (the only REPL/TUI `/mcp` renderer), while WebUI list output flows through `listMcp`/`McpServerInfo` in `packages/mcp/src/manage.ts`, which can lag fields the CLI renderer reads directly from `MCPServerConfig` (e.g. `sandboxTrust` badge exists in `renderList` but not in the shared projection).**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/cli/src/slash-commands/mcp-utils.ts`
@@ -53,7 +53,7 @@
   - *How:* `sandboxTrust`
   - *How:* `renderList`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:25:58.141Z; skill=codebase-navigation; applied=2; wins=2; skipped=26; skippedWins=26 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:25:58.141Z; skill=codebase-navigation; applied=2; wins=2; skipped=31; skippedWins=31 -->
 - **Before mapping or approving edits to any `packages/**/tests/**/*.test.ts` file in this repo, diff the file's used symbols against its import lists with root `vitest.config.ts` `globals: false` in mind — vitest hooks (`afterAll`, `beforeEach`, …) and helper resets must be explicitly imported, so an un-imported used symbol is a guaranteed win32/ReferenceError failure invisible to production `tsc --noEmit -p packages/core`. When a test imports through `packages/core/src/sandbox/index.ts`, check the barrel's explicit re-export lines before proposing a barrel change: the barrel is under a public-API snapshot gate, and missing imports should be fixed in the test file, not by editing `src/sandbox/index.ts`.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/**/tests/**/*.test.ts`
@@ -65,7 +65,7 @@
   - *How:* `packages/core/src/sandbox/index.ts`
   - *How:* `src/sandbox/index.ts`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:11:34.959Z; skill=codebase-navigation; applied=1; wins=1; skipped=85; skippedWins=85 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:11:34.959Z; skill=codebase-navigation; applied=1; wins=1; skipped=90; skippedWins=90 -->
 - **Before reporting blast radius for WebUI view mounting, check `packages/webui/tests/components/chat-keep-alive.test.ts` — it asserts on raw source text of `packages/webui/src/components/ViewRouter.tsx` (`<ChatView />` always mounted, `ws-view-parked` parking, regex-rejected conditional renders), so structural or formatting edits to that render site can break tests that import graphs won't reveal.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/webui/tests/components/chat-keep-alive.test.ts`
@@ -73,7 +73,7 @@
   - *How:* `<ChatView />`
   - *How:* `ws-view-parked`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:19:19.976Z; skill=typescript-strict; applied=4; wins=4; skipped=27; skippedWins=27 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:19:19.976Z; skill=typescript-strict; applied=4; wins=4; skipped=32; skippedWins=32 -->
 - **Re-verify file-payload claims against current source before applying stale role notes: `packages/core/src/sandbox/windows-helper.ts` no longer embeds the PowerShell/C# Safer P/Invoke script older notes describe — it is now the 82-line `runas /trustlevel:0x20000` variant (`defaultWindowsHelperRunner`), so its behavioral contract lives in the TypeScript signatures and header doc, not inside a string payload. When mapping sandbox helper blast radius, anchor on `windows-native.ts:11` (production), `sandbox/index.ts:34` (public-API snapshot gate), and the env-gated `windows-native-integration.test.ts`.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/core/src/sandbox/windows-helper.ts`
@@ -84,7 +84,7 @@
   - *How:* `windows-native-integration.test.ts`
   - *How:* `sandbox/index.ts`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=14; wins=14; skipped=61; skippedWins=61 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=14; wins=14; skipped=66; skippedWins=66 -->
 - **When `codebase-impact-analysis` reports indirect call sites with `line: 0` (e.g. `applyHelper` reachability into `packages/core/src/sandbox/wrap.ts`), confirm exact locations with a literal-path `grep` for the symbol before citing `file:line`; report only grep-confirmed line numbers.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `codebase-impact-analysis`
@@ -94,7 +94,7 @@
   - *How:* `grep`
   - *How:* `file:line`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=3; wins=3; skipped=72; skippedWins=72 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=3; wins=3; skipped=77; skippedWins=77 -->
 - **When mapping a file whose main payload is a string-embedded script (e.g. the PowerShell/C# inside `packages/core/src/sandbox/windows-helper.ts`), read the full file with `read` — `codebase-skeleton` compresses the embedded script, and the behavioral contract (diagnostic exit codes, stdout lines, template-literal backslash prohibition) lives inside the string, not in TypeScript signatures.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `packages/core/src/sandbox/windows-helper.ts`
@@ -103,7 +103,7 @@
 
 ## Patterns to follow
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-04T17:39:58.246Z; skill=codebase-navigation; applied=11; wins=11; skipped=63; skippedWins=63 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-04T17:39:58.246Z; skill=codebase-navigation; applied=12; wins=12; skipped=67; skippedWins=67 -->
 - **Use `docs/reports/architecture-health-current.json` as a shortcut for "which vitest project collects this test file": it contains a generated per-file → `projects` array (e.g. `webui-jsdom`, `server-node`) mapping every test file to its collector(s). Verify against `packages/webui/vitest.config.ts` project `include`/`exclude` when the entry looks stale — the JSON is generated inventory, not the collection source of truth.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `docs/reports/architecture-health-current.json`
@@ -116,7 +116,7 @@
 
 ## Project facts
 
-<!-- learned-stamp: category=fact; capturedAt=2026-10-04T19:22:17.596Z; skill=codebase-navigation; applied=5; wins=5; skipped=24; skippedWins=24 -->
+<!-- learned-stamp: category=fact; capturedAt=2026-10-04T19:22:17.596Z; skill=codebase-navigation; applied=6; wins=6; skipped=28; skippedWins=28 -->
 - **Close "who runs a gated integration test" by grepping its gate env var repo-wide, not just import graphs: `WRONGSTACK_SANDBOX_INTEGRATION` in this repo gates three suites (`packages/core/tests/sandbox/windows-native-integration.test.ts`, `packages/core/tests/sandbox/container.test.ts`, `packages/tools/tests/sandbox-integration.test.ts`) and is set by no workflow — so invocation is manual-only, a fact import/call graphs cannot show. For leaf test files (no exports), "callers" are the vitest collectors: root `vitest.config.ts` `include` plus the per-file `projects` mapping in `docs/reports/architecture-health-current.json`.**
   - *Why:* Current state of the project — assumed by other conventions, build steps, or peers, so acting on a stale assumption wastes a cycle.
   - *How:* `WRONGSTACK_SANDBOX_INTEGRATION`
