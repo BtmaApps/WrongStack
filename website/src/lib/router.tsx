@@ -1,6 +1,6 @@
 import {
-  createContext,
   type CSSProperties,
+  createContext,
   type MouseEvent,
   type ReactNode,
   useCallback,
@@ -34,11 +34,12 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   const navigate = useCallback((to: string) => {
     const url = new URL(to, window.location.origin);
     const nextPath = normalizePath(url.pathname);
-    if (nextPath === normalizePath(window.location.pathname) && url.hash) {
+    const samePage = nextPath === normalizePath(window.location.pathname);
+    window.history.pushState({}, '', `${nextPath}${url.search}${url.hash}`);
+    if (samePage && url.hash) {
       document.querySelector(url.hash)?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
-    window.history.pushState({}, '', `${nextPath}${url.search}${url.hash}`);
     setPath(nextPath);
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);

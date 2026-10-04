@@ -58,7 +58,7 @@ export const featureStories: Feature[] = [
       'Malformed tool arguments repaired before validation',
       'Abort signals flow into subprocesses, walks and MCP calls',
       'Loop detection compares completed results, steers unchanged work and cuts persistent loops',
-      'With LSP and hooks enabled, file edits return current diagnostics or an unverified notice',
+      'With LSP and hooks enabled, single and bulk edits return bounded diagnostics or an unverified notice',
     ],
     icon: SquareTerminal,
     accent: 'red',

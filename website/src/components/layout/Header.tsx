@@ -56,8 +56,13 @@ export function Header() {
   );
   const reducedMotion = useReducedMotion();
   const moreRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<number | undefined>(undefined);
-  const leaveTimer = useRef<number | undefined>(undefined);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const clearMoreTimers = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    clearTimeout(leaveTimer.current);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -67,24 +72,32 @@ export function Header() {
   }, []);
 
   useEffect(() => {
+    clearMoreTimers();
     setOpen(false);
     setMoreOpen(false);
-  }, [path]);
+  }, [clearMoreTimers, path]);
 
   useEffect(() => {
     const close = (event: PointerEvent) => {
-      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
+      if (!moreRef.current?.contains(event.target as Node)) {
+        clearMoreTimers();
+        setMoreOpen(false);
+      }
     };
     const closeWithEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMoreOpen(false);
+      if (event.key === 'Escape') {
+        clearMoreTimers();
+        setMoreOpen(false);
+      }
     };
     window.addEventListener('pointerdown', close);
     window.addEventListener('keydown', closeWithEscape);
     return () => {
       window.removeEventListener('pointerdown', close);
       window.removeEventListener('keydown', closeWithEscape);
+      clearMoreTimers();
     };
-  }, []);
+  }, [clearMoreTimers]);
 
   const handleMoreEnter = useCallback(() => {
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
@@ -131,7 +144,10 @@ export function Header() {
           >
             <button
               type="button"
-              onClick={() => setMoreOpen((value) => !value)}
+              onClick={() => {
+                clearMoreTimers();
+                setMoreOpen((value) => !value);
+              }}
               aria-expanded={moreOpen}
               className={cn(
                 'flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors',
@@ -163,6 +179,7 @@ export function Header() {
                           key={group.id}
                           type="button"
                           onMouseEnter={() => setActiveGroup(group.id)}
+                          onClick={() => setActiveGroup(group.id)}
                           style={{ animationDelay: `${30 + groupIndex * 24}ms` }}
                           className={cn(
                             'menu-item-enter relative w-full px-4 py-3 text-left transition-colors',

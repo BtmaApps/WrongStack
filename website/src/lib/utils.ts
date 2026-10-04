@@ -33,6 +33,10 @@ export const skills = [
   { name: 'code-review', description: 'Review a PR, branch, or diff before it merges' },
   { name: 'codebase-navigation', description: 'Find and trace code with the codebase index' },
   { name: 'debugging', description: 'Root-cause an observed failure and prove the fix' },
+  {
+    name: 'evidence-audit',
+    description: 'Proof-driven bug hunt and fix rounds for any codebase scope',
+  },
   { name: 'chimera', description: 'Post-session code quality review of changed files' },
   {
     name: 'docker-deploy',
