@@ -336,7 +336,12 @@ function sortKeys(value: unknown, depth = 0, seen: Set<object> = new Set()): unk
     }
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      out[key] = sortKeys((value as Record<string, unknown>)[key], depth + 1, seen);
+      Object.defineProperty(out, key, {
+        value: sortKeys((value as Record<string, unknown>)[key], depth + 1, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     return out;
   } finally {

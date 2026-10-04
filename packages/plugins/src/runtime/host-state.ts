@@ -29,6 +29,11 @@ export function createHostStates<T extends HostState>(
   return {
     reset(api: PluginAPI): T {
       remove(api);
+      // Aborting the previous host runs listeners synchronously. A listener
+      // may reset this API again; keep that later reset instead of replacing
+      // its live state when the outer call resumes.
+      const reentrant = hosts.get(api);
+      if (reentrant) return reentrant;
       const state = create();
       hosts.set(api, state);
       return state;

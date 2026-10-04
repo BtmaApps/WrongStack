@@ -178,12 +178,16 @@
       "lines": 828,
       "relativeImports": 1
     },
+    "packages/plugins/src/cost-tracker/index.ts": {
+      "lines": 811,
+      "relativeImports": 1
+    },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
       "lines": 906,
       "relativeImports": 1
     },
     "packages/plugins/src/loop-breaker/index.ts": {
-      "lines": 853,
+      "lines": 858,
       "relativeImports": 0
     },
     "packages/plugins/src/migration-planner/index.ts": {
@@ -191,7 +195,7 @@
       "relativeImports": 2
     },
     "packages/plugins/src/secret-scanner/index.ts": {
-      "lines": 848,
+      "lines": 853,
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {

@@ -151,7 +151,15 @@ export abstract class WireAdapter implements Provider {
    * cap. `ctx.tools` already contains the final provider selection.
    */
   maxToolsCount: number = 0;
-  private toolSelectionCache: { source: Tool[]; limit: number; selected: Tool[] } | undefined;
+  private toolSelectionCache:
+    | {
+        source: Tool[];
+        sourceItems: Tool[];
+        sourceNames: string[];
+        limit: number;
+        selected: Tool[];
+      }
+    | undefined;
 
   constructor(
     protected readonly apiKey: string,
@@ -206,7 +214,16 @@ export abstract class WireAdapter implements Provider {
   selectToolsForRequest(tools: Tool[]): Tool[] {
     if (this.maxToolsCount <= 0 || tools.length <= this.maxToolsCount) return tools;
     const cached = this.toolSelectionCache;
-    if (cached?.source === tools && cached.limit === this.maxToolsCount) return cached.selected;
+    if (
+      cached?.source === tools &&
+      cached.limit === this.maxToolsCount &&
+      cached.sourceItems.length === tools.length &&
+      cached.sourceItems.every(
+        (tool, index) => tool === tools[index] && cached.sourceNames[index] === tools[index]?.name,
+      )
+    ) {
+      return cached.selected;
+    }
     const filteredTools = filterToolsByMaxCount(tools, this.maxToolsCount);
     // Log the dropped tools once per session so the user knows tools were
     // omitted — conversation history may reference them.
@@ -214,7 +231,13 @@ export abstract class WireAdapter implements Provider {
     if (droppedNames.length > 0) {
       this.logMaxToolsWarning(droppedNames);
     }
-    this.toolSelectionCache = { source: tools, limit: this.maxToolsCount, selected: filteredTools };
+    this.toolSelectionCache = {
+      source: tools,
+      sourceItems: [...tools],
+      sourceNames: tools.map((tool) => tool.name),
+      limit: this.maxToolsCount,
+      selected: filteredTools,
+    };
     return filteredTools;
   }
 

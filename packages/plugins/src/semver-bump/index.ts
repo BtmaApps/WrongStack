@@ -272,7 +272,7 @@ function generateChangelog(commits: ConventionalCommit[]): string {
   for (const c of commits) {
     if (c.breaking) {
       sections.breaking.push(c);
-    } else if (c.type in sections) {
+    } else if (Object.hasOwn(sections, c.type)) {
       sections[c.type as SectionKey].push(c);
     } else {
       sections.other.push(c);

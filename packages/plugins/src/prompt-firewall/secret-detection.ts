@@ -504,7 +504,12 @@ export function redactDeep(
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = redactDeep(v, allow, counter, skip, budget, deadline);
+      Object.defineProperty(out, k, {
+        value: redactDeep(v, allow, counter, skip, budget, deadline),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     return out;
   }

@@ -78,14 +78,26 @@ export function createH1State<T>(initial: T): H1State<T> {
     state: initial,
 
     register(key, unregister) {
-      const prior = handles.get(key);
-      if (prior) {
+      // An unregister callback can synchronously register another handle
+      // under this key. Release each one before replacing the slot so the
+      // final reentrant registration cannot be silently orphaned. The
+      // sweep is bounded: a callback that re-arms its own key re-stores
+      // it while the slot is empty, so the loop would otherwise never
+      // terminate. Stop once a callback has already been released.
+      const released = new Set<Unregister>();
+      let prior = handles.get(key);
+      while (prior) {
         handles.delete(key);
+        released.add(prior);
         safeRelease(prior);
         const reentrant = handles.get(key);
-        if (reentrant) {
+        if (!reentrant || released.has(reentrant)) {
+          // Drop the stale re-arm so a later release() cannot invoke an
+          // already-released unregister a second time.
           handles.delete(key);
-          safeRelease(reentrant);
+          prior = undefined;
+        } else {
+          prior = reentrant;
         }
       }
       if (unregister) {

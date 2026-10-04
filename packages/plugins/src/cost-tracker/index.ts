@@ -240,6 +240,19 @@ function readCostTrackerConfig(raw: Record<string, unknown> | undefined): CostTr
  * unbounded distinct keys. */
 const modelKeyCache = new BoundedMap<string, string>({ max: 256 });
 
+function ownValue<T>(record: Record<string, T>, key: string): T | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+function setOwnValue<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 function estimateCost(
   model: string,
   freshTokens: number,
@@ -255,12 +268,12 @@ function estimateCost(
 
   const unnamespaced = key.includes('/') ? key.split('/').pop()! : key;
   const pricing =
-    pricingOverrides[key] ??
-    pricingOverrides[unnamespaced] ??
-    bundledFromRegistry[key] ??
-    bundledFromRegistry[unnamespaced] ??
-    PRICING[key] ??
-    PRICING[unnamespaced] ??
+    ownValue(pricingOverrides, key) ??
+    ownValue(pricingOverrides, unnamespaced) ??
+    ownValue(bundledFromRegistry, key) ??
+    ownValue(bundledFromRegistry, unnamespaced) ??
+    ownValue(PRICING, key) ??
+    ownValue(PRICING, unnamespaced) ??
     DEFAULT_PRICING;
   const inputCost =
     (freshTokens / 1_000_000) * pricing.input +
@@ -375,11 +388,11 @@ const plugin: Plugin = {
         // cost for this model non-finite — reject the whole entry.
         if (!Number.isFinite(input) || !Number.isFinite(output)) continue;
         const cacheRead = v['cacheRead'];
-        pricingOverrides[model.toLowerCase()] = {
+        setOwnValue(pricingOverrides, model.toLowerCase(), {
           input,
           output,
           ...(typeof cacheRead === 'number' && Number.isFinite(cacheRead) ? { cacheRead } : {}),
-        };
+        });
       }
     }
 
@@ -415,13 +428,13 @@ const plugin: Plugin = {
               Number.isFinite(cost.input) &&
               Number.isFinite(cost.output)
             ) {
-              bundledFromRegistry[modelId.toLowerCase()] = {
+              setOwnValue(bundledFromRegistry, modelId.toLowerCase(), {
                 input: cost.input,
                 output: cost.output,
                 ...(typeof cost.cache_read === 'number' && Number.isFinite(cost.cache_read)
                   ? { cacheRead: cost.cache_read }
                   : {}),
-              };
+              });
               hydrated += 1;
             }
           }
@@ -513,10 +526,10 @@ const plugin: Plugin = {
       sessionCost.totalTokens += totalTokens;
       sessionCost.totalCostUsd += costUsd;
 
-      if (sessionCost.byModel[model] === undefined) {
-        sessionCost.byModel[model] = { tokens: 0, costUsd: 0, requests: 0 };
+      if (!Object.hasOwn(sessionCost.byModel, model)) {
+        setOwnValue(sessionCost.byModel, model, { tokens: 0, costUsd: 0, requests: 0 });
       }
-      const slot = expectDefined(sessionCost.byModel[model]);
+      const slot = expectDefined(ownValue(sessionCost.byModel, model));
       slot.tokens += totalTokens;
       slot.costUsd += costUsd;
       slot.requests += 1;

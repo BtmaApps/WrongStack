@@ -328,7 +328,12 @@ function redactInput(input: unknown, depth = 0): RedactionResult {
     for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
       const redacted = redactInput(v, depth + 1);
       if (!redacted.ok) return redacted;
-      out[k] = redacted.value;
+      Object.defineProperty(out, k, {
+        value: redacted.value,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     return { ok: true, value: out };
   }

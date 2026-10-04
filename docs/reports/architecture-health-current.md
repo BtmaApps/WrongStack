@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T18:07:58.370Z
+**Generated:** 2026-10-04T18:08:38.747Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4485 |
-| Production source lines | 1055239 |
-| Test files | 4086 |
+| Production source lines | 1055307 |
+| Test files | 4087 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14610 |
 | Non-command slash imports | 0 |
@@ -42,7 +42,7 @@
 | @wrongstack/mcp | 49 | 57 | @wrongstack/core |
 | @wrongstack/persistence | 8 | 19 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugin-sdk | 11 | 5 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 9 | 10 | — |
 | @wrongstack/providers | 120 | 109 | @wrongstack/core |
