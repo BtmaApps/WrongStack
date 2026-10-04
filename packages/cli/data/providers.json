@@ -3,7 +3,16 @@
     "id": "openai-codex",
     "name": "OpenAI Codex (ChatGPT sign-in)",
     "doc": "https://developers.openai.com/codex/models",
-    "models": {}
+    "models": {
+      "gpt-6.1-sol": { "id": "gpt-6.1-sol", "name": "GPT-6.1 Sol" }
+    }
+  },
+  "openai-chatgpt": {
+    "id": "openai-chatgpt",
+    "name": "OpenAI (ChatGPT plan)",
+    "models": {
+      "gpt-6.1-sol": { "id": "gpt-6.1-sol", "name": "GPT-6.1 Sol" }
+    }
   },
   "alibaba-token-plan": {
     "id": "alibaba-token-plan",

@@ -77,9 +77,19 @@ export function resolveProviderModelList(
     accountOwned ||
     ['openai-codex', 'github-copilot', 'anthropic-oauth'].includes(providerHint ?? '')
   ) {
-    // Saved account snapshots define membership, including an explicit empty
-    // result. Generic/curated/sibling catalogs may enrich IDs, never add them.
-    return (savedModels ?? []).map((id) => {
+    // Account snapshots plus explicitly curated ChatGPT suggestions define
+    // membership. Never add generic or sibling OpenAI catalog IDs here.
+    const ids = new Set(savedModels ?? []);
+    if (['openai-codex', 'openai-chatgpt'].includes(catalog?.id ?? providerHint ?? '')) {
+      for (const model of byId.values()) {
+        if (
+          model.provenance?.sources.includes('wrongstack-overlay') ||
+          model.provenance?.authoritative === true
+        )
+          ids.add(model.id);
+      }
+    }
+    return [...ids].map((id) => {
       const hit = byId.get(id);
       return hit ? describeCatalogModel(hit) : { id, name: id, capabilities: [] };
     });

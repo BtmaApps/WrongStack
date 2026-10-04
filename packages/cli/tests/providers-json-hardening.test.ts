@@ -9,6 +9,11 @@ const WEBUI_PROVIDERS_PATH = fileURLToPath(
   new URL('../../webui/public/providers.json', import.meta.url),
 );
 
+// These two account providers preserve curated suggestions even when discovery
+// has not supplied metadata yet (DefaultModelsRegistry.getModels). A suggestion
+// is not an entitlement or a source for invented descriptions/context limits.
+const CURATED_ACCOUNT_PROVIDERS = new Set(['openai-codex', 'openai-chatgpt']);
+
 /**
  * Minimum required fields for every model entry in the CLI providers.json
  * overlay. Providers.json uses `<id>: { id, name, description, ... }` shape.
@@ -16,7 +21,7 @@ const WEBUI_PROVIDERS_PATH = fileURLToPath(
 interface ProviderModelEntry {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   reasoning?: boolean;
   tool_call?: boolean;
   modalities?: { input: string[]; output: string[] };
@@ -29,7 +34,7 @@ interface ProviderModelEntry {
 interface ProviderEntry {
   id: string;
   name: string;
-  doc: string;
+  doc?: string;
   models?: Record<string, ProviderModelEntry>;
 }
 
@@ -59,12 +64,14 @@ describe('providers.json hardening — schema validation', () => {
       expect(provider.id, `provider ${id}`).toBe(id);
       expect(provider.name, `provider ${id}`).toBeTruthy();
       expect(typeof provider.name, `provider ${id}`).toBe('string');
-      expect(provider.doc, `provider ${id}`).toBeTruthy();
-      expect(typeof provider.doc, `provider ${id}`).toBe('string');
+      if (provider.doc !== undefined || !CURATED_ACCOUNT_PROVIDERS.has(id)) {
+        expect(provider.doc, `provider ${id}`).toBeTruthy();
+        expect(typeof provider.doc, `provider ${id}`).toBe('string');
+      }
     }
   });
 
-  it('CLI providers.json — every model entry has required fields (id, name, description)', () => {
+  it('CLI providers.json — model entries have identity and metadata when sourced', () => {
     const data = loadCliProviders();
     for (const [providerId, provider] of Object.entries(data)) {
       if (providerId.startsWith('_')) continue;
@@ -73,8 +80,12 @@ describe('providers.json hardening — schema validation', () => {
         expect(model.id, `${providerId}.models.${key}.id`).toBe(key);
         expect(model.name, `${providerId}.models.${key}.name`).toBeTruthy();
         expect(typeof model.name, `${providerId}.models.${key}.name`).toBe('string');
-        expect(model.description, `${providerId}.models.${key}.description`).toBeTruthy();
-        expect(typeof model.description, `${providerId}.models.${key}.description`).toBe('string');
+        if (model.description !== undefined || !CURATED_ACCOUNT_PROVIDERS.has(providerId)) {
+          expect(model.description, `${providerId}.models.${key}.description`).toBeTruthy();
+          expect(typeof model.description, `${providerId}.models.${key}.description`).toBe(
+            'string',
+          );
+        }
       }
     }
   });
@@ -102,7 +113,7 @@ describe('providers.json hardening — schema validation', () => {
     ],
   };
 
-  it('CLI providers.json — text models have limit.context unless models.dev owns them', () => {
+  it('CLI providers.json — text limits are known, catalog-owned, or unknown account metadata', () => {
     const data = loadCliProviders();
     for (const [providerId, provider] of Object.entries(data)) {
       if (providerId.startsWith('_')) continue;
@@ -112,6 +123,7 @@ describe('providers.json hardening — schema validation', () => {
         // Image/video generation models legitimately omit limit
         const outputModality = model.modalities?.output?.[0];
         if (outputModality === 'image' || outputModality === 'video') continue;
+        if (CURATED_ACCOUNT_PROVIDERS.has(providerId) && model.limit === undefined) continue;
         if (catalogBacked.includes(key)) {
           expect(
             model.limit,
@@ -134,6 +146,7 @@ describe('providers.json hardening — schema validation', () => {
     for (const [providerId, provider] of Object.entries(data)) {
       if (!provider.models) continue;
       for (const [key, model] of Object.entries(provider.models)) {
+        if (model.description === undefined && CURATED_ACCOUNT_PROVIDERS.has(providerId)) continue;
         expect(
           model.description?.trim(),
           `${providerId}.models.${key}.description is empty`,

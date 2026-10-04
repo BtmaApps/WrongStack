@@ -267,7 +267,14 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       const provider = merged[providerId];
       if (!provider) continue;
       provider.models = Object.fromEntries(
-        Object.entries(provider.models).filter(([modelId]) => allowed.has(modelId)),
+        Object.entries(provider.models).filter(
+          ([modelId, model]) =>
+            allowed.has(modelId) ||
+            // Explicit ChatGPT overlay suggestions survive stale/empty account
+            // snapshots; generic models.dev membership remains account-scoped.
+            (['openai-codex', 'openai-chatgpt'].includes(providerId) &&
+              model.provenance?.sources.includes('wrongstack-overlay')),
+        ),
       );
     }
     return merged;
