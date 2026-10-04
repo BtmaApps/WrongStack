@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T18:02:33.542Z
+**Generated:** 2026-10-04T18:03:15.403Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4485 |
-| Production source lines | 1054853 |
+| Production source lines | 1054914 |
 | Test files | 4079 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14610 |
@@ -106,9 +106,9 @@ None.
 | 924 | `packages/webui/src/hooks/ws-handlers.ts` |
 | 922 | `packages/cli/src/fleet/host.ts` |
 | 917 | `packages/cli/src/cli-main.ts` |
+| 913 | `packages/cli/src/webui-server.ts` |
 | 911 | `packages/kanban/src/server/project-server.ts` |
 | 911 | `packages/sdd/src/sdd-parallel-run.ts` |
-| 910 | `packages/cli/src/webui-server.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 907 | `packages/mcp/src/server.ts` |

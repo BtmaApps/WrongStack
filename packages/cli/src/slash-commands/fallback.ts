@@ -561,8 +561,9 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
               message: `${color.green('✓')} fallback gate countdown disabled ${color.dim('(immediate auto-switch)')}`,
             };
           }
-          const num = Number.parseInt(val, 10);
-          if (!Number.isFinite(num) || num < 1 || num > 60) {
+          const value = val.trim();
+          const num = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+          if (!Number.isSafeInteger(num) || num < 1 || num > 60) {
             return {
               message: `${color.amber('Usage:')} /fallback gate <1-60 seconds> | off`,
             };

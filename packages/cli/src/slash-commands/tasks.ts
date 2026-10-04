@@ -22,8 +22,9 @@ import type { SlashCommandContext } from './command-context.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
 function findTask(tasks: TaskItem[], query: string): { idx: number; item: TaskItem } | null {
-  const asIndex = Number.parseInt(query, 10);
-  if (!Number.isNaN(asIndex)) {
+  const value = query.trim();
+  const asIndex = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+  if (Number.isSafeInteger(asIndex)) {
     const idx = asIndex - 1;
     const item = tasks[idx];
     if (item) return { idx, item };

@@ -1,6 +1,7 @@
 import type { AgentPhase } from '@wrongstack/core/agent-catalog';
 import { AGENTS_BY_PHASE, summarizeDispatchLog } from '@wrongstack/core/agent-catalog';
 import { dispatchAgent } from '@wrongstack/core/coordination';
+import { sandboxTierForAgent } from '@wrongstack/core/sandbox';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import { formatFleetBudgetLines } from '../fleet/host-status.js';
@@ -173,7 +174,7 @@ async function handleStatus(opts: SlashCommandContext, cmd: string): Promise<{ m
     } else {
       lines.push('');
       lines.push(
-        `  ${color.bold('ID').padEnd(36)} ${color.bold('NAME').padEnd(16)} ${color.bold('STATUS').padEnd(10)} ${color.bold('TASK')}`,
+        `  ${color.bold('ID').padEnd(36)} ${color.bold('NAME').padEnd(16)} ${color.bold('STATUS').padEnd(10)} ${color.bold('TIER').padEnd(9)} ${color.bold('TASK')}`,
       );
       lines.push(color.dim('  ' + '─'.repeat(80)));
       for (const sa of status.subagents) {
@@ -187,8 +188,11 @@ async function handleStatus(opts: SlashCommandContext, cmd: string): Promise<{ m
               : color.dim(sa.status.padEnd(10));
         const ext =
           sa.extensions && sa.extensions > 0 ? `${color.yellow(`⚡×${sa.extensions}`)} ` : '';
+        const tier = color.dim(
+          sandboxTierForAgent(sa.id).replace('workspace-write', 'rw').padEnd(9),
+        );
         const task = sa.currentTask ?? color.dim('—');
-        lines.push(`  ${id} ${name} ${statusColor} ${ext}${task}`);
+        lines.push(`  ${id} ${name} ${statusColor} ${tier} ${ext}${task}`);
       }
     }
     const budget = opts.onFleetBudget?.();
@@ -369,7 +373,13 @@ async function handleSpawn(
   subargs: string[],
 ): Promise<{ message: string }> {
   const role = subargs[0] ?? 'worker';
-  const count = Math.min(16, Math.max(1, Number.parseInt(subargs[1] ?? '1', 10) || 1));
+  const rawCount = subargs[1] ?? '1';
+  if (!/^-?\d+$/.test(rawCount)) {
+    const msg = `Invalid spawn count "${rawCount}". Use an integer between 1 and 16.`;
+    opts.renderer.writeWarning(msg);
+    return { message: msg };
+  }
+  const count = Math.min(16, Math.max(1, Number.parseInt(rawCount, 10) || 1));
   if (!opts.onFleetSpawn) {
     const msg = `${color.amber('⚠ /fleet spawn is not wired in this session.')}`;
     opts.renderer.writeWarning(msg);

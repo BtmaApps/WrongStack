@@ -122,7 +122,10 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     : wstackGlobalRoot();
   const profileConfigPath =
     opts.profileConfigPath ?? opts.globalConfigPath ?? path.join(globalRoot, 'config.json');
-  const rateLimitMax = Number.parseInt(process.env['WEBUI_RATE_LIMIT'] ?? '600', 10);
+  const rawRateLimit = process.env['WEBUI_RATE_LIMIT']?.trim() ?? '';
+  const parsedRateLimit = /^\d+$/.test(rawRateLimit) ? Number(rawRateLimit) : Number.NaN;
+  const rateLimitMax =
+    Number.isSafeInteger(parsedRateLimit) && parsedRateLimit >= 0 ? parsedRateLimit : 600;
   const clients = new Map<WebSocket, ConnectedClient>();
   const pendingConfirms = new Map<string, PendingConfirm>();
   const secretScrubber = new DefaultSecretScrubber();

@@ -113,6 +113,10 @@ const INTENTIONALLY_UNHANDLED = new Set<string>([
   // this diagnostic frame is a best-effort surface for edge-case failures that
   // don't have a dedicated UI handler yet.
   'terminal.error',
+  // Sandbox lifecycle telemetry (plan 28) — the WebUI reads the active tier via
+  // the `/api/sandbox/status` poll (`useSandboxStatus`); these frames are
+  // forward-looking live signal with no dedicated UI consumer yet.
+  'sandbox.event',
   // Goal granular events — the client mirrors the full canonical state via
   // `goal.state` (handled), so these per-event signals are redundant.
   'goal.error',

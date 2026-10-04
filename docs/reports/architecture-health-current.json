@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:02:33.542Z",
+  "generatedAt": "2026-10-04T18:03:15.403Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4485,
     "testFiles": 4079,
-    "sourceLines": 1054853,
+    "sourceLines": 1054914,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -25835,6 +25835,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/cli/src/slash-commands/settings-mutations.ts",
+      "lines": 801,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/cli/src/slash-commands/tool.ts",
       "lines": 839,
       "relativeImports": 5
@@ -25846,7 +25851,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 910,
+      "lines": 913,
       "relativeImports": 22
     },
     {
@@ -26407,6 +26412,11 @@
       "relativeImports": 38
     },
     {
+      "file": "packages/cli/src/webui-server.ts",
+      "lines": 913,
+      "relativeImports": 22
+    },
+    {
       "file": "packages/kanban/src/server/project-server.ts",
       "lines": 911,
       "relativeImports": 10
@@ -26415,11 +26425,6 @@
       "file": "packages/sdd/src/sdd-parallel-run.ts",
       "lines": 911,
       "relativeImports": 7
-    },
-    {
-      "file": "packages/cli/src/webui-server.ts",
-      "lines": 910,
-      "relativeImports": 22
     },
     {
       "file": "packages/webui/src/components/AudienceMemoryPanel.tsx",

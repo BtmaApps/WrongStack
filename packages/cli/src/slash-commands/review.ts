@@ -86,8 +86,15 @@ export function buildReviewCommand(opts: SlashCommandContext): SlashCommand {
       for (let i = 0; i < tokens.length; i++) {
         const tok = (tokens[i] ?? '').toLowerCase();
         if ((tok === '--limit' || tok === '-n') && tokens[i + 1]) {
-          const n = Number.parseInt(tokens[++i] ?? '', 10);
-          if (Number.isFinite(n) && n > 0) limit = Math.min(200, n);
+          const raw = tokens[++i] ?? '';
+          if (!/^\d+$/.test(raw)) {
+            return { message: `Invalid --limit "${raw}". Use a positive integer.` };
+          }
+          const n = Number(raw);
+          if (!Number.isFinite(n)) {
+            return { message: `Invalid --limit "${raw}". Use a positive integer.` };
+          }
+          if (n > 0) limit = Math.min(200, n);
         } else if ((tok === '--files' || tok === '--file') && tokens[i + 1]) {
           fileFilter = (tokens[++i] ?? '').toLowerCase();
         }

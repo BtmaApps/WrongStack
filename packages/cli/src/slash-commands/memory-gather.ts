@@ -63,8 +63,9 @@ export async function runGatherCommand(
         gatherErrors.push('--limit needs a value between 1 and 500.');
         continue;
       }
-      const parsed = Number.parseInt(next, 10);
-      if (!Number.isFinite(parsed) || parsed < 1) {
+      const value = next.trim();
+      const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+      if (!Number.isSafeInteger(parsed) || parsed < 1) {
         gatherErrors.push(`--limit must be a positive integer (got "${next}").`);
         continue;
       }

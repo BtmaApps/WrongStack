@@ -178,8 +178,9 @@ export async function executeContextSettings(
         message: `${color.amber('Usage:')} /settings max-concurrent <n>   ${color.dim('(0 = default)')}`,
       };
     }
-    const n = Number.parseInt(raw, 10);
-    if (Number.isNaN(n) || n < 0) {
+    const value = raw.trim();
+    const n = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+    if (!Number.isSafeInteger(n) || n < 0) {
       return {
         message: `${color.red('Invalid number')}: "${raw}". Enter a non-negative integer (0 = default)`,
       };

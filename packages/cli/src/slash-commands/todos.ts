@@ -8,8 +8,9 @@ import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
 /** Find a todo by 1-based index, exact id, or case-insensitive substring. */
 function findTodo(todos: TodoItem[], query: string): { idx: number; item: TodoItem } | null {
-  const asIndex = Number.parseInt(query, 10);
-  if (!Number.isNaN(asIndex)) {
+  const value = query.trim();
+  const asIndex = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+  if (Number.isSafeInteger(asIndex)) {
     const idx = asIndex - 1;
     const item = todos[idx];
     if (item) return { idx, item };

@@ -330,8 +330,9 @@ export function buildBrainCommand(opts: SlashCommandContext): SlashCommand {
           );
         }
         if (ledgerOp === 'autodeny') {
-          const n = Number.parseInt(rest[1] ?? '', 10);
-          if (!Number.isInteger(n) || n < 0) {
+          const raw = rest[1]?.trim() ?? '';
+          const n = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+          if (!Number.isSafeInteger(n) || n < 0) {
             const msg =
               'Usage: /brain ledger autodeny <n>  (0 disables the deterministic deny guard)';
             opts.renderer.writeWarning(msg);

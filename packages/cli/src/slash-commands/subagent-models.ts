@@ -93,8 +93,9 @@ function formatSlot(slot: SubagentSlot | undefined, config: Config): string {
 /** 1-based lane number from user input; returns undefined when out of range. */
 function parseLaneNumber(token: string | undefined, laneCount: number): number | undefined {
   if (!token) return undefined;
-  const n = Number.parseInt(token, 10);
-  if (!Number.isFinite(n) || n < 1 || n > laneCount) return undefined;
+  const value = token.trim();
+  const n = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+  if (!Number.isSafeInteger(n) || n < 1 || n > laneCount) return undefined;
   return n - 1;
 }
 
@@ -278,8 +279,9 @@ export function buildSubagentModelsCommand(opts: SlashCommandContext): SlashComm
           );
         }
         case 'lanes': {
-          const count = Number.parseInt(tokens[1] ?? '', 10);
-          if (!Number.isFinite(count) || count < 1 || count > MAX_SUBAGENT_SLOTS) {
+          const rawCount = tokens[1]?.trim() ?? '';
+          const count = /^\d+$/.test(rawCount) ? Number(rawCount) : Number.NaN;
+          if (!Number.isSafeInteger(count) || count < 1 || count > MAX_SUBAGENT_SLOTS) {
             return {
               message: color.red(`Lane count must be between 1 and ${MAX_SUBAGENT_SLOTS}.`),
             };

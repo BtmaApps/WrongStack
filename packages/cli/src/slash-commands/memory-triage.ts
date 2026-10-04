@@ -69,8 +69,9 @@ export async function runTriageCommand(
           flagErrors.push('--limit needs a value.');
           continue;
         }
-        const parsed = Number.parseInt(next, 10);
-        if (!Number.isFinite(parsed) || parsed < 1) {
+        const value = next.trim();
+        const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+        if (!Number.isSafeInteger(parsed) || parsed < 1) {
           flagErrors.push(`--limit must be a positive integer (got "${next}").`);
           continue;
         }
@@ -83,8 +84,9 @@ export async function runTriageCommand(
           flagErrors.push('--max-phase3 needs a value.');
           continue;
         }
-        const parsed = Number.parseInt(next, 10);
-        if (!Number.isFinite(parsed) || parsed < 1) {
+        const value = next.trim();
+        const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+        if (!Number.isSafeInteger(parsed) || parsed < 1) {
           flagErrors.push(`--max-phase3 must be a positive integer (got "${next}").`);
           continue;
         }
@@ -97,8 +99,9 @@ export async function runTriageCommand(
           flagErrors.push('--max-phase4-pairs needs a value.');
           continue;
         }
-        const parsed = Number.parseInt(next, 10);
-        if (!Number.isFinite(parsed) || parsed < 1) {
+        const value = next.trim();
+        const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+        if (!Number.isSafeInteger(parsed) || parsed < 1) {
           flagErrors.push(`--max-phase4-pairs must be a positive integer (got "${next}").`);
           continue;
         }

@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 8,
+      "files": 9,
       "typeOnly": 0,
-      "runtimeOrMixed": 8
+      "runtimeOrMixed": 9
     },
     "@wrongstack/core/security": {
       "files": 185,
@@ -10225,6 +10225,12 @@
     {
       "specifier": "@wrongstack/core/sandbox",
       "file": "packages/cli/src/cli-main.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/cli/src/slash-commands/fleet.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

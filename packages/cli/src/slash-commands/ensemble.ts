@@ -61,17 +61,33 @@ export function buildEnsembleCommand(opts: SlashCommandContext): SlashCommand {
       // timeout and bounded concurrency — these flags just surface them.
       let timeoutMs: number | undefined;
       let maxConcurrency: number | undefined;
+      const invalidOptions: string[] = [];
       const flagStripped = args
-        .replace(/--timeout(?:=|\s+)(\d+)/i, (_m, n: string) => {
-          const sec = Number.parseInt(n, 10);
-          if (Number.isFinite(sec) && sec > 0) timeoutMs = Math.min(3600, sec) * 1000;
+        .replace(/--timeout(?:=|\s+)(\S+)/i, (_m, raw: string) => {
+          const value = raw.trim();
+          const sec = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+          if (!Number.isSafeInteger(sec) || sec < 1) {
+            invalidOptions.push(`--timeout "${raw}"`);
+          } else {
+            timeoutMs = Math.min(3600, sec) * 1000;
+          }
           return ' ';
         })
-        .replace(/--(?:concurrency|max)(?:=|\s+)(\d+)/i, (_m, n: string) => {
-          const c = Number.parseInt(n, 10);
-          if (Number.isFinite(c) && c > 0) maxConcurrency = Math.min(16, c);
+        .replace(/--(?:concurrency|max)(?:=|\s+)(\S+)/i, (_m, raw: string) => {
+          const value = raw.trim();
+          const c = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+          if (!Number.isSafeInteger(c) || c < 1) {
+            invalidOptions.push(`--concurrency "${raw}"`);
+          } else {
+            maxConcurrency = Math.min(16, c);
+          }
           return ' ';
         });
+      if (invalidOptions.length > 0) {
+        return {
+          message: `Invalid ensemble option: ${invalidOptions.join(', ')}. Use positive integer values.`,
+        };
+      }
       const trimmed = flagStripped.trim();
       if (!trimmed) {
         return {

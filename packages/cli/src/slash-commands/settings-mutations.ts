@@ -109,8 +109,9 @@ export async function executeSettingsSubcommand(
           message: `${color.amber('Usage:')} /settings delay <seconds>   ${color.dim('(0 disables)')}`,
         };
       }
-      const seconds = Number.parseFloat(raw);
-      if (Number.isNaN(seconds) || seconds < 0) {
+      const value = raw.trim();
+      const seconds = value ? Number(value) : Number.NaN;
+      if (!Number.isFinite(seconds) || seconds < 0) {
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter seconds, e.g. /settings delay 30`,
         };
@@ -210,8 +211,9 @@ export async function executeSettingsSubcommand(
       if (raw === undefined) {
         return { message: `${color.amber('Usage:')} /settings refine-delay <seconds>` };
       }
-      const seconds = Number.parseFloat(raw);
-      if (Number.isNaN(seconds) || seconds < 0) {
+      const value = raw.trim();
+      const seconds = value ? Number(value) : Number.NaN;
+      if (!Number.isFinite(seconds) || seconds < 0) {
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter seconds, e.g. /settings refine-delay 30`,
         };
@@ -347,8 +349,9 @@ export async function executeSettingsSubcommand(
           message: `${color.amber('Usage:')} /settings breaker-timeout <seconds>   ${color.dim('(0 = manual recovery only)')}`,
         };
       }
-      const seconds = Number.parseFloat(raw);
-      if (Number.isNaN(seconds) || seconds < 0) {
+      const value = raw.trim();
+      const seconds = value ? Number(value) : Number.NaN;
+      if (!Number.isFinite(seconds) || seconds < 0) {
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter seconds, e.g. /settings breaker-timeout 60`,
         };

@@ -38,6 +38,10 @@
       "lines": 901,
       "relativeImports": 13
     },
+    "packages/cli/src/slash-commands/settings-mutations.ts": {
+      "lines": 801,
+      "relativeImports": 8
+    },
     "packages/cli/src/slash-commands/tool.ts": {
       "lines": 839,
       "relativeImports": 5
@@ -47,7 +51,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 910,
+      "lines": 913,
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {

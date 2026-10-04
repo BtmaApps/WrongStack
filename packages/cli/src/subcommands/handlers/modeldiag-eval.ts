@@ -133,7 +133,16 @@ export async function runModeldiagEval(
   const maxValue =
     maxEq?.replace('--max=', '') ??
     (typeof deps.flags?.['max'] === 'string' ? deps.flags['max'] : undefined);
-  const maxModels = maxValue ? Math.max(1, parseInt(maxValue, 10) || 2) : 2;
+  let maxModels = 2;
+  if (maxValue !== undefined) {
+    const rawMax = maxValue.trim();
+    const parsedMax = /^\d+$/.test(rawMax) ? Number(rawMax) : Number.NaN;
+    if (!Number.isSafeInteger(parsedMax) || parsedMax < 1) {
+      writeLine(`${color.amber(`Invalid --max value "${maxValue}". Use a positive integer.`)}`);
+      return 1;
+    }
+    maxModels = parsedMax;
+  }
 
   const quick =
     evalArgs.includes('--quick') ||
@@ -193,9 +202,9 @@ export async function runModeldiagEval(
     } else {
       targetProviderIds = [];
       for (const part of selected.split(',').map((s) => s.trim())) {
-        const idx = parseInt(part, 10);
-        if (idx >= 1 && idx <= keyedProviderIds.length) {
-          const pid = keyedProviderIds[idx - 1]!;
+        const index = /^\d+$/.test(part) ? Number(part) : Number.NaN;
+        if (Number.isSafeInteger(index) && index >= 1 && index <= keyedProviderIds.length) {
+          const pid = keyedProviderIds[index - 1]!;
           if (!targetProviderIds.includes(pid)) targetProviderIds.push(pid);
         } else if (keyedProviderIds.includes(part)) {
           if (!targetProviderIds.includes(part)) targetProviderIds.push(part);
