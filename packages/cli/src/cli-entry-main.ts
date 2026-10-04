@@ -61,7 +61,9 @@ export async function main(argv: string[]): Promise<number> {
   );
   try {
     const { initializeCli } = await import('./cli-context.js');
-    const cliCtx = await initializeCli(argv);
+    const cliCtx = await initializeCli(argv, {
+      onNonTuiLaunch: () => startupOutput.stop(),
+    });
     // A number means a short-circuit flag or a subcommand already ran to
     // completion; the interactive stack is never touched.
     if (typeof cliCtx === 'number') return cliCtx;

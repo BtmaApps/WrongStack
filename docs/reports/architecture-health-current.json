@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:01:05.997Z",
+  "generatedAt": "2026-10-04T18:01:49.788Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4077,
-    "sourceLines": 1054840,
+    "testFiles": 4078,
+    "sourceLines": 1054849,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -155,7 +155,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 566,
-      "testFiles": 586,
+      "testFiles": 587,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -195,7 +195,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 586
+          "testFiles": 587
         }
       ]
     },
@@ -3078,6 +3078,12 @@
       },
       {
         "file": "packages/cli/tests/hq-kanban-oversized-e2e.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-launch-startup-output.test.ts",
         "projects": [
           "root-node"
         ]

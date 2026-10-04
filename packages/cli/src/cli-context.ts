@@ -63,7 +63,10 @@ export interface CliContext extends BootContext {
  * or a numeric exit code when a short-circuit flag (--help, --desktop, --hq)
  * fires. When the return is a number the caller must return it immediately.
  */
-export async function initializeCli(argv: string[]): Promise<CliContext | number> {
+export async function initializeCli(
+  argv: string[],
+  options: { onNonTuiLaunch?: () => void } = {},
+): Promise<CliContext | number> {
   // Pre-boot side effects (must fire before --help short-circuit).
   applyNodeEnvDefault();
   applySessionShellDefault();
@@ -152,6 +155,10 @@ export async function initializeCli(argv: string[]): Promise<CliContext | number
       return 0;
     }
     effectiveArgv = applyLaunchMenuToArgv(argv, menuResult);
+    // Release TUI startup capture before entering a server's lifetime wait.
+    // HQ does not return until shutdown, so restoring output after initializeCli
+    // resolves would hide its connection banner until Ctrl+C.
+    if (menuResult.mode !== 'tui-repl') options.onNonTuiLaunch?.();
     // Re-parse so the downstream short-circuits see the augmented
     // surface flags and any user-typed --port / --host.
     const augmentedFlags = parseArgs(effectiveArgv).flags;
