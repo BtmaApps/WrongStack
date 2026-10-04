@@ -347,7 +347,19 @@ export class RequirementIntakeStore {
         } else {
           index.entries.push(entry);
         }
-        await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
+        try {
+          await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
+        } catch (error) {
+          // The record is already durable. Do not leave a valid but stale
+          // index that can hide it from status-filtered listings; a missing
+          // index is rebuilt from the record files on the next read.
+          try {
+            await fsp.unlink(this.indexPath);
+          } catch {
+            // Best effort: preserve the original index-write failure.
+          }
+          throw error;
+        }
       },
       { timeoutMs: this.lockTimeoutMs },
     );

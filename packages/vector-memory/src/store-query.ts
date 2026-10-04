@@ -120,7 +120,11 @@ export async function searchVectorEntries(
   // Embed the query through the same provider-level cache as writes —
   // repeated identical queries skip the ONNX pass entirely.
   const strict = opts.failOnEmbeddingError === true;
-  const queryVec = await host.embedWithCache(query, strict);
+  const queryVec = await host.embedWithCache(query, strict).catch((error) => {
+    host.assertOpen();
+    throw error;
+  });
+  host.assertOpen();
   if (!queryVec || queryVec.length === 0) {
     if (strict) {
       throw new VectorMemoryProviderUnavailableError(

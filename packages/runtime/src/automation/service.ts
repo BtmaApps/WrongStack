@@ -23,6 +23,7 @@ export class AutomationService {
   readonly workerId = `${os.hostname()}/${process.pid}/${randomUUID()}`;
   private readonly active = new Map<string, { abort: AbortController; done: Promise<void> }>();
   private ticking = false;
+  private tickDone: Promise<void> = Promise.resolve();
   private stopped = false;
   lastError: string | null = null;
   constructor(
@@ -39,12 +40,21 @@ export class AutomationService {
   async tick(now = Date.now()): Promise<void> {
     if (this.ticking || this.stopped) return;
     this.ticking = true;
+    let resolveTick: (() => void) | undefined;
+    this.tickDone = new Promise<void>((resolve) => {
+      resolveTick = resolve;
+    });
     try {
       await this.recoverAbsentWorkers(now);
+      if (this.stopped) return;
       await this.store.scheduleDue(now);
       while (!this.stopped && this.active.size < this.maxConcurrent) {
         const run = await this.store.claim(this.workerId, now);
         if (!run) break;
+        if (this.stopped) {
+          await this.store.finish(run.id, run.leaseId!, { status: 'cancelled' });
+          break;
+        }
         const abort = new AbortController();
         const done = this.run(run, abort.signal)
           .catch((error) => {
@@ -56,6 +66,7 @@ export class AutomationService {
       }
     } finally {
       this.ticking = false;
+      resolveTick?.();
     }
   }
   private async run(run: AutomationRun, signal: AbortSignal): Promise<void> {
@@ -251,6 +262,7 @@ export class AutomationService {
   async stop(): Promise<void> {
     this.stopped = true;
     for (const item of this.active.values()) item.abort.abort();
+    await this.tickDone;
     await this.idle();
   }
 }

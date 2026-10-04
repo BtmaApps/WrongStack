@@ -46,6 +46,7 @@ export function createToolSearch(options: SearchToolOptions = {}): ResearchSearc
         NO_CONTEXT,
         { signal: opts.signal ?? new AbortController().signal },
       );
+      if (opts.signal?.aborted) return [];
       return out.results.map((result) => ({
         title: result.title,
         url: result.url,

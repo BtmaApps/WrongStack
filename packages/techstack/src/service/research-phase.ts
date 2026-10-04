@@ -30,6 +30,7 @@ export async function runResearchPhase(
   } catch {
     return snapshot;
   }
+  if (options.signal?.aborted) return snapshot;
   options.onProgress?.('synthesizing', 1, 1);
   return findings.length
     ? { ...snapshot, findings: [...snapshot.findings, ...findings] }

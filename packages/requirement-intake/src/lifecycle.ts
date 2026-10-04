@@ -23,6 +23,7 @@ export const ALLOWED_TRANSITIONS: Readonly<Record<IntakeStatus, readonly IntakeS
 export const MUTABLE_STATUSES: readonly IntakeStatus[] = ['draft', 'collecting_information'];
 
 export function canTransition(from: IntakeStatus, to: IntakeStatus): boolean {
+  if (!Object.hasOwn(ALLOWED_TRANSITIONS, from)) return false;
   return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
 }
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:08:38.747Z",
+  "generatedAt": "2026-10-04T18:09:22.415Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4087,
-    "sourceLines": 1055307,
+    "testFiles": 4091,
+    "sourceLines": 1055338,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -576,7 +576,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 28,
-      "testFiles": 23,
+      "testFiles": 24,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -596,7 +596,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 23
+          "testFiles": 24
         }
       ]
     },
@@ -724,7 +724,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 51,
-      "testFiles": 42,
+      "testFiles": 44,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -739,7 +739,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 42
+          "testFiles": 44
         }
       ]
     },
@@ -824,7 +824,7 @@
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
       "sourceFiles": 18,
-      "testFiles": 24,
+      "testFiles": 25,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -839,7 +839,7 @@
         {
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
-          "testFiles": 24
+          "testFiles": 25
         }
       ]
     },
@@ -14063,6 +14063,12 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/automation-stop-claim.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/automation.test.ts",
         "projects": [
           "root-node"
@@ -16121,6 +16127,12 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/research-phase-cancelled-completion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/research/llm-cancelled-completion.test.ts",
         "projects": [
           "root-node"
@@ -16134,6 +16146,12 @@
       },
       {
         "file": "packages/techstack/tests/research/researcher.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/research/search-cancelled-completion.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20772,6 +20790,12 @@
       },
       {
         "file": "packages/vector-memory/tests/sage-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vector-memory/tests/search-close-embedding.test.ts",
         "projects": [
           "root-node"
         ]
