@@ -285,7 +285,12 @@ export async function elicitViaUserInput(
     }
     const content: Record<string, unknown> = {};
     form.fields.forEach((field, i) => {
-      content[field.name] = answerValue(field, byId.get(questionId(i)));
+      Object.defineProperty(content, field.name, {
+        value: answerValue(field, byId.get(questionId(i))),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     });
     const checked = validateElicitationContent(form.fields, content);
     if (checked.ok) return { action: 'accept', content: checked.value };

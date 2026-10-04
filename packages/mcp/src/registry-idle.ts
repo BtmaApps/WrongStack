@@ -50,7 +50,7 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
   // `if (slot.onDisconnect)` before `removeDisconnectListener`, so that listener
   // could then never be detached), inflate `sleepCount`, and broadcast
   // `mcp.server.disconnected {reason:'idle-sleep'}` for a server now serving work.
-  if (slot.client || slot.state !== 'dormant') return;
+  if (ctx.servers.get(slot.cfg.name) !== slot || slot.client || slot.state !== 'dormant') return;
   slot.onDisconnect = undefined;
   slot.operations.sleepCount++;
   ctx.recordOperation(slot, 'sleep', 'idle-timeout');

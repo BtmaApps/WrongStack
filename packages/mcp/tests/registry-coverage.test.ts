@@ -423,6 +423,7 @@ describe('MCPRegistry coverage', () => {
 
     await sleepIdleSlot(
       {
+        servers: new Map(),
         recordOperation: vi.fn(),
         log: { info: vi.fn(), warn: vi.fn() },
         events: { emit: vi.fn() },

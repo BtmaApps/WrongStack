@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:04:29.765Z",
+  "generatedAt": "2026-10-04T18:05:11.632Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4081,
-    "sourceLines": 1055050,
+    "testFiles": 4084,
+    "sourceLines": 1055131,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -384,7 +384,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 49,
-      "testFiles": 54,
+      "testFiles": 57,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -397,7 +397,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 54
+          "testFiles": 57
         }
       ]
     },
@@ -11765,6 +11765,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/idle-sleep-slot-identity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/integration.test.ts",
         "projects": [
           "root-node"
@@ -11916,6 +11922,18 @@
       },
       {
         "file": "packages/mcp/tests/stdio-fault-soak.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/streamable-connect-close-fence.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/streamable-cr-event-delimiter.test.ts",
         "projects": [
           "root-node"
         ]

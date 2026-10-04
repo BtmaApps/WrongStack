@@ -272,6 +272,7 @@ describe('mcp 100% coverage suite', () => {
       operations: { inFlightCalls: 0, sleepCount: 0 },
     };
     const fakeCtx: any = {
+      servers: new Map([[fakeSlot.cfg.name, fakeSlot]]),
       log: { warn: vi.fn(), info: vi.fn() },
       events: { emit: vi.fn() },
       recordOperation: vi.fn(),

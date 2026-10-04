@@ -394,14 +394,19 @@ export function validateElicitationContent(
 ): Parsed<Record<string, ElicitationValue>> {
   const out: Record<string, ElicitationValue> = {};
   for (const field of fields) {
-    const raw = content[field.name];
+    const raw = Object.hasOwn(content, field.name) ? content[field.name] : undefined;
     if (
       Array.isArray(raw) &&
       raw.length === 0 &&
       field.kind === 'multi-enum' &&
       field.minItems === 0
     ) {
-      out[field.name] = [];
+      Object.defineProperty(out, field.name, {
+        value: [],
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
       continue;
     }
     // `''` is a real string answer, not an absent one. A declared
@@ -420,7 +425,12 @@ export function validateElicitationContent(
     }
     const checked = checkValue(field, raw);
     if (!checked.ok) return checked;
-    out[field.name] = checked.value;
+    Object.defineProperty(out, field.name, {
+      value: checked.value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return { ok: true, value: out };
 }

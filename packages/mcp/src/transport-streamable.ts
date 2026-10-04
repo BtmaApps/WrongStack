@@ -161,9 +161,15 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     this.closed = false;
     this.state = 'connecting';
     this.serverMetadata = undefined;
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
-    const startupTimer = setTimeout(() => this.abortController?.abort(), this.timeout);
+    const controller = new AbortController();
+    this.abortController = controller;
+    const signal = controller.signal;
+    const assertCurrent = (): void => {
+      if (this.abortController !== controller || signal.aborted || this.closed) {
+        throw makeAbortError('connect');
+      }
+    };
+    const startupTimer = setTimeout(() => controller.abort(), this.timeout);
 
     try {
       const initializeId = this.genId();
@@ -190,6 +196,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       };
       this.applyTlsAgent(initFetchOpts);
       const initRes = await this.fetchWithAuthorization(this.url, initFetchOpts, signal);
+      assertCurrent();
 
       if (!initRes.ok) {
         throw new Error(`initialize HTTP ${initRes.status}: ${initRes.statusText}`);
@@ -208,6 +215,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         data = extractJsonRpcResults(await readBodyCapped(initRes))[0];
       }
 
+      assertCurrent();
       if (!data) {
         throw new Error('Could not parse initialize response');
       }
@@ -224,9 +232,11 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       // subsequent request. (Header lookups are case-insensitive.)
       this.sessionId = initRes.headers.get('mcp-session-id') ?? undefined;
       await this.postRaw('notifications/initialized', {});
+      assertCurrent();
 
       const revision = this.toolCatalogRevision;
       const tools = await listAllTools((params) => this.postRaw('tools/list', params));
+      assertCurrent();
       if (revision === this.toolCatalogRevision) {
         this.tools.splice(0, this.tools.length, ...(tools ?? []));
       }
@@ -235,8 +245,10 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       clearTimeout(startupTimer);
     } catch (err) {
       clearTimeout(startupTimer);
-      this.state = 'failed';
-      this.abortController.abort();
+      if (this.abortController === controller && !this.closed) {
+        this.state = 'failed';
+      }
+      controller.abort();
       throw err;
     }
   }
@@ -429,7 +441,15 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
  * 0 when no event has completed yet.
  */
 function completeEventsEnd(text: string): number {
-  const lf = text.lastIndexOf('\n\n');
-  const crlf = text.lastIndexOf('\r\n\r\n');
-  return Math.max(lf === -1 ? 0 : lf + 2, crlf === -1 ? 0 : crlf + 4);
+  let start = 0;
+  let end = 0;
+  for (let idx = 0; idx < text.length; idx++) {
+    const code = text.charCodeAt(idx);
+    if (code !== 10 && code !== 13) continue;
+    const empty = idx === start;
+    if (code === 13 && text.charCodeAt(idx + 1) === 10) idx++;
+    start = idx + 1;
+    if (empty) end = start;
+  }
+  return end;
 }

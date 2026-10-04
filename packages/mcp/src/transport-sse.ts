@@ -105,9 +105,15 @@ export class SSETransport extends BaseHTTPTransport {
     this.endpointUrl = undefined;
     this.state = 'connecting';
     this.serverMetadata = undefined;
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
-    const startupTimer = setTimeout(() => this.abortController?.abort(), this.timeout);
+    const controller = new AbortController();
+    this.abortController = controller;
+    const signal = controller.signal;
+    const assertCurrent = (): void => {
+      if (this.abortController !== controller || signal.aborted || this.closed) {
+        throw makeAbortError('connect');
+      }
+    };
+    const startupTimer = setTimeout(() => controller.abort(), this.timeout);
 
     try {
       const sseUrl = this.buildSSEUrl();
@@ -117,6 +123,12 @@ export class SSETransport extends BaseHTTPTransport {
       };
       this.applyTlsAgent(fetchOpts);
       const response = await this.fetchWithAuthorization(sseUrl, fetchOpts, signal);
+      try {
+        assertCurrent();
+      } catch (error) {
+        await response.body?.cancel().catch(() => undefined);
+        throw error;
+      }
 
       if (!response.ok) {
         throw new ToolError({
@@ -138,16 +150,19 @@ export class SSETransport extends BaseHTTPTransport {
 
       const textDecoder = new TextDecoder();
       const sseReader = new SSEReader();
-      this.readLoopAbort = new AbortController();
+      const readLoopAbort = new AbortController();
+      this.readLoopAbort = readLoopAbort;
       const streamReady = new Promise<void>((resolve) => {
         this.streamSignal = resolve;
       });
 
       sseReader.onEndpoint((endpoint) => {
+        if (this.abortController !== controller || signal.aborted || this.closed) return;
         this.acceptEndpoint(endpoint);
         this.streamSignal?.();
       });
       sseReader.onMessage((msg) => {
+        if (this.abortController !== controller || signal.aborted || this.closed) return;
         this.streamSignal?.();
         // A server request (method + id), e.g. elicitation: answered by POST.
         const id: unknown = msg.id;
@@ -191,8 +206,9 @@ export class SSETransport extends BaseHTTPTransport {
         releaseLock: () => reader.releaseLock(),
       } as globalThis.ReadableStreamDefaultReader<string>;
 
-      void this.readSSEBody(reader, textDecoder, sseReader);
+      void this.readSSEBody(reader, textDecoder, sseReader, controller, readLoopAbort.signal);
       await this.waitForStream(streamReady, signal);
+      assertCurrent();
 
       const initRes = await this.httpPost('initialize', {
         protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
@@ -201,6 +217,7 @@ export class SSETransport extends BaseHTTPTransport {
         capabilities: this.serverRequests.capabilities(),
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       });
+      assertCurrent();
 
       if (initRes.error) {
         throw new ToolError({
@@ -218,9 +235,11 @@ export class SSETransport extends BaseHTTPTransport {
       } catch {
         // servers may not require it
       }
+      assertCurrent();
 
       const revision = this.toolCatalogRevision;
       const tools = await listAllTools((params) => this.httpPost('tools/list', params));
+      assertCurrent();
       if (revision === this.toolCatalogRevision) {
         this.tools.splice(0, this.tools.length, ...(tools ?? []));
       }
@@ -229,11 +248,13 @@ export class SSETransport extends BaseHTTPTransport {
       clearTimeout(startupTimer);
     } catch (err) {
       clearTimeout(startupTimer);
-      this.state = 'failed';
-      this.abortController.abort();
+      if (this.abortController === controller && !this.closed) {
+        this.state = 'failed';
+      }
+      controller.abort();
       throw err;
     } finally {
-      this.streamSignal = undefined;
+      if (this.abortController === controller) this.streamSignal = undefined;
     }
   }
 
@@ -279,9 +300,16 @@ export class SSETransport extends BaseHTTPTransport {
     reader: globalThis.ReadableStreamDefaultReader<Uint8Array>,
     decoder: InstanceType<typeof TextDecoder>,
     sseReader: SSEReader,
+    controller?: AbortController,
+    signal?: AbortSignal,
   ): Promise<void> {
     try {
-      while (!this.readerDone) {
+      while (
+        !this.readerDone &&
+        !signal?.aborted &&
+        (!controller || this.abortController === controller) &&
+        !this.closed
+      ) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
@@ -290,16 +318,24 @@ export class SSETransport extends BaseHTTPTransport {
     } catch {
       // SSE read error — connection lost.
     } finally {
-      this.streamSignal?.();
-      // Responses that were to arrive over this stream never will.
-      this.rejectStreamPending('SSE stream closed');
-      // Stream ended (either via error or clean remote close / EOF).
-      // Transition to disconnected so callTool and health checks see
-      // the correct state, then notify disconnect handlers so the
-      // registry can schedule a reconnect.
-      if (!this.readerDone && this.state !== 'disconnected' && this.state !== 'failed') {
-        this.state = 'disconnected';
-        this.notifyDisconnect();
+      if (!controller || this.abortController === controller) {
+        this.streamSignal?.();
+        // Responses that were to arrive over this stream never will.
+        this.rejectStreamPending('SSE stream closed');
+        // Stream ended (either via error or clean remote close / EOF).
+        // Transition to disconnected so callTool and health checks see
+        // the correct state, then notify disconnect handlers so the
+        // registry can schedule a reconnect.
+        if (
+          !this.readerDone &&
+          !signal?.aborted &&
+          !this.closed &&
+          this.state !== 'disconnected' &&
+          this.state !== 'failed'
+        ) {
+          this.state = 'disconnected';
+          this.notifyDisconnect();
+        }
       }
     }
   }
