@@ -209,6 +209,18 @@ function optionalNumber(args: Record<string, unknown>, key: string): number | un
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function optionalNonNegativeInteger(
+  args: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = optionalNumber(args, key);
+  if (value === undefined) return undefined;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${key} must be a non-negative integer`);
+  }
+  return value;
+}
+
 function optionalRetentionAge(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
   if (value === undefined) return undefined;
@@ -585,11 +597,11 @@ async function executeManage(
         ...(optionalString(args, 'currentTask') !== undefined
           ? { currentTask: optionalString(args, 'currentTask') }
           : {}),
-        ...(optionalNumber(args, 'iterations') !== undefined
-          ? { iterations: optionalNumber(args, 'iterations') }
+        ...(optionalNonNegativeInteger(args, 'iterations') !== undefined
+          ? { iterations: optionalNonNegativeInteger(args, 'iterations') }
           : {}),
-        ...(optionalNumber(args, 'toolCalls') !== undefined
-          ? { toolCalls: optionalNumber(args, 'toolCalls') }
+        ...(optionalNonNegativeInteger(args, 'toolCalls') !== undefined
+          ? { toolCalls: optionalNonNegativeInteger(args, 'toolCalls') }
           : {}),
       });
       return { heartbeat: true, agentId: identity.actor };
