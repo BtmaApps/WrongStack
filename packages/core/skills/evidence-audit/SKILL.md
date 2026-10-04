@@ -1,6 +1,8 @@
 ---
 name: evidence-audit
 description: Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, "find real bugs in", "prove and fix", "continue the audit round on", or "what is actually broken in" a package, module, directory, or service, even without the word "audit", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring.
+required-capabilities: [filesystem.read, filesystem.write, execution.shell, verification.run, version-control.manage]
+required-tools: []
 ---
 
 # Evidence-led audit
