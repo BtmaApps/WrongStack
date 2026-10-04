@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:06:33.913Z",
+  "generatedAt": "2026-10-04T18:07:16.307Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4085,
-    "sourceLines": 1055166,
+    "testFiles": 4086,
+    "sourceLines": 1055198,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -405,7 +405,7 @@
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
       "sourceFiles": 8,
-      "testFiles": 18,
+      "testFiles": 19,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -416,7 +416,7 @@
         {
           "path": "packages/persistence/tsconfig.test.json",
           "error": null,
-          "testFiles": 18
+          "testFiles": 19
         }
       ]
     },
@@ -12054,6 +12054,12 @@
       },
       {
         "file": "packages/persistence/tests/endpoint-reclaim-proof.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/persistence/tests/file-lock-failed-write-ownership.test.ts",
         "projects": [
           "root-node"
         ]

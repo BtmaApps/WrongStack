@@ -372,8 +372,18 @@ export function createPersistencePrimitives(
         break;
       } catch (error) {
         if (handle) {
+          const owned = await handle.stat().catch(() => undefined);
           await handle.close().catch(() => undefined);
-          await fs.unlink(lockPath).catch(() => undefined);
+          const current = await fs.stat(lockPath).catch(() => undefined);
+          if (
+            owned &&
+            current &&
+            owned.ino === current.ino &&
+            owned.dev === current.dev &&
+            owned.birthtimeMs === current.birthtimeMs
+          ) {
+            await fs.unlink(lockPath).catch(() => undefined);
+          }
           handle = undefined;
         }
 

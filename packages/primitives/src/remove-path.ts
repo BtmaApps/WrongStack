@@ -16,9 +16,31 @@ function pathExists(target: string): boolean {
   }
 }
 
+function assertSameDirectory(target: string, expected: fs.Stats): void {
+  const current = fs.lstatSync(target);
+  if (
+    !current.isDirectory() ||
+    current.isSymbolicLink() ||
+    current.dev !== expected.dev ||
+    current.ino !== expected.ino
+  ) {
+    throw new Error(`Path changed during recursive removal: ${target}`);
+  }
+}
+
 function removeWithUnlinkRmdir(target: string): void {
-  if (fs.lstatSync(target).isDirectory()) {
-    for (const entry of fs.readdirSync(target)) removeWithUnlinkRmdir(path.join(target, entry));
+  const info = fs.lstatSync(target);
+  if (info.isDirectory()) {
+    const entries = fs.readdirSync(target);
+    // Readdir follows a path that may have been replaced by a symlink or
+    // junction after lstat. Fence the traversal to the directory identity we
+    // observed before reading its children.
+    assertSameDirectory(target, info);
+    for (const entry of entries) {
+      assertSameDirectory(target, info);
+      removeWithUnlinkRmdir(path.join(target, entry));
+    }
+    assertSameDirectory(target, info);
     fs.rmdirSync(target);
   } else {
     fs.unlinkSync(target);

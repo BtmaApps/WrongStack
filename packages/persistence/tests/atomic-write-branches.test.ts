@@ -206,6 +206,7 @@ describe('persistence primitive edge branches', () => {
   it('cleans a partially acquired lock and retries after a missing directory', async () => {
     const firstHandle = {
       writeFile: vi.fn().mockRejectedValue(errorWithCode('ENOENT')),
+      stat: vi.fn().mockRejectedValue(errorWithCode('ENOENT')),
       close: vi.fn().mockRejectedValue(errorWithCode('EIO')),
     };
     const secondHandle = {
@@ -591,11 +592,7 @@ describe('persistence primitive edge branches', () => {
       Buffer.from('binary-data'),
       expect.objectContaining({ encoding: 'utf8' }),
     );
-    expect(doubles.fs.open).toHaveBeenCalledWith(
-      expect.stringContaining('.tmp'),
-      'wx',
-      0o644,
-    );
+    expect(doubles.fs.open).toHaveBeenCalledWith(expect.stringContaining('.tmp'), 'wx', 0o644);
   });
 
   it('uses default createLockTimeoutError when not provided', async () => {
