@@ -145,7 +145,7 @@ Full configuration options under `extensions["@wrongstack/plug-lsp"]`:
 | Option | Default | Description |
 |---|---|---|
 | `autoStart` | `"lazy"` | `"lazy"` = start on first file access; `"eager"` = all at session start; `"never"` = manual only |
-| `diagnosticsAfterEdit` | `"background"` | With host hooks enabled, append bounded current diagnostics to successful file-edit results; `"manual"` = on request only. Minimal hosts without hooks retain background collection. |
+| `diagnosticsAfterEdit` | `"background"` | With host hooks enabled, append bounded current diagnostics to successful single-file and bulk `replace`/`patch` results (up to eight supported files, one shared deadline); previews are skipped. `"manual"` = on request only. Minimal hosts without hooks retain background collection. |
 | `diagnosticsWaitMs` | `1500` | How long `lsp_diagnostics` waits for a push-only server's first `publishDiagnostics` after a file is opened or edited. A cold `tsserver` needs a second or two; the tool returns as soon as the push lands. |
 | `severityFilter` | `["error","warning"]` | Which diagnostic severities to return |
 | `maxDiagnosticsPerFile` | `5` | Maximum diagnostics per file |

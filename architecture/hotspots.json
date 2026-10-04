@@ -107,8 +107,8 @@
       "relativeImports": 9
     },
     "packages/core/src/execution/tool-executor.ts": {
-      "lines": 809,
-      "relativeImports": 26
+      "lines": 836,
+      "relativeImports": 28
     },
     "packages/core/src/goal/phase-orchestrator.ts": {
       "lines": 842,

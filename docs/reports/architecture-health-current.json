@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:50:07.264Z",
+  "generatedAt": "2026-10-04T14:50:59.064Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4460,
-    "testFiles": 4032,
-    "sourceLines": 1051474,
+    "sourceFiles": 4461,
+    "testFiles": 4033,
+    "sourceLines": 1051637,
     "workspaceEdges": 133,
-    "moduleEdges": 14529,
+    "moduleEdges": 14533,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -241,8 +241,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 996,
-      "testFiles": 888,
+      "sourceFiles": 997,
+      "testFiles": 889,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -257,7 +257,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 888
+          "testFiles": 889
         }
       ]
     },
@@ -7823,6 +7823,12 @@
       },
       {
         "file": "packages/core/tests/execution/parallel-eternal-engine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/post-tool-write-paths.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25614,8 +25620,8 @@
     },
     {
       "file": "packages/core/src/execution/tool-executor.ts",
-      "lines": 809,
-      "relativeImports": 26
+      "lines": 836,
+      "relativeImports": 28
     },
     {
       "file": "packages/core/src/goal/phase-orchestrator.ts",

@@ -7,6 +7,7 @@ import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import { Container, EventBus } from '@wrongstack/core/kernel';
 import type { PluginAPI } from '@wrongstack/core/plugin';
 import type { Logger, SlashCommand, Tool } from '@wrongstack/core/types';
+import { patchTool, replaceTool } from '@wrongstack/tools';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_NAME } from '../../src/config.js';
 import plugin from '../../src/index.js';
@@ -122,17 +123,19 @@ describe('plugin entry', () => {
       permission: 'auto',
       mutating: true,
       async execute() {
-        await fs.writeFile(source, 'const answer: number = "wrong";');
+        await fs.writeFile(source, 'const answer: number = "wrong";\n');
         return 'edited';
       },
     };
+    const executable: Tool[] = [edit, patchTool as unknown as Tool, replaceTool as unknown as Tool];
     const executor = new ToolExecutor(
-      { get: () => edit, list: () => [edit] },
+      { get: (name) => executable.find((tool) => tool.name === name), list: () => executable },
       {
         hookRunner: new HookRunner({ registry: hooks }),
         permissionPolicy: { evaluate: async () => ({ permission: 'auto' }) } as never,
         secretScrubber: { scrub: (text: string) => text } as never,
         perIterationOutputCapBytes: 50_000,
+        confirmAwaiter: async () => 'yes',
       },
     );
     const executed = await executor.executeBatch(
@@ -167,6 +170,64 @@ describe('plugin entry', () => {
       { cwd: root, session: { id: 'owned-session' }, signal: new AbortController().signal },
     );
     expect(repeatedFeedback.additionalContext).toContain('version=1;');
+    const second = path.join(root, 'second.ts');
+    await fs.writeFile(second, 'const second: number = "wrong";\n');
+    const context = {
+      cwd: root,
+      projectRoot: root,
+      signal: new AbortController().signal,
+      session: { id: 'owned-session', append: async () => {} },
+      messages: [],
+      todos: [],
+      readFiles: new Set(),
+      fileMtimes: new Map(),
+      meta: {},
+    } as never;
+    const replaced = await executor.executeBatch(
+      [
+        {
+          type: 'tool_use',
+          id: 'replace-bulk',
+          name: 'replace',
+          input: {
+            files: 'edited.ts,second.ts',
+            pattern: 'wrong',
+            replacement: 'bulk',
+            dry_run: false,
+          },
+        },
+      ],
+      context,
+      'sequential',
+    );
+    const replaceResult = replaced.outputs[0]?.result;
+    expect(replaceResult).toMatchObject({
+      is_error: false,
+      content: expect.stringContaining('Verified file(s): 2'),
+    });
+    expect(replaceResult).toMatchObject({ content: expect.stringContaining('MOCK001') });
+    expect(await fs.readFile(second, 'utf8')).toContain('"bulk"');
+    const patched = await executor.executeBatch(
+      [
+        {
+          type: 'tool_use',
+          id: 'patch-bulk',
+          name: 'patch',
+          input: {
+            patch:
+              '--- a/edited.ts\n+++ b/edited.ts\n@@ -1 +1 @@\n-const answer: number = "bulk";\n+const answer: number = "patched";\n' +
+              '--- a/second.ts\n+++ b/second.ts\n@@ -1 +1 @@\n-const second: number = "bulk";\n+const second: number = "patched";\n',
+          },
+        },
+      ],
+      context,
+      'sequential',
+    );
+    expect(patched.outputs[0]?.result).toMatchObject({
+      is_error: false,
+      content: expect.stringContaining('Verified file(s): 2'),
+    });
+    expect(await fs.readFile(second, 'utf8')).toContain('"patched"');
     expect(await plugin.health?.()).toMatchObject({ ok: true });
 
     await plugin.teardown?.(api);

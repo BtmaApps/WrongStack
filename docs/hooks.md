@@ -176,7 +176,11 @@ hooks see the same shape.
   "event": "PreToolUse",
   "toolName": "bash",                                   // PreToolUse / PostToolUse
   "toolInput": { "command": "ls" },                     // PreToolUse / PostToolUse
-  "toolResult": { "content": "...", "isError": false }, // PostToolUse only
+  "toolResult": {                                       // PostToolUse only
+    "content": "...", "isError": false,
+    "modifiedPaths": ["/abs/project/src/file.ts"],       // optional bulk-write scope
+    "modifiedPathsOmitted": 2                            // optional omitted entry count
+  },
   "prompt": "user text",                                // UserPromptSubmit only
   "compaction": {                                       // PreCompact / PostCompact
     "trigger": "auto",                                  // auto | manual | overflow | tool
@@ -197,6 +201,14 @@ hooks see the same shape.
   "sessionId": "01J..."                                 // when known
 }
 ```
+
+For completed `patch` and `replace` calls, `modifiedPaths` carries the tool's
+reported file scope before text rendering, truncation or spooling. Paths are
+absolute and deduplicated from at most 64 entries; invalid paths and paths
+changed by secret scrubbing are omitted. `modifiedPathsOmitted` counts omitted
+entries, including any beyond that bound. An empty list represents a known
+empty scope (including a dry run); an absent list is unknown. The field does
+not certify file contents or test success. It is not populated for failed calls.
 
 The types intentionally avoid referencing the live `Context` (which lives in a
 higher layer) so `types/config.ts` can import them without a layering cycle. The

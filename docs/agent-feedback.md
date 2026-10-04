@@ -8,15 +8,25 @@ CLI, TUI, WebUI and SimpleUI through the shared agent runtime.
 With `@wrongstack/plug-lsp`, `diagnosticsAfterEdit: "background"` (the default)
 and host hooks enabled, successful `edit`, `write`, `replace`, `patch` and
 `codebase-ast-replace` calls for a configured language receive inline LSP
-feedback before the tool result returns. The target comes from `path` or `file`;
-shell commands and multi-file payloads without either are not automatically checked.
+feedback before the tool result returns. Single-file targets come from `path`
+or `file`. Bulk `replace` and `patch` targets come from the completed tool's
+structured file scope, preserved independently of output rendering, clipping
+and spooling. Patch paths respect its working directory. Input globs and diff
+text are not expanded or parsed again by the LSP plugin. Dry runs are skipped;
+shell commands are not automatically checked.
 
 Feedback identifies the file, tracked document version, SHA-256 content hash
 and server. It uses the configured severities and diagnostic counts, with a
-7,000-character diagnostic-body limit. The total analysis deadline is
+7,000-character diagnostic-body limit and an 8,000-character overall limit.
+At most eight supported files are checked per call. Diagnostic count limits
+apply across the batch; omitted files and unavailable scopes are explicitly
+unverified. The host carries at most 64 path entries, excluding paths changed
+by secret scrubbing. Earlier files are rechecked after later analysis. The
+total analysis deadline shared by all files is
 `min(diagnosticsWaitMs, 5000)` milliseconds, including lazy server startup.
 A cold server may therefore report an unverified notice; use `lsp_diagnostics`
-for an explicit follow-up check.
+for an explicit follow-up check. The verified-file count refers to diagnostic
+snapshot identity and freshness, not to correctness or passing tests.
 
 Silent servers, changed documents, replaced servers and failed checks never
 produce a clean-file claim. Results from a departed project/session or canceled

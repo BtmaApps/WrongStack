@@ -84,6 +84,137 @@ async function fixture() {
 }
 
 describe('same-call post-edit LSP feedback', () => {
+  it('checks deduplicated bulk-write paths even when result text is spooled', async () => {
+    const f = await fixture();
+    f.cfg.diagnosticsWaitMs = 1000;
+    const second = path.join(f.root, 'b.ts');
+    await fs.writeFile(second, 'const b: number = "x";');
+    const output = await f.run({
+      ...f.input,
+      toolName: 'replace',
+      toolInput: { files: '*.ts', dry_run: false },
+      toolResult: {
+        content: '[spooled output]',
+        isError: false,
+        modifiedPaths: [f.file, second, f.file],
+      },
+    });
+    expect(output?.additionalContext).toContain('a.ts');
+    expect(output?.additionalContext).toContain('b.ts');
+    expect(output?.additionalContext).toContain('Verified file(s): 2');
+    expect(f.pull).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the total diagnostic count and text budget across bulk files', async () => {
+    const f = await fixture();
+    const files = await Promise.all(
+      Array.from({ length: 10 }, async (_, i) => {
+        const file = path.join(f.root, `bulk-${i}.ts`);
+        await fs.writeFile(file, 'const a = 1;');
+        return file;
+      }),
+    );
+    f.cfg.diagnosticsWaitMs = 1000;
+    f.cfg.maxDiagnosticsTotal = 3;
+    f.pull.mockResolvedValue([{ ...error, message: 'x'.repeat(20_000) }]);
+    const input = {
+      ...f.input,
+      toolName: 'patch',
+      toolInput: { patch: 'diff' },
+      toolResult: {
+        content: 'patched',
+        isError: false,
+        modifiedPaths: files,
+        modifiedPathsOmitted: 2,
+      },
+    };
+    const output = (await f.run(input))?.additionalContext ?? '';
+    expect(f.pull).toHaveBeenCalledTimes(8);
+    expect(output).toContain('4 additional file scope entries not checked');
+    expect(output.length).toBeLessThan(8000);
+    expect(output).toContain('[diagnostics truncated]');
+    f.pull.mockResolvedValue([error]);
+    const compact = (await f.run(input))?.additionalContext ?? '';
+    expect(compact).toContain('Total: 3 diagnostics in 3 files.');
+    expect((compact.match(/ERROR typescript/g) ?? []).length).toBe(3);
+  });
+
+  it('does not call an unchecked bulk scope clean or check a preview', async () => {
+    const f = await fixture();
+    const missing = await f.run({ ...f.input, toolName: 'patch', toolInput: { patch: 'diff' } });
+    expect(missing?.additionalContext).toContain('file scope unavailable');
+    expect(missing?.additionalContext).not.toContain('No LSP diagnostics');
+    await f.run({
+      ...f.input,
+      toolName: 'patch',
+      toolInput: { dry_run: true },
+      toolResult: { content: 'preview', isError: false, modifiedPaths: [f.file] },
+    });
+    await f.run({
+      ...f.input,
+      toolName: 'replace',
+      toolInput: { files: '*.ts' },
+      toolResult: { content: 'preview', isError: false, modifiedPaths: [] },
+    });
+    expect(f.pull).not.toHaveBeenCalled();
+  });
+
+  it('rechecks the first file after analyzing the second file', async () => {
+    const f = await fixture();
+    f.cfg.diagnosticsWaitMs = 1000;
+    const second = path.join(f.root, 'b.ts');
+    await fs.writeFile(second, 'const b = 2;');
+    f.pull.mockResolvedValueOnce([]).mockImplementationOnce(async () => {
+      await fs.writeFile(f.file, 'changed while b was analyzed');
+      return [];
+    });
+    const output =
+      (
+        await f.run({
+          ...f.input,
+          toolName: 'patch',
+          toolInput: {},
+          toolResult: { content: 'patched', isError: false, modifiedPaths: [f.file, second] },
+        })
+      )?.additionalContext ?? '';
+    expect(output).toContain('a.ts": current diagnostics unavailable; file not verified');
+    expect(output).toContain('Verified file(s): 1');
+  });
+
+  it('shares one deadline across files and marks remaining files unverified', async () => {
+    const f = await fixture();
+    const second = path.join(f.root, 'b.ts');
+    await fs.writeFile(second, 'const b = 2;');
+    f.cfg.diagnosticsWaitMs = 20;
+    const started = Promise.withResolvers<void>();
+    f.pull.mockImplementation(async (_uri, _waitMs, signal) => {
+      started.resolve();
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+      signal.throwIfAborted();
+      return [];
+    });
+    vi.useFakeTimers();
+    try {
+      const pending = f.run({
+        ...f.input,
+        toolName: 'patch',
+        toolInput: {},
+        toolResult: { content: 'patched', isError: false, modifiedPaths: [f.file, second] },
+      });
+      await started.promise;
+      await vi.advanceTimersByTimeAsync(20);
+      const output = (await pending)?.additionalContext ?? '';
+      expect(f.pull).toHaveBeenCalledTimes(1);
+      expect(output).toContain('a.ts": current diagnostics unavailable');
+      expect(output).toContain('b.ts": current diagnostics unavailable');
+      expect(output).not.toContain('No LSP diagnostics');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('includes current diagnostics with exact document identity', async () => {
     const f = await fixture();
     const output = await f.run();

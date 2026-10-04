@@ -25,6 +25,7 @@ import {
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { ToolResultRenderMode, ToolResultRenderModeConfig } from '../types/config.js';
 import { isWrongStackError } from '../types/errors.js';
+import type { HookInput } from '../types/hooks.js';
 import type { Tool } from '../types/tool.js';
 import {
   GOVERNED_TOOL_EXECUTOR_META_KEY,
@@ -45,6 +46,7 @@ import {
 } from '../utils/tool-result-fingerprint.js';
 import { resolveToolResultRenderMode } from '../utils/tool-result-render-mode.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
+import { postToolWritePaths } from './post-tool-write-paths.js';
 import { toolErrorResult } from './tool-error-taxonomy.js';
 import { validateToolInputAndHooks } from './tool-executor-guard.js';
 import {
@@ -169,6 +171,10 @@ export class ToolExecutor {
     const runOne = async (use0: ToolUseBlock): Promise<ToolExecutionOutput> => {
       const start = Date.now();
       let use = use0;
+      // A preceding call may have connected MCP, changed a plugin, or disabled
+      // a tool. Discovery and nested invocation must see the executable registry
+      // used by this call, including within a single sequential batch.
+      ctx.catalogTools = this.registry.list();
       const tool = this.registry.get(use.name);
 
       if (!tool) {
@@ -418,7 +424,7 @@ export class ToolExecutor {
           const post = await this.opts.hookRunner.postToolUse(
             tool.name,
             use.input,
-            { content: String(result.content), isError: !!result.is_error },
+            { content: String(result.content), isError: !!result.is_error, ...produced.writePaths },
             ctx,
           );
           if (post.additionalContext) {
@@ -637,6 +643,7 @@ export class ToolExecutor {
     budget: number,
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ block: ToolResultBlock; bytes: number }> {
+    ctx.catalogTools = this.registry.list();
     return this.withGovernedExecutionBridge(ctx, async () => {
       let produced: Awaited<ReturnType<ToolExecutor['produceToolOutput']>>;
       try {
@@ -670,7 +677,11 @@ export class ToolExecutor {
         const post = await this.opts.hookRunner.postToolUse(
           tool.name,
           use.input,
-          { content: String(settled.block.content), isError: !!settled.block.is_error },
+          {
+            content: String(settled.block.content),
+            isError: !!settled.block.is_error,
+            ...produced.writePaths,
+          },
           ctx,
         );
         if (post.additionalContext) {
@@ -718,7 +729,15 @@ export class ToolExecutor {
     use: ToolUseBlock,
     ctx: Context,
     budgetHint: number,
-  ): Promise<{ text: string; fingerprint: string; data?: { value: unknown } }> {
+  ): Promise<{
+    text: string;
+    fingerprint: string;
+    data?: { value: unknown };
+    writePaths: Pick<
+      NonNullable<HookInput['toolResult']>,
+      'modifiedPaths' | 'modifiedPathsOmitted'
+    >;
+  }> {
     if (use._resultFormat === 'data' && !tool.outputSchema) {
       throw new Error(
         `Tool "${tool.name}" does not declare structured output; use tools.call instead`,
@@ -749,7 +768,15 @@ export class ToolExecutor {
     const content = tool.preserveFullOutput
       ? scrubbed
       : await maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
-    return { text: content, fingerprint: fingerprintText(scrubbed), ...(data ? { data } : {}) };
+    const writePaths = postToolWritePaths(tool.name, use.input, output, ctx, (value) =>
+      this.opts.secretScrubber.scrub(value),
+    );
+    return {
+      text: content,
+      fingerprint: fingerprintText(scrubbed),
+      writePaths,
+      ...(data ? { data } : {}),
+    };
   }
 
   private settleToolOutput(

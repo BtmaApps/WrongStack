@@ -282,7 +282,7 @@ export class HookRunner {
   async postToolUse(
     toolName: string,
     toolInput: unknown,
-    result: { content: string; isError: boolean },
+    result: NonNullable<HookInput['toolResult']>,
     env: HookRunEnv,
   ): Promise<{ additionalContext?: string | undefined; contextAs?: 'inline' | 'separate' }> {
     const payload: HookInput = {

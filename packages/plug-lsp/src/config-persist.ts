@@ -39,7 +39,13 @@ export async function persistServerConfig(
   if (patch === null) {
     delete servers[name];
   } else {
-    servers[name] = { ...(asRecord(servers[name]) ?? {}), ...patch };
+    const existing = Object.hasOwn(servers, name) ? asRecord(servers[name]) : undefined;
+    Object.defineProperty(servers, name, {
+      value: { ...(existing ?? {}), ...patch },
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
   }
 
   section.servers = servers;

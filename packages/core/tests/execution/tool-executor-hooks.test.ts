@@ -312,6 +312,28 @@ describe('ToolExecutor — PreToolUse hooks', () => {
 });
 
 describe('ToolExecutor — PostToolUse hooks', () => {
+  it('preserves write scope for spooled output in both batch and approved execution', async () => {
+    const reg = new HookRegistry();
+    const seen = vi.fn<(input: HookInput) => undefined>(() => undefined);
+    reg.registerInProcess('PostToolUse', '*', seen);
+    const patch = tool('patch', async () => ({
+      files: ['a.ts'],
+      dry_run: false,
+      message: 'x'.repeat(150_000),
+    }));
+    const ex = makeExecutor([patch], new HookRunner({ registry: reg }));
+    const ctx = makeCtx();
+    await ex.executeBatch([use('patch')], ctx, 'sequential');
+    await ex.executeTool(patch, use('patch'), ctx, 50_000);
+    expect(seen).toHaveBeenCalledTimes(2);
+    for (const [input] of seen.mock.calls) {
+      expect(input).toMatchObject({
+        toolResult: { modifiedPaths: [expect.stringMatching(/a\.ts$/)] },
+      });
+      expect(input.toolResult?.content).not.toContain('x'.repeat(150_000));
+    }
+  });
+
   it('appends additionalContext to the tool result', async () => {
     const reg = new HookRegistry();
     reg.registerInProcess('PostToolUse', '*', () => ({ additionalContext: 'lint: ok' }));

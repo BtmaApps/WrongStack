@@ -115,6 +115,24 @@ describe.skipIf(!runnable)('native TypeScript language server E2E', () => {
       const cleanFeedback = await feedback(input, runtime);
       expect(cleanFeedback?.additionalContext).toContain('No LSP diagnostics.');
       expect(cleanFeedback?.additionalContext).not.toContain('ERROR');
+      const second = path.join(root, 'second.ts');
+      await fs.writeFile(second, 'export const broken: number = "bulk edit";\n');
+      const bulkFeedback = await feedback(
+        {
+          ...input,
+          toolName: 'replace',
+          toolInput: { files: '*.ts', dry_run: false },
+          toolResult: {
+            content: 'spooled replace output',
+            isError: false,
+            modifiedPaths: [source, second],
+          },
+        },
+        runtime,
+      );
+      expect(bulkFeedback?.additionalContext).toContain('Verified file(s): 2');
+      expect(bulkFeedback?.additionalContext).toContain('second.ts');
+      expect(bulkFeedback?.additionalContext).toContain('ERROR');
     } finally {
       await registry.shutdown();
     }

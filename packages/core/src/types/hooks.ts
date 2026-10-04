@@ -149,7 +149,14 @@ export interface HookInput {
   /** The tool's `mutating` flag (PreToolUse). See `toolCapabilities`. */
   toolMutating?: boolean | undefined;
   /** Tool result preview (PostToolUse only). */
-  toolResult?: { content: string; isError: boolean };
+  toolResult?: {
+    content: string;
+    isError: boolean;
+    /** Bounded file scope reported by a completed bulk-write tool, before output clipping. */
+    modifiedPaths?: string[] | undefined;
+    /** Additional path entries not represented in modifiedPaths. */
+    modifiedPathsOmitted?: number | undefined;
+  };
   /** The submitted user text (UserPromptSubmit only). */
   prompt?: string | undefined;
   /** PreCompact / PostCompact: what triggered the pass and its size. */
