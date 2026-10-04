@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 364,
-      "typeOnly": 287,
+      "files": 365,
+      "typeOnly": 288,
       "runtimeOrMixed": 98
     },
     "@wrongstack/core/agent-catalog": {
@@ -49,9 +49,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
-      "files": 80,
+      "files": 81,
       "typeOnly": 19,
-      "runtimeOrMixed": 77
+      "runtimeOrMixed": 78
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -184,8 +184,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1292,
-      "typeOnly": 1143,
+      "files": 1293,
+      "typeOnly": 1144,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -1126,6 +1126,12 @@
       "file": "packages/providers/src/provider-config-state.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/providers/tests/tool-use-envelope.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -4628,6 +4634,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/plugins/tests/path-guard.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/providers/tests/tool-use-envelope.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17144,6 +17156,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/tool-priority.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/tool-use-envelope.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

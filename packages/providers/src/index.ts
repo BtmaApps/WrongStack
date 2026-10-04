@@ -251,6 +251,7 @@ export {
 } from './stream-timeouts.js';
 export {
   createSubscriptionRefreshTransaction,
+  hasSubscriptionRefreshTransaction,
   setSubscriptionRefreshTransaction,
 } from './subscription-refresh-store.js';
 export { contentFromAnthropic } from './tool-format/from-anthropic.js';

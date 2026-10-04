@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:48:24.296Z
+**Generated:** 2026-10-04T14:49:16.607Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4460 |
-| Production source lines | 1051417 |
-| Test files | 4029 |
+| Production source lines | 1051457 |
+| Test files | 4032 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14529 |
 | Non-command slash imports | 0 |
@@ -44,7 +44,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 9 | 10 | — |
-| @wrongstack/providers | 120 | 106 | @wrongstack/core |
+| @wrongstack/providers | 120 | 109 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 23 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
@@ -88,7 +88,7 @@ None.
 | 996 | `packages/tools/src/codebase-index/writer.ts` |
 | 992 | `packages/sage/src/sqlite-store.ts` |
 | 982 | `packages/mcp/src/registry.ts` |
-| 981 | `packages/providers/src/index.ts` |
+| 982 | `packages/providers/src/index.ts` |
 | 980 | `packages/sage/src/project-server.ts` |
 | 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |

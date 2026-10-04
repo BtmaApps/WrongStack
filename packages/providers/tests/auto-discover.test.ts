@@ -5,6 +5,45 @@ import {
   resolveDiscoveryTargets,
 } from '../src/auto-discover.js';
 
+describe('Codex discovery defaults', () => {
+  it.each([{ type: 'openai-codex' }, { type: 'account-alias', family: 'openai-codex' as const }])(
+    'discovers latest account models without a saved base URL: %j',
+    async (provider) => {
+      const [target] = resolveDiscoveryTargets({
+        providers: {
+          codex: {
+            ...provider,
+            apiKeys: [
+              {
+                label: 'account',
+                apiKey: 'test-access',
+                createdAt: '',
+                authMethod: 'oauth' as const,
+              },
+            ],
+          },
+        },
+      } as never);
+      expect(target).toBeDefined();
+      expect(target?.baseUrl).toBe('https://chatgpt.com/backend-api/codex');
+      const models = await discoverOpenAICompatibleModels('codex', {
+        ...target!,
+        fetchImpl: async (url) => {
+          expect(String(url)).toContain('/codex/models?client_version=');
+          return Response.json({
+            models: [
+              { slug: 'gpt-6.1-sol', visibility: 'list' },
+              { slug: 'future-release', visibility: 'list' },
+              { slug: 'hidden', visibility: 'hide' },
+            ],
+          });
+        },
+      });
+      expect(Object.keys(models?.models ?? {})).toEqual(['gpt-6.1-sol', 'future-release']);
+    },
+  );
+});
+
 describe('mapCompatibleModel', () => {
   it('maps omniroute extended metadata onto a ModelsDevModel', () => {
     const m = mapCompatibleModel({

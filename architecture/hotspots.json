@@ -207,7 +207,7 @@
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
-      "lines": 981,
+      "lines": 982,
       "relativeImports": 77
     },
     "packages/providers/src/openai-codex.ts": {

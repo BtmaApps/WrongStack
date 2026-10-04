@@ -9,6 +9,7 @@ import { ProviderError } from '@wrongstack/core/types';
 import { fetchCopilotModels } from './github-copilot-models.js';
 import { copilotBaseUrlFromToken } from './github-copilot-token.js';
 import {
+  CODEX_BASE_URL,
   CODEX_CLIENT_VERSION,
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
@@ -156,8 +157,8 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
         ['github-copilot', 'openai-codex', 'anthropic-oauth'].includes(cfg.family ?? cfg.type))
     ) {
       const copilot = cfg.family === 'github-copilot';
-      const codex = cfg.family === 'openai-codex';
-      let baseUrl = cfg.baseUrl;
+      const codex = (cfg.family ?? cfg.type) === 'openai-codex';
+      let baseUrl = cfg.baseUrl ?? (codex ? CODEX_BASE_URL : undefined);
       let modelsUrl: string | undefined;
       let headers: Record<string, string> | undefined;
       if (strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) {
@@ -460,10 +461,20 @@ export async function discoverOpenAICompatibleModels(
     try {
       apiKey = await opts.prepareApiKey(fetchImpl);
     } catch (error) {
-      const status = error instanceof ProviderError ? error.status : undefined;
-      opts.onFailure?.(
-        `OAuth credential renewal failed${status ? ` (HTTP ${status})` : ''}; check account sign-in`,
-      );
+      const providerError = error instanceof ProviderError ? error : undefined;
+      const status = providerError?.status;
+      // `oauthFailure` validates body.error against the same regex; mirror it
+      // so the gate stays in sync with whatever the producer considered an
+      // OAuth error code. Non-OAuth throws fall through to the original wording.
+      const codeRaw =
+        providerError?.body && typeof providerError.body === 'object'
+          ? (providerError.body as { code?: unknown }).code
+          : undefined;
+      const code =
+        typeof codeRaw === 'string' && /^[a-z0-9_.-]{1,100}$/i.test(codeRaw) ? codeRaw : undefined;
+      const detail =
+        code && status ? ` (${code}, HTTP ${status})` : status ? ` (HTTP ${status})` : '';
+      opts.onFailure?.(`OAuth credential renewal failed${detail}; check account sign-in`);
       return undefined;
     }
   }

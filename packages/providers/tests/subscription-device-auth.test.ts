@@ -33,8 +33,8 @@ describe('subscription device authorization', () => {
       'kimi',
       createKimiAuthStrategy,
       'kimi-for-coding',
-      'https://auth.kimi.com/api/oauth/device_authorization',
-      'https://auth.kimi.com/api/oauth/token',
+      'https://auth.kimi.ai/api/oauth/device_authorization',
+      'https://auth.kimi.ai/api/oauth/token',
     ],
     [
       'meta',

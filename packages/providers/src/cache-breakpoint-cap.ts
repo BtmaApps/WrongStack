@@ -123,7 +123,13 @@ export function capAnthropicCacheBreakpoints(
     if (marker.pinned) indices.push(index);
     return indices;
   }, []);
-  const keep = new Set(pinned.length > effectiveLimit ? pinned.slice(-effectiveLimit) : pinned);
+  const keep = new Set(
+    effectiveLimit === 0
+      ? []
+      : pinned.length > effectiveLimit
+        ? pinned.slice(-effectiveLimit)
+        : pinned,
+  );
 
   if (keep.size < effectiveLimit) keep.add(0);
   if (keep.size < effectiveLimit) keep.add(markers.length - 1);

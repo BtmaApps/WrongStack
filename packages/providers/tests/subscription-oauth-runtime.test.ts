@@ -174,7 +174,7 @@ describe('subscription OAuth inference', () => {
       'fetch',
       vi.fn<typeof fetch>(async (input, init) => {
         urls.push(String(input));
-        if (String(input) === 'https://auth.kimi.com/api/oauth/token') {
+        if (String(input) === 'https://auth.kimi.ai/api/oauth/token') {
           return Response.json({
             access_token: 'new-access',
             refresh_token: 'new-refresh',
@@ -213,7 +213,7 @@ describe('subscription OAuth inference', () => {
       text: 'KIMI_LOGIN_OK',
     });
     expect(urls).toEqual([
-      'https://auth.kimi.com/api/oauth/token',
+      'https://auth.kimi.ai/api/oauth/token',
       'https://api.kimi.ai/coding/v1/messages',
     ]);
   });
@@ -243,6 +243,52 @@ describe('subscription OAuth inference', () => {
       retryable: false,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces the parsed OAuth body.error code in the auto-discovery failure message', async () => {
+    const initial = credential('kimi', true);
+    const failures: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input) => {
+        if (String(input) === 'https://auth.kimi.ai/api/oauth/token')
+          return Response.json({ error: 'invalid_grant' }, { status: 400 });
+        throw new Error(`unexpected fetch in discovery: ${String(input)}`);
+      }),
+    );
+    const [target] = resolveDiscoveryTargets({
+      providers: { plan: { type: 'kimi-for-coding', apiKeys: [{ ...initial }] } },
+    } as never);
+    const result = await discoverOpenAICompatibleModels('plan', {
+      baseUrl: target!.baseUrl,
+      prepareApiKey: target!.prepareApiKey,
+      fetchImpl: fetch as typeof fetch,
+      onFailure: (reason) => failures.push(reason),
+    });
+    expect(result).toBeUndefined();
+    expect(failures).toHaveLength(1);
+    // Pinned format: code FIRST, then HTTP status. Lets the next failure be
+    // re-diagnosed from the message alone without re-running the renewal.
+    expect(failures[0]).toBe(
+      'OAuth credential renewal failed (invalid_grant, HTTP 400); check account sign-in',
+    );
+  });
+
+  it('keeps the original wording when the failure is not an OAuth-style ProviderError', async () => {
+    const initial = credential('kimi', true);
+    const failures: string[] = [];
+    const [target] = resolveDiscoveryTargets({
+      providers: { plan: { type: 'kimi-for-coding', apiKeys: [{ ...initial }] } },
+    } as never);
+    const result = await discoverOpenAICompatibleModels('plan', {
+      baseUrl: target!.baseUrl,
+      prepareApiKey: async () => {
+        throw new Error('network down');
+      },
+      onFailure: (reason) => failures.push(reason),
+    });
+    expect(result).toBeUndefined();
+    expect(failures).toEqual(['OAuth credential renewal failed; check account sign-in']);
   });
   it('runs a namespaced ChatGPT tool turn and replays encrypted reasoning without unsupported preview fields', async () => {
     let calls = 0;

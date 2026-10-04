@@ -16,7 +16,7 @@ const XAI_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828';
 const KIMI_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098';
 const META_CLIENT_ID = '1031625952748946';
 const XAI_TOKEN_URL = 'https://auth.x.ai/oauth2/token';
-const KIMI_TOKEN_URL = 'https://auth.kimi.com/api/oauth/token';
+const KIMI_TOKEN_URL = 'https://auth.kimi.ai/api/oauth/token';
 const META_KEY_URL = 'https://api.meta.ai/muse-code/key';
 
 function tokenCredential(
@@ -110,7 +110,7 @@ export function createKimiAuthStrategy(fetchImpl: typeof fetch = fetch): Provide
       },
       family: 'anthropic',
       baseUrl: 'https://api.kimi.com/coding/v1',
-      deviceUrl: 'https://auth.kimi.com/api/oauth/device_authorization',
+      deviceUrl: 'https://auth.kimi.ai/api/oauth/device_authorization',
       tokenUrl: KIMI_TOKEN_URL,
       clientId: KIMI_CLIENT_ID,
       credential: async (body) => tokenCredential('kimi', body),

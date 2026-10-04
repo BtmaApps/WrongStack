@@ -119,7 +119,13 @@ export interface AnthropicStreamState {
   // large tool inputs delivered as many small deltas (mirrors presets/openai.ts).
   blocks: Map<
     number,
-    { kind: BlockKind; id?: string | undefined; name?: string | undefined; chunks: string[] }
+    {
+      kind: BlockKind;
+      id?: string | undefined;
+      name?: string | undefined;
+      chunks: string[];
+      initialInput?: unknown;
+    }
   >;
 }
 
@@ -264,10 +270,21 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
       case 'content_block_start': {
         const index = Number(ev['index'] ?? 0);
         const cb = ev['content_block'] as
-          | { type?: string | undefined; id?: string | undefined; name?: string | undefined }
+          | {
+              type?: string | undefined;
+              id?: string | undefined;
+              name?: string | undefined;
+              input?: unknown;
+            }
           | undefined;
         if (cb?.type === 'tool_use') {
-          state.blocks.set(index, { kind: 'tool_use', id: cb.id, name: cb.name, chunks: [] });
+          state.blocks.set(index, {
+            kind: 'tool_use',
+            id: cb.id,
+            name: cb.name,
+            chunks: [],
+            initialInput: cb.input,
+          });
           if (cb.id && cb.name) {
             out.push({ type: 'tool_use_start', id: cb.id, name: cb.name });
           }
@@ -323,9 +340,16 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
         const index = Number(ev['index'] ?? 0);
         const block = state.blocks.get(index);
         if (block?.kind === 'tool_use' && block.id) {
-          const input = parseToolInput(
-            block.chunks.length === 1 ? (block.chunks[0] ?? '') : block.chunks.join(''),
-          );
+          // Canonical Anthropic starts with {} then streams the object. Some
+          // compatible gateways supply the full arguments on the start event.
+          // Deltas remain authoritative when present; never discard start-only input.
+          const raw =
+            block.chunks.length > 0
+              ? block.chunks.join('')
+              : typeof block.initialInput === 'string'
+                ? block.initialInput
+                : JSON.stringify(block.initialInput);
+          const input = parseToolInput(raw);
           out.push({ type: 'tool_use_stop', id: block.id, input });
         } else if (block?.kind === 'thinking') {
           out.push({ type: 'thinking_stop' });

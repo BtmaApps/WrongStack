@@ -38,13 +38,11 @@ let _pendingStats: DebugStreamStats | null = null;
 const THROTTLE_MS = 200; // batch React dispatches at ~5 Hz
 
 function _flush(): void {
-  try {
-    if (_pendingStats && _debugStreamCallback) {
-      _debugStreamCallback({ ..._pendingStats });
-    }
-  } finally {
-    _pendingStats = null;
-    _throttleTimer = null;
+  const stats = _pendingStats;
+  _pendingStats = null;
+  _throttleTimer = null;
+  if (stats && _debugStreamCallback) {
+    _debugStreamCallback({ ...stats });
   }
 }
 

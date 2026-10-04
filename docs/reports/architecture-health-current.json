@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:48:24.296Z",
+  "generatedAt": "2026-10-04T14:49:16.607Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4460,
-    "testFiles": 4029,
-    "sourceLines": 1051417,
+    "testFiles": 4032,
+    "sourceLines": 1051457,
     "workspaceEdges": 133,
     "moduleEdges": 14529,
     "nonCommandSlashImports": 0,
@@ -506,7 +506,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 120,
-      "testFiles": 106,
+      "testFiles": 109,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -519,7 +519,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 106
+          "testFiles": 109
         }
       ]
     },
@@ -13156,6 +13156,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/cache-zero-limit.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/capabilities.test.ts",
         "projects": [
           "root-node"
@@ -13630,6 +13636,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/stream-debug-reentrant.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/stream-debug-state.test.ts",
         "projects": [
           "root-node"
@@ -13691,6 +13703,12 @@
       },
       {
         "file": "packages/providers/tests/tool-priority.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/tool-use-envelope.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25721,7 +25739,7 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 981,
+      "lines": 982,
       "relativeImports": 77
     },
     {
@@ -25998,7 +26016,7 @@
     },
     {
       "file": "packages/providers/src/index.ts",
-      "lines": 981,
+      "lines": 982,
       "relativeImports": 77
     },
     {
