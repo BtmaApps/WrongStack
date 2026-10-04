@@ -44,6 +44,7 @@ export const STATUSLINE_ICONS = {
   tools: glyphs.tools,
   version: glyphs.brand,
   working_dir: glyphs.workingDirectory,
+  sandbox: glyphs.lock,
   yolo: glyphs.warning,
 } as const satisfies Record<StatuslineItem, string>;
 

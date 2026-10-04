@@ -1,3 +1,4 @@
+import { createSandboxExecWrapper } from '@wrongstack/core/sandbox';
 import type { Tool } from '@wrongstack/core/types';
 import { auditTool } from './audit.js';
 import { bashTool } from './bash.js';
@@ -56,6 +57,20 @@ import { toolUseTool } from './tool-use.js';
 import { treeTool } from './tree.js';
 import { typecheckTool } from './typecheck.js';
 import { writeTool } from './write.js';
+
+/**
+ * Exec-family sandbox choke point (plan 28 — docs/specs/sandboxed-execution-tiers-sdd.md).
+ *
+ * Wraps bash/exec/git so a configured sandbox policy is enforced per call.
+ * The default policy is `mode: "off"`, which passes every call through
+ * unchanged; hosts opt in via `configureSandboxPolicy` (same module-level
+ * pattern as exec.ts's `configureExecPolicy`). Call-time re-read keeps the
+ * policy runtime-toggleable without rebuilding the registry.
+ */
+const sandboxWrap = createSandboxExecWrapper();
+const sandboxedBashTool = sandboxWrap(bashTool);
+const sandboxedExecTool = sandboxWrap(execTool);
+const sandboxedGitTool = sandboxWrap(gitTool);
 
 /**
  * Provider-facing descriptions for every built-in tool.
@@ -257,7 +272,7 @@ export const TIER1_TOOLS: Tool[] = [
   codebaseIncomingCallsTool,
   codebaseOutgoingCallsTool,
   codebaseIndexTool,
-  bashTool,
+  sandboxedBashTool,
   grepTool,
   globTool,
   diffTool,
@@ -284,11 +299,11 @@ export const TIER2_TOOLS: Tool[] = [
   projectKitRunTool,
   replaceTool,
   toolScriptTool,
-  execTool,
+  sandboxedExecTool,
   pwshTool,
   fetchTool,
   readUrlContentTool,
-  gitTool,
+  sandboxedGitTool,
   treeTool,
   lintTool,
   formatTool,
@@ -346,8 +361,8 @@ const rawBuiltinTools: Tool[] = [
   replaceTool,
   globTool,
   grepTool,
-  bashTool,
-  execTool,
+  sandboxedBashTool,
+  sandboxedExecTool,
   pwshTool,
   fetchTool,
   searchTool,
@@ -355,7 +370,7 @@ const rawBuiltinTools: Tool[] = [
   planTool,
   kanbanTool,
   taskTool,
-  gitTool,
+  sandboxedGitTool,
   patchTool,
   jsonTool,
   diffTool,

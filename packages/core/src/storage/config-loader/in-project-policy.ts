@@ -258,6 +258,19 @@ const IN_PROJECT_DENIED_PATHS: ReadonlyArray<{ path: string; reason: string }> =
   },
   { path: 'tools.exec.danger', reason: 'Weakens the destructive-command banner.' },
   {
+    // Plan 28 (exec-family sandbox). `tools.sandbox.mode` and `tools.sandbox.tier`
+    // are intentionally ALLOWED from a project config: they can only tighten
+    // containment, never widen it. The two leaves below can.
+    path: 'tools.sandbox.backend',
+    reason:
+      'Selects the exec-sandbox backend; container variants add image/CLI overrides (RCE class).',
+  },
+  {
+    path: 'tools.sandbox.writableRoots',
+    reason:
+      'Bind-mounts host paths read-write inside the sandbox; a repo-committed list could mount user directories.',
+  },
+  {
     // The whole subtree, not just the dangerous leaves: a persona's
     // `instruction` is rendered into the voter SYSTEM prompt, a profile seat
     // may pin providerId/model, and `defaultProfile` selects which of those

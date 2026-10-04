@@ -58,6 +58,7 @@ const ownership = {
   quota: ['concrete runtime default', 'Runtime or Providers'],
   registry: ['concrete runtime default', 'Runtime composition'],
   replay: ['storage/repository implementation', 'repository/runtime implementation'],
+  sandbox: ['concrete runtime default', 'Runtime or focused sandbox implementation'],
   security: ['concrete runtime default', 'Runtime security subsystem'],
   'session-catalog': [
     'storage/repository implementation',

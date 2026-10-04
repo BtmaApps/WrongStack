@@ -1232,6 +1232,23 @@
       ]
     },
     {
+      "subpath": "./sandbox",
+      "target": {
+        "types": "./dist/sandbox/index.d.ts",
+        "import": "./dist/sandbox/index.js"
+      },
+      "source": "packages/core/src/sandbox/index.ts",
+      "declarations": [
+        "export * from './types.js';",
+        "export type { SandboxAuditRecord, SandboxExpansionApprover } from './audit.js';",
+        "export { clearSandboxAuditLog, emitSandboxDenied, getSandboxAuditLog, requestSandboxExpansion, setSandboxAuditEvents, setSandboxExpansionApprover, } from './audit.js';",
+        "export { configureSandboxPolicy, getResolvedSandboxConfig, resetSandboxPolicy } from './manager.js';",
+        "export { createPolicySandboxApprover } from './approver.js';",
+        "export { createSandboxExecWrapper } from './wrap.js';",
+        "export { policyOnlySandboxBackend } from './backends/policy-only.js';"
+      ]
+    },
+    {
       "subpath": "./tools",
       "target": {
         "types": "./dist/tools/index.d.ts",
@@ -1593,8 +1610,8 @@
       "directory": "kernel",
       "classification": "kernel primitive",
       "intendedOwner": "Core",
-      "sourceFiles": 21,
-      "sourceLines": 4360
+      "sourceFiles": 22,
+      "sourceLines": 4398
     },
     {
       "directory": "models",
@@ -1667,6 +1684,13 @@
       "sourceLines": 259
     },
     {
+      "directory": "sandbox",
+      "classification": "concrete runtime default",
+      "intendedOwner": "Runtime or focused sandbox implementation",
+      "sourceFiles": 7,
+      "sourceLines": 452
+    },
+    {
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
@@ -1692,14 +1716,14 @@
       "classification": "host/application concern",
       "intendedOwner": "CLI/TUI presentation contract; host rendering stays outside Core",
       "sourceFiles": 1,
-      "sourceLines": 365
+      "sourceLines": 372
     },
     {
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 109,
-      "sourceLines": 25050
+      "sourceLines": 25063
     },
     {
       "directory": "tasking",
@@ -1720,7 +1744,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15801
+      "sourceLines": 15823
     },
     {
       "directory": "typesafe",

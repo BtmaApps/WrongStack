@@ -1,3 +1,5 @@
+import type { SandboxConfig } from '../../sandbox/types.js';
+
 export interface ToolsConfig {
   defaultExecutionStrategy: 'parallel' | 'sequential' | 'smart';
   /** Hard cap on LLM turns per agent.run(). 0 = unlimited. Default: 0. */
@@ -417,4 +419,10 @@ export interface AutoThinConfig {
    * regardless of this flag. Default: false.
    */
   applyOnBoot?: boolean | undefined;
+  /**
+   * Sandbox enforcement for the exec-family tools (bash, exec, git).
+   * Default `mode: "off"` preserves current behavior exactly; hosts opt in
+   * per plan 28 (docs/specs/sandboxed-execution-tiers-sdd.md).
+   */
+  sandbox?: SandboxConfig | undefined;
 }

@@ -1,0 +1,63 @@
+{
+  "spec": "sandboxed-execution-tiers",
+  "plan": "docs/competitive-roadmap-2026-2027/28-sandboxed-execution-tiers.md",
+  "generated": "2026-10-04",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Tier contract types + config schema (tools.sandbox: mode/tier/writableRoots) in packages/core/src/sandbox/types.ts",
+      "dependsOn": [],
+      "status": "done"
+    },
+    {
+      "id": "T2",
+      "title": "Policy-only backend + exec choke point wrapper wired into bash/exec/git builtins and MCP exec wrappers (no-op equivalence)",
+      "dependsOn": ["T1"],
+      "status": "done"
+    },
+    {
+      "id": "T3",
+      "title": "sandbox_denied error kind + audit events (denial, expansion_requested, outcome)",
+      "dependsOn": ["T2"],
+      "status": "done"
+    },
+    {
+      "id": "T4",
+      "title": "Container backend (Docker/Podman): same-absolute-path mount, deny-by-default network, writableRoots; browser_* disabled in tier",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T5",
+      "title": "Windows-native backend: icacls low-integrity workspace constraint + persistence caveat docs",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T6",
+      "title": "Expansion-request approval flow through permissionPolicy.evaluate + one-call elevation",
+      "dependsOn": ["T2"],
+      "status": "done"
+    },
+    {
+      "id": "T7",
+      "title": "Fleet inheritance + per-spawn override + /fleet status surfacing",
+      "dependsOn": ["T2"],
+      "status": "pending"
+    },
+    {
+      "id": "T8",
+      "title": "In-project config guards: tier/mode allowed, backend image/command denied; assertInProjectAllowListComplete updated",
+      "dependsOn": ["T2"],
+      "status": "done"
+    },
+    {
+      "id": "T9",
+      "title": "CLI/TUI/WebUI tier indicators + docs",
+      "dependsOn": ["T3", "T6"],
+      "status": "done"
+    }
+  ],
+  "criticalPath": ["T1", "T2", "T4"],
+  "parallelGroups": [["T4", "T5", "T6", "T7", "T8"]]
+}

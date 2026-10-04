@@ -1,3 +1,4 @@
+import { getResolvedSandboxConfig } from '@wrongstack/core/sandbox';
 import { Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
@@ -35,6 +36,9 @@ export function buildSafetyWorkEntries(p: StatusBarRailBuildParams): RailSpanEnt
     hasActiveGoal,
     goalSummary,
   } = p;
+  const sandboxCfg = getResolvedSandboxConfig();
+  const sandboxTierShort =
+    sandboxCfg.tier === 'read-only' ? 'RO' : sandboxCfg.tier === 'workspace-write' ? 'RW' : 'FULL';
   const autonomyColor = chipColor(
     autonomy === 'eternal' ? theme.error : autonomy === 'auto' ? theme.warn : theme.accent,
     isNoColor,
@@ -60,6 +64,18 @@ export function buildSafetyWorkEntries(p: StatusBarRailBuildParams): RailSpanEnt
             {isNoColor
               ? autonomy.slice(0, 1).toUpperCase()
               : `∞${autonomy.slice(0, 1).toUpperCase()}`}
+          </Text>,
+        ])
+      : null,
+    // Exec-sandbox posture (plan 28): visible only while a tier is enforced —
+    // default `mode: 'off'` renders nothing, so the rail-order pins are stable.
+    sandboxCfg.mode === 'enforced' && showChip('sandbox')
+      ? entry('sandbox', 'sandbox', p, [
+          <Text color={chipColor(theme.warn, isNoColor)} bold>
+            {isNoColor ? `SANDBOX ${sandboxTierShort}` : `SBX ${sandboxTierShort}`}
+          </Text>,
+          <Text color={chipColor(theme.warn, isNoColor)} bold>
+            {isNoColor ? 'SBX' : 'SB'}
           </Text>,
         ])
       : null,

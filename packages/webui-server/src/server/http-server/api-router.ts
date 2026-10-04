@@ -1,6 +1,6 @@
 import type * as http from 'node:http';
-import { handleProjectAutomation } from './automation-handler.js';
 import * as v8 from 'node:v8';
+import { getResolvedSandboxConfig } from '@wrongstack/core/sandbox';
 import { sanitizeApiError } from '@wrongstack/core/security';
 import { getSageSurface } from '@wrongstack/sage';
 import { getIndexState } from '@wrongstack/tools';
@@ -53,6 +53,7 @@ import {
   handleApiSessionMessage,
   handleApiSessions,
 } from './api-handlers.js';
+import { handleProjectAutomation } from './automation-handler.js';
 import { handleMemorySearchPage } from './memory-search-page.js';
 import { handleMemorySearchResolve, isWebuiSearchVisible } from './memory-search-resolve.js';
 import { decodeSessionId, strictDecodeParam } from './security-helpers.js';
@@ -157,6 +158,24 @@ export async function handleApiRoutes(
     }
     res.writeHead(204);
     res.end();
+    return true;
+  }
+
+  if (url.pathname === '/api/sandbox/status' && req.method === 'GET') {
+    if (requireAccessToken && !accessTokenOk) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return true;
+    }
+    // Posture-only snapshot: tier/mode/backend. writableRoots are deliberately
+    // NOT exposed over HTTP — they name host filesystem paths.
+    const sandboxCfg = getResolvedSandboxConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        sandbox: { mode: sandboxCfg.mode, tier: sandboxCfg.tier, backend: sandboxCfg.backend },
+      }),
+    );
     return true;
   }
 

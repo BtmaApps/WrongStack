@@ -91,6 +91,14 @@ type SessionEventVariant =
       /** With `allowed: false`: the resident read-only companions still run. */
       companions?: boolean | undefined;
     }
+  | {
+      type: 'sandbox_audit';
+      ts: string;
+      /** Ring/bus event name: `sandbox.denied`, `sandbox.expansion_requested`, or `sandbox.expansion_outcome`. */
+      event: string;
+      tool: string;
+      detail: Record<string, unknown>;
+    }
   /**
    * The session's whole `/permissions allow|deny` list; the last event wins on
    * resume. Untrusted journal payload, normalized when read
@@ -133,6 +141,12 @@ type SessionEventVariant =
       estimatedInputTokens?: number | undefined;
       /** Number of tools offered to the model in this request. */
       toolCount?: number | undefined;
+      /**
+       * System-prompt identity variant this request ran under (`default`,
+       * `lite`, `pro`, `scout`). Absent on journals written before it existed
+       * and on hosts that keep no per-conversation variant.
+       */
+      systemVariant?: string | undefined;
     }
   | {
       type: 'llm_response';

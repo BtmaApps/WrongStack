@@ -181,6 +181,10 @@
       "types": "./dist/notifications/index.d.ts",
       "import": "./dist/notifications/index.js"
     },
+    "./sandbox": {
+      "types": "./dist/sandbox/index.d.ts",
+      "import": "./dist/sandbox/index.js"
+    },
     "./tools": {
       "types": "./dist/tools/index.d.ts",
       "import": "./dist/tools/index.js"

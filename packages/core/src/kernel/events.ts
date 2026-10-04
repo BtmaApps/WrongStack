@@ -11,6 +11,7 @@ import type { MemoryEventMap } from './events/memory-events.js';
 import type { NetworkEventMap } from './events/network-events.js';
 import type { ProcessEventMap } from './events/process-events.js';
 import type { ProviderEventMap } from './events/provider-events.js';
+import type { SandboxEventMap } from './events/sandbox-events.js';
 import type { SddEventMap } from './events/sdd-events.js';
 import type { SessionEventMap } from './events/session-events.js';
 import type { ToolEventMap } from './events/tool-events.js';
@@ -88,7 +89,8 @@ export interface EventMap
     SddEventMap,
     WorktreeEventMap,
     FleetEventMap,
-    WrongTraceEventMap {}
+    WrongTraceEventMap,
+    SandboxEventMap {}
 
 export type EventName = keyof EventMap;
 export type Listener<E extends EventName> = (payload: EventMap[E]) => void;

@@ -200,12 +200,13 @@ describe('build-script allowlists stay in sync with the tree (WS-072)', () => {
  * VF-31 (security report Phase 4): CI installs with `--ignore-scripts` and
  * rebuilds an explicit, workflow-pinned list of native dependencies, so a
  * fork PR cannot widen its own allowlist via pnpm-workspace.yaml. The same
- * package set now lives in three places, and drift in any of them is silent
+ * package set is pinned in the following locations; drift in any of them is silent
  * without this check:
  *
  *   1. `pnpm-workspace.yaml` `allowBuilds` — the LOCAL-DEV source of truth
  *   2. `.github/workflows/ci.yml` — every job's `pnpm rebuild <list>` step
  *   3. `.github/workflows/release.yml` — the `pack` job's rebuild step
+ *   4. `.github/workflows/pages.yml` — the `website-checks` job's rebuild step
  *
  * Adding to the workspace file without the workflows means CI silently lacks
  * the native binary; adding to a workflow without the workspace file means
@@ -241,6 +242,7 @@ describe('build-allowlist freshness across workflows (VF-31)', () => {
   // drift this block exists to catch, so they are scanned here too.
   const lists = [
     ...workflowRebuildLists('.github/workflows/ci.yml'),
+    ...workflowRebuildLists('.github/workflows/pages.yml'),
     ...workflowRebuildLists('.github/workflows/release.yml'),
     ...workflowRebuildLists('dev.sh'),
     ...workflowRebuildLists('dev.ps1'),

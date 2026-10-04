@@ -56,7 +56,8 @@ export type StatuslineItem =
   | 'side_effects'
   | 'version'
   | 'dropped_tools'
-  | 'prompt_variant';
+  | 'prompt_variant'
+  | 'sandbox';
 
 /** Physical status bar line a chip renders on (1-based, detailed mode). */
 export type StatuslineLine = 1 | 2 | 3 | 4;
@@ -135,6 +136,7 @@ export const STATUSLINE_ITEMS: StatuslineItem[] = [
   'todos',
   'plan',
   'tasks',
+  'sandbox',
   // Line 4 — ASYNC: things running beside the turn, and countdowns
   'fleet',
   'fleet_agents',
@@ -206,6 +208,7 @@ export const DEFAULT_LINES: Record<StatuslineItem, StatuslineLine> = {
   todos: 3,
   plan: 3,
   tasks: 3,
+  sandbox: 3,
   // L4 — ASYNC: fleet/peers/services plus the countdowns, all of which
   // arrive and leave on their own schedule.
   fleet: 4,
@@ -232,6 +235,9 @@ export const DEFAULT_HIDDEN_ITEMS: StatuslineItem[] = [
   'sessions',
   'tools',
   'side_effects',
+  // Off-by-default: with `mode: 'off'` (the default) this chip renders nothing
+  // useful — it becomes meaningful the moment a host enforces a sandbox tier.
+  'sandbox',
 ];
 
 /** Default on/off map for a fresh config: everything except {@link DEFAULT_HIDDEN_ITEMS}. */
@@ -361,4 +367,5 @@ export const CHIP_DESCRIPTIONS: Record<StatuslineItem, string> = {
   version: 'WrongStack version + update notice (right-anchored)',
   dropped_tools: 'Tools dropped from the provider request (maxTools limit)',
   prompt_variant: 'System prompt variant (Lite / Standard / Pro)',
+  sandbox: 'Exec-sandbox tier (off / read-only / workspace-write / full-access)',
 };

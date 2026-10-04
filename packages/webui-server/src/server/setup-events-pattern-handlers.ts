@@ -69,6 +69,12 @@ export function registerSetupEventsPatternHandlers(options: {
         payload: { event: eventName, ...projectWide(payload) },
       });
     }),
+    events.onPattern('sandbox.*', (eventName, payload) => {
+      broadcast(clients, {
+        type: 'sandbox.event',
+        payload: { event: eventName, ...(payload as Record<string, unknown>) },
+      } as never as WSServerMessage);
+    }),
     events.onPattern('brain.*', (eventName, payload) => {
       const eventPayload = payload as Record<string, unknown> | null;
       const sessionId = eventPayload?.['sessionId'];

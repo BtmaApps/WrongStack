@@ -14,9 +14,9 @@ import {
  * AND the left-to-right render order within each rail.
  */
 describe('STATUSLINE_ITEMS navigation order matches visual layout', () => {
-  it('has exactly 40 fields', () => {
-    expect(STATUSLINE_ITEMS.length).toBe(41);
-    expect(STATUSLINE_FIELD_COUNT).toBe(41);
+  it('has exactly 42 fields', () => {
+    expect(STATUSLINE_ITEMS.length).toBe(42);
+    expect(STATUSLINE_FIELD_COUNT).toBe(42);
   });
 
   it('follows line 1 → line 2 → line 3 → line 4 order', () => {
@@ -77,6 +77,7 @@ describe('STATUSLINE_ITEMS navigation order matches visual layout', () => {
         'todos',
         'plan',
         'tasks',
+        'sandbox',
       ],
       4: [
         'fleet',
@@ -177,6 +178,7 @@ describe('STATUSLINE_ITEMS navigation order matches visual layout', () => {
       'prompt_variant',
       'queue',
       'quota',
+      'sandbox',
       'sessions',
       'side_effects',
       'state',

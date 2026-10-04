@@ -7,6 +7,8 @@
  *
  * Usage: <SessionsDashboard /> — standalone, no store dependencies.
  */
+
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import {
   Activity,
   AlertCircle,
@@ -23,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { toErrorMessage } from '@wrongstack/core/utils/error';
+import { useSandboxStatus } from '@/hooks/use-sandbox-status';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
@@ -207,6 +209,7 @@ function HistoryWorkspace() {
 }
 
 export function SessionsDashboard() {
+  const sandboxLine = useSandboxStatus();
   const { t } = useAppTranslation();
 
   return (
@@ -223,6 +226,14 @@ export function SessionsDashboard() {
           <h1 className="mt-0.5 text-lg font-semibold tracking-tight">
             {t('activity:sessions.workspaceTitle', { defaultValue: 'Sessions' })}
           </h1>
+        </div>
+        <div className="ml-3 flex items-center gap-2">
+          <span
+            data-testid="sandbox-status"
+            className="rounded border border-border/75 bg-background px-2 py-0.5 text-xs text-muted-foreground"
+          >
+            {sandboxLine}
+          </span>
         </div>
         <TabsList className="h-9 min-h-9 justify-start border-border/75 bg-background p-0 shadow-none">
           <TabsTrigger

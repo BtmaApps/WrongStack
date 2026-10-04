@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:50:59.064Z",
+  "generatedAt": "2026-10-04T14:52:24.507Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4461,
-    "testFiles": 4033,
-    "sourceLines": 1051637,
+    "sourceFiles": 4472,
+    "testFiles": 4041,
+    "sourceLines": 1052373,
     "workspaceEdges": 133,
-    "moduleEdges": 14533,
+    "moduleEdges": 14553,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 977
+    "testOnlyExports": 981
   },
   "errors": [],
   "packageCycles": [],
@@ -49,6 +49,7 @@
       "quota",
       "registry",
       "replay",
+      "sandbox",
       "security",
       "session-catalog",
       "skills",
@@ -85,6 +86,7 @@
       "quota",
       "registry",
       "replay",
+      "sandbox",
       "security",
       "session-catalog",
       "skills",
@@ -149,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 562,
-      "testFiles": 580,
+      "sourceFiles": 563,
+      "testFiles": 581,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -190,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 580
+          "testFiles": 581
         }
       ]
     },
@@ -241,8 +243,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 997,
-      "testFiles": 889,
+      "sourceFiles": 1005,
+      "testFiles": 893,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -257,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 889
+          "testFiles": 893
         }
       ]
     },
@@ -764,7 +766,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 269,
-      "testFiles": 294,
+      "testFiles": 295,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -780,7 +782,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 294
+          "testFiles": 295
         }
       ]
     },
@@ -788,7 +790,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 451,
-      "testFiles": 411,
+      "testFiles": 412,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -811,7 +813,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 411
+          "testFiles": 412
         }
       ]
     },
@@ -841,8 +843,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 643,
-      "testFiles": 457,
+      "sourceFiles": 645,
+      "testFiles": 458,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -865,7 +867,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 457
+          "testFiles": 458
         }
       ]
     },
@@ -4553,6 +4555,12 @@
       },
       {
         "file": "packages/cli/tests/slash-review.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-sandbox.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8950,6 +8958,24 @@
         ]
       },
       {
+        "file": "packages/core/tests/sandbox/sandbox-audit.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/sandbox-config.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/sandbox-expansion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/security/always-allow-without-subject.test.ts",
         "projects": [
           "root-node"
@@ -9575,6 +9601,12 @@
       },
       {
         "file": "packages/core/tests/storage/in-project-observability-denied.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/in-project-sandbox-denied.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17674,6 +17706,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/sandbox-equivalence.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/search-cache-ttl.test.ts",
         "projects": [
           "root-node"
@@ -19835,6 +19873,12 @@
       },
       {
         "file": "packages/tui/tests/status-bar-rail-order.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/status-bar-sandbox-chip.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24838,6 +24882,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/pure/sandbox-status.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/server/providers-json.test.ts",
         "projects": [
           "webui-jsdom"
@@ -26716,6 +26766,10 @@
       "name": "fileProposals"
     },
     {
+      "file": "packages/cli/src/slash-commands/sandbox.ts",
+      "name": "buildSandboxCommand"
+    },
+    {
       "file": "packages/cli/src/slash-commands/sdd-format.ts",
       "name": "taskStatusIcon"
     },
@@ -27470,6 +27524,10 @@
     {
       "file": "packages/core/src/quota/index.ts",
       "name": "resetProviderQuota"
+    },
+    {
+      "file": "packages/core/src/sandbox/types.ts",
+      "name": "DEFAULT_SANDBOX_CONFIG"
     },
     {
       "file": "packages/core/src/security/permission-helpers.ts",
@@ -30046,6 +30104,14 @@
     {
       "file": "packages/webui/src/lib/reasoning-effort.ts",
       "name": "EFFORT_LABEL_KEYS"
+    },
+    {
+      "file": "packages/webui/src/lib/sandbox-status.ts",
+      "name": "initialSandboxEventState"
+    },
+    {
+      "file": "packages/webui/src/lib/sandbox-status.ts",
+      "name": "reduceSandboxEvent"
     },
     {
       "file": "packages/webui/src/lib/sdd-theme.ts",

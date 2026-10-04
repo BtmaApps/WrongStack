@@ -143,6 +143,11 @@
       "typeOnly": 0,
       "runtimeOrMixed": 2
     },
+    "@wrongstack/core/sandbox": {
+      "files": 6,
+      "typeOnly": 0,
+      "runtimeOrMixed": 6
+    },
     "@wrongstack/core/security": {
       "files": 185,
       "typeOnly": 27,
@@ -184,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1293,
-      "typeOnly": 1144,
+      "files": 1294,
+      "typeOnly": 1145,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -10170,6 +10175,42 @@
       "runtimeOrMixed": 1
     },
     {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/cli/src/slash-commands/sandbox.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/tools/src/builtin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/tools/tests/sandbox-equivalence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/tui/src/components/status-bar-rails-safety.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/tui/tests/status-bar-sandbox-chip.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/webui-server/src/server/http-server/api-router.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
       "specifier": "@wrongstack/core/security",
       "file": "apps/desktop/src/main/desktop-config-io.ts",
       "typeOnly": 0,
@@ -13922,6 +13963,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/review.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/sandbox.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

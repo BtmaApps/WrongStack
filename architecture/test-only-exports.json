@@ -248,6 +248,9 @@
     "packages/cli/src/slash-commands/memory-triage.ts": [
       "fileProposals"
     ],
+    "packages/cli/src/slash-commands/sandbox.ts": [
+      "buildSandboxCommand"
+    ],
     "packages/cli/src/slash-commands/sdd-format.ts": [
       "taskStatusIcon"
     ],
@@ -608,6 +611,9 @@
     "packages/core/src/quota/index.ts": [
       "reachedQuotaWindow",
       "resetProviderQuota"
+    ],
+    "packages/core/src/sandbox/types.ts": [
+      "DEFAULT_SANDBOX_CONFIG"
     ],
     "packages/core/src/security/permission-helpers.ts": [
       "MAX_COMMAND_SCAN_NODES",
@@ -1950,6 +1956,10 @@
       "ALL_EFFORTS",
       "AUTO_EFFORT_LABEL_KEY",
       "EFFORT_LABEL_KEYS"
+    ],
+    "packages/webui/src/lib/sandbox-status.ts": [
+      "initialSandboxEventState",
+      "reduceSandboxEvent"
     ],
     "packages/webui/src/lib/sdd-theme.ts": [
       "SDD_PRIORITY",
