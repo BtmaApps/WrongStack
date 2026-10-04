@@ -133,7 +133,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/governance/src/capability-grant.ts',
       'packages/governance/src/verification-execution-lease.ts',
       'packages/mcp/src/authorization.ts',
-      'packages/mcp/src/server.ts',
+      'packages/mcp/src/server-http.ts', // existing HTTP comparison relocated from server.ts
       'packages/webui-server/src/server/ws-auth.ts', // delegates; name kept for its callers
     ]);
 

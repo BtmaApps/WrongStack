@@ -1,3 +1,9 @@
+import type { CodexAccountCatalogHost } from './codex-account-catalog.js';
+import {
+  fetchContextLimits as fetchContextLimitsFromHost,
+  publishLiveModels as publishLiveModelsFromHost,
+  readAccountQuota as readAccountQuotaFromHost,
+} from './codex-account-catalog.js';
 import {
   CODEX_ROUTING_HINT_HEADER,
   codexCacheSessionId,
@@ -5,8 +11,6 @@ import {
   codexRoutingHint,
   compressCodexRequestBody,
   DEFAULT_CODEX_BASE,
-  positiveContextLimit,
-  resolveCodexModelsUrl,
   resolveCodexUrl,
   resolveCodexWebSocketUrl,
 } from './openai-codex-request.js';
@@ -49,7 +53,6 @@ import {
   type Request,
   type StreamEvent,
 } from '@wrongstack/core/types';
-import { safeParse } from '@wrongstack/core/utils';
 import {
   type CodexResponseMetadata,
   type CodexWebSocketFactory,
@@ -60,11 +63,9 @@ import {
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import {
-  CODEX_CLIENT_VERSION,
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
   type CodexTokens,
-  codexUsageUrl,
   refreshCodexTokens,
 } from './oauth/codex-protocol.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
@@ -75,28 +76,14 @@ import {
   type HeadersLike,
   translateCodexHttpError,
 } from './openai-codex-errors.js';
-import type {
-  CodexLiveModel,
-  CodexModelMetadata,
-  CodexModelPolicy,
-  CodexModelsResponse,
-} from './openai-codex-model-policy.js';
-import {
-  CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT,
-  codexSendCeiling,
-  parseCodexTruncationPolicy,
-  parseReasoningEffort,
-  parseSupportedReasoningEfforts,
-} from './openai-codex-model-policy.js';
-import { parseCodexRateLimitHeaders, parseCodexUsagePayload } from './openai-codex-rate-limits.js';
+import type { CodexLiveModel, CodexModelPolicy } from './openai-codex-model-policy.js';
+import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
 import { parseOpenAIResponsesStream } from './openai-codex-stream.js';
 import {
   isCacheProbeEnabled,
   recordCacheProbeRequest,
   recordCacheProbeUsage,
 } from './prompt-cache-probe.js';
-import { upstreamUrl } from './proxy-upstream.js';
-import { redirectSafeFetch } from './redirect-safe-fetch.js';
 import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
 
 // Owned by `codex-websocket.ts` (both transports carry it); re-exported here
@@ -137,13 +124,6 @@ function isTurnContinuation(req: Request): boolean {
   if (last?.role !== 'user' || !Array.isArray(last.content)) return false;
   return last.content.some((block) => block.type === 'tool_result');
 }
-
-const CODEX_MODELS_FAILURE_COOLDOWN_MS = 5_000;
-const CODEX_MODELS_TIMEOUT_MS = 3_000;
-/** Budget for the account usage read (`/wham/usage`) — a status call, never on a turn's path. */
-const CODEX_USAGE_TIMEOUT_MS = 10_000;
-/** Match the official client's in-memory/file model catalog freshness window. */
-const CODEX_MODELS_CACHE_TTL_MS = 5 * 60_000;
 /** The official client proactively refreshes ChatGPT access tokens five minutes early. */
 const CODEX_TOKEN_REFRESH_SKEW_MS = 5 * 60_000;
 
@@ -404,92 +384,7 @@ export class OpenAICodexProvider extends WireAdapter {
   }
 
   private async fetchContextLimits(signal: AbortSignal): Promise<void> {
-    const url = `${resolveCodexModelsUrl(this.baseUrl)}?client_version=${encodeURIComponent(CODEX_CLIENT_VERSION)}`;
-    const timeout = AbortSignal.timeout(CODEX_MODELS_TIMEOUT_MS);
-    const probeSignal = AbortSignal.any([signal, timeout]);
-    try {
-      const headers = this.buildHeaders({ model: '', messages: [] });
-      headers.accept = 'application/json';
-      delete headers['content-type'];
-      if (this.contextLimitsEtag) headers['if-none-match'] = this.contextLimitsEtag;
-      const response = await redirectSafeFetch(this.fetchImpl, url, {
-        method: 'GET',
-        headers,
-        signal: probeSignal,
-      });
-      if (response.status === 304) {
-        this.contextLimitsFreshUntil = Date.now() + CODEX_MODELS_CACHE_TTL_MS;
-        this.contextLimitsRetryAfter = 0;
-        return;
-      }
-      if (!response.ok) {
-        this.contextLimitsRetryAfter = Date.now() + CODEX_MODELS_FAILURE_COOLDOWN_MS;
-        return;
-      }
-      const payload = safeParse<CodexModelsResponse>(await response.text());
-      if (!payload.ok || !Array.isArray(payload.value?.models)) {
-        this.contextLimitsRetryAfter = Date.now() + CODEX_MODELS_FAILURE_COOLDOWN_MS;
-        return;
-      }
-      const next = new Map<string, CodexModelPolicy>();
-      const live: CodexLiveModel[] = [];
-      for (const raw of payload.value.models) {
-        if (!raw || typeof raw !== 'object') continue;
-        const entry = raw as CodexModelMetadata;
-        if (typeof entry.slug !== 'string') continue;
-        // Prefer the model's maximum; fall back to the default window for a
-        // catalog too old to publish one. See codexSendCeiling.
-        const window =
-          positiveContextLimit(entry.max_context_window) ??
-          positiveContextLimit(entry.context_window);
-        // `visibility: 'list'` is what the official picker shows; `hide` marks
-        // internal routes (`gpt-reserve`, `codex-auto-review`) that a user must
-        // not be offered. Policy is still recorded for them — a hidden model
-        // the caller names explicitly should still get the right ceiling.
-        if (entry.visibility === undefined || entry.visibility === 'list') {
-          live.push({
-            id: entry.slug,
-            name: typeof entry.display_name === 'string' ? entry.display_name : entry.slug,
-            ...(typeof entry.description === 'string' ? { description: entry.description } : {}),
-            ...(window ? { maxContext: window } : {}),
-          });
-        }
-        if (!window) continue;
-        const percent =
-          typeof entry.effective_context_window_percent === 'number'
-            ? entry.effective_context_window_percent
-            : CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT;
-        const defaultReasoningEffort = parseReasoningEffort(entry.default_reasoning_level);
-        // Absent `input_modalities` means an older catalog that predates the
-        // field, not a text-only model — assume images are fine there.
-        const modalities = entry.input_modalities;
-        next.set(entry.slug, {
-          sendCeiling: codexSendCeiling(window, percent),
-          ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
-          supportedReasoningEfforts: parseSupportedReasoningEfforts(
-            entry.supported_reasoning_levels,
-          ),
-          acceptsImages: !Array.isArray(modalities) || modalities.includes('image'),
-          parallelToolCalls: entry.supports_parallel_tool_calls !== false,
-          supportsVerbosity: entry.support_verbosity === true,
-          truncation: parseCodexTruncationPolicy(entry.truncation_policy),
-        });
-      }
-      if (next.size === 0) {
-        this.contextLimitsRetryAfter = Date.now() + CODEX_MODELS_FAILURE_COOLDOWN_MS;
-        return;
-      }
-      this.contextLimits = next;
-      this.publishLiveModels(live);
-      this.contextLimitsEtag = response.headers?.get?.('etag') ?? undefined;
-      this.contextLimitsFreshUntil = Date.now() + CODEX_MODELS_CACHE_TTL_MS;
-      this.contextLimitsRetryAfter = 0;
-    } catch {
-      // Keep the last verified catalog. The awaited probe is deliberately
-      // bounded: knowing the new ceiling before send is the safety guarantee;
-      // a failed probe may delay one request by at most the timeout above.
-      this.contextLimitsRetryAfter = Date.now() + CODEX_MODELS_FAILURE_COOLDOWN_MS;
-    }
+    return fetchContextLimitsFromHost.call(this.codexAccountCatalogHost(), signal);
   }
 
   /**
@@ -500,11 +395,7 @@ export class OpenAICodexProvider extends WireAdapter {
    * a host that persists the list rewrite its config on a timer.
    */
   private publishLiveModels(models: CodexLiveModel[]): void {
-    if (!this.onModels || models.length === 0) return;
-    const signature = models.map((m) => `${m.id}:${m.maxContext ?? ''}`).join(',');
-    if (signature === this.lastModelsSignature) return;
-    this.lastModelsSignature = signature;
-    this.onModels(models);
+    publishLiveModelsFromHost.call(this.codexAccountCatalogHost(), models);
   }
 
   override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
@@ -692,37 +583,7 @@ export class OpenAICodexProvider extends WireAdapter {
    * the snapshots recorded, or an empty array when nothing could be read.
    */
   async readAccountQuota(opts: { signal?: AbortSignal | undefined; timeoutMs?: number } = {}) {
-    const signal = AbortSignal.any([
-      ...(opts.signal ? [opts.signal] : []),
-      AbortSignal.timeout(opts.timeoutMs ?? CODEX_USAGE_TIMEOUT_MS),
-    ]);
-    const url = upstreamUrl(codexUsageUrl(this.baseUrl));
-    const read = async (): Promise<Response> => {
-      const headers: Record<string, string> = {
-        accept: 'application/json',
-        authorization: `Bearer ${this.access}`,
-        originator: CODEX_ORIGINATOR,
-        'user-agent': CODEX_USER_AGENT,
-      };
-      if (this.accountId) headers['chatgpt-account-id'] = this.accountId;
-      return redirectSafeFetch(this.fetchImpl, url, { method: 'GET', headers, signal });
-    };
-    try {
-      await this.ensureFreshToken(signal);
-      let response = await read();
-      if (response.status === 401) {
-        await this.doRefresh(signal);
-        response = await read();
-      }
-      if (!response.ok) return [];
-      const payload = safeParse<unknown>(await response.text());
-      if (!payload.ok) return [];
-      const snapshots = parseCodexUsagePayload(this.id, payload.value);
-      if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
-      return snapshots;
-    } catch {
-      return [];
-    }
+    return readAccountQuotaFromHost.call(this.codexAccountCatalogHost(), opts);
   }
 
   private async ensureFreshToken(signal: AbortSignal): Promise<void> {
@@ -931,5 +792,27 @@ export class OpenAICodexProvider extends WireAdapter {
     headers?: HeadersLike,
   ): ProviderError {
     return translateCodexHttpError(this.id, status, text, headers);
+  }
+
+  private codexAccountCatalogHost(): CodexAccountCatalogHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.baseUrl satisfies CodexAccountCatalogHost['baseUrl']);
+    void (this.buildHeaders satisfies CodexAccountCatalogHost['buildHeaders']);
+    void (this.contextLimitsEtag satisfies CodexAccountCatalogHost['contextLimitsEtag']);
+    void (this.fetchImpl satisfies CodexAccountCatalogHost['fetchImpl']);
+    void (this
+      .contextLimitsFreshUntil satisfies CodexAccountCatalogHost['contextLimitsFreshUntil']);
+    void (this
+      .contextLimitsRetryAfter satisfies CodexAccountCatalogHost['contextLimitsRetryAfter']);
+    void (this.contextLimits satisfies CodexAccountCatalogHost['contextLimits']);
+    void (this.publishLiveModels satisfies CodexAccountCatalogHost['publishLiveModels']);
+    void (this.onModels satisfies CodexAccountCatalogHost['onModels']);
+    void (this.lastModelsSignature satisfies CodexAccountCatalogHost['lastModelsSignature']);
+    void (this.access satisfies CodexAccountCatalogHost['access']);
+    void (this.accountId satisfies CodexAccountCatalogHost['accountId']);
+    void (this.ensureFreshToken satisfies CodexAccountCatalogHost['ensureFreshToken']);
+    void (this.doRefresh satisfies CodexAccountCatalogHost['doRefresh']);
+    void (this.id satisfies CodexAccountCatalogHost['id']);
+    return this as unknown as CodexAccountCatalogHost;
   }
 }

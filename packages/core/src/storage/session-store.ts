@@ -36,7 +36,7 @@ import {
   collectReachableManifestHashes,
   sweepCheckpointCas,
 } from './session-checkpoint-gc.js';
-import { captureCheckpoint, materializeCheckpoint, sessionContentText } from './session-helpers.js';
+import { captureCheckpoint, materializeCheckpoint } from './session-helpers.js';
 import { resolveSessionId, sessionIdResolutionError } from './session-id-resolver.js';
 import { scrubPersistedSessionSummary } from './session-read-scrubber.js';
 import { type CreateSessionHost, executeCreateSession } from './session-store/create-session.js';
@@ -52,26 +52,22 @@ import {
 } from './session-store/list-sessions.js';
 import { SessionLoadCache } from './session-store/load-cache.js';
 import { executeLoadSession } from './session-store/load-session.js';
-import { executeAdoptMovedSession, executeMoveSession } from './session-store/move-session.js';
+import { executeAdoptMovedSession } from './session-store/move-session.js';
 import {
   ensureShardDir as ensureSessionShardDir,
   sessionPath as sessionStorePath,
   shardKeyForSessionId,
   shardManifestPath,
 } from './session-store/paths.js';
-import { pruneSessionFiles } from './session-store/prune-helpers.js';
 import { executeRebuildIndex } from './session-store/rebuild-index.js';
-import { executeRenameSession } from './session-store/rename-session.js';
 import { executeResumeSession } from './session-store/resume-session.js';
 import { searchSessionEvents } from './session-store/search-events.js';
 import {
   executeArchive,
-  executeArchiveIdle,
   executeEnsureHot,
   executeRehydrate,
   type SessionArchiveHost,
 } from './session-store/session-archive.js';
-import { executeClearSessionHistory } from './session-store/session-store-clear.js';
 import {
   appendToIndexStrict,
   COMPACT_EVERY,
@@ -98,6 +94,15 @@ import type {
   SessionFileRef,
   SessionStoreOptions,
 } from './session-store/types.js';
+import type { SessionStoreRetentionHost } from './session-store-retention.js';
+import {
+  archiveIdle as archiveIdleFromHost,
+  clearHistory as clearHistoryFromHost,
+  move as moveFromHost,
+  prune as pruneFromHost,
+  rename as renameFromHost,
+} from './session-store-retention.js';
+import { assertRetentionDays } from './session-store-retention-support.js';
 
 export type { SessionStoreOptions } from './session-store/types.js';
 
@@ -792,15 +797,7 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async move(id: string, target: SessionMoveTarget): Promise<SessionMoveResult> {
-    const host = { ...this.asArchiveHost(), projectRoot: this.projectRoot };
-    const deleteLocal = (sid: string) => this.deleteSession(sid);
-    const result = await executeMoveSession(
-      { ...host, deleteLocal },
-      await this.resolveId(id),
-      target,
-    );
-    this._indexCache = null;
-    return result;
+    return moveFromHost.call(this.sessionStoreRetentionHost(), id, target);
   }
 
   adoptMovedSession(id: string, name: string | undefined): Promise<SessionSummary> {
@@ -808,80 +805,15 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async rename(id: string, name: string): Promise<SessionSummary> {
-    const canonical = await this.resolveId(id);
-    if (this.catalogClient) {
-      const summary = await this.catalogClient.call('rename', {
-        sessionId: canonical,
-        name: sessionContentText(this.secretScrubber.scrub(name)),
-      });
-      this.clearLoadCache(canonical);
-      if (id !== canonical) this.clearLoadCache(id);
-      return summary;
-    }
-    const manifest = this.sessionPath(canonical, '.summary.json');
-    const located = await locateTranscript(this.dir, canonical);
-    const jsonlPath = located?.filePath ?? this.sessionPath(canonical, '.jsonl');
-    const updated = await executeRenameSession({
-      id: canonical,
-      name,
-      manifest,
-      jsonlPath,
-      events: this.events,
-      secretScrubber: this.secretScrubber,
-      readSummaryManifest: (sid) => this.readSummaryManifest(sid),
-      summaryFor: (sid) => this.summaryFor(sid),
-      appendToIndexStrict: (sum) => this.appendToIndexStrict(sum),
-      isSessionInUse: this.isSessionInUse,
-    });
-    this.clearLoadCache(canonical);
-    if (id !== canonical) this.clearLoadCache(id);
-    return updated;
+    return renameFromHost.call(this.sessionStoreRetentionHost(), id, name);
   }
 
   async prune(maxAgeDays = 30): Promise<number> {
-    // Same rejection as the catalog prune. A NaN or negative cutoff compares
-    // false against every mtime and deletes the young sessions it should keep.
-    const ageDays = assertRetentionDays(maxAgeDays);
-    if (this.catalogClient) {
-      return this.catalogClient.call('prune', {
-        maxAgeDays: ageDays,
-        holderId: this.maintenanceHolderId,
-      });
-    }
-    const deleted = await pruneSessionFiles(
-      this.dir,
-      ageDays,
-      (id) => this.deleteSession(id),
-      this.isSessionInUse,
-    );
-    if (deleted > 0) {
-      await this.compactIndex().catch(() => undefined);
-    }
-    return deleted;
+    return pruneFromHost.call(this.sessionStoreRetentionHost(), maxAgeDays);
   }
 
   async clearHistory(id: string): Promise<void> {
-    // Leaf and prefix references resolve with or without the catalog daemon.
-    // Skipping that step wrote a new transcript under the query and left the
-    // real session's history in place.
-    const canonical = await this.resolveId(id);
-    await executeClearSessionHistory({
-      id,
-      canonical,
-      catalogClient: this.catalogClient,
-      maintenanceHolderId: this.maintenanceHolderId,
-      ensureShardDir: (sid) => this.ensureShardDir(sid),
-      sessionPath: (sid, ext) => this.sessionPath(sid, ext),
-    });
-    if (!this.catalogClient) {
-      await this.appendToIndexStrict(await this.summaryFor(canonical));
-    }
-    this.clearLoadCache(canonical);
-    // loadInternal() caches under the id it was called with, so a session
-    // previously loaded via an alias would keep a raw-keyed entry after a
-    // canonical-only clear. Delete both keys; Map.delete no-ops on a miss.
-    if (id !== canonical) this.clearLoadCache(id);
-    await fsp.unlink(this.sessionPath(canonical, '.jsonl.gz')).catch(() => undefined);
+    return clearHistoryFromHost.call(this.sessionStoreRetentionHost(), id);
   }
 
   async archive(id: string): Promise<SessionArchiveResult> {
@@ -895,27 +827,7 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   async archiveIdle(policy?: Partial<SessionStoragePolicy>): Promise<SessionArchiveIdleResult> {
-    const requested: SessionStoragePolicy = { ...this.storagePolicy, ...policy };
-    const key = archivePolicyKey(requested);
-    const current = this.archiveIdleInFlight;
-    if (current?.key === key) return current.promise;
-    // A backfill (or any other policy) that arrives while a narrower pass is
-    // running must not adopt that pass's result. Wait it out, then run.
-    if (current) {
-      await current.promise.catch(() => undefined);
-      return this.archiveIdle(policy);
-    }
-    // Companion journals are chosen from the host policy. Without this
-    // override, includeSubagents on the call is ignored and the store
-    // default gzips them anyway.
-    const promise = executeArchiveIdle(
-      { ...this.asArchiveHost(), storagePolicy: requested },
-      requested,
-    ).finally(() => {
-      if (this.archiveIdleInFlight?.promise === promise) this.archiveIdleInFlight = null;
-    });
-    this.archiveIdleInFlight = { key, promise };
-    return promise;
+    return archiveIdleFromHost.call(this.sessionStoreRetentionHost(), policy);
   }
 
   private async summarize(id: string, mtime: string): Promise<SessionSummary> {
@@ -927,17 +839,32 @@ export class DefaultSessionStore implements SessionStore {
       secretScrubber: this.secretScrubber,
     });
   }
-}
 
-/**
- * Finite ages only. `NaN` and negatives must not reach a cutoff: every
- * comparison with `NaN` is false, and a negative cutoff sits in the future.
- */
-function assertRetentionDays(maxAgeDays: number): number {
-  if (typeof maxAgeDays !== 'number' || !Number.isFinite(maxAgeDays) || maxAgeDays < 0) {
-    throw new TypeError('Invalid prune age');
+  private sessionStoreRetentionHost(): SessionStoreRetentionHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.asArchiveHost satisfies SessionStoreRetentionHost['asArchiveHost']);
+    void (this.projectRoot satisfies SessionStoreRetentionHost['projectRoot']);
+    void (this.deleteSession satisfies SessionStoreRetentionHost['deleteSession']);
+    void (this.resolveId satisfies SessionStoreRetentionHost['resolveId']);
+    void (this._indexCache satisfies SessionStoreRetentionHost['_indexCache']);
+    void (this.catalogClient satisfies SessionStoreRetentionHost['catalogClient']);
+    void (this.secretScrubber satisfies SessionStoreRetentionHost['secretScrubber']);
+    void (this.clearLoadCache satisfies SessionStoreRetentionHost['clearLoadCache']);
+    void (this.sessionPath satisfies SessionStoreRetentionHost['sessionPath']);
+    void (this.dir satisfies SessionStoreRetentionHost['dir']);
+    void (this.events satisfies SessionStoreRetentionHost['events']);
+    void (this.readSummaryManifest satisfies SessionStoreRetentionHost['readSummaryManifest']);
+    void (this.summaryFor satisfies SessionStoreRetentionHost['summaryFor']);
+    void (this.appendToIndexStrict satisfies SessionStoreRetentionHost['appendToIndexStrict']);
+    void (this.isSessionInUse satisfies SessionStoreRetentionHost['isSessionInUse']);
+    void (this.maintenanceHolderId satisfies SessionStoreRetentionHost['maintenanceHolderId']);
+    void (this.compactIndex satisfies SessionStoreRetentionHost['compactIndex']);
+    void (this.ensureShardDir satisfies SessionStoreRetentionHost['ensureShardDir']);
+    void (this.storagePolicy satisfies SessionStoreRetentionHost['storagePolicy']);
+    void (this.archiveIdleInFlight satisfies SessionStoreRetentionHost['archiveIdleInFlight']);
+    void (this.archiveIdle satisfies SessionStoreRetentionHost['archiveIdle']);
+    return this as unknown as SessionStoreRetentionHost;
   }
-  return maxAgeDays;
 }
 
 function stripSessionTranscriptQuery(query: string): string {
@@ -949,14 +876,4 @@ function stripSessionTranscriptQuery(query: string): string {
 
 function isMissingSessionError(error: unknown): boolean {
   return error instanceof Error && error.message.startsWith('Session not found:');
-}
-
-/** Equal policies share one in-flight pass. `backfill` is the opt-in flag. */
-function archivePolicyKey(policy: SessionStoragePolicy): string {
-  return [
-    policy.hotKeepSessions,
-    policy.archiveAfterDays,
-    policy.includeSubagents ? 1 : 0,
-    policy.backfill === true ? 1 : 0,
-  ].join(':');
 }

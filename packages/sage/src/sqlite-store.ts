@@ -1,3 +1,15 @@
+import type { SqliteMemoryMutationsHost } from './sqlite-memory-mutations.js';
+import {
+  applyHqSync as applyHqSyncFromHost,
+  clear as clearFromHost,
+  consolidate as consolidateFromHost,
+  forget as forgetFromHost,
+  hardDeleteSage as hardDeleteSageFromHost,
+  recordInjection as recordInjectionFromHost,
+  recordUse as recordUseFromHost,
+  updateSage as updateSageFromHost,
+  upsertMemory as upsertMemoryFromHost,
+} from './sqlite-memory-mutations.js';
 import {
   addGraphEdge as delegateAddGraphEdge,
   cascadeDeleteEdges as delegateCascadeDeleteEdges,
@@ -33,7 +45,6 @@ import type { SqliteCandidateHost } from './sqlite-store-candidate-ops.js';
 import { reconcileAcceptedCandidates } from './sqlite-store-candidates.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
-import { recordSqliteInjection, recordSqliteUse } from './sqlite-store-counters.js';
 import { deleteSqliteSage } from './sqlite-store-delete.js';
 import {
   findRelatedSqliteSage,
@@ -49,9 +60,6 @@ import {
   readSqliteMemory,
   rememberSqliteMemoryBridge,
 } from './sqlite-store-legacy-bridge.js';
-import { clearLegacySqliteMemory } from './sqlite-store-legacy-clear.js';
-import { consolidateLegacySqliteMemory } from './sqlite-store-legacy-consolidate.js';
-import { forgetLegacySqliteMemory } from './sqlite-store-legacy-forget.js';
 import { listLegacySqliteMemory } from './sqlite-store-legacy-list.js';
 import { listSqliteMemories } from './sqlite-store-list-memories.js';
 import { listSqliteSagePage } from './sqlite-store-list-page.js';
@@ -60,7 +68,6 @@ export { isSqliteAvailable } from './sqlite-store-loader.js';
 
 import { SqliteMutationQueue } from './sqlite-store-mutation-queue.js';
 import {
-  applySageHqSync,
   backfillAdminSage,
   closeSqliteStore,
   drainSqliteStoreMutations,
@@ -82,10 +89,8 @@ import { executeUnifiedSearch } from './sqlite-store-search.js';
 import { consolidateSqliteSession } from './sqlite-store-session-consolidation.js';
 import { SqliteStatementCache } from './sqlite-store-statement-cache.js';
 import { getSqliteSageStats } from './sqlite-store-stats.js';
-import { updateSqliteSage } from './sqlite-store-update.js';
-import { upsertSqliteCandidate, upsertSqliteMemory } from './sqlite-store-upsert.js';
+import { upsertSqliteCandidate } from './sqlite-store-upsert.js';
 import { verifySqliteSage } from './sqlite-store-verify.js';
-import { mergeLiveCounterFields } from './store-helpers.js';
 import type {
   CandidateDecision,
   CreateCandidateInput,
@@ -116,7 +121,6 @@ import type {
   SessionConsolidationResult,
   UpdateSageInput,
 } from './types.js';
-import { DEFAULT_PERSISTENCE } from './types.js';
 
 export { sqliteStoreCoverage } from './sqlite-store-coverage.js';
 
@@ -342,63 +346,15 @@ export class SqliteSageStore implements MemoryStore {
   }
 
   async forget(query: string, scope: MemoryScope = 'project-memory'): Promise<number> {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return 0;
-    await this.initialize();
-    return this.runMutation(() => {
-      return forgetLegacySqliteMemory(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-          audit: (event, data) => this.audit(event, data),
-          emitForgotten: (targetScope, targetQuery, removed) =>
-            this.events?.emit('memory.forgotten', {
-              scope: targetScope,
-              query: targetQuery,
-              removed,
-            }),
-        },
-        query,
-        scope,
-      );
-    });
+    return forgetFromHost.call(this.sqliteMemoryMutationsHost(), query, scope);
   }
 
   async consolidate(scope: MemoryScope): Promise<void> {
-    await this.initialize();
-    await this.runMutation(() => {
-      consolidateLegacySqliteMemory(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-          audit: (event, data) => this.audit(event, data),
-          emitConsolidated: (targetScope, removed) =>
-            this.events?.emit('memory.consolidated', { scope: targetScope, removed }),
-        },
-        scope,
-      );
-    });
+    return consolidateFromHost.call(this.sqliteMemoryMutationsHost(), scope);
   }
 
   async clear(scope?: MemoryScope): Promise<void> {
-    await this.initialize();
-    await this.runMutation(() => {
-      clearLegacySqliteMemory(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-          audit: (event, data) => this.audit(event, data),
-          emitCleared: (targetScope) => this.events?.emit('memory.cleared', { scope: targetScope }),
-        },
-        scope,
-      );
-    });
+    return clearFromHost.call(this.sqliteMemoryMutationsHost(), scope);
   }
 
   async list(scope: MemoryScope = 'project-memory', limit?: number): Promise<MemoryEntry[]> {
@@ -407,14 +363,7 @@ export class SqliteSageStore implements MemoryStore {
   }
 
   private upsertMemory(m: Sage): void {
-    // H6 (docs/sage-phase4-design.md): the counter chain json_set's advisory
-    // fields into `data` independently of this whole-column write, so an
-    // advisory bump that committed after the caller read the row must survive
-    // the replace.
-    const previous = this.stmt('SELECT data FROM memories WHERE id = ?').get(m.id) as
-      | { data: string }
-      | undefined;
-    upsertSqliteMemory((sql) => this.stmt(sql), mergeLiveCounterFields(previous?.data, m));
+    upsertMemoryFromHost.call(this.sqliteMemoryMutationsHost(), m);
   }
 
   async listHqSync(after = ''): Promise<HqSageRecord[]> {
@@ -428,23 +377,7 @@ export class SqliteSageStore implements MemoryStore {
   }
 
   async applyHqSync(records: HqSageRecord[]): Promise<void> {
-    await this.initialize();
-    const changed = await this.runMutation(() =>
-      applySageHqSync(
-        {
-          db: this.db,
-          upsert: (memory) => this.upsertMemory(memory),
-          anchors: (memory) => this.syncAnchorEdges(memory),
-          deleteEdges: (node) => this.cascadeDeleteEdges(node),
-        },
-        records,
-      ),
-    );
-    for (const id of changed) {
-      this.audit('memory.hq_synced', { memoryId: id });
-    }
-    if (changed.length)
-      this.events?.emit('memory.consolidated', { scope: 'project-memory', removed: 0 });
+    return applyHqSyncFromHost.call(this.sqliteMemoryMutationsHost(), records);
   }
 
   private upsertCandidate(candidate: MemoryCandidate, canonicalText?: string): void {
@@ -487,95 +420,24 @@ export class SqliteSageStore implements MemoryStore {
   }
 
   async updateSage(id: string, input: UpdateSageInput): Promise<Sage> {
-    await this.initialize();
-    return this.runMutation(() => {
-      return updateSqliteSage(
-        {
-          projectRoot: this.projectRoot,
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-          audit: (event, data) => this.audit(event, data),
-          emitUpdated: (memory) =>
-            this.events?.emit(
-              'memory.updated',
-              this.eventPayload({
-                memoryId: memory.id,
-                status: memory.status,
-                kind: memory.kind,
-                persistence: memory.persistence ?? DEFAULT_PERSISTENCE,
-                confidence: memory.confidence,
-                freshness: memory.freshness,
-              }),
-            ),
-          emitDeleted: (memory, reason, removedEdges) =>
-            this.events?.emit(
-              'memory.deleted',
-              this.eventPayload({
-                memoryId: memory.id,
-                reason,
-                persistence: memory.persistence ?? DEFAULT_PERSISTENCE,
-                removedEdges,
-                contextPolicy:
-                  memory.contextPolicy === 'never' ? ('never' as const) : ('eligible' as const),
-              }),
-            ),
-        },
-        id,
-        input,
-      );
-    });
+    return updateSageFromHost.call(this.sqliteMemoryMutationsHost(), id, input);
   }
 
   async hardDeleteSage(id: string, reason?: string): Promise<{ deleted: true; id: string }> {
-    // Soft-delete shim. The SQLite backend used to ship its own
-    // un-audited-by-force SQL path here; it now routes through
-    // `deleteSage` (which sets status: 'deleted', preserving
-    // the tombstone for audit/recovery) so the same force/permanent
-    // guard, edge cascade, audit entry, and event payload apply to
-    // every caller.
-    // Pass `force: true` because this method historically implied
-    // "operator-driven, no questions asked" (it predates the guard).
-    await this.deleteSage(id, reason ?? 'Manually deleted via SQLite API.', {
-      force: true,
-    });
-    return { deleted: true, id };
+    return hardDeleteSageFromHost.call(this.sqliteMemoryMutationsHost(), id, reason);
   }
 
   async recordInjection(memoryIds: string[], trigger: string, sessionId?: string): Promise<void> {
-    if (memoryIds.length === 0) return;
-    await this.initialize();
-    await this.runCounterMutation(() => {
-      recordSqliteInjection(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          audit: (event, data) => this.audit(event, data),
-        },
-        memoryIds,
-        trigger,
-        sessionId,
-      );
-    });
+    return recordInjectionFromHost.call(
+      this.sqliteMemoryMutationsHost(),
+      memoryIds,
+      trigger,
+      sessionId,
+    );
   }
 
   async recordUse(memoryIds: string[], source: string, sessionId?: string): Promise<void> {
-    if (memoryIds.length === 0) return;
-    await this.initialize();
-    await this.runCounterMutation(() => {
-      recordSqliteUse(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          audit: (event, data) => this.audit(event, data),
-        },
-        memoryIds,
-        source,
-        sessionId,
-      );
-    });
+    return recordUseFromHost.call(this.sqliteMemoryMutationsHost(), memoryIds, source, sessionId);
   }
 
   async searchSage(query: string, opts?: SageSearchOptions): Promise<Sage[]> {
@@ -978,6 +840,25 @@ export class SqliteSageStore implements MemoryStore {
       searchSage: (...args) => this.searchSage(...args),
       traverseGraph: (...args) => this.traverseGraph(...args),
     };
+  }
+
+  private sqliteMemoryMutationsHost(): SqliteMemoryMutationsHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.initialize satisfies SqliteMemoryMutationsHost['initialize']);
+    void (this.runMutation satisfies SqliteMemoryMutationsHost['runMutation']);
+    void (this.stmt satisfies SqliteMemoryMutationsHost['stmt']);
+    void (this.nowIso satisfies SqliteMemoryMutationsHost['nowIso']);
+    void (this.upsertMemory satisfies SqliteMemoryMutationsHost['upsertMemory']);
+    void (this.cascadeDeleteEdges satisfies SqliteMemoryMutationsHost['cascadeDeleteEdges']);
+    void (this.audit satisfies SqliteMemoryMutationsHost['audit']);
+    void (this.events satisfies SqliteMemoryMutationsHost['events']);
+    void (this.syncAnchorEdges satisfies SqliteMemoryMutationsHost['syncAnchorEdges']);
+    void (this.db satisfies SqliteMemoryMutationsHost['db']);
+    void (this.projectRoot satisfies SqliteMemoryMutationsHost['projectRoot']);
+    void (this.eventPayload satisfies SqliteMemoryMutationsHost['eventPayload']);
+    void (this.deleteSage satisfies SqliteMemoryMutationsHost['deleteSage']);
+    void (this.runCounterMutation satisfies SqliteMemoryMutationsHost['runCounterMutation']);
+    return this as unknown as SqliteMemoryMutationsHost;
   }
 }
 

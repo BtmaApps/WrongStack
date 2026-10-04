@@ -1,4 +1,13 @@
 import { expectDefined } from '@wrongstack/core/utils';
+import type { IndexerOptions } from './indexer-discovery.js';
+import { discoverIndexerFiles } from './indexer-discovery.js';
+import {
+  assignRefsToSymbols,
+  moduleOwnerSymbol,
+  shouldUseParserWorkerPool,
+} from './indexer-symbol-ownership.js';
+
+export { shouldUseParserWorkerPool } from './indexer-symbol-ownership.js';
 
 /**
  * Main indexing orchestrator.
@@ -14,24 +23,16 @@ import { expectDefined } from '@wrongstack/core/utils';
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
-import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { indexParallelBatchSize, isFrugalPerf } from '@wrongstack/core/utils';
 import { xxhash64String as contentHashHex } from './content-hash.js';
-import { loadGitignoreMatcher } from './gitignore.js';
 import { runGraphRankPass, shouldRefreshRanks } from './graph-rank-pass.js';
 import { throwIfAborted, YIELD_EVERY_N, yieldEventLoop } from './index-scheduling.js';
 import {
   computeGitSnapshotKey,
-  DEFAULT_IGNORE,
-  DEFAULT_IGNORE_FILES,
-  expandTargetedDirectories,
-  findSourceFiles,
   gitBlobStamp,
   IndexSourceChangedError,
-  isAtlasProjection,
   isMissingPathError,
-  isWithinProject,
   MAX_INDEX_FILE_BYTES,
 } from './index-source-files.js';
 import { detectLang } from './languages.js';
@@ -40,7 +41,6 @@ import {
   createRebuildParserPool,
   getParserPool,
   type ParserWorkerPool,
-  resolveWorkerPoolThreshold,
 } from './parser-worker-pool.js';
 import { recordFilesystemRead } from './perf-metrics.js';
 import { planRefBinding, runRefBinding } from './ref-binding-pass.js';
@@ -50,14 +50,7 @@ import {
   RELATION_STRUCTURE_KEY,
   resolveProjectRelations,
 } from './relation-pass.js';
-import {
-  type FileMeta,
-  type IndexResult,
-  type Symbol as IndexSymbol,
-  MODULE_OWNER_NAME,
-  type Ref,
-  type SymbolLang,
-} from './schema.js';
+import type { FileMeta, IndexResult, Symbol as IndexSymbol, Ref, SymbolLang } from './schema.js';
 import { IndexStore } from './writer.js';
 
 /**
@@ -78,30 +71,6 @@ export function resolveParallelBatch(): number {
 const REBUILD_PARALLEL_BATCH = 40;
 
 /**
- * Pool startup is amortized across the complete index run, not one outer
- * batch. Balanced batches are capped at 40 files, so comparing the per-batch
- * parse count with the 500-file threshold made the worker path unreachable.
- *
- * Threshold is env-configurable (audit T-04): `WRONGSTACK_INDEX_WORKER_THRESHOLD`
- * overrides the default, `0` disables the worker path entirely.
- */
-export function shouldUseParserWorkerPool(
-  candidateFileCount: number,
-  parseBatchCount: number,
-  opts: { rebuild?: boolean | undefined } = {},
-): boolean {
-  const threshold = resolveWorkerPoolThreshold();
-  // 0 = explicit opt-out: no candidate count (not even 0 itself, which would
-  // satisfy >= 0) may take the worker path.
-  if (threshold === 0) return false;
-  // Frugal (the project server) keeps parsing on its own thread, except for a
-  // rebuild into an empty index: that is the run a user waits on, and it gets
-  // a bounded pool of its own (FRUGAL_REBUILD_WORKERS).
-  if (isFrugalPerf() && !opts.rebuild) return false;
-  return candidateFileCount >= threshold && parseBatchCount > 1;
-}
-
-/**
  * Detect AbortError (DOMException with name 'AbortError') thrown by signal-aware
  * fs.promises calls (stat, readFile). We must re-throw these so the cancellation
  * propagates — catching them as ordinary errors would keep the loop running.
@@ -110,82 +79,9 @@ function isAbortError(err: unknown): boolean {
   return err instanceof DOMException && err.name === 'AbortError';
 }
 
-interface IndexerOptions {
-  projectRoot: string;
-  files?: string[] | undefined;
-  force?: boolean | undefined;
-  langs?: string[] | undefined;
-  ignore?: string[] | undefined;
-  /** Override the index directory (default: the global per-project dir). */
-  indexDir?: string | undefined;
-  /**
-   * Signal that cancels indexing cooperatively. Polled at yield points
-   * (file walk, per-file loop) so a hung filesystem won't lock up the
-   * process. When the tool executor's timeout fires, this signal aborts
-   * and `runIndexer` throws, releasing the mutex and resetting flags.
-   */
-  signal?: AbortSignal | undefined;
-  /**
-   * Per-file progress callback. Injected by the caller instead of imported
-   * from the host's module state so the indexer can run inside a worker
-   * thread (worker posts progress messages; inline host updates its state).
-   */
-  onProgress?: ((current: number, total: number) => void) | undefined;
-}
-
 /** Bump to re-parse every symbol-less file once (they may now own refs). */
 const MODULE_OWNER_VERSION = '1';
 const MODULE_OWNER_VERSION_KEY = 'module_owner_version';
-
-/**
- * Refs hang off symbols, so a file that declares nothing — a test file of
- * `describe`/`it` blocks, a barrel of `export … from`, an entry script — used
- * to lose every import and call it made: a tenth of this repository's files
- * were absent from the dependency graph, and re-export chains broke at every
- * pure barrel. Such a file gets one `mod` symbol at its top instead. Its text
- * is empty, so it stays out of search.
- */
-function moduleOwnerSymbol(file: string, lang: SymbolLang): IndexSymbol {
-  return {
-    id: 0,
-    lang,
-    kind: 'mod',
-    name: MODULE_OWNER_NAME,
-    file,
-    line: 1,
-    col: 0,
-    signature: '',
-    docComment: '',
-    scope: '',
-    text: '',
-  };
-}
-
-function assignRefsToSymbols(refs: Ref[], symbols: IndexSymbol[]): Ref[] {
-  if (refs.length === 0 || symbols.length === 0) return [];
-  const ordered = [...symbols].sort((a, b) => a.line - b.line || a.col - b.col || a.id - b.id);
-  const seen = new Set<string>();
-  const assigned: Ref[] = [];
-  for (const ref of refs) {
-    let owner: IndexSymbol | undefined;
-    for (const symbol of ordered) {
-      if (symbol.line > ref.line) break;
-      owner = symbol;
-    }
-    // Imports usually appear before the first declaration. Attach them to the
-    // first real symbol so file/package dependency graphs retain the module
-    // edge without inventing an invalid owner id 0.
-    if (!owner && ref.callType === 'import') owner = ordered[0];
-    if (!owner || owner.id <= 0) continue;
-    // The module is part of the identity: same-name imports from different
-    // modules are distinct dependencies (mirrors ts-parser's deduplicateRefs).
-    const key = `${owner.id}:${ref.toName}:${ref.callType}:${ref.module ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    assigned.push({ ...ref, fromId: owner.id });
-  }
-  return assigned;
-}
 
 /** Run a full or incremental index and return statistics. */
 export async function runIndexer(_ctx: Context, opts: IndexerOptions): Promise<IndexResult> {
@@ -246,58 +142,8 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   let filesEmpty = 0;
   let filesFailed = 0;
   let symbolsIndexed = 0;
-
-  // Honor the project-root .gitignore (skips node_modules, build output, and
-  // any project-specific ignored paths) on top of the always-on DEFAULT_IGNORE.
-  const isGitIgnored = await loadGitignoreMatcher(projectRoot);
-
-  let files: string[];
-  /** Set of all files discovered on disk (before language filtering).
-   *  Used for O(1) stale-file detection instead of stat-ing every
-   *  previously-indexed file. Null when an explicit file list was given. */
-  let discoveredFiles: Set<string> | null = null;
-  let discoveryComplete = true;
-  let cleanBlobs: Map<string, string> | undefined;
-  let discoverySnapshotKey: string | undefined;
-  let dirtyHashes: Map<string, string> | undefined;
-  if (opts.files && opts.files.length > 0) {
-    // Explicit file list (per-edit / watcher path): keep paths inside the
-    // project only and apply both always-on and .gitignore exclusions.
-    const targeted = await expandTargetedDirectories(
-      store,
-      projectRoot,
-      opts.files.map((f) => path.resolve(projectRoot, f)),
-      isGitIgnored,
-      signal,
-    );
-    files = targeted.filter((f) => {
-      if (!isWithinProject(projectRoot, f)) return false;
-      const rel = path.relative(projectRoot, f).replace(/\\/g, '/');
-      return (
-        !rel.split('/').some((seg) => DEFAULT_IGNORE.includes(seg)) &&
-        !DEFAULT_IGNORE_FILES.has(path.basename(f)) &&
-        !isAtlasProjection(rel) &&
-        !isGitIgnored(rel, false)
-      );
-    });
-  } else {
-    const discovery = await findSourceFiles(projectRoot, ignore, isGitIgnored, signal);
-    files = discovery.files;
-    errors.push(...discovery.errors);
-    discoveryComplete = discovery.complete;
-    discoveredFiles = new Set(files);
-    cleanBlobs = discovery.cleanBlobs;
-    discoverySnapshotKey = discovery.snapshotKey;
-    dirtyHashes = discovery.dirtyHashes;
-  }
-
-  if (langs && langs.length > 0) {
-    const langSet = new Set(langs);
-    files = files.filter((f) => {
-      const lang = detectLang(f);
-      return lang ? langSet.has(lang) : false;
-    });
-  }
+  let { files, discoveredFiles, discoveryComplete, cleanBlobs, discoverySnapshotKey, dirtyHashes } =
+    await discoverIndexerFiles({ projectRoot, opts, store, signal, ignore, errors, langs });
 
   // A user-forced run limited to some languages or files re-parses exactly
   // that scope. Clearing the WHOLE index first (as a scoped `force` used to)

@@ -369,6 +369,18 @@ describe('same-call post-edit LSP feedback', () => {
     expect(f.pull).not.toHaveBeenCalled();
   });
 
+  it('verifies diagnostics returned by a push-only server', async () => {
+    const f = await fixture();
+    f.cfg.diagnosticsWaitMs = 1000;
+    f.server.capabilities = {};
+    const pushed = vi.spyOn(f.server, 'waitForDiagnostics').mockResolvedValue([error]);
+    const output = await f.run();
+    expect(pushed).toHaveBeenCalledOnce();
+    expect(f.pull).not.toHaveBeenCalled();
+    expect(output?.additionalContext).toContain('ERROR typescript(2322)');
+    expect(output?.additionalContext).toContain('Verified file(s): 1');
+  });
+
   it('drops feedback on cancellation and bounds diagnostic text', async () => {
     const f = await fixture();
     const aborted = new AbortController();

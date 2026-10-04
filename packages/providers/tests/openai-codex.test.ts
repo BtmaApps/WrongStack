@@ -521,14 +521,14 @@ describe('CODEX_CLIENT_VERSION pin', () => {
   });
 
   it('is the only client_version definition — both call sites share it', async () => {
-    const [provider, models] = await Promise.all([
-      readFile(new URL('../src/openai-codex.ts', import.meta.url), 'utf8'),
+    const [catalog, models] = await Promise.all([
+      readFile(new URL('../src/codex-account-catalog.ts', import.meta.url), 'utf8'),
       readFile(new URL('../src/oauth/codex-models.ts', import.meta.url), 'utf8'),
     ]);
     // Each used to derive its own value from package.json, and they disagreed
     // (one fell back to an invented '0.309.1'), so the login flow and the
     // running transport could be shown different catalogs.
-    for (const source of [provider, models]) {
+    for (const source of [catalog, models]) {
       expect(source).toContain('CODEX_CLIENT_VERSION');
       expect(source).not.toMatch(/package\.json/);
     }

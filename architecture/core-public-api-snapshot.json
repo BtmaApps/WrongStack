@@ -1555,15 +1555,15 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 217,
-      "sourceLines": 59386
+      "sourceFiles": 218,
+      "sourceLines": 59440
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 66,
-      "sourceLines": 15455
+      "sourceFiles": 67,
+      "sourceLines": 15476
     },
     {
       "directory": "design",
@@ -1576,8 +1576,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 73,
-      "sourceLines": 21429
+      "sourceFiles": 77,
+      "sourceLines": 21635
     },
     {
       "directory": "extension",
@@ -1604,8 +1604,8 @@
       "directory": "hq",
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
-      "sourceFiles": 60,
-      "sourceLines": 12325
+      "sourceFiles": 61,
+      "sourceLines": 12340
     },
     {
       "directory": "infrastructure",
@@ -1625,8 +1625,8 @@
       "directory": "models",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
-      "sourceFiles": 14,
-      "sourceLines": 3861
+      "sourceFiles": 16,
+      "sourceLines": 3976
     },
     {
       "directory": "notifications",
@@ -1702,8 +1702,8 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 32,
-      "sourceLines": 10159
+      "sourceFiles": 33,
+      "sourceLines": 10190
     },
     {
       "directory": "session-catalog",
@@ -1730,8 +1730,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 110,
-      "sourceLines": 25233
+      "sourceFiles": 112,
+      "sourceLines": 25346
     },
     {
       "directory": "tasking",
@@ -1751,8 +1751,8 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 83,
-      "sourceLines": 15849
+      "sourceFiles": 84,
+      "sourceLines": 15864
     },
     {
       "directory": "typesafe",

@@ -8,13 +8,8 @@ import {
   type IndexStoreBatchesHost,
   replaceEmptyFile,
 } from './index-store-batches.js';
-import {
-  checkpointWal as delegateCheckpointWal,
-  compactIfNeeded as delegateCompactIfNeeded,
-  optimizeFtsIfNeeded as delegateOptimizeFtsIfNeeded,
-  recordFtsChurn as delegateRecordFtsChurn,
-  type IndexStoreMaintenanceHost,
-} from './index-store-maintenance.js';
+import type { IndexStoreMaintenanceHost } from './index-store-maintenance.js';
+import * as indexStoreMaintenance from './index-store-maintenance.js';
 import {
   bindRefsByImports,
   type RefBindingResult,
@@ -32,115 +27,32 @@ import type {
   SymbolLang,
 } from './schema.js';
 import { loadDatabaseSync, runSqliteWithRetry } from './sqlite-runtime.js';
-import {
-  getAllFileMetasWithStatement,
-  getAllIndexableWithStatement,
-  getFileMetasWithStatement,
-  getFileMetaWithStatement,
-  getIndexSummaryWithStatement,
-  getMaxSymbolIdWithStatement,
-  getMetadataWithStatement,
-  getStatsWithStatement,
-  type IndexSummary,
-} from './writer-admin.js';
+import type { IndexSummary } from './writer-admin.js';
+import * as writerAdmin from './writer-admin.js';
 import { bulkInsertRefsWithStatement } from './writer-bulk-insert.js';
 import type { ConceptCoverage, ConceptEdge, FileConcept, Subsystem } from './writer-concepts.js';
-import {
-  getAllFileConceptsWithStatement,
-  getConceptCoverageWithStatement,
-  getConceptEdgesWithStatement,
-  getFileConceptWithStatement,
-  getReadyConceptSummariesWithStatement,
-  getSubsystemsWithStatement,
-  markStaleConceptsWithStatement,
-  pruneOrphanConceptsWithStatement,
-  replaceSubsystemsWithStatement,
-  upsertFileConceptWithStatement,
-} from './writer-concepts.js';
-import {
-  clearIndex,
-  deleteFileSymbols,
-  deleteIndexedFile,
-  type IndexDeletionHost,
-  invalidateIncomingIndexRefs,
-} from './writer-deletion.js';
-import {
-  findIncomingCallsByName,
-  findOutgoingCallsByName,
-  findReachableSymbolIds,
-  findRefsFromWithStatement,
-  findRefsToWithStatement,
-  findTransitiveIncomingCallsByName,
-  findTransitiveOutgoingCallsByName,
-  getFileGraphWithStatement,
-  getFileSymbolsWithStatement,
-  getPackageGraphWithStatement,
-  getSymbolGraphWithStatement,
-  getSymbolsByIdsWithStatement,
-} from './writer-graph-reader.js';
+import * as writerConcepts from './writer-concepts.js';
+import type { IndexDeletionHost } from './writer-deletion.js';
+import * as writerDeletion from './writer-deletion.js';
+import * as writerGraphReader from './writer-graph-reader.js';
 import { resolveIndexDir } from './writer-helpers.js';
 import { allocateSymbolIds, initIndexSchema } from './writer-init.js';
 import { optimizeStore } from './writer-maintenance.js';
-import {
-  insertSymbolsWithStatement,
-  setFilePackagesWithStatement,
-  setGitBlobsWithStatement,
-  upsertFileWithStatement,
-} from './writer-mutations.js';
+import * as writerMutations from './writer-mutations.js';
 import { applyIndexStorePragmas } from './writer-pragmas.js';
 import type { RankedFileRow } from './writer-rank.js';
-import {
-  getFileRankMapWithStatement,
-  getImportVisibilityWithStatement,
-  getPackageFileCountsWithStatement,
-  getRankCountsWithStatement,
-  getRankedFilesWithStatement,
-  getSymbolGraphFactsWithStatement,
-  getSymbolNameCandidatesWithStatement,
-  getTopFileRanksWithStatement,
-  getTopSymbolRanksWithStatement,
-  replaceFileRanksWithStatement,
-  replaceSymbolRanksWithStatement,
-} from './writer-rank.js';
-import {
-  applyImportResolutionsWithStatement,
-  getAllImportRefsWithStatement,
-  getAllResolvedRefsWithStatement,
-  getFilePackagesWithStatement,
-  getFilesWithDanglingImportsWithStatement,
-  getImportersOfFilesWithStatement,
-  getImportsWithoutTargetWithStatement,
-  getNamespaceDeclarationsWithStatement,
-  getRefNamesTargetingWithStatement,
-  getUnresolvedImportsWithStatement,
-  resolveRefsForNamesUnsafe,
-  resolveRefsWithStatement,
-} from './writer-refs.js';
+import * as writerRank from './writer-rank.js';
+import * as writerRefs from './writer-refs.js';
 import { REFS_INDEX_SQL, SYMBOL_INDEX_SQL } from './writer-schema.js';
-import {
-  countSearchWithStatement,
-  searchRankedWithStatement,
-  searchWithStatement,
-} from './writer-search.js';
+import * as writerSearch from './writer-search.js';
 import type { WriterSearchFilter } from './writer-search-helpers.js';
 import { StorePool } from './writer-store-pool.js';
-import {
-  beginIndexWrite,
-  commitIndexWrite,
-  type IndexTransactionHost,
-  rollbackIndexWrite,
-  runAtomicUpdate,
-  runIndexWrite,
-} from './writer-transactions.js';
+import type { WriterSymbolQueriesHost } from './writer-symbol-queries.js';
+import * as writerSymbolQueries from './writer-symbol-queries.js';
+import type { IndexTransactionHost } from './writer-transactions.js';
+import * as writerTransactions from './writer-transactions.js';
 import type { FileVectorRow, VectorHit } from './writer-vectors.js';
-import {
-  countFileVectorsWithStatement,
-  getFileVectorStatesWithStatement,
-  pruneOrphanFileVectorsWithStatement,
-  reconcileVectorProviderWithStatement,
-  searchFileVectorsWithStatement,
-  upsertFileVectorsWithStatement,
-} from './writer-vectors.js';
+import * as writerVectors from './writer-vectors.js';
 
 export { codebaseIndexDirOverride, resolveIndexDir } from './writer-helpers.js';
 
@@ -203,15 +115,15 @@ export class IndexStore {
   }
 
   async runAtomicIndexUpdate<T>(job: () => Promise<T>): Promise<T> {
-    return runAtomicUpdate(this.indexTransactionHost(), job);
+    return writerTransactions.runAtomicUpdate(this.indexTransactionHost(), job);
   }
 
   private beginWriteTransaction(): string | null {
-    return beginIndexWrite(this.indexTransactionHost());
+    return writerTransactions.beginIndexWrite(this.indexTransactionHost());
   }
 
   private commitWriteTransaction(savepoint: string | null): void {
-    commitIndexWrite(this.indexTransactionHost(), savepoint);
+    writerTransactions.commitIndexWrite(this.indexTransactionHost(), savepoint);
   }
 
   /**
@@ -221,7 +133,7 @@ export class IndexStore {
    * that message used to replace the real error.
    */
   private rollbackWriteTransaction(savepoint: string | null): void {
-    rollbackIndexWrite(this.indexTransactionHost(), savepoint);
+    writerTransactions.rollbackIndexWrite(this.indexTransactionHost(), savepoint);
   }
 
   private initSchema(): void {
@@ -240,7 +152,7 @@ export class IndexStore {
   private static readonly MAX_SQL_VARS = 900;
 
   private runWriteTransaction<T>(operation: () => T): T {
-    return runIndexWrite(this.indexTransactionHost(), operation);
+    return writerTransactions.runIndexWrite(this.indexTransactionHost(), operation);
   }
 
   private allocateSymbolIds(count: number): number {
@@ -252,17 +164,21 @@ export class IndexStore {
   }
 
   private invalidateIncomingRefsForFiles(files: readonly string[]): Set<string> {
-    return invalidateIncomingIndexRefs(this.indexDeletionHost(), files);
+    return writerDeletion.invalidateIncomingIndexRefs(this.indexDeletionHost(), files);
   }
 
   private resolveRefsForNamesUnsafe(names: Iterable<string>): number {
-    return resolveRefsForNamesUnsafe((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, names);
+    return writerRefs.resolveRefsForNamesUnsafe(
+      (sql) => this.stmt(sql),
+      IndexStore.MAX_SQL_VARS,
+      names,
+    );
   }
 
   insertSymbols(symbols: IndexSymbol[]): IndexSymbol[] {
     this.invalidateBm25();
     return this.runWriteTransaction(() => {
-      const result = insertSymbolsWithStatement(
+      const result = writerMutations.insertSymbolsWithStatement(
         (sql) => this.stmt(sql),
         IndexStore.MAX_SQL_VARS,
         this.ftsAvailable,
@@ -276,46 +192,54 @@ export class IndexStore {
   }
 
   deleteSymbolsForFile(file: string): void {
-    deleteFileSymbols(this.indexDeletionHost(), file);
+    writerDeletion.deleteFileSymbols(this.indexDeletionHost(), file);
   }
 
   deleteFile(file: string): void {
-    deleteIndexedFile(this.indexDeletionHost(), file);
+    writerDeletion.deleteIndexedFile(this.indexDeletionHost(), file);
   }
 
   upsertFile(meta: FileMeta): void {
-    this.runWithRetry(() => upsertFileWithStatement((sql) => this.stmt(sql), meta));
+    this.runWithRetry(() => writerMutations.upsertFileWithStatement((sql) => this.stmt(sql), meta));
   }
 
   getFileMeta(file: string): FileMeta | null {
-    return getFileMetaWithStatement((sql) => this.stmt(sql), file);
+    return writerAdmin.getFileMetaWithStatement((sql) => this.stmt(sql), file);
   }
 
   getAllFileMetas(): FileMeta[] {
-    return getAllFileMetasWithStatement((sql) => this.stmt(sql));
+    return writerAdmin.getAllFileMetasWithStatement((sql) => this.stmt(sql));
   }
 
   /** Metadata for just `files`; absent ones are missing from the result. */
   getFileMetas(files: readonly string[]): FileMeta[] {
     if (files.length === 0) return [];
-    return getFileMetasWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, files);
+    return writerAdmin.getFileMetasWithStatement(
+      (sql) => this.stmt(sql),
+      IndexStore.MAX_SQL_VARS,
+      files,
+    );
   }
 
   setFilePackages(entries: ReadonlyMap<string, string>): void {
-    this.runWithRetry(() => setFilePackagesWithStatement((sql) => this.stmt(sql), entries));
+    this.runWithRetry(() =>
+      writerMutations.setFilePackagesWithStatement((sql) => this.stmt(sql), entries),
+    );
   }
 
   /** Record the Git blob each file's rows were built from ('' clears it). */
   setGitBlobs(entries: ReadonlyMap<string, string>): void {
-    this.runWithRetry(() => setGitBlobsWithStatement((sql) => this.stmt(sql), entries));
+    this.runWithRetry(() =>
+      writerMutations.setGitBlobsWithStatement((sql) => this.stmt(sql), entries),
+    );
   }
 
   getNamespaceDeclarations(): Array<{ name: string; file: string }> {
-    return getNamespaceDeclarationsWithStatement((sql) => this.stmt(sql));
+    return writerRefs.getNamespaceDeclarationsWithStatement((sql) => this.stmt(sql));
   }
 
   getFilePackages(): Map<string, string> {
-    return getFilePackagesWithStatement((sql) => this.stmt(sql));
+    return writerRefs.getFilePackagesWithStatement((sql) => this.stmt(sql));
   }
 
   getUnresolvedImports(onlyFiles?: readonly string[]): Array<{
@@ -323,7 +247,7 @@ export class IndexStore {
     lang: string;
     module: string;
   }> {
-    return getUnresolvedImportsWithStatement(
+    return writerRefs.getUnresolvedImportsWithStatement(
       (sql) => this.stmt(sql),
       IndexStore.MAX_SQL_VARS,
       onlyFiles,
@@ -331,18 +255,18 @@ export class IndexStore {
   }
 
   getFilesWithDanglingImports(): string[] {
-    return getFilesWithDanglingImportsWithStatement((sql) => this.stmt(sql));
+    return writerRefs.getFilesWithDanglingImportsWithStatement((sql) => this.stmt(sql));
   }
 
   /** Imports whose `to_file` is unset — the ones a newly added file can satisfy. */
   getImportsWithoutTarget(): Array<{ fromFile: string; lang: string; module: string }> {
-    return getImportsWithoutTargetWithStatement((sql) => this.stmt(sql));
+    return writerRefs.getImportsWithoutTargetWithStatement((sql) => this.stmt(sql));
   }
 
   /** Files holding an import resolved to one of `targets`. */
   getImportersOfFiles(targets: readonly string[]): string[] {
     if (targets.length === 0) return [];
-    return getImportersOfFilesWithStatement(
+    return writerRefs.getImportersOfFilesWithStatement(
       (sql) => this.stmt(sql),
       IndexStore.MAX_SQL_VARS,
       targets,
@@ -355,7 +279,7 @@ export class IndexStore {
    */
   getRefNamesTargeting(targets: readonly string[]): Array<[string, string]> {
     if (targets.length === 0) return [];
-    return getRefNamesTargetingWithStatement(
+    return writerRefs.getRefNamesTargetingWithStatement(
       (sql) => this.stmt(sql),
       IndexStore.MAX_SQL_VARS,
       targets,
@@ -382,7 +306,7 @@ export class IndexStore {
       toFile: string | null;
     }>,
   ): number {
-    return applyImportResolutionsWithStatement(
+    return writerRefs.applyImportResolutionsWithStatement(
       this.db,
       (sql) => this.stmt(sql),
       this.runWithRetry.bind(this),
@@ -396,11 +320,11 @@ export class IndexStore {
     filter?: WriterSearchFilter,
     opts?: { limit?: number | undefined },
   ): SearchResult[] {
-    return searchWithStatement((sql) => this.stmt(sql), query, filter, opts);
+    return writerSearch.searchWithStatement((sql) => this.stmt(sql), query, filter, opts);
   }
 
   countSearch(query: string, filter?: WriterSearchFilter | undefined): number {
-    return countSearchWithStatement((sql) => this.stmt(sql), query, filter);
+    return writerSearch.countSearchWithStatement((sql) => this.stmt(sql), query, filter);
   }
 
   searchRanked(
@@ -408,7 +332,7 @@ export class IndexStore {
     filter: WriterSearchFilter | undefined,
     limit: number,
   ): { results: SearchResult[]; total: number } {
-    return searchRankedWithStatement(
+    return writerSearch.searchRankedWithStatement(
       (sql) => this.stmt(sql),
       this.search.bind(this),
       this.ftsAvailable,
@@ -455,20 +379,20 @@ export class IndexStore {
   }
 
   getAllIndexable(): Array<{ id: number; text: string }> {
-    return getAllIndexableWithStatement((sql) => this.stmt(sql));
+    return writerAdmin.getAllIndexableWithStatement((sql) => this.stmt(sql));
   }
 
   getMaxSymbolId(): number {
-    return getMaxSymbolIdWithStatement((sql) => this.stmt(sql));
+    return writerAdmin.getMaxSymbolIdWithStatement((sql) => this.stmt(sql));
   }
 
   getStats(): IndexStats {
-    return getStatsWithStatement((sql) => this.stmt(sql), this.indexDir);
+    return writerAdmin.getStatsWithStatement((sql) => this.stmt(sql), this.indexDir);
   }
 
   /** P2.5: minimal summary for search-response piggyback (see writer-admin). */
   getIndexSummary(): IndexSummary {
-    return getIndexSummaryWithStatement((sql) => this.stmt(sql));
+    return writerAdmin.getIndexSummaryWithStatement((sql) => this.stmt(sql));
   }
 
   setLastIndexed(ts: number): void {
@@ -480,7 +404,7 @@ export class IndexStore {
   }
 
   getMetadata(key: string): string | undefined {
-    return getMetadataWithStatement((sql) => this.stmt(sql), key);
+    return writerAdmin.getMetadataWithStatement((sql) => this.stmt(sql), key);
   }
 
   setMetadata(key: string, value: string): void {
@@ -495,7 +419,7 @@ export class IndexStore {
   }
 
   clearAll(): void {
-    clearIndex(this.indexDeletionHost());
+    writerDeletion.clearIndex(this.indexDeletionHost());
   }
 
   /**
@@ -566,7 +490,7 @@ export class IndexStore {
   }
 
   resolveRefs(): number {
-    return this.runWithRetry(() => resolveRefsWithStatement((sql) => this.stmt(sql)));
+    return this.runWithRetry(() => writerRefs.resolveRefsWithStatement((sql) => this.stmt(sql)));
   }
 
   resolveRefsForNames(names: Iterable<string>): number {
@@ -597,7 +521,7 @@ export class IndexStore {
    * it ran, safe to call from the daemon's single-threaded idle path.
    */
   optimizeFtsIfNeeded(options: { minChurnRatio?: number; minChurnRows?: number } = {}): boolean {
-    return delegateOptimizeFtsIfNeeded(this.indexStoreMaintenanceHost(), options);
+    return indexStoreMaintenance.optimizeFtsIfNeeded(this.indexStoreMaintenanceHost(), options);
   }
 
   /**
@@ -607,7 +531,7 @@ export class IndexStore {
    * survives store open/close cycles in the daemon pool.
    */
   private recordFtsChurn(rows: number): void {
-    delegateRecordFtsChurn(this.indexStoreMaintenanceHost(), rows);
+    indexStoreMaintenance.recordFtsChurn(this.indexStoreMaintenanceHost(), rows);
   }
 
   /**
@@ -622,11 +546,11 @@ export class IndexStore {
    * never wait on readers here: busy means "retry at the next idle window".
    */
   checkpointWal(): boolean {
-    return delegateCheckpointWal(this.indexStoreMaintenanceHost());
+    return indexStoreMaintenance.checkpointWal(this.indexStoreMaintenanceHost());
   }
 
   compactIfNeeded(options: { minBytes?: number; minFreeRatio?: number } = {}): boolean {
-    return delegateCompactIfNeeded(this.indexStoreMaintenanceHost(), options);
+    return indexStoreMaintenance.compactIfNeeded(this.indexStoreMaintenanceHost(), options);
   }
 
   findIncomingCallsByName(
@@ -634,7 +558,12 @@ export class IndexStore {
     file?: string,
     limit = 100,
   ): { calls: CallSite[]; symbolFound: boolean; ambiguous: boolean; totalMatches: number } {
-    return findIncomingCallsByName((sql) => this.stmt(sql), symbolName, file, limit);
+    return writerSymbolQueries.findIncomingCallsByNameFromStore.call(
+      this.writerSymbolQueriesHost(),
+      symbolName,
+      file,
+      limit,
+    );
   }
 
   findOutgoingCallsByName(
@@ -642,7 +571,12 @@ export class IndexStore {
     file?: string,
     limit = 100,
   ): { calls: CallSite[]; symbolFound: boolean; unresolvedCount: number; totalMatches: number } {
-    return findOutgoingCallsByName((sql) => this.stmt(sql), symbolName, file, limit);
+    return writerSymbolQueries.findOutgoingCallsByNameFromStore.call(
+      this.writerSymbolQueriesHost(),
+      symbolName,
+      file,
+      limit,
+    );
   }
 
   findTransitiveIncomingCallsByName(
@@ -650,7 +584,12 @@ export class IndexStore {
     file?: string,
     limit = 200,
   ): { calls: CallSite[]; symbolFound: boolean; ambiguous: boolean; totalMatches: number } {
-    return findTransitiveIncomingCallsByName((sql) => this.stmt(sql), symbolName, file, limit);
+    return writerSymbolQueries.findTransitiveIncomingCallsByNameFromStore.call(
+      this.writerSymbolQueriesHost(),
+      symbolName,
+      file,
+      limit,
+    );
   }
 
   findTransitiveOutgoingCallsByName(
@@ -658,31 +597,36 @@ export class IndexStore {
     file?: string,
     limit = 200,
   ): { calls: CallSite[]; symbolFound: boolean; unresolvedCount: number; totalMatches: number } {
-    return findTransitiveOutgoingCallsByName((sql) => this.stmt(sql), symbolName, file, limit);
+    return writerSymbolQueries.findTransitiveOutgoingCallsByNameFromStore.call(
+      this.writerSymbolQueriesHost(),
+      symbolName,
+      file,
+      limit,
+    );
   }
 
   findReachableSymbolIds(seedIds: number[]): Set<number> {
-    return findReachableSymbolIds((sql) => this.stmt(sql), seedIds);
+    return writerGraphReader.findReachableSymbolIds((sql) => this.stmt(sql), seedIds);
   }
 
   findRefsTo(symbolId: number): Ref[] {
-    return findRefsToWithStatement((sql) => this.stmt(sql), symbolId);
+    return writerGraphReader.findRefsToWithStatement((sql) => this.stmt(sql), symbolId);
   }
 
   findRefsFrom(symbolId: number): Ref[] {
-    return findRefsFromWithStatement((sql) => this.stmt(sql), symbolId);
+    return writerGraphReader.findRefsFromWithStatement((sql) => this.stmt(sql), symbolId);
   }
 
   getPackageGraph(): CodeMapGraph {
-    return getPackageGraphWithStatement((sql) => this.stmt(sql));
+    return writerGraphReader.getPackageGraphWithStatement((sql) => this.stmt(sql));
   }
 
   getFileGraph(packageFilter: string): CodeMapGraph {
-    return getFileGraphWithStatement((sql) => this.stmt(sql), packageFilter);
+    return writerGraphReader.getFileGraphWithStatement((sql) => this.stmt(sql), packageFilter);
   }
 
   getSymbolGraph(fileFilter: string): CodeMapGraph {
-    return getSymbolGraphWithStatement((sql) => this.stmt(sql), fileFilter);
+    return writerGraphReader.getSymbolGraphWithStatement((sql) => this.stmt(sql), fileFilter);
   }
 
   getAllSymbols(): Array<{
@@ -693,18 +637,7 @@ export class IndexStore {
     line: number;
     scope: string;
   }> {
-    return (
-      this.stmt(
-        'SELECT id, name, file, kind, line, scope FROM symbols ORDER BY id',
-      ).all() as Array<{
-        id: number;
-        name: string;
-        file: string;
-        kind: string;
-        line: number;
-        scope: string;
-      }>
-    ).map((r) => ({ ...r, kind: r.kind as SymbolKind }));
+    return writerSymbolQueries.getAllSymbols.call(this.writerSymbolQueriesHost());
   }
 
   /** Declarations in one file, in source order. */
@@ -712,7 +645,7 @@ export class IndexStore {
     file: string,
     limit: number,
   ): Array<{ id: number; name: string; kind: string; line: number; signature: string }> {
-    return getFileSymbolsWithStatement((sql) => this.stmt(sql), file, limit);
+    return writerSymbolQueries.getFileSymbols.call(this.writerSymbolQueriesHost(), file, limit);
   }
 
   /** Declarations behind an arbitrary id list, for the retrieval walk. */
@@ -726,7 +659,7 @@ export class IndexStore {
     signature: string;
     scope: string;
   }> {
-    return getSymbolsByIdsWithStatement((sql) => this.stmt(sql), ids);
+    return writerSymbolQueries.getSymbolsByIds.call(this.writerSymbolQueriesHost(), ids);
   }
 
   getAllResolvedRefs(): Array<{
@@ -734,7 +667,7 @@ export class IndexStore {
     toId: number;
     callType: string;
   }> {
-    return getAllResolvedRefsWithStatement((sql) => this.stmt(sql));
+    return writerSymbolQueries.getAllResolvedRefs.call(this.writerSymbolQueriesHost());
   }
 
   /**
@@ -744,8 +677,16 @@ export class IndexStore {
    */
   replaceRanks(symbols: readonly SymbolRankRow[], files: readonly FileRankRow[]): void {
     this.runWriteTransaction(() => {
-      replaceSymbolRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, symbols);
-      replaceFileRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, files);
+      writerRank.replaceSymbolRanksWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        symbols,
+      );
+      writerRank.replaceFileRanksWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        files,
+      );
     });
   }
 
@@ -754,7 +695,7 @@ export class IndexStore {
   /** Wipe stored vectors when the embedding model changed. */
   reconcileVectorProvider(provider: string): boolean {
     return this.runWithRetry(() =>
-      reconcileVectorProviderWithStatement(
+      writerVectors.reconcileVectorProviderWithStatement(
         (sql) => this.stmt(sql),
         (key) => this.getMetadata(key),
         (key, value) => this.setMetadata(key, value),
@@ -764,64 +705,79 @@ export class IndexStore {
   }
 
   getFileVectorStates(provider: string): Map<string, string> {
-    return getFileVectorStatesWithStatement((sql) => this.stmt(sql), provider);
+    return writerVectors.getFileVectorStatesWithStatement((sql) => this.stmt(sql), provider);
   }
 
   upsertFileVectors(rows: readonly FileVectorRow[]): void {
     this.runWriteTransaction(() => {
-      upsertFileVectorsWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, rows);
+      writerVectors.upsertFileVectorsWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        rows,
+      );
     });
   }
 
   pruneOrphanFileVectors(): number {
-    return this.runWithRetry(() => pruneOrphanFileVectorsWithStatement((sql) => this.stmt(sql)));
+    return this.runWithRetry(() =>
+      writerVectors.pruneOrphanFileVectorsWithStatement((sql) => this.stmt(sql)),
+    );
   }
 
   countFileVectors(): number {
-    return countFileVectorsWithStatement((sql) => this.stmt(sql));
+    return writerVectors.countFileVectorsWithStatement((sql) => this.stmt(sql));
   }
 
   searchFileVectors(query: Float32Array, limit: number, minScore: number): VectorHit[] {
-    return searchFileVectorsWithStatement((sql) => this.stmt(sql), query, limit, minScore);
+    return writerVectors.searchFileVectorsWithStatement(
+      (sql) => this.stmt(sql),
+      query,
+      limit,
+      minScore,
+    );
   }
 
   // ── Concept layer ────────────────────────────────────────────────────────
 
   upsertFileConcept(concept: FileConcept): void {
     this.runWriteTransaction(() => {
-      upsertFileConceptWithStatement((sql) => this.stmt(sql), concept);
+      writerConcepts.upsertFileConceptWithStatement((sql) => this.stmt(sql), concept);
     });
   }
 
   getFileConcept(file: string): FileConcept | undefined {
-    return getFileConceptWithStatement((sql) => this.stmt(sql), file);
+    return writerConcepts.getFileConceptWithStatement((sql) => this.stmt(sql), file);
   }
 
   getAllFileConcepts(): FileConcept[] {
-    return getAllFileConceptsWithStatement((sql) => this.stmt(sql));
+    return writerConcepts.getAllFileConceptsWithStatement((sql) => this.stmt(sql));
   }
 
   getReadyConceptSummaries(): Map<string, string> {
-    return getReadyConceptSummariesWithStatement((sql) => this.stmt(sql));
+    return writerConcepts.getReadyConceptSummariesWithStatement((sql) => this.stmt(sql));
   }
 
   getConceptCoverage(): ConceptCoverage {
-    return getConceptCoverageWithStatement((sql) => this.stmt(sql));
+    return writerConcepts.getConceptCoverageWithStatement((sql) => this.stmt(sql));
   }
 
   /** Flag summaries whose file has changed since they were written. */
   markStaleConcepts(): number {
-    return this.runWithRetry(() => markStaleConceptsWithStatement((sql) => this.stmt(sql)));
+    return this.runWithRetry(() =>
+      writerConcepts.markStaleConceptsWithStatement((sql) => this.stmt(sql)),
+    );
   }
 
   /** Drop summaries for files that are no longer indexed. */
   pruneOrphanConcepts(): number {
-    return this.runWithRetry(() => pruneOrphanConceptsWithStatement((sql) => this.stmt(sql)));
+    return this.runWithRetry(() =>
+      writerConcepts.pruneOrphanConceptsWithStatement((sql) => this.stmt(sql)),
+    );
   }
 
   replaceSubsystems(subsystems: readonly Subsystem[], edges: readonly ConceptEdge[]): void {
     this.runWriteTransaction(() => {
-      replaceSubsystemsWithStatement(
+      writerConcepts.replaceSubsystemsWithStatement(
         (sql) => this.stmt(sql),
         IndexStore.MAX_SQL_VARS,
         subsystems,
@@ -831,48 +787,48 @@ export class IndexStore {
   }
 
   getSubsystems(): Subsystem[] {
-    return getSubsystemsWithStatement((sql) => this.stmt(sql));
+    return writerConcepts.getSubsystemsWithStatement((sql) => this.stmt(sql));
   }
 
   getConceptEdges(): ConceptEdge[] {
-    return getConceptEdgesWithStatement((sql) => this.stmt(sql));
+    return writerConcepts.getConceptEdgesWithStatement((sql) => this.stmt(sql));
   }
 
   getPackageFileCounts(): Map<string, number> {
-    return getPackageFileCountsWithStatement((sql) => this.stmt(sql));
+    return writerRank.getPackageFileCountsWithStatement((sql) => this.stmt(sql));
   }
 
   getRankedFiles(limit: number): RankedFileRow[] {
-    return getRankedFilesWithStatement((sql) => this.stmt(sql), limit);
+    return writerRank.getRankedFilesWithStatement((sql) => this.stmt(sql), limit);
   }
 
   getTopFileRanks(limit: number): FileRankRow[] {
-    return getTopFileRanksWithStatement((sql) => this.stmt(sql), limit);
+    return writerRank.getTopFileRanksWithStatement((sql) => this.stmt(sql), limit);
   }
 
   getTopSymbolRanks(limit: number): SymbolRankRow[] {
-    return getTopSymbolRanksWithStatement((sql) => this.stmt(sql), limit);
+    return writerRank.getTopSymbolRanksWithStatement((sql) => this.stmt(sql), limit);
   }
 
   getFileRankMap(): Map<string, number> {
-    return getFileRankMapWithStatement((sql) => this.stmt(sql));
+    return writerRank.getFileRankMapWithStatement((sql) => this.stmt(sql));
   }
 
   getRankCounts(): { symbols: number; files: number } {
-    return getRankCountsWithStatement((sql) => this.stmt(sql));
+    return writerRank.getRankCountsWithStatement((sql) => this.stmt(sql));
   }
 
   getSymbolNameCandidates(): Map<number, number> {
-    return getSymbolNameCandidatesWithStatement((sql) => this.stmt(sql));
+    return writerRank.getSymbolNameCandidatesWithStatement((sql) => this.stmt(sql));
   }
 
   /** Declaring file and homonym count per symbol, from one scan. */
   getSymbolGraphFacts(): { fileOf: Map<number, string>; candidates: Map<number, number> } {
-    return getSymbolGraphFactsWithStatement((sql) => this.stmt(sql));
+    return writerSymbolQueries.getSymbolGraphFacts.call(this.writerSymbolQueriesHost());
   }
 
   getImportVisibility(): Map<string, Set<string>> {
-    return getImportVisibilityWithStatement((sql) => this.stmt(sql));
+    return writerSymbolQueries.getImportVisibility.call(this.writerSymbolQueriesHost());
   }
 
   getAllImportRefs(): Array<{
@@ -882,7 +838,7 @@ export class IndexStore {
     callType: string;
     line: number;
   }> {
-    return getAllImportRefsWithStatement((sql) => this.stmt(sql));
+    return writerSymbolQueries.getAllImportRefs.call(this.writerSymbolQueriesHost());
   }
 
   close(): void {
@@ -986,6 +942,12 @@ export class IndexStore {
       commitWriteTransaction: (...args) => this.commitWriteTransaction(...args),
       rollbackWriteTransaction: (...args) => this.rollbackWriteTransaction(...args),
     };
+  }
+
+  private writerSymbolQueriesHost(): WriterSymbolQueriesHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.stmt satisfies WriterSymbolQueriesHost['stmt']);
+    return this as unknown as WriterSymbolQueriesHost;
   }
 }
 

@@ -7,20 +7,16 @@ import { deriveAppViewState } from './app-view-state.js';
 import { leaderTimelineFromEntries } from './components/agents-monitor.js';
 import type { StatuslineItem } from './components/statusline-picker.js';
 import { usePendingUserInput } from './components/user-input-prompt.js';
+import { resolveControllerProps } from './controller-props.js';
 import { useAppEnvironment } from './hooks/use-app-environment.js';
 import { useAppRefSpine } from './hooks/use-app-ref-spine.js';
 import { useAppState } from './hooks/use-app-state.js';
 import { useAuthPanel } from './hooks/use-auth-panel.js';
-import { useAutonomousCoordinator } from './hooks/use-autonomous-coordinator.js';
-import { useBrainPanel } from './hooks/use-brain-panel.js';
-import { useBrainRiskSync } from './hooks/use-brain-risk-sync.js';
-import { useBugHuntLoop } from './hooks/use-bug-hunt-loop.js';
 import { useClientTelemetry } from './hooks/use-client-telemetry.js';
 import { useCoreTuiCommands } from './hooks/use-core-tui-commands.js';
 import { useDirectorFleetBridge } from './hooks/use-director-fleet-bridge.js';
 import { useExitCommand } from './hooks/use-exit-command.js';
 import { useFileSearch } from './hooks/use-file-search.js';
-import { useHelpPanel } from './hooks/use-help-panel.js';
 import { useHistoryArchive } from './hooks/use-history-archive.js';
 import { useHistoryAutoScroll } from './hooks/use-history-auto-scroll.js';
 import { useHistoryCopyNotice } from './hooks/use-history-copy-notice.js';
@@ -28,23 +24,17 @@ import { useInitialPrompt } from './hooks/use-initial-prompt.js';
 import { useInputHistoryPersistence } from './hooks/use-input-history-persistence.js';
 import { useKanbanBoardFocus } from './hooks/use-kanban-board-focus.js';
 import { useLeaderAutoWake } from './hooks/use-leader-auto-wake.js';
-import { useMailboxViewModel } from './hooks/use-mailbox-view-model.js';
-import { useModePicker } from './hooks/use-mode-picker.js';
-import { useModelPickRequest } from './hooks/use-model-pick.js';
 import { useNextStepsAutoSubmit } from './hooks/use-next-steps-auto-submit.js';
 import { usePanelControllers } from './hooks/use-panel-controllers.js';
 import { usePasteHandling } from './hooks/use-paste-handling.js';
-import { usePromptPicker } from './hooks/use-prompt-picker.js';
 import { useProviderEventBridge } from './hooks/use-provider-event-bridge.js';
 import { useProviderWarmup } from './hooks/use-provider-warmup.js';
 import { useQueueManager } from './hooks/use-queue-manager.js';
 import { useSessionInterruptController } from './hooks/use-session-interrupt-controller.js';
 import { useSessionRewind } from './hooks/use-session-rewind.js';
-import { useShadowPanel } from './hooks/use-shadow-panel.js';
 import { useSkillMentionPicker } from './hooks/use-skill-mention-picker.js';
 import { useSlashPicker } from './hooks/use-slash-picker.js';
 import { useStatusbarViewModel } from './hooks/use-statusbar-view-model.js';
-import { useSubagentModelsPanel } from './hooks/use-subagent-models-panel.js';
 import { useThemePickerHandler } from './hooks/use-theme-picker-handler.js';
 import { useTokenCounterRefresh } from './hooks/use-token-counter-refresh.js';
 import { useTuiControllers } from './hooks/use-tui-controllers.js';
@@ -53,136 +43,38 @@ import { useTuiSlashCommands } from './hooks/use-tui-slash-commands.js';
 import { useApp, useStdout } from './ink.js';
 import { setActiveTheme } from './theme.js';
 import { useControllerKeyPipeline } from './use-controller-key-pipeline.js';
+import { useControllerPanelHooks } from './use-controller-panel-hooks.js';
 
 export function useAppController(props: AppProps) {
-  const {
-    agent,
-    slashRegistry,
-    secretInputController,
-    attachments,
-    events,
-    tokenCounter,
-    model,
-    banner = true,
-    queueStore,
-    queueStoreFor,
-    onQueueChange,
-    yolo = false,
-    chime = false,
-    confirmExit = true,
-    titleController,
-    mouse = false,
-    capability,
-    enhanceEnabled = true,
-    enhanceController,
-    midRunSendPicker = true,
-    enhanceDelayMs = 15_000,
-    getAutonomy,
-    getEternalEngine,
-    getParallelEngine,
-    getSddRun,
-    subscribeGoal,
-    appVersion,
-    provider,
-    family,
-    keyTail,
-    profile,
-    profileConfigPath,
-    autonomyAgents,
-    toolCount,
-    getPickableProviders,
-    switchProviderAndModel,
-    getSettings,
-    saveSettings,
-    getPluginItems,
-    onPluginToggle,
-    getMcpServers,
-    onMcpToggle,
-    onMcpRestart,
-    getToolsItems,
-    onToolToggle,
-    getBrainData,
-    onBrainRiskLevel,
-    brainPanelHost,
-    subagentModelsHost,
-    getShadowData,
-    onShadowStart,
-    onShadowStop,
-    authHost,
-    getSuggestions,
-    getAutoSuggestions,
-    autonomyNextPrompt,
-    setSuggestions,
-    switchAutonomy,
-    effectiveMaxContext,
-    onExit,
-    director,
-    getDirector,
-    onClearHistory,
-    listSessions,
-    fleetStreamController,
-    interruptController,
-    statuslineHiddenItems,
-    setStatuslineHiddenItems,
-    saveStatuslineHiddenItems,
-    statuslineLines,
-    setStatuslineLines,
-    saveStatuslineLines,
-    statuslineDensities,
-    setStatuslineDensities,
-    saveStatuslineDensities,
-    statuslineOrder,
-    setStatuslineOrder,
-    saveStatuslineOrder,
-    agentsMonitorController,
-    initialGoal,
-    initialAsk,
-    sessionsDir,
-    modeLabel,
-    getModeLabel,
-    getModes,
-    registerDebugStreamCallback,
-    restoreDebugStreamCallback,
-    restoredMessages,
-    restoredToolCalls,
-    restoredEvents,
-    getProjectPickerItems,
-    getLiveSessions,
-    initialAgentsMonitorOpen,
-    onPanelOpen,
-    subscribeCoordinatorEvents,
-    coordinatorRunning = false,
-    clientId,
-    memoryStore,
-    configStore,
-  } = props;
-  const pendingUserInput = usePendingUserInput(events);
+  const controllerProps = resolveControllerProps(props);
+  const secretInputController = controllerProps.secretInputController;
+  const pendingUserInput = usePendingUserInput(controllerProps.events);
   const { exit } = useApp();
   const { stdout } = useStdout();
 
-  const projectRoot = agent.ctx.projectRoot;
+  const projectRoot = controllerProps.agent.ctx.projectRoot;
 
   // Decomposition Phase 4 A1 (docs/decomposition-a0-app-map.md): state
   // facade + ref spine extracted; call order fixed + unconditional
   // (behavior contract §0.3).
   const { state, dispatch, layoutStore, liveTodos } = useAppState({
-    agent,
-    banner,
-    appVersion,
-    provider,
-    model,
-    family,
-    keyTail,
-    profile,
-    profileConfigPath,
-    autonomyAgents,
-    restoredMessages,
-    restoredToolCalls,
-    restoredEvents,
-    enhanceEnabled,
-    initialAgentsMonitorOpen,
-    initialFleetChat: fleetStreamController?.mode,
-    sessionsDir,
+    agent: controllerProps.agent,
+    banner: controllerProps.banner,
+    appVersion: controllerProps.appVersion,
+    provider: controllerProps.provider,
+    model: controllerProps.model,
+    family: controllerProps.family,
+    keyTail: controllerProps.keyTail,
+    profile: controllerProps.profile,
+    profileConfigPath: controllerProps.profileConfigPath,
+    autonomyAgents: controllerProps.autonomyAgents,
+    restoredMessages: controllerProps.restoredMessages,
+    restoredToolCalls: controllerProps.restoredToolCalls,
+    restoredEvents: controllerProps.restoredEvents,
+    enhanceEnabled: controllerProps.enhanceEnabled,
+    initialAgentsMonitorOpen: controllerProps.initialAgentsMonitorOpen,
+    initialFleetChat: controllerProps.fleetStreamController?.mode,
+    sessionsDir: controllerProps.sessionsDir,
   });
   const {
     promptUsageRef,
@@ -226,7 +118,11 @@ export function useAppController(props: AppProps) {
     setRefineProviderId,
     refineModel,
     setRefineModel,
-  } = useAppRefSpine({ attachments, state, midRunSendPicker });
+  } = useAppRefSpine({
+    attachments: controllerProps.attachments,
+    state,
+    midRunSendPicker: controllerProps.midRunSendPicker,
+  });
   const onScrollInfo = useCallback(
     (info: { scrolled: boolean }) =>
       dispatch({ type: 'setHistoryScrolled', scrolled: info.scrolled }),
@@ -239,8 +135,8 @@ export function useAppController(props: AppProps) {
   const { onRequestOlderEntries } = useHistoryArchive({
     entries: state.entries,
     dispatch,
-    sessionsDir,
-    sessionId: agent.ctx.session?.id,
+    sessionsDir: controllerProps.sessionsDir,
+    sessionId: controllerProps.agent.ctx.session?.id,
   });
   const onHistoryCopy = useHistoryCopyNotice(dispatch);
   const { focusedBoardId, setFocusedBoardId, boardFocusRef } = useKanbanBoardFocus();
@@ -250,52 +146,40 @@ export function useAppController(props: AppProps) {
     inputHistory: state.inputHistory,
     dispatch,
   });
-
-  const { openPromptPicker, setPromptFavorite } = usePromptPicker({ projectRoot, dispatch });
-  const { openModePicker } = useModePicker({ dispatch, getModes });
-
-  const { requestModelPick, handleModelPicked } = useModelPickRequest({
+  const {
+    openPromptPicker,
+    setPromptFavorite,
+    openModePicker,
+    handleModelPicked,
+    brainCtl,
+    openBrainPanel,
+    changeBrainRisk,
+    openShadowPanel,
+    handleShadowStart,
+    handleShadowStop,
+    subagentModelsCtl,
+    openHelpPanel,
+    bugHuntLoop,
+    mailbox,
+    setMailboxPanelOpen,
+  } = useControllerPanelHooks({
+    projectRoot,
     dispatch,
-    getPickableProviders,
-    pickerOpen: state.modelPicker.open,
+    getModes: controllerProps.getModes,
+    getPickableProviders: controllerProps.getPickableProviders,
+    state,
+    getBrainData: controllerProps.getBrainData,
+    brainPanelHost: controllerProps.brainPanelHost,
+    onBrainRiskLevel: controllerProps.onBrainRiskLevel,
+    getShadowData: controllerProps.getShadowData,
+    onShadowStart: controllerProps.onShadowStart,
+    onShadowStop: controllerProps.onShadowStop,
+    subagentModelsHost: controllerProps.subagentModelsHost,
+    slashRegistry: controllerProps.slashRegistry,
+    subscribeCoordinatorEvents: controllerProps.subscribeCoordinatorEvents,
+    submitRef,
+    events: controllerProps.events,
   });
-  const brainCtl = useBrainPanel({ dispatch, getBrainData, brainPanelHost, requestModelPick });
-  const openBrainPanel = brainCtl.openBrainPanel;
-  const { changeBrainRisk } = useBrainRiskSync({
-    dispatch,
-    riskLevel: state.brainPanel.riskLevel,
-    brainPanelOpen: state.brainPanel.open,
-    onBrainRiskLevel,
-  });
-
-  const { openShadowPanel, handleShadowStart, handleShadowStop } = useShadowPanel(dispatch, {
-    getShadowData,
-    onShadowStart,
-    onShadowStop,
-  });
-
-  const subagentModelsCtl = useSubagentModelsPanel({
-    dispatch,
-    subagentModelsHost,
-    requestModelPick,
-  });
-
-  const { openHelpPanel } = useHelpPanel(dispatch, slashRegistry);
-
-  useAutonomousCoordinator(subscribeCoordinatorEvents, dispatch);
-
-  const bugHuntLoop = useBugHuntLoop(
-    dispatch,
-    (command) => {
-      void submitRef.current(command);
-    },
-    // Wholesale history replacement (notably /clear) must end any hunt —
-    // see the historyGen effect inside useBugHuntLoop.
-    state.historyGen,
-  );
-
-  const mailbox = useMailboxViewModel(events);
-  const { setMailboxPanelOpen } = mailbox;
 
   // Decomposition Phase 4 A2 (docs/decomposition-a0-app-map.md): environment
   // facade — theme, env state, live settings, activity, layout, mouse,
@@ -337,53 +221,53 @@ export function useAppController(props: AppProps) {
     memoryRecordTotalRef,
     setLiveToolCount,
   } = useAppEnvironment({
-    agent,
-    attachments,
-    configStore,
+    agent: controllerProps.agent,
+    attachments: controllerProps.attachments,
+    configStore: controllerProps.configStore,
     state,
     dispatch,
     mailboxPanelOpen: mailbox.mailboxPanelOpen,
     stdout,
-    events,
-    memoryStore,
-    model,
-    provider,
-    effectiveMaxContext,
-    yolo,
-    mouse,
-    capability,
-    chime,
-    confirmExit,
+    events: controllerProps.events,
+    memoryStore: controllerProps.memoryStore,
+    model: controllerProps.model,
+    provider: controllerProps.provider,
+    effectiveMaxContext: controllerProps.effectiveMaxContext,
+    yolo: controllerProps.yolo,
+    mouse: controllerProps.mouse,
+    capability: controllerProps.capability,
+    chime: controllerProps.chime,
+    confirmExit: controllerProps.confirmExit,
     stateRef,
     builderRef,
     eternalLoopRunningRef,
     parallelLoopRunningRef,
-    getAutonomy,
-    modeLabel,
-    statuslineHiddenItems,
-    toolCount,
-    getSettings,
-    setStatuslineHiddenItems,
-    saveStatuslineHiddenItems,
-    statuslineLines,
-    setStatuslineLines,
-    saveStatuslineLines,
-    statuslineDensities,
-    setStatuslineDensities,
-    saveStatuslineDensities,
-    statuslineOrder,
-    setStatuslineOrder,
-    saveStatuslineOrder,
-    titleController,
+    getAutonomy: controllerProps.getAutonomy,
+    modeLabel: controllerProps.modeLabel,
+    statuslineHiddenItems: controllerProps.statuslineHiddenItems,
+    toolCount: controllerProps.toolCount,
+    getSettings: controllerProps.getSettings,
+    setStatuslineHiddenItems: controllerProps.setStatuslineHiddenItems,
+    saveStatuslineHiddenItems: controllerProps.saveStatuslineHiddenItems,
+    statuslineLines: controllerProps.statuslineLines,
+    setStatuslineLines: controllerProps.setStatuslineLines,
+    saveStatuslineLines: controllerProps.saveStatuslineLines,
+    statuslineDensities: controllerProps.statuslineDensities,
+    setStatuslineDensities: controllerProps.setStatuslineDensities,
+    saveStatuslineDensities: controllerProps.saveStatuslineDensities,
+    statuslineOrder: controllerProps.statuslineOrder,
+    setStatuslineOrder: controllerProps.setStatuslineOrder,
+    saveStatuslineOrder: controllerProps.saveStatuslineOrder,
+    titleController: controllerProps.titleController,
     getYolo: props.getYolo,
-    getModeLabel,
-    getEternalEngine,
-    getParallelEngine,
-    switchAutonomy,
+    getModeLabel: controllerProps.getModeLabel,
+    getEternalEngine: controllerProps.getEternalEngine,
+    getParallelEngine: controllerProps.getParallelEngine,
+    switchAutonomy: controllerProps.switchAutonomy,
     subscribeEternalIteration: props.subscribeEternalIteration,
     subscribeEternalStage: props.subscribeEternalStage,
-    getLiveSessions,
-    saveSettings,
+    getLiveSessions: controllerProps.getLiveSessions,
+    saveSettings: controllerProps.saveSettings,
   });
   const {
     liveModel,
@@ -402,8 +286,8 @@ export function useAppController(props: AppProps) {
   const { displayThinkingWord } = activity;
 
   const liveDirector = useCallback(
-    (): Director | null => getDirector?.() ?? director,
-    [getDirector, director],
+    (): Director | null => controllerProps.getDirector?.() ?? controllerProps.director,
+    [controllerProps.getDirector, controllerProps.director],
   );
 
   const clearPendingConfirms = useCallback(() => {
@@ -420,7 +304,7 @@ export function useAppController(props: AppProps) {
   }, [dispatch, stateRef]);
 
   const authPanelController = useAuthPanel({
-    authHost,
+    authHost: controllerProps.authHost,
     stateRef,
     dispatch,
     open: state.authPanel.open,
@@ -465,9 +349,9 @@ export function useAppController(props: AppProps) {
   );
 
   const { handleRewindTo, handleRewindRedo } = useSessionRewind({
-    agent,
-    sessionsDir,
-    interruptController,
+    agent: controllerProps.agent,
+    sessionsDir: controllerProps.sessionsDir,
+    interruptController: controllerProps.interruptController,
     liveDirector,
     sessionGenerationRef,
   });
@@ -482,13 +366,17 @@ export function useAppController(props: AppProps) {
     dispatch({ type: 'clearInput' });
   };
 
-  const tokenRefresh = useTokenCounterRefresh(tokenCounter, events, agent.ctx.session?.id);
+  const tokenRefresh = useTokenCounterRefresh(
+    controllerProps.tokenCounter,
+    controllerProps.events,
+    controllerProps.agent.ctx.session?.id,
+  );
 
   const statusbar = useStatusbarViewModel({
-    agent,
-    tokenCounter,
+    agent: controllerProps.agent,
+    tokenCounter: controllerProps.tokenCounter,
     activeMaxContext,
-    effectiveMaxContext,
+    effectiveMaxContext: controllerProps.effectiveMaxContext,
     liveProvider,
     liveModel,
     liveTodos,
@@ -503,59 +391,59 @@ export function useAppController(props: AppProps) {
 
   const acceptSlashPickerSelection = useSlashPicker({
     state,
-    slashRegistry,
+    slashRegistry: controllerProps.slashRegistry,
     dispatch,
     setDraft,
   });
 
   const { getCronJobs, runSteerSequence } = useCoreTuiCommands({
-    agent,
-    slashRegistry,
-    memoryStore,
-    onPanelOpen,
+    agent: controllerProps.agent,
+    slashRegistry: controllerProps.slashRegistry,
+    memoryStore: controllerProps.memoryStore,
+    onPanelOpen: controllerProps.onPanelOpen,
     memoryContextMonitorRef,
     memoryRecordTotalRef,
     stateRef,
     boardFocusRef,
     setFocusedBoardId,
     terminalWidth: stdout.columns ?? 80,
-    getModeLabel,
+    getModeLabel: controllerProps.getModeLabel,
     activeCtrlRef,
     clearPendingConfirms,
     dispatch,
     liveDirector,
     streamingTextRef,
-    director,
+    director: controllerProps.director,
     handleRewindTo,
     handleRewindRedo,
-    getSettings,
+    getSettings: controllerProps.getSettings,
   });
 
   const panelControllers = usePanelControllers({
     state,
     stateRef,
     dispatch,
-    getPickableProviders,
-    getProjectPickerItems,
-    getLiveSessions,
-    onPanelOpen,
+    getPickableProviders: controllerProps.getPickableProviders,
+    getProjectPickerItems: controllerProps.getProjectPickerItems,
+    getLiveSessions: controllerProps.getLiveSessions,
+    onPanelOpen: controllerProps.onPanelOpen,
     openStatuslinePicker,
     openAuthPanel: authPanelController.openAuthPanel,
     openModePicker,
     openBrainPanel,
     openShadowPanel,
-    openSubagentModelsPanel: subagentModelsHost
+    openSubagentModelsPanel: controllerProps.subagentModelsHost
       ? subagentModelsCtl.openSubagentModelsPanel
       : undefined,
     openHelpPanel,
-    getSettings,
-    getPluginItems,
-    onPluginToggle,
-    getMcpServers,
-    onMcpToggle,
-    onMcpRestart,
-    getToolsItems,
-    onToolToggle,
+    getSettings: controllerProps.getSettings,
+    getPluginItems: controllerProps.getPluginItems,
+    onPluginToggle: controllerProps.onPluginToggle,
+    getMcpServers: controllerProps.getMcpServers,
+    onMcpToggle: controllerProps.onMcpToggle,
+    onMcpRestart: controllerProps.onMcpRestart,
+    getToolsItems: controllerProps.getToolsItems,
+    onToolToggle: controllerProps.onToolToggle,
     setLiveToolCount,
     getActiveModelReasoningEffortLevels: props.getActiveModelReasoningEffortLevels,
   });
@@ -577,14 +465,14 @@ export function useAppController(props: AppProps) {
   } = useNextStepsAutoSubmit({
     state,
     autonomyLive,
-    agent,
-    getAutonomy,
-    getSettings,
-    getSuggestions,
-    getAutoSuggestions,
+    agent: controllerProps.agent,
+    getAutonomy: controllerProps.getAutonomy,
+    getSettings: controllerProps.getSettings,
+    getSuggestions: controllerProps.getSuggestions,
+    getAutoSuggestions: controllerProps.getAutoSuggestions,
     getYolo: props.getYolo,
-    setSuggestions,
-    autonomyNextPrompt,
+    setSuggestions: controllerProps.setSuggestions,
+    autonomyNextPrompt: controllerProps.autonomyNextPrompt,
     dispatch,
     clearDraft,
     runBlocksRef,
@@ -611,7 +499,7 @@ export function useAppController(props: AppProps) {
           },
         });
       try {
-        configStore?.update({ themePreset: preset });
+        controllerProps.configStore?.update({ themePreset: preset });
       } catch (err) {
         // A synchronous store failure is reported too — swallowing it left the
         // user believing a theme was saved when the write never happened.
@@ -627,38 +515,38 @@ export function useAppController(props: AppProps) {
         warnPersist(err);
       }
     },
-    [configStore, dispatch, props.saveThemePreset],
+    [controllerProps.configStore, dispatch, props.saveThemePreset],
   );
 
   useTuiSlashCommands({
-    slashRegistry,
+    slashRegistry: controllerProps.slashRegistry,
     skillLoader: props.skillLoader,
     getResourceMenu: props.getResourceMenu,
-    getPickableProviders,
-    switchProviderAndModel,
+    getPickableProviders: controllerProps.getPickableProviders,
+    switchProviderAndModel: controllerProps.switchProviderAndModel,
     openModelPicker,
     openFKeyPicker,
     projectRoot,
-    agent,
+    agent: controllerProps.agent,
     dispatch,
-    getSettings,
-    saveSettings,
+    getSettings: controllerProps.getSettings,
+    saveSettings: controllerProps.saveSettings,
     openSettings,
     state,
     openStatuslinePicker,
     setHiddenItems,
     hiddenItemsRef,
     setMailboxPanelOpen,
-    switchAutonomy,
-    listSessions,
+    switchAutonomy: controllerProps.switchAutonomy,
+    listSessions: controllerProps.listSessions,
     openPromptPicker,
-    configStore,
+    configStore: controllerProps.configStore,
     applyThemePreset,
   });
 
   useProviderEventBridge({
-    events,
-    agent,
+    events: controllerProps.events,
+    agent: controllerProps.agent,
     dispatch,
     streamingTextRef,
     streamSegmentsRef,
@@ -671,13 +559,13 @@ export function useAppController(props: AppProps) {
   });
 
   useClientTelemetry({
-    events,
-    clientId,
-    tokenCounter,
-    getAutonomy,
-    agent,
-    registerDebugStreamCallback,
-    restoreDebugStreamCallback,
+    events: controllerProps.events,
+    clientId: controllerProps.clientId,
+    tokenCounter: controllerProps.tokenCounter,
+    getAutonomy: controllerProps.getAutonomy,
+    agent: controllerProps.agent,
+    registerDebugStreamCallback: controllerProps.registerDebugStreamCallback,
+    restoreDebugStreamCallback: controllerProps.restoreDebugStreamCallback,
     dispatch,
   });
 
@@ -696,20 +584,23 @@ export function useAppController(props: AppProps) {
   });
 
   const queueManager = useQueueManager({
-    queueStore,
-    queueStoreFor,
-    onQueueChange,
-    slashRegistry,
+    queueStore: controllerProps.queueStore,
+    queueStoreFor: controllerProps.queueStoreFor,
+    onQueueChange: controllerProps.onQueueChange,
+    slashRegistry: controllerProps.slashRegistry,
     stateRef,
     dispatch,
-    getSettings,
-    saveSettings,
+    getSettings: controllerProps.getSettings,
+    saveSettings: controllerProps.saveSettings,
     midRunSendPickerRef,
   });
 
-  useProviderWarmup(agent, state.buffer, state.status);
+  useProviderWarmup(controllerProps.agent, state.buffer, state.status);
 
-  const getActiveSessionId = useCallback(() => agent.ctx.session.id, [agent]);
+  const getActiveSessionId = useCallback(
+    () => controllerProps.agent.ctx.session.id,
+    [controllerProps.agent],
+  );
 
   const getLeaderTranscript = useCallback(
     () => leaderTimelineFromEntries(stateRef.current.entries),
@@ -717,13 +608,13 @@ export function useAppController(props: AppProps) {
   );
 
   useTuiEventBridge({
-    events,
+    events: controllerProps.events,
     dispatch,
     stateRef,
     setActiveMaxContext,
     getSessionId: getActiveSessionId,
-    subscribeGoal,
-    onClearHistory,
+    subscribeGoal: controllerProps.subscribeGoal,
+    onClearHistory: controllerProps.onClearHistory,
     sessionGenerationRef,
   });
 
@@ -732,13 +623,13 @@ export function useAppController(props: AppProps) {
     fleetChat: state.fleetChat,
     enhanceEnabled: state.enhanceEnabled,
     agentsMonitorOpen: state.agentsMonitorOpen,
-    fleetStreamController,
-    enhanceController,
-    agentsMonitorController,
+    fleetStreamController: controllerProps.fleetStreamController,
+    enhanceController: controllerProps.enhanceController,
+    agentsMonitorController: controllerProps.agentsMonitorController,
   });
 
   useSessionInterruptController({
-    interruptController,
+    interruptController: controllerProps.interruptController,
     dispatch,
     stateRef,
     activeCtrlRef,
@@ -753,24 +644,24 @@ export function useAppController(props: AppProps) {
     parallelLoopRunningRef,
     tokenPreviewsRef,
     clearPendingConfirms,
-    getEternalEngine,
-    getParallelEngine,
-    getSddRun,
-    switchAutonomy,
+    getEternalEngine: controllerProps.getEternalEngine,
+    getParallelEngine: controllerProps.getParallelEngine,
+    getSddRun: controllerProps.getSddRun,
+    switchAutonomy: controllerProps.switchAutonomy,
   });
 
   useExitCommand({
-    slashRegistry,
+    slashRegistry: controllerProps.slashRegistry,
     dispatch,
     exitConfirm: state.exitConfirm,
     stateRef,
     sessionGenerationRef,
-    interruptController,
+    interruptController: controllerProps.interruptController,
     getDirector: liveDirector,
   });
 
   useDirectorFleetBridge({
-    director,
+    director: controllerProps.director,
     dispatch,
     stateRef,
     chatMode: state.fleetChat,
@@ -788,7 +679,7 @@ export function useAppController(props: AppProps) {
   });
 
   const { onThemePickerEnter, onThemePickerUndo } = useThemePickerHandler({
-    configStore,
+    configStore: controllerProps.configStore,
     saveThemePreset: props.saveThemePreset,
     dispatch,
     selectedIndex: state.themePicker.selected,
@@ -825,18 +716,18 @@ export function useAppController(props: AppProps) {
     setPromptFavorite,
     stateRef,
     exitRequestedRef,
-    agent,
+    agent: controllerProps.agent,
     liveDirector,
-    onExit,
+    onExit: controllerProps.onExit,
     exit,
     activeCtrlRef,
     clearPendingConfirms,
-    getEternalEngine,
-    getParallelEngine,
+    getEternalEngine: controllerProps.getEternalEngine,
+    getParallelEngine: controllerProps.getParallelEngine,
     eternalLoopRunningRef,
     parallelLoopRunningRef,
-    switchAutonomy,
-    getSddRun,
+    switchAutonomy: controllerProps.switchAutonomy,
+    getSddRun: controllerProps.getSddRun,
     confirmExitRef,
     historyScrollRef,
     onHistoryScrollActivity,
@@ -857,7 +748,7 @@ export function useAppController(props: AppProps) {
     openProjectPicker,
     loadLiveSessions,
     openStatuslinePicker,
-    statuslineHiddenItems,
+    statuslineHiddenItems: controllerProps.statuslineHiddenItems,
     draftRef,
     clearDraft,
     mouseMode,
@@ -919,9 +810,9 @@ export function useAppController(props: AppProps) {
 
   useLeaderAutoWake({
     leaderAutoWake: props.leaderAutoWake,
-    events,
+    events: controllerProps.events,
     dispatch,
-    getSessionId: () => agent.ctx.session?.id,
+    getSessionId: () => controllerProps.agent.ctx.session?.id,
     activeController: activeCtrlRef,
     eternalLoopRunning: eternalLoopRunningRef,
     parallelLoopRunning: parallelLoopRunningRef,
@@ -930,7 +821,13 @@ export function useAppController(props: AppProps) {
     runBlocks: runBlocksRef,
   });
 
-  useInitialPrompt({ initialGoal, initialAsk, builderRef, runBlocksRef, dispatch });
+  useInitialPrompt({
+    initialGoal: controllerProps.initialGoal,
+    initialAsk: controllerProps.initialAsk,
+    builderRef,
+    runBlocksRef,
+    dispatch,
+  });
 
   const viewState = deriveAppViewState({
     state,
@@ -989,8 +886,8 @@ export function useAppController(props: AppProps) {
     focusedBoardId,
     getCronJobs,
     getLeaderTranscript,
-    coordinatorRunning,
-    enhanceDelayMs,
+    coordinatorRunning: controllerProps.coordinatorRunning,
+    enhanceDelayMs: controllerProps.enhanceDelayMs,
     layoutStore,
   };
 }

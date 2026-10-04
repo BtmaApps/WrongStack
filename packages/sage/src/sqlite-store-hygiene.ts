@@ -1,12 +1,13 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
 import { ulid } from '@wrongstack/core/utils';
-import { verifyMemoryAnchors } from './anchors/verify.js';
 import { reviewedTargetTexts, wasReviewedUnchanged } from './shared/candidate-dedupe.js';
 import { applySemanticChange } from './shared/semantic-rewrite.js';
-import { isVerificationStale } from './shared/stale-reason.js';
-import { anchorsChanged } from './sqlite-store-anchor-diff.js';
+import type { SqliteHygieneContext } from './sqlite-hygiene-anchors.js';
+import {
+  compareIsoAscending,
+  compareMemoryAgeAscending,
+  hygieneScopeKey,
+} from './sqlite-hygiene-anchors.js';
+import { verifyHygieneMemories } from './sqlite-hygiene-verification.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { cleanReferencingMemories, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import {
@@ -18,7 +19,6 @@ import {
 import type {
   CandidateSuggestedAction,
   MemoryAnchor,
-  MemoryCandidate,
   Sage,
   SageHygieneOptions,
   SageHygieneReport,
@@ -40,116 +40,6 @@ const HYGIENE_NEAR_DUP_BUCKET_CAP = 80;
 const CRITICAL_IMPORTANCE_FLOOR = 0.9;
 
 /**
- * Ascending byte comparison for ISO-8601 timestamps. `localeCompare` is
- * locale-aware and can reorder ASCII-only ISO strings across locales (Turkish
- * `i`/`I`, German `ß`/`ss`) — see `shared/pagination.ts:compareByUpdatedDesc`
- * for the canonical rationale. Oldest-first keeps the earliest record as the
- * dedup keeper. Valid for uniform-format strings (all writers use
- * `new Date().toISOString()`).
- */
-function compareIsoAscending(a: string, b: string): number {
-  if (a < b) return -1;
-  if (a > b) return 1;
-  return 0;
-}
-
-/**
- * Oldest-first ordering for a pair of memories.
- *
- * `createdAt` is millisecond-precision, so two memories written in the same
- * tick compare EQUAL. The equal case used to fall through to the caller's
- * query order (`updated_at DESC, id DESC`) — which lists the newest record
- * first, so the "newer" pick resolved to the OLDER member and the
- * `contradicts` link plus the 'investigate' candidate landed on the wrong
- * claim. Ids are ULIDs and sort lexicographically by creation time, so they
- * break the tie in true insertion order. Byte comparison for the same reason
- * `compareIsoAscending` avoids `localeCompare`.
- */
-function compareMemoryAgeAscending(a: Sage, b: Sage): number {
-  const byCreated = compareIsoAscending(a.createdAt, b.createdAt);
-  if (byCreated !== 0) return byCreated;
-  if (a.id < b.id) return -1;
-  if (a.id > b.id) return 1;
-  return 0;
-}
-
-function hygieneScopeKey(m: Sage): string {
-  return m.scope === 'session' ? `session:${m.ownerSessionId ?? ''}` : m.scope;
-}
-
-/**
- * Can a path-existence check alone prove every anchor valid? Only for plain
- * file/test/directory/package paths: a content hash, blob hash or symbol can
- * make a memory stale while its file still exists, and an existence pass that
- * reactivated such a memory would silently undo a deep verification.
- */
-function existenceProvesAnchors(anchors: readonly MemoryAnchor[]): boolean {
-  return (
-    anchors.length > 0 &&
-    anchors.every(
-      (anchor) =>
-        Boolean(anchor.path) &&
-        (anchor.type === 'file' ||
-          anchor.type === 'test' ||
-          anchor.type === 'directory' ||
-          anchor.type === 'package') &&
-        !anchor.contentHash &&
-        !anchor.gitBlobHash &&
-        !anchor.symbol,
-    )
-  );
-}
-
-/**
- * Every anchor resolves inside the project (symlinks included) to an entry of
- * the right kind — the same containment and file/directory rules
- * `verifyMemoryAnchors` applies, without hashing.
- */
-async function anchorsPresentOnDisk(
-  projectRoot: string,
-  realRoot: string,
-  anchors: readonly MemoryAnchor[],
-): Promise<boolean> {
-  for (const anchor of anchors) {
-    try {
-      const real = await fs.promises.realpath(path.resolve(projectRoot, anchor.path!));
-      const relative = path.relative(realRoot, real);
-      // `rel === '..'` / a '..<sep>' prefix (not a bare startsWith('..')):
-      // legal in-root names whose first segment starts with '..' (e.g.
-      // `..hidden/theme.css`) produce rel values like "..hidden\theme.css"
-      // and must not be misread as escapes. Same predicate as paths.ts
-      // escapesRoot and the design tool's materialize/verify guards.
-      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-        return false;
-      }
-      const stat = await fs.promises.stat(real);
-      const wantsDirectory = anchor.type === 'directory' || anchor.type === 'package';
-      if (wantsDirectory ? !stat.isDirectory() : !stat.isFile()) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
-
-interface SqliteHygieneContext {
-  projectRoot: string;
-  stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>;
-  now: () => Date;
-  nowIso: () => string;
-  listMemories: (opts: { status: Sage['status'] | 'all'; limit: number }) => Promise<Sage[]>;
-  listCandidates: (includeResolved?: boolean) => Promise<MemoryCandidate[]>;
-  addCandidate: (candidate: MemoryCandidate) => Promise<void>;
-  runMutation: <T>(work: () => T) => Promise<T>;
-  upsertMemory: (memory: Sage) => void;
-  syncAnchorEdges: (memory: Sage) => void;
-  /** Soft-delete edge cascade for auto session GC. */
-  cascadeDeleteEdges: (nodeId: string) => void;
-  audit: (event: string, data?: Record<string, unknown>) => void;
-  pruneAuditLog: () => void;
-}
-
-/**
  * Default age after which session-scoped memories without an explicit
  * `expiresAt` are soft-deleted by hygiene. Session scope is ephemeral by
  * contract; waiting for review candidates only pollutes the corpus.
@@ -163,189 +53,7 @@ export async function runSqliteSageHygiene(
   const startedAt = ctx.nowIso();
 
   const active = await ctx.listMemories({ status: 'active', limit: 0 });
-  const stale: string[] = [];
-  const verified: string[] = [];
-  const reactivated: string[] = [];
-
-  // Anchor verification depth is configurable:
-  // - existence (default): cheap O(N) path presence only.
-  // - content / git: deep verify via verifyMemoryAnchors (content hash,
-  //   symbol, command; git blob when depth is git or the anchor carries one).
-  if (opts?.verify !== false) {
-    const depth = opts?.verifyDepth ?? 'existence';
-    const verificationRunAt = ctx.nowIso();
-    const verificationOutcomes = new Map<string, boolean>();
-    // Stale memories are re-verified too. This pass used to demote active →
-    // stale and never look back, and nothing else on the automatic path moves
-    // stale → active: a memory whose file was restored or re-created stayed
-    // out of search and injection for good.
-    // Only memories verification itself demoted: a manually retired memory
-    // (`memory_update status: "stale"`) must not be revived by a passing check.
-    const staleMemories = (await ctx.listMemories({ status: 'stale', limit: 0 })).filter(
-      (memory) => memory.anchors.length > 0 && isVerificationStale(memory),
-    );
-    const reactivations = new Map<string, MemoryAnchor[]>();
-
-    if (depth === 'existence') {
-      const anchorPaths = new Set<string>();
-      for (const m of active) {
-        for (const anchor of m.anchors) {
-          if (
-            anchor.path &&
-            (anchor.type === 'file' ||
-              anchor.type === 'symbol' ||
-              anchor.type === 'test' ||
-              anchor.type === 'git')
-          ) {
-            anchorPaths.add(path.resolve(ctx.projectRoot, anchor.path));
-          }
-        }
-      }
-      const pathsToVerify = [...anchorPaths];
-      const existingPaths = new Set<string>();
-      const realRoot = await fs.promises.realpath(ctx.projectRoot).catch(() => undefined);
-      let nextPath = 0;
-      const verifyWorker = async (): Promise<void> => {
-        if (!realRoot) return;
-        while (nextPath < pathsToVerify.length) {
-          const anchorPath = pathsToVerify[nextPath++]!;
-          try {
-            const real = await fs.promises.realpath(anchorPath);
-            const relative = path.relative(realRoot, real);
-            if (
-              relative === '..' ||
-              relative.startsWith(`..${path.sep}`) ||
-              path.isAbsolute(relative)
-            ) {
-              continue;
-            }
-            existingPaths.add(anchorPath);
-          } catch {
-            // Missing, inaccessible, or broken-link anchors are stale.
-          }
-        }
-      };
-      await Promise.all(
-        Array.from({ length: Math.min(32, pathsToVerify.length) }, () => verifyWorker()),
-      );
-
-      for (const m of active) {
-        const allValid = m.anchors.every(
-          (anchor) =>
-            !anchor.path ||
-            !(
-              anchor.type === 'file' ||
-              anchor.type === 'symbol' ||
-              anchor.type === 'test' ||
-              anchor.type === 'git'
-            ) ||
-            existingPaths.has(path.resolve(ctx.projectRoot, anchor.path)),
-        );
-        verificationOutcomes.set(m.id, allValid);
-        if (allValid) verified.push(m.id);
-        else stale.push(m.id);
-      }
-      if (realRoot) {
-        for (const m of staleMemories) {
-          if (!existenceProvesAnchors(m.anchors)) continue;
-          if (await anchorsPresentOnDisk(ctx.projectRoot, realRoot, m.anchors)) {
-            reactivations.set(m.id, m.anchors);
-          }
-        }
-      }
-    } else {
-      // Deep pass: bound concurrency so hygiene stays usable on large corpora.
-      const DEEP_CONCURRENCY = 8;
-      let nextMem = 0;
-      const deepWorker = async (): Promise<void> => {
-        while (nextMem < active.length) {
-          const memory = active[nextMem++]!;
-          if (memory.anchors.length === 0) {
-            verificationOutcomes.set(memory.id, true);
-            verified.push(memory.id);
-            continue;
-          }
-          try {
-            const result = await verifyMemoryAnchors(ctx.projectRoot, memory, verificationRunAt);
-            // `unknown` (e.g. git unavailable) does not force stale; only explicit
-            // stale/contradicted outcomes demote the memory.
-            const demote = result.status === 'stale' || result.status === 'contradicted';
-            verificationOutcomes.set(memory.id, !demote);
-            if (demote) stale.push(memory.id);
-            else verified.push(memory.id);
-          } catch {
-            // Fail-open: leave active if deep verify itself errors.
-            verificationOutcomes.set(memory.id, true);
-            verified.push(memory.id);
-          }
-        }
-      };
-      await Promise.all(
-        Array.from({ length: Math.min(DEEP_CONCURRENCY, Math.max(1, active.length)) }, () =>
-          deepWorker(),
-        ),
-      );
-      let nextStale = 0;
-      const staleWorker = async (): Promise<void> => {
-        while (nextStale < staleMemories.length) {
-          const memory = staleMemories[nextStale++]!;
-          try {
-            const result = await verifyMemoryAnchors(ctx.projectRoot, memory, verificationRunAt);
-            // Only an explicit `verified` reactivates; `unknown` stays stale.
-            if (result.status === 'verified') reactivations.set(memory.id, memory.anchors);
-          } catch {
-            // Fail-closed for reactivation: the memory stays stale.
-          }
-        }
-      };
-      await Promise.all(
-        Array.from({ length: Math.min(DEEP_CONCURRENCY, staleMemories.length) }, () =>
-          staleWorker(),
-        ),
-      );
-    }
-
-    await ctx.runMutation(() => {
-      for (const [memoryId, allValid] of verificationOutcomes) {
-        const current = readSqliteSageRow(ctx.stmt, memoryId);
-        if (!current) continue;
-        if (current.status !== 'active') continue;
-        if (allValid && current.anchors.length === 0) continue;
-        const updated = applySemanticChange(
-          current,
-          {
-            status: allValid ? ('active' as const) : ('stale' as const),
-            lastVerifiedAt: verificationRunAt,
-            ...(allValid ? { freshness: 1 } : { staleReason: 'verification' as const }),
-          },
-          ctx.nowIso(),
-        );
-        ctx.upsertMemory(updated);
-        ctx.syncAnchorEdges(updated);
-      }
-      for (const [memoryId, observedAnchors] of reactivations) {
-        const current = readSqliteSageRow(ctx.stmt, memoryId);
-        // Re-read inside the mutation: a person may have retired it meanwhile.
-        if (!current || !isVerificationStale(current)) continue;
-        // Anchors edited while verification ran: what was verified is no
-        // longer what the memory points at.
-        if (anchorsChanged(current.anchors, observedAnchors)) continue;
-        const updated = applySemanticChange(
-          current,
-          {
-            status: 'active' as const,
-            staleReason: undefined,
-            lastVerifiedAt: verificationRunAt,
-            freshness: 1,
-          },
-          ctx.nowIso(),
-        );
-        ctx.upsertMemory(updated);
-        ctx.syncAnchorEdges(updated);
-        reactivated.push(memoryId);
-      }
-    });
-  }
+  const { stale, verified, reactivated } = await verifyHygieneMemories({ opts, ctx, active });
 
   let deduplicated = 0;
   let superseded = 0;

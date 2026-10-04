@@ -35,9 +35,19 @@ import {
 } from '@wrongstack/core/types';
 import { formatMemoryEvidenceBlock, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { getSageSurface } from '@wrongstack/sage';
-import { publishAcpLiveProgress } from './acp-live-progress.js';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
+import type { HostAcpRunnerHost } from './host-acp-runner.js';
+import {
+  acpCommandOpts as acpCommandOptsFromHost,
+  spawnACP as spawnACPFromHost,
+} from './host-acp-runner.js';
 import { HostAcpRunnerCache } from './host-acp-runner-cache.js';
+import type { HostBudgetHost } from './host-budget.js';
+import {
+  budgetView as budgetViewFromHost,
+  manifest as manifestFromHost,
+  usage as usageFromHost,
+} from './host-budget.js';
 import { normalizeMaxConcurrent } from './host-concurrency.js';
 import { createHostFleetManager, prepareHostDirectorRuntime } from './host-director-builder.js';
 import {
@@ -64,12 +74,7 @@ import { HostMemoryCompanion } from './host-memory-companion.js';
 import { applyFleetRootDefaults } from './host-paths.js';
 import { HostShadowManager } from './host-shadow-manager.js';
 import type { HostSpawnAndWaitOptions, HostSpawnOptions } from './host-spawn-types.js';
-import {
-  aggregateFleetUsage,
-  buildFleetHostStatus,
-  type FleetHostStatus,
-  type FleetHostUsage,
-} from './host-status.js';
+import { buildFleetHostStatus, type FleetHostStatus, type FleetHostUsage } from './host-status.js';
 import { createHostSubagentFactory } from './host-subagent-factory.js';
 import { createHostFleetSupervisor } from './host-supervisor.js';
 import { reportTaskResultToLeader } from './host-task-result-report.js';
@@ -481,62 +486,11 @@ export class MultiAgentHost {
   }
 
   private acpCommandOpts(): BuildAcpSubagentRunnerOptions {
-    let overrides: BuildAcpSubagentRunnerOptions['overrides'];
-    try {
-      overrides = this.deps.configStore.get()?.acp?.agents;
-    } catch {
-      overrides = undefined;
-    }
-    return {
-      ...(overrides ? { overrides } : {}),
-      publishLive: (ctx, task, event) => {
-        publishAcpLiveProgress({
-          event,
-          subagentId: ctx.subagentId,
-          agentName: ctx.config.name ?? ctx.config.role ?? ctx.subagentId,
-          sessionId: ctx.sessionId,
-          taskId: task.id,
-          fleet: this.getDirector()?.fleet,
-          hostEvents: this.deps.events,
-        });
-      },
-    };
+    return acpCommandOptsFromHost.call(this.hostAcpRunnerHost());
   }
 
   async spawnACP(subagentId: string, task: string, config: Config): Promise<string> {
-    const taskId = randomUUID();
-    await this.ensureCoordinator(config);
-    const coordinator = this.getCoordinator();
-
-    const acpRunner = await this.buildACPRunner(subagentId);
-    this.recordLearningRole(subagentId, subagentId);
-    coordinator.setRunner(acpRunner);
-    this.directorRunnerSet = true;
-    await coordinator.spawn({
-      id: subagentId,
-      name: subagentId,
-      role: subagentId,
-      provider: 'acp',
-    });
-    await coordinator.assign({
-      id: taskId,
-      description: task,
-    });
-
-    this.deps.events.emit('subagent.spawned', {
-      // Whatever the coordinator recorded at spawn — `spawnACP` has no caller
-      // context to name an origin, so this is the host session today, but the
-      // announcement must not disagree with the roster the worker lands in.
-      sessionId: this.sessionForSubagent(subagentId),
-      subagentId,
-      taskId,
-      name: subagentId,
-      provider: 'acp',
-      model: undefined,
-      description: task,
-    });
-
-    return taskId;
+    return spawnACPFromHost.call(this.hostAcpRunnerHost(), subagentId, task, config);
   }
 
   private filterTools(allow?: string[]): Tool[] {
@@ -767,61 +721,15 @@ export class MultiAgentHost {
   }
 
   budgetView(): import('./host-status.js').FleetBudgetView {
-    const snap = this.fleetManager?.budgetSnapshot?.();
-    const maxSpawns =
-      snap?.maxSpawns ??
-      this.opts.maxSpawns ??
-      this.director?.maxSpawns ??
-      Number.POSITIVE_INFINITY;
-    const usedSpawns = snap?.usedSpawns ?? this.director?.spawnCount ?? 0;
-    const remainingSpawns =
-      snap?.remainingSpawns ??
-      Math.max(0, (Number.isFinite(maxSpawns) ? maxSpawns : Number.POSITIVE_INFINITY) - usedSpawns);
-    const live = this.director
-      ? this.getCoordinator()
-          .getStatus()
-          .subagents.filter((s) => s.status === 'running' || s.status === 'idle').length
-      : 0;
-    const maxConcurrentSource = this.opts.budgetSources?.maxConcurrent ?? 'default';
-    const maxSpawnsSource = this.opts.budgetSources?.maxSpawns ?? 'default';
-    const effectiveSource = `maxConcurrent=${maxConcurrentSource}, maxSpawns=${maxSpawnsSource}`;
-    return {
-      maxConcurrent: this.getMaxConcurrent(),
-      activeAgents: live,
-      maxSpawns,
-      usedSpawns,
-      remainingSpawns,
-      maxConcurrentSource,
-      maxSpawnsSource,
-      effectiveSource,
-      ...(snap
-        ? {
-            maxTokens: snap.maxTokens,
-            usedTokens: snap.usedTokens,
-            remainingTokens: snap.remainingTokens,
-            maxCostUsd: snap.maxCostUsd,
-            usedCostUsd: snap.usedCostUsd,
-            remainingCostUsd: snap.remainingCostUsd,
-            ...(snap.checkpointMaxSpawns !== undefined
-              ? { checkpointMaxSpawns: snap.checkpointMaxSpawns }
-              : {}),
-            ...(snap.ceilingMismatch ? { ceilingMismatch: true } : {}),
-          }
-        : {}),
-    };
+    return budgetViewFromHost.call(this.hostBudgetHost());
   }
 
   usage(): FleetHostUsage {
-    const shadowTaskIds = this.shadowManager.getTaskIds();
-    const completed = this.director
-      ? this.director.completedResults().filter((r) => !shadowTaskIds.has(r.taskId))
-      : [];
-    return aggregateFleetUsage(completed);
+    return usageFromHost.call(this.hostBudgetHost());
   }
 
   async manifest(): Promise<string | null> {
-    if (!this.director) return null;
-    return (await this.director.fleetManager?.writeManifest()) ?? null;
+    return manifestFromHost.call(this.hostBudgetHost());
   }
 
   async promoteToDirector(): Promise<Director | null> {
@@ -917,5 +825,29 @@ export class MultiAgentHost {
     if (monitor) {
       await monitor.close();
     }
+  }
+
+  private hostAcpRunnerHost(): HostAcpRunnerHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.deps satisfies HostAcpRunnerHost['deps']);
+    void (this.getDirector satisfies HostAcpRunnerHost['getDirector']);
+    void (this.ensureCoordinator satisfies HostAcpRunnerHost['ensureCoordinator']);
+    void (this.getCoordinator satisfies HostAcpRunnerHost['getCoordinator']);
+    void (this.buildACPRunner satisfies HostAcpRunnerHost['buildACPRunner']);
+    void (this.recordLearningRole satisfies HostAcpRunnerHost['recordLearningRole']);
+    void (this.directorRunnerSet satisfies HostAcpRunnerHost['directorRunnerSet']);
+    void (this.sessionForSubagent satisfies HostAcpRunnerHost['sessionForSubagent']);
+    return this as unknown as HostAcpRunnerHost;
+  }
+
+  private hostBudgetHost(): HostBudgetHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.fleetManager satisfies HostBudgetHost['fleetManager']);
+    void (this.opts satisfies HostBudgetHost['opts']);
+    void (this.director satisfies HostBudgetHost['director']);
+    void (this.getCoordinator satisfies HostBudgetHost['getCoordinator']);
+    void (this.getMaxConcurrent satisfies HostBudgetHost['getMaxConcurrent']);
+    void (this.shadowManager satisfies HostBudgetHost['shadowManager']);
+    return this as unknown as HostBudgetHost;
   }
 }

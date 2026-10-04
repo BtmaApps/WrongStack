@@ -61,6 +61,7 @@ describe('buildUndoClearMessage', () => {
     const input = ['x', 'y'];
     const msg = buildUndoClearMessage('a', input);
     input.push('z');
+    if (msg.type !== 'provider.undo_clear') throw new Error('Expected provider.undo_clear');
     expect(msg.payload).toMatchObject({ previousModels: ['x', 'y'] });
   });
 

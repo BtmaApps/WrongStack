@@ -90,9 +90,6 @@
       "fileAuditSink",
       "memAuthAuditSink"
     ],
-    "packages/cli/src/auth-menu/panel-service.ts": [
-      "plainMaskedKey"
-    ],
     "packages/cli/src/boot/config-backup-recovery.ts": [
       "defaultProfileProvidersAreEmpty",
       "findLatestProviderBackup"
@@ -527,7 +524,6 @@
     "packages/core/src/hq/auth-store.ts": [
       "defaultHqDataDir",
       "emptyHqAuthFile",
-      "HQ_AUTH_CONTENT_HASH_REDACTED",
       "hqRuntimeFilePath",
       "mintHqBrowserToken",
       "writeHqAuthFile"
@@ -623,9 +619,6 @@
     ],
     "packages/core/src/security/process-lockdown.ts": [
       "__resetProcessLockdownForTests"
-    ],
-    "packages/core/src/security/secret-vault.ts": [
-      "keyFileNeedsHardening"
     ],
     "packages/core/src/security/totp.ts": [
       "hotp"
@@ -793,8 +786,14 @@
     "packages/mcp/src/registry-connect-loop.ts": [
       "discoverSlotCapabilities"
     ],
-    "packages/mcp/src/server.ts": [
-      "handleHttpRequest"
+    "packages/mcp/src/server-dispatch.ts": [
+      "INVALID_REQUEST",
+      "MAX_REPORTED_SCHEMA_ERRORS",
+      "METHOD_NOT_FOUND"
+    ],
+    "packages/mcp/src/server-http.ts": [
+      "hostHeaderIsAcceptable",
+      "originIsAcceptable"
     ],
     "packages/mcp/src/test-helpers/mock-server.ts": [
       "MockMCPServer"
@@ -914,10 +913,6 @@
     "packages/plugins/src/dependency-vulnerability-gate/index.ts": [
       "isInstallCommand"
     ],
-    "packages/plugins/src/duplicate-code-detector/index.ts": [
-      "hashFingerprint",
-      "hookIndexBudgets"
-    ],
     "packages/plugins/src/error-lens/index.ts": [
       "extractErrorLine",
       "extractFrames"
@@ -969,10 +964,6 @@
     "packages/plugins/src/prompt-firewall/index.ts": [
       "detectSecrets"
     ],
-    "packages/plugins/src/semver-bump/index.ts": [
-      "determineBump",
-      "parseConventional"
-    ],
     "packages/plugins/src/token-throttle/index.ts": [
       "computeThrottleDelay",
       "pruneWindow",
@@ -997,6 +988,9 @@
     ],
     "packages/providers/src/presets/mistral.ts": [
       "mistralToolCallId"
+    ],
+    "packages/providers/src/provider-factory.ts": [
+      "makeProvider"
     ],
     "packages/providers/src/reasoning-echo-support.ts": [
       "refusedReasoningEchoField",
@@ -1240,9 +1234,6 @@
       "parseContentHash",
       "xxhash64Hex"
     ],
-    "packages/tools/src/codebase-index/dead-code-scan.ts": [
-      "discoverEntryPoints"
-    ],
     "packages/tools/src/codebase-index/generic-parser.ts": [
       "GENERIC_MAX_FILE_CHARS",
       "GENERIC_MAX_SYMBOLS_DEFAULT"
@@ -1253,9 +1244,6 @@
     ],
     "packages/tools/src/codebase-index/graph-rank-pass.ts": [
       "createImplicitVisibility"
-    ],
-    "packages/tools/src/codebase-index/indexer.ts": [
-      "shouldUseParserWorkerPool"
     ],
     "packages/tools/src/codebase-index/json-parser.ts": [
       "JSON_MAX_SYMBOLS_DEFAULT"
@@ -1712,13 +1700,6 @@
     "packages/webui-server/src/server/terminal-ws-handler.ts": [
       "resolveTerminalShell"
     ],
-    "packages/webui/src/components/activity-bar/index.tsx": [
-      "applyLockedAnchors",
-      "calculateDesktopActivityCapacity",
-      "moveItemId",
-      "resolveActivityOrder",
-      "splitDesktopActivityBarItems"
-    ],
     "packages/webui/src/components/AgentsPage.tsx": [
       "getIterations",
       "getLastEventAt"
@@ -1833,13 +1814,6 @@
     "packages/webui/src/hooks/ws-handlers.ts": [
       "handleConfigDoctorResult",
       "handleDiagGet",
-      "handleMemorySageBackfillRecoverable",
-      "handleMemorySageCandidateResolve",
-      "handleMemorySageGet",
-      "handleMemorySageList",
-      "handleMemorySageRecover",
-      "handleMemorySageRemember",
-      "handleMemorySageUpdate",
       "handleModesList",
       "handleStatsGet",
       "handleTodosUpdated",
@@ -1936,7 +1910,6 @@
     "packages/webui/src/lib/fonts.ts": [
       "clampFontSetting",
       "DEFAULT_FONT_PRESET",
-      "FONT_FAMILIES",
       "FONT_ROLE_CSS_VARIABLE",
       "isFamilyAllowedForRole",
       "isFontFamilyId"

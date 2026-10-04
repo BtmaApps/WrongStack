@@ -1,3 +1,20 @@
+import {
+  contextWindowWarning,
+  ensureUsableModelResponse,
+  fallbackCandidates,
+  maxContextOf,
+  primaryTarget,
+  sameTarget,
+  shouldFallback,
+} from './fallback-model-selection.js';
+
+export {
+  effectiveFallbackChain,
+  fallbackProfileChain,
+  runtimeFallbackChain,
+  smartDefaultFallbackChain,
+} from './fallback-model-selection.js';
+
 /**
  * Cross-provider fallback model extension.
  *
@@ -16,22 +33,15 @@ import { randomUUID } from 'node:crypto';
 import type { ProviderModelStatusTracker } from '../coordination/provider-status-tracker.js';
 import type { AgentExtension } from '../extension/extension-points.js';
 import type { EventBus } from '../kernel/events.js';
-import { isTextBlock, isToolUseBlock } from '../types/blocks.js';
 import type { Config } from '../types/config.js';
 import type { Logger } from '../types/logger.js';
-import {
-  isFallbackWorthy,
-  type Provider,
-  ProviderError,
-  type Response,
-} from '../types/provider.js';
+import { type Provider, ProviderError, type Response } from '../types/provider.js';
 import {
   configuredProviderIdentities,
   providerIdentities,
 } from '../utils/provider-catalog-binding.js';
 import { resolveEventSessionId } from './context.js';
-import type { FallbackChain } from './fallback-profile-manager.js';
-import { FallbackProfileManager } from './fallback-profile-manager.js';
+import type { FallbackProfileManager } from './fallback-profile-manager.js';
 import { evaluateModelCalendar, logicalCalendarTarget } from './model-availability-calendar.js';
 import { isProviderFailureTracked } from './provider-runner.js';
 import { bindRequestProvider } from './request-provider-binding.js';
@@ -149,172 +159,9 @@ export type FallbackGateFn = (params: {
   requestId: string;
 }) => Promise<{ providerId: string; model: string } | null>;
 
-export function fallbackProfileChain(config: Config, profileName: string | undefined): string[] {
-  if (!profileName) return [];
-  const mgr = new FallbackProfileManager(config);
-  return mgr.resolve(profileName).map((e) => `${e.providerId}/${e.model}`);
-}
-
-/**
- * Check if an error should trigger a fallback. Returns the status for
- * logging, or null if the error doesn't warrant a fallback attempt.
- *
- * Branches on the canonical `ProviderError.kind`: capacity/availability
- * failures (rate limit, overload, server error, stream hang, timeout,
- * network) are worth trying on another provider; request-shaped failures
- * (auth, invalid request, context overflow, content filter) would fail
- * identically anywhere — or need a different remedy (compaction, key fix) —
- * so they surface instead.
- */
-function shouldFallback(err: unknown): number | null {
-  if (err instanceof ProviderError || ProviderError.isProviderError(err)) {
-    const kind = (err as ProviderError).kind;
-    return isFallbackWorthy(kind) ? (err as ProviderError).status : null;
-  }
-  if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    if (
-      msg.includes('econnrefused') ||
-      msg.includes('econnreset') ||
-      msg.includes('etimedout') ||
-      msg.includes('fetch failed') ||
-      msg.includes('failed to fetch') ||
-      msg.includes('network') ||
-      msg.includes('timeout') ||
-      msg.includes('503') ||
-      msg.includes('502') ||
-      msg.includes('504') ||
-      msg.includes('overloaded') ||
-      msg.includes('rate limit') ||
-      msg.includes('quota')
-    ) {
-      return 503;
-    }
-  }
-  return null;
-}
-
-function isUsableModelResponse(response: Response): boolean | undefined {
-  if (!response?.content) return undefined;
-  return response.content.some(
-    (block) => isToolUseBlock(block) || (isTextBlock(block) && block.text.trim().length > 0),
-  );
-}
-
-function ensureUsableModelResponse(
-  response: Response,
-  providerId: string,
-  model: string,
-): Response {
-  const usable = isUsableModelResponse(response);
-  // undefined content means the caller didn't provide a content field (e.g. test mocks) — let it through
-  if (usable !== false) return response;
-  throw new ProviderError(
-    `Empty response from ${providerId}/${model}; trying the next configured model`,
-    503,
-    true,
-    providerId,
-    { kind: 'overloaded' },
-  );
-}
-
-export function smartDefaultFallbackChain(config: Config): string[] {
-  const mgr = new FallbackProfileManager(config);
-  return mgr.resolveEffective({ fallbackAuto: true }).map((e) => `${e.providerId}/${e.model}`);
-}
-
-/**
- * The effective fallback chain for a turn: the explicit `fallbackModels` list
- * when non-empty, otherwise the selected profile, otherwise the smart default
- * (unless `fallbackAuto` is off).
- *
- * NOTE: this is the SELECTED chain, not the full runtime order — it omits the
- * bridge, the primary re-insertion, the extra `default`-profile depth and the
- * last-resort sweep that {@link runtimeFallbackChain} adds. Use
- * `runtimeFallbackChain` for anything shown to a user as "what will be tried".
- */
-export function effectiveFallbackChain(config: Config): string[] {
-  const mgr = new FallbackProfileManager(config);
-  return mgr
-    .resolveEffective({
-      fallbackModels: config.fallbackModels,
-      fallbackProfile: config.fallbackProfile,
-      fallbackAuto: config.fallbackAuto,
-    })
-    .map((e) => `${e.providerId}/${e.model}`);
-}
-
-/**
- * The chain the agent loop will ACTUALLY rotate through, in order, if the
- * current primary fails right now — the same `resolveCandidates` call the
- * fallback extension makes, including bridge, primary re-insertion, the
- * `default`-profile depth and the last-resort sweep.
- *
- * `/fallback` used to render `effectiveFallbackChain` instead, so the
- * displayed chain could be four entries while the runtime rotated through
- * seventeen — the view was structurally unable to match the behavior it
- * claimed to describe.
- */
-export function runtimeFallbackChain(config: Config): string[] {
-  const mgr = new FallbackProfileManager(config);
-  const current = primaryTarget(config);
-  return mgr.resolveCandidates(current, {}).map((e) => `${e.providerId}/${e.model}`);
-}
-
 const DEFAULT_PRIMARY_COOLDOWN_MS = 60_000;
 const DEFAULT_PRIMARY_COOLDOWN_MAX_MS = 10 * 60_000;
 const DEFAULT_PRIMARY_RECOVERY_SUCCESSES = 2;
-
-function sameTarget(
-  a: { providerId: string; model: string } | undefined,
-  b: { providerId: string; model: string },
-): boolean {
-  return !!a && a.providerId === b.providerId && a.model === b.model;
-}
-
-function fallbackCandidates(
-  config: Config,
-  current: { providerId: string; model: string },
-  opts: {
-    fallbackModels?: readonly string[] | undefined;
-    fallbackProfile?: string | undefined;
-    sharedManager?: FallbackProfileManager | undefined;
-    primary?: { providerId: string; model: string } | undefined;
-    closedWorld?: boolean | undefined;
-  } = {},
-): FallbackChain {
-  const mgr = opts.sharedManager ?? new FallbackProfileManager(config);
-  return mgr.resolveCandidates(current, {
-    fallbackModels: opts.fallbackModels,
-    fallbackProfile: opts.fallbackProfile,
-    primary: opts.primary ?? primaryTarget(config),
-    closedWorld: opts.closedWorld,
-  });
-}
-
-const primaryTarget = (cfg: Config) => ({ providerId: cfg.provider, model: cfg.model });
-
-function maxContextOf(provider: Provider): number {
-  const max = provider.capabilities.maxContext;
-  return typeof max === 'number' && Number.isFinite(max) ? max : 0;
-}
-
-function contextWindowWarning(
-  currentProvider: Provider,
-  nextProvider: Provider,
-  currentTokens: unknown,
-):
-  | { fromMaxContext: number; toMaxContext: number; currentTokens?: number | undefined }
-  | undefined {
-  const fromMaxContext = maxContextOf(currentProvider);
-  const toMaxContext = maxContextOf(nextProvider);
-  if (fromMaxContext <= 0 || toMaxContext <= 0 || toMaxContext >= fromMaxContext) return undefined;
-  return {
-    fromMaxContext,
-    toMaxContext,
-    ...(typeof currentTokens === 'number' && currentTokens > 0 ? { currentTokens } : {}),
-  };
-}
 
 /**
  * Build the cross-provider fallback extension. Always returns an extension —

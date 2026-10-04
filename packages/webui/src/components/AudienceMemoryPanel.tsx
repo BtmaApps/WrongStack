@@ -1,3 +1,5 @@
+import { Download, Filter, Plus, RefreshCw, Search, Tag, Trash2, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 /**
  * AudienceMemoryPanel — browse and manage audience-scoped project memories.
  *
@@ -5,29 +7,8 @@
  * searches across every audience dimension, and provides safe create/import/
  * un-scope/delete workflows without duplicating the full Memory Manager editor.
  */
-import {
-  Download,
-  Filter,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldOff,
-  Tag,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { usePagination } from '@/hooks/usePagination';
-import {
-  KIND_LABELS,
-  MEMORY_KINDS,
-  memoryPreview,
-  splitList,
-} from '@/components/MemoryManager/shared';
+import { MEMORY_KINDS, memoryPreview } from '@/components/MemoryManager/shared';
 import { Button } from '@/components/ui/button';
-import { Pagination } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -37,20 +18,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/usePagination';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SageEntry } from '@/types';
+import type { MemoryAudience } from './audience-memory-card.js';
+import {
+  AudienceMemoryCard,
+  AudienceMemorySkeleton,
+  AudienceStat,
+  EmptyAudienceMemory,
+} from './audience-memory-card.js';
+import type { CreateEntry } from './audience-memory-dialogs.js';
+import {
+  CreateAudienceMemoryDialog,
+  ImportAudienceMemoryDialog,
+} from './audience-memory-dialogs.js';
 
-type MemoryAudience = NonNullable<SageEntry['audience']>;
 type Feedback = { tone: 'error' | 'success'; text: string };
-
-interface CreateEntry {
-  text: string;
-  kind: string;
-  roles: string[];
-  taskTypes: string[];
-  modes: string[];
-}
 
 interface ImportedEntry {
   text: string;
@@ -567,342 +554,5 @@ export function AudienceMemoryPanel() {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function AudienceStat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="bg-card/95 px-1.5 py-2 text-center">
-      <p className="text-sm font-semibold tabular-nums">{value}</p>
-      <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function AudienceMemoryCard({
-  memory,
-  onFilter,
-  onClearScope,
-  onDelete,
-}: {
-  memory: SageEntry;
-  onFilter: (value: string) => void;
-  onClearScope: () => void;
-  onDelete: () => void;
-}) {
-  const { t } = useAppTranslation();
-  return (
-    <li className="group rounded-md border border-border/65 bg-card/55 p-2.5 transition-colors hover:border-border hover:bg-card/85">
-      <p className="break-words text-xs leading-5">{memory.text}</p>
-      {memory.audience && <AudienceBadges audience={memory.audience} onFilter={onFilter} />}
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/45 pt-2">
-        <div className="flex min-w-0 items-center gap-1.5 text-[9px] uppercase tracking-wide text-muted-foreground">
-          <span className="truncate">{KIND_LABELS[memory.kind] ?? memory.kind}</span>
-          <span aria-hidden="true">·</span>
-          <span>{memory.status}</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            onClick={onClearScope}
-            aria-label={`Remove audience scope from ${memoryPreview(memory.text, 42)}`}
-            title={t('activity:audienceMem.makeGeneralMemory')}
-          >
-            <ShieldOff className="size-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 text-destructive hover:text-destructive"
-            onClick={onDelete}
-            aria-label={`Delete ${memoryPreview(memory.text, 42)}`}
-            title={t('activity:audienceMem.delete')}
-          >
-            <Trash2 className="size-3" />
-          </Button>
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function AudienceBadges({
-  audience,
-  onFilter,
-}: {
-  audience: MemoryAudience;
-  onFilter: (value: string) => void;
-}) {
-  const badges = [
-    ...(audience.roles ?? []).map((value) => ({ label: 'role', value })),
-    ...(audience.taskTypes ?? []).map((value) => ({ label: 'task', value })),
-    ...(audience.modes ?? []).map((value) => ({ label: 'mode', value })),
-  ];
-  return (
-    <div className="mt-2 flex flex-wrap gap-1">
-      {badges.map(({ label, value }) => (
-        <button
-          key={`${label}:${value}`}
-          type="button"
-          className="max-w-full truncate rounded border border-primary/15 bg-primary/7 px-1.5 py-0.5 font-mono text-[9px] text-primary/90 transition-colors hover:border-primary/35 hover:bg-primary/12"
-          onClick={() => onFilter(value)}
-          title={`Filter by ${label}: ${value}`}
-        >
-          {label}:{value}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function AudienceMemorySkeleton() {
-  const { t } = useAppTranslation();
-  return (
-    <div
-      className="space-y-2 pt-3"
-      role="status"
-      aria-label={t('activity:audienceMem.loadingAudienceMemories')}
-    >
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="animate-pulse rounded-md border border-border/50 p-3">
-          <div className="h-2.5 w-full rounded bg-muted" />
-          <div className="mt-2 h-2.5 w-2/3 rounded bg-muted" />
-          <div className="mt-3 h-4 w-24 rounded bg-muted" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyAudienceMemory({ onAdd }: { onAdd: () => void }) {
-  const { t } = useAppTranslation();
-  return (
-    <div className="flex h-full min-h-44 flex-col items-center justify-center px-5 text-center">
-      <span className="mb-3 flex size-10 items-center justify-center rounded-full border border-dashed border-primary/35 bg-primary/5 text-primary">
-        <Tag className="size-4" />
-      </span>
-      <p className="text-xs font-medium">{t('activity:audienceMem.emptyTitle')}</p>
-      <p className="mt-1 max-w-52 text-[10px] leading-4 text-muted-foreground">
-        {t('activity:audienceMem.emptyBody')}
-      </p>
-      <Button variant="outline" size="sm" className="mt-3 h-7 gap-1 text-xs" onClick={onAdd}>
-        <Plus className="size-3" />
-        {t('activity:audienceMem.addScoped')}
-      </Button>
-    </div>
-  );
-}
-
-function CreateAudienceMemoryDialog({
-  open,
-  busy,
-  onOpenChange,
-  onCreate,
-}: {
-  open: boolean;
-  busy: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreate: (entry: CreateEntry) => void;
-}) {
-  const { t } = useAppTranslation();
-  const [text, setText] = useState('');
-  const [kind, setKind] = useState('workflow');
-  const [roles, setRoles] = useState('');
-  const [taskTypes, setTaskTypes] = useState('');
-  const [modes, setModes] = useState('');
-
-  useEffect(() => {
-    if (open) return;
-    setText('');
-    setKind('workflow');
-    setRoles('');
-    setTaskTypes('');
-    setModes('');
-  }, [open]);
-
-  const parsedRoles = splitList(roles);
-  const parsedTaskTypes = splitList(taskTypes);
-  const parsedModes = splitList(modes);
-  const canSubmit =
-    text.trim().length > 0 &&
-    (parsedRoles.length > 0 || parsedTaskTypes.length > 0 || parsedModes.length > 0);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{t('activity:audienceMem.createTitle')}</DialogTitle>
-          <DialogDescription>{t('activity:audienceMem.createBody')}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="audience-memory-text" className="mb-1.5 block text-xs font-medium">
-              {t('activity:audienceMem.fieldMemory')}
-            </label>
-            <textarea
-              id="audience-memory-text"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder={t('activity:audienceMem.whatShouldMatchingAgentsRemember')}
-              rows={4}
-              autoFocus
-              className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <div>
-            <label htmlFor="audience-memory-kind" className="mb-1.5 block text-xs font-medium">
-              {t('activity:audienceMem.fieldKind')}
-            </label>
-            <select
-              id="audience-memory-kind"
-              value={kind}
-              onChange={(event) => setKind(event.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {MEMORY_KINDS.map((value) => (
-                <option key={value} value={value}>
-                  {KIND_LABELS[value] ?? value}
-                </option>
-              ))}
-            </select>
-          </div>
-          <fieldset className="space-y-3 rounded-md border border-border/70 bg-background/35 p-3">
-            <legend className="px-1 text-xs font-medium">
-              {t('activity:audienceMem.selectors')}
-            </legend>
-            <AudienceInput
-              id="audience-memory-roles"
-              label={t('activity:audienceMem.statRoles')}
-              value={roles}
-              onChange={setRoles}
-              placeholder={t('activity:audienceMem.reviewerRefactorPlanner')}
-            />
-            <AudienceInput
-              id="audience-memory-task-types"
-              label={t('activity:audienceMem.fieldTaskTypes')}
-              value={taskTypes}
-              onChange={setTaskTypes}
-              placeholder={t('activity:audienceMem.reviewRefactorBugfix')}
-            />
-            <AudienceInput
-              id="audience-memory-modes"
-              label={t('activity:audienceMem.statModes')}
-              value={modes}
-              onChange={setModes}
-              placeholder={t('activity:audienceMem.teachCodeReview')}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              {t('activity:audienceMem.selectorsHint')}
-            </p>
-          </fieldset>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            {t('common:action.cancel')}
-          </Button>
-          <Button
-            onClick={() =>
-              onCreate({
-                text: text.trim(),
-                kind,
-                roles: parsedRoles,
-                taskTypes: parsedTaskTypes,
-                modes: parsedModes,
-              })
-            }
-            disabled={!canSubmit || busy}
-          >
-            {busy ? 'Remembering…' : 'Remember'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AudienceInput({
-  id,
-  label,
-  value,
-  placeholder,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-1.5 sm:grid-cols-[6rem_1fr] sm:items-center">
-      <label htmlFor={id} className="text-[11px] font-medium text-muted-foreground">
-        {label}
-      </label>
-      <Input
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-8 font-mono text-xs"
-      />
-    </div>
-  );
-}
-
-function ImportAudienceMemoryDialog({
-  open,
-  onOpenChange,
-  onImport,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onImport: (raw: string) => boolean;
-}) {
-  const { t } = useAppTranslation();
-  const [raw, setRaw] = useState('');
-
-  useEffect(() => {
-    if (!open) setRaw('');
-  }, [open]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{t('activity:audienceMem.importTitle')}</DialogTitle>
-          <DialogDescription>
-            {t('activity:audienceMem.importBodyBefore')}{' '}
-            <code>{t('activity:audienceMemoryPanel.memoryAudienceExport')}</code>.{' '}
-            {t('activity:audienceMem.importBodyAfter')}
-          </DialogDescription>
-        </DialogHeader>
-        <div>
-          <label htmlFor="audience-memory-import" className="mb-1.5 block text-xs font-medium">
-            {t('activity:audienceMem.jsonArray')}
-          </label>
-          <textarea
-            id="audience-memory-import"
-            value={raw}
-            onChange={(event) => setRaw(event.target.value)}
-            placeholder={'[\n  { "text": "…", "audience": { "roles": ["reviewer"] } }\n]'}
-            rows={10}
-            autoFocus
-            spellCheck={false}
-            className="w-full resize-y rounded-md border border-input bg-background p-3 font-mono text-xs outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('common:action.cancel')}
-          </Button>
-          <Button onClick={() => onImport(raw)} disabled={!raw.trim()}>
-            <Upload className="size-4" />
-            {t('activity:audienceMem.importAction')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

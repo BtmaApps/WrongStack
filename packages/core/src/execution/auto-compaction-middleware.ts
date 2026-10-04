@@ -22,13 +22,25 @@ import {
   eliseAcknowledgedToolResults,
 } from './compaction-core.js';
 import { emergencyTrim } from './compaction-emergency-trim.js';
+import type { CompactionHistoryPolicyHost } from './compaction-history-policy.js';
+import {
+  hygieneInterval as hygieneIntervalFromHost,
+  invalidateTokenCaches as invalidateTokenCachesFromHost,
+  recordAttempt as recordAttemptFromHost,
+  resolvePreserveK as resolvePreserveKFromHost,
+  resolveToolReceiptRetention as resolveToolReceiptRetentionFromHost,
+  resolveToolResultRetention as resolveToolResultRetentionFromHost,
+  shouldRunHygiene as shouldRunHygieneFromHost,
+  shouldSkipNoopRetry as shouldSkipNoopRetryFromHost,
+} from './compaction-history-policy.js';
+import type { CompactionReportingHost } from './compaction-reporting.js';
+import { reportCompaction as reportCompactionFromHost } from './compaction-reporting.js';
 import { compactionReportStillCurrent } from './compaction-result-state.js';
 import type { PressureLevel } from './compaction-thresholds.js';
 import {
   adaptThresholdsForSignals,
   contextWindowBudget,
   effectiveMaxContext,
-  LEVEL_RANK,
   normalizeTargetLoad,
   pressureLevelFor,
   sanitizeThresholds,
@@ -39,14 +51,6 @@ import {
 } from './compaction-token-estimation.js';
 
 export type { ContextWindowBudgetSnapshot } from '../utils/context-budget.js';
-
-/** Max chars of collapse digest persisted to the session log line. */
-const MAX_DIGEST_LOG_CHARS = 4_000;
-
-function truncateDigest(digest: string): string {
-  if (digest.length <= MAX_DIGEST_LOG_CHARS) return digest;
-  return `${digest.slice(0, MAX_DIGEST_LOG_CHARS)}… [+${digest.length - MAX_DIGEST_LOG_CHARS} chars; full turns in session log]`;
-}
 
 type CompactionFailureMode = 'throw' | 'throw_on_hard' | 'continue';
 
@@ -107,10 +111,7 @@ export class AutoCompactionMiddleware {
    * the no-op and skip until either the pressure level escalates or context
    * has grown by at least this many tokens since the failed attempt.
    */
-  private static readonly NOOP_RETRY_DELTA_TOKENS = 2_000;
   /** A tiny positive delta is operationally still a no-op at large context sizes. */
-  private static readonly MIN_EFFECTIVE_REDUCTION_TOKENS = 1_000;
-  private static readonly MIN_EFFECTIVE_REDUCTION_RATIO = 0.005;
 
   /**
    * Ceiling for the derived send-guard gate. The stale note this replaces read
@@ -131,8 +132,6 @@ export class AutoCompactionMiddleware {
    * window it is wider than that gap, so a second pass could never run before
    * hard pressure already forces one.
    */
-  private static readonly HYGIENE_GROWTH_RATIO = 0.15;
-  private static readonly HYGIENE_MIN_GROWTH_TOKENS = 20_000;
 
   /** Runtime bookkeeping belongs to the context, even when a pipeline is shared.
    * Weak keys also let closed conversations release their cached references.
@@ -517,15 +516,14 @@ export class AutoCompactionMiddleware {
     availableInputTokens: number,
     thresholds: { warn: number; hard: number },
   ): boolean {
-    if (level === 'hard') return true;
-    const last = this.stateFor(ctx).lastHygieneTokens;
-    if (last === null) return true;
-    // Compaction or a rewind can shrink the context below the last anchor.
-    // Re-anchor on the smaller size instead of banking the drop as growth
-    // that has already been spent.
-    const anchor = Math.min(last, tokens);
-    this.stateFor(ctx).lastHygieneTokens = anchor;
-    return tokens - anchor >= this.hygieneInterval(availableInputTokens, thresholds);
+    return shouldRunHygieneFromHost.call(
+      this.compactionHistoryPolicyHost(),
+      ctx,
+      level,
+      tokens,
+      availableInputTokens,
+      thresholds,
+    );
   }
 
   /**
@@ -537,34 +535,16 @@ export class AutoCompactionMiddleware {
     availableInputTokens: number,
     thresholds: { warn: number; hard: number },
   ): number {
-    const fractional = Math.max(
-      1,
-      Math.floor(availableInputTokens * AutoCompactionMiddleware.HYGIENE_GROWTH_RATIO),
+    return hygieneIntervalFromHost.call(
+      this.compactionHistoryPolicyHost(),
+      availableInputTokens,
+      thresholds,
     );
-    const gap = Math.max(
-      1,
-      Math.floor(availableInputTokens * thresholds.hard) -
-        Math.ceil(availableInputTokens * thresholds.warn),
-    );
-    if (AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS <= gap) {
-      return Math.max(AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS, fractional);
-    }
-    return fractional;
   }
 
   /** Invalidate every token view derived from the pre-rewrite conversation. */
   private invalidateTokenCaches(ctx: Context): void {
-    const state = this.stateFor(ctx);
-    ctx.lastRequestTokens = undefined;
-    ctx.lastRealInputTokens = undefined;
-    delete ctx.meta['lastRequestTokensAt'];
-    delete ctx.meta['realAnchorMsgCount'];
-    state._cachedTokens = -1;
-    state._cachedMsgCount = -1;
-    state._cachedToolCount = -1;
-    state._cachedRevision = -1;
-    state._cachedSystemRef = null;
-    state._cachedToolsRef = null;
+    invalidateTokenCachesFromHost.call(this.compactionHistoryPolicyHost(), ctx);
   }
 
   /**
@@ -575,13 +555,7 @@ export class AutoCompactionMiddleware {
    * window from spamming compaction events every iteration.
    */
   private shouldSkipNoopRetry(ctx: Context, level: PressureLevel, tokens: number): boolean {
-    // Hard pressure must still pass the overflow check on every retry.
-    if (level === 'hard') return false;
-    const stuck = this.stateFor(ctx).lastNoopAttempt;
-    if (!stuck) return false;
-    // Escalation always retries — soft → hard might be reducible aggressively.
-    if (LEVEL_RANK[level] > LEVEL_RANK[stuck.level]) return false;
-    return Math.abs(tokens - stuck.tokens) < AutoCompactionMiddleware.NOOP_RETRY_DELTA_TOKENS;
+    return shouldSkipNoopRetryFromHost.call(this.compactionHistoryPolicyHost(), ctx, level, tokens);
   }
 
   private recordAttempt(
@@ -590,21 +564,7 @@ export class AutoCompactionMiddleware {
     tokens: number,
     report: CompactReport,
   ): void {
-    // Prefer full-request tokens (accurate); fall back to message-only before/after.
-    const before = report.fullRequestTokensBefore ?? report.before;
-    const after = report.fullRequestTokensAfter ?? report.after;
-    const saved = before - after;
-    const minimumUsefulSaving = Math.max(
-      AutoCompactionMiddleware.MIN_EFFECTIVE_REDUCTION_TOKENS,
-      Math.ceil(before * AutoCompactionMiddleware.MIN_EFFECTIVE_REDUCTION_RATIO),
-    );
-    const reduced = saved >= minimumUsefulSaving;
-    const repaired = !!report.repaired;
-    if (reduced || repaired) {
-      this.stateFor(ctx).lastNoopAttempt = null;
-    } else {
-      this.stateFor(ctx).lastNoopAttempt = { level, tokens };
-    }
+    recordAttemptFromHost.call(this.compactionHistoryPolicyHost(), ctx, level, tokens, report);
   }
 
   /**
@@ -624,66 +584,13 @@ export class AutoCompactionMiddleware {
     aggressive: boolean,
     report: CompactReport,
   ): Promise<void> {
-    const note = (err: unknown): void => {
-      const error = err instanceof Error ? err : new Error(String(err));
-      try {
-        this.events?.emit('compaction.failed', {
-          sessionId: resolveEventSessionId(ctx),
-          err: error,
-          aggressive,
-          level: pressure.level,
-          tokens: pressure.tokens,
-          maxContext: pressure.budget.maxContext,
-          budget: pressure.budget,
-          signals: pressure.signals,
-          load: pressure.load,
-          fatal: false,
-        });
-      } catch {
-        // A listener failure must not hide the hard ceiling.
-      }
-    };
-    try {
-      this.onCompact?.(report);
-    } catch (err) {
-      if (ctx.signal?.aborted) return;
-      note(err);
-    }
-    try {
-      this.events?.emit('compaction.fired', {
-        sessionId: resolveEventSessionId(ctx),
-        level: pressure.level,
-        tokens: pressure.tokens,
-        load: pressure.load,
-        maxContext: pressure.budget.maxContext,
-        budget: pressure.budget,
-        signals: pressure.signals,
-        report,
-        aggressive,
-      });
-    } catch (err) {
-      if (ctx.signal?.aborted) return;
-      note(err);
-    }
-    try {
-      await this.sessionBridge?.append({
-        type: 'compaction',
-        ts: new Date().toISOString(),
-        before: report.before,
-        after: report.after,
-        fullRequestTokensBefore: report.fullRequestTokensBefore,
-        fullRequestTokensAfter: report.fullRequestTokensAfter,
-        level: pressure.level,
-        aggressive,
-        reductions: report.reductions?.map((r) => ({ phase: r.phase, saved: r.saved })),
-        budget: pressure.budget,
-        signals: pressure.signals,
-        ...(report.collapsedDigest ? { digest: truncateDigest(report.collapsedDigest) } : {}),
-      });
-    } catch (err) {
-      if (ctx.signal?.aborted) return;
-      note(err);
-    }
+    return reportCompactionFromHost.call(
+      this.compactionReportingHost(),
+      ctx,
+      pressure,
+      aggressive,
+      report,
+    );
   }
 
   private async compact(
@@ -923,12 +830,7 @@ export class AutoCompactionMiddleware {
 
   /** Preserve-window size from the active policy, defaulting to 6 recent pairs. */
   private resolvePreserveK(ctx: Context): number {
-    const policy = ctx.meta?.['contextWindowPolicy'];
-    const k =
-      policy && typeof policy === 'object'
-        ? (policy as { preserveK?: unknown }).preserveK
-        : undefined;
-    return typeof k === 'number' && k > 0 ? Math.floor(k) : 6;
+    return resolvePreserveKFromHost.call(this.compactionHistoryPolicyHost(), ctx);
   }
 
   /**
@@ -940,21 +842,7 @@ export class AutoCompactionMiddleware {
    * turning that room into another unbounded prompt owner.
    */
   private resolveToolResultRetention(ctx: Context): number {
-    const policy = ctx.meta?.['contextWindowPolicy'];
-    const threshold =
-      policy && typeof policy === 'object'
-        ? (policy as { eliseThreshold?: unknown }).eliseThreshold
-        : undefined;
-    const perResultBaseline =
-      typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0
-        ? Math.floor(threshold)
-        : 1_200;
-    const desired = perResultBaseline * this.resolvePreserveK(ctx);
-    const contextCap = Math.max(
-      perResultBaseline,
-      Math.floor(effectiveMaxContext(ctx, this._maxContext) * 0.12),
-    );
-    return Math.max(perResultBaseline, Math.min(desired, contextCap));
+    return resolveToolResultRetentionFromHost.call(this.compactionHistoryPolicyHost(), ctx);
   }
 
   /**
@@ -963,7 +851,7 @@ export class AutoCompactionMiddleware {
    * absolute bounds keep frugal mode useful and deep mode finite.
    */
   private resolveToolReceiptRetention(ctx: Context): number {
-    return Math.min(96, Math.max(16, this.resolvePreserveK(ctx) * 4));
+    return resolveToolReceiptRetentionFromHost.call(this.compactionHistoryPolicyHost(), ctx);
   }
 
   private compactionTokenEstimationHost(): CompactionTokenEstimationHost {
@@ -971,5 +859,22 @@ export class AutoCompactionMiddleware {
       stateFor: (...args) => this.stateFor(...args),
       _estimator: this._estimator,
     };
+  }
+
+  private compactionReportingHost(): CompactionReportingHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.events satisfies CompactionReportingHost['events']);
+    void (this.onCompact satisfies CompactionReportingHost['onCompact']);
+    void (this.sessionBridge satisfies CompactionReportingHost['sessionBridge']);
+    return this as unknown as CompactionReportingHost;
+  }
+
+  private compactionHistoryPolicyHost(): CompactionHistoryPolicyHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.stateFor satisfies CompactionHistoryPolicyHost['stateFor']);
+    void (this.hygieneInterval satisfies CompactionHistoryPolicyHost['hygieneInterval']);
+    void (this.resolvePreserveK satisfies CompactionHistoryPolicyHost['resolvePreserveK']);
+    void (this._maxContext satisfies CompactionHistoryPolicyHost['_maxContext']);
+    return this as unknown as CompactionHistoryPolicyHost;
   }
 }

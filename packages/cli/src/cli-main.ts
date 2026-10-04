@@ -1,17 +1,10 @@
 /** Top-level CLI phase orchestrator. */
-import {
-  createEventUserInputAwaiter,
-  isUnattendedAutonomy,
-  providerToolsForVariant,
-} from '@wrongstack/core/agent';
+import { createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
 import { mailboxSessionTag } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { createPolicySandboxApprover, setSandboxExpansionApprover } from '@wrongstack/core/sandbox';
-import { registerJevTools } from '@wrongstack/core/tools';
-import type { SystemPromptBuilder } from '@wrongstack/core/types';
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
-import { wireEventWiring } from './boot/event-wiring.js';
 import { resolveExecutionMode } from './boot/execution-mode.js';
 import { isRestrictedMode, withRestrictedTools } from './boot/restricted-mode.js';
 import { isSafeMode } from './boot/safe-mode.js';
@@ -19,7 +12,7 @@ import { resolveModeAndCapabilities } from './boot/system-prompt.js';
 import { resolveToolRestriction } from './boot/tool-restriction-flags.js';
 import type { CliContext } from './cli-context.js';
 import { launchEternalFromFlag } from './cli-eternal-flag.js';
-import { loadOnlineAgentsForPrompt } from './cli-main-helpers.js';
+import { setupCliInfrastructure } from './cli-infrastructure.js';
 import { activeProfileConfigPath } from './profile-config-path.js';
 import { CLI_VERSION } from './version.js';
 import { setupBrainAndOrchestration } from './wiring/brain-and-orchestration.js';
@@ -35,7 +28,6 @@ import { setupCliHeapWatchdog } from './wiring/heap-watchdog-setup.js';
 import { setupHqTelemetry } from './wiring/hq-telemetry.js';
 import { setupLifecycleAndPlugins } from './wiring/lifecycle-plugins.js';
 import { registerCliManagementTools } from './wiring/management-tools.js';
-import { setupMetrics } from './wiring/metrics.js';
 import {
   buildProviderForId as buildProviderForIdRuntime,
   resolveProviderCfg as resolveProviderCfgRuntime,
@@ -52,7 +44,6 @@ import { prepareRuntimeDispatch } from './wiring/runtime-dispatch-state.js';
 import { setupSessionEstablishment } from './wiring/session-establishment.js';
 import { setupSessionRegistry } from './wiring/session-registry.js';
 import { setupSessionRuntime } from './wiring/session-runtime.js';
-import { setupTeardownRegistrar } from './wiring/teardown-registrar.js';
 import { setupVectorMemory } from './wiring/vector-memory-setup.js';
 
 export { CLI_VERSION };
@@ -182,51 +173,34 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     getHookRunner: () => hookRunnerRef.current,
     getSwitchProviderAndModel: () => switchProviderAndModelRef.current,
   });
-
-  const { metricsSink, healthRegistry, metricsStatus, tracer } = setupMetrics({
+  const {
+    metricsSink,
+    healthRegistry,
+    metricsStatus,
+    tracer,
+    tuiOwnsScreen,
+    evOn,
+    eventWiring,
+    promptBuilder,
+    onlineAgents,
+    systemPrompt,
+  } = await setupCliInfrastructure({
     flags,
     wpaths,
     events,
     logger,
-    config: { provider: config.provider, model: config.model },
-    observability: { config: config.observability, serviceVersion: CLI_VERSION, teardownHandlers },
-  });
-
-  const { tuiOwnsScreen, evOn } = setupTeardownRegistrar({
-    flags,
-    events,
-    logger,
+    getConfig: () => config,
     teardownHandlers,
     vectorMemoryStore,
-  });
-
-  const eventWiring = wireEventWiring({
-    evOn,
-    events,
     renderer,
-    getProvider: () => config.provider,
-    getModel: () => config.model,
-    getSessionId: () => sessionRef.current?.id ?? '',
-    projectSlug: wpaths.projectSlug,
-    getActiveModeId: () => activeMode?.id ?? 'off',
-    tuiOwnsScreen,
-  });
-
-  teardownHandlers.push(registerJevTools(toolRegistry, configStore));
-  const promptBuilder = container.resolve(TOKENS.SystemPromptBuilder) as SystemPromptBuilder;
-  const onlineAgents = await loadOnlineAgentsForPrompt(
-    wpaths.projectDir,
-    flags['simpleui'] === true,
-  );
-
-  const systemPrompt = await promptBuilder.build({
+    sessionRef,
+    activeMode,
+    toolRegistry,
+    configStore,
+    container,
     cwd,
     projectRoot,
-    tools: providerToolsForVariant(toolRegistry, config.systemPrompt?.variant, undefined, provider),
-    catalogTools: toolRegistry.list(),
-    provider: config.provider,
-    model: config.model,
-    onlineAgents,
+    provider,
   });
 
   const {

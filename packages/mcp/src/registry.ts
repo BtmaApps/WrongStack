@@ -9,12 +9,10 @@ import type {
 } from './authorization-manager.js';
 import type { MCPClient } from './client.js';
 import { MCP_CONSTANTS } from './constants.js';
-import {
-  type MCPInsertionPolicy,
-  type MCPPromptInsertion,
-  type MCPResourceInsertion,
-  preparePromptInsertion,
-  prepareResourceInsertion,
+import type {
+  MCPInsertionPolicy,
+  MCPPromptInsertion,
+  MCPResourceInsertion,
 } from './content-selection.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
 import { manifestConfigHash, readCapabilityManifest } from './manifest-cache.js';
@@ -39,12 +37,20 @@ import {
   requireAuthorizationManager,
   requireHttpServerConfig,
 } from './registry-authorization.js';
+import { advanceCatalogVersion } from './registry-catalog.js';
+import type { RegistryCatalogOperationsHost } from './registry-catalog-operations.js';
 import {
-  advanceCatalogVersion,
-  cloneCatalogRecords,
-  collectCatalogPages,
-  registryCatalogSnapshot,
-} from './registry-catalog.js';
+  getCatalog as getCatalogFromHost,
+  getPrompt as getPromptFromHost,
+  listPrompts as listPromptsFromHost,
+  listResources as listResourcesFromHost,
+  listResourceTemplates as listResourceTemplatesFromHost,
+  readResource as readResourceFromHost,
+  selectPromptForInsertion as selectPromptForInsertionFromHost,
+  selectResourceForInsertion as selectResourceForInsertionFromHost,
+  subscribeResource as subscribeResourceFromHost,
+  unsubscribeResource as unsubscribeResourceFromHost,
+} from './registry-catalog-operations.js';
 import {
   applySlotTools,
   attemptConnectSlot,
@@ -517,63 +523,22 @@ export class MCPRegistry {
   }
 
   getCatalog(name: string): MCPRegistryCatalog | undefined {
-    const slot = this.servers.get(name);
-    if (slot) {
-      return registryCatalogSnapshot(slot);
-    }
-    const disabled = this.disabledServers.get(name);
-    if (disabled) {
-      return {
-        name: disabled.name,
-        state: 'idle',
-      };
-    }
-    return undefined;
+    return getCatalogFromHost.call(this.registryCatalogOperationsHost(), name);
   }
 
   async listResources(name: string, opts: { refresh?: boolean } = {}): Promise<MCPResource[]> {
-    const slot = this.requireSlot(name);
-    if (!opts.refresh && slot.resources) return cloneCatalogRecords(slot.resources);
-    const version = advanceCatalogVersion(slot, 'resources');
-    return this.withConnectedClient(name, async (client, assertCurrent) => {
-      if (!client.getServerMetadata()?.capabilities.resources) return [];
-      const resources = await collectCatalogPages(
-        (cursor) => client.listResources(cursor ? { cursor } : {}),
-        (page) => page.resources,
-      );
-      assertCurrent();
-      if (slot.catalogVersions?.resources === version) {
-        slot.resources = resources;
-        await this.persistCapabilityManifest(slot);
-      }
-      return cloneCatalogRecords(resources);
-    });
+    return listResourcesFromHost.call(this.registryCatalogOperationsHost(), name, opts);
   }
 
   async listResourceTemplates(
     name: string,
     opts: { refresh?: boolean } = {},
   ): Promise<MCPResourceTemplate[]> {
-    const slot = this.requireSlot(name);
-    if (!opts.refresh && slot.resourceTemplates) return cloneCatalogRecords(slot.resourceTemplates);
-    const version = advanceCatalogVersion(slot, 'resourceTemplates');
-    return this.withConnectedClient(name, async (client, assertCurrent) => {
-      if (!client.getServerMetadata()?.capabilities.resources) return [];
-      const templates = await collectCatalogPages(
-        (cursor) => client.listResourceTemplates(cursor ? { cursor } : {}),
-        (page) => page.resourceTemplates,
-      );
-      assertCurrent();
-      if (slot.catalogVersions?.resourceTemplates === version) {
-        slot.resourceTemplates = templates;
-        await this.persistCapabilityManifest(slot);
-      }
-      return cloneCatalogRecords(templates);
-    });
+    return listResourceTemplatesFromHost.call(this.registryCatalogOperationsHost(), name, opts);
   }
 
   async readResource(name: string, uri: string): Promise<MCPReadResourceResult> {
-    return this.withConnectedClient(name, (client) => client.readResource(uri));
+    return readResourceFromHost.call(this.registryCatalogOperationsHost(), name, uri);
   }
 
   async selectResourceForInsertion(
@@ -581,34 +546,24 @@ export class MCPRegistry {
     uri: string,
     policy?: MCPInsertionPolicy | undefined,
   ): Promise<MCPResourceInsertion> {
-    return prepareResourceInsertion(name, uri, await this.readResource(name, uri), policy);
+    return selectResourceForInsertionFromHost.call(
+      this.registryCatalogOperationsHost(),
+      name,
+      uri,
+      policy,
+    );
   }
 
   async subscribeResource(name: string, uri: string): Promise<void> {
-    await this.withConnectedClient(name, (client) => client.subscribeResource(uri));
+    return subscribeResourceFromHost.call(this.registryCatalogOperationsHost(), name, uri);
   }
 
   async unsubscribeResource(name: string, uri: string): Promise<void> {
-    await this.withConnectedClient(name, (client) => client.unsubscribeResource(uri));
+    return unsubscribeResourceFromHost.call(this.registryCatalogOperationsHost(), name, uri);
   }
 
   async listPrompts(name: string, opts: { refresh?: boolean } = {}): Promise<MCPPrompt[]> {
-    const slot = this.requireSlot(name);
-    if (!opts.refresh && slot.prompts) return cloneCatalogRecords(slot.prompts);
-    const version = advanceCatalogVersion(slot, 'prompts');
-    return this.withConnectedClient(name, async (client, assertCurrent) => {
-      if (!client.getServerMetadata()?.capabilities.prompts) return [];
-      const prompts = await collectCatalogPages(
-        (cursor) => client.listPrompts(cursor ? { cursor } : {}),
-        (page) => page.prompts,
-      );
-      assertCurrent();
-      if (slot.catalogVersions?.prompts === version) {
-        slot.prompts = prompts;
-        await this.persistCapabilityManifest(slot);
-      }
-      return cloneCatalogRecords(prompts);
-    });
+    return listPromptsFromHost.call(this.registryCatalogOperationsHost(), name, opts);
   }
 
   async getPrompt(
@@ -616,7 +571,12 @@ export class MCPRegistry {
     promptName: string,
     args?: Record<string, string> | undefined,
   ): Promise<MCPGetPromptResult> {
-    return this.withConnectedClient(serverName, (client) => client.getPrompt(promptName, args));
+    return getPromptFromHost.call(
+      this.registryCatalogOperationsHost(),
+      serverName,
+      promptName,
+      args,
+    );
   }
 
   /** Keep all remote requests awake and reject results from superseded clients. */
@@ -659,11 +619,11 @@ export class MCPRegistry {
     args?: Record<string, string> | undefined,
     policy?: MCPInsertionPolicy | undefined,
   ): Promise<MCPPromptInsertion> {
-    return preparePromptInsertion(
+    return selectPromptForInsertionFromHost.call(
+      this.registryCatalogOperationsHost(),
       serverName,
       promptName,
       args,
-      await this.getPrompt(serverName, promptName, args),
       policy,
     );
   }
@@ -977,5 +937,18 @@ export class MCPRegistry {
 
   private async attemptConnect(slot: ServerSlot): Promise<void> {
     return attemptConnectSlot(this.connectContext(), slot);
+  }
+
+  private registryCatalogOperationsHost(): RegistryCatalogOperationsHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.servers satisfies RegistryCatalogOperationsHost['servers']);
+    void (this.disabledServers satisfies RegistryCatalogOperationsHost['disabledServers']);
+    void (this.requireSlot satisfies RegistryCatalogOperationsHost['requireSlot']);
+    void (this.withConnectedClient satisfies RegistryCatalogOperationsHost['withConnectedClient']);
+    void (this
+      .persistCapabilityManifest satisfies RegistryCatalogOperationsHost['persistCapabilityManifest']);
+    void (this.readResource satisfies RegistryCatalogOperationsHost['readResource']);
+    void (this.getPrompt satisfies RegistryCatalogOperationsHost['getPrompt']);
+    return this as unknown as RegistryCatalogOperationsHost;
   }
 }

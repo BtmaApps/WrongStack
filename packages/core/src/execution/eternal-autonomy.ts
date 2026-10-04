@@ -12,7 +12,6 @@ import {
 } from '../storage/goal-store.js';
 import { toErrorMessage } from '../utils/error.js';
 import { sleep } from '../utils/sleep.js';
-import { formatDecisionSummary } from './autonomy-brain.js';
 import { compactionReportStillCurrent } from './compaction-result-state.js';
 import {
   brainstormTask as delegateBrainstormTask,
@@ -22,6 +21,12 @@ import {
   type EternalAutonomyDirectivesHost,
 } from './eternal-autonomy-directives.js';
 import { BRAINSTORM_DONE } from './eternal-autonomy-directives-types.js';
+import type { EternalCompletionHost } from './eternal-completion.js';
+import {
+  clearGoalManually as clearGoalManuallyFromHost,
+  consultBrainForDone as consultBrainForDoneFromHost,
+  markGoalCompleted as markGoalCompletedFromHost,
+} from './eternal-completion.js';
 
 /**
  * Sense-decide-execute-reflect loop on top of a long-running Goal.
@@ -697,30 +702,7 @@ export class EternalAutonomyEngine {
     action: { source: JournalEntry['source']; task: string; directive: string },
     note: string,
   ): Promise<void> {
-    const current = await this.loadGoal();
-    if (!current) return;
-    if (current.goalState === 'completed') return;
-    const withFlag: GoalFile = { ...current, goalState: 'completed' };
-    const withEntry = appendJournal(withFlag, {
-      source: action.source,
-      task: `MISSION COMPLETE — ${action.task}`.slice(0, 240),
-      status: 'success',
-      note: note.slice(0, 240),
-    });
-    await saveGoal(this.goalPath, withEntry, this.opts.events);
-    // Remove the goal file so it doesn't persist as stale state.
-    // A completed goal should be gone — the user creates a new one
-    // with `/goal set` when they want to work on something else.
-    try {
-      const { unlink } = await import('node:fs/promises');
-      await unlink(this.goalPath);
-    } catch {
-      // best-effort — file may already be gone
-    }
-    // Fire stop callbacks so the REPL knows to exit eternal mode
-    // and show a goal-completion banner. Without this the engine
-    // stops internally but the REPL keeps spinning in the eternal loop.
-    this.opts.onEternalStop?.();
+    return markGoalCompletedFromHost.call(this.eternalCompletionHost(), action, note);
   }
 
   /**
@@ -729,26 +711,7 @@ export class EternalAutonomyEngine {
    * `onEternalStop` so the REPL returns to normal mode.
    */
   private async clearGoalManually(note: string): Promise<void> {
-    const current = await this.loadGoal();
-    if (current) {
-      const abandoned: GoalFile = { ...current, goalState: 'abandoned' };
-      await saveGoal(this.goalPath, abandoned, this.opts.events);
-    }
-    try {
-      const { unlink } = await import('node:fs/promises');
-      await unlink(this.goalPath);
-    } catch {
-      // best-effort — file may already be gone
-    }
-    this.opts.onEternalStop?.();
-    // Best-effort journal write — a Windows EPERM/ENOENT on the goal file
-    // during /goal clear must not surface as an unhandled rejection.
-    void this.appendIterationEntry({
-      source: 'manual',
-      task: 'goal cleared',
-      status: 'success',
-      note: note.slice(0, 240),
-    }).catch(() => {});
+    return clearGoalManuallyFromHost.call(this.eternalCompletionHost(), note);
   }
 
   private async appendFailure(task: string, note: string): Promise<void> {
@@ -760,78 +723,7 @@ export class EternalAutonomyEngine {
    * Without a brain, always returns true (use heuristic: DONE threshold met = done).
    */
   private async consultBrainForDone(goal: GoalFile): Promise<boolean> {
-    if (!this.opts.brain) return true; // No brain — trust the heuristic
-
-    const deliverablesStatus = goal.deliverables?.length
-      ? `\nDeliverables: ${goal.deliverables.length} total, progress ${goal.progress ?? 'unknown'}%`
-      : '';
-    const recentJournal = goal.journal
-      .slice(-5)
-      .map((e) => `  #${e.iteration} [${e.status}] ${e.task}`)
-      .join('\n');
-
-    try {
-      const decision = await this.opts.brain.decide({
-        id: `goal-done-${goal.iterations}`,
-        sessionId: this.opts.agent.ctx.session?.id,
-        source: 'system',
-        question: `Brainstorm returned DONE ${this.consecutiveBrainstormDone}x. Is the goal truly complete?`,
-        context: [
-          `Goal: ${goal.goal}`,
-          `Iterations: ${goal.iterations}`,
-          `Progress: ${goal.progress ?? 'unknown'}%`,
-          deliverablesStatus,
-          recentJournal ? `\nRecent work:\n${recentJournal}` : '',
-        ].join('\n'),
-        risk: 'high',
-        fallback: 'continue',
-        // Structured verdict — completion is control-plane input, decided by
-        // exact option id rather than sniffing prose for "done"/"complete".
-        options: [
-          {
-            id: 'goal_complete',
-            label: 'The goal is complete — stop the eternal run',
-            consequence: 'The engine stops and the goal file is archived.',
-            risk: 'high',
-          },
-          {
-            id: 'keep_working',
-            label: 'Not complete yet — keep working',
-            consequence: 'The engine continues iterating on the goal.',
-            risk: 'low',
-          },
-        ],
-      });
-
-      // Log the brain decision into the journal
-      const summary = formatDecisionSummary(decision, {
-        id: `goal-done-${goal.iterations}`,
-        source: 'system',
-        question: 'Is the goal complete?',
-        risk: 'high',
-        fallback: 'continue',
-      });
-      const rationale = 'rationale' in decision ? decision.rationale : undefined;
-      await this.appendIterationEntry({
-        source: 'brainstorm',
-        task: summary,
-        status: 'success',
-        note: rationale,
-      });
-
-      if (decision.type === 'deny') {
-        return false;
-      }
-      if (decision.type === 'answer') {
-        // Exact option id only. An answer that names neither option (e.g. a
-        // policy fallback "continue") conservatively keeps the run alive —
-        // never stop on prose.
-        return decision.optionId === 'goal_complete';
-      }
-      return false;
-    } catch {
-      return false;
-    }
+    return consultBrainForDoneFromHost.call(this.eternalCompletionHost(), goal);
   }
 
   /**
@@ -860,5 +752,16 @@ export class EternalAutonomyEngine {
       readGitStatus: (...args) => this.readGitStatus(...args),
       logError: (...args) => this.logError(...args),
     };
+  }
+
+  private eternalCompletionHost(): EternalCompletionHost {
+    // Preserve the owner's instance and check each member against the helper contract.
+    void (this.loadGoal satisfies EternalCompletionHost['loadGoal']);
+    void (this.goalPath satisfies EternalCompletionHost['goalPath']);
+    void (this.opts satisfies EternalCompletionHost['opts']);
+    void (this.appendIterationEntry satisfies EternalCompletionHost['appendIterationEntry']);
+    void (this
+      .consecutiveBrainstormDone satisfies EternalCompletionHost['consecutiveBrainstormDone']);
+    return this as unknown as EternalCompletionHost;
   }
 }
