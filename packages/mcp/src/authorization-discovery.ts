@@ -6,7 +6,7 @@ import * as https from 'node:https';
 
 import * as net from 'node:net';
 
-import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
+import { isPrivateIPv4, isPrivateIPv6, toErrorMessage } from '@wrongstack/core/utils';
 
 export interface MCPAuthorizationChallenge {
   status: 401;
@@ -394,7 +394,7 @@ export async function discoverFirst<T>(
       return { url: candidate, value: parse(value) };
     } catch (error) {
       signal?.throwIfAborted();
-      failures.push(`${candidate}: ${error instanceof Error ? error.message : String(error)}`);
+      failures.push(`${candidate}: ${toErrorMessage(error)}`);
     }
   }
   throw new Error(`MCP ${label} discovery failed (${failures.join('; ')})`);

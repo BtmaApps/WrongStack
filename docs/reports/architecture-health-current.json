@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T19:53:22.089Z",
+  "generatedAt": "2026-10-04T20:26:53.775Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,9 +14,9 @@
     "packages": 37,
     "sourceFiles": 4485,
     "testFiles": 4097,
-    "sourceLines": 1056041,
+    "sourceLines": 1056047,
     "workspaceEdges": 133,
-    "moduleEdges": 14610,
+    "moduleEdges": 14612,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -24,10 +24,7 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 984
   },
-  "errors": [
-    "1 unexcepted module cycle(s)",
-    "ARCH-CYCLE-TYPE-11: exception no longer matches an active cycle"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -1056,7 +1053,6 @@
           "packages/core/src/core/agent-loop-detector.ts",
           "packages/core/src/core/agent-loop.ts",
           "packages/core/src/core/agent-response.ts",
-          "packages/core/src/core/agent-tool-surface.ts",
           "packages/core/src/core/agent-tools.ts",
           "packages/core/src/core/agent-types.ts",
           "packages/core/src/core/agent.ts",
@@ -1087,30 +1083,11 @@
     "matchedExceptions": [
       "ARCH-CYCLE-TYPE-05",
       "ARCH-CYCLE-TYPE-09",
+      "ARCH-CYCLE-TYPE-11",
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-29"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/core/src/core/agent-internals.ts",
-          "packages/core/src/core/agent-loop-context.ts",
-          "packages/core/src/core/agent-loop-detector.ts",
-          "packages/core/src/core/agent-loop.ts",
-          "packages/core/src/core/agent-response.ts",
-          "packages/core/src/core/agent-tool-surface.ts",
-          "packages/core/src/core/agent-tools.ts",
-          "packages/core/src/core/agent-types.ts",
-          "packages/core/src/core/agent.ts",
-          "packages/core/src/extension/extension-points.ts",
-          "packages/core/src/extension/registry.ts",
-          "packages/core/src/mailbox-attach.ts",
-          "packages/core/src/session-note-attach.ts",
-          "packages/core/src/types/plugin.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -25219,7 +25196,7 @@
       {
         "file": "packages/webui/tests/pure/sandbox-status.test.ts",
         "projects": [
-          "webui-jsdom"
+          "root-node"
         ]
       },
       {

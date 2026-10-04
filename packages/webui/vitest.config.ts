@@ -105,6 +105,7 @@ export default defineConfig({
           exclude: [
             'tests/server/**',
             'tests/pure/agent-transcript-messages.test.ts',
+            'tests/pure/sandbox-status.test.ts',
             '**/node_modules/**',
             '**/dist/**',
           ],

@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1306,
-      "typeOnly": 1157,
+      "files": 1307,
+      "typeOnly": 1158,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -15757,6 +15757,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/structured-output.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/wrap-tool-sandbox.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

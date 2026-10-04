@@ -6,6 +6,7 @@ import {
   SandboxDeniedError,
   setSandboxAgentOverride,
 } from '@wrongstack/core/sandbox';
+import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MCPClient } from '../src/client.js';
 import type { MCPTool } from '../src/contracts.js';
@@ -69,18 +70,22 @@ describe('createSandboxMcpGate — stream seam', () => {
     configureSandboxPolicy({ mode: 'enforced', tier: 'workspace-write', backend: 'policy-only' });
     const streamTool = {
       name: 'streamy',
+      description: 'Stream sandbox test output',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
       execute: async () => 'unused',
       async *executeStream() {
-        yield 'leaked';
+        yield { type: 'final' as const, output: 'leaked' };
       },
-    };
+    } satisfies Tool;
     const wrapped = createSandboxMcpGate()(streamTool);
     expect(wrapped.executeStream).toBeDefined();
     if (!wrapped.executeStream) return;
-    const chunks: string[] = [];
+    const chunks: ToolStreamEvent<string>[] = [];
     let err: unknown;
     try {
-      for await (const chunk of wrapped.executeStream({}, ctx, opts)) chunks.push(String(chunk));
+      for await (const chunk of wrapped.executeStream({}, ctx, opts)) chunks.push(chunk);
     } catch (e) {
       err = e;
     }
@@ -91,16 +96,20 @@ describe('createSandboxMcpGate — stream seam', () => {
   it('mode off: executeStream passes through', async () => {
     const streamTool = {
       name: 'streamy',
+      description: 'Stream sandbox test output',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
       execute: async () => 'unused',
       async *executeStream() {
-        yield 'ok';
+        yield { type: 'final' as const, output: 'ok' };
       },
-    };
+    } satisfies Tool;
     const wrapped = createSandboxMcpGate()(streamTool);
     expect(wrapped.executeStream).toBeDefined();
     if (!wrapped.executeStream) return;
-    const chunks: string[] = [];
-    for await (const chunk of wrapped.executeStream({}, ctx, opts)) chunks.push(String(chunk));
-    expect(chunks).toEqual(['ok']);
+    const chunks: ToolStreamEvent<string>[] = [];
+    for await (const chunk of wrapped.executeStream({}, ctx, opts)) chunks.push(chunk);
+    expect(chunks).toEqual([{ type: 'final', output: 'ok' }]);
   });
 });

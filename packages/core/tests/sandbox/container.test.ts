@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   buildContainerRoute,
   configureSandboxPolicy,
@@ -153,9 +153,7 @@ describe('buildContainerRoute (plan 28 T4)', () => {
     // quoted region early; sh inside the container then sees the original
     // text. POSIX keeps the single-quoted form unchanged.
     expect(route?.command).toContain(
-      process.platform === 'win32'
-        ? 'sh -lc "echo ""a b"" > f"'
-        : "sh -lc 'echo \"a b\" > f'",
+      process.platform === 'win32' ? 'sh -lc "echo ""a b"" > f"' : 'sh -lc \'echo "a b" > f\'',
     );
   });
 });
@@ -167,7 +165,7 @@ describe('browser_*-disabled tier gate (plan 28 T4)', () => {
       description: 'stub',
       permission: 'confirm',
       mutating: true,
-      execute: async (input: { q: string }) => ({ ok: true }),
+      execute: async () => ({ ok: true }),
     } as unknown as CoreTool<{ q: string }, { ok: boolean }>;
   }
 

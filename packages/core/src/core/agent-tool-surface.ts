@@ -1,12 +1,18 @@
+import type { Container } from '../kernel/container.js';
 import { TOKENS } from '../kernel/tokens.js';
+import type { ToolRegistry } from '../registry/tool-registry.js';
 import type { Provider } from '../types/provider.js';
 import type { BuildContext, SystemPromptBuilder } from '../types/system-prompt.js';
-import type { AgentInternals } from './agent-internals.js';
+import type { Context } from './context.js';
 import { providerToolsForVariant } from './scout-tool-surface.js';
 
 /** Keep prompt composition, provider accounting, and executable discovery aligned. */
 export async function refreshAgentToolSurface(
-  agent: AgentInternals,
+  agent: {
+    readonly ctx: Context;
+    readonly tools: ToolRegistry;
+    readonly container: Pick<Container, 'safeResolve'>;
+  },
   provider: Provider,
   model: string,
   refreshPrompt: boolean,

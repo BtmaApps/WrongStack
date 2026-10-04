@@ -65,7 +65,7 @@ describeGated('windows-native real ACL + restricted-token mechanics (plan 28 T5/
     expect(plan.grants).toHaveLength(1);
     // The plan's identity is helper-contractual; substitute a real well-known
     // identity so icacls accepts it, keeping the argv shape identical.
-    const argv = plan.grants[0].map((part) => part.replace('WrongStackSandbox', 'Everyone'));
+    const argv = plan.grants[0]!.map((part) => part.replace('WrongStackSandbox', 'Everyone'));
     const grant = icacls(argv.slice(1));
     expect(grant.status).toBe(0);
     const readback = icacls([dir]);

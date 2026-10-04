@@ -122,6 +122,36 @@
       "fingerprint": "c29fd7d333f936b3"
     },
     {
+      "file": "packages/core/tests/sandbox/windows-helper-propagation.test.ts",
+      "kind": "conditional-skip",
+      "fingerprint": "b7596d6570afbe11"
+    },
+    {
+      "file": "packages/core/tests/sandbox/windows-helper-propagation.test.ts",
+      "kind": "conditional-suite-alias",
+      "fingerprint": "e049e81c4d9b815e"
+    },
+    {
+      "file": "packages/core/tests/sandbox/windows-helper-propagation.test.ts",
+      "kind": "skip",
+      "fingerprint": "f5339551c09ccb77"
+    },
+    {
+      "file": "packages/core/tests/sandbox/windows-native-integration.test.ts",
+      "kind": "conditional-skip",
+      "fingerprint": "5099dd071b894428"
+    },
+    {
+      "file": "packages/core/tests/sandbox/windows-native-integration.test.ts",
+      "kind": "conditional-suite-alias",
+      "fingerprint": "f2cd3f8779deb2b6"
+    },
+    {
+      "file": "packages/core/tests/sandbox/windows-native-integration.test.ts",
+      "kind": "skip",
+      "fingerprint": "54bbd3213d32d6d0"
+    },
+    {
       "file": "packages/core/tests/security/file-permissions.test.ts",
       "kind": "skipIf",
       "fingerprint": "b16aeb2c1e88f226"
@@ -345,6 +375,11 @@
       "file": "packages/sage/tests/feedback-counters.test.ts",
       "kind": "skipIf",
       "fingerprint": "838869ab26efd619"
+    },
+    {
+      "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "08950baaff5eac45"
     },
     {
       "file": "packages/sage/tests/project-server-auth-gate.test.ts",
@@ -670,6 +705,11 @@
       "file": "packages/tools/tests/project-server-idle.test.ts",
       "kind": "skipIf",
       "fingerprint": "d6d5511c7bbb4262"
+    },
+    {
+      "file": "packages/tools/tests/sandbox-integration.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "424ce934e2b110a4"
     },
     {
       "file": "packages/tools/tests/search-relative-paths.test.ts",

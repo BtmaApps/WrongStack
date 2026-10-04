@@ -63,18 +63,6 @@
   - *How:* `rejectStreamPending`
   - *How:* `json { "findings": [] }`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-04T18:27:35.436Z; skill=code-review; applied=1; wins=1; skipped=25; skippedWins=25 -->
-- **Always verify the store-contract ordering when a service diff moves audit `from`/`to` assignment *inside* a `store.update` mutate callback: confirm the store persists options **after** invoking `mutate` (see `appendHistory(next, options)` called post-callback in `packages/requirement-intake/src/store.ts#update`) — a store that snapshots options pre-callback would silently record `undefined` transitions for every such call site.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `from`
-  - *How:* `to`
-  - *How:* `store.update`
-  - *How:* `mutate`
-  - *How:* `appendHistory(next, options)`
-  - *How:* `packages/requirement-intake/src/store.ts#update`
-  - *How:* `undefined`
-  - *How:* `packages/requirement-intake/src/store.ts`
-
 <!-- learned-stamp: category=convention; capturedAt=2026-10-04T15:56:23.218Z; applied=10; wins=10; skipped=79; skippedWins=79 -->
 - **Before flagging wrapper-instance duplication in `packages/tools/src/builtin.ts` (e.g. `browserTools.map((tool) => browserTierGate(tool))` appearing in `OPTIONAL_TOOLS`, `OFF_ONLY_TOOLS`, and `rawBuiltinTools`): recognize that `builtinTools` already maps every entry to a fresh `{ ...tool, description }` object, so consumers of the tier arrays are necessarily name-based — distinct wrapper instances cannot break identity matching that was already impossible. Always read `packages/core/src/sandbox/browser-rule.ts` for the deny precondition (`mode === 'enforced' && backend === 'container'`) before alleging browser tools are newly blocked under the default `mode: 'off'`.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
@@ -192,4 +180,4 @@
   - *How:* `@wrongstack/core`
 
 ---
-*Last capture: 2026-10-04T19:21:29.400Z · 18 entries*
+*Last capture: 2026-10-04T19:21:29.400Z · 17 entries*

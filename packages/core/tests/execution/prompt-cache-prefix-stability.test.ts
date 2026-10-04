@@ -81,7 +81,7 @@ function makeHarness() {
 
   const a = {
     ctx,
-    tools: { listForProvider: () => [] },
+    tools: { listForProvider: () => [], list: () => [] },
     pipelines: { request: { run: async (request: Request) => request } },
     events: { emit: vi.fn() },
     logger: { warn: vi.fn() },

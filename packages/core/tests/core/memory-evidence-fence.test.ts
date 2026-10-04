@@ -101,7 +101,7 @@ describe('provider request memory evidence', () => {
     } as never as AgentInternals['ctx'];
     return {
       ctx,
-      tools: { listForProvider: () => [] },
+      tools: { listForProvider: () => [], list: () => [] },
       pipelines: { request: { run: async (request: Request) => request } },
       events: { emit: vi.fn() },
       logger: { warn: vi.fn() },
