@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Specification, SpecStatus } from '@wrongstack/core/types';
-import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
+import { atomicWrite, ensureDir, withFileLock } from '@wrongstack/core/utils';
 
 export interface SpecStoreOptions {
   /** Directory where spec files are stored. Defaults to `.wrongstack/specs`. */
@@ -39,18 +39,15 @@ export class SpecStore {
 
   async save(spec: Specification): Promise<void> {
     const snapshot = structuredClone(spec);
-    const pending = this.writeChain.then(async () => {
-      await ensureDir(this.baseDir);
-      const filePath = this.filePath(snapshot.id);
-      await atomicWrite(filePath, JSON.stringify(snapshot, null, 2), { mode: 0o600 });
-      await this.updateIndex(snapshot);
-    });
-    this.writeChain = pending.catch(() => undefined);
-    await pending;
+    await this.enqueueWrite(() => this.writeSnapshot(snapshot));
   }
 
   async load(id: string): Promise<Specification | null> {
     await this.writeChain;
+    return this.loadFile(id);
+  }
+
+  private async loadFile(id: string): Promise<Specification | null> {
     // Resolve the path OUTSIDE the read try/catch so a containment
     // failure (H-6 regression) propagates as a caller-visible error
     // instead of being silently coerced to "not found".
@@ -70,17 +67,22 @@ export class SpecStore {
   }
 
   async delete(id: string): Promise<boolean> {
-    await this.writeChain;
     // Same separation as `load`: validate the id first, then handle the
     // I/O errors that mean "this id is not present" as a clean false.
     const filePath = this.filePath(id);
-    try {
-      await fsp.unlink(filePath);
+    return this.enqueueWrite(async () => {
+      let removed = false;
+      try {
+        await fsp.unlink(filePath);
+        removed = true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+      // Repair a stale index even when a previous delete removed the file
+      // but failed before the derived index update completed.
       await this.removeFromIndex(id);
-      return true;
-    } catch {
-      return false;
-    }
+      return removed;
+    });
   }
 
   async exists(id: string): Promise<boolean> {
@@ -116,17 +118,38 @@ export class SpecStore {
     id: string,
     patch: Partial<Omit<Specification, 'id' | 'createdAt'>>,
   ): Promise<Specification | null> {
-    const spec = await this.load(id);
-    if (!spec) return null;
-    const updated: Specification = {
-      ...spec,
-      ...patch,
-      id: spec.id,
-      createdAt: spec.createdAt,
-      updatedAt: Date.now(),
-    };
-    await this.save(updated);
-    return updated;
+    return this.enqueueWrite(async () => {
+      const spec = await this.loadFile(id);
+      if (!spec) return null;
+      const updated: Specification = {
+        ...spec,
+        ...patch,
+        id: spec.id,
+        createdAt: spec.createdAt,
+        updatedAt: Date.now(),
+      };
+      await this.writeSnapshot(updated);
+      return updated;
+    });
+  }
+
+  /** Serialize every read-modify-write across this process and other store instances. */
+  private enqueueWrite<T>(work: () => Promise<T>): Promise<T> {
+    const pending = this.writeChain.then(async () => {
+      await ensureDir(this.baseDir);
+      return withFileLock(this.indexPath, work);
+    });
+    this.writeChain = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
+  }
+
+  private async writeSnapshot(snapshot: Specification): Promise<void> {
+    const filePath = this.filePath(snapshot.id);
+    await atomicWrite(filePath, JSON.stringify(snapshot, null, 2), { mode: 0o600 });
+    await this.updateIndex(snapshot);
   }
 
   /**
@@ -161,14 +184,60 @@ export class SpecStore {
   }
 
   private async readIndex(): Promise<SpecIndex> {
+    let raw: string;
     try {
-      const raw = await fsp.readFile(this.indexPath, 'utf8');
-      const parsed = JSON.parse(raw) as SpecIndex;
-      if (parsed?.version === 1 && Array.isArray(parsed.entries)) return parsed;
-    } catch {
-      /* no index yet */
+      raw = await fsp.readFile(this.indexPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return this.rebuildIndex();
+      throw error;
     }
-    return { version: 1, entries: [] };
+    try {
+      const parsed = JSON.parse(raw) as SpecIndex;
+      if (
+        parsed?.version === 1 &&
+        Array.isArray(parsed.entries) &&
+        parsed.entries.every(
+          (entry) =>
+            entry &&
+            typeof entry.id === 'string' &&
+            typeof entry.title === 'string' &&
+            typeof entry.version === 'string' &&
+            typeof entry.status === 'string' &&
+            Number.isFinite(entry.updatedAt) &&
+            typeof entry.filePath === 'string',
+        )
+      )
+        return parsed;
+    } catch {
+      // The spec files are authoritative; rebuild a malformed derived index.
+    }
+    return this.rebuildIndex();
+  }
+
+  private async rebuildIndex(): Promise<SpecIndex> {
+    let files: import('node:fs').Dirent[];
+    try {
+      files = await fsp.readdir(this.baseDir, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] };
+      throw error;
+    }
+    const entries: SpecIndexEntry[] = [];
+    for (const file of files) {
+      if (!file.isFile() || !file.name.endsWith('.json') || file.name === '_index.json') continue;
+      const id = file.name.slice(0, -'.json'.length);
+      const spec = await this.loadFile(id);
+      if (!spec || spec.id !== id) continue;
+      entries.push({
+        id,
+        title: spec.title,
+        version: spec.version,
+        status: spec.status,
+        updatedAt: spec.updatedAt,
+        filePath: this.filePath(id),
+      });
+    }
+    return { version: 1, entries };
   }
 
   private async updateIndex(spec: Specification): Promise<void> {

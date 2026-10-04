@@ -197,7 +197,11 @@ export class AutomationStore {
     }
     if (payloadHash) {
       const duplicate = state.runs.find(
-        (run) => run.jobId === job.id && run.payloadHash === payloadHash,
+        (run) =>
+          run.jobId === job.id &&
+          run.payloadHash === payloadHash &&
+          run.trigger === trigger &&
+          run.context === context,
       );
       if (duplicate) return duplicate;
     }

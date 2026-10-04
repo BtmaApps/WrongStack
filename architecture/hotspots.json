@@ -223,7 +223,7 @@
       "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
-      "lines": 828,
+      "lines": 839,
       "relativeImports": 13
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -231,7 +231,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 980,
+      "lines": 1010,
       "relativeImports": 5
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -251,12 +251,16 @@
       "relativeImports": 3
     },
     "packages/sdd/src/sdd-parallel-run.ts": {
-      "lines": 911,
+      "lines": 921,
       "relativeImports": 7
     },
     "packages/sdd/src/spec-builder.ts": {
       "lines": 805,
       "relativeImports": 3
+    },
+    "packages/security-scanner/src/skill-generator.ts": {
+      "lines": 807,
+      "relativeImports": 6
     },
     "packages/simpleui/src/file-explorer.tsx": {
       "lines": 809,

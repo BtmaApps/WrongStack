@@ -226,13 +226,17 @@ function runCmd(cmd: string, args: string[]): Promise<string | null> {
       child.kill('SIGTERM');
     }, CLIPBOARD_CMD_TIMEOUT_MS);
     // Safety cap: if the child ignores SIGTERM, do not hang forever.
-    const killCap = setTimeout(() => finish(null), CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
+    const killCap = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(null);
+    }, CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
     const onStdoutData = (c: Buffer | string): void => {
       const chunk = Buffer.isBuffer(c) ? c : Buffer.from(c);
       outBytes += chunk.byteLength;
       if (outBytes > MAX_TEXT_BYTES) {
         out = '';
         child.kill('SIGTERM');
+        child.kill('SIGKILL');
         finish(null);
         return;
       }
@@ -275,7 +279,10 @@ function runCmdWithInput(cmd: string, args: string[], input: string): Promise<bo
       killedByTimeout = true;
       child.kill('SIGTERM');
     }, CLIPBOARD_CMD_TIMEOUT_MS);
-    const killCap = setTimeout(() => finish(false), CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
+    const killCap = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(false);
+    }, CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
     child.on('error', () => finish(false));
     child.on('exit', (code) => {
       if (killedByTimeout) return finish(false);
@@ -312,12 +319,16 @@ function runCmdToFile(cmd: string, args: string[], outPath: string): Promise<boo
       child.kill('SIGTERM');
     }, CLIPBOARD_CMD_TIMEOUT_MS);
     // Safety cap: if the child ignores SIGTERM, do not hang forever.
-    const killCap = setTimeout(() => finish(false), CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
+    const killCap = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(false);
+    }, CLIPBOARD_CMD_TIMEOUT_MS + 2_000);
     const onStdoutData = (c: Buffer): void => {
       outputBytes += c.byteLength;
       if (outputBytes > MAX_IMAGE_BYTES) {
         chunks.length = 0;
         child.kill('SIGTERM');
+        child.kill('SIGKILL');
         finish(false);
         return;
       }

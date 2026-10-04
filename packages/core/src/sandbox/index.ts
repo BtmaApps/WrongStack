@@ -32,4 +32,4 @@ export { createSandboxBrowserTierGate } from './browser-rule.js';
 export { configureSandboxPolicy, getResolvedSandboxConfig, resetSandboxPolicy } from './manager.js';
 export * from './types.js';
 export { defaultWindowsHelperRunner, runHelperRoute } from './windows-helper.js';
-export { createSandboxExecWrapper } from './wrap.js';
+export { createSandboxExecWrapper, createSandboxMcpGate } from './wrap.js';

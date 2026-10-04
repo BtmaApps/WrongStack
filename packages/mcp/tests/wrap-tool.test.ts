@@ -130,6 +130,7 @@ describe('wrapMCPTool', () => {
       { name: 'secret-tool', inputSchema: { type: 'object' } },
       mkClient(async () => 'ok'),
       'confirm',
+      false,
       { onStart, onFinish },
     );
     const ctx = {} as Parameters<typeof wrapped.execute>[1];
@@ -151,6 +152,7 @@ describe('wrapMCPTool', () => {
         throw new Error('boom');
       }),
       'confirm',
+      false,
       { onStart: vi.fn(), onFinish },
     );
     const ctx = {} as Parameters<typeof wrapped.execute>[1];

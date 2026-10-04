@@ -96,7 +96,9 @@ describeGated('windows-native real ACL + restricted-token mechanics (plan 28 T5/
       });
       const helper = defaultWindowsHelperRunner();
 
-      // The launcher exits immediately (detached child) — code is always 0.
+      // T5.2: the helper WAITS on the child — real exit codes propagate. The
+      // deny ACE makes cmd fail the redirection with exit 1 (the old detached
+      // launcher always resolved 0).
       const denyRoute = (await helper(
         buildWindowsRoute(
           { tool: 'bash', kind: 'shell', command: `echo x > "${sensitive}\\out.txt"` },
@@ -109,7 +111,7 @@ describeGated('windows-native real ACL + restricted-token mechanics (plan 28 T5/
         )!,
       )) as NonNullable<Awaited<ReturnType<typeof helper>>>;
       const denied = await runHelperRoute(denyRoute);
-      expect(denied.code).toBe(0);
+      expect(denied.code).toBe(1);
       await waitFor(() => !existsSync(join(sensitive, 'out.txt')), 5_000);
 
       // The workspace itself stays writable through the same launcher.
@@ -124,7 +126,11 @@ describeGated('windows-native real ACL + restricted-token mechanics (plan 28 T5/
           }),
         )!,
       )) as NonNullable<Awaited<ReturnType<typeof helper>>>;
-      await runHelperRoute(allowRoute);
+      const allowed = await runHelperRoute(allowRoute);
+      expect(allowed.code).toBe(0);
+      // NOTE: 'ok' is redirected into ok.txt, so the captured pipe is
+      // intentionally empty here — stdio propagation is proven by the
+      // non-redirected echo case in the T5.2 test below.
       await waitFor(() => existsSync(join(dir, 'ok.txt')), 10_000);
     } finally {
       // Drop the deny ACE so cleanup can remove the tree.
@@ -138,5 +144,48 @@ describeGated('windows-native real ACL + restricted-token mechanics (plan 28 T5/
       }
       rmSync(sensitive, { recursive: true, force: true });
     }
+  });
+
+  it('exit code and stdio propagate through the helper (T5.2)', async () => {
+    configureSandboxPolicy({
+      mode: 'enforced',
+      tier: 'workspace-write',
+      backend: 'windows-native',
+      writableRoots: [dir],
+    });
+    const helper = defaultWindowsHelperRunner();
+
+    // A FAILING payload's non-zero exit code must propagate (the core T5.2
+    // assertion the detached runas prototype could never provide).
+    const failRoute = (await helper(
+      buildWindowsRoute(
+        { tool: 'bash', kind: 'shell', command: 'exit 42' },
+        resolveSandboxConfig({
+          mode: 'enforced',
+          tier: 'workspace-write',
+          backend: 'windows-native',
+          writableRoots: [dir],
+        }),
+      )!,
+    )) as NonNullable<Awaited<ReturnType<typeof helper>>>;
+    const failed = await runHelperRoute(failRoute);
+    expect(failed.code).toBe(42);
+
+    // Child stdout reaches the launcher's captured pipe.
+    const marker = 't52-propagated-marker';
+    const echoRoute = (await helper(
+      buildWindowsRoute(
+        { tool: 'bash', kind: 'shell', command: `echo ${marker}` },
+        resolveSandboxConfig({
+          mode: 'enforced',
+          tier: 'workspace-write',
+          backend: 'windows-native',
+          writableRoots: [dir],
+        }),
+      )!,
+    )) as NonNullable<Awaited<ReturnType<typeof helper>>>;
+    const echoed = await runHelperRoute(echoRoute);
+    expect(echoed.code).toBe(0);
+    expect(echoed.out).toContain(marker);
   });
 });

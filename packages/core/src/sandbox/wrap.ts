@@ -32,6 +32,80 @@ import {
  * Both seams enforce: a denying backend cannot be bypassed by calling the
  * streaming entry point (T4/T5 prerequisite).
  */
+
+/**
+ * MCP exec-wrapper gate (plan 28 conflict analysis — decision: DENIED, not
+ * routed). MCP tool calls are JSON-RPC to an external server process: their
+ * effects run server-side, so there is no local argv the choke point could
+ * rewrite into a sandbox tier — "routing like bash" is semantically
+ * impossible. Under `mode: enforced` every MCP tool call is therefore denied
+ * with a structured `sandbox_denied` error (T6 one-call expansion still
+ * applies when a host registered an approver — approving means "run this
+ * call uncontained"); `mode: off` restores MCP access. Escape hatch (shipped): the per-server trust mark `mcpServers.*.sandboxTrust: true` bypasses this gate for that server (identity wrapper) and is only settable from USER-global config — `mcpServers` is wholly denied for in-project config (SDD conflict analysis).
+ */
+export function createSandboxMcpGate(
+  options: { trusted?: boolean } = {},
+): <I, O>(tool: Tool<I, O>) => Tool<I, O> {
+  // Trusted escape hatch (mcpServers.*.sandboxTrust): identity wrapper — the
+  // server's tools bypass the gate entirely, enforced mode or not.
+  if (options.trusted) return (tool) => tool;
+  return <I, O>(tool: Tool<I, O>): Tool<I, O> => {
+    const rawExecute = tool.execute;
+    const rawExecuteStream = tool.executeStream;
+    // Gate every seam the tool carries: a stream-only tool (execute absent
+    // at runtime despite its nominally required type — reachable via casts)
+    // must not slip through an execute-only fast path.
+    if (!rawExecute && !rawExecuteStream) return tool;
+    const gated: Tool<I, O> = { ...tool };
+    if (rawExecute) {
+      gated.execute = async (input, ctx, opts) => {
+        // Per-agent resolution (T7): an override tightened to `enforced`
+        // must deny even when the process-global mode is `off` — mirror
+        // createSandboxExecWrapper, which resolves per call site.
+        const config = resolveSandboxConfigForAgent(
+          (ctx as { agentId?: string } | undefined)?.agentId,
+        );
+        if (config.mode === 'off') {
+          return rawExecute.call(tool, input, ctx, opts);
+        }
+        const decision = mcpDenyDecision(config.tier);
+        if ((await resolveDeny(tool.name, decision, config.tier, ctx)) === 'elevated') {
+          return rawExecute.call(tool, input, ctx, opts);
+        }
+        throw new SandboxDeniedError(tool.name, decision);
+      };
+    }
+    // Stream seam enforces too (header invariant): a denying backend cannot
+    // be bypassed by calling the streaming entry point.
+    if (rawExecuteStream) {
+      gated.executeStream = async function* (input: I, ctx: unknown, opts: unknown) {
+        const config = resolveSandboxConfigForAgent(
+          (ctx as { agentId?: string } | undefined)?.agentId,
+        );
+        if (config.mode === 'off') {
+          yield* rawExecuteStream.call(tool, input, ctx as never, opts as never);
+          return;
+        }
+        const decision = mcpDenyDecision(config.tier);
+        if ((await resolveDeny(tool.name, decision, config.tier, ctx)) === 'elevated') {
+          yield* rawExecuteStream.call(tool, input, ctx as never, opts as never);
+          return;
+        }
+        throw new SandboxDeniedError(tool.name, decision);
+      } as typeof rawExecuteStream;
+    }
+    return gated;
+  };
+}
+
+function mcpDenyDecision(tier: string): SandboxDenyDecision {
+  return {
+    outcome: 'deny',
+    reason: `MCP tool effects run inside the server process and cannot be routed into the "${tier}" sandbox tier (mode: enforced)`,
+    missing: [],
+  };
+}
+
 async function resolveDeny(
   toolName: string,
   decision: SandboxDenyDecision,

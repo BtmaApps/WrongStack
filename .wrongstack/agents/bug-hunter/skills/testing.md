@@ -1,21 +1,19 @@
-## Ownership and disputed reverts
+## Working-tree adjudication
 
-- Before reapplying a fix to `packages/webui-server/src/server/http-server/vector-memory-handlers.ts`, check fleet pulses and inbound mail for an ownership steer. Treat a revert accompanied by deliberate fail-closed pinning tests as a docs defect, not a regression.
-- On an explicit steer such as “do not edit these files,” stop editing immediately, leave the owner’s tree untouched, and communicate read-only findings through permitted channels.
+- Check claims that paired config changes are absent with `git status --short` on the named path. Adjudicate workflow-ratchet “red on HEAD” findings against the working tree: unstaged `.github/workflows/*.yml` edits can be missed by committed-state `git diff` and truncated sibling-file lists. If cited coordinates disagree, re-read the live YAML before patching.
+- Run the flagged suite from the repo root with `pnpm exec vitest run <file>`; if the `test` wrapper cannot resolve `vitest`, use `pnpm exec vitest run <path>`. For workflow hardening, run `pnpm exec vitest run packages/core/tests/architecture/workflow-hardening.test.ts`; for `packages/core/src/chronicle/tool-adapter.ts`, run `pnpm exec vitest run packages/core/tests/chronicle`. Treat a green run as falsifying an allegedly deterministic red finding in the current tree; record the command and `exitCode` under `verification_evidence`.
 
-## Test adjudication
+## Proxy receiver identity
 
-- Run the flagged test before inspecting its cited production branch: `pnpm exec vitest run <file>`, e.g. `pnpm exec vitest run packages/core/tests/core/agent-malformed-retry.test.ts`. A green run falsifies claims about that test’s contract; preserve its assertions and record the command and `exitCode` as `verification_evidence`.
-- In `packages/core/src/core/agent-loop.ts`, use `foldBlockIntoConversation` for all runtime-injected context (`btw`/session/mailbox/steer/pulse/coach). Treat calibration corruption claims as false positives unless a failing test shows the required `clearEvaluatedMailboxBlocks` recalibration is absent.
+- Re-read `packages/vector-memory/src/sage-port-wrapper.ts` immediately before patching; parallel workers may already have fixed it. Preserve `delegateWithOverrides`’s `result === target ? delegated : result` contract: methods returning the target must return the proxy, keeping `: this` methods such as `withTraceId()` in `packages/sage/src/memory-port.ts` wrapped.
+- Reproduce with `ClassInstancePort` in `packages/vector-memory/tests/sage-port-wrapper.test.ts`, especially “preserves prototype methods of a class-instance port.” Avoid object-literal-only regressions: own-property methods pass through unbound and conceal escapes; prototype methods exercise binding/re-mapping. Run `pnpm exec vitest run packages/vector-memory/tests/sage-port-wrapper.test.ts`.
 
-## SQLite migration fixtures
+## Verification scope
 
-- Build the N-1 fixture with raw `loadRuntimeDatabaseSync()` DDL at a `mkdtempSync` path, then set its version row to the old `SCHEMA_VERSION`; a fresh database bypasses the upgrade branch.
-- Reopen through the real store constructor and assert both writer success and advancement to the current `SCHEMA_VERSION`. Read the current value from `packages/techstack/src/store/schema.ts`; never hard-code it.
-- Keep cases in `packages/techstack/tests/store/` beside `store-roundtrip.test.ts`, and remove each temporary directory.
+- Typecheck core test findings with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/core/tsconfig.test.json`; use `packages/vector-memory/tsconfig.json` for vector-memory source findings. Lint touched files with `pnpm exec biome check <file>`.
+- Avoid root Vitest for `packages/webui/**`, which is excluded. Use `pnpm --filter @wrongstack/webui exec vitest run tests/components/<file>` (e.g. `tests/components/sage-tabs.test.tsx`).
 
-## Verification scopes
+## Fixture and schema checks
 
-- Verify store changes with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/techstack/tsconfig.json`, touched-file lint via `pnpm exec biome check packages/techstack/src/store/schema.ts packages/techstack/tests/store/store-roundtrip.test.ts`, and `pnpm exec vitest run packages/techstack/tests/store`.
-- Never run WebUI tests through root Vitest: `packages/webui/**` is excluded, so `pnpm exec vitest run packages/webui/...` fails with “No test files found.” Use `pnpm --filter @wrongstack/webui exec vitest run tests/components/<file>`.
-- For SageTabs changes, verify with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/webui/tsconfig.json`, `pnpm exec biome check packages/webui/src/components/MemoryManager/SageTabs.tsx`, and `pnpm --filter @wrongstack/webui exec vitest run tests/components/sage-tabs.test.tsx tests/components/memory-manager.test.tsx`.
+- Before claiming an event field is missing, search `packages/core/src/kernel/events/*.ts`, not `kernel/events.ts`, then typecheck.
+- Before accepting an unsatisfiable-assertion finding, evaluate fixture transformations: `replaceAll('SECRET','[REDACTED]')` can invalidate `rawPath.startsWith(scrubbedPrefix)`; assert against the scrubbed form.

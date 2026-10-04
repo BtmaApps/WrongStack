@@ -366,15 +366,67 @@ export class RequirementIntakeStore {
   }
 
   private async readIdempotency(): Promise<IdempotencyFile> {
+    let raw: string;
     try {
-      const raw = await fsp.readFile(this.idempotencyPath, 'utf8');
-      const parsed = JSON.parse(raw) as IdempotencyFile;
-      if (parsed?.version === 1 && parsed.entries && typeof parsed.entries === 'object')
-        return parsed;
-    } catch {
-      // No map yet.
+      raw = await fsp.readFile(this.idempotencyPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: {} };
+      throw error;
     }
-    return { version: 1, entries: {} };
+
+    let parsed: Partial<IdempotencyFile> | null;
+    try {
+      parsed = JSON.parse(raw) as Partial<IdempotencyFile> | null;
+    } catch (error) {
+      if (error instanceof SyntaxError) return this.recoverIdempotency();
+      throw error;
+    }
+    if (
+      parsed?.version !== 1 ||
+      !parsed.entries ||
+      typeof parsed.entries !== 'object' ||
+      Array.isArray(parsed.entries)
+    ) {
+      return this.recoverIdempotency();
+    }
+    return parsed as IdempotencyFile;
+  }
+
+  /** Rebuild a lost/corrupt idempotency index from its durable record files. */
+  private async recoverIdempotency(): Promise<IdempotencyFile> {
+    let files: string[];
+    try {
+      files = await fsp.readdir(this.baseDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: {} };
+      throw error;
+    }
+
+    const entries: IdempotencyFile['entries'] = {};
+    for (const file of files) {
+      if (file === INDEX_PATH || file === IDEMPOTENCY_PATH || !file.endsWith('.json')) continue;
+      const id = file.slice(0, -'.json'.length);
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) continue;
+      let record: RequirementIntakeRecord;
+      try {
+        record = JSON.parse(
+          await fsp.readFile(path.join(this.baseDir, file), 'utf8'),
+        ) as RequirementIntakeRecord;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+        throw error;
+      }
+      if (record?.id !== id) throw new Error(`Invalid requirement intake record: ${file}`);
+      const key = record.idempotencyKey;
+      if (typeof key !== 'string' || key.trim().length === 0) continue;
+      const digest = hashIdempotencyKey(key.trim());
+      if (!Object.hasOwn(entries, digest)) {
+        entries[digest] = { intakeId: record.id, createdAt: record.createdAt };
+      }
+    }
+    const recovered = { version: 1 as const, entries };
+    await this.pruneIdempotency(recovered);
+    return recovered;
   }
 
   private async pruneIdempotency(map: IdempotencyFile): Promise<void> {

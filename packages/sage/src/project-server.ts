@@ -26,6 +26,7 @@ import { type ClientState, type CompleteSageStore, parseArgs } from './project-s
 import {
   assertDispatchArgs,
   encodeSageProjectServerMessage,
+  SAGE_DISPATCH_FIELD_SPECS,
   SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
   type SageProjectServerClientMessage,
   type SageProjectServerInfo,
@@ -576,6 +577,30 @@ async function dispatch(
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Validate the untrusted JSON envelope before auth or dispatch touches it. */
+function parseClientMessage(value: unknown): SageProjectServerClientMessage | undefined {
+  if (!isRecord(value) || !Number.isSafeInteger(value.id) || Number(value.id) < 0) return undefined;
+  switch (value.type) {
+    case 'request':
+      if (
+        typeof value.op !== 'string' ||
+        !Object.hasOwn(SAGE_DISPATCH_FIELD_SPECS, value.op) ||
+        !isRecord(value.meta)
+      )
+        return undefined;
+      return value as unknown as SageProjectServerClientMessage;
+    case 'cancel':
+    case 'shutdown':
+      return value as unknown as SageProjectServerClientMessage;
+    default:
+      return undefined;
+  }
+}
+
 function checkAuthToken(state: ClientState, message: SageProjectServerClientMessage): boolean {
   // WS-028: `shutdown` is now gated too. It stops the daemon for every client
   // in the project — a denial of service any same-UID process could trigger
@@ -691,10 +716,15 @@ function onData(state: ClientState, chunk: string): void {
     const line = state.buffer.slice(0, newline);
     state.buffer = state.buffer.slice(newline + 1);
     if (!line) continue;
-    let message: SageProjectServerClientMessage;
+    let rawMessage: unknown;
     try {
-      message = JSON.parse(line) as SageProjectServerClientMessage;
+      rawMessage = JSON.parse(line) as unknown;
     } catch {
+      state.socket.destroy(new Error('Invalid SAGE project server request'));
+      return;
+    }
+    const message = parseClientMessage(rawMessage);
+    if (!message) {
       state.socket.destroy(new Error('Invalid SAGE project server request'));
       return;
     }

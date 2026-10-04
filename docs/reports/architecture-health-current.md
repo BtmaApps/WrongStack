@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T18:11:35.021Z
+**Generated:** 2026-10-04T19:45:30.510Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4485 |
-| Production source lines | 1055381 |
-| Test files | 4093 |
+| Production source lines | 1055963 |
+| Test files | 4096 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14610 |
 | Non-command slash imports | 0 |
@@ -33,13 +33,13 @@
 | @wrongstack/cli | 566 | 588 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 6 | 1 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1014 | 901 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1014 | 903 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 44 | 30 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 40 | 33 | @wrongstack/persistence |
 | @wrongstack/kanban | 102 | 82 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 49 | 57 | @wrongstack/core |
+| @wrongstack/mcp | 49 | 58 | @wrongstack/core |
 | @wrongstack/persistence | 8 | 19 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
@@ -84,13 +84,13 @@ None.
 
 | Lines | File |
 |---:|---|
+| 1010 | `packages/sage/src/project-server.ts` |
 | 999 | `packages/webui/src/types/client-message.ts` |
 | 997 | `packages/tui/src/use-app-controller.tsx` |
 | 996 | `packages/tools/src/codebase-index/writer.ts` |
 | 992 | `packages/sage/src/sqlite-store.ts` |
 | 982 | `packages/mcp/src/registry.ts` |
 | 982 | `packages/providers/src/index.ts` |
-| 980 | `packages/sage/src/project-server.ts` |
 | 976 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 963 | `packages/core/src/storage/session-store.ts` |
 | 959 | `packages/tools/src/codebase-index/indexer.ts` |
@@ -105,10 +105,10 @@ None.
 | 926 | `packages/cli/src/auth-menu/panel-service.ts` |
 | 924 | `packages/webui/src/hooks/ws-handlers.ts` |
 | 922 | `packages/cli/src/fleet/host.ts` |
+| 921 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 917 | `packages/cli/src/cli-main.ts` |
 | 913 | `packages/cli/src/webui-server.ts` |
 | 911 | `packages/kanban/src/server/project-server.ts` |
-| 911 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 907 | `packages/mcp/src/server.ts` |
@@ -137,7 +137,7 @@ None.
 
 ## Exports only tests reference
 
-- 985 runtime exports are referenced by tests and by no other production file.
+- 984 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

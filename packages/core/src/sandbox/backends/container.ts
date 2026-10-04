@@ -73,24 +73,37 @@ export function buildContainerRoute(
   const cwd = request.cwd?.trim() || process.cwd();
   const readOnly = config.tier === 'read-only';
 
-  // Same-absolute-path mounts: `-v <host>:<same>` so paths inside the container
-  // keep their host spelling. Deny-by-default network: `--network none`.
+  // Mount strategy:
+  // - POSIX hosts: same-absolute-path mounts (`-v <p>:<p>`) so container paths
+  //   keep their host spelling.
+  // - Windows hosts + Linux containers: same-path mounts are impossible (the
+  //   drive path does not exist inside the container), so each mount gets a
+  //   fixed container-side location — `/w0` for the working directory, `/w1…`
+  //   for the writable roots — and `-w` targets the working directory's mount.
+  const isWindows = process.platform === 'win32';
   const argv = [RUNNER, 'run', '--rm', '--network', 'none'];
   const mounts = [...new Set([cwd, ...(readOnly ? [] : config.writableRoots)])];
-  // shell-form: each path-bearing token is single-quoted so paths with
-  // spaces survive the join (the argv array is flattened into one line).
-  for (const mount of mounts) {
-    argv.push('-v', shellSingleQuote(`${mount}:${mount}${readOnly ? ':ro' : ''}`));
-  }
-  argv.push('-w', shellSingleQuote(cwd), image);
+  let workdir = cwd;
+  // Windows: the route line is executed by cmd.exe, which does NOT strip
+  // POSIX single quotes (they reached docker literally → exit 125). Double-
+  // quote tokens instead — cmd strips them, and embedded quotes are doubled.
+  const quoteToken = isWindows
+    ? (value: string) => `"${value.replaceAll('"', '""')}"`
+    : shellSingleQuote;
+  mounts.forEach((host, index) => {
+    const containerPath = isWindows ? `/w${index}` : host;
+    if (host === cwd) workdir = containerPath;
+    argv.push('-v', quoteToken(`${host}:${containerPath}${readOnly ? ':ro' : ''}`));
+  });
+  argv.push('-w', quoteToken(workdir), image);
 
   if (request.kind === 'argv' && request.argv !== undefined) {
     return { argv: [...argv, ...request.argv] };
   }
   if (request.kind === 'shell' && request.command !== undefined) {
     // bash is a shell-form tool: the routed line goes through the user's
-    // default shell, so the inner command is single-quote escaped.
-    argv.push('sh', '-lc', shellSingleQuote(request.command));
+    // default shell, so the inner command is escaped for that shell.
+    argv.push('sh', '-lc', quoteToken(request.command));
     return { command: argv.join(' ') };
   }
   return undefined;

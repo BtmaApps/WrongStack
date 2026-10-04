@@ -1251,7 +1251,7 @@
         "export { configureSandboxPolicy, getResolvedSandboxConfig, resetSandboxPolicy } from './manager.js';",
         "export { createPolicySandboxApprover } from './approver.js';",
         "export { createSandboxBrowserTierGate } from './browser-rule.js';",
-        "export { createSandboxExecWrapper } from './wrap.js';",
+        "export { createSandboxExecWrapper, createSandboxMcpGate } from './wrap.js';",
         "export { defaultWindowsHelperRunner, runHelperRoute } from './windows-helper.js';",
         "export { policyOnlySandboxBackend } from './backends/policy-only.js';"
       ]
@@ -1696,7 +1696,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused sandbox implementation",
       "sourceFiles": 12,
-      "sourceLines": 1077
+      "sourceLines": 1283
     },
     {
       "directory": "security",
@@ -1752,7 +1752,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15839
+      "sourceLines": 15849
     },
     {
       "directory": "typesafe",

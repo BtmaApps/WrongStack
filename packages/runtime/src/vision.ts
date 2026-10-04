@@ -87,12 +87,14 @@ export async function routeImagesForModel(
     else if (!img.source.data?.trim())
       throw new Error('vision: base64 image data must not be empty');
   }
+  opts.signal.throwIfAborted();
 
   if (opts.supportsVision) {
     return { blocks, route: 'native', convertedImages: 0 };
   }
 
   const adapters = await resolveAdapters(opts.adapters);
+  opts.signal.throwIfAborted();
   if (adapters.length === 0) {
     throw new ImageInputUnsupportedError({
       providerId: opts.providerId,
@@ -122,6 +124,7 @@ export async function routeImagesForModel(
           ctx: opts.ctx,
           signal: opts.signal,
         });
+        opts.signal.throwIfAborted();
         // A blank answer is a failure, not a result — fall through to the next
         // adapter instead of aborting the whole route on it.
         if (!candidate?.trim()) continue;
@@ -129,6 +132,7 @@ export async function routeImagesForModel(
         adapterName = adapter.name;
         break;
       } catch (err) {
+        opts.signal.throwIfAborted();
         lastErr = err;
       }
     }
@@ -144,6 +148,7 @@ export async function routeImagesForModel(
     });
   }
 
+  opts.signal.throwIfAborted();
   return { blocks: out, route: 'adapter', convertedImages, adapterName };
 }
 

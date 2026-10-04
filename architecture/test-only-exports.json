@@ -1064,7 +1064,6 @@
       "SAGE_PROJECT_SERVER_METADATA_FILE"
     ],
     "packages/sage/src/project-server-protocol.ts": [
-      "SAGE_DISPATCH_FIELD_SPECS",
       "SageInvalidArgsError",
       "validateDispatchArgs"
     ],

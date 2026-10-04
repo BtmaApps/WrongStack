@@ -4,77 +4,129 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-03T22:16:19.560Z; applied=17; wins=17; skipped=4; skippedWins=4 -->
-- **Always tree the specific `.temp_files/proof-driven-bug-hunter/<round>/` dir and read its sibling config before predicting how that round's `proof.test.ts` runs — harness layout varies per round: round `r1-token-counter-deltacost-2026-10-04/` uses `run.mjs` + `vitest.proof.config.mjs` (repo-root cwd requirement, tee'd `proof.before.log`), while `round-2-2026-10-04-cargo-toml-hash/` ships a bare local `vitest.config.ts` with `include: ['proof.test.ts']` and no runner at all. Never assume the `run.mjs` pattern exists; absence of `proof.before.log` means the round has not been run yet.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T17:12:56.059Z; skill=codebase-navigation; applied=15; wins=15; skipped=42; skippedWins=42 -->
+- **Never treat a `codebase-search` hit for an ignored-scope scratch script as a caller — index coverage stops at the ignore boundary, so name matches (e.g. `Probe2` in `packages/simpleui/tests/`) are collisions. Close callers of `.temp_files/*.ps1` probes with a filename-stem repo-wide grep plus a body-token control (e.g. grep the C# class name like `SaferProbe` in `.temp_files/`); if zero, callers are manual-only by construction, since `Add-Type`/P/Invoke probes import no project code. Identify a probe's role by grepping its Win32 API symbol in tracked scope (`SaferCreateLevel` → `packages/core/src/sandbox/windows-helper.ts`) instead of reading around.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `.temp_files/proof-driven-bug-hunter/<round>/`
-  - *How:* `proof.test.ts`
-  - *How:* `r1-token-counter-deltacost-2026-10-04/`
-  - *How:* `run.mjs`
-  - *How:* `vitest.proof.config.mjs`
-  - *How:* `proof.before.log`
-  - *How:* `round-2-2026-10-04-cargo-toml-hash/`
-  - *How:* `vitest.config.ts`
-  - *How:* `include: ['proof.test.ts']`
+  - *How:* `codebase-search`
+  - *How:* `Probe2`
+  - *How:* `packages/simpleui/tests/`
+  - *How:* `.temp_files/*.ps1`
+  - *How:* `SaferProbe`
+  - *How:* `.temp_files/`
+  - *How:* `Add-Type`
+  - *How:* `SaferCreateLevel`
+  - *How:* `packages/core/src/sandbox/windows-helper.ts`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-03T22:01:22.151Z; skill=codebase-navigation; applied=13; wins=13; skipped=22; skippedWins=22 -->
-- **When mapping consumers of any `packages/*/tsconfig.test.json`, never assume the package's own scripts invoke it: grep the repo for `tsconfig.test.json` and check both (a) the package's `package.json` scripts — some packages (mailbox-mcp, sage-mcp, kanban-mcp, acp, cli) wire `tsc --noEmit -p tsconfig.test.json` into their own `typecheck`, while others (tools, core) do not — and (b) `scripts/check-test-typecheck.mjs` `discoverProjects()`, which generically scans every workspace package for the config plus test files and is then the *only* caller. Diagnostics from each config are ratcheted by `architecture/test-typecheck-baseline/packages-<pkg>.json` behind `pnpm check:test-types`.**
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T18:51:34.226Z; skill=codebase-navigation; applied=1; wins=1; skipped=6; skippedWins=6 -->
+- **When documenting a config key's in-project trust status in `docs/configuration.md`, diff the prose lists ("In-project config trust boundary", ~) against the code tables in `packages/core/src/storage/config-loader/in-project-policy.ts` (`IN_PROJECT_ALLOWED_KEYS`, `KNOWN_DENIED_IN_PROJECT`, `IN_PROJECT_DENIED_PATHS`) — the doc lists are hand-maintained and drift (e.g. all three `tools.sandbox.*` denied paths were missing while code enforced them). Treat the code table as source of truth, never the doc.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
-  - *How:* `packages/*/tsconfig.test.json`
-  - *How:* `tsconfig.test.json`
-  - *How:* `package.json`
-  - *How:* `tsc --noEmit -p tsconfig.test.json`
-  - *How:* `typecheck`
-  - *How:* `scripts/check-test-typecheck.mjs`
-  - *How:* `discoverProjects()`
-  - *How:* `architecture/test-typecheck-baseline/packages-<pkg>.json`
-  - *How:* `pnpm check:test-types`
+  - *How:* `docs/configuration.md`
+  - *How:* `packages/core/src/storage/config-loader/in-project-policy.ts`
+  - *How:* `IN_PROJECT_ALLOWED_KEYS`
+  - *How:* `KNOWN_DENIED_IN_PROJECT`
+  - *How:* `IN_PROJECT_DENIED_PATHS`
+  - *How:* `tools.sandbox.*`
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-03T22:20:01.747Z; skill=node-modern; applied=14; wins=14; skipped=3; skippedWins=3 -->
-- **Always tree the specific `.temp_files/proof-driven-bug-hunter/<round>/` dir and read the round's config before predicting invocation — layouts vary per round with no shared runner: some rounds ship `run.mjs` + `vitest.proof.config.mjs` (repo-root cwd, tee'd `proof.before.log`); others (e.g. `-r2-mime-case-`) ship a bare `vitest.proof.config.ts` that spreads root `vitest.config.ts` with a pinned `include` and `exclude**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:29:01.311Z; skill=codebase-navigation; applied=12; wins=12; skipped=37; skippedWins=37 -->
+- **Always map test-file blast radius through collectors and gates, not call graphs: leaf `*.test.ts` files have no exports or importers, so check package `vitest.config.ts` + root `vitest.config.ts` `include` patterns, `tsconfig.test.json` via the package `typecheck` script, and coverage `include`/thresholds (e.g. `packages/cli/vitest.config.ts`) — weakened assertions can fail coverage gates even when no code imports the test. Watch for CWD-relative scratch roots like `path.resolve('../../.temp_files')` in CLI fleet tests, which assume vitest CWD = package root.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `.temp_files/proof-driven-bug-hunter/<round>/`
-  - *How:* `run.mjs`
-  - *How:* `vitest.proof.config.mjs`
-  - *How:* `proof.before.log`
-  - *How:* `-r2-mime-case-`
-  - *How:* `vitest.proof.config.ts`
+  - *How:* `*.test.ts`
   - *How:* `vitest.config.ts`
   - *How:* `include`
+  - *How:* `tsconfig.test.json`
+  - *How:* `typecheck`
+  - *How:* `packages/cli/vitest.config.ts`
+  - *How:* `path.resolve('../../.temp_files')`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-03T22:23:56.843Z; skill=codebase-navigation; applied=10; wins=10; skipped=5; skippedWins=5 -->
-- **Resolve "who calls this test file" through invocation wiring, not import graphs: read the owning `packages/<pkg>/package.json` `scripts.test`, glob for a per-package `vitest.config.*` (its absence makes root `vitest.config.ts` the sole collector), and check `architecture/test-skip-budget.json` before touching any `describe.skipIf` — skip gates are ledgered there.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T18:56:28.463Z; skill=codebase-navigation; skipped=5; skippedWins=5 -->
+- **Always resolve `packages/cli/src/slash-commands/mcp-utils.ts` to its real target before mapping MCP command surfaces — it is a deprecated re-export of `packages/cli/src/services/mcp-management.ts` (the only REPL/TUI `/mcp` renderer), while WebUI list output flows through `listMcp`/`McpServerInfo` in `packages/mcp/src/manage.ts`, which can lag fields the CLI renderer reads directly from `MCPServerConfig` (e.g. `sandboxTrust` badge exists in `renderList` but not in the shared projection).**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/<pkg>/package.json`
-  - *How:* `scripts.test`
-  - *How:* `vitest.config.*`
-  - *How:* `vitest.config.ts`
-  - *How:* `architecture/test-skip-budget.json`
-  - *How:* `describe.skipIf`
+  - *How:* `packages/cli/src/slash-commands/mcp-utils.ts`
+  - *How:* `packages/cli/src/services/mcp-management.ts`
+  - *How:* `/mcp`
+  - *How:* `listMcp`
+  - *How:* `McpServerInfo`
+  - *How:* `packages/mcp/src/manage.ts`
+  - *How:* `MCPServerConfig`
+  - *How:* `sandboxTrust`
+  - *How:* `renderList`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-03T21:50:21.198Z; skill=node-modern; applied=28; wins=28; skipped=8; skippedWins=8 -->
-- **When predicting gates for edits under `packages/tools/tests/**`, read `packages/tools/package.json` `scripts.test` first — it runs `vitest run --root ../.. packages/tools/tests`, and `packages/tools` has no own `vitest.config.*`, so the root `vitest.config.ts` (`packages/**/tests/**` include) is the sole collection config for that package's suites.**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:25:58.141Z; skill=codebase-navigation -->
+- **Before mapping or approving edits to any `packages/**/tests/**/*.test.ts` file in this repo, diff the file's used symbols against its import lists with root `vitest.config.ts` `globals: false` in mind — vitest hooks (`afterAll`, `beforeEach`, …) and helper resets must be explicitly imported, so an un-imported used symbol is a guaranteed win32/ReferenceError failure invisible to production `tsc --noEmit -p packages/core`. When a test imports through `packages/core/src/sandbox/index.ts`, check the barrel's explicit re-export lines before proposing a barrel change: the barrel is under a public-API snapshot gate, and missing imports should be fixed in the test file, not by editing `src/sandbox/index.ts`.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/tools/tests/**`
-  - *How:* `packages/tools/package.json`
-  - *How:* `scripts.test`
-  - *How:* `vitest run --root ../.. packages/tools/tests`
-  - *How:* `packages/tools`
-  - *How:* `vitest.config.*`
+  - *How:* `packages/**/tests/**/*.test.ts`
   - *How:* `vitest.config.ts`
-  - *How:* `packages/**/tests/**`
+  - *How:* `globals: false`
+  - *How:* `afterAll`
+  - *How:* `beforeEach`
+  - *How:* `tsc --noEmit -p packages/core`
+  - *How:* `packages/core/src/sandbox/index.ts`
+  - *How:* `src/sandbox/index.ts`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:11:34.959Z; skill=codebase-navigation; applied=1; wins=1; skipped=57; skippedWins=57 -->
+- **Before reporting blast radius for WebUI view mounting, check `packages/webui/tests/components/chat-keep-alive.test.ts` — it asserts on raw source text of `packages/webui/src/components/ViewRouter.tsx` (`<ChatView />` always mounted, `ws-view-parked` parking, regex-rejected conditional renders), so structural or formatting edits to that render site can break tests that import graphs won't reveal.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `packages/webui/tests/components/chat-keep-alive.test.ts`
+  - *How:* `packages/webui/src/components/ViewRouter.tsx`
+  - *How:* `<ChatView />`
+  - *How:* `ws-view-parked`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T19:19:19.976Z; skill=typescript-strict; applied=3; wins=3 -->
+- **Re-verify file-payload claims against current source before applying stale role notes: `packages/core/src/sandbox/windows-helper.ts` no longer embeds the PowerShell/C# Safer P/Invoke script older notes describe — it is now the 82-line `runas /trustlevel:0x20000` variant (`defaultWindowsHelperRunner`), so its behavioral contract lives in the TypeScript signatures and header doc, not inside a string payload. When mapping sandbox helper blast radius, anchor on `windows-native.ts:11` (production), `sandbox/index.ts:34` (public-API snapshot gate), and the env-gated `windows-native-integration.test.ts`.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `packages/core/src/sandbox/windows-helper.ts`
+  - *How:* `runas /trustlevel:0x20000`
+  - *How:* `defaultWindowsHelperRunner`
+  - *How:* `windows-native.ts:11`
+  - *How:* `sandbox/index.ts:34`
+  - *How:* `windows-native-integration.test.ts`
+  - *How:* `sandbox/index.ts`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=12; wins=12; skipped=35; skippedWins=35 -->
+- **When `codebase-impact-analysis` reports indirect call sites with `line: 0` (e.g. `applyHelper` reachability into `packages/core/src/sandbox/wrap.ts`), confirm exact locations with a literal-path `grep` for the symbol before citing `file:line`; report only grep-confirmed line numbers.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `codebase-impact-analysis`
+  - *How:* `line: 0`
+  - *How:* `applyHelper`
+  - *How:* `packages/core/src/sandbox/wrap.ts`
+  - *How:* `grep`
+  - *How:* `file:line`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-04T17:37:15.631Z; skill=codebase-navigation; applied=3; wins=3; skipped=44; skippedWins=44 -->
+- **When mapping a file whose main payload is a string-embedded script (e.g. the PowerShell/C# inside `packages/core/src/sandbox/windows-helper.ts`), read the full file with `read` — `codebase-skeleton` compresses the embedded script, and the behavioral contract (diagnostic exit codes, stdout lines, template-literal backslash prohibition) lives inside the string, not in TypeScript signatures.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `packages/core/src/sandbox/windows-helper.ts`
+  - *How:* `read`
+  - *How:* `codebase-skeleton`
 
 ## Patterns to follow
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-03T22:26:49.835Z; skill=codebase-navigation; applied=7; wins=7; skipped=6; skippedWins=6 -->
-- **Use a control grep before trusting a zero-hit grep into `.temp_files/`: a grep given an explicit path into the ignored directory DOES search it (verified in round `-r2-mime-case-` — token `regression-unfixed` hit while `vitest.unfixed` was a true zero). Always pair the zero-hit query with a known-present token (e.g. a filename stem from the target file) in the same scope; only a control hit makes the zero real, since `.temp_files/` ignore-filtering otherwise makes zeros ambiguous.**
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-04T17:39:58.246Z; skill=codebase-navigation; applied=7; wins=7; skipped=39; skippedWins=39 -->
+- **Use `docs/reports/architecture-health-current.json` as a shortcut for "which vitest project collects this test file": it contains a generated per-file → `projects` array (e.g. `webui-jsdom`, `server-node`) mapping every test file to its collector(s). Verify against `packages/webui/vitest.config.ts` project `include`/`exclude` when the entry looks stale — the JSON is generated inventory, not the collection source of truth.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
-  - *How:* `.temp_files/`
-  - *How:* `-r2-mime-case-`
-  - *How:* `regression-unfixed`
-  - *How:* `vitest.unfixed`
+  - *How:* `docs/reports/architecture-health-current.json`
+  - *How:* `projects`
+  - *How:* `webui-jsdom`
+  - *How:* `server-node`
+  - *How:* `packages/webui/vitest.config.ts`
+  - *How:* `include`
+  - *How:* `exclude`
+
+## Project facts
+
+<!-- learned-stamp: category=fact; capturedAt=2026-10-04T19:22:17.596Z; skill=codebase-navigation; applied=1; wins=1 -->
+- **Close "who runs a gated integration test" by grepping its gate env var repo-wide, not just import graphs: `WRONGSTACK_SANDBOX_INTEGRATION` in this repo gates three suites (`packages/core/tests/sandbox/windows-native-integration.test.ts`, `packages/core/tests/sandbox/container.test.ts`, `packages/tools/tests/sandbox-integration.test.ts`) and is set by no workflow — so invocation is manual-only, a fact import/call graphs cannot show. For leaf test files (no exports), "callers" are the vitest collectors: root `vitest.config.ts` `include` plus the per-file `projects` mapping in `docs/reports/architecture-health-current.json`.**
+  - *Why:* Current state of the project — assumed by other conventions, build steps, or peers, so acting on a stale assumption wastes a cycle.
+  - *How:* `WRONGSTACK_SANDBOX_INTEGRATION`
+  - *How:* `packages/core/tests/sandbox/windows-native-integration.test.ts`
+  - *How:* `packages/core/tests/sandbox/container.test.ts`
+  - *How:* `packages/tools/tests/sandbox-integration.test.ts`
+  - *How:* `vitest.config.ts`
+  - *How:* `include`
+  - *How:* `projects`
+  - *How:* `docs/reports/architecture-health-current.json`
 
 ---
-*Last capture: 2026-10-03T22:26:49.835Z · 6 entries*
+*Last capture: 2026-10-04T19:25:58.141Z · 11 entries*

@@ -15,6 +15,7 @@ import {
  * orchestrator drives it via `generateSkill()`.
  */
 
+import { realpath } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import type { Provider, Request } from '@wrongstack/core/types';
@@ -524,10 +525,24 @@ export async function gatherProjectInfo(
   _techStack: TechStackInfo,
 ): Promise<string> {
   const info: string[] = [];
+  let canonicalRoot: string;
+  try {
+    canonicalRoot = await realpath(projectRoot);
+  } catch {
+    return '';
+  }
 
   for (const file of KEY_FILES) {
     try {
-      const content = await readFileHead(path.join(projectRoot, file), KEY_FILE_HEAD_CHARS);
+      const resolvedFile = await realpath(path.join(canonicalRoot, file));
+      const relativeFile = path.relative(canonicalRoot, resolvedFile);
+      if (
+        relativeFile === '..' ||
+        relativeFile.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativeFile)
+      )
+        continue;
+      const content = await readFileHead(resolvedFile, KEY_FILE_HEAD_CHARS);
       const displayName = file === 'README.md' || file === 'CONTRIBUTING.md' ? 'README' : file;
       info.push(`\n--- ${displayName} ---\n${content}`);
     } catch {
@@ -537,7 +552,7 @@ export async function gatherProjectInfo(
 
   try {
     const { readdir } = await import('node:fs/promises');
-    const entries = await readdir(projectRoot, { withFileTypes: true });
+    const entries = await readdir(canonicalRoot, { withFileTypes: true });
     const dirs = entries
       .filter((e) => e.isDirectory())
       .map((e) => e.name)

@@ -4,7 +4,17 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-09-16T13:58:56.873Z; skill=verify-before-done -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T07:50:57.974Z -->
+- **Avoid Unix pipes (`tail`, `head`, `grep -v`) in `bash` tool commands on this Windows host — the shell falls through to `cmd.exe`, which rejects them with exit 255 ("not recognized"). Run commands bare (the tool bounds output itself) or write output to a file under `.temp_files/` and read it back.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `tail`
+  - *How:* `head`
+  - *How:* `grep -v`
+  - *How:* `bash`
+  - *How:* `cmd.exe`
+  - *How:* `.temp_files/`
+
+<!-- learned-stamp: category=warning; capturedAt=2026-09-16T13:58:56.873Z; skill=verify-before-done; applied=1; wins=1 -->
 - **When `pnpm check:architecture` fails with "core-public-api-snapshot.json is stale", treat inventory `sourceLines` drift as expected on worktrees with concurrent `packages/core/src/**` edits: diagnose read-only by copying `scripts/snapshot-core-public-api.mjs` to `.temp_files/`, patching its `emit` target there, running it, and `git diff --no-index`-ing against `architecture/`; attribute drift with `git diff --numstat`. Never run the `--write` script as verifier — report it; the committer owns regenerating `architecture/core-public-api-snapshot.json`.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `pnpm check:architecture`
@@ -21,7 +31,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-09-16T13:43:56.139Z; skill=verify-before-done; applied=1; wins=1 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-09-16T13:43:56.139Z; skill=verify-before-done; applied=2; wins=2 -->
 - **Always run `pnpm --filter <pkg> typecheck` per touched package even when focused vitest suites and `biome check` both pass — a string-concatenation typo (`-` written instead of `+` between literal fragments, e.g. `packages/tools/src/codebase-index/codebase-skeleton-tool.ts:52`) is valid runtime JS that silently corrupts the value to a `NaN`-prefixed string; vitest passes unless it asserts on the value's prefix, Biome doesn't flag it, and only `tsc --noEmit` rejects it (TS2362/TS2363).**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `pnpm --filter <pkg> typecheck`
@@ -34,4 +44,4 @@
   - *How:* `packages/tools/src/codebase-index/codebase-skeleton-tool.ts`
 
 ---
-*Last capture: 2026-09-16T13:58:56.873Z · 2 entries*
+*Last capture: 2026-10-04T07:50:57.974Z · 3 entries*

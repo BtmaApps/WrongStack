@@ -169,7 +169,7 @@ against that same repo.
 A top-level allow is not enough when the dangerous switch lives one level down.
 These paths are stripped even though their parent is allowed:
 
-`tools.exec.allow`, `tools.exec.danger`, `tools.council`, `skills.extraDirs`, `skills.registryUrl`, `Sage.storage.directory`, `autonomy.yolo`, `autonomy.defaultMode`, `launch.autonomy`, `features.allowOutsideProjectRoot`, `tools.restrictToProjectRoot`, `tools.kanbanGovernance`, `tools.autoThin`, `tools.disabledToolMeta`, `features.mailboxBridge`, `features.pluginsTrust`
+`tools.exec.allow`, `tools.exec.danger`, `tools.council`, `skills.extraDirs`, `skills.registryUrl`, `Sage.storage.directory`, `autonomy.yolo`, `autonomy.defaultMode`, `launch.autonomy`, `features.allowOutsideProjectRoot`, `tools.restrictToProjectRoot`, `tools.kanbanGovernance`, `tools.autoThin`, `tools.disabledToolMeta`, `features.mailboxBridge`, `features.pluginsTrust`, `tools.sandbox.backend`, `tools.sandbox.image`, `tools.sandbox.writableRoots`
 
 `autonomy.yolo` is the one that explains the list: top-level `yolo` was
 denied, but the whole `autonomy` subtree was allowed — and `autonomy.yolo` is
@@ -808,6 +808,22 @@ The detector watches consecutive effectively-identical iterations and per-call r
 
 Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`) and `scope` (`iteration`/`call`) so UIs can render a warning chip.
 
+### `tools.sandbox` — exec-family sandbox tiers
+
+Optional containment for the exec-family tools (`bash`, `exec`, `git`). Off by default; the approval policy is unaffected — the sandbox adds a layer on top of it.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `string` | `"off"` | `off`: no containment (zero behavioral change). `enforced`: exec-family calls are gated by the selected backend. |
+| `tier` | `string` | `"read-only"` | `read-only` (workspace mounted `:ro`), `workspace-write` (workspace + `writableRoots` writable), `full-access` (allow-all, no routing). |
+| `writableRoots` | `string[]` | `[]` | Additional host directories the sandbox may write (mounted read-write in `workspace-write`). |
+| `backend` | `string` | `"policy-only"` | `policy-only` (advisory pass-through), `container` (Docker), `windows-native` (restricted-token prototype). `full-access` and `policy-only` never route. |
+| `image` | `string` | — | Container image for the `container` backend (e.g. `alpine:3.19`). |
+
+Behavior notes: denials surface as structured `sandbox_denied` tool errors with full audit parity (`sandbox.denied` event + session record); MCP tool calls are denied under `enforced` unless the server sets `sandboxTrust` (see `mcpServers`); `browser_*` tools are disabled under enforced + `container`; on Windows hosts the container mounts translate to fixed `/wN` container paths. Full design: `docs/specs/sandboxed-execution-tiers-sdd.md`.
+
+**In-project config:** `tools.sandbox.mode` and `tools.sandbox.tier` are allowed from a repository's `.wrongstack/config.json` — they can only tighten containment. `tools.sandbox.backend`, `tools.sandbox.image`, and `tools.sandbox.writableRoots` are stripped with a warning — see the nested-denials list above.
+
 ---
 
 ## `mcpServers` — MCP server configuration
@@ -851,6 +867,7 @@ Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`)
 | `enabled` | `boolean` | `false` | Whether to connect at startup. |
 | `allowedTools` | `string[]` | all tools | Restrict which tools are registered. |
 | `permission` | `string` | `"confirm"` | Default permission for MCP tools: `auto`, `confirm`, `deny`. |
+| `sandboxTrust` | `boolean` | `false` | Plan 28: bypass the enforced sandbox tier for this server's tools (MCP calls are otherwise `sandbox_denied` under `tools.sandbox.mode: "enforced"`). User-global config only — `mcpServers` is denied in-project, so a repository cannot mark its own servers trusted. |
 | `startupTimeoutMs` | `number` | `10000` | Timeout for initial connection. |
 | `requestTimeoutMs` | `number` | `60000` | Timeout for individual tool calls. |
 | `tls.ca` | `string` | — | Path to CA certificate file (HTTPS transports). |

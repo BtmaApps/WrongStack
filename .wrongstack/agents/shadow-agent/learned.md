@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=7; wins=7 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=40; wins=40 -->
 - **Always treat `mail_inbox` returning `tool lacks allowed capability` as UNKNOWN (mailbox scan unavailable), never as "no control messages" — emit `shadow: quiet` with exactly one caveat line naming the denied tool, and never escalate or invoke `terminate_subagent` without a readable explicit `hoop`/`shadow` command. When `fleet action=status` and `fleet action=health` are clean, that is the fleet verdict; the injection `[FLEET PULSE]` block is FYI noise, not mailbox evidence.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `mail_inbox`
@@ -17,5 +17,14 @@
   - *How:* `fleet action=health`
   - *How:* `[FLEET PULSE]`
 
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T15:12:39.180Z; applied=14; wins=14 -->
+- **When `mail_inbox` is denied by session policy (allowed list lacks `coordination.mail`), emit `shadow: quiet` only if `fleet action=status` and `fleet action=health` are clean, and append exactly one caveat line naming the denied tool — never treat the denial as "no control messages" and never escalate it into an anomaly or intervention.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `mail_inbox`
+  - *How:* `coordination.mail`
+  - *How:* `shadow: quiet`
+  - *How:* `fleet action=status`
+  - *How:* `fleet action=health`
+
 ---
-*Last capture: 2026-09-12T21:38:03.000Z · 1 entries*
+*Last capture: 2026-10-04T15:12:39.180Z · 2 entries*

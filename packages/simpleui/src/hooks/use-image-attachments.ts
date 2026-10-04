@@ -81,14 +81,25 @@ function generateId(): string {
  *  - If the user cancels the file picker (no files selected), nothing happens.
  */
 export function useImageAttachments(): UseImageAttachmentsResult {
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [attachedImages, setAttachedImagesState] = useState<AttachedImage[]>([]);
+  // Keep a synchronous mirror so two picker change events in the same turn
+  // cannot both calculate their capacity from the same committed render.
+  const attachedImagesRef = useRef(attachedImages);
+  attachedImagesRef.current = attachedImages;
+  const setAttachedImages = useCallback<React.Dispatch<React.SetStateAction<AttachedImage[]>>>(
+    (action) => {
+      const next = typeof action === 'function' ? action(attachedImagesRef.current) : action;
+      attachedImagesRef.current = next;
+      setAttachedImagesState(next);
+    },
+    [],
+  );
   const [rejectedImages, setRejectedImages] = useState<RejectedImage[]>([]);
   // The change handler is created once (`attachImages` has an empty dep list),
   // so it cannot read `attachedImages` directly — it would see the value from
   // the first render forever and the count cap would never bind. A ref tracks
   // the live count instead.
-  const attachedCountRef = useRef(0);
-  attachedCountRef.current = attachedImages.length;
+  const pendingReadCountRef = useRef(0);
 
   const attachImages = useCallback(() => {
     const input = document.createElement('input');
@@ -108,7 +119,11 @@ export function useImageAttachments(): UseImageAttachmentsResult {
         if (!file) continue;
         // WS-055: screen before reading, so an oversized or non-image file is
         // never materialized as base64 in the browser at all.
-        const reason = rejectionReason(file, attachedCountRef.current, accepted);
+        const reason = rejectionReason(
+          file,
+          attachedImagesRef.current.length + pendingReadCountRef.current,
+          accepted,
+        );
         if (reason !== null) {
           rejected.push({ name: file.name, reason });
           continue;
@@ -133,16 +148,21 @@ export function useImageAttachments(): UseImageAttachmentsResult {
           }),
         );
       }
+      pendingReadCountRef.current += readers.length;
       // Surface refusals instead of dropping files silently — a picker that
       // quietly ignores half a selection reads as a bug, and the user has no
       // way to learn the limit.
       setRejectedImages(rejected);
       void Promise.all(readers)
         .then((images) => {
+          pendingReadCountRef.current = Math.max(0, pendingReadCountRef.current - readers.length);
           const valid = images.filter((img): img is AttachedImage => img !== null);
-          if (valid.length > 0) setAttachedImages((current) => [...current, ...valid]);
+          if (valid.length > 0) {
+            setAttachedImages((current) => [...current, ...valid].slice(0, MAX_IMAGES));
+          }
         })
         .catch(() => {
+          pendingReadCountRef.current = Math.max(0, pendingReadCountRef.current - readers.length);
           // Defensive: no reader rejects (errors resolve to null), but never
           // leave this detached promise without its own catch.
         });

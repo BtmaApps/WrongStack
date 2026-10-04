@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:11:35.021Z",
+  "generatedAt": "2026-10-04T19:45:30.510Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4093,
-    "sourceLines": 1055381,
+    "testFiles": 4096,
+    "sourceLines": 1055963,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 985
+    "testOnlyExports": 984
   },
   "errors": [
     "1 unexcepted module cycle(s)",
@@ -247,7 +247,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1014,
-      "testFiles": 901,
+      "testFiles": 903,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -262,7 +262,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 901
+          "testFiles": 903
         }
       ]
     },
@@ -384,7 +384,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 49,
-      "testFiles": 57,
+      "testFiles": 58,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -397,7 +397,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 57
+          "testFiles": 58
         }
       ]
     },
@@ -9059,6 +9059,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/sandbox/mcp-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/sandbox/sandbox-audit.test.ts",
         "projects": [
           "root-node"
@@ -9072,6 +9078,12 @@
       },
       {
         "file": "packages/core/tests/sandbox/sandbox-expansion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/sandbox/windows-helper-propagation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12024,6 +12036,12 @@
       },
       {
         "file": "packages/mcp/tests/wrap-tool-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/wrap-tool-sandbox.test.ts",
         "projects": [
           "root-node"
         ]
@@ -26150,7 +26168,7 @@
     },
     {
       "file": "packages/requirement-intake/src/service.ts",
-      "lines": 828,
+      "lines": 839,
       "relativeImports": 13
     },
     {
@@ -26160,7 +26178,7 @@
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 980,
+      "lines": 1010,
       "relativeImports": 5
     },
     {
@@ -26185,13 +26203,18 @@
     },
     {
       "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 911,
+      "lines": 921,
       "relativeImports": 7
     },
     {
       "file": "packages/sdd/src/spec-builder.ts",
       "lines": 805,
       "relativeImports": 3
+    },
+    {
+      "file": "packages/security-scanner/src/skill-generator.ts",
+      "lines": 807,
+      "relativeImports": 6
     },
     {
       "file": "packages/simpleui/src/file-explorer.tsx",
@@ -26391,6 +26414,11 @@
   ],
   "hotspots": [
     {
+      "file": "packages/sage/src/project-server.ts",
+      "lines": 1010,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/webui/src/types/client-message.ts",
       "lines": 999,
       "relativeImports": 9
@@ -26419,11 +26447,6 @@
       "file": "packages/providers/src/index.ts",
       "lines": 982,
       "relativeImports": 77
-    },
-    {
-      "file": "packages/sage/src/project-server.ts",
-      "lines": 980,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
@@ -26496,6 +26519,11 @@
       "relativeImports": 26
     },
     {
+      "file": "packages/sdd/src/sdd-parallel-run.ts",
+      "lines": 921,
+      "relativeImports": 7
+    },
+    {
       "file": "packages/cli/src/cli-main.ts",
       "lines": 917,
       "relativeImports": 38
@@ -26509,11 +26537,6 @@
       "file": "packages/kanban/src/server/project-server.ts",
       "lines": 911,
       "relativeImports": 10
-    },
-    {
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 911,
-      "relativeImports": 7
     },
     {
       "file": "packages/webui/src/components/AudienceMemoryPanel.tsx",
@@ -28713,10 +28736,6 @@
     {
       "file": "packages/sage/src/project-server-endpoint.ts",
       "name": "SAGE_PROJECT_SERVER_METADATA_FILE"
-    },
-    {
-      "file": "packages/sage/src/project-server-protocol.ts",
-      "name": "SAGE_DISPATCH_FIELD_SPECS"
     },
     {
       "file": "packages/sage/src/project-server-protocol.ts",

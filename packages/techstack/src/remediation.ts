@@ -322,6 +322,11 @@ export async function applyPlan(
       continue;
     }
     const approved = options.approve ? await options.approve(item, index) : false;
+    // Approval may be asynchronous (for example, a prompt can remain open
+    // while the caller cancels). Re-check cancellation at the side-effect
+    // boundary so an approval that arrives after cancellation cannot start an
+    // install/remove operation.
+    if (options.signal?.aborted) throw new DOMException('Remediation cancelled', 'AbortError');
     if (!approved) {
       results.push({
         dependencyName: item.dependencyName,

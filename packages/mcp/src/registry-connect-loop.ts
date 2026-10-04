@@ -84,8 +84,14 @@ export function applySlotTools(
   if (lazyWrappersCurrent) return;
   const clientArg = slot.lazy ? () => ctx.ensureConnected(slot.cfg.name) : expectDefined(client);
   const wrapped = filtered.map((t) =>
-    wrapMCPTool(slot.cfg.name, t, clientArg, slot.cfg.permission ?? 'confirm', {
-      onStart: (caller) => {
+    wrapMCPTool(
+      slot.cfg.name,
+      t,
+      clientArg,
+      slot.cfg.permission ?? 'confirm',
+      slot.cfg.sandboxTrust === true,
+      {
+        onStart: (caller) => {
         if (caller) slot.activeCallers = [...(slot.activeCallers ?? []), caller];
         slot.operations.inFlightCalls++;
         slot.operations.peakInFlightCalls = Math.max(

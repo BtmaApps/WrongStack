@@ -1,45 +1,55 @@
 # explore-companion Role Instructions
 
-## Result Submission
+## Evidence and Result Submission
 
-- Submit findings with `submit_result`; this role has no `mailbox`. Keep every field ASCII-only. If validation rejects a result, shorten the narrative and `files_examined` before removing evidence.
-- Separate confirmed findings from inconclusive checks. Tool failure, ignored paths, index gaps, truncation, or an unqualified zero-hit result never proves absence.
-- Re-read or re-tree volatile targets immediately before `submit_result`; report observed state transitions rather than an earlier snapshot.
+- Submit findings with `submit_result`; this role has no `mailbox`. Keep fields ASCII-only. If validation fails, shorten narrative and `files_examined` before removing evidence.
+- Separate confirmed findings from inconclusive checks. Tool failure, ignored paths, index gaps, truncation, and unvalidated zero-hit searches never prove absence.
+- Read named targets directly; confirm declarations, imports, assertions, and wiring rather than treating skeletons or call graphs as authoritative. Recheck volatile targets before submission.
+- Never retry or bypass denied reads of `.npmrc`, `.env*`, `.pypirc`, or `.netrc`, including through `codebase-skeleton`; report the restriction and leave access to the leader.
 
-## Search and Evidence Discipline
+## Search and Consumer Closure
 
-- Read named files directly. Treat skeleton ranges and call-graph rows as leads; confirm declarations, imports, assertions, and wiring with exact searches or short reads.
-- Build tracked candidate sets with repo-wide, case-sensitive `grep` in `files_with_matches` mode and `truncated=false`. Read hits to reject comments, generated artifacts, same-file references, and suffix collisions.
-- Use word-boundary tokens such as `\bSymbol\b` and search every export separately. Pair import-specifier greps (`from ['"]…<mod>…['"]`) with a separate bare-token grep on the module path — inline dynamic `import()` calls never match the `from '…'` form. Include `.mjs` in the extension set when mapping `packages/webui/src/components/**` consumers; browser smokes under `packages/webui/tests/*-smoke.mjs` import components via in-page source strings and are invisible to `.{ts,tsx}`-only sweeps.
-- Avoid directory-level nested braces, extension alternation, and large combined token patterns for file enumeration or capped searches. Confirm config presence with flat globs, exact-name reads, or `tree`; split searches by family and run the most generic token alone after an unexpected zero.
-- Raw `<` may arrive HTML-escaped. For JSX/component usage, combine an exact import search with `\bComponentName\b`, then inspect hits to distinguish imports, JSX render sites, re-exports, and mentions.
-- Content search does not search filenames. A test need not mention itself. Zero hits describe only the searched scope; filesystem absence requires direct `ENOENT` plus an untruncated containing-directory tree.
-- `codebase-impact-analysis` misattributes `callerName`/`callerKind` on import-edge rows and labels rows with `line: 0`; treat its affected-file list as authoritative and confirm exact import/render lines with a word-bounded token grep plus the JSX-site read. The same conflation discipline applies to `codebase-outgoing-calls` for tsx components: local closure functions (`fire`, `disarm`) resolve to unrelated same-name symbols repo-wide.
+- Use case-sensitive `grep`, `files_with_matches`, and `truncated=false` for candidate enumeration; read hits to distinguish consumers from comments, fixtures, generated output, and naming collisions.
+- Close module consumers with module-path, sibling-relative, and bare-symbol searches plus barrel and `package.json` `exports` inspection; neither path searches nor `codebase-incoming-calls` alone establish completeness.
+- Include dynamic imports and non-TypeScript harnesses: `from`-only patterns miss `import()`, while `.{ts,tsx}` sweeps miss browser-smoke `.mjs` source strings.
+- Treat same-named symbols and huge indirect impact lists as collision candidates; verify direct call sites and import resolution before reporting blast radius.
+- Content searches do not search filenames. State spelling and directory scope; full-path searches miss bare-filename references. Confirm unexpected zeros with simpler searches or direct reads.
+- For non-code configs, expect `codebase-skeleton` to return full content; use literal-path searches rather than call graphs, distinguishing runtime readers, reverse references, sync comments, docs, and fixture data.
+- Reuse complete `tree` logs under `~/.wrongstack/tool-output/` instead of repeating large walks; validate log searches with a known-present control token.
 
-## Public Surface and Consumer Closure
+## Ignored Namespaces and Scratch Probes
 
-- Establish API exposure before counting consumers: diff module exports against every barrel re-export, follow wildcard barrels, and inspect the owning `package.json` `exports`. A wildcard barrel (`export * from '../execution/design-*.js'`, public subpath `./design`) resolves to false "0 direct call sites" while its transitive rows flood with unrelated `line:0` noise — close such modules with a word-bounded token grep, never `codebase-impact-analysis` alone.
-- Barrels re-export selectively: a barrel that carries `create*AuthStrategy` from `subscription-flows.js` may omit `refreshDeviceSubscription` (reached only via a non-barrel sibling like `packages/providers/src/subscription-oauth.ts`). Always grep the barrel and non-barrel siblings together, then pair import-specifier greps with a check of imported names against the target module's export list — a barrel-only sweep miscounts when consumers pull only sibling modules re-exported by the same barrel.
-- For browser-safe core utils, close consumers with both `@wrongstack/core/utils/<name>` (no `.js`) and the `<name>.js` specifier form — compat entries re-export core utils via the bare package subpath, and `packages/tools/src/index.ts` barrels them again; a `.js`-suffix-only grep undercounts the cli/tui/webui/simpleui consumer set by the whole hub chain.
-- For React components, also grep render tests for `data-testid` tokens (`getByTestId('…')`) and `getByText(`/`queryByText(` literals — both pin runtime contracts that `packages/webui` tests never typecheck (`packages/webui/tsconfig.json` includes only `src/**/*`), so renames or template-string changes break the suite with zero compiler signal. When a component renders no `data-testid`, fall back to `getByText` literals; when neither exists, grep for class-name tokens (e.g. `automation-(overlay|dialog|close)`) rather than component names to find true consumers.
-- Verify render-test coverage with an import grep, not filename adjacency: a component's render test can live in an unrelatedly-named file (`AgentDetailSection` rendered by `packages/webui/tests/components/subagent-chat-tabs.test.tsx`), while the same-named test file may exercise only the store. A word-bounded `\bComponent\b` grep with `.mjs` in scope closes both directions.
-- An alias accepted only by `scripts/vitest-core-aliases.mjs` but absent from `exports` is an exposure anomaly, not a public Node ESM path.
+- `.temp_files/`, `.design/`, `.reports/`, `docs/reports/`, and `docs/competitive-*/` can be absent from indexes, `glob`, and normal greps despite existing on disk; prove existence with direct reads or exact-directory trees.
+- Prove tracked and ignored search scopes separately: use a known tracked token for the tracked control and a token from the target body for the ignored control. Explicit-path grep can still be filtered; if its control fails, discard that pass and read candidate files directly.
+- Report which method establishes each zero. Ignored-file edits lack tracked Git recovery; warn the leader before blind edits.
+- Classify scratch scripts and adjacent artifacts by content, not names; print-only probes are not assertion gates, and neighboring logs need not share a producer.
+- For browser probes, inspect the manifest targeted by `createRequire(...)` and search hardcoded ports in both scratch and tracked package scopes; identify dependency and server prerequisites explicitly.
+- For `proof-driven-bug-hunter` rounds, inspect the actual directory, config, runner, and test imports; aliases may be unused, and `config.ts` requires explicit `--config` rather than Vitest autodiscovery.
+- `readDesignBrief()` in `packages/core/src/execution/design-detect.ts` injects the first 6000 bytes of `.design/` briefs into Design Studio prompts; edits affect agent constraints despite lacking normal test coverage.
 
-## Test Collection, Typechecking, and Browser Smokes
+## Package and Wiring Anchors
 
-- Read the current root and per-package Vitest configs, package scripts, and test tsconfig instead of predicting collection. The root `vitest.config.ts` excludes `tests/components|hooks|stores|lib|integration|server|i18n|helpers|fixtures|setup|types/**` while deliberately leaving `tests/pure/**` collectible — a script pointing `TEST` at `packages/webui/tests/pure/**` runs at root; pointing it at any other webui test dir collects zero files and exits 1. For `packages/plugins/tests/*.test.ts`, check both the package `vitest.config.ts` (`include: ['tests/**/*.test.ts']`, `globals: false`, coverage thresholds over `src/**`) and the root `vitest.config.ts` `packages/**/tests/**` include, plus `packages/plugins/tsconfig.test.json` (exercised by `pnpm check:test-types`).
-- The WebUI config collects `tests/**/*.test.{ts,tsx}`, not `*-smoke.mjs`; before naming a smoke's gate, check filename references, internal virtual-module or plugin identifiers, `test:*-browser` scripts, config inclusion, and tsconfig. Absence from scripts means manual-only (`node tests/<name>.mjs`).
-- `docs/reports/architecture-health-current.json` lists every root-collected test file under a `projects` array (e.g. `"root-node"`); one grep corroborates collection cheaply.
-- Run `pnpm check:test-types` when test diagnostics could change. Most `packages/simpleui` suites need `// @vitest-environment jsdom`.
+- Sandbox imports use `@wrongstack/core/sandbox`, not the `@wrongstack/core` barrel; validate package exposure through exports and re-exports.
+- `packages/tools` consumers can use both `@wrongstack/tools` and declared subpaths such as `@wrongstack/tools/bash`; search both.
+- Close `packages/kanban/src/verification/*` consumers through `verification-context.ts`, and WebUI handler consumers through `packages/webui/src/hooks/ws-handlers.ts`; check `architecture/test-only-exports.json` before calling unaggregated handlers production API.
+- Separate `packages/webui/src/components/activity-bar/index.tsx` consumers from `activity-bar/nav.ts` consumers; the latter re-exports `@/lib/view-navigation`, not `ActivityBar`.
+- Browser-smoke fakes are wired through Vite `resolve.alias` replacements; search filename stems and read `packages/simpleui/tests/app-browser-smoke.mjs`, not just import statements.
+- pnpm 12 settings belong in `pnpm-workspace.yaml`; `.npmrc` still supplies npm-compatible registry/auth settings.
+- Aliases available only through `scripts/vitest-core-aliases.mjs` do not establish public Node ESM paths; inspect manifests directly for alias targets and versions.
 
-## `.design/` Briefs
+## Test Gates and Runtime Contracts
 
-- `.design/` is gitignored — a `glob` returning 0 files is ignore-filtering, not absence; prove existence with direct `read`.
-- `readDesignBrief()` in `packages/core/src/execution/design-detect.ts` injects the first 6000 bytes into agent system prompts on every Design Studio turn. Treat briefs as a runtime prompt-injection source, not inert docs: edits have zero test blast radius (`packages/core/tests/execution/design-detect.test.ts` uses `fs.mkdtemp` fixtures) and zero git-recovery options, but directly change the constraints future agent turns receive.
+- Determine collectors from package scripts and root/package Vitest configs, not import graphs; check `architecture/test-skip-budget.json` before changing skip conditions.
+- `packages/tools` and `packages/providers` use root Vitest; CLI tests are collected by both root and package configs, with package coverage thresholds and `tsconfig.test.json` typechecking.
+- Root Vitest collects WebUI `tests/pure/**`, but excludes its component, hook, store, and other dedicated test directories; verify collection before claiming a gate.
+- WebUI render tests are outside `packages/webui/tsconfig.json`; inspect imports, symbol mentions, `data-testid`, text, and class assertions because compiler checks will not catch contract changes.
+- For test typechecking, inspect package scripts and `scripts/check-test-typecheck.mjs` discovery; `pnpm check:test-types` uses `architecture/test-typecheck-baseline/` ratchets.
+- `packages/cli/tests/webui-server/ws-twoway-completeness.test.ts` scans source text, so import graphs miss its dependencies; new server frames require client handling or `INTENTIONALLY_UNHANDLED` classification.
+- Status-bar edits require checking `packages/tui/vitest.status-bar-sgr.config.ts`, `packages/tui/tests/status-bar-sgr.test.ts`, and invocation scripts because raw escape-sequence assertions constrain colors and glyphs.
 
-## Ignored Scratch Namespace (`.temp_files/`)
+## Documentation and Inventory
 
-- `.temp_files/` is gitignored and absent from codebase indexes and normal content grep. Use direct `read`, exact containing-directory `tree(..., truncated=false)`, a repo-wide literal-path grep for tracked references, and the complete harness tree artifact; do not content-grep the large scratch tree.
-- Classify `.temp_files/*.mjs` by its body and artifacts, not extension or filename. Print-only probes are not assertion gates. A bare `proof.ts`/`.mjs` with top-level `main()` + `process.exitCode` is self-executing and plain `node` cannot run it when it imports tracked sources via literal relative paths.
-
-_(truncated at 8192 bytes — the next optimization pass must shorten it)_
+- Treat `docs/specs/*-sdd.md` as traceability anchors with sibling `*.task-graph.json` synchronization; verify runtime readers separately.
+- Check competitive-research baselines in `docs/reports/`, `docs/research/`, and `website/src/data/comparisons.ts` before reporting no prior art.
+- Verify feature counts against `packages/plugins/src/catalog.ts`, `packages/core/tests/coordination/agent-catalog.test.ts`, and `packages/webui-server/src/server/config-pref-updates.ts`; prefer `docs/AGENTS.md` over generated `.wrongstack/AGENTS.md`.
+- Distinguish root, in-project `.wrongstack/`, and user `~/.wrongstack/AGENTS.md`; trace `inProjectAgentsFile` and `project-instructions.ts` rather than assuming identical prompt consumers.

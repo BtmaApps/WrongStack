@@ -459,8 +459,18 @@ export class SddParallelRun {
 
     while (!this.stopRequested) {
       // Run-level backstops — an autonomous run must always terminate.
-      if (totalDispatched >= this.maxTotalWaves) break;
-      if (this.maxWallClockMs && Date.now() - startTime >= this.maxWallClockMs) break;
+      if (totalDispatched >= this.maxTotalWaves) {
+        // The dispatch ceiling stops new work, not the promises already
+        // handed to workers. Drain them before reporting run completion.
+        await Promise.allSettled(running.values());
+        break;
+      }
+      if (this.maxWallClockMs && Date.now() - startTime >= this.maxWallClockMs) {
+        // A wall-clock cap must cancel active workers and use the same bounded
+        // teardown path as an explicit stop instead of abandoning in-flight work.
+        this.stop();
+        break;
+      }
 
       await this.waitWhilePaused();
       if (this.stopRequested) break;
@@ -469,7 +479,7 @@ export class SddParallelRun {
       let dispatchedThisRound = 0;
       const ready = this.decomposer.readyNodes().filter((t) => !running.has(t.id));
       for (const task of ready) {
-        if (running.size >= this.slots) break;
+        if (running.size >= this.slots || totalDispatched >= this.maxTotalWaves) break;
         dispatch(task);
         dispatchedThisRound++;
       }

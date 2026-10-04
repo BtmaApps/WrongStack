@@ -1,46 +1,48 @@
 # Reviewer Agent Instructions
 
-## Review Evidence and Coverage
+## Evidence and Coverage
 
-- Treat diffs, changed-file lists, and artifact bundles as incomplete or stale. Confirm every finding and any all-clear against current on-disk source with `read`/`grep`, and cite live `file:line`. If a changed import names an omitted sibling, `glob` its directory and read it; report a missing module only when absent on disk.
-- Never file a Medium+ finding without reading its exact line. If `[artifact middle omitted]` hides a changed region, reread bounded ranges or use contextual `grep`; do not issue an all-clear. Name uncovered `file:line` ranges and set `completion: "partial"`; use `{"findings": []}` when no defect is confirmed, not to imply complete coverage.
+- Confirm findings against current on-disk source, not intermediate diff hunks or incomplete bundles. Read the exact defect location and cite live `file:line`; trace the relevant producer, consumer, and tests before reporting.
+- Never issue an all-clear while changed ranges remain hidden: recover `[artifact middle omitted]` content from the printed `~/.wrongstack/tool-output/…-read-….log` path or single-anchor `grep` with `context_lines` 40+; otherwise identify uncovered ranges and set `completion: "partial"`.
+- Use `{"findings": []}` when no defect is confirmed, but do not imply complete coverage when evidence is missing.
+- Verify missing modules with explicit paths on disk. A zero-result brace-expansion `glob` is inconclusive because some backends do not expand braces.
+- Resolve added documentation links and heading anchors against live files; verify removed index targets still exist before calling their removal link rot.
 
-## Finding Validation
+## Blocked Research and Deliverables
 
-- Trace changed invariants through every producer, consumer, lifecycle path, and exact-equality assertion. Thread fields end to end — declaration, handler, production consumer, and tests — and grep the exact flag in the real store or call site. Mock-only tests cannot prove live wiring.
-- When a diff extracts functions into a new sibling module and re-exports them, verify the sibling exists on disk and exports the exact re-exported names before treating any call site as broken — a missing or mis-named export is a package-wide compile break the diff will not show.
-- When reviewing a new `export *` line in a package barrel, verify the target module exists AND no two `export *` sources export the same symbol name — an ambiguous name is a package-wide compile break.
-- Never treat a `glob` result of 0 files as a missing module when the pattern used brace expansion (e.g. `packages/webui-protocol/src/{a,b}.ts`) — many glob backends do not expand braces, so the miss is inconclusive. Re-probe with one explicit path per call.
-- When a diff swaps an allowlist entry from one file path to another, verify both sides before approving: grep `child_process` in the removed path (a missing import means the `IMPORTS_CHILD_PROCESS` filter in `packages/tools/tests/architecture/shell-true-parity.test.ts` drops its `shell:` lines, so removal is safe), and confirm the added path exists and contains a non-inert `shell:` value (the allowlist uses `endsWith`, so a dead entry masks nothing while a missing one turns the gate red).
-- Verify every branch initializes values used later, mutable state is reset, and rename or shape changes leave no old reads or writes. Check language semantics before filing. In `optionalFn?.(arg).catch(cb)`, optional chaining short-circuits; `.catch` is unsafe only when an invoked callee returns a non-Promise.
-- Normalize model or API limits before `slice` or SQL `LIMIT`: reject `NaN`, `Infinity`, negatives, and out-of-range integers. `slice(0, -n)` drops the last `n` items, and `x ?? default` does not catch `NaN`. `clampLimit` signatures differ: `packages/webui-server/src/server/ws-validation-common.ts` uses `(value, def, max)` with minimum 1; `packages/core/src/chronicle/metrics-schema.ts` uses `(limit, fallback)` with a 10,000 cap.
-- `shortHash` in `packages/bench/src/fingerprint.ts` is 12-character SHA-256 hex; its suffix is separator-free when appended to `slug()` output.
+- For `.reports/**` grounded-research tasks, check fetch and write capabilities independently. Report each missing surface in the re-dispatch request.
+- Distinguish capability policy from tool registration. A denial listing `allowed: fs.read, fs.write, net.outbound, coordination.result.submit` does not expose those tools; request a worker whose registered schema supplies the missing fetch/write surfaces, not new authorization.
+- Treat policy denials as binding. If `session_note` is denied, use sanctioned `submit_result`; do not retry the denied tool or bypass it through `mailbox`.
+- Treat `search` snippets as leads, not fetched sources. After one evidence-free round without a fetch tool, submit `completion: "partial"` with an exact successor fetch list: repository, raw README, `api.github.com` metadata, `/releases/latest`, and documentation root.
+- Never substitute training-memory recall for required fetched evidence, even under pressure to conclude. Keep recall out of the report and label any recall included in the handoff explicitly unverified.
 
-## Documentation Diffs
+## Imports and Delegation
 
-- `glob` each target of a removed documentation index row before calling it link rot — removal is correct when the file or directory no longer exists on disk. Equally, resolve every newly added relative link and heading anchor (e.g. `docs/foo.md#heading` against the live `##` heading) before declaring a docs diff clean.
+- Resolve `@wrongstack/core` subpaths through `packages/core/package.json` `exports`. `"./agent"` maps to `dist/core/index.js`, so `'@wrongstack/core/agent'` symbols must be re-exported from `core/index.ts`, not merely defined in `core/agent.ts`. Check with `grep '<symbol>|<source-module>' packages/core/src`.
+- For extracted modules and new barrel exports, verify target files and exact exported names. Check overlapping `export *` sources for ambiguous names before approving.
+- Before approving Proxy delegation that binds methods to the original receiver, inspect the contract for `: this` or same-instance returns. Such methods can return the raw object and shed overrides; check `delegateWithOverrides` in `packages/vector-memory/src/sage-port-wrapper.ts` against `withTraceId(): this` in `packages/sage/src/memory-port.ts`.
 
-## Test Claims vs. Live Behavior
+## Runtime Contracts and Feature Gates
 
-- Verify tests claiming "without global env changes" against the live env-layering mechanism. In `packages/providers/src/native-catalog.ts`, `endpointEnv` is a per-provider spread copy of `process.env` plus profile-scoped overrides — a copy, not a mutation — so isolation tests pass via real per-closure isolation. Any regression to writing `process.env` or to env-fallback precedence breaks a concrete `toContain` assertion.
-- Verify changed responsive-split test expectations by recomputing the slot arithmetic from the live constants: `calculateDesktopActivityCapacity` derives slots from `COMPACT_/FULL_RESERVED_PX` and `_SLOT_PX`, and `splitDesktopActivityBarItems` gives remaining slots to the first N of the on-disk `VIEWS` order — so inserting a view shifts which ids appear in `visibleViewIds` without any capacity change.
-- Verify vitest `exclude` "allowlist" claims against the on-disk `vitest.config.ts`. Exclusion lists are additive with no negative glob, so the allowlist works only if the broad entry (e.g. `packages/webui/**`) was actually *removed*. Read the live file around the `exclude:` block before concluding the subtree excludes are dead code.
-- When a chronicle test asserts `String(attributes.<field>).length < N`, verify what `capPreview` in `packages/core/src/chronicle/tool-adapter.ts` actually returns: the truncated branch returns `{preview, truncated, totalBytes}`, so `String()` collapses it to `"[object Object]"` and the assertion is unconditional. Prefer asserting the object shape or `attributes.<field>.preview.length`. Require the same test to assert a pre-truncation-derived field such as `fileStats` from `file-tool-stats.ts` — that field is the only thing proving stats are computed from the full output before `capPreview`.
-- A literal assertion guards behavior only when it matches exact live syntax and that occurrence reaches the runtime path. For cross-package source pins, prove the new regex matches the exact literal and the old regex does not; both matching is vacuous, while neither matching guards nothing.
-- Resolve `DESIGN_STACKS` in `packages/core/src/types/design-kit.ts` before crediting a design-kit-loader test regex — the skipped-kit reason interpolates `DESIGN_STACKS.join(', ')`, so both the membership and the order of the regex's trailing list must match the literal array.
+- Trace changed fields, state resets, and branch initialization through production paths; mock-only tests do not establish live wiring.
+- Validate paired feature gates against actual parser and boot materialization, not just contrasting `!flags['x']` and `flags['x'] === true` syntax.
+- For `flags.tui === true` gates in `packages/cli/src/wiring/**`, inspect `packages/cli/src/boot.ts`: launch-menu TUI selection, `quick`, and `--goal`/`--ask` via `boot/goal-tui-default.ts` explicitly set the flag. Do not infer a mismatch merely because `shouldCaptureTuiStartup` defaults on.
+- Read helper contracts before reporting missing caller validation. `parseAuthMenuIndex` in `packages/cli/src/auth-menu/index-input.ts` already requires `Number.isSafeInteger(index) && index > 0`; an undefined check and upper bound complete one-based lookup validation.
+- Check intended numeric semantics before flagging nonfinite values. `clampBudget` in `packages/tui/src/checkpoint-retention.ts` permits explicit unbounded `Infinity`, pinned by `packages/tui/tests/checkpoint-nan-budget.test.ts`; elsewhere verify validation before `slice` or SQL `LIMIT`, since negative slicing and `NaN` bypassing `??` can be defects.
 
-## Settings and Preferences
+## Tests and Cross-System Invariants
 
-- Validate numeric preferences in the serve, seed, and broadcast paths, not only in `prefs.update`. `packages/webui-server/src/server/context-meta.ts` seeds numbers with only a type check, so out-of-range values can reach `packages/simpleui/src/settings-panel.tsx`. Ensure `presetOptions` applies `Number.isInteger` and its floor guard, and never re-offers invalid stored values.
-- SimpleUI toggles must update the model, defaults, parser, shallow equality, catalog, row binding, and `BOOLEAN_PREF_KEYS` in `packages/webui-server/src/server/ws-payload-preferences.ts`; the server rejects unlisted update keys.
-- `CONFIG_BEHAVIOR_DEFAULTS.autonomy` in `packages/core/src/storage/config-loader.ts` is the canonical TUI autonomy-default source. A setting must flow through TUI state, contracts, reducers, the CLI settings adapter, overlays, persistence, and `app-view`. `LiveSettingsInput` also requires hydration from `cfg.features` and persistence back to `feats`.
+- Verify fixture-mutated configuration exists in live defaults and is read at call time rather than captured during construction; for LSP configuration, inspect `packages/plug-lsp/src/config.ts` `DEFAULT_CONFIG`/`mergeConfig` and `deps.cfg.<key>`.
+- Require assertions to distinguish correct behavior from the regression. Source-pinning regexes must match live syntax and relevant runtime paths; assertions that coerce objects to `"[object Object]"` do not prove truncation bounds.
+- For transcript markers and joins, check `packages/bench/src/trace-eval.ts` raw serialized-substring matching and `SessionEventAttribution` in `packages/core/src/types/session-events.ts`; uniformly absent `agentId` remains symmetric, unlike one-sided attribution.
+- Validate roster and skill-count claims against `FLEET_ROSTER` in `packages/core/tests/coordination/agent-catalog.test.ts` and `glob packages/core/skills/*/SKILL.md`, never remembered counts.
+- Check live `vitest.config.ts` before crediting exclusion “allowlists”: exclusions are additive, so a broad exclusion must actually be removed.
 
-## TUI Contracts
+## UI and Settings Review
 
-- Treat every newly reachable filtered array as potentially empty. Guard selected values, clamp indices before windowing, and never cast an array lookup to a member type when the array contains objects. Selection reducers, index consumers, and caller-supplied React keys must agree on synchronization, element type, and uniqueness.
-- Preserve React hook order, snapshot render-bumped revisions before effects, and check cancellation inside timer callbacks. Do not put fresh values such as `cache.totalHeight()` directly in effect dependencies; use a revision or stable memo.
-- Account for every subtraction from measured history totals. Preserve `EntryHeightCache` seeding with `cache.sync(ids)` before `cache.recordMany(...)`, and derive picker widths from rendered labels because `padEnd` does not truncate.
-
-## Design Tool
-
-_(truncated at 8192 bytes — the next optimization pass must shorten it)_
+- In `packages/webui`, check `outline-none` changes against `packages/webui/src/index.css` global `:focus-visible`; suppressing its token ring requires a replacement visible focus style, while removing suppression restores accessibility.
+- Treat newly reachable filtered arrays as potentially empty. Check selection guards, index clamping, element types, and React key uniqueness together.
+- Preserve React hook order and timer cancellation; use stable revisions or memoization rather than fresh computed values in effect dependencies.
+- Validate numeric preferences across serve, seed, update, and broadcast paths, not only `prefs.update`.
+- For SimpleUI toggles, verify model, defaults, parser, equality, catalog, row binding, and `BOOLEAN_PREF_KEYS` in `packages/webui-server/src/server/ws-payload-preferences.ts`; unlisted update keys are rejected.
+- Use `CONFIG_BEHAVIOR_DEFAULTS.autonomy` in `packages/core/src/storage/config-loader.ts` as the canonical TUI autonomy default, and verify settings hydration, runtime propagation, and persistence end to end.

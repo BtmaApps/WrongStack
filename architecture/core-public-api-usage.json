@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 9,
+      "files": 11,
       "typeOnly": 0,
-      "runtimeOrMixed": 9
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
       "files": 185,
@@ -10237,6 +10237,18 @@
     {
       "specifier": "@wrongstack/core/sandbox",
       "file": "packages/cli/src/slash-commands/sandbox.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/mcp/src/wrap-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/mcp/tests/wrap-tool-sandbox.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

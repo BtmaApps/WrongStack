@@ -67,19 +67,37 @@ describe('buildContainerRoute (plan 28 T4)', () => {
       writableRoots: ['D:/work/extra'],
     });
     const route = routeNow();
-    expect(route?.argv?.slice(0, 11)).toEqual([
-      'docker',
-      'run',
-      '--rm',
-      '--network',
-      'none',
-      '-v',
-      "'D:/work/proj:D:/work/proj'",
-      '-v',
-      "'D:/work/extra:D:/work/extra'",
-      '-w',
-      "'D:/work/proj'",
-    ]);
+    if (process.platform === 'win32') {
+      // Windows host + Linux container: fixed container-side mounts (/w0, /w1),
+      // double-quoted because the route line runs through cmd.exe.
+      expect(route?.argv?.slice(0, 11)).toEqual([
+        'docker',
+        'run',
+        '--rm',
+        '--network',
+        'none',
+        '-v',
+        '"D:/work/proj:/w0"',
+        '-v',
+        '"D:/work/extra:/w1"',
+        '-w',
+        '"/w0"',
+      ]);
+    } else {
+      expect(route?.argv?.slice(0, 11)).toEqual([
+        'docker',
+        'run',
+        '--rm',
+        '--network',
+        'none',
+        '-v',
+        "'D:/work/proj:D:/work/proj'",
+        '-v',
+        "'D:/work/extra:D:/work/extra'",
+        '-w',
+        "'D:/work/proj'",
+      ]);
+    }
     expect(route?.argv?.slice(11, 13)).toEqual(['alpine:3.19', 'echo']);
     expect(route?.argv?.at(-1)).toBe('hi');
   });
@@ -94,12 +112,14 @@ describe('buildContainerRoute (plan 28 T4)', () => {
     });
     const route = routeNow();
     const joined = route?.argv?.join(' ') ?? '';
-    expect(joined).toContain("'D:/work/proj:D:/work/proj:ro'");
+    expect(joined).toContain(
+      process.platform === 'win32' ? '"D:/work/proj:/w0:ro"' : "'D:/work/proj:D:/work/proj:ro'",
+    );
     expect(joined).not.toContain('D:/work/extra');
     expect(joined).toContain('--network none');
   });
 
-  it('wraps shell-form (bash) commands with sh -lc and single-quote escaping', () => {
+  it('wraps shell-form (bash) commands with sh -lc and shell-appropriate quoting', () => {
     configureSandboxPolicy({
       mode: 'enforced',
       tier: 'workspace-write',
@@ -110,13 +130,38 @@ describe('buildContainerRoute (plan 28 T4)', () => {
       { tool: 'bash', kind: 'shell', command: "echo 'hi' > f", cwd: 'D:/work/proj' },
       getResolvedSandboxConfig(),
     );
-    expect(route?.command).toContain("-w 'D:/work/proj' alpine:3.19 sh -lc 'echo");
-    expect(route?.command).toContain("> f'");
+    expect(route?.command).toContain(
+      process.platform === 'win32'
+        ? '-w "/w0" alpine:3.19 sh -lc "echo'
+        : "-w 'D:/work/proj' alpine:3.19 sh -lc 'echo",
+    );
+    expect(route?.command).toContain(process.platform === 'win32' ? '> f"' : "> f'");
+  });
+
+  it('doubles embedded double quotes in the cmd.exe-quoted inner command (win32 boundary)', () => {
+    configureSandboxPolicy({
+      mode: 'enforced',
+      tier: 'workspace-write',
+      backend: 'container',
+      image: 'alpine:3.19',
+    });
+    const route = buildContainerRoute(
+      { tool: 'bash', kind: 'shell', command: 'echo "a b" > f', cwd: 'D:/work/proj' },
+      getResolvedSandboxConfig(),
+    );
+    // quoteToken doubles embedded quotes so cmd.exe cannot terminate the
+    // quoted region early; sh inside the container then sees the original
+    // text. POSIX keeps the single-quoted form unchanged.
+    expect(route?.command).toContain(
+      process.platform === 'win32'
+        ? 'sh -lc "echo ""a b"" > f"'
+        : "sh -lc 'echo \"a b\" > f'",
+    );
   });
 });
 
 describe('browser_*-disabled tier gate (plan 28 T4)', () => {
-  function browserStub(): Tool<{ q: string }, { ok: boolean }> {
+  function browserStub(): CoreTool<{ q: string }, { ok: boolean }> {
     return {
       name: 'browser_navigate',
       description: 'stub',

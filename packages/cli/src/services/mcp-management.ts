@@ -122,7 +122,13 @@ function renderList(
             ` [${health.healthState}; failures ${health.failures.transport}/${health.failures.protocol}/${health.failures.tool}; call p95 ${health.callLatency.p95Ms ?? '-'}ms]`,
           )
         : '';
-      lines.push(`  ${color.bold(name)}  ${enabled}${stateStr}${toolCount}${operations}`);
+      // Plan 28: mcpServers.*.sandboxTrust bypasses the enforced sandbox tier
+      // for this server — always visible in listings (security-relevant state).
+      const trustBadge =
+        cfg.sandboxTrust === true ? `${color.yellow('[sandbox-trusted]')}  ` : '';
+      lines.push(
+        `  ${color.bold(name)}  ${enabled}${stateStr}${toolCount}${trustBadge}${operations}`,
+      );
       if (cfg.description) lines.push(`    ${color.dim(cfg.description)}`);
     }
     lines.push('');

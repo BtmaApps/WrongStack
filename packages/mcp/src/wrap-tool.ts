@@ -1,3 +1,4 @@
+import { createSandboxMcpGate } from '@wrongstack/core/sandbox';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import type { Permission, Tool } from '@wrongstack/core/types';
 import { mcpQualifiedToolName } from '@wrongstack/core/utils';
@@ -49,14 +50,20 @@ export function wrapMCPTool(
   mcpTool: MCPTool,
   client: MCPClientResolver,
   permission: Permission = 'confirm',
+  sandboxTrust = false,
   observer?: MCPToolCallObserver | undefined,
 ): Tool {
+  // Sandbox gate (plan 28): MCP tool calls are DENIED under enforced tiers —
+  // their effects run in the server process and cannot be routed (SDD
+  // conflict analysis). mode 'off' (default) is a pure pass-through.
+  // mcpServers.*.sandboxTrust (user-global only) bypasses it for this server.
+  const sandboxGate = createSandboxMcpGate({ trusted: sandboxTrust });
   // Sanitized to the provider-wire pattern ^[a-zA-Z0-9_-]{1,128}$ — server
   // names and remote tool names may contain dots/colons/spaces that
   // Anthropic-family endpoints reject with a 400. The remote call below
   // still uses the original `mcpTool.name`.
   const qualifiedName = mcpQualifiedToolName(serverName, mcpTool.name);
-  return {
+  const tool: Tool = {
     name: qualifiedName,
     description: mcpTool.description ?? `${qualifiedName} (MCP tool)`,
     usageHint: `Tool provided by MCP server "${serverName}". ${mcpTool.description ?? ''}`,
@@ -101,6 +108,7 @@ export function wrapMCPTool(
       }
     },
   };
+  return sandboxGate(tool);
 }
 
 /** What the model is told after a `-32042`: which pages, what the user chose, whether to retry. */

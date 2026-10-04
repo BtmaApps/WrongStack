@@ -78,6 +78,7 @@ export class SddBoardStore {
   private baseDirReady: Promise<void> | undefined;
   private cachedIndex: SddBoardIndex | undefined;
   private cachedIndexSignature: IndexSignature | null = null;
+  private indexNeedsRebuild = false;
 
   constructor(opts: SddBoardStoreOptions) {
     this.baseDir = opts.baseDir;
@@ -318,10 +319,11 @@ export class SddBoardStore {
     try {
       const raw = await fsp.readFile(this.indexPath, 'utf8');
       const parsed = JSON.parse(raw) as SddBoardIndex;
-      if (parsed?.version === 1) {
+      if (parsed?.version === 1 && Array.isArray(parsed.entries)) {
         parsed.entries.sort((a, b) => b.updatedAt - a.updatedAt);
         this.cachedIndex = parsed;
         this.cachedIndexSignature = signature;
+        this.indexNeedsRebuild = false;
         return parsed;
       }
     } catch {
@@ -329,7 +331,45 @@ export class SddBoardStore {
     }
     this.cachedIndex = { version: 1, entries: [] };
     this.cachedIndexSignature = signature;
+    this.indexNeedsRebuild = true;
     return this.cachedIndex;
+  }
+
+  private async rebuildIndexEntries(): Promise<SddBoardIndexEntry[]> {
+    let files: import('node:fs').Dirent[];
+    try {
+      files = await fsp.readdir(this.baseDir, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw error;
+    }
+    const entries: SddBoardIndexEntry[] = [];
+    for (const file of files) {
+      if (!file.isFile() || !file.name.endsWith('.json') || file.name === '_index.json') continue;
+      const runId = file.name.slice(0, -'.json'.length);
+      const snapshot = await this.load(runId);
+      if (
+        !snapshot ||
+        snapshot.runId !== runId ||
+        typeof snapshot.title !== 'string' ||
+        typeof snapshot.status !== 'string' ||
+        !Number.isFinite(snapshot.updatedAt) ||
+        !snapshot.progress ||
+        !Number.isFinite(snapshot.progress.total) ||
+        !Number.isFinite(snapshot.progress.completed)
+      )
+        continue;
+      entries.push({
+        runId,
+        specId: snapshot.specId,
+        title: snapshot.title,
+        status: snapshot.status,
+        total: snapshot.progress.total,
+        completed: snapshot.progress.completed,
+        updatedAt: snapshot.updatedAt,
+      });
+    }
+    return entries.sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   private async updateIndex(snapshot: SddBoardSnapshot): Promise<void> {
@@ -337,7 +377,9 @@ export class SddBoardStore {
       const current = await this.readIndex();
       const index: SddBoardIndex = {
         version: 1,
-        entries: current.entries.map((entry) => ({ ...entry })),
+        entries: this.indexNeedsRebuild
+          ? await this.rebuildIndexEntries()
+          : current.entries.map((entry) => ({ ...entry })),
       };
       const entry: SddBoardIndexEntry = {
         runId: snapshot.runId,
@@ -355,6 +397,7 @@ export class SddBoardStore {
       await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
       this.cachedIndex = index;
       this.cachedIndexSignature = await this.indexSignature();
+      this.indexNeedsRebuild = false;
     });
   }
 
@@ -363,13 +406,14 @@ export class SddBoardStore {
       const current = await this.readIndex();
       const index: SddBoardIndex = {
         version: 1,
-        entries: current.entries
+        entries: (this.indexNeedsRebuild ? await this.rebuildIndexEntries() : current.entries)
           .filter((entry) => entry.runId !== runId)
           .map((entry) => ({ ...entry })),
       };
       await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
       this.cachedIndex = index;
       this.cachedIndexSignature = await this.indexSignature();
+      this.indexNeedsRebuild = false;
     });
   }
 

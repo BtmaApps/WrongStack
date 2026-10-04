@@ -28,6 +28,16 @@ export interface MCPServerConfig {
   origin?: 'repository' | undefined;
   allowedTools?: string[] | undefined;
   permission?: Permission | undefined;
+  /**
+   * Plan 28 sandbox trust mark: when true, this server's tool calls BYPASS the
+   * enforced sandbox tier (MCP tool calls are otherwise `sandbox_denied` under
+   * `tools.sandbox.mode: enforced` — see the sandboxed-execution-tiers SDD
+   * conflict analysis). Security-sensitive by design: only meaningful from
+   * USER-global config — `mcpServers` is wholly denied for in-project config,
+   * so a committed repository cannot mark its own servers trusted. Default:
+   * false/undefined (fail-closed).
+   */
+  sandboxTrust?: boolean | undefined;
   startupTimeoutMs?: number | undefined;
   requestTimeoutMs?: number | undefined;
   /**

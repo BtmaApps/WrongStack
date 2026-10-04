@@ -175,6 +175,15 @@ export function parseArgs(
   return out;
 }
 
+/** Convert the parsed absolute override back to SAGE's project-relative path contract. */
+export function projectRelativeStorageDirectory(projectRoot: string, directory: string): string {
+  const relative = path.relative(path.resolve(projectRoot), path.resolve(directory));
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('--storage-dir must stay inside the project root');
+  }
+  return relative || '.';
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parseArgs(argv);
   if (args.help) {
@@ -188,9 +197,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
 
   const projectRoot = canonicalProjectRoot(args.projectRoot);
+  const storageDirectory = args.storageDirectory
+    ? projectRelativeStorageDirectory(args.projectRoot, args.storageDirectory)
+    : undefined;
   const port = new ProjectSageMemoryPort({
     projectRoot,
-    ...(args.storageDirectory ? { directory: args.storageDirectory } : {}),
+    ...(storageDirectory ? { directory: storageDirectory } : {}),
   });
 
   // Acquire (or lazily spawn) the SAGE IPC server. We don't lower this to

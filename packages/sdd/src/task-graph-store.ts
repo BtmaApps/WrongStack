@@ -2,7 +2,7 @@ import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskStore } from '@wrongstack/core/tasking';
 import type { TaskGraph, TaskNode } from '@wrongstack/core/types';
-import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
+import { atomicWrite, ensureDir, withFileLock } from '@wrongstack/core/utils';
 
 export interface TaskGraphStoreOptions {
   /** Directory where task graph files are stored. Defaults to `.wrongstack/task-graphs`. */
@@ -59,18 +59,19 @@ export class TaskGraphStore implements TaskStore {
 
   async save(graph: TaskGraph): Promise<void> {
     const snapshot = graphFromJSON(graphToJSON(graph));
-    const pending = this.writeChain.then(async () => {
-      await ensureDir(this.baseDir);
+    await this.enqueueWrite(async () => {
       const filePath = this.filePath(snapshot.id);
       await atomicWrite(filePath, graphToJSON(snapshot), { mode: 0o600 });
       await this.updateIndex(snapshot);
     });
-    this.writeChain = pending.catch(() => undefined);
-    await pending;
   }
 
   async load(id: string): Promise<TaskGraph | null> {
     await this.writeChain;
+    return this.loadFile(id);
+  }
+
+  private async loadFile(id: string): Promise<TaskGraph | null> {
     try {
       const raw = await fsp.readFile(this.filePath(id), 'utf8');
       return graphFromJSON(raw);
@@ -86,14 +87,23 @@ export class TaskGraphStore implements TaskStore {
   }
 
   async delete(id: string): Promise<boolean> {
-    await this.writeChain;
+    let filePath: string;
     try {
-      await fsp.unlink(this.filePath(id));
-      await this.removeFromIndex(id);
-      return true;
+      filePath = this.filePath(id);
     } catch {
       return false;
     }
+    return this.enqueueWrite(async () => {
+      let removed = false;
+      try {
+        await fsp.unlink(filePath);
+        removed = true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+      await this.removeFromIndex(id);
+      return removed;
+    });
   }
 
   async exists(id: string): Promise<boolean> {
@@ -155,30 +165,85 @@ export class TaskGraphStore implements TaskStore {
   }
 
   private async readIndex(): Promise<TaskGraphIndex> {
+    let raw: string;
     try {
-      const raw = await fsp.readFile(this.indexPath, 'utf8');
-      const parsed = JSON.parse(raw) as TaskGraphIndex;
-      if (parsed?.version === 1 && Array.isArray(parsed.entries)) return parsed;
-    } catch {
-      /* no index yet */
+      raw = await fsp.readFile(this.indexPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return this.rebuildIndex();
+      throw error;
     }
-    return { version: 1, entries: [] };
+    try {
+      const parsed = JSON.parse(raw) as TaskGraphIndex;
+      if (
+        parsed?.version === 1 &&
+        Array.isArray(parsed.entries) &&
+        parsed.entries.every(
+          (entry) =>
+            entry &&
+            typeof entry.id === 'string' &&
+            typeof entry.specId === 'string' &&
+            typeof entry.title === 'string' &&
+            Number.isSafeInteger(entry.nodeCount) &&
+            Number.isSafeInteger(entry.completedCount) &&
+            Number.isFinite(entry.updatedAt) &&
+            typeof entry.filePath === 'string',
+        )
+      )
+        return parsed;
+    } catch {
+      // The graph files are authoritative; rebuild a malformed derived index.
+    }
+    return this.rebuildIndex();
   }
 
-  private async updateIndex(graph: TaskGraph): Promise<void> {
-    const index = await this.readIndex();
-    const completedCount = Array.from(graph.nodes.values()).filter(
-      (n) => n.status === 'completed',
-    ).length;
-    const entry: TaskGraphIndexEntry = {
+  private async rebuildIndex(): Promise<TaskGraphIndex> {
+    let files: import('node:fs').Dirent[];
+    try {
+      files = await fsp.readdir(this.baseDir, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] };
+      throw error;
+    }
+    const entries: TaskGraphIndexEntry[] = [];
+    for (const file of files) {
+      if (!file.isFile() || !file.name.endsWith('.json') || file.name === '_index.json') continue;
+      const id = file.name.slice(0, -'.json'.length);
+      const graph = await this.loadFile(id);
+      if (!graph || graph.id !== id) continue;
+      entries.push(this.indexEntry(graph));
+    }
+    return { version: 1, entries };
+  }
+
+  /** Serialize graph and index mutations across this process and other store instances. */
+  private enqueueWrite<T>(work: () => Promise<T>): Promise<T> {
+    const pending = this.writeChain.then(async () => {
+      await ensureDir(this.baseDir);
+      return withFileLock(this.indexPath, work);
+    });
+    this.writeChain = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
+  }
+
+  private indexEntry(graph: TaskGraph): TaskGraphIndexEntry {
+    return {
       id: graph.id,
       specId: graph.specId,
       title: graph.title,
       nodeCount: graph.nodes.size,
-      completedCount,
+      completedCount: Array.from(graph.nodes.values()).filter((n) => n.status === 'completed')
+        .length,
       updatedAt: graph.updatedAt,
       filePath: this.filePath(graph.id),
     };
+  }
+
+  private async updateIndex(graph: TaskGraph): Promise<void> {
+    const index = await this.readIndex();
+    const entry = this.indexEntry(graph);
     const idx = index.entries.findIndex((e) => e.id === graph.id);
     if (idx >= 0) {
       index.entries[idx] = entry;

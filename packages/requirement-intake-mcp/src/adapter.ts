@@ -31,6 +31,10 @@ import {
   type IntakeContext,
   type IntakePriority,
   type IntakeStatus,
+  MAX_IDEMPOTENCY_KEY_LENGTH,
+  MAX_REQUEST_LENGTH,
+  MAX_TITLE_LENGTH,
+  REQUEST_TYPES,
   RequirementIntakeService,
   RequirementIntakeStore,
 } from '@wrongstack/requirement-intake';
@@ -61,32 +65,20 @@ const SUBMIT_SCHEMA: Record<string, unknown> = {
   properties: {
     request: {
       type: 'string',
+      minLength: 1,
+      maxLength: MAX_REQUEST_LENGTH,
       description:
         'The exact software development request to record — a feature, bug fix, refactor, UI/API/infra change, migration, documentation, etc. Preserved verbatim.',
     },
     title: {
       type: 'string',
+      maxLength: MAX_TITLE_LENGTH,
       description: 'Optional short title. Defaults to a deterministic title from the request.',
     },
     requestType: {
       type: 'string',
-      enum: [
-        'feature',
-        'bug_fix',
-        'refactor',
-        'performance',
-        'security',
-        'ui_change',
-        'api_change',
-        'infrastructure',
-        'migration',
-        'testing',
-        'documentation',
-        'maintenance',
-        'other',
-        'unspecified',
-      ],
-      description: 'Request type hint. Unknown values normalize to other/unspecified.',
+      maxLength: 64,
+      description: `Request type hint. Supported values: ${REQUEST_TYPES.join(', ')}. Unknown values normalize to other.`,
     },
     priority: {
       type: 'string',
@@ -95,6 +87,7 @@ const SUBMIT_SCHEMA: Record<string, unknown> = {
     },
     idempotencyKey: {
       type: 'string',
+      maxLength: MAX_IDEMPOTENCY_KEY_LENGTH,
       description: 'Optional key making create idempotent — retries return the existing record.',
     },
   },

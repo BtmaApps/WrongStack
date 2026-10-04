@@ -131,7 +131,7 @@ export class RequirementIntakeService {
   async createIntake(input: CreateIntakeInput, ctx: IntakeContext): Promise<IntakeCreateResult> {
     const validated = this.guardValidation(() => validateCreateInput(input));
     if (validated.projectId !== ctx.projectId) {
-      throw new IntakeAuthorizationError('create', ctx.id, validated.projectId);
+      this.denyUnauthorized('create', ctx, validated.projectId);
     }
     await this.authorize('create', ctx);
 
@@ -139,6 +139,7 @@ export class RequirementIntakeService {
       const existing = await this.store.findByIdempotencyKey(validated.idempotencyKey);
       if (existing) {
         if (existing.projectId !== ctx.projectId) {
+          this.recordUnauthorizedAttempt();
           throw new IntakeValidationError([
             {
               field: 'idempotencyKey',
@@ -166,6 +167,7 @@ export class RequirementIntakeService {
     // expose the record that happened to be created first.
     if (!result.created) {
       if (result.record.projectId !== ctx.projectId) {
+        this.recordUnauthorizedAttempt();
         throw new IntakeValidationError([
           {
             field: 'idempotencyKey',
@@ -214,7 +216,7 @@ export class RequirementIntakeService {
     filter?: IntakeListFilter | undefined,
   ): Promise<RequirementIntakeRecord[]> {
     if (projectId !== ctx.projectId) {
-      throw new IntakeAuthorizationError('list', ctx.id, projectId);
+      this.denyUnauthorized('list', ctx, projectId);
     }
     await this.authorize('list', ctx);
     return this.store.list(projectId, filter);
@@ -420,32 +422,28 @@ export class RequirementIntakeService {
     }
 
     const hadQuestions = proposals.some((proposal) => proposal.kind === 'question');
-    const previousStatus = record.status;
-    const nextStatus: IntakeStatus =
-      previousStatus === 'draft' ? 'collecting_information' : previousStatus;
+    let previousStatus: IntakeStatus = record.status;
+    const updateOptions: StoreUpdateOptions = {
+      actorId: ctx.id,
+      actorType: ctx.type,
+      action: hadQuestions ? 'information_requested' : 'suggestions_added',
+    };
 
-    const updated = await this.store.update(
-      id,
-      {
-        actorId: ctx.id,
-        actorType: ctx.type,
-        action: hadQuestions ? 'information_requested' : 'suggestions_added',
-        from: previousStatus === nextStatus ? undefined : previousStatus,
-        to: previousStatus === nextStatus ? undefined : nextStatus,
-      },
-      (next) => {
-        this.assertMutable(next, 'generateSuggestions');
-        next.llmSuggestions.push(...proposals);
-        if (next.llmSuggestions.length > MAX_SUGGESTIONS) {
-          next.llmSuggestions = next.llmSuggestions.slice(
-            next.llmSuggestions.length - MAX_SUGGESTIONS,
-          );
-        }
-        if (previousStatus === 'draft' && nextStatus === 'collecting_information') {
-          next.status = nextStatus;
-        }
-      },
-    );
+    const updated = await this.store.update(id, updateOptions, (next) => {
+      this.assertMutable(next, 'generateSuggestions');
+      previousStatus = next.status;
+      if (next.status === 'draft') {
+        updateOptions.from = 'draft';
+        updateOptions.to = 'collecting_information';
+        next.status = 'collecting_information';
+      }
+      next.llmSuggestions.push(...proposals);
+      if (next.llmSuggestions.length > MAX_SUGGESTIONS) {
+        next.llmSuggestions = next.llmSuggestions.slice(
+          next.llmSuggestions.length - MAX_SUGGESTIONS,
+        );
+      }
+    });
 
     this.metrics.increment('intake.suggestions.succeeded');
     this.logger.info('intake', 'intake.suggestions.succeeded', {
@@ -558,24 +556,25 @@ export class RequirementIntakeService {
     this.assertSubmitReady(record);
 
     const now = Date.now();
+    let previousStatus: IntakeStatus = record.status;
+    const updateOptions: StoreUpdateOptions = {
+      actorId: ctx.id,
+      actorType: ctx.type,
+      action: 'submitted',
+      expectedVersion: expectedVersion ?? record.version,
+    };
     try {
-      const updated = await this.store.update(
-        id,
-        {
-          actorId: ctx.id,
-          actorType: ctx.type,
-          action: 'submitted',
-          from: record.status,
-          to: 'submitted',
-          expectedVersion: expectedVersion ?? record.version,
-        },
-        (next) => {
-          next.status = 'submitted';
-          next.submittedAt = now;
-          next.submittedBy = ctx.id;
-          next.submittedByType = ctx.type;
-        },
-      );
+      const updated = await this.store.update(id, updateOptions, (next) => {
+        assertTransition(next.status, 'submitted');
+        this.assertSubmitReady(next);
+        previousStatus = next.status;
+        updateOptions.from = next.status;
+        updateOptions.to = 'submitted';
+        next.status = 'submitted';
+        next.submittedAt = now;
+        next.submittedBy = ctx.id;
+        next.submittedByType = ctx.type;
+      });
 
       this.metrics.increment('intake.submitted');
       this.metrics.recordDuration('intake.time_to_submit', now - updated.createdAt);
@@ -589,7 +588,7 @@ export class RequirementIntakeService {
         projectId: updated.projectId,
         actorId: ctx.id,
         actorType: ctx.type,
-        previousStatus: record.status,
+        previousStatus,
         status: 'submitted',
       });
       return { record: updated, idempotent: false };
@@ -729,9 +728,21 @@ export class RequirementIntakeService {
   ): Promise<void> {
     const allowed = await this.authorizer.isAllowed(operation, ctx, record);
     if (!allowed) {
-      this.metrics.increment('intake.unauthorized_attempt');
-      throw new IntakeAuthorizationError(operation, ctx.id, ctx.projectId);
+      this.denyUnauthorized(operation, ctx, ctx.projectId);
     }
+  }
+
+  private denyUnauthorized(
+    operation: IntakeOperation,
+    ctx: IntakeContext,
+    projectId: string,
+  ): never {
+    this.recordUnauthorizedAttempt();
+    throw new IntakeAuthorizationError(operation, ctx.id, projectId);
+  }
+
+  private recordUnauthorizedAttempt(): void {
+    this.metrics.increment('intake.unauthorized_attempt');
   }
 
   private assertMutable(record: RequirementIntakeRecord, action: string): void {

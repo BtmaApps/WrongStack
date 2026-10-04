@@ -1,15 +1,20 @@
-## Chronicle preview assertions
+## High-confidence checks
 
-- Before crediting `String(attributes.<previewField>).length < N` in a chronicle test, read `capPreview` in `packages/core/src/chronicle/tool-adapter.ts`. The truncated branch returns `{preview, truncated, totalBytes}`, so `String()` collapses to `"[object Object]"` and the bound holds unconditionally. Accept only an object-shape assertion or `attributes.<previewField>.preview.length`.
-- Require the same test to assert a pre-truncation-derived field such as `fileStats` from `file-tool-stats.ts` — it is the only proof stats were computed from the full output before `capPreview`.
+- For `packages/webui` changes to `outline-none`, inspect `:focus-visible` in `packages/webui/src/index.css` (`outline: 2px solid hsl(var(--ring)/0.85)`). Treat removal as restoring accessibility; flag additions without a replacement `focus:` indicator.
+- Read final files before citing defects: `toolKey(event)!` in `packages/bench/src/transcript-mine.ts` may already have an explicit guard. For `[agentId, id]` joins, verify symmetric `agentId` emission across joined event types in `packages/core/src/types/session-events.ts`; asymmetry silently drops rows.
+- Compare capture-enable and capture-accept predicates in `packages/cli/src/cli-entry-main.ts` and `packages/cli/src/boot/tui-startup-output.ts`. Check parser defaults rather than inferring them from `=== true`; mismatched `!flags['x']` and `flags['x'] === true` can silently disable default launches.
 
-## Barrel exports and import subpaths
+## Instructions and catalog
 
-- Resolve every new import subpath on disk before crediting it; a failed probe is inconclusive. `parseNativeCloudSettings` from `@wrongstack/core/cloud-provider` may live in flat `packages/core/src/cloud-provider.ts`, not a directory — `grep` with a directory `path` errors, so retry as a file glob.
-- A `glob` of 0 files via brace expansion (`packages/webui-protocol/src/{automation,code-assist}.ts`) proves nothing; re-probe one explicit path per call before reporting a broken re-export.
-- For each new `export *` in a barrel (`packages/webui-protocol/src/index.ts`, `@wrongstack/core`), confirm the target module exists **and** no two `export *` sources export the same symbol name — a collision is a package-wide compile break no single-file review catches.
+- Validate `ws:if`/`ws:else`/`ws:end` nesting in `packages/core/instructions/**` against `packages/core/src/core/instruction-template.ts`. Check that `parse()` binds else to the innermost frame with `frame.branches.length === 1`; subsequent else markers disappear. Account for `evaluate()` ANDing multiple `tool=` attributes and fail-open behavior retaining text while dropping markers.
+- Verify counts using `FLEET_ROSTER` in `packages/core/tests/coordination/agent-catalog.test.ts` and `glob packages/core/skills/*/SKILL.md`, not role memory.
 
-## Shell allowlist moves
+## Tests and module boundaries
 
-- When a diff swaps a `shell:` allowlist entry between paths (e.g. `verification-context.ts` → `verification-process.ts`), verify both sides. Grep `child_process` in the removed path: absent means `IMPORTS_CHILD_PROCESS` in `packages/tools/tests/architecture/shell-true-parity.test.ts` drops its `shell:` lines before the allowlist check, so removal is safe rather than un-vetting a live site.
-- The added path must exist and contain a non-inert `shell:` value — entries match by `endsWith`, so a dead entry masks nothing and a missing one turns the gate red.
+- Check `capPreview` in `packages/core/src/chronicle/tool-adapter.ts` before accepting `String(attributes.<previewField>).length < N`: truncated values are `{preview, truncated, totalBytes}`, so stringification yields `"[object Object]"`. Require object-shape or `.preview.length` assertions plus pre-truncation-derived `fileStats` from `file-tool-stats.ts`.
+- Resolve `parseNativeCloudSettings` from `@wrongstack/core/cloud-provider` against flat `packages/core/src/cloud-provider.ts`; retry directory-probe failures as file globs. Re-probe `packages/webui-protocol/src/{automation,code-assist}.ts` as explicit paths when brace expansion returns nothing.
+- For `export *` in `packages/webui-protocol/src/index.ts` or `@wrongstack/core`, verify target existence and conflicting exported names.
+
+## Shell allowlists
+
+- For `shell:` moves from `verification-context.ts` to `verification-process.ts`, inspect both paths. Check removed-path `child_process` imports: `IMPORTS_CHILD_PROCESS` in `packages/tools/tests/architecture/shell-true-parity.test.ts` filters paths without them before allowlist checks. Require the added path to exist with a non-inert `shell:` value; matching uses `endsWith`.

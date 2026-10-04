@@ -40,6 +40,12 @@
       "status": "done"
     },
     {
+      "id": "T5.2",
+      "title": "Native N-API addon: full exit-code/stdio propagation through the helper contract v2",
+      "dependsOn": ["T5.1"],
+      "status": "done"
+    },
+    {
       "id": "T6",
       "title": "Expansion-request approval flow through permissionPolicy.evaluate + one-call elevation",
       "dependsOn": ["T2"],

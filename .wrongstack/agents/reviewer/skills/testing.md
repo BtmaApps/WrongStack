@@ -1,12 +1,16 @@
+## Fixture config knobs
+
+- Before judging Vitest tests that mutate fixture config, verify the key exists in `DEFAULT_CONFIG`/`mergeConfig` in `packages/plug-lsp/src/config.ts` and the consumer reads `deps.cfg.<key>` at call time. Flag ineffective mutations of missing or construction-captured knobs; they can produce vacuous passes or misleading failures.
+
 ## Design-tool path guards
 
-- Before flagging any ENOENT hard-fail in the design tool, read `resolveReal` in `packages/tools/src/design.ts`: it walks up parents on ENOENT and falls back to `path.resolve`, so not-yet-existing capture/verify/materialize paths never crash `assertProjectRelative` or the materialize `out` guard — do not report that as a defect.
-- Judge design-verify kit-vs-capture precedence solely by `resolveVerifyTokens` in `packages/core/src/execution/design-project-store.ts`: a pinned-but-unreadable kit returns `undefined` and must not fall back to `.design/captured-tokens.json`.
+- Check `resolveReal` in `packages/tools/src/design.ts` before alleging ENOENT failures in `assertProjectRelative` or the materialize `out` guard. Account for its parent traversal on ENOENT and `path.resolve` fallback when testing not-yet-existing capture/verify/materialize paths.
+- Use `resolveVerifyTokens` in `packages/core/src/execution/design-project-store.ts` as the authority for kit-vs-capture precedence: expect a pinned-but-unreadable kit to return `undefined`, without falling back to `.design/captured-tokens.json`.
 
 ## Provider env isolation
 
-- Verify any test claiming "without global env changes" against `endpointEnv` in `packages/providers/src/native-catalog.ts` (~line 57), not the test text: it must stay a per-provider spread copy of `process.env` plus profile-scoped `AZURE_RESOURCE_NAME` / `AWS_REGION` / `GOOGLE_VERTEX_*`. These tests pass via real per-closure isolation — a regression to writing `process.env` or to env-fallback precedence breaks a concrete URL `toContain` assertion.
+- Validate “without global env changes” claims against `endpointEnv` in `packages/providers/src/native-catalog.ts`, not test descriptions. Check that it builds a per-provider spread copy of `process.env` with profile-scoped `AZURE_RESOURCE_NAME` / `AWS_REGION` / `GOOGLE_VERTEX_*`; use concrete URL `toContain` assertions to check precedence, and separately check for writes to `process.env`.
 
 ## Verdicts
 
-- Emit `{ "findings": [] }` only when every check above holds; otherwise list each concrete defect — a false ENOENT, a capture fallback, or an env mutation — as its own finding.
+- Report supported defects separately; do not turn an ENOENT concern disproved by `resolveReal` into a finding. Return `{ "findings": [] }` only when the applicable checks reveal no reportable defects.
