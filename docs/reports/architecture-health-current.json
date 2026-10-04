@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:55:16.768Z",
+  "generatedAt": "2026-10-04T14:56:07.876Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4478,
-    "testFiles": 4049,
-    "sourceLines": 1053672,
+    "testFiles": 4050,
+    "sourceLines": 1053671,
     "workspaceEdges": 133,
     "moduleEdges": 14575,
     "nonCommandSlashImports": 0,
@@ -247,7 +247,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1008,
-      "testFiles": 896,
+      "testFiles": 897,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -262,7 +262,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 896
+          "testFiles": 897
         }
       ]
     },
@@ -10818,6 +10818,12 @@
       },
       {
         "file": "packages/core/tests/utils/tool-wire-compact.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/tool-wire-owned-schema-keys.test.ts",
         "projects": [
           "root-node"
         ]

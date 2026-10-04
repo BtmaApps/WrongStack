@@ -95,15 +95,12 @@ describe('DefaultTokenCounter', () => {
     const events = new EventBus();
     const seen: Array<{
       cost: { total: number };
-      deltaCost?: { input: number; output: number; total: number };
+      deltaCost?: { input: number; output: number; total: number } | undefined;
     }> = [];
     events.on('token.accounted', (event) => seen.push(event));
     const tc = new DefaultTokenCounter({ events });
     const noCacheRead = { ...m1, cost: { input: 3, output: 15, cache_write: 3 } } as ResolvedModel;
-    tc.accountWithModel(
-      { input: 1_000_000, output: 0, cacheWrite: 1_000_000 },
-      noCacheRead,
-    );
+    tc.accountWithModel({ input: 1_000_000, output: 0, cacheWrite: 1_000_000 }, noCacheRead);
     // Sanity: the write-rate fallback charged $3 for the cacheWrite
     // tokens at the input rate ($3/M * 1M). Plus the input itself:
     // 1M input * $3/M = $3. Running cost.total = $6.

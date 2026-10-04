@@ -94,7 +94,7 @@ export function normalizeTopLevelToolSchema(
   delete out['anyOf'];
   delete out['allOf'];
 
-  const properties: Record<string, unknown> = isRecord(schema['properties'])
+  let properties: Record<string, unknown> = isRecord(schema['properties'])
     ? { ...schema['properties'] }
     : {};
   let required = stringSet(schema['required']);
@@ -102,7 +102,7 @@ export function normalizeTopLevelToolSchema(
   for (const { keyword, branches } of combinators) {
     const objectBranches = branches.filter(isRecord);
     for (const branch of objectBranches) {
-      if (isRecord(branch['properties'])) Object.assign(properties, branch['properties']);
+      if (isRecord(branch['properties'])) properties = { ...properties, ...branch['properties'] };
     }
 
     const branchRequired = objectBranches.map((branch) => stringSet(branch['required']));
@@ -146,11 +146,15 @@ function compactSchemaNode(node: unknown, maxDescriptionChars: number): unknown 
 
   const out: JSONSchema = {};
   for (const [key, value] of Object.entries(node)) {
-    if (key === 'description' && typeof value === 'string') {
-      out[key] = compactDescription(value, maxDescriptionChars);
-    } else {
-      out[key] = compactSchemaNode(value, maxDescriptionChars);
-    }
+    Object.defineProperty(out, key, {
+      value:
+        key === 'description' && typeof value === 'string'
+          ? compactDescription(value, maxDescriptionChars)
+          : compactSchemaNode(value, maxDescriptionChars),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
   }
   return out;
 }

@@ -15,6 +15,7 @@ vi.mock('node:fs/promises', async () => {
     // Fall through to the real module for anything not overridden (chmod,
     // open, fsync, …) so atomicWrite's durability path works on real files.
     ...real,
+    open: vi.fn(real.open),
     readFile: vi.fn(real.readFile),
     writeFile: vi.fn(real.writeFile),
     rename: real.rename,
@@ -850,10 +851,10 @@ describe('DefaultConfigLoader', () => {
     const emitSpy = vi.spyOn(events, 'emit');
     const { loader: l, paths } = loader({ events });
     await fs.mkdir(path.dirname(paths.syncConfig), { recursive: true });
-    // Make atomicWrite's underlying writeFile call fail with EACCES
+    // Fail atomicWrite's exclusive temp-file creation with EACCES.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockFs = (globalThis as any).__mockFs as typeof fs;
-    mockFs.writeFile.mockRejectedValueOnce(
+    vi.mocked(mockFs.open).mockRejectedValueOnce(
       Object.assign(new Error('Permission denied'), { code: 'EACCES' }),
     );
     try {
@@ -868,7 +869,7 @@ describe('DefaultConfigLoader', () => {
         }),
       );
     } finally {
-      mockFs.writeFile.mockReset();
+      vi.mocked(mockFs.open).mockReset();
     }
   });
 

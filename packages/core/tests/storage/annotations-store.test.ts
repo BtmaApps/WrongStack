@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventBus } from '../../src/kernel/events.js';
 import { AnnotationsStore } from '../../src/storage/annotations-store.js';
 
@@ -30,7 +30,7 @@ vi.mock('node:fs/promises', async () => {
     access: real.access,
     rename: real.rename,
     unlink: real.unlink,
-    open: real.open,
+    open: vi.fn(real.open),
     close: real.close,
     readdir: real.readdir,
     chmod: real.chmod,
@@ -304,7 +304,7 @@ describe('AnnotationsStore', () => {
     const events = new EventBus();
     const emitSpy = vi.spyOn(events, 'emit');
     const loggedStore = new AnnotationsStore({ dir, events });
-    fs.writeFile.mockRejectedValueOnce(
+    vi.mocked(fs.open).mockRejectedValueOnce(
       Object.assign(new Error('ENOSPC no space left'), { code: 'ENOSPC' }),
     );
     try {
@@ -321,7 +321,7 @@ describe('AnnotationsStore', () => {
         }),
       );
     } finally {
-      fs.writeFile.mockReset();
+      vi.mocked(fs.open).mockReset();
     }
   });
 
@@ -335,7 +335,7 @@ describe('AnnotationsStore', () => {
       authorId: 'alice',
       text: 'fix this',
     });
-    fs.writeFile.mockRejectedValueOnce(
+    vi.mocked(fs.open).mockRejectedValueOnce(
       Object.assign(new Error('ENOSPC no space left'), { code: 'ENOSPC' }),
     );
     try {
@@ -352,7 +352,7 @@ describe('AnnotationsStore', () => {
         }),
       );
     } finally {
-      fs.writeFile.mockReset();
+      vi.mocked(fs.open).mockReset();
     }
   });
 });

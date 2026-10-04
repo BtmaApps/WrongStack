@@ -174,7 +174,7 @@ export class DirectorStateCheckpoint {
   private readonly lockPath: string;
   private timer: NodeJS.Timeout | null = null;
   private readonly debounceMs: number;
-  private writing = false;
+  private writing: Promise<void> | null = null;
   private rewriteRequested = false;
 
   constructor(
@@ -355,22 +355,13 @@ export class DirectorStateCheckpoint {
     this.schedule();
   }
 
-  /** Force a synchronous flush — used by Director.shutdown(). */
+  /** Wait for all pending checkpoint writes — used by Director.shutdown(). */
   async flush(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
     await this.persist();
-    // If a rewrite was requested while we waited, persist() scheduled
-    // a follow-up write. Loop until no more rewrites are requested so
-    // shutdown doesn't return before the most recent state lands on disk.
-    /* v8 ignore start -- concurrency-defensive: persist()'s finally clears the flag in single-threaded flow */
-    while (this.rewriteRequested) {
-      this.rewriteRequested = false;
-      await this.persist();
-    }
-    /* v8 ignore stop */
   }
 
   private bumpUpdatedAt(): void {
@@ -378,6 +369,10 @@ export class DirectorStateCheckpoint {
   }
 
   private schedule(): void {
+    if (this.writing) {
+      this.rewriteRequested = true;
+      return;
+    }
     if (this.timer) return;
     this.timer = setTimeout(() => {
       this.timer = null;
@@ -385,36 +380,36 @@ export class DirectorStateCheckpoint {
     }, this.debounceMs);
   }
 
-  private async persist(): Promise<void> {
+  private persist(): Promise<void> {
     if (this.writing) {
-      // A write is already in flight — defer to a follow-up flush so the
-      // most recent state still lands. Without this guard, simultaneous
-      // burst mutations can drop the latest snapshot if rename races.
+      // Share the entire write drain, including the latest snapshot. Awaiting
+      // an already-resolved promise here would starve the in-flight file I/O.
       this.rewriteRequested = true;
-      return;
+      return this.writing;
     }
-    this.writing = true;
-    try {
-      await atomicWrite(this.filePath, JSON.stringify(this.snapshot, null, 2), {
-        mode: 0o600,
-      });
-    } catch (err) {
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          event: 'director_state.checkpoint_write_failed',
-          message: toErrorMessage(err),
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    } finally {
-      this.writing = false;
-      /* v8 ignore start -- concurrency-defensive: rewriteRequested is only set by an overlapping persist() */
-      if (this.rewriteRequested) {
-        this.rewriteRequested = false;
-        this.schedule();
+    this.writing = Promise.resolve().then(async () => {
+      try {
+        do {
+          this.rewriteRequested = false;
+          try {
+            await atomicWrite(this.filePath, JSON.stringify(this.snapshot, null, 2), {
+              mode: 0o600,
+            });
+          } catch (err) {
+            console.warn(
+              JSON.stringify({
+                level: 'warn',
+                event: 'director_state.checkpoint_write_failed',
+                message: toErrorMessage(err),
+                timestamp: new Date().toISOString(),
+              }),
+            );
+          }
+        } while (this.rewriteRequested);
+      } finally {
+        this.writing = null;
       }
-      /* v8 ignore stop */
-    }
+    });
+    return this.writing;
   }
 }

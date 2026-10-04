@@ -116,8 +116,8 @@ describe('HQ persistence I/O batching', () => {
 
     await Promise.all([snapshots.drain(), timeseries.drain()]);
 
-    const snapshotWrites = io.writeFile.mock.calls.filter(([file]) =>
-      String(file).includes('.snapshot.json.'),
+    const snapshotWrites = io.open.mock.calls.filter(
+      ([file, flags]) => String(file).includes('.snapshot.json.') && flags === 'wx',
     );
     expect(snapshotWrites).toHaveLength(1);
     expect(

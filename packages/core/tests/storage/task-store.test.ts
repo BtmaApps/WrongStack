@@ -2,8 +2,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { EventBus } from '../../src/kernel/events.js';
-import { isSessionError } from '../../src/types/errors.js';
 import { emptyTaskFile, loadTasks, mutateTasks, saveTasks } from '../../src/storage/task-store.js';
+import { isSessionError } from '../../src/types/errors.js';
 
 // vi.mock is hoisted above imports.  We use vi.importActual inside the factory
 // to lazily get the real module, avoiding TDZ issues.  The returned plain object
@@ -19,6 +19,7 @@ vi.mock('node:fs/promises', async () => {
     // (open, stat, …). `mutateTasks` goes through withFileLock/atomicWrite,
     // which lock + stat real files in the real temp dirs these tests use.
     ...real,
+    open: vi.fn(real.open),
     mkdtemp: async (prefix: string) => {
       const dir = await real.mkdtemp(prefix);
       store[dir] = '';
@@ -372,7 +373,7 @@ describe('task-store', () => {
     const fp = path.join(dir, 'io-error.tasks.json');
     const events: EventBus = { emit: vi.fn() } as never;
     try {
-      vi.mocked(fsp.writeFile).mockRejectedValueOnce(
+      vi.mocked(fsp.open).mockRejectedValueOnce(
         Object.assign(new Error('ENOSPC no space left'), { code: 'ENOSPC' }),
       );
       await saveTasks(fp, { ...emptyTaskFile('sess'), tasks: [makeTask()] }, events);
@@ -386,7 +387,7 @@ describe('task-store', () => {
         }),
       );
     } finally {
-      vi.mocked(fsp.writeFile).mockReset();
+      vi.mocked(fsp.open).mockReset();
       await fsp.rm(dir, { recursive: true, force: true });
     }
   });

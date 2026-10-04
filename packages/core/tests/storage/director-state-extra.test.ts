@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DirectorStateCheckpoint, loadDirectorState } from '../../src/storage/director-state.js';
+import * as atomic from '../../src/utils/atomic-write.js';
 
 // Covers the load-missing-file branch, the recordTaskAssigned update branch,
 // the natural debounce-timer fire, the persist failure warning, and the
@@ -78,16 +79,58 @@ describe('director-state — extra coverage', () => {
     expect(warn).toHaveBeenCalled();
   });
 
-  it('persist defers to a follow-up write when one is already in flight', async () => {
+  it('overlapping flushes wait for file I/O and persist mutations during the follow-up write', async () => {
     const file = path.join(dir, 'guard.json');
     const cp = new DirectorStateCheckpoint(
       file,
       { directorRunId: 'r', spawnDepth: 0, maxSpawnDepth: 2 },
       10,
     );
-    (cp as never as { writing: boolean }).writing = true;
-    await (cp as never as { persist(): Promise<void> }).persist();
-    expect((cp as never as { rewriteRequested: boolean }).rewriteRequested).toBe(true);
+    const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+    const releases = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+    const original = atomic.atomicWrite;
+    let active = 0;
+    let maxActive = 0;
+    const write = vi.spyOn(atomic, 'atomicWrite').mockImplementation(async (...args) => {
+      const index = write.mock.calls.length - 1;
+      active++;
+      maxActive = Math.max(maxActive, active);
+      started[index]?.resolve();
+      try {
+        if (releases[index]) await releases[index].promise;
+        await original(...args);
+      } finally {
+        active--;
+      }
+    });
+    cp.setUsage({ totalCost: 1 });
+    await started[0]?.promise;
+    cp.setUsage({ totalCost: 2 });
+    const firstFlush = cp.flush();
+    const secondFlush = cp.flush();
+    let finished = false;
+    void firstFlush.then(() => {
+      finished = true;
+    });
+    try {
+      // A real macrotask must run even while shutdown is awaiting the first write.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(finished).toBe(false);
+      releases[0]?.resolve();
+      await started[1]?.promise;
+      cp.setUsage({ totalCost: 3 });
+      expect(finished).toBe(false);
+      releases[1]?.resolve();
+      await Promise.all([firstFlush, secondFlush]);
+      expect((await loadDirectorState(file))?.usage).toEqual({ totalCost: 3 });
+      expect(write).toHaveBeenCalledTimes(3);
+      expect(maxActive).toBe(1);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(write).toHaveBeenCalledTimes(3);
+    } finally {
+      for (const release of releases) release.resolve();
+      await Promise.all([firstFlush, secondFlush]);
+    }
   });
 
   it('reconcileCrashedState transitions running tasks and allocated worktrees to failed', async () => {

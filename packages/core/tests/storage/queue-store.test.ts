@@ -14,6 +14,8 @@ vi.mock('node:fs/promises', async () => {
   const store: Record<string, string> = {};
 
   const mockFs = {
+    ...real,
+    open: vi.fn(real.open),
     mkdtemp: async (prefix: string) => {
       const dir = await real.mkdtemp(prefix);
       store[dir] = '';
@@ -96,6 +98,7 @@ describe('QueueStore', () => {
     readFileMock.mockReset();
     statMock.mockReset();
     writeFileMock.mockReset();
+    vi.mocked(fsp.open).mockReset();
     unlinkMock.mockReset();
     accessMock.mockReset();
   });
@@ -287,7 +290,7 @@ describe('QueueStore', () => {
   it('emits storage.error when write() encounters a disk I/O error', async () => {
     const events: EventBus = { emit: vi.fn() } as never;
     const store = new QueueStore({ dir, events });
-    writeFileMock.mockRejectedValueOnce(
+    vi.mocked(fsp.open).mockRejectedValueOnce(
       Object.assign(new Error('ENOSPC no space left'), { code: 'ENOSPC' }),
     );
     await store.write([{ displayText: 'hello', blocks: [{ type: 'text', text: 'hello' }] }]);

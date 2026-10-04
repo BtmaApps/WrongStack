@@ -3,12 +3,12 @@ import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { Context } from '../../src/core/context.js';
 import type { EventBus } from '../../src/kernel/events.js';
-import type { SessionWriter } from '../../src/types/session.js';
 import {
   attachTodosCheckpoint,
   loadTodosCheckpoint,
   saveTodosCheckpoint,
 } from '../../src/storage/todos-checkpoint.js';
+import type { SessionWriter } from '../../src/types/session.js';
 
 // vi.mock is hoisted above imports.  We use vi.importActual inside the factory
 // to lazily get the real module, avoiding TDZ issues.  The returned plain object
@@ -20,6 +20,8 @@ vi.mock('node:fs/promises', async () => {
   const store: Record<string, string> = {};
 
   const mockFs = {
+    ...real,
+    open: vi.fn(real.open),
     mkdtemp: async (prefix: string) => {
       const dir = await real.mkdtemp(prefix);
       store[dir] = '';
@@ -379,7 +381,7 @@ describe('todos-checkpoint', () => {
     const file = path.join(dir, 'io-error.todos.json');
     const events: EventBus = { emit: vi.fn() } as never;
     try {
-      vi.mocked(fs.writeFile).mockRejectedValueOnce(
+      vi.mocked(fs.open).mockRejectedValueOnce(
         Object.assign(new Error('ENOSPC no space left'), { code: 'ENOSPC' }),
       );
       await saveTodosCheckpoint(
@@ -401,7 +403,7 @@ describe('todos-checkpoint', () => {
         }),
       );
     } finally {
-      vi.mocked(fs.writeFile).mockReset();
+      vi.mocked(fs.open).mockReset();
       await fs.rm(dir, { recursive: true, force: true });
     }
   });
