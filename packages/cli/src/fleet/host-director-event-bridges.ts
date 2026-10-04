@@ -257,16 +257,16 @@ export function registerDirectorSubagentLifecycleBridges(input: {
     }),
     director.fleet.filter('subagent.removed', (e) => {
       const payload = e.payload as {
+        sessionId?: string | undefined;
         subagentId?: string | undefined;
         reason?: string | undefined;
       };
       const subagentId = payload.subagentId ?? e.subagentId;
-      const removedSessionId = sessionFor(subagentId);
+      // The coordinator has already deleted the worker. Its event preserves
+      // the spawn-time owner; a fresh lookup would fall back to the current tab.
+      const removedSessionId = payload.sessionId ?? sessionFor(subagentId);
       onSubagentRemoved(subagentId);
       agentMonitor?.removeSubagent(subagentId);
-      // Resolve BEFORE the coordinator forgets the worker: `onSubagentRemoved`
-      // above is the host's own bookkeeping, but a later lookup would fall
-      // back to the host session and file the removal in the wrong roster.
       events.emit('subagent.removed', {
         sessionId: removedSessionId,
         subagentId,

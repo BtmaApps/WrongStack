@@ -211,8 +211,8 @@ describe('createFleetStatusBroadcaster', () => {
 
     expect(fake.sent).toHaveLength(0);
     expect(fake.heartbeats).toEqual([
-      expect.objectContaining({ agentId: 'chimera-1', status: 'running' }),
-      expect.objectContaining({ agentId: 'chimera-1', status: 'idle' }),
+      expect.objectContaining({ agentId: 'chimera-1@abcd1234', status: 'running' }),
+      expect.objectContaining({ agentId: 'chimera-1@abcd1234', status: 'idle' }),
     ]);
   });
 
@@ -227,11 +227,11 @@ describe('createFleetStatusBroadcaster', () => {
     });
     events.emit('subagent.task_completed', completedEvent('sub-1'));
     await vi.runAllTimersAsync();
-    expect(fake.heartbeats[0]).toMatchObject({ agentId: 'sub-1', status: 'running' });
+    expect(fake.heartbeats[0]).toMatchObject({ agentId: 'sub-1@abcd1234', status: 'running' });
     expect((fake.heartbeats[0] as { currentTask: string }).currentTask.length).toBeLessThanOrEqual(
       80,
     );
-    expect(fake.heartbeats[1]).toMatchObject({ agentId: 'sub-1', status: 'idle' });
+    expect(fake.heartbeats[1]).toMatchObject({ agentId: 'sub-1@abcd1234', status: 'idle' });
   });
 
   it('deregisters the agent from the mailbox registry on subagent.removed', async () => {
@@ -240,7 +240,7 @@ describe('createFleetStatusBroadcaster', () => {
     // deregisterAgent is fire-and-forget (void mb().deregisterAgent(...).catch(...)),
     // so flush the microtask queue.
     await vi.runAllTimersAsync();
-    expect(fake.deregistered).toContain('sub-1');
+    expect(fake.deregistered).toContain('sub-1@abcd1234');
   });
 
   it('enabled:false disables everything; stop() detaches listeners', async () => {

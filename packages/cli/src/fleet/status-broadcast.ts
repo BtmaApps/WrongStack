@@ -23,7 +23,7 @@
  * @module fleet/status-broadcast
  */
 
-import type { Mailbox } from '@wrongstack/core/coordination';
+import { type Mailbox, mailboxSessionTag } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { FleetConfig } from '@wrongstack/core/types';
 
@@ -76,6 +76,10 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
   };
   const nameOf = (id: string): string => opts.subagentName?.(id) ?? id;
   const from = (): string => `fleet@${opts.sessionTag()}`;
+  // Match mailbox-attach's identity, using the event's owning tab rather
+  // than the session the shared host happened to boot with.
+  const agentIdentity = (id: string, sessionId?: string): string =>
+    `${id}@${sessionId ? mailboxSessionTag(sessionId) : opts.sessionTag()}`;
 
   // ── throttling state ────────────────────────────────────────────────
   const lastSentAt = new Map<string, number>(); // subagentId → ts
@@ -189,13 +193,13 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
           // Registry enrichment only — a start is visible via the pulse;
           // broadcasting every start would double mailbox traffic.
           heartbeat({
-            agentId: e.subagentId,
+            agentId: agentIdentity(e.subagentId, e.sessionId),
             status: 'running',
             currentTask: e.description?.slice(0, 80),
           });
         }),
         opts.events.on('subagent.task_completed', (e) => {
-          heartbeat({ agentId: e.subagentId, status: 'idle' });
+          heartbeat({ agentId: agentIdentity(e.subagentId, e.sessionId), status: 'idle' });
           const name = nameOf(e.subagentId);
           if (silentInfrastructureAgents.has(e.subagentId) || isSilentInfrastructureAgent(name)) {
             return;
@@ -242,7 +246,7 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
         // when fired right after the task_completed idle heartbeat.
         opts.events.on('subagent.removed', (e) => {
           void mb()
-            .deregisterAgent(e.subagentId)
+            .deregisterAgent(agentIdentity(e.subagentId, e.sessionId))
             .catch(() => {
               /* best-effort — a broken mailbox must never affect the fleet */
             });

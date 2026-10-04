@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 250,
-      "typeOnly": 96,
-      "runtimeOrMixed": 215
+      "files": 251,
+      "typeOnly": 95,
+      "runtimeOrMixed": 217
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 51
     },
     "@wrongstack/core/kernel": {
-      "files": 327,
+      "files": 328,
       "typeOnly": 151,
-      "runtimeOrMixed": 190
+      "runtimeOrMixed": 191
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -3007,8 +3007,8 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/fleet/status-broadcast.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3440,6 +3440,12 @@
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/lifecycle-presence.test.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -7051,6 +7057,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/lifecycle-presence.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

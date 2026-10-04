@@ -19,7 +19,7 @@
  * broadcaster for retired chimera agents.
  */
 
-import { Director } from '@wrongstack/core/coordination';
+import { Director, mailboxSessionTag } from '@wrongstack/core/coordination';
 import { EventBus } from '@wrongstack/core/kernel';
 import type { SubagentRunContext, SubagentRunOutcome, TaskSpec } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -131,7 +131,7 @@ describe('chimera subagent lifecycle → mailbox deregister', () => {
       await new Promise((r) => setTimeout(r, 10));
 
       // ── 6. Verify deregisterAgent was called BEFORE the 60s prune ──
-      expect(fake.deregistered).toContain(subagentId);
+      expect(fake.deregistered).toContain(`${subagentId}@${mailboxSessionTag('sess-test')}`);
 
       // ── 7. Verify the coordinator entry is actually gone (not just deregistered) ──
       const st = director.status();
