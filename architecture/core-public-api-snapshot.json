@@ -453,6 +453,7 @@
         "export { decodeSessionIdStrict, isSafePathSegment, isSafeSessionId, MAX_PATH_SEGMENT_LENGTH, resolveContainedPath, } from './path-segment.js';",
         "export { defaultHeapLogPath, type HeapDiagnosticFields, type HeapDiagnosticValue, type HeapSample, type HeapWatchdogOptions, startHeapWatchdog, startSharedHeapWatchdog, takeHeapSample, } from './heap-watchdog.js';",
         "export { deriveCachePrefixKey } from './cache-key.js';",
+        "export { detectProjectKind, isOutsideProject, type ProjectKind, } from './project-folder.js';",
         "export { expandGlob } from './glob-expand.js';",
         "export { formatMemoryEvidenceBlock, MEMORY_EVIDENCE_TAG, sanitizeMemoryEvidenceBody, sanitizeMemoryEvidenceSource, } from './memory-evidence-fence.js';",
         "export { formatProjectSuppliedBlock, PROJECT_SUPPLIED_INSTRUCTIONS_TAG, PROJECT_SUPPLIED_TAG, sanitizeProjectSuppliedBody, sanitizeProjectSuppliedSource, } from './project-supplied-fence.js';",
@@ -1764,8 +1765,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 81,
-      "sourceLines": 13762
+      "sourceFiles": 82,
+      "sourceLines": 13824
     },
     {
       "directory": "vcs",

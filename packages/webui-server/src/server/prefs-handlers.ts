@@ -20,6 +20,7 @@ import { type PendingConfirm, resolveYoloEligiblePendingConfirms } from './pendi
 import { SESSION_SCOPED_PREF_KEYS } from './session-scoped-prefs.js';
 import {
   buildSystemPromptInfo,
+  isScoutSuggested,
   type SystemPromptSurface,
   unavailableSystemPromptInfo,
 } from './system-prompt-handlers.js';
@@ -407,6 +408,16 @@ export async function handlePrefsUpdate(
     subagentModelPlan: _plan,
     ...durablePayload
   } = payload;
+  // Scout picked in a scratch folder is that session's choice, not the profile
+  // default: the CLI reads the same file, and the next launch inside a project
+  // would otherwise open on the general-purpose identity.
+  if (
+    durablePayload['systemPromptVariant'] === 'scout' &&
+    ctx.systemPrompt &&
+    (await isScoutSuggested(ctx.systemPrompt))
+  ) {
+    delete durablePayload['systemPromptVariant'];
+  }
   if (Object.keys(durablePayload).length > 0) {
     try {
       await ctx.persist(durablePayload);

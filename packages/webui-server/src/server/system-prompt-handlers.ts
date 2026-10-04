@@ -28,6 +28,12 @@ export interface SystemPromptSurface {
   profileConfigPath: string;
   /** The variant the running session is currently built from. */
   current: () => SystemInstructionVariant;
+  /**
+   * True when the project root is a scratch folder rather than a codebase
+   * (no manifest, no AGENTS.md, no git). The picker then suggests Scout, and
+   * a Scout choice made there is not written to the profile default.
+   */
+  outsideProject?: (() => Promise<boolean>) | undefined;
   /** Snapshot used to render a draft against this session's callable tools. */
   previewContext?:
     | ((sessionId?: string) => {
@@ -62,6 +68,8 @@ export interface SystemPromptInfoPayload {
   current: SystemInstructionVariant;
   /** False until the user has explicitly picked a variant at least once. */
   chosen: boolean;
+  /** Variant the picker preselects for a new session in this folder, if any. */
+  suggested?: SystemInstructionVariant | undefined;
   variants: SystemPromptVariantInfo[];
   /** Set when the token estimate could not be computed; variants still list. */
   error?: string | undefined;
@@ -99,6 +107,7 @@ export async function buildSystemPromptInfo(
   } catch {
     chosen = false;
   }
+  const suggestScout = await isScoutSuggested(surface);
   return {
     current: (currentOverride as SystemInstructionVariant | undefined) ?? surface.current(),
     chosen,
@@ -108,8 +117,18 @@ export async function buildSystemPromptInfo(
       hint: option.hint,
       tokens: tokens[option.variant] ?? 0,
     })),
+    ...(suggestScout ? { suggested: 'scout' as const } : {}),
     ...(error !== undefined ? { error } : {}),
   };
+}
+
+/** Whether this folder is one where the picker suggests Scout. Never throws. */
+export async function isScoutSuggested(surface: SystemPromptSurface): Promise<boolean> {
+  try {
+    return (await surface.outsideProject?.()) === true;
+  } catch {
+    return false;
+  }
 }
 
 /** Payload for a host that never wired the picker — the browser hides it. */

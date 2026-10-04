@@ -3,64 +3,18 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { color, toErrorMessage } from '@wrongstack/core/utils';
+import {
+  color,
+  detectProjectKind,
+  isOutsideProject,
+  type ProjectKind,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import type { ReadlineInputReader } from '../input-reader.js';
 import type { TerminalRenderer } from '../renderer.js';
 import { detectProjectFacts, renderAgentsTemplate } from '../services/project-facts.js';
 
-export type ProjectKind =
-  /** `.wrongstack/AGENTS.md` exists — fully set up. */
-  | 'initialized'
-  /** Has a recognizable manifest (package.json, pyproject.toml, etc.) but no AGENTS.md yet. */
-  | 'project'
-  /** No manifest, no AGENTS.md — probably an empty/scratch directory. */
-  | 'empty';
-
-const MANIFESTS = [
-  'package.json',
-  'pyproject.toml',
-  'Cargo.toml',
-  'go.mod',
-  'Makefile',
-  'pom.xml',
-  'build.gradle',
-  'build.gradle.kts',
-  'composer.json',
-  'Gemfile',
-];
-
-export async function detectProjectKind(projectRoot: string): Promise<ProjectKind> {
-  try {
-    await fs.access(path.join(projectRoot, '.wrongstack', 'AGENTS.md'));
-    return 'initialized';
-  } catch {
-    // not initialized
-  }
-  for (const m of MANIFESTS) {
-    try {
-      await fs.access(path.join(projectRoot, m));
-      return 'project';
-    } catch {
-      // try next
-    }
-  }
-  return 'empty';
-}
-
-/**
- * No manifest, no AGENTS.md, and no git repository at the project root: a
- * scratch or home folder rather than a codebase. Checked after the project
- * check, so a `git init` the user just accepted already counts as a project.
- */
-export async function isOutsideProject(projectRoot: string): Promise<boolean> {
-  if ((await detectProjectKind(projectRoot)) !== 'empty') return false;
-  try {
-    await fs.access(path.join(projectRoot, '.git'));
-    return false;
-  } catch {
-    return true;
-  }
-}
+export { detectProjectKind, isOutsideProject, type ProjectKind };
 
 async function scaffoldAgentsMd(projectRoot: string): Promise<string> {
   const dir = path.join(projectRoot, '.wrongstack');

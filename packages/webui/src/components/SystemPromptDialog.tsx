@@ -44,11 +44,16 @@ export function SystemPromptDialog() {
   const [presetBusy, setPresetBusy] = useState(false);
   const [presetDirty, setPresetDirty] = useState(false);
 
+  // A new conversation (or the first-run pick) in a folder that is not a
+  // project starts on the server's suggestion; opening the picker mid-session
+  // just shows what this tab is running.
+  const suggested = pickerStartsSession || info?.chosen === false ? info?.suggested : undefined;
+
   // Re-seed the selection from the live variant each time the dialog opens, so
   // an abandoned pick does not linger into the next open.
   useEffect(() => {
-    if (pickerOpen) setSelected(current);
-  }, [pickerOpen, current]);
+    if (pickerOpen) setSelected(suggested ?? current);
+  }, [pickerOpen, current, suggested]);
 
   // Only one `system_prompt.get` is sent per connection, so a tab opened later
   // has never had its own variant answered for and would fall back to the last
@@ -95,6 +100,11 @@ export function SystemPromptDialog() {
               ? t('activity:systemPrompt.firstRunDescription')
               : t('activity:systemPrompt.description')}
           </DialogDescription>
+          {suggested === 'scout' && (
+            <p className="text-xs text-muted-foreground">
+              {t('activity:systemPrompt.suggestedScout')}
+            </p>
+          )}
         </DialogHeader>
 
         {unavailable ? (

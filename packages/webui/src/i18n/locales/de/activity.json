@@ -3816,7 +3816,8 @@
     "selectTabCompleteEnterDispatchEsc": "↑/↓ auswählen · Tab vervollständigen · Enter senden · Esc schließen"
   },
   "chatInput": {
-    "promptLibrary": "Prompt-Bibliothek"
+    "promptLibrary": "Prompt-Bibliothek",
+    "composerLabel": "Nachricht an den Agenten senden"
   },
   "chipMultiSelect": {
     "filter": "Filtern…"
@@ -3952,6 +3953,7 @@
     "title": "System-Prompt",
     "description": "Legen Sie fest, wie viele eingebaute Vorgaben der Agent erhält. Ein größerer Prompt kostet bei jeder Anfrage Tokens.",
     "firstRunDescription": "Wählen Sie vor Ihrer ersten Nachricht eine System-Prompt-Größe. Ein größerer Prompt kostet bei jeder Anfrage Tokens.",
+    "suggestedScout": "Dieser Ordner ist kein Projekt, daher ist Scout – der Allzweck-Agent – vorausgewählt. Eine Auswahl hier ändert Ihre gespeicherte Voreinstellung nicht.",
     "tokens": "~{{count}} Tokens",
     "current": "Aktuell",
     "apply": "Übernehmen",

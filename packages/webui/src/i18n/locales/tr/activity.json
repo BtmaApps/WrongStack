@@ -3877,7 +3877,8 @@
     "selectTabCompleteEnterDispatchEsc": "↑/↓ seç · Tab tamamla · Enter gönder · Esc kapat"
   },
   "chatInput": {
-    "promptLibrary": "İstem kitaplığı"
+    "promptLibrary": "İstem kitaplığı",
+    "composerLabel": "Ajan'a mesaj gönder"
   },
   "chipMultiSelect": {
     "filter": "Filtrele…"
@@ -4013,6 +4014,7 @@
     "title": "Sistem promptu",
     "description": "Ajanın hangi hazır yönergelerle başlayacağını seçin. Büyük prompt her istekte token harcar.",
     "firstRunDescription": "İlk mesajınızdan önce sistem promptu boyutunu seçin. Büyük prompt her istekte token harcar.",
+    "suggestedScout": "Bu klasör bir proje değil; bu yüzden genel amaçlı ajan Scout önceden seçildi. Burada seçmek kayıtlı varsayılanınızı değiştirmez.",
     "tokens": "~{{count}} token",
     "current": "Geçerli",
     "apply": "Uygula",

@@ -133,6 +133,11 @@ export {
   useDaemonPerfDefaults,
 } from './perf-profile.js';
 export { isPidAlive } from './pid.js';
+export {
+  detectProjectKind,
+  isOutsideProject,
+  type ProjectKind,
+} from './project-folder.js';
 export * from './project-identity.js';
 export {
   activateProjectStateGuard,

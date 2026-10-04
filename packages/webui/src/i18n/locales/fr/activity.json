@@ -3816,7 +3816,8 @@
     "selectTabCompleteEnterDispatchEsc": "↑/↓ sélectionner · Tab compléter · Entrée envoyer · Échap fermer"
   },
   "chatInput": {
-    "promptLibrary": "Bibliothèque de prompts"
+    "promptLibrary": "Bibliothèque de prompts",
+    "composerLabel": "Envoyer un message à l'agent"
   },
   "chipMultiSelect": {
     "filter": "Filtrer…"
@@ -3952,6 +3953,7 @@
     "title": "Prompt système",
     "description": "Choisissez le volume de consignes intégrées fourni à l'agent. Un prompt plus long consomme des tokens à chaque requête.",
     "firstRunDescription": "Choisissez une taille de prompt système avant votre premier message. Un prompt plus long consomme des tokens à chaque requête.",
+    "suggestedScout": "Ce dossier n’est pas un projet : Scout, l’agent généraliste, est donc présélectionné. Le choisir ici ne modifie pas votre valeur par défaut enregistrée.",
     "tokens": "~{{count}} tokens",
     "current": "Actuel",
     "apply": "Appliquer",

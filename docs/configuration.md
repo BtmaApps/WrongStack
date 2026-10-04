@@ -371,8 +371,9 @@ prompt cache stays valid. Spawn-capable tools are still withheld from a solo
 session.
 
 Launched from a folder that is not a project (no manifest, no
-`.wrongstack/AGENTS.md`, no git), the startup menu preselects Scout. Choosing it
-there applies to that launch only; the saved profile default is unchanged.
+`.wrongstack/AGENTS.md`, no git), the CLI startup menu and the WebUI new-session
+picker preselect Scout. Choosing it there applies to that launch or session only;
+the saved profile default is unchanged.
 
 CLI flags override this setting for one launch:
 

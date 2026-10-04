@@ -137,4 +137,32 @@ describe('SystemPromptDialog', () => {
 
     expect(screen.getByText(/before your first message/)).toBeDefined();
   });
+
+  it('starts a new session on the suggested Scout in a non-project folder', () => {
+    render(<SystemPromptDialog />);
+    const info = {
+      ...INFO,
+      suggested: 'scout' as const,
+      variants: [
+        ...INFO.variants,
+        { variant: 'scout' as const, label: 'Scout', hint: 'general', tokens: 4443 },
+      ],
+    };
+    open({ startsSession: true, info: info as typeof INFO });
+
+    expect(screen.getByText(/This folder is not a project/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & start session' }));
+
+    expect(setSystemPromptVariant).toHaveBeenCalledWith('scout');
+  });
+
+  it('keeps the live variant when opened mid-session, even with a suggestion', () => {
+    render(<SystemPromptDialog />);
+    open({ info: { ...INFO, suggested: 'scout' } as typeof INFO });
+
+    expect(screen.queryByText(/This folder is not a project/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(setSystemPromptVariant).not.toHaveBeenCalled();
+  });
 });

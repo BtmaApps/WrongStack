@@ -3816,7 +3816,8 @@
     "selectTabCompleteEnterDispatchEsc": "↑/↓ seleziona · Tab completa · Invio invia · Esc chiudi"
   },
   "chatInput": {
-    "promptLibrary": "Libreria di prompt"
+    "promptLibrary": "Libreria di prompt",
+    "composerLabel": "Invia un messaggio all'agente"
   },
   "chipMultiSelect": {
     "filter": "Filtra…"
@@ -3952,6 +3953,7 @@
     "title": "Prompt di sistema",
     "description": "Scegli quante istruzioni integrate riceve l'agente. Un prompt più grande consuma token a ogni richiesta.",
     "firstRunDescription": "Scegli una dimensione del prompt di sistema prima del primo messaggio. Un prompt più grande consuma token a ogni richiesta.",
+    "suggestedScout": "Questa cartella non è un progetto, quindi Scout, l’agente generico, è preselezionato. Sceglierlo qui non cambia l’impostazione predefinita salvata.",
     "tokens": "~{{count}} token",
     "current": "Attuale",
     "apply": "Applica",

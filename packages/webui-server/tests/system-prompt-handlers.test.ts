@@ -294,3 +294,46 @@ describe('prefs.update systemPromptVariant', () => {
     expect(msg.payload.message).toContain('systemPromptVariant');
   });
 });
+
+describe('Scout suggestion outside a project', () => {
+  const outside = (value: boolean | Error) => ({
+    ...surface(path.join(tmp, 'config.json')),
+    outsideProject: async () => {
+      if (value instanceof Error) throw value;
+      return value;
+    },
+  });
+
+  it('suggests Scout only for a folder that is not a project', async () => {
+    expect((await buildSystemPromptInfo(outside(true))).suggested).toBe('scout');
+    expect((await buildSystemPromptInfo(outside(false))).suggested).toBeUndefined();
+    // A failed check never blocks the picker; it just suggests nothing.
+    expect((await buildSystemPromptInfo(outside(new Error('EACCES')))).suggested).toBeUndefined();
+  });
+
+  it('applies Scout there without writing it as the profile default', async () => {
+    const persist = vi.fn(async () => undefined);
+    const applyVariant = vi.fn();
+    const context = ctx({
+      persist,
+      systemPrompt: { ...outside(true), applyVariant },
+    });
+
+    await handlePrefsUpdate(context, {} as never, {
+      systemPromptVariant: 'scout',
+      logLevel: 'info',
+    });
+
+    expect(applyVariant).toHaveBeenCalledWith('scout', undefined);
+    expect(persist).toHaveBeenCalledWith({ logLevel: 'info' });
+  });
+
+  it('still persists Scout picked inside a project', async () => {
+    const persist = vi.fn(async () => undefined);
+    const context = ctx({ persist, systemPrompt: outside(false) });
+
+    await handlePrefsUpdate(context, {} as never, { systemPromptVariant: 'scout' });
+
+    expect(persist).toHaveBeenCalledWith({ systemPromptVariant: 'scout' });
+  });
+});

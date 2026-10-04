@@ -17,7 +17,7 @@ import { TOKENS } from '@wrongstack/core/kernel';
 import { SkillInstaller } from '@wrongstack/core/skills';
 import { PromptUsageStore } from '@wrongstack/core/storage';
 import { resolveTokenSavingTier, type SessionWriter } from '@wrongstack/core/types';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { isOutsideProject, resolveWstackPaths } from '@wrongstack/core/utils';
 import {
   type BrainHandlerContext,
   type CustomModeStore,
@@ -288,6 +288,7 @@ export function createWebuiRouteContexts({
       },
       profileConfigPath,
       current: () => opts.appConfig?.systemPrompt?.variant ?? 'default',
+      outsideProject: () => isOutsideProject(promptProjectRoot()),
       // Patch the live config before rebuilding — `persistPrefs` writes the
       // file, and the builder reads the variant off the in-memory object.
       applyVariant: async (variant, sessionId) => {

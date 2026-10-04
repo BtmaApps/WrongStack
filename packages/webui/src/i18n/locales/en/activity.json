@@ -3877,7 +3877,8 @@
     "selectTabCompleteEnterDispatchEsc": "↑/↓ select · Tab complete · Enter dispatch · Esc dismiss"
   },
   "chatInput": {
-    "promptLibrary": "Prompt library"
+    "promptLibrary": "Prompt library",
+    "composerLabel": "Message the agent"
   },
   "chipMultiSelect": {
     "filter": "Filter…"
@@ -4013,6 +4014,7 @@
     "title": "System prompt",
     "description": "Choose how much built-in guidance the agent starts with. A larger prompt costs tokens on every request.",
     "firstRunDescription": "Pick a system prompt size before your first message. A larger prompt costs tokens on every request.",
+    "suggestedScout": "This folder is not a project, so Scout — the general-purpose agent — is preselected. Choosing it here does not change your saved default.",
     "tokens": "~{{count}} tokens",
     "current": "Current",
     "apply": "Apply",

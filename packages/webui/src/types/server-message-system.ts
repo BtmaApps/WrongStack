@@ -365,6 +365,8 @@ export interface WSSystemPromptVariantInfo {
 export interface WSSystemPromptInfo {
   current: 'lite' | 'default' | 'pro' | 'scout';
   chosen: boolean;
+  /** Preselected for a new session in this folder (a non-project folder suggests Scout). */
+  suggested?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
   variants: WSSystemPromptVariantInfo[];
   error?: string | undefined;
 }

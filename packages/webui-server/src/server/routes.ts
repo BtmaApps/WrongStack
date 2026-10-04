@@ -32,7 +32,7 @@ import {
 } from '@wrongstack/core/coordination';
 import { type DestructiveKind, resolveYoloConfirmKinds } from '@wrongstack/core/security';
 import { type ProviderConfig, resolveTokenSavingTier } from '@wrongstack/core/types';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { isOutsideProject, resolveWstackPaths } from '@wrongstack/core/utils';
 import { makeProviderFromConfig, withCatalogCapabilities } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import { createAutonomyRouteHandlers } from './autonomy-routes.js';
@@ -340,6 +340,7 @@ export function buildRoutes(
     },
     profileConfigPath: deps.profileConfigPath,
     current: () => state.getConfig().systemPrompt?.variant ?? 'default',
+    outsideProject: () => isOutsideProject(state.getProjectRoot()),
     // Move the in-memory default too: `persistPrefsToConfig` writes the file,
     // not the object, and everything that has no per-tab answer reads the
     // object — `current()` for a picker in a tab that never chose, and the
