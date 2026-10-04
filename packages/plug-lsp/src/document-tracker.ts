@@ -34,6 +34,9 @@ export class DocumentTracker {
   private clock = 0;
   private trackedBytes = 0;
   private generation = 0;
+  private documentOperationClock = 0;
+  /** Latest in-flight open/change read per path, so older reads cannot win late. */
+  private readonly documentOperations = new Map<string, number>();
   private cwd: string;
 
   constructor(
@@ -80,32 +83,42 @@ export class DocumentTracker {
     const absPath = this.resolve(filePath);
     const languageId = this.detectLanguage(absPath);
     if (!languageId) return;
-    const text = await this.readTrackable(absPath, 'changed file');
-    if (text === null || generation !== this.generation) return;
-    const doc = this.docs.get(absPath);
-    if (!doc) {
-      await this.open(absPath, text);
-      return;
-    }
-    doc.version++;
-    this.accountText(doc.text, text);
-    doc.text = text;
-    this.touch(absPath);
-    for (const server of this.registry().list()) {
-      /* v8 ignore next -- false branch is defensive for mixed registries. */
-      if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
-      // A server that never received didOpen must be caught up with didOpen,
-      // not didChange — LSP servers only track open documents, so a didChange
-      // for an unopened document is dropped and the server silently misses
-      // the new content. Same two-tier fan-out as open().
-      if (doc.serverNames.has(server.name)) {
-        server.notifyDidChange({ uri: doc.uri, version: doc.version }, text);
-      } else {
-        server.notifyDidOpen(toTextDocumentItem(doc));
-        doc.serverNames.add(server.name);
+    const operation = this.beginDocumentOperation(absPath);
+    try {
+      const text = await this.readTrackable(absPath, 'changed file');
+      if (
+        text === null ||
+        generation !== this.generation ||
+        !this.isCurrentDocumentOperation(absPath, operation)
+      )
+        return;
+      const doc = this.docs.get(absPath);
+      if (!doc) {
+        await this.open(absPath, text);
+        return;
       }
+      doc.version++;
+      this.accountText(doc.text, text);
+      doc.text = text;
+      this.touch(absPath);
+      for (const server of this.registry().list()) {
+        /* v8 ignore next -- false branch is defensive for mixed registries. */
+        if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
+        // A server that never received didOpen must be caught up with didOpen,
+        // not didChange — LSP servers only track open documents, so a didChange
+        // for an unopened document is dropped and the server silently misses
+        // the new content. Same two-tier fan-out as open().
+        if (doc.serverNames.has(server.name)) {
+          server.notifyDidChange({ uri: doc.uri, version: doc.version }, text);
+        } else {
+          server.notifyDidOpen(toTextDocumentItem(doc));
+          doc.serverNames.add(server.name);
+        }
+      }
+      this.enforceBudget();
+    } finally {
+      this.finishDocumentOperation(absPath, operation);
     }
-    this.enforceBudget();
   }
 
   async open(filePath: string, knownText?: string): Promise<boolean> {
@@ -113,50 +126,62 @@ export class DocumentTracker {
     const absPath = this.resolve(filePath);
     const languageId = this.detectLanguage(absPath);
     if (!languageId) return false;
-    let text: string;
-    if (knownText !== undefined) {
-      // A caller-supplied body still counts against the per-document cap.
-      if (Buffer.byteLength(knownText, 'utf8') > MAX_DOCUMENT_BYTES) return false;
-      text = knownText;
-    } else {
-      const read = await this.readTrackable(absPath, 'file');
-      if (read === null || generation !== this.generation) return false;
-      text = read;
-    }
-    let doc = this.docs.get(absPath);
-    /* v8 ignore next -- both create and existing paths are covered; branch accounting is source-map noisy. */
-    if (!doc) {
-      doc = {
-        uri: pathToUri(absPath),
-        path: absPath,
-        languageId,
-        version: 1,
-        text,
-        serverNames: new Set(),
-      };
-      this.docs.set(absPath, doc);
-      this.accountText(undefined, text);
-      this.events?.emit('lsp.document.opened', { path: absPath, language: languageId });
-    } else if (text !== doc.text) {
-      doc.version++;
-      this.accountText(doc.text, text);
-      doc.text = text;
+    const operation = this.beginDocumentOperation(absPath);
+    try {
+      let text: string;
+      if (knownText !== undefined) {
+        // A caller-supplied body still counts against the per-document cap.
+        if (Buffer.byteLength(knownText, 'utf8') > MAX_DOCUMENT_BYTES) return false;
+        text = knownText;
+      } else {
+        const read = await this.readTrackable(absPath, 'file');
+        if (
+          read === null ||
+          generation !== this.generation ||
+          !this.isCurrentDocumentOperation(absPath, operation)
+        )
+          return false;
+        text = read;
+      }
+      if (generation !== this.generation || !this.isCurrentDocumentOperation(absPath, operation))
+        return false;
+      let doc = this.docs.get(absPath);
+      /* v8 ignore next -- both create and existing paths are covered; branch accounting is source-map noisy. */
+      if (!doc) {
+        doc = {
+          uri: pathToUri(absPath),
+          path: absPath,
+          languageId,
+          version: 1,
+          text,
+          serverNames: new Set(),
+        };
+        this.docs.set(absPath, doc);
+        this.accountText(undefined, text);
+        this.events?.emit('lsp.document.opened', { path: absPath, language: languageId });
+      } else if (text !== doc.text) {
+        doc.version++;
+        this.accountText(doc.text, text);
+        doc.text = text;
+        for (const server of this.registry().list()) {
+          if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
+          if (!doc.serverNames.has(server.name)) continue;
+          server.notifyDidChange({ uri: doc.uri, version: doc.version }, text);
+        }
+      }
+      this.touch(absPath);
       for (const server of this.registry().list()) {
         if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
-        if (!doc.serverNames.has(server.name)) continue;
-        server.notifyDidChange({ uri: doc.uri, version: doc.version }, text);
+        /* v8 ignore next -- duplicate-open guard is defensive/idempotent. */
+        if (doc.serverNames.has(server.name)) continue;
+        server.notifyDidOpen(toTextDocumentItem(doc));
+        doc.serverNames.add(server.name);
       }
+      this.enforceBudget();
+      return this.docs.has(absPath);
+    } finally {
+      this.finishDocumentOperation(absPath, operation);
     }
-    this.touch(absPath);
-    for (const server of this.registry().list()) {
-      if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
-      /* v8 ignore next -- duplicate-open guard is defensive/idempotent. */
-      if (doc.serverNames.has(server.name)) continue;
-      server.notifyDidOpen(toTextDocumentItem(doc));
-      doc.serverNames.add(server.name);
-    }
-    this.enforceBudget();
-    return this.docs.has(absPath);
   }
 
   async reopenForServer(server: LSPServer): Promise<void> {
@@ -194,6 +219,22 @@ export class DocumentTracker {
   /** Record a document as most-recently-used. */
   private touch(absPath: string): void {
     this.lastUsed.set(absPath, ++this.clock);
+  }
+
+  /** Fence overlapping reads so only the latest operation for a path may publish. */
+  private beginDocumentOperation(absPath: string): number {
+    const operation = ++this.documentOperationClock;
+    this.documentOperations.set(absPath, operation);
+    return operation;
+  }
+
+  private isCurrentDocumentOperation(absPath: string, operation: number): boolean {
+    return this.documentOperations.get(absPath) === operation;
+  }
+
+  private finishDocumentOperation(absPath: string, operation: number): void {
+    if (this.isCurrentDocumentOperation(absPath, operation))
+      this.documentOperations.delete(absPath);
   }
 
   /** Adjust the running byte total when a document's text is replaced. */
