@@ -84,6 +84,34 @@ export const DISCOVERY_AGENTS: AgentDefinition[] = [
       ],
     },
   },
+  {
+    config: {
+      id: 'investigator',
+      name: 'Investigator',
+      role: 'investigator',
+      tools: [...TOOLS.research, 'read_url_content'],
+    },
+    budget: MEDIUM_BUDGET,
+    capability: {
+      phase: 'discovery',
+      summary:
+        'General desk research on any non-technical topic: products, prices, markets, rules, events — sourced and dated.',
+      keywords: [
+        'investigator',
+        'desk research',
+        'look up',
+        'find out',
+        'fact-check',
+        'fact check',
+        'market research',
+        'compare prices',
+        'price comparison',
+        'product comparison',
+        'regulations',
+        'current events',
+      ],
+    },
+  },
 ];
 
 /**

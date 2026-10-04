@@ -35,6 +35,8 @@ export type {
 export { SessionRegistry as LegacySessionRegistry } from '../session-catalog/session-registry.js';
 export type { SyncCategory, SyncConfig } from '../types/config.js';
 export type { DefaultSessionReaderOptions, SessionReader } from '../types/session-reader.js';
+export type { VcsAdapter, VcsKind, VcsOptions } from '../vcs/vcs-adapter.js';
+export type { VcsRunner, VcsRunResult } from '../vcs/vcs-runner.js';
 export {
   type Annotation,
   AnnotationsStore,
@@ -221,14 +223,13 @@ export {
   ReplayLogStore,
   type ReplayLogStoreOptions,
 } from './replay-log-store.js';
+export { attachScoutToolLearning, seedScoutLearnedTools } from './scout-tool-learning.js';
 export { stampAgentId, withAgentAttribution } from './session-agent-attribution.js';
 export { SessionAnalyzer } from './session-analyzer.js';
 export {
   SessionCheckpointCas,
   type SessionCheckpointCasOptions,
 } from './session-checkpoint-cas.js';
-export type { VcsAdapter, VcsKind, VcsOptions } from '../vcs/vcs-adapter.js';
-export type { VcsRunner, VcsRunResult } from '../vcs/vcs-runner.js';
 export {
   type CheckpointGcResult,
   collectReachableManifestHashes,

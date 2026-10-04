@@ -5,6 +5,7 @@ import type {
   Request,
   Response,
   StreamEvent,
+  Tool,
 } from '@wrongstack/core/types';
 import { ConfigError, ParseError, ProviderError, StreamHangError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
@@ -146,10 +147,11 @@ export abstract class WireAdapter implements Provider {
    * gets the same guarantee without each adapter repeating the logic.
    * Set by subclasses from their provider-specific options/quirks.
    *
-   * Public so consumers (e.g. the TUI status bar view model) can read it to
-   * compute the dropped-tool count: `max(0, ctx.tools.length - maxToolsCount)`.
+   * Public so diagnostics can compare the candidate direct surface with this
+   * cap. `ctx.tools` already contains the final provider selection.
    */
   maxToolsCount: number = 0;
+  private toolSelectionCache: { source: Tool[]; limit: number; selected: Tool[] } | undefined;
 
   constructor(
     protected readonly apiKey: string,
@@ -197,24 +199,29 @@ export abstract class WireAdapter implements Provider {
   }
 
   /**
-   * Apply the maxTools limit to a request, returning a possibly-filtered copy.
-   * Centralized so both {@link stream} and provider overrides (e.g.
-   * {@link GoogleProvider.stream}) share one implementation.
-   *
-   * Returns the original request reference unchanged when no filtering is
-   * needed (no allocation, preserves WeakMap caches).
+   * Resolve maxTools before prompt composition. The wire also uses this as a
+   * backstop for standalone requests. Stable selections retain array identity
+   * for prompt caching and context accounting.
    */
-  protected applyMaxToolsFilter(req: Request): Request {
-    if (this.maxToolsCount <= 0 || !req.tools || req.tools.length <= this.maxToolsCount) {
-      return req;
-    }
-    const filteredTools = filterToolsByMaxCount(req.tools, this.maxToolsCount);
+  selectToolsForRequest(tools: Tool[]): Tool[] {
+    if (this.maxToolsCount <= 0 || tools.length <= this.maxToolsCount) return tools;
+    const cached = this.toolSelectionCache;
+    if (cached?.source === tools && cached.limit === this.maxToolsCount) return cached.selected;
+    const filteredTools = filterToolsByMaxCount(tools, this.maxToolsCount);
     // Log the dropped tools once per session so the user knows tools were
     // omitted — conversation history may reference them.
-    const droppedNames = req.tools.filter((t) => !filteredTools.includes(t)).map((t) => t.name);
+    const droppedNames = tools.filter((t) => !filteredTools.includes(t)).map((t) => t.name);
     if (droppedNames.length > 0) {
       this.logMaxToolsWarning(droppedNames);
     }
+    this.toolSelectionCache = { source: tools, limit: this.maxToolsCount, selected: filteredTools };
+    return filteredTools;
+  }
+
+  protected applyMaxToolsFilter(req: Request): Request {
+    if (!req.tools) return req;
+    const filteredTools = this.selectToolsForRequest(req.tools);
+    if (filteredTools === req.tools) return req;
     // If a specific tool was pinned via toolChoice but was filtered out,
     // fall back to 'auto' so the provider never receives a tool_choice
     // for a tool it wasn't given.

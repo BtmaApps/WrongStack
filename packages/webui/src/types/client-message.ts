@@ -730,7 +730,7 @@ export type WSClientMessageCore =
   | { type: 'system_prompt.presets.get'; payload?: SessionScopedPayload }
   | {
       type: 'system_prompt.presets.create';
-      payload: { name: string; baseVariant: 'lite' | 'default' | 'pro' };
+      payload: { name: string; baseVariant: 'lite' | 'default' | 'pro' | 'scout' };
     }
   | {
       type: 'system_prompt.presets.save';
@@ -745,7 +745,7 @@ export type WSClientMessageCore =
   | {
       type: 'system_prompt.presets.activate';
       payload: {
-        baseVariant: 'lite' | 'default' | 'pro';
+        baseVariant: 'lite' | 'default' | 'pro' | 'scout';
         id?: string;
         sessionId?: string;
         scope: 'profile' | 'project';

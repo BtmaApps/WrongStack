@@ -151,7 +151,7 @@ design, the settings, what leaves the machine, and how to evaluate the
 thresholds against your own roster.
 
 The same typed-judgment approach is available for **role dispatch** — picking
-which of the ~75 catalog agents takes an ambiguous task — in
+which of the ~79 catalog agents takes an ambiguous task — in
 [fleet-dispatch-classifier.md](./fleet-dispatch-classifier.md). Both share one
 `typesafe` account block; neither is enabled by configuring it.
 
@@ -173,7 +173,7 @@ Foreign skills are usable as-is, but to **own, edit, or commit** one, import it 
 
 ## Bundled skills
 
-WrongStack ships with 36 bundled skills:
+WrongStack ships with 37 bundled skills:
 
 | Skill | Description |
 |---|---|
@@ -186,6 +186,7 @@ WrongStack ships with 36 bundled skills:
 | `codebase-navigation` | Orient, locate, and trace code with the codebase index before reading files |
 | `debugging` | Root-cause an observed failure: reproduce, localize, fix at the cause, prove it |
 | `docker-deploy` | Docker containerization, multi-stage builds, image scanning |
+| `evidence-audit` | Proof-driven audit rounds: reproduce, apply a scope-only fix, verify, and promote high-risk regressions |
 | `git-flow` | Commit message style, branch hygiene, safe history operations |
 | `mailbox-bridge` | Loopback HTTP bridge that exposes the project's shared WrongStack mailbox so external agents (Claude Code, Aider, scripts) can read, send, and acknowledge messages |
 | `mnemosyne` | Deterministic and LLM-supported curation of SAGE memory entries |

@@ -51,6 +51,7 @@ vi.mock('@wrongstack/core/agent', () => ({
     constructor(readonly options: Record<string, unknown>) {}
     build = mocks.systemPromptBuild;
   },
+  providerToolsForVariant: (registry: { listForProvider(): unknown }) => registry.listForProvider(),
 }));
 vi.mock('@wrongstack/core/coordination', () => ({
   getSharedProjectMailbox: vi.fn(() => ({ getAgentStatuses: mocks.getAgentStatuses })),
@@ -103,10 +104,12 @@ vi.mock('@wrongstack/core/tools', () => ({
 }));
 vi.mock('@wrongstack/core/storage', () => ({
   AnnotationsStore: class AnnotationsStoreMock {},
+  attachScoutToolLearning: vi.fn(() => () => undefined),
   DefaultSessionReader: class DefaultSessionReaderMock {},
   DefaultSessionStore: class DefaultSessionStoreMock {},
   getSessionRegistry: vi.fn(),
   PromptUsageStore: class PromptUsageStoreMock {},
+  seedScoutLearnedTools: vi.fn(() => []),
 }));
 vi.mock('@wrongstack/core/types', () => ({
   DEFAULT_SESSION_PRUNE_DAYS: 30,

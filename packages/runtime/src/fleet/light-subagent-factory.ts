@@ -172,11 +172,12 @@ export function makeLightSubagentFactory(deps: LightSubagentFactoryDeps): AgentF
     const allowed = filterToolList(deps.toolRegistry, subCfg.tools);
     const subRegistry = new ToolRegistry();
     for (const t of allowed) subRegistry.register(t);
+    const providerTools = provider.selectToolsForRequest?.(allowed) ?? allowed;
 
     const baseSystem: TextBlock[] = await systemPromptBuilder.build({
       cwd: subCwd,
       projectRoot: deps.projectRoot,
-      tools: allowed,
+      tools: providerTools,
       catalogTools: allowed,
       model: effModel,
       provider: effProvider,
@@ -204,7 +205,7 @@ export function makeLightSubagentFactory(deps: LightSubagentFactoryDeps): AgentF
       allowOutsideProjectRoot:
         config.features?.allowOutsideProjectRoot ?? !(config.tools?.restrictToProjectRoot ?? false),
       model: effModel,
-      tools: allowed,
+      tools: providerTools,
       catalogTools: allowed,
       agentId: agentName,
       agentName,

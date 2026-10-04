@@ -94,6 +94,7 @@ export async function setupSession(params: {
     provider: string;
     features?: { allowOutsideProjectRoot?: boolean | undefined };
     tools?: { restrictToProjectRoot?: boolean | undefined } | undefined;
+    systemPrompt?: { variant?: string | undefined } | undefined;
   };
   wpaths: WstackPaths;
   projectRoot: string;
@@ -319,6 +320,11 @@ export async function setupSession(params: {
   const resumedRequestTokens = projectLastRequestTokens(restoredEvents);
   if (resumedRequestTokens !== undefined) {
     context.lastRequestTokens = resumedRequestTokens;
+  }
+  // The agent resolves this conversation's identity and direct tool surface
+  // from meta on every run; without it a Scout launch kept the tier surface.
+  if (config.systemPrompt?.variant) {
+    context.meta['systemPromptVariant'] = config.systemPrompt.variant;
   }
   // Inject package-author-tracker options so the install tool can record authorship.
   context.meta['packageTrackerOpts'] = {

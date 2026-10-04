@@ -43,6 +43,7 @@ import type {
   SessionWriter,
   SystemPromptBuilder,
   TokenCounter,
+  Tool,
 } from '@wrongstack/core/types';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import { type MultiAgentDeps, MultiAgentHost } from '../src/multi-agent.js';
@@ -152,6 +153,65 @@ afterEach(async () => {
 });
 
 describe('subagent model lanes reach the provider', () => {
+  it('renders worker tool guidance from its provider cap without shrinking the assigned catalog', async () => {
+    const deps = makeDeps();
+    for (const name of ['read', 'write'])
+      deps.toolRegistry.register({
+        name,
+        description: name,
+        permission: 'auto',
+        mutating: false,
+        inputSchema: { type: 'object' },
+        async execute() {
+          return 'ok';
+        },
+      });
+    vi.mocked(makeProviderFromConfig).mockImplementationOnce(() => ({
+      id: 'mock',
+      capabilities: {
+        streaming: false,
+        tools: true,
+        parallelTools: true,
+        vision: false,
+        promptCache: false,
+        systemPrompt: true,
+        jsonMode: false,
+        reasoning: false,
+        maxContext: 1_000_000,
+        cacheControl: 'none',
+      },
+      selectToolsForRequest: (tools: Tool[]) => tools.filter((t) => t.name === 'read'),
+      async complete() {
+        return {
+          content: [{ type: 'text', text: 'ok' }],
+          stopReason: 'end_turn',
+          usage: { input: 1, output: 1 },
+          model: 'mock',
+        };
+      },
+      // biome-ignore lint/correctness/useYield: non-streaming fixture rejects the unused path
+      async *stream() {
+        throw new Error('not used');
+      },
+    }));
+    const host = new MultiAgentHost(deps);
+    try {
+      const { taskId } = await host.spawn('check assigned files', { tools: ['read', 'write'] });
+      await host.getDirector()?.awaitTasks([taskId]);
+      expect(deps.systemPromptBuilder.build).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tools: [expect.objectContaining({ name: 'read' })],
+          catalogTools: expect.arrayContaining([
+            expect.objectContaining({ name: 'read' }),
+            expect.objectContaining({ name: 'write' }),
+          ]),
+          subagent: true,
+        }),
+      );
+    } finally {
+      await host.stopAll();
+    }
+  });
   it('builds the spawned subagent on the lane model, not the leader model', async () => {
     installPlan([{ provider: 'openai', model: 'lane-model-1' }]);
     const host = new MultiAgentHost(makeDeps());

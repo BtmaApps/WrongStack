@@ -17,6 +17,7 @@ export {
 } from './pre-launch/launch-prompts.js';
 export {
   detectProjectKind,
+  isOutsideProject,
   type ProjectKind,
   runProjectCheck,
 } from './pre-launch/project-check.js';

@@ -1,7 +1,12 @@
 /** Top-level CLI phase orchestrator. */
-import { createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
+import {
+  createEventUserInputAwaiter,
+  isUnattendedAutonomy,
+  providerToolsForVariant,
+} from '@wrongstack/core/agent';
 import { mailboxSessionTag } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
+import { createPolicySandboxApprover, setSandboxExpansionApprover } from '@wrongstack/core/sandbox';
 import { registerJevTools } from '@wrongstack/core/tools';
 import type { SystemPromptBuilder } from '@wrongstack/core/types';
 import { writeErr } from '@wrongstack/core/utils';
@@ -217,7 +222,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
   const systemPrompt = await promptBuilder.build({
     cwd,
     projectRoot,
-    tools: toolRegistry.listForProvider(),
+    tools: providerToolsForVariant(toolRegistry, config.systemPrompt?.variant, undefined, provider),
     catalogTools: toolRegistry.list(),
     provider: config.provider,
     model: config.model,
@@ -570,6 +575,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
   });
 
   director = await ensureDirectorAndAnnounce({
+    logger,
     multiAgentHost,
     priorFleetState,
     renderer,
@@ -627,6 +633,13 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     permissionPolicy: container.resolve(TOKENS.PermissionPolicy),
     contextMeta: agent.ctx.meta,
   });
+
+  // Plan 28 T6 — expansion approvals ride the standard permission policy
+  // (trust rules / YOLO / prompt delegate) via a `sandbox-expansion` pseudo-tool;
+  // no new Brain option contract.
+  setSandboxExpansionApprover(
+    createPolicySandboxApprover(() => container.resolve(TOKENS.PermissionPolicy)),
+  );
 
   setupCliSlashCommands({
     slashRegistry,

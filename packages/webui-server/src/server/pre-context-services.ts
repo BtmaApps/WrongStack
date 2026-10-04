@@ -22,7 +22,11 @@
 
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import { Context, DefaultSystemPromptBuilder } from '@wrongstack/core/agent';
+import {
+  Context,
+  DefaultSystemPromptBuilder,
+  providerToolsForVariant,
+} from '@wrongstack/core/agent';
 import type { AgentStatusTracker } from '@wrongstack/core/coordination';
 import {
   getSharedProjectMailbox,
@@ -40,10 +44,12 @@ import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { SkillInstaller } from '@wrongstack/core/skills';
 import {
   AnnotationsStore,
+  attachScoutToolLearning,
   DefaultSessionReader,
   DefaultSessionStore,
   getSessionRegistry,
   PromptUsageStore,
+  seedScoutLearnedTools,
 } from '@wrongstack/core/storage';
 import {
   createMcpControlTool,
@@ -544,20 +550,20 @@ export async function createPreContextServices(
   } catch {
     /* Non-fatal — mailbox errors should not block prompt building */
   }
+  // Resolve the provider before prompt tool conditions so configured tool caps
+  // apply to the boot prompt as well as subsequent agent requests.
+  const resolvedProvider = resolveSetupProvider({ config, needsProvider, providerRegistry });
+  const provider = resolvedProvider.provider;
+  const needsSetup = resolvedProvider.needsSetup;
   const systemPrompt = await systemPromptBuilder.build({
     cwd: projectRoot,
     projectRoot,
-    tools: toolRegistry.listForProvider(),
+    tools: providerToolsForVariant(toolRegistry, config.systemPrompt?.variant, undefined, provider),
     catalogTools: toolRegistry.list(),
     provider: config.provider,
     model: config.model,
     onlineAgents,
   });
-
-  // ── Provider resolution ──
-  const resolvedProvider = resolveSetupProvider({ config, needsProvider, providerRegistry });
-  const provider = resolvedProvider.provider;
-  const needsSetup = resolvedProvider.needsSetup;
 
   // ── Context ──
   context = new Context({
@@ -589,6 +595,10 @@ export async function createPreContextServices(
   await hydrateSessionKanban(context);
   attachSessionKanbanMirror(context);
   seedContextMeta(config, context);
+  // Scout: promote the deferred tools this project keeps calling through
+  // `tool_use`; new tabs inherit the list with the leader's project meta.
+  seedScoutLearnedTools(context.meta, wpaths.projectDir);
+  attachScoutToolLearning(events, wpaths.projectDir);
 
   return {
     modelsRegistry,

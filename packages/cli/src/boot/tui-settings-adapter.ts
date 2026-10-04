@@ -220,7 +220,9 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
       animationStyle: normalizeAnimationStyle(autonomy?.animationStyle),
       configScope: cfg.configScope ?? 'global',
       systemPromptVariant:
-        cfg.systemPrompt?.variant === 'lite' || cfg.systemPrompt?.variant === 'pro'
+        cfg.systemPrompt?.variant === 'lite' ||
+        cfg.systemPrompt?.variant === 'pro' ||
+        cfg.systemPrompt?.variant === 'scout'
           ? cfg.systemPrompt.variant
           : cfg.systemPrompt?.variant === 'default'
             ? 'default'

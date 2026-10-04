@@ -6,6 +6,26 @@ import { DefaultSystemPromptBuilder } from '../../src/core/system-prompt-builder
 import { expandSharedSystemInstructions } from '../../src/utils/instruction-file.js';
 
 describe('shared system contract', () => {
+  it.each(['default', 'lite', 'pro', 'scout'] as const)(
+    '%s preserves Project Kit discovery when its schema is deferred',
+    async (systemVariant) => {
+      const bundle = await loadInstructionBundle({ systemVariant });
+      const render = (names: string[]) =>
+        renderInstructionLayer(bundle.system?.identity ?? '', {
+          toolNames: new Set(names),
+          tier: 'minimal',
+          subagent: false,
+          strictToolReferences: true,
+        });
+      const deferred = render(['tool_search', 'tool_use']);
+      expect(deferred).toContain('Before writing an ad hoc script');
+      expect(deferred).toContain('search the enabled catalog for Project Kit');
+      expect(render([])).not.toContain('search the enabled catalog for Project Kit');
+      expect(render(['project_kit'])).toContain(
+        'use `project_kit` to look for a reusable capability',
+      );
+    },
+  );
   it.each(['default', 'lite', 'pro'] as const)(
     '%s guides ToolFlow according to available tools',
     async (systemVariant) => {

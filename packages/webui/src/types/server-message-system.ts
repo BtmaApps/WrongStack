@@ -48,8 +48,8 @@ export type WSSystemMiscServerMessage =
       type: 'system_prompt.presets';
       payload: {
         presets?: WSSystemPromptPreset[];
-        active?: Partial<Record<'lite' | 'default' | 'pro', string>>;
-        projectActive?: Partial<Record<'lite' | 'default' | 'pro', string>>;
+        active?: Partial<Record<'lite' | 'default' | 'pro' | 'scout', string>>;
+        projectActive?: Partial<Record<'lite' | 'default' | 'pro' | 'scout', string>>;
         selectedId?: string;
         error?: string;
       };
@@ -348,7 +348,7 @@ export interface WSPromptsJournalPayload {
 
 /** One selectable identity-prompt size, with its upper-bound token estimate. */
 export interface WSSystemPromptVariantInfo {
-  variant: 'lite' | 'default' | 'pro';
+  variant: 'lite' | 'default' | 'pro' | 'scout';
   label: string;
   hint: string;
   tokens: number;
@@ -363,7 +363,7 @@ export interface WSSystemPromptVariantInfo {
  * deliberate "Standard" and decide whether to open the picker unprompted.
  */
 export interface WSSystemPromptInfo {
-  current: 'lite' | 'default' | 'pro';
+  current: 'lite' | 'default' | 'pro' | 'scout';
   chosen: boolean;
   variants: WSSystemPromptVariantInfo[];
   error?: string | undefined;
@@ -372,7 +372,7 @@ export interface WSSystemPromptInfo {
 export interface WSSystemPromptPreset {
   id: string;
   name: string;
-  baseVariant: 'lite' | 'default' | 'pro';
+  baseVariant: 'lite' | 'default' | 'pro' | 'scout';
   baseHash: string;
   baseText: string;
   currentBaseText: string;

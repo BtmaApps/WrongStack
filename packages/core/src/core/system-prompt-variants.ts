@@ -1,6 +1,6 @@
 /**
  * The shared catalogue of system-prompt identity variants - Lite / Standard /
- * Pro - plus the per-variant token estimate every surface shows before a user
+ * Pro / Scout - plus the per-variant token estimate every surface shows before a user
  * commits to one.
  *
  * This lives in core because three surfaces need the same answer: the CLI's
@@ -23,9 +23,26 @@ export const SYSTEM_PROMPT_VARIANT_OPTIONS: ReadonlyArray<{
   label: string;
   hint: string;
 }> = [
-  { variant: 'lite', label: 'Lite', hint: 'leanest - best for small context windows' },
-  { variant: 'default', label: 'Standard', hint: 'balanced - the default' },
-  { variant: 'pro', label: 'Pro', hint: 'most detailed guidance - uses more tokens' },
+  {
+    variant: 'lite',
+    label: 'Lite',
+    hint: 'compact coding guidance - tools follow your token-saving setting',
+  },
+  {
+    variant: 'default',
+    label: 'Standard',
+    hint: 'balanced coding guidance - tools follow your token-saving setting',
+  },
+  {
+    variant: 'pro',
+    label: 'Pro',
+    hint: 'detailed coding guidance - tools follow your token-saving setting',
+  },
+  {
+    variant: 'scout',
+    label: 'Scout',
+    hint: 'general-purpose - few direct tools, discovers the rest on demand',
+  },
 ];
 
 /** All selectable variants, in menu order. */

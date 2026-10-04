@@ -197,9 +197,9 @@ describe('iOS assistant smoke-test', () => {
       expect(rosterEntry?.prompt?.length).toBeLessThan(12_000);
     });
 
-    it('catalog size is 75 (post-addition sanity check)', () => {
-      expect(ALL_AGENT_DEFINITIONS.length).toBe(75);
-      expect(Object.keys(AGENT_CATALOG).length).toBe(75);
+    it('catalog size is 79 (post-addition sanity check)', () => {
+      expect(ALL_AGENT_DEFINITIONS.length).toBe(79);
+      expect(Object.keys(AGENT_CATALOG).length).toBe(79);
     });
   });
 });

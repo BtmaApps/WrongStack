@@ -8,6 +8,17 @@ import { type InstructionTemplateContext, renderInstructionLayer } from './instr
 
 import { instructionSection, renderToolSelectionBoundary } from './system-prompt-blocks.js';
 
+function compactToolHint(hint: string, limit: number): string {
+  const text = hint.trim();
+  if (text.length <= limit) return text;
+  const sentenceEnd = text.indexOf('.') + 1;
+  let end = Math.min(sentenceEnd > 0 ? sentenceEnd : limit, limit);
+  // Keep a character intact when the configured boundary falls inside an emoji.
+  const last = text.charCodeAt(end - 1);
+  if (last >= 0xd800 && last <= 0xdbff) end--;
+  return `${text.slice(0, end)}…`;
+}
+
 export interface SystemPromptToolUsageHost {
   instructions: (variant?: SystemInstructionVariant | undefined) => Promise<InstructionBundle>;
   templateContext: (ctx: BuildContext) => InstructionTemplateContext;
@@ -86,11 +97,7 @@ export async function buildToolUsage(
     for (const t of catTools) {
       const hint = t.usageHint ?? t.description;
       // Trim to the tier-specific limit, preferring sentence boundaries.
-      const desc =
-        hint.length > descLimit
-          ? hint.slice(0, hint.indexOf('.', 20) + 1 || descLimit) +
-            (hint.length > descLimit ? '…' : '')
-          : hint.trim();
+      const desc = compactToolHint(hint, descLimit);
       lines.push(`- **${t.name}** — ${desc}`);
       const boundary = renderToolSelectionBoundary(t);
       if (boundary) lines.push(`  ${boundary}`);
@@ -102,7 +109,7 @@ export async function buildToolUsage(
     if (byCat.size > 0) lines.push('');
     for (const t of uncategorized) {
       const hint = t.usageHint ?? t.description;
-      lines.push(`\n### ${t.name}\n${hint.trim()}`);
+      lines.push(`\n### ${t.name}\n${compactToolHint(hint, descLimit)}`);
       const boundary = renderToolSelectionBoundary(t);
       if (boundary) lines.push(boundary);
     }

@@ -100,6 +100,7 @@ export {
 } from './project-instructions.js';
 export { runProviderWithRetry } from './provider-runner.js';
 export { setQueuedMessagesSnapshot } from './queued-messages.js';
+export { providerToolsForVariant, SCOUT_DIRECT_TOOL_NAMES } from './scout-tool-surface.js';
 export {
   buildSessionNoteBlock,
   consumeSessionNotes,

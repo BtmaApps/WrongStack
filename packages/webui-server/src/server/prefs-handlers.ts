@@ -232,7 +232,8 @@ export async function handleSystemPromptPresets(
   }
   try {
     const variant = payload['baseVariant'];
-    const validVariant = variant === 'lite' || variant === 'default' || variant === 'pro';
+    const validVariant =
+      variant === 'lite' || variant === 'default' || variant === 'pro' || variant === 'scout';
     let selectedId: string | undefined;
     if (action === 'create') {
       if (!validVariant || typeof payload['name'] !== 'string')

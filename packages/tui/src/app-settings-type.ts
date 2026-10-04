@@ -129,7 +129,7 @@ export type Settings = {
    * the CLI boot menu (persistSystemPromptVariant), not the TUI picker, so
    * there is no saveSettings counterpart.
    */
-  systemPromptVariant?: 'lite' | 'default' | 'pro' | undefined;
+  systemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
   animationStyle: 'rainbow' | 'wave' | 'pulse' | 'dots' | 'breathe' | 'static' | 'cycle';
   /** When true, read tool includes codebase-index symbols alongside file content. */
   readSymbols: boolean;

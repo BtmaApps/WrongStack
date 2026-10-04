@@ -60,6 +60,12 @@ export const ROLE_SKILL_SETS = {
   'explore-companion': skillSet('codebase-navigation', 'node-modern', 'typescript-strict'),
   search: skillSet('codebase-navigation', 'bug-hunter', 'typescript-strict', 'research-web'),
   research: skillSet('research-web', 'tech-stack', 'security-scanner', 'api-design'),
+  investigator: skillSet(
+    'research-web',
+    'verify-before-done',
+    'output-standards',
+    'data-governance',
+  ),
 
   analyst: skillSet('sdd', 'api-design', 'testing', 'security-scanner'),
   planner: skillSet('sdd', 'multi-agent', 'refactor-planner', 'testing'),
@@ -134,6 +140,13 @@ export const ROLE_SKILL_SETS = {
   ios: skillSet('sdd', 'testing', 'security-scanner', 'research-web'),
 
   document: skillSet('output-standards', 'research-web', 'api-design', 'prompt-engineering'),
+  writer: skillSet('output-standards', 'research-web', 'verify-before-done', 'prompt-engineering'),
+  translator: skillSet(
+    'output-standards',
+    'verify-before-done',
+    'research-web',
+    'prompt-engineering',
+  ),
   uml: skillSet('sdd', 'refactor-planner', 'api-design', 'output-standards'),
   i18n: skillSet('react-modern', 'testing', 'typescript-strict', 'output-standards'),
   prompt: skillSet('prompt-engineering', 'skill-creator', 'output-standards', 'testing'),
@@ -141,6 +154,7 @@ export const ROLE_SKILL_SETS = {
   git: skillSet('git-flow', 'chimera', 'testing', 'security-scanner'),
   release: skillSet('git-flow', 'tech-stack', 'chimera', 'security-scanner'),
   devops: skillSet('docker-deploy', 'observability', 'security-scanner', 'git-flow', 'tech-stack'),
+  sysadmin: skillSet('debugging', 'security-scanner', 'observability', 'verify-before-done'),
   observability: skillSet('observability', 'node-modern', 'testing', 'audit-log'),
   dependency: skillSet('tech-stack', 'security-scanner', 'node-modern', 'git-flow'),
 

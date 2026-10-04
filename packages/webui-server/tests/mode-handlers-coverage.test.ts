@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@wrongstack/core/agent', () => ({
   DefaultSystemPromptBuilder: mocks.DefaultSystemPromptBuilder,
+  providerToolsForVariant: (registry: { listForProvider(): unknown }) => registry.listForProvider(),
 }));
 vi.mock('@wrongstack/core/utils', () => ({ resolveWstackPaths: mocks.resolveWstackPaths }));
 vi.mock('../src/server/mode-routes.js', () => ({

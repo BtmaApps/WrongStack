@@ -9,7 +9,7 @@ import {
 } from '../utils/instruction-file.js';
 
 /** Which bundled system instruction a preset or session starts from. */
-export type SystemInstructionVariant = 'default' | 'lite' | 'pro';
+export type SystemInstructionVariant = 'default' | 'lite' | 'pro' | 'scout';
 
 export interface SystemPromptPreset {
   id: string;
@@ -31,6 +31,7 @@ const FILES: Record<SystemInstructionVariant, string> = {
   default: 'system.md',
   lite: 'system-lite.md',
   pro: 'system-pro.md',
+  scout: 'system-scout.md',
 };
 const PRESET_ID = /^[a-f0-9-]{36}$/;
 const MAX_TEXT = 200_000;
@@ -139,7 +140,7 @@ function validateRecord(value: unknown): SystemPromptPreset {
     typeof p.name !== 'string' ||
     !p.name.trim() ||
     p.name.length > 80 ||
-    (p.baseVariant !== 'default' && p.baseVariant !== 'lite' && p.baseVariant !== 'pro') ||
+    !(typeof p.baseVariant === 'string' && Object.hasOwn(FILES, p.baseVariant)) ||
     typeof p.baseHash !== 'string' ||
     typeof p.baseText !== 'string' ||
     typeof p.text !== 'string' ||
@@ -248,7 +249,7 @@ const projectKey = (projectDir: string) =>
 
 function parseActivePresets(raw: Record<string, unknown>): ActivePresets {
   const active: ActivePresets = {};
-  for (const variant of ['default', 'lite', 'pro'] as const) {
+  for (const variant of Object.keys(FILES) as SystemInstructionVariant[]) {
     if (typeof raw[variant] === 'string' && PRESET_ID.test(raw[variant]))
       active[variant] = raw[variant];
   }

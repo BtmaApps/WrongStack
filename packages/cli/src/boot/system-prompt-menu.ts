@@ -1,8 +1,8 @@
 /**
- * Interactive system-prompt selection menu — Lite / Standard / Pro.
+ * Interactive system-prompt selection menu — Lite / Standard / Pro / Scout.
  *
  * Shown at startup when the user did not pin a variant via
- * `--system-lite`, `--system-pro`, or `--system-prompt <variant>`.
+ * `--system-lite`, `--system-pro`, `--system-scout`, or `--system-prompt <variant>`.
  * Each option displays the estimated token count of the identity block
  * that variant injects (resolved through the same bundled → global →
  * project instruction dirs the SystemPromptBuilder uses, so a project
@@ -29,6 +29,7 @@ import {
   type SystemPromptVariantPaths,
 } from '@wrongstack/core/agent';
 import { color } from '@wrongstack/core/utils';
+import { parseAuthMenuIndex } from '../auth-menu/index-input.js';
 import type { ReadlineInputReader } from '../input-reader.js';
 import { LaunchAbortedError } from '../pre-launch.js';
 import type { TerminalRenderer } from '../renderer.js';
@@ -66,6 +67,7 @@ export function isSystemPromptPinned(flags: Record<string, string | boolean>): b
   return (
     flagOn(flags['system-pro']) ||
     flagOn(flags['system-lite']) ||
+    flagOn(flags['system-scout']) ||
     typeof flags['system-prompt'] === 'string'
   );
 }
@@ -102,13 +104,27 @@ export async function runSystemPromptMenu(deps: {
   paths: SystemPromptMenuPaths;
   /** Saved variant from config — enables the summary gate. */
   lastVariant?: SystemInstructionVariant | undefined;
+  /**
+   * The launch folder is not a project (no manifest, no AGENTS.md, no git):
+   * the coding identities have nothing to work on, so Scout is preselected in
+   * the menu and the summary gate points at it. A saved choice is never
+   * replaced silently — the gate still defaults to it.
+   */
+  suggestScout?: boolean | undefined;
 }): Promise<SystemInstructionVariant> {
-  const { renderer, reader, paths, lastVariant } = deps;
+  const { renderer, reader, paths, lastVariant, suggestScout } = deps;
   const tokens = await countSystemPromptTokens(paths);
-  const defaultVariant: SystemInstructionVariant = lastVariant ?? 'default';
+  const defaultVariant: SystemInstructionVariant = suggestScout
+    ? 'scout'
+    : (lastVariant ?? 'default');
 
   // Summary gate — reuse the persisted selection when one exists.
   if (lastVariant) {
+    if (suggestScout && lastVariant !== 'scout') {
+      renderer.write(
+        `\n  ${color.dim('○')} ${color.dim(`Not a project folder — ${labelFor('scout')} (general-purpose) may fit better; answer n to choose it.`)}\n`,
+      );
+    }
     const answer = (
       await reader.readLine(
         `  ${color.amber('?')} Continue with ${color.bold(labelFor(lastVariant))} system prompt ${color.dim(`(~${fmtTok(tokens[lastVariant])} tokens)`)}? ${color.dim('[Y/n/q]')} ${color.dim('(auto Y in 5s)')} `,
@@ -123,6 +139,11 @@ export async function runSystemPromptMenu(deps: {
   }
 
   renderer.write(`\n  ${color.amber('?')} System prompt:\n`);
+  if (suggestScout) {
+    renderer.write(
+      `  ${color.dim(`Not a project folder — ${labelFor('scout')} is preselected.`)}\n`,
+    );
+  }
   for (const [index, opt] of SYSTEM_PROMPT_OPTIONS.entries()) {
     const num = index + 1;
     const isDefault = opt.variant === defaultVariant;
@@ -143,8 +164,8 @@ export async function runSystemPromptMenu(deps: {
   if (answer === 'q' || answer === 'quit') throw new LaunchAbortedError();
   if (!answer) return defaultVariant;
 
-  const num = Number.parseInt(answer, 10);
-  if (!Number.isNaN(num) && num >= 1 && num <= SYSTEM_PROMPT_OPTIONS.length) {
+  const num = parseAuthMenuIndex(answer);
+  if (num !== undefined && num <= SYSTEM_PROMPT_OPTIONS.length) {
     return SYSTEM_PROMPT_OPTIONS[num - 1]!.variant;
   }
   // Accept labels or variant ids directly (e.g. "pro", "standard").
@@ -207,6 +228,8 @@ export async function maybeRunSystemPromptMenu(opts: {
    * does not reliably honor for directory renames.
    */
   persist?: typeof persistSystemPromptVariant | undefined;
+  /** The launch folder is not a project — see `runSystemPromptMenu`. */
+  outsideProject?: boolean | undefined;
 }): Promise<SystemPromptMenuOutcome> {
   if (!opts.isInteractiveTTY) return { aborted: false, changed: false };
   if (shouldSkipSystemPromptMenu(opts.flags)) return { aborted: false, changed: false };
@@ -222,8 +245,18 @@ export async function maybeRunSystemPromptMenu(opts: {
       reader: opts.reader,
       lastVariant: savedVariant,
       paths: opts.paths,
+      suggestScout: opts.outsideProject,
     });
     if (chosen === savedVariant) return { variant: chosen, aborted: false, changed: false };
+    // Scout picked for a scratch folder is this launch's choice, not the
+    // profile default: persisting it would make the next launch inside a
+    // project open on the general-purpose identity.
+    if (opts.outsideProject && chosen === 'scout') {
+      opts.renderer.write(
+        `  ${color.dim(`${labelFor('scout')} for this launch only; the saved default stays ${labelFor(savedVariant ?? 'default')}.`)}\n`,
+      );
+      return { variant: chosen, aborted: false, changed: true };
+    }
     try {
       await (opts.persist ?? persistSystemPromptVariant)(opts.profileConfigPath, chosen);
     } catch (err) {

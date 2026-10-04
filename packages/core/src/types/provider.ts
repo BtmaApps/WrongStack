@@ -395,6 +395,12 @@ export interface Provider {
   readonly id: string;
   readonly capabilities: Capabilities;
   /**
+   * Resolve the tools this provider can send before prompt composition and
+   * context accounting. Preserve array identity while the selection is unchanged.
+   * Providers without a tool-count restriction may omit this hook.
+   */
+  selectToolsForRequest?(tools: Tool[]): Tool[];
+  /**
    * Optional live capability probe. The agent calls this at request boundaries
    * before context-window middleware runs, allowing a provider-side limit
    * decrease to trigger compaction before the oversized request is sent.

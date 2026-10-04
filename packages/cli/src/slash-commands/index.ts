@@ -68,6 +68,7 @@ import { buildProfileCommand } from './profile.js';
 import { buildProviderStatusCommand } from './provider-status.js';
 import { buildPruneCommand } from './prune.js';
 import { buildRefinerCommand } from './refiner.js';
+import { buildScoutStatsCommand } from './scout-stats.js';
 import { buildSddCommand } from './sdd.js';
 import { buildExitCommand, buildLoadCommand, buildSaveCommand } from './session.js';
 import { buildSetModelCommand } from './setmodel.js';
@@ -86,6 +87,7 @@ import { buildHqCommand } from './hq.js';
 import { buildMouseCommand } from './mouse.js';
 import { buildProjectCommand } from './project.js';
 import { buildReviewCommand } from './review.js';
+import { buildSandboxCommand } from './sandbox.js';
 import { buildSecurityCommand } from './security.js';
 import { buildSettingsCommand } from './settings.js';
 import { buildShadowCommand } from './shadow.js';
@@ -141,6 +143,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildAgentsCommand(opts),
     buildDirectorCommand(opts),
     buildFleetCommand(opts),
+    buildScoutStatsCommand(opts),
     buildFKeysCommand(opts),
     ...buildFKeyAliasCommands(opts),
     buildEnhanceCommand(opts),
@@ -199,6 +202,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildCollabCommand(opts),
     buildReviewCommand(opts),
     buildSecurityCommand(opts),
+    buildSandboxCommand(opts),
     buildProjectCommand(opts),
     buildWorkingDirCommand(opts),
     buildStatuslineCommand({

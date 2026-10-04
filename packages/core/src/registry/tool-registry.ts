@@ -89,6 +89,10 @@ export class ToolRegistry {
   private _providerExcluded: Set<string> | undefined;
   private _providerListSnapshot: readonly Tool[] | undefined;
   private _providerListSnapshotVersion = -1;
+  private readonly _withinSnapshots = new WeakMap<
+    ReadonlySet<string>,
+    { version: number; tools: readonly Tool[] }
+  >();
   /**
    * Launch-time tool restriction (`--only-tools` / `--disallowed-tools`). Unlike
    * `_disabled` it is not a toggle: `enable()` cannot lift it, and it applies
@@ -655,6 +659,22 @@ export class ToolRegistry {
     this._providerListSnapshot = arr;
     this._providerListSnapshotVersion = this._version;
     return arr;
+  }
+
+  /**
+   * The enabled catalog narrowed to a fixed name set, independent of the
+   * tier surface above — a per-conversation surface (the Scout identity) must
+   * not depend on which tier the process booted with, nor rewrite the
+   * registry-wide surface other conversations share. Memoised per (name set,
+   * registry version) so callers that compare tool-array identity across turns
+   * (context-usage anchor, compaction cache) see a stable reference.
+   */
+  listWithin(names: ReadonlySet<string>): Tool[] {
+    const cached = this._withinSnapshots.get(names);
+    if (cached && cached.version === this._version) return cached.tools as Tool[];
+    const tools = this.list().filter((tool) => names.has(tool.name));
+    this._withinSnapshots.set(names, { version: this._version, tools });
+    return tools;
   }
 
   /**

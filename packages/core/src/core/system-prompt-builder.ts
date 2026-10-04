@@ -654,8 +654,8 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
    *
    * Cached per variant rather than once for the builder: four conversations
    * share this instance and each picks its own identity, so a single memoised
-   * bundle handed whichever variant loaded first to all of them. At most three
-   * entries exist ('default' | 'lite' | 'pro').
+   * bundle handed whichever variant loaded first to all of them. At most four
+   * entries exist ('default' | 'lite' | 'pro' | 'scout').
    */
   private async instructions(
     variant?: SystemInstructionVariant | undefined,

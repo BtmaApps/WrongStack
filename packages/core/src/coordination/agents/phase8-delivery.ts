@@ -147,6 +147,51 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       ],
     },
   },
+  {
+    config: {
+      id: 'sysadmin',
+      name: 'Sysadmin',
+      role: 'sysadmin',
+      tools: [
+        'read',
+        'grep',
+        'glob',
+        'search',
+        'tree',
+        'json',
+        'diff',
+        'logs',
+        'bash',
+        'exec',
+        'pwsh',
+        'write',
+        'edit',
+        'mailbox',
+      ],
+    },
+    budget: MEDIUM_BUDGET,
+    capability: {
+      phase: 'delivery',
+      summary:
+        'Machine and server administration: services, processes, disks, packages, scheduled tasks, logs — read-only first.',
+      keywords: [
+        'sysadmin',
+        'system administration',
+        'windows service',
+        'systemd',
+        'scheduled task',
+        'cron job',
+        'crontab',
+        'disk space',
+        'disk full',
+        'port in use',
+        'firewall',
+        'file permissions',
+        'environment variable',
+        'startup programs',
+      ],
+    },
+  },
 ];
 
 /**

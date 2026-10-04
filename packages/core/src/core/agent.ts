@@ -14,11 +14,11 @@ import type { PermissionPolicy } from '../types/permission.js';
 import type { Plugin, PluginAPI } from '../types/plugin.js';
 import type { Renderer } from '../types/renderer.js';
 import type { RetryPolicy } from '../types/retry-policy.js';
-import type { BuildContext, SystemPromptBuilder } from '../types/system-prompt.js';
 import type { Tool } from '../types/tool.js';
 import type { ToolExecutorLike } from '../types/tool-executor.js';
 import { type AgentLoopHandler, createAgentLoopHandler, signalAbortReason } from './agent-loop.js';
 import { type AgentResponseHandler, createAgentResponseHandler } from './agent-response.js';
+import { refreshAgentToolSurface } from './agent-tool-surface.js';
 import { type AgentToolHandler, createAgentToolHandler } from './agent-tools.js';
 import {
   type AgentInit,
@@ -138,7 +138,7 @@ export class Agent {
     this.extensions.setLogger(this._logger);
     this.toolExecutor = init.toolExecutor;
     this._toolHandler = createAgentToolHandler(this);
-    this._responseHandler = createAgentResponseHandler(this);
+    this._responseHandler = createAgentResponseHandler(this, this.refreshSystemPrompt);
     this._loopHandler = createAgentLoopHandler(this, {
       tools: this._toolHandler,
       response: this._responseHandler,
@@ -301,12 +301,6 @@ export class Agent {
       });
     });
 
-    // Keep provider accounting and lazy discovery separate. `ctx.tools` is the
-    // direct request surface; catalogTools remains executable through governed
-    // meta-tools without paying every schema on every provider call.
-    this.ctx.tools = this.tools.listForProvider();
-    this.ctx.catalogTools = this.tools.list();
-
     // Initialize timing and span BEFORE the try so the catch and finally
     // blocks can reference them even when the throw happens during prompt
     // refresh or beforeRun — both of which run inside the try below.
@@ -319,34 +313,13 @@ export class Agent {
       // inside the try/finally so that _runInProgress, session pins, and
       // the controller are cleaned up on failure — otherwise the agent is
       // permanently wedged ("already in progress") on the next run().
-      if (this.refreshSystemPrompt) {
-        const builder = this.container.safeResolve<SystemPromptBuilder>(TOKENS.SystemPromptBuilder);
-        if (builder) {
-          const onlineAgents = Array.isArray(this.ctx.meta['promptOnlineAgents'])
-            ? (this.ctx.meta['promptOnlineAgents'] as NonNullable<BuildContext['onlineAgents']>)
-            : undefined;
-          // The identity variant is THIS conversation's, not the process's.
-          // Without it the refresh rebuilt every tab's prompt from the boot
-          // variant, silently undoing a Lite/Pro choice on that tab's very
-          // next turn — the builder is one shared instance and took the
-          // variant once, at construction.
-          const systemVariant = this.ctx.meta['systemPromptVariant'];
-          const autonomy = this.ctx.meta['autonomy'];
-          this.ctx.systemPrompt = await builder.build({
-            cwd: this.ctx.cwd,
-            projectRoot: this.ctx.projectRoot,
-            tools: this.ctx.tools,
-            catalogTools: this.ctx.catalogTools,
-            provider: this.ctx.provider.id,
-            model: opts.model ?? this.ctx.model,
-            onlineAgents,
-            ...(systemVariant === 'lite' || systemVariant === 'pro' || systemVariant === 'default'
-              ? { systemVariant }
-              : {}),
-            ...(typeof autonomy === 'string' ? { autonomy } : {}),
-          });
-        }
-      }
+      await refreshAgentToolSurface(
+        this,
+        this.ctx.provider,
+        opts.model ?? this.ctx.model,
+        this.refreshSystemPrompt,
+        true,
+      );
 
       span = this.tracer?.startSpan('agent.run', {
         ...spanSessionAttributes(this.ctx),

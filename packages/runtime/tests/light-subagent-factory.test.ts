@@ -190,6 +190,30 @@ function makeDeps(providerRegistered = true, configOverride: Partial<Config> = {
 }
 
 describe('makeLightSubagentFactory', () => {
+  it('builds prompt tool guidance from the worker provider selection while retaining its catalog', async () => {
+    const deps = makeDeps(false, { provider: 'capped' });
+    deps.providerRegistry.register({
+      type: 'capped',
+      family: 'openai',
+      create: () => ({
+        ...providerFor('capped'),
+        selectToolsForRequest: (tools: Tool[]) => tools.filter((t) => t.name === 'read'),
+      }),
+    });
+    const build = vi.fn(async () => [{ type: 'text' as const, text: 'capped' }]);
+    deps.container.override(TOKENS.SystemPromptBuilder, () => ({ build }) as never);
+    await makeLightSubagentFactory(deps)({ id: 'capped-worker', tools: ['read', 'write'] });
+    expect(build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: [expect.objectContaining({ name: 'read' })],
+        catalogTools: [
+          expect.objectContaining({ name: 'read' }),
+          expect.objectContaining({ name: 'write' }),
+        ],
+        subagent: true,
+      }),
+    );
+  });
   it('builds a fresh isolated Agent with its own EventBus', async () => {
     const factory = makeLightSubagentFactory(makeDeps());
     const a = await factory({ id: 's1', role: 'executor' });

@@ -21,6 +21,7 @@ const BROWSER_AGENT_ROUTES = {
     ['explore', 'Explore'],
     ['search', 'Search'],
     ['research', 'Research'],
+    ['investigator', 'Investigator'],
   ],
   planning: [
     ['analyst', 'Analyst'],
@@ -88,6 +89,8 @@ const BROWSER_AGENT_ROUTES = {
     ['uml', 'UML'],
     ['i18n', 'I18n'],
     ['prompt', 'Prompt'],
+    ['writer', 'Writer'],
+    ['translator', 'Translator'],
   ],
   delivery: [
     ['platform-engineer', 'Platform Engineer'],
@@ -96,6 +99,7 @@ const BROWSER_AGENT_ROUTES = {
     ['devops', 'DevOps'],
     ['observability', 'Observability'],
     ['dependency', 'Dependency'],
+    ['sysadmin', 'Sysadmin'],
   ],
   meta: [
     ['skill-manage', 'Skill Manager'],

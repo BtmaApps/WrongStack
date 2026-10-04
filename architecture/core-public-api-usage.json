@@ -84,9 +84,9 @@
       "runtimeOrMixed": 51
     },
     "@wrongstack/core/kernel": {
-      "files": 324,
+      "files": 325,
       "typeOnly": 150,
-      "runtimeOrMixed": 188
+      "runtimeOrMixed": 189
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -144,9 +144,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 6,
+      "files": 7,
       "typeOnly": 0,
-      "runtimeOrMixed": 6
+      "runtimeOrMixed": 7
     },
     "@wrongstack/core/security": {
       "files": 185,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1296,
-      "typeOnly": 1147,
+      "files": 1299,
+      "typeOnly": 1150,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -229,9 +229,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 709,
+      "files": 710,
       "typeOnly": 67,
-      "runtimeOrMixed": 674
+      "runtimeOrMixed": 675
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -7284,6 +7284,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/wiring-session-establishment.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/wiring-slash-commands.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10177,6 +10183,12 @@
     {
       "specifier": "@wrongstack/core/request-conversation",
       "file": "packages/providers/tests/opencode-go.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/cli/src/cli-main.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13986,6 +13998,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/scout-stats.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/sdd-format.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15211,6 +15229,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/slash-commands/memory-stats.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/slash-commands/scout-stats.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17227,6 +17251,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/tool-use-envelope.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/wire-adapter.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -22045,6 +22075,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/refiner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/slash-commands/scout-stats.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

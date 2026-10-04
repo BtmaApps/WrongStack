@@ -66,8 +66,9 @@ export interface InstructionBundlePaths {
   projectDir?: string | undefined;
   /**
    * Selects the markdown file used for the system identity layer.
-   * Defaults to `system.md`; `lite` reads `system-lite.md` and `pro` reads
-   * `system-pro.md` from the same bundled/global/project instruction directories.
+   * Defaults to `system.md`; `lite` reads `system-lite.md`, `pro` reads
+   * `system-pro.md` and `scout` reads `system-scout.md` from the same
+   * bundled/global/project instruction directories.
    */
   systemVariant?: SystemInstructionVariant | undefined;
   /**
@@ -183,6 +184,7 @@ function resolveSystemInstructionFile(paths: InstructionBundlePaths | undefined)
   if (paths?.systemFile !== undefined) return sanitizeSystemInstructionFile(paths.systemFile);
   if (paths?.systemVariant === 'lite') return 'system-lite.md';
   if (paths?.systemVariant === 'pro') return 'system-pro.md';
+  if (paths?.systemVariant === 'scout') return 'system-scout.md';
   return 'system.md';
 }
 

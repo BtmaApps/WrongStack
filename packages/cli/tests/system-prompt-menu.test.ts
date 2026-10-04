@@ -32,7 +32,7 @@ import {
   shouldSkipSystemPromptMenu,
 } from '../src/boot/system-prompt-menu.js';
 import type { ReadlineInputReader } from '../src/input-reader.js';
-import { LaunchAbortedError } from '../src/pre-launch.js';
+import { isOutsideProject, LaunchAbortedError } from '../src/pre-launch.js';
 import type { TerminalRenderer } from '../src/renderer.js';
 
 // ── Renderer / reader mocks ─────────────────────────────────────────────
@@ -348,9 +348,9 @@ describe('persistSystemPromptVariant', () => {
 
 describe('SYSTEM_PROMPT_OPTIONS', () => {
   it('covers exactly the selectable variants in menu order', () => {
-    expect(SYSTEM_PROMPT_VARIANTS).toEqual(['lite', 'default', 'pro']);
+    expect(SYSTEM_PROMPT_VARIANTS).toEqual(['lite', 'default', 'pro', 'scout']);
     expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.variant)).toEqual(SYSTEM_PROMPT_VARIANTS);
-    expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.label)).toEqual(['Lite', 'Standard', 'Pro']);
+    expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.label)).toEqual(['Lite', 'Standard', 'Pro', 'Scout']);
   });
 });
 
@@ -487,5 +487,110 @@ describe('maybeRunSystemPromptMenu', () => {
     expect((res.persistError as Error | undefined)?.message).toBe('injected persist failure');
     // The seam is only consulted for real writes, with the caller's args.
     expect(persistCalls).toEqual([[configPath, 'default']]);
+  });
+});
+
+// ── Launch folder that is not a project ─────────────────────────────────
+
+const written = (renderer: TerminalRenderer): string =>
+  (renderer.write as ReturnType<typeof vi.fn>).mock.calls.map((call) => String(call[0])).join('');
+
+describe('outside a project', () => {
+  it('preselects Scout on first run', async () => {
+    const { renderer, reader } = makeGateHarness(['']);
+    const chosen = await runSystemPromptMenu({
+      renderer,
+      reader,
+      paths: gatePaths(),
+      suggestScout: true,
+    });
+    expect(chosen).toBe('scout');
+    expect(written(renderer)).toContain('Not a project folder');
+  });
+
+  it('keeps a saved choice on the summary gate and only points at Scout', async () => {
+    const { renderer, reader } = makeGateHarness(['']);
+    const chosen = await runSystemPromptMenu({
+      renderer,
+      reader,
+      paths: gatePaths(),
+      lastVariant: 'pro',
+      suggestScout: true,
+    });
+    expect(chosen).toBe('pro');
+    expect(written(renderer)).toContain('answer n to choose it');
+  });
+
+  it('opens the full menu on Scout after n at the summary gate', async () => {
+    const { renderer, reader } = makeGateHarness(['n', '']);
+    const chosen = await runSystemPromptMenu({
+      renderer,
+      reader,
+      paths: gatePaths(),
+      lastVariant: 'default',
+      suggestScout: true,
+    });
+    expect(chosen).toBe('scout');
+  });
+
+  it('applies Scout for the launch without making it the profile default', async () => {
+    const configPath = tmpProfileConfig();
+    await fs.writeFile(configPath, JSON.stringify({ systemPrompt: { variant: 'pro' } }), 'utf8');
+    const persist = vi.fn();
+    const { renderer, reader } = makeGateHarness(['n', '']);
+    const res = await maybeRunSystemPromptMenu({
+      isInteractiveTTY: true,
+      flags: {},
+      renderer,
+      reader,
+      profileConfigPath: configPath,
+      paths: gatePaths(),
+      persist,
+      outsideProject: true,
+    });
+    expect(res).toEqual({ variant: 'scout', aborted: false, changed: true });
+    expect(persist).not.toHaveBeenCalled();
+    expect(written(renderer)).toContain('the saved default stays Pro');
+  });
+
+  it('still persists a coding variant picked outside a project', async () => {
+    const configPath = tmpProfileConfig();
+    await fs.writeFile(configPath, JSON.stringify({}), 'utf8');
+    const persist = vi.fn();
+    const { renderer, reader } = makeGateHarness(['3']); // Pro
+    const res = await maybeRunSystemPromptMenu({
+      isInteractiveTTY: true,
+      flags: {},
+      renderer,
+      reader,
+      profileConfigPath: configPath,
+      paths: gatePaths(),
+      persist,
+      outsideProject: true,
+    });
+    expect(res.variant).toBe('pro');
+    expect(persist).toHaveBeenCalledWith(configPath, 'pro');
+  });
+});
+
+describe('isOutsideProject', () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-outside-'));
+  });
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it('is true for a folder with no manifest, AGENTS.md, or git', async () => {
+    expect(await isOutsideProject(dir)).toBe(true);
+  });
+
+  it('is false once the folder is a git repository or has a manifest', async () => {
+    await fs.mkdir(path.join(dir, '.git'));
+    expect(await isOutsideProject(dir)).toBe(false);
+    await fs.rm(path.join(dir, '.git'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'package.json'), '{}', 'utf8');
+    expect(await isOutsideProject(dir)).toBe(false);
   });
 });

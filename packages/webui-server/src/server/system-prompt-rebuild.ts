@@ -13,6 +13,7 @@
 import {
   type Context,
   DefaultSystemPromptBuilder,
+  providerToolsForVariant,
   type SystemInstructionVariant,
 } from '@wrongstack/core/agent';
 import { type Container, TOKENS } from '@wrongstack/core/kernel';
@@ -67,7 +68,9 @@ function variantForContext(
   config: Pick<Config, 'systemPrompt'>,
 ): SystemInstructionVariant | undefined {
   const scoped = context.meta['systemPromptVariant'];
-  if (scoped === 'lite' || scoped === 'default' || scoped === 'pro') return scoped;
+  if (scoped === 'lite' || scoped === 'default' || scoped === 'pro' || scoped === 'scout') {
+    return scoped;
+  }
   return config.systemPrompt?.variant;
 }
 
@@ -87,6 +90,7 @@ export async function rebuildSystemPrompt(
     globalRoot: deps.globalRoot,
   });
   const config = deps.getConfig();
+  const variant = variantForContext(deps.context, config);
   const builder = new DefaultSystemPromptBuilder({
     memoryStore: deps.memoryStore,
     injectMemory: false,
@@ -110,13 +114,18 @@ export async function rebuildSystemPrompt(
     instructionPaths: {
       globalDir: paths.globalInstructions,
       projectDir: paths.inProjectInstructions,
-      systemVariant: variantForContext(deps.context, config),
+      systemVariant: variant,
     },
   });
   deps.context.systemPrompt = await builder.build({
     cwd: deps.projectRoot,
     projectRoot: deps.projectRoot,
-    tools: deps.toolRegistry.listForProvider(),
+    tools: providerToolsForVariant(
+      deps.toolRegistry,
+      variant,
+      deps.context.meta,
+      deps.context.provider,
+    ),
     catalogTools: deps.toolRegistry.list(),
     provider: config.provider,
     model: config.model,

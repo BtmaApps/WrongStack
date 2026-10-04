@@ -12,8 +12,11 @@ export interface ToolSearchOutput {
   tools: {
     name: string;
     description: string;
-    /** Exact schema required by tool_use for an on-demand invocation. */
-    inputSchema: Tool['inputSchema'];
+    /**
+     * Exact schema required by tool_use for an on-demand invocation. Present
+     * on the leading results only; see `schemaOmitted`.
+     */
+    inputSchema?: Tool['inputSchema'] | undefined;
     usageHint?: string | undefined;
     /** Runtime family, suitable for passing back through the `tags` filter. */
     category?: string | undefined;
@@ -21,10 +24,12 @@ export interface ToolSearchOutput {
     capabilities?: readonly string[] | undefined;
     permission: string;
     mutating: boolean;
+    /** True when the schema was left out; search the exact name to get it. */
+    schemaOmitted?: true | undefined;
   }[];
   total: number;
   truncated: boolean;
-  /** Guidance returned when a query matched nothing. */
+  /** Guidance: why nothing matched, or how to get an omitted schema. */
   hint?: string | undefined;
   /** Total count of tools in the registry (for "no results" hints). */
   _available?: number;
@@ -42,6 +47,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     '- `query` searches names and descriptions.\n' +
     '- You can filter by `tags` (category, capability, or name terms), `permission`, or `mutating`.\n' +
     '- The catalog searched here is the full registry, not just the tools listed in this request.\n' +
+    '- The first 5 results include `inputSchema`; for another result, search its exact name to get the schema.\n' +
     '- Once you find the right tool name, invoke it with `tool_use`.\n' +
     'Call this before concluding a capability is unavailable.',
   permission: 'auto',
@@ -130,16 +136,31 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
 
     // Best match first; ties keep registry order.
     if (query) filtered.sort((x, y) => (scores.get(y) ?? 0) - (scores.get(x) ?? 0));
-    const results = filtered.slice(0, limit).map((t: Tool) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-      ...(t.usageHint ? { usageHint: t.usageHint } : {}),
-      ...(t.category ? { category: t.category } : {}),
-      ...(t.capabilities?.length ? { capabilities: t.capabilities } : {}),
-      permission: t.permission,
-      mutating: t.mutating,
-    }));
+    // Full schemas only for the leading matches: a 20-result answer carrying
+    // every schema and usage hint cost ~29 KB of context, most of it for tools
+    // the model never calls. The rest stay identifiable by name and a short
+    // description; searching the exact name returns that tool's schema.
+    const results = filtered.slice(0, limit).map((t: Tool, index: number) =>
+      index < SCHEMA_RESULTS
+        ? {
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema,
+            ...(t.usageHint ? { usageHint: t.usageHint } : {}),
+            ...(t.category ? { category: t.category } : {}),
+            ...(t.capabilities?.length ? { capabilities: t.capabilities } : {}),
+            permission: t.permission,
+            mutating: t.mutating,
+          }
+        : {
+            name: t.name,
+            description: shortDescription(t.description),
+            ...(t.category ? { category: t.category } : {}),
+            permission: t.permission,
+            mutating: t.mutating,
+            schemaOmitted: true as const,
+          },
+    );
 
     // When no tools match, give the model actionable guidance so it
     // doesn't spiral through random queries. Tell it how many tools exist and
@@ -155,7 +176,9 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
         ? `${excludedByFilters} tool(s) match "${input.query}" but the tags/permission/mutating filters excluded them; search again without those filters.`
         : results.length === 0 && query
           ? `No tools matched "${input.query}". ${totalAvailable} tools are available; try a broader query, or call tool_search with no query and limit up to 100.`
-          : undefined;
+          : results.length > SCHEMA_RESULTS
+            ? `Schemas are included for the first ${SCHEMA_RESULTS} results; call tool_search with another tool's exact name to get its inputSchema.`
+            : undefined;
 
     return {
       tools: results,
@@ -189,19 +212,120 @@ const QUERY_STOP_WORDS = new Set([
   'tools',
   'use',
   'using',
+  'run',
+  'make',
+  'do',
+  'get',
+  'some',
+  'my',
+  'two',
+  'want',
+  'need',
 ]);
 
+/** Results that carry their full input schema and usage hint. */
+const SCHEMA_RESULTS = 5;
+
+/** First sentence of a description, capped — enough to tell tools apart. */
+function shortDescription(description: string): string {
+  const firstSentence = description.split(/(?<=\.)\s/)[0] ?? description;
+  return firstSentence.length > 160 ? `${firstSentence.slice(0, 157)}...` : firstSentence;
+}
+
 /**
- * How well a tool answers a query. The whole query found in the name or
- * description wins outright. Otherwise the query is split into words and a
- * tool must contain at least half of them (a word in the name counts double):
- * models describe what they need in phrases such as "generate image with
- * prompt and path", which as one literal substring matched nothing.
+ * The words people use for a need, mapped to the words the tool catalog uses
+ * for it. One-directional: a query term expands; tool text is never
+ * rewritten. A model describing a task ("download", "website", "folder") does
+ * not speak the catalog's vocabulary ("fetch", "browser", "directory").
+ */
+const QUERY_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
+  download: ['fetch', 'url'],
+  http: ['fetch', 'url'],
+  request: ['fetch'],
+  api: ['fetch', 'url'],
+  website: ['browser', 'page', 'url'],
+  webpage: ['browser', 'page', 'url'],
+  site: ['browser', 'page', 'url'],
+  internet: ['web', 'search'],
+  google: ['web', 'search'],
+  screenshot: ['capture', 'png'],
+  image: ['png', 'screenshot', 'vision'],
+  picture: ['png', 'screenshot', 'image'],
+  photo: ['png', 'screenshot', 'image'],
+  folder: ['directory', 'tree'],
+  list: ['tree', 'directory'],
+  find: ['search', 'glob', 'grep'],
+  name: ['path'],
+  compare: ['diff'],
+  difference: ['diff'],
+  filename: ['glob', 'path'],
+  text: ['grep', 'content'],
+  task: ['todo', 'kanban'],
+  checklist: ['todo'],
+  script: ['exec', 'command'],
+  command: ['exec', 'bash', 'shell'],
+  shell: ['bash', 'pwsh', 'exec'],
+  terminal: ['bash', 'pwsh', 'exec', 'shell'],
+  powershell: ['pwsh'],
+  commit: ['git'],
+  branch: ['git'],
+  history: ['git', 'log'],
+  archive: ['zip', 'tar', 'compress'],
+  zip: ['archive', 'compress'],
+  subagent: ['delegate', 'spawn'],
+  worker: ['delegate', 'subagent', 'spawn'],
+  remember: ['memory'],
+  recall: ['memory', 'remember'],
+  dependency: ['install', 'package'],
+  library: ['install', 'package'],
+  vulnerability: ['audit', 'security'],
+  cve: ['audit', 'security'],
+};
+
+/** Plural and verb forms reduced to the stem a tool's text most likely uses. */
+function termForms(term: string): string[] {
+  const forms = [term];
+  if (term.length > 4 && term.endsWith('ies')) forms.push(`${term.slice(0, -3)}y`);
+  else if (term.length > 4 && term.endsWith('es')) forms.push(term.slice(0, -2), term.slice(0, -1));
+  else if (term.length > 3 && term.endsWith('s') && !term.endsWith('ss')) {
+    forms.push(term.slice(0, -1));
+  }
+  if (term.length > 5 && term.endsWith('ing')) forms.push(term.slice(0, -3));
+  if (term.length > 4 && term.endsWith('ed')) forms.push(term.slice(0, -2), term.slice(0, -1));
+  return forms;
+}
+
+/** Every word that counts as a hit for one query term. */
+function termAlternatives(term: string): string[] {
+  const out = new Set<string>();
+  for (const form of termForms(term)) {
+    out.add(form);
+    for (const synonym of QUERY_SYNONYMS[form] ?? []) out.add(synonym);
+  }
+  return [...out].filter((alt) => alt.length > 1);
+}
+
+/**
+ * How well a tool answers a query. An exact tool name wins, then the whole
+ * query found in the name or description. Otherwise the query is split into
+ * words; each word counts through its plural/verb forms and catalog synonyms,
+ * scored by where it lands (the whole name 6, a name segment 4, inside the name 2,
+ * description/usage/category/capabilities 1). A tool must cover at least half
+ * of the words: models describe what they need in phrases such as "generate
+ * image with prompt and path", which as one literal substring matched nothing.
  */
 function queryScore(t: Tool, query: string): number {
   const name = t.name.toLowerCase();
-  const text = `${name} ${t.description.toLowerCase()} ${(t.usageHint ?? '').toLowerCase()}`;
-  if (name.includes(query) || t.description.toLowerCase().includes(query)) return 1_000;
+  const description = t.description.toLowerCase();
+  if (name === query.trim()) return 2_000;
+  if (name.includes(query) || description.includes(query)) return 1_000;
+  const nameSegments = new Set(name.split(/[^a-z0-9]+/).filter(Boolean));
+  const text = [
+    description,
+    (t.usageHint ?? '').toLowerCase(),
+    (t.category ?? '').toLowerCase(),
+    ...(t.capabilities ?? []).map((capability) => capability.toLowerCase()),
+  ].join(' ');
   const terms = [
     ...new Set(
       query
@@ -210,16 +334,20 @@ function queryScore(t: Tool, query: string): number {
         .filter((w) => w.length > 1 && !QUERY_STOP_WORDS.has(w)),
     ),
   ];
-  if (terms.length < 2) return 0;
+  if (terms.length === 0) return 0;
   let hits = 0;
   let score = 0;
   for (const term of terms) {
-    if (name.includes(term)) {
+    let best = 0;
+    for (const alt of termAlternatives(term)) {
+      if (alt === name) best = Math.max(best, 6);
+      else if (nameSegments.has(alt)) best = Math.max(best, 4);
+      else if (alt.length > 2 && name.includes(alt)) best = Math.max(best, 2);
+      else if (text.includes(alt)) best = Math.max(best, 1);
+    }
+    if (best > 0) {
       hits++;
-      score += 2;
-    } else if (text.includes(term)) {
-      hits++;
-      score += 1;
+      score += best;
     }
   }
   return hits * 2 >= terms.length ? score : 0;

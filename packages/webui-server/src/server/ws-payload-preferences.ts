@@ -48,7 +48,7 @@ const REASONING_EFFORT_VALUES = new Set([
 ]);
 const CACHE_TTL_VALUES = new Set(['default', '5m', '1h']);
 /** Identity-prompt variants offered by the system-prompt picker. */
-const SYSTEM_PROMPT_VARIANT_VALUES = new Set(['lite', 'default', 'pro']);
+const SYSTEM_PROMPT_VARIANT_VALUES = new Set(['lite', 'default', 'pro', 'scout']);
 
 const BOOLEAN_PREF_KEYS = new Set([
   'subagentsAllowed',

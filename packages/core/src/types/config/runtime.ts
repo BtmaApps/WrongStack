@@ -71,10 +71,12 @@ export interface ModelRuntimeStreamingConfig {
 /**
  * Selects which built-in/base system identity prompt file is used when building
  * the host system prompt. Surfaces keep `default` unless explicitly told to use
- * the lite or pro prompt.
+ * the lite, pro, or scout prompt. `scout` is the general-purpose identity: it
+ * also shrinks the direct tool surface to a small set and reaches everything
+ * else through `tool_search` / `tool_use`.
  */
 export interface SystemPromptConfig {
-  variant?: 'default' | 'lite' | 'pro' | undefined;
+  variant?: 'default' | 'lite' | 'pro' | 'scout' | undefined;
 }
 
 /**

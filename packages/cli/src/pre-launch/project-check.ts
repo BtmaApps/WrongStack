@@ -47,6 +47,21 @@ export async function detectProjectKind(projectRoot: string): Promise<ProjectKin
   return 'empty';
 }
 
+/**
+ * No manifest, no AGENTS.md, and no git repository at the project root: a
+ * scratch or home folder rather than a codebase. Checked after the project
+ * check, so a `git init` the user just accepted already counts as a project.
+ */
+export async function isOutsideProject(projectRoot: string): Promise<boolean> {
+  if ((await detectProjectKind(projectRoot)) !== 'empty') return false;
+  try {
+    await fs.access(path.join(projectRoot, '.git'));
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 async function scaffoldAgentsMd(projectRoot: string): Promise<string> {
   const dir = path.join(projectRoot, '.wrongstack');
   const file = path.join(dir, 'AGENTS.md');

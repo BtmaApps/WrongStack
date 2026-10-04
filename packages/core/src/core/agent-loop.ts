@@ -512,6 +512,7 @@ export function createAgentLoopHandler(
             messageCount: req.messages.length,
             estimatedInputTokens: preFlight.total,
             toolCount: (req.tools ?? []).length,
+            systemVariant: String(a.ctx.meta['systemPromptVariant'] ?? '') || undefined,
           })
           .catch(() => {});
 

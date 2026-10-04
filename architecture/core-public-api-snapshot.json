@@ -154,6 +154,7 @@
         "export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';",
         "export { formatModelRef, type ModelRef, normalizeModelRef, parseModelRef, } from './model-ref.js';",
         "export { markUserInputObserver, userInputObserverCount } from './user-input-observers.js';",
+        "export { providerToolsForVariant, SCOUT_DIRECT_TOOL_NAMES } from './scout-tool-surface.js';",
         "export { readUserInstructions, type UserInstructionsDocument, userInstructionsFile, writeUserInstructions, } from './project-instructions.js';",
         "export { runProviderWithRetry } from './provider-runner.js';",
         "export { setQueuedMessagesSnapshot } from './queued-messages.js';",
@@ -951,6 +952,7 @@
         "export { appendJournal, emptyGoal, formatGoal, type GoalFile, goalFilePath, type JournalEntry, loadGoal, MAX_JOURNAL_ENTRIES, MAX_PROGRESS_HISTORY, type ProgressSnapshot, parseProgressFromText, recordProgress, saveGoal, setProgress, summarizeUsage, } from './goal-store.js';",
         "export { applyGoalDeliverableCompletions, type CompletedGoalDeliverable, type CoordinateGoalIterationOptions, coordinateGoalIteration, type GoalCoordinationResult, isGoalDeliverableComplete, parseCompletedGoalDeliverables, recomputeGoalProgress, stripGoalDeliverableMarker, } from './goal-coordination.js';",
         "export { applyNamespacePayload, buildNamespacePayloads, CLOUD_SYNC_CONTRACT, CLOUD_SYNC_NAMESPACES, CloudConfigSync, type CloudConfigSyncDeps, type CloudConfigSyncSettings, type CloudSyncPassSummary, LOCAL_ONLY_TOP_LEVEL, NAMESPACE_SCHEMA_VERSIONS, stripSecretMaterial, } from './cloud-config-sync.js';",
+        "export { attachScoutToolLearning, seedScoutLearnedTools } from './scout-tool-learning.js';",
         "export { attachTodosCheckpoint, loadTodosCheckpoint, saveTodosCheckpoint, type TodosCheckpointFile, } from './todos-checkpoint.js';",
         "export { cleanOrphanLocks, type OrphanLockCleanResult, } from './orphan-lock-cleaner.js';",
         "export { createGoalKanbanBoard, deleteGoalKanbanBoard, findGoalBoardByTag, findGoalKanbanBoard, formatGoalAutonomyChoice, formatGoalEvent, formatGoalKanbanPreview, type GoalFileWithKanban, parseAutonomyChoice, } from './goal-kanban.js';",
@@ -1548,14 +1550,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 217,
-      "sourceLines": 59232
+      "sourceLines": 59380
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 64,
-      "sourceLines": 15232
+      "sourceFiles": 66,
+      "sourceLines": 15449
     },
     {
       "directory": "design",
@@ -1674,7 +1676,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
       "sourceFiles": 5,
-      "sourceLines": 1432
+      "sourceLines": 1452
     },
     {
       "directory": "replay",
@@ -1722,8 +1724,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 109,
-      "sourceLines": 25063
+      "sourceFiles": 110,
+      "sourceLines": 25233
     },
     {
       "directory": "tasking",
@@ -1744,7 +1746,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 83,
-      "sourceLines": 15823
+      "sourceLines": 15831
     },
     {
       "directory": "typesafe",

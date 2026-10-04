@@ -1,0 +1,9 @@
+interface:
+  display_name: "Evidence Audit"
+  short_description: "Proof-driven bug hunt and fix rounds for any codebase scope"
+  default_prompt: "Run an evidence-led audit round on this scope: "
+
+policy:
+  # Implicit invocation lets prompts like "find real bugs in src/auth" pick this up.
+  # Set to false if you only ever want explicit $evidence-audit.
+  allow_implicit_invocation: true

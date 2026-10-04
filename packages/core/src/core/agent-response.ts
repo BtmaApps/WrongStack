@@ -18,6 +18,7 @@ import { formatMemoryEvidenceBlock } from '../utils/memory-evidence-fence.js';
 import { hasMeaningfulContent, repairToolUseAdjacency } from '../utils/message-invariants.js';
 import { formatTodoForModel, hasKanbanBoundTodos } from '../utils/todos-format.js';
 import type { AgentInternals } from './agent-internals.js';
+import { refreshAgentToolSurface } from './agent-tool-surface.js';
 import { type Context, type RunOptions, resolveEventSessionId } from './context.js';
 import { bindRequestHistoryVersion, contextHistoryVersion } from './context-history-version.js';
 import { bindRequestPromptBasis, captureRequestPromptBasis } from './context-usage-anchor.js';
@@ -377,7 +378,10 @@ function composeRequestMessages(
   return { messages: out, boundary };
 }
 
-export function createAgentResponseHandler(a: AgentInternals): AgentResponseHandler {
+export function createAgentResponseHandler(
+  a: AgentInternals,
+  refreshSystemPrompt = false,
+): AgentResponseHandler {
   // Each assigned prompt array is one explicit cache epoch. Freeze it at the
   // first request boundary so turn-time code cannot silently invalidate the
   // provider prefix by pushing/replacing blocks in place. Lifecycle actions
@@ -401,6 +405,12 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
   async function buildAndRunRequestPipeline(
     opts: RunOptions,
   ): Promise<{ request: Request; provider: Provider }> {
+    await a.ctx.waitForModelTransition();
+    const provider = a.ctx.provider;
+    const model = opts.model ?? a.ctx.model;
+    // Resolve provider caps before rendering prompt tool conditions. Rebuild
+    // only when the direct surface changed (MCP, policy or provider switch).
+    await refreshAgentToolSurface(a, provider, model, refreshSystemPrompt);
     // Only scan for tool-use adjacency issues when tool content has been
     // added since the last scan. Pure text responses and iterations without
     // tool calls don't introduce new adjacency problems — skipping the O(n)
@@ -457,27 +467,20 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       : liveContextTail.length > 0
         ? [...stableSystem, ...liveContextTail]
         : stableSystem;
-    // A picker/WebUI switch can still be building a provider while
-    // auto-continue prepares the next iteration. Wait immediately before
-    // capturing the request identity so that iteration cannot retain the old
-    // model by racing the switch.
-    await a.ctx.waitForModelTransition();
-    // Capture provider and model as one request identity. A live /model switch
-    // may replace ctx.provider while the async request pipeline or provider
-    // call is pending; this request must still finish under the identity it
-    // started with.
-    const provider = a.ctx.provider;
     const conversationThreadId = a.ctx.activeRunSessionId ?? a.ctx.session?.id;
     const owningSessionId = a.ctx.meta?.['sessionId'];
     const conversationSessionId =
       typeof owningSessionId === 'string' && owningSessionId.length > 0
         ? owningSessionId
         : conversationThreadId;
+    // The conversation's direct surface — Scout narrows it — resolved live so a
+    // tool registered mid-run (an MCP server connecting) is offered at once.
+    const providerTools = a.ctx.tools;
     const baseReq: Request = {
-      model: opts.model ?? a.ctx.model,
+      model,
       system,
       messages: composedMessages ?? (requestHistory as Message[]),
-      tools: a.tools.listForProvider(),
+      tools: providerTools,
       // `maxTokens` is deliberately NOT set here. The provider adapter
       // resolves the ceiling from the catalog entry for the model in
       // `req.model`, which is the only source that stays correct across a
@@ -495,7 +498,7 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       // full epoch — a glossary/plan refresh must not re-route the cache
       // partition when the actual prefix bytes did not change.
       cache: {
-        key: deriveCachePrefixKey(stableSystem, a.tools.listForProvider()),
+        key: deriveCachePrefixKey(stableSystem, providerTools),
         sessionId: conversationSessionId,
         threadId: conversationThreadId,
       },

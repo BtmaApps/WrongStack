@@ -248,8 +248,10 @@
     "packages/cli/src/slash-commands/memory-triage.ts": [
       "fileProposals"
     ],
-    "packages/cli/src/slash-commands/sandbox.ts": [
-      "buildSandboxCommand"
+    "packages/cli/src/slash-commands/scout-stats.ts": [
+      "formatVariantUsage",
+      "SOLO_HEAVY_TOOL_CALLS",
+      "summarizeVariantUsage"
     ],
     "packages/cli/src/slash-commands/sdd-format.ts": [
       "taskStatusIcon"
@@ -639,6 +641,11 @@
     "packages/core/src/storage/director-state.ts": [
       "acquireDirectorStateLock",
       "releaseDirectorStateLock"
+    ],
+    "packages/core/src/storage/scout-tool-learning.ts": [
+      "readLearnedScoutTools",
+      "recordGatewayToolUse",
+      "scoutToolUseLogPath"
     ],
     "packages/core/src/types/runtime-capability-manifest.ts": [
       "isDeprecatedRuntimeToolAlias",

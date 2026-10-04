@@ -62,6 +62,7 @@ import { ReadlineInputReader } from './input-reader.js';
 import { type PickerResult, runPicker, saveToGlobalConfig } from './picker.js';
 import {
   hasAnyCredential,
+  isOutsideProject,
   LaunchAbortedError,
   persistLaunchChoices,
   runFirstRunSetup,
@@ -279,13 +280,17 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // dispatched here too, but current setup flows use `wstack auth`.
   // Bound once so the narrowing survives `first` being a `let` (the `quick`
   // intercept above clears it).
+  // Install the OAuth persisters before ANY path below can renew a credential:
+  // subcommand handlers run their own provider auto-discovery (`wstack models`,
+  // `wstack modeldiag test`), and the interactive path's auto-discovery below
+  // runs before cli-context.ts installs them. A renewal without the durable
+  // subscription transaction rotates the refresh token on the server and drops
+  // the rotated value, so the stored grant is consumed and every later renewal
+  // fails with invalid_grant until the user signs in again. Re-installing later
+  // is harmless — the second call replaces the first with an equivalent writer.
+  installProviderPersisters({ config, paths: wpaths, vault, logger });
   const subcommandHandler = first ? subcommands[first] : undefined;
   if (first && subcommandHandler) {
-    // Subcommands run and exit before the interactive path installs these.
-    // `wstack acp` is a long-lived server (an editor spawns it), so its OAuth
-    // refreshes must reach the config too — otherwise a rotated refresh token
-    // lives only in that process and the next launch has to sign in again.
-    installProviderPersisters({ config, paths: wpaths, vault, logger });
     if (flags['help'] === true || flags['h'] === true) {
       const deepSub = positional[1];
       if (deepSub && renderDeepHelp(`${first}:${deepSub}`, renderer)) {
@@ -623,6 +628,7 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
         globalDir: wpaths.globalInstructions,
         projectDir: wpaths.inProjectInstructions,
       },
+      outsideProject: await isOutsideProject(projectRoot),
     });
     if (promptMenu.aborted) {
       await reader.close();

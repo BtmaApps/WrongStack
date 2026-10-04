@@ -2,6 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toolSearchTool } from '../../../tools/src/tool-search.js';
+import { toolUseTool } from '../../../tools/src/tool-use.js';
 import { Agent, createDefaultPipelines } from '../../src/core/agent.js';
 import { Context } from '../../src/core/context.js';
 import { DefaultErrorHandler } from '../../src/execution/error-handler.js';
@@ -176,6 +178,175 @@ describe('Agent', () => {
       }),
     );
     expect(ctx.systemPrompt).toEqual([{ type: 'text', text: 'refreshed' }]);
+  });
+
+  it('sends a Scout conversation its own small surface, not the tier surface', async () => {
+    const provider = new MockProvider([
+      { content: [{ type: 'text', text: 'ok' }], stopReason: 'end_turn' },
+    ]);
+    const build = vi.fn(async () => [{ type: 'text' as const, text: 'refreshed' }]);
+    const tool = (name: string): Tool => ({
+      name,
+      description: name,
+      inputSchema: { type: 'object', properties: {} },
+      permission: 'auto',
+      mutating: false,
+      async execute() {
+        return 'ok';
+      },
+    });
+    const { agent, tools, ctx, tmp } = await buildAgent(
+      provider,
+      ['read', 'bash', 'codebase-search', 'tool_search', 'tool_use'].map(tool),
+      undefined,
+      { refreshSystemPrompt: true, systemPromptBuild: build },
+    );
+    cleanupDirs.push(tmp);
+    // A tier surface that withholds the shell — Scout must not depend on it.
+    tools.setProviderToolNames(['read', 'codebase-search', 'tool_search', 'tool_use']);
+    ctx.meta['systemPromptVariant'] = 'scout';
+
+    await agent.run('hello');
+
+    const scoutSurface = ['read', 'bash', 'tool_search', 'tool_use'];
+    expect(provider.receivedRequests[0]?.tools?.map((t) => t.name)).toEqual(scoutSurface);
+    expect(build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemVariant: 'scout',
+        tools: scoutSurface.map((name) => expect.objectContaining({ name })),
+      }),
+    );
+    // The withheld catalog stays reachable through the lazy gateways.
+    expect(ctx.catalogTools.map((t) => t.name)).toContain('codebase-search');
+  });
+
+  it('keeps delegation off a solo Scout conversation request', async () => {
+    const provider = new MockProvider([
+      { content: [{ type: 'text', text: 'ok' }], stopReason: 'end_turn' },
+    ]);
+    const tool = (name: string): Tool => ({
+      name,
+      description: name,
+      inputSchema: { type: 'object', properties: {} },
+      permission: 'auto',
+      mutating: false,
+      async execute() {
+        return 'ok';
+      },
+    });
+    const { agent, ctx, tmp } = await buildAgent(provider, ['read', 'delegate'].map(tool));
+    cleanupDirs.push(tmp);
+    ctx.meta['systemPromptVariant'] = 'scout';
+    ctx.meta['subagentsAllowed'] = false;
+
+    await agent.run('hello');
+
+    expect(provider.receivedRequests[0]?.tools?.map((t) => t.name)).toEqual(['read']);
+    expect(ctx.tools.map((t) => t.name)).toEqual(['read']);
+  });
+
+  it('renders the provider-selected surface and refreshes it after a cap change', async () => {
+    let capped = true;
+    const limited: Tool[] = [];
+    const provider = Object.assign(
+      new MockProvider([
+        {
+          content: [{ type: 'tool_use', id: 'uncap', name: 'uncap', input: {} }],
+          stopReason: 'tool_use',
+        },
+        { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+      ]),
+      { selectToolsForRequest: (tools: Tool[]) => (capped ? limited : tools) },
+    );
+    const make = (name: string): Tool => ({
+      name,
+      description: name,
+      permission: 'auto',
+      mutating: false,
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        capped = false;
+        return 'uncapped';
+      },
+    });
+    const uncap = make('uncap');
+    const hidden = make('hidden');
+    limited.push(uncap);
+    const build = vi.fn(async (input: BuildContext) => [
+      {
+        type: 'text' as const,
+        text: `DIRECT:${input.tools.map((t) => t.name).join(',')}`,
+      },
+    ]);
+    const { agent, tmp, ctx } = await buildAgent(provider, [uncap, hidden], undefined, {
+      refreshSystemPrompt: true,
+      systemPromptBuild: build,
+    });
+    cleanupDirs.push(tmp);
+    expect((await agent.run('uncap')).status).toBe('done');
+    const [before, after] = provider.receivedRequests;
+    expect(before?.tools?.map((t) => t.name)).toEqual(['uncap']);
+    expect(before?.system?.map((b) => b.text).join('\n')).toContain('DIRECT:uncap');
+    expect(before?.system?.map((b) => b.text).join('\n')).not.toContain('hidden');
+    expect(after?.tools?.map((t) => t.name)).toEqual(['uncap', 'hidden']);
+    expect(after?.system?.map((b) => b.text).join('\n')).toContain('DIRECT:uncap,hidden');
+    expect(build).toHaveBeenCalledTimes(2);
+    expect(ctx.catalogTools.map((t) => t.name)).toContain('hidden');
+  });
+
+  it('discovers and invokes an MCP-style tool registered during the same run', async () => {
+    let registerLate = () => {};
+    const late: Tool = {
+      name: 'mcp__regression__late',
+      description: 'late',
+      permission: 'auto',
+      mutating: false,
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        return 'LATE_RESULT';
+      },
+    };
+    const connect: Tool = {
+      ...late,
+      name: 'connect',
+      async execute() {
+        registerLate();
+        return 'connected';
+      },
+    };
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'connect', name: 'connect', input: {} },
+          { type: 'tool_use', id: 'search', name: 'tool_search', input: { query: late.name } },
+        ],
+        stopReason: 'tool_use',
+      },
+      {
+        content: [
+          { type: 'tool_use', id: 'use', name: 'tool_use', input: { tool: late.name, input: {} } },
+        ],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tools, ctx, tmp } = await buildAgent(provider, [
+      connect,
+      toolSearchTool,
+      toolUseTool,
+    ]);
+    cleanupDirs.push(tmp);
+    tools.setProviderToolNames(['connect', 'tool_search', 'tool_use']);
+    registerLate = () => tools.register(late);
+    expect((await agent.run('connect and use', { executionStrategy: 'sequential' })).status).toBe(
+      'done',
+    );
+    const results = ctx.messages
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((b) => b.type === 'tool_result');
+    expect(results.find((b) => b.tool_use_id === 'search')?.content).toContain(late.name);
+    expect(results.find((b) => b.tool_use_id === 'use')?.is_error).toBe(false);
+    expect(results.find((b) => b.tool_use_id === 'use')?.content).toContain('LATE_RESULT');
   });
 
   it('pins the starting session before asynchronous beforeRun hooks', async () => {

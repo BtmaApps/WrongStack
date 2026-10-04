@@ -1,3 +1,4 @@
+import type { Tool } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import { OpenAIProvider } from '../src/openai.js';
 
@@ -15,6 +16,34 @@ function mockFetch(json: unknown, status = 200) {
 }
 
 describe('WireAdapter — coverage of abstract base paths', () => {
+  it('selects the bounded tools before prompt composition with stable array identity', () => {
+    const provider = new OpenAIProvider({ apiKey: 'test-unused', quirks: { maxTools: 2 } });
+    provider.suppressMaxToolsWarning();
+    const tools: Tool[] = ['read', 'tool_search', 'tool_use', 'test'].map((name) => ({
+      name,
+      description: name,
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      async execute() {
+        return '';
+      },
+    }));
+    const selected = provider.selectToolsForRequest(tools);
+    expect(selected.map((t) => t.name)).toEqual(['tool_search', 'tool_use']);
+    expect(provider.selectToolsForRequest(tools)).toBe(selected);
+    expect(provider.selectToolsForRequest(selected)).toBe(selected);
+    provider.maxToolsCount = 0;
+    expect(provider.selectToolsForRequest(tools)).toBe(tools);
+    provider.maxToolsCount = 3;
+    expect(provider.selectToolsForRequest(tools).map((t) => t.name)).toEqual([
+      'read',
+      'tool_search',
+      'tool_use',
+    ]);
+    provider.maxToolsCount = 1;
+    expect(() => provider.selectToolsForRequest(tools)).toThrow(/cannot preserve/);
+  });
   // Line 56: constructor throws on empty apiKey (falsy check: !apiKey)
   it('constructor throws when apiKey is empty string', () => {
     expect(() => new OpenAIProvider({ apiKey: '' })).toThrow(/apiKey required/);

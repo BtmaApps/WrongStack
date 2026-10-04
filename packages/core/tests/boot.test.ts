@@ -11,40 +11,46 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * boot-config.test.ts (which runs the real core against a temp HOME).
  */
 
-const { canonicalRootMock, mkdirMock, writeFileMock, renameMock, mockWpaths } = vi.hoisted(() => ({
-  canonicalRootMock: vi.fn((root: string) => root),
-  mkdirMock: vi.fn().mockResolvedValue(undefined),
-  writeFileMock: vi.fn().mockResolvedValue(undefined),
-  renameMock: vi.fn().mockResolvedValue(undefined),
-  mockWpaths: {
-    globalRoot: '/home/testuser/.wrongstack',
-    projectDir: '/tmp/test/.wrongstack',
-    projectSessions: '/tmp/test/.wrongstack/sessions',
-    projectMeta: '/tmp/test/.wrongstack/meta.json',
-    projectHash: 'abc123',
-    globalConfig: '/home/testuser/.wrongstack/config.json',
-    profilesDir: '/home/testuser/.wrongstack/profiles',
-    profileConfig: (name: string) => `/home/testuser/.wrongstack/profiles/${name}/config.json`,
-    profileStatuslineConfig: (name: string) =>
-      `/home/testuser/.wrongstack/profiles/${name}/statusline.json`,
-    profileModeConfig: (name: string) => `/home/testuser/.wrongstack/profiles/${name}/mode.json`,
-    profileProviderStatus: (name: string) =>
-      `/home/testuser/.wrongstack/profiles/${name}/provider-status.json`,
-    profileUpdateCache: (name: string) =>
-      `/home/testuser/.wrongstack/profiles/${name}/update-cache.json`,
-    projectLocalConfig: '/tmp/test/.wrongstack/config.json',
-    secretsKey: '/home/testuser/.wrongstack/.key',
-    logFile: '/home/testuser/.wrongstack/wrongstack.log',
-  },
-}));
+const { canonicalRootMock, mkdirMock, openMock, writeFileMock, renameMock, mockWpaths } =
+  vi.hoisted(() => ({
+    canonicalRootMock: vi.fn((root: string) => root),
+    mkdirMock: vi.fn().mockResolvedValue(undefined),
+    openMock: vi.fn(),
+    writeFileMock: vi.fn().mockResolvedValue(undefined),
+    renameMock: vi.fn().mockResolvedValue(undefined),
+    mockWpaths: {
+      globalRoot: '/home/testuser/.wrongstack',
+      projectDir: '/tmp/test/.wrongstack',
+      projectSessions: '/tmp/test/.wrongstack/sessions',
+      projectMeta: '/tmp/test/.wrongstack/meta.json',
+      projectHash: 'abc123',
+      globalConfig: '/home/testuser/.wrongstack/config.json',
+      profilesDir: '/home/testuser/.wrongstack/profiles',
+      profileConfig: (name: string) => `/home/testuser/.wrongstack/profiles/${name}/config.json`,
+      profileStatuslineConfig: (name: string) =>
+        `/home/testuser/.wrongstack/profiles/${name}/statusline.json`,
+      profileModeConfig: (name: string) => `/home/testuser/.wrongstack/profiles/${name}/mode.json`,
+      profileProviderStatus: (name: string) =>
+        `/home/testuser/.wrongstack/profiles/${name}/provider-status.json`,
+      profileUpdateCache: (name: string) =>
+        `/home/testuser/.wrongstack/profiles/${name}/update-cache.json`,
+      projectLocalConfig: '/tmp/test/.wrongstack/config.json',
+      secretsKey: '/home/testuser/.wrongstack/.key',
+      logFile: '/home/testuser/.wrongstack/wrongstack.log',
+    },
+  }));
 
 vi.mock('node:os', () => ({ homedir: () => '/home/testuser' }));
 // The project-meta write goes through atomicWrite (temp + rename); the
-// mock needs rename/unlink too, while the best-effort open/stat/chmod
-// steps inside atomicWrite tolerate being absent (they throw, are caught).
+// The write handle is required; fsync/stat/chmod remain best-effort.
 vi.mock('node:fs/promises', () => ({
   mkdir: mkdirMock,
   writeFile: writeFileMock,
+  open: openMock.mockImplementation(async (filePath: string) => ({
+    writeFile: (data: string, options: unknown) => writeFileMock(filePath, data, options),
+    sync: async () => {},
+    close: async () => {},
+  })),
   rename: renameMock,
   unlink: vi.fn().mockResolvedValue(undefined),
 }));
@@ -109,6 +115,7 @@ describe('bootConfig (core)', () => {
     mkdirMock.mockClear();
     renameMock.mockClear();
     writeFileMock.mockClear();
+    openMock.mockClear();
     migrateMock.mockReset();
     migrateMock.mockResolvedValue({ migrated: 0, file: '' });
   });
@@ -138,12 +145,17 @@ describe('bootConfig (core)', () => {
     expect(writeFileMock).toHaveBeenCalledWith(
       expect.stringContaining('meta.json'),
       expect.stringContaining('"hash": "abc123"'),
-      expect.objectContaining({ flag: 'wx' }),
+      expect.objectContaining({ encoding: 'utf8' }),
     );
     expect(renameMock).toHaveBeenCalledWith(
       expect.stringContaining('meta.json'),
       '/tmp/test/.wrongstack/meta.json',
     );
+    expect(
+      openMock.mock.calls.some(
+        ([file, flags]) => String(file).includes('meta.json') && flags === 'wx',
+      ),
+    ).toBe(true);
   });
 
   it('pins shared project metadata to the canonical worktree identity root', async () => {
@@ -152,7 +164,7 @@ describe('bootConfig (core)', () => {
     expect(writeFileMock).toHaveBeenCalledWith(
       expect.stringContaining('meta.json'),
       expect.stringContaining('"root": "/tmp/main-checkout"'),
-      expect.objectContaining({ flag: 'wx' }),
+      expect.objectContaining({ encoding: 'utf8' }),
     );
   });
 

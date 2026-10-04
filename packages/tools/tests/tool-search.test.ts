@@ -282,3 +282,84 @@ describe('toolSearchTool', () => {
     expect(result.tools.map((t) => t.name)).toEqual(['mcp__github__create_issue']);
   });
 });
+
+describe('toolSearchTool vocabulary', () => {
+  const t = (name: string, description: string, extra: Record<string, unknown> = {}) => ({
+    name,
+    description,
+    permission: 'auto',
+    mutating: false,
+    inputSchema: { type: 'object', properties: {} },
+    ...extra,
+  });
+
+  it('matches plural and verb forms of a single word', async () => {
+    const ctx = makeCtx([
+      t('browser_screenshot', 'Capture a page or element PNG.'),
+      t('read', 'Read a file.'),
+    ]);
+    const plural = await executeToolSearch({ query: 'screenshots' }, ctx);
+    expect(plural.tools.map((tool) => tool.name)).toEqual(['browser_screenshot']);
+    const verb = await executeToolSearch({ query: 'reading' }, ctx);
+    expect(verb.tools.map((tool) => tool.name)).toEqual(['read']);
+  });
+
+  it('translates task vocabulary into catalog vocabulary', async () => {
+    const ctx = makeCtx([
+      t('fetch', 'Fetch a URL and return its content.'),
+      t('tree', 'Display a project or subpath directory tree.'),
+      t('write', 'Write a file.'),
+    ]);
+    const download = await executeToolSearch({ query: 'download' }, ctx);
+    expect(download.tools[0]?.name).toBe('fetch');
+    const folder = await executeToolSearch({ query: 'list folder contents' }, ctx);
+    expect(folder.tools[0]?.name).toBe('tree');
+  });
+
+  it('ranks a tool whose name is the query word above tools that only mention it', async () => {
+    const ctx = makeCtx([
+      t('codebase-targeted-test', 'Pick the tests affected by a change.'),
+      t('test', "Execute the project's test suite."),
+    ]);
+    const result = await executeToolSearch({ query: 'run tests' }, ctx);
+    expect(result.tools[0]?.name).toBe('test');
+  });
+
+  it('puts an exact name first even when other tools contain it', async () => {
+    const ctx = makeCtx([t('project_kit_run', 'Run a kit.'), t('project_kit', 'Inspect kits.')]);
+    const result = await executeToolSearch({ query: 'project_kit' }, ctx);
+    expect(result.tools[0]?.name).toBe('project_kit');
+  });
+
+  it('searches category and capability tags', async () => {
+    const ctx = makeCtx([
+      t('mcp__docs__lookup', 'Look things up.', { capabilities: ['knowledge.retrieve'] }),
+    ]);
+    const result = await executeToolSearch({ query: 'retrieve' }, ctx);
+    expect(result.tools.map((tool) => tool.name)).toEqual(['mcp__docs__lookup']);
+  });
+
+  it('sends full schemas only for the leading results', async () => {
+    const tools = Array.from({ length: 8 }, (_, i) =>
+      t(`file_tool_${i}`, `Handles a file. Second sentence ${i}.`, { usageHint: `hint ${i}` }),
+    );
+    const result = await executeToolSearch({ query: 'file' }, makeCtx(tools));
+
+    expect(result.tools).toHaveLength(8);
+    for (const tool of result.tools.slice(0, 5)) {
+      expect(tool.inputSchema).toBeDefined();
+      expect(tool.schemaOmitted).toBeUndefined();
+    }
+    for (const tool of result.tools.slice(5)) {
+      expect(tool.inputSchema).toBeUndefined();
+      expect(tool.usageHint).toBeUndefined();
+      expect(tool.schemaOmitted).toBe(true);
+      expect(tool.description).toBe('Handles a file.');
+    }
+    expect(result.hint).toContain('exact name');
+    // The exact name then returns that tool's schema.
+    const exact = await executeToolSearch({ query: 'file_tool_7' }, makeCtx(tools));
+    expect(exact.tools[0]).toMatchObject({ name: 'file_tool_7', usageHint: 'hint 7' });
+    expect(exact.tools[0]?.inputSchema).toBeDefined();
+  });
+});

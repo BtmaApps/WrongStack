@@ -26,4 +26,8 @@ Use `project_kit_run` to verify or execute the inspected revision.
 <!--ws:else-->
 Discover the Project Kit execution tool through the enabled catalog before verifying or running a kit. An explicitly disabled execution route must not be bypassed with shell commands.
 <!--ws:end-->
+<!--ws:else-->
+<!--ws:if tool=tool_search tool=tool_use-->
+Before writing an ad hoc script for a project-specific check or repeated operation, search the enabled catalog for Project Kit with `tool_search`. If available, inspect its reusable capabilities through `tool_use` before creating a duplicate script. Follow the discovered guide, parameter schema, and revision verification requirements. An explicitly disabled kit or execution route must not be bypassed.
+<!--ws:end-->
 <!--ws:end-->

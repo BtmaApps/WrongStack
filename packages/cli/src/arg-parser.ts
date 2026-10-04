@@ -78,6 +78,7 @@ export const BOOLEAN_FLAGS = new Set([
   'token-saving-mode',
   'system-lite',
   'system-pro',
+  'system-scout',
   'hq',
   'hq-allow-exec',
   'tunnel',

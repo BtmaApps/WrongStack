@@ -198,10 +198,11 @@ export function createHostSubagentFactory(
     const subagentTools = companion
       ? memoryCompanionTools(host.deps.toolRegistry.list())
       : host.filterTools(effectiveCfg.tools);
+    const providerTools = provider.selectToolsForRequest?.(subagentTools) ?? subagentTools;
     const baseSystem: TextBlock[] = await host.deps.systemPromptBuilder.build({
       cwd: subCwd,
       projectRoot: host.deps.projectRoot,
-      tools: subagentTools,
+      tools: providerTools,
       catalogTools: subagentTools,
       model: effModel,
       provider: effProvider,
@@ -212,7 +213,7 @@ export function createHostSubagentFactory(
     baseSystem.unshift({
       type: 'text',
       text: renderInstructionLayer(DEFAULT_SUBAGENT_BASELINE, {
-        toolNames: new Set(subagentTools.map((tool) => tool.name)),
+        toolNames: new Set(providerTools.map((tool) => tool.name)),
         tier: 'off',
         subagent: true,
         strictToolReferences: true,
@@ -344,7 +345,7 @@ export function createHostSubagentFactory(
         : (config.features?.allowOutsideProjectRoot ??
           !(config.tools?.restrictToProjectRoot ?? false)),
       model: effModel,
-      tools: subagentTools,
+      tools: providerTools,
       catalogTools: subagentTools,
       agentId: subagentName,
       agentName: effectiveCfg.name ?? subagentName,

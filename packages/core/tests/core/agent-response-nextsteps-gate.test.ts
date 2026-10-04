@@ -122,7 +122,7 @@ describe('provider request live-context tail', () => {
     } as never as AgentInternals['ctx'];
     const a = {
       ctx,
-      tools: { listForProvider: () => [] },
+      tools: { listForProvider: () => [], list: () => [] },
       pipelines: { request: { run: async (request: Request) => request } },
       events: { emit: vi.fn() },
       logger: { warn: vi.fn() },

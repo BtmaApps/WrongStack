@@ -105,6 +105,67 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
       ],
     },
   },
+  {
+    config: {
+      id: 'writer',
+      name: 'Writer',
+      role: 'writer',
+      tools: [
+        'read',
+        'grep',
+        'glob',
+        'search',
+        'fetch',
+        'read_url_content',
+        'write',
+        'edit',
+        'mailbox',
+      ],
+    },
+    budget: MEDIUM_BUDGET,
+    capability: {
+      phase: 'knowledge',
+      summary:
+        'General writing and editing: reports, articles, emails, letters, proposals, summaries — no invented facts.',
+      keywords: [
+        'writer',
+        'write an email',
+        'write a report',
+        'write an article',
+        'blog post',
+        'cover letter',
+        'proposal',
+        'proofread',
+        'copyedit',
+        'rewrite this',
+        'press release',
+        'newsletter',
+      ],
+    },
+  },
+  {
+    config: {
+      id: 'translator',
+      name: 'Translator',
+      role: 'translator',
+      tools: ['read', 'grep', 'glob', 'search', 'fetch', 'write', 'edit', 'mailbox'],
+    },
+    budget: MEDIUM_BUDGET,
+    capability: {
+      phase: 'knowledge',
+      summary:
+        'Document and prose translation: preserves meaning, tone, formatting, placeholders, and glossary terms.',
+      keywords: [
+        'translator',
+        'translate this',
+        'translate document',
+        'translate text',
+        'translate article',
+        'review translation',
+        'bilingual',
+      ],
+    },
+  },
 ];
 
 /**

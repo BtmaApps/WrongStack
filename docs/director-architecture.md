@@ -59,8 +59,10 @@
 
 ### Pre-built fleet roster
 
-`FLEET_ROSTER` contains 77 unique role ids: the 75-role phase catalog plus the
-operational `generic` and `shadow-agent` roles. Representative roles include:
+`FLEET_ROSTER` contains 83 unique role ids: the 79-role phase catalog plus the
+operational `generic`, `shadow-agent`, `explore-companion`, and `chaos-monkey`
+roles. Four catalog roles serve general, non-coding work — `investigator`,
+`writer`, `translator`, and `sysadmin` — which the Scout identity delegates to. Representative roles include:
 
 | Role | File | Purpose |
 |------|------|---------|
@@ -132,7 +134,7 @@ Three properties worth keeping:
   (force-push, tag collision, dirty tree) least often has a safe default.
   Pinned by `roster-discoverability.test.ts`.
 
-Toolset narrowing does **not** cost a role its guidance: running all 75 curated
+Toolset narrowing does **not** cost a role its guidance: running all 79 curated
 skill sets against their own toolsets drops zero skills, so the tool presets and
 `ROLE_SKILL_SETS` are consistent by construction.
 

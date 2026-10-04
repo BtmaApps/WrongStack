@@ -38,9 +38,9 @@ const KEBAB = /^[a-z][a-z0-9-]*$/;
 const TOOL_ID = /^[a-z][a-z0-9_-]*$/;
 
 describe('agent catalog integrity', () => {
-  it('has 75 catalog definitions and AGENT_CATALOG keys match 1:1', () => {
-    expect(ALL_AGENT_DEFINITIONS.length).toBe(75);
-    expect(Object.keys(AGENT_CATALOG).length).toBe(75);
+  it('has 79 catalog definitions and AGENT_CATALOG keys match 1:1', () => {
+    expect(ALL_AGENT_DEFINITIONS.length).toBe(79);
+    expect(Object.keys(AGENT_CATALOG).length).toBe(79);
     for (const def of ALL_AGENT_DEFINITIONS) {
       expect(AGENT_CATALOG[def.config.role as string]).toBe(def);
     }
@@ -87,7 +87,7 @@ describe('agent catalog integrity', () => {
     }
   });
 
-  it('groups every catalog agent into exactly one phase and the groups sum to 75', () => {
+  it('groups every catalog agent into exactly one phase and the groups sum to 79', () => {
     let total = 0;
     const seen = new Set<string>();
     for (const phase of PHASES) {
@@ -100,8 +100,8 @@ describe('agent catalog integrity', () => {
       }
       total += group.length;
     }
-    expect(total).toBe(75);
-    expect(seen.size).toBe(75);
+    expect(total).toBe(79);
+    expect(seen.size).toBe(79);
   });
 
   it('every built-in role carries a non-empty technology policy suffix in its prompt', async () => {
@@ -152,7 +152,7 @@ describe('agent catalog integrity', () => {
 
 describe('fleet roster derivation', () => {
   it('FLEET_ROSTER is the catalog plus the standalone shadow, generic, explore-companion, and chaos-monkey roles', () => {
-    expect(Object.keys(FLEET_ROSTER).length).toBe(79);
+    expect(Object.keys(FLEET_ROSTER).length).toBe(83);
     // Legacy four are preserved alongside the catalog.
     for (const legacy of ['audit-log', 'bug-hunter', 'refactor-planner', 'security-scanner']) {
       expect(FLEET_ROSTER[legacy]).toBeDefined();

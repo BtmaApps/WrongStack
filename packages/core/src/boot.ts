@@ -380,13 +380,13 @@ export function flagsToConfigPatch(flags: Record<string, string | boolean>): Par
     patch.features ??= {} as Config['features'];
     patch.features.tokenSavingMode = true;
   }
-  if (isEnabledFlag(flags['system-pro']) || flags['system-prompt'] === 'pro') {
-    patch.systemPrompt = { variant: 'pro' };
-  } else if (isEnabledFlag(flags['system-lite']) || flags['system-prompt'] === 'lite') {
-    patch.systemPrompt = { variant: 'lite' };
-  } else if (flags['system-prompt'] === 'default') {
-    patch.systemPrompt = { variant: 'default' };
-  }
+  // `--system-<variant>` / `--system-prompt <variant>` pin the identity for this
+  // launch only; `pro` wins when several variant flags are given.
+  const promptVariant =
+    (['pro', 'lite', 'scout'] as const).find(
+      (variant) => isEnabledFlag(flags[`system-${variant}`]) || flags['system-prompt'] === variant,
+    ) ?? (flags['system-prompt'] === 'default' ? 'default' : undefined);
+  if (promptVariant) patch.systemPrompt = { variant: promptVariant };
   // `--token-saving-tier <level>` takes precedence over `--token-saving-mode`.
   // Supported values: auto, off, minimal, light, medium, aggressive.
   //

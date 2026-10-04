@@ -23,7 +23,11 @@
  */
 import * as path from 'node:path';
 import { TOKENS } from '@wrongstack/core/kernel';
-import { getSessionRegistry } from '@wrongstack/core/storage';
+import {
+  attachScoutToolLearning,
+  getSessionRegistry,
+  seedScoutLearnedTools,
+} from '@wrongstack/core/storage';
 import { addFatalSalvageHook } from '@wrongstack/core/utils';
 import type { CliContext } from '../cli-context.js';
 import type { loadOnlineAgentsForPrompt } from '../cli-main-helpers.js';
@@ -43,7 +47,12 @@ const BOOT_RESUME_RENEW_MS = 20_000;
 interface SessionEstablishmentArgs {
   /** Container used to resolve SessionStore + TokenCounter. */
   container: Pick<CliContext['container'], 'resolve'>;
-  config: { provider: string; model: string };
+  /**
+   * Passed to `setupSession` whole. Rebuilding it here field by field dropped
+   * `features` / `tools`, so the leader context always opened with filesystem
+   * access outside the project root, whatever the config said.
+   */
+  config: Parameters<typeof setupSession>[0]['config'];
   wpaths: Parameters<typeof setupSession>[0]['wpaths'];
   projectRoot: string;
   cwd: string;
@@ -83,7 +92,7 @@ export async function setupSessionEstablishment(args: SessionEstablishmentArgs) 
   tokenCounter.setSessionId?.(() => sessionRef.current?.id);
   const sessionRegistry = getSessionRegistry(wpaths.globalRoot);
   const sessResult = await setupSession({
-    config: { model: config.model, provider: config.provider },
+    config,
     wpaths,
     projectRoot,
     cwd,
@@ -148,6 +157,10 @@ export async function setupSessionEstablishment(args: SessionEstablishmentArgs) 
     priorFleetState,
   } = sessResult;
   context.meta['promptOnlineAgents'] = onlineAgents;
+  // Scout: promote the deferred tools this project keeps calling through
+  // `tool_use`, and keep learning from this process's calls.
+  seedScoutLearnedTools(context.meta, wpaths.projectDir);
+  attachScoutToolLearning(events, wpaths.projectDir);
   sessionRef.current = session;
   // P0 kill-safety: fatal paths (crash-shield error-storm exit, top-level
   // main rejection, 'exit' listeners) drain the writer synchronously via

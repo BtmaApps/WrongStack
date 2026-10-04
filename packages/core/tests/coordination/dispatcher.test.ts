@@ -9,15 +9,29 @@ import {
 } from '../../src/coordination/index.js';
 
 describe('catalog', () => {
-  it('has 75 catalog agents, all with role/prompt/keywords', () => {
+  it('has 79 catalog agents, all with role/prompt/keywords', () => {
     const roles = Object.keys(AGENT_CATALOG);
-    expect(roles.length).toBe(75);
+    expect(roles.length).toBe(79);
     for (const def of Object.values(AGENT_CATALOG)) {
       expect(def.config.role).toBeTruthy();
       expect((def.config.prompt ?? '').length).toBeGreaterThan(50);
       expect(def.capability.keywords.length).toBeGreaterThan(0);
       expect(def.budget.timeoutMs).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('general-purpose roles', () => {
+  // The Scout identity delegates non-coding work; these requests must land on
+  // the general specialists rather than their technical neighbours (research,
+  // document, i18n, devops).
+  it.each([
+    ['fact-check these claims and look up the current regulations', 'investigator'],
+    ['proofread my cover letter and rewrite this intro', 'writer'],
+    ['translate this document into German', 'translator'],
+    ['the disk is full: check disk space and the windows service that fails', 'sysadmin'],
+  ])('routes "%s" to %s', (task, role) => {
+    expect(scoreAgents(task)[0]?.role).toBe(role);
   });
 });
 

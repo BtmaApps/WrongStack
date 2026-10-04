@@ -200,17 +200,13 @@ describe('DefaultSystemPromptBuilder — F-area tier semantics', () => {
     }
   });
 
-  describe('F-area — known-equal pair (off === medium under current fixture)', () => {
-    // Documented behavior, not a test failure: with an all-TIER1
-    // fixture and no shell-guidance trigger, off and medium produce
-    // byte-identical prompts. This test will fail (signaling a
-    // behavior change) if the prompt-builder ever introduces an
-    // off/medium divergence. If that happens, move 'off' vs 'medium'
-    // into the knownDiffer list above and update this test.
-    it('off === medium (documented finding)', async () => {
+  describe('F-area — uncategorized hints respect the tier budget', () => {
+    // The fixture's long first sentence now observes the same hard budget
+    // as categorized tools, so medium is shorter than off.
+    it('medium is shorter than off for long uncategorized hints', async () => {
       const a = await promptAt('off');
       const b = await promptAt('medium');
-      expect(a).toBe(b);
+      expect(b.length).toBeLessThan(a.length);
     });
   });
 

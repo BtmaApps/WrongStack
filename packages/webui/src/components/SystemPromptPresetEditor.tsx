@@ -6,7 +6,15 @@ import { useActiveSessionId } from '@/stores/session-lanes';
 import type { WSSystemPromptPreset } from '@/types/server-message-system';
 import { Button } from './ui/button';
 
-type Variant = 'lite' | 'default' | 'pro';
+type Variant = 'lite' | 'default' | 'pro' | 'scout';
+
+const VARIANT_LABELS: Record<Variant, string> = {
+  lite: 'Lite',
+  default: 'Standard',
+  pro: 'Pro',
+  scout: 'Scout',
+};
+
 type Library = {
   presets?: WSSystemPromptPreset[];
   active?: Partial<Record<Variant, string>>;
@@ -113,8 +121,7 @@ export function SystemPromptPresetEditor({
 
   const create = () => {
     const suggested = t('activity:systemPrompt.presets.suggestedName', {
-      variant:
-        currentVariant === 'default' ? 'Standard' : currentVariant === 'pro' ? 'Pro' : 'Lite',
+      variant: VARIANT_LABELS[currentVariant],
     });
     setBusy(true);
     client.send({
@@ -176,8 +183,7 @@ export function SystemPromptPresetEditor({
         </div>
         <Button size="sm" variant="outline" disabled={busy} onClick={create}>
           {t('activity:systemPrompt.presets.copy', {
-            variant:
-              currentVariant === 'default' ? 'Standard' : currentVariant === 'pro' ? 'Pro' : 'Lite',
+            variant: VARIANT_LABELS[currentVariant],
           })}
         </Button>
       </div>
