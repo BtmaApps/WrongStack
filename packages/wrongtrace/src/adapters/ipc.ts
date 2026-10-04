@@ -137,6 +137,7 @@ export function createIpcTransport(socketPath?: string, timeouts?: IpcTimeouts):
             } catch {
               continue; // malformed line — tolerate, keep scanning
             }
+            if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) continue;
             if (envelope.id !== id) {
               // Result and error envelopes share the same correlation rule.
               // A stale/foreign error must not fail the current request.

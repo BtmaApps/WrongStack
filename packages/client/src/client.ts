@@ -196,8 +196,8 @@ export class WrongStackClient {
       return run;
     }
     this.runs.set(id, { run, socket: this.socketNumber });
-    if (!this.subscribed.includes(sessionId)) this.subscribe(sessionId);
     try {
+      if (!this.subscribed.includes(sessionId)) this.subscribe(sessionId);
       this.post({
         type: 'user_message',
         payload: {
@@ -393,8 +393,14 @@ export class WrongStackClient {
   }
 
   private adopt(info: SessionInfo): SessionInfo {
+    const previous = this.current;
     this.current = info;
-    this.subscribe(info.sessionId);
+    try {
+      this.subscribe(info.sessionId);
+    } catch (error) {
+      this.current = previous;
+      throw error;
+    }
     return info;
   }
 
@@ -404,17 +410,23 @@ export class WrongStackClient {
    * applied per session, and the server sends what was missed.
    */
   private subscribe(sessionId: string, catchUp = false): void {
-    this.subscribed = [sessionId, ...this.subscribed.filter((id) => id !== sessionId)].slice(
+    const previous = this.subscribed;
+    this.subscribed = [sessionId, ...previous.filter((id) => id !== sessionId)].slice(
       0,
       MAX_SUBSCRIBED,
     );
     const cursors = catchUp ? this.frames.request(this.subscribed) : null;
-    this.socket.send(
-      JSON.stringify({
-        type: 'session.subscribe',
-        payload: { sessionIds: this.subscribed, sessionId, ...(cursors ?? {}) },
-      }),
-    );
+    try {
+      this.socket.send(
+        JSON.stringify({
+          type: 'session.subscribe',
+          payload: { sessionIds: this.subscribed, sessionId, ...(cursors ?? {}) },
+        }),
+      );
+    } catch (error) {
+      this.subscribed = previous;
+      throw error;
+    }
   }
 
   /** The next frame that matches, or a timeout. */
@@ -591,6 +603,7 @@ export class WrongStackClient {
       if (this.closing) return;
       if (!(await this.wait(delay))) return;
       delay = Math.min(delay * 2, policy.maxDelayMs ?? 10_000);
+      const socketBeforeAttempt = this.socketNumber;
       try {
         const { start, early } = await this.open();
         if (this.closing) {
@@ -598,12 +611,20 @@ export class WrongStackClient {
           return;
         }
         this.receive({ type: 'session.start', payload: start });
-        this.connection = 'open';
         this.subscribe(this.current.sessionId, true);
         for (const frame of early) this.receive(frame);
         this.setState('open', undefined);
         return;
       } catch (error) {
+        // `open()` installs the new socket before catch-up subscription. If
+        // that send fails, retire the socket without letting its close route
+        // finish the client or start a nested reconnect attempt.
+        if (this.socketNumber !== socketBeforeAttempt) {
+          this.socketNumber += 1;
+          if (this.socket.readyState === SOCKET_OPEN) {
+            this.socket.close(NORMAL_CLOSURE, 'reconnect attempt failed');
+          }
+        }
         last =
           error instanceof WrongStackError
             ? error

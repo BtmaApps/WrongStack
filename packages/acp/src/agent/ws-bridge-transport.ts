@@ -62,6 +62,7 @@ export class WsBridgeTransport implements AgentServerTransport {
   receive(msg: ACPMessage): void {
     if (this.closed) return;
     for (const handler of [...this.handlers]) {
+      if (this.closed) break;
       try {
         handler(msg);
       } catch {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:05:11.632Z",
+  "generatedAt": "2026-10-04T18:05:53.295Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4084,
-    "sourceLines": 1055131,
+    "testFiles": 4085,
+    "sourceLines": 1055154,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -112,7 +112,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 45,
-      "testFiles": 52,
+      "testFiles": 53,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -126,7 +126,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 52
+          "testFiles": 53
         }
       ]
     },
@@ -1602,6 +1602,12 @@
       },
       {
         "file": "packages/acp/tests/wrongstack-acp-http-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/ws-bridge-close-during-dispatch.test.ts",
         "projects": [
           "root-node"
         ]
