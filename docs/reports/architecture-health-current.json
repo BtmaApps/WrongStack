@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:56:07.876Z",
+  "generatedAt": "2026-10-04T14:57:00.351Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4478,
-    "testFiles": 4050,
-    "sourceLines": 1053671,
+    "sourceFiles": 4479,
+    "testFiles": 4052,
+    "sourceLines": 1053873,
     "workspaceEdges": 133,
-    "moduleEdges": 14575,
+    "moduleEdges": 14584,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 986
+    "testOnlyExports": 985
   },
   "errors": [
     "1 unexcepted module cycle(s)",
@@ -603,8 +603,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 124,
-      "testFiles": 124,
+      "sourceFiles": 125,
+      "testFiles": 125,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -619,7 +619,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 124
+          "testFiles": 125
         }
       ]
     },
@@ -824,7 +824,7 @@
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
       "sourceFiles": 18,
-      "testFiles": 23,
+      "testFiles": 24,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -839,7 +839,7 @@
         {
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
-          "testFiles": 23
+          "testFiles": 24
         }
       ]
     },
@@ -14273,6 +14273,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/injection-validity.test.ts",
         "projects": [
           "root-node"
@@ -20604,6 +20610,12 @@
       },
       {
         "file": "packages/vector-memory/tests/sage-mirror-shared-text.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vector-memory/tests/sage-port-receiver.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28417,10 +28429,6 @@
     {
       "file": "packages/sage/src/middleware/tool-call-memory-trace.ts",
       "name": "mergeMemoryEvidence"
-    },
-    {
-      "file": "packages/sage/src/middleware/tool-call-memory-trace.ts",
-      "name": "TOOL_MEMORY_EVIDENCE_SOURCE"
     },
     {
       "file": "packages/sage/src/middleware/tool-call-memory.ts",

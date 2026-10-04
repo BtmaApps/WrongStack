@@ -65,6 +65,29 @@ interface SearchCapabilityShape {
   searchSageWithBreakdown?: ((...args: never[]) => unknown) | undefined;
 }
 
+function delegateWithOverrides<T extends object>(original: T, overrides: Partial<T>): T {
+  const methods = new WeakMap<object, unknown>();
+  const delegated = new Proxy(original, {
+    get(target, key) {
+      if (Object.hasOwn(overrides, key)) return Reflect.get(overrides, key);
+      const value = Reflect.get(target, key, target);
+      if (key === 'constructor' || typeof value !== 'function' || Object.hasOwn(target, key)) {
+        return value;
+      }
+      let bound = methods.get(value);
+      if (bound === undefined) {
+        bound = (...args: unknown[]) => {
+          const result = Reflect.apply(value, target, args);
+          return result === target ? delegated : result;
+        };
+        methods.set(value, bound);
+      }
+      return bound;
+    },
+  });
+  return delegated;
+}
+
 export interface VectorPortWrappingOptions {
   /** Vector store. The wrapper adapts it to the SAGE recall contract. */
   store: VectorMemoryStore;
@@ -193,27 +216,18 @@ export function wrapMemoryPortWithVectorRecall(
       );
     };
 
-  // Build the wrapper on the port's prototype chain, NOT via a plain
-  // spread. `{ ...port }` copies only own enumerable properties: for a
-  // class-instance port, `withTraceId` / `dispose` / `health` / `read` /
-  // `remember` live on the prototype and a spread silently drops them —
-  // the first direct method call after wrapping (e.g. boot's
-  // `memoryStore.withTraceId(traceId)`) then crashes. Test fakes built
-  // as object literals hide this; the E2E boot path exposed it
-  // (memoryStore.withTraceId is not a function).
-  const wrapped = Object.create(
-    Object.getPrototypeOf(port),
-    Object.getOwnPropertyDescriptors(port),
-  ) as MemoryPort;
+  // Delegate lifecycle and capability members to their original receivers:
+  // copying a prototype does not copy native private-field branding or state.
   const wrapSearchCapability = <C extends SearchCapabilityShape>(original: C): C => {
-    const capability = Object.create(original) as C;
-    capability.searchSage = wrapSearchSage(original.searchSage.bind(original) as never);
+    const overrides: Partial<SearchCapabilityShape> = {
+      searchSage: wrapSearchSage(original.searchSage.bind(original) as never),
+    };
     if (original.searchSageWithBreakdown) {
-      capability.searchSageWithBreakdown = wrapSearchWithBreakdown(
+      overrides.searchSageWithBreakdown = wrapSearchWithBreakdown(
         original.searchSageWithBreakdown.bind(original) as never,
       );
     }
-    return capability;
+    return delegateWithOverrides(original, overrides as Partial<C>);
   };
 
   // Every read-side capability that exposes `searchSage` is wrapped. The
@@ -226,7 +240,7 @@ export function wrapMemoryPortWithVectorRecall(
     SAGE_SURFACE_CAPABILITY.id,
     SAGE_SERVICE_CAPABILITY.id,
   ]);
-  wrapped.getCapability = <T>(capability: {
+  const getCapability = <T>(capability: {
     id: string;
     readonly __memoryCapabilityType?: ((value: T) => T) | undefined;
   }): T | undefined => {
@@ -239,5 +253,5 @@ export function wrapMemoryPortWithVectorRecall(
     }
     return port.getCapability<T>(capability as never);
   };
-  return wrapped;
+  return delegateWithOverrides(port, { getCapability });
 }

@@ -122,6 +122,22 @@ export class InjectionTracker {
     });
   }
 
+  /** Update retained evidence without re-arming consume-once usefulness credit. */
+  refresh(memoryId: string, text: string, sessionId?: string, renderedContextText?: string): void {
+    const key = `${sessionId ?? '<no-session>'}\0${memoryId}`;
+    const context = this.contextEntries.get(key);
+    if (!context) return;
+    const textKey = normalizeTextKey(text);
+    const tokenSet = new Set(tokenize(textKey));
+    context.contextTextKey = contextNeedle(textKey, renderedContextText, this.minTokens);
+    const entry = this.entries.get(key);
+    if (entry) {
+      entry.textKey = textKey;
+      entry.tokenSet = tokenSet;
+      entry.tokens = tokenSet.size;
+    }
+  }
+
   /**
    * Compare tracked injections with the exact provider-bound request text.
    * This is the authoritative boundary for "in context" vs "left context":

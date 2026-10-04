@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:56:07.876Z
+**Generated:** 2026-10-04T14:57:00.351Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4478 |
-| Production source lines | 1053671 |
-| Test files | 4050 |
+| Production source files | 4479 |
+| Production source lines | 1053873 |
+| Test files | 4052 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14575 |
+| Relative module edges | 14584 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -49,7 +49,7 @@
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 23 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
-| @wrongstack/sage | 124 | 124 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 125 | 125 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
@@ -58,7 +58,7 @@
 | @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 269 | 295 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 451 | 412 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
-| @wrongstack/vector-memory | 18 | 23 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
+| @wrongstack/vector-memory | 18 | 24 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 645 | 458 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 49 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 12 | @wrongstack/core |
@@ -137,7 +137,7 @@ None.
 
 ## Exports only tests reference
 
-- 986 runtime exports are referenced by tests and by no other production file.
+- 985 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

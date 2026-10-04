@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 365,
+      "files": 366,
       "typeOnly": 288,
-      "runtimeOrMixed": 98
+      "runtimeOrMixed": 99
     },
     "@wrongstack/core/agent-catalog": {
       "files": 20,
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 51
     },
     "@wrongstack/core/kernel": {
-      "files": 325,
-      "typeOnly": 150,
-      "runtimeOrMixed": 189
+      "files": 327,
+      "typeOnly": 151,
+      "runtimeOrMixed": 190
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1299,
-      "typeOnly": 1150,
+      "files": 1302,
+      "typeOnly": 1153,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -229,9 +229,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 710,
+      "files": 712,
       "typeOnly": 67,
-      "runtimeOrMixed": 675
+      "runtimeOrMixed": 677
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1239,6 +1239,12 @@
       "file": "packages/sage/src/middleware/tool-call-memory.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -7656,6 +7662,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/sage/src/middleware/evidence-refresh.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/sage/src/middleware/outcome-capture.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7723,6 +7735,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/sage/tests/host-wiring-daily-triage-injector-evidence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17484,6 +17502,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/sage/src/middleware/evidence-refresh.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/sage/src/middleware/outcome-capture.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17641,6 +17665,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/sage/tests/domain-term-extractor.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -19483,6 +19513,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/vector-memory/src/tools.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/vector-memory/tests/sage-port-receiver.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -23562,6 +23598,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/src/middleware/evidence-refresh.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/src/middleware/session-end-commit-extractor.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -23635,6 +23677,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/src/sqlite-store-schema.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/tests/injected-evidence-freshness.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

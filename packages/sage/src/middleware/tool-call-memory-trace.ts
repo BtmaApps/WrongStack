@@ -303,22 +303,31 @@ export function storeProviderMemoryEvidence(
   text: string,
   maxChars: number,
 ): MergedMemoryEvidence {
-  const host = ctx as ToolCallPipelinePayload['ctx'] & MemoryEvidenceHost;
   const window = Math.max(0, Math.floor(maxChars));
   const merged = mergeMemoryEvidence(readToolMemoryEvidence(ctx), text, window);
+  replaceProviderMemoryEvidence(ctx, merged.text, window);
+  return merged;
+}
+
+/** Replace the window after refreshing it; removed rows must not be merged back. */
+export function replaceProviderMemoryEvidence(
+  ctx: ToolCallPipelinePayload['ctx'],
+  text: string,
+  maxChars: number,
+): void {
+  const host = ctx as ToolCallPipelinePayload['ctx'] & MemoryEvidenceHost;
   // The merge already fits the window; never let the store's own cap slice a
   // memory line (incoming lines are kept even when they alone exceed it).
-  const storeCap = Math.max(window, merged.text.length);
+  const storeCap = Math.max(maxChars, text.length);
   if (typeof host.setMemoryEvidence === 'function') {
-    host.setMemoryEvidence(TOOL_MEMORY_EVIDENCE_SOURCE, merged.text, storeCap);
-    return merged;
+    host.setMemoryEvidence(TOOL_MEMORY_EVIDENCE_SOURCE, text, storeCap);
+    return;
   }
   const retained = (host.memoryEvidence ?? []).filter(
     (entry) => entry.source !== TOOL_MEMORY_EVIDENCE_SOURCE,
   );
-  retained.push({ source: TOOL_MEMORY_EVIDENCE_SOURCE, text: merged.text.slice(0, storeCap) });
+  if (text) retained.push({ source: TOOL_MEMORY_EVIDENCE_SOURCE, text });
   host.memoryEvidence = retained.slice(-8);
-  return merged;
 }
 
 /**

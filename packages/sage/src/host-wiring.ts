@@ -15,6 +15,7 @@ import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { getSageRetrieval, getSageSurface } from './memory-port.js';
 import { createSageContextMonitorMiddleware } from './middleware/context-monitor.js';
 import { createSageDomainTermExtractorMiddleware } from './middleware/domain-term-extractor-middleware.js';
+import { createSageEvidenceRefreshMiddleware } from './middleware/evidence-refresh.js';
 import { InjectionTracker } from './middleware/injection-tracker.js';
 import { createSageOutcomeCaptureMiddleware } from './middleware/outcome-capture.js';
 import { createSagePathRemapMiddleware } from './middleware/path-remap.js';
@@ -109,11 +110,14 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
   // (the usefulness signal behind recordUse). A tracker per middleware would
   // silently drop every cross-path use.
   const injectionTracker = new InjectionTracker();
+  const surface = getSageSurface(memoryStore);
+  const getMemory = surface ? (id: string) => surface.getSage(id) : undefined;
 
   if (cfg?.inject?.toolResults !== false) {
     deps.pipelines.toolCall.use(
       createSageToolCallMiddleware({
         memory: retrieval,
+        getMemory,
         maxHintsPerTool: cfg?.inject?.maxHintsPerTool,
         maxCharsPerTool: cfg?.inject?.maxCharsPerTool,
         taskAware: cfg?.inject?.taskAware,
@@ -128,6 +132,16 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
         getSessionId: deps.getSessionId,
       }),
     );
+    if (getMemory) {
+      deps.pipelines.request.use(
+        createSageEvidenceRefreshMiddleware({
+          getMemory,
+          projectRoot: deps.projectRoot,
+          getSessionId: deps.getSessionId,
+          tracker: injectionTracker,
+        }),
+      );
+    }
   }
   if (cfg?.capture?.toolOutcomes || cfg?.capture?.errorPatterns) {
     deps.pipelines.toolCall.use(

@@ -1044,8 +1044,7 @@
       "pathAnchorRelation"
     ],
     "packages/sage/src/middleware/tool-call-memory-trace.ts": [
-      "mergeMemoryEvidence",
-      "TOOL_MEMORY_EVIDENCE_SOURCE"
+      "mergeMemoryEvidence"
     ],
     "packages/sage/src/middleware/tool-call-memory.ts": [
       "toolCallMemoryCoverage"

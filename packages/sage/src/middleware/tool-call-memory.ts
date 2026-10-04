@@ -69,6 +69,8 @@ export type {
 
 export interface SageToolCallMiddlewareOptions {
   memory: SageRetrieverLike;
+  /** Read current rows for retained evidence, including after non-retrieval tools. */
+  getMemory?: GetEvidenceMemory | undefined;
   enabled?: boolean | undefined;
   maxHintsPerTool?: number | undefined;
   maxCharsPerTool?: number | undefined;
@@ -138,6 +140,8 @@ function withRetrievalBudget<T>(work: Promise<T>, timeoutMs: number): Promise<T>
 }
 
 import { nowIso } from '@wrongstack/primitives';
+import { type GetEvidenceMemory, refreshMemoryEvidence } from './evidence-refresh.js';
+import { replaceProviderMemoryEvidence } from './tool-call-memory-trace.js';
 
 export function createSageToolCallMiddleware(
   opts: SageToolCallMiddlewareOptions,
@@ -168,6 +172,27 @@ export function createSageToolCallMiddleware(
       let attemptedTrigger: ExtractedTriggerContext | undefined;
       let attemptedPlan: ReturnType<MemoryInjectorAgent['plan']> | undefined;
       try {
+        const previousEvidence = readToolMemoryEvidence(nextPayload.ctx);
+        if (opts.getMemory && previousEvidence) {
+          const refreshed = await withRetrievalBudget(
+            refreshMemoryEvidence(
+              previousEvidence,
+              opts.getMemory,
+              opts.getSessionId?.() ?? (nextPayload.ctx.session as { id?: string } | undefined)?.id,
+              nextPayload.ctx.projectRoot,
+              opts.tracker,
+            ),
+            opts.retrievalTimeoutMs ?? DEFAULT_RETRIEVAL_TIMEOUT_MS,
+          ).catch(() => '');
+          // A clear/replacement while the read awaited owns the new window.
+          if (readToolMemoryEvidence(nextPayload.ctx) === previousEvidence) {
+            replaceProviderMemoryEvidence(
+              nextPayload.ctx,
+              refreshed,
+              TOOL_MEMORY_EVIDENCE_WINDOW_CHARS,
+            );
+          }
+        }
         if (nextPayload.result.is_error) return nextPayload;
 
         const trigger = extractTrigger(nextPayload.toolUse.name, nextPayload.toolUse.input);
