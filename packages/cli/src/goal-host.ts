@@ -42,9 +42,11 @@ const DEFAULT_TASK_CONCURRENCY = 1;
 
 /** Resolve per-phase task concurrency from env, clamped to a sane range. */
 function resolveTaskConcurrency(): number {
-  const raw = Number.parseInt(process.env['WRONGSTACK_GOAL_TASK_CONCURRENCY'] ?? '', 10);
-  if (!Number.isFinite(raw)) return DEFAULT_TASK_CONCURRENCY;
-  return Math.min(8, Math.max(1, raw));
+  const value = process.env['WRONGSTACK_GOAL_TASK_CONCURRENCY']?.trim() ?? '';
+  if (!/^\d+$/.test(value)) return DEFAULT_TASK_CONCURRENCY;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_TASK_CONCURRENCY;
+  return Math.min(8, Math.max(1, parsed));
 }
 
 import type { MultiAgentHost } from './multi-agent.js';

@@ -643,8 +643,9 @@ export async function executeSettingsSubcommand(
         return {
           message: `${color.amber('Usage:')} /settings max-iterations <n>   ${color.dim('(0 = default)')}`,
         };
-      const n = Number.parseInt(raw, 10);
-      if (Number.isNaN(n) || n < 0)
+      const value = raw.trim();
+      const n = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+      if (!Number.isSafeInteger(n) || n < 0)
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter a non-negative integer.`,
         };
@@ -664,8 +665,9 @@ export async function executeSettingsSubcommand(
         return {
           message: `${color.amber('Usage:')} /settings auto-proceed-max-iterations <n>   ${color.dim('(0 = unlimited)')}`,
         };
-      const n = Number.parseInt(raw, 10);
-      if (Number.isNaN(n) || n < 0)
+      const value = raw.trim();
+      const n = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+      if (!Number.isSafeInteger(n) || n < 0)
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter a non-negative integer.`,
         };

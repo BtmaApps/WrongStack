@@ -140,7 +140,8 @@ export async function handleHqShortCircuit(
   // launch commands.
   let port: number;
   if (typeof flags['port'] === 'string' && flags['port'].trim() !== '') {
-    const parsed = Number.parseInt(flags['port'], 10);
+    const rawPort = flags['port'].trim();
+    const parsed = /^\d+$/.test(rawPort) ? Number(rawPort) : Number.NaN;
     if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) {
       port = parsed;
     } else {

@@ -244,10 +244,12 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
   };
 
   const metricsPortFlag = flags['metrics-port'];
-  const metricsPort =
-    typeof metricsPortFlag === 'string' && metricsPortFlag.length > 0
-      ? Number.parseInt(metricsPortFlag, 10)
-      : undefined;
+  let metricsPort: number | undefined;
+  if (typeof metricsPortFlag === 'string' && metricsPortFlag.trim() !== '') {
+    const rawPort = metricsPortFlag.trim();
+    const parsed = /^\d+$/.test(rawPort) ? Number(rawPort) : Number.NaN;
+    metricsPort = Number.isInteger(parsed) && parsed >= 0 && parsed <= 65_535 ? parsed : Number.NaN;
+  }
   if (metricsPort !== undefined && !flags.metrics) flags.metrics = true;
 
   // OTLP metrics export needs a sink even without `--metrics`.

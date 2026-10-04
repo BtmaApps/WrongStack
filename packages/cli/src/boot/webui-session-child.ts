@@ -127,15 +127,17 @@ function boolFlag(flags: Record<string, string | boolean>, names: string[]): boo
 
 function parsePositiveInteger(value: string | undefined, label: string): number {
   if (value === undefined) throw new Error(`${label} is required`);
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0)
+  const trimmed = value.trim();
+  const parsed = /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0)
     throw new Error(`${label} must be a positive integer`);
   return parsed;
 }
 
 function parsePort(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
-  const parsed = Number.parseInt(value, 10);
+  const trimmed = value.trim();
+  const parsed = /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN;
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
     throw new Error('--port must be a port between 1 and 65535');
   }

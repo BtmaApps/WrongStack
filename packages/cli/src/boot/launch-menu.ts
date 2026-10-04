@@ -534,7 +534,7 @@ async function promptPort(deps: RunLaunchMenuDeps, defaultPort: number): Promise
     if (answer === '' || answer === '\n') return defaultPort;
     if (answer === 'q' || answer === 'quit') return defaultPort;
 
-    const parsed = Number.parseInt(answer, 10);
+    const parsed = /^\d+$/.test(answer) ? Number(answer) : Number.NaN;
     if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) {
       return parsed;
     }

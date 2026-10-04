@@ -73,7 +73,7 @@ export async function downloadReleaseAssetToFile(
             throw new Error(`download ${url} is too large`);
           }
           hash.update(value);
-          await out.write(value);
+          await out.writeFile(value);
         }
       } finally {
         reader.releaseLock();

@@ -49,6 +49,7 @@ import { LOCAL_LLM_PRESETS, type LocalLlmPresetEntry } from './local-presets.js'
 
 export type { LocalLlmPresetEntry } from './local-presets.js';
 
+import { parseAuthMenuIndex } from './index-input.js';
 import { suggestLabel } from './shared.js';
 import type { AuthMenuDeps } from './types.js';
 
@@ -556,8 +557,8 @@ async function pickLocalPreset(deps: AuthMenuDeps): Promise<LocalLlmPresetEntry 
 
   if (!answer || answer === 'q' || answer === 'quit') return undefined;
 
-  const num = Number.parseInt(answer, 10);
-  if (!Number.isNaN(num) && num >= 1 && num <= LOCAL_LLM_PRESETS.length) {
+  const num = parseAuthMenuIndex(answer);
+  if (num !== undefined && num <= LOCAL_LLM_PRESETS.length) {
     return LOCAL_LLM_PRESETS[num - 1];
   }
   const byId = LOCAL_LLM_PRESETS.find((p) => p.id === answer);

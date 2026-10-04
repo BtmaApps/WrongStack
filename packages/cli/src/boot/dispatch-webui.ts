@@ -264,7 +264,8 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
   };
   const parsePort = (value: string | undefined, fallback: number, label: string): number => {
     if (value === undefined) return fallback;
-    const parsed = Number.parseInt(value, 10);
+    const trimmed = value.trim();
+    const parsed = /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN;
     if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
       throw new Error(`${label} must be a port between 1 and 65535`);
     }

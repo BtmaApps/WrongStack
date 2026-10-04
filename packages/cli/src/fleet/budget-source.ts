@@ -18,8 +18,10 @@ interface ResolvedFleetBudget {
 function positiveInt(raw: unknown): number | undefined {
   if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return Math.floor(raw);
   if (typeof raw === 'string' && raw.trim() !== '') {
-    const n = Number.parseInt(raw, 10);
-    if (Number.isFinite(n) && n > 0) return n;
+    const value = raw.trim();
+    if (!/^\d+$/.test(value)) return undefined;
+    const n = Number(value);
+    if (Number.isSafeInteger(n) && n > 0) return n;
   }
   return undefined;
 }

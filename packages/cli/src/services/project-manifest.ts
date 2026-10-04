@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { ConfigError } from '@wrongstack/core/types';
-import { readProjectIdentity, withFileLock, wstackGlobalRoot } from '@wrongstack/core/utils';
+import {
+  atomicWrite,
+  readProjectIdentity,
+  withFileLock,
+  wstackGlobalRoot,
+} from '@wrongstack/core/utils';
 
 // Shared project-manifest types and persistence.
 
@@ -82,8 +87,7 @@ export async function saveManifest(
   globalConfigPath?: string | undefined,
 ): Promise<void> {
   const file = projectsJsonPath(globalConfigPath);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(manifest, null, 2), 'utf8');
+  await atomicWrite(file, JSON.stringify(manifest, null, 2), { encoding: 'utf8' });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────

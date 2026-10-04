@@ -202,8 +202,9 @@ async function handleFleetAction(
   if (action === 'concurrency') {
     const current = input.multiAgentHost.getMaxConcurrent();
     if (!target) return `Concurrent-subagent ceiling: ${current}`;
-    const next = Number.parseInt(target, 10);
-    if (!Number.isFinite(next) || next < 1) {
+    const value = target.trim();
+    const next = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+    if (!Number.isSafeInteger(next) || next < 1) {
       return `Invalid value "${target}". Concurrency must be an integer >= 1.`;
     }
     try {

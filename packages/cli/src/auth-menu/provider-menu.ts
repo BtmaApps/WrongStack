@@ -9,6 +9,7 @@ import {
 } from '../provider-config-utils.js';
 import { addKeyForProvider } from './add-provider.js';
 import { loadProviders } from './helpers.js';
+import { parseAuthMenuIndex } from './index-input.js';
 import {
   confirm,
   readKeyInput,
@@ -42,7 +43,7 @@ export async function manageProvider(providerId: string, deps: AuthMenuDeps): Pr
     }
 
     const [verb = '', argRaw = ''] = raw.split(/\s+/, 2);
-    const arg = argRaw ? Number.parseInt(argRaw, 10) : Number.NaN;
+    const arg = parseAuthMenuIndex(argRaw);
 
     const handled = await dispatchAction(verb, arg, providerId, keys, cfg, deps);
     if (handled === 'exit') return;
@@ -55,7 +56,7 @@ type ActionResult = 'continue' | 'exit' | 'unknown' | void;
 
 async function dispatchAction(
   verb: string,
-  arg: number,
+  arg: number | undefined,
   providerId: string,
   keys: ReturnType<typeof normalizeKeys>,
   cfg: ProviderConfig,
@@ -266,12 +267,12 @@ async function dispatchAction(
 }
 
 function validKeyIndex(
-  arg: number,
+  arg: number | undefined,
   max: number,
   deps: { renderer: AuthMenuDeps['renderer'] },
   verb: string,
-): boolean {
-  if (!Number.isFinite(arg) || arg < 1 || arg > max) {
+): arg is number {
+  if (arg === undefined || arg > max) {
     deps.renderer.writeError(`Usage: ${verb} <1-${max}>`);
     return false;
   }

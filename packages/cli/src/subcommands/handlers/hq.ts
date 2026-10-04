@@ -120,7 +120,12 @@ async function startServer(deps: SubcommandDeps): Promise<number> {
       : publicOrigin !== undefined
         ? '127.0.0.1'
         : HQ_CLI_DEFAULT_HOST;
-  const port = typeof flags['port'] === 'string' ? Number.parseInt(flags['port'], 10) : 3499;
+  const rawPort = typeof flags['port'] === 'string' ? flags['port'].trim() : undefined;
+  const port = rawPort === undefined ? 3499 : /^\d+$/.test(rawPort) ? Number(rawPort) : Number.NaN;
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    deps.renderer.writeError(`Invalid --port value: ${String(flags['port'])}\n`);
+    return 1;
+  }
   if (publicOrigin !== undefined && !isLoopbackHost(host)) {
     deps.renderer.writeError(
       'Persistent public HQ requires a loopback bind. Remove --host or use --host 127.0.0.1.\n',

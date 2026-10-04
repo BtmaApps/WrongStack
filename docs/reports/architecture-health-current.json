@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T14:52:24.507Z",
+  "generatedAt": "2026-10-04T14:53:19.567Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4472,
-    "testFiles": 4041,
-    "sourceLines": 1052373,
+    "sourceFiles": 4473,
+    "testFiles": 4042,
+    "sourceLines": 1052426,
     "workspaceEdges": 133,
-    "moduleEdges": 14553,
+    "moduleEdges": 14556,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 563,
-      "testFiles": 581,
+      "sourceFiles": 564,
+      "testFiles": 582,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 581
+          "testFiles": 582
         }
       ]
     },
@@ -3847,6 +3847,12 @@
       },
       {
         "file": "packages/cli/tests/redact-sample-real-shapes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/release-asset-download-to-file.test.ts",
         "projects": [
           "root-node"
         ]

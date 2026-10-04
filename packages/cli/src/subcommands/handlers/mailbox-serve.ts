@@ -106,8 +106,9 @@ export const mailboxServeCmd: SubcommandHandler = async (args, deps) => {
 async function startServer(deps: SubcommandDeps): Promise<number> {
   const flags = deps.flags ?? {};
   const host = typeof flags['host'] === 'string' ? flags['host'] : DEFAULT_HOST;
+  const rawPort = typeof flags['port'] === 'string' ? flags['port'].trim() : undefined;
   const portRaw =
-    typeof flags['port'] === 'string' ? Number.parseInt(flags['port'], 10) : DEFAULT_PORT;
+    rawPort === undefined ? DEFAULT_PORT : /^\d+$/.test(rawPort) ? Number(rawPort) : Number.NaN;
   const strictPort = flags['strict-port'] === true;
   // `--port 0` is valid and means "let the OS assign a free port" — the
   // same thing the non-strict default does. Reject only NaN, negative,

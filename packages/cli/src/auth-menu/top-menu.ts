@@ -1,6 +1,7 @@
 import { color } from '@wrongstack/core/utils';
 import { addCustomProvider, addFromCatalog } from './add-provider.js';
 import { loadProviders } from './helpers.js';
+import { parseAuthMenuIndex } from './index-input.js';
 import { runAuthLocal } from './local.js';
 import { runOAuthLoginMenu } from './oauth-menu.js';
 import { manageProvider } from './provider-menu.js';
@@ -56,8 +57,8 @@ export async function runTopMenu(deps: AuthMenuDeps): Promise<number> {
     }
 
     // Numeric selection
-    const idx = Number.parseInt(choice, 10);
-    if (!Number.isNaN(idx) && idx >= 1 && idx <= ids.length) {
+    const idx = parseAuthMenuIndex(choice);
+    if (idx !== undefined && idx <= ids.length) {
       const pid = ids[idx - 1]!;
       await manageProvider(pid, deps);
       continue;

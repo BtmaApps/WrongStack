@@ -12,17 +12,28 @@ export class HostAcpRunnerCache {
   ) {}
 
   get(subagentId: string): Promise<SubagentRunner> {
-    const cached = this.runners.get(subagentId);
-    if (cached) {
+    const existingRunner = this.runners.get(subagentId);
+    if (existingRunner) {
       touchLruKey(this.accessOrder, subagentId);
-      return cached;
+      return existingRunner;
     }
 
     // CLI /spawn and Director fan-out are trusted local agents - grant write/execute access.
     // The session default is read-only for untrusted agents (acp-session.ts:133);
     // buildAcpSubagentRunner passes defaultPermissionPolicy explicitly.
     const runner = buildAcpSubagentRunner(subagentId, this.resolveOpts?.());
-    setBoundedLruEntry(this.runners, this.accessOrder, subagentId, runner, this.maxEntries);
-    return runner;
+    let cached: Promise<SubagentRunner>;
+    cached = runner.catch((error: unknown) => {
+      // A transient startup failure must not poison every later cache lookup.
+      // A stale rejected promise must not evict a replacement for the same id.
+      if (this.runners.get(subagentId) === cached) {
+        this.runners.delete(subagentId);
+        const index = this.accessOrder.indexOf(subagentId);
+        if (index >= 0) this.accessOrder.splice(index, 1);
+      }
+      throw error;
+    });
+    setBoundedLruEntry(this.runners, this.accessOrder, subagentId, cached, this.maxEntries);
+    return cached;
   }
 }

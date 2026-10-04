@@ -99,14 +99,20 @@ export const chronicleCmd: SubcommandHandler = async (args, deps) => {
         flags['dry-run'] === 'true' ||
         flags['n'] === true;
       const daysIndex = args.indexOf('--days');
+      const hasDaysFlag = daysIndex >= 0 || Object.hasOwn(flags, 'days');
       const rawDays =
         daysIndex >= 0 && daysIndex + 1 < args.length
           ? args[daysIndex + 1]
           : typeof flags['days'] === 'string'
             ? flags['days']
             : undefined;
-      const days = rawDays ? parseInt(rawDays, 10) : 30;
-      if (!Number.isFinite(days) || days < 1) {
+      const trimmedDays = rawDays?.trim();
+      const days = !hasDaysFlag
+        ? 30
+        : trimmedDays !== undefined && /^\d+$/.test(trimmedDays)
+          ? Number(trimmedDays)
+          : Number.NaN;
+      if (!Number.isSafeInteger(days) || days < 1) {
         deps.renderer.writeError(
           `Invalid retention days: ${rawDays ?? ''}. Use --days N (positive integer).\n`,
         );
