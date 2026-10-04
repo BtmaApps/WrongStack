@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:05:50.901Z",
+  "generatedAt": "2026-10-04T15:06:42.858Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4479,
-    "testFiles": 4070,
-    "sourceLines": 1054121,
+    "testFiles": 4072,
+    "sourceLines": 1054132,
     "workspaceEdges": 133,
     "moduleEdges": 14585,
     "nonCommandSlashImports": 0,
@@ -957,7 +957,7 @@
       "name": "@wrongstack/wrongtrace",
       "dir": "packages/wrongtrace",
       "sourceFiles": 11,
-      "testFiles": 6,
+      "testFiles": 8,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -968,7 +968,7 @@
         {
           "path": "packages/wrongtrace/tsconfig.test.json",
           "error": null,
-          "testFiles": 6
+          "testFiles": 8
         }
       ]
     },
@@ -25523,7 +25523,19 @@
         ]
       },
       {
+        "file": "packages/wrongtrace/src/__tests__/mcp-own-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/wrongtrace/src/__tests__/mcp.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/wrongtrace/src/__tests__/nested-diagnostic-rows.test.ts",
         "projects": [
           "root-node"
         ]

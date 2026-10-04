@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T15:05:50.901Z
+**Generated:** 2026-10-04T15:06:42.858Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4479 |
-| Production source lines | 1054121 |
-| Test files | 4070 |
+| Production source lines | 1054132 |
+| Test files | 4072 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14585 |
 | Non-command slash imports | 0 |
@@ -63,7 +63,7 @@
 | @wrongstack/webui-hq | 126 | 50 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 271 | 267 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
-| @wrongstack/wrongtrace | 11 | 6 | — |
+| @wrongstack/wrongtrace | 11 | 8 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |
 
 ## Module cycles

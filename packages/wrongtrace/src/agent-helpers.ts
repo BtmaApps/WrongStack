@@ -192,6 +192,14 @@ interface FrictionReport {
   cross_agent_ratio_pct?: number;
 }
 
+function isFrictionRow(
+  value: unknown,
+): value is WrongTraceFrictionRow & { conflict_count?: number } {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.author_model === 'string' && typeof row.overwriter_model === 'string';
+}
+
 export function summarizeFriction(friction: unknown): FrictionSummary {
   const empty: FrictionSummary = {
     topPair: null,
@@ -202,11 +210,12 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
   };
   if (!friction || typeof friction !== 'object') return empty;
   const r = friction as FrictionReport;
-  const edges = Array.isArray(friction)
+  const rawEdges = Array.isArray(friction)
     ? (friction as Array<WrongTraceFrictionRow & { conflict_count?: number }>)
     : Array.isArray(r.edges)
       ? r.edges
       : [];
+  const edges = rawEdges.filter(isFrictionRow);
   // `rawTotal` and `r.total_collisions` are the SAME property on the SAME
   // object (r is just friction re-typed), so this was a duplicate check whose
   // second arm could never be taken once the first was false — dead code that
@@ -313,6 +322,7 @@ export async function getRecentActivity(
   const all = [...events, ...collisions];
   const matched: RecentActivityEntry[] = [];
   for (const ev of all) {
+    if (ev === null || typeof ev !== 'object' || Array.isArray(ev)) continue;
     if (typeof ev.file_path !== 'string' || ev.file_path !== filePath) continue;
     const at = ev.overwriter_time ?? ev.author_time ?? '';
     if (!at) continue;

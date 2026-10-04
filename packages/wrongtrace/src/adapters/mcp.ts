@@ -59,6 +59,7 @@ export function createMcpTransport(
     isWired: entries.length > 0,
     availableTools: entries.map(([k]) => k),
     async invoke<T>(tool: McpToolName, args: Record<string, unknown>): Promise<T | null> {
+      if (!Object.hasOwn(tools, tool)) return null;
       const handler = tools[tool];
       if (!handler) return null;
       let timer: ReturnType<typeof setTimeout> | undefined;
