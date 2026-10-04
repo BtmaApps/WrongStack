@@ -10,7 +10,7 @@
  * The composition is now expressed as boundary predicates over a linear glob
  * NFA. This file keeps a verbatim copy of the OLD composed-regex matcher as
  * the oracle and asserts the two agree on every (rule set, path, isDir)
- * triple, then pins the ReDoS bound.
+ * triple except the intentional leading-whitespace correction, then pins the ReDoS bound.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -258,7 +258,7 @@ function ruleSets(): string[][] {
 }
 
 describe('gitignore differential: boundary-predicate matcher vs. old composed regex', () => {
-  it('agrees with the old implementation on every (rules, path, isDir) triple', () => {
+  it('agrees with the old implementation except its corrected leading-whitespace behavior', () => {
     const disagreements: string[] = [];
     let cases = 0;
 
@@ -285,7 +285,13 @@ describe('gitignore differential: boundary-predicate matcher vs. old composed re
     }
 
     expect(cases).toBeGreaterThan(6000);
-    expect(disagreements.slice(0, 15)).toEqual([]);
+    // The historical oracle trims leading spaces. Git preserves them; the
+    // leading-space regression suite checks the corrected behavior against Git.
+    // Keep exactly these two differences so every other corpus mismatch fails.
+    expect(disagreements).toEqual([
+      'rules=["  spaced  "] path="spaced" isDir=false: old=true new=false',
+      'rules=["  spaced  "] path="spaced" isDir=true: old=true new=false',
+    ]);
   });
 
   it('keeps the documented semantics that make the composition non-trivial', () => {

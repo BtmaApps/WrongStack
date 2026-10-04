@@ -8,11 +8,23 @@ const mockStore = new Map<string, string>();
 // We mock fs/promises to intercept file I/O without writing anywhere real.
 vi.mock('node:fs/promises', async (importOriginal) => {
   const realFs = await importOriginal<typeof import('node:fs/promises')>();
+  const writeFile = vi.fn().mockImplementation(async (filePath: string, content: string) => {
+    mockStore.set(filePath, content);
+  });
   return {
     ...realFs,
     mkdir: vi.fn().mockResolvedValue(undefined),
-    writeFile: vi.fn().mockImplementation(async (filePath: string, content: string) => {
-      mockStore.set(filePath, content);
+    writeFile,
+    open: vi.fn().mockImplementation(async (filePath: string, flags: string) => {
+      if (flags === 'r+' && !mockStore.has(filePath)) {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      }
+      if (flags === 'wx') mockStore.set(filePath, '');
+      return {
+        writeFile: (content: string) => writeFile(filePath, content),
+        sync: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
     }),
     readFile: vi.fn().mockImplementation(async (filePath: string) => {
       const content = mockStore.get(filePath);
@@ -52,6 +64,18 @@ import {
   PersistentProcessRegistry,
   resetPersistentProcessRegistry,
 } from '../src/process-registry-persistent.js';
+
+function persistedRegistry():
+  | {
+      instances: Array<[string, { pid: number }]>;
+      protectedPatterns: string[];
+    }
+  | undefined {
+  const content = [...mockStore].find(
+    ([name]) => path.basename(name) === 'process-registry.json',
+  )?.[1];
+  return content === undefined ? undefined : JSON.parse(content);
+}
 
 describe('PersistentProcessRegistry', () => {
   let registry: PersistentProcessRegistry;
@@ -128,19 +152,27 @@ describe('PersistentProcessRegistry', () => {
       registry.registerMainProcess();
       // register* persists fire-and-forget through acquireLock, which now
       // awaits an fs.mkdir first — assert asynchronously.
-      await vi.waitFor(() => expect(vi.mocked(fs.writeFile)).toHaveBeenCalled());
+      await vi.waitFor(() =>
+        expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === process.pid)).toBe(
+          true,
+        ),
+      );
     });
   });
 
   describe('registerChildProcess', () => {
     it('registers a child process and stores it', async () => {
       registry.registerChildProcess(9999, 'test-child', 'node test.js', 'sess-1', 'spawn');
-      await vi.waitFor(() => expect(vi.mocked(fs.writeFile)).toHaveBeenCalled());
+      await vi.waitFor(() =>
+        expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === 9999)).toBe(true),
+      );
     });
 
     it('accepts fork mode', async () => {
       registry.registerChildProcess(8888, 'fork-child', 'node worker.js', undefined, 'fork');
-      await vi.waitFor(() => expect(vi.mocked(fs.writeFile)).toHaveBeenCalled());
+      await vi.waitFor(() =>
+        expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === 8888)).toBe(true),
+      );
     });
   });
 
@@ -168,7 +200,7 @@ describe('PersistentProcessRegistry', () => {
   describe('addProtectedPattern', () => {
     it('adds a new pattern', async () => {
       await registry.addProtectedPattern('myapp');
-      expect(vi.mocked(fs.writeFile)).toHaveBeenCalled();
+      expect(persistedRegistry()?.protectedPatterns).toContain('myapp');
     });
 
     it('retries a transient Windows EPERM while atomically publishing', async () => {
@@ -181,6 +213,7 @@ describe('PersistentProcessRegistry', () => {
       try {
         await expect(registry.addProtectedPattern('windows-retry')).resolves.toBeUndefined();
         expect(vi.mocked(fs.rename)).toHaveBeenCalledTimes(2);
+        expect(persistedRegistry()?.protectedPatterns).toContain('windows-retry');
       } finally {
         if (platformDescriptor) Object.defineProperty(process, 'platform', platformDescriptor);
       }
@@ -196,9 +229,13 @@ describe('PersistentProcessRegistry', () => {
   describe('unregister', () => {
     it('unregisters a process', async () => {
       registry.registerChildProcess(7777, 'proc-to-remove', 'cmd');
+      await vi.waitFor(() =>
+        expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === 7777)).toBe(true),
+      );
       const before = vi.mocked(fs.writeFile).mock.calls.length;
       await registry.unregister(7777);
       expect(vi.mocked(fs.writeFile).mock.calls.length).toBeGreaterThan(before);
+      expect(persistedRegistry()?.instances.some(([, entry]) => entry.pid === 7777)).toBe(false);
     });
   });
 });

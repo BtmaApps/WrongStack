@@ -96,8 +96,8 @@ export function compileGitignore(lines: string[]): IgnoreMatcher {
 
   for (const raw of lines) {
     let line = raw.replace(/\r$/, '');
-    if (!line.trim() || line.trimStart().startsWith('#')) continue;
-    line = line.trim();
+    if (!line.trim() || line.startsWith('#')) continue;
+    line = line.trimEnd();
 
     let negated = false;
     if (line.startsWith('!')) {

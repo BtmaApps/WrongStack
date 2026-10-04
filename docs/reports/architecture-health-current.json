@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T15:01:26.977Z",
+  "generatedAt": "2026-10-04T15:02:18.459Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4479,
-    "testFiles": 4058,
+    "testFiles": 4059,
     "sourceLines": 1053974,
     "workspaceEdges": 133,
     "moduleEdges": 14584,
@@ -769,7 +769,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 269,
-      "testFiles": 295,
+      "testFiles": 296,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -785,7 +785,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 295
+          "testFiles": 296
         }
       ]
     },
@@ -17238,6 +17238,12 @@
       },
       {
         "file": "packages/tools/tests/gitignore-differential.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/gitignore-leading-spaces.test.ts",
         "projects": [
           "root-node"
         ]
