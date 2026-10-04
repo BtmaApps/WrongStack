@@ -30,7 +30,7 @@ export interface RateLimiterOptions {
 
 export interface TokenBucket {
   /** Wait until a token is available, respecting the optional timeout. */
-  waitForToken(timeoutMs?: number | undefined): Promise<void>;
+  waitForToken(timeoutMs?: number | undefined, signal?: AbortSignal | undefined): Promise<void>;
   /** Current fill level (for diagnostics). */
   fill(): number;
   /**
@@ -66,10 +66,14 @@ export function createTokenBucket(opts?: RateLimiterOptions): TokenBucket {
 
   return { waitForToken, fill, isFull };
 
-  async function waitForToken(timeoutMs?: number | undefined): Promise<void> {
+  async function waitForToken(
+    timeoutMs?: number | undefined,
+    signal?: AbortSignal | undefined,
+  ): Promise<void> {
     const deadline = timeoutMs !== undefined ? Date.now() + timeoutMs : Infinity;
 
     while (true) {
+      signal?.throwIfAborted();
       refill();
 
       if (tokens >= 1) {
@@ -93,7 +97,7 @@ export function createTokenBucket(opts?: RateLimiterOptions): TokenBucket {
         5000, // safety cap: never sleep longer than 5s
       );
 
-      await sleep(delay);
+      await sleep(delay, signal);
     }
   }
 
@@ -118,6 +122,20 @@ export function createTokenBucket(opts?: RateLimiterOptions): TokenBucket {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal | undefined): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('The operation was aborted', 'AbortError'));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }

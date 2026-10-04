@@ -1,13 +1,13 @@
 import { ToolCapabilities } from '@wrongstack/core/security';
 import type { Logger, Tool } from '@wrongstack/core/types';
-import type { TelegramBotOutbound } from '../bot-queue.js';
 import type { TelegramBot } from '../bot.js';
+import { truncateForTelegram } from '../bot.js';
+import type { TelegramBotOutbound } from '../bot-queue.js';
 import {
   resolveTelegramOutboundTarget,
   scrubTelegramOutboundText,
   type TelegramChatId,
 } from '../security/outbound.js';
-import { truncateForTelegram } from '../bot.js';
 
 interface TelegramSendInput {
   /** Chat or user ID to send the message to. Falls back to config.notifyChatId when omitted. */
@@ -72,7 +72,7 @@ export function makeTelegramSendTool(opts: {
       opts.log.info(`telegram_send → chat_id=${chatId} (${truncated.length} chars)`);
 
       const res = opts.outbound
-        ? await opts.outbound.sendManual(chatId, truncated)
+        ? await opts.outbound.sendManual(chatId, truncated, toolOpts?.signal)
         : toolOpts?.signal
           ? await opts.bot.sendMessage(chatId, truncated, toolOpts.signal)
           : await opts.bot.sendMessage(chatId, truncated);

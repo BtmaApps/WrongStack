@@ -69,7 +69,7 @@ export class TelegramBotOutbound {
     this.#queue = new OutboundQueue({
       maxPerChat: opts.maxPerChat,
       maxConcurrency: opts.maxConcurrency,
-      send: (chatId, text) => this.#rateLimitedSend(chatId, text),
+      send: (chatId, text, signal) => this.#rateLimitedSend(chatId, text, signal),
       log: opts.log,
     });
     // Without this the bucket map grows one entry per distinct chatId for the
@@ -95,6 +95,7 @@ export class TelegramBotOutbound {
   async #rateLimitedSend(
     chatId: string | number,
     text: string,
+    signal?: AbortSignal | undefined,
   ): Promise<TelegramBotResponse<TelegramApiMessage>> {
     const key = String(chatId);
     let bucket = this.#buckets.get(key);
@@ -109,9 +110,12 @@ export class TelegramBotOutbound {
     // Wait up to 5s for a token slot; if timeout, proceed anyway so the
     // queue doesn't stall. Telegram will return 429 if we're still over the
     // limit, and the api-client's retry logic will handle it.
-    await bucket.waitForToken(5_000);
+    await bucket.waitForToken(5_000, signal);
+    signal?.throwIfAborted();
 
-    const res = await this.#bot.sendMessage(chatId, text);
+    const res = signal
+      ? await this.#bot.sendMessage(chatId, text, signal)
+      : await this.#bot.sendMessage(chatId, text);
     if (!res.ok) {
       throw new Error(`Telegram outbound send returned ok=false for chat ${chatId}`);
     }
@@ -122,6 +126,7 @@ export class TelegramBotOutbound {
   async sendManual(
     chatId: string | number,
     text: string,
+    signal?: AbortSignal | undefined,
   ): Promise<TelegramBotResponse<TelegramApiMessage>> {
     if (this.#stopped) {
       throw new Error('Telegram outbound queue is stopped');
@@ -130,6 +135,7 @@ export class TelegramBotOutbound {
       chatId,
       text,
       kind: 'manual',
+      signal,
     })) as TelegramBotResponse<TelegramApiMessage>;
   }
 

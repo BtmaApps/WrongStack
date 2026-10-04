@@ -33,6 +33,8 @@ export interface OutboundEntry {
   readonly text: string;
   /** Manual = user-triggered (never dropped). Notification = best-effort. */
   readonly kind: OutboundKind;
+  /** Cancellation for a manual send; notifications are best-effort and ignore it. */
+  readonly signal?: AbortSignal | undefined;
 }
 
 /**
@@ -44,6 +46,7 @@ export interface OutboundEntry {
  */
 interface InternalEntry extends OutboundEntry {
   readonly id: number;
+  abortHandler?: (() => void) | undefined;
 }
 
 export interface OutboundQueueOptions {
@@ -57,7 +60,11 @@ export interface OutboundQueueOptions {
    * the original enqueue caller. Keeping this as an injected function lets
    * the queue own ordering/backpressure while tests swap a fake transport.
    */
-  readonly send: (chatId: string | number, text: string) => Promise<unknown>;
+  readonly send: (
+    chatId: string | number,
+    text: string,
+    signal?: AbortSignal | undefined,
+  ) => Promise<unknown>;
   readonly log?: Logger | undefined;
 }
 
@@ -90,7 +97,11 @@ export class OutboundQueue {
   readonly #opts: {
     maxPerChat: number;
     maxConcurrency: number;
-    send: (chatId: string | number, text: string) => Promise<unknown>;
+    send: (
+      chatId: string | number,
+      text: string,
+      signal?: AbortSignal | undefined,
+    ) => Promise<unknown>;
     log: Logger | undefined;
   };
   readonly #lanes = new Map<string, ChatLane>();
@@ -104,7 +115,11 @@ export class OutboundQueue {
   #failed = 0;
   #resolvers = new Map<
     number,
-    { resolve: (value: unknown) => void; reject: (err: unknown) => void }
+    {
+      resolve: (value: unknown) => void;
+      reject: (err: unknown) => void;
+      cleanup: () => void;
+    }
   >();
 
   constructor(opts: OutboundQueueOptions) {
@@ -128,6 +143,9 @@ export class OutboundQueue {
   enqueue(entry: OutboundEntry): Promise<unknown> {
     if (this.#stopped) {
       return Promise.reject(new Error('Outbound queue is stopped'));
+    }
+    if (entry.kind === 'manual' && entry.signal?.aborted) {
+      return Promise.reject(new DOMException('Telegram send cancelled', 'AbortError'));
     }
     const internal: InternalEntry = { ...entry, id: this.#mintId() };
     const key = String(entry.chatId);
@@ -183,7 +201,34 @@ export class OutboundQueue {
     }
 
     return new Promise<unknown>((resolve, reject) => {
-      this.#resolvers.set(internal.id, { resolve, reject });
+      const cleanup = (): void => {
+        if (internal.abortHandler && internal.signal) {
+          internal.signal.removeEventListener('abort', internal.abortHandler);
+        }
+        internal.abortHandler = undefined;
+      };
+      this.#resolvers.set(internal.id, { resolve, reject, cleanup });
+      if (internal.signal) {
+        internal.abortHandler = () => {
+          const currentLane = this.#lanes.get(key);
+          const index = currentLane?.pending.indexOf(internal) ?? -1;
+          const resolver = this.#resolvers.get(internal.id);
+          if (index >= 0) {
+            currentLane?.pending.splice(index, 1);
+            if (currentLane && !currentLane.running && currentLane.pending.length === 0) {
+              this.#lanes.delete(key);
+            }
+          }
+          if (resolver) {
+            this.#resolvers.delete(internal.id);
+            resolver.cleanup();
+            resolver.reject(new DOMException('Telegram send cancelled', 'AbortError'));
+          }
+          this.#schedule();
+        };
+        internal.signal.addEventListener('abort', internal.abortHandler, { once: true });
+        if (internal.signal.aborted) internal.abortHandler();
+      }
       this.#schedule();
     });
   }
@@ -215,6 +260,7 @@ export class OutboundQueue {
         const resolver = this.#resolvers.get(entry.id);
         if (resolver) {
           this.#resolvers.delete(entry.id);
+          resolver.cleanup();
           resolver.reject(new Error('Outbound queue stopped before send'));
         }
         this.#opts.log?.debug(
@@ -277,11 +323,14 @@ export class OutboundQueue {
     // registered until this method's finally block prunes it.
     const lane = this.#lanes.get(key)!;
     try {
-      const result = await this.#opts.send(entry.chatId, entry.text);
+      const result = entry.signal
+        ? await this.#opts.send(entry.chatId, entry.text, entry.signal)
+        : await this.#opts.send(entry.chatId, entry.text);
       this.#sent += 1;
       const resolver = this.#resolvers.get(entry.id);
       if (resolver) {
         this.#resolvers.delete(entry.id);
+        resolver.cleanup();
         resolver.resolve(result);
       }
     } catch (err) {
@@ -289,6 +338,7 @@ export class OutboundQueue {
       const resolver = this.#resolvers.get(entry.id);
       if (resolver) {
         this.#resolvers.delete(entry.id);
+        resolver.cleanup();
         // Only manual entries retain a completion resolver. Notification
         // promises settle on acceptance, before transport work begins.
         resolver.reject(err);
@@ -302,6 +352,10 @@ export class OutboundQueue {
       }
     } finally {
       this.#active -= 1;
+      if (entry.abortHandler && entry.signal) {
+        entry.signal.removeEventListener('abort', entry.abortHandler);
+        entry.abortHandler = undefined;
+      }
       lane.running = false;
       // Prune an idle lane so the per-chat map doesn't grow for the whole
       // process lifetime in unrestricted mode (a bot reachable by many chats).
