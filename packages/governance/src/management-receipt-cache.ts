@@ -106,6 +106,10 @@ export class GovernanceManagementReceiptCache {
   private readonly ttlMs: number;
   private readonly maxEntries: number;
   private readonly records = new Map<string, ReceiptRecord>();
+  private readonly reservations = new WeakMap<
+    GovernanceManagementReceiptReservation,
+    ReceiptRecord
+  >();
 
   constructor(options: GovernanceManagementReceiptCacheOptions = {}) {
     this.now = options.now ?? Date.now;
@@ -165,13 +169,16 @@ export class GovernanceManagementReceiptCache {
     if (!requestId || !requestFingerprint) return null;
     const key = receiptKey(options.credential, requestId);
     if (this.records.has(key) || this.records.size >= this.maxEntries) return null;
-    this.records.set(key, {
+    const record: ReceiptRecord = {
       fingerprint: requestFingerprint,
       response: null,
       allowAfterRotation: false,
       expiresAtMs: this.now() + this.ttlMs,
-    });
-    return Object.freeze({ key, fingerprint: requestFingerprint, requestId });
+    };
+    this.records.set(key, record);
+    const reservation = Object.freeze({ key, fingerprint: requestFingerprint, requestId });
+    this.reservations.set(reservation, record);
+    return reservation;
   }
 
   commit(
@@ -180,7 +187,12 @@ export class GovernanceManagementReceiptCache {
     allowAfterRotation = false,
   ): void {
     const current = this.records.get(reservation.key);
-    if (!current || current.response !== null || current.fingerprint !== reservation.fingerprint) {
+    if (
+      !current ||
+      this.reservations.get(reservation) !== current ||
+      current.response !== null ||
+      current.fingerprint !== reservation.fingerprint
+    ) {
       throw new Error('Governance management receipt reservation is not active.');
     }
     if (response.requestId !== reservation.requestId) {
@@ -195,7 +207,11 @@ export class GovernanceManagementReceiptCache {
 
   release(reservation: GovernanceManagementReceiptReservation): void {
     const current = this.records.get(reservation.key);
-    if (current?.response === null && current.fingerprint === reservation.fingerprint) {
+    if (
+      current?.response === null &&
+      this.reservations.get(reservation) === current &&
+      current.fingerprint === reservation.fingerprint
+    ) {
       this.records.delete(reservation.key);
     }
   }

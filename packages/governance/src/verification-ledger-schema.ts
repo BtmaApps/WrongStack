@@ -51,6 +51,39 @@ export function initializeSchema(host: VerificationLedgerSchemaHost): void {
       CREATE INDEX IF NOT EXISTS governance_workspace_snapshots_project_idx
         ON governance_workspace_snapshots (project_id, revision);
 
+      -- REPLACE can delete conflicts without firing non-recursive DELETE triggers.
+      CREATE TRIGGER IF NOT EXISTS governance_verification_runs_no_replace
+      BEFORE INSERT ON governance_verification_runs
+      WHEN EXISTS (SELECT 1 FROM governance_verification_runs WHERE run_id = NEW.run_id)
+      BEGIN
+        SELECT RAISE(ABORT, 'governance_verification_runs is append-only');
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS governance_verification_leases_no_replace
+      BEFORE INSERT ON governance_verification_leases
+      WHEN EXISTS (SELECT 1 FROM governance_verification_leases
+                   WHERE lease_id = NEW.lease_id OR run_id = NEW.run_id)
+      BEGIN
+        SELECT RAISE(ABORT, 'governance_verification_leases is append-only');
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS governance_verification_consumptions_no_replace
+      BEFORE INSERT ON governance_verification_lease_consumptions
+      WHEN EXISTS (SELECT 1 FROM governance_verification_lease_consumptions
+                   WHERE sequence = NEW.sequence OR lease_id = NEW.lease_id)
+      BEGIN
+        SELECT RAISE(ABORT, 'governance_verification_lease_consumptions is append-only');
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS governance_workspace_snapshots_no_replace
+      BEFORE INSERT ON governance_workspace_snapshots
+      WHEN EXISTS (SELECT 1 FROM governance_workspace_snapshots
+                   WHERE snapshot_id = NEW.snapshot_id
+                      OR (project_id = NEW.project_id AND revision = NEW.revision))
+      BEGIN
+        SELECT RAISE(ABORT, 'governance_workspace_snapshots is append-only');
+      END;
+
       CREATE TRIGGER IF NOT EXISTS governance_verification_runs_no_update
       BEFORE UPDATE ON governance_verification_runs
       BEGIN

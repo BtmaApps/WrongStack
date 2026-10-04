@@ -4,6 +4,26 @@ import type { KanbanEventContext, KanbanManagementReview } from '../types.js';
 
 const LEASE_MS = 120_000;
 
+function taskReview(
+  reviews: Record<string, KanbanManagementReview> | undefined,
+  taskId: string,
+): KanbanManagementReview | undefined {
+  return reviews && Object.hasOwn(reviews, taskId) ? reviews[taskId] : undefined;
+}
+
+function setTaskReview(
+  reviews: Record<string, KanbanManagementReview>,
+  taskId: string,
+  review: KanbanManagementReview,
+): void {
+  Object.defineProperty(reviews, taskId, {
+    value: review,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
+
 export async function recordTaskManagementReview(
   projectRoot: string,
   boardId: string,
@@ -23,21 +43,22 @@ export async function recordTaskManagementReview(
     if (!task) return false;
     assertManagementWrite(board, [task], eventContext, 'note');
     const lease = board.management!.lease!;
-    lease.reviews ??= {};
-    lease.reviews[task.id] = {
+    lease.reviews ??= Object.create(null) as Record<string, KanbanManagementReview>;
+    setTaskReview(lease.reviews, task.id, {
       taskVersion: managementTaskVersion(board, task),
       disposition: input.disposition,
       reason: input.reason.trim(),
       reviewedAt: Date.now(),
       reviewedBy: eventContext.actor ?? eventContext.sessionId,
-    };
+    });
     board.management!.pendingTaskIds = board.tasks
       .filter(
         (candidate) =>
           candidate.status !== 'completed' &&
           candidate.status !== 'archived' &&
           !candidate.mergedIntoTaskId &&
-          lease.reviews?.[candidate.id]?.taskVersion !== managementTaskVersion(board, candidate),
+          taskReview(lease.reviews, candidate.id)?.taskVersion !==
+            managementTaskVersion(board, candidate),
       )
       .map((candidate) => candidate.id);
     return true;
@@ -69,19 +90,20 @@ export async function claimBoardManagement(
     const active = board.tasks.filter(
       (task) => task.status !== 'completed' && task.status !== 'archived' && !task.mergedIntoTaskId,
     );
-    const reviews: Record<string, KanbanManagementReview> = {};
+    const reviews = Object.create(null) as Record<string, KanbanManagementReview>;
     for (const task of active) {
       const version = managementTaskVersion(board, task);
-      const prior = [state?.lease?.reviews?.[task.id], state?.reviews?.[task.id]].find(
-        (review) => review?.taskVersion === version,
-      );
-      if (prior) reviews[task.id] = { ...prior };
+      const prior = [
+        taskReview(state?.lease?.reviews, task.id),
+        taskReview(state?.reviews, task.id),
+      ].find((review) => review?.taskVersion === version);
+      if (prior) setTaskReview(reviews, task.id, { ...prior });
     }
     board.management = {
       ...state,
       status: 'running',
       lastAttemptAt: now,
-      pendingTaskIds: active.filter((task) => !reviews[task.id]).map((task) => task.id),
+      pendingTaskIds: active.filter((task) => !taskReview(reviews, task.id)).map((task) => task.id),
       lease: {
         token: input.token,
         fingerprint: input.fingerprint,
@@ -135,9 +157,12 @@ export async function finishBoardManagement(
     const active = board.tasks.filter(
       (task) => task.status !== 'completed' && task.status !== 'archived' && !task.mergedIntoTaskId,
     );
-    const reviews = state.lease.reviews ?? {};
+    const reviews =
+      state.lease.reviews ?? (Object.create(null) as Record<string, KanbanManagementReview>);
     const pending = active
-      .filter((task) => reviews[task.id]?.taskVersion !== managementTaskVersion(board, task))
+      .filter(
+        (task) => taskReview(reviews, task.id)?.taskVersion !== managementTaskVersion(board, task),
+      )
       .map((task) => task.id);
     const complete = result.status === 'completed' && pending.length === 0;
     if (complete) {
@@ -149,8 +174,8 @@ export async function finishBoardManagement(
     state.pendingTaskIds = pending;
     state.lastCompletedAt = Date.now();
     const decisions = active.flatMap((task) =>
-      reviews[task.id]?.disposition === 'needs_leader' && !pending.includes(task.id)
-        ? [`${task.id}: ${reviews[task.id]!.reason}`]
+      taskReview(reviews, task.id)?.disposition === 'needs_leader' && !pending.includes(task.id)
+        ? [`${task.id}: ${taskReview(reviews, task.id)!.reason}`]
         : [],
     );
     state.summary = [

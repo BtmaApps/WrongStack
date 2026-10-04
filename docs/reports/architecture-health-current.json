@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:03:50.451Z",
+  "generatedAt": "2026-10-04T18:04:29.765Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4079,
-    "sourceLines": 1054976,
+    "testFiles": 4081,
+    "sourceLines": 1055050,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -294,7 +294,7 @@
       "name": "@wrongstack/governance",
       "dir": "packages/governance",
       "sourceFiles": 40,
-      "testFiles": 31,
+      "testFiles": 33,
       "workspaceDependencies": [
         "@wrongstack/persistence"
       ],
@@ -307,7 +307,7 @@
         {
           "path": "packages/governance/tsconfig.test.json",
           "error": null,
-          "testFiles": 31
+          "testFiles": 33
         }
       ]
     },
@@ -10991,6 +10991,12 @@
         ]
       },
       {
+        "file": "packages/governance/tests/management-receipt-stale-owner.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/governance/tests/plan-version-path-scope.test.ts",
         "projects": [
           "root-node"
@@ -11076,6 +11082,12 @@
       },
       {
         "file": "packages/governance/tests/verification-issuance-coordinator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/governance/tests/verification-ledger-replace.test.ts",
         "projects": [
           "root-node"
         ]
