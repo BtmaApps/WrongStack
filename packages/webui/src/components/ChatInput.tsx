@@ -416,6 +416,7 @@ export function ChatInput({
           )}
           <textarea
             ref={textareaRef}
+            aria-label={t('activity:chatInput.composerLabel')}
             aria-controls={skillMentions.open ? skillMentions.listId : undefined}
             aria-activedescendant={skillMentions.open ? skillMentions.activeId : undefined}
             aria-autocomplete="list"

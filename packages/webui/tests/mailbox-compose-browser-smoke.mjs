@@ -603,6 +603,73 @@ async function auditContrast(page) {
   return { failures };
 }
 
+/**
+ * Focus-indicator contract — the rendered twin of the contrast audit.
+ *
+ * Every control reached by Tab must show the single `--ring` indicator. Two
+ * defects this catches that contrast ratios never would:
+ *
+ *  - an `outline-none` regression. The Tailwind `utilities` layer outranks the
+ *    app's `:focus-visible` rule, so the class silently deletes the focus
+ *    affordance and every text contrast ratio stays green.
+ *  - a ring that falls back to `currentColor` (the icon's own colour) instead
+ *    of the token — which is what a transitioned `outline-color` looks like
+ *    when sampled mid-flight.
+ *
+ * Driven with real key presses: `:focus-visible` is a keyboard-only state and
+ * cannot be asserted from a programmatic `.focus()`.
+ */
+async function auditFocusRing(page) {
+  const TAB_STOPS = 24;
+  const seen = new Set();
+  const failures = [];
+  for (let i = 0; i < TAB_STOPS; i += 1) {
+    await page.keyboard.press('Tab');
+    const row = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return null;
+      const cs = getComputedStyle(el);
+      // Resolve --ring through a probe so the assertion follows the active
+      // palette/theme instead of a hardcoded rgb.
+      const probe = document.createElement('span');
+      probe.style.color = 'hsl(var(--ring))';
+      document.body.appendChild(probe);
+      const token = getComputedStyle(probe).color;
+      probe.remove();
+      return {
+        tag: el.tagName.toLowerCase(),
+        name: el.getAttribute('aria-label') || (el.innerText || '').trim().slice(0, 40),
+        outlineWidth: parseFloat(cs.outlineWidth) || 0,
+        outlineStyle: cs.outlineStyle,
+        outlineColor: cs.outlineColor,
+        token,
+      };
+    });
+    if (!row) continue;
+    const key = `${row.tag}:${row.name}`;
+    if (seen.has(key)) break; // wrapped around the document
+    seen.add(key);
+    const rgb = (c) => {
+      const m = c.match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const [r, g, b] = m[1].split(/[,/]/).map(parseFloat);
+      return [r, g, b];
+    };
+    const actual = rgb(row.outlineColor);
+    const expected = rgb(row.token);
+    if (
+      row.outlineWidth < 2 ||
+      row.outlineStyle === 'none' ||
+      /transparent/.test(row.outlineColor)
+    ) {
+      failures.push({ ...row, reason: 'no visible focus ring' });
+    } else if (!actual || !expected || actual.some((v, idx) => Math.abs(v - expected[idx]) > 2)) {
+      failures.push({ ...row, reason: 'focus ring is not the --ring token' });
+    }
+  }
+  return { failures, stops: seen.size };
+}
+
 async function runCombo(browser, url, theme, width, height) {
   // Pin the browser locale: accessible-name assertions expect English.
   const context = await browser.newContext({ locale: 'en-US', viewport: { width, height } });
@@ -802,6 +869,11 @@ async function runCombo(browser, url, theme, width, height) {
     screenshots.push(await shot(page, `notifications-${theme}-${width}`));
     await page.keyboard.press('Escape');
 
+    // Focus indicator: every control reached by Tab must show the single
+    // --ring affordance. Runs after the dropdown is dismissed so the sweep
+    // starts from a clean document.
+    const focusRing = await auditFocusRing(page);
+
     const contrast = {
       failures: [
         ...contrastOpen.failures,
@@ -822,6 +894,7 @@ async function runCombo(browser, url, theme, width, height) {
       checks: 'passed',
       screenshots,
       contrast,
+      focusRing,
       pageErrors,
     };
   } catch (error) {
@@ -856,10 +929,20 @@ try {
   const contrastFailures = results.flatMap((r) =>
     (r.contrast?.failures ?? []).map((f) => ({ combo: `${r.theme}/${r.viewport}`, ...f })),
   );
+  // Focus-indicator contract, enforced by the same rendered gate as the
+  // contrast ratios: an `outline-none` regression or a ring that falls back
+  // to currentColor must fail here, not ship.
+  const focusRingFailures = results.flatMap((r) =>
+    (r.focusRing?.failures ?? []).map((f) => ({ combo: `${r.theme}/${r.viewport}`, ...f })),
+  );
   const pageErrors = results.flatMap((r) => r.pageErrors ?? []);
-  const passed = failed.length === 0 && contrastFailures.length === 0 && pageErrors.length === 0;
+  const passed =
+    failed.length === 0 &&
+    contrastFailures.length === 0 &&
+    focusRingFailures.length === 0 &&
+    pageErrors.length === 0;
   process.stdout.write(
-    `${JSON.stringify({ passed, results, contrastFailures, pageErrors, screenshotDir: path.relative(webuiRoot, shotDir) }, null, 2)}\n`,
+    `${JSON.stringify({ passed, results, contrastFailures, focusRingFailures, pageErrors, screenshotDir: path.relative(webuiRoot, shotDir) }, null, 2)}\n`,
   );
   if (!passed) process.exitCode = 1;
 } finally {

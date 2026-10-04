@@ -94,16 +94,32 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
           desktopShell ? 'left-10' : 'left-12',
         )}
       >
-        {/* Drag handle */}
-        <hr
+        {/* Resize handle. Was an `<hr>` carrying aria-valuemin/max/now with no
+            role: those properties are only meaningful on a focusable separator,
+            so AT had no widget to expose and the drag was mouse-only. Now an
+            explicit role="separator" that keyboard users can operate too. */}
+        <div
+          role="separator"
           aria-orientation="vertical"
+          aria-label={t('activity:sidePanel.dragHint')}
           aria-valuemin={SIDEBAR_MIN_WIDTH}
           aria-valuemax={SIDEBAR_MAX_WIDTH}
           aria-valuenow={sidebarWidth}
           tabIndex={0}
           onMouseDown={startDrag}
           onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)}
-          className="group/handle absolute top-0 right-0 z-10 m-0 h-full w-2 cursor-col-resize border-0 border-r border-border/70 hover:border-primary/70"
+          onKeyDown={(e) => {
+            const step = e.shiftKey ? 64 : 16;
+            let next: number | null = null;
+            if (e.key === 'ArrowLeft') next = sidebarWidth - step;
+            else if (e.key === 'ArrowRight') next = sidebarWidth + step;
+            else if (e.key === 'Home') next = SIDEBAR_MIN_WIDTH;
+            else if (e.key === 'End') next = SIDEBAR_MAX_WIDTH;
+            if (next === null) return;
+            e.preventDefault();
+            setSidebarWidth(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, next)));
+          }}
+          className="group/handle absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize border-r border-border/70 hover:border-primary/70"
           title={t('activity:sidePanel.dragHint')}
         />
 

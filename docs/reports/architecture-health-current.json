@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:09:22.415Z",
+  "generatedAt": "2026-10-04T18:10:08.681Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4485,
-    "testFiles": 4091,
-    "sourceLines": 1055338,
+    "testFiles": 4093,
+    "sourceLines": 1055380,
     "workspaceEdges": 133,
     "moduleEdges": 14610,
     "nonCommandSlashImports": 0,
@@ -847,7 +847,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 645,
-      "testFiles": 462,
+      "testFiles": 464,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -870,7 +870,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 462
+          "testFiles": 464
         }
       ]
     },
@@ -23141,6 +23141,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/command-palette-combobox.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/command-palette-export-utils.test.ts",
         "projects": [
           "webui-jsdom"
@@ -23994,6 +24000,12 @@
       },
       {
         "file": "packages/webui/tests/components/sidepanel-agents-routing.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/sidepanel-resize-handle.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

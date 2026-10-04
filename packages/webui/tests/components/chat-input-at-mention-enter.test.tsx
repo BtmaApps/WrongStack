@@ -350,3 +350,29 @@ it('restores the insertion caret synchronously in the middle of a draft', () => 
   expect(textarea.selectionStart).toBe(13);
   expect(wsMock.sendMessage).not.toHaveBeenCalled();
 });
+
+// Regression: the composer textarea had NO aria-label, so its accessible name
+// came from `placeholder` alone. A placeholder is not a label — it disappears
+// the moment the operator types, leaving the field unnamed for a screen
+// reader mid-sentence. The name must be a real attribute wired to the
+// composerLabel key.
+describe('ChatInput composer accessible name', () => {
+  it('names the textarea via activity:chatInput.composerLabel', async () => {
+    const en = (await import('../../src/i18n/locales/en/activity.json')).default;
+    render(<ChatInput />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    // Assert against the real catalog value, not a hardcoded string, so a
+    // reworded label does not need a test edit and a wrong-key wiring still
+    // fails (the attribute would be a different string).
+    expect(textarea.getAttribute('aria-label')).toBeTruthy();
+    expect(textarea.getAttribute('aria-label')).toBe(en.chatInput.composerLabel);
+    expect(String(en.chatInput.composerLabel).trim().length).toBeGreaterThan(0);
+
+    // The name must survive content: a placeholder-derived name would be the
+    // thing that disappears here.
+    typeInto(textarea, 'a draft in progress');
+    expect(textarea.getAttribute('aria-label')).toBe(en.chatInput.composerLabel);
+    expect(textarea.value).toBe('a draft in progress');
+  });
+});

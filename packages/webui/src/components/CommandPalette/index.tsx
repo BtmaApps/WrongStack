@@ -505,6 +505,17 @@ export function CommandPalette() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('commandPalette:placeholder')}
             aria-label={t('commandPalette:placeholder')}
+            // Combobox contract: the visible highlight moves with ArrowUp/Down
+            // while DOM focus stays in the input, so it must be exposed as a
+            // combobox pointing at the selected option — otherwise a screen
+            // reader announces the input and nothing about what is selected.
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-palette-list"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              filtered[index] ? `command-palette-option-${filtered[index].id}` : undefined
+            }
             className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
@@ -524,7 +535,12 @@ export function CommandPalette() {
           <kbd className="text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">Esc</kbd>
         </div>
 
-        <div className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain">
+        <div
+          id="command-palette-list"
+          role="listbox"
+          aria-label={t('commandPalette:title')}
+          className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain"
+        >
           {filtered.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {t('commandPalette:noMatches', { query })}
@@ -569,6 +585,9 @@ function renderGroupedList(
               <button
                 type="button"
                 key={item.id}
+                id={`command-palette-option-${item.id}`}
+                role="option"
+                aria-selected={active}
                 onMouseEnter={() => setIndex(globalIdx)}
                 onClick={() => dispatch(item)}
                 className={cn(

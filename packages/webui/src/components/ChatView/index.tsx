@@ -290,6 +290,12 @@ export function ChatView() {
               role="log"
               aria-label={t('activity:chatView.chatTranscript')}
               aria-live="polite"
+              // The log region is correct as-is (ONE region around the whole
+              // transcript, not one per row). The real hazard was streaming:
+              // a run rewrites the same text node continuously, so a polite
+              // region re-announced every chunk. `aria-busy` tells AT to defer
+              // until the turn settles, then announce it once.
+              aria-busy={state.isLoading}
             >
               {state.rows.map((row, i) => (
                 <ChatRowView

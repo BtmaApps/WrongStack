@@ -197,7 +197,7 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
       />
       <button
         type="button"
-        className="nodrag nopan block w-full cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-primary"
+        className="nodrag nopan block w-full cursor-pointer text-left"
         onClick={(event) => {
           if (event.shiftKey && graphNode.file) {
             data.onShowHistory(graphNode.file);
