@@ -218,12 +218,18 @@ export function createPersistencePrimitives(
     // `chmod`; Windows does not — `chmod` only flips the read-only bit
     // and the renamed file inherits the parent directory's ACEs, so a
     // `CodexSandboxUsers`-style sibling account can read the secret.
-    // Apply `restrictFilePermissions` unconditionally when the mode is
+    // Apply `restrictFilePermissions` on Windows when the mode is
     // an owner-only secret mode (group and other have no permissions) — it shells out
-    // to `icacls` on Windows and re-applies the owning-user-only ACE. The helper is
-    // idempotent and a no-op on POSIX (the `chmod` above already narrowed the mode).
+    // to `icacls` on Windows and re-applies the owning-user-only ACE.
+    // POSIX already has the computed mode; applying the helper's fixed 0600
+    // there would widen stricter modes such as 0400.
     // A hardened directory already gave the temp file an owner-only ACL.
-    if (mode !== undefined && (mode & 0o077) === 0 && !dirIsOwnerOnly) {
+    if (
+      _filePermOps.platform === 'win32' &&
+      mode !== undefined &&
+      (mode & 0o077) === 0 &&
+      !dirIsOwnerOnly
+    ) {
       await restrictFilePermissions(targetPath, { warn: () => undefined }).catch(() => undefined);
     }
   }
@@ -244,43 +250,11 @@ export function createPersistencePrimitives(
     content: string | Uint8Array,
     opts: AtomicWriteOptions = {},
   ): Promise<void> {
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
-    const dirIsOwnerOnly =
-      isOwnerOnlyMode(opts.mode) && (await prepareOwnerOnlyDir(path.dirname(targetPath)));
-    const tmp = tempPathFor(targetPath);
-    let tempCreated = false;
-
-    try {
-      // `mode` at CREATION, not only via the chmod in commitTemp. Without it the
-      // temp file exists at the umask default (typically 0644) for the whole
-      // write, and only tightens afterwards — a window on multi-user POSIX hosts
-      // during which HQ bearer tokens and encrypted config sat world-readable
-      // (audit 2026-08-20). The chmod in commitTemp still runs: it also handles
-      // intersecting with an existing target's mode. Ensure owner write permission
-      // during creation so fsync/open(r+) succeeds before tightening in commitTemp.
-      const createMode = opts.mode !== undefined ? opts.mode | 0o200 : undefined;
-      if (typeof content === 'string') {
-        await fs.writeFile(tmp, content, {
-          flag: 'wx',
-          encoding: opts.encoding ?? 'utf8',
-          ...(createMode !== undefined ? { mode: createMode } : {}),
-        });
-      } else {
-        await fs.writeFile(tmp, content, {
-          flag: 'wx',
-          ...(createMode !== undefined ? { mode: createMode } : {}),
-        });
-      }
-      tempCreated = true;
-      await commitTemp(tmp, targetPath, opts, dirIsOwnerOnly);
-    } catch (error) {
-      // `wx` reports EEXIST when a different writer already owns this random
-      // temp path. Never remove that file if this invocation did not create it.
-      if (tempCreated || (error as NodeJS.ErrnoException).code !== 'EEXIST') {
-        await fs.unlink(tmp).catch(() => undefined);
-      }
-      throw error;
-    }
+    await atomicReplaceWithWriter(
+      targetPath,
+      (handle) => handle.writeFile(content, { encoding: opts.encoding ?? 'utf8' }),
+      opts,
+    );
   }
 
   /**
@@ -306,7 +280,8 @@ export function createPersistencePrimitives(
     let tempCreated = false;
 
     try {
-      // Same creation-mode reasoning as the buffered path above.
+      // Restrict the temp at creation; add owner write permission until commitTemp
+      // applies the final ceiling so writing and fsync can finish first.
       const createMode = opts.mode !== undefined ? opts.mode | 0o200 : undefined;
       const handle = await fs.open(tmp, 'wx', createMode);
       tempCreated = true;

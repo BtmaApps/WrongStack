@@ -1538,7 +1538,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 64,
-      "sourceLines": 15200
+      "sourceLines": 15232
     },
     {
       "directory": "design",
@@ -1552,7 +1552,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 72,
-      "sourceLines": 21330
+      "sourceLines": 21347
     },
     {
       "directory": "extension",
@@ -1733,8 +1733,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 80,
-      "sourceLines": 13728
+      "sourceFiles": 81,
+      "sourceLines": 13758
     },
     {
       "directory": "vcs",

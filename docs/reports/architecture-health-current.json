@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T21:37:27.472Z",
+  "generatedAt": "2026-10-04T07:16:10.429Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4458,
-    "testFiles": 4025,
-    "sourceLines": 1051085,
+    "sourceFiles": 4460,
+    "testFiles": 4029,
+    "sourceLines": 1051391,
     "workspaceEdges": 133,
-    "moduleEdges": 14521,
+    "moduleEdges": 14529,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -241,7 +241,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 995,
+      "sourceFiles": 996,
       "testFiles": 888,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -418,8 +418,8 @@
     {
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
-      "sourceFiles": 50,
-      "testFiles": 51,
+      "sourceFiles": 51,
+      "testFiles": 52,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -433,7 +433,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 51
+          "testFiles": 52
         }
       ]
     },
@@ -764,7 +764,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 269,
-      "testFiles": 291,
+      "testFiles": 294,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -780,7 +780,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 291
+          "testFiles": 294
         }
       ]
     },
@@ -12154,6 +12154,12 @@
         ]
       },
       {
+        "file": "packages/plug-lsp/tests/unit/post-edit-feedback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plug-lsp/tests/unit/registry-coverage.test.ts",
         "projects": [
           "root-node"
@@ -17002,6 +17008,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/fetch-media-types.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/fetch-transport.test.ts",
         "projects": [
           "root-node"
@@ -17093,6 +17105,12 @@
       },
       {
         "file": "packages/tools/tests/install.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/json-file-growth.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17609,6 +17627,12 @@
       },
       {
         "file": "packages/tools/tests/regex-guard-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/replace-cancellation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25542,7 +25566,7 @@
     },
     {
       "file": "packages/core/src/core/agent-loop.ts",
-      "lines": 820,
+      "lines": 840,
       "relativeImports": 36
     },
     {
@@ -25569,6 +25593,11 @@
       "file": "packages/core/src/execution/prompt-enhancer.ts",
       "lines": 818,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/core/src/execution/tool-executor.ts",
+      "lines": 809,
+      "relativeImports": 26
     },
     {
       "file": "packages/core/src/goal/phase-orchestrator.ts",

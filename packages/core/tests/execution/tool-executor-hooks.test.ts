@@ -6,6 +6,7 @@ import { HookRunner } from '../../src/hooks/runner.js';
 import type { ToolResultBlock, ToolUseBlock } from '../../src/types/blocks.js';
 import type { HookInput } from '../../src/types/hooks.js';
 import type { Tool } from '../../src/types/tool.js';
+import { toolResultFingerprint } from '../../src/utils/tool-result-fingerprint.js';
 
 function makeCtx(): Context {
   return {
@@ -68,6 +69,24 @@ function use(name: string, input: Record<string, unknown> = {}): ToolUseBlock {
 }
 
 describe('ToolExecutor — PreToolUse hooks', () => {
+  it('keeps full output evidence stable through spooling and inline hook feedback', async () => {
+    const reg = new HookRegistry();
+    reg.registerInProcess('PostToolUse', '*', async () => ({ additionalContext: 'same feedback' }));
+    const ex = makeExecutor(
+      [tool('read', async () => 'x'.repeat(150_000))],
+      new HookRunner({ registry: reg }),
+    );
+    const first = (await ex.executeBatch([use('read')], makeCtx(), 'sequential')).outputs[0]
+      ?.result as ToolResultBlock;
+    const second = (await ex.executeBatch([use('read')], makeCtx(), 'sequential')).outputs[0]
+      ?.result as ToolResultBlock;
+    expect(first.content).not.toBe(second.content);
+    expect(first.content).toContain('same feedback');
+    expect(toolResultFingerprint(first)).toBe(toolResultFingerprint(second));
+    second.content = 'replaced by a result policy';
+    expect(toolResultFingerprint(first)).not.toBe(toolResultFingerprint(second));
+    expect(JSON.stringify(first)).not.toContain('digest');
+  });
   it('keeps allow/mutate silent in YOLO mode without requesting approval', async () => {
     const reg = new HookRegistry();
     reg.registerInProcess('PreToolUse', '*', async () => ({

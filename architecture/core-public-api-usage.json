@@ -49,9 +49,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/execution": {
-      "files": 79,
+      "files": 80,
       "typeOnly": 19,
-      "runtimeOrMixed": 76
+      "runtimeOrMixed": 77
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -64,9 +64,9 @@
       "runtimeOrMixed": 31
     },
     "@wrongstack/core/hooks": {
-      "files": 13,
+      "files": 14,
       "typeOnly": 3,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
       "files": 157,
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 50
     },
     "@wrongstack/core/kernel": {
-      "files": 323,
+      "files": 324,
       "typeOnly": 150,
-      "runtimeOrMixed": 187
+      "runtimeOrMixed": 188
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -184,8 +184,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1290,
-      "typeOnly": 1141,
+      "files": 1292,
+      "typeOnly": 1143,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -4621,6 +4621,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/plug-lsp/tests/integration/plugin-entry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/plugins/tests/path-guard.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5078,6 +5084,12 @@
     {
       "specifier": "@wrongstack/core/hooks",
       "file": "packages/cli/tests/wrongtrace-hooks.executor.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hooks",
+      "file": "packages/plug-lsp/tests/integration/plugin-entry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7496,6 +7508,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/unit/post-edit-feedback.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -15601,6 +15619,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/src/post-edit-feedback.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/src/registry.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15800,6 +15824,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/unit/post-edit-feedback.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

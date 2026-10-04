@@ -136,7 +136,8 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     });
 
     const contentType = res.headers.get('content-type') ?? 'text/plain';
-    if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(contentType)) {
+    const normalizedType = contentType.toLowerCase();
+    if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(normalizedType)) {
       await res.body?.cancel().catch(() => {});
       throw new ToolValidationError({
         message: `read_url_content: refusing to read binary content-type "${contentType}"`,
@@ -149,9 +150,9 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     );
 
     let content: string;
-    if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
+    if (normalizedType.includes('text/html') || normalizedType.includes('application/xhtml+xml')) {
       content = (await getTurndown()).turndown(rawBody).trim();
-    } else if (contentType.includes('application/json')) {
+    } else if (normalizedType.includes('application/json')) {
       try {
         const parsed = JSON.parse(rawBody);
         content = JSON.stringify(parsed, null, 2);

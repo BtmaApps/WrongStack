@@ -1,14 +1,25 @@
-import type { ContentBlock, ToolUseBlock } from '../types/blocks.js';
+import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import { isTextBlock, isToolUseBlock } from '../types/blocks.js';
+import { toolResultFingerprint } from '../utils/tool-result-fingerprint.js';
 import type { AgentInternals } from './agent-internals.js';
 import { resolveEventSessionId } from './context.js';
 
-export function iterationFingerprint(blocks: ContentBlock[]): string {
+function interactionKey(use: ToolUseBlock, results: readonly ToolResultBlock[]): string {
+  const result = results.find((item) => item.tool_use_id === use.id);
+  return `${use.name}:${hashSmall(stableStringify(use.input ?? {}))}:${
+    result ? `${!!result.is_error}:${toolResultFingerprint(result)}` : 'unavailable'
+  }`;
+}
+
+export function iterationFingerprint(
+  blocks: ContentBlock[],
+  results: readonly ToolResultBlock[] = [],
+): string {
   const toolUses = blocks.filter(isToolUseBlock);
   const texts = blocks.filter(isTextBlock);
 
   const toolNameSet = Array.from(new Set(toolUses.map((u) => u.name))).sort();
-  const firstInputHash = toolUses[0] ? hashSmall(stableStringify(toolUses[0].input ?? {})) : '';
+  const interactions = toolUses.map((use) => interactionKey(use, results)).join('|');
   const textBlob = texts
     .map((t) => t.text)
     .join('')
@@ -17,7 +28,7 @@ export function iterationFingerprint(blocks: ContentBlock[]): string {
   const hasContent = toolNameSet.length > 0 || textBlob.length > 0;
   if (!hasContent) return '__empty__';
 
-  return [`tools=${toolNameSet.join('+') || '-'}`, `in0=${firstInputHash}`, `txt=${textBlob}`].join(
+  return [`tools=${toolNameSet.join('+') || '-'}`, `calls=${interactions}`, `txt=${textBlob}`].join(
     '\n',
   );
 }
@@ -110,11 +121,12 @@ export class AgentLoopDetector {
     content: ContentBlock[],
     toolUses: ToolUseBlock[],
     queueSteer: (text: string) => void,
+    results: readonly ToolResultBlock[] = [],
   ): { cut: boolean; cutSummary?: string } {
     const loopCfg = this.a.loopDetection;
     if (loopCfg.mode === 'off') return { cut: false };
 
-    const sig = iterationFingerprint(content);
+    const sig = iterationFingerprint(content, results);
     if (sig !== '__empty__') {
       this.recentIterationSigs.push(sig);
       const sigWindow = Math.max(loopCfg.windowSize, MAX_CYCLE_PERIOD * CYCLE_REPEATS);
@@ -172,7 +184,7 @@ export class AgentLoopDetector {
       const repeatMultiplier = observationRepeat ? 2 : 1;
       const detail =
         kind === 'tool'
-          ? `"${names}" called with effectively identical inputs ${this.toolLoopCount} times in a row`
+          ? `"${names}" called with effectively identical inputs and results ${this.toolLoopCount} times in a row`
           : kind === 'mixed'
             ? `"${names}" + same text repeated ${this.toolLoopCount} times in a row`
             : `same assistant text repeated ${this.toolLoopCount} times in a row`;
@@ -233,7 +245,7 @@ export class AgentLoopDetector {
 
     if (loopCfg.mode === 'steer-then-cut') {
       for (const u of toolUses) {
-        const key = `${u.name}:${hashSmall(stableStringify(u.input ?? {}))}`;
+        const key = interactionKey(u, results);
         this.recentCallKeys.push(key);
         if (this.recentCallKeys.length > loopCfg.windowSize) this.recentCallKeys.shift();
         let count = 0;
@@ -251,7 +263,7 @@ export class AgentLoopDetector {
         const total = (this.callKeyTotals.get(key) ?? 0) + 1;
         this.callKeyTotals.set(key, total);
         if (this.steeredCallKeys.has(key) && total >= observationThreshold * 2) {
-          const detail = `"${u.name}" called with identical arguments ${total} times despite a steer`;
+          const detail = `"${u.name}" called with identical arguments and results ${total} times despite a steer`;
           this.a.logger.warn(`Loop detected: ${detail} — stopping to prevent infinite loop.`);
           this.a.events.emit('tool.loop_detected', {
             sessionId: resolveEventSessionId(this.a.ctx),
@@ -286,8 +298,8 @@ export class AgentLoopDetector {
           scope: 'call',
         });
         queueSteer(
-          `[loop-detector] You have called ${u.name}(${preview}) ${count} times with identical arguments ` +
-            `within the last ${loopCfg.windowSize} tool calls. The result will not change. Do not repeat ` +
+          `[loop-detector] You have called ${u.name}(${preview}) ${count} times with identical arguments and results ` +
+            `within the last ${loopCfg.windowSize} tool calls. These calls have produced no new evidence. Do not repeat ` +
             'this call — use what you already know, try a different approach, or explain the blocker.',
         );
       }

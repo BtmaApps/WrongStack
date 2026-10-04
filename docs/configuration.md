@@ -746,7 +746,7 @@ Controls compaction behavior, token thresholds, and context window modes.
 
 ### `tools.loopDetection`
 
-The detector watches two signals: consecutive effectively-identical iterations (same tool-name set + inputs + text) and per-call repeats — the same tool invoked with identical arguments N times within a sliding window, even when interleaved with other calls (e.g. re-reading the same file for the 4th time).
+The detector watches consecutive effectively-identical iterations and per-call repeats within a sliding window. Tool iterations are checked after execution using every call's canonical arguments and completed result (including error status); a changed result does not count as the same interaction. Text-only repetition is still checked before the next step. Unchanged check/fix cycles remain detectable, while changing tool results can continue within the configured run budget. Different output is new evidence, not proof of task completion.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -754,7 +754,7 @@ The detector watches two signals: consecutive effectively-identical iterations (
 | `steerThreshold` | `number` | `3` | Consecutive identical iterations before the detector acts (min 2). |
 | `cutThreshold` | `number` | `5` | Consecutive identical iterations at which the turn is cut in `steer-then-cut` mode (min `steerThreshold + 1`). |
 | `windowSize` | `number` | `12` | Sliding window of recent tool calls for per-call repeat detection (min 4). |
-| `callRepeatThreshold` | `number` | `4` | Identical (name + canonicalized args) calls within the window that trigger a steer note (min 2). |
+| `callRepeatThreshold` | `number` | `4` | Identical (name + canonicalized args + completed result) interactions within the window that trigger a steer note (min 2). |
 
 Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`) and `scope` (`iteration`/`call`) so UIs can render a warning chip.
 

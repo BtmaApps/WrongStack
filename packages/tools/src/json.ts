@@ -1,3 +1,4 @@
+import { createReadStream } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import type { Context } from '@wrongstack/core/agent';
 import type { Tool } from '@wrongstack/core/types';
@@ -25,7 +26,7 @@ const MAX_JSON_FILE_BYTES_HUMAN = '16 MiB';
 class JsonFileTooLargeError extends Error {
   constructor(filePath: string, size: number) {
     super(
-      `json: "${filePath}" is ${size} bytes — exceeds the ${MAX_JSON_FILE_BYTES_HUMAN} file-size limit. ` +
+      `json: "${filePath}" exceeds the ${MAX_JSON_FILE_BYTES_HUMAN} file-size limit (${size} bytes observed). ` +
         'Extract the relevant portion into a smaller file first, or use a shell tool to query it directly.',
     );
     this.name = 'JsonFileTooLargeError';
@@ -50,7 +51,18 @@ async function readJsonFileBounded(filePath: string, ctx: Context): Promise<stri
   if (stat.size > MAX_JSON_FILE_BYTES) {
     throw new JsonFileTooLargeError(filePath, stat.size);
   }
-  return fs.readFile(resolved, 'utf8');
+  // A file can grow after stat. Bound the actual read, with one extra byte
+  // to distinguish an exact-cap file from an oversized one.
+  const chunks: Buffer[] = [];
+  let bytesRead = 0;
+  for await (const chunk of createReadStream(resolved, { end: MAX_JSON_FILE_BYTES })) {
+    bytesRead += chunk.length;
+    if (bytesRead > MAX_JSON_FILE_BYTES) {
+      throw new JsonFileTooLargeError(filePath, bytesRead);
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, bytesRead).toString('utf8');
 }
 
 // ---------------------------------------------------------------------------

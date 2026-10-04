@@ -94,7 +94,9 @@ describe('persistence primitive edge branches', () => {
     usePlatform('linux');
     const primitives = createPersistencePrimitives();
 
-    doubles.fs.open.mockRejectedValueOnce(errorWithCode('EIO'));
+    doubles.fs.open
+      .mockResolvedValueOnce(doubles.lockHandle)
+      .mockRejectedValueOnce(errorWithCode('EIO'));
     await expect(primitives.atomicWrite('/tmp/value.txt', 'value', { mode: 0o640 })).resolves.toBe(
       undefined,
     );
@@ -105,7 +107,7 @@ describe('persistence primitive edge branches', () => {
     expect(doubles.fs.mkdir).toHaveBeenCalledWith('/tmp/nested', { recursive: true });
 
     const writeError = errorWithCode('EIO');
-    doubles.fs.writeFile.mockRejectedValueOnce(writeError);
+    doubles.lockHandle.writeFile.mockRejectedValueOnce(writeError);
     doubles.fs.unlink.mockRejectedValueOnce(errorWithCode('EPERM'));
     await expect(primitives.atomicWrite('/tmp/failure.txt', 'value')).rejects.toBe(writeError);
   });
@@ -585,10 +587,14 @@ describe('persistence primitive edge branches', () => {
     usePlatform('linux');
     const primitives = createPersistencePrimitives();
     await primitives.atomicWrite('/tmp/buffer.bin', Buffer.from('binary-data'), { mode: 0o644 });
-    expect(doubles.fs.writeFile).toHaveBeenCalledWith(
-      expect.stringContaining('.tmp'),
+    expect(doubles.lockHandle.writeFile).toHaveBeenCalledWith(
       Buffer.from('binary-data'),
-      expect.objectContaining({ mode: 0o644 }),
+      expect.objectContaining({ encoding: 'utf8' }),
+    );
+    expect(doubles.fs.open).toHaveBeenCalledWith(
+      expect.stringContaining('.tmp'),
+      'wx',
+      0o644,
     );
   });
 

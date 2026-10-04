@@ -131,6 +131,141 @@ describe('agent-loop fingerprint detector', () => {
 
   // ── The k2p7 loop patterns the safety valve must catch ─────────────
 
+  it('allows identical calls while their completed results keep changing', async () => {
+    let revision = 0;
+    const probe: Tool = {
+      ...echoTool('probe'),
+      async execute() {
+        return `revision=${++revision}`;
+      },
+    };
+    const provider = new MockProvider([
+      ...Array.from({ length: 12 }, (_, i) => ({
+        content: [{ type: 'tool_use' as const, id: `p${i}`, name: 'probe', input: {} }],
+        stopReason: 'tool_use' as const,
+      })),
+      { content: [{ type: 'text', text: 'finished' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, [probe]);
+    cleanupDirs.push(tmp);
+    const detections: unknown[] = [];
+    (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
+      detections.push(e),
+    );
+    const result = await agent.run('observe progress');
+    expect(result.status).toBe('done');
+    expect(result.finalText).toBe('finished');
+    expect(revision).toBe(12);
+    expect(detections).toEqual([]);
+  });
+
+  it('allows a check/fix cycle whose edit results show different changes', async () => {
+    let revision = 0;
+    const fix: Tool = {
+      ...echoTool('fix'),
+      mutating: true,
+      async execute() {
+        return `diff ${++revision}`;
+      },
+    };
+    const provider = new MockProvider([
+      ...Array.from({ length: 12 }, (_, i) => ({
+        content: [
+          { type: 'tool_use' as const, id: `c${i}`, name: i % 2 ? 'fix' : 'check', input: {} },
+        ],
+        stopReason: 'tool_use' as const,
+      })),
+      { content: [{ type: 'text', text: 'finished' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, [echoTool('check'), fix], { mode: 'cut' });
+    cleanupDirs.push(tmp);
+    expect((await agent.run('repair')).status).toBe('done');
+    expect(revision).toBe(6);
+  });
+
+  it('still cuts repeated calls that keep returning the same error', async () => {
+    const fail: Tool = {
+      ...echoTool('fail'),
+      async execute() {
+        throw new Error('unchanged failure');
+      },
+    };
+    const provider = new MockProvider(
+      Array.from({ length: 6 }, (_, i) => ({
+        content: [{ type: 'tool_use' as const, id: `f${i}`, name: 'fail', input: {} }],
+        stopReason: 'tool_use' as const,
+      })),
+    );
+    const { agent, tmp } = await buildAgent(provider, [fail], { mode: 'cut' });
+    cleanupDirs.push(tmp);
+    expect((await agent.run('retry')).status).toBe('max_iterations');
+    expect(provider.calls).toBe(3);
+  });
+
+  it('accounts for changing results beyond the first call in a batch', async () => {
+    let revision = 0;
+    const changing: Tool = {
+      ...echoTool('changing'),
+      async execute() {
+        return `revision ${++revision}`;
+      },
+    };
+    const provider = new MockProvider([
+      ...Array.from({ length: 8 }, (_, i) => ({
+        content: [
+          { type: 'tool_use' as const, id: `first-${i}`, name: 'echo', input: {} },
+          { type: 'tool_use' as const, id: `second-${i}`, name: 'changing', input: {} },
+        ],
+        stopReason: 'tool_use' as const,
+      })),
+      { content: [{ type: 'text', text: 'finished' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, [echoTool(), changing], { mode: 'cut' });
+    cleanupDirs.push(tmp);
+    expect((await agent.run('observe the full batch')).status).toBe('done');
+    expect(revision).toBe(8);
+  });
+
+  it('cuts identical full outputs despite different spool paths', async () => {
+    const large: Tool = {
+      ...echoTool('large'),
+      async execute() {
+        return 'x'.repeat(150_000);
+      },
+    };
+    const provider = new MockProvider(
+      Array.from({ length: 6 }, (_, i) => ({
+        content: [{ type: 'tool_use' as const, id: `large-${i}`, name: 'large', input: {} }],
+        stopReason: 'tool_use' as const,
+      })),
+    );
+    const { agent, tmp } = await buildAgent(provider, [large]);
+    cleanupDirs.push(tmp);
+    expect((await agent.run('repeat large output')).status).toBe('max_iterations');
+    expect(provider.calls).toBe(5);
+  });
+
+  it('recognizes changed full output even when its visible head and tail are identical', async () => {
+    let revision = 0;
+    const large: Tool = {
+      ...echoTool('large'),
+      async execute() {
+        return `${'x'.repeat(75_000)}${++revision}${'x'.repeat(75_000)}`;
+      },
+    };
+    const provider = new MockProvider([
+      ...Array.from({ length: 8 }, (_, i) => ({
+        content: [{ type: 'tool_use' as const, id: `large-${i}`, name: 'large', input: {} }],
+        stopReason: 'tool_use' as const,
+      })),
+      { content: [{ type: 'text', text: 'finished' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, [large]);
+    cleanupDirs.push(tmp);
+    expect((await agent.run('observe changing large output')).status).toBe('done');
+    expect(revision).toBe(8);
+  });
+
   it("breaks the run when the same tool is called with identical inputs 3 times in a row (legacy 'cut' mode)", async () => {
     const echo = echoTool();
     // Three identical tool-use responses, then the model finally gives up —
@@ -154,7 +289,7 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, tmp } = await buildAgent(provider, [echo], { mode: 'cut' });
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ tools: string; kind?: string; repeatCount: number }> = [];
+    const detected: Array<{ tools: string; kind?: string | undefined; repeatCount: number }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({ tools: e.tools, kind: e.kind, repeatCount: e.repeatCount }),
     );
@@ -253,7 +388,7 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, tmp } = await buildAgent(provider, [], { mode: 'cut' });
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ kind?: string; tools: string; repeatCount: number }> = [];
+    const detected: Array<{ kind?: string | undefined; tools: string; repeatCount: number }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({ kind: e.kind, tools: e.tools, repeatCount: e.repeatCount }),
     );
@@ -388,7 +523,11 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, ctx, tmp } = await buildAgent(provider, [echo]);
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ action?: string; scope?: string; repeatCount: number }> = [];
+    const detected: Array<{
+      action?: string | undefined;
+      scope?: string | undefined;
+      repeatCount: number;
+    }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({ action: e.action, scope: e.scope, repeatCount: e.repeatCount }),
     );
@@ -426,7 +565,11 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, tmp } = await buildAgent(provider);
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ action?: string; kind?: string; repeatCount: number }> = [];
+    const detected: Array<{
+      action?: string | undefined;
+      kind?: string | undefined;
+      repeatCount: number;
+    }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({ action: e.action, kind: e.kind, repeatCount: e.repeatCount }),
     );
@@ -492,8 +635,12 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, ctx, tmp } = await buildAgent(provider, tools);
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ action?: string; scope?: string; tools: string; repeatCount: number }> =
-      [];
+    const detected: Array<{
+      action?: string | undefined;
+      scope?: string | undefined;
+      tools: string;
+      repeatCount: number;
+    }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({
         action: e.action,
@@ -550,7 +697,7 @@ describe('agent-loop fingerprint detector', () => {
     const { agent, tmp } = await buildAgent(provider, tools);
     cleanupDirs.push(tmp);
 
-    const detected: Array<{ scope?: string; repeatCount: number }> = [];
+    const detected: Array<{ scope?: string | undefined; repeatCount: number }> = [];
     (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
       detected.push({ scope: e.scope, repeatCount: e.repeatCount }),
     );

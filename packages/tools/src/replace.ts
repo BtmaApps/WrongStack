@@ -212,6 +212,7 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
         // Write to the real path (already validated inside project root)
         // so atomicWrite's temp-and-rename can't be redirected through a
         // freshly-planted symlink at absPath.
+        signal?.throwIfAborted();
         await atomicWrite(realPath, newContent, { mode: stat.mode & 0o777 });
         // Same bookkeeping as `edit`: record the new mtime + hash (tagged
         // 'write' so the permission bypass does not widen) so a later `edit`

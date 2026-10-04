@@ -26,6 +26,7 @@ export class SSEReader {
   private buffer = '';
   private skipLeadingLF = false;
   private dataLines: string[] = [];
+  private dataLength = 0;
   private eventName = '';
   private endpointListeners: Array<(endpoint: string) => void> = [];
 
@@ -115,6 +116,13 @@ export class SSEReader {
   }
 
   private processLine(line: string): void {
+    if (line.length > SSE_READER_MAX_BUFFER) {
+      throw new ToolError({
+        message: `SSE: completed line exceeds ${SSE_READER_MAX_BUFFER} characters`,
+        code: 'TOOL_EXECUTION_FAILED',
+        toolName: 'mcp_transport_sse_reader',
+      });
+    }
     if (line === '') {
       this.flush();
       return;
@@ -129,6 +137,14 @@ export class SSEReader {
     if (field === 'event') {
       this.eventName = value;
     } else if (field === 'data') {
+      const nextLength = this.dataLength + value.length + (this.dataLines.length > 0 ? 1 : 0);
+      if (nextLength > SSE_READER_MAX_BUFFER) {
+        throw new ToolError({
+          message: `SSE: event data exceeds ${SSE_READER_MAX_BUFFER} characters`,
+          code: 'TOOL_EXECUTION_FAILED',
+          toolName: 'mcp_transport_sse_reader',
+        });
+      }
       if (this.dataLines.length >= SSE_READER_MAX_DATA_LINES) {
         throw new ToolError({
           message: `SSE: exceeded ${SSE_READER_MAX_DATA_LINES} data lines per event — upstream is not sending blank-line delimiters`,
@@ -141,6 +157,7 @@ export class SSEReader {
           },
         });
       }
+      this.dataLength = nextLength;
       this.dataLines.push(value);
     }
   }
@@ -148,6 +165,7 @@ export class SSEReader {
   private flush(): void {
     const eventName = this.eventName;
     this.eventName = '';
+    this.dataLength = 0;
     if (this.dataLines.length === 0) {
       return;
     }
@@ -197,6 +215,7 @@ export class SSEReader {
     this.skipLeadingLF = false;
     this.dataLines = [];
     this.eventName = '';
+    this.dataLength = 0;
     this.listeners = [];
     this.endpointListeners = [];
   }

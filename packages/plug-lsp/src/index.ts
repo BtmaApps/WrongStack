@@ -3,6 +3,7 @@ import { expectDefined } from '@wrongstack/core/utils';
 import { autoDiscoverServers } from './auto-discover.js';
 import { PLUGIN_NAME, plugLspConfigSchema, readPlugLSPConfig } from './config.js';
 import { DocumentTracker } from './document-tracker.js';
+import { createPostEditFeedback } from './post-edit-feedback.js';
 import { LSPRegistry } from './registry.js';
 import { supportsPullDiagnostics } from './server/capabilities.js';
 import { registerSlashCommands } from './slash-commands/index.js';
@@ -23,6 +24,7 @@ let teardownState: {
   commandNames: string[];
   registry: LSPRegistry;
   tracker: DocumentTracker;
+  settled: () => Promise<void>;
 } | null = null;
 
 const plugin: Plugin = {
@@ -32,6 +34,7 @@ const plugin: Plugin = {
   apiVersion: '^0.1.1',
   capabilities: {
     tools: true,
+    hooks: true,
     slashCommands: true,
     pipelines: [],
   },
@@ -72,6 +75,25 @@ const plugin: Plugin = {
     };
     syncToolAvailability(registry.list().length > 0);
     const commandNames = registerSlashCommands(api, registry, tracker, cfg, cwd);
+    let epoch = 0;
+    let active = true;
+    let boundCwd = cwd;
+    let rebind = Promise.resolve();
+    const hasFeedbackHook = typeof api.registerHook === 'function';
+    const unregisterFeedback = hasFeedbackHook
+      ? api.registerHook(
+          'PostToolUse',
+          'edit|write|replace|patch|codebase-ast-replace',
+          createPostEditFeedback({ registry, tracker, cfg, log: api.log }, (targetCwd) => {
+            const captured = epoch;
+            return () => active && epoch === captured && boundCwd === targetCwd;
+          }),
+          {
+            name: 'lsp-post-edit-feedback',
+            timeoutMs: Math.min(cfg.diagnosticsWaitMs, 5000) + 1000,
+          },
+        )
+      : () => {};
 
     const unregisterPrompt = api.registerSystemPromptContributor(async () =>
       toolsRegistered
@@ -80,7 +102,7 @@ const plugin: Plugin = {
               type: 'text',
               text:
                 '[LSP code intelligence]\n' +
-                'For supported source files, use semantic LSP tools when they are more precise than text search: lsp_definition, lsp_references, lsp_hover, lsp_symbols, lsp_completion, and codebase-lsp-search with preferLsp=true. Use lsp_code_actions to inspect server fixes, lsp_rename for symbol-safe renames, and only execute commands the server advertised. Use confirmed lsp_request only for documented vendor methods with no typed tool. After editing supported code, use lsp_diagnostics as a focused check before declaring verification; tests and typecheck remain the authoritative gates. LSP servers start lazily when path-scoped tools target their language.',
+                'For supported source files, use semantic LSP tools when they are more precise than text search: lsp_definition, lsp_references, lsp_hover, lsp_symbols, lsp_completion, and codebase-lsp-search with preferLsp=true. Use lsp_code_actions to inspect server fixes, lsp_rename for symbol-safe renames, and only execute commands the server advertised. Use confirmed lsp_request only for documented vendor methods with no typed tool. With post-edit feedback enabled, edit results include current file diagnostics or an unverified notice. An unverified notice requires a follow-up lsp_diagnostics check or tests/typecheck before declaring verification; tests and typecheck remain the authoritative gates. LSP servers start lazily when path-scoped tools target their language.',
             },
           ]
         : [],
@@ -88,14 +110,51 @@ const plugin: Plugin = {
 
     const offs = [
       api.events.on('session.started', () => {
+        epoch++;
         const nextCwd = api.config.cwd ?? process.cwd();
-        tracker.setCwd(nextCwd);
-        void registry.bind(nextCwd, cfg.autoStart);
+        boundCwd = '';
+        const captured = epoch;
+        rebind = rebind
+          .then(async () => {
+            if (!active || epoch !== captured) return;
+            await tracker.forceCloseAll();
+            if (!active || epoch !== captured) return;
+            tracker.setCwd(nextCwd);
+            await registry.bind(nextCwd, cfg.autoStart);
+            if (active && epoch === captured) boundCwd = nextCwd;
+          })
+          .catch((err) => api.log.debug('LSP project bind failed', err));
       }),
       api.events.on('session.ended', () => {
-        void tracker.forceCloseAll().finally(() => registry.shutdown());
+        epoch++;
+        boundCwd = '';
+        const captured = epoch;
+        rebind = rebind
+          .then(async () => {
+            if (!active || epoch !== captured) return;
+            await tracker.forceCloseAll();
+            if (active && epoch === captured) await registry.shutdown();
+          })
+          .catch((err) => api.log.debug('LSP session cleanup failed', err));
       }),
       api.events.on('tool.executed', (event) => {
+        if (hasFeedbackHook && cfg.diagnosticsAfterEdit === 'background' && event.name !== 'read') {
+          // Idempotent refresh also covers hosts that disabled ordinary hooks.
+          // fileWritten would increment the revision a second time after feedback.
+          const input = event.input as { path?: unknown; file?: unknown } | undefined;
+          const target = input?.path ?? input?.file;
+          if (
+            event.ok &&
+            typeof target === 'string' &&
+            ['edit', 'write', 'replace', 'patch', 'codebase-ast-replace'].includes(event.name)
+          ) {
+            const file = resolveInputPath(target, { cwd: api.config.cwd ?? process.cwd() });
+            void tracker
+              .open(file)
+              .catch((err) => api.log.debug('LSP tracker refresh failed', err));
+          }
+          return;
+        }
         void tracker
           .handleToolExecuted(event)
           .then(async () => {
@@ -129,6 +188,11 @@ const plugin: Plugin = {
           .catch((err) => api.log.debug('LSP tracker failed to handle tool event', err));
       }),
       unregisterPrompt,
+      unregisterFeedback,
+      () => {
+        active = false;
+        epoch++;
+      },
     ];
 
     teardownState = {
@@ -137,6 +201,7 @@ const plugin: Plugin = {
       commandNames,
       registry,
       tracker,
+      settled: () => rebind,
     };
   },
   async teardown(api) {
@@ -146,6 +211,7 @@ const plugin: Plugin = {
     for (const off of state.offs) off();
     for (const name of state.toolNames) api.tools.unregister(name);
     for (const name of state.commandNames) api.slashCommands.unregister(`${PLUGIN_NAME}:${name}`);
+    await state.settled();
     await state.tracker.forceCloseAll();
     await state.registry.shutdown();
   },

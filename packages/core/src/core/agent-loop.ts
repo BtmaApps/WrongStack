@@ -673,7 +673,10 @@ export function createAgentLoopHandler(
 
         const toolUses = res.content.filter(isToolUseBlock);
 
-        const loopCheck = loopDetector.checkIteration(i, res.content, toolUses, queueLoopSteer);
+        const loopCheck =
+          toolUses.length === 0
+            ? loopDetector.checkIteration(i, res.content, toolUses, queueLoopSteer)
+            : { cut: false };
         if (loopCheck.cut) {
           return {
             status: 'max_iterations',
@@ -724,6 +727,23 @@ export function createAgentLoopHandler(
 
         try {
           const toolExecution = await handlers.tools.executeTools(toolUses);
+          const completedLoopCheck = controller.signal.aborted
+            ? { cut: false }
+            : loopDetector.checkIteration(
+                i,
+                res.content,
+                toolUses,
+                queueLoopSteer,
+                toolExecution.results,
+              );
+          if (completedLoopCheck.cut) {
+            return {
+              status: 'max_iterations',
+              iterations,
+              finalText: finalText || completedLoopCheck.cutSummary || '',
+              delegateSummaries,
+            };
+          }
           const advice = toolCoachEnabled()
             ? toolCoach.afterTools(toolUses, toolExecution.results, toolExecution.settlements)
             : null;

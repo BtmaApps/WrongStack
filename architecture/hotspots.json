@@ -83,7 +83,7 @@
       "relativeImports": 3
     },
     "packages/core/src/core/agent-loop.ts": {
-      "lines": 820,
+      "lines": 840,
       "relativeImports": 36
     },
     "packages/core/src/core/fallback-model.ts": {
@@ -105,6 +105,10 @@
     "packages/core/src/execution/prompt-enhancer.ts": {
       "lines": 818,
       "relativeImports": 9
+    },
+    "packages/core/src/execution/tool-executor.ts": {
+      "lines": 809,
+      "relativeImports": 26
     },
     "packages/core/src/goal/phase-orchestrator.ts": {
       "lines": 842,

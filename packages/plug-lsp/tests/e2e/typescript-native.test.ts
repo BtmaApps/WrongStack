@@ -5,6 +5,7 @@ import { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { DocumentTracker } from '../../src/document-tracker.js';
+import { createPostEditFeedback } from '../../src/post-edit-feedback.js';
 import { LSPRegistry } from '../../src/registry.js';
 import { makeLSPTools } from '../../src/tools/index.js';
 import type { PlugLSPConfig } from '../../src/types.js';
@@ -97,6 +98,23 @@ describe.skipIf(!runnable)('native TypeScript language server E2E', () => {
         .get('lsp_diagnostics')!
         .execute({ path: source }, ctx, { signal });
       expect(String(changed)).toContain('ERROR');
+
+      const feedback = createPostEditFeedback({ registry, tracker, cfg, log }, () => () => true);
+      const input = {
+        event: 'PostToolUse' as const,
+        toolName: 'edit',
+        toolInput: { path: source },
+        toolResult: { content: 'edited', isError: false },
+        cwd: root,
+      };
+      const runtime = { signal, deadlineAt: Date.now() + 6000 };
+      const brokenFeedback = await feedback(input, runtime);
+      expect(brokenFeedback?.additionalContext).toContain('ERROR');
+      expect(brokenFeedback?.additionalContext).toContain('sha256=');
+      await fs.writeFile(source, 'export const answer: number = 42;\nanswer;\n');
+      const cleanFeedback = await feedback(input, runtime);
+      expect(cleanFeedback?.additionalContext).toContain('No LSP diagnostics.');
+      expect(cleanFeedback?.additionalContext).not.toContain('ERROR');
     } finally {
       await registry.shutdown();
     }

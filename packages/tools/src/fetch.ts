@@ -227,7 +227,8 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
         res.headers.get('content-length') === '0';
       const ct =
         res.headers.get('content-type') ?? (bodyless ? 'text/plain' : 'application/octet-stream');
-      if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(ct)) {
+      const normalizedType = ct.toLowerCase();
+      if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(normalizedType)) {
         throw new FetchError({
           message: `fetch: refusing to read binary content-type "${ct}"`,
           status: res.status,
@@ -282,7 +283,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       }
       const text = Buffer.concat(chunks).toString('utf8');
 
-      const isHtml = ct.includes('text/html');
+      const isHtml = normalizedType.includes('text/html');
       const isJson = /[/+]json(;|$)/i.test(ct);
       const format = input.format ?? (isHtml ? 'markdown' : 'text');
       let content: string;

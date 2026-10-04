@@ -360,7 +360,16 @@ export function createSseLineFoldingTransform(
   // O(n²) for one large event (a Codex `response.completed`).
   const lineParts: Uint8Array[] = [];
   let lineLength = 0;
+  const assertLineBudget = (length: number): void => {
+    if (length > MAX_BUFFER_BYTES) {
+      throw new ParseError({
+        message: `SSE: folding line exceeds ${MAX_BUFFER_BYTES} bytes — upstream is not framing events`,
+        source: 'sse',
+      });
+    }
+  };
   const takeLine = (tail: Uint8Array): Uint8Array => {
+    assertLineBudget(lineLength + tail.length);
     const out = new Uint8Array(new ArrayBuffer(lineLength + tail.length));
     let at = 0;
     for (const part of lineParts) {
@@ -464,6 +473,7 @@ export function createSseLineFoldingTransform(
       }
 
       if (chunkStart < value.length) {
+        assertLineBudget(lineLength + value.length - chunkStart);
         // Copy: the source chunk may be a reused/transferred buffer.
         lineParts.push(new Uint8Array(value.subarray(chunkStart)));
         lineLength += value.length - chunkStart;
@@ -482,6 +492,8 @@ export function createSseLineFoldingTransform(
         await pull(controller);
       } catch (error) {
         if (cancelled) return;
+        lineParts.length = 0;
+        lineLength = 0;
         void reader.cancel(error).catch(() => {});
         reader.releaseLock();
         throw error;

@@ -39,8 +39,9 @@ export function timingSafeTokenEqual(
   expected: string | undefined | null,
 ): boolean {
   if (!supplied || !expected) return false;
-  const a = Buffer.from(supplied, 'utf8');
-  const b = Buffer.from(expected, 'utf8');
+  // UTF-8 replaces lone surrogates, making distinct strings compare equal.
+  const a = Buffer.from(supplied, 'utf16le');
+  const b = Buffer.from(expected, 'utf16le');
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
 }

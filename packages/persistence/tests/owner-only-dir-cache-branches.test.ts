@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const doubles = vi.hoisted(() => {
-  const handle = { sync: vi.fn(), close: vi.fn() };
+  const handle = { sync: vi.fn(), close: vi.fn(), writeFile: vi.fn() };
   const fs = {
     mkdir: vi.fn(),
     writeFile: vi.fn(),
@@ -44,6 +44,7 @@ beforeEach(() => {
   doubles.fs.open.mockResolvedValue(doubles.handle);
   doubles.handle.sync.mockResolvedValue(undefined);
   doubles.handle.close.mockResolvedValue(undefined);
+  doubles.handle.writeFile.mockResolvedValue(undefined);
   doubles.fs.chmod.mockResolvedValue(undefined);
   doubles.fs.rename.mockResolvedValue(undefined);
   doubles.fs.unlink.mockResolvedValue(undefined);

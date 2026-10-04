@@ -2,6 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ToolExecutor } from '@wrongstack/core/execution';
+import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import { Container, EventBus } from '@wrongstack/core/kernel';
 import type { PluginAPI } from '@wrongstack/core/plugin';
 import type { Logger, SlashCommand, Tool } from '@wrongstack/core/types';
@@ -33,6 +35,7 @@ describe('plugin entry', () => {
     const commands = new Map<string, SlashCommand>();
     const promptContributors: Array<() => Promise<Array<{ type: string; text: string }>>> = [];
     const events = new EventBus();
+    const hooks = new HookRegistry();
     const api = {
       container: new Container(),
       events,
@@ -60,6 +63,14 @@ describe('plugin entry', () => {
           if (index >= 0) promptContributors.splice(index, 1);
         };
       },
+      registerHook: ((event, matcher, hook, options) =>
+        hooks.registerInProcess(
+          event,
+          matcher,
+          hook,
+          PLUGIN_NAME,
+          options,
+        )) as PluginAPI['registerHook'],
       config: {
         version: 1,
         cwd: root,
@@ -95,7 +106,7 @@ describe('plugin entry', () => {
     expect(tools.has('codebase-lsp-search')).toBe(true);
     expect(commands.has(`${PLUGIN_NAME}:lsp-list`)).toBe(true);
     expect(promptContributors).toHaveLength(1);
-    expect((await promptContributors[0]!())[0]?.text).toContain('use lsp_diagnostics');
+    expect((await promptContributors[0]!())[0]?.text).toContain('lsp_diagnostics');
 
     const ready = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('background LSP startup timed out')), 5000);
@@ -104,14 +115,65 @@ describe('plugin entry', () => {
         resolve();
       });
     });
-    events.emit('tool.executed', { name: 'edit', ok: true, input: { path: source } } as never);
+    const edit: Tool = {
+      name: 'edit',
+      description: 'fixture edit',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: true,
+      async execute() {
+        await fs.writeFile(source, 'const answer: number = "wrong";');
+        return 'edited';
+      },
+    };
+    const executor = new ToolExecutor(
+      { get: () => edit, list: () => [edit] },
+      {
+        hookRunner: new HookRunner({ registry: hooks }),
+        permissionPolicy: { evaluate: async () => ({ permission: 'auto' }) } as never,
+        secretScrubber: { scrub: (text: string) => text } as never,
+        perIterationOutputCapBytes: 50_000,
+      },
+    );
+    const executed = await executor.executeBatch(
+      [{ type: 'tool_use', id: 'edit-1', name: 'edit', input: { path: source } }],
+      {
+        cwd: root,
+        projectRoot: root,
+        signal: new AbortController().signal,
+        session: { id: 'owned-session', append: async () => {} },
+        messages: [],
+        todos: [],
+        readFiles: new Set(),
+        fileMtimes: new Map(),
+        meta: {},
+      } as never,
+      'sequential',
+    );
     await ready;
+    expect(executed.outputs[0]?.result).toMatchObject({
+      type: 'tool_result',
+      is_error: false,
+      content: expect.stringContaining('[Post-edit LSP feedback]'),
+    });
+    expect(executed.outputs[0]?.result).toMatchObject({
+      content: expect.stringContaining('MOCK001'),
+    });
+    events.emit('tool.executed', { name: 'edit', ok: true, input: { path: source } } as never);
+    const repeatedFeedback = await new HookRunner({ registry: hooks }).postToolUse(
+      'edit',
+      { path: source },
+      { content: 'edited', isError: false },
+      { cwd: root, session: { id: 'owned-session' }, signal: new AbortController().signal },
+    );
+    expect(repeatedFeedback.additionalContext).toContain('version=1;');
     expect(await plugin.health?.()).toMatchObject({ ok: true });
 
     await plugin.teardown?.(api);
     expect(tools.size).toBe(0);
     expect(commands.size).toBe(0);
     expect(promptContributors).toHaveLength(0);
+    expect(hooks.list('PostToolUse')).toHaveLength(0);
     expect(await plugin.health?.()).toMatchObject({ ok: false });
     await fs.rm(root, { recursive: true, force: true });
   });

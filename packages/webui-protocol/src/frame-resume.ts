@@ -57,11 +57,13 @@ export class SessionFrameGate<T extends SequencedFrame> {
     sessionIds: readonly string[],
   ): { eventEpoch: string; cursors: Record<string, number> } | null {
     if (!this.epoch) return null;
-    const cursors: Record<string, number> = {};
+    const entries: [string, number][] = [];
     for (const id of sessionIds) {
       const seq = this.applied.get(id);
-      if (seq !== undefined) cursors[id] = seq;
+      if (seq !== undefined) entries.push([id, seq]);
     }
+    // Preserve special session ids as own properties without invoking setters.
+    const cursors = Object.fromEntries(entries);
     return Object.keys(cursors).length > 0 ? { eventEpoch: this.epoch, cursors } : null;
   }
 

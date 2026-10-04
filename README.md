@@ -37,6 +37,11 @@ It ships with a deep built-in toolbox, bundled skills, managed first-party
 plugins, and a provider catalog pulled live from
 [models.dev](https://models.dev) — all on top of a compact, swappable kernel.
 
+The coding loop compares completed tool results when detecting repetition.
+With the LSP plugin and hooks enabled, successful file edits include bounded,
+version-bound diagnostics or an explicit unverified notice. Research briefs
+preserve API/version evidence and unresolved questions. See [agent feedback](docs/agent-feedback.md).
+
 **Built from scratch, stands on its own.** WrongStack is not a plugin layer or an
 orchestration kit bolted onto another coding tool — it's a complete agent written
 top to bottom: its own compact kernel, its own provider transports with real SSE,

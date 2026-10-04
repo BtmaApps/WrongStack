@@ -38,6 +38,11 @@ import {
 import { toErrorMessage } from '../utils/error.js';
 import { createToolOutputSerializer } from '../utils/tool-output-serializer.js';
 import { rememberProgrammaticOutput } from '../utils/tool-programmatic-output.js';
+import {
+  appendToolResultContext,
+  fingerprintText,
+  rememberToolResultFingerprint,
+} from '../utils/tool-result-fingerprint.js';
 import { resolveToolResultRenderMode } from '../utils/tool-result-render-mode.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { toolErrorResult } from './tool-error-taxonomy.js';
@@ -394,6 +399,12 @@ export class ToolExecutor {
           producedText = `${producedText}\n\n${preToolContext.text}`;
         }
         let { block: result, bytes } = this.settleToolOutput(tool, use, producedText, budget);
+        rememberToolResultFingerprint(
+          result,
+          preToolContext?.contextAs === 'inline'
+            ? fingerprintText(JSON.stringify([produced.fingerprint, preToolContext.text]))
+            : produced.fingerprint,
+        );
         if (produced.data) rememberProgrammaticOutput(result, produced.data.value);
         budget -= bytes;
         await queueDirectoryInstructions(tool, use.input, ctx);
@@ -417,7 +428,7 @@ export class ToolExecutor {
                 : post.additionalContext;
             } else {
               const appended = `\n\n${post.additionalContext}`;
-              result = { ...result, content: `${result.content}${appended}` };
+              result = appendToolResultContext(result, appended);
               budget = Math.max(0, budget - Buffer.byteLength(appended, 'utf8'));
             }
           }
@@ -639,6 +650,12 @@ export class ToolExecutor {
         text = `${text}\n\n${preToolContext.text}`;
       }
       const settled = this.settleToolOutput(tool, use, text, budget);
+      rememberToolResultFingerprint(
+        settled.block,
+        preToolContext?.contextAs === 'inline'
+          ? fingerprintText(JSON.stringify([produced.fingerprint, preToolContext.text]))
+          : produced.fingerprint,
+      );
       if (produced.data) rememberProgrammaticOutput(settled.block, produced.data.value);
       await queueDirectoryInstructions(tool, use.input, ctx);
       if (preToolContext?.contextAs === 'separate') {
@@ -664,7 +681,7 @@ export class ToolExecutor {
           } else {
             const appended = `\n\n${post.additionalContext}`;
             return {
-              block: { ...settled.block, content: `${settled.block.content}${appended}` },
+              block: appendToolResultContext(settled.block, appended),
               bytes: settled.bytes + Buffer.byteLength(appended, 'utf8'),
             };
           }
@@ -701,7 +718,7 @@ export class ToolExecutor {
     use: ToolUseBlock,
     ctx: Context,
     budgetHint: number,
-  ): Promise<{ text: string; data?: { value: unknown } }> {
+  ): Promise<{ text: string; fingerprint: string; data?: { value: unknown } }> {
     if (use._resultFormat === 'data' && !tool.outputSchema) {
       throw new Error(
         `Tool "${tool.name}" does not declare structured output; use tools.call instead`,
@@ -732,7 +749,7 @@ export class ToolExecutor {
     const content = tool.preserveFullOutput
       ? scrubbed
       : await maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
-    return { text: content, ...(data ? { data } : {}) };
+    return { text: content, fingerprint: fingerprintText(scrubbed), ...(data ? { data } : {}) };
   }
 
   private settleToolOutput(
