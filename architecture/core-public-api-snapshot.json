@@ -1668,7 +1668,7 @@
       "classification": "product feature",
       "intendedOwner": "plugin/runtime implementation",
       "sourceFiles": 4,
-      "sourceLines": 631
+      "sourceLines": 648
     },
     {
       "directory": "quota",
@@ -1703,14 +1703,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 32,
-      "sourceLines": 10128
+      "sourceLines": 10159
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5419
+      "sourceLines": 5433
     },
     {
       "directory": "skills",

@@ -135,7 +135,11 @@ export async function ensureGitignore(projectRoot: string): Promise<void> {
       content = '';
     }
 
-    if (!content.includes('.wrongstack') && !content.includes('.wrongstack/')) {
+    const hasWrongstackRule = content.split(/\r?\n/u).some((line) => {
+      const rule = line.trim();
+      return ['.wrongstack', '.wrongstack/', '/.wrongstack', '/.wrongstack/'].includes(rule);
+    });
+    if (!hasWrongstackRule) {
       const addition =
         content.endsWith('\n') || content.length === 0 ? '.wrongstack/\n' : '\n.wrongstack/\n';
       await fs.writeFile(gitignorePath, content + addition, 'utf8');
@@ -349,19 +353,32 @@ async function updateRootCatalog(
     monthData.days[dateStr] = { sessions: {} };
   }
   const dayData = monthData.days[dateStr]!;
-  if (!dayData.sessions[sessionId]) {
-    dayData.sessions[sessionId] = {
-      promptCount: 0,
-      tokenEstimate: 0,
-      lastTimestamp: entry.timestamp,
-      categories: {},
-    };
+  if (!Object.hasOwn(dayData.sessions, sessionId)) {
+    Object.defineProperty(dayData.sessions, sessionId, {
+      value: {
+        promptCount: 0,
+        tokenEstimate: 0,
+        lastTimestamp: entry.timestamp,
+        categories: {},
+      },
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   const sessionData = dayData.sessions[sessionId]!;
   sessionData.promptCount += 1;
   sessionData.tokenEstimate += entry.metadata.tokenEstimate;
   sessionData.lastTimestamp = entry.timestamp;
-  sessionData.categories[entry.category] = (sessionData.categories[entry.category] ?? 0) + 1;
+  const categoryCount = Object.hasOwn(sessionData.categories, entry.category)
+    ? (sessionData.categories[entry.category] ?? 0)
+    : 0;
+  Object.defineProperty(sessionData.categories, entry.category, {
+    value: categoryCount + 1,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
 
   try {
     await fs.writeFile(indexJsonFile, JSON.stringify(catalog, null, 2), 'utf8');

@@ -159,7 +159,12 @@ export function boundPresenceValue(value: unknown, depth: number): unknown {
   }
   const result: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value).slice(0, 64)) {
-    result[key] = boundPresenceValue(item, depth + 1);
+    Object.defineProperty(result, key, {
+      value: boundPresenceValue(item, depth + 1),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return result;
 }

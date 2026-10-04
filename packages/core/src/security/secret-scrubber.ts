@@ -663,16 +663,27 @@ export class DefaultSecretScrubber implements SecretScrubber {
    * value without a credential anchor returns immediately without regex work.
    */
   scrubObject<T>(obj: T): T {
-    const seen = new WeakSet();
+    const copies = new WeakMap<object, unknown>();
     const visit = (v: unknown): unknown => {
       if (typeof v === 'string') return this.scrub(v);
       if (v === null || typeof v !== 'object') return v;
-      if (seen.has(v as object)) return v;
-      seen.add(v as object);
-      if (Array.isArray(v)) return v.map(visit);
+      const source = v as object;
+      if (copies.has(source)) return copies.get(source);
+      if (Array.isArray(v)) {
+        const out: unknown[] = [];
+        copies.set(source, out);
+        for (const item of v) out.push(visit(item));
+        return out;
+      }
       const out: Record<string, unknown> = {};
+      copies.set(source, out);
       for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-        out[k] = visit(val);
+        Object.defineProperty(out, k, {
+          value: visit(val),
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
       }
       return out;
     };
@@ -694,14 +705,22 @@ export class DefaultSecretScrubber implements SecretScrubber {
    * `scrubObject`: see the contract note on `SecretScrubber.scrubObjectShared`.
    */
   scrubObjectShared<T>(obj: T): T {
-    const seen = new WeakSet();
+    const completed = new WeakMap<object, unknown>();
+    const active = new WeakSet<object>();
+    let hasCycle = false;
     const visit = (v: unknown): unknown => {
       if (typeof v === 'string') return this.scrub(v);
       if (v === null || typeof v !== 'object') return v;
-      // Matches `scrubObject`: a node reached twice is returned as-is rather
-      // than re-entered, which terminates on cycles.
-      if (seen.has(v as object)) return v;
-      seen.add(v as object);
+      const sourceObject = v as object;
+      // An active node is a back-edge. Defer cyclic graphs to the full
+      // cycle-aware copier after this pass; completed aliases can safely reuse
+      // their scrubbed (or unchanged) result.
+      if (active.has(sourceObject)) {
+        hasCycle = true;
+        return v;
+      }
+      if (completed.has(sourceObject)) return completed.get(sourceObject);
+      active.add(sourceObject);
       if (Array.isArray(v)) {
         let out: unknown[] | undefined;
         for (let i = 0; i < v.length; i++) {
@@ -713,7 +732,10 @@ export class DefaultSecretScrubber implements SecretScrubber {
           out ??= [...v];
           out[i] = after;
         }
-        return out ?? v;
+        const result = out ?? v;
+        active.delete(sourceObject);
+        completed.set(sourceObject, result);
+        return result;
       }
       const source = v as Record<string, unknown>;
       let out: Record<string, unknown> | undefined;
@@ -722,10 +744,19 @@ export class DefaultSecretScrubber implements SecretScrubber {
         const after = visit(before);
         if (after === before) continue;
         out ??= { ...source };
-        out[k] = after;
+        Object.defineProperty(out, k, {
+          value: after,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
       }
-      return out ?? v;
+      const result = out ?? v;
+      active.delete(sourceObject);
+      completed.set(sourceObject, result);
+      return result;
     };
-    return visit(obj) as T;
+    const result = visit(obj);
+    return (hasCycle ? this.scrubObject(obj) : result) as T;
   }
 }

@@ -15,6 +15,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { isPidAlive } from '../utils/pid.js';
 import {
   breakStaleLock,
   lockOwnerStamp,
@@ -28,7 +29,6 @@ import type {
   SessionLiveStatus,
   SessionRegistryEntry,
 } from './session-registry-types.js';
-import { isPidAlive } from '../utils/pid.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -108,16 +108,25 @@ function sameOwner(
  * but not a plain object — as an empty registry so the next write heals the
  * file instead of wedging every future write forever.
  */
+function emptyRegistry(): Record<string, SessionRegistryEntry> {
+  return Object.create(null) as Record<string, SessionRegistryEntry>;
+}
+
 function parseRegistry(raw: string): Record<string, SessionRegistryEntry> {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, SessionRegistryEntry>;
+      // Session IDs are object keys. A null-prototype map keeps identifiers
+      // such as `__proto__` as ordinary own properties and avoids inherited
+      // names being mistaken for registered sessions.
+      const registry = emptyRegistry();
+      for (const [id, entry] of Object.entries(parsed)) registry[id] = entry;
+      return registry;
     }
   } catch {
     /* corrupt file — fall through to empty */
   }
-  return {};
+  return emptyRegistry();
 }
 
 /** Derive the session-level status from the agent collective. */
@@ -532,7 +541,7 @@ export class SessionRegistry {
 
       return registry;
     } catch {
-      return {};
+      return emptyRegistry();
     }
   }
 
