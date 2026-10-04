@@ -24,8 +24,8 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 255,
-      "typeOnly": 95,
+      "files": 256,
+      "typeOnly": 96,
       "runtimeOrMixed": 224
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -84,9 +84,9 @@
       "runtimeOrMixed": 52
     },
     "@wrongstack/core/kernel": {
-      "files": 332,
+      "files": 334,
       "typeOnly": 151,
-      "runtimeOrMixed": 198
+      "runtimeOrMixed": 200
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1323,
-      "typeOnly": 1169,
+      "files": 1325,
+      "typeOnly": 1171,
       "runtimeOrMixed": 394
     },
     "@wrongstack/core/types/limits": {
@@ -3451,6 +3451,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/fleet/explore-companion-registry.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -7038,6 +7044,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/cli-infrastructure.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/cli-tool-surface.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7099,6 +7111,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14970,6 +14988,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/cli-infrastructure.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/cli-tool-surface.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -15037,6 +15061,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet-subagent-tool-visibility.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

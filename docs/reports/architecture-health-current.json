@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T22:14:20.744Z",
+  "generatedAt": "2026-10-04T23:02:18.861Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 37,
     "sourceFiles": 4573,
-    "testFiles": 4097,
+    "testFiles": 4099,
     "sourceLines": 1058450,
     "workspaceEdges": 133,
     "moduleEdges": 14998,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 573,
-      "testFiles": 588,
+      "testFiles": 590,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -192,7 +192,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 588
+          "testFiles": 590
         }
       ]
     },
@@ -2400,6 +2400,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/cli-infrastructure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/cli-main-baseline.test.ts",
         "projects": [
           "root-node"
@@ -2725,6 +2731,12 @@
       },
       {
         "file": "packages/cli/tests/fleet/explore-companion-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
         "projects": [
           "root-node"
         ]
