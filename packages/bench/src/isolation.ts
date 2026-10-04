@@ -228,11 +228,10 @@ export async function prepareWorkdir(
   attempt?: number | undefined,
 ): Promise<string> {
   const suffix = attempt !== undefined && attempt > 1 ? `__a${attempt}` : '';
-  const cellSlug = slug(cellLabel);
-  const cellKey = /[\\/]/.test(cellLabel)
-    ? `${cellSlug}-${computeStableJsonHash(cellLabel).slice(0, 8)}`
-    : cellSlug;
-  const safe = `${cellKey}__${slug(taskId)}${suffix}`;
+  // Slugs alone collide after case folding, punctuation removal or truncation.
+  const cellKey = `${slug(cellLabel)}-${computeStableJsonHash(cellLabel)}`;
+  const taskKey = `${slug(taskId)}-${computeStableJsonHash(taskId)}`;
+  const safe = `${cellKey}__${taskKey}${suffix}`;
   const dest = path.join(sandbox.workRoot, safe);
   // Fresh copy every time: a previous failed run must not leak edits forward.
   await fs.rm(dest, { recursive: true, force: true });

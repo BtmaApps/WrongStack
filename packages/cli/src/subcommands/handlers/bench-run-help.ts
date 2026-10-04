@@ -157,7 +157,8 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
   {
     name: 'limit',
     flag: '--limit <N>',
-    description: 'Cap the number of tasks per cell (useful for smoke tests).',
+    description:
+      'Cap the number of tasks per cell (positive safe integer; useful for smoke tests).',
     group: 'control',
     kind: 'value',
   },
@@ -172,7 +173,7 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
   {
     name: 'concurrency',
     flag: '--concurrency <N>',
-    description: 'Override the per-cell concurrency from the model config.',
+    description: 'Override the per-cell concurrency from the model config (positive safe integer).',
     group: 'control',
     kind: 'value',
   },
@@ -180,7 +181,7 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
     name: 'repeats',
     flag: '--repeats <N>',
     description:
-      'Attempts per (task x model). >1 adds pass@k and a flakiness count so run-to-run noise is visible.',
+      'Attempts per (task x model), a positive safe integer. >1 adds pass@k and a flakiness count.',
     group: 'control',
     kind: 'value',
     defaultValue: '1',

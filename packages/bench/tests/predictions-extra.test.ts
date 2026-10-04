@@ -29,6 +29,6 @@ describe('writePredictionsJsonl', () => {
 
   it('slugifies the cell label, falling back to "cell" for empty slugs', async () => {
     const file = await writePredictionsJsonl(dir, '@@@', []);
-    expect(path.basename(file)).toBe('predictions-cell.jsonl');
+    expect(path.basename(file)).toMatch(/^predictions-cell-[a-f0-9]{12}\.jsonl$/);
   });
 });

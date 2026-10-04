@@ -6,7 +6,8 @@ import * as path from 'node:path';
  * the test file, the checker script — holds whatever the agent left there.
  * Copy each listed file from the task template over the workdir copy when
  * they differ (or the workdir copy is gone), so grading uses the ORIGINAL.
- * Paths that are absolute or escape either root are skipped. Returns the
+ * Invalid template paths are skipped. An existing protected file whose
+ * destination cannot be safely resolved prevents grading. Returns the
  * relative paths that were restored.
  */
 export async function restoreFromTemplate(
@@ -17,14 +18,15 @@ export async function restoreFromTemplate(
   const restored: string[] = [];
   for (const rel of relPaths) {
     const source = await inside(templateDir, rel);
-    const target = await inside(workdir, rel);
-    if (!source || !target) continue;
+    if (!source) continue;
     let original: Buffer;
     try {
       original = await fs.readFile(source);
     } catch {
       continue; // not in the template: nothing to restore from
     }
+    const target = await inside(workdir, rel);
+    if (!target) throw new Error(`cannot safely restore protected file: ${rel}`);
     const current = await fs.readFile(target).catch(() => undefined);
     if (current?.equals(original)) continue;
     await fs.mkdir(path.dirname(target), { recursive: true });

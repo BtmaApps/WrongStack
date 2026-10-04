@@ -112,6 +112,16 @@ function flagBool(deps: SubcommandDeps, name: string): boolean {
   return v === true || v === 'true';
 }
 
+function positiveIntegerFlag(deps: SubcommandDeps, name: string): number | undefined {
+  const raw = flagStr(deps, name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`--${name} must be a positive safe integer.`);
+  }
+  return value;
+}
+
 /** Resolve the wstack CLI entry the runner spawns. */
 async function resolveWstackEntry(): Promise<string> {
   try {
@@ -137,8 +147,17 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
     return 1;
   }
   const suiteId = flagStr(deps, 'suite') ?? 'core';
-  const limitRaw = flagStr(deps, 'limit');
-  const limit = limitRaw ? Math.max(1, Number.parseInt(limitRaw, 10)) : undefined;
+  let limit: number | undefined;
+  let concurrency: number | undefined;
+  let repeats: number | undefined;
+  try {
+    limit = positiveIntegerFlag(deps, 'limit');
+    concurrency = positiveIntegerFlag(deps, 'concurrency');
+    repeats = positiveIntegerFlag(deps, 'repeats');
+  } catch (error) {
+    deps.renderer.writeError(toErrorMessage(error));
+    return 1;
+  }
   const outBase = flagStr(deps, 'out') ?? 'bench-results';
 
   let config: BenchConfig;
@@ -154,20 +173,8 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
     deps.renderer.writeError(toErrorMessage(err));
     return 1;
   }
-  const concurrencyRaw = flagStr(deps, 'concurrency');
-  if (concurrencyRaw) {
-    const c = Number.parseInt(concurrencyRaw, 10);
-    if (c > 0) config.concurrency = c;
-  }
-  const repeatsRaw = flagStr(deps, 'repeats');
-  if (repeatsRaw) {
-    const r = Number.parseInt(repeatsRaw, 10);
-    if (!Number.isFinite(r) || r <= 0) {
-      deps.renderer.writeError('--repeats must be a positive integer.');
-      return 1;
-    }
-    config.repeats = r;
-  }
+  if (concurrency !== undefined) config.concurrency = concurrency;
+  if (repeats !== undefined) config.repeats = repeats;
 
   // The output directory is computed up front: the SWE-bench grader writes
   // per-instance predictions under it during the run.

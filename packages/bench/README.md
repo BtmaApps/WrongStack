@@ -38,7 +38,7 @@ Three invariants keep the report objective:
 
 For SWE-bench the bench runs the agent on each materialized instance and extracts a
 conformant model patch (`git diff`, with held-out test files and harness bookkeeping —
-`.gitignore` / `.wrongstack/` — stripped), then writes a `predictions-<cell>.jsonl` in the
+`.gitignore` / `.wrongstack/` — stripped), then writes a `predictions-<slug>-<label-hash>.jsonl` in the
 official format. Grading itself is delegated to the canonical
 `princeton-nlp/SWE-bench` harness (deterministic, version-sensitive) rather than
 re-implemented — or plugged in inline via a `SwebenchExternalGrade` hook when Docker is
@@ -206,7 +206,7 @@ wstack bench run --suite swebench --dataset-dir ./swe-data --models bench.config
 
 # Then grade with the official harness:
 python -m swebench.harness.run_evaluation \
-  --predictions_path ./bench-results/<ts>/predictions-<cell>.jsonl --run_id my-run
+  --predictions_path ./bench-results/<ts>/predictions-<slug>-<label-hash>.jsonl --run_id my-run
 ```
 
 The pinned subset lives in `subsets/swe-bench-verified-50.json` — replace the

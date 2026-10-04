@@ -116,7 +116,7 @@ also makes the run robust to: crashing models, per-task timeouts (tree-kill), an
 | `report.md` | Leaderboard sorted by Pass@1, stamped with harness fingerprint |
 | `summary.json` | Fingerprint + folded per-cell results (machine-readable) |
 | `results.jsonl` | One row per `(task × cell)` — full reproducibility |
-| `predictions-<cell>.jsonl` | (SWE-bench only) official-format predictions |
+| `predictions-<slug>-<label-hash>.jsonl` | (SWE-bench only) official-format predictions; hash preserves distinct cell identities |
 
 ### Report columns
 
@@ -285,7 +285,7 @@ wstack bench run --suite local --suite-dir ./evals \
 wstack bench run --suite swebench --dataset-dir ./swe-data \
   --models bench.config.json --limit 5
 python -m swebench.harness.run_evaluation \
-  --predictions_path ./bench-results/<ts>/predictions-<cell>.jsonl --run_id my-run
+  --predictions_path ./bench-results/<ts>/predictions-<slug>-<label-hash>.jsonl --run_id my-run
 ```
 
 ---

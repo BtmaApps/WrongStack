@@ -198,7 +198,7 @@ describe('prepareWorkdir', () => {
     const sandbox = await createSandbox({ baseDir: base, maxIterations: 1, yolo: false });
     const dest = await prepareWorkdir(sandbox, await template(), 'Weird/ID With Spaces!', '@@@');
     // '@@@' slugifies to the fallback 'x'; the awkward id becomes a dashed slug.
-    expect(path.basename(dest)).toMatch(/^x__weird-id-with-spaces$/);
+    expect(path.basename(dest)).toMatch(/^x-[a-f0-9]{12}__weird-id-with-spaces-[a-f0-9]{12}$/);
   });
 });
 

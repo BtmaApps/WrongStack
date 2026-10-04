@@ -132,8 +132,10 @@ function buildCandidates(
   sourceBase: Omit<TranscriptCaseSource, 'eventStart' | 'eventEnd'>,
 ): MinedTraceEvalDraft[] {
   const toolUses = new Map<string, ToolUse>();
+  const activeUses = new Map<string, string>();
   const toolResults = new Map<string, ToolResult[]>();
   const toolEnds = new Map<string, boolean[]>();
+  const toolEndIndexes = new Map<string, number>();
   const prompts: Array<{ index: number; text: string }> = [];
   const candidates: MinedTraceEvalDraft[] = [];
   let ordinal = 0;
@@ -147,30 +149,37 @@ function buildCandidates(
     if (event.type === 'tool_use') {
       const id = stringValue(event['id']);
       const name = stringValue(event['name']);
-      if (id && name) toolUses.set(id, { index, id, name, input: event['input'] });
+      const actorKey = toolKey(event);
+      if (id && name && actorKey) {
+        const key = JSON.stringify([actorKey, index]);
+        toolUses.set(key, { index, id, name, input: event['input'] });
+        activeUses.set(actorKey, key);
+      }
       continue;
     }
     if (event.type === 'tool_result') {
       const id = stringValue(event['id']);
-      if (!id) continue;
-      const rows = toolResults.get(id) ?? [];
+      const key = activeUses.get(toolKey(event) ?? '');
+      if (!id || !key) continue;
+      const rows = toolResults.get(key) ?? [];
       rows.push({ index, id, content: event['content'], isError: event['isError'] === true });
-      toolResults.set(id, rows);
+      toolResults.set(key, rows);
       continue;
     }
     if (event.type === 'tool_call_end') {
-      const id = stringValue(event['id']);
-      if (!id) continue;
-      const outcomes = toolEnds.get(id) ?? [];
+      const key = activeUses.get(toolKey(event) ?? '');
+      if (!key) continue;
+      const outcomes = toolEnds.get(key) ?? [];
       outcomes.push(event['ok'] === true);
-      toolEnds.set(id, outcomes);
+      toolEnds.set(key, outcomes);
+      if (!toolEndIndexes.has(key)) toolEndIndexes.set(key, index);
     }
   }
 
-  for (const use of toolUses.values()) {
+  for (const [key, use] of toolUses) {
     if (!EDIT_TOOLS.has(use.name.toLowerCase())) continue;
     ordinal++;
-    const endingIndex = endIndexFor(events, use.id, use.index);
+    const endingIndex = toolEndIndexes.get(key) ?? use.index;
     const prompt = latestPrompt(prompts, use.index);
     const retrieval = suggestRetrieval(toolUses, toolResults, use.index);
     const inputContains = suggestIntentMarkers(use.input);
@@ -194,7 +203,7 @@ function buildCandidates(
       observed: {
         toolName: use.name,
         toolUseId: use.id,
-        toolApplied: toolEnds.get(use.id)?.some((ok) => ok),
+        toolApplied: toolEnds.get(key)?.some((ok) => ok),
       },
       traceEval: {
         source: { ...sourceBase, eventStart: prompt?.index ?? use.index, eventEnd: endingIndex },
@@ -220,7 +229,7 @@ function suggestRetrieval(
     const use = toolUses.get(id);
     if (!use || use.index >= beforeIndex || !RETRIEVAL_TOOLS.has(use.name.toLowerCase())) continue;
     for (const result of results) {
-      if (result.isError) continue;
+      if (result.isError || result.index >= beforeIndex) continue;
       const marker = conciseMarker(serialise(result.content));
       if (marker) rows.push({ index: result.index, name: use.name, marker });
     }
@@ -237,7 +246,7 @@ function suggestIntentMarkers(input: unknown): string[] {
       /(?:new|replace|content|patch|insert|text|value)/i.test(key) && !/(?:old|search)/i.test(key),
   );
   const selected = [...paths, ...edits, ...leaves]
-    .map(({ value }) => conciseMarker(value))
+    .map(({ value }) => conciseMarker(JSON.stringify(value).slice(1, -1)))
     .filter((value, index, all) => value.length > 0 && all.indexOf(value) === index)
     .slice(0, 2);
   return selected;
@@ -252,14 +261,6 @@ function stringLeaves(value: unknown, key = ''): Array<{ key: string; value: str
   return Object.entries(value).flatMap(([childKey, childValue]) =>
     stringLeaves(childValue, key ? `${key}.${childKey}` : childKey),
   );
-}
-
-function endIndexFor(events: ParsedEvent[], id: string, fallback: number): number {
-  for (let index = fallback + 1; index < events.length; index++) {
-    const event = events[index];
-    if (event?.type === 'tool_call_end' && event['id'] === id) return index;
-  }
-  return fallback;
 }
 
 function latestPrompt(
@@ -324,7 +325,7 @@ async function copyPinnedTranscript(destination: string, raw: string): Promise<v
 }
 
 function conciseMarker(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().slice(0, 160);
+  return value.trim().slice(0, 160);
 }
 
 function serialise(value: unknown): string {
@@ -340,6 +341,13 @@ function stringValue(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toolKey(event: ParsedEvent): string | undefined {
+  const id = stringValue(event['id']);
+  if (!id) return undefined;
+  const actor = typeof event['agentId'] === 'string' ? event['agentId'] : '';
+  return JSON.stringify([actor, id]);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

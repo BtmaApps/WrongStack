@@ -28,7 +28,7 @@ export async function writePredictionsJsonl(
   predictions: SwebenchPrediction[],
 ): Promise<string> {
   await fs.mkdir(outDir, { recursive: true });
-  const file = path.join(outDir, `predictions-${slug(cellLabel)}.jsonl`);
+  const file = path.join(outDir, `predictions-${storageKey(cellLabel)}.jsonl`);
   const body = predictions.map((p) => JSON.stringify(p)).join('\n');
   await fs.writeFile(file, body + (body ? '\n' : ''), 'utf8');
   return file;

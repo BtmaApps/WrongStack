@@ -16,28 +16,32 @@ export async function evaluateTraceEval(opts: {
   spec: TranscriptEvalSpec;
 }): Promise<TraceEvalResult> {
   const events = await readSessionLogEvents(opts);
-  const toolUses = new Map<string, { name: string; input: unknown }>();
-  const toolEnds = new Map<string, boolean[]>();
+  type ToolUse = { name: string; input: unknown; applied: boolean };
+  const toolUses = new Map<string, ToolUse>();
+  const attempts: ToolUse[] = [];
   const toolResults: Array<{ name: string; content: unknown; isError: boolean }> = [];
 
   for (const event of events) {
     const type = event['type'];
     if (type === 'tool_use') {
-      const id = stringValue(event['id']);
+      const id = toolKey(event);
       const name = stringValue(event['name']);
-      if (id && name) toolUses.set(id, { name, input: event['input'] });
+      if (id && name) {
+        const use = { name, input: event['input'], applied: false };
+        toolUses.set(id, use);
+        attempts.push(use);
+      }
       continue;
     }
     if (type === 'tool_call_end') {
-      const id = stringValue(event['id']);
+      const id = toolKey(event);
       if (!id) continue;
-      const outcomes = toolEnds.get(id) ?? [];
-      outcomes.push(event['ok'] === true);
-      toolEnds.set(id, outcomes);
+      const use = toolUses.get(id);
+      if (use && event['ok'] === true) use.applied = true;
       continue;
     }
     if (type === 'tool_result') {
-      const id = stringValue(event['id']);
+      const id = toolKey(event);
       const use = id ? toolUses.get(id) : undefined;
       if (use) {
         toolResults.push({
@@ -58,14 +62,11 @@ export async function evaluateTraceEval(opts: {
     ),
   );
 
-  const correctIntentIds: string[] = [];
-  for (const [id, use] of toolUses) {
-    if (matchesRecall(use.name, use.input, opts.spec.recall)) correctIntentIds.push(id);
-  }
-  const recallPassed = correctIntentIds.length > 0;
-  const editApplicationPassed = correctIntentIds.some((id) =>
-    (toolEnds.get(id) ?? []).some((ok) => ok),
+  const correctIntents = attempts.filter((use) =>
+    matchesRecall(use.name, use.input, opts.spec.recall),
   );
+  const recallPassed = correctIntents.length > 0;
+  const editApplicationPassed = correctIntents.some((use) => use.applied);
 
   return {
     sourceSessionId: opts.spec.source.sessionId,
@@ -89,6 +90,13 @@ function matchesToolName(name: string, allowList: string[] | undefined): boolean
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+function toolKey(event: Record<string, unknown>): string | undefined {
+  const id = stringValue(event['id']);
+  if (!id) return undefined;
+  const actor = typeof event['agentId'] === 'string' ? event['agentId'] : '';
+  return JSON.stringify([actor, id]);
 }
 
 function serialise(value: unknown): string {
