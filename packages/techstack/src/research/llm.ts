@@ -33,6 +33,7 @@ export function createProviderLlm(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return async (req: ResearchLlmRequest): Promise<string> => {
+    req.signal?.throwIfAborted();
     // Re-resolve per call so a mid-session model switch takes effect.
     const llm = accessor();
     if (!llm) throw new Error('TechStack research: no provider available');
@@ -65,6 +66,7 @@ export function createProviderLlm(
 
     try {
       const res = await llm.provider.complete(request, { signal: timer.signal });
+      timer.signal.throwIfAborted();
       return res.content
         .filter((block) => block.type === 'text')
         .map((block) => block.text)

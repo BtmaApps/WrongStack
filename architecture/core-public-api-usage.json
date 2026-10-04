@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1302,
-      "typeOnly": 1153,
+      "files": 1303,
+      "typeOnly": 1154,
       "runtimeOrMixed": 378
     },
     "@wrongstack/core/types/limits": {
@@ -17977,6 +17977,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/techstack/src/research/llm.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/techstack/tests/research/llm-cancelled-completion.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

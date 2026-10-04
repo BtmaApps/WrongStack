@@ -76,6 +76,9 @@ export async function runOptionalPluginLlm<T>(
 
   try {
     const response = await request.api.llm.complete(request.prompt, request.options);
+    if (request.options?.signal?.aborted) {
+      return { used: false, value: null, fallbackReason: 'cancelled' };
+    }
     const parsed = request.parse(response.text);
     if (parsed === null) {
       request.api.log.warn(`${request.label}: ignored invalid LLM response`);
@@ -118,7 +121,7 @@ export async function runOptionalPluginCouncil<T>(
         ...(request.councilOptions ? { options: request.councilOptions } : {}),
         ...(request.options?.signal ? { signal: request.options.signal } : {}),
       });
-      if (result.status === 'cancelled') {
+      if (request.options?.signal?.aborted || result.status === 'cancelled') {
         return { used: false, value: null, fallbackReason: 'cancelled' };
       }
       const parsed = result.status === 'decided' ? request.parse(result.answer ?? '') : null;

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T14:58:43.649Z
+**Generated:** 2026-10-04T14:59:37.829Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4479 |
-| Production source lines | 1053950 |
-| Test files | 4053 |
+| Production source lines | 1053955 |
+| Test files | 4055 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14584 |
 | Non-command slash imports | 0 |
@@ -42,7 +42,7 @@
 | @wrongstack/mcp | 49 | 54 | @wrongstack/core |
 | @wrongstack/persistence | 8 | 18 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plugin-sdk | 11 | 5 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 129 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 9 | 10 | — |
 | @wrongstack/providers | 120 | 109 | @wrongstack/core |
@@ -54,7 +54,7 @@
 | @wrongstack/sdd | 39 | 40 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
 | @wrongstack/simpleui | 113 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
-| @wrongstack/techstack | 51 | 41 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
+| @wrongstack/techstack | 51 | 42 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 38 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 269 | 295 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 451 | 412 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
