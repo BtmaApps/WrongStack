@@ -7218,7 +7218,12 @@ input:focus-visible,
   border-color: var(--line);
   background: var(--simple-control);
   box-shadow: none;
-  overflow: hidden;
+  /* NO overflow:hidden here: it would erase the @-file and $-skill pickers.
+     They are absolutely positioned ABOVE this box (bottom: calc(100% + 10px)),
+     and this element is their containing block — clipping here hides them
+     completely while they stay in the DOM (proven 2026-10-04 via the
+     browser-smoke probe). Children are inset (actions padding) or
+     transparent (textarea), so the rounded corners do not need a clip. */
 }
 
 .composer:focus-within {

@@ -16,6 +16,13 @@
 //      NOT submit the draft.
 //   3. Enter with zero matches ("No files match …") is a pure no-op:
 //      no submit, no newline in the draft.
+//   4. Both mention pickers (`$` skills, `@` files) are HIT-TESTABLE above
+//      the composer inside the production ancestor chain. Regression guard
+//      for the SimpleUI overflow-clip class (2026-10-04): a positioned
+//      ancestor with overflow:hidden erases these upward-opening popups
+//      while they stay in the DOM — plain visibility checks cannot see it,
+//      only elementFromPoint can. The fixture therefore mounts ChatInput
+//      inside the real App > ViewRouter > ChatView chain, not standalone.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -88,11 +95,64 @@ wsClient.listFiles = (query, limit) => {
 };
 wsClient.supportsCapability = () => true;
 wsClient.onStatus = () => () => {};
+const skillsListSubscribers = new Set();
+// Layer on top of the files.list wrapper ABOVE — delegating to the raw
+// originalOn here would bypass filesListSubscribers and the mocked file
+// responses would reach nobody (this exact bug broke case 2).
+const withFilesList = wsClient.on;
+wsClient.on = (type, cb) => {
+  if (type === 'skills.list') {
+    skillsListSubscribers.add(cb);
+    return () => skillsListSubscribers.delete(cb);
+  }
+  return withFilesList(type, cb);
+};
 wsClient.send = (message, options) => {
   window.__sent.push(message);
+  if (message.type === 'skills.list') {
+    setTimeout(() => {
+      for (const cb of Array.from(skillsListSubscribers)) cb({ payload: {
+        requestId: options && options.requestId,
+        skills: [
+          { name: 'bug-hunter', description: 'Proof-driven defect hunt' },
+          { name: 'debugging', description: 'Root-cause a failure' },
+        ],
+      } });
+    }, 10);
+  }
   return { requestId: 'browser-smoke-stub' };
 };
-createRoot(document.getElementById('root')).render(React.createElement(ChatInput));
+createRoot(document.getElementById('root')).render(
+  // Production ancestor chain, classes verbatim (App.tsx:273-295,
+  // ViewRouter.tsx:70-80, ChatView/index.tsx:119,170,189,360-366,431-437).
+  // ChatInput mounts in the composer pane SIBLING to the overflow-hidden
+  // transcript pane — this chain is what keeps the popups unclipped.
+  React.createElement('div', { className: 'ws-app-root flex min-h-0 min-w-0 overflow-hidden' },
+    React.createElement('main', { id: 'main-content', className: 'flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden bg-background/70' },
+      React.createElement('div', { className: 'relative flex min-h-0 min-w-0 flex-1 flex-col' },
+        React.createElement('div', { className: 'flex min-h-0 min-w-0 flex-1 flex-col' },
+          React.createElement('div', { className: 'flex flex-col flex-1 min-h-0 bg-[hsl(var(--surface-2)/0.45)]' },
+            React.createElement('div', { className: 'h-12 shrink-0' }, 'chat header'),
+            React.createElement('div', { className: 'relative flex min-h-0 min-w-0 flex-1 flex-col' },
+              React.createElement('div', { className: 'ws-view-pane relative mx-2 mt-2 min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border border-border/70 bg-card/55 sm:mx-3 lg:mx-4 lg:mt-3' },
+                React.createElement('div', { className: 'min-h-0 flex-1 overflow-y-auto' },
+                  React.createElement('div', { style: { height: 600 } }, 'transcript'),
+                ),
+              ),
+              React.createElement('div', { className: 'ws-view-pane shrink-0 bg-[hsl(var(--surface-2)/0.45)] px-2 pb-2 pt-2 sm:px-3 lg:px-4 lg:pb-3' },
+                React.createElement('div', { className: 'ws-chat-input-wrap p-0' },
+                  React.createElement('div', { className: 'max-w-6xl mx-auto' },
+                    React.createElement(ChatInput),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
 window.__atMentionReady = true;
 window.__dumpState = () => ({
   draft: document.querySelector('[data-chat-textarea]')?.value ?? null,
@@ -193,6 +253,53 @@ try {
     if (!state.refs.some((ref) => ref.path === 'src/index.ts'))
       throw new Error('earlier pick reference disappeared');
     results.push({ case: 'Enter with zero matches is a no-op', status: 'passed' });
+
+    // 4. Both pickers hit-testable inside the production chain (see header).
+    //    elementFromPoint at the popup center must return the popup itself:
+    //    a positioned ancestor with overflow:hidden erases the popup from
+    //    the screen while it stays in the DOM, and plain visibility checks
+    //    pass anyway — only the hit-test catches that bug class.
+    const hitTestable = (locator) =>
+      locator.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const onScreen =
+          rect.top < window.innerHeight &&
+          rect.bottom > 0 &&
+          rect.left < window.innerWidth &&
+          rect.right > 0;
+        if (!onScreen) return false;
+        const probe = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        );
+        return probe ? el.contains(probe) : false;
+      });
+    await focusEnd();
+    await ta.pressSequentially(' $');
+    const skillPicker = page.locator('[aria-label="Skills"]');
+    await skillPicker.waitFor({ timeout: 5000 });
+    const skillRow = skillPicker.getByRole('option').first();
+    await skillRow.waitFor({ timeout: 5000 });
+    // The row must render the `$name` form (JSX `$` text + {skill.name} expr).
+    const rowText = await skillRow.textContent();
+    if (!rowText?.startsWith('$'))
+      throw new Error(`skill row does not render "$name": ${JSON.stringify(rowText)}`);
+    if (!(await hitTestable(skillPicker)))
+      throw new Error('skill picker rendered but NOT hit-testable (overflow-clipped?)');
+    await ta.press('Escape');
+    await skillPicker.waitFor({ state: 'detached' });
+
+    await focusEnd();
+    await ta.pressSequentially(' @in');
+    const filePickerPopup = page.locator('div.max-h-72');
+    await filePickerPopup.waitFor({ timeout: 5000 });
+    await filePickerPopup.locator('button').first().waitFor({ timeout: 5000 });
+    if (!(await hitTestable(filePickerPopup)))
+      throw new Error('file picker rendered but NOT hit-testable (overflow-clipped?)');
+    await ta.press('Escape');
+    await filePickerPopup.waitFor({ state: 'detached' });
+    await ta.fill('');
+    results.push({ case: 'mention pickers hit-testable in production chain', status: 'passed' });
 
     if (pageErrors.length > 0) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
     process.stdout.write(`${JSON.stringify({ passed: true, results })}\n`);

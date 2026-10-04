@@ -55,6 +55,22 @@ export class SimpleSocket {
         });
       }
       if (type === 'prefs.get') this.#emit('prefs.updated', {});
+      if (type === 'skills.list') {
+        // Same wire shape as the runtime: { requestId, skills: [{name,description}] }
+        this.#emit('skills.list', {
+          requestId: payload.requestId,
+          skills: [
+            { name: 'bug-hunter', description: 'Proof-driven defect hunt' },
+            { name: 'debugging', description: 'Root-cause a failure' },
+          ],
+        });
+      }
+      if (type === 'files.list') {
+        // Same wire shape as the runtime: { files: string[] } (no requestId).
+        this.#emit('files.list', {
+          files: ['packages/simpleui/src/app.tsx', 'packages/simpleui/src/composer.tsx'],
+        });
+      }
       if (type === 'user_message') {
         this.#emit('iteration.started', { sessionId: 'sess-browser-smoke' });
         this.#emit('provider.response', {

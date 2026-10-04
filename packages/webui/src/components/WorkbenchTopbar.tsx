@@ -348,9 +348,12 @@ export function WorkbenchTopbar({
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold">
-                  {projectName || 'WrongStack'}
-                </span>
+                {/* Typographic anchor for the workbench: the one 700-weight,
+                    largest-type element on the screen. The session/project you
+                    are working inside is the one thing an operator must never
+                    lose across a long session, so it outranks the sibling
+                    status chips (11px/500) instead of competing with them. */}
+                <span className="truncate text-base font-bold">{projectName || 'WrongStack'}</span>
                 <VersionBadge
                   version={appVersion}
                   latestVersion={latestVersion}

@@ -521,11 +521,6 @@
   [class*="tracking-"] {
     letter-spacing: 0;
   }
-
-  :focus-visible {
-    outline: 2px solid hsl(var(--ring) / 0.85);
-    outline-offset: 2px;
-  }
 }
 
 @layer components {
@@ -1769,4 +1764,30 @@ kbd {
     0 8px,
     8px -8px,
     -8px 0;
+}
+
+/* ── Focus indicator — ONE token for the whole workbench ──────────────────
+   Deliberately UNLAYERED. Inside `@layer base` this rule sat below every
+   Tailwind utility, so any component that touched `outline` could override
+   the ring's geometry or colour. Unlayered author CSS outranks every
+   `@layer`, so the indicator can no longer be undone by a component utility.
+
+   `transition-property` is the actual fix for the activity rail. Tailwind v4's
+   `transition-colors` includes `outline-color`, and `.ws-nav-button` uses it,
+   so the rail's ring was ANIMATED for 150ms, starting from the icon's own
+   colour: sampled at 0ms it computed to `rgb(100, 97, 89)`
+   (= `--muted-foreground`, the inactive icon colour), at 80ms to
+   `rgba(202, 37, 78, 0.863)`, and only settled on the ring
+   `rgba(213, 31, 77, 0.85)` by ~250ms. A focus indicator must be immediate,
+   so outline-color is deliberately excluded from the transition while focused.
+
+   Keep this OUTSIDE `@layer` — and outside the region mirrored to
+   packages/webui-hq/src/styles/tokens.css (index.css:10-383), which covers
+   the @theme + first base token block, not this rule. */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.85);
+  outline-offset: 2px;
+  /* `transition-colors` minus outline-color: hover/colour changes still ease,
+     the focus ring does not. */
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
 }

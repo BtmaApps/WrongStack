@@ -17,8 +17,9 @@
 //
 // Run manually:  cd packages/simpleui && node tests/app-browser-smoke.mjs
 //
-// Asserts boot, session.start reflection, the send path, and the command
-// palette cycle — with a hard zero-pageerror gate.
+// Asserts boot, session.start reflection, the send path, the command
+// palette cycle, and that the `$` skill / `@` file mention pickers are
+// genuinely visible above the composer — with a hard zero-pageerror gate.
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,6 +87,28 @@ const server = await createServer({
   ],
 });
 
+// A clipped or covered picker still passes a plain visibility check (non-empty
+// box, no display:none). The honest check is elementFromPoint at its center:
+// a picker erased by ancestor overflow loses the hit-test to whatever paints
+// beneath it. Regression 2026-10-04: `overflow: hidden` on .composer hid BOTH
+// mention pickers exactly this way — present in the DOM, invisible on screen.
+async function expectPickerOnScreen(picker) {
+  const box = await picker.boundingBox();
+  assert.ok(box && box.width > 0 && box.height > 0, 'picker has a non-empty bounding box');
+  const hit = await picker.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const onScreen =
+      rect.top < window.innerHeight &&
+      rect.bottom > 0 &&
+      rect.left < window.innerWidth &&
+      rect.right > 0;
+    if (!onScreen) return false;
+    const probe = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return probe ? el.contains(probe) : false;
+  });
+  assert.equal(hit, true, 'picker must be on-screen and hit-testable, not overflow-clipped');
+}
+
 let browser;
 try {
   await server.listen();
@@ -136,7 +159,32 @@ try {
     await page.keyboard.press('Escape');
     await palette.waitFor({ state: 'detached' });
 
-    // 4. No horizontal overflow at this viewport.
+    // 4. Mention pickers: `$` opens the skill list and `@` opens the file
+    //    list, and BOTH must actually paint above the composer (they are
+    //    absolutely positioned above it; see expectPickerOnScreen).
+    await composer.click();
+    await composer.pressSequentially('$');
+    const skillPicker = page.locator('.skill-mention-picker');
+    await skillPicker.waitFor();
+    await skillPicker.getByRole('option').first().waitFor();
+    await expectPickerOnScreen(skillPicker);
+    await composer.press('Escape');
+    await skillPicker.waitFor({ state: 'detached' });
+    // Escape only dismisses the popup — the `$` stays in the draft, and `@`
+    // directly after it is not a word-boundary mention (by design). Clear
+    // before opening the file picker.
+    await composer.fill('');
+
+    await composer.pressSequentially('@');
+    const filePicker = page.locator('.file-picker');
+    await filePicker.waitFor();
+    await filePicker.getByRole('option').first().waitFor();
+    await expectPickerOnScreen(filePicker);
+    await composer.press('Escape');
+    await filePicker.waitFor({ state: 'detached' });
+    await composer.fill('');
+
+    // 5. No horizontal overflow at this viewport.
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
       false,

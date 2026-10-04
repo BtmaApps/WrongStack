@@ -505,7 +505,7 @@ export function CommandPalette() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('commandPalette:placeholder')}
             aria-label={t('commandPalette:placeholder')}
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+            className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();

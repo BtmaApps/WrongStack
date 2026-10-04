@@ -1,8 +1,8 @@
-import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
-import { useChatStore, useUIStore, type ChatMessage } from '@/stores';
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { type ChatMessage, useChatStore, useUIStore } from '@/stores';
 
 /** CSS rules for ::highlight() pseudo-elements (CSS Custom Highlights API).
  *  Injected via JavaScript to avoid lightningcss warnings — the pseudo-element
@@ -236,7 +236,7 @@ export function SearchOverlay() {
             }
           }}
           placeholder={t('activity:search.placeholder')}
-          className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+          className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground"
         />
         <span className="text-xs text-muted-foreground tabular-nums shrink-0">
           {hits.length === 0 ? (query ? '0' : '') : `${activeHit + 1} / ${hits.length}`}
