@@ -168,4 +168,78 @@ describe('file tool numeric evidence', () => {
       ),
     ).toEqual({ addedLines: 12, removedLines: 0, partial: false });
   });
+  it('parses the serialized formats the event bus actually emits (not JSON)', () => {
+    // Regression: production `tool.executed` outputs are rendered text
+    // (`read: <path> (…)\n  1→…`, `edit (path=… …)` + diff), and the old
+    // JSON.parse-first parser returned undefined for every one of them —
+    // which is why Session Story showed no line evidence at all.
+    expect(
+      fileToolStats(
+        'read',
+        'read: src/a.ts (limit=80 total_lines=231 encoding=utf8 truncated=true)\n 1→const a = 1;\n 2→const b = 2;\n 3→const c = 3;',
+      ),
+    ).toEqual({ readLines: 3, totalLines: 231, partial: false });
+    // The event envelope caps output at ~400 chars (truncateForEvent) and
+    // marks the cut with a trailing ellipsis — the surviving numbered lines
+    // are a prefix count and must be flagged partial, never exact.
+    const truncatedStats = fileToolStats(
+      'read',
+      'read: src/a.ts (limit=50 total_lines=300 encoding=utf8 truncated=false)\n 1→import x;\n 2→import y;\n 3→import z;\n 4→…',
+    );
+    expect(truncatedStats).toMatchObject({ readLines: 4, partial: true });
+    // Summary/binary/stub reads carry no numbered lines.
+    expect(
+      fileToolStats('read', 'read: src/a.ts (mode=summary total_lines=231)\nsummary: src/a.ts'),
+    ).toBeUndefined();
+    expect(
+      fileToolStats(
+        'write',
+        'write (path=src/new.ts bytes_written=4200 created=true)\n+++ src/new.ts\n+ (new file, 92 lines)',
+      ),
+    ).toEqual({ addedLines: 92, removedLines: 0, partial: false });
+    expect(
+      fileToolStats(
+        'edit',
+        'edit (path=src/a.ts replacements=1)\n--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n keep\n-gone\n+fresh',
+      ),
+    ).toEqual({ addedLines: 1, removedLines: 1, partial: false });
+    // No-op edits serialize no diff at all.
+    expect(fileToolStats('edit', 'edit (path=src/a.ts replacements=0 note=(no-op: no match))')).toBeUndefined();
+  });
+  it('prefers the exact totals in a clipped diff_summary header', () => {
+    // compactDiff emits `diff_summary (… added=N removed=N …)` with EXACT
+    // counts over the full diff even when only 8 hunks are shown.
+    const output = [
+      'edit (path=src/big.ts replacements=9)',
+      'diff_summary (files=1 hunks=9 shown_hunks=8 added=57 removed=12 lines=431)',
+      '--- src/big.ts',
+      '+++ src/big.ts',
+      '@@ -1,2 +1,2 @@',
+      ' ctx',
+      '-old',
+      '+new',
+    ].join('\n');
+    expect(fileToolStats('edit', output)).toEqual({
+      addedLines: 57,
+      removedLines: 12,
+      partial: false,
+    });
+  });
+  it('marks serialized diffs partial when the tool cut them in transit', () => {
+    const output = [
+      'edit (path=src/big.ts replacements=3)',
+      '--- src/big.ts',
+      '+++ src/big.ts',
+      '@@ -1,2 +1,2 @@',
+      ' ctx',
+      '-old',
+      '+new',
+      '…[diff truncated: 9000 of 12000 bytes omitted]',
+    ].join('\n');
+    expect(fileToolStats('edit', output)).toEqual({
+      addedLines: 1,
+      removedLines: 1,
+      partial: true,
+    });
+  });
 });

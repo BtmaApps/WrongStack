@@ -1,16 +1,21 @@
-## Live-tree verification
+## Proven invariants
 
-- Anchor findings in live files, not review-bundle context or cached reads. If `read` hides changed lines behind `[artifact middle omitted]` and rejects re-reads as "unchanged since previous read", recover them from the printed absolute path under `~/.wrongstack/tool-output/…-read-….log` (`read` accepts paths outside the root), or use single-anchor `grep` with `context_lines` 40+. If coverage remains incomplete, name uncovered `file:line` ranges and set `completion: "partial"`; never issue an all-clear.
+- Don't flag the sandbox-gate asymmetry: a pass condition of `mode === 'off'` (deny everything else) is intentional fail-closed hardening versus the exec wrapper's `mode !== 'enforced'`. Confirm against the `SandboxMode` union (`packages/core/src/sandbox/types.ts`) and the pinning tests (`packages/core/tests/sandbox/mcp-gate.test.ts`) before flagging. [3/3 ok]
+- In `packages/mcp/src/transport-sse.ts`, `close()` aborts but does not replace `this.abortController`, so `this.abortController === controller` identity checks stay valid after close. Before flagging or approving, verify stale async paths (`readSSEBody` finally, SSE callbacks) skip shared cleanup — `streamSignal`, `rejectStreamPending`, state transitions — when identity fails, or they clobber the newer connection's state. [2/2 ok]
+
+## Verification method
+
+- Anchor findings in live files, not bundle context or cached reads. For docs-only revisions whose citations are load-bearing, read the changed file's full live range in the first batch — recovery logs re-collapse the same middle.
+- If `read` elides a middle (`[artifact middle omitted]`) and rejects re-reads as "unchanged", read the log under `~/.wrongstack/tool-output/…-read-….log` directly (`read` accepts paths outside the root) or single-anchor `grep` with `context_lines` 40+.
+- Name uncovered `file:line` ranges and set `completion: "partial"` — never an all-clear. Emit ```json { "findings": [] }``` only when verification is complete and clean.
 
 ## Cross-file invariants
 
-- For marker changes in `packages/bench/src/transcript-mine.ts`, check `packages/bench/src/trace-eval.ts`: `retrievalPassed`/`matchesRecall` use raw `serialise(...).includes(...)`. Require verbatim or identically JSON-escaped needles; check `conciseMarker`/`JSON.stringify` for whitespace collapse and unescaped quotes/newlines.
-- Validate `[agentId, id]` joins in `packages/bench/src/transcript-mine.ts` against `SessionEventAttribution` in `packages/core/src/types/session-events.ts`. Attribution is per-writer: absent `agentId` (actor `''`) throughout one journal is symmetric and must degrade to plain id matching; do not flag that absence alone as dropped events.
-- For stale-tick guards capturing `this.interval` in `packages/webui-server/src/server/collab/broadcast-scheduler.ts`, confirm synchronous callbacks and handle mutation only through `stop()`/`ensure()`. Under those conditions, treat re-entrant stop/restart bail-out as intentional.
-- Before flagging `discoverOpenAICompatibleModels` in `packages/providers/src/auto-discover.ts`, compare its error-code regex with `oauthFailure` in `packages/providers/src/oauth/http.ts`: `/^[a-z0-9_.-]{1,100}$/i` over `body.error`. Require byte-identical regexes and preserve exact-string tests’ code-first, HTTP-status-second ordering.
+- Marker needles in `packages/bench/src/transcript-mine.ts` feed raw `serialise(...).includes(...)` in `retrievalPassed`/`matchesRecall` (`packages/bench/src/trace-eval.ts`): require verbatim or identically JSON-escaped needles; check `conciseMarker`/`JSON.stringify` for whitespace collapse and unescaped quotes/newlines.
+- `[agentId, id]` joins vs `SessionEventAttribution` (`packages/core/src/types/session-events.ts`) are per-writer: absent `agentId` (actor `''`) degrades symmetrically to plain id matching — don't flag it alone as dropped events.
+- Before flagging `discoverOpenAICompatibleModels` (`packages/providers/src/auto-discover.ts`), compare its error-code regex with `oauthFailure` (`packages/providers/src/oauth/http.ts`): `/^[a-z0-9_.-]{1,100}$/i` over `body.error` — require byte-identical regexes and code-first, HTTP-status-second test ordering.
 
-## Configuration and architecture
+## Config and architecture
 
-- Before flagging a Vitest `exclude` allowlist as dead, `read vitest.config.ts` at `exclude:` and verify whether `packages/webui/**` remains. Exclusions are additive without negative globs; subtree exclusions work once the broad entry is removed, regardless of stale diff context.
-- Require edits to `architecture/hotspots.json` to include regeneration; validate with `validateHotspotBaseline` in `scripts/lib/architecture-health.mjs`. Flag `lines`/`relativeImports` drift for files at or above `thresholdLines` (800), missing qualifying files, and entries retained below 800.
-- Do not flag disappearing tail rows in the fixed 50-row "Largest production files" table in `docs/reports/architecture-health-current.md`; allow size/order-driven reflow.
+- Don't call a Vitest `exclude` allowlist dead without reading `exclude:` in `vitest.config.ts` and checking whether `packages/webui/**` remains — exclusions are additive with no negative globs, so subtree exclusions hold once the broad entry is removed.
+- Require regeneration with any edit to `architecture/hotspots.json`; validate via `validateHotspotBaseline` (`scripts/lib/architecture-health.mjs`). Flag `lines`/`relativeImports` drift at or above `thresholdLines` (800), missing qualifying files, and entries below 800; ignore tail-row reflow in the fixed 50-row table (`docs/reports/architecture-health-current.md`).

@@ -4,14 +4,334 @@
     "name": "OpenAI Codex (ChatGPT sign-in)",
     "doc": "https://developers.openai.com/codex/models",
     "models": {
-      "gpt-6.1-sol": { "id": "gpt-6.1-sol", "name": "GPT-6.1 Sol" }
+      "gpt-6.1-sol": {
+        "id": "gpt-6.1-sol",
+        "name": "GPT-6.1-Sol",
+        "description": "Latest workhorse model for coding and everyday work.",
+        "release_date": "2026-09-29",
+        "knowledge": "2026-04-30",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-astra": {
+        "id": "gpt-6-astra",
+        "name": "GPT-6-Astra",
+        "description": "Frontier intelligence for the most demanding work.",
+        "release_date": "2026-09-04",
+        "knowledge": "2026-04-30",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-sol": {
+        "id": "gpt-6-sol",
+        "name": "GPT-6-Sol",
+        "description": "Previous generation workhorse model.",
+        "release_date": "2026-09-22",
+        "knowledge": "2026-04-20",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-luna": {
+        "id": "gpt-6-luna",
+        "name": "GPT-6-Luna",
+        "description": "Fast and affordable model for easier tasks.",
+        "release_date": "2026-09-22",
+        "knowledge": "2026-05-18",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-sol": {
+        "id": "gpt-5.6-sol",
+        "name": "GPT-5.6-Sol",
+        "description": "Older generation workhorse model.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-terra": {
+        "id": "gpt-5.6-terra",
+        "name": "GPT-5.6-Terra",
+        "description": "Older balanced model for straightforward work.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-luna": {
+        "id": "gpt-5.6-luna",
+        "name": "GPT-5.6-Luna",
+        "description": "Older fast and efficient model.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      }
     }
   },
   "openai-chatgpt": {
     "id": "openai-chatgpt",
     "name": "OpenAI (ChatGPT plan)",
     "models": {
-      "gpt-6.1-sol": { "id": "gpt-6.1-sol", "name": "GPT-6.1 Sol" }
+      "gpt-6.1-sol": {
+        "id": "gpt-6.1-sol",
+        "name": "GPT-6.1-Sol",
+        "description": "Latest workhorse model for coding and everyday work.",
+        "release_date": "2026-09-29",
+        "knowledge": "2026-04-30",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-astra": {
+        "id": "gpt-6-astra",
+        "name": "GPT-6-Astra",
+        "description": "Frontier intelligence for the most demanding work.",
+        "release_date": "2026-09-04",
+        "knowledge": "2026-04-30",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-sol": {
+        "id": "gpt-6-sol",
+        "name": "GPT-6-Sol",
+        "description": "Previous generation workhorse model.",
+        "release_date": "2026-09-22",
+        "knowledge": "2026-04-20",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-6-luna": {
+        "id": "gpt-6-luna",
+        "name": "GPT-6-Luna",
+        "description": "Fast and affordable model for easier tasks.",
+        "release_date": "2026-09-22",
+        "knowledge": "2026-05-18",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-sol": {
+        "id": "gpt-5.6-sol",
+        "name": "GPT-5.6-Sol",
+        "description": "Older generation workhorse model.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-terra": {
+        "id": "gpt-5.6-terra",
+        "name": "GPT-5.6-Terra",
+        "description": "Older balanced model for straightforward work.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      },
+      "gpt-5.6-luna": {
+        "id": "gpt-5.6-luna",
+        "name": "GPT-5.6-Luna",
+        "description": "Older fast and efficient model.",
+        "release_date": "2026-07-09",
+        "knowledge": "2026-02-16",
+        "reasoning": true,
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "medium", "high", "xhigh", "max"]
+          }
+        ],
+        "tool_call": true,
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        },
+        "limit": {
+          "context": 872000,
+          "output": 128000
+        }
+      }
     }
   },
   "alibaba-token-plan": {

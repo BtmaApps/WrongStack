@@ -74,6 +74,194 @@ describe('dashboard evidence', () => {
       partial: true,
     });
   });
+  it('derives line evidence from outputLines/outputPreview when fileStats is absent', () => {
+    // Journals recorded before the producer learned to parse the serialized
+    // output carry no `fileStats` — the Files tab showed "—" for both line
+    // columns. `outputLines` (read) and the serialized diff in
+    // `outputPreview` (edit/write) recover the same evidence.
+    const story = buildSessionStory(
+      'a',
+      [
+        record('1', 'tool.started', 'read'),
+        record('1', 'tool.executed', 'read', {
+          outcome: 'success',
+          attributes: { toolName: 'read', input: { path: 'D:/repo/a.ts' }, outputLines: 117 },
+        }),
+        record('2', 'tool.started', 'edit'),
+        record('2', 'tool.executed', 'edit', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'edit',
+            input: { path: 'D:/repo/a.ts' },
+            outputPreview:
+              'edit (path=D:/repo/a.ts replacements=1)\n--- a.ts\n+++ a.ts\n@@ -1,3 +1,3 @@\n keep\n-gone\n+fresh',
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const stats = storyStats(story, 'D:/repo');
+    expect(stats.files[0]).toMatchObject({
+      path: 'a.ts',
+      reads: 1,
+      edits: 1,
+      readLines: 117,
+      readMeasured: 1,
+      added: 1,
+      removed: 1,
+      changeMeasured: 1,
+      partial: false,
+    });
+  });
+  it('marks preview-derived counts partial when the journal kept a truncated copy', () => {
+    const story = buildSessionStory(
+      'a',
+      [
+        record('1', 'tool.started', 'edit'),
+        record('1', 'tool.executed', 'edit', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'edit',
+            input: { path: 'D:/repo/a.ts' },
+            outputPreview: {
+              preview: 'edit (path=D:/repo/a.ts replacements=1)\n--- a.ts\n+++ a.ts\n@@ -1,3 +1,3 @@\n keep\n-gone\n+fres',
+              truncated: true,
+              totalBytes: 4096,
+            },
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const stats = storyStats(story, 'D:/repo');
+    // The preview was cut mid-line: the +1/-1 counts are a lower bound.
+    expect(stats.files[0]).toMatchObject({
+      added: 1,
+      removed: 1,
+      changeMeasured: 1,
+      partial: true,
+    });
+  });
+  it('credits a truncated preview that lost the diff as a zero-count partial, not unmeasured', () => {
+    const story = buildSessionStory(
+      'a',
+      [
+        record('1', 'tool.started', 'edit'),
+        record('1', 'tool.executed', 'edit', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'edit',
+            input: { path: 'D:/repo/a.ts' },
+            outputPreview: {
+              // The 2 KiB budget ran out inside the header line — the diff
+              // itself never made it into the journal.
+              preview: 'edit (path=D:/repo/a.ts replacements=1 note=matched by ladder t',
+              truncated: true,
+              totalBytes: 4096,
+            },
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const stats = storyStats(story, 'D:/repo');
+    expect(stats.files[0]).toMatchObject({
+      edits: 1,
+      added: 0,
+      removed: 0,
+      changeMeasured: 1,
+      partial: true,
+    });
+    // A WHOLE preview without a diff is a genuine no-op and stays unmeasured.
+    const noOp = buildSessionStory(
+      'a',
+      [
+        record('2', 'tool.started', 'edit'),
+        record('2', 'tool.executed', 'edit', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'edit',
+            input: { path: 'D:/repo/a.ts' },
+            outputPreview: 'edit (path=D:/repo/a.ts replacements=0 note=(no-op: no match))',
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const noOpStats = storyStats(noOp, 'D:/repo');
+    expect(noOpStats.files[0]).toMatchObject({ edits: 1, changeMeasured: 0 });
+  });
+  it('counts a historical new-file write from its marker line (no --- header)', () => {
+    // Serialized creations are `+++ path` + `+ (new file, N lines)` — the
+    // unified-diff `--- `/`+++ ` anchor never fires for them, so without the
+    // marker parse every created file on a pre-fileStats journal would read
+    // as unmeasured despite the preview naming the exact size.
+    const story = buildSessionStory(
+      'a',
+      [
+        record('1', 'tool.started', 'write'),
+        record('1', 'tool.executed', 'write', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'write',
+            input: { path: 'D:/repo/new.ts' },
+            outputPreview:
+              'write (path=D:/repo/new.ts bytes_written=4200 created=true)\n+++ new.ts\n+ (new file, 92 lines)',
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const stats = storyStats(story, 'D:/repo');
+    expect(stats.files[0]).toMatchObject({
+      writes: 1,
+      added: 92,
+      removed: 0,
+      changeMeasured: 1,
+      partial: false,
+    });
+  });
+  it('prefers the exact outputLines over a truncated fileStats.readLines prefix', () => {
+    // Post-fix producer events count reads from the event body, which the
+    // envelope caps at ~400 chars — a prefix. `outputLines` is exact (full
+    // output), so it must win for reads when both exist.
+    const story = buildSessionStory(
+      'a',
+      [
+        record('1', 'tool.started', 'read'),
+        record('1', 'tool.executed', 'read', {
+          outcome: 'success',
+          attributes: {
+            toolName: 'read',
+            input: { path: 'D:/repo/a.ts' },
+            outputLines: 50,
+            fileStats: { readLines: 7, totalLines: 300, partial: true },
+          },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    const stats = storyStats(story, 'D:/repo');
+    expect(stats.files[0]).toMatchObject({ reads: 1, readLines: 50, readMeasured: 1 });
+  });
   it('attributes patch edits to each file named in the diff, creating unseen rows', () => {
     // A patch call is not path-scoped: it carries no `path`, and neither file
     // appears in `story.files` from a read/edit/write record.

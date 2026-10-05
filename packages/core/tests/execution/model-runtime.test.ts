@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  resolveModelRuntime,
-  resolveReasoningForRequest,
-  resolveCacheForRequest,
-  resolveParametersForRequest,
   mergeModelRuntime,
+  resolveCacheForRequest,
+  resolveModelRuntime,
+  resolveParametersForRequest,
+  resolveReasoningForRequest,
 } from '../../src/execution/model-runtime.js';
 import type { ModelRuntimeConfig } from '../../src/types/config.js';
 import type { Capabilities, ReasoningConfig } from '../../src/types/provider.js';
@@ -80,11 +80,24 @@ describe('resolveModelRuntime', () => {
     expect(r.reasoning).toEqual({ effort: 'high' });
   });
 
-  it('warns when effort not in supported levels', () => {
+  it('clamps an unsupported effort to the strongest supported level below it', () => {
+    // Omitting it fell back to the provider default (medium): asking for more
+    // reasoning than the model offers used to get less than it can give.
     const settings: ModelRuntimeConfig = { reasoning: { effort: 'xhigh' } };
     const r = resolveModelRuntime(settings, capsOn);
+    expect(r.reasoning).toEqual({ effort: 'high' });
+    expect(r.warnings[0]).toMatch(/not supported.*using "high"/);
+  });
+
+  it('takes the weakest supported level when every level is stronger', () => {
+    const r = resolveModelRuntime({ reasoning: { effort: 'minimal' } }, capsOn);
+    expect(r.reasoning).toEqual({ effort: 'low' });
+  });
+
+  it('still omits an unsupported "none": disabling is not a strength to approximate', () => {
+    const r = resolveModelRuntime({ reasoning: { effort: 'none' } }, capsOn);
     expect(r.reasoning).toBeUndefined();
-    expect(r.warnings[0]).toMatch(/not supported/);
+    expect(r.warnings[0]).toMatch(/omitted/);
   });
 
   it('forwards effort when the model reasons but levels are undocumented (B6)', () => {

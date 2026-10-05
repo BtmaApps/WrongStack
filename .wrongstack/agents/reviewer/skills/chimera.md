@@ -1,20 +1,22 @@
-## High-confidence checks
+# chimera — project addendum
 
-- For `packages/webui` changes to `outline-none`, inspect `:focus-visible` in `packages/webui/src/index.css` (`outline: 2px solid hsl(var(--ring)/0.85)`). Treat removal as restoring accessibility; flag additions without a replacement `focus:` indicator.
-- Read final files before citing defects: `toolKey(event)!` in `packages/bench/src/transcript-mine.ts` may already have an explicit guard. For `[agentId, id]` joins, verify symmetric `agentId` emission across joined event types in `packages/core/src/types/session-events.ts`; asymmetry silently drops rows.
-- Compare capture-enable and capture-accept predicates in `packages/cli/src/cli-entry-main.ts` and `packages/cli/src/boot/tui-startup-output.ts`. Check parser defaults rather than inferring them from `=== true`; mismatched `!flags['x']` and `flags['x'] === true` can silently disable default launches.
+`[N×]` = completed applications, all successful; proven checks lead.
 
-## Instructions and catalog
+## Evidence before findings
 
-- Validate `ws:if`/`ws:else`/`ws:end` nesting in `packages/core/instructions/**` against `packages/core/src/core/instruction-template.ts`. Check that `parse()` binds else to the innermost frame with `frame.branches.length === 1`; subsequent else markers disappear. Account for `evaluate()` ANDing multiple `tool=` attributes and fail-open behavior retaining text while dropping markers.
-- Verify counts using `FLEET_ROSTER` in `packages/core/tests/coordination/agent-catalog.test.ts` and `glob packages/core/skills/*/SKILL.md`, not role memory.
+- Never file a finding sourced from a diff hunk alone — read the live file range even when the hunk looks current; hunks can omit on-disk lines (a hunk for `architecture/core-public-api-snapshot.json` missed `packages/core/src/sandbox/index.ts:5`'s `createPolicySandboxApprover` export). [13×]
+- Validate new spec-doc claims (config paths, symbol names) against sibling files from the same session: `tools.sandbox.image` must match the denial table in `packages/core/src/storage/config-loader/in-project-policy.ts` and the consuming backend's error string. [13×]
 
-## Tests and module boundaries
+## Real-bug patterns to check
 
-- Check `capPreview` in `packages/core/src/chronicle/tool-adapter.ts` before accepting `String(attributes.<previewField>).length < N`: truncated values are `{preview, truncated, totalBytes}`, so stringification yields `"[object Object]"`. Require object-shape or `.preview.length` assertions plus pre-truncation-derived `fileStats` from `file-tool-stats.ts`.
-- Resolve `parseNativeCloudSettings` from `@wrongstack/core/cloud-provider` against flat `packages/core/src/cloud-provider.ts`; retry directory-probe failures as file globs. Re-probe `packages/webui-protocol/src/{automation,code-assist}.ts` as explicit paths when brace expansion returns nothing.
-- For `export *` in `packages/webui-protocol/src/index.ts` or `@wrongstack/core`, verify target existence and conflicting exported names.
+- Hardening `Record`-typed board state (`lease.reviews` in `packages/kanban/src/manager/management.ts`): require `Object.hasOwn` reads paired with `Object.defineProperty` writes — a JSON-restored plain object makes `??= Object.create(null)` a no-op, and `obj['__proto__'] = x` corrupts instead of creating an own property. [12×]
+- Rollbacks (`previous` restore) around a stateful send must capture a fresh array reference before any rebuild — in-place mutation makes the rollback a no-op (pattern: `subscribe()` in `packages/client/src/client.ts`). [13×]
+- A new positional parameter inserted before an optional trailing callback (`wrapMCPTool`'s `sandboxTrust` before `observer`): check every caller's argument order via `codebase-incoming-calls` — a truthy non-boolean mis-slotted into `trusted` identity-wraps through `createSandboxMcpGate({ trusted })`, a silent security-gate bypass. [6×]
 
-## Shell allowlists
+## Known non-bugs — verify before flagging
 
-- For `shell:` moves from `verification-context.ts` to `verification-process.ts`, inspect both paths. Check removed-path `child_process` imports: `IMPORTS_CHILD_PROCESS` in `packages/tools/tests/architecture/shell-true-parity.test.ts` filters paths without them before allowlist checks. Require the added path to exist with a non-inert `shell:` value; matching uses `endsWith`.
+- win32 quoting in `buildContainerRoute` (`packages/core/src/sandbox/backends/container.ts`): cmd.exe expands `%VAR%` inside double quotes but leaves `\"` to CommandLineToArgvW; `-v D:\path:/w0` works on Docker Desktop; `kind: 'argv'` keeps quote glyphs literal — check how `wrap.ts` executes `{argv}` (shell-join vs direct spawn) before alleging a bug. [4×]
+- Hardcoded `aria-expanded="true"` on a combobox in a Radix Dialog is accurate — `DialogContent` renders nothing while closed — but verify `aria-activedescendant` targets the exact array and ordering the renderer used to stamp option IDs. [1×]
+- In `packages/plugins/src/runtime/host-state.ts`, verify `remove()` deletes the `hosts` entry **before** `state.abort.abort()` — only that ordering keeps the `reset()` guard (`hosts.get(api)`) correct; `T extends HostState` makes `if (reentrant)` narrowing safe. [1×]
+- `withFileLock` from `@wrongstack/core/utils` must resolve via the `packages/core/src/utils/atomic-write.ts` re-export (`packages/core/package.json` `exports["./utils"]`); atomicWrite-inside-lock matches `packages/core/src/goal/phase-store.ts` and `packages/core/src/typesafe/settings.ts`, and `packages/core/tests/utils/atomic-write.test.ts` covers it — don't flag Windows-rename or lock-residue without new evidence. [1×]
+- For early-fire callbacks added to boot/init, map existing `finally` cleanup before flagging double-invocation: `startupOutput.stop()` in `packages/cli/src/cli-entry-main.ts` is already idempotent; ask instead which launch paths bypass the menu guard.

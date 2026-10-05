@@ -48,3 +48,9 @@ WrongStack pinned `0.153.4` and the plan API was queried with no version at all,
 | Per-token pricing | Never copied — subscription usage is not billed per token. |
 
 Discovery snapshots are cached per account in `~/.wrongstack/cache/discovered-models-cache.json`; entries left behind by rotated refresh tokens are pruned on the next write.
+
+## The overlay as the guarantee layer
+
+`packages/cli/data/providers.json` carries the full current model set for both account providers, with the live context window, reasoning efforts, modalities and description, plus the models.dev output ceiling, knowledge cutoff and release date. Discovery still wins for every field it states; the overlay only guarantees that these models stay visible, with real limits, where discovery cannot see them — a stale `client_version`, an empty or failed snapshot, or an older installed binary (installed binaries read the overlay from GitHub `main`).
+
+It is generated, never hand-edited: `pnpm sync:chatgpt-overlay` reports drift (exit 1), `-- --write` rewrites both entries from the signed-in local account. Retiring models (the catalog's `upgrade`) and hidden routes are excluded, and per-token pricing is never written. `codex-catalog-overlay-sync.test.ts` checks completeness and that both providers carry the same set.

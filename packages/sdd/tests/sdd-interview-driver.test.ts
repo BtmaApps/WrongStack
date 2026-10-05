@@ -312,6 +312,28 @@ describe('SddInterviewDriver', () => {
     expect(await b.loadExisting()).toBe(false);
   });
 
+  it('discard drains in-flight autoSaves — no resurrection of the deleted session', async () => {
+    const sessionPath = path.join(h.dir, 'session-discard-drain.json');
+    const a = makeDriver({ sessionPath });
+    a.driver.start('OAuth login');
+    // Deliberately NOT awaiting builder.saveSession() first: setSpec inside
+    // ingestAgentOutput queues a fire-and-forget autoSave that may still be
+    // in flight when discard runs. deleteSession must drain the
+    // pendingSessionWrite chain BEFORE unlinking (spec-builder.ts:350) or the
+    // stale atomic-rename resurrects the discarded session file.
+    await a.driver.ingestAgentOutput(SPEC_OUTPUT);
+    await a.driver.discard();
+    // Window for a would-be resurrecting rename to land after the unlink.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await expect(fs.access(sessionPath)).rejects.toThrow();
+    const b = new SddInterviewDriver({
+      specStore: a.specStore,
+      graphStore: a.graphStore,
+      sessionPath,
+    });
+    expect(await b.loadExisting()).toBe(false);
+  });
+
   it('resumes sessions without a graph and tolerates a missing persisted graph', async () => {
     const noGraphPath = path.join(h.dir, 'session-no-graph.json');
     const noGraph = makeDriver({ sessionPath: noGraphPath });

@@ -8,38 +8,114 @@ export function fileToolStats(
   // derived from the input diff instead and handled before the shared parse.
   if (name === 'patch') return patchToolStats(output, input);
   if (!['read', 'edit', 'write'].includes(name)) return undefined;
-  let result: Record<string, unknown>;
-  try {
-    const parsed: unknown = JSON.parse(output);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
-    result = parsed as Record<string, unknown>;
-  } catch {
-    return undefined;
+  const result = asObject(output);
+  // The runtime serializes tool results for the event bus as human-readable
+  // text (`createToolOutputSerializer` → `renderToolObject`), NOT as JSON —
+  // the serialized formats below are what production `tool.executed` events
+  // actually carry. The JSON envelope stays first because embedders and
+  // tests can still hand over the raw structured result.
+  if (name === 'read') {
+    if (result && typeof result.text === 'string') {
+      // `read` right-aligns line numbers to a common width, so every line before
+      // a digit-width boundary is emitted with leading spaces ("  1→…"). Anchor on
+      // optional whitespace or those lines are silently dropped from the count.
+      const lines = result.text.split('\n').filter((line) => /^\s*\d+→/.test(line));
+      // Summary, binary, PDF, and already-shown stubs have no numbered source lines.
+      if (!lines.length) return undefined;
+      return {
+        readLines: lines.length,
+        ...(Number.isInteger(result.total_lines) && Number(result.total_lines) >= 0
+          ? { totalLines: result.total_lines }
+          : {}),
+      };
+    }
+    return serializedReadStats(output);
   }
-  if (name === 'read' && typeof result.text === 'string') {
-    // `read` right-aligns line numbers to a common width, so every line before
-    // a digit-width boundary is emitted with leading spaces ("  1→…"). Anchor on
-    // optional whitespace or those lines are silently dropped from the count.
-    const lines = result.text.split('\n').filter((line) => /^\s*\d+→/.test(line));
-    // Summary, binary, PDF, and already-shown stubs have no numbered source lines.
-    if (!lines.length) return undefined;
-    return {
-      readLines: lines.length,
-      ...(Number.isInteger(result.total_lines) && Number(result.total_lines) >= 0
-        ? { totalLines: result.total_lines }
-        : {}),
-    };
-  }
-  if (name === 'write' && result.created === true && typeof result.diff === 'string') {
+  if (name === 'write' && result?.created === true && typeof result.diff === 'string') {
     const created = /^\+\+\+ [^\n]+\n\+ \(new file, (\d+) lines\)$/.exec(result.diff);
     if (created) return { addedLines: Number(created[1]), removedLines: 0, partial: false };
   }
-  if (typeof result.diff !== 'string' || !result.diff.startsWith('--- ')) return undefined;
-  const { addedLines, removedLines } = countHunks(result.diff);
+  if (result && typeof result.diff === 'string' && result.diff.startsWith('--- ')) {
+    const { addedLines, removedLines } = countHunks(result.diff);
+    return {
+      addedLines,
+      removedLines,
+      partial: typeof result.note === 'string' && /diff truncated/i.test(result.note),
+    };
+  }
+  // Serialized `write` for a new file: `write (… created=true)` followed by a
+  // one-line diff whose marker names the exact size.
+  if (name === 'write') {
+    const created = /\n\+\+\+ [^\n]+\n\+ \(new file, (\d+) lines\)/.exec(output);
+    if (created) return { addedLines: Number(created[1]), removedLines: 0, partial: false };
+  }
+  return serializedDiffStats(output);
+}
+
+/**
+ * `read` as the event bus actually carries it: a `read: <path> (…)` header
+ * line followed by the numbered source lines. Counting `N→` prefixes over
+ * the whole output is exact — only source lines carry the marker.
+ *
+ * The event envelope caps `output` at ~400 chars (`truncateForEvent`), so
+ * for most reads only the first few numbered lines survive; those counts
+ * are a LOWER BOUND and are marked partial. The exact count over the full
+ * output is persisted separately as `outputLines` (sizeSignals) — consumers
+ * that need exactness prefer it.
+ */
+function serializedReadStats(output: string): Record<string, unknown> | undefined {
+  const lines = output.split('\n');
+  let readLines = 0;
+  for (const line of lines) if (/^\s*\d+→/.test(line)) readLines++;
+  // Summary, binary, PDF, and already-shown stubs have no numbered source lines.
+  if (!readLines) return undefined;
+  const header = /total_lines=(\d+)/.exec(lines[0] ?? '');
+  return {
+    readLines,
+    // `truncateForEvent` marks a cut with a trailing ellipsis; a count over a
+    // truncated body undercounts reality and must never read as exact.
+    partial: output.endsWith('…'),
+    ...(header ? { totalLines: Number(header[1]) } : {}),
+  };
+}
+
+/**
+ * Line deltas from the serialized `edit`/`write` result. The diff rides in
+ * the text after the `tool (path=…)` header, anchored by its own `--- `/`+++ `
+ * pair so hunk-body lines that merely start with those prefixes are never
+ * mistaken for the start.
+ *
+ * A diff the renderer clipped (`compactDiff`, >260 lines) still names the
+ * EXACT totals in its `diff_summary (… added=N removed=N …)` header — prefer
+ * that over counting visible hunks. Anything the tool itself cut in transit
+ * carries `…[diff truncated:`, and those counts understate reality, so they
+ * are marked partial.
+ */
+function serializedDiffStats(output: string): Record<string, unknown> | undefined {
+  const lines = output.split('\n');
+  let start = -1;
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (lines[i]!.startsWith('--- ') && lines[i + 1]!.startsWith('+++ ')) {
+      start = i;
+      break;
+    }
+  }
+  // No-op edits and identical overwrites produce no diff at all.
+  if (start === -1) return undefined;
+  const summary = /diff_summary \([^)]*\badded=(\d+) removed=(\d+)/.exec(output);
+  if (summary) {
+    return {
+      addedLines: Number(summary[1]),
+      removedLines: Number(summary[2]),
+      partial: output.includes('…[diff truncated:'),
+    };
+  }
+  const { addedLines, removedLines } = countHunks(lines.slice(start).join('\n'));
+  if (!addedLines && !removedLines) return undefined;
   return {
     addedLines,
     removedLines,
-    partial: typeof result.note === 'string' && /diff truncated/i.test(result.note),
+    partial: output.includes('…[diff truncated:'),
   };
 }
 

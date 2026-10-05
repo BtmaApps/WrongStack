@@ -23,6 +23,7 @@ import type {
   Capabilities,
   Provider,
   ReasoningConfig,
+  ReasoningEffort,
   ReasoningRequest,
   Request,
   RequestCacheControl,
@@ -98,6 +99,35 @@ export function resolveModelRuntime(
   };
 }
 
+/** Effort strengths, weakest first. `none` is a request to disable, not a strength. */
+const EFFORT_STRENGTH: readonly ReasoningEffort[] = [
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+/**
+ * The supported effort nearest to `requested`: the strongest one not above it,
+ * else the weakest one above it. Undefined for `none` (disabling is not a
+ * strength to approximate) or when no supported level is a known strength.
+ */
+export function nearestSupportedEffort(
+  requested: ReasoningEffort,
+  supported: readonly ReasoningEffort[],
+): ReasoningEffort | undefined {
+  const rank = EFFORT_STRENGTH.indexOf(requested);
+  if (rank < 0) return undefined;
+  const ranked = supported
+    .map((effort) => ({ effort, rank: EFFORT_STRENGTH.indexOf(effort) }))
+    .filter((entry) => entry.rank >= 0)
+    .sort((a, b) => a.rank - b.rank);
+  const below = ranked.filter((entry) => entry.rank <= rank).at(-1);
+  return (below ?? ranked[0])?.effort;
+}
+
 export function resolveReasoningForRequest(
   settings: ModelRuntimeConfig,
   rc: ReasoningConfig | undefined,
@@ -159,9 +189,20 @@ export function resolveReasoningForRequest(
       rc.effortLevels.length > 0 &&
       !rc.effortLevels.includes(effort)
     ) {
-      warnings.push(
-        `reasoning effort "${effort}" not supported by this model (supported: ${rc.effortLevels.join(', ')}); the setting was omitted.`,
-      );
+      // Clamp rather than drop: omitting the field silently fell back to the
+      // provider default (usually medium), so asking for `max` on a model that
+      // tops out at `xhigh` got LESS reasoning than the model can give.
+      const nearest = nearestSupportedEffort(effort, rc.effortLevels);
+      if (nearest) {
+        out.effort = nearest;
+        warnings.push(
+          `reasoning effort "${effort}" not supported by this model (supported: ${rc.effortLevels.join(', ')}); using "${nearest}".`,
+        );
+      } else {
+        warnings.push(
+          `reasoning effort "${effort}" not supported by this model (supported: ${rc.effortLevels.join(', ')}); the setting was omitted.`,
+        );
+      }
     } else {
       // Either the documented levels include this effort, or the model's
       // effort vocabulary is undocumented (`effortSupported === undefined`).

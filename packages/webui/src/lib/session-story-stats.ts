@@ -122,23 +122,43 @@ export function storyStats(story: ReturnType<typeof buildSessionStory>, projectR
     if (call.name === 'read') file.reads++;
     if (call.name === 'edit') file.edits++;
     if (call.name === 'write') file.writes++;
-    let stats = call.end.raw.attributes?.fileStats;
+    const attributes = call.end.raw.attributes ?? {};
+    let stats = attributes.fileStats;
     if (!stats || typeof stats !== 'object') stats = {};
     const data = stats as Record<string, unknown>;
     const number = (value: unknown) =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
-    const read = number(data.readLines);
+    // Reads: `outputLines` is the exact numbered-line count over the FULL
+    // output (sizeSignals, persisted since long before fileStats existed);
+    // `fileStats.readLines` counts only what survived the event envelope's
+    // ~400-char cap, so on post-fix events it can be a mere prefix — prefer
+    // the exact number and fall back to the prefix.
+    const read =
+      (call.name === 'read' ? number(attributes.outputLines) : undefined) ??
+      number(data.readLines);
     if (read !== undefined) {
       file.readLines += read;
       file.readMeasured++;
     }
-    const added = number(data.addedLines),
+    let added = number(data.addedLines),
       removed = number(data.removedLines);
+    let partial = data.partial === true;
+    if (added === undefined || removed === undefined) {
+      // Same fallback for edit/write: the serialized diff rides in
+      // `outputPreview`, exact when the preview is whole and a lower bound
+      // (marked partial) when the journal kept only a truncated copy.
+      const derived = previewDiffStats(call.name, attributes.outputPreview);
+      if (derived) {
+        added = derived.addedLines;
+        removed = derived.removedLines;
+        partial ||= derived.partial;
+      }
+    }
     if (added !== undefined && removed !== undefined) {
       file.added += added;
       file.removed += removed;
       file.changeMeasured++;
-      file.partial ||= data.partial === true;
+      file.partial ||= partial;
     }
   }
   return {
@@ -191,6 +211,108 @@ export function storyStats(story: ReturnType<typeof buildSessionStory>, projectR
      */
     conflictedTruncated,
   };
+}
+
+/**
+ * Fallback line evidence for journals recorded before `attributes.fileStats`
+ * existed: `edit`/`write` serialized their unified diff into `outputPreview`.
+ * A string preview is the whole output (capPreview only truncates over its
+ * byte budget), so counts from it are exact; the object form is a truncated
+ * copy, so its counts are a lower bound and are marked partial.
+ */
+function previewDiffStats(
+  name: string,
+  preview: unknown,
+): { addedLines: number; removedLines: number; partial: boolean } | undefined {
+  if (name !== 'edit' && name !== 'write') return undefined;
+  let text: string;
+  let truncated: boolean;
+  if (typeof preview === 'string') {
+    text = preview;
+    truncated = false;
+  } else if (preview && typeof preview === 'object') {
+    const record = preview as Record<string, unknown>;
+    if (typeof record.preview !== 'string') return undefined;
+    // The object form exists to flag truncation, but honour the flag itself:
+    // an untruncated object must never be misread as a lower bound.
+    truncated = record.truncated === true;
+    text = record.preview;
+  } else return undefined;
+  // A diff the renderer clipped still names the exact totals in its
+  // `diff_summary (… added=N removed=N …)` header.
+  const summary = /diff_summary \([^)]*\badded=(\d+) removed=(\d+)/.exec(text);
+  if (summary) {
+    return {
+      addedLines: Number(summary[1]),
+      removedLines: Number(summary[2]),
+      partial: truncated || text.includes('…[diff truncated:'),
+    };
+  }
+  // Serialized new-file writes carry `+++ path` + `+ (new file, N lines)` and
+  // NO `--- ` half, so the unified-diff anchor below never fires for them —
+  // parse the marker first or a historical creation call stays unmeasured
+  // even when the preview names the exact size.
+  if (name === 'write') {
+    const created = /\n\+\+\+ [^\n]+\n\+ \(new file, (\d+) lines\)/.exec(text);
+    if (created) {
+      return {
+        addedLines: Number(created[1]),
+        removedLines: 0,
+        partial: truncated || text.includes('…[diff truncated:'),
+      };
+    }
+  }
+  const lines = text.split('\n');
+  let start = -1;
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (lines[i]!.startsWith('--- ') && lines[i + 1]!.startsWith('+++ ')) {
+      start = i;
+      break;
+    }
+  }
+  const counted = countVisibleDeltas(lines, start);
+  if (counted === undefined) {
+    // No-op edits and identical overwrites serialize no diff at all — a
+    // WHOLE preview without one measured nothing and stays "—". A TRUNCATED
+    // preview that kept the mutating header but lost the diff still proves
+    // the call changed the file, so credit it as a zero-count partial
+    // instead: a silent "—" would read as "never measured".
+    if (truncated && mutatingCall(name, text)) return { addedLines: 0, removedLines: 0, partial: true };
+    return undefined;
+  }
+  if (!counted.addedLines && !counted.removedLines && !truncated) return undefined;
+  return {
+    addedLines: counted.addedLines,
+    removedLines: counted.removedLines,
+    partial: truncated || text.includes('…[diff truncated:'),
+  };
+}
+
+/** Count `+`/`-` lines inside `@@` hunks from the diff header on; undefined when no diff is present. */
+function countVisibleDeltas(
+  lines: string[],
+  start: number,
+): { addedLines: number; removedLines: number } | undefined {
+  if (start === -1) return undefined;
+  let addedLines = 0;
+  let removedLines = 0;
+  let inHunk = false;
+  for (const line of lines.slice(start)) {
+    if (line.startsWith('@@ ')) {
+      inHunk = true;
+      continue;
+    }
+    if (!inHunk) continue;
+    if (line.startsWith('+')) addedLines++;
+    else if (line.startsWith('-')) removedLines++;
+  }
+  return { addedLines, removedLines };
+}
+
+/** The serialized header names what the call did: a mutating header proves the file changed. */
+function mutatingCall(name: string, text: string): boolean {
+  if (name === 'edit') return /replacements=[1-9]/.test(text);
+  return /created=true|bytes_written=[1-9]/.test(text) && !/no-op/i.test(text);
 }
 
 /**

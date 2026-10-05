@@ -1,7 +1,7 @@
 {
   "name": "wrongstack-monorepo",
   "private": true,
-  "version": "1.0.32",
+  "version": "1.0.33",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@12.3.4+sha512.961aa41fb077da3a04a441d9f8e15ebc0c96da8ef710b2eb67bf9ee7cb0610eabd48f1fd85f51cffe73846785fa0f87c56a3a872a1d893f8446741b5cce45457",
@@ -50,6 +50,7 @@
     "version:major": "node scripts/bump-version.mjs major",
     "version:set": "node scripts/bump-version.mjs set",
     "sync:models": "node scripts/sync-models.mjs",
+    "sync:chatgpt-overlay": "node scripts/sync-chatgpt-overlay.mjs",
     "providers:catalog:check": "pnpm --filter @wrongstack/providers build && node scripts/generate-provider-catalog.mjs",
     "providers:catalog:write": "pnpm --filter @wrongstack/providers build && node scripts/generate-provider-catalog.mjs --write",
     "website:tools:check": "pnpm --filter @wrongstack/tools build && tsx scripts/generate-website-tool-catalog.ts",
