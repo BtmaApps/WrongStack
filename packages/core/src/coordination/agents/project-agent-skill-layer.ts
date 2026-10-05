@@ -97,6 +97,21 @@ export function saveProjectSkillAugmentation(
 }
 
 /**
+ * Longest prefix of `text` that fits in `maxBytes` UTF-8 bytes, cut at a code
+ * point boundary so a multibyte title can never end in a split sequence.
+ */
+function sliceUtf8Bytes(text: string, maxBytes: number): string {
+  if (Buffer.byteLength(text, 'utf8') <= maxBytes) return text;
+  const buf = Buffer.from(text, 'utf8').subarray(0, maxBytes);
+  // Back off trailing continuation bytes, then a lead byte whose sequence the
+  // cut severed — either would decode to U+FFFD downstream.
+  let end = buf.length;
+  while (end > 0 && (buf[end - 1] ?? 0) >= 0x80 && (buf[end - 1] ?? 0) <= 0xbf) end--;
+  if (end > 0 && (buf[end - 1] ?? 0) >= 0xc0) end--;
+  return buf.subarray(0, end).toString('utf8');
+}
+
+/**
  * Keep an addendum under budget: its title, then as much of the **end** as fits.
  *
  * Two things the previous byte-offset slice got wrong. It could land inside a
@@ -121,7 +136,15 @@ function boundAugmentation(text: string): string {
     tail.unshift(lines[i] as string);
     budget -= cost;
   }
-  if (tail.length === 0) return `${title.slice(0, SKILL_AUGMENTATION_MAX_BYTES)}${notice}`;
+  // The budget is BYTES; String.slice counts UTF-16 code units, so a CJK title
+  // of 6144+ units wrote an addendum up to 3x the cap and could split a
+  // surrogate pair. Slice by bytes, leaving room for the notice itself.
+  if (tail.length === 0) {
+    return `${sliceUtf8Bytes(
+      title,
+      SKILL_AUGMENTATION_MAX_BYTES - Buffer.byteLength(notice, 'utf8'),
+    )}${notice}`;
+  }
   return `${title}\n…\n${tail.join('\n').trimEnd()}${notice}`;
 }
 

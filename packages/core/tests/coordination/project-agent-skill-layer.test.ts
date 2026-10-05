@@ -25,6 +25,7 @@ import {
   saveProjectAgentConsolidated,
   saveProjectSkillAugmentation,
   setSkillPinned,
+  SKILL_AUGMENTATION_MAX_BYTES,
   splitLearnedEntries,
   updateProjectAgentLearned,
 } from '../../src/coordination/agents/index.js';
@@ -415,6 +416,36 @@ describe('prompt assembly', () => {
     const prompt = buildProjectContextualizedPrompt('BASE', 'verifier', projectRoot);
     expect(prompt).toContain('Project-developed skills');
     expect(prompt).toContain('`testing`');
+  });
+
+  // Regression: the truncation fallback used String.slice with the BYTE
+  // budget (6144 code units, not bytes), so a multibyte title long enough to
+  // trigger the fallback wrote an addendum up to 3x SKILL_AUGMENTATION_MAX_
+  // BYTES under a "truncated at 6144 bytes" notice, and could cut a
+  // surrogate pair in half. Every path must honor the byte budget as bytes.
+  it('bounds a multibyte-title addendum to the byte budget in the truncation fallback', () => {
+    const cjkTitle = `# ${'項'.repeat(6200)}`; // ~18.6 KB of UTF-8 on line one
+    saveProjectSkillAugmentation('verifier', 'testing', `${cjkTitle}\n- 完整指令`, projectRoot);
+    const saved = loadProjectSkillAugmentation('verifier', 'testing', projectRoot);
+    expect(Buffer.byteLength(saved, 'utf8')).toBeLessThanOrEqual(SKILL_AUGMENTATION_MAX_BYTES);
+    expect(saved).toContain('truncated at');
+  });
+
+  it('never splits a surrogate pair when the fallback truncates the title', () => {
+    // One BMP char before the astral run offsets the code-unit boundary so a
+    // UTF-16 slice lands in the middle of a surrogate pair.
+    const astralTitle = `# 項${'𝐀'.repeat(3200)}`; // ~12.8 KB of UTF-8
+    saveProjectSkillAugmentation('verifier', 'testing', astralTitle, projectRoot);
+    const saved = loadProjectSkillAugmentation('verifier', 'testing', projectRoot);
+    expect(Buffer.byteLength(saved, 'utf8')).toBeLessThanOrEqual(SKILL_AUGMENTATION_MAX_BYTES);
+    expect(saved).not.toContain('\uFFFD');
+  });
+
+  it('passes an addendum already within the byte budget through unchanged', () => {
+    const ascii = `# ASCII addendum\n${'- directive line\n'.repeat(50)}`.trimEnd();
+    expect(Buffer.byteLength(ascii, 'utf8')).toBeLessThanOrEqual(SKILL_AUGMENTATION_MAX_BYTES);
+    saveProjectSkillAugmentation('verifier', 'testing', ascii, projectRoot);
+    expect(loadProjectSkillAugmentation('verifier', 'testing', projectRoot)).toBe(ascii);
   });
 });
 
