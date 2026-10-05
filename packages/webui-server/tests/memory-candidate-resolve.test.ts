@@ -124,4 +124,43 @@ describe('memory.sage.candidateResolve', () => {
 
     expect(String(sent[0]?.payload.error)).toContain('target locked');
   });
+
+  // A client frame may legally omit `payload` — the protocol decoder only
+  // requires one for server frames. The handler must answer with its
+  // `candidateId is required` validation error, not throw a TypeError that
+  // escapes it and leaves the client without any response frame (the
+  // connection-lifecycle catch only logs).
+  it('answers a payload-less frame with candidateId-required instead of throwing', async () => {
+    const surface = {
+      listCandidates: async () => [],
+      resolveCandidate: async () => null,
+      acceptCandidate: async () => null,
+      rejectCandidate: async () => null,
+    };
+    const { ws, sent } = fakeWs();
+
+    await expect(
+      handleSageCandidateResolve(
+        ws,
+        { type: 'memory.sage.candidateResolve' } as never,
+        portWith(surface),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.type).toBe('memory.sage.candidateResolve');
+    expect(sent[0]?.payload.error).toBe('candidateId is required');
+  });
+
+  it('answers a payload that is present but empty the same way', async () => {
+    const { ws, sent } = fakeWs();
+
+    await handleSageCandidateResolve(
+      ws,
+      { payload: {} },
+      portWith({ rejectCandidate: async () => null }),
+    );
+
+    expect(sent[0]?.payload.error).toBe('candidateId is required');
+  });
 });

@@ -72,7 +72,13 @@ export async function handleSageCandidateResolve(
     });
     return;
   }
-  const payload = (msg as { payload: Record<string, unknown> }).payload;
+  // `?? {}` mirrors the sibling handlers (listCandidates L29,
+  // backfillRecoverable L177): client frames reach this handler without a
+  // payload (the protocol decoder only requires one for server frames), and
+  // the `candidateId is required` validation below — not a TypeError that
+  // escapes the handler and leaves the client without a response frame —
+  // is the documented answer for that input.
+  const payload = (msg as { payload?: Record<string, unknown> }).payload ?? {};
   const candidateId = payload['candidateId'] as string | undefined;
   const action = payload['action'] as 'accept' | 'reject' | undefined;
   if (!candidateId) {
