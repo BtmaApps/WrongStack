@@ -357,9 +357,26 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.32',
+    date: '2026-10-05',
+    latest: true,
+    tagline: 'Optional execution sandbox, Scout, and feedback grounded in tool results',
+    highlights: [
+      'Optional exec-family sandbox tiers add Docker routing, a Windows helper backend, per-agent overrides and visible approval/audit status; off by default, with policy-only remaining advisory',
+      'Scout adds a general-purpose identity, compact direct tools, live tool discovery, specialist delegation and session-only suggestions outside project folders',
+      '/scout-stats compares recorded discovery, tool use and delegation across prompt variants',
+      'Successful single and bulk edits receive bounded, version-bound LSP feedback when the plugin and hooks are enabled; unavailable checks remain explicitly unverified',
+      'Repetition checks use completed tool results and full-output fingerprints, with existing run budgets still enforced',
+      'WebUI and SimpleUI keep host terminals compact; TUI startup preserves errors and prompts while logging routine diagnostics',
+      'SAGE refreshes retained evidence before provider requests; account model discovery renews expiring credentials and preserves explicit curated ChatGPT suggestions without claiming entitlement',
+      'Investigator, writer, translator and sysadmin roles extend the fleet beyond coding tasks',
+      'Cancellation, MCP/ACP lifecycle, Telegram queue, fleet session ownership, plugin state and persistence fixes',
+      'Accessible focus, combobox and resize controls, plus more reliable website navigation and release workflows',
+    ],
+  },
+  {
     version: '1.0.31',
     date: '2026-10-03',
-    latest: true,
     tagline: 'ToolFlow, visual Session Story, and persistent Docker automation',
     highlights: [
       'ToolFlow composes tools in sandboxed JavaScript with per-call permission checks and compact results across WebUI, TUI and SimpleUI',

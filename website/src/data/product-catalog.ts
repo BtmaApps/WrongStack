@@ -225,6 +225,13 @@ export const rosterPhases = [
         tools: 6,
         budget: 'light',
       },
+      {
+        role: 'investigator',
+        name: 'Investigator',
+        summary: 'Researches products, prices, markets, rules and events with dated sources.',
+        tools: 7,
+        budget: 'medium',
+      },
     ],
   },
   {
@@ -654,6 +661,21 @@ export const rosterPhases = [
         tools: 10,
         budget: 'light',
       },
+      {
+        role: 'writer',
+        name: 'Writer',
+        summary:
+          'Writes and edits reports, articles, emails, proposals and summaries from evidence.',
+        tools: 9,
+        budget: 'medium',
+      },
+      {
+        role: 'translator',
+        name: 'Translator',
+        summary: 'Translates prose while preserving meaning, tone, formatting and glossary terms.',
+        tools: 8,
+        budget: 'medium',
+      },
     ],
   },
   {
@@ -701,6 +723,14 @@ export const rosterPhases = [
         name: 'Platform Engineer',
         summary: 'Monorepo layout, build graph, internal tooling and developer experience.',
         tools: 19,
+        budget: 'medium',
+      },
+      {
+        role: 'sysadmin',
+        name: 'Sysadmin',
+        summary:
+          'Inspects services, processes, disks, packages and logs before changing the system.',
+        tools: 14,
         budget: 'medium',
       },
     ],

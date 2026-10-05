@@ -305,11 +305,12 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Remote workspaces. Sessions that carry on.
+                Scout the work. Choose the boundaries.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In {version}: work over SSH, compose tools in code, watch the live browser, and
-                carry prompts and attachments between the terminal and WebUI.
+                In {version}: choose optional execution sandbox tiers, discover tools with Scout,
+                and get coding feedback from completed tool results and fresh LSP diagnostics.
+                Calmer terminals and cancellation fixes keep long sessions easier to follow.
               </p>
             </div>
             <a
@@ -323,16 +324,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Your remote workspace',
-                'Run wstack remote against a Linux or macOS host. The agent and tools stay there; its WebUI reaches you over SSH.',
+                'Choose execution boundaries',
+                'Opt into exec-family sandbox tiers with Docker routing, a Windows helper backend and visible approval/audit status. Off by default; the policy-only backend remains advisory.',
               ],
               [
-                'WrongStack ToolFlow',
-                'Compose tools. Return answers. Filter and compute inside a sandboxed script, then return the small result needed for the next decision. Every call keeps its permission checks.',
+                'Scout beyond coding',
+                'Start with --system-scout for research, writing, operations or code. Scout discovers enabled tools on demand and delegates to specialists when session policy allows it.',
               ],
               [
-                'Keep work in view',
-                'Watch the live browser and keep hidden terminals running. Open Story in a WebUI tab for parallel subagent timelines, team branches, replay, and recorded file, memory, and mail evidence.',
+                'Feedback you can inspect',
+                'With the LSP plugin and hooks enabled, successful edits return fresh, bounded diagnostics or an explicit unverified notice. Repetition checks compare completed tool results.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">

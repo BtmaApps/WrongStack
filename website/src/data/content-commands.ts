@@ -32,6 +32,7 @@ const commandRows: Array<[string, string]> = [
   ['/techstack', 'Scan dependencies, verify versions and write a technology report.'],
   ['/diag', 'Inspect runtime diagnostics and active system state.'],
   ['/stats', 'Show token, cost and iteration statistics for the session.'],
+  ['/scout-stats', 'Compare recorded tool discovery and delegation across system-prompt variants.'],
   ['/memory', 'Search, graph, verify, clean, import and inspect structured memory.'],
   ['/todos', 'View and manage the current session todo list.'],
   ['/tasks', 'Manage structured tasks with priorities and dependencies.'],
@@ -40,6 +41,7 @@ const commandRows: Array<[string, string]> = [
   ['/models', 'Manage custom model definitions.'],
   ['/modelcaps', 'Browse model context, capability and pricing information.'],
   ['/yolo', 'Query or toggle automatic tool approval for this session.'],
+  ['/sandbox', 'Inspect the resolved exec-sandbox policy and recent denial or expansion records.'],
   ['/autonomy', 'Set the active autonomy level.'],
   ['/save', 'Force the live session writer to flush to disk.'],
   ['/sessions', 'List and resume saved sessions; also available as /resume and /load.'],
@@ -157,6 +159,7 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
     '/context',
     '/diag',
     '/stats',
+    '/scout-stats',
     '/memory',
     '/todos',
     '/tasks',
@@ -192,6 +195,7 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
     '/models',
     '/modelcaps',
     '/yolo',
+    '/sandbox',
     '/settings',
     '/statusline',
     '/fallback',
@@ -251,6 +255,14 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
 };
 
 const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
+  '/sandbox': {
+    usage: ['/sandbox', '/sandbox --audit'],
+    note: 'Reports the current policy; configure tools.sandbox in your profile to change it.',
+  },
+  '/scout-stats': {
+    usage: ['/scout-stats', '/scout-stats 50'],
+    note: 'Reads project session journals. Older journals without a prompt variant remain unrecorded.',
+  },
   '/context': {
     usage: ['/context', '/context mode deep', '/context thresholds 0.6 0.75 0.9'],
     note: 'The /ctx alias reaches the same command.',

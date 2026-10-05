@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.32] — 2026-10-05
+
+Optional execution sandbox tiers and the general-purpose Scout identity extend
+how WrongStack runs work. The coding loop gains result-aware repetition checks
+and fresh post-edit diagnostics, while terminals, account discovery and retained
+memory evidence improve. Cancellation and ownership fixes span the runtime.
+
+### Added
+
+- **Optional execution sandbox.** Exec-family tools (`bash`, `exec`, `git`) gain `read-only`, `workspace-write` and `full-access` tiers, Docker routing, a Windows helper backend and per-agent overrides. Approval expansion, denial events, `/sandbox --audit` and TUI/WebUI status make the selected policy visible. Sandbox mode is off by default; `policy-only` is advisory, and `full-access` does not route through containment. The Windows backend requires its helper path and rejects unsupported or unavailable configurations. Repository config cannot supply the backend, image or writable roots. See [sandbox configuration](docs/configuration.md#toolssandbox--exec-family-sandbox-tiers).
+- **General-purpose Scout identity.** `--system-scout` and `--system-prompt scout` expose a compact direct tool set, with the remaining enabled catalog discovered through `tool_search` and invoked through `tool_use`. Scout carries its identity into specialist workers and respects solo-session policy. Frequently used deferred tools can join the direct surface at the next session start. Launching outside a project suggests Scout for that launch or session without changing the saved profile default.
+- **Scout activity report.** `/scout-stats [sessions]` compares prompt variants using recorded token usage, tool discovery, found-then-used calls and delegation. Older journals without a prompt variant remain unrecorded.
+- **Post-edit LSP feedback.** With the LSP plugin and host hooks enabled, successful single and bulk edits return bounded diagnostics tied to file content, document version and server identity. Missing scope, stale results, silent servers and timeouts produce an explicit unverified notice. Diagnostic feedback does not replace tests or typechecks. See [coding-agent feedback](docs/agent-feedback.md).
+- **Specialists for general-purpose work.** Investigator, writer, translator and sysadmin roles extend the fleet beyond coding tasks.
+
+### Changed
+
+- **Result-aware repetition checks.** The loop detector compares canonical tool arguments and completed results, including errors and every call in a batch. Full-output fingerprints keep clipping and spool filenames from hiding unchanged work; changed output remains subject to run budgets.
+- **Compact host terminals.** WebUI and SimpleUI deduplicate warnings, bound visible logs and worker rows, and expire logs and finished workers after 30 seconds. `WEBUI_VERBOSE=1` restores full console output. TUI startup records routine diagnostics at the configured log level while keeping errors and selection prompts visible.
+- **Account model discovery.** ChatGPT plan API, Kimi, xAI and Meta renew expiring credentials before catalog requests and report discovery failures. Explicit curated ChatGPT overlay suggestions survive account snapshot refreshes; they do not establish account access, limits or pricing. Other account catalogs retain exact snapshot membership.
+- **Required-skill guidance.** Bundled instructions define required skills for the lifetime of a task, including continuation and audit work.
+
+### Fixed
+
+- **Memory freshness.** Retained SAGE evidence is refreshed before provider requests so changed anchors and memory validity are reflected in injected context.
+- **Canceled and closed work.** Late provider completions, image processing, research, Telegram queue sends and polling, MCP transports, ACP sessions and disposed browser clients no longer continue or publish work after cancellation, closure or shutdown.
+- **Coordination and storage ownership.** Fleet presence retains the worker's session identity; failed subscription registration is restored; stale governance receipt owners, failed lock acquisition and path removal preserve ownership boundaries. Registry keys, plugin host state and shared secret graphs are handled without corrupting unrelated state.
+- **Tools and input validation.** Numeric slash-command and diagnostic input, mailbox limits, streamed input, benchmark traces and JSON report failures are validated or reported. Gitignore rules preserve meaningful spaces and dependency parsing preserves `#` inside Cargo strings.
+- **Accessible interfaces and navigation.** Focus rings, WebUI combobox and resize controls, mailbox interactions, sidebar/tab visibility, export fences and website navigation, hover intent and route handling are corrected.
+- **LSP lifecycle.** Document tracking and bulk-write scope remain valid across version changes, server replacement and asynchronous diagnostic collection.
+- **Release workflows.** Pages deployment validates versions, and release asset handling resolves both draft and published GitHub releases.
+
 ## [1.0.31] — 2026-10-03
 
 ToolFlow brings compact tool orchestration to the existing execution gate, and

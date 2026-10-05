@@ -1,6 +1,6 @@
+import { AlertTriangle, ArrowDown, Check, EyeOff, ShieldCheck } from 'lucide-react';
 import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
 import { securityFacts, securityLayers } from '@/data/content';
-import { AlertTriangle, ArrowDown, Check, EyeOff, ShieldCheck } from 'lucide-react';
 
 export function SecurityPage() {
   return (
@@ -92,6 +92,18 @@ export function SecurityPage() {
               <code className="mt-6 block rounded-lg border border-brand/15 bg-card px-4 py-3 font-mono text-xs text-brand">
                 --yolo ≠ bypass security policy
               </code>
+              <h3 className="mt-6 font-black text-fg">Optional execution sandbox</h3>
+              <p className="mt-3 text-sm leading-7 text-muted">
+                Exec-family sandbox tiers are off by default. Docker and Windows helper backends
+                route supported calls; policy-only is advisory and full-access does not route.
+                Approval checks still apply. Inspect the resolved policy with /sandbox and recent
+                denial or expansion records with /sandbox --audit.
+              </p>
+              <div className="mt-4">
+                <ExternalDoc path="docs/configuration.md#toolssandbox--exec-family-sandbox-tiers">
+                  Review sandbox tiers and backend requirements
+                </ExternalDoc>
+              </div>
             </div>
           </div>
         </div>

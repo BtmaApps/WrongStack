@@ -1,6 +1,25 @@
 import type { CommandDetailMap } from './command-detail-types';
 
 export const commandDetailsPart1: CommandDetailMap = {
+  '/sandbox': {
+    purpose: 'Inspect the resolved exec-family sandbox policy and its recent audit records.',
+    behavior:
+      'Run `/sandbox` to see mode, tier, backend and writable roots for bash, exec and git. Add `--audit` for recent in-process denial and expansion records. Configure tools.sandbox in your profile; this command only reports policy. Sandbox mode is off by default. The policy-only backend is advisory, full-access does not route, and containment depends on the configured Docker or Windows helper backend.',
+    before: 'Choose the sandbox mode, tier and backend in your profile configuration.',
+    during: 'Review the effective policy; use `/sandbox --audit` to inspect recent decisions.',
+    after:
+      'Permission checks still apply. An enforced label alone does not establish OS containment.',
+  },
+  '/scout-stats': {
+    purpose: 'Compare tool discovery and delegation recorded under each system-prompt variant.',
+    behavior:
+      'Run `/scout-stats [sessions]` to inspect the last project session journals: 20 by default, up to 200. The report groups token usage, tool calls, empty tool searches, found-then-used tools and delegation by Scout, Lite, Standard and Pro. Journals without a recorded variant appear as unrecorded. It reads existing evidence and makes no extra model call.',
+    before: 'Use `--system-scout` or `--system-prompt scout` to start a Scout session.',
+    during:
+      'Compare discovery results and delegation share; solo policy intentionally disables delegation.',
+    after:
+      'Use the recorded evidence to tune discovery guidance. The report does not certify task quality.',
+  },
   '/bughunt': {
     purpose: 'Investigate a scoped defect with evidence before and after a minimal fix.',
     behavior:

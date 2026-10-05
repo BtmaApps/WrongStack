@@ -55,25 +55,27 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.31
+### What's new in 1.0.32
 
-- **[ToolFlow](docs/toolflow.md)** composes repeated or dependent tool calls in
-  sandboxed JavaScript, preserves each call's permission checks and returns
-  compact findings. WebUI, TUI and SimpleUI show the run and its measured output.
-- **[Session Story](docs/session-story.md)** visualizes the selected tab and its
-  subagents with timelines, replay, team branches and recorded model, tool,
-  file, memory and mail evidence.
-- **[Persistent automation](docs/subcommands/automation.md)** runs scheduled or
-  signed GitHub jobs in independent Docker snapshots, with portable job
-  definitions, versioned templates and reviewable patches.
-- **WebUI Code Assist and fleet mail:** isolated file and symbol assistance,
-  typed mailbox composition and replies, saved sidebar ordering and theme
-  contrast readouts.
-- **[Offline quality experiments](docs/subcommands/bench-experiments.md),
-  [native cloud profiles](docs/subcommands/provider-cloud.md)** and a structured
-  two-pane [`/provider-quota`](docs/slash/provider-quota.md) TUI browser.
-- **Lifecycle and policy fixes** across Explore Companion, Brain Council,
-  Kanban, IPC ownership, tools, caches and token accounting.
+- **[Optional execution sandbox](docs/configuration.md#toolssandbox--exec-family-sandbox-tiers)**
+  adds exec-family tiers, Docker routing, a Windows helper backend, per-agent
+  overrides and visible approval/audit status. Off by default; `policy-only`
+  provides advisory policy rather than OS containment.
+- **[Scout](docs/configuration.md#systemprompt--baseline-system-prompt-selection)** is a general-purpose
+  identity with a compact direct tool set, live `tool_search` / `tool_use`
+  discovery and specialist delegation. Launch with `--system-scout`; inspect
+  recorded discovery and delegation with [`/scout-stats`](docs/slash/scout-stats.md).
+- **[Coding-agent feedback](docs/agent-feedback.md)** compares completed tool
+  results for repetition and attaches bounded, version-bound LSP diagnostics
+  to successful single and bulk edits when the plugin and hooks are enabled.
+- **Calmer terminals and accessible controls:** WebUI and SimpleUI bound logs
+  and finished-worker rows; TUI startup keeps errors and prompts visible.
+  Keyboard focus, comboboxes, resizing and website navigation are improved.
+- **Fresher memory and account catalogs:** retained SAGE evidence is refreshed
+  before provider requests, and account model discovery renews expiring tokens.
+  Curated ChatGPT model suggestions remain distinct from account entitlement.
+- **Cancellation and ownership fixes** across providers, MCP/ACP, fleet presence,
+  Telegram queues, plugins, persistence and browser session work.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -705,8 +707,8 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.30** — current release; semver from 1.0.0 onward
-- Full release verification: `pnpm release:check` (18 gates) before publishing
+- **v1.0.32** — current release; semver from 1.0.0 onward
+- Full release verification: `pnpm release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`
 - Node 22.19+ only, ESM-only, no CommonJS bundles
