@@ -1,10 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SddInterviewDriver } from '../src/sdd-interview-driver.js';
 import { SpecStore } from '../src/spec-store.js';
 import { TaskGraphStore } from '../src/task-graph-store.js';
+
+// Each test runs a start→ingest→persist→read-back chain over real fs with a
+// per-test temp dir (recursive rm in afterEach); under parallel-suite load the
+// 5s default testTimeout fires before the fs chain finishes — timeouts only,
+// never assertion mismatches (classified 2026-10-05).
+vi.setConfig({ testTimeout: 15_000 });
 
 /**
  * Temp roots created by the tests, removed after each one. Without this every

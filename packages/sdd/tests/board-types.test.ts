@@ -3,9 +3,15 @@ import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { buildBoardSnapshot, buildBoardTasks } from '../src/board-types.js';
 import { SddBoardStore } from '../src/sdd-board-store.js';
+
+// The append/compaction loops here stat + rename real files per event; under
+// parallel-suite load (e.g. combined sdd+sage runs) the 5s default testTimeout
+// fires before the fs chain finishes — timeouts only, never assertion
+// mismatches (classified 2026-10-05).
+vi.setConfig({ testTimeout: 15_000 });
 
 function node(id: string, over: Partial<TaskNode> = {}): TaskNode {
   return {

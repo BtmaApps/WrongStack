@@ -1,9 +1,14 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { isExplanatoryText, SddInterviewDriver } from '../src/sdd-interview-driver.js';
 import { SpecStore } from '../src/spec-store.js';
 import { TaskGraphStore } from '../src/task-graph-store.js';
+
+// Same persist-then-read-back fs chains as sdd-interview-driver.test.ts; the
+// 5s default testTimeout fires first under parallel-suite load (classified
+// 2026-10-05).
+vi.setConfig({ testTimeout: 15_000 });
 
 function tmp(prefix: string): string {
   return path.join(os.tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);

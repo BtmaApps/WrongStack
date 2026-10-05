@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SddBoardSnapshot } from '../src/board-types.js';
 import { SddBoardStore, sameIndexSignature } from '../src/sdd-board-store.js';
 
+// Control/event appends and snapshot persistence hit real fs per call; under
+// parallel-suite load the 5s default testTimeout fires before the fs chain
+// finishes — timeouts only, never assertion mismatches (classified 2026-10-05).
+vi.setConfig({ testTimeout: 15_000 });
+
 let directory: string;
 
 beforeEach(async () => {
