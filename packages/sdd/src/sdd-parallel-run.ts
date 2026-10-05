@@ -136,6 +136,15 @@ export class SddParallelRun {
   /** Monotonic dispatch counter (unique subagent ids) + dispatch-round counter. */
   private dispatchSeq = 0;
   private round = 0;
+  /**
+   * True once `run()` has returned. A FINISHED run is not "running" even when
+   * the graph is left unsettled (deadlock exit): `isRunning()` gates
+   * `cleanupWorktrees()` / `rollback()` / the Ctrl+C ladders, and a returned
+   * run kept reporting live, silently no-oping cleanup and refusing rollback
+   * with "run still active" until the user called `stop()` on a run that had
+   * already ended. Cleared again at the top of `run()` so a re-run re-arms.
+   */
+  private runReturned = false;
 
   constructor(private readonly opts: SddParallelRunOptions) {
     this.slots = Math.min(16, Math.max(1, opts.parallelSlots ?? 2));
@@ -211,7 +220,7 @@ export class SddParallelRun {
     return this.paused;
   }
   isRunning(): boolean {
-    return !this.stopRequested && !this.decomposer.isSettled();
+    return !this.stopRequested && !this.runReturned && !this.decomposer.isSettled();
   }
 
   /** Base branch the run's squash commits land on (undefined when worktrees off). */
@@ -413,6 +422,7 @@ export class SddParallelRun {
     const startTime = Date.now();
     this.round = 0;
     this.dispatchSeq = 0;
+    this.runReturned = false; // re-arm: a new run() call is live again
     let totalDispatched = 0;
 
     this.buildCoordinator();
@@ -557,6 +567,10 @@ export class SddParallelRun {
       ...(this.fatalError ? { fatalError: this.fatalError } : {}),
     });
 
+    // The run has finished — release the liveness gate even when the graph is
+    // left unsettled (deadlock exit), so cleanupWorktrees()/rollback() and the
+    // host's Ctrl+C ladders stop treating the returned run as live.
+    this.runReturned = true;
     return {
       totalWaves: this.round,
       totalCompleted: finalProgress.completed,

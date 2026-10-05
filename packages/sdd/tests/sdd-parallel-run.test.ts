@@ -662,6 +662,31 @@ describe('SddParallelRun — Layer 2: lifecycle (merged commits / cleanup / roll
     expect(res.ok).toBe(false);
     expect(res.reason).toMatch(/still active/i);
   });
+
+  // The deadlock exit returns from run() with the graph UNSETTLED and
+  // stopRequested false — the run object must still stop counting as live,
+  // or cleanupWorktrees() silently no-ops and rollback() keeps refusing with
+  // "run still active" on a run that already finished.
+  it('releases the run once run() returns deadlocked — cleanup + rollback work without stop()', async () => {
+    const wt = fakeWorktrees();
+    const { run, tracker, t1, t2 } = await makeHarness({ worktrees: wt.wm });
+    tracker.addDependency(t1.id, t2.id); // t2 depends on t1
+    tracker.updateNodeStatus(t1.id, 'blocked'); // nothing runnable, graph unsettled
+    stubExecuteOne(run, tracker);
+    (run as never as { baseBranch: string }).baseBranch = 'main';
+
+    const result = await run.run();
+    expect(result.deadlocked).toBe(true);
+    expect(result.stopRequested).toBe(false);
+
+    expect(run.isRunning()).toBe(false);
+    expect(await run.cleanupWorktrees()).toBe(2);
+    expect(wt.calls).toContain('cleanupAllManaged');
+
+    const res = await run.rollback();
+    expect(res.ok).toBe(true);
+    expect(wt.calls).toContain('revert:');
+  });
 });
 
 describe('SddParallelRun — Layer 2: robustness', () => {
