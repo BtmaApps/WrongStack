@@ -2,9 +2,7 @@
   "schemaVersion": 1,
   "files": {
     "apps/desktop/src/main/runtime-manager.ts": [
-      "reclaimableRuntimeIds",
-      "resolveIdleTimeoutMs",
-      "SNAPSHOT_LOG_LINES"
+      "resolveIdleTimeoutMs"
     ],
     "apps/desktop/src/main/state/constants.ts": [
       "LOG_NOTIFY_DEBOUNCE_MS",
@@ -208,10 +206,6 @@
       "makeHeadlessPromptDelegate",
       "makePromptDelegate"
     ],
-    "packages/cli/src/picker.ts": [
-      "filterProviders",
-      "renderLiveProviderList"
-    ],
     "packages/cli/src/plugin-management.ts": [
       "renderConfiguredPlugins",
       "renderPluginAuditReport"
@@ -383,9 +377,6 @@
     ],
     "packages/codebase-index-mcp/src/cli.ts": [
       "resolveIndexProjectRoot"
-    ],
-    "packages/core/src/boot.ts": [
-      "cleanupStaleProjects"
     ],
     "packages/core/src/chronicle/project-server-client.ts": [
       "resolveChronicleProjectServerUrl"
@@ -1108,9 +1099,6 @@
       "IDLE_AGENT_TTL_MS",
       "isActiveStatus",
       "parseAgentSessionReplays"
-    ],
-    "packages/simpleui/src/lib/message-handler.ts": [
-      "delegationNoticeText"
     ],
     "packages/simpleui/src/lib/model-catalog-view.ts": [
       "isLikelyNonChatModel"

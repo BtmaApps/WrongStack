@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import { forgetSandboxAgentOverride } from '../sandbox/agent-overrides.js';
 import { DirectorStateCheckpoint, type DirectorStateSnapshot } from '../storage/director-state.js';
-import type { BridgeMessage } from '../types/agent-bridge.js';
 import type { Config } from '../types/config.js';
 import type { Logger } from '../types/logger.js';
 import type {
@@ -14,7 +13,6 @@ import type {
 } from '../types/multi-agent.js';
 import type { SessionWriter } from '../types/session.js';
 import type { Tool } from '../types/tool.js';
-import { toErrorMessage } from '../utils/error.js';
 import { InMemoryAgentBridge } from './agent-bridge.js';
 import {
   acquireCheckpointLock as acquireDirectorCheckpointLock,
@@ -31,6 +29,14 @@ import { DirectorBudgetPolicy } from './director/director-budget-policy.js';
 import { DirectorCollabController } from './director/director-collab.js';
 import type { DirectorTaskRegistry } from './director/director-task-registry.js';
 import { buildDirectorToolset } from './director/director-toolset.js';
+import {
+  ask as askFromHost,
+  type DirectorCompletionListenersHost,
+  extensionsFor as extensionsForFromHost,
+  handleTaskCompleted as handleTaskCompletedFromHost,
+  logShutdownError as logShutdownErrorFromHost,
+  on as onFromHost,
+} from './director-completion-listeners.js';
 import { DirectorIdleRetirement } from './director-idle-retirement.js';
 import {
   type DirectorLifecycleHost,
@@ -56,11 +62,26 @@ import {
   readDirectorSubagentSession,
 } from './director-session.js';
 import { admitDirectorSpawn } from './director-spawn-admission.js';
-import { completeDirectorTask } from './director-task-completion.js';
+import {
+  applyResumeBudget as applyResumeBudgetFromHost,
+  type DirectorTaskNotesHost,
+  drainLeaderBtwNotes as drainLeaderBtwNotesFromHost,
+  getLeaderBtwNotes as getLeaderBtwNotesFromHost,
+  getSubagentMeta as getSubagentMetaFromHost,
+  markTaskOwned as markTaskOwnedFromHost,
+  observeTask as observeTaskFromHost,
+  onSessionTerminate as onSessionTerminateFromHost,
+  peekLeaderBtwNotes as peekLeaderBtwNotesFromHost,
+  recordWorktreeTaskUpdate as recordWorktreeTaskUpdateFromHost,
+  requestFinish as requestFinishFromHost,
+  setLeaderBtwNote as setLeaderBtwNoteFromHost,
+  subagentIdsForSession as subagentIdsForSessionFromHost,
+  workComplete as workCompleteFromHost,
+} from './director-task-notes.js';
 import { createDirectorTaskRegistry } from './director-task-registry-wiring.js';
 import { FleetBus, type FleetUsage, FleetUsageAggregator } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
-import type { DirectorFleetHost, ManifestEntry } from './fleet-spawn.js';
+import type { DirectorFleetHost } from './fleet-spawn.js';
 import type { ICoordinator } from './icoordinator.js';
 import { InMemoryBridgeTransport } from './in-memory-transport.js';
 import { LargeAnswerStore } from './large-answer-store.js';
@@ -90,10 +111,6 @@ export type { DirectorOptions, TaskResultNotification } from './director-options
 export type { ModelMatrixSource } from './model-matrix.js';
 
 export class Director implements DirectorFleetHost, ICoordinator {
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars — just a cast helper */
-  private static _asManifestEntry(v: unknown): ManifestEntry {
-    return v as ManifestEntry;
-  }
   get coordinatorId(): string {
     return this.id;
   }
@@ -137,8 +154,8 @@ export class Director implements DirectorFleetHost, ICoordinator {
       sessionWriter: this.sessionWriter,
       usage: this.usage,
       manifestEntries: this.manifestEntries,
-      completedResult: (taskId) => this.tasks.completedResult(taskId),
-      logShutdownError: (phase, err) => this.logShutdownError(phase, err),
+      completedResult: (...args) => this.tasks.completedResult(...args),
+      logShutdownError: (...args) => this.logShutdownError(...args),
       onManifestTimerFired: () => {
         this.manifestTimer = null;
       },
@@ -346,38 +363,15 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   private handleTaskCompleted(payload: { task: TaskSpec; result: TaskResult }): void {
-    completeDirectorTask(
-      {
-        tasks: this.tasks,
-        subagentIdleDelayMs: this.subagentIdleDelayMs,
-        subagentIdleTimeoutMs: this.subagentIdleTimeoutMs,
-        taskResultNotifier: this.taskResultNotifier,
-        manifestEntries: this.manifestEntries,
-        logger: this.logger,
-        stateCheckpoint: this.stateCheckpoint,
-        usage: this.usage,
-        fleetManager: this.fleetManager,
-        retireSubagentOnTaskComplete: this.retireSubagentOnTaskComplete,
-        armSubagentIdleRetirement: (id, delay) => this.armSubagentIdleRetirement(id, delay),
-        appendSessionEvent: (event) => this.appendSessionEvent(event),
-        scheduleManifest: () => this.scheduleManifest(),
-      },
-      payload,
-    );
+    handleTaskCompletedFromHost(this.directorCompletionListenersHost(), payload);
   }
 
   extensionsFor(subagentId: string): number {
-    return this.budgetPolicy.extensionsFor(subagentId);
+    return extensionsForFromHost(this.directorCompletionListenersHost(), subagentId);
   }
 
   workComplete(): void {
-    this.workCompleteFlag = true;
-    this.fleet.emit({
-      subagentId: this.id,
-      ts: Date.now(),
-      type: 'director.work_complete',
-      payload: {},
-    });
+    workCompleteFromHost(this.directorTaskNotesHost());
   }
 
   isWorkComplete(): boolean {
@@ -393,23 +387,23 @@ export class Director implements DirectorFleetHost, ICoordinator {
    * Returns the number of subagents notified.
    */
   requestFinish(reason: string): number {
-    return this.coordinator.requestFinish(reason);
+    return requestFinishFromHost(this.directorTaskNotesHost(), reason);
   }
 
   setLeaderBtwNote(note: string): number {
-    return this.btwNotes.add(note);
+    return setLeaderBtwNoteFromHost(this.directorTaskNotesHost(), note);
   }
 
   getLeaderBtwNotes(): string[] {
-    return this.btwNotes.drain();
+    return getLeaderBtwNotesFromHost(this.directorTaskNotesHost());
   }
 
   peekLeaderBtwNotes(): string[] {
-    return this.btwNotes.peek();
+    return peekLeaderBtwNotesFromHost(this.directorTaskNotesHost());
   }
 
   drainLeaderBtwNotes(): string[] {
-    return this.getLeaderBtwNotes();
+    return drainLeaderBtwNotesFromHost(this.directorTaskNotesHost());
   }
 
   cancelCollabSession(sessionId: string, reason = 'Director cancelled'): void {
@@ -440,15 +434,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   private recordWorktreeTaskUpdate(update: WorktreeTaskStateUpdate): void {
-    this.taskWorktrees.set(update.taskId, update);
-    const owner = this.tasks.ownerFor(update.taskId) ?? update.subagentId;
-    const entry = Director._asManifestEntry(this.manifestEntries.get(owner));
-    if (entry) {
-      entry.worktrees = { ...(entry.worktrees ?? {}), [update.taskId]: update };
-    }
-    this.stateCheckpoint?.recordTaskWorktree(update.taskId, update);
-    this.fleetManager?.recordTaskWorktree(update);
-    if (!this.fleetManager) this.scheduleManifest();
+    recordWorktreeTaskUpdateFromHost(this.directorTaskNotesHost(), update);
   }
 
   async spawn(
@@ -542,22 +528,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   async ask<T = unknown>(subagentId: string, payload: unknown, timeoutMs?: number): Promise<T> {
-    if (!this.subagentBridges.has(subagentId)) {
-      throw new Error(
-        `ask: unknown subagent "${subagentId}" (spawn() it first; current fleet: ${Array.from(this.subagentBridges.keys()).join(', ') || '(empty)'})`,
-      );
-    }
-    const msg: BridgeMessage = {
-      id: randomUUID(),
-      type: 'task',
-      from: this.id,
-      to: subagentId,
-      payload,
-      timestamp: Date.now(),
-      priority: 'normal',
-    };
-    const reply = await this.bridge.request<T>(msg, timeoutMs);
-    return reply.payload;
+    return askFromHost<T>(this.directorCompletionListenersHost(), subagentId, payload, timeoutMs);
   }
 
   rollUp(taskIds: string[], style: 'markdown' | 'json' = 'markdown'): string {
@@ -584,11 +555,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   private logShutdownError(phase: string, err: unknown): void {
-    const detail = toErrorMessage(err);
-    process.emitWarning(
-      `Director shutdown phase "${phase}" failed: ${detail}`,
-      'DirectorShutdownWarning',
-    );
+    logShutdownErrorFromHost(this.directorCompletionListenersHost(), phase, err);
   }
 
   async assign(task: TaskSpec): Promise<string> {
@@ -609,17 +576,14 @@ export class Director implements DirectorFleetHost, ICoordinator {
    * outcome itself.
    */
   markTaskOwned(taskId: string): void {
-    this.tasks.markOwned(taskId);
+    markTaskOwnedFromHost(this.directorTaskNotesHost(), taskId);
   }
 
   private readonly sessionTerminateListeners = new Set<(sessionId: string) => void>();
 
   /** Called at the start of every `terminateSession(sessionId)`. */
   onSessionTerminate(listener: (sessionId: string) => void): () => void {
-    this.sessionTerminateListeners.add(listener);
-    return () => {
-      this.sessionTerminateListeners.delete(listener);
-    };
+    return onSessionTerminateFromHost(this.directorTaskNotesHost(), listener);
   }
 
   /**
@@ -630,7 +594,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
     taskId: string,
     cb: (result: TaskResult, info: { leaderConsumed: boolean }) => void,
   ): () => void {
-    return this.tasks.observe(taskId, cb);
+    return observeTaskFromHost(this.directorTaskNotesHost(), taskId, cb);
   }
 
   awaitTasksAny(taskIds: string[], opts?: { timeoutMs?: number }): Promise<AwaitAnyResult> {
@@ -660,7 +624,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
 
   /** Every live subagent one session spawned (what `terminateSession` would stop). */
   subagentIdsForSession(sessionId: string): string[] {
-    return this.coordinator.subagentIdsForSession(sessionId);
+    return subagentIdsForSessionFromHost(this.directorTaskNotesHost(), sessionId);
   }
 
   /**
@@ -705,10 +669,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
     event: 'task.completed',
     handler: (payload: { task: TaskSpec; result: TaskResult }) => void,
   ): () => void {
-    this.coordinator.on(event, handler);
-    return () => {
-      this.coordinator.off(event, handler);
-    };
+    return onFromHost(this.directorCompletionListenersHost(), event, handler);
   }
 
   completedResults(): TaskResult[] {
@@ -741,14 +702,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
   ):
     | { provider?: string | undefined; model?: string | undefined; name?: string | undefined }
     | undefined {
-    const usage = this.subagentMeta.get(id);
-    const manifest = Director._asManifestEntry(this.manifestEntries.get(id));
-    if (!usage && !manifest) return undefined;
-    return {
-      provider: usage?.provider ?? manifest?.provider,
-      model: usage?.model ?? manifest?.model,
-      name: manifest?.name,
-    };
+    return getSubagentMetaFromHost(this.directorTaskNotesHost(), id);
   }
 
   leaderSystemPrompt(basePrompt?: string): string {
@@ -785,14 +739,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
    * resumes with a fresh budget rather than a possibly-exhausted counter.
    */
   private applyResumeBudget(snapshot: DirectorStateSnapshot): void {
-    if (this.fleetManager) {
-      this.fleetManager.restoreFromCheckpoint(snapshot);
-    }
-    // Director owns a parallel checkpoint writer for task events — keep its
-    // ceiling metadata aligned with the live construction-time maxSpawns.
-    this.stateCheckpoint?.applyLiveMaxSpawns(
-      Number.isFinite(this.maxSpawns) ? this.maxSpawns : undefined,
-    );
+    applyResumeBudgetFromHost(this.directorTaskNotesHost(), snapshot);
   }
 
   private directorModelRoutingHost(): DirectorModelRoutingHost {
@@ -856,5 +803,52 @@ export class Director implements DirectorFleetHost, ICoordinator {
       subagentBaseline: this.subagentBaseline,
       sharedScratchpadPath: this.sharedScratchpadPath,
     };
+  }
+
+  private directorTaskNotesHost(): DirectorTaskNotesHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      workCompleteFlag: this.workCompleteFlag,
+      fleet: this.fleet,
+      id: this.id,
+      coordinator: this.coordinator,
+      btwNotes: this.btwNotes,
+      getLeaderBtwNotes: this.getLeaderBtwNotes,
+      taskWorktrees: this.taskWorktrees,
+      tasks: this.tasks,
+      manifestEntries: this.manifestEntries,
+      stateCheckpoint: this.stateCheckpoint,
+      fleetManager: this.fleetManager,
+      scheduleManifest: this.scheduleManifest,
+      sessionTerminateListeners: this.sessionTerminateListeners,
+      subagentMeta: this.subagentMeta,
+      maxSpawns: this.maxSpawns,
+    } satisfies DirectorTaskNotesHost);
+    return this as unknown as DirectorTaskNotesHost;
+  }
+
+  private directorCompletionListenersHost(): DirectorCompletionListenersHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      tasks: this.tasks,
+      subagentIdleDelayMs: this.subagentIdleDelayMs,
+      subagentIdleTimeoutMs: this.subagentIdleTimeoutMs,
+      taskResultNotifier: this.taskResultNotifier,
+      manifestEntries: this.manifestEntries,
+      logger: this.logger,
+      stateCheckpoint: this.stateCheckpoint,
+      usage: this.usage,
+      fleetManager: this.fleetManager,
+      retireSubagentOnTaskComplete: this.retireSubagentOnTaskComplete,
+      armSubagentIdleRetirement: this.armSubagentIdleRetirement,
+      appendSessionEvent: this.appendSessionEvent,
+      scheduleManifest: this.scheduleManifest,
+      budgetPolicy: this.budgetPolicy,
+      subagentBridges: this.subagentBridges,
+      id: this.id,
+      bridge: this.bridge,
+      coordinator: this.coordinator,
+    } satisfies DirectorCompletionListenersHost);
+    return this as unknown as DirectorCompletionListenersHost;
   }
 }

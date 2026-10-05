@@ -4,26 +4,19 @@ import { randomUUID } from 'node:crypto';
  * factory is created lazily on the first `/spawn` so users who never use
  * subagents don't pay the construction cost.
  */
-import { createProjectAgentRoster, recordDispatch } from '@wrongstack/core/agent-catalog';
+import { createProjectAgentRoster } from '@wrongstack/core/agent-catalog';
 import {
-  AdaptiveConcurrencyController,
+  type AdaptiveConcurrencyController,
   type AgentFactory,
-  areSubagentCompanionsAllowedForSession,
   areSubagentsAllowedForSession,
-  DEFAULT_MAX_FLEET_SPAWNS,
   type DefaultMultiAgentCoordinator,
-  Director,
+  type Director,
   type DirectorSessionFactory,
   FLEET_ROSTER,
   type FleetSupervisor,
-  HARD_MAX_SPAWN_DEPTH,
-  makeDirectorSessionFactory,
-  makeFleetEmitTool,
-  postSessionNote,
   resolveProjectDir,
   type TaskResultNotification,
 } from '@wrongstack/core/coordination';
-import { TOKENS } from '@wrongstack/core/kernel';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import type { SubagentRunner } from '@wrongstack/core/types';
 import {
@@ -33,8 +26,7 @@ import {
   type TaskResult,
   type Tool,
 } from '@wrongstack/core/types';
-import { formatMemoryEvidenceBlock, wstackGlobalRoot } from '@wrongstack/core/utils';
-import { getSageSurface } from '@wrongstack/sage';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
 import type { HostAcpRunnerHost } from './host-acp-runner.js';
 import {
@@ -49,28 +41,16 @@ import {
   usage as usageFromHost,
 } from './host-budget.js';
 import { normalizeMaxConcurrent } from './host-concurrency.js';
-import { createHostFleetManager, prepareHostDirectorRuntime } from './host-director-builder.js';
 import {
-  installDirectorTaskCompletedHandler,
-  registerCoordinatorLifecycleHandlers,
-  registerDirectorBudgetAndContextBridges,
-  registerDirectorStatsBridge,
-  registerDirectorSubagentLifecycleBridges,
-} from './host-director-event-bridges.js';
-import {
-  createHostStatusBroadcaster,
-  startDirectorAgentMonitor,
-} from './host-director-services.js';
-import { createHostExploreCompanion } from './host-explore-companion.js';
-import {
-  createExploreCompanionRegistry,
-  type ExploreCompanionRegistry,
-} from './host-explore-companion-registry.js';
-import { makeFleetWorktreeConflictResolver, selectSubagentTools } from './host-helpers.js';
+  buildDirector as buildDirectorFromHost,
+  type HostDirectorSetupHost,
+} from './host-director-setup.js';
+import type { ExploreCompanionRegistry } from './host-explore-companion-registry.js';
+import { selectSubagentTools } from './host-helpers.js';
 import { HostLearningScheduler } from './host-learning-scheduler.js';
 import { HostLearningRoleTracker } from './host-learning-tracker.js';
 import { emitHostLifecycleCompleted } from './host-lifecycle-events.js';
-import { HostMemoryCompanion } from './host-memory-companion.js';
+import type { HostMemoryCompanion } from './host-memory-companion.js';
 import { applyFleetRootDefaults } from './host-paths.js';
 import { HostShadowManager } from './host-shadow-manager.js';
 import type { HostSpawnAndWaitOptions, HostSpawnOptions } from './host-spawn-types.js';
@@ -228,222 +208,7 @@ export class MultiAgentHost {
   }
 
   private async buildDirector(): Promise<void> {
-    if (this.director) return;
-    const config: Config = this.deps.configStore.get() as Config;
-    this.learningScheduler.sweep();
-
-    const fleetManager = createHostFleetManager(this.opts);
-    this.fleetManager = fleetManager;
-
-    if (this.opts.sessionsRoot && !this.sessionFactory) {
-      this.sessionFactory = makeDirectorSessionFactory({
-        sessionsRoot: this.opts.sessionsRoot,
-        directorRunId: this.opts.directorRunId,
-        traceId: this.opts.traceId,
-      });
-    }
-
-    const {
-      coordinatorConfig,
-      fleetLifecycle,
-      subagentIdleTimeoutMs,
-      defaultScratchpad,
-      worktreePolicy,
-      worktrees,
-    } = prepareHostDirectorRuntime({
-      config,
-      deps: this.deps,
-      opts: this.opts,
-    });
-    this.director = new Director({
-      config: coordinatorConfig,
-      manifestPath: this.opts.manifestPath,
-      sharedScratchpadPath: defaultScratchpad,
-      stateCheckpointPath: this.opts.stateCheckpointPath,
-      sessionWriter: this.opts.sessionWriter,
-      sessionId: () => this.deps.session.id,
-      directorBudget: this.opts.directorBudget,
-      maxSpawns: this.opts.maxSpawns ?? DEFAULT_MAX_FLEET_SPAWNS,
-      maxBudgetExtensions: this.opts.maxBudgetExtensions,
-      checkpointDebounceMs: this.opts.checkpointDebounceMs,
-      sessionsRoot: this.opts.sessionsRoot,
-      directorRunId: this.opts.directorRunId,
-      maxSpawnDepth: HARD_MAX_SPAWN_DEPTH,
-      maxContext: this.opts.getLeaderMaxContext,
-      modelMatrix: () => this.deps.configStore.get().modelMatrix,
-      // Live getter, like modelMatrix: tier edits from `/tier`, the TUI menu or
-      // the WebUI editor take effect on the next spawn without a restart.
-      appConfig: () => this.deps.configStore.get(),
-      worktrees,
-      worktreePolicy,
-      worktreeConflictResolver: makeFleetWorktreeConflictResolver(),
-      fleetManager,
-      brain: this.opts.brain,
-      roster: this.roster,
-      dispatchClassifier: (task, candidates) =>
-        this.learningScheduler.classifyDispatch(task, candidates),
-      // Routing telemetry. Sibling of `dispatchClassifier` on purpose: both are
-      // seams the host fills so core keeps no provider and no filesystem
-      // dependency. See `.wrongstack/agents/dispatch-log.jsonl`.
-      onSpawnRouted: (entry) => recordDispatch(entry, this.deps.projectRoot),
-      taskResultNotifier: (n) => this.reportTaskResultToLeader(n),
-      subagentIdleTimeoutMs,
-      ...(this.opts.statusTracker ? { statusTracker: this.opts.statusTracker } : {}),
-      // Live, like `modelMatrix` and `appConfig`: a `/model` switch has to
-      // reach the NEXT spawn. Snapshotting here pinned every later worker to
-      // the model the leader happened to run on when the fleet was built.
-      sessionProvider: () => this.deps.configStore.get().provider,
-      sessionModel: () => this.deps.configStore.get().model,
-      retireSubagentOnTaskComplete:
-        this.opts.retireSubagentOnTaskComplete ?? fleetLifecycle?.retireOnTaskComplete ?? true,
-    });
-    installDirectorTaskCompletedHandler({
-      director: this.director,
-      fleetManager: this.fleetManager,
-      agentMonitor: this.opts.agentMonitor,
-      captureCompletedTaskLearning: (result) => this.captureCompletedTaskLearning(result),
-      isShadowTask: (taskId) => this.shadowManager.isShadowTask(taskId),
-      onShadowTaskCompleted: (taskId, subagentId) =>
-        this.shadowManager.onShadowTaskCompleted(taskId, subagentId),
-      emitLifecycleCompleted: (taskId, result) => this.emitLifecycleCompleted(taskId, result),
-    });
-
-    startDirectorAgentMonitor({
-      director: this.director,
-      agentMonitor: this.opts.agentMonitor,
-    });
-
-    this.statusBroadcaster = createHostStatusBroadcaster({
-      events: this.deps.events,
-      sessionId: this.deps.session.id,
-      mailboxProjectDir: () => this.mailboxProjectDir(),
-      subagentName: (id) => this.director?.status().subagents.find((s) => s.id === id)?.name,
-      config: config.fleet?.statusBroadcasts,
-    });
-    this.statusBroadcaster.start();
-
-    this.buildFleetSupervisor(config);
-
-    // One companion per conversation. The boot session gets one now — that is
-    // the CLI's and the TUI's only session, and building it here keeps their
-    // behaviour identical. Every other session opens one when it first runs,
-    // which is how the WebUI's tabs 2-4 get a companion at all: the host is
-    // built once, so a single instance pinned to the boot session filtered
-    // every other tab's signals out and explored for nobody.
-    this.exploreCompanions = createExploreCompanionRegistry({
-      create: (sessionId) =>
-        this.director
-          ? createHostExploreCompanion({
-              director: this.director,
-              events: this.deps.events,
-              sessionId,
-              mailboxProjectDir: this.mailboxProjectDir(),
-              roster: this.roster,
-              config: config.fleet?.exploreCompanion,
-              projectRoot: this.deps.projectRoot,
-              scrub: (text) => this.deps.secretScrubber.scrub(text),
-              // Companion gate, not the general one: a Bug Hunter round runs
-              // solo but keeps its read-only companions.
-              companionsAllowed: () => areSubagentCompanionsAllowedForSession(sessionId),
-            })
-          : null,
-    });
-    this.exploreCompanions.ensure(this.deps.session.id);
-    this.memoryCompanion = new HostMemoryCompanion({
-      director: this.director,
-      events: this.deps.events,
-      projectRoot: this.deps.projectRoot,
-      roster: this.roster,
-      memory: () => {
-        const port = this.deps.container.safeResolve(TOKENS.MemoryStore);
-        return port ? getSageSurface(port) : undefined;
-      },
-      enabled: (sessionId) => {
-        const current = this.deps.configStore.get();
-        return (
-          current.features.memory !== false &&
-          current.features.memoryCurator !== false &&
-          current.Sage?.enabled !== false &&
-          areSubagentCompanionsAllowedForSession(sessionId)
-        );
-      },
-      scrub: (text) => this.deps.secretScrubber.scrub(text),
-      note: (sessionId, subject, body) =>
-        postSessionNote({
-          sessionId,
-          from: 'memory-companion',
-          to: 'leader',
-          kind: 'result',
-          subject,
-          body: formatMemoryEvidenceBlock('memory-companion', body),
-          events: this.deps.events,
-        }),
-    });
-    this.memoryCompanion.ensure(this.deps.session.id);
-    this.exploreCompanionOff = this.deps.events.on('agent.run.started', (e) => {
-      // Unstamped runs exist (thin embedders); `ensure` ignores an empty id,
-      // but keep the narrowing explicit rather than relying on that.
-      if (e.sessionId && areSubagentCompanionsAllowedForSession(e.sessionId)) {
-        this.exploreCompanions?.ensure(e.sessionId);
-        // Workers have agentRole metadata and must never open their own verifier.
-        if (!e.ctx.meta?.['agentRole']) this.memoryCompanion?.ensure(e.sessionId);
-      }
-    });
-
-    this.directorOffHandles.push(
-      ...registerDirectorBudgetAndContextBridges({
-        director: this.director,
-        events: this.deps.events,
-        sessionFor: (subagentId) => this.sessionForSubagent(subagentId),
-      }),
-    );
-    this.directorOffHandles.push(
-      registerDirectorStatsBridge({
-        director: this.director,
-        events: this.deps.events,
-        sessionId: this.deps.session.id,
-      }),
-    );
-    this.directorOffHandles.push(
-      ...registerDirectorSubagentLifecycleBridges({
-        director: this.director,
-        events: this.deps.events,
-        sessionFor: (subagentId) => this.sessionForSubagent(subagentId),
-        agentMonitor: this.opts.agentMonitor,
-        onSubagentRemoved: (subagentId) => this.shadowManager.clearShadowAgent(subagentId),
-      }),
-    );
-    const coordinator = this.getCoordinator();
-    this.coordinatorOffHandle = registerCoordinatorLifecycleHandlers({
-      coordinator,
-      events: this.deps.events,
-      sessionFor: (subagentId) => this.sessionForSubagent(subagentId),
-      isShadowTask: (taskId) => this.shadowManager.isShadowTask(taskId),
-      onSubagentStopped: (subagentId) => this.shadowManager.clearShadowAgent(subagentId),
-    });
-    this.fleetEmitTool = makeFleetEmitTool(this.director);
-    this.directorToolsByName = new Map(
-      this.director.tools(this.roster).map((tool) => [tool.name, tool] as const),
-    );
-
-    const adaptiveConfig = this.deps.configStore.get().adaptiveConcurrency;
-    if (adaptiveConfig?.enabled) {
-      this.adaptiveConcurrencyController = new AdaptiveConcurrencyController(
-        this.director.fleet,
-        (n: number) => coordinator.setMaxConcurrent(n),
-        { maxConcurrent: this.getMaxConcurrent(), ...adaptiveConfig },
-        undefined,
-        this.deps.container.safeResolve(TOKENS.Logger),
-      );
-    }
-
-    const runner = await this.buildSubagentRunner(config);
-    if (!this.directorRunnerSet) {
-      this.getCoordinator().setRunner(runner);
-      this.directorRunnerSet = true;
-    }
-
-    this.shadowManager.armIfNeeded();
+    return buildDirectorFromHost(this.hostDirectorSetupHost());
   }
 
   /**
@@ -849,5 +614,39 @@ export class MultiAgentHost {
     void (this.getMaxConcurrent satisfies HostBudgetHost['getMaxConcurrent']);
     void (this.shadowManager satisfies HostBudgetHost['shadowManager']);
     return this as unknown as HostBudgetHost;
+  }
+
+  private hostDirectorSetupHost(): HostDirectorSetupHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      director: this.director,
+      deps: this.deps,
+      learningScheduler: this.learningScheduler,
+      opts: this.opts,
+      fleetManager: this.fleetManager,
+      sessionFactory: this.sessionFactory,
+      roster: this.roster,
+      reportTaskResultToLeader: this.reportTaskResultToLeader,
+      captureCompletedTaskLearning: this.captureCompletedTaskLearning,
+      shadowManager: this.shadowManager,
+      emitLifecycleCompleted: this.emitLifecycleCompleted,
+      statusBroadcaster: this.statusBroadcaster,
+      mailboxProjectDir: this.mailboxProjectDir,
+      buildFleetSupervisor: this.buildFleetSupervisor,
+      exploreCompanions: this.exploreCompanions,
+      memoryCompanion: this.memoryCompanion,
+      exploreCompanionOff: this.exploreCompanionOff,
+      directorOffHandles: this.directorOffHandles,
+      sessionForSubagent: this.sessionForSubagent,
+      getCoordinator: this.getCoordinator,
+      coordinatorOffHandle: this.coordinatorOffHandle,
+      fleetEmitTool: this.fleetEmitTool,
+      directorToolsByName: this.directorToolsByName,
+      adaptiveConcurrencyController: this.adaptiveConcurrencyController,
+      getMaxConcurrent: this.getMaxConcurrent,
+      buildSubagentRunner: this.buildSubagentRunner,
+      directorRunnerSet: this.directorRunnerSet,
+    } satisfies HostDirectorSetupHost);
+    return this as unknown as HostDirectorSetupHost;
   }
 }

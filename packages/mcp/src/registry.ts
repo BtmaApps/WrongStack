@@ -1,7 +1,6 @@
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Logger, MCPServerConfig } from '@wrongstack/core/types';
-import { expectDefined } from '@wrongstack/core/utils';
 import type {
   MCPAuthorizationManager,
   MCPAuthorizationStartResult,
@@ -15,13 +14,11 @@ import type {
   MCPResourceInsertion,
 } from './content-selection.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
-import { manifestConfigHash, readCapabilityManifest } from './manifest-cache.js';
-import {
-  createMCPServerOperationState,
-  type MCPFailureKind,
-  type MCPOperationKind,
-  type MCPOperationListener,
-  type MCPServerOperationalHealth,
+import type {
+  MCPFailureKind,
+  MCPOperationKind,
+  MCPOperationListener,
+  MCPServerOperationalHealth,
 } from './operations.js';
 import type {
   MCPGetPromptResult,
@@ -59,13 +56,25 @@ import {
 } from './registry-connect-loop.js';
 import { markLazySlotDormant, resetDisconnectedSlotTools } from './registry-disconnect.js';
 import { buildRegistryOperationalHealth } from './registry-health.js';
-import { type RegistryIdleContext, sleepIdleSlot, sweepIdleSlots } from './registry-idle.js';
+import { type RegistryIdleContext, sweepIdleSlots } from './registry-idle.js';
 import {
   recordRegistryFailure,
   recordRegistryOperation,
   recordRegistrySuccess,
 } from './registry-operations.js';
 import { scheduleRegistryReconnect } from './registry-reconnect.js';
+import {
+  activateServer as activateServerFromHost,
+  deactivateServer as deactivateServerFromHost,
+  ensureConnected as ensureConnectedFromHost,
+  type RegistryServerLifecycleHost,
+  restart as restartFromHost,
+  singleFlightConnect as singleFlightConnectFromHost,
+  sleep as sleepFromHost,
+  start as startFromHost,
+  startLazy as startLazyFromHost,
+  stop as stopFromHost,
+} from './registry-server-lifecycle.js';
 import type { ServerSlot } from './registry-slots.js';
 import type { MCPRegistryCatalog, MCPRegistryOptions } from './registry-types.js';
 
@@ -161,49 +170,7 @@ export class MCPRegistry {
   }
 
   async start(cfg: MCPServerConfig): Promise<void> {
-    if (cfg.enabled === false) {
-      if (this.servers.has(cfg.name)) {
-        await this.stop(cfg.name);
-      }
-      this.markDisabled(cfg);
-      return;
-    }
-    this.disabledServers.delete(cfg.name);
-    // Reject duplicate registrations explicitly. Without this, calling
-    // start() twice with the same name would overwrite the slot in
-    // `this.servers` and orphan the previous slot's client (still
-    // connected, with listeners wired into a slot that's no longer
-    // reachable from the registry). Callers that want a clean re-start
-    // should use `restart(name)`.
-    if (this.servers.has(cfg.name)) {
-      throw new Error(
-        `MCP server "${cfg.name}" is already registered — use restart() to re-cycle a running server`,
-      );
-    }
-    // Lazy-connect requires a manifest cache dir to register tools cold.
-    const lazy = !!cfg.lazy && !!this.cacheDir;
-    const slot: ServerSlot = {
-      cfg,
-      state: 'idle',
-      toolNames: [],
-      lazyTools: [],
-      attempts: 0,
-      reconnectPending: false,
-      reconnectCycles: 0,
-      lazy,
-      lastUsed: Date.now(),
-      registeredLazy: false,
-      operations: createMCPServerOperationState(),
-    };
-    this.servers.set(cfg.name, slot);
-    const startup = lazy ? this.startLazy(slot) : this.singleFlightConnect(slot);
-    const settled = startup.then(
-      () => {},
-      () => {},
-    );
-    this.startups.add(settled);
-    void settled.finally(() => this.startups.delete(settled));
-    await startup;
+    return startFromHost(this.registryServerLifecycleHost(), cfg);
   }
 
   /**
@@ -234,46 +201,11 @@ export class MCPRegistry {
    * cache yet, do a one-time cold discovery connect to learn + cache the tools.
    */
   private async startLazy(slot: ServerSlot): Promise<void> {
-    // start() only marks a slot lazy when a cache directory is configured.
-    const cacheDir = expectDefined(this.cacheDir);
-    const hash = manifestConfigHash(slot.cfg);
-    const generation = slot.startupGeneration;
-    const cached = await readCapabilityManifest(cacheDir, slot.cfg.name, hash);
-    if (this.servers.get(slot.cfg.name) !== slot || slot.startupGeneration !== generation) return;
-    if (cached) {
-      slot.serverMetadata = cached.serverMetadata;
-      slot.resources = cached.resources;
-      slot.resourceTemplates = cached.resourceTemplates;
-      slot.prompts = cached.prompts;
-      this.applyTools(slot, cached.tools);
-      slot.state = 'dormant';
-      this.ensureIdleSweep();
-      this.log.info(
-        `MCP server "${slot.cfg.name}" registered lazily from cache (${cached.tools.length} tools, dormant)`,
-      );
-      return;
-    }
-    // No cache — must connect once to discover the tool list, then it stays
-    // connected and becomes eligible for idle auto-sleep.
-    await this.singleFlightConnect(slot);
+    return startLazyFromHost(this.registryServerLifecycleHost(), slot);
   }
 
   private singleFlightConnect(slot: ServerSlot): Promise<MCPClient | undefined> {
-    if (slot.client && slot.state === 'connected') return Promise.resolve(slot.client);
-    if (slot.connecting) return slot.connecting;
-
-    const generation = slot.startupGeneration;
-    const promise = this.attemptConnect(slot).then(() =>
-      slot.startupGeneration === generation ? slot.client : undefined,
-    );
-    slot.connecting = promise;
-    const clearFlight = () => {
-      // A stop/restart can install another flight before this one settles.
-      if (slot.connecting === promise) slot.connecting = undefined;
-    };
-    void promise.then(clearFlight, clearFlight);
-
-    return promise;
+    return singleFlightConnectFromHost(this.registryServerLifecycleHost(), slot);
   }
 
   /**
@@ -281,24 +213,7 @@ export class MCPRegistry {
    * concurrent first-calls share one connect. Resolver wrappers call this.
    */
   async ensureConnected(name: string): Promise<MCPClient> {
-    const slot = this.servers.get(name);
-    if (!slot) throw new Error(`MCP server "${name}" not registered`);
-    slot.lastUsed = Date.now();
-    if (slot.client && slot.state === 'connected') return slot.client;
-    const waking = slot.state === 'dormant' && !slot.connecting;
-    if (waking) {
-      slot.operations.wakeCount++;
-      this.recordOperation(slot, 'wake', 'lazy-demand');
-      slot.attempts = 0;
-      slot.reconnectCycles = 0;
-    }
-    const client = await this.singleFlightConnect(slot);
-    if (!client) {
-      throw new Error(`MCP server "${name}" failed to connect on demand`);
-    }
-    slot.lastUsed = Date.now();
-    this.ensureIdleSweep();
-    return client;
+    return ensureConnectedFromHost(this.registryServerLifecycleHost(), name);
   }
 
   /**
@@ -307,26 +222,7 @@ export class MCPRegistry {
    * The server connection stays alive — this only toggles tool visibility.
    */
   activateServer(name: string): void {
-    const slot = this.servers.get(name);
-    if (!slot) return;
-    // A dormant lazy server has no client yet — its resolver wrappers connect on
-    // demand, so it can still be activated (registered) without a live process.
-    if (!slot.client && !slot.lazy) return;
-    if (slot.toolNames.length > 0) return; // already active
-    const cached = slot.lazyTools;
-    if (cached.length === 0) return;
-    for (const tool of cached) {
-      try {
-        this.toolRegistry.register(tool, `mcp:${name}`);
-        slot.toolNames.push(tool.name);
-      } catch (err) {
-        this.log.warn(`MCP tool "${tool.name}" activate failed`, err);
-      }
-    }
-    // Visibility only — no connection changed, so no `mcp.server.connected`:
-    // that event drove a "connected" toast and the connects counter on every
-    // ephemeral `mcp_use` call.
-    this.log.info(`MCP server "${name}" activated (${slot.toolNames.length} tools)`);
+    activateServerFromHost(this.registryServerLifecycleHost(), name);
   }
 
   /**
@@ -335,22 +231,7 @@ export class MCPRegistry {
    * Returns the number of tools that were deactivated.
    */
   deactivateServer(name: string): number {
-    const slot = this.servers.get(name);
-    if (!slot) return 0;
-    const count = slot.toolNames.length;
-    if (count === 0) return 0;
-    for (const t of slot.toolNames) {
-      try {
-        this.toolRegistry.unregister(t);
-      } catch {
-        /* ignore */
-      }
-    }
-    slot.toolNames = [];
-    // The connection stays up: emitting `mcp.server.disconnected` here flipped
-    // the WebUI row to an error state with a warning toast after every call.
-    this.log.info(`MCP server "${name}" deactivated (${count} tools removed)`);
-    return count;
+    return deactivateServerFromHost(this.registryServerLifecycleHost(), name);
   }
 
   /**
@@ -388,56 +269,7 @@ export class MCPRegistry {
   }
 
   async stop(name: string): Promise<void> {
-    const slot = this.servers.get(name);
-    if (!slot) return;
-    slot.startupGeneration = (slot.startupGeneration ?? 0) + 1;
-    slot.reconnectPending = false;
-    // Cancel the pending backoff timer. Without this, a disconnect scheduled
-    // for reconnection would fire its `attemptReconnect` callback after the
-    // slot has been torn down and respawn the server we just told to stop.
-    if (slot.reconnectTimer) {
-      clearTimeout(slot.reconnectTimer);
-      slot.reconnectTimer = undefined;
-    }
-    slot.state = 'disconnected';
-    // Drain until the slot is EMPTY, because a demand-wake can install a FRESH
-    // client while every `close()` below is pending — lazy tool calls resolve
-    // their client through `ensureConnected` (registry-connect-loop.ts:77), and
-    // while this await runs both single-flight guards are inert (`state` is not
-    // 'connected' and this method never sets `connecting`). A bounded pass
-    // count only relocates the window: a wake landing in the LAST pass's close
-    // survives `stop()` with `slot.client` set and its client never closed —
-    // the single-flight and final-window suites pin exactly that postcondition.
-    // So the loop keeps closing whatever a wake installs — `stop()` is the
-    // later intent — until nothing is left to close. Detaching `client`/
-    // `onDisconnect` BEFORE awaiting — the ordering `sleepIdleSlot` already
-    // uses — keeps a wake from reusing the closing client; clearing those
-    // fields only after the await instead would drop the replacement's only
-    // reference: a live client and its child process that no later stop(),
-    // idle sweep or disconnect can reach, with a disconnect listener nothing
-    // can detach.
-    while (slot.client) {
-      const client = slot.client;
-      slot.client = undefined;
-      const handler = slot.onDisconnect;
-      slot.onDisconnect = undefined;
-      client.removeExitListener?.(this.onChildExit);
-      if (handler) client.removeDisconnectListener?.(handler);
-      client.removeToolsChangedListener?.(this.onToolsChanged);
-      this.removeCatalogListeners(client);
-      try {
-        await client.close?.();
-      } catch (err) {
-        this.log.warn(`MCP server "${name}" error during stop close`, err);
-      }
-      slot.state = 'disconnected';
-    }
-    slot.connecting = undefined;
-    resetDisconnectedSlotTools(slot, this.toolRegistry);
-    // Full teardown — a future start()/restart() re-registers lazy wrappers.
-    slot.registeredLazy = false;
-    this.recordOperation(slot, 'stop', 'manual');
-    this.events.emit('mcp.server.disconnected', { name, reason: 'stop' });
+    return stopFromHost(this.registryServerLifecycleHost(), name);
   }
 
   /**
@@ -456,44 +288,11 @@ export class MCPRegistry {
    * for them sleep is a stop.
    */
   async sleep(name: string): Promise<void> {
-    const slot = this.requireSlot(name);
-    if (!slot.lazy) {
-      await this.stop(name);
-      return;
-    }
-    if (slot.state === 'dormant') return;
-    if (slot.operations.inFlightCalls > 0) {
-      throw new Error(`MCP server "${name}" has requests in flight — try again when they finish`);
-    }
-    await sleepIdleSlot(this.idleContext(), slot);
+    return sleepFromHost(this.registryServerLifecycleHost(), name);
   }
 
   async restart(name: string, nextCfg?: MCPServerConfig | undefined): Promise<void> {
-    const slot = this.servers.get(name);
-    if (!slot) throw new Error(`MCP server "${name}" not registered`);
-    if (nextCfg && nextCfg.name !== name) {
-      throw new Error(`MCP restart config names "${nextCfg.name}", expected "${name}"`);
-    }
-    if (nextCfg?.enabled === false) {
-      await this.stop(name);
-      this.markDisabled(nextCfg);
-      return;
-    }
-    slot.operations.restartCount++;
-    this.recordOperation(slot, 'restart', 'manual');
-    await this.stop(name);
-    if (nextCfg) {
-      slot.cfg = nextCfg;
-      slot.lazy = !!nextCfg.lazy && !!this.cacheDir;
-      slot.discoveredTools = undefined;
-    }
-    slot.attempts = 0;
-    slot.reconnectCycles = 0; // user intent: start fresh
-    if (slot.lazy) {
-      await this.startLazy(slot);
-    } else {
-      await this.singleFlightConnect(slot);
-    }
+    return restartFromHost(this.registryServerLifecycleHost(), name, nextCfg);
   }
 
   list(): { name: string; state: ConnectionState; toolCount: number; tools: string[] }[] {
@@ -950,5 +749,32 @@ export class MCPRegistry {
     void (this.readResource satisfies RegistryCatalogOperationsHost['readResource']);
     void (this.getPrompt satisfies RegistryCatalogOperationsHost['getPrompt']);
     return this as unknown as RegistryCatalogOperationsHost;
+  }
+
+  private registryServerLifecycleHost(): RegistryServerLifecycleHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      servers: this.servers,
+      stop: this.stop,
+      markDisabled: this.markDisabled,
+      disabledServers: this.disabledServers,
+      cacheDir: this.cacheDir,
+      startLazy: this.startLazy,
+      singleFlightConnect: this.singleFlightConnect,
+      startups: this.startups,
+      applyTools: this.applyTools,
+      ensureIdleSweep: this.ensureIdleSweep,
+      log: this.log,
+      attemptConnect: this.attemptConnect,
+      recordOperation: this.recordOperation,
+      toolRegistry: this.toolRegistry,
+      onChildExit: this.onChildExit,
+      onToolsChanged: this.onToolsChanged,
+      removeCatalogListeners: this.removeCatalogListeners,
+      events: this.events,
+      requireSlot: this.requireSlot,
+      idleContext: this.idleContext,
+    } satisfies RegistryServerLifecycleHost);
+    return this as unknown as RegistryServerLifecycleHost;
   }
 }

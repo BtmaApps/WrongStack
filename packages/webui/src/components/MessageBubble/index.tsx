@@ -26,7 +26,6 @@ import type { ChatMessage } from '@/stores';
 import { useChatStore, useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import { useAutoSubmitStreak } from '@/stores/auto-submit-streak.js';
 import { useLocalPrefs } from '@/stores/local-prefs';
-import { toWireImages } from '../ChatInput/image-attachments.js';
 import { BrainDecisionCard, parseBrainMarkdown } from '../ChatView/BrainDecisionCard.js';
 import { CouncilDecisionCard, parseCouncilMarkdown } from '../ChatView/CouncilDecisionCard.js';
 import { fillInput, NextStepsBar } from '../NextStepsBar';
@@ -36,6 +35,7 @@ import { CopyButton } from './CopyButton.js';
 import { ErrorBodyWithStack } from './ErrorBody.js';
 import { FailedRunContinue } from './FailedRunContinue.js';
 import { LazyMarkdown as ReactMarkdown } from './LazyMarkdown.js';
+import { createMessageBubbleActions } from './message-bubble-actions.js';
 import { StreamingMarkdown } from './StreamingMarkdown.js';
 import { ToolLedgerCard } from './ToolLedgerCard.js';
 import { markdownComponents, rehypePlugins } from './utils.js';
@@ -226,89 +226,18 @@ export const MessageBubble = memo(function MessageBubble({
    * field breaks that coupling.
    */
   const nextSteps = message.nextSteps?.steps ?? [];
-
-  /** Attachments of a user message that can still be resent — only those
-   *  whose data URL survived (persistence strips it, so after a refresh a
-   *  regenerate/edit resend degrades to text-only, matching the placeholder
-   *  chip the bubble already shows). */
-  const resendableAttachments = (msg: ChatMessage) =>
-    (msg.attachments ?? []).flatMap((a) =>
-      a.dataUrl
-        ? [{ id: a.id, dataUrl: a.dataUrl, mediaType: a.mediaType, bytes: a.bytes, name: a.name }]
-        : [],
-    );
-
-  const retryUserMessage = () => {
-    const client = getWSClient(wsUrl);
-    if (!client.isConnected) {
-      toast.error(t('common:status.notConnectedRetry'));
-      return;
-    }
-    const atts = resendableAttachments(message);
-    truncateAfter(message.id);
-    updateMessage(message.id, { status: undefined });
-    setLoading(true);
-    client.sendMessage(message.content, atts.length > 0 ? toWireImages(atts) : undefined);
-  };
-
-  const regenerate = () => {
-    const all = useChatStore.getState().messages;
-    const idx = all.findIndex((m) => m.id === message.id);
-    if (idx === -1) return;
-    let userIdx = -1;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (all[i]?.role === 'user') {
-        userIdx = i;
-        break;
-      }
-    }
-    if (userIdx === -1) return;
-    const client = getWSClient(wsUrl);
-    if (!client.isConnected) {
-      toast.error(t('common:status.notConnectedRetry'));
-      return;
-    }
-    const userMsg = expectDefined(all[userIdx]);
-    const atts = resendableAttachments(userMsg);
-    truncateAfter(userMsg.id);
-    updateMessage(userMsg.id, { status: undefined });
-    setLoading(true);
-    client.sendMessage(userMsg.content, atts.length > 0 ? toWireImages(atts) : undefined);
-  };
-
-  const startEdit = () => {
-    setEditValue(message.content);
-    setEditing(true);
-  };
-  const cancelEdit = () => {
-    setEditing(false);
-    setEditValue('');
-  };
-  const saveEdit = () => {
-    const next = editValue.trim();
-    if (!next) {
-      cancelEdit();
-      return;
-    }
-    const client = getWSClient(wsUrl);
-    if (!client.isConnected) {
-      toast.error(t('common:status.notConnectedRetry'));
-      return;
-    }
-    const atts = resendableAttachments(message);
-    truncateAfter(message.id);
-    updateMessage(message.id, {
-      content: next,
-      status: undefined,
-      ...(atts.length > 0
-        ? { attachments: atts.map((a) => ({ ...a, kind: 'image' as const })) }
-        : {}),
+  const { retryUserMessage, regenerate, startEdit, cancelEdit, saveEdit } =
+    createMessageBubbleActions({
+      wsUrl,
+      t,
+      message,
+      truncateAfter,
+      updateMessage,
+      setLoading,
+      setEditValue,
+      setEditing,
+      editValue,
     });
-    setLoading(true);
-    client.sendMessage(next, atts.length > 0 ? toWireImages(atts) : undefined);
-    setEditing(false);
-    setEditValue('');
-  };
 
   return (
     <div

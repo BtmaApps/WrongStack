@@ -28,7 +28,6 @@ import type {
   WorkspaceCheckpointRef,
 } from '../types/session.js';
 import { withFileLock } from '../utils/atomic-write.js';
-import { toErrorMessage } from '../utils/index.js';
 import type { EventBus } from './event-bus-port.js';
 import { SessionCheckpointCas } from './session-checkpoint-cas.js';
 import {
@@ -43,7 +42,6 @@ import { type CreateSessionHost, executeCreateSession } from './session-store/cr
 import { deleteSessionArtifacts } from './session-store/delete-session-artifacts.js';
 import { assertSessionCanBeDeleted } from './session-store/delete-session-guards.js';
 import { collectSessionIds as collectSessionIdsFromDirectory } from './session-store/directory-session-files.js';
-import { emitSessionStoreWrite } from './session-store/events.js';
 import { forkSession } from './session-store/fork-session.js';
 import {
   executeListFilteredSessions,
@@ -59,7 +57,6 @@ import {
   shardKeyForSessionId,
   shardManifestPath,
 } from './session-store/paths.js';
-import { executeRebuildIndex } from './session-store/rebuild-index.js';
 import { executeResumeSession } from './session-store/resume-session.js';
 import { searchSessionEvents } from './session-store/search-events.js';
 import {
@@ -68,13 +65,6 @@ import {
   executeRehydrate,
   type SessionArchiveHost,
 } from './session-store/session-archive.js';
-import {
-  appendToIndexStrict,
-  COMPACT_EVERY,
-  compactIndexInner,
-  readIndexFile,
-  writeTombstone,
-} from './session-store/session-store-index.js';
 import {
   type CachedShardManifest,
   listFromDirectoryScan,
@@ -94,6 +84,16 @@ import type {
   SessionFileRef,
   SessionStoreOptions,
 } from './session-store/types.js';
+import {
+  appendToIndexStrictFromState as appendToIndexStrictFromHost,
+  compactIndex as compactIndexFromHost,
+  compactIndexInnerFromState as compactIndexInnerFromHost,
+  persistCatalogSummary as persistCatalogSummaryFromHost,
+  readIndex as readIndexFromHost,
+  rebuildIndex as rebuildIndexFromHost,
+  type SessionStoreIndexHost,
+  writeTombstoneFromState as writeTombstoneFromHost,
+} from './session-store-index.js';
 import type { SessionStoreRetentionHost } from './session-store-retention.js';
 import {
   archiveIdle as archiveIdleFromHost,
@@ -290,13 +290,14 @@ export class DefaultSessionStore implements SessionStore {
       onAppendBatch: this.onAppendBatch,
       storagePolicy: this.storagePolicy,
       autoArchive: this.autoArchive,
-      logWarn: (msg, ctx) => this.logWarn(msg, ctx),
-      ensureShardDir: (id) => this.ensureShardDir(id),
-      sessionPath: (id, ext) => this.sessionPath(id, ext),
-      invalidateShardManifestBySessionId: (id) => this.invalidateShardManifestBySessionId(id),
-      readSummaryManifest: (id) => this.readSummaryManifest(id),
-      persistCatalogSummary: (summary) => this.persistCatalogSummary(summary),
-      archiveIdle: (policy) => this.archiveIdle(policy),
+      logWarn: (...args) => this.logWarn(...args),
+      ensureShardDir: (...args) => this.ensureShardDir(...args),
+      sessionPath: (...args) => this.sessionPath(...args),
+      invalidateShardManifestBySessionId: (...args) =>
+        this.invalidateShardManifestBySessionId(...args),
+      readSummaryManifest: (...args) => this.readSummaryManifest(...args),
+      persistCatalogSummary: (...args) => this.persistCatalogSummary(...args),
+      archiveIdle: (...args) => this.archiveIdle(...args),
       onIndexAppendCreate: (id) => {
         this._manualTombstones.delete(id);
         this._indexDeletedIds.delete(id);
@@ -315,12 +316,13 @@ export class DefaultSessionStore implements SessionStore {
       catalogClient: this.catalogClient,
       maintenanceHolderId: this.maintenanceHolderId,
       secretScrubber: this.secretScrubber,
-      clearLoadCache: (sessionId) => this.clearLoadCache(sessionId),
-      sessionPath: (id, ext) => this.sessionPath(id, ext),
-      summaryFor: (id) => this.summaryFor(id),
-      readSummaryManifest: (id) => this.readSummaryManifest(id),
-      invalidateShardManifestBySessionId: (id) => this.invalidateShardManifestBySessionId(id),
-      appendToIndex: (summary) => this.appendToIndex(summary),
+      clearLoadCache: (...args) => this.clearLoadCache(...args),
+      sessionPath: (...args) => this.sessionPath(...args),
+      summaryFor: (...args) => this.summaryFor(...args),
+      readSummaryManifest: (...args) => this.readSummaryManifest(...args),
+      invalidateShardManifestBySessionId: (...args) =>
+        this.invalidateShardManifestBySessionId(...args),
+      appendToIndex: (...args) => this.appendToIndex(...args),
     };
   }
 
@@ -522,9 +524,9 @@ export class DefaultSessionStore implements SessionStore {
   private asListSessionsHost(): ListSessionsHost {
     return {
       catalogClient: this.catalogClient,
-      readIndex: () => this.readIndex(),
-      listFromDirectoryScan: (limit) => this.listFromDirectoryScan(limit),
-      scrubSummaries: (summaries) => this.scrubSummaries(summaries),
+      readIndex: (...args) => this.readIndex(...args),
+      listFromDirectoryScan: (...args) => this.listFromDirectoryScan(...args),
+      scrubSummaries: (...args) => this.scrubSummaries(...args),
       getIndexDeletedIds: () => this._indexDeletedIds,
     };
   }
@@ -546,20 +548,7 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   private async appendToIndexStrict(summary: SessionSummary): Promise<void> {
-    await appendToIndexStrict(
-      this.dir,
-      this.indexFile,
-      summary,
-      (id) => this.invalidateShardManifestBySessionId(id),
-      () => {
-        this._indexCache = null;
-        this.indexAppendCount++;
-        const shouldCompact = this.indexAppendCount >= COMPACT_EVERY;
-        if (shouldCompact) this.indexAppendCount = 0;
-        return { shouldCompact };
-      },
-      () => this.compactIndexInner(),
-    );
+    return appendToIndexStrictFromHost(this.sessionStoreIndexHost(), summary);
   }
 
   private async appendToIndex(summary: SessionSummary): Promise<void> {
@@ -567,77 +556,15 @@ export class DefaultSessionStore implements SessionStore {
   }
 
   private async persistCatalogSummary(summary: SessionSummary): Promise<void> {
-    if (!this.catalogClient) {
-      await this.appendToIndex(summary);
-      return;
-    }
-    const located = await locateTranscript(this.dir, summary.id);
-    await this.catalogClient.call('upsert_summary', {
-      summary,
-      transcriptRelativePath: located?.relativePath ?? `${summary.id}.jsonl`,
-      summaryRelativePath: `${summary.id}.summary.json`,
-      ...(located?.state === 'cold'
-        ? {
-            storageState: 'cold' as const,
-            codec: 'gzip' as const,
-            compressedSize: located.size,
-          }
-        : located
-          ? { storageState: 'hot' as const, uncompressedSize: located.size }
-          : {}),
-    });
+    return persistCatalogSummaryFromHost(this.sessionStoreIndexHost(), summary);
   }
 
   private async writeTombstone(id: string): Promise<void> {
-    let shouldCompact = false;
-    await writeTombstone(
-      this.dir,
-      this.indexFile,
-      id,
-      (sid) => this.invalidateShardManifestBySessionId(sid),
-      () => {
-        // Immediate in-memory adds: belt-and-braces so a concurrent
-        // incremental cache rebuild cannot resurrect the deleted id even if
-        // it rebuilds from a base snapshot that predates this tombstone.
-        // _manualTombstones survives readIndex() snapshot merges until the
-        // parsed file itself carries the row.
-        this._manualTombstones.add(id);
-        this._indexDeletedIds.add(id);
-        this._indexCache = null;
-        this.indexAppendCount++;
-        // Deletes share the append counter. Compaction runs after this
-        // callback returns: writeTombstone still holds the index lock, and
-        // that lock is not reentrant.
-        if (this.indexAppendCount >= COMPACT_EVERY) {
-          this.indexAppendCount = 0;
-          shouldCompact = true;
-        }
-      },
-    );
-    if (shouldCompact) await this.compactIndex();
+    return writeTombstoneFromHost(this.sessionStoreIndexHost(), id);
   }
 
   private async compactIndex(): Promise<void> {
-    const t0 = Date.now();
-    let outcome: 'success' | 'failure' = 'success';
-    let errorMsg: string | undefined;
-    try {
-      await withFileLock(this.indexFile, () => this.compactIndexInner());
-    } catch (err) {
-      outcome = 'failure';
-      errorMsg = toErrorMessage(err);
-    } finally {
-      emitSessionStoreWrite(
-        this.events,
-        '~compact~',
-        this.indexFile,
-        'compact',
-        outcome,
-        Date.now() - t0,
-        undefined,
-        errorMsg,
-      );
-    }
+    return compactIndexFromHost(this.sessionStoreIndexHost());
   }
 
   /**
@@ -659,29 +586,11 @@ export class DefaultSessionStore implements SessionStore {
    * otherwise be racing a delete it cannot see.
    */
   private async compactIndexInner(): Promise<void> {
-    const entries = await this.readIndex();
-    // Persist the FILE-TRUTH tombstone snapshot (not the post-merge view):
-    // tombstones that landed after our last parse belong to writeTombstone's
-    // own durable path and must not be written prematurely by compaction.
-    await compactIndexInner(this.indexFile, entries, this._indexFileDeletedIds);
-    this._indexCache = null;
+    return compactIndexInnerFromHost(this.sessionStoreIndexHost());
   }
 
   private async readIndex(): Promise<readonly SessionSummary[]> {
-    const { summaries, deletedIds, cache } = await readIndexFile(this.indexFile, this._indexCache);
-    this._indexCache = cache;
-    // Merge manual tombstones so a read whose snapshot predates a concurrent
-    // writeTombstone cannot erase the in-flight deletion; prune entries the
-    // parsed file already carries (prune-source = file snapshot, never the
-    // set being mutated).
-    const merged = new Set(deletedIds);
-    for (const manual of this._manualTombstones) {
-      merged.add(manual);
-      if (deletedIds.has(manual)) this._manualTombstones.delete(manual);
-    }
-    this._indexFileDeletedIds = deletedIds;
-    this._indexDeletedIds = merged;
-    return summaries;
+    return readIndexFromHost(this.sessionStoreIndexHost());
   }
 
   /**
@@ -692,28 +601,17 @@ export class DefaultSessionStore implements SessionStore {
    * index resolve last-wins, matching append order.
    */
   async rebuildIndex(): Promise<number> {
-    return executeRebuildIndex({
-      catalogClient: this.catalogClient,
-      indexFile: this.indexFile,
-      dir: this.dir,
-      readIndex: () => this.readIndex(),
-      collectSessionIds: (dir) => this.collectSessionIds(dir),
-      summaryFor: (id) => this.summaryFor(id),
-      getIndexDeletedIds: () => this._indexDeletedIds,
-      clearIndexCache: () => {
-        this._indexCache = null;
-      },
-    });
+    return rebuildIndexFromHost(this.sessionStoreIndexHost());
   }
 
   private asShardScanHost(): ShardScanHost {
     return {
       dir: this.dir,
       shardManifestCache: this.shardManifestCache,
-      shardManifestPath: (shardKey) => this.shardManifestPath(shardKey),
-      readSummaryManifest: (id) => this.readSummaryManifest(id),
-      summaryHeaderFor: (ref) => this.summaryHeaderFor(ref),
-      summaryFor: (id) => this.summaryFor(id),
+      shardManifestPath: (...args) => this.shardManifestPath(...args),
+      readSummaryManifest: (...args) => this.readSummaryManifest(...args),
+      summaryHeaderFor: (...args) => this.summaryHeaderFor(...args),
+      summaryFor: (...args) => this.summaryFor(...args),
     };
   }
 
@@ -728,10 +626,10 @@ export class DefaultSessionStore implements SessionStore {
   private asSummaryManifestHost(): SummaryManifestHost {
     return {
       events: this.events,
-      sessionPath: (id, ext) => this.sessionPath(id, ext),
-      requireTranscript: (id) => this.requireTranscript(id),
-      summarize: (id, mtime) => this.summarize(id, mtime),
-      logWarn: (msg, ctx) => this.logWarn(msg, ctx),
+      sessionPath: (...args) => this.sessionPath(...args),
+      requireTranscript: (...args) => this.requireTranscript(...args),
+      summarize: (...args) => this.summarize(...args),
+      logWarn: (...args) => this.logWarn(...args),
     };
   }
 
@@ -864,6 +762,29 @@ export class DefaultSessionStore implements SessionStore {
     void (this.archiveIdleInFlight satisfies SessionStoreRetentionHost['archiveIdleInFlight']);
     void (this.archiveIdle satisfies SessionStoreRetentionHost['archiveIdle']);
     return this as unknown as SessionStoreRetentionHost;
+  }
+
+  private sessionStoreIndexHost(): SessionStoreIndexHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      dir: this.dir,
+      indexFile: this.indexFile,
+      invalidateShardManifestBySessionId: this.invalidateShardManifestBySessionId,
+      _indexCache: this._indexCache,
+      indexAppendCount: this.indexAppendCount,
+      compactIndexInner: this.compactIndexInner,
+      catalogClient: this.catalogClient,
+      appendToIndex: this.appendToIndex,
+      _manualTombstones: this._manualTombstones,
+      _indexDeletedIds: this._indexDeletedIds,
+      compactIndex: this.compactIndex,
+      events: this.events,
+      readIndex: this.readIndex,
+      _indexFileDeletedIds: this._indexFileDeletedIds,
+      collectSessionIds: this.collectSessionIds,
+      summaryFor: this.summaryFor,
+    } satisfies SessionStoreIndexHost);
+    return this as unknown as SessionStoreIndexHost;
   }
 }
 

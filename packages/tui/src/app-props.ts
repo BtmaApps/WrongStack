@@ -1,21 +1,12 @@
 import type { Agent } from '@wrongstack/core/agent';
-import type { CoordinatorEvent, Director } from '@wrongstack/core/coordination';
+import type { CoordinatorEvent } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
-import type {
-  StatuslineDensities,
-  StatuslineLines,
-  StatuslineOrder,
-} from '@wrongstack/core/statusline';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type {
   AttachmentStore,
   AutonomyStage,
-  ConfigStore,
-  ContextSnapshot,
-  FleetChatVerbosity,
   Message,
-  SessionLoadProgress,
   SkillLoader,
   TokenCounter,
   TokenSavingTier,
@@ -23,22 +14,12 @@ import type {
 import type { VisionAdapters } from '@wrongstack/runtime/vision';
 import type { SddLifecycleResult, SddRunControl } from '@wrongstack/sdd';
 import type React from 'react';
-import type { ResumeSessionEntry, Settings } from './app-reducer.js';
-import type { AuthPanelHost } from './auth-panel-model.js';
-import type { BrainRiskLevel } from './brain-contracts.js';
-import type { AutonomyAgentStatus, HistoryEntry } from './history-entry.js';
-import type { SessionInterruptController } from './hooks/use-session-interrupt-controller.js';
-import type {
-  AgentTranscriptReader,
-  McpPickerItem,
-  PluginPickerItem,
-  ProviderOption,
-  ResourceMenuId,
-  ResourceMenuSnapshot,
-  StatuslineItem,
-  ToolPickerItem,
-} from './ui-contracts.js';
-
+import type { TuiCoordinationProps } from './app-coordination-props.js';
+import type { TuiEnhancementProps } from './app-enhancement-props.js';
+import type { TuiSessionProps } from './app-session-props.js';
+import type { TuiSettingsProps } from './app-settings-props.js';
+import type { AutonomyAgentStatus } from './history-entry.js';
+import type { ProviderOption, ResourceMenuId, ResourceMenuSnapshot } from './ui-contracts.js';
 /**
  * Props for the TUI `<App>` shell.
  *
@@ -58,7 +39,11 @@ export interface TuiLeaderAutoWake {
   noteUserInput(sessionId: string): void;
 }
 
-export interface AppProps {
+export interface AppProps
+  extends TuiCoordinationProps,
+    TuiSessionProps,
+    TuiSettingsProps,
+    TuiEnhancementProps {
   agent: Agent;
   slashRegistry: SlashCommandRegistry;
   /** Shared loader used by the interactive `/skill` browser. */
@@ -132,75 +117,6 @@ export interface AppProps {
    * on legacy, non-TTY, or restricted-terminal environments.
    */
   capability?: import('@wrongstack/core/utils').TerminalCapability | undefined;
-  /**
-   * When true, free-text prompts are run through the prompt refiner
-   * ("did you mean this?") before reaching the main agent. Default on;
-   * toggled live via the `/enhance` slash command + `enhanceController`.
-   */
-  enhanceEnabled?: boolean | undefined;
-  /**
-   * Shared controller for the `/enhance on|off` toggle. The TUI rebinds
-   * `setEnabled` on mount to a dispatch-backed setter so the slash command
-   * (handled in the CLI) flips the reducer flag. Mirrors `fleetStreamController`.
-   */
-  enhanceController?:
-    | {
-        enabled: boolean;
-        setEnabled: (enabled: boolean) => void;
-      }
-    | undefined;
-  /**
-   * When true (default), submitting a plain message while the agent is busy
-   * pops the send-mode picker (queue / by-the-way / steer) instead of silently
-   * queueing. Toggled live via `/queue picker on|off`; persisted to
-   * `autonomy.midRunSendPicker`.
-   */
-  midRunSendPicker?: boolean | undefined;
-  /** Auto-send countdown (ms) for the refinement preview panel. Default 4000. */
-  enhanceDelayMs?: number | undefined;
-  /**
-   * Returns a capability-gated low-effort reasoning hint for the prompt
-   * refiner (or undefined when nothing can be safely reduced). Forwarded to
-   * `enhanceUserPrompt` so a slow reasoning model does not burn thinking
-   * tokens on this shallow rewrite. Absent → the refiner sends no reasoning
-   * field, exactly as before.
-   */
-  getEnhancerReasoning?:
-    | ((
-        providerId?: string,
-        modelId?: string,
-      ) =>
-        | import('@wrongstack/core/types').ReasoningRequest
-        | undefined
-        | Promise<import('@wrongstack/core/types').ReasoningRequest | undefined>)
-    | undefined;
-  /**
-   * Effort levels the ACTIVE model documents (models.dev reasoningConfig),
-   * for the model-aware /settings reasoning-effort cycle (WebUI parity).
-   * Undefined = vocabulary undocumented; the picker cycles the full set.
-   */
-  getActiveModelReasoningEffortLevels?: (() => string[] | undefined) | undefined;
-  /**
-   * Build a Provider for a (providerId, modelId) pair WITHOUT switching the
-   * session — used to retry a failed refinement on the fallback/another model
-   * ephemerally. Returns undefined when the host can't build the provider
-   * (missing key, unknown id), in which case that recovery option is skipped.
-   */
-  buildEnhancerProvider?:
-    | ((
-        providerId: string,
-        modelId: string,
-      ) => Promise<import('@wrongstack/core/types').Provider | undefined>)
-    | undefined;
-  /**
-   * Resolve the one-key "retry with another model" fallback ref
-   * (`provider/model`) offered on a refine failure, or undefined when none is
-   * configured/derivable. Recomputed per call so `/fallback` and `/model`
-   * changes are reflected.
-   */
-  getEnhanceFallbackRef?: (() => string | undefined) | undefined;
-  /** Resolve the dedicated refiner target (`provider/model`) for the initial attempt. */
-  getConfiguredRefinerRef?: (() => string | undefined) | undefined;
   /**
    * Query the live YOLO state from the permission policy. Called after
    * every slash-command dispatch so `/yolo off` (which mutates the
@@ -281,105 +197,6 @@ export interface AppProps {
    * Handlers receive the event name and payload from PhaseEventMap.
    */
   subscribeGoal?: ((handler: (event: string, payload: unknown) => void) => () => void) | undefined;
-  /**
-   * Read the persisted autonomy settings (defaultMode, autoProceedDelayMs).
-   * Used by the SettingsPicker in the TUI on mount and after Ctrl+S toggle.
-   */
-  /** Settings shape — shared between getSettings and saveSettings. */
-  getSettings?: (() => Settings) | undefined;
-  /**
-   * Live view over the persisted user config. The TUI uses this to:
-   * - apply `themePreset` on boot (so `/theme` choices persist across
-   *   restarts), and
-   * - write `themePreset` back when the picker Enter handler fires
-   *   (so the picker shows `[active]` on the right row next session).
-   *
-   * Optional for hosts that don't expose a config store (e.g. tests);
-   * when omitted the TUI stays on the default catppuccin palette and
-   * picker changes are ephemeral.
-   */
-  configStore?: ConfigStore | undefined;
-  /**
-   * Persist settings changes. Returns null on success, or an
-   * error string on failure (so the TUI can display it as a hint).
-   */
-  saveSettings?: ((s: Settings) => string | null | Promise<string | null>) | undefined;
-  /** Persist the active theme preset to disk so the next boot starts with it. */
-  saveThemePreset?:
-    | ((preset: import('@wrongstack/core/types').ThemePresetId) => Promise<void>)
-    | undefined;
-  /** Load toggleable plugin rows for the interactive plugin picker. */
-  getPluginItems?: (() => PluginPickerItem[]) | undefined;
-  /** Toggle one plugin from the interactive picker and return the refreshed rows. */
-  onPluginToggle?:
-    | ((name: string) => Promise<{
-        items: PluginPickerItem[];
-        message?: string | undefined;
-        error?: string | undefined;
-      }>)
-    | undefined;
-  /** Load MCP server rows for the interactive MCP picker. */
-  getMcpServers?: (() => McpPickerItem[]) | undefined;
-  /** Toggle one MCP server (enable/disable) from the interactive picker. */
-  onMcpToggle?:
-    | ((name: string) => Promise<{
-        items: McpPickerItem[];
-        message?: string | undefined;
-        error?: string | undefined;
-      }>)
-    | undefined;
-  /** Restart one MCP server from the interactive picker. */
-  onMcpRestart?:
-    | ((name: string) => Promise<{
-        items: McpPickerItem[];
-        message?: string | undefined;
-        error?: string | undefined;
-      }>)
-    | undefined;
-  /** Load tool rows for the interactive tool picker. */
-  getToolsItems?: (() => ToolPickerItem[]) | undefined;
-  /** Toggle one tool (enable/disable) from the interactive tool picker. */
-  onToolToggle?:
-    | ((name: string) => Promise<{
-        items: ToolPickerItem[];
-        message?: string | undefined;
-        error?: string | undefined;
-      }>)
-    | undefined;
-  /** Get current brain risk level and decision log. */
-  getBrainData?:
-    | (() => {
-        riskLevel: BrainRiskLevel;
-        log: Array<{ kind: string; question: string; outcome: string; age: string }>;
-      })
-    | undefined;
-  /** Set brain risk ceiling. */
-  onBrainRiskLevel?: ((level: BrainRiskLevel) => string | undefined) | undefined;
-  /** Full Brain settings editor bridge (live apply + persist). */
-  brainPanelHost?: import('./brain-panel-model.js').BrainPanelHost | undefined;
-  /**
-   * Session-scoped subagent model plan bridge for `/subagent-models`. The host
-   * owns the plan (it needs the session writer to journal it); the panel only
-   * reads snapshots and calls back. Absent = the panel stays unavailable and
-   * the slash command falls back to its text output.
-   */
-  subagentModelsHost?:
-    | import('./subagent-models-panel-model.js').SubagentModelsPanelHost
-    | undefined;
-  /** Get current Shadow Agent state. */
-  getShadowData?:
-    | (() => { activeId: string | null; running: boolean; model: string; intervalMs: number })
-    | undefined;
-  /** Start Shadow Agent. Returns message or error. */
-  onShadowStart?: (() => Promise<string | undefined>) | undefined;
-  /** Stop Shadow Agent. Returns message or error. */
-  onShadowStop?: (() => Promise<string | undefined>) | undefined;
-  /**
-   * Host for the interactive `/auth` panel (provider/key management, OAuth
-   * sign-in, local-server add). Provided by the CLI; when absent, `/auth`
-   * falls back to its plain-text output.
-   */
-  authHost?: AuthPanelHost | undefined;
   /**
    * Predict likely next steps after a completed turn (/next). The CLI owns the
    * gating (toggle + autonomy off) and returns [] when disabled, so the App can
@@ -515,99 +332,6 @@ export interface AppProps {
   clearTerminal?: (() => void) | undefined;
 
   /**
-   * Called when the user selects a session in the /resume picker. The host
-   * loads the session JSONL, replays history entries, rebuilds the agent
-   * context, and returns the hydrated history entries + nextId for display.
-   * Returns null when resume fails (session not found, corrupt JSONL, etc.).
-   *
-   * The returned entries replace the TUI's current entries in a single
-   * `replaceHistory` dispatch, so the user sees the prior conversation
-   * exactly as it appeared during live interaction.
-   */
-  onResumeSession?:
-    | ((
-        sessionId: string,
-        onLoadProgress?: (progress: SessionLoadProgress) => void,
-        /**
-         * Live stage names as each step of the resume begins (`resolve_id`,
-         * `open_journal`, `swap_writer`, …). Drives the rolling rows of the
-         * resume loading block, so the screen reports what is actually
-         * happening instead of a spinner over an unexplained multi-second wait.
-         */
-        onStage?: (stage: string) => void,
-      ) => Promise<{
-        entries: HistoryEntry[];
-        nextId: number;
-        sessionId: string;
-        /**
-         * Optional context-window snapshot computed from the resumed
-         * session's tokenCounter after accounting the persisted usage.
-         * When present, the reducer writes `tokens` to `state.leader.ctxTokens`,
-         * `maxContext` to `state.leader.ctxMaxTokens`, and bumps
-         * `state.contextChipVersion` so the chip refreshes immediately. When
-         * absent, the chip stays at its previous value until the next ctx.pct
-         * event lands.
-         */
-        contextSnapshot?: ContextSnapshot | undefined;
-        /**
-         * `false` when the transcript loaded but the session was NOT claimed
-         * for writing — another process owns it, or the claim lapsed. The
-         * conversation is still shown (read-only); the agent keeps writing to
-         * the session it was already in. Treated as present-but-true by hosts
-         * that predate the field.
-         */
-        attached?: boolean | undefined;
-        /**
-         * Non-fatal problems to print alongside the replayed transcript
-         * (sidecars that did not re-point, a provider that is gone). These no
-         * longer abort a resume, so they have to be visible somewhere.
-         */
-        warnings?: string[] | undefined;
-        /**
-         * `<nextsteps>` parsed from the resumed session's final assistant turn.
-         *
-         * OFFERED, never executed: the resume lists them and stops. Empty when
-         * the session did not end on a next-steps block, when it has open todos
-         * (the board keeps precedence), or when the transcript is read-only.
-         */
-        nextSteps?: string[] | undefined;
-      } | null>)
-    | undefined;
-
-  /**
-   * List recent session summaries for the /resume picker. The host reads
-   * from the session store and returns ResumeSessionEntry-shaped data.
-   * Used both by the /resume slash command (to populate the picker) and
-   * optionally by the startup rehydration path.
-   */
-  listSessions?: ((limit?: number) => Promise<ResumeSessionEntry[]>) | undefined;
-  /**
-   * Branch a session at a checkpoint (the conversation before that prompt)
-   * into a new session, leaving the original as it is. Returns the new id;
-   * the TUI then resumes it. The working tree is shared, not copied.
-   */
-  forkSession?:
-    | ((sessionId: string, checkpointPromptIndex: number) => Promise<{ id: string }>)
-    | undefined;
-
-  /**
-   * Goal text passed from `--goal "..."` on the command line. When set,
-   * the App mounts, renders the banner, then automatically dispatches
-   * a synthetic `/goal <text>` so the user lands in goal mode without
-   * having to type the slash command. Mutually advisory with `initialSteer`
-   * — `initialGoal` wins if both are present.
-   */
-  initialGoal?: string | undefined;
-  /**
-   * Initial user message passed from `--ask "..."` on the command line.
-   * Submitted verbatim as the first turn (no preamble) so users can
-   * launch the TUI and pre-populate one turn from a shell alias / script.
-   */
-  initialAsk?: string | undefined;
-  /** Directory for session JSONL files. Passed to App for /rewind. */
-  sessionsDir?: string | undefined;
-
-  /**
    * Load project picker items from the global manifest.
    * Called each time the project picker panel opens (F1).
    */
@@ -647,120 +371,6 @@ export interface AppProps {
   onSwitchToSession?:
     | ((sessionId: string, projectRoot: string, projectName: string) => void)
     | undefined;
-
-  // --- Fleet ---
-  /** Live director for fleet panel rendering. Null when director mode is off. */
-  director: Director | null;
-  /**
-   * Read the CURRENT director. Unlike the static `director` prop (captured at
-   * boot, null in non---director sessions), this sees a director the fleet
-   * host built lazily on the first delegate/spawn. Fleet teardown paths
-   * (Ctrl+C, Esc, /steer) resolve through this.
-   */
-  getDirector?: (() => Director | null) | undefined;
-  /** Optional roster for human-readable subagent names. */
-  fleetRoster?: Record<string, { name: string }> | undefined;
-  /**
-   * Shared controller for the `/fleet stream on|off` and `/agents chat`
-   * slash commands. The App installs dispatch-backed setters on mount so
-   * the commands can flip the reducer's `fleetChat` mode from the CLI
-   * surface. Also seeds the boot value of `state.fleetChat` (cli-main
-   * creates it from the persisted config).
-   */
-  fleetStreamController?:
-    | {
-        mode: FleetChatVerbosity;
-        setMode: (mode: FleetChatVerbosity) => void;
-      }
-    | undefined;
-  /**
-   * Read-only per-subagent transcript access for the F3 agents monitor.
-   * The CLI passes AgentMonitorService (structurally compatible); absent
-   * in embedded/test surfaces, where the detail card falls back to the
-   * streaming-tail snippet.
-   */
-  agentTranscripts?: AgentTranscriptReader | undefined;
-  /**
-   * Shared controller for the `/interrupt` slash command. The App installs the
-   * real `abortLeader` on mount so the command can abort the in-flight leader
-   * run (slash commands don't get the RunController). The fleet teardown is the
-   * command's own `onFleetKill`.
-   */
-  interruptController?: SessionInterruptController | undefined;
-  /**
-   * Controller for status bar hidden items. App installs a dispatch-backed
-   * setter on mount so the /statusline slash command can update the TUI's
-   * visible bar without a round-trip. The initial value is loaded from
-   * the config file before App mounts.
-   */
-  statuslineHiddenItems: StatuslineItem[];
-  setStatuslineHiddenItems: (items: StatuslineItem[]) => void;
-  /**
-   * Atomically persists statusline hidden items to disk. Used by the
-   * statusline picker so each toggle is immediately durable.
-   */
-  saveStatuslineHiddenItems: (items: StatuslineItem[]) => Promise<void>;
-  /**
-   * Per-chip statusline line assignment (statusline.json schema v2).
-   * Optional: hosts that don't load it keep the core contract defaults.
-   */
-  statuslineLines?: StatuslineLines | undefined;
-  setStatuslineLines?: ((lines: StatuslineLines) => void) | undefined;
-  saveStatuslineLines?: ((lines: StatuslineLines) => Promise<void>) | undefined;
-  /**
-   * Per-chip density pin (statusline.json schema v3). Absent keys leave the
-   * chip to the rail fitter.
-   */
-  statuslineDensities?: StatuslineDensities | undefined;
-  setStatuslineDensities?: ((densities: StatuslineDensities) => void) | undefined;
-  saveStatuslineDensities?: ((densities: StatuslineDensities) => Promise<void>) | undefined;
-  /** Custom left-to-right chip order (statusline.json schema v4). */
-  statuslineOrder?: StatuslineOrder | undefined;
-  setStatuslineOrder?: ((order: StatuslineOrder) => void) | undefined;
-  saveStatuslineOrder?: ((order: StatuslineOrder) => Promise<void>) | undefined;
-  /**
-   * Controller for the agents monitor overlay. App installs a dispatch-backed
-   * setter on mount so the `/agents on|off` slash command can toggle the
-   * overlay without a round-trip.
-   */
-  agentsMonitorController?:
-    | {
-        visible: boolean;
-        setVisible: (visible: boolean) => void;
-      }
-    | undefined;
-  /**
-   * Mutable ref for opening TUI panels from slash commands. The slash commands
-   * call `onPanelOpen.current(action)` to open panels. The App sets
-   * `onPanelOpen.current` to its actual dispatch function on mount.
-   */
-  onPanelOpen?: { current: ((action: string) => boolean) | null } | undefined;
-  /** Active agent mode label shown in the status bar (e.g. "teach", "brief"). */
-  modeLabel?: string | undefined;
-  /**
-   * Called ONCE on mount by the App to install its debug-stream telemetry
-   * callback. The callback receives throttled DebugStreamStats every ~200 ms
-   * while the stream debug feature is active. The App dispatches to its
-   * reducer; the StatusBar renders the stats on line 3. When omitted (headless
-   * CLI/no TTY), debug stats go to stderr via the default callback.
-   */
-  registerDebugStreamCallback?:
-    | ((
-        cb: (stats: {
-          chunkCount: number;
-          lastChunkSize: number;
-          lastDeltaMs: number;
-          totalBytes: number;
-          lastChunkAt: string;
-        }) => void,
-      ) => void)
-    | undefined;
-  /**
-   * Called on App unmount (via useEffect cleanup). Restores the debug-stream
-   * callback to the default stderr writer so non-TUI invocations continue to
-   * print debug lines.
-   */
-  restoreDebugStreamCallback?: (() => void) | undefined;
   /**
    * Messages restored from a previous session. When provided (non-empty),
    * the TUI renders the prior conversation as history entries so a resumed

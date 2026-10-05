@@ -13,24 +13,18 @@ import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { showPanel } from '@/lib/view-navigation';
 import { getWSClient } from '@/lib/ws-client';
-import {
-  useActiveSessionId,
-  useFileReferenceStore,
-  useGitChangesStore,
-  useSessionStore,
-  useUIStore,
-} from '@/stores';
+import { useActiveSessionId, useFileReferenceStore, useSessionStore, useUIStore } from '@/stores';
 import { onLaneDisposed } from '@/stores/chat-lanes';
 import type { TreeNode } from '@/stores/file-store';
 import { useFileStore } from '@/stores/file-store';
+import { CodeAssistPanel } from './CodeAssistPanel';
+import { confirmModal } from './ConfirmModal';
 import {
   BreadcrumbContextMenu,
   CreatePromptModal,
   NodeContextMenu,
   RenamePromptModal,
 } from './FileExplorer/FileExplorerModals.js';
-import { confirmModal } from './ConfirmModal';
-import { CodeAssistPanel } from './CodeAssistPanel';
 import { TreeRow } from './FileExplorer/TreeRow.js';
 import {
   collectAllFiles,
@@ -47,6 +41,7 @@ import type {
 } from './FileExplorer/types.js';
 import { copyToClipboard as copyTextToClipboard } from './MessageBubble/utils.js';
 import { toast } from './Toaster';
+import { useFileExplorerLocation } from './useFileExplorerLocation.js';
 
 type FileExplorerChrome = {
   contextMenu: { x: number; y: number; crumb: CrumbContext } | null;
@@ -81,100 +76,15 @@ export function FileExplorer() {
   const activeFilePath = useFileStore((s) => s.activeFilePath);
   const cwd = useSessionStore((s) => s.cwd);
   const projectName = useSessionStore((s) => s.projectName);
-  const gitChanges = useGitChangesStore((s) => s.files);
-  const gitRepoPrefix = useGitChangesStore((s) => s.repoPrefix);
-  const gitDirs = useGitChangesStore((s) => s.dirs);
-
-  const gitStatusMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const f of gitChanges) {
-      const norm = f.path.replace(/\\/g, '/').replace(/^\//, '');
-      m.set(norm, f.status);
-    }
-    return m;
-  }, [gitChanges]);
-
-  const dirStatusMap = useMemo(() => new Map(Object.entries(gitDirs)), [gitDirs]);
-
-  const getGitStatus = useCallback(
-    (nodePath: string, isDir: boolean): string | undefined => {
-      const root = (cwd || projectName || '')
-        .replace(/\\/g, '/')
-        .replace(/^\//, '')
-        .replace(/\/$/, '');
-      let norm = nodePath.replace(/\\/g, '/').replace(/^\//, '');
-      if (root && norm.startsWith(root + '/')) {
-        norm = norm.slice(root.length + 1);
-      }
-      // Tree paths are PROJECT-root-relative; porcelain paths from
-      // git.changes are REPO-root-relative. When a repo subdirectory is
-      // opened as the project, git keys carry a prefix the tree never
-      // emits — prepend the server-computed repoPrefix (see
-      // repoRelativePrefix in webui-server git-handlers) to align them.
-      const key = gitRepoPrefix + norm;
-      const direct = gitStatusMap.get(key);
-      if (direct) return direct;
-      if (isDir) {
-        // Directory badges come from the server-computed aggregate in
-        // git.changes (highest-ranked child status) — no client-side
-        // prefix scanning over the file map.
-        return dirStatusMap.get(key);
-      }
-      return undefined;
-    },
-    [gitStatusMap, dirStatusMap, gitRepoPrefix, cwd, projectName],
-  );
-
-  const pathSep = cwd?.includes('\\') ? '\\' : '/';
-
-  const truncateMiddle = (s: string, keepStart = 8, keepEnd = 4): string => {
-    if (s.length <= keepStart + keepEnd + 2) return s;
-    return `${s.slice(0, keepStart)}…${s.slice(-keepEnd)}`;
-  };
-
-  const isAtRoot = (() => {
-    if (!cwd || !projectName) return true;
-    const segments = cwd.replace(/\\/g, '/').split('/').filter(Boolean);
-    return (segments[segments.length - 1] ?? '') === projectName;
-  })();
-
-  const breadcrumbs = useMemo(() => {
-    if (!cwd || !projectName) return [];
-    const norm = cwd.replace(/\\/g, '/');
-    const segments = norm.split('/').filter(Boolean);
-    let rootIdx = -1;
-    for (let i = segments.length - 1; i >= 0; i--) {
-      if (segments[i] === projectName) {
-        rootIdx = i;
-        break;
-      }
-    }
-    if (rootIdx === -1) {
-      return segments.map((s, i) => ({
-        label: s,
-        path: '/' + segments.slice(0, i + 1).join('/'),
-        isLast: i === segments.length - 1,
-      }));
-    }
-    const rel = segments.slice(rootIdx);
-    return rel.map((s, i) => ({
-      label: s,
-      path: '/' + segments.slice(0, rootIdx + i + 1).join('/'),
-      isLast: i === rel.length - 1,
-    }));
-  }, [cwd, projectName]);
-
-  const bcRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = bcRef.current;
-    if (el && breadcrumbs.length > 1) {
-      el.scrollLeft = el.scrollWidth;
-    }
-  }, [breadcrumbs]);
-
-  const handleBreadcrumbClick = useCallback((crumbPath: string) => {
-    getWSClient().send({ type: 'working_dir.set', payload: { path: crumbPath } });
-  }, []);
+  const {
+    getGitStatus,
+    pathSep,
+    truncateMiddle,
+    isAtRoot,
+    breadcrumbs,
+    bcRef,
+    handleBreadcrumbClick,
+  } = useFileExplorerLocation({ cwd, projectName });
 
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -559,294 +469,297 @@ export function FileExplorer() {
         </div>
       ) : (
         <>
-      {error && (
-        <div className="flex shrink-0 items-center gap-1.5 px-2 py-1 border-b border-destructive/30 bg-destructive/5 text-[10px] text-destructive">
-          <span className="truncate flex-1 min-w-0">
-            {t('activity:fileExplorer.loadFailed', { error })}
-          </span>
-          <button
-            type="button"
-            onClick={() => useFileStore.getState().setError(null)}
-            className="shrink-0 text-destructive/70 hover:text-destructive text-[10px]"
-            title={t('common:action.dismiss')}
-            aria-label={t('common:action.dismiss')}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      {tree.length > 0 && dirCount > 0 && (
-        <div className="flex items-center gap-0.5 px-2 py-0.5 border-b shrink-0">
-          <button
-            type="button"
-            onClick={handleGlobalExpand}
-            className={cn(
-              'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-              'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
-            )}
-            title={t('activity:fileExplorer.expandAllTitle')}
-          >
-            <Folders className="h-3 w-3" />
-            <span>{t('activity:fileExplorer.expandAll')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleGlobalCollapse}
-            className={cn(
-              'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-              'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
-            )}
-            title={t('activity:fileExplorer.collapseAllTitle')}
-          >
-            <Minimize2 className="h-3 w-3" />
-            <span>{t('activity:fileExplorer.collapse')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSortBySize((v) => !v)}
-            className={cn(
-              'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
-              'hover:bg-muted/60',
-              sortBySize ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-            )}
-            title={
-              sortBySize
-                ? t('activity:fileExplorer.sortByNameTitle')
-                : t('activity:fileExplorer.sortBySizeTitle')
-            }
-          >
-            <ArrowDownWideNarrow className="h-3 w-3" />
-            <span>
-              {sortBySize
-                ? t('activity:fileExplorer.sortBySize')
-                : t('activity:fileExplorer.sortByName')}
-            </span>
-          </button>
-          <div className="relative flex items-center">
-            <Search className="absolute left-1 h-3 w-3 text-muted-foreground/60 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('activity:fileExplorer.searchPlaceholder')}
-              className="w-28 rounded bg-muted/40 px-1 py-0.5 pl-4 text-[10px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:w-40 focus:bg-muted/70 focus:ring-1 focus:ring-primary/30 transition-all"
-              aria-label={t('activity:fileExplorer.search')}
-            />
-            {searchQuery && (
+          {error && (
+            <div className="flex shrink-0 items-center gap-1.5 px-2 py-1 border-b border-destructive/30 bg-destructive/5 text-[10px] text-destructive">
+              <span className="truncate flex-1 min-w-0">
+                {t('activity:fileExplorer.loadFailed', { error })}
+              </span>
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-0.5 text-muted-foreground/60 hover:text-foreground text-[10px]"
-                aria-label={t('common:action.clear')}
+                onClick={() => useFileStore.getState().setError(null)}
+                className="shrink-0 text-destructive/70 hover:text-destructive text-[10px]"
+                title={t('common:action.dismiss')}
+                aria-label={t('common:action.dismiss')}
               >
                 ✕
               </button>
-            )}
-          </div>
-          <span className="ml-auto text-[9px] text-muted-foreground/70 tabular-nums">
-            {t('activity:fileExplorer.folders', { count: dirCount })}
-          </span>
-        </div>
-      )}
-      <div className="min-h-0 min-w-0 flex flex-1 flex-col py-1">
-        {breadcrumbs.length > 0 && (
-          <div
-            ref={bcRef}
-            className="relative flex shrink-0 items-center gap-0.5 px-1 pb-1 border-b border-border/30 overflow-x-auto"
-          >
-            <span className="sticky left-0 shrink-0 w-3 h-full bg-gradient-to-r from-background to-transparent pointer-events-none" />
-            {breadcrumbs.map((crumb, i) => {
-              const displayLabel = crumb.isLast ? crumb.label : truncateMiddle(crumb.label);
-              const tooltipPath = crumb.path.replace(/\//g, pathSep);
-
-              const normSegments = cwd ? cwd.replace(/\\/g, '/').split('/').filter(Boolean) : [];
-              const rootIdx = (() => {
-                for (let j = normSegments.length - 1; j >= 0; j--) {
-                  if (normSegments[j] === projectName) return j;
+            </div>
+          )}
+          {tree.length > 0 && dirCount > 0 && (
+            <div className="flex items-center gap-0.5 px-2 py-0.5 border-b shrink-0">
+              <button
+                type="button"
+                onClick={handleGlobalExpand}
+                className={cn(
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
+                  'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
+                )}
+                title={t('activity:fileExplorer.expandAllTitle')}
+              >
+                <Folders className="h-3 w-3" />
+                <span>{t('activity:fileExplorer.expandAll')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleGlobalCollapse}
+                className={cn(
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
+                  'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
+                )}
+                title={t('activity:fileExplorer.collapseAllTitle')}
+              >
+                <Minimize2 className="h-3 w-3" />
+                <span>{t('activity:fileExplorer.collapse')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBySize((v) => !v)}
+                className={cn(
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
+                  'hover:bg-muted/60',
+                  sortBySize ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                )}
+                title={
+                  sortBySize
+                    ? t('activity:fileExplorer.sortByNameTitle')
+                    : t('activity:fileExplorer.sortBySizeTitle')
                 }
-                return -1;
-              })();
-              const absSegments =
-                rootIdx >= 0
-                  ? normSegments.slice(0, rootIdx + i + 1)
-                  : normSegments.slice(0, i + 1);
-              const absPath =
-                pathSep === '\\' ? absSegments.join('\\') : '/' + absSegments.join('/');
-              const relSegments =
-                rootIdx >= 0 ? normSegments.slice(rootIdx + 1, rootIdx + i + 1) : [];
-              const relPath = relSegments.join(pathSep) || '.';
-
-              return (
-                <span key={crumb.path} className="flex items-center gap-0.5 shrink-0">
-                  {i > 0 && (
-                    <span className="text-[9px] text-muted-foreground/65 select-none">
-                      {pathSep}
-                    </span>
-                  )}
+              >
+                <ArrowDownWideNarrow className="h-3 w-3" />
+                <span>
+                  {sortBySize
+                    ? t('activity:fileExplorer.sortBySize')
+                    : t('activity:fileExplorer.sortByName')}
+                </span>
+              </button>
+              <div className="relative flex items-center">
+                <Search className="absolute left-1 h-3 w-3 text-muted-foreground/60 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('activity:fileExplorer.searchPlaceholder')}
+                  className="w-28 rounded bg-muted/40 px-1 py-0.5 pl-4 text-[10px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:w-40 focus:bg-muted/70 focus:ring-1 focus:ring-primary/30 transition-all"
+                  aria-label={t('activity:fileExplorer.search')}
+                />
+                {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => handleBreadcrumbClick(crumb.path)}
-                    onContextMenu={(e) => handleBreadcrumbContext(e, { absPath, relPath })}
-                    className={cn(
-                      'px-1 py-0.5 rounded text-[11px] transition-colors whitespace-nowrap',
-                      crumb.isLast
-                        ? 'text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
-                    )}
-                    title={
-                      crumb.isLast
-                        ? t('activity:fileExplorer.currentDirTitle', { path: tooltipPath })
-                        : t('activity:fileExplorer.navigateToTitle', { path: tooltipPath })
-                    }
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-0.5 text-muted-foreground/60 hover:text-foreground text-[10px]"
+                    aria-label={t('common:action.clear')}
                   >
-                    {displayLabel}
+                    ✕
                   </button>
-                </span>
-              );
-            })}
-            {tree.length > 0 && (
-              <span className="ml-auto shrink-0 text-[9px] text-muted-foreground/70 tabular-nums pl-2">
-                {cwdStats.files > 0 &&
-                  t('activity:fileExplorer.filesSuffix', { count: cwdStats.files })}
-                {cwdStats.files > 0 && cwdStats.dirs > 0 && ', '}
-                {cwdStats.dirs > 0 && t('activity:fileExplorer.folders', { count: cwdStats.dirs })}
+                )}
+              </div>
+              <span className="ml-auto text-[9px] text-muted-foreground/70 tabular-nums">
+                {t('activity:fileExplorer.folders', { count: dirCount })}
               </span>
+            </div>
+          )}
+          <div className="min-h-0 min-w-0 flex flex-1 flex-col py-1">
+            {breadcrumbs.length > 0 && (
+              <div
+                ref={bcRef}
+                className="relative flex shrink-0 items-center gap-0.5 px-1 pb-1 border-b border-border/30 overflow-x-auto"
+              >
+                <span className="sticky left-0 shrink-0 w-3 h-full bg-gradient-to-r from-background to-transparent pointer-events-none" />
+                {breadcrumbs.map((crumb, i) => {
+                  const displayLabel = crumb.isLast ? crumb.label : truncateMiddle(crumb.label);
+                  const tooltipPath = crumb.path.replace(/\//g, pathSep);
+
+                  const normSegments = cwd
+                    ? cwd.replace(/\\/g, '/').split('/').filter(Boolean)
+                    : [];
+                  const rootIdx = (() => {
+                    for (let j = normSegments.length - 1; j >= 0; j--) {
+                      if (normSegments[j] === projectName) return j;
+                    }
+                    return -1;
+                  })();
+                  const absSegments =
+                    rootIdx >= 0
+                      ? normSegments.slice(0, rootIdx + i + 1)
+                      : normSegments.slice(0, i + 1);
+                  const absPath =
+                    pathSep === '\\' ? absSegments.join('\\') : '/' + absSegments.join('/');
+                  const relSegments =
+                    rootIdx >= 0 ? normSegments.slice(rootIdx + 1, rootIdx + i + 1) : [];
+                  const relPath = relSegments.join(pathSep) || '.';
+
+                  return (
+                    <span key={crumb.path} className="flex items-center gap-0.5 shrink-0">
+                      {i > 0 && (
+                        <span className="text-[9px] text-muted-foreground/65 select-none">
+                          {pathSep}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleBreadcrumbClick(crumb.path)}
+                        onContextMenu={(e) => handleBreadcrumbContext(e, { absPath, relPath })}
+                        className={cn(
+                          'px-1 py-0.5 rounded text-[11px] transition-colors whitespace-nowrap',
+                          crumb.isLast
+                            ? 'text-foreground font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                        )}
+                        title={
+                          crumb.isLast
+                            ? t('activity:fileExplorer.currentDirTitle', { path: tooltipPath })
+                            : t('activity:fileExplorer.navigateToTitle', { path: tooltipPath })
+                        }
+                      >
+                        {displayLabel}
+                      </button>
+                    </span>
+                  );
+                })}
+                {tree.length > 0 && (
+                  <span className="ml-auto shrink-0 text-[9px] text-muted-foreground/70 tabular-nums pl-2">
+                    {cwdStats.files > 0 &&
+                      t('activity:fileExplorer.filesSuffix', { count: cwdStats.files })}
+                    {cwdStats.files > 0 && cwdStats.dirs > 0 && ', '}
+                    {cwdStats.dirs > 0 &&
+                      t('activity:fileExplorer.folders', { count: cwdStats.dirs })}
+                  </span>
+                )}
+              </div>
+            )}
+            {activeFilePath && (
+              <button
+                type="button"
+                onClick={handleFileIndicatorClick}
+                className="flex shrink-0 items-center gap-1 w-full text-left px-2 py-0.5 border-b border-border/30 text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                title={t('activity:fileExplorer.navigateParentTitle', {
+                  path: activeFilePath.replace(/\//g, pathSep),
+                })}
+              >
+                <FileCode className="h-3 w-3 shrink-0" />
+                <span className="truncate">
+                  {(() => {
+                    const segments = activeFilePath.replace(/\\/g, '/').split('/');
+                    return segments[segments.length - 1] ?? activeFilePath;
+                  })()}
+                </span>
+                <span className="ml-auto text-[8px] text-muted-foreground/65 shrink-0">
+                  {t('activity:fileExplorer.goToDir')}
+                </span>
+              </button>
+            )}
+            {breadcrumbs.length === 0 && !isAtRoot && (
+              <button
+                type="button"
+                onClick={handleGoUp}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 w-full text-left px-1 py-0.5 text-[11px] rounded',
+                  'hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground',
+                  'font-medium',
+                )}
+              >
+                <CornerLeftUp className="h-3.5 w-3.5 shrink-0" />
+                <span>..</span>
+                <span className="text-[9px] text-muted-foreground/70 ml-auto">
+                  {t('activity:fileExplorer.parentDirectory')}
+                </span>
+              </button>
+            )}
+            {tree.length > 0 ? (
+              <div
+                id="ws-file-tree"
+                role="tree"
+                aria-label={t('activity:fileExplorer.folders', { count: dirCount })}
+                aria-activedescendant={focusedPath ? treeRowId(focusedPath) : undefined}
+                tabIndex={0}
+                onKeyDown={handleTreeKeyDown}
+                onFocus={handleTreeFocus}
+                className="min-h-0 min-w-0 flex-1 outline-none"
+              >
+                <VList ref={listRef} className="h-full">
+                  {rows.map((row) => (
+                    <TreeRow
+                      key={row.emptyPlaceholder ? `${row.node.path}#empty` : row.node.path}
+                      node={row.node}
+                      depth={row.depth}
+                      emptyPlaceholder={row.emptyPlaceholder}
+                      expanded={row.node.type === 'directory' && expandedDirs.has(row.node.path)}
+                      isActive={row.node.type === 'file' && row.node.path === activeFilePath}
+                      isSelected={!row.emptyPlaceholder && row.node.path === selectedPath}
+                      isFocused={!row.emptyPlaceholder && row.node.path === focusedPath}
+                      gitStatus={
+                        !row.emptyPlaceholder
+                          ? getGitStatus(row.node.path, row.node.type === 'directory')
+                          : undefined
+                      }
+                      onToggle={toggleDir}
+                      onSelect={handleSelect}
+                      onOpen={handleOpen}
+                      onContextMenu={handleNodeContextMenu}
+                    />
+                  ))}
+                </VList>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground italic p-2">
+                {t('activity:fileExplorer.noFiles')}
+              </p>
             )}
           </div>
-        )}
-        {activeFilePath && (
-          <button
-            type="button"
-            onClick={handleFileIndicatorClick}
-            className="flex shrink-0 items-center gap-1 w-full text-left px-2 py-0.5 border-b border-border/30 text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            title={t('activity:fileExplorer.navigateParentTitle', {
-              path: activeFilePath.replace(/\//g, pathSep),
-            })}
-          >
-            <FileCode className="h-3 w-3 shrink-0" />
-            <span className="truncate">
-              {(() => {
-                const segments = activeFilePath.replace(/\\/g, '/').split('/');
-                return segments[segments.length - 1] ?? activeFilePath;
-              })()}
-            </span>
-            <span className="ml-auto text-[8px] text-muted-foreground/65 shrink-0">
-              {t('activity:fileExplorer.goToDir')}
-            </span>
-          </button>
-        )}
-        {breadcrumbs.length === 0 && !isAtRoot && (
-          <button
-            type="button"
-            onClick={handleGoUp}
-            className={cn(
-              'flex shrink-0 items-center gap-1.5 w-full text-left px-1 py-0.5 text-[11px] rounded',
-              'hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground',
-              'font-medium',
-            )}
-          >
-            <CornerLeftUp className="h-3.5 w-3.5 shrink-0" />
-            <span>..</span>
-            <span className="text-[9px] text-muted-foreground/70 ml-auto">
-              {t('activity:fileExplorer.parentDirectory')}
-            </span>
-          </button>
-        )}
-        {tree.length > 0 ? (
-          <div
-            id="ws-file-tree"
-            role="tree"
-            aria-label={t('activity:fileExplorer.folders', { count: dirCount })}
-            aria-activedescendant={focusedPath ? treeRowId(focusedPath) : undefined}
-            tabIndex={0}
-            onKeyDown={handleTreeKeyDown}
-            onFocus={handleTreeFocus}
-            className="min-h-0 min-w-0 flex-1 outline-none"
-          >
-            <VList ref={listRef} className="h-full">
-              {rows.map((row) => (
-                <TreeRow
-                  key={row.emptyPlaceholder ? `${row.node.path}#empty` : row.node.path}
-                  node={row.node}
-                  depth={row.depth}
-                  emptyPlaceholder={row.emptyPlaceholder}
-                  expanded={row.node.type === 'directory' && expandedDirs.has(row.node.path)}
-                  isActive={row.node.type === 'file' && row.node.path === activeFilePath}
-                  isSelected={!row.emptyPlaceholder && row.node.path === selectedPath}
-                  isFocused={!row.emptyPlaceholder && row.node.path === focusedPath}
-                  gitStatus={
-                    !row.emptyPlaceholder
-                      ? getGitStatus(row.node.path, row.node.type === 'directory')
-                      : undefined
-                  }
-                  onToggle={toggleDir}
-                  onSelect={handleSelect}
-                  onOpen={handleOpen}
-                  onContextMenu={handleNodeContextMenu}
-                />
-              ))}
-            </VList>
-          </div>
-        ) : (
-          <p className="text-[11px] text-muted-foreground italic p-2">
-            {t('activity:fileExplorer.noFiles')}
-          </p>
-        )}
-      </div>
 
-      {contextMenu && (
-        <BreadcrumbContextMenu
-          contextMenu={contextMenu}
-          onClose={() => setContextMenu(null)}
-          copyToClipboard={copyToClipboard}
-          handleStartCreate={handleStartCreate}
-          handleShellOpen={handleShellOpen}
-        />
-      )}
+          {contextMenu && (
+            <BreadcrumbContextMenu
+              contextMenu={contextMenu}
+              onClose={() => setContextMenu(null)}
+              copyToClipboard={copyToClipboard}
+              handleStartCreate={handleStartCreate}
+              handleShellOpen={handleShellOpen}
+            />
+          )}
 
-      {nodeMenu && (
-        <NodeContextMenu
-          nodeMenu={nodeMenu}
-          onClose={() => setNodeMenu(null)}
-          handleMentionInChat={handleMentionInChat}
-          copyNodePath={(path) => {
-            void copyTextToClipboard(path).then((ok) => {
-              if (ok) toast.success(t('common:action.copied'));
-              else toast.error(t('common:action.copyFailed'));
-            });
-            setNodeMenu(null);
-          }}
-          handleStartCreate={handleStartCreate}
-          handleStartRename={handleStartRename}
-          handleDelete={handleDelete}
-        />
-      )}
+          {nodeMenu && (
+            <NodeContextMenu
+              nodeMenu={nodeMenu}
+              onClose={() => setNodeMenu(null)}
+              handleMentionInChat={handleMentionInChat}
+              copyNodePath={(path) => {
+                void copyTextToClipboard(path).then((ok) => {
+                  if (ok) toast.success(t('common:action.copied'));
+                  else toast.error(t('common:action.copyFailed'));
+                });
+                setNodeMenu(null);
+              }}
+              handleStartCreate={handleStartCreate}
+              handleStartRename={handleStartRename}
+              handleDelete={handleDelete}
+            />
+          )}
 
-      {createPrompt && (
-        <CreatePromptModal
-          createPrompt={createPrompt}
-          createName={createName}
-          setCreateName={setCreateName}
-          onCancel={() => {
-            setCreatePrompt(null);
-            setCreateName('');
-          }}
-          onConfirm={handleConfirmCreate}
-        />
-      )}
+          {createPrompt && (
+            <CreatePromptModal
+              createPrompt={createPrompt}
+              createName={createName}
+              setCreateName={setCreateName}
+              onCancel={() => {
+                setCreatePrompt(null);
+                setCreateName('');
+              }}
+              onConfirm={handleConfirmCreate}
+            />
+          )}
 
-      {renamePrompt && (
-        <RenamePromptModal
-          renamePrompt={renamePrompt}
-          renameValue={renameValue}
-          setRenameValue={setRenameValue}
-          onCancel={() => {
-            setRenamePrompt(null);
-            setRenameValue('');
-          }}
-          onConfirm={handleConfirmRename}
-        />
-      )}
+          {renamePrompt && (
+            <RenamePromptModal
+              renamePrompt={renamePrompt}
+              renameValue={renameValue}
+              setRenameValue={setRenameValue}
+              onCancel={() => {
+                setRenamePrompt(null);
+                setRenameValue('');
+              }}
+              onConfirm={handleConfirmRename}
+            />
+          )}
         </>
       )}
 

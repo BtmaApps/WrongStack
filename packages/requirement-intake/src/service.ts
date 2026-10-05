@@ -13,21 +13,18 @@
  * The original request is immutable after creation: no API path can change
  * `originalRequest`, and LLM suggestions can never write to it.
  */
-
 import type { IntakeAuthorizer, IntakeOperation } from './authorization.js';
 import {
   DEFAULT_INTAKE_QUESTIONS,
   INTAKE_FIELDS,
   type IntakeQuestionTemplate,
   type IntakeStatus,
-  MAX_SUGGESTIONS,
 } from './constants.js';
 import {
   IntakeAuthorizationError,
   IntakeConflictError,
   IntakeNotFoundError,
   IntakeStatusLockedError,
-  IntakeSuggestionError,
   IntakeValidationError,
 } from './errors.js';
 import { IntakeEventEmitter } from './events.js';
@@ -47,12 +44,14 @@ import {
   findSuggestionProposal,
   markUserSources,
 } from './service-helpers.js';
-import type { RequirementIntakeStore, StoreUpdateOptions } from './store.js';
 import {
-  type LlmSuggestionGenerator,
-  toProposals,
-  validateLlmSuggestionOutput,
-} from './suggestions.js';
+  acceptSuggestion as acceptSuggestionFromHost,
+  generateSuggestions as generateSuggestionsFromHost,
+  type IntakeSuggestionsHost,
+  rejectSuggestion as rejectSuggestionFromHost,
+} from './service-suggestions.js';
+import type { RequirementIntakeStore, StoreUpdateOptions } from './store.js';
+import type { LlmSuggestionGenerator } from './suggestions.js';
 import type {
   AddAnswerInput,
   AttachResourceInput,
@@ -72,7 +71,6 @@ import {
   validateCreateInput,
   validateUpdateInput,
 } from './validation.js';
-
 export interface RequirementIntakeServiceOptions {
   store: RequirementIntakeStore;
   authorizer: IntakeAuthorizer;
@@ -385,82 +383,7 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     focus?: string[] | undefined,
   ): Promise<LlmSuggestionProposal[]> {
-    const record = await this.requireRecord(id, ctx, 'suggest');
-    this.assertMutable(record, 'generateSuggestions');
-    if (!this.generator) {
-      throw new IntakeSuggestionError('No LLM suggestion generator is configured on this service');
-    }
-    this.metrics.increment('intake.suggestions.requested');
-
-    let output;
-    try {
-      output = await this.generator.generate({ record, focus });
-    } catch (error) {
-      this.metrics.increment('intake.suggestions.failed');
-      this.logger.error('intake', 'intake.suggestions.failed', {
-        intakeId: record.id,
-        projectId: record.projectId,
-        actorId: ctx.id,
-      });
-      throw new IntakeSuggestionError('LLM suggestion generation failed', { cause: error });
-    }
-
-    let proposals: LlmSuggestionProposal[];
-    try {
-      proposals = toProposals(validateLlmSuggestionOutput(output));
-    } catch (error) {
-      this.metrics.increment('intake.suggestions.failed');
-      throw error instanceof IntakeSuggestionError
-        ? error
-        : new IntakeSuggestionError('LLM suggestion output could not be validated', {
-            cause: error,
-          });
-    }
-    if (proposals.length === 0) {
-      this.metrics.increment('intake.suggestions.failed');
-      throw new IntakeSuggestionError('LLM suggestion output contained no usable proposals');
-    }
-
-    const hadQuestions = proposals.some((proposal) => proposal.kind === 'question');
-    let previousStatus: IntakeStatus = record.status;
-    const updateOptions: StoreUpdateOptions = {
-      actorId: ctx.id,
-      actorType: ctx.type,
-      action: hadQuestions ? 'information_requested' : 'suggestions_added',
-    };
-
-    const updated = await this.store.update(id, updateOptions, (next) => {
-      this.assertMutable(next, 'generateSuggestions');
-      previousStatus = next.status;
-      if (next.status === 'draft') {
-        updateOptions.from = 'draft';
-        updateOptions.to = 'collecting_information';
-        next.status = 'collecting_information';
-      }
-      next.llmSuggestions.push(...proposals);
-      if (next.llmSuggestions.length > MAX_SUGGESTIONS) {
-        next.llmSuggestions = next.llmSuggestions.slice(
-          next.llmSuggestions.length - MAX_SUGGESTIONS,
-        );
-      }
-    });
-
-    this.metrics.increment('intake.suggestions.succeeded');
-    this.logger.info('intake', 'intake.suggestions.succeeded', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-      count: proposals.length,
-    });
-    this.emit(hadQuestions ? 'RequirementIntakeInformationRequested' : 'RequirementIntakeUpdated', {
-      intakeId: updated.id,
-      projectId: updated.projectId,
-      actorId: ctx.id,
-      actorType: ctx.type,
-      previousStatus,
-      status: updated.status,
-    });
-    return proposals;
+    return generateSuggestionsFromHost(this.intakeSuggestionsHost(), id, ctx, focus);
   }
 
   async acceptSuggestion(
@@ -469,36 +392,13 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     expectedVersion?: number | undefined,
   ): Promise<RequirementIntakeRecord> {
-    const record = await this.requireRecord(id, ctx, 'accept_suggestion');
-    this.assertMutable(record, 'acceptSuggestion');
-    const proposal = this.findSuggestion(record, proposalId);
-    if (proposal.status !== 'pending') {
-      throw new IntakeValidationError([
-        { field: 'suggestionId', message: `suggestion is already ${proposal.status}` },
-      ]);
-    }
-
-    return this.store
-      .update(
-        id,
-        this.updateMeta(ctx, 'suggestion_accepted', [proposal.kind], expectedVersion),
-        (next) => {
-          this.assertMutable(next, 'acceptSuggestion');
-          const target = next.llmSuggestions.find((candidate) => candidate.id === proposalId);
-          if (!target) {
-            throw new IntakeValidationError([
-              { field: 'suggestionId', message: `suggestion not found: ${proposalId}` },
-            ]);
-          }
-          this.applyProposal(next, target);
-          target.status = 'accepted';
-          target.resolvedAt = Date.now();
-        },
-      )
-      .then((updated) => {
-        this.afterMutation(updated, ctx, 'RequirementIntakeUpdated');
-        return updated;
-      });
+    return acceptSuggestionFromHost(
+      this.intakeSuggestionsHost(),
+      id,
+      proposalId,
+      ctx,
+      expectedVersion,
+    );
   }
 
   async rejectSuggestion(
@@ -507,35 +407,13 @@ export class RequirementIntakeService {
     ctx: IntakeContext,
     expectedVersion?: number | undefined,
   ): Promise<RequirementIntakeRecord> {
-    const record = await this.requireRecord(id, ctx, 'reject_suggestion');
-    this.assertMutable(record, 'rejectSuggestion');
-    this.findSuggestion(record, proposalId);
-
-    return this.store
-      .update(
-        id,
-        this.updateMeta(ctx, 'suggestion_rejected', [proposalId], expectedVersion),
-        (next) => {
-          this.assertMutable(next, 'rejectSuggestion');
-          const target = next.llmSuggestions.find((candidate) => candidate.id === proposalId);
-          if (!target) {
-            throw new IntakeValidationError([
-              { field: 'suggestionId', message: `suggestion not found: ${proposalId}` },
-            ]);
-          }
-          if (target.status !== 'pending') {
-            throw new IntakeValidationError([
-              { field: 'suggestionId', message: `suggestion is already ${target.status}` },
-            ]);
-          }
-          target.status = 'rejected';
-          target.resolvedAt = Date.now();
-        },
-      )
-      .then((updated) => {
-        this.afterMutation(updated, ctx, 'RequirementIntakeUpdated');
-        return updated;
-      });
+    return rejectSuggestionFromHost(
+      this.intakeSuggestionsHost(),
+      id,
+      proposalId,
+      ctx,
+      expectedVersion,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -834,5 +712,23 @@ export class RequirementIntakeService {
       }
       throw error;
     }
+  }
+
+  private intakeSuggestionsHost(): IntakeSuggestionsHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      requireRecord: this.requireRecord,
+      assertMutable: this.assertMutable,
+      generator: this.generator,
+      metrics: this.metrics,
+      logger: this.logger,
+      store: this.store,
+      emit: this.emit,
+      findSuggestion: this.findSuggestion,
+      updateMeta: this.updateMeta,
+      applyProposal: this.applyProposal,
+      afterMutation: this.afterMutation,
+    } satisfies IntakeSuggestionsHost);
+    return this as unknown as IntakeSuggestionsHost;
   }
 }
