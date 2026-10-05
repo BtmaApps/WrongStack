@@ -216,7 +216,23 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
   async ensureFreshToken(signal: AbortSignal): Promise<void> {
     if (!this.refreshKey) return;
     if (!this.isStale()) return;
-    await this.doRefresh(signal);
+    try {
+      await this.doRefresh(signal);
+    } catch (error) {
+      // Refreshing inside the skew window is opportunistic. While the current
+      // access token has not actually expired, a token-endpoint blip (503, a
+      // timeout) must not fail a request that would succeed with it; the next
+      // request tries again, and a real 401 still forces the refresh and
+      // surfaces its error.
+      if (
+        !signal.aborted &&
+        this.expiresAt !== undefined &&
+        Number.isFinite(this.expiresAt) &&
+        Date.now() < this.expiresAt
+      )
+        return;
+      throw error;
+    }
   }
 
   /**

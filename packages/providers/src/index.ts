@@ -26,10 +26,14 @@ export {
 } from './anthropic-oauth.js';
 export { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 export {
+  CHATGPT_ACCOUNT_METADATA_CATALOG,
   type DiscoverOptions,
+  type DiscoveryOverlayOptions,
   type DiscoveryTarget,
   discoverOpenAICompatibleModels,
+  discoveryOverlay,
   mapCompatibleModel,
+  pruneDiscoveryCache,
   resolveDiscoveryTargets,
 } from './auto-discover.js';
 export { ANTHROPIC_MAX_BREAKPOINTS, capAnthropicCacheBreakpoints } from './cache-breakpoint-cap.js';

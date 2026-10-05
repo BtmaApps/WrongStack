@@ -275,3 +275,61 @@ describe('models visibility commands', () => {
     expect(readConfig().providers?.anthropic?.models).toBeUndefined();
   });
 });
+
+describe('models visibility commands on the frozen live config', () => {
+  // `ConfigLoader.load` freezes the config. These commands wrote to disk and
+  // then threw assigning into it, so the user saw a stack trace and exit 1.
+  const frozen = (providers: Record<string, unknown>) => {
+    const cfg = {
+      version: 1,
+      provider: 'anthropic',
+      model: 'anthropic-test-model',
+      providers,
+    } as never as Config;
+    writeConfig(cfg);
+    return Object.freeze(cfg);
+  };
+  const account = {
+    type: 'anthropic',
+    models: ['anthropic-test-model'],
+    apiKeys: [{ label: 'default', apiKey: 'enc:x', createdAt: '' }],
+    activeKey: 'default',
+  };
+
+  it.each([
+    ['hide', ['hide', 'anthropic', 'anthropic-test-model']],
+    ['show', ['show', 'anthropic', 'claude-new']],
+    ['reset', ['reset', 'anthropic']],
+  ])('%s succeeds and updates the in-process config', async (_name, argv) => {
+    const cfg = frozen({ anthropic: { ...account } });
+    const { renderer } = makeRenderer();
+    const deps = makeDeps(cfg, configPath, renderer);
+    expect(await modelsCmd(argv, deps as never)).toBe(0);
+    expect(deps.config).not.toBe(cfg);
+    expect(deps.config.providers?.anthropic?.models).toEqual(
+      readConfig().providers?.anthropic?.models,
+    );
+  });
+
+  it('reset <provider> <model> drops only that custom definition', async () => {
+    const cfg = frozen({
+      anthropic: {
+        ...account,
+        customModels: {
+          'stale-model': { modelsDev: { limit: { context: 1_050_000 } } },
+          'kept-model': { maxOutput: 4096 },
+        },
+      },
+    });
+    const { renderer } = makeRenderer();
+    const deps = makeDeps(cfg, configPath, renderer);
+    expect(await modelsCmd(['reset', 'anthropic', 'stale-model'], deps as never)).toBe(0);
+    const stored = readConfig().providers?.anthropic;
+    // It used to ignore the model and wipe the provider's visible list instead.
+    expect(stored?.models).toEqual(['anthropic-test-model']);
+    expect(Object.keys(stored?.customModels ?? {})).toEqual(['kept-model']);
+    expect(Object.keys(deps.config.providers?.anthropic?.customModels ?? {})).toEqual([
+      'kept-model',
+    ]);
+  });
+});

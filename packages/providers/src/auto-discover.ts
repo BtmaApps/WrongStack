@@ -4,17 +4,19 @@ import type {
   ModelsDevModel,
   ModelsDevProvider,
   ProviderConfig,
+  ReasoningEffort,
 } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { fetchCopilotModels } from './github-copilot-models.js';
 import { copilotBaseUrlFromToken } from './github-copilot-token.js';
 import {
   CODEX_BASE_URL,
-  CODEX_CLIENT_VERSION,
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
+  codexClientVersion,
   codexModelsUrl,
 } from './oauth/codex-protocol.js';
+import { subscriptionModelsPath } from './oauth/subscription-models.js';
 import { extractAccountId } from './openai-codex-account.js';
 import { matchesActiveProviderCredential } from './provider-credential-state.js';
 import { projectCompatibleProviderPresets } from './provider-definitions.js';
@@ -56,6 +58,13 @@ interface CompatibleModelEntry {
   max_context_window?: unknown;
   input_modalities?: unknown;
   output_modalities?: unknown;
+  /**
+   * ChatGPT account catalogs (`/codex/models`, the plan API's `/v1/models`)
+   * enumerate reasoning efforts as `[{ effort, description }]`.
+   */
+  supported_reasoning_levels?: unknown;
+  /** ChatGPT account catalogs: the model is retiring in favour of `upgrade.model`. */
+  upgrade?: unknown;
   /** Vercel AI Gateway nests both directions under one object. */
   modalities?: {
     input?: unknown;
@@ -117,10 +126,97 @@ export interface DiscoveryTarget {
   copilotCatalog?: boolean | undefined;
   modelsUrl?: string | undefined;
   headers?: Record<string, string> | undefined;
+  /**
+   * Leave the snapshot's `npm` unset so the catalog's own wire-family
+   * classification stands. The ChatGPT account catalogs are not
+   * openai-compatible endpoints: stamping that family on them downgraded every
+   * model to the openai-compatible baseline (no reasoning) in `capabilitiesFor`.
+   */
+  inheritWireFamily?: boolean | undefined;
+  /** Catalog provider whose same-id models fill the fields the account snapshot omits. */
+  metadataCatalogId?: string | undefined;
   /** Renew account credentials before a catalog request; may update the cache identity. */
   prepareApiKey?: ((fetchImpl: typeof fetch) => Promise<string>) | undefined;
   /** Fence results if the selected account changes during discovery. */
   isCurrent?: (() => boolean) | undefined;
+}
+
+/**
+ * models.dev provider that publishes the same model ids the ChatGPT account
+ * catalogs serve. Used only to fill fields those catalogs never state (output
+ * ceiling, knowledge cutoff); see `metadataFallbackProviderId`.
+ */
+export const CHATGPT_ACCOUNT_METADATA_CATALOG = 'openai';
+
+/** Options a host passes to `registry.mergeOverlay` for one discovery snapshot. */
+export interface DiscoveryOverlayOptions {
+  authoritativeProviderIds?: readonly string[] | undefined;
+  observedAt?: string | undefined;
+  metadataFallbackProviderId?: string | undefined;
+}
+
+/**
+ * The registry merge for one discovery snapshot, identical for every host.
+ *
+ * Both the CLI boot and the WebUI server merge discovery results; computing
+ * the payload and options here keeps them from drifting. It also normalises
+ * snapshots cached by older builds, which stamped the openai-compatible family
+ * on account catalogs that are not openai-compatible.
+ */
+export function discoveryOverlay(
+  target: Pick<
+    DiscoveryTarget,
+    'id' | 'modelDiscoveryAuthoritative' | 'inheritWireFamily' | 'metadataCatalogId'
+  >,
+  provider: ModelsDevProvider,
+  observedAt?: string | undefined,
+): { payload: Record<string, ModelsDevProvider>; options: DiscoveryOverlayOptions } {
+  let snapshot = provider;
+  if (target.inheritWireFamily && snapshot.npm !== undefined) {
+    const { npm: _stamped, ...rest } = snapshot;
+    snapshot = rest;
+  }
+  // Discovery names a snapshot after its config id; an account provider's
+  // catalog entry already carries the real display name, which that id would
+  // overwrite ("openai-codex" instead of "OpenAI Codex (ChatGPT sign-in)").
+  // The merge keeps a base field the overlay leaves undefined.
+  if (target.inheritWireFamily && snapshot.name === target.id) {
+    snapshot = { ...snapshot, name: undefined } as unknown as ModelsDevProvider;
+  }
+  return {
+    payload: { [target.id]: snapshot },
+    options: {
+      ...(target.modelDiscoveryAuthoritative
+        ? { authoritativeProviderIds: [target.id], ...(observedAt ? { observedAt } : {}) }
+        : {}),
+      ...(target.metadataCatalogId ? { metadataFallbackProviderId: target.metadataCatalogId } : {}),
+    },
+  };
+}
+
+/**
+ * Drop cache entries for earlier credentials of the same account catalog.
+ *
+ * Account cache keys carry a hash of the refresh token so one account's
+ * models never stand in for another's. OAuth servers rotate that token on
+ * every refresh, so without pruning each refresh appended a new full snapshot
+ * and the cache file grew without bound (28 entries / 1.1 MB observed). Only
+ * the current credential's snapshot can ever be read again.
+ */
+export function pruneDiscoveryCache(
+  cache: Record<string, unknown>,
+  target: Pick<DiscoveryTarget, 'id' | 'baseUrl' | 'accountCatalog' | 'cacheKey'>,
+): boolean {
+  if (!target.accountCatalog) return false;
+  const prefix = `${target.id}\u0000${target.baseUrl}\u0000`;
+  let pruned = false;
+  for (const key of Object.keys(cache)) {
+    if (key !== target.cacheKey && key.startsWith(prefix)) {
+      delete cache[key];
+      pruned = true;
+    }
+  }
+  return pruned;
 }
 
 /** Active API key from a ProviderConfig (mirrors the provider factory's resolver). */
@@ -171,13 +267,16 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
       } else if (copilot) {
         baseUrl = copilotBaseUrlFromToken(active.apiKey);
       } else if (codex) {
-        modelsUrl = `${codexModelsUrl(baseUrl)}?client_version=${encodeURIComponent(CODEX_CLIENT_VERSION)}`;
+        modelsUrl = `${codexModelsUrl(baseUrl)}?client_version=${encodeURIComponent(codexClientVersion())}`;
         headers = { originator: CODEX_ORIGINATOR, 'user-agent': CODEX_USER_AGENT };
         const accountId = active.accountId ?? extractAccountId(active.apiKey);
         if (accountId) headers['chatgpt-account-id'] = accountId;
       }
       if (!baseUrl) continue;
-      const modelDiscoveryPath = strategy === 'xai' ? 'language-models' : undefined;
+      const modelDiscoveryPath =
+        strategy === 'xai' || strategy === 'chatgpt-api'
+          ? subscriptionModelsPath(strategy)
+          : undefined;
       const identity = createHash('sha256')
         .update(active.refreshToken ?? active.apiKey)
         .digest('hex');
@@ -194,6 +293,10 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
         modelsUrl,
         headers,
       };
+      if (codex || strategy === 'chatgpt-api') {
+        target.inheritWireFamily = true;
+        target.metadataCatalogId = CHATGPT_ACCOUNT_METADATA_CATALOG;
+      }
       if (strategy && Object.hasOwn(SUBSCRIPTION_ENDPOINTS, strategy)) {
         let source = { ...active };
         const isCurrent = () =>
@@ -265,6 +368,8 @@ export interface DiscoverOptions {
   accountCatalog?: boolean | undefined;
   copilotCatalog?: boolean | undefined;
   modelsUrl?: string | undefined;
+  /** See {@link DiscoveryTarget.inheritWireFamily}. */
+  inheritWireFamily?: boolean | undefined;
   prepareApiKey?: DiscoveryTarget['prepareApiKey'];
   /** Safe diagnostic categories only; response bodies and credentials are never reported. */
   onFailure?: ((reason: string) => void) | undefined;
@@ -346,6 +451,27 @@ function asPosInt(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined;
 }
 
+/** `[{ effort: 'low' }, ...]` -> `['low', ...]`; undefined when the field is absent or not an array. */
+function readSupportedReasoningEfforts(v: unknown): ReasoningEffort[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: ReasoningEffort[] = [];
+  for (const level of v) {
+    const effort =
+      level && typeof level === 'object' ? (level as { effort?: unknown }).effort : undefined;
+    if (typeof effort === 'string' && effort && !out.includes(effort as ReasoningEffort))
+      out.push(effort as ReasoningEffort);
+  }
+  return out;
+}
+
+function isRetiring(upgrade: unknown): boolean {
+  return (
+    !!upgrade &&
+    typeof upgrade === 'object' &&
+    typeof (upgrade as { model?: unknown }).model === 'string'
+  );
+}
+
 function asStringArray(v: unknown): string[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const out = v.filter((x): x is string => typeof x === 'string');
@@ -398,10 +524,12 @@ export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel 
   );
   // omniroute splits these: `reasoning` (effort) and `thinking` (extended).
   // Either implies the model can reason for capability purposes.
+  const accountEfforts = readSupportedReasoningEfforts(entry.supported_reasoning_levels);
   const reasoning = foldSignals(
     asTriBool(caps.reasoning),
     asTriBool(caps.thinking),
     params ? params.includes('reasoning') || params.includes('include_reasoning') : undefined,
+    accountEfforts ? accountEfforts.length > 0 : undefined,
   );
   const temperature = foldSignals(
     asTriBool(caps.temperature),
@@ -423,6 +551,14 @@ export function mapCompatibleModel(entry: CompatibleModelEntry): ModelsDevModel 
     ...(typeof entry.description === 'string' && entry.description
       ? { description: entry.description }
       : {}),
+    // Efforts the account accepts, in the registry's native shape; the registry
+    // keeps the ones it knows and drops the rest (e.g. `ultra`, which delegates).
+    ...(accountEfforts && accountEfforts.length > 0
+      ? { reasoning_options: [{ type: 'effort' as const, values: accountEfforts }] }
+      : {}),
+    // The backend names a replacement for a retiring model; that is a lifecycle
+    // statement, the same one models.dev makes with `status: deprecated`.
+    ...(isRetiring(entry.upgrade) ? { status: 'deprecated' } : {}),
   };
   if (inputModalities || outputModalities || vision !== undefined) {
     const input = inputModalities ?? (vision ? ['text', 'image'] : ['text']);
@@ -567,8 +703,9 @@ export async function discoverOpenAICompatibleModels(
     return {
       id: providerId,
       name: opts.providerName ?? providerId,
-      // Classifies to the openai-compatible wire family in the registry.
-      npm: '@ai-sdk/openai-compatible',
+      // Classifies to the openai-compatible wire family in the registry -
+      // unless the target's own catalog entry already knows its family.
+      ...(opts.inheritWireFamily ? {} : { npm: '@ai-sdk/openai-compatible' }),
       api: base,
       env: [],
       models,

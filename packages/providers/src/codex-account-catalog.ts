@@ -7,9 +7,9 @@ import {
   CODEX_USAGE_TIMEOUT_MS,
 } from './codex-account-catalog-support.js';
 import {
-  CODEX_CLIENT_VERSION,
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
+  codexClientVersion,
   codexUsageUrl,
 } from './oauth/codex-protocol.js';
 import type {
@@ -54,7 +54,7 @@ export async function fetchContextLimits(
   this: CodexAccountCatalogHost,
   signal: AbortSignal,
 ): Promise<void> {
-  const url = `${resolveCodexModelsUrl(this.baseUrl)}?client_version=${encodeURIComponent(CODEX_CLIENT_VERSION)}`;
+  const url = `${resolveCodexModelsUrl(this.baseUrl)}?client_version=${encodeURIComponent(codexClientVersion())}`;
   const timeout = AbortSignal.timeout(CODEX_MODELS_TIMEOUT_MS);
   const probeSignal = AbortSignal.any([signal, timeout]);
   try {

@@ -282,12 +282,14 @@ function aliasProviderId(configProviderId: string, cfg: ProviderConfig | undefin
 async function discoverProviderModels(
   deps: Parameters<SubcommandHandler>[1],
   ids: string[],
+  onlyProviderId?: string | undefined,
 ): Promise<Awaited<ReturnType<typeof deps.modelsRegistry.getProvider>>> {
   if (!('mergeOverlay' in deps.modelsRegistry)) return undefined;
   try {
     const { discoverAndMergeProviders } = await import('../../boot/auto-discover-providers.js');
+    const only = onlyProviderId ? deps.config.providers?.[onlyProviderId] : undefined;
     await discoverAndMergeProviders({
-      config: deps.config,
+      config: only ? { ...deps.config, providers: { [onlyProviderId!]: only } } : deps.config,
       registry: deps.modelsRegistry as DefaultModelsRegistry,
       cacheDir: deps.paths.cacheDir,
     });
@@ -309,6 +311,14 @@ async function getCatalogProviderForConfigProvider(
   provider: Awaited<ReturnType<typeof deps.modelsRegistry.getProvider>>;
 }> {
   const cfg = deps.config.providers?.[providerId];
+  // A signed-in account's catalog entry is only the curated overlay until its
+  // account snapshot is merged: listing it bare showed every model with no
+  // context, output or capabilities. Boot merges the snapshot; a subcommand
+  // has no boot, so merge it here (live, or the cached snapshot offline).
+  if (usesAccountCatalog(cfg)) {
+    const found = await discoverProviderModels(deps, [providerId], providerId);
+    if (found) return { providerId, provider: found };
+  }
   const lookupId = aliasProviderId(providerId, cfg);
   const provider = await deps.modelsRegistry.getProvider(lookupId);
   if (provider) return { providerId: lookupId, provider };
@@ -320,6 +330,11 @@ async function getCatalogProviderForConfigProvider(
     providerId: lookupId,
     provider: await discoverProviderModels(deps, [lookupId, providerId]),
   };
+}
+
+function usesAccountCatalog(cfg: ProviderConfig | undefined): boolean {
+  const active = cfg?.apiKeys?.find((key) => key.label === cfg.activeKey) ?? cfg?.apiKeys?.[0];
+  return active?.authMethod === 'oauth';
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -366,10 +381,7 @@ async function modelsHide(args: string[], deps: Parameters<SubcommandHandler>[1]
       p.models = nextVisible;
     },
   );
-  deps.config.providers = {
-    ...(deps.config.providers ?? {}),
-    [providerId]: { ...saved, models: nextVisible },
-  };
+  publishProviderConfig(deps, providerId, { ...saved, models: nextVisible });
   deps.renderer.writeInfo(
     `Hidden ${providerId}/${modelId}. Visible: ${nextVisible.length}, hidden: ${Math.max(0, knownIds.length - nextVisible.length)}.`,
   );
@@ -422,10 +434,7 @@ async function modelsShow(args: string[], deps: Parameters<SubcommandHandler>[1]
       p.models = nextVisible;
     },
   );
-  deps.config.providers = {
-    ...(deps.config.providers ?? {}),
-    [providerId]: { ...saved, models: nextVisible },
-  };
+  publishProviderConfig(deps, providerId, { ...saved, models: nextVisible });
   const isKnown = knownIds.includes(modelId);
   deps.renderer.writeInfo(
     `Visible ${providerId}/${modelId}${isKnown ? '' : ' (not in current catalog)'}. Visible: ${nextVisible.length}.`,
@@ -474,13 +483,60 @@ async function modelsHidden(
   return 0;
 }
 
+/**
+ * Reflect a provider change in this process's config. The loaded config is
+ * frozen (`ConfigLoader.load`), so assigning into it threw AFTER the change had
+ * already been written to disk: the command printed a stack trace and exited
+ * non-zero on success. Replace the object instead of mutating it.
+ */
+function publishProviderConfig(
+  deps: Parameters<SubcommandHandler>[1],
+  providerId: string,
+  next: ProviderConfig,
+): void {
+  deps.config = {
+    ...deps.config,
+    providers: { ...(deps.config.providers ?? {}), [providerId]: next },
+  };
+}
+
+async function modelsResetCustomModel(
+  providerId: string,
+  modelId: string,
+  saved: ProviderConfig,
+  deps: Parameters<SubcommandHandler>[1],
+): Promise<number> {
+  if (!saved.customModels || !Object.hasOwn(saved.customModels, modelId)) {
+    deps.renderer.writeInfo(`${providerId}/${modelId} has no custom definition; nothing to reset.`);
+    return 0;
+  }
+  await mutateConfigProviders(
+    activeProfileConfigPath(deps.paths, deps.config),
+    deps.vault,
+    (providers) => {
+      const p = providers[providerId];
+      if (!p?.customModels) return;
+      delete p.customModels[modelId];
+      if (Object.keys(p.customModels).length === 0) delete p.customModels;
+    },
+  );
+  const { [modelId]: _dropped, ...rest } = saved.customModels;
+  const next: ProviderConfig = { ...saved };
+  if (Object.keys(rest).length > 0) next.customModels = rest;
+  else delete next.customModels;
+  publishProviderConfig(deps, providerId, next);
+  deps.renderer.writeInfo(`Reset ${providerId}/${modelId} to the catalog definition.`);
+  return 0;
+}
+
 async function modelsReset(
   args: string[],
   deps: Parameters<SubcommandHandler>[1],
 ): Promise<number> {
   const providerId = args[0];
+  const modelId = args[1];
   if (!providerId) {
-    deps.renderer.writeError('Usage: wstack models reset <provider>');
+    deps.renderer.writeError('Usage: wstack models reset <provider> [model]');
     return 1;
   }
   const saved = deps.config.providers?.[providerId];
@@ -488,6 +544,10 @@ async function modelsReset(
     deps.renderer.writeError(`Provider "${providerId}" is not configured.`);
     return 1;
   }
+  // `reset <provider> <model>` drops that model's custom definition so the
+  // catalog's values apply again. It used to ignore the model and fall through
+  // to the provider-wide branch below, wiping the provider's visible list.
+  if (modelId) return modelsResetCustomModel(providerId, modelId, saved, deps);
   if (saved.models === undefined) {
     deps.renderer.writeInfo(`${providerId} already shows the full catalog model list.`);
     return 0;
@@ -503,10 +563,7 @@ async function modelsReset(
   );
   const nextProvider = { ...saved };
   delete nextProvider.models;
-  deps.config.providers = {
-    ...(deps.config.providers ?? {}),
-    [providerId]: nextProvider,
-  };
+  publishProviderConfig(deps, providerId, nextProvider);
   deps.renderer.writeInfo(
     `Reset visible model list for ${providerId} to the full catalog default.`,
   );
@@ -522,6 +579,9 @@ async function modelsCaps(args: string[], deps: Parameters<SubcommandHandler>[1]
     return 1;
   }
 
+  if (usesAccountCatalog(deps.config.providers?.[providerId])) {
+    await discoverProviderModels(deps, [providerId], providerId);
+  }
   const resolved = await deps.modelsRegistry.getModel(providerId, modelId);
   if (!resolved) {
     deps.renderer.writeError('Model not found in catalog: ' + providerId + '/' + modelId);

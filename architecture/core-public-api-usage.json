@@ -94,9 +94,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/models": {
-      "files": 38,
+      "files": 39,
       "typeOnly": 10,
-      "runtimeOrMixed": 29
+      "runtimeOrMixed": 30
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1325,
-      "typeOnly": 1171,
+      "files": 1327,
+      "typeOnly": 1173,
       "runtimeOrMixed": 394
     },
     "@wrongstack/core/types/limits": {
@@ -8629,6 +8629,12 @@
     {
       "specifier": "@wrongstack/core/models",
       "file": "packages/providers/tests/catalog-change-invalidation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/providers/tests/chatgpt-account-catalog.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17166,6 +17172,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/chatgpt-account-catalog.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/chatgpt-direct-auth.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17313,6 +17325,12 @@
       "file": "packages/providers/tests/oauth-copilot-device-flow.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/oauth-refresh-hardening.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",

@@ -28,6 +28,7 @@ export const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
   'github-copilot': 'github-copilot',
   'google-antigravity': 'google-antigravity',
   'openai-codex': 'openai-codex',
+  'openai-chatgpt': 'openai',
 };
 
 /**
@@ -66,6 +67,19 @@ export const SIBLING_CATALOG_BY_FAMILY: Partial<Record<WireFamily, string>> = {
  */
 export const CATALOG_ALIAS_BY_PROVIDER_TYPE: Partial<Record<string, string>> = {
   'ai-gateway': 'vercel',
+};
+
+/**
+ * Providers with a catalog entry of their own that may still MISS a model,
+ * keyed by provider type: the model is then looked up here instead.
+ *
+ * Unlike an alias this never replaces the provider's own entry. `openai-chatgpt`
+ * used to alias to `openai` outright, so the plan account's snapshot was never
+ * read: every surface showed the public API's 1.05M window instead of the
+ * account's, and the TUI picker offered all of the API's models (embeddings,
+ * realtime, gpt-3.5) under a plan that serves a handful.
+ */
+export const SIBLING_CATALOG_BY_PROVIDER_TYPE: Partial<Record<string, string>> = {
   'openai-chatgpt': 'openai',
 };
 
@@ -247,7 +261,10 @@ export async function capabilitiesFor(
         ? provider?.family
         : undefined;
   const family = knownFamily ?? FAMILY_BY_PROVIDER_ID[providerId] ?? 'unsupported';
-  const siblingProviderId = SIBLING_CATALOG_BY_FAMILY[family];
+  const siblingProviderId =
+    SIBLING_CATALOG_BY_FAMILY[family] ??
+    SIBLING_CATALOG_BY_PROVIDER_TYPE[catalogProviderId] ??
+    SIBLING_CATALOG_BY_PROVIDER_TYPE[providerId];
   const siblingProvider =
     siblingProviderId && (!provider || provider.family === 'unsupported')
       ? await registry.getProvider(siblingProviderId)

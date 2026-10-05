@@ -28,7 +28,16 @@
 
 import { createRequire } from 'node:module';
 import { arch as osArch, release as osRelease, type as osType } from 'node:os';
-import { FetchError, ParseError } from '@wrongstack/core/types';
+import { FetchError, ParseError, ProviderError } from '@wrongstack/core/types';
+
+/** OAuth error codes meaning the stored refresh token can never be used again. */
+const CODEX_DEAD_SESSION_CODES: ReadonlySet<string> = new Set([
+  'invalid_grant',
+  'invalid_refresh_token',
+  'refresh_token_expired',
+  'refresh_token_invalidated',
+  'refresh_token_reused',
+]);
 
 // ── Constants (verified against the real Codex CLI) ─────────────────────────
 
@@ -66,8 +75,33 @@ export const CODEX_ORIGINATOR = 'wrongstack';
  * bump it deliberately after checking the wire, never automatically.
  * The client's own identity travels separately, in `originator` and the
  * User-Agent, which stay WrongStack's.
+ *
+ * A stale pin fails silently, so check it whenever a model is "missing". The
+ * gate is NOT only `minimal_client_version`: on 2026-10-05 the backend hid
+ * `gpt-6.1-sol` (published minimum 0.153.0) from every version below 0.159.0
+ * and `gpt-6-sol` / `gpt-6-luna` (minimum 0.155.0) below 0.155.0, so the old
+ * 0.153.4 pin served 5 of the account's 8 models and none of the retirement
+ * notices (`upgrade`). The new models share the catalog traits of gpt-6-astra
+ * (`use_responses_lite`, `tool_mode: code_mode_only`), which this transport
+ * already drives. Compare against `npm view @openai/codex version`.
+ * `WRONGSTACK_CODEX_CLIENT_VERSION` overrides the pin without a release; see
+ * {@link codexClientVersion}.
  */
-export const CODEX_CLIENT_VERSION = '0.153.4';
+export const CODEX_CLIENT_VERSION = '0.160.0';
+
+const CODEX_CLIENT_VERSION_ENV = 'WRONGSTACK_CODEX_CLIENT_VERSION';
+
+/**
+ * The `client_version` to advertise: the pin, or a semver override from
+ * `WRONGSTACK_CODEX_CLIENT_VERSION`. Codex ships roughly weekly and new models
+ * appear behind newer versions, so a user can unhide a fresh rollout without
+ * waiting for a WrongStack release. A malformed override is ignored rather
+ * than sent — the backend answers 400 to anything that is not semver.
+ */
+export function codexClientVersion(env: NodeJS.ProcessEnv = process.env): string {
+  const override = env[CODEX_CLIENT_VERSION_ENV]?.trim();
+  return override && /^\d+\.\d+\.\d+$/.test(override) ? override : CODEX_CLIENT_VERSION;
+}
 /**
  * The client's own identity, sent as `User-Agent` on every ChatGPT-backend call.
  *
@@ -217,8 +251,43 @@ export async function readCodexTokenResponse(
 ): Promise<CodexTokens> {
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    // Only the OAuth error CODE leaves this function: the response body can
+    // echo request fields, and it used to be pasted verbatim into the message.
+    let code: string | undefined;
+    try {
+      const parsed = JSON.parse(text) as { error?: unknown } | null;
+      const raw =
+        typeof parsed?.error === 'object'
+          ? (parsed.error as { code?: unknown })?.code
+          : parsed?.error;
+      if (typeof raw === 'string' && /^[a-z0-9_.-]{1,100}$/i.test(raw)) code = raw;
+    } catch {
+      // not JSON
+    }
+    const detail = code ? `${res.status}, ${code}` : String(res.status);
+    if (op === 'refresh') {
+      // A refresh runs on a request's path, so it must speak the provider error
+      // contract: retry a transient 429/5xx, and stop with a sign-in hint when
+      // the refresh token itself is dead.
+      const deadSession =
+        res.status === 401 ||
+        res.status === 403 ||
+        (code !== undefined && CODEX_DEAD_SESSION_CODES.has(code));
+      throw new ProviderError(
+        `Codex token refresh failed (${detail}).${
+          deadSession ? ' Sign in with ChatGPT again: wstack auth login chatgpt' : ''
+        }`,
+        res.status,
+        !deadSession && (res.status === 429 || res.status >= 500),
+        CODEX_PROVIDER_ID,
+        {
+          body: { code: code ?? 'oauth_failed' },
+          ...(deadSession ? { kind: 'auth' as const } : {}),
+        },
+      );
+    }
     throw new FetchError({
-      message: `Codex token ${op} failed (${res.status}): ${text || res.statusText}`,
+      message: `Codex token ${op} failed (${detail})`,
       status: res.status,
       context: { provider: CODEX_PROVIDER_ID, op, url: CODEX_TOKEN_URL },
     });

@@ -1,7 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Config, Logger, ModelsDevPayload, ModelsDevProvider } from '@wrongstack/core/types';
-import { discoverOpenAICompatibleModels, resolveDiscoveryTargets } from '@wrongstack/providers';
+import {
+  type DiscoveryOverlayOptions,
+  discoverOpenAICompatibleModels,
+  discoveryOverlay,
+  pruneDiscoveryCache,
+  resolveDiscoveryTargets,
+} from '@wrongstack/providers';
 
 interface DiscoverCacheEntry {
   fetchedAt: string;
@@ -11,13 +17,7 @@ interface DiscoverCacheEntry {
 type DiscoverCache = Record<string, DiscoverCacheEntry>;
 
 interface OverlayRegistry {
-  mergeOverlay(
-    payload: ModelsDevPayload,
-    opts?: {
-      authoritativeProviderIds?: readonly string[] | undefined;
-      observedAt?: string | undefined;
-    },
-  ): void;
+  mergeOverlay(payload: ModelsDevPayload, opts?: DiscoveryOverlayOptions): void;
 }
 
 function isOverlayRegistry(value: unknown): value is OverlayRegistry {
@@ -79,12 +79,12 @@ export async function discoverAndMergeWebuiProviders(opts: {
         baseUrl,
         apiKey,
         modelDiscoveryPath,
-        modelDiscoveryAuthoritative,
         accountCatalog,
         copilotCatalog,
         modelsUrl,
         headers,
         prepareApiKey,
+        inheritWireFamily,
       } = target;
       let failureReason = 'model catalog request failed';
       const provider = await discoverOpenAICompatibleModels(id, {
@@ -96,6 +96,7 @@ export async function discoverAndMergeWebuiProviders(opts: {
         modelsUrl,
         providerName: id,
         ...(modelDiscoveryPath ? { modelDiscoveryPath } : {}),
+        inheritWireFamily,
         fetchImpl: opts.fetchImpl,
         prepareApiKey,
         onFailure: (reason) => {
@@ -108,15 +109,10 @@ export async function discoverAndMergeWebuiProviders(opts: {
         if (accountCatalog) cfg.models = Object.keys(provider.models);
         const fetchedAt = new Date().toISOString();
         cache[cacheKey] = { fetchedAt, provider };
+        pruneDiscoveryCache(cache, target);
         cacheDirty = true;
-        if (modelDiscoveryAuthoritative) {
-          registry.mergeOverlay(
-            { [id]: provider },
-            { observedAt: fetchedAt, authoritativeProviderIds: [id] },
-          );
-        } else {
-          registry.mergeOverlay({ [id]: provider });
-        }
+        const merge = discoveryOverlay(target, provider, fetchedAt);
+        registry.mergeOverlay(merge.payload, merge.options);
         opts.logger?.info?.(
           `auto-discovered ${Object.keys(provider.models).length} models for "${id}" from ${baseUrl}`,
         );
@@ -134,15 +130,10 @@ export async function discoverAndMergeWebuiProviders(opts: {
           cache[cacheKey] = cached;
           cacheDirty = true;
         }
+        if (pruneDiscoveryCache(cache, target)) cacheDirty = true;
         if (accountCatalog) cfg.models = Object.keys(cached.provider.models);
-        if (modelDiscoveryAuthoritative) {
-          registry.mergeOverlay(
-            { [id]: cached.provider },
-            { observedAt: cached.fetchedAt, authoritativeProviderIds: [id] },
-          );
-        } else {
-          registry.mergeOverlay({ [id]: cached.provider });
-        }
+        const merge = discoveryOverlay(target, cached.provider, cached.fetchedAt);
+        registry.mergeOverlay(merge.payload, merge.options);
         opts.logger?.warn?.(
           `auto-discovery for "${id}" failed; using ${
             Object.keys(cached.provider.models).length
@@ -151,19 +142,15 @@ export async function discoverAndMergeWebuiProviders(opts: {
       } else {
         if (accountCatalog) {
           cfg.models = [];
-          registry.mergeOverlay(
-            {
-              [id]: {
-                id,
-                name: id,
-                npm: '@ai-sdk/openai-compatible',
-                api: baseUrl,
-                env: [],
-                models: {},
-              },
-            },
-            { authoritativeProviderIds: [id] },
-          );
+          const merge = discoveryOverlay(target, {
+            id,
+            name: id,
+            npm: '@ai-sdk/openai-compatible',
+            api: baseUrl,
+            env: [],
+            models: {},
+          });
+          registry.mergeOverlay(merge.payload, merge.options);
         }
         opts.logger?.warn?.(
           `auto-discovery for "${id}" failed and no cache available (${failureReason}; catalog at ${baseUrl})`,

@@ -9,7 +9,7 @@ import { chatGPTHostId } from './chatgpt-host.js';
 import { verifyChatGPTIdentity } from './chatgpt-identity.js';
 import { oauthExpiry, oauthFailure, oauthForm, oauthSignal, requiredOAuthString } from './http.js';
 import { createState, generatePkce, startLoopbackServer } from './shared.js';
-import { fetchSubscriptionModels } from './subscription-models.js';
+import { fetchSubscriptionModels, subscriptionModelsPath } from './subscription-models.js';
 
 const AUTHORIZE_URL = 'https://auth.openai.com/api/accounts/authorize';
 const TOKEN_URL = 'https://auth.openai.com/api/accounts/oauth/token';
@@ -24,18 +24,34 @@ async function directCredential(
   fetchImpl: typeof fetch,
   signal?: AbortSignal,
   previous?: ProviderApiKey,
+  renewal = false,
 ): Promise<ProviderApiKey> {
   const apiKey = requiredOAuthString(body, 'access_token');
-  const refreshToken = requiredOAuthString(body, 'refresh_token');
-  const scope = requiredOAuthString(body, 'scope');
+  // On renewal the server may keep (not rotate) the refresh token and may omit
+  // the unchanged scope; both are then the previous ones. A sign-in has no
+  // previous values, so it still requires them.
+  const refreshToken =
+    renewal && typeof body.refresh_token !== 'string' && previous?.refreshToken
+      ? previous.refreshToken
+      : requiredOAuthString(body, 'refresh_token');
+  const scope =
+    renewal && typeof body.scope !== 'string' && previous?.scope
+      ? previous.scope
+      : requiredOAuthString(body, 'scope');
   if (!scope.split(/\s+/).includes(PLAN_SCOPE))
     throw new Error('ChatGPT plan usage was not granted. Enable plan usage and sign in again.');
   const expiresAt = oauthExpiry(body);
   const idToken = typeof body.id_token === 'string' ? body.id_token : undefined;
   if (nonce !== undefined && !idToken) throw new Error('ChatGPT sign-in returned no ID token.');
-  const identity = idToken
-    ? await verifyChatGPTIdentity(idToken, clientId, nonce, fetchImpl, signal)
-    : undefined;
+  // Identity is established at sign-in (nonce-bound) and pinned in
+  // `oauthSubject`. A refresh token cannot change accounts, so re-verifying on
+  // renewal adds no protection -- but it ran AFTER the server had already
+  // rotated the refresh token, and a JWKS blip or a few seconds of clock skew
+  // threw the new pair away and forced a fresh sign-in.
+  const identity =
+    idToken && !renewal
+      ? await verifyChatGPTIdentity(idToken, clientId, nonce, fetchImpl, signal)
+      : undefined;
   if (previous?.oauthSubject && identity && previous.oauthSubject !== identity.subject) {
     throw new Error(
       'ChatGPT account changed during reauthorization. Add it as a separate account.',
@@ -152,6 +168,7 @@ export function createChatGPTDirectAuthStrategy(
             credential.apiKey,
             fetchImpl,
             effective,
+            subscriptionModelsPath('chatgpt-api'),
           );
           effective.throwIfAborted();
           return {
@@ -233,5 +250,13 @@ export async function refreshChatGPTDirect(
     signal,
   );
   if (!response.ok) throw oauthFailure('chatgpt-api', response.status, body);
-  return directCredential(body, credential.oauthClientId, undefined, fetchImpl, signal, credential);
+  return directCredential(
+    body,
+    credential.oauthClientId,
+    undefined,
+    fetchImpl,
+    signal,
+    credential,
+    true,
+  );
 }

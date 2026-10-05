@@ -57,6 +57,7 @@ export {
   CODEX_TOKEN_URL,
   CODEX_USER_AGENT,
   type CodexTokens,
+  codexClientVersion,
   codexRedirectUri,
   exchangeCodexAuthorizationCode,
   readCodexTokenResponse,

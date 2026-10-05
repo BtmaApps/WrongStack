@@ -38,6 +38,7 @@ import {
   CATALOG_ALIAS_BY_PROVIDER_TYPE,
   FAMILY_BY_PROVIDER_ID,
   SIBLING_CATALOG_BY_FAMILY,
+  SIBLING_CATALOG_BY_PROVIDER_TYPE,
 } from './capabilities.js';
 
 /**
@@ -243,7 +244,9 @@ function catalogIdsFor(config: Config | undefined, providerId: string): string[]
   const cfg = providerCfgFor(config, providerId);
   if (cfg?.type && cfg.type !== providerId) ids.push(cfg.type);
   const family = cfg?.family ?? FAMILY_BY_PROVIDER_ID[providerId];
-  const sibling = family ? SIBLING_CATALOG_BY_FAMILY[family] : undefined;
+  const sibling =
+    (family ? SIBLING_CATALOG_BY_FAMILY[family] : undefined) ??
+    SIBLING_CATALOG_BY_PROVIDER_TYPE[cfg?.type ?? providerId];
   if (sibling && !ids.includes(sibling)) ids.push(sibling);
   // Gateways publish under a models.dev id of their own (`ai-gateway` →
   // `vercel`). Keyed on the config TYPE too, so a user alias resolves as well.

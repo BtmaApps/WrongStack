@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-05T08:03:11.782Z
+**Generated:** 2026-10-05T08:04:26.441Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4573 |
-| Production source lines | 1058487 |
-| Test files | 4099 |
+| Production source lines | 1059064 |
+| Test files | 4101 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 14998 |
+| Relative module edges | 15003 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -44,7 +44,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 132 | 126 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 10 | 10 | — |
-| @wrongstack/providers | 123 | 109 | @wrongstack/core |
+| @wrongstack/providers | 123 | 111 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
@@ -91,6 +91,8 @@ None.
 | 880 | `packages/core/src/storage/session-store.ts` |
 | 874 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 873 | `packages/sage/src/sqlite-store.ts` |
+| 870 | `packages/cli/src/subcommands/handlers/providers-models.ts` |
+| 869 | `packages/providers/src/openai-codex.ts` |
 | 864 | `packages/cli/src/webui-server.ts` |
 | 864 | `packages/tui/src/components/settings-picker.tsx` |
 | 863 | `packages/core/src/chronicle/project-server.ts` |
@@ -124,15 +126,13 @@ None.
 | 839 | `packages/requirement-intake/src/service.ts` |
 | 837 | `packages/cli/src/picker.ts` |
 | 836 | `packages/core/src/execution/tool-executor.ts` |
+| 833 | `packages/core/src/models/models-registry.ts` |
 | 833 | `packages/governance/src/protocol-decoder.ts` |
 | 833 | `packages/webui/src/components/ChatView/CouncilDecisionCard.tsx` |
 | 832 | `packages/cli/src/slash-commands/kanban-task-subcommands.ts` |
 | 830 | `packages/acp/src/agent/server-agent-turn.ts` |
 | 829 | `packages/webui/src/components/MessageBubble/index.tsx` |
 | 828 | `packages/cli/src/auth-menu/panel-service.ts` |
-| 828 | `packages/core/src/plugins/skills-plugin.ts` |
-| 828 | `packages/plugins/src/accessibility-auditor/index.ts` |
-| 828 | `packages/sage/src/store-helpers.ts` |
 
 ## Exports only tests reference
 

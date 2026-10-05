@@ -586,6 +586,7 @@ export function buildProvider(
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
           accountId: entry?.accountId,
         },
+        ...(entry?.authMethod === 'oauth' ? { credential: entry } : {}),
         ...oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)),
         // The list the ChatGPT backend reports for THIS account, refreshed on
         // the catalog probe the transport already makes.
@@ -602,6 +603,7 @@ export function buildProvider(
           refreshToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
+        ...(entry?.authMethod === 'oauth' ? { credential: entry } : {}),
         onRefresh: oauthPersistenceCallbacks(id, cfg, expectDefined(apiKey)).onRefresh,
       });
     }

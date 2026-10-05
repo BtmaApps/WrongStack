@@ -2,7 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { DefaultModelsRegistry } from '@wrongstack/core/models';
 import type { Config, Logger, ModelsDevProvider } from '@wrongstack/core/types';
-import { discoverOpenAICompatibleModels, resolveDiscoveryTargets } from '@wrongstack/providers';
+import {
+  discoverOpenAICompatibleModels,
+  discoveryOverlay,
+  pruneDiscoveryCache,
+  resolveDiscoveryTargets,
+} from '@wrongstack/providers';
 
 interface DiscoverCacheEntry {
   fetchedAt: string;
@@ -51,12 +56,12 @@ export async function discoverAndMergeProviders(opts: {
         baseUrl,
         apiKey,
         modelDiscoveryPath,
-        modelDiscoveryAuthoritative,
         accountCatalog,
         copilotCatalog,
         modelsUrl,
         headers,
         prepareApiKey,
+        inheritWireFamily,
       } = target;
       let failureReason = 'model catalog request failed';
       const provider = await discoverOpenAICompatibleModels(id, {
@@ -68,6 +73,7 @@ export async function discoverAndMergeProviders(opts: {
         modelsUrl,
         providerName: id,
         modelDiscoveryPath,
+        inheritWireFamily,
         fetchImpl: opts.fetchImpl,
         prepareApiKey,
         onFailure: (reason) => {
@@ -80,15 +86,10 @@ export async function discoverAndMergeProviders(opts: {
         if (accountCatalog) cfg.models = Object.keys(provider.models);
         const fetchedAt = new Date().toISOString();
         cache[cacheKey] = { fetchedAt, provider };
+        pruneDiscoveryCache(cache, target);
         cacheDirty = true;
-        if (modelDiscoveryAuthoritative) {
-          opts.registry.mergeOverlay(
-            { [id]: provider },
-            { observedAt: fetchedAt, authoritativeProviderIds: [id] },
-          );
-        } else {
-          opts.registry.mergeOverlay({ [id]: provider });
-        }
+        const merge = discoveryOverlay(target, provider, fetchedAt);
+        opts.registry.mergeOverlay(merge.payload, merge.options);
         opts.logger?.info(
           `auto-discovered ${Object.keys(provider.models).length} models for "${id}" from ${baseUrl}`,
         );
@@ -101,15 +102,10 @@ export async function discoverAndMergeProviders(opts: {
           cache[cacheKey] = cached;
           cacheDirty = true;
         }
+        if (pruneDiscoveryCache(cache, target)) cacheDirty = true;
         if (accountCatalog) cfg.models = Object.keys(cached.provider.models);
-        if (modelDiscoveryAuthoritative) {
-          opts.registry.mergeOverlay(
-            { [id]: cached.provider },
-            { observedAt: cached.fetchedAt, authoritativeProviderIds: [id] },
-          );
-        } else {
-          opts.registry.mergeOverlay({ [id]: cached.provider });
-        }
+        const merge = discoveryOverlay(target, cached.provider, cached.fetchedAt);
+        opts.registry.mergeOverlay(merge.payload, merge.options);
         opts.logger?.warn(
           `auto-discovery for "${id}" failed; using ${
             Object.keys(cached.provider.models).length
@@ -118,19 +114,15 @@ export async function discoverAndMergeProviders(opts: {
       } else {
         if (accountCatalog) {
           cfg.models = [];
-          opts.registry.mergeOverlay(
-            {
-              [id]: {
-                id,
-                name: id,
-                npm: '@ai-sdk/openai-compatible',
-                api: baseUrl,
-                env: [],
-                models: {},
-              },
-            },
-            { authoritativeProviderIds: [id] },
-          );
+          const merge = discoveryOverlay(target, {
+            id,
+            name: id,
+            npm: '@ai-sdk/openai-compatible',
+            api: baseUrl,
+            env: [],
+            models: {},
+          });
+          opts.registry.mergeOverlay(merge.payload, merge.options);
         }
         opts.logger?.warn(
           `auto-discovery for "${id}" failed and no cache available (${failureReason}; catalog at ${baseUrl})`,

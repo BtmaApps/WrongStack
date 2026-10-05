@@ -18,8 +18,8 @@
 import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
   type Capabilities,
-  FetchError,
   ParseError,
+  type ProviderApiKey,
   ProviderError,
   type Request,
   type StreamEvent,
@@ -28,9 +28,14 @@ import { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 import type { HeadersLike } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
+import { oauthFailure } from './oauth/http.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import type { AnthropicStreamState } from './presets/anthropic.js';
 import { anthropicWireFormat } from './presets/anthropic.js';
+import {
+  hasSubscriptionRefreshTransaction,
+  renewRotatingOAuthCredential,
+} from './subscription-refresh-store.js';
 import { ANTHROPIC_SIGNER, streamWithThinkingSigner } from './thinking-signer.js';
 import type { WireAdapterStreamOptions } from './wire-adapter.js';
 import { WireFormatProvider } from './wire-format.js';
@@ -113,16 +118,22 @@ export async function refreshAnthropicOAuthToken(
       : AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
+    // A refresh runs on a request's path, so it speaks the provider error
+    // contract: the real status decides retry (429/5xx) vs. "sign in again"
+    // (dead refresh token), and only the OAuth error CODE is kept -- the raw
+    // body used to be pasted into the message.
     const text = await res.text().catch(() => '');
-    // Preserve the real status: FetchError derives `recoverable` from it
-    // (429/5xx → true). Hardcoding 401 marked every transient blip (503, 429)
-    // as a non-recoverable auth failure, so callers dropped credentials and
-    // forced a re-login instead of retrying.
-    throw new FetchError({
-      message: `Claude token refresh failed (${res.status}): ${text || res.statusText}`,
-      status: res.status,
-      context: { provider: 'anthropic-oauth' },
-    });
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // not JSON: the status alone classifies it
+    }
+    const body =
+      parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    throw oauthFailure('anthropic-oauth', res.status, body);
   }
   const json = (await res.json()) as {
     access_token?: string;
@@ -166,6 +177,14 @@ export interface AnthropicOAuthProviderOptions {
   refreshFn?:
     | ((refreshToken: string, signal?: AbortSignal) => Promise<AnthropicOAuthTokens>)
     | undefined;
+  /**
+   * The stored account entry this transport was built from. With a host
+   * refresh transaction installed, renewals run under the config lock against
+   * the entry on disk (see `renewRotatingOAuthCredential`): Claude rotates its
+   * refresh token on every use, so a process-local renewal let a second process
+   * replay a consumed token and forced a fresh sign-in.
+   */
+  credential?: ProviderApiKey | undefined;
 }
 
 export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamState> {
@@ -174,6 +193,7 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
 
   private access: string;
   private refresh: string | undefined;
+  private credential: ProviderApiKey | undefined;
   private readonly refreshFn: (
     refreshToken: string,
     signal?: AbortSignal,
@@ -196,6 +216,7 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
     this.access = opts.credentials.accessToken;
     this.refresh = opts.credentials.refreshToken;
     this.refreshFn = opts.refreshFn ?? refreshAnthropicOAuthToken;
+    this.credential = opts.credential ? { ...opts.credential } : undefined;
     this.refreshCoordinator = new OAuthRefreshCoordinator<
       AnthropicOAuthTokens,
       {
@@ -208,8 +229,11 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
       initialExpiresAt: opts.credentials.expiresAt,
       label: 'Anthropic OAuth',
       hooks: {
-        refreshFn: (key, signal) => this.refreshFn(key, signal),
-        onRefresh: opts.onRefresh,
+        refreshFn: (key, signal) => this.exchangeRefreshToken(key, signal),
+        // The host transaction already wrote the rotation under its lock.
+        onRefresh: (payload) => {
+          if (!(this.credential && hasSubscriptionRefreshTransaction())) opts.onRefresh?.(payload);
+        },
         formatPayload: (_tokens, derived) => ({
           accessToken: derived.accessToken,
           refreshToken: derived.refreshKey ?? '',
@@ -229,6 +253,27 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
         },
       },
     });
+  }
+
+  private async exchangeRefreshToken(
+    refreshToken: string,
+    signal?: AbortSignal,
+  ): Promise<AnthropicOAuthTokens> {
+    const stored = this.credential;
+    const renewed = stored
+      ? await renewRotatingOAuthCredential({
+          providerId: this.id,
+          stored,
+          accessToken: this.access,
+          refreshToken,
+          exchange: (key) => this.refreshFn(key, signal),
+          signInHint:
+            'Claude sign-in has no refresh token. Sign in again: wstack auth login claude',
+        })
+      : undefined;
+    if (!renewed) return this.refreshFn(refreshToken, signal);
+    this.credential = renewed.credential;
+    return renewed.tokens;
   }
 
   /**

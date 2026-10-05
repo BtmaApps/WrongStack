@@ -13,7 +13,7 @@ import { AnthropicProvider } from './anthropic.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { refreshChatGPTDirect } from './oauth/chatgpt-direct.js';
 import { refreshDeviceSubscription } from './oauth/subscription-flows.js';
-import { fetchSubscriptionModels } from './oauth/subscription-models.js';
+import { fetchSubscriptionModels, subscriptionModelsPath } from './oauth/subscription-models.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { OpenAIResponsesProvider } from './openai-responses.js';
 import type { OAuthRefreshedTokens, ProviderLiveModel } from './provider-account-types.js';
@@ -228,7 +228,7 @@ export class SubscriptionOAuthProvider implements Provider {
         this.credential.apiKey,
         this.opts.fetchImpl,
         opts.signal,
-        this.credential.oauthStrategyId === 'xai' ? 'language-models' : 'models',
+        subscriptionModelsPath(this.credential.oauthStrategyId),
       );
       this.checkedAt = Date.now();
       if (models !== undefined) {

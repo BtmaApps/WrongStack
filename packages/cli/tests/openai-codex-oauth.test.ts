@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { isParseError, type ModelsRegistry } from '@wrongstack/core/types';
+import { isParseError, type ModelsRegistry, ProviderError } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildAuthorizeUrl,
@@ -455,18 +455,38 @@ describe('refreshCodexToken', () => {
     expect(tokens.expires).toBeGreaterThanOrEqual(before + 59 * 60_000);
   });
 
-  it('non-2xx refresh response throws a structured FetchError (openai-codex refresh context)', async () => {
-    // Same shape as the exchange path, with op: 'refresh'.
-    const fe = await expectFetchError(() => refreshCodexToken('OLD_RT'), {
-      status: 401,
-      body: '{"error":"invalid_grant"}',
-      context: {
-        provider: 'openai-codex',
-        op: 'refresh',
-        url: 'https://auth.openai.com/oauth/token',
-      },
-    });
-    expect(fe).toBeDefined();
+  it('a dead refresh token is an auth ProviderError with a sign-in hint, never the raw body', async () => {
+    // A refresh runs on a request's path, so it speaks the provider error
+    // contract (FetchError VALIDATION_ERROR was neither retried nor treated as auth).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response('{"error":"invalid_grant","error_description":"echo RT_SECRET"}', {
+            status: 400,
+          }),
+      ),
+    );
+    const err = (await refreshCodexToken('OLD_RT').catch((e: unknown) => e)) as ProviderError;
+    expect(err).toBeInstanceOf(ProviderError);
+    expect(err.status).toBe(400);
+    expect(err.retryable).toBe(false);
+    expect(err.kind).toBe('auth');
+    expect(err.message).toContain('invalid_grant');
+    expect(err.message).toContain('wstack auth login chatgpt');
+    expect(err.message).not.toContain('RT_SECRET');
+  });
+
+  it('a transient token-endpoint failure on refresh is retryable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('upstream down', { status: 503 })),
+    );
+    const err = (await refreshCodexToken('OLD_RT').catch((e: unknown) => e)) as ProviderError;
+    expect(err).toBeInstanceOf(ProviderError);
+    expect(err.retryable).toBe(true);
+    expect(err.kind).not.toBe('auth');
+    expect(err.message).not.toContain('upstream down');
   });
 
   it('2xx response with missing fields throws a structured ParseError', async () => {

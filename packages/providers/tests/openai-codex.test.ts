@@ -529,9 +529,21 @@ describe('CODEX_CLIENT_VERSION pin', () => {
     // (one fell back to an invented '0.309.1'), so the login flow and the
     // running transport could be shown different catalogs.
     for (const source of [catalog, models]) {
-      expect(source).toContain('CODEX_CLIENT_VERSION');
+      expect(source).toContain('codexClientVersion()');
       expect(source).not.toMatch(/package\.json/);
     }
+  });
+
+  it('honours a semver override and ignores a malformed one', async () => {
+    const { CODEX_CLIENT_VERSION, codexClientVersion } = await import(
+      '../src/oauth/codex-protocol.js'
+    );
+    expect(codexClientVersion({})).toBe(CODEX_CLIENT_VERSION);
+    expect(codexClientVersion({ WRONGSTACK_CODEX_CLIENT_VERSION: ' 0.170.2 ' })).toBe('0.170.2');
+    // The backend 400s on non-semver; never forward it.
+    expect(codexClientVersion({ WRONGSTACK_CODEX_CLIENT_VERSION: 'latest' })).toBe(
+      CODEX_CLIENT_VERSION,
+    );
   });
 });
 

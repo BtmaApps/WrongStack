@@ -10,6 +10,7 @@ import {
 } from '../src/oauth/chatgpt-direct.js';
 import { chatGPTHostId } from '../src/oauth/chatgpt-host.js';
 import { verifyChatGPTIdentity } from '../src/oauth/chatgpt-identity.js';
+import { CODEX_CLIENT_VERSION } from '../src/oauth/codex-protocol.js';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const jwk = {
@@ -63,7 +64,9 @@ function fetcher(
       });
     }
     if (url.endsWith('/.well-known/jwks.json')) return Response.json({ keys: [jwk] });
-    expect(url).toBe('https://api.openai.com/v1/models');
+    // The plan API gates its catalog on the Codex client version exactly like
+    // the Codex backend; a bare request returns only the oldest model set.
+    expect(url).toBe(`https://api.openai.com/v1/models?client_version=${CODEX_CLIENT_VERSION}`);
     expect(new Headers(init?.headers).get('authorization')).toBe('Bearer direct-access');
     return Response.json({
       models: [

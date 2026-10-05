@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
 import type { ModelsRegistry } from '@wrongstack/core/types';
 import { extractAccountId } from '../openai-codex-account.js';
 import {
-  CODEX_CLIENT_VERSION,
   CODEX_ORIGINATOR,
   CODEX_USER_AGENT,
+  codexClientVersion,
   codexModelsUrl,
 } from './codex-protocol.js';
 
@@ -52,7 +52,7 @@ export async function fetchCodexModels(
   signal?: AbortSignal,
 ): Promise<string[]> {
   const url = `${codexModelsUrl(baseUrl)}?client_version=${encodeURIComponent(
-    CODEX_CLIENT_VERSION,
+    codexClientVersion(),
   )}`;
   try {
     // Same header set the runtime probe in `../openai-codex.ts` sends, from the

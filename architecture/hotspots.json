@@ -43,7 +43,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/subcommands/handlers/providers-models.ts": {
-      "lines": 810,
+      "lines": 870,
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
@@ -106,6 +106,10 @@
       "lines": 842,
       "relativeImports": 14
     },
+    "packages/core/src/models/models-registry.ts": {
+      "lines": 833,
+      "relativeImports": 8
+    },
     "packages/core/src/plugins/skills-plugin.ts": {
       "lines": 828,
       "relativeImports": 15
@@ -163,8 +167,8 @@
       "relativeImports": 0
     },
     "packages/providers/src/openai-codex.ts": {
-      "lines": 819,
-      "relativeImports": 21
+      "lines": 869,
+      "relativeImports": 22
     },
     "packages/requirement-intake/src/service.ts": {
       "lines": 839,

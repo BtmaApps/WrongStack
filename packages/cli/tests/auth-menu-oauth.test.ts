@@ -507,7 +507,9 @@ describe('openai-codex-oauth.ts — pure helpers', () => {
 
     routes = [];
     route('auth.openai.com/oauth/token', () => jsonResponse({ error: 'bad' }, 400));
-    await expect(exchangeCodex('c', 'v')).rejects.toThrow(/Codex token exchange failed \(400\)/);
+    await expect(exchangeCodex('c', 'v')).rejects.toThrow(
+      /Codex token exchange failed \(400, bad\)/,
+    );
 
     routes = [];
     route('auth.openai.com/oauth/token', () => jsonResponse({ foo: 1 }));

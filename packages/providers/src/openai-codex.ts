@@ -14,6 +14,10 @@ import {
   resolveCodexUrl,
   resolveCodexWebSocketUrl,
 } from './openai-codex-request.js';
+import {
+  hasSubscriptionRefreshTransaction,
+  renewRotatingOAuthCredential,
+} from './subscription-refresh-store.js';
 
 export {
   codexCacheSessionId,
@@ -48,6 +52,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
   type Capabilities,
+  type ProviderApiKey,
   ProviderError,
   type ReasoningEffort,
   type Request,
@@ -209,6 +214,17 @@ export interface OpenAICodexProviderOptions {
   webSocketFactory?: CodexWebSocketFactory | undefined;
   /** Best-effort WebSocket prewarm before the first real response. */
   webSocketPrewarm?: boolean | undefined;
+  /**
+   * The stored account entry this transport was built from. With it, and a
+   * host-installed subscription refresh transaction, every refresh runs under
+   * the config file lock against the entry as it is ON DISK: a token another
+   * process already rotated is adopted instead of replayed, and the rotation is
+   * persisted atomically with the exchange. Codex rotates its refresh token on
+   * every use, so two processes (TUI + WebUI, an editor's `wstack acp`)
+   * refreshing from the same stored pair used to end with one of them getting
+   * `refresh_token_reused` and the account needing a fresh sign-in.
+   */
+  credential?: ProviderApiKey | undefined;
   /** Override the refresh call (tests). */
   refreshFn?:
     | ((refreshToken: string, signal?: AbortSignal) => Promise<CodexOAuthTokens>)
@@ -231,6 +247,7 @@ export class OpenAICodexProvider extends WireAdapter {
   private access: string;
   private refresh: string | undefined;
   private accountId: string | undefined;
+  private credential: ProviderApiKey | undefined;
   private readonly refreshFn: (
     refreshToken: string,
     signal?: AbortSignal,
@@ -297,6 +314,7 @@ export class OpenAICodexProvider extends WireAdapter {
     this.refresh = opts.credentials.refreshToken;
     this.accountId = opts.credentials.accountId ?? extractAccountId(this.access) ?? undefined;
     this.refreshFn = opts.refreshFn ?? refreshCodexAccessToken;
+    this.credential = opts.credential ? { ...opts.credential } : undefined;
     this.refreshCoordinator = new OAuthRefreshCoordinator<
       CodexOAuthTokens,
       {
@@ -311,8 +329,11 @@ export class OpenAICodexProvider extends WireAdapter {
       refreshSkewMs: CODEX_TOKEN_REFRESH_SKEW_MS,
       label: 'Codex OAuth',
       hooks: {
-        refreshFn: (key, signal) => this.refreshFn(key, signal),
-        onRefresh: opts.onRefresh,
+        refreshFn: (key, signal) => this.exchangeRefreshToken(key, signal),
+        // The host transaction already wrote the rotation under its lock.
+        onRefresh: (payload) => {
+          if (!this.refreshesInHostTransaction()) opts.onRefresh?.(payload);
+        },
         formatPayload: (_tokens, derived) => ({
           accessToken: derived.accessToken,
           refreshToken: derived.refreshKey ?? '',
@@ -351,6 +372,35 @@ export class OpenAICodexProvider extends WireAdapter {
       ? new CodexWebSocketPool(opts.webSocketFactory ?? defaultCodexWebSocketFactory)
       : undefined;
     this.capabilities = capabilitiesForFamily('openai-codex', { ...opts.capabilities });
+  }
+
+  private refreshesInHostTransaction(): boolean {
+    return this.credential !== undefined && hasSubscriptionRefreshTransaction();
+  }
+
+  /** One refresh-token exchange; see {@link OpenAICodexProviderOptions.credential}. */
+  private async exchangeRefreshToken(
+    refreshToken: string,
+    signal?: AbortSignal,
+  ): Promise<CodexOAuthTokens> {
+    const stored = this.credential;
+    const renewed = stored
+      ? await renewRotatingOAuthCredential({
+          providerId: this.id,
+          stored,
+          accessToken: this.access,
+          refreshToken,
+          exchange: (key) => this.refreshFn(key, signal),
+          project: (tokens, current) => ({
+            accountId: extractAccountId(tokens.access) ?? current.accountId,
+          }),
+          signInHint:
+            'ChatGPT sign-in has no refresh token. Sign in again: wstack auth login chatgpt',
+        })
+      : undefined;
+    if (!renewed) return this.refreshFn(refreshToken, signal);
+    this.credential = renewed.credential;
+    return renewed.tokens;
   }
 
   /**

@@ -9,10 +9,17 @@ const mocks = vi.hoisted(() => ({
   resolveDiscoveryTargets: vi.fn(),
 }));
 
-vi.mock('@wrongstack/providers', () => ({
-  discoverOpenAICompatibleModels: mocks.discoverOpenAICompatibleModels,
-  resolveDiscoveryTargets: mocks.resolveDiscoveryTargets,
-}));
+vi.mock('@wrongstack/providers', async (importOriginal) => {
+  // The overlay/cache helpers are pure and shared with the CLI host; use the
+  // real ones so this suite exercises the same merge the CLI does.
+  const actual = await importOriginal<typeof import('@wrongstack/providers')>();
+  return {
+    discoverOpenAICompatibleModels: mocks.discoverOpenAICompatibleModels,
+    resolveDiscoveryTargets: mocks.resolveDiscoveryTargets,
+    discoveryOverlay: actual.discoveryOverlay,
+    pruneDiscoveryCache: actual.pruneDiscoveryCache,
+  };
+});
 
 describe('model-auto-discovery', () => {
   let tmpDir: string;
@@ -160,7 +167,7 @@ describe('model-auto-discovery', () => {
       }),
     );
 
-    expect(registry.mergeOverlay).toHaveBeenCalledWith({ ollama: fakeProvider });
+    expect(registry.mergeOverlay).toHaveBeenCalledWith({ ollama: fakeProvider }, {});
     expect(logger.info).toHaveBeenCalledWith(
       expect.stringContaining('auto-discovered 2 models for "ollama"'),
     );
@@ -217,7 +224,7 @@ describe('model-auto-discovery', () => {
       logger,
     });
 
-    expect(registry.mergeOverlay).toHaveBeenCalledWith({ vllm: cachedProvider });
+    expect(registry.mergeOverlay).toHaveBeenCalledWith({ vllm: cachedProvider }, {});
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('using 1 cached models from 2026-09-07T12:00:00.000Z'),
     );

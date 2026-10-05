@@ -32,6 +32,64 @@ export interface RuntimeModelsOverlayOptions {
   authoritativeProviderIds?: readonly string[] | undefined;
   /** Observation time for live/cache-backed provider snapshots. */
   observedAt?: string | undefined;
+  /**
+   * Catalog provider whose same-id models fill the fields an account snapshot
+   * does not state. Account catalogs (ChatGPT sign-in, the ChatGPT plan API)
+   * publish their own context windows and reasoning levels but no output
+   * ceiling or knowledge cutoff; models.dev publishes those for the identical
+   * model ids under `openai`. Only gaps are filled: the account's context,
+   * modalities and reasoning levels always win, and per-token API pricing and
+   * lifecycle status are never copied onto a subscription model.
+   */
+  metadataFallbackProviderId?: string | undefined;
+}
+
+/** Fields an account snapshot may borrow from a same-id catalog model when it is silent. */
+const ACCOUNT_GAP_FIELDS = [
+  'family',
+  'tool_call',
+  'reasoning',
+  'temperature',
+  'attachment',
+  'knowledge',
+  'release_date',
+  'last_updated',
+  'open_weights',
+  'modalities',
+] as const satisfies readonly (keyof ModelsDevModel)[];
+
+function fillAccountModelGaps(
+  model: ModelsDevModel,
+  ref: ModelsDevModel | undefined,
+): ModelsDevModel {
+  if (!ref) return model;
+  const out: ModelsDevModel = { ...model };
+  let filled = false;
+  for (const key of ACCOUNT_GAP_FIELDS) {
+    if (out[key] === undefined && ref[key] !== undefined) {
+      (out as Record<string, unknown>)[key] = ref[key];
+      filled = true;
+    }
+  }
+  if (
+    out.reasoning_options === undefined &&
+    out.reasoningConfig === undefined &&
+    ref.reasoning_options !== undefined
+  ) {
+    out.reasoning_options = ref.reasoning_options;
+    filled = true;
+  }
+  // The output ceiling only: context (and an input sub-limit) are properties
+  // of the account's plan, which is exactly what the snapshot already states.
+  if (out.limit?.output === undefined && ref.limit?.output !== undefined) {
+    out.limit = { ...out.limit, output: ref.limit.output };
+    filled = true;
+  }
+  if (!filled || !out.provenance) return out;
+  const sources = out.provenance.sources.includes('models-dev')
+    ? out.provenance.sources
+    : ['models-dev' as const, ...out.provenance.sources];
+  return { ...out, provenance: { ...out.provenance, sources } };
 }
 
 function annotatePayload(
@@ -145,6 +203,9 @@ const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
   'github-copilot': 'github-copilot',
   'google-antigravity': 'google-antigravity',
   'openai-codex': 'openai-codex',
+  // ChatGPT plan usage rides the public Responses API. Its catalog entry is
+  // overlay + account discovery only, neither of which names an SDK.
+  'openai-chatgpt': 'openai',
 };
 
 export function classifyFamily(npm: string | undefined): WireFamily {
@@ -173,6 +234,8 @@ export class DefaultModelsRegistry implements ModelsRegistry {
    */
   private extraOverlay?: ModelsDevPayload | undefined;
   private readonly authoritativeModelIds = new Map<string, Set<string>>();
+  /** Account provider id -> catalog provider id that fills its snapshot's gaps. */
+  private readonly metadataFallback = new Map<string, string>();
   private fetchedAt?: Date | undefined;
   private readonly cacheFile: string;
   private readonly url: string;
@@ -258,6 +321,12 @@ export class DefaultModelsRegistry implements ModelsRegistry {
       const cloned = mergeModelsPayload({}, { [providerId]: incoming })[providerId];
       if (cloned) this.extraOverlay[providerId] = cloned;
     }
+    if (opts.metadataFallbackProviderId) {
+      for (const providerId of Object.keys(payload)) {
+        if (providerId !== opts.metadataFallbackProviderId)
+          this.metadataFallback.set(providerId, opts.metadataFallbackProviderId);
+      }
+    }
     if (this.catalogPayload) this.publish(this.withExtraOverlay(this.catalogPayload));
   }
 
@@ -275,6 +344,17 @@ export class DefaultModelsRegistry implements ModelsRegistry {
             (['openai-codex', 'openai-chatgpt'].includes(providerId) &&
               model.provenance?.sources.includes('wrongstack-overlay')),
         ),
+      );
+    }
+    for (const [providerId, fromId] of this.metadataFallback) {
+      const provider = merged[providerId];
+      const from = merged[fromId];
+      if (!provider || !from) continue;
+      provider.models = Object.fromEntries(
+        Object.entries(provider.models).map(([modelId, model]) => [
+          modelId,
+          fillAccountModelGaps(model, from.models[modelId]),
+        ]),
       );
     }
     return merged;
