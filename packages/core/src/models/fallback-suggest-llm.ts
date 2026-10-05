@@ -334,11 +334,15 @@ export function mergeLlmFallbackSuggestions(
       rejected++;
       continue;
     }
-    const refs = [...new Set(chain.filter((r): r is string => typeof r === 'string'))].slice(
-      0,
-      length,
-    );
-    const picked = refs.map((r) => byRef.get(r.trim()));
+    // Dedupe on the TRIMMED ref — the same value the pool lookup below uses —
+    // so a whitespace variant of an earlier pick ("openai/gpt-5" vs
+    // " openai/gpt-5") cannot occupy a second chain slot and ship the same
+    // model twice. An empty or unknown ref still resolves to undefined and
+    // rejects the whole profile, per the "any ref outside the pool" rule.
+    const refs = [
+      ...new Set(chain.filter((r): r is string => typeof r === 'string').map((r) => r.trim())),
+    ].slice(0, length);
+    const picked = refs.map((r) => byRef.get(r));
     if (picked.length < 2 || picked.some((s) => s === undefined)) {
       rejected++;
       continue;

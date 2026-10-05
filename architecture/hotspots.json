@@ -183,7 +183,7 @@
       "relativeImports": 3
     },
     "packages/sdd/src/sdd-parallel-run.ts": {
-      "lines": 860,
+      "lines": 874,
       "relativeImports": 8
     },
     "packages/sdd/src/spec-builder.ts": {

@@ -232,6 +232,46 @@ describe('fallback suggestions — LLM merge', () => {
     expect(suggestions).toEqual(draft);
   });
 
+  it('collapses a padded duplicate ref instead of shipping the same model twice', () => {
+    // Raw strings differ, so a raw-string Set keeps both — but both trim to the
+    // same pool ref. The chain must come out distinct, never one model twice.
+    const reply = JSON.stringify({
+      profiles: [
+        {
+          id: 'strong',
+          chain: ['openai/gpt-5', '\topenai/gpt-5', 'anthropic/claude-opus-4-1'],
+        },
+      ],
+    });
+    const { suggestions, rejected } = mergeLlmFallbackSuggestions(reply, POOL, draft);
+    expect(rejected).toBe(0);
+    const strong = suggestions.find((s) => s.id === 'strong');
+    expect(strong?.source).toBe('llm');
+    expect(strong?.chain).toEqual(['openai/gpt-5', 'anthropic/claude-opus-4-1']);
+  });
+
+  it('rejects a chain that is one model twice under whitespace variants', () => {
+    const reply = JSON.stringify({
+      profiles: [{ id: 'strong', chain: ['openai/gpt-5', ' openai/gpt-5'] }],
+    });
+    const { suggestions, rejected } = mergeLlmFallbackSuggestions(reply, POOL, draft);
+    expect(rejected).toBe(1);
+    expect(suggestions.find((s) => s.id === 'strong')).toEqual(
+      draft.find((s) => s.id === 'strong'),
+    );
+  });
+
+  it('rejects an exact duplicate pair as a one-model chain', () => {
+    const reply = JSON.stringify({
+      profiles: [{ id: 'strong', chain: ['openai/gpt-5', 'openai/gpt-5'] }],
+    });
+    const { suggestions, rejected } = mergeLlmFallbackSuggestions(reply, POOL, draft);
+    expect(rejected).toBe(1);
+    expect(suggestions.find((s) => s.id === 'strong')).toEqual(
+      draft.find((s) => s.id === 'strong'),
+    );
+  });
+
   it('caps the pool and lists every pooled ref in the prompt', () => {
     const big: FallbackSuggestCandidate[] = Array.from({ length: 80 }, (_, i) => ({
       provider: `p${i % 5}`,

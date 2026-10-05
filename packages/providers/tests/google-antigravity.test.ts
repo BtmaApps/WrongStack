@@ -417,6 +417,72 @@ describe('project bootstrap', () => {
     expect(calls).toBe(2);
   });
 
+  it.each(['load', 'onboard'] as const)(
+    'reports malformed %s response JSON as retryable, not BYOP',
+    async (stage) => {
+      let calls = 0;
+      const result = await bootstrapAntigravityProject({
+        accessToken: 't',
+        fetchImpl: async () => {
+          calls += 1;
+          return stage === 'load' || calls === 2 ? new Response('{broken') : Response.json({});
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: 'discovery_failed' });
+      expect(calls).toBe(stage === 'load' ? 1 : 2);
+    },
+  );
+
+  it.each(['load', 'onboard'] as const)(
+    'reports an interrupted %s response body as retryable, not BYOP',
+    async (stage) => {
+      let calls = 0;
+      const result = await bootstrapAntigravityProject({
+        accessToken: 't',
+        fetchImpl: async () => {
+          calls += 1;
+          if (stage === 'onboard' && calls === 1) return Response.json({});
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              pull(stream) {
+                stream.error(new TypeError('body connection interrupted'));
+              },
+            }),
+          );
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: 'discovery_failed' });
+      expect(calls).toBe(stage === 'load' ? 1 : 2);
+    },
+  );
+
+  it.each(['load', 'onboard'] as const)(
+    'preserves cancellation during the %s response body read',
+    async (stage) => {
+      let calls = 0;
+      const controller = new AbortController();
+      const reason = new DOMException('caller cancelled body read', 'AbortError');
+      const pending = bootstrapAntigravityProject({
+        accessToken: 't',
+        signal: controller.signal,
+        fetchImpl: async () => {
+          calls += 1;
+          if (stage === 'onboard' && calls === 1) return Response.json({});
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              pull(stream) {
+                controller.abort(reason);
+                stream.error(reason);
+              },
+            }),
+          );
+        },
+      });
+      await expect(pending).rejects.toBe(reason);
+      expect(calls).toBe(stage === 'load' ? 1 : 2);
+    },
+  );
+
   it('reports a network failure as retryable', async () => {
     const result = await bootstrapAntigravityProject({
       accessToken: 't',

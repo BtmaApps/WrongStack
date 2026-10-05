@@ -142,7 +142,7 @@ async function postJson(
     signal: timeoutSignal(opts.signal),
   });
   if (!res.ok) return undefined;
-  const json: unknown = await res.json().catch(() => null);
+  const json: unknown = await res.json();
   return typeof json === 'object' && json !== null ? (json as Record<string, unknown>) : {};
 }
 

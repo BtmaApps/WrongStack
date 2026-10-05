@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T23:02:18.861Z",
+  "generatedAt": "2026-10-05T08:03:11.782Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 37,
     "sourceFiles": 4573,
     "testFiles": 4099,
-    "sourceLines": 1058450,
+    "sourceLines": 1058487,
     "workspaceEdges": 133,
     "moduleEdges": 14998,
     "nonCommandSlashImports": 0,
@@ -26113,7 +26113,7 @@
     },
     {
       "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 860,
+      "lines": 874,
       "relativeImports": 8
     },
     {
@@ -26274,6 +26274,11 @@
       "relativeImports": 41
     },
     {
+      "file": "packages/sdd/src/sdd-parallel-run.ts",
+      "lines": 874,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/sage/src/sqlite-store.ts",
       "lines": 873,
       "relativeImports": 37
@@ -26307,11 +26312,6 @@
       "file": "packages/core/src/coordination/director.ts",
       "lines": 861,
       "relativeImports": 46
-    },
-    {
-      "file": "packages/sdd/src/sdd-parallel-run.ts",
-      "lines": 860,
-      "relativeImports": 8
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",

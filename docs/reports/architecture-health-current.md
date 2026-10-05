@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-04T23:02:18.861Z
+**Generated:** 2026-10-05T08:03:11.782Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4573 |
-| Production source lines | 1058450 |
+| Production source lines | 1058487 |
 | Test files | 4099 |
 | Workspace dependency edges | 133 |
 | Relative module edges | 14998 |
@@ -89,6 +89,7 @@ None.
 | 891 | `packages/cli/src/cli-main.ts` |
 | 881 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 880 | `packages/core/src/storage/session-store.ts` |
+| 874 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 873 | `packages/sage/src/sqlite-store.ts` |
 | 864 | `packages/cli/src/webui-server.ts` |
 | 864 | `packages/tui/src/components/settings-picker.tsx` |
@@ -96,7 +97,6 @@ None.
 | 862 | `packages/kanban/src/server/project-server.ts` |
 | 862 | `packages/webui/src/components/FileExplorer.tsx` |
 | 861 | `packages/core/src/coordination/director.ts` |
-| 860 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 859 | `packages/webui-server/src/server/start-webui.ts` |
 | 858 | `packages/core/src/coordination/subagent-budget.ts` |
 | 858 | `packages/plugins/src/loop-breaker/index.ts` |
