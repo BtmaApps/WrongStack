@@ -234,7 +234,15 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
       }
     },
     deleteSession: async (ws, msg) => {
-      const { id } = (msg as { payload: { id: string } }).payload;
+      // A payload-less frame is legal at this boundary (the protocol decoder
+      // requires a payload only for server frames) — refuse it like any
+      // other bad input instead of throwing past the dispatcher, which
+      // leaves the client without a response frame (cf. candidateResolve).
+      const { id } = (msg as { payload?: { id?: string | undefined } }).payload ?? {};
+      if (!id) {
+        result(ws, false, 'Session id is required');
+        return;
+      }
       // The run check runs OUTSIDE the transition gate on purpose. Aborting a
       // wedged run and waiting for it to unwind can take up to
       // RUN_STOP_GRACE_MS, and the gate is shared with `user_message` setup —
@@ -368,8 +376,13 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
      */
     resumeSession: (ws, msg) =>
       serializeSessionTransition(async () => {
-        const { id } = (msg as { payload: { id: string } }).payload;
+        // Payload-less frames are legal here too — see deleteSession above.
+        const { id } = (msg as { payload?: { id?: string | undefined } }).payload ?? {};
         const focusOnly = (msg as { type?: string }).type === 'session.focus';
+        if (!id) {
+          result(ws, false, 'Session id is required');
+          return;
+        }
         if (ctx.canSwapSessions?.() === false) {
           result(ws, false, 'Session store not available');
           return;

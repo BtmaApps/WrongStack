@@ -216,6 +216,47 @@ describe('handleSkillsUninstall', () => {
   });
 });
 
+// Payload-less frames are legal at the WS boundary — the protocol decoder
+// requires a payload only for SERVER frames. These handlers must answer
+// with their validation errors, never throw past the dispatcher (pinned
+// after sibling session handlers were found crashing on the same input).
+describe('payload-less frames', () => {
+  it('skills.content answers Skill name is required', async () => {
+    const ctx = makeCtx({ skillLoader: { listEntries: async () => [] } as never });
+    const { ws, messages } = openWs();
+    await handleSkillsContent(ws, ctx, { type: 'skills.content' });
+    expect(payloadOf(messages, 'skills.content')?.error).toBe('Skill name is required');
+  });
+
+  it('skills.install answers the ref-required error', async () => {
+    const installer = {
+      listInstalled: async () => [],
+      install: async () => [],
+      uninstall: async () => {},
+      update: async () => ({ updated: 0, unchanged: 0, errors: [] }),
+    };
+    const ctx = makeCtx({ skillInstaller: installer as never });
+    const { ws, messages } = openWs();
+    await handleSkillsInstall(ws, ctx, { type: 'skills.install' });
+    expect(String(payloadOf(messages, 'skills.installed')?.error)).toContain(
+      'Skill reference is required',
+    );
+  });
+
+  it('skills.uninstall answers Skill name is required', async () => {
+    const installer = {
+      listInstalled: async () => [],
+      install: async () => [],
+      uninstall: async () => {},
+      update: async () => ({ updated: 0, unchanged: 0, errors: [] }),
+    };
+    const ctx = makeCtx({ skillInstaller: installer as never });
+    const { ws, messages } = openWs();
+    await handleSkillsUninstall(ws, ctx, { type: 'skills.uninstall' });
+    expect(payloadOf(messages, 'skills.uninstalled')?.error).toBe('Skill name is required');
+  });
+});
+
 describe('handleSkillsUpdate', () => {
   it('reports updated/unchanged/errors tallies', async () => {
     const installer = {

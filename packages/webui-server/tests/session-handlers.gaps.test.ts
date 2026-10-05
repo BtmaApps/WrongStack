@@ -749,3 +749,34 @@ describe('createSessionHandlers — checkpoints and rewind', () => {
     expect(h.context.state.replaceMessages).toHaveBeenCalled();
   });
 });
+
+// Payload-less frames are legal at the WS boundary — the protocol decoder
+// requires a payload only for SERVER frames. deleteSession/resumeSession
+// used to destructure `msg.payload` directly and threw past the dispatcher,
+// leaving the client without any response frame
+// (round r2-20261005-sibling-payload-guards; cf. candidateResolve r1).
+describe('createSessionHandlers — payload-less frames', () => {
+  it('session.delete answers with Session id is required instead of throwing', async () => {
+    const h = makeHarness();
+    await expect(
+      h.routes.deleteSession(h.ws as never, { type: 'session.delete' } as never),
+    ).resolves.toBeUndefined();
+    expect(h.store.delete).not.toHaveBeenCalled();
+    const res = h.sent.find((m) => m.type === 'key.operation_result');
+    expect(res?.payload['success']).toBe(false);
+    expect(res?.payload['message']).toBe('Session id is required');
+  });
+
+  it.each(['session.resume', 'session.focus'])(
+    '%s answers with Session id is required instead of throwing',
+    async (type) => {
+      const h = makeHarness({ canSwapSessions: () => false });
+      await expect(
+        h.routes.resumeSession(h.ws as never, { type } as never),
+      ).resolves.toBeUndefined();
+      const res = h.sent.find((m) => m.type === 'key.operation_result');
+      expect(res?.payload['success']).toBe(false);
+      expect(res?.payload['message']).toBe('Session id is required');
+    },
+  );
+});
