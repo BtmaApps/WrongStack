@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { type ClientState, encodeResponse, parseArgs } from './project-server-options.js';
-
 /**
  * One detached Chronicle owner per local project.
  *
@@ -8,7 +6,6 @@ import { type ClientState, encodeResponse, parseArgs } from './project-server-op
  * server owns ordering/hash chaining, partition rotation, retention, the
  * project file watcher, derived metrics, and journal queries.
  */
-
 import { randomBytes } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
@@ -26,10 +23,12 @@ import { ChronicleJournal, type ChronicleJournalStats } from './journal.js';
 import { importLegacyChronicleJournal } from './legacy-journal-import.js';
 import { ChronicleMetricsStore } from './metrics-store.js';
 import { ChroniclePartitionRangeCache } from './partition-range-cache.js';
+import { dispatchChronicle } from './project-server-dispatch.js';
 import {
   chronicleProjectServerEndpoint,
   chronicleProjectServerMetadataPath,
 } from './project-server-endpoint.js';
+import { type ClientState, encodeResponse, parseArgs } from './project-server-options.js';
 import {
   CHRONICLE_MAX_APPEND_BATCH,
   CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS,
@@ -39,10 +38,9 @@ import {
   type ChronicleProjectServerInfo,
   type ChronicleProjectServerMessage,
   type ChronicleProjectServerMetadata,
-  type ChronicleServerOperationName,
   type ChronicleServerOperations,
 } from './project-server-protocol.js';
-import { type ChronicleQuery, ChronicleQueryEngine } from './query.js';
+import { ChronicleQueryEngine } from './query.js';
 import type { ChronicleEventSink } from './sink.js';
 import { type ChronicleQuarantinedFamily, ChronicleSqliteJournal } from './sqlite-journal.js';
 import type { ChronicleSqliteQueryEngine } from './sqlite-query.js';
@@ -409,99 +407,6 @@ async function serverHealth(): Promise<ChronicleProjectServerHealth> {
   };
 }
 
-/** True when the only narrowing is a time window/page — no genuinely ad hoc
- *  filter (text/path/provider/model/session/etc.) that fixed-dimension
- *  aggregation in ChronicleMetricsStore can't answer. */
-function isDefaultView(query: ChronicleQuery): boolean {
-  const { from, to, limit, order, cursor, ...rest } = query;
-  return Object.values(rest).every((value) => value === undefined);
-}
-
-async function dispatch<O extends ChronicleServerOperationName>(
-  op: O,
-  rawArgs: unknown,
-): Promise<ChronicleServerOperations[O]['result']> {
-  switch (op) {
-    case 'ping':
-      return (await serverHealth()) as ChronicleServerOperations[O]['result'];
-    case 'append': {
-      const args = rawArgs as ChronicleServerOperations['append']['args'];
-      return (await appendInputs(args.inputs)) as ChronicleServerOperations[O]['result'];
-    }
-    case 'flush':
-      await flushJournals();
-      return undefined as ChronicleServerOperations[O]['result'];
-    case 'purge': {
-      const args = rawArgs as ChronicleServerOperations['purge']['args'];
-      return useSqliteStore()
-        ? ((await (await store()).purge(args)) as ChronicleServerOperations[O]['result'])
-        : ((await journalForToday().purge(args)) as ChronicleServerOperations[O]['result']);
-    }
-    case 'query': {
-      const args = rawArgs as ChronicleServerOperations['query']['args'];
-      const result = await (await queryEngine()).query(args.query);
-      // The default/unfiltered view (only from/to/limit/order/cursor set) is
-      // servable from the incrementally-refreshed metrics store instead of
-      // the summary the query engine just computed by scanning matched
-      // events — any other filter (text/path/provider/model/session/etc.)
-      // keeps the raw-scan summary, since fixed-dimension aggregation can't
-      // answer genuinely ad hoc filters.
-      if (isDefaultView(args.query)) {
-        await refreshMetrics();
-        result.summary = metrics().defaultSummary({
-          ...(args.query.from ? { from: args.query.from } : {}),
-          ...(args.query.to ? { to: args.query.to } : {}),
-        });
-      }
-      return result as ChronicleServerOperations[O]['result'];
-    }
-    case 'facet': {
-      const args = rawArgs as ChronicleServerOperations['facet']['args'];
-      const engine = await queryEngine();
-      return {
-        values: await engine.facet(args.field, args.query, args.limit),
-        diagnostics: engine.diagnostics,
-      } as ChronicleServerOperations[O]['result'];
-    }
-    case 'facets': {
-      const args = rawArgs as ChronicleServerOperations['facets']['args'];
-      const engine = await queryEngine();
-      return {
-        values: await engine.facets(args.fields, args.query, args.limit),
-        diagnostics: engine.diagnostics,
-      } as ChronicleServerOperations[O]['result'];
-    }
-    case 'graph': {
-      const args = rawArgs as ChronicleServerOperations['graph']['args'];
-      return (await (
-        await queryEngine()
-      ).graph(args.seed, args.hops, args.maxNodes)) as ChronicleServerOperations[O]['result'];
-    }
-    case 'metrics': {
-      const args = rawArgs as ChronicleServerOperations['metrics']['args'];
-      const refreshed =
-        args.refresh === false
-          ? { ingestedEvents: 0, ingestedBytes: 0, sourceFiles: 0, invalidLines: 0 }
-          : await refreshMetrics();
-      if (args.refresh === false) {
-        // Keep the projection converging without putting historical indexing
-        // latency on the caller's critical path.
-        void refreshMetrics().catch(() => {});
-      }
-      const store = metrics();
-      const data =
-        args.view === 'providers'
-          ? store.providerDaily(args.providers)
-          : args.view === 'tasks'
-            ? store.taskOutcomes(args.tasks)
-            : args.view === 'files'
-              ? store.fileLineage(args.files)
-              : store.summary();
-      return { refreshed, data } as ChronicleServerOperations[O]['result'];
-    }
-  }
-}
-
 function send(state: ClientState, message: ChronicleProjectServerMessage): void {
   const encoded = encodeResponse(state, message);
   if (encoded !== undefined) state.socket.write(encoded);
@@ -557,7 +462,21 @@ async function handleMessage(
   activeRequests++;
   state.unsettled.add(message.id);
   try {
-    const result = await dispatch(message.op, message.args);
+    const result = await dispatchChronicle(
+      {
+        serverHealth,
+        appendInputs,
+        flushJournals,
+        useSqliteStore,
+        store,
+        journalForToday,
+        queryEngine,
+        refreshMetrics,
+        metrics,
+      },
+      message.op,
+      message.args,
+    );
     state.unsettled.delete(message.id);
     send(state, { type: 'response', id: message.id, ok: true, result });
   } catch (error) {

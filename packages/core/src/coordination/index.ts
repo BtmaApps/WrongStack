@@ -5,6 +5,7 @@ export {
   InMemoryAgentBridge,
   InMemoryBridgeTransport,
 } from './agent-bridge.js';
+export * from './agent-catalog-exports.js';
 export {
   type AgentFactory,
   type AgentFactoryResult,
@@ -12,130 +13,13 @@ export {
   makeAgentSubagentRunner,
   withDisabledToolFiltering,
 } from './agent-subagent-runner.js';
-export {
-  AGENT_CATALOG,
-  AGENTS_BY_PHASE,
-  type AgentBudgetTier,
-  type AgentCapability,
-  type AgentDefinition,
-  type AgentPhase,
-  ALL_AGENT_DEFINITIONS,
-  type AutoOptimizeDecision,
-  type AutoOptimizeEvent,
-  type AutoOptimizePolicy,
-  type AutoOptimizePolicyOverrides,
-  applyProjectAgentConfig,
-  assertProjectAgentRole,
-  BUILD_AGENTS,
-  buildConsolidationInstruction,
-  buildProjectContextualizedPrompt,
-  buildSkillDistillInstruction,
-  CAPTURE_COOLDOWN_MS,
-  CAPTURE_MAX_PER_SESSION,
-  CAPTURE_SESSION_WINDOW_MS,
-  type ConsolidationMetadata,
-  type CreateProjectAgentInput,
-  canCaptureNewLearned,
-  captureLearnedFromAgentOutput,
-  captureLearnedFromAgentOutputDetailed,
-  clearProjectAgentConsolidated,
-  clearProjectSkillAugmentation,
-  consolidatedDocumentPath,
-  createProjectAgent,
-  createProjectAgentRoster,
-  DEFAULT_AUTO_OPTIMIZE_POLICY,
-  DEFAULT_EAGER_SKILL_LIMIT,
-  DELIVERY_AGENTS,
-  DIRECTIVE_QUARANTINE_MAX_UTILITY,
-  DIRECTIVE_QUARANTINE_MIN_APPLIED,
-  DISCOVERY_AGENTS,
-  type DirectiveOutcomeResult,
-  DOMAIN_AGENTS,
-  detectLearnedConflicts,
-  directiveTrials,
-  directiveUtility,
-  directiveWasApplied,
-  eagerRoleSkills,
-  evaluateAutoOptimize,
-  getAgentDefinition,
-  getProjectAgentLearnStats,
-  HEAVY_BUDGET,
-  hintLearnedNeedsSummarization,
-  isConsolidated,
-  isProvenDirective,
-  KNOWLEDGE_AGENTS,
-  LEARNED_SOFT_LIMIT,
-  type LearnedCaptureResult,
-  LearningOptimizationScheduler,
-  type LearningOptimizationSchedulerOptions,
-  type LearningOptimizerLlm,
-  LIGHT_BUDGET,
-  listProjectAgentLearnedEntries,
-  listProjectAgentRoles,
-  listProjectSkillAugmentations,
-  loadConsolidationMetadata,
-  loadProjectAgentConfig,
-  loadProjectAgentConsolidated,
-  loadProjectAgentIdentity,
-  loadProjectAgentLearned,
-  loadProjectAgentLearningPolicy,
-  loadProjectAgentProfile,
-  loadProjectSkillAugmentation,
-  loadRoleKnowledgeManifest,
-  loadSkillAffinity,
-  MEDIUM_BUDGET,
-  META_AGENTS,
-  type OptimizeLearningOptions,
-  type OptimizeLearningResult,
-  optimizeProjectAgentLearning,
-  PLANNING_AGENTS,
-  type ProjectAgentConfig,
-  type ProjectAgentLearningPolicy,
-  type ProjectAgentProfile,
-  type QuarantinedDirective,
-  quarantinePath,
-  REVIEW_AGENTS,
-  type RoleKnowledgeManifest,
-  rankRoleSkills,
-  readQuarantinedDirectives,
-  readRawLearnedEntries,
-  recordDirectiveOutcomes,
-  recordSkillBlocked,
-  recordSkillLoad,
-  recordSkillOutcome,
-  refreshProjectAgentIdentity,
-  renderSkillAugmentation,
-  resetCaptureWindow,
-  resetCaptureWindows,
-  resetProjectAgentIdentity,
-  resolveAutoOptimizePolicy,
-  resolveRoleSkillCandidates,
-  retiredDirectivesToWarnAbout,
-  routeDirectiveToSkill,
-  type SaveConsolidationOptions,
-  SKILL_AUGMENTATION_MAX_BYTES,
-  type SkillAffinity,
-  type SkillAffinityEntry,
-  saveProjectAgentConsolidated,
-  saveProjectSkillAugmentation,
-  scoreSkillAffinity,
-  scrubRetiredLines,
-  setSkillPinned,
-  slugifyProjectAgentRole,
-  unwrapWholeDocumentFence,
-  updateProjectAgentConfig,
-  updateProjectAgentIdentity,
-  updateProjectAgentKnowledge,
-  updateProjectAgentLearned,
-  updateProjectAgentLearningPolicy,
-  VERIFY_AGENTS,
-  validateProjectAgentConfig,
-} from './agents/index.js';
+
 export {
   type AutoExtendCeiling,
   type AutoExtendPolicy,
   attachAutoExtend,
 } from './auto-extend.js';
+export * from './autonomy-exports.js';
 export {
   type BrainArbiter,
   type BrainDecision,
@@ -382,134 +266,11 @@ export {
   type SupervisedSubagent,
   type SupervisorLogEntry,
 } from './fleet-supervisor.js';
-export { resolveProjectDir } from './global-mailbox-paths.js';
+
 export type { ICoordinator } from './icoordinator.js';
 export type { IFleetManager } from './ifleet-manager.js';
 export { LargeAnswerStore } from './large-answer-store.js';
-export { type MailToolsOptions, makeMailInboxTool, makeMailSendTool } from './mail-tools.js';
-// Mailbox - inter-agent messaging
-export type {
-  MailboxActionInput,
-  MailboxActionResult,
-  MailboxMessageAction,
-} from './mailbox-actions.js';
-export { actionToAckInput } from './mailbox-actions.js';
-export {
-  parseMailboxAckInput,
-  parseMailboxQueryInput,
-  parseMailboxSendInput,
-} from './mailbox-codecs.js';
-// Request bounds every untrusted boundary must apply. Exported so the
-// out-of-package surfaces (mailbox-mcp) enforce the same ceiling as the
-// in-package ones rather than inventing their own.
-export {
-  MAILBOX_MAX_ACK_BATCH,
-  MAILBOX_MAX_QUERY_LIMIT,
-} from './mailbox-constants.js';
-export type {
-  MailboxCredentialVerifier,
-  RedactedMailboxCredential,
-} from './mailbox-credential-store.js';
-export { redactMailboxCredential } from './mailbox-credential-store.js';
-export {
-  CREDENTIAL_VERIFY_COOLDOWN_MS,
-  CREDENTIAL_VERIFY_MAX_FAILURES,
-  CREDENTIAL_VERIFY_WINDOW_MS,
-  CredentialVerifyThrottle,
-  credentialVerifyThrottle,
-} from './mailbox-credential-throttle.js';
-export { MailboxEventEmitter } from './mailbox-events.js';
-export {
-  buildDownAlert,
-  buildRecoveryAlert,
-  type DownAlertInput,
-  MAILBOX_HEALTH_DEFAULT_FAILURE_THRESHOLD,
-  MAILBOX_HEALTH_DEFAULT_FROM,
-  MAILBOX_HEALTH_DEFAULT_INTERVAL_MS,
-  MAILBOX_HEALTH_DEFAULT_TIMEOUT_MS,
-  type MailboxHealthEvent,
-  MailboxHealthWatchdog,
-  type MailboxHealthWatchdogOptions,
-  type RecoveryAlertInput,
-  validateWatchdogOptions,
-  type WatchdogConfig,
-} from './mailbox-health.js';
-// ── Mailbox hooks — tool-execution integration ────────────────────────────
-export {
-  createMailboxHooks,
-  type MailboxHooksOptions,
-} from './mailbox-hooks.js';
-export {
-  authorizeMailboxBearerToken,
-  authorizePersistedMailboxCredential,
-  createMailboxHttpRouter,
-  MAILBOX_HTTP_DEFAULT_MAX_AGE_MS,
-  MAILBOX_HTTP_MAX_AGE_CEILING_MS,
-  MAILBOX_HTTP_MAX_BODY_BYTES,
-  MAILBOX_HTTP_RATE_LIMIT_PER_MINUTE,
-  MAILBOX_HTTP_RATE_LIMIT_WINDOW_MS,
-  type MailboxHttpAccessDecision,
-  MailboxHttpRateLimiter,
-  type MailboxHttpRouter,
-  type MailboxHttpRouterOptions,
-} from './mailbox-http-router.js';
-export {
-  isMailboxProjectServerAvailable,
-  MailboxProjectServerConnection,
-  type MailboxProjectServerConnectionState,
-} from './mailbox-project-server-client.js';
-// Endpoint derivation is pure and side-effect free. Exported so daemon
-// inventory surfaces (`wstack doctor --daemons`) can locate this daemon
-// without importing the daemon entry itself, which would start one.
-export {
-  mailboxProjectServerEndpoint,
-  mailboxProjectServerMetadataPath,
-} from './mailbox-project-server-endpoint.js';
-export type {
-  MailboxProjectServerInfo,
-  MailboxProjectServerStatus,
-} from './mailbox-project-server-protocol.js';
-export {
-  applyMailboxSendPolicy,
-  type MailboxResolver,
-  type MailboxToolOptions,
-  mailboxSessionTag,
-  makeMailboxTool,
-  resolveMailboxIdentity,
-} from './mailbox-tool.js';
-export type {
-  AgentHeartbeatInput,
-  AgentRegistrationInput,
-  ClientHeartbeatInput,
-  ClientRegistrationInput,
-  ClientSource,
-  ClientStatus,
-  Mailbox,
-  MailboxAckBatchInput,
-  MailboxAckInput,
-  MailboxAgentStatus,
-  MailboxAudience,
-  MailboxMessage,
-  MailboxMessageProjection,
-  MailboxMessageType,
-  MailboxQuery,
-  MailboxRecipientState,
-  MailboxSendInput,
-  MailboxTaskContext,
-  PurgeOptions,
-  PurgeResult,
-  ReadReceipts,
-  RegisteredAgent,
-} from './mailbox-types.js';
-export {
-  isMailboxLeader,
-  isMailboxMessageVisibleTo,
-  MAILBOX_TYPE_PROPERTIES,
-  mailboxIdentityBase,
-  normalizeRecipient,
-  SESSION_RECIPIENT_PREFIX,
-  sessionRecipient,
-} from './mailbox-types.js';
+export * from './mailbox-exports.js';
 export {
   isValidMatrixKey,
   MATRIX_PHASE_KEYS,
@@ -597,7 +358,6 @@ export {
   type ProjectMailboxOptions,
   RemoteMailbox,
 } from './remote-mailbox.js';
-export { RemoteMailboxCredentialStore } from './remote-mailbox-credential-store.js';
 export {
   postSessionNote,
   SessionNoteHub,
@@ -721,10 +481,6 @@ export {
   taskBoundarySchemaProperties,
 } from './task-boundary.js';
 export {
-  startTechStackConsumer,
-  type TechStackConsumerOptions,
-} from './techstack-mailbox-consumer.js';
-export {
   makeTypeSafeDispatchClassifier,
   type TypeSafeDispatchClassifierOptions,
 } from './typesafe-dispatch-classifier.js';
@@ -738,118 +494,3 @@ export {
   type WorktreeTaskStateUpdate,
   wrapSubagentRunnerWithWorktrees,
 } from './worktree-task-runner.js';
-
-// ── Autonomous coordination layer ──────────────────────────────────────────
-
-// ── Adaptive Concurrency Controller ──────────────────────────────────────────
-export {
-  AdaptiveConcurrencyController,
-  type AdaptiveConcurrencyState,
-} from './adaptive-concurrency.js';
-/** Agent Monitor — virtual chat history, timeline streaming, HQ bridge */
-export {
-  type AgentMonitorOptions,
-  AgentMonitorService,
-  type AgentTimelineEntry,
-  type AgentVirtualSession,
-  createAgentMonitorService,
-} from './agent-monitor.js';
-export {
-  AgentStatusTracker,
-  type AgentStatusTrackerOptions,
-} from './agent-status-tracker.js';
-export type {
-  ApprovalDecision,
-  AutonomousBrainOptions,
-  AutonomousDecisionRequest,
-  AutonomousDecisionType,
-  DecisionPrompt,
-  EscalationDecision,
-  LLMProvider,
-  PrioritizationDecision,
-  SpawnDecision,
-} from './autonomous-brain.js';
-/** Autonomous brain — LLM-backed decision-making engine */
-export { AutonomousBrain } from './autonomous-brain.js';
-export type {
-  AutonomousCoordinatorOptions,
-  CoordinatorEvent,
-  CoordinatorStats,
-  RunOptions,
-} from './autonomous-coordinator.js';
-/** Autonomous coordinator — wires all coordination components */
-export { AutonomousCoordinator } from './autonomous-coordinator.js';
-/** Change manager — autonomous code change lifecycle */
-export {
-  type ApplyResult,
-  type ChangeFile,
-  ChangeManager,
-  type ChangeManagerOptions,
-  type ChangeProposal,
-  DEFAULT_QUALITY_CHECKS,
-  type QualityGateChecks,
-  type RollbackResult,
-} from './change-manager.js';
-export {
-  type CollabBusState,
-  CollaborationBus,
-  type ConsumedInjectionInfo,
-} from './collab-bus.js';
-export {
-  collabInjectMiddleware,
-  collabPauseMiddleware,
-} from './collab-pause.js';
-export type {
-  ConsensusOptions,
-  ConsensusResult,
-  QuorumRule,
-  VoterConfig,
-} from './consensus-protocol.js';
-/** Consensus protocol — agent voting on proposed changes */
-export { ConsensusProtocol } from './consensus-protocol.js';
-export { FleetNotifier, type FleetNotifierOptions } from './fleet-notifier.js';
-export {
-  type KanbanDispatchPort,
-  kanbanDispatch,
-  setKanbanDispatch,
-} from './kanban-dispatch-port.js';
-export {
-  type KanbanBoundaryOpsPort,
-  kanbanBoundaryOps,
-  setKanbanBoundaryOps,
-} from './kanban-ops-port.js';
-export type {
-  ChangeNode,
-  ChangeStatus,
-  DecisionNode,
-  FactCategory,
-  FactNode,
-  GoalNode,
-  GoalPriority,
-  GoalStatus,
-  GraphSubscription,
-  NodeFilter,
-  NodeType,
-  QualityCheck,
-  QualityGateResult,
-  VoteNode,
-  VoteRecord,
-  VoteValue,
-} from './knowledge-graph.js';
-/** Shared knowledge graph — facts, goals, decisions, changes */
-export { KnowledgeGraph } from './knowledge-graph.js';
-export type {
-  TaskAuctionOptions,
-  TaskBid,
-} from './task-auctioneer.js';
-/** Task auctioneer — project-wide task marketplace */
-export { TaskAuctioneer } from './task-auctioneer.js';
-export type {
-  DAGEdgeEvent,
-  DAGEdgeHandler,
-  DAGNode,
-  DAGNodeStatus,
-  RunnablesHandler,
-} from './task-dag.js';
-/** Task DAG — dependency graph with fork/join semantics */
-export { TaskDAG } from './task-dag.js';

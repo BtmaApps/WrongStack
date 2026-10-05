@@ -7,7 +7,6 @@
  * service construction (Phase 1c), route/dispatcher/connection wiring
  * (Phase 1b/1a), WS + HTTP server creation, and graceful shutdown.
  */
-
 import * as path from 'node:path';
 import { startOtlpExport } from '@wrongstack/core/observability';
 import { createCompatibilityTrustBoundary } from '@wrongstack/core/security';
@@ -22,7 +21,6 @@ import { createConnectionHandler } from './connection-handler.js';
 import { createEternalSubscription } from './eternal-iteration-broadcast.js';
 import { setupWebUiGovernance } from './governance-runtime.js';
 import { createMessageDispatcher } from './message-dispatcher.js';
-
 import type { PendingConfirm } from './pending-confirms.js';
 import { createPreContextServices } from './pre-context-services.js';
 import {
@@ -42,9 +40,7 @@ import {
   type WebuiMutableState,
 } from './routes.js';
 import { armEvents, createWsServers, resolvePorts, startHttpServer } from './server-runtime.js';
-import { scheduleOwnerlessEmptySessionCleanup } from './session-cleanup-scheduler.js';
 import { collectDisplayedSessionIds, createSessionTransitionGate } from './session-handlers.js';
-import { toSessionHistoryEntries } from './session-history.js';
 import { createDefaultFileWatcherMetrics, type FileWatcherMetrics } from './setup-events.js';
 import {
   createStandaloneAgentPipelines,
@@ -60,6 +56,7 @@ import { touchProjectEntry } from './start-webui-project.js';
 import { setupWebuiProxyInstantApply } from './start-webui-proxy-apply.js';
 import { createPackageOperationExecutor } from './start-webui-remediation.js';
 import { handleWebuiSecurityRejection } from './start-webui-security.js';
+import { setupStandaloneSessionMaintenance } from './start-webui-session-maintenance.js';
 import {
   createRunLockControl,
   createSessionBridgeManager,
@@ -749,29 +746,12 @@ export async function startWebUI(
   });
 
   const routes = buildRoutes(state, deps, cb);
-  const refreshSessionHistory = async (): Promise<void> => {
-    const list = await state.getSessionStore().list(200);
-    broadcast(clients, {
-      type: 'sessions.list',
-      payload: { sessions: toSessionHistoryEntries(list, state.getSession().id) },
-    });
-  };
-  const stopEmptySessionCleanup = scheduleOwnerlessEmptySessionCleanup({
-    getSessionStore: state.getSessionStore,
-    getActiveSessionId: () => state.getSession().id,
-    // Every tab the browser declared, not just the one in front — a
-    // background tab's brand-new session is empty and would otherwise be
-    // swept out from under it.
-    getActiveSessionIds: () =>
-      collectDisplayedSessionIds({ getSession: state.getSession, clients }),
-    hasParticipants: (sessionId) => collabHandler.hasParticipants(sessionId),
-    refreshSessions: refreshSessionHistory,
+  const { stopEmptySessionCleanup, offSessionRenamed } = setupStandaloneSessionMaintenance({
+    state,
+    clients,
+    collabHandler,
     logger,
-  });
-  // A session the model renamed (`session_rename`) shows its new name in
-  // every open history list, as a rename from the list itself does.
-  const offSessionRenamed = events.on('session.renamed', () => {
-    void refreshSessionHistory().catch(() => undefined);
+    events,
   });
 
   let kanbanSupervisorDispose: (() => void | Promise<void>) | null = null;

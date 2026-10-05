@@ -1,31 +1,3 @@
-import type { CodexAccountCatalogHost } from './codex-account-catalog.js';
-import {
-  fetchContextLimits as fetchContextLimitsFromHost,
-  publishLiveModels as publishLiveModelsFromHost,
-  readAccountQuota as readAccountQuotaFromHost,
-} from './codex-account-catalog.js';
-import {
-  CODEX_ROUTING_HINT_HEADER,
-  codexCacheSessionId,
-  codexClientRequestId,
-  codexRoutingHint,
-  compressCodexRequestBody,
-  DEFAULT_CODEX_BASE,
-  resolveCodexUrl,
-  resolveCodexWebSocketUrl,
-} from './openai-codex-request.js';
-import {
-  hasSubscriptionRefreshTransaction,
-  renewRotatingOAuthCredential,
-} from './subscription-refresh-store.js';
-
-export {
-  codexCacheSessionId,
-  resolveCodexModelsUrl,
-  resolveCodexUrl,
-  resolveCodexWebSocketUrl,
-} from './openai-codex-request.js';
-
 /**
  * `openai-codex` wire family — the ChatGPT-backend Responses API.
  *
@@ -47,7 +19,6 @@ export {
  * below both, so the CLI login flow, the headless WebUI flow, and this refresh
  * path share one definition instead of three that had to be kept in step by hand.
  */
-
 import { createHash, randomUUID } from 'node:crypto';
 import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
@@ -58,21 +29,21 @@ import {
   type Request,
   type StreamEvent,
 } from '@wrongstack/core/types';
+import type { CodexAccountCatalogHost } from './codex-account-catalog.js';
+import {
+  fetchContextLimits as fetchContextLimitsFromHost,
+  publishLiveModels as publishLiveModelsFromHost,
+  readAccountQuota as readAccountQuotaFromHost,
+} from './codex-account-catalog.js';
 import {
   type CodexResponseMetadata,
-  type CodexWebSocketFactory,
   CodexWebSocketFallbackError,
   CodexWebSocketPool,
   defaultCodexWebSocketFactory,
 } from './codex-websocket.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
-import {
-  CODEX_ORIGINATOR,
-  CODEX_USER_AGENT,
-  type CodexTokens,
-  refreshCodexTokens,
-} from './oauth/codex-protocol.js';
+import { CODEX_ORIGINATOR, CODEX_USER_AGENT, refreshCodexTokens } from './oauth/codex-protocol.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { extractAccountId, extractPlanType } from './openai-codex-account.js';
 import { buildCodexRequestBody } from './openai-codex-body.js';
@@ -82,14 +53,55 @@ import {
   translateCodexHttpError,
 } from './openai-codex-errors.js';
 import type { CodexLiveModel, CodexModelPolicy } from './openai-codex-model-policy.js';
+import type { CodexOAuthTokens, OpenAICodexProviderOptions } from './openai-codex-options.js';
 import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
+import {
+  CODEX_ROUTING_HINT_HEADER,
+  codexCacheSessionId,
+  codexClientRequestId,
+  codexRoutingHint,
+  compressCodexRequestBody,
+  DEFAULT_CODEX_BASE,
+  resolveCodexUrl,
+  resolveCodexWebSocketUrl,
+} from './openai-codex-request.js';
 import { parseOpenAIResponsesStream } from './openai-codex-stream.js';
+import {
+  type CodexTurnStateHost,
+  onResponseHeaders as onResponseHeadersFromHost,
+  reasoningReplayKey as reasoningReplayKeyFromHost,
+  rememberTurnState as rememberTurnStateFromHost,
+  resolveTurnState as resolveTurnStateFromHost,
+  turnStateKey as turnStateKeyFromHost,
+  webSocketScope as webSocketScopeFromHost,
+} from './openai-codex-turn-state.js';
+import {
+  CODEX_TURN_STATE_HEADER,
+  CODEX_TURN_STATE_MAX_SESSIONS,
+} from './openai-codex-turn-state-contracts.js';
 import {
   isCacheProbeEnabled,
   recordCacheProbeRequest,
   recordCacheProbeUsage,
 } from './prompt-cache-probe.js';
-import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
+import {
+  hasSubscriptionRefreshTransaction,
+  renewRotatingOAuthCredential,
+} from './subscription-refresh-store.js';
+import { WireAdapter } from './wire-adapter.js';
+
+export type {
+  CodexCredentials,
+  CodexOAuthTokens,
+  OpenAICodexProviderOptions,
+} from './openai-codex-options.js';
+
+export {
+  codexCacheSessionId,
+  resolveCodexModelsUrl,
+  resolveCodexUrl,
+  resolveCodexWebSocketUrl,
+} from './openai-codex-request.js';
 
 // Owned by `codex-websocket.ts` (both transports carry it); re-exported here
 // so the long-standing public name keeps resolving from the provider module.
@@ -108,36 +120,8 @@ function isReasoningReplayRejection(err: ProviderError): boolean {
   const message = `${err.message} ${JSON.stringify(err.body ?? '')}`;
   return /reasoning item|item\s+['"]?rs_[\w-]+|required following item/i.test(message);
 }
-
-/** Sticky-routing token the ChatGPT backend hands back on every response. */
-const CODEX_TURN_STATE_HEADER = 'x-codex-turn-state';
-/** Bound on remembered turn-state entries so a long-lived process cannot grow. */
-const CODEX_TURN_STATE_MAX_SESSIONS = 64;
-
-/**
- * Is this request a continuation of the turn already in flight, rather than a
- * new user turn?
- *
- * `x-codex-turn-state` is scoped to ONE turn: the official client keeps it in a
- * turn-scoped `OnceLock` and replays it on the requests that finish that turn
- * (the tool-call round-trips), never on the next user turn. In the canonical
- * message shape a tool-call round-trip is a user message carrying tool results,
- * so that is the boundary this reproduces.
- */
-function isTurnContinuation(req: Request): boolean {
-  const last = req.messages[req.messages.length - 1];
-  if (last?.role !== 'user' || !Array.isArray(last.content)) return false;
-  return last.content.some((block) => block.type === 'tool_result');
-}
 /** The official client proactively refreshes ChatGPT access tokens five minutes early. */
 const CODEX_TOKEN_REFRESH_SKEW_MS = 5 * 60_000;
-
-/**
- * Token shape returned by a refresh. Structurally the shared
- * {@link CodexTokens}; kept as a named alias because it is part of this
- * package's published surface.
- */
-export type CodexOAuthTokens = CodexTokens;
 
 /**
  * Refresh an expired Codex access token using its refresh token.
@@ -160,85 +144,6 @@ export { extractAccountId } from './openai-codex-account.js';
 export type { CodexLiveModel } from './openai-codex-model-policy.js';
 export { codexOutputCap } from './openai-codex-model-policy.js';
 export { parseOpenAIResponsesStream } from './openai-codex-stream.js';
-
-// ── Provider ────────────────────────────────────────────────────────────────
-
-export interface CodexCredentials {
-  /** The OAuth access token (a JWT). */
-  accessToken: string;
-  /** The refresh token, used to mint a new access token before/at expiry. */
-  refreshToken?: string | undefined;
-  /** Access-token expiry, epoch ms. When absent, refresh only fires on 401. */
-  expiresAt?: number | undefined;
-  /** Cached ChatGPT account id. Re-derived from the live token when missing. */
-  accountId?: string | undefined;
-}
-
-export interface OpenAICodexProviderOptions {
-  credentials: CodexCredentials;
-  baseUrl?: string | undefined;
-  id?: string | undefined;
-  fetchImpl?: typeof fetch | undefined;
-  capabilities?: Partial<Capabilities> | undefined;
-  streamOpts?: WireAdapterStreamOptions | undefined;
-  /**
-   * Persist rotated tokens after a successful refresh. The CLI wires this to
-   * write back to the encrypted config so the new access/refresh pair survive
-   * the session.
-   */
-  onRefresh?:
-    | ((creds: {
-        accessToken: string;
-        refreshToken: string;
-        expiresAt: number;
-        accountId: string | undefined;
-      }) => void)
-    | undefined;
-  /** Observe response metadata surfaced inside the Responses stream. */
-  onResponseMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined;
-  /**
-   * Receives the account's picker-visible model list every time the live
-   * `/codex/models` catalog is re-read, so a host can keep its stored list in
-   * step with the backend.
-   *
-   * The stored list used to be written once, at login, and never again: an
-   * account that gained `gpt-6-astra` a week later kept whatever the login
-   * happened to resolve. This rides the catalog probe the transport already
-   * performs at request boundaries, so keeping the list live costs no extra
-   * request.
-   */
-  onModels?: ((models: CodexLiveModel[]) => void) | undefined;
-  /** Enable the Responses WebSocket transport; defaults on for the real fetch. */
-  webSocket?: boolean | undefined;
-  /** Injectable WebSocket factory for hosts and tests. */
-  webSocketFactory?: CodexWebSocketFactory | undefined;
-  /** Best-effort WebSocket prewarm before the first real response. */
-  webSocketPrewarm?: boolean | undefined;
-  /**
-   * The stored account entry this transport was built from. With it, and a
-   * host-installed subscription refresh transaction, every refresh runs under
-   * the config file lock against the entry as it is ON DISK: a token another
-   * process already rotated is adopted instead of replayed, and the rotation is
-   * persisted atomically with the exchange. Codex rotates its refresh token on
-   * every use, so two processes (TUI + WebUI, an editor's `wstack acp`)
-   * refreshing from the same stored pair used to end with one of them getting
-   * `refresh_token_reused` and the account needing a fresh sign-in.
-   */
-  credential?: ProviderApiKey | undefined;
-  /** Override the refresh call (tests). */
-  refreshFn?:
-    | ((refreshToken: string, signal?: AbortSignal) => Promise<CodexOAuthTokens>)
-    | undefined;
-  /**
-   * Reasoning effort for the Codex (gpt-5.x) reasoning models. Sent as
-   * `reasoning.effort` with `summary: 'auto'` so chain-of-thought streams back
-   * as thinking deltas. Request-level reasoning settings override this default.
-   * Default 'medium'. Set 'none' to omit reasoning entirely.
-   */
-  reasoningEffort?: ReasoningEffort | undefined;
-  /** Used only when the live model catalog explicitly supports verbosity. */
-  textVerbosity?: 'low' | 'medium' | 'high' | undefined;
-}
 
 export class OpenAICodexProvider extends WireAdapter {
   override readonly id: string;
@@ -662,27 +567,7 @@ export class OpenAICodexProvider extends WireAdapter {
    * it as soon as a new user turn begins.
    */
   protected override onResponseHeaders(headers: HeadersLike | undefined, _request: Request): void {
-    if (!headers) return;
-    this.rememberTurnState(_request, headers.get(CODEX_TURN_STATE_HEADER) ?? undefined);
-    const served = (headers.get('openai-model') ?? headers.get('x-openai-model'))?.trim();
-    if (served) this.servedModels.set(_request, served);
-    // `x-codex-plan-type` is the account's live tier as the backend sees it.
-    // The JWT claim is a snapshot taken when the token was minted, so it goes
-    // stale across an upgrade; prefer the header and keep the claim as the
-    // fallback for backends that omit it.
-    const planLabel =
-      headers.get('x-codex-plan-type')?.trim() || extractPlanType(this.access) || undefined;
-    const snapshots = parseCodexRateLimitHeaders(headers).map((snapshot) =>
-      snapshot.planLabel === undefined && planLabel !== undefined
-        ? { ...snapshot, planLabel }
-        : snapshot,
-    );
-    if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
-    const etag = headers.get('x-models-etag');
-    if (etag && etag !== this.contextLimitsEtag) {
-      this.contextLimitsEtag = etag;
-      this.contextLimitsFreshUntil = 0;
-    }
+    onResponseHeadersFromHost(this.codexTurnStateHost(), headers, _request);
   }
 
   protected override buildHeaders(_req: Request): Record<string, string> {
@@ -712,19 +597,15 @@ export class OpenAICodexProvider extends WireAdapter {
 
   /** Key under which this request's turn state is remembered. */
   private turnStateKey(req: Request): string {
-    return (
-      codexCacheSessionId(req.cache?.threadId) ??
-      codexCacheSessionId(req.cache?.sessionId) ??
-      '__default__'
-    );
+    return turnStateKeyFromHost(this.codexTurnStateHost(), req);
   }
 
   private reasoningReplayKey(req: Request): string {
-    return JSON.stringify([this.accountId, req.model, this.turnStateKey(req)]);
+    return reasoningReplayKeyFromHost(this.codexTurnStateHost(), req);
   }
 
   private webSocketScope(req: Request): string {
-    return JSON.stringify([this.accountId, this.turnStateKey(req)]);
+    return webSocketScopeFromHost(this.codexTurnStateHost(), req);
   }
 
   /**
@@ -735,27 +616,11 @@ export class OpenAICodexProvider extends WireAdapter {
    * it must neither send nor invalidate a conversation's turn state.
    */
   private resolveTurnState(req: Request): string | undefined {
-    if (req.messages.length === 0) return undefined;
-    const key = this.turnStateKey(req);
-    if (!isTurnContinuation(req)) {
-      this.turnState.delete(key);
-      return undefined;
-    }
-    return this.turnState.get(key);
+    return resolveTurnStateFromHost(this.codexTurnStateHost(), req);
   }
 
   private rememberTurnState(req: Request, value: string | undefined): void {
-    if (!value || req.messages.length === 0) return;
-    const key = this.turnStateKey(req);
-    // Re-insert so the map stays in least-recently-used order for the eviction
-    // below; a Map preserves insertion order and delete+set moves the entry.
-    this.turnState.delete(key);
-    this.turnState.set(key, value);
-    while (this.turnState.size > CODEX_TURN_STATE_MAX_SESSIONS) {
-      const oldest = this.turnState.keys().next().value;
-      if (oldest === undefined) break;
-      this.turnState.delete(oldest);
-    }
+    rememberTurnStateFromHost(this.codexTurnStateHost(), req, value);
   }
 
   protected override buildBody(req: Request, ctx: BuildBodyContext): Record<string, unknown> {
@@ -864,5 +729,21 @@ export class OpenAICodexProvider extends WireAdapter {
     void (this.doRefresh satisfies CodexAccountCatalogHost['doRefresh']);
     void (this.id satisfies CodexAccountCatalogHost['id']);
     return this as unknown as CodexAccountCatalogHost;
+  }
+
+  private codexTurnStateHost(): CodexTurnStateHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      rememberTurnState: this.rememberTurnState,
+      servedModels: this.servedModels,
+      access: this.access,
+      id: this.id,
+      contextLimitsEtag: this.contextLimitsEtag,
+      contextLimitsFreshUntil: this.contextLimitsFreshUntil,
+      accountId: this.accountId,
+      turnStateKey: this.turnStateKey,
+      turnState: this.turnState,
+    } satisfies CodexTurnStateHost);
+    return this as unknown as CodexTurnStateHost;
   }
 }

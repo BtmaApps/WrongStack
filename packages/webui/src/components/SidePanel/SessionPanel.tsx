@@ -6,7 +6,6 @@
  * handful of settings you actually flip mid-session (autonomy, YOLO,
  * refine, sound). Rarely-touched configuration stays in Settings.
  */
-
 import {
   CheckCircle2,
   Circle,
@@ -64,6 +63,7 @@ import {
 } from '../ui/dropdown-menu';
 import { WorkspaceDock } from '../WorkspaceDock';
 import { ProviderQuotaPanel } from './ProviderQuotaPanel';
+import { ActionButton, QuickToggle, StatBox } from './SessionPanelControls.js';
 import { type SessionSection, SessionSections } from './SessionSections';
 
 // ── Formatting helpers ────────────────────────────────────────────────
@@ -87,100 +87,6 @@ function fmtElapsed(ms: number): string {
 function _shortSessionId(sessionId: string): string {
   const leaf = sessionId.split('/').pop() ?? sessionId;
   return leaf.length > 18 ? leaf.slice(0, 18) : leaf;
-}
-
-// ── Small building blocks ─────────────────────────────────────────────
-
-function ActionButton({
-  icon,
-  label,
-  onClick,
-  disabled,
-  tone,
-  title,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean | undefined;
-  tone?: 'primary' | 'danger' | undefined;
-  title?: string | undefined;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title ?? label}
-      className={cn(
-        'flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors',
-        'disabled:opacity-40 disabled:cursor-not-allowed',
-        tone === 'primary'
-          ? 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/20'
-          : tone === 'danger'
-            ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
-            : 'border-border bg-card hover:bg-accent text-foreground/80',
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function StatBox({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string | undefined;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col rounded-lg border border-border/60 bg-card/65 p-2 shadow-sm">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold tabular-nums truncate">{value}</span>
-      {sub && <span className="text-[9px] text-muted-foreground/70 truncate">{sub}</span>}
-    </div>
-  );
-}
-
-/** Compact switch row sized for the 300px panel. */
-function QuickToggle({
-  label,
-  value,
-  onChange,
-  title,
-}: {
-  label: string;
-  value: boolean;
-  onChange: () => void;
-  title?: string | undefined;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2 py-1" title={title}>
-      <span className="text-xs text-foreground/80">{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={value}
-        aria-label={label}
-        onClick={onChange}
-        className={cn(
-          'shrink-0 relative inline-flex h-4 w-7 rounded-full border transition-colors',
-          value ? 'bg-primary border-primary' : 'bg-muted border-input hover:bg-muted/80',
-        )}
-      >
-        <span
-          className={cn(
-            'absolute top-0.5 left-0.5 h-2.5 w-2.5 rounded-full bg-background shadow transition-transform',
-            value && 'translate-x-3',
-          )}
-        />
-      </button>
-    </div>
-  );
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────

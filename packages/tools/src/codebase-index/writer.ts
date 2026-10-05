@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
-import { type Bm25Index, buildBm25Index } from './bm25.js';
+import type { Bm25Index } from './bm25.js';
 import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
 import {
   commitBatch,
@@ -30,6 +30,20 @@ import { loadDatabaseSync, runSqliteWithRetry } from './sqlite-runtime.js';
 import type { IndexSummary } from './writer-admin.js';
 import * as writerAdmin from './writer-admin.js';
 import { bulkInsertRefsWithStatement } from './writer-bulk-insert.js';
+import {
+  checkpointWal as checkpointWalFromHost,
+  close as closeFromHost,
+  dataVersion as dataVersionFromHost,
+  deferSecondaryIndexes as deferSecondaryIndexesFromHost,
+  getOrBuildBm25 as getOrBuildBm25FromHost,
+  optimizeFtsIfNeeded as optimizeFtsIfNeededFromHost,
+  recordFtsChurn as recordFtsChurnFromHost,
+  restoreSecondaryIndexes as restoreSecondaryIndexesFromHost,
+  setLastIndexed as setLastIndexedFromHost,
+  setMetadata as setMetadataFromHost,
+  stmt as stmtFromHost,
+  type WriterCacheLifecycleHost,
+} from './writer-cache-lifecycle.js';
 import type { ConceptCoverage, ConceptEdge, FileConcept, Subsystem } from './writer-concepts.js';
 import * as writerConcepts from './writer-concepts.js';
 import type { IndexDeletionHost } from './writer-deletion.js';
@@ -43,7 +57,6 @@ import { applyIndexStorePragmas } from './writer-pragmas.js';
 import type { RankedFileRow } from './writer-rank.js';
 import * as writerRank from './writer-rank.js';
 import * as writerRefs from './writer-refs.js';
-import { REFS_INDEX_SQL, SYMBOL_INDEX_SQL } from './writer-schema.js';
 import * as writerSearch from './writer-search.js';
 import type { WriterSearchFilter } from './writer-search-helpers.js';
 import { StorePool } from './writer-store-pool.js';
@@ -56,21 +69,9 @@ import * as writerVectors from './writer-vectors.js';
 
 export { codebaseIndexDirOverride, resolveIndexDir } from './writer-helpers.js';
 
-/** Index names declared by the symbols/refs index DDL. */
-function secondaryIndexNames(): string[] {
-  const names: string[] = [];
-  for (const sql of [...SYMBOL_INDEX_SQL, ...REFS_INDEX_SQL]) {
-    const match = /CREATE INDEX IF NOT EXISTS (\w+)/.exec(sql);
-    if (match?.[1]) names.push(match[1]);
-  }
-  return names;
-}
-
 export { StorePool } from './writer-store-pool.js';
 
 const DB_FILE = 'index.db';
-
-const MAX_STATEMENT_CACHE = 128;
 
 export class IndexStore {
   private db: DatabaseSync;
@@ -86,19 +87,7 @@ export class IndexStore {
   private bm25DataVersion = -1;
 
   private stmt(sql: string): ReturnType<DatabaseSync['prepare']> {
-    const cached = this.stmtCache.get(sql);
-    if (cached !== undefined) {
-      this.stmtCache.delete(sql);
-      this.stmtCache.set(sql, cached);
-      return cached;
-    }
-    const s = this.db.prepare(sql);
-    this.stmtCache.set(sql, s);
-    if (this.stmtCache.size > MAX_STATEMENT_CACHE) {
-      const oldest = this.stmtCache.keys().next();
-      if (!oldest.done) this.stmtCache.delete(oldest.value);
-    }
-    return s;
+    return stmtFromHost(this.writerCacheLifecycleHost(), sql);
   }
 
   constructor(projectRoot: string, opts: { indexDir?: string | undefined } = {}) {
@@ -357,25 +346,12 @@ export class IndexStore {
    * writes, so short-query results silently dropped every symbol added since.
    */
   private getOrBuildBm25(): Bm25Index {
-    const version = this.dataVersion();
-    if (this.bm25Cache && !this.bm25Dirty && version === this.bm25DataVersion) {
-      return this.bm25Cache;
-    }
-    const docs = this.getAllIndexable();
-    this.bm25Cache = buildBm25Index(docs);
-    this.bm25Dirty = false;
-    this.bm25DataVersion = version;
-    return this.bm25Cache;
+    return getOrBuildBm25FromHost(this.writerCacheLifecycleHost());
   }
 
   /** Changes whenever ANOTHER connection commits to this database. */
   private dataVersion(): number {
-    try {
-      const row = this.stmt('PRAGMA data_version').get() as { data_version?: number } | undefined;
-      return Number(row?.data_version ?? -1);
-    } catch {
-      return -1;
-    }
+    return dataVersionFromHost(this.writerCacheLifecycleHost());
   }
 
   getAllIndexable(): Array<{ id: number; text: string }> {
@@ -396,11 +372,7 @@ export class IndexStore {
   }
 
   setLastIndexed(ts: number): void {
-    this.runWithRetry(() => {
-      this.stmt("INSERT OR REPLACE INTO metadata(key, value) VALUES('last_indexed', ?)").run(
-        String(ts),
-      );
-    });
+    setLastIndexedFromHost(this.writerCacheLifecycleHost(), ts);
   }
 
   getMetadata(key: string): string | undefined {
@@ -408,14 +380,7 @@ export class IndexStore {
   }
 
   setMetadata(key: string, value: string): void {
-    // Every index run re-asserts its data-version markers. Rewriting an equal
-    // value still appends WAL frames and moves the database's mtime, which
-    // made a run that changed nothing look like a new database to every
-    // file-fingerprint cache (the WebUI Code Map's among them).
-    if (this.getMetadata(key) === value) return;
-    this.runWithRetry(() => {
-      this.stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES(?, ?)').run(key, value);
-    });
+    setMetadataFromHost(this.writerCacheLifecycleHost(), key, value);
   }
 
   clearAll(): void {
@@ -431,16 +396,12 @@ export class IndexStore {
    * update a failure rolls the drop back with everything else.
    */
   deferSecondaryIndexes(): void {
-    this.runWithRetry(() => {
-      for (const name of secondaryIndexNames()) this.db.exec(`DROP INDEX IF EXISTS ${name}`);
-    });
+    deferSecondaryIndexesFromHost(this.writerCacheLifecycleHost());
   }
 
   /** Recreate what {@link deferSecondaryIndexes} dropped (idempotent). */
   restoreSecondaryIndexes(): void {
-    this.runWithRetry(() => {
-      for (const sql of [...SYMBOL_INDEX_SQL, ...REFS_INDEX_SQL]) this.db.exec(sql);
-    });
+    restoreSecondaryIndexesFromHost(this.writerCacheLifecycleHost());
   }
 
   insertRefs(fromId: number, refs: Ref[]): void {
@@ -521,7 +482,7 @@ export class IndexStore {
    * it ran, safe to call from the daemon's single-threaded idle path.
    */
   optimizeFtsIfNeeded(options: { minChurnRatio?: number; minChurnRows?: number } = {}): boolean {
-    return indexStoreMaintenance.optimizeFtsIfNeeded(this.indexStoreMaintenanceHost(), options);
+    return optimizeFtsIfNeededFromHost(this.writerCacheLifecycleHost(), options);
   }
 
   /**
@@ -531,7 +492,7 @@ export class IndexStore {
    * survives store open/close cycles in the daemon pool.
    */
   private recordFtsChurn(rows: number): void {
-    indexStoreMaintenance.recordFtsChurn(this.indexStoreMaintenanceHost(), rows);
+    recordFtsChurnFromHost(this.writerCacheLifecycleHost(), rows);
   }
 
   /**
@@ -546,7 +507,7 @@ export class IndexStore {
    * never wait on readers here: busy means "retry at the next idle window".
    */
   checkpointWal(): boolean {
-    return indexStoreMaintenance.checkpointWal(this.indexStoreMaintenanceHost());
+    return checkpointWalFromHost(this.writerCacheLifecycleHost());
   }
 
   compactIfNeeded(options: { minBytes?: number; minFreeRatio?: number } = {}): boolean {
@@ -842,14 +803,7 @@ export class IndexStore {
   }
 
   close(): void {
-    this.stmtCache.clear();
-    this.bm25Dirty = true;
-    this.bm25Cache = null;
-    try {
-      this.db.close();
-    } catch {
-      /* already closed */
-    }
+    closeFromHost(this.writerCacheLifecycleHost());
   }
 
   private indexStoreMaintenanceHost(): IndexStoreMaintenanceHost {
@@ -948,6 +902,24 @@ export class IndexStore {
     // Preserve the owner's instance and check each member against the helper contract.
     void (this.stmt satisfies WriterSymbolQueriesHost['stmt']);
     return this as unknown as WriterSymbolQueriesHost;
+  }
+
+  private writerCacheLifecycleHost(): WriterCacheLifecycleHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      stmtCache: this.stmtCache,
+      db: this.db,
+      dataVersion: this.dataVersion,
+      bm25Cache: this.bm25Cache,
+      bm25Dirty: this.bm25Dirty,
+      bm25DataVersion: this.bm25DataVersion,
+      getAllIndexable: this.getAllIndexable,
+      stmt: this.stmt,
+      runWithRetry: this.runWithRetry,
+      getMetadata: this.getMetadata,
+      indexStoreMaintenanceHost: this.indexStoreMaintenanceHost,
+    } satisfies WriterCacheLifecycleHost);
+    return this as unknown as WriterCacheLifecycleHost;
   }
 }
 

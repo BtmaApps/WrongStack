@@ -1,5 +1,4 @@
 import type { Director } from '@wrongstack/core/coordination';
-import type { ThemePresetId } from '@wrongstack/core/types';
 import { useCallback, useEffect } from 'react';
 import type { AppProps } from './app-props.js';
 import { effectivePanelPositions, mergeStatuslineHiddenItems } from './app-ui-state.js';
@@ -12,7 +11,6 @@ import { useAppEnvironment } from './hooks/use-app-environment.js';
 import { useAppRefSpine } from './hooks/use-app-ref-spine.js';
 import { useAppState } from './hooks/use-app-state.js';
 import { useAuthPanel } from './hooks/use-auth-panel.js';
-import { useClientTelemetry } from './hooks/use-client-telemetry.js';
 import { useCoreTuiCommands } from './hooks/use-core-tui-commands.js';
 import { useDirectorFleetBridge } from './hooks/use-director-fleet-bridge.js';
 import { useExitCommand } from './hooks/use-exit-command.js';
@@ -27,7 +25,6 @@ import { useLeaderAutoWake } from './hooks/use-leader-auto-wake.js';
 import { useNextStepsAutoSubmit } from './hooks/use-next-steps-auto-submit.js';
 import { usePanelControllers } from './hooks/use-panel-controllers.js';
 import { usePasteHandling } from './hooks/use-paste-handling.js';
-import { useProviderEventBridge } from './hooks/use-provider-event-bridge.js';
 import { useProviderWarmup } from './hooks/use-provider-warmup.js';
 import { useQueueManager } from './hooks/use-queue-manager.js';
 import { useSessionInterruptController } from './hooks/use-session-interrupt-controller.js';
@@ -39,12 +36,10 @@ import { useThemePickerHandler } from './hooks/use-theme-picker-handler.js';
 import { useTokenCounterRefresh } from './hooks/use-token-counter-refresh.js';
 import { useTuiControllers } from './hooks/use-tui-controllers.js';
 import { useTuiEventBridge } from './hooks/use-tui-event-bridge.js';
-import { useTuiSlashCommands } from './hooks/use-tui-slash-commands.js';
 import { useApp, useStdout } from './ink.js';
-import { setActiveTheme } from './theme.js';
 import { useControllerKeyPipeline } from './use-controller-key-pipeline.js';
 import { useControllerPanelHooks } from './use-controller-panel-hooks.js';
-
+import { useControllerThemeEvents } from './use-controller-theme-events.js';
 export function useAppController(props: AppProps) {
   const controllerProps = resolveControllerProps(props);
   const { getDirector } = controllerProps;
@@ -478,77 +473,20 @@ export function useAppController(props: AppProps) {
     clearDraft,
     runBlocksRef,
   });
-
-  /**
-   * Applies `/theme <preset>` immediately: swap the live palette, write the
-   * choice to the ConfigStore, and persist it to disk. Extracted here so the
-   * slash command does not need its own copy of the persist-and-report
-   * sequence — the picker (`useThemePickerHandler`) has the same three steps
-   * and both report persistence failure the same way.
-   */
-  const applyThemePreset = useCallback(
-    (preset: ThemePresetId) => {
-      setActiveTheme(preset);
-      const warnPersist = (err: unknown) =>
-        dispatch({
-          type: 'addEntry',
-          entry: {
-            kind: 'warn',
-            text: `Theme applied in-memory but could not persist to disk: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          },
-        });
-      try {
-        controllerProps.configStore?.update({ themePreset: preset });
-      } catch (err) {
-        // A synchronous store failure is reported too — swallowing it left the
-        // user believing a theme was saved when the write never happened.
-        warnPersist(err);
-        return;
-      }
-      // `saveThemePreset` is optional, so the promise has to be produced
-      // inside the try: `void undefined.catch(...)` would throw a TypeError
-      // whenever the host wired no persistence.
-      try {
-        void props.saveThemePreset?.(preset).catch(warnPersist);
-      } catch (err) {
-        warnPersist(err);
-      }
-    },
-    [controllerProps.configStore, dispatch, props.saveThemePreset],
-  );
-
-  useTuiSlashCommands({
-    slashRegistry: controllerProps.slashRegistry,
-    skillLoader: props.skillLoader,
-    getResourceMenu: props.getResourceMenu,
-    getPickableProviders: controllerProps.getPickableProviders,
-    switchProviderAndModel: controllerProps.switchProviderAndModel,
+  useControllerThemeEvents({
+    dispatch,
+    controllerProps,
+    props,
     openModelPicker,
     openFKeyPicker,
     projectRoot,
-    agent: controllerProps.agent,
-    dispatch,
-    getSettings: controllerProps.getSettings,
-    saveSettings: controllerProps.saveSettings,
     openSettings,
     state,
     openStatuslinePicker,
     setHiddenItems,
     hiddenItemsRef,
     setMailboxPanelOpen,
-    switchAutonomy: controllerProps.switchAutonomy,
-    listSessions: controllerProps.listSessions,
     openPromptPicker,
-    configStore: controllerProps.configStore,
-    applyThemePreset,
-  });
-
-  useProviderEventBridge({
-    events: controllerProps.events,
-    agent: controllerProps.agent,
-    dispatch,
     streamingTextRef,
     streamSegmentsRef,
     pendingDeltaRef,
@@ -557,17 +495,6 @@ export function useAppController(props: AppProps) {
     activeRunGenerationRef,
     assistantCommittedThisRunRef,
     setMemoryContextMonitor,
-  });
-
-  useClientTelemetry({
-    events: controllerProps.events,
-    clientId: controllerProps.clientId,
-    tokenCounter: controllerProps.tokenCounter,
-    getAutonomy: controllerProps.getAutonomy,
-    agent: controllerProps.agent,
-    registerDebugStreamCallback: controllerProps.registerDebugStreamCallback,
-    restoreDebugStreamCallback: controllerProps.restoreDebugStreamCallback,
-    dispatch,
   });
 
   const {

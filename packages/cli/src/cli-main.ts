@@ -6,18 +6,15 @@ import { createPolicySandboxApprover, setSandboxExpansionApprover } from '@wrong
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
 import { resolveExecutionMode } from './boot/execution-mode.js';
-import { isRestrictedMode, withRestrictedTools } from './boot/restricted-mode.js';
 import { isSafeMode } from './boot/safe-mode.js';
 import { resolveModeAndCapabilities } from './boot/system-prompt.js';
-import { resolveToolRestriction } from './boot/tool-restriction-flags.js';
 import type { CliContext } from './cli-context.js';
 import { launchEternalFromFlag } from './cli-eternal-flag.js';
-import { setupCliInfrastructure } from './cli-infrastructure.js';
+import { setupInitialCliTools } from './cli-initial-tools.js';
 import { activeProfileConfigPath } from './profile-config-path.js';
 import { CLI_VERSION } from './version.js';
 import { setupBrainAndOrchestration } from './wiring/brain-and-orchestration.js';
 import { runCliExecution } from './wiring/cli-execute-builder.js';
-import { setupCliPromptAndTools } from './wiring/cli-prompt-and-tools-setup.js';
 import { setupCliSlashCommands } from './wiring/cli-slash-commands-setup.js';
 import { setupCommandHostState } from './wiring/command-host-state.js';
 import { setupDepWatcherConsumers } from './wiring/dep-watcher.js';
@@ -27,7 +24,6 @@ import { setupDirectorAndAutonomy } from './wiring/director-setup.js';
 import { setupCliHeapWatchdog } from './wiring/heap-watchdog-setup.js';
 import { setupHqTelemetry } from './wiring/hq-telemetry.js';
 import { setupLifecycleAndPlugins } from './wiring/lifecycle-plugins.js';
-import { registerCliManagementTools } from './wiring/management-tools.js';
 import {
   buildProviderForId as buildProviderForIdRuntime,
   resolveProviderCfg as resolveProviderCfgRuntime,
@@ -124,56 +120,14 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     tuning: config.Sage?.vector,
   });
   memoryStore = vectorWrappedMemoryStore;
-
-  const skillLoader = container.resolve(TOKENS.SkillLoader);
-  const promptLoader = container.resolve(TOKENS.PromptLoader);
-  const sessionRef: { current: import('@wrongstack/core/types').SessionWriter | undefined } = {
-    current: undefined,
-  };
-  const autonomyModeRef: {
-    current: import('./services/autonomy-mode.js').AutonomyMode;
-  } = { current: 'off' };
-
-  const { toolRegistry } = await setupCliPromptAndTools({
-    appendedInstructions:
-      typeof flags['append-system-prompt'] === 'string' ? flags['append-system-prompt'] : undefined,
-    toolRestriction: withRestrictedTools(resolveToolRestriction(flags), isRestrictedMode(flags)),
-    safeMode: isSafeMode(flags),
-    warn: (message) => renderer.writeWarning(message),
-    container,
-    modeStore,
-    memoryStore,
+  const {
     skillLoader,
+    promptLoader,
     sessionRef,
     autonomyModeRef,
-    modeId,
-    modePrompt,
-    modelCapabilitiesRef,
-    config,
-    wpaths,
-    projectRoot,
-    events,
-    vectorMemoryStore,
-  });
-
-  const stdinInteractive = process.stdin.isTTY;
-  const hookRunnerRef: {
-    current: import('@wrongstack/core/tools').PluginManagerHookRunner | null;
-  } = { current: null };
-  const switchProviderAndModelRef: {
-    current: ((providerId: string, modelId: string) => Promise<string | null>) | null;
-  } = { current: null };
-  registerCliManagementTools({
     toolRegistry,
-    configStore,
-    profileConfigPath,
-    stdinInteractive,
-    events,
-    modelsRegistry,
-    getHookRunner: () => hookRunnerRef.current,
-    getSwitchProviderAndModel: () => switchProviderAndModelRef.current,
-  });
-  const {
+    hookRunnerRef,
+    switchProviderAndModelRef,
     metricsSink,
     healthRegistry,
     metricsStatus,
@@ -184,22 +138,27 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     promptBuilder,
     onlineAgents,
     systemPrompt,
-  } = await setupCliInfrastructure({
-    flags,
-    wpaths,
-    events,
-    logger,
-    getConfig: () => config,
-    teardownHandlers,
-    vectorMemoryStore,
-    renderer,
-    sessionRef,
-    activeMode,
-    toolRegistry,
-    configStore,
+  } = await setupInitialCliTools({
     container,
-    cwd,
+    flags,
+    renderer,
+    modeStore,
+    memoryStore,
+    modeId,
+    modePrompt,
+    modelCapabilitiesRef,
+    getConfig: () => config,
+    wpaths,
     projectRoot,
+    events,
+    vectorMemoryStore,
+    configStore,
+    profileConfigPath,
+    modelsRegistry,
+    logger,
+    teardownHandlers,
+    activeMode,
+    cwd,
     provider,
   });
 

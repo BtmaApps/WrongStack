@@ -1,23 +1,3 @@
-import type { SqliteMemoryMutationsHost } from './sqlite-memory-mutations.js';
-import {
-  applyHqSync as applyHqSyncFromHost,
-  clear as clearFromHost,
-  consolidate as consolidateFromHost,
-  forget as forgetFromHost,
-  hardDeleteSage as hardDeleteSageFromHost,
-  recordInjection as recordInjectionFromHost,
-  recordUse as recordUseFromHost,
-  updateSage as updateSageFromHost,
-  upsertMemory as upsertMemoryFromHost,
-} from './sqlite-memory-mutations.js';
-import {
-  addGraphEdge as delegateAddGraphEdge,
-  cascadeDeleteEdges as delegateCascadeDeleteEdges,
-  graphFor as delegateGraphFor,
-  syncAnchorEdges as delegateSyncAnchorEdges,
-  type SqliteStoreGraphHost,
-} from './sqlite-store-graph.js';
-
 /**
  * SQLite-backed SAGE store.
  *
@@ -32,7 +12,6 @@ import {
  * On first open, if a legacy `memories.jsonl` exists and the SQLite db is empty,
  * the store migrates records automatically (one-time cost).
  */
-
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { HqSageRecord } from '@wrongstack/core/hq';
@@ -40,18 +19,51 @@ import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/typ
 import { resolveSagePaths } from './paths.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
-import { pruneSqliteAuditLog, readSqliteAudit, writeSqliteAudit } from './sqlite-store-audit.js';
+import type { SqliteMemoryMutationsHost } from './sqlite-memory-mutations.js';
+import {
+  applyHqSync as applyHqSyncFromHost,
+  clear as clearFromHost,
+  consolidate as consolidateFromHost,
+  forget as forgetFromHost,
+  hardDeleteSage as hardDeleteSageFromHost,
+  recordInjection as recordInjectionFromHost,
+  recordUse as recordUseFromHost,
+  updateSage as updateSageFromHost,
+  upsertMemory as upsertMemoryFromHost,
+} from './sqlite-memory-mutations.js';
+import { pruneSqliteAuditLog, readSqliteAudit } from './sqlite-store-audit.js';
 import type { SqliteCandidateHost } from './sqlite-store-candidate-ops.js';
+import {
+  acceptCandidateOp,
+  addCandidateOp,
+  createCandidateOp,
+  listCandidatesOp,
+  rejectCandidateOp,
+  resolveCandidateOp,
+} from './sqlite-store-candidate-ops.js';
 import { reconcileAcceptedCandidates } from './sqlite-store-candidates.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
-import { deleteSqliteSage } from './sqlite-store-delete.js';
 import {
   findRelatedSqliteSage,
   type SqliteFindRelatedOptions,
 } from './sqlite-store-find-related.js';
+import {
+  addGraphEdge as delegateAddGraphEdge,
+  cascadeDeleteEdges as delegateCascadeDeleteEdges,
+  graphFor as delegateGraphFor,
+  type SqliteStoreGraphHost,
+} from './sqlite-store-graph.js';
 import { traverseSqliteGraph } from './sqlite-store-graph-traverse.js';
-import { runSqliteSageHygiene } from './sqlite-store-hygiene.js';
+import {
+  audit as auditFromHost,
+  deleteSage as deleteSageFromHost,
+  hygiene as hygieneFromHost,
+  rememberSage as rememberSageFromHost,
+  type SqliteStoreGraphWriteHost,
+  syncAnchorEdges as syncAnchorEdgesFromHost,
+  verify as verifyFromHost,
+} from './sqlite-store-graph-write.js';
 import { initializeSqliteSageStore } from './sqlite-store-initialize.js';
 import { migrateSqliteLegacyJsonl } from './sqlite-store-jsonl-migration.js';
 import { importLegacySqliteMemory, searchLegacySqliteMemory } from './sqlite-store-legacy-api.js';
@@ -63,9 +75,6 @@ import {
 import { listLegacySqliteMemory } from './sqlite-store-legacy-list.js';
 import { listSqliteMemories } from './sqlite-store-list-memories.js';
 import { listSqliteSagePage } from './sqlite-store-list-page.js';
-
-export { isSqliteAvailable } from './sqlite-store-loader.js';
-
 import { SqliteMutationQueue } from './sqlite-store-mutation-queue.js';
 import {
   backfillAdminSage,
@@ -83,14 +92,12 @@ import {
   retrieveSageAudienceWithAudit,
   searchSqliteSageWithRecall,
 } from './sqlite-store-recall.js';
-import { rememberSqliteSage } from './sqlite-store-remember.js';
 import { retrieveSqliteSageForPath } from './sqlite-store-retrieve-path.js';
 import { executeUnifiedSearch } from './sqlite-store-search.js';
 import { consolidateSqliteSession } from './sqlite-store-session-consolidation.js';
 import { SqliteStatementCache } from './sqlite-store-statement-cache.js';
 import { getSqliteSageStats } from './sqlite-store-stats.js';
 import { upsertSqliteCandidate } from './sqlite-store-upsert.js';
-import { verifySqliteSage } from './sqlite-store-verify.js';
 import type {
   CandidateDecision,
   CreateCandidateInput,
@@ -123,6 +130,7 @@ import type {
 } from './types.js';
 
 export { sqliteStoreCoverage } from './sqlite-store-coverage.js';
+export { isSqliteAvailable } from './sqlite-store-loader.js';
 
 // ─── Store ──────────────────────────────────────────────────────────────
 
@@ -313,18 +321,7 @@ export class SqliteSageStore implements MemoryStore {
    *   semantically consistent.
    */
   async rememberSage(input: RememberSageInput): Promise<Sage> {
-    return rememberSqliteSage({
-      input,
-      projectRoot: this.projectRoot,
-      initialize: () => this.initialize(),
-      nowIso: () => this.nowIso(),
-      stmt: (sql) => this.stmt(sql),
-      runMutation: (work) => this.runMutation(work),
-      upsertMemory: (memory) => this.upsertMemory(memory),
-      syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-      emit: (event, payload) =>
-        this.events?.emit(event as never, this.eventPayload(payload) as never),
-    });
+    return rememberSageFromHost(this.sqliteStoreGraphWriteHost(), input);
   }
 
   // ─── Legacy MemoryStore compatibility ──────────────────────────────
@@ -416,7 +413,7 @@ export class SqliteSageStore implements MemoryStore {
    *   refreshed confidence and re-sync converges to the newer memory.
    */
   private syncAnchorEdges(memory: Sage): void {
-    delegateSyncAnchorEdges(this.sqliteStoreGraphHost(), memory);
+    syncAnchorEdgesFromHost(this.sqliteStoreGraphWriteHost(), memory);
   }
 
   async updateSage(id: string, input: UpdateSageInput): Promise<Sage> {
@@ -562,39 +559,13 @@ export class SqliteSageStore implements MemoryStore {
    * inline, but the host-facing surface needs it as a discrete operation.
    */
   async verify(memoryId?: string, signal?: AbortSignal): Promise<MemoryVerificationResult[]> {
-    await this.initialize();
-    return this.runCompositeOperation(() =>
-      verifySqliteSage(
-        {
-          projectRoot: this.projectRoot,
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          runMutation: (work) => this.runMutation(work),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-        },
-        memoryId,
-        signal,
-      ),
-    );
+    return verifyFromHost(this.sqliteStoreGraphWriteHost(), memoryId, signal);
   }
 
   // ─── Audit ──────────────────────────────────────────────────────────
 
   private audit(event: string, data?: Record<string, unknown>): void {
-    writeSqliteAudit(
-      {
-        stmt: (sql) => this.stmt(sql),
-        nowIso: () => this.nowIso(),
-        getTraceId: () => this.currentTraceId(),
-        getWritesSincePrune: () => this.auditWritesSincePrune,
-        setWritesSincePrune: (value) => {
-          this.auditWritesSincePrune = value;
-        },
-      },
-      event,
-      data,
-    );
+    auditFromHost(this.sqliteStoreGraphWriteHost(), event, data);
   }
 
   /** Delete all but the most recent {@link AUDIT_LOG_MAX_ROWS} audit rows. */
@@ -628,40 +599,20 @@ export class SqliteSageStore implements MemoryStore {
     return {
       projectRoot: this.projectRoot,
       paths: this.paths,
-      stmt: (sql) => this.stmt(sql),
-      nowIso: () => this.nowIso(),
-      runMutation: (work) => this.runMutation(work),
-      rememberSage: (input) => this.rememberSage(input),
-      updateSage: (id, input) => this.updateSage(id, input),
-      upsertCandidate: (candidate, canonicalText) => this.upsertCandidate(candidate, canonicalText),
-      audit: (event, data) => this.audit(event, data),
+      stmt: (...args) => this.stmt(...args),
+      nowIso: (...args) => this.nowIso(...args),
+      runMutation: (...args) => this.runMutation(...args),
+      rememberSage: (...args) => this.rememberSage(...args),
+      updateSage: (...args) => this.updateSage(...args),
+      upsertCandidate: (...args) => this.upsertCandidate(...args),
+      audit: (...args) => this.audit(...args),
     };
   }
 
   // ─── Hygiene ────────────────────────────────────────────────────────
 
   async hygiene(opts?: SageHygieneOptions): Promise<SageHygieneReport> {
-    return this.runCompositeOperation(async () => {
-      await this.initialize();
-      return runSqliteSageHygiene(
-        {
-          projectRoot: this.projectRoot,
-          stmt: (sql) => this.stmt(sql),
-          now: () => this.now(),
-          nowIso: () => this.nowIso(),
-          listMemories: (listOpts) => this.listMemories(listOpts),
-          listCandidates: (includeResolved) => this.listCandidates(includeResolved),
-          addCandidate: (candidate) => this.addCandidate(candidate),
-          runMutation: (work) => this.runMutation(work),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-          audit: (event, data) => this.audit(event, data),
-          pruneAuditLog: () => this.pruneAuditLog(),
-        },
-        opts,
-      );
-    });
+    return hygieneFromHost(this.sqliteStoreGraphWriteHost(), opts);
   }
 
   // ─── Candidates ─────────────────────────────────────────────────────
@@ -771,16 +722,16 @@ export class SqliteSageStore implements MemoryStore {
   private adminHost(): SqliteAdminHost {
     return {
       projectRoot: this.projectRoot,
-      now: () => this.now(),
-      nowIso: () => this.nowIso(),
-      stmt: (sql) => this.stmt(sql),
-      runMutation: (work) => this.runMutation(work),
-      upsertMemory: (memory) => this.upsertMemory(memory),
-      syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-      audit: (event, data) => this.audit(event, data),
+      now: (...args) => this.now(...args),
+      nowIso: (...args) => this.nowIso(...args),
+      stmt: (...args) => this.stmt(...args),
+      runMutation: (...args) => this.runMutation(...args),
+      upsertMemory: (...args) => this.upsertMemory(...args),
+      syncAnchorEdges: (...args) => this.syncAnchorEdges(...args),
+      audit: (...args) => this.audit(...args),
       emit: (event, payload) =>
         this.events?.emit(event as never, this.eventPayload(payload) as never),
-      listCandidates: () => this.listCandidates(),
+      listCandidates: (...args) => this.listCandidates(...args),
     };
   }
 
@@ -802,23 +753,7 @@ export class SqliteSageStore implements MemoryStore {
     reason = 'Manually deleted via API.',
     options: { force?: boolean; neverInject?: boolean } = {},
   ): Promise<void> {
-    await this.initialize();
-    await this.runMutation(() => {
-      deleteSqliteSage(
-        {
-          stmt: (sql) => this.stmt(sql),
-          nowIso: () => this.nowIso(),
-          upsertMemory: (memory) => this.upsertMemory(memory),
-          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-          audit: (event, data) => this.audit(event, data),
-          emit: (event, payload) =>
-            this.events?.emit(event as never, this.eventPayload(payload) as never),
-        },
-        id,
-        reason,
-        options,
-      );
-    });
+    return deleteSageFromHost(this.sqliteStoreGraphWriteHost(), id, reason, options);
   }
 
   async drainMutations(): Promise<void> {
@@ -860,13 +795,31 @@ export class SqliteSageStore implements MemoryStore {
     void (this.runCounterMutation satisfies SqliteMemoryMutationsHost['runCounterMutation']);
     return this as unknown as SqliteMemoryMutationsHost;
   }
-}
 
-import {
-  acceptCandidateOp,
-  addCandidateOp,
-  createCandidateOp,
-  listCandidatesOp,
-  rejectCandidateOp,
-  resolveCandidateOp,
-} from './sqlite-store-candidate-ops.js';
+  private sqliteStoreGraphWriteHost(): SqliteStoreGraphWriteHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      sqliteStoreGraphHost: this.sqliteStoreGraphHost,
+      projectRoot: this.projectRoot,
+      initialize: this.initialize,
+      nowIso: this.nowIso,
+      stmt: this.stmt,
+      runMutation: this.runMutation,
+      upsertMemory: this.upsertMemory,
+      syncAnchorEdges: this.syncAnchorEdges,
+      events: this.events,
+      eventPayload: this.eventPayload,
+      runCompositeOperation: this.runCompositeOperation,
+      currentTraceId: this.currentTraceId,
+      auditWritesSincePrune: this.auditWritesSincePrune,
+      now: this.now,
+      listMemories: this.listMemories,
+      listCandidates: this.listCandidates,
+      addCandidate: this.addCandidate,
+      cascadeDeleteEdges: this.cascadeDeleteEdges,
+      audit: this.audit,
+      pruneAuditLog: this.pruneAuditLog,
+    } satisfies SqliteStoreGraphWriteHost);
+    return this as unknown as SqliteStoreGraphWriteHost;
+  }
+}

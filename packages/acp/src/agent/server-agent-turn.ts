@@ -48,18 +48,21 @@
  * through `RunTurnApi.sendSessionUpdate`. Nothing is sent after the session is
  * disposed, and a notice failure never reaches the event bus.
  */
-import type { Agent, AgentInput } from '@wrongstack/core/agent';
-import { parseIncomingImages } from '@wrongstack/core/utils';
-import type {
-  ContentBlock,
-  McpServer,
-  PlanEntry,
-  StopReason,
-  ToolKind,
-  UsageCost,
-} from '../types/acp-v1.js';
+import type { Agent } from '@wrongstack/core/agent';
+import type { McpServer } from '../types/acp-v1.js';
 import type { RunTurn, RunTurnApi, RunTurnResult } from './protocol-handler.js';
-
+import {
+  extractPlan,
+  extractText,
+  extractUsage,
+  isRecord,
+  pickStopReason,
+  promptToAgentInput,
+  promptToText,
+  seedAgentContext,
+  toolNameToKind,
+  toolTitle,
+} from './server-agent-turn-content.js';
 export interface ACPServerAgentTurnOptions {
   /**
    * Factory that creates a fresh `Agent` for a given session.
@@ -576,103 +579,6 @@ function replayEntryBytes(entry: SessionReplayUpdate): number {
 }
 
 /**
- * Prime a freshly-created agent's conversation state with restored history.
- * Each recorded user/agent chunk becomes a `user`/`assistant` message so the
- * model continues the prior conversation instead of starting blank.
- */
-function seedAgentContext(
-  agent: Agent,
-  history: ReadonlyArray<{ sessionUpdate: string; content: unknown }>,
-): void {
-  const state = (agent as { ctx?: { state?: { appendMessage?: (m: unknown) => void } } }).ctx
-    ?.state;
-  if (!state?.appendMessage) return;
-  for (const u of history) {
-    const text = (u.content as { text?: unknown } | undefined)?.text;
-    if (typeof text !== 'string' || text.length === 0) continue;
-    const role = u.sessionUpdate === 'user_message_chunk' ? 'user' : 'assistant';
-    state.appendMessage({ role, content: text });
-  }
-}
-
-/** Map a WrongStack tool name to the closest ACP ToolKind for UI grouping. */
-function toolNameToKind(name: string): ToolKind {
-  const n = name.toLowerCase();
-  if (n.includes('read') || n.includes('cat')) return 'read';
-  if (n.includes('write') || n.includes('edit') || n.includes('apply') || n.includes('patch'))
-    return 'edit';
-  if (n.includes('delete') || n === 'rm' || n.startsWith('rm_') || n.endsWith('_rm'))
-    return 'delete';
-  if (n.includes('move') || n.includes('rename') || n.includes('mv')) return 'move';
-  if (n.includes('grep') || n.includes('glob') || n.includes('search') || n.includes('find'))
-    return 'search';
-  if (
-    n.includes('bash') ||
-    n.includes('shell') ||
-    n.includes('exec') ||
-    n.includes('run') ||
-    n.includes('terminal')
-  )
-    return 'execute';
-  if (n.includes('fetch') || n.includes('http') || n.includes('web') || n.includes('url'))
-    return 'fetch';
-  if (n.includes('think') || n.includes('plan')) return 'think';
-  return 'other';
-}
-
-/** A short, human-readable title for a tool call card. */
-function toolTitle(name: string, input: unknown): string {
-  if (isRecord(input)) {
-    const path = input.path ?? input.file ?? input.filePath ?? input.pattern ?? input.command;
-    if (typeof path === 'string' && path.length > 0) {
-      return `${name}: ${path.length > 80 ? `${path.slice(0, 77)}…` : path}`;
-    }
-  }
-  return name;
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
-/**
- * Convert an ACP `ContentBlock[]` prompt into a core `AgentInput`.
- *
- * When the prompt is all text we return a plain string (the common,
- * cheapest path). When it carries images we build a multimodal
- * `ContentBlock[]` the provider can pass to a vision-capable model.
- * Images go through core's shared ingest (allowlist, base64, size and count
- * caps, the bytes decide the media type): the client's label used to reach
- * the provider unchecked. Every other block renders as in the text path, so
- * an embedded resource keeps its `[embedded resource: <uri>]` header.
- */
-function promptToAgentInput(blocks: readonly ContentBlock[]): AgentInput {
-  const images = blocks.filter((b) => b.type === 'image');
-  if (images.length === 0) {
-    return promptToText(blocks);
-  }
-  let parsed: ReturnType<typeof parseIncomingImages>;
-  try {
-    parsed = parseIncomingImages(images.map((b) => ({ data: b.data, mediaType: b.mimeType })));
-  } catch (err) {
-    // IncomingImageError: its message is safe to echo; a bad block is the
-    // client's invalid params, not an internal error.
-    throw Object.assign(new Error((err as Error).message), { code: -32602 });
-  }
-  const out: AgentInput = [];
-  let next = 0;
-  for (const b of blocks) {
-    if (b.type === 'image') out.push(parsed[next++]!);
-    else if (b.type === 'text') out.push({ type: 'text', text: b.text });
-    else {
-      const text = promptToText([b]);
-      if (text) out.push({ type: 'text', text });
-    }
-  }
-  return out;
-}
-
-/**
  * Tear down the agents and timers held by a turn factory. The
  * server's `close()` should call this so child connections don't
  * outlive the server.
@@ -681,131 +587,6 @@ export function disposeACPServerAgentTurn(opts: { agents: Map<string, Agent> }):
   return Promise.allSettled(Array.from(opts.agents.values()).map((agent) => agent.teardown())).then(
     () => undefined,
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────
-
-/**
- * Convert an ACP `ContentBlock[]` prompt to a single user-message
- * string. Text blocks are concatenated; image / audio / resource
- * blocks are recorded as a bracketed placeholder (full multimodal
- * support is a future PR — the adapter is v1-text only for now).
- */
-function promptToText(blocks: readonly ContentBlock[]): string {
-  const parts: string[] = [];
-  for (const b of blocks) {
-    if (b.type === 'text') {
-      parts.push(b.text);
-    } else if (b.type === 'image') {
-      parts.push(`[image: ${b.mimeType}]`);
-    } else if (b.type === 'audio') {
-      parts.push(`[audio: ${b.mimeType}]`);
-    } else if (b.type === 'resource') {
-      parts.push(
-        'text' in b.resource && typeof b.resource.text === 'string'
-          ? `[embedded resource: ${b.resource.uri}]\n${b.resource.text}`
-          : `[embedded resource: ${b.resource.uri}]`,
-      );
-    } else if (b.type === 'resource_link') {
-      parts.push(`[resource link: ${b.uri}]`);
-    }
-  }
-  return parts.join('\n').trim();
-}
-
-/**
- * Extract the agent's final text from a `RunResult`. The shape
- * varies across core versions, so we read the most common fields
- * defensively and concatenate whatever text we find.
- */
-function extractText(result: unknown): string {
-  if (typeof result !== 'object' || result === null) return '';
-  const r = result as Record<string, unknown>;
-  // v1: result.text is the agent's final text (string).
-  if (typeof r.text === 'string') return r.text;
-  // Legacy: result.content is an array of blocks.
-  if (Array.isArray(r.content)) {
-    const parts: string[] = [];
-    for (const c of r.content) {
-      if (typeof c === 'object' && c !== null) {
-        const cb = c as { type?: string; text?: unknown };
-        if (cb.type === 'text' && typeof cb.text === 'string') parts.push(cb.text);
-      }
-    }
-    return parts.join('');
-  }
-  return '';
-}
-
-/**
- * Map a `RunResult` (and the parent signal) to a v1 `StopReason`.
- *
- * If the parent signal was aborted, return `'cancelled'`. Otherwise
- * the agent completed normally — we treat any non-error result
- * as `'end_turn'`. The core `RunResult` doesn't currently surface
- * a per-turn stop reason, so v1's `'max_tokens'`, `'max_turn_requests'`,
- * and `'refusal'` discriminators can't be emitted precisely; we
- * log a warning if the result carries an error and return the
- * generic end_turn.
- */
-function pickStopReason(result: unknown, signal: AbortSignal): StopReason {
-  if (signal.aborted) return 'cancelled';
-  if (typeof result !== 'object' || result === null) return 'end_turn';
-  const r = result as { error?: unknown; stopReason?: unknown };
-  if (r.error) {
-    return 'end_turn';
-  }
-  if (typeof r.stopReason === 'string' && r.stopReason) {
-    return r.stopReason as StopReason;
-  }
-  return 'end_turn';
-}
-
-/**
- * Extract a plan from the agent's RunResult, if available.
- * The plan is an array of PlanEntry objects.
- */
-function extractPlan(result: unknown): PlanEntry[] {
-  if (typeof result !== 'object' || result === null) return [];
-  const r = result as Record<string, unknown>;
-  if (Array.isArray(r.plan)) {
-    // Agent provided a plan array
-    return r.plan.filter(
-      (e: unknown) =>
-        typeof e === 'object' &&
-        e !== null &&
-        typeof (e as { content?: unknown }).content === 'string',
-    ) as PlanEntry[];
-  }
-  return [];
-}
-
-/**
- * Extract usage/token info from the agent's RunResult, if available.
- */
-function extractUsage(
-  result: unknown,
-): { used: number; size: number; cost?: UsageCost | undefined } | null {
-  if (typeof result !== 'object' || result === null) return null;
-  const r = result as Record<string, unknown>;
-  if (typeof r.usage === 'object' && r.usage !== null) {
-    const u = r.usage as { used?: unknown; size?: unknown; cost?: unknown };
-    if (
-      typeof u.used === 'number' &&
-      Number.isFinite(u.used) &&
-      typeof u.size === 'number' &&
-      Number.isFinite(u.size)
-    ) {
-      return {
-        used: u.used,
-        size: u.size,
-        ...(typeof u.cost === 'object' && u.cost !== null ? { cost: u.cost as UsageCost } : {}),
-      };
-    }
-  }
-  return null;
 }
 
 /** Internal deterministic seams used by the per-file coverage suite. */

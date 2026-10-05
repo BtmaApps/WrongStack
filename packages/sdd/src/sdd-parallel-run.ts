@@ -1,19 +1,3 @@
-import type { SddTaskDispatchHost } from './sdd-task-dispatch.js';
-import {
-  applyTaskFailure as applyTaskFailureFromHost,
-  executeOne as executeOneFromHost,
-  executeWave as executeWaveFromHost,
-  trySupervisorRescue as trySupervisorRescueFromHost,
-} from './sdd-task-dispatch.js';
-import {
-  computeDeadlockChains as delegateComputeDeadlockChains,
-  recoverFailedBlockers as delegateRecoverFailedBlockers,
-  requeueFailedTasks as delegateRequeueFailedTasks,
-  resetOrphans as delegateResetOrphans,
-  restoreRetryMap as delegateRestoreRetryMap,
-  type SddTaskRecoveryHost,
-} from './sdd-task-recovery.js';
-
 /**
  * SddParallelRun
  *
@@ -33,7 +17,6 @@ import {
  * await run.run({ onProgress: (p) => console.log(renderProgress(p)) });
  * ```
  */
-
 import { randomUUID } from 'node:crypto';
 import type { AgentFactory } from '@wrongstack/core/coordination';
 import {
@@ -51,7 +34,19 @@ import type {
 } from '@wrongstack/core/types';
 import type { WorktreeHandle } from '@wrongstack/core/worktree';
 import { requireSessionId } from '@wrongstack/primitives';
-import { splitGraphNode } from './graph-split.js';
+import {
+  cancelTask as cancelTaskFromHost,
+  cleanupWorktrees as cleanupWorktreesFromHost,
+  deleteTask as deleteTaskFromHost,
+  reassignTask as reassignTaskFromHost,
+  retryTask as retryTaskFromHost,
+  rollback as rollbackFromHost,
+  type SddParallelControlsHost,
+  setTaskFallbacks as setTaskFallbacksFromHost,
+  setTaskModel as setTaskModelFromHost,
+  setTaskVerification as setTaskVerificationFromHost,
+  splitTask as splitTaskFromHost,
+} from './sdd-parallel-controls.js';
 import type {
   RunResult,
   SddParallelRunOptions,
@@ -61,6 +56,21 @@ import type {
   WaveResult,
 } from './sdd-parallel-run-types.js';
 import { SddTaskDecomposer, type TaskBatch } from './sdd-task-decomposer.js';
+import type { SddTaskDispatchHost } from './sdd-task-dispatch.js';
+import {
+  applyTaskFailure as applyTaskFailureFromHost,
+  executeOne as executeOneFromHost,
+  executeWave as executeWaveFromHost,
+  trySupervisorRescue as trySupervisorRescueFromHost,
+} from './sdd-task-dispatch.js';
+import {
+  computeDeadlockChains as delegateComputeDeadlockChains,
+  recoverFailedBlockers as delegateRecoverFailedBlockers,
+  requeueFailedTasks as delegateRequeueFailedTasks,
+  resetOrphans as delegateResetOrphans,
+  restoreRetryMap as delegateRestoreRetryMap,
+  type SddTaskRecoveryHost,
+} from './sdd-task-recovery.js';
 import {
   allocateTaskWorktrees,
   forgetTaskWorktree,
@@ -240,16 +250,7 @@ export class SddParallelRun {
    * (0 when worktrees are disabled). Idempotent.
    */
   async cleanupWorktrees(): Promise<number> {
-    if (this.isRunning()) return 0;
-    const wt = this.opts.worktrees;
-    if (!wt) return 0;
-    // Release any handles this run still holds (kept on stop / needs-review).
-    for (const [taskId, handle] of [...this.taskWorktrees]) {
-      await wt.release(handle, { keep: false }).catch(() => {});
-      this.forgetWorktree(taskId);
-    }
-    const { removed } = await wt.cleanupAllManaged();
-    return removed;
+    return cleanupWorktreesFromHost(this.sddParallelControlsHost());
   }
 
   /**
@@ -258,35 +259,17 @@ export class SddParallelRun {
    * revert outcome; a dirty tree or revert conflict surfaces as `ok:false`.
    */
   async rollback(): Promise<{ ok: boolean; reverted: number; reason?: string }> {
-    if (this.isRunning())
-      return { ok: false, reverted: 0, reason: 'run still active — stop it first' };
-    const wt = this.opts.worktrees;
-    if (!wt || !this.baseBranch) {
-      return { ok: false, reverted: 0, reason: 'no worktree run to roll back' };
-    }
-    return wt.revertCommits(
-      this.baseBranch,
-      this.mergedCommits.map((c) => c.sha),
-    );
+    return rollbackFromHost(this.sddParallelControlsHost());
   }
 
   /** Requeue a task to `pending` so the scheduler re-runs it (clears retries + cancel marker). */
   retryTask(taskId: string): boolean {
-    if (!this.opts.tracker.getNode(taskId)) return false;
-    this.retryMap.delete(taskId);
-    this.persistRetries(taskId, 0);
-    // Clear any cancel marker so a previously-cancelled task can run again.
-    this.cancelledTasks.delete(taskId);
-    this.opts.tracker.patchMetadata(taskId, { cancelled: undefined });
-    this.opts.tracker.updateNodeStatus(taskId, 'pending', 'manual retry');
-    return true;
+    return retryTaskFromHost(this.sddParallelControlsHost(), taskId);
   }
 
   /** Reassign a task to a specific agent name (reflected on the board). */
   reassignTask(taskId: string, agentName: string): boolean {
-    if (!this.opts.tracker.getNode(taskId)) return false;
-    this.opts.tracker.updateNode(taskId, { assignee: agentName });
-    return true;
+    return reassignTaskFromHost(this.sddParallelControlsHost(), taskId, agentName);
   }
 
   /**
@@ -295,19 +278,12 @@ export class SddParallelRun {
    * assignment lives on node metadata so it survives crash → resume.
    */
   setTaskModel(taskId: string, model: string | undefined, provider?: string | undefined): boolean {
-    if (!this.opts.tracker.getNode(taskId)) return false;
-    this.opts.tracker.patchMetadata(taskId, {
-      model,
-      ...(provider !== undefined ? { provider } : {}),
-    });
-    return true;
+    return setTaskModelFromHost(this.sddParallelControlsHost(), taskId, model, provider);
   }
 
   /** Set/override a task's fallback model chain (applied on its next dispatch). */
   setTaskFallbacks(taskId: string, fallbackModels: string[] | undefined): boolean {
-    if (!this.opts.tracker.getNode(taskId)) return false;
-    this.opts.tracker.patchMetadata(taskId, { fallbackModels });
-    return true;
+    return setTaskFallbacksFromHost(this.sddParallelControlsHost(), taskId, fallbackModels);
   }
 
   /**
@@ -316,10 +292,7 @@ export class SddParallelRun {
    * clears it. Applied on the task's next verification — i.e. its next dispatch.
    */
   setTaskVerification(taskId: string, verificationCommand: string | undefined): boolean {
-    if (!this.opts.tracker.getNode(taskId)) return false;
-    const cmd = verificationCommand?.trim();
-    this.opts.tracker.patchMetadata(taskId, { verificationCommand: cmd ? cmd : undefined });
-    return true;
+    return setTaskVerificationFromHost(this.sddParallelControlsHost(), taskId, verificationCommand);
   }
 
   /**
@@ -329,32 +302,7 @@ export class SddParallelRun {
    * `retryTask` to bring a cancelled task back. Returns false for an unknown task.
    */
   async cancelTask(taskId: string): Promise<boolean> {
-    const node = this.opts.tracker.getNode(taskId);
-    if (!node) return false;
-    // Completed is terminal: the work shipped and its dependents were already
-    // unblocked. `updateNodeStatus` applies transitions blindly, so without
-    // this guard a cancel racing the task's completion — the user clicks
-    // cancel just as it finishes — rewrote `completed` to `failed`, showed
-    // finished work as "Cancelled" on the board, and undercounted the run's
-    // completed total. Cancelling a *failed* task stays allowed: its cancelled
-    // marker is what blocks the end-of-run retry sweep from requeueing it.
-    if (node.status === 'completed') return false;
-    this.cancelledTasks.add(taskId);
-    // Terminal failed + cancel marker: failed keeps dependents un-deadlocked,
-    // the marker drives the "Cancelled" board look and blocks retry/auto-redispatch.
-    this.opts.tracker.patchMetadata(taskId, { cancelled: true });
-    this.opts.tracker.updateNodeStatus(taskId, 'failed', 'cancelled by user');
-    this.emit('sdd.task.failed', {
-      runId: this.runId,
-      taskId,
-      subagentId: '',
-      error: 'cancelled by user',
-    });
-    const subagentId = this.taskSubagents.get(taskId);
-    if (subagentId && this.coordinator) {
-      await this.coordinator.stop(subagentId).catch(() => {});
-    }
-    return true;
+    return cancelTaskFromHost(this.sddParallelControlsHost(), taskId);
   }
 
   /**
@@ -363,12 +311,7 @@ export class SddParallelRun {
    * touching it; dependents lose this blocker. Returns false if missing or running.
    */
   deleteTask(taskId: string): boolean {
-    const node = this.opts.tracker.getNode(taskId);
-    if (!node) return false;
-    if (node.status === 'in_progress' || this.taskSubagents.has(taskId)) return false;
-    this.cancelledTasks.delete(taskId);
-    this.retryMap.delete(taskId);
-    return this.opts.tracker.removeNode(taskId);
+    return deleteTaskFromHost(this.sddParallelControlsHost(), taskId);
   }
 
   /**
@@ -381,14 +324,7 @@ export class SddParallelRun {
    * The scheduler picks the new pending leaves up on its next dispatch pass.
    */
   splitTask(taskId: string, subtasks: SddSubtaskSpec[]): string[] {
-    const leafIds = splitGraphNode(this.opts.tracker, taskId, subtasks, {
-      isRunning: (id) => this.taskSubagents.has(id),
-    });
-    if (!leafIds.length) return [];
-    this.retryMap.delete(taskId);
-    this.persistRetries(taskId, 0);
-    this.emit('sdd.task.split', { runId: this.runId, taskId, subtaskIds: leafIds });
-    return leafIds;
+    return splitTaskFromHost(this.sddParallelControlsHost(), taskId, subtasks);
   }
 
   private async waitWhilePaused(): Promise<void> {
@@ -824,9 +760,7 @@ export class SddParallelRun {
   private sddTaskRecoveryHost(): SddTaskRecoveryHost {
     const self = this;
     return {
-      get opts() {
-        return self.opts;
-      },
+      opts: self.opts,
       get retryMap() {
         return self.retryMap;
       },
@@ -869,5 +803,25 @@ export class SddParallelRun {
     void (this.setTaskModel satisfies SddTaskDispatchHost['setTaskModel']);
     void (this.splitTask satisfies SddTaskDispatchHost['splitTask']);
     return this as unknown as SddTaskDispatchHost;
+  }
+
+  private sddParallelControlsHost(): SddParallelControlsHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      isRunning: this.isRunning,
+      opts: this.opts,
+      taskWorktrees: this.taskWorktrees,
+      forgetWorktree: this.forgetWorktree,
+      baseBranch: this.baseBranch,
+      mergedCommits: this.mergedCommits,
+      retryMap: this.retryMap,
+      persistRetries: this.persistRetries,
+      cancelledTasks: this.cancelledTasks,
+      emit: this.emit,
+      runId: this.runId,
+      taskSubagents: this.taskSubagents,
+      coordinator: this.coordinator,
+    } satisfies SddParallelControlsHost);
+    return this as unknown as SddParallelControlsHost;
   }
 }

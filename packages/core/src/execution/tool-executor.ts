@@ -46,7 +46,6 @@ import {
 } from '../utils/tool-result-fingerprint.js';
 import { resolveToolResultRenderMode } from '../utils/tool-result-render-mode.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
-import { postToolWritePaths } from './post-tool-write-paths.js';
 import { toolErrorResult } from './tool-error-taxonomy.js';
 import { validateToolInputAndHooks } from './tool-executor-guard.js';
 import {
@@ -54,13 +53,14 @@ import {
   logToolSuccess as logToolSuccessEvent,
 } from './tool-executor-logging.js';
 import { deniedResult, toolInputCorrection, unknownToolResult } from './tool-executor-results.js';
-import { runToolWithTimeout } from './tool-executor-runner.js';
+import { classifyToolError, hashPermissionInput } from './tool-executor-support.js';
 import {
-  classifyToolError,
-  hashPermissionInput,
-  maybePersistLargeToolOutput,
-  toolProgrammaticOutput,
-} from './tool-executor-support.js';
+  budgetForString as budgetForStringFromHost,
+  produceToolOutput as produceToolOutputFromHost,
+  runWithTimeout as runWithTimeoutFromHost,
+  settleToolOutput as settleToolOutputFromHost,
+  type ToolOutputSettlementHost,
+} from './tool-output-settlement.js';
 
 export { classifyToolError } from './tool-executor-support.js';
 
@@ -738,45 +738,7 @@ export class ToolExecutor {
       'modifiedPaths' | 'modifiedPathsOmitted'
     >;
   }> {
-    if (use._resultFormat === 'data' && !tool.outputSchema) {
-      throw new Error(
-        `Tool "${tool.name}" does not declare structured output; use tools.call instead`,
-      );
-    }
-    this.opts.events?.emit('tool.started', {
-      sessionId: resolveEventSessionId(ctx),
-      ...(ctx.traceId ? { traceId: ctx.traceId } : {}),
-      ...(ctx.activeLogicalRequestId ? { logicalRequestId: ctx.activeLogicalRequestId } : {}),
-      ...(ctx.activePromptManifestId ? { promptManifestId: ctx.activePromptManifestId } : {}),
-      agentId: ctx.agentId,
-      agentName: ctx.agentName,
-      name: tool.name,
-      id: use.id,
-      input: use.input,
-      taskId: ctx.currentKanbanTaskId,
-      boardId: ctx.currentKanbanBoardId,
-      ...(typeof ctx.provider === 'object'
-        ? { provider: (ctx.provider as { id: string }).id }
-        : {}),
-      ...(ctx.model ? { model: ctx.model } : {}),
-    });
-    this.opts.renderer?.writeToolCall(tool.name, use.input);
-    const output = await this.runWithTimeout(tool, use.input, ctx.signal, ctx, use.id);
-    const data = toolProgrammaticOutput(tool, use, output, this.opts.secretScrubber);
-    const text = this.serializer.serialize(output, { toolName: tool.name, input: use.input, tool });
-    const scrubbed = this.opts.secretScrubber.scrub(text);
-    const content = tool.preserveFullOutput
-      ? scrubbed
-      : await maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
-    const writePaths = postToolWritePaths(tool.name, use.input, output, ctx, (value) =>
-      this.opts.secretScrubber.scrub(value),
-    );
-    return {
-      text: content,
-      fingerprint: fingerprintText(scrubbed),
-      writePaths,
-      ...(data ? { data } : {}),
-    };
+    return produceToolOutputFromHost(this.toolOutputSettlementHost(), tool, use, ctx, budgetHint);
   }
 
   private settleToolOutput(
@@ -785,24 +747,7 @@ export class ToolExecutor {
     text: string,
     budget: number,
   ): { block: ToolResultBlock; bytes: number } {
-    const { text: capped, newBudget } = tool.preserveFullOutput
-      ? {
-          text,
-          newBudget: Math.max(0, budget - Buffer.byteLength(text, 'utf8')),
-        }
-      : this.serializer.enforceCap(text, budget);
-    this.hintRenderMode(tool.name);
-    this.opts.renderer?.writeToolResult(tool.name, capped, false);
-    return {
-      block: {
-        type: 'tool_result',
-        tool_use_id: use.id,
-        name: tool.name,
-        content: capped,
-        is_error: false,
-      },
-      bytes: budget - newBudget,
-    };
+    return settleToolOutputFromHost(this.toolOutputSettlementHost(), tool, use, text, budget);
   }
 
   private async runWithTimeout(
@@ -812,24 +757,37 @@ export class ToolExecutor {
     ctx: Context,
     toolUseId?: string | undefined,
   ): Promise<unknown> {
-    return runToolWithTimeout(
+    return runWithTimeoutFromHost(
+      this.toolOutputSettlementHost(),
       tool,
       input,
       parentSignal,
       ctx,
-      this.opts,
-      {
-        iterationTimeoutMs: this.iterationTimeoutMs,
-        maxToolTimeoutMs: this.maxToolTimeoutMs,
-        progressEmitIntervalMs: ToolExecutor.PROGRESS_EMIT_INTERVAL_MS,
-        progressTailChars: ToolExecutor.PROGRESS_TAIL_CHARS,
-        progressHeadChars: ToolExecutor.PROGRESS_HEAD_CHARS,
-      },
       toolUseId,
     );
   }
 
   private budgetForString(content: string, budget: number): number {
-    return Math.max(0, budget - Buffer.byteLength(content, 'utf8'));
+    return budgetForStringFromHost(this.toolOutputSettlementHost(), content, budget);
+  }
+
+  private toolOutputSettlementHost(): ToolOutputSettlementHost {
+    const owner = this;
+    return {
+      get opts() {
+        return owner.opts;
+      },
+      set opts(value) {
+        owner.opts = value;
+      },
+      runWithTimeout: (...args) => owner.runWithTimeout(...args),
+      serializer: owner.serializer,
+      hintRenderMode: (...args) => owner.hintRenderMode(...args),
+      iterationTimeoutMs: owner.iterationTimeoutMs,
+      maxToolTimeoutMs: owner.maxToolTimeoutMs,
+      PROGRESS_EMIT_INTERVAL_MS: ToolExecutor.PROGRESS_EMIT_INTERVAL_MS,
+      PROGRESS_TAIL_CHARS: ToolExecutor.PROGRESS_TAIL_CHARS,
+      PROGRESS_HEAD_CHARS: ToolExecutor.PROGRESS_HEAD_CHARS,
+    };
   }
 }

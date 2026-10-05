@@ -1,21 +1,18 @@
 import type { Agent, Context } from '@wrongstack/core/agent';
 import type { AgentFactory } from '@wrongstack/core/coordination';
 import {
-  GoalRunLeaseBusyError,
   GoalRunPersistence,
   type PhaseGraph,
   type PhaseNode,
   PhaseOrchestrator,
   PhaseStore,
   type PhaseTemplate,
-  prepareGoalGraphForResume,
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/core/worktree';
 import type { WebSocket } from 'ws';
-import { gitStdout, isGitWorkTree } from './git-process.js';
 import {
   planPhases as delegatePlanPhases,
   runChimeraReview as delegateRunChimeraReview,
@@ -29,21 +26,15 @@ import {
   type GoalWorkerHost,
   repairGoalPhase,
 } from './goal-workers.js';
+import {
+  type GoalWsRunControlsHost,
+  handleClear as handleClearFromHost,
+  handleResumeGraph as handleResumeGraphFromHost,
+  handleRevert as handleRevertFromHost,
+  handleStart as handleStartFromHost,
+  handleStop as handleStopFromHost,
+} from './goal-ws-run-controls.js';
 import { errMessage, sendSerialized } from './ws-utils.js';
-
-/**
- * List the commits on `branch` since `baseSha` (oldest → newest, the order they
- * landed). Used by `goal.revert` to feed WorktreeManager.revertCommits,
- * which reverses them. Returns [] on any git error.
- */
-async function commitsSince(cwd: string, baseSha: string, branch: string): Promise<string[]> {
-  const output = await gitStdout(cwd, ['log', '--reverse', '--format=%H', `${baseSha}..${branch}`]);
-  if (output === null) return [];
-  return output
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 interface WSClient {
   ws: WebSocket;
@@ -340,102 +331,11 @@ export class GoalWebSocketHandler {
   }
 
   private async handleStart(payload?: Record<string, unknown>): Promise<void> {
-    if (
-      this.startInFlight ||
-      this.orchestrator?.isRunning() ||
-      (this.stopping && this.runPromise)
-    ) {
-      this.broadcast({
-        type: 'goal.error',
-        payload: { message: 'A Goal run is already in progress. Stop it before starting another.' },
-      });
-      return;
-    }
-    this.startInFlight = true;
-    // Cleared here, before the first await, not in startRun: a stop that lands
-    // while the lease is being acquired must still be seen by startRun.
-    this.stopping = false;
-    this.runStatus = 'running';
-    try {
-      this.releaseRunLease = await this.store.acquireRunLease(
-        `webui:${process.pid}:${crypto.randomUUID()}`,
-      );
-      await this.startRun(payload);
-    } catch (err) {
-      this.runStatus = 'failed';
-      this.broadcast({
-        type: 'goal.error',
-        payload: {
-          message:
-            err instanceof GoalRunLeaseBusyError
-              ? err.message
-              : `Goal start failed: ${toErrorMessage(err)}`,
-        },
-      });
-    } finally {
-      this.startInFlight = false;
-      if (!this.orchestrator) await this.releaseActiveRunLease();
-    }
+    return handleStartFromHost(this.goalWsRunControlsHost(), payload);
   }
 
   private async handleResumeGraph(graphId: string): Promise<void> {
-    if (
-      this.startInFlight ||
-      this.runStatus === 'running' ||
-      this.runStatus === 'paused' ||
-      (this.stopping && this.runPromise)
-    ) {
-      this.broadcast({
-        type: 'goal.error',
-        payload: { message: 'Stop the active Goal run before resuming a saved board.' },
-      });
-      return;
-    }
-    this.startInFlight = true;
-    this.stopping = false;
-    let releaseRunLease: (() => Promise<void>) | undefined;
-    try {
-      releaseRunLease = await this.store.acquireRunLease(
-        `webui-resume:${process.pid}:${crypto.randomUUID()}`,
-      );
-      const graph = this.graph?.id === graphId ? this.graph : await this.store.load(graphId);
-      if (!graph) throw new Error(`Saved Goal not found: ${graphId}`);
-      if (this.stopping) return;
-      const worktrees =
-        graph.worktrees !== false && this.projectRoot && (await isGitWorkTree(this.projectRoot))
-          ? new WorktreeManager({ projectRoot: this.projectRoot })
-          : undefined;
-      await prepareGoalGraphForResume(graph, worktrees);
-      this.graph = graph;
-      this.orchestrator = null;
-      this.runStatus = 'running';
-      this.releaseRunLease = releaseRunLease;
-      releaseRunLease = undefined;
-      await this.startRun(undefined, graph);
-      if (!this.stopping && this.orchestrator) {
-        this.broadcast({ type: 'goal.resumed', payload: { graphId: graph.id } });
-        this.broadcastState();
-      }
-    } catch (err) {
-      this.runStatus = this.graph ? 'stopped' : 'idle';
-      this.abort = null;
-      this.broadcast({
-        type: 'goal.error',
-        payload: {
-          message:
-            err instanceof GoalRunLeaseBusyError
-              ? err.message
-              : `Goal resume failed: ${toErrorMessage(err)}`,
-        },
-      });
-      await this.releaseActiveRunLease();
-    } finally {
-      this.startInFlight = false;
-      await releaseRunLease?.();
-      // startRun returned without launching (stopped mid-setup): the lease
-      // handed to this.releaseRunLease above is not the run's to keep.
-      if (!this.orchestrator) await this.releaseActiveRunLease();
-    }
+    return handleResumeGraphFromHost(this.goalWsRunControlsHost(), graphId);
   }
 
   private async startRun(
@@ -452,22 +352,7 @@ export class GoalWebSocketHandler {
    * `goal.clear` to reset or `goal.revert` to undo the changes.
    */
   private async handleStop(): Promise<void> {
-    this.stopping = true;
-    this.abort?.abort();
-    this.assessAbort?.abort();
-    this.assessAbort = null;
-    const orchestrator = this.orchestrator;
-    const runPromise = this.runPromise;
-    orchestrator?.stop();
-    this.orchestrator = null;
-    this.runStatus = 'stopped';
-    this.stopBroadcast();
-    await runPromise?.catch(() => undefined);
-    if (this.graph) await this.persistence.save(this.graph).catch(() => undefined);
-    if (this.runPromise === runPromise) this.runPromise = null;
-    this.abort = null;
-    await this.releaseActiveRunLease();
-    this.broadcast({ type: 'goal.stopped', payload: { title: this.graph?.title } });
+    return handleStopFromHost(this.goalWsRunControlsHost());
   }
 
   /**
@@ -476,16 +361,7 @@ export class GoalWebSocketHandler {
    * on the base branch — that is `goal.revert`.
    */
   private async handleClear(): Promise<void> {
-    await this.handleStop();
-    if (this.worktrees) await this.worktrees.cleanupAllManaged().catch(() => undefined);
-    this.orchestrator = null;
-    this.graph = null;
-    this.runStatus = 'idle';
-    this.runBase = null;
-    this.usedNicknames.clear();
-    this.broadcast({ type: 'goal.cleared', payload: {} });
-    // Empty state → board/wizard falls back to the goal-entry screen.
-    this.broadcast({ type: 'goal.state', payload: this.buildState() });
+    return handleClearFromHost(this.goalWsRunControlsHost());
   }
 
   /**
@@ -495,26 +371,7 @@ export class GoalWebSocketHandler {
    * conflicting revert rather than leaving the tree half-reverted.
    */
   private async handleRevert(): Promise<void> {
-    await this.handleStop();
-    if (!this.worktrees || !this.runBase || !this.projectRoot) {
-      this.broadcast({
-        type: 'goal.reverted',
-        payload: { ok: false, reverted: 0, reason: 'no git baseline was captured for this run' },
-      });
-      return;
-    }
-    await this.worktrees.cleanupAllManaged().catch(() => undefined);
-    const shas = await commitsSince(this.projectRoot, this.runBase.sha, this.runBase.branch);
-    const res = await this.worktrees.revertCommits(this.runBase.branch, shas);
-    this.broadcast({ type: 'goal.reverted', payload: res });
-    if (res.ok) {
-      this.orchestrator = null;
-      this.graph = null;
-      this.runStatus = 'idle';
-      this.runBase = null;
-      this.broadcast({ type: 'goal.cleared', payload: {} });
-      this.broadcast({ type: 'goal.state', payload: this.buildState() });
-    }
+    return handleRevertFromHost(this.goalWsRunControlsHost());
   }
 
   /** Plan phases+todos for the goal via the LLM; reject unusable plans.
@@ -844,5 +701,34 @@ export class GoalWebSocketHandler {
         self.assessSeq = value;
       },
     };
+  }
+
+  private goalWsRunControlsHost(): GoalWsRunControlsHost {
+    // Check the complete helper contract while preserving the owner's identity and receivers.
+    void ({
+      startInFlight: this.startInFlight,
+      orchestrator: this.orchestrator,
+      stopping: this.stopping,
+      runPromise: this.runPromise,
+      broadcast: this.broadcast,
+      runStatus: this.runStatus,
+      releaseRunLease: this.releaseRunLease,
+      store: this.store,
+      startRun: this.startRun,
+      releaseActiveRunLease: this.releaseActiveRunLease,
+      graph: this.graph,
+      projectRoot: this.projectRoot,
+      broadcastState: this.broadcastState,
+      abort: this.abort,
+      assessAbort: this.assessAbort,
+      stopBroadcast: this.stopBroadcast,
+      persistence: this.persistence,
+      handleStop: this.handleStop,
+      worktrees: this.worktrees,
+      runBase: this.runBase,
+      usedNicknames: this.usedNicknames,
+      buildState: this.buildState,
+    } satisfies GoalWsRunControlsHost);
+    return this as unknown as GoalWsRunControlsHost;
   }
 }

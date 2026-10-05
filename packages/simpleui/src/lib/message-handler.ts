@@ -1,8 +1,3 @@
-import { finiteNumber } from './context-load.js';
-import { handleContextMessage } from './context-message-handler.js';
-
-export { normalizeContextLoad } from './context-load.js';
-
 /**
  * WebSocket message handler for SimpleUI.
  *
@@ -16,16 +11,12 @@ export { normalizeContextLoad } from './context-load.js';
  *     [dispatchUserMessage, requestProviderModels, worklists],
  *   );
  */
-
 import { parseArtifactPresentation } from '@wrongstack/tools/artifact-presentation';
 import {
   isFinalTurnStopReason,
   type projectNextStepsToolInput,
 } from '@wrongstack/tools/next-steps';
 import {
-  formatAutoWakeNotice,
-  formatAutoWakeSuppressedNotice,
-  formatDeliveryPendingNotice,
   projectChatMessage,
   projectFleetMessage,
   projectToolMessage,
@@ -47,7 +38,10 @@ import {
   retainSimpleChatMessages,
   updateSubagents,
 } from './chat-model.js';
+import { finiteNumber } from './context-load.js';
+import { handleContextMessage } from './context-message-handler.js';
 import type { MessageHandlerDeps } from './message-handler-deps.js';
+import { delegationNoticeText, messageId } from './message-handler-notices.js';
 import { handleSessionStartMessage } from './message-handler-session-start.js';
 import {
   closeStaleToolCalls,
@@ -68,44 +62,9 @@ import { projectRefineResult } from './refine-model.js';
 import { parseSessionSummaries } from './session-model.js';
 import { projectStatusNotice } from './status-notice.js';
 
-// ── Helpers ─────────────────────────────────────────────────────────
-
-function stringList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
-}
-
-/**
- * The transcript line for a background-delegation notice, or `null` when the
- * frame carries nothing to show (an `undisplayed` hold never reaches a tab).
- */
-export function delegationNoticeText(
-  type: string,
-  payload: Record<string, unknown>,
-): string | null {
-  const delegationIds = stringList(payload['delegationIds']);
-  if (type === 'delegation.delivery_pending') {
-    return formatDeliveryPendingNotice(
-      delegationIds,
-      finiteNumber(payload['count'], delegationIds.length || 1),
-    );
-  }
-  if (type === 'delegation.auto_wake_started') {
-    return formatAutoWakeNotice(delegationIds, finiteNumber(payload['chain'], 0));
-  }
-  if (type === 'delegation.auto_wake_suppressed') {
-    if (payload['reason'] !== 'chain_cap') return null;
-    return formatAutoWakeSuppressedNotice(finiteNumber(payload['pending'], 1));
-  }
-  return null;
-}
-
-function messageId(prefix: string): string {
-  return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`}`;
-}
-
+export { normalizeContextLoad } from './context-load.js';
 export type { MessageHandlerDeps } from './message-handler-deps.js';
+export { delegationNoticeText } from './message-handler-notices.js';
 
 // ── Factory ─────────────────────────────────────────────────────────
 
