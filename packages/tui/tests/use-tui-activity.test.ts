@@ -373,6 +373,48 @@ describe('useTuiActivity foreground working time', () => {
     expect(storageMocks.loadGoal).not.toHaveBeenCalled();
     act(() => view.unmount());
   });
+
+  // Regression: the stat fingerprint used to be committed BEFORE `loadGoal`
+  // ran, so a read that failed transiently (EBUSY while another wstack holds
+  // the file on Windows, or a parse of a partially-written goal) was never
+  // retried until mtime/size moved again — the goal chip stayed stale even
+  // though the very next tick saw a perfectly readable, unchanged file. The
+  // sibling task poll (use-statusbar-view-model) clears its gate on failure
+  // for exactly this reason; the fingerprint may only be consumed by a read
+  // that actually produced a goal (or a confirmed-missing file).
+  it('retries the goal read after a failed load while the stat is unchanged', async () => {
+    vi.useFakeTimers();
+    stubGoalStat({ changing: false });
+    storageMocks.loadGoal
+      .mockRejectedValueOnce(Object.assign(new Error('file busy'), { code: 'EBUSY' }))
+      .mockResolvedValue({ goal: 'ship it', iterations: 1, progress: 10, deliverables: [] });
+
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+      view = render(
+        React.createElement(ActivityHarness, { status: 'idle', projectRoot: 'project' }),
+      );
+      await Promise.resolve();
+    });
+    expect(storageMocks.loadGoal).toHaveBeenCalledTimes(1); // first read failed
+    expect(fsMocks.stat).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+      await Promise.resolve();
+    });
+
+    // The file is readable again and its mtime/size never changed — the next
+    // tick must retry the read and surface the goal instead of skipping it.
+    expect(fsMocks.stat).toHaveBeenCalledTimes(2);
+    expect(storageMocks.loadGoal).toHaveBeenCalledTimes(2);
+
+    const goalActions = dispatchMock.mock.calls
+      .map(([action]) => action as { type?: string; summary?: { goal?: string } })
+      .filter((action) => action.type === 'goalSummary' && action.summary?.goal === 'ship it');
+    expect(goalActions).toHaveLength(1);
+    act(() => view.unmount());
+  });
 });
 
 describe('useTuiActivity shared animation tick', () => {

@@ -308,8 +308,18 @@ export function useTuiActivity({
         (stat) => {
           const statFingerprint = `${stat.mtimeMs}:${stat.size}`;
           if (statFingerprint === goalStatFingerprintRef.current) return undefined;
-          goalStatFingerprintRef.current = statFingerprint;
-          return loadGoal(goalPath);
+          // The fingerprint is committed only AFTER a successful read (below).
+          // Committing it here let a single transient read failure (EBUSY while
+          // another wstack holds the file, or a parse of a partially-written
+          // goal) consume the gate: every later tick skipped the read until
+          // mtime/size moved again, so the chip stayed stale while the file
+          // sat perfectly readable. A failed read retries on the next tick —
+          // the same recovery the sibling task poll applies by clearing its
+          // own gate on catch.
+          return loadGoal(goalPath).then(
+            (goal) => ({ goal, statFingerprint }),
+            () => undefined,
+          );
         },
         () => {
           // No goal file (or unreadable). Clear the chip once, then stay quiet
@@ -320,9 +330,12 @@ export function useTuiActivity({
           return null;
         },
       )
-      .then((goal) => {
-        if (goal === undefined) return; // Unchanged on disk — nothing to do.
+      .then((result) => {
+        // `undefined`: unchanged on disk, or a failed read the next tick retries.
+        if (result === undefined) return;
         if (generation !== goalSummaryGenerationRef.current) return;
+        if (result !== null) goalStatFingerprintRef.current = result.statFingerprint;
+        const goal = result === null ? null : result.goal;
         if (!goal) {
           if (goalSummaryFingerprintRef.current === 'null') return;
           goalSummaryFingerprintRef.current = 'null';
