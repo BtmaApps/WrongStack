@@ -357,9 +357,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.0.32',
+    version: '1.0.33',
     date: '2026-10-05',
     latest: true,
+    tagline: 'Complete ChatGPT account catalogs and safe OAuth token rotation',
+    highlights: [
+      'ChatGPT account catalogs list every entitled model, including gpt-6.1-sol, gpt-6-sol and gpt-6-luna, with reasoning levels and retirement notices',
+      'Context window, pricing and status come from the account snapshot; models.dev fills only a missing output ceiling or knowledge date',
+      'WRONGSTACK_CODEX_CLIENT_VERSION adopts a newer catalog rollout without waiting for a release',
+      'Codex and Claude renew single-use refresh tokens in a locked config transaction, so concurrent processes adopt the rotation instead of replaying a consumed token',
+      'wstack models <provider> and models caps merge the account snapshot; models hide, show and reset no longer throw after writing',
+      'Fixes for duplicate fallback suggestions, Antigravity bootstrap retries, SDD cleanup after a deadlocked run and WebUI frames sent without a payload',
+    ],
+  },
+  {
+    version: '1.0.32',
+    date: '2026-10-05',
     tagline: 'Optional execution sandbox, Scout, and feedback grounded in tool results',
     highlights: [
       'Optional exec-family sandbox tiers add Docker routing, a Windows helper backend, per-agent overrides and visible approval/audit status; off by default, with policy-only remaining advisory',

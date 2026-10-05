@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.33] — 2026-10-05
+
+A provider-account patch release. ChatGPT account catalogs now list every model
+the account is entitled to, with reasoning levels and retirement notices, and
+single-use OAuth refresh tokens rotate safely across concurrent processes.
+Fixes cover fallback suggestions, Antigravity discovery, SDD run cleanup and
+WebUI frames sent without a payload.
+
+### Changed
+
+- **ChatGPT account catalogs show every entitled model.** Every account catalog request, including the ChatGPT plan API's `/v1/models`, now advertises Codex client version `0.160.0`. The previous pin hid `gpt-6.1-sol`, `gpt-6-sol` and `gpt-6-luna`, and the plan API was queried without a version. `WRONGSTACK_CODEX_CLIENT_VERSION` overrides the version without a release. See [ChatGPT model catalog](docs/chatgpt-model-catalog.md).
+- **Account snapshots keep their own facts.** Account catalogs map reasoning levels and retirement notices, keep the curated display name, and no longer mark Codex models as non-reasoning. A same-id models.dev entry fills only the output ceiling and knowledge date the snapshot omits; context window, pricing and status are never copied. `openai-chatgpt` no longer inherits the public API catalog, which uses the API window and lists unrelated models; that catalog remains a per-model fallback only.
+- **Model commands use the account snapshot.** `wstack models <provider>` and `wstack models caps` merge the account catalog, and CLI and WebUI discovery share one overlay. The plan runtime probe reads `max_context_window`, and discovery cache entries left by rotated refresh tokens are pruned.
+
+### Fixed
+
+- **OAuth refresh-token rotation.** Codex and Claude renew single-use refresh tokens inside the host's locked config transaction, so a second process adopts the rotated token instead of replaying a consumed one. A failed proactive refresh no longer fails a request whose current token is still valid. Refresh errors are classified provider errors without the raw response body, and ChatGPT plan renewal no longer re-verifies the ID token after the server rotates the pair.
+- **Model visibility commands.** `wstack models hide`, `show` and `reset` no longer throw on the frozen live config after writing, and `reset <provider> <model>` removes that custom model instead of clearing the visible list.
+- **Fallback suggestions.** Chain references are deduplicated after trimming, so a whitespace variant cannot add the same model twice.
+- **Antigravity discovery.** A malformed or interrupted project-bootstrap response is a retryable discovery failure instead of being read as "no project".
+- **SDD run cleanup.** A parallel run that returns from a dependency deadlock stops reporting itself as running, so worktree cleanup and rollback work instead of refusing an active run.
+- **WebUI frames without a payload.** `session.delete`, `session.resume`, `session.focus` and `memory.sage.candidateResolve` frames sent without a payload receive a validation error instead of no response.
+
 ## [1.0.32] — 2026-10-05
 
 Optional execution sandbox tiers and the general-purpose Scout identity extend

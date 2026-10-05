@@ -55,27 +55,27 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.32
+### What's new in 1.0.33
 
-- **[Optional execution sandbox](docs/configuration.md#toolssandbox--exec-family-sandbox-tiers)**
-  adds exec-family tiers, Docker routing, a Windows helper backend, per-agent
-  overrides and visible approval/audit status. Off by default; `policy-only`
-  provides advisory policy rather than OS containment.
-- **[Scout](docs/configuration.md#systemprompt--baseline-system-prompt-selection)** is a general-purpose
-  identity with a compact direct tool set, live `tool_search` / `tool_use`
-  discovery and specialist delegation. Launch with `--system-scout`; inspect
-  recorded discovery and delegation with [`/scout-stats`](docs/slash/scout-stats.md).
-- **[Coding-agent feedback](docs/agent-feedback.md)** compares completed tool
-  results for repetition and attaches bounded, version-bound LSP diagnostics
-  to successful single and bulk edits when the plugin and hooks are enabled.
-- **Calmer terminals and accessible controls:** WebUI and SimpleUI bound logs
-  and finished-worker rows; TUI startup keeps errors and prompts visible.
-  Keyboard focus, comboboxes, resizing and website navigation are improved.
-- **Fresher memory and account catalogs:** retained SAGE evidence is refreshed
-  before provider requests, and account model discovery renews expiring tokens.
-  Curated ChatGPT model suggestions remain distinct from account entitlement.
-- **Cancellation and ownership fixes** across providers, MCP/ACP, fleet presence,
-  Telegram queues, plugins, persistence and browser session work.
+- **[ChatGPT account catalogs](docs/chatgpt-model-catalog.md)** now list every
+  entitled model, including `gpt-6.1-sol`, `gpt-6-sol` and `gpt-6-luna`, with
+  reasoning levels and retirement notices. Context window, pricing and status
+  come from the account snapshot, never from models.dev.
+  `WRONGSTACK_CODEX_CLIENT_VERSION` adopts a newer catalog rollout without a
+  release.
+- **Safe OAuth rotation:** Codex and Claude renew single-use refresh tokens
+  inside a locked config transaction, so concurrent processes adopt the rotated
+  token instead of replaying a consumed one. A failed proactive refresh no
+  longer fails a request whose token is still valid.
+- **Model commands:** `wstack models <provider>` and `models caps` merge the
+  account snapshot; `models hide/show/reset` no longer throw after writing.
+- **Fixes** for duplicate fallback suggestions, Antigravity bootstrap
+  retries, SDD cleanup after a deadlocked run, and WebUI frames sent without a
+  payload.
+
+1.0.32 added optional execution sandbox tiers, the general-purpose
+[Scout](docs/configuration.md#systemprompt--baseline-system-prompt-selection)
+identity and [post-edit LSP feedback](docs/agent-feedback.md).
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -707,7 +707,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.32** — current release; semver from 1.0.0 onward
+- **v1.0.33** — current release; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`

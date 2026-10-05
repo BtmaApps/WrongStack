@@ -305,12 +305,12 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Scout the work. Choose the boundaries.
+                Every model your account carries. Tokens that rotate safely.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In {version}: choose optional execution sandbox tiers, discover tools with Scout,
-                and get coding feedback from completed tool results and fresh LSP diagnostics.
-                Calmer terminals and cancellation fixes keep long sessions easier to follow.
+                In {version}: ChatGPT account catalogs list every entitled model with its own
+                limits, and Codex and Claude sign-ins survive refresh-token rotation across
+                concurrent processes. Fallback, Antigravity, SDD and WebUI fixes round it out.
               </p>
             </div>
             <a
@@ -324,16 +324,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Choose execution boundaries',
-                'Opt into exec-family sandbox tiers with Docker routing, a Windows helper backend and visible approval/audit status. Off by default; the policy-only backend remains advisory.',
+                'Every entitled model',
+                'ChatGPT account catalogs now include gpt-6.1-sol, gpt-6-sol and gpt-6-luna, with reasoning levels and retirement notices. Context, pricing and status come from the account, never from models.dev.',
               ],
               [
-                'Scout beyond coding',
-                'Start with --system-scout for research, writing, operations or code. Scout discovers enabled tools on demand and delegates to specialists when session policy allows it.',
+                'Sign-ins that stay signed in',
+                'Codex and Claude renew single-use refresh tokens inside a locked config transaction, so a second process adopts the rotation instead of replaying a consumed token.',
               ],
               [
-                'Feedback you can inspect',
-                'With the LSP plugin and hooks enabled, successful edits return fresh, bounded diagnostics or an explicit unverified notice. Repetition checks compare completed tool results.',
+                'Scout and sandbox tiers',
+                'Since 1.0.32: start with --system-scout for research, writing, operations or code, and opt into exec-family sandbox tiers. Sandboxing is off by default; policy-only remains advisory.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
