@@ -277,7 +277,7 @@ describe('ChatGPT account catalogs', () => {
         const capabilities = await capabilitiesFor(registry, providerId, 'gpt-6-astra');
         expect(
           resolveMaxOutputTokens(
-            { model: 'gpt-6-astra', messages: [] },
+            { model: 'gpt-6-astra' },
             { providerId, capabilities },
           ),
         ).toBe(128000);
