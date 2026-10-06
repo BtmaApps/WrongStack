@@ -321,6 +321,15 @@ function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
   const versions = new Map<string, string[]>();
   let inPackages = false;
   for (const raw of lockContent.split(/\r?\n/)) {
+    // Blank lines and comments are not top-level keys. Skipping them BEFORE the
+    // section test matters: a real pnpm lockfile puts a blank line directly
+    // after `packages:` (and between entries), so without this guard the flag
+    // reset on that blank, the section closed before its first entry, and
+    // `allVersions` came back empty — dropping EVERY transitive instance from
+    // the SBOM while direct rows kept resolving, which made the two
+    // includeTransitive modes return an identical count. `parsePnpmImporters`
+    // has always carried this guard.
+    if (raw.trim() === '' || raw.trimStart().startsWith('#')) continue;
     if (!/^\s/.test(raw)) {
       inPackages = raw.startsWith('packages:') || raw.startsWith('snapshots:');
       continue;

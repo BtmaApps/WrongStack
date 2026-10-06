@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T07:00:07.458Z",
+  "generatedAt": "2026-10-06T09:19:45.520Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4656,
-    "testFiles": 4145,
-    "sourceLines": 1068627,
+    "sourceFiles": 4657,
+    "testFiles": 4149,
+    "sourceLines": 1068769,
     "workspaceEdges": 133,
-    "moduleEdges": 15319,
+    "moduleEdges": 15320,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 969
+    "testOnlyExports": 970
   },
   "errors": [],
   "packageCycles": [],
@@ -244,7 +244,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1054,
-      "testFiles": 920,
+      "testFiles": 921,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -259,7 +259,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 920
+          "testFiles": 921
         }
       ]
     },
@@ -721,7 +721,7 @@
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 51,
-      "testFiles": 47,
+      "testFiles": 49,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -736,7 +736,7 @@
         {
           "path": "packages/techstack/tsconfig.test.json",
           "error": null,
-          "testFiles": 47
+          "testFiles": 49
         }
       ]
     },
@@ -789,8 +789,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 467,
-      "testFiles": 414,
+      "sourceFiles": 468,
+      "testFiles": 415,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -813,7 +813,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 414
+          "testFiles": 415
         }
       ]
     },
@@ -5677,6 +5677,12 @@
       },
       {
         "file": "packages/core/tests/architecture/daemon-metadata-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/dependency-advisory-guards.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16158,7 +16164,19 @@
         ]
       },
       {
+        "file": "packages/techstack/tests/adapters/go-gosum-authority.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/techstack/tests/adapters/gradle-swift.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/techstack/tests/adapters/npm-pnpm-section-tracking.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18613,6 +18631,12 @@
       },
       {
         "file": "packages/tui/tests/background-strip.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/banner-formation.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -29245,6 +29269,10 @@
     {
       "file": "packages/tui/src/components/help-overlay.tsx",
       "name": "helpSections"
+    },
+    {
+      "file": "packages/tui/src/components/history/banner-formation.ts",
+      "name": "BANNER_FORMATION_DURATION_MS"
     },
     {
       "file": "packages/tui/src/components/history/banner.tsx",
