@@ -1,5 +1,6 @@
 import { expectDefined, toErrorMessage, validateAgainstSchema } from '@wrongstack/core/utils';
 import { MCP_CONSTANTS, negotiateProtocolVersion } from './constants.js';
+import type { MCPToolAnnotations } from './contracts.js';
 import type { MCPPromptArgument, MCPPromptMessage, MCPResourceContents } from './protocol.js';
 
 /**
@@ -19,6 +20,14 @@ export interface MCPServerTool {
   name: string;
   description?: string | undefined;
   inputSchema: Record<string, unknown>;
+  /**
+   * `ToolAnnotations` (spec 2025-03-26) — this server's own claim about its
+   * behaviour, published verbatim by `tools/list`. A client MUST treat it as
+   * untrusted, so publishing it never relaxes anything on our side: the
+   * permission tier of a proxied tool comes from WrongStack policy, not from a
+   * hint in this object.
+   */
+  annotations?: MCPToolAnnotations | undefined;
 }
 
 /** The result of a `tools/call`, as the host produces it. */
@@ -184,9 +193,23 @@ export class MCPServer {
     } catch (err) {
       const message = toErrorMessage(err);
       this.logger?.warn?.(`MCP server: method "${msg.method}" threw: ${message}`);
-      // A schema violation is the caller's fault, not ours — JSON-RPC has a
-      // code for exactly that, and clients retry differently on it (WS-026).
-      const code = err instanceof InvalidToolArgumentsError ? INVALID_PARAMS : INTERNAL_ERROR;
+      // SEP-1303: an argument that violates the advertised `inputSchema` is
+      // feedback the model can act on, so it goes back as a tool-execution
+      // error (`isError: true` in the result), not a protocol error — a
+      // JSON-RPC error stays inside the transport and never reaches the model.
+      // The warn above still fires, so the server-side audit trail for the
+      // probe traffic this gate exists to catch is kept.
+      if (err instanceof InvalidToolArgumentsError) {
+        return JSON.stringify({
+          jsonrpc: '2.0',
+          id: requestId,
+          result: { content: [{ type: 'text', text: message }], isError: true },
+        });
+      }
+      // Anything in the InvalidParamsError family is the caller's request
+      // error, not our failure — JSON-RPC has a code for exactly that, and
+      // clients key their retry policy off the difference.
+      const code = err instanceof InvalidParamsError ? INVALID_PARAMS : INTERNAL_ERROR;
       return this.encodeError(requestId, code, message);
     } finally {
       if (this.inFlightRequests.get(requestId) === controller) {
@@ -225,7 +248,7 @@ export class MCPServer {
       case 'tools/call': {
         const p = (params ?? {}) as { name?: unknown | undefined; arguments?: unknown | undefined };
         if (typeof p.name !== 'string') {
-          throw new Error('tools/call requires a string "name"');
+          throw new InvalidParamsError('tools/call requires a string "name"');
         }
         const args =
           p.arguments && typeof p.arguments === 'object' && !Array.isArray(p.arguments)
@@ -250,7 +273,7 @@ export class MCPServer {
         if (this.resources.length === 0) return METHOD_NOT_FOUND_SENTINEL;
         const uri = requiredParamString(params, 'uri', 'resources/read');
         const resource = this.resources.find((candidate) => candidate.uri === uri);
-        if (!resource) throw new Error(`Resource not found: ${uri}`);
+        if (!resource) throw new InvalidLookupError(`Resource not found: ${uri}`);
         return { contents: structuredClone(resource.contents) };
       }
       case 'prompts/list': {
@@ -267,12 +290,13 @@ export class MCPServer {
         if (this.prompts.length === 0) return METHOD_NOT_FOUND_SENTINEL;
         const name = requiredParamString(params, 'name', 'prompts/get');
         const prompt = this.prompts.find((candidate) => candidate.name === name);
-        if (!prompt) throw new Error(`Prompt not found: ${name}`);
+        if (!prompt) throw new InvalidLookupError(`Prompt not found: ${name}`);
         const input = paramsRecord(params);
         const args = stringRecord(input['arguments'], 'prompts/get arguments');
         for (const argument of prompt.arguments ?? []) {
           if (argument.required && !Object.hasOwn(args, argument.name)) {
-            throw new Error(`Prompt "${name}" requires argument "${argument.name}"`);
+            // prompts.md: "Missing required arguments: -32602 (Invalid params)".
+            throw new InvalidParamsError(`Prompt "${name}" requires argument "${argument.name}"`);
           }
         }
         const messages = prompt.template
@@ -357,12 +381,40 @@ export class MCPServer {
 export const MAX_REPORTED_SCHEMA_ERRORS = 5;
 
 /**
- * Marks a `tools/call` rejected by {@link MCPServer.assertArgumentsMatchSchema}
- * so `handleMessage` can answer with JSON-RPC `-32602 Invalid params` rather
- * than the generic internal-error code every other throw maps to.
+ * Marks a `tools/call` rejected by {@link MCPServer.assertArgumentsMatchSchema}.
+ * SEP-1303: `handleMessage` answers these in-band — `{ content, isError: true }`
+ * — so the model sees the refusal and can retry with corrected arguments,
+ * instead of a JSON-RPC error that stays inside the transport.
  */
 export class InvalidToolArgumentsError extends Error {
   override readonly name = 'InvalidToolArgumentsError';
+}
+
+/**
+ * Base for every failure that is the *caller's* request error, mapped to
+ * JSON-RPC `-32602 Invalid params`. Current MCP assigns no dedicated code to these:
+ * `prompts.md` prescribes `-32602` for an invalid prompt name AND for missing
+ * required arguments, and `resources.md` retired the old `-32002` in favour of
+ * the same code. Use this (or a subclass) instead of a bare `throw`, which
+ * `handleMessage` would otherwise report as `-32603 Internal error` — a code
+ * clients legitimately retry.
+ */
+export class InvalidParamsError extends Error {
+  // Typed as `string`, not the literal, so subclasses may override `name`.
+  override readonly name: string = 'InvalidParamsError';
+}
+
+/**
+ * Marks a lookup for a resource or prompt that does not exist.
+ *
+ * JSON-RPC has no "not found" code, and MCP retired its own `-32002` in favour
+ * of plain Invalid params, so this maps to `-32602` rather than the
+ * `-32603 Internal error` a bare `throw` would produce. A caller asking for one
+ * URI out of a known-good catalog made a request error, not a server failure —
+ * and callers key retry policy off that difference.
+ */
+export class InvalidLookupError extends InvalidParamsError {
+  override readonly name = 'InvalidLookupError';
 }
 
 export const SERVER_PAGE_SIZE = 100;
@@ -375,10 +427,13 @@ export function paginate<T>(
   let offset = 0;
   if (cursor !== undefined) {
     if (typeof cursor !== 'string' || !/^\d+$/.test(cursor)) {
-      throw new Error('MCP pagination cursor must be a non-negative integer string');
+      // pagination.md: "Invalid cursors SHOULD result in an error with code
+      // -32602 (Invalid params)."
+      throw new InvalidParamsError('MCP pagination cursor must be a non-negative integer string');
     }
     offset = Number(cursor);
-    if (!Number.isSafeInteger(offset)) throw new Error('MCP pagination cursor is too large');
+    if (!Number.isSafeInteger(offset))
+      throw new InvalidParamsError('MCP pagination cursor is too large');
   }
   const page = items.slice(offset, offset + SERVER_PAGE_SIZE);
   const next = offset + page.length;
@@ -397,7 +452,7 @@ export function paramsRecord(params: unknown): Record<string, unknown> {
 export function requiredParamString(params: unknown, field: string, method: string): string {
   const value = paramsRecord(params)[field];
   if (typeof value !== 'string' || value.length === 0) {
-    throw new Error(`${method} requires a non-empty string "${field}"`);
+    throw new InvalidParamsError(`${method} requires a non-empty string "${field}"`);
   }
   return value;
 }
@@ -405,11 +460,11 @@ export function requiredParamString(params: unknown, field: string, method: stri
 export function stringRecord(value: unknown, label: string): Record<string, string> {
   if (value === undefined) return Object.create(null) as Record<string, string>;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`${label} must be an object`);
+    throw new InvalidParamsError(`${label} must be an object`);
   }
   const result: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof item !== 'string') throw new Error(`${label}.${key} must be a string`);
+    if (typeof item !== 'string') throw new InvalidParamsError(`${label}.${key} must be a string`);
     result[key] = item;
   }
   return result;
@@ -418,7 +473,8 @@ export function stringRecord(value: unknown, label: string): Record<string, stri
 export function renderPromptTemplate(template: string, args: Record<string, string>): string {
   return template.replace(/\{\{([A-Za-z_][A-Za-z0-9_.-]*)\}\}/g, (_match, name: string) => {
     const value = Object.hasOwn(args, name) ? args[name] : undefined;
-    if (value === undefined) throw new Error(`Missing prompt template argument "${name}"`);
+    if (value === undefined)
+      throw new InvalidParamsError(`Missing prompt template argument "${name}"`);
     return value;
   });
 }

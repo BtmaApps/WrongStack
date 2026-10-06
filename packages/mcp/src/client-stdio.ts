@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import type { ExitListener, MCPClientOptions } from './client-types.js';
-import { MCP_CONSTANTS } from './constants.js';
+import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool } from './contracts.js';
 import type { ServerRequestResponder } from './elicitation.js';
 import { type MCPServerMetadata, parseServerMetadata } from './protocol.js';
@@ -176,6 +176,12 @@ export async function connectStdio(host: ClientStdioHost): Promise<void> {
     host.state = 'failed';
     throw new Error(`MCP initialize returned malformed server metadata: ${toErrorMessage(err)}`);
   }
+  // stdio carries no `MCP-Protocol-Version` header, but the rule is the same:
+  // a server that answered with a revision we do not implement is not a server
+  // we can talk to. Throwing here means disconnecting — MCPClient.connect's
+  // catch closes the client, which terminates the child process, so nothing is
+  // left running behind the failed handshake.
+  assertSupportedServerProtocolVersion(host.opts.name, host._serverMetadata.protocolVersion);
   try {
     await host.notify('notifications/initialized', {});
   } catch (err) {

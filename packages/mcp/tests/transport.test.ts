@@ -10,7 +10,7 @@ import { validateTransportUrl } from '../src/transport-security.js';
 const originalUnsafeMcpTls = process.env['WRONGSTACK_UNSAFE_MCP_TLS'];
 const originalCi = process.env['CI'];
 const INIT_RESULT = {
-  protocolVersion: '2025-06-18',
+  protocolVersion: '2024-11-05',
   capabilities: { tools: {}, resources: {}, prompts: {} },
   serverInfo: { name: 'transport-fixture', version: '1.0.0' },
 };

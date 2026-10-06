@@ -397,6 +397,24 @@ describe('MCP HTTP transport guards (WS-024)', () => {
   });
 });
 
+type JsonRpcBody = { error?: { code: number; message: string }; result?: unknown };
+
+/**
+ * SEP-1303: an argument violating the advertised `inputSchema` is a tool
+ * EXECUTION error — `isError: true` in the result — so the model reads it and
+ * can retry with corrected arguments. A JSON-RPC error would keep the refusal
+ * inside the transport and out of the model's view.
+ */
+function expectToolRefusal(body: JsonRpcBody): void {
+  expect(body.error).toBeUndefined();
+  expect((body.result as { isError?: boolean; content?: unknown }).isError).toBe(true);
+}
+
+function toolRefusalText(body: JsonRpcBody): string {
+  const result = body.result as { content?: { text?: string }[] };
+  return (result.content ?? []).map((block) => block.text ?? '').join('\n');
+}
+
 describe('MCP tools/call schema enforcement (WS-026)', () => {
   async function call(args: Record<string, unknown>): Promise<{
     status: number;
@@ -413,14 +431,14 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
 
   it('rejects a value outside a declared enum', async () => {
     const { body } = await call({ mode: '../../etc/passwd', path: 'a.txt' });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('mode');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('mode');
     expect(received).toHaveLength(0);
   });
 
   it('rejects a missing required property', async () => {
     const { body } = await call({ mode: 'read' });
-    expect(body.error?.code).toBe(-32602);
+    expectToolRefusal(body);
     expect(received).toHaveLength(0);
   });
 
@@ -439,24 +457,24 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
   // pinned in the core validator suite rather than left to assumption.
   it('enforces additionalProperties: false', async () => {
     const { body } = await call({ ...VALID, injected: 'yes' });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('injected');
-    expect(body.error?.message).toContain('unknown property');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('injected');
+    expect(toolRefusalText(body)).toContain('unknown property');
     expect(received).toHaveLength(0);
   });
 
   it('enforces string lengths (maxLength)', async () => {
     const { body } = await call({ ...VALID, path: 'x'.repeat(101) });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('path');
-    expect(body.error?.message).toContain('expected string length <= 100, got 101');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('path');
+    expect(toolRefusalText(body)).toContain('expected string length <= 100, got 101');
     expect(received).toHaveLength(0);
   });
 
   it('enforces patternProperties on matching keys', async () => {
     const { body } = await call({ ...VALID, opt_flag: 1 });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('opt_flag');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('opt_flag');
     expect(received).toHaveLength(0);
   });
 
@@ -469,17 +487,17 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
 
   it('enforces array lengths (maxItems)', async () => {
     const { body } = await call({ ...VALID, tags: ['a', 'b', 'c'] });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('tags');
-    expect(body.error?.message).toContain('expected array length <= 2, got 3');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('tags');
+    expect(toolRefusalText(body)).toContain('expected array length <= 2, got 3');
     expect(received).toHaveLength(0);
   });
 
   it('enforces numeric bounds (minimum/maximum)', async () => {
     const { body } = await call({ ...VALID, count: 999 });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toContain('count');
-    expect(body.error?.message).toContain('expected number <= 10, got 999');
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('count');
+    expect(toolRefusalText(body)).toContain('expected number <= 10, got 999');
     expect(received).toHaveLength(0);
   });
 
@@ -494,7 +512,7 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
 
   it('rejects a wrong type, which the shared validator does check', async () => {
     const { body } = await call({ ...VALID, count: 'not-a-number' });
-    expect(body.error?.code).toBe(-32602);
+    expectToolRefusal(body);
     expect(received).toHaveLength(0);
   });
 
@@ -504,13 +522,13 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
     expect(received).toEqual([VALID]);
   });
 
-  it('uses -32602 Invalid params, not the generic internal-error code', async () => {
-    // Clients back off differently on an internal error than on bad input;
-    // reporting -32603 would make a caller retry an argument that can never
-    // succeed.
+  it('delivers the refusal as a tool result, not a protocol error (SEP-1303)', async () => {
+    // A JSON-RPC error never reaches the model, so a bad `mode` would be
+    // unrecoverable: the model cannot correct an argument it was never told
+    // about. -32603 specifically would also make a caller retry forever.
     const { body } = await call({ mode: 'nope', path: 'a.txt' });
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.code).not.toBe(-32603);
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toContain('mode');
   });
 
   it('caps the echoed schema errors at MAX_REPORTED_SCHEMA_ERRORS', async () => {
@@ -553,8 +571,8 @@ describe('MCP tools/call schema enforcement (WS-026)', () => {
       }),
     });
     const body = (await res.json()) as { error?: { code: number; message: string } };
-    expect(body.error?.code).toBe(-32602);
-    expect(body.error?.message).toMatch(/\(\+2 more\)$/);
+    expectToolRefusal(body);
+    expect(toolRefusalText(body)).toMatch(/\(\+2 more\)$/);
   });
 });
 
@@ -622,10 +640,7 @@ describe('MCP stdio framing — multi-byte UTF-8 across chunk boundaries', () =>
     const lead = bytes.indexOf(leadByte);
     expect(lead, 'split point must land inside the payload').toBeGreaterThan(0);
 
-    const response = await runStdio([
-      bytes.subarray(0, lead + 1),
-      bytes.subarray(lead + 1),
-    ]);
+    const response = await runStdio([bytes.subarray(0, lead + 1), bytes.subarray(lead + 1)]);
 
     expect(response).toContain(PAYLOAD);
     // A split that mangled the argument would still return ok:true — assert

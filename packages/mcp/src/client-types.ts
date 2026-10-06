@@ -2,6 +2,7 @@ import type { MCPAuthorizationProvider } from './authorization.js';
 
 import type { MCPTool } from './contracts.js';
 import type { MCPClientElicitationHandler } from './elicitation.js';
+import type { MCPLogMessageNotification, MCPProgressNotification } from './protocol.js';
 
 export type Transport = 'stdio' | 'sse' | 'streamable-http';
 
@@ -75,3 +76,10 @@ export type ToolsChangedListener = (name: string, tools: MCPTool[]) => void;
 export type MCPListChangedListener = (name: string) => void;
 /** `notifications/resources/updated` — the payload of a live subscription. */
 export type MCPResourceUpdatedListener = (name: string, uri: string) => void;
+/**
+ * `notifications/progress` (2024-11-05 progress utility) — in-flight progress
+ * for a request that carried a `params._meta.progressToken`.
+ */
+export type MCPProgressListener = (name: string, progress: MCPProgressNotification) => void;
+/** `notifications/message` (2024-11-05 logging utility) — a server log line. */
+export type MCPLogMessageListener = (name: string, log: MCPLogMessageNotification) => void;

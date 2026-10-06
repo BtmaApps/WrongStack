@@ -45,7 +45,7 @@ describe('MCPClient resources and prompts', () => {
       const result =
         request.method === 'initialize'
           ? {
-              protocolVersion: '2025-06-18',
+              protocolVersion: '2024-11-05',
               capabilities: { tools: {}, resources: {}, prompts: {} },
               serverInfo: { name: 'http-fixture', version: '1.0.0' },
             }

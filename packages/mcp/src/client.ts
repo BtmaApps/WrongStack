@@ -19,11 +19,14 @@ import type {
   JsonRpcServerRequest,
   MCPClientOptions,
   MCPListChangedListener,
+  MCPLogMessageListener,
   MCPPageOptions,
+  MCPProgressListener,
   MCPRequestOptions,
   MCPResourceUpdatedListener,
   ToolsChangedListener,
 } from './client-types.js';
+import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
 import type {
@@ -31,6 +34,8 @@ import type {
   MCPListPromptsResult,
   MCPListResourcesResult,
   MCPListResourceTemplatesResult,
+  MCPLogMessageNotification,
+  MCPProgressNotification,
   MCPReadResourceResult,
   MCPServerMetadata,
 } from './protocol.js';
@@ -105,6 +110,10 @@ export class MCPClient {
   private readonly resourcesChangedListeners = new Set<MCPListChangedListener>();
   private readonly promptsChangedListeners = new Set<MCPListChangedListener>();
   private readonly resourceUpdatedListeners = new Set<MCPResourceUpdatedListener>();
+  private readonly progressListeners = new Set<MCPProgressListener>();
+  private readonly logMessageListeners = new Set<MCPLogMessageListener>();
+  /** Per-request `progressToken` source for calls that opt into progress. */
+  private progressTokenCounter = 0;
   /** Notified when an HTTP transport (SSE or streamable-http) disconnects. */
   private readonly disconnectListeners = new Set<() => void>();
   /** Answers server→client requests (ping, elicitation) on every transport. */
@@ -230,8 +239,27 @@ export class MCPClient {
       return this.httpTransport.callTool(name, input, opts);
     }
     // stdio
-    const res = await this.request('tools/call', { name, arguments: input }, undefined, opts);
+    // The progressToken opts the call into `notifications/progress` while it
+    // runs (2024-11-05 progress utility) — a server MAY answer with progress
+    // notifications carrying this token.
+    const res = await this.request(
+      'tools/call',
+      { name, arguments: input, _meta: { progressToken: this.nextProgressToken() } },
+      undefined,
+      opts,
+    );
     return toToolCallResult(res);
+  }
+
+  /**
+   * Fresh `params._meta.progressToken` for a request that opts into
+   * `notifications/progress`. Unique per client, so
+   * `(server name, token)` identifies the in-flight request a progress
+   * notification belongs to.
+   */
+  private nextProgressToken(): string {
+    this.progressTokenCounter += 1;
+    return `progress-${this.progressTokenCounter}`;
   }
 
   /**
@@ -380,7 +408,7 @@ export class MCPClient {
       Number.isFinite(this.opts.requestTimeoutMs) &&
       this.opts.requestTimeoutMs > 0
         ? this.opts.requestTimeoutMs
-        : 60_000;
+        : MCP_CONSTANTS.REQUEST_TIMEOUT_MS;
     const effectiveTimeoutMs =
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
         ? timeoutMs
@@ -613,6 +641,22 @@ export class MCPClient {
     this.resourceUpdatedListeners.delete(listener);
   }
 
+  addProgressListener(listener: MCPProgressListener): void {
+    this.progressListeners.add(listener);
+  }
+
+  removeProgressListener(listener: MCPProgressListener): void {
+    this.progressListeners.delete(listener);
+  }
+
+  addLogMessageListener(listener: MCPLogMessageListener): void {
+    this.logMessageListeners.add(listener);
+  }
+
+  removeLogMessageListener(listener: MCPLogMessageListener): void {
+    this.logMessageListeners.delete(listener);
+  }
+
   addPromptsChangedListener(listener: MCPListChangedListener): void {
     this.promptsChangedListeners.add(listener);
   }
@@ -625,6 +669,26 @@ export class MCPClient {
     for (const listener of this.resourceUpdatedListeners) {
       try {
         listener(this.opts.name, uri);
+      } catch {
+        /* listeners are best-effort */
+      }
+    }
+  }
+
+  private emitProgress(progress: MCPProgressNotification): void {
+    for (const listener of this.progressListeners) {
+      try {
+        listener(this.opts.name, progress);
+      } catch {
+        /* listeners are best-effort */
+      }
+    }
+  }
+
+  private emitLogMessage(log: MCPLogMessageNotification): void {
+    for (const listener of this.logMessageListeners) {
+      try {
+        listener(this.opts.name, log);
       } catch {
         /* listeners are best-effort */
       }
@@ -675,6 +739,8 @@ export class MCPClient {
       toolsChangedListeners: this.toolsChangedListeners,
       emitCapabilityChanged: (...args) => this.emitCapabilityChanged(...args),
       emitResourceUpdated: (uri: string) => this.emitResourceUpdated(uri),
+      emitProgress: (progress: MCPProgressNotification) => this.emitProgress(progress),
+      emitLogMessage: (log: MCPLogMessageNotification) => this.emitLogMessage(log),
       get _serverMetadata() {
         return self._serverMetadata;
       },
@@ -792,6 +858,8 @@ export class MCPClient {
       handleToolsListChanged: (...args) => this.handleToolsListChanged(...args),
       emitCapabilityChanged: (...args) => this.emitCapabilityChanged(...args),
       emitResourceUpdated: (...args) => this.emitResourceUpdated(...args),
+      emitProgress: (...args) => this.emitProgress(...args),
+      emitLogMessage: (...args) => this.emitLogMessage(...args),
       pending: this.pending,
     };
   }

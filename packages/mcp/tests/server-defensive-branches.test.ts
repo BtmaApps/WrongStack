@@ -67,9 +67,14 @@ describe('MCPServer defensive branches', () => {
         params: { name: 'echo', arguments: { x: 1 } },
       }),
     );
-    const parsed = JSON.parse(res ?? '') as { error?: { code: number; message: string } };
-    expect(parsed.error?.code).toBe(-32602);
-    expect(parsed.error?.message).toContain('(root): root-level failure');
+    const parsed = JSON.parse(res ?? '') as {
+      error?: { code: number; message: string };
+      result?: { isError?: boolean; content?: { type: string; text: string }[] };
+    };
+    // SEP-1303: schema refusals are in-band tool results, not JSON-RPC errors.
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.result?.isError).toBe(true);
+    expect(parsed.result?.content?.[0]?.text).toContain('(root): root-level failure');
   });
 
   it('refuses a content-type whose split yields no media type', async () => {

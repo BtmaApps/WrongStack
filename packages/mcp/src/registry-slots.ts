@@ -1,5 +1,6 @@
 import type { MCPServerConfig, Tool } from '@wrongstack/core/types';
 import type { MCPClient } from './client.js';
+import type { MCPUnsupportedProtocolVersionError } from './constants.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
 import type { ElicitationRequester } from './elicitation.js';
 import type { MCPServerOperationState } from './operations.js';
@@ -34,6 +35,15 @@ export interface ServerSlot {
   /** Serializes replacements so rapid list-change notifications cannot restore stale data. */
   manifestWrite?: Promise<void> | undefined;
   attempts: number;
+  /**
+   * The protocol-version refusal that ended the last connect attempt, if any.
+   *
+   * `attemptConnectSlot` swallows connect failures (a bad server must not
+   * reject `start()`), so without this the demand-wake path could only report
+   * a generic "failed to connect" and the refused revision — the one detail the
+   * operator can act on — would be lost. Cleared when an attempt begins.
+   */
+  protocolVersionRefusal?: MCPUnsupportedProtocolVersionError | undefined;
   /** Set when a reconnect cycle is already running for this slot. */
   reconnectPending: boolean;
   reconnectTimer?: NodeJS.Timeout | undefined;

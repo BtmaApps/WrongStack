@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 const METADATA = {
-  protocolVersion: '2025-06-18',
+  protocolVersion: '2024-11-05',
   capabilities: { tools: {}, resources: { subscribe: true }, prompts: {} },
   serverInfo: { name: 'fixture', version: '1.0.0' },
 };

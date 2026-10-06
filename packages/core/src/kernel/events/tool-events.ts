@@ -367,6 +367,35 @@ export interface ToolEventMap {
    */
   'mcp.resource.updated': { name: string; uri: string };
   /**
+   * `notifications/progress` (2024-11-05 progress utility) from a connected
+   * MCP server. A server sends these only for requests whose `params._meta`
+   * carried a `progressToken` — this host sends one on every `tools/call` —
+   * so the token correlates the notification with the in-flight request.
+   * `progress` normally increases monotonically toward `total`. The payload
+   * is attacker-controllable server output: free text (`message`) is clamped
+   * and control-character-sanitized before the event is published.
+   */
+  'mcp.progress': {
+    name: string;
+    progressToken: string | number;
+    progress: number;
+    total?: number | undefined;
+    message?: string | undefined;
+  };
+  /**
+   * `notifications/message` (2024-11-05 logging utility) from a connected MCP
+   * server. `data` is the log content serialized to text and clamped;
+   * `logger` names the emitting subsystem when the server sent one. Log
+   * output is display-only — it must never influence tool-call, permission,
+   * or sandbox decisions.
+   */
+  'mcp.log': {
+    name: string;
+    level: 'debug' | 'info' | 'notice' | 'warning' | 'error';
+    logger?: string | undefined;
+    data?: string | undefined;
+  };
+  /**
    * OAuth state for one HTTP MCP server. Emitted by the host that owns the
    * token vault, so an expired or rejected credential is visible instead of
    * failing every call with an opaque 401. Carries no token or code.

@@ -8,9 +8,14 @@ import {
   type MCPAuthorizationProvider,
   parseMcpBearerChallenge,
 } from './authorization.js';
+import { MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
 import { type ServerRequest, ServerRequestResponder } from './elicitation.js';
-import type { MCPServerMetadata } from './protocol.js';
+import type {
+  MCPLogMessageNotification,
+  MCPProgressNotification,
+  MCPServerMetadata,
+} from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import {
   ALLOW_MCP_PRIVATE_NETWORKS,
@@ -154,7 +159,7 @@ function createTimeoutSignal(
   const safeTimeout =
     typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0
       ? timeoutMs
-      : 60_000;
+      : MCP_CONSTANTS.REQUEST_TIMEOUT_MS;
   const onTimeout = () => {
     if (hold?.()) {
       timer = setTimeout(onTimeout, safeTimeout);
@@ -207,6 +212,9 @@ export abstract class BaseHTTPTransport {
   protected readonly resourcesChangedListeners = new Set<() => void>();
   protected readonly resourceUpdatedListeners = new Set<(uri: string) => void>();
   protected readonly promptsChangedListeners = new Set<() => void>();
+  protected readonly progressListeners = new Set<(progress: MCPProgressNotification) => void>();
+  protected readonly logMessageListeners = new Set<(log: MCPLogMessageNotification) => void>();
+  private progressTokenCounter = 0;
   protected protocolVersion?: string | undefined;
   protected readonly serverRequests: ServerRequestResponder;
 
@@ -229,7 +237,7 @@ export abstract class BaseHTTPTransport {
       Number.isFinite(opts.requestTimeoutMs) &&
       opts.requestTimeoutMs > 0
         ? opts.requestTimeoutMs
-        : 60_000;
+        : MCP_CONSTANTS.REQUEST_TIMEOUT_MS;
     if (opts.tls) {
       if (opts.tls.rejectUnauthorized === false) {
         // Origin only: after config-env expansion the URL can carry a
@@ -391,6 +399,16 @@ export abstract class BaseHTTPTransport {
     return () => this.resourceUpdatedListeners.delete(cb);
   }
 
+  onProgress(cb: (progress: MCPProgressNotification) => void): () => void {
+    this.progressListeners.add(cb);
+    return () => this.progressListeners.delete(cb);
+  }
+
+  onLogMessage(cb: (log: MCPLogMessageNotification) => void): () => void {
+    this.logMessageListeners.add(cb);
+    return () => this.logMessageListeners.delete(cb);
+  }
+
   /**
    * Fire all disconnect handlers. Subclasses call this when the connection
    * drops so the registry can schedule reconnects.
@@ -433,6 +451,37 @@ export abstract class BaseHTTPTransport {
         /* ignore */
       }
     }
+  }
+
+  protected notifyProgress(progress: MCPProgressNotification): void {
+    for (const cb of this.progressListeners) {
+      try {
+        cb(progress);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  protected notifyLogMessage(log: MCPLogMessageNotification): void {
+    for (const cb of this.logMessageListeners) {
+      try {
+        cb(log);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /**
+   * Fresh `params._meta.progressToken` for a request that opts into
+   * `notifications/progress` (2024-11-05 progress utility). Unique per
+   * transport, so `(server name, token)` identifies the in-flight request a
+   * progress notification belongs to.
+   */
+  protected nextProgressToken(): string {
+    this.progressTokenCounter += 1;
+    return `progress-${this.progressTokenCounter}`;
   }
 
   private async dispatcherFetch(): Promise<typeof globalThis.fetch> {

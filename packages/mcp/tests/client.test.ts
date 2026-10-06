@@ -1009,7 +1009,7 @@ describe('MCPClient stdio rx — UTF-8 chunk boundaries', () => {
         '  let msg; try { msg = JSON.parse(line); } catch { return; }',
         "  const reply = (result) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result }) + '\\n');",
         "  if (msg.method === 'initialize') {",
-        "    reply({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'utf8-split', version: '0.0.0' } });",
+        "    reply({ protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'utf8-split', version: '0.0.0' } });",
         "  } else if (msg.method === 'tools/list') {",
         "    reply({ tools: [{ name: 'big', inputSchema: { type: 'object' } }] });",
         "  } else if (msg.method === 'tools/call') {",

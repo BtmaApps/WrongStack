@@ -75,8 +75,16 @@ describe('attached SAGE MCP (external coding agents)', () => {
       method: 'tools/call',
       params: { name: 'memory_candidates', arguments: { action: 'accept', candidate_id: 'x' } },
     });
-    expect((accept['error'] as { code: number }).code).toBe(-32602);
-    expect((accept['error'] as { message: string }).message).toContain('["list","propose"]');
+    // The narrowed schema still refuses it — SEP-1303 moved the refusal from a
+    // JSON-RPC error into the tool result, so the model can see why it was
+    // denied. The host is never invoked either way, which is the guarantee that
+    // actually matters here.
+    expect(accept['error']).toBeUndefined();
+    const acceptResult = accept['result'] as { isError?: boolean; content?: { text?: string }[] };
+    expect(acceptResult.isError).toBe(true);
+    expect((acceptResult.content ?? []).map((block) => block.text ?? '').join('\n')).toContain(
+      '["list","propose"]',
+    );
 
     const propose = (
       await call(server, {

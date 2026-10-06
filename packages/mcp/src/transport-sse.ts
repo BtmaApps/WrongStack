@@ -1,8 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import { ToolError } from '@wrongstack/core/types';
-import { MCP_CONSTANTS } from './constants.js';
+import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
-import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
+import {
+  logMessageNotification,
+  parseServerMetadata,
+  progressNotification,
+  resourceUpdatedUri,
+} from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import { SSEReader } from './sse-reader.js';
 import { listAllTools, toToolCallResult } from './tool-schema.js';
@@ -187,6 +192,12 @@ export class SSETransport extends BaseHTTPTransport {
           } else if (msg.method === 'notifications/resources/updated') {
             const uri = resourceUpdatedUri(msg.params);
             if (uri) this.notifyResourceUpdated(uri);
+          } else if (msg.method === 'notifications/progress') {
+            const progress = progressNotification(msg.params);
+            if (progress) this.notifyProgress(progress);
+          } else if (msg.method === 'notifications/message') {
+            const log = logMessageNotification(msg.params);
+            if (log) this.notifyLogMessage(log);
           }
           return;
         }
@@ -228,7 +239,12 @@ export class SSETransport extends BaseHTTPTransport {
         });
       }
       this.serverMetadata = parseServerMetadata(initRes.result);
-      this.protocolVersion = this.serverMetadata.protocolVersion;
+      // Throws on a revision we do not implement; the catch below aborts the
+      // connect controller and the MCPClient connect wrapper closes down.
+      this.protocolVersion = assertSupportedServerProtocolVersion(
+        this.name,
+        this.serverMetadata.protocolVersion,
+      );
 
       try {
         await this.httpPost('notifications/initialized', {});
@@ -523,7 +539,14 @@ export class SSETransport extends BaseHTTPTransport {
         context: { transport: 'sse', state: this.state },
       });
     }
-    const res = await this.httpPost('tools/call', { name, arguments: input }, opts);
+    // The progressToken opts the call into `notifications/progress` while it
+    // runs (2024-11-05 progress utility) — a server MAY answer with progress
+    // notifications carrying this token.
+    const res = await this.httpPost(
+      'tools/call',
+      { name, arguments: input, _meta: { progressToken: this.nextProgressToken() } },
+      opts,
+    );
     return toToolCallResult(res);
   }
 

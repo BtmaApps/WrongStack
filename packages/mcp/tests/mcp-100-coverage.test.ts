@@ -85,7 +85,7 @@ describe('mcp 100% coverage suite', () => {
         jsonrpc: '2.0',
         id: 1,
         result: {
-          protocolVersion: '2025-06-18',
+          protocolVersion: '2024-11-05',
           capabilities: { tools: {} },
           serverInfo: { name: 'test', version: '1.0' },
         },

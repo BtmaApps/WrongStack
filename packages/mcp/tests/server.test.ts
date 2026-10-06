@@ -190,13 +190,14 @@ describe('MCPServer.handleMessage', () => {
       method: 'tools/call',
       params: { name: 1 },
     });
-    expect((invalid!.error as { code: number }).code).toBe(-32603);
+    // A non-string tool name is bad params, not a server failure.
+    expect((invalid!.error as { code: number }).code).toBe(-32602);
     const missingParams = await call(server, {
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',
     });
-    expect((missingParams!.error as { code: number }).code).toBe(-32603);
+    expect((missingParams!.error as { code: number }).code).toBe(-32602);
 
     for (const argumentsValue of [null, [], 'text']) {
       await call(server, {
@@ -304,7 +305,9 @@ describe('MCPServer.handleMessage', () => {
       method: 'resources/read',
       params: { uri: 'file:///missing' },
     });
-    expect((missing!.error as { code: number }).code).toBe(-32603);
+    // Unknown URI is the caller's request error, not a server failure: MCP
+    // retired its own -32002 in favour of plain Invalid params.
+    expect((missing!.error as { code: number }).code).toBe(-32602);
   });
 
   it('paginates explicitly configured resources', async () => {
@@ -366,14 +369,19 @@ describe('MCPServer.handleMessage', () => {
       method: 'prompts/get',
       params: { name: 'review' },
     });
-    expect((missingArgument!.error as { code: number }).code).toBe(-32603);
+    // prompts.md: "Missing required arguments: -32602 (Invalid params)".
+    expect((missingArgument!.error as { code: number }).code).toBe(-32602);
+    // The refusal must name the missing argument — a caller cannot fix what it
+    // cannot identify.
+    expect((missingArgument!.error as { message: string }).message).toContain('target');
     const missingPrompt = await call(server, {
       jsonrpc: '2.0',
       id: 4,
       method: 'prompts/get',
       params: { name: 'missing' },
     });
-    expect((missingPrompt!.error as { code: number }).code).toBe(-32603);
+    // prompts.md: "Invalid prompt name: -32602 (Invalid params)".
+    expect((missingPrompt!.error as { code: number }).code).toBe(-32602);
   });
 
   it('serves static prompt messages and validates prompt arguments', async () => {
@@ -419,7 +427,8 @@ describe('MCPServer.handleMessage', () => {
         method: 'prompts/get',
         params: { name: 'static', arguments: argumentsValue },
       });
-      expect((response!.error as { code: number }).code).toBe(-32603);
+      // Caller-side param error: -32602, not -32603 (pagination.md / prompts.md).
+      expect((response!.error as { code: number }).code).toBe(-32602);
     }
     const missingTemplateValue = await call(server, {
       jsonrpc: '2.0',
@@ -427,7 +436,9 @@ describe('MCPServer.handleMessage', () => {
       method: 'prompts/get',
       params: { name: 'template', arguments: {} },
     });
-    expect((missingTemplateValue!.error as { code: number }).code).toBe(-32603);
+    // The template references `{{gap}}`, which the caller never supplied:
+    // prompts.md puts "Missing required arguments" at -32602.
+    expect((missingTemplateValue!.error as { code: number }).code).toBe(-32602);
   });
 
   it('validates resource and prompt pagination cursors', async () => {
@@ -451,7 +462,8 @@ describe('MCPServer.handleMessage', () => {
         method: 'resources/list',
         params: { cursor },
       });
-      expect((response!.error as { code: number }).code).toBe(-32603);
+      // Caller-side param error: -32602, not -32603 (pagination.md / prompts.md).
+      expect((response!.error as { code: number }).code).toBe(-32602);
     }
     const firstPrompts = await call(server, {
       jsonrpc: '2.0',
@@ -474,7 +486,8 @@ describe('MCPServer.handleMessage', () => {
       ['prompts/get', { name: '' }],
     ] as const) {
       const response = await call(server, { jsonrpc: '2.0', id: 1, method, params });
-      expect((response!.error as { code: number }).code).toBe(-32603);
+      // Caller-side param error: -32602, not -32603 (pagination.md / prompts.md).
+      expect((response!.error as { code: number }).code).toBe(-32602);
     }
   });
 

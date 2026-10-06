@@ -14,7 +14,7 @@ import {
   setJsonPath,
   updateJsonObjectFile,
 } from '@wrongstack/core/utils';
-import type { MCPRegistry } from '@wrongstack/mcp';
+import type { MCPRegistry, MCPToolAnnotations } from '@wrongstack/mcp';
 export interface McpParsedArgs {
   action: 'list' | 'add' | 'remove' | 'enable' | 'disable' | 'restart';
   name: string;
@@ -108,6 +108,7 @@ function renderList(
   );
   const configuredNames = new Set(Object.keys(configured));
 
+  let hintBadgesShown = false;
   if (configuredNames.size > 0) {
     lines.push(color.bold('Configured servers:'));
     for (const [name, cfg] of Object.entries(configured)) {
@@ -124,12 +125,30 @@ function renderList(
         : '';
       // Plan 28: mcpServers.*.sandboxTrust bypasses the enforced sandbox tier
       // for this server — always visible in listings (security-relevant state).
-      const trustBadge =
-        cfg.sandboxTrust === true ? `${color.yellow('[sandbox-trusted]')}  ` : '';
+      const trustBadge = cfg.sandboxTrust === true ? `${color.yellow('[sandbox-trusted]')}  ` : '';
       lines.push(
         `  ${color.bold(name)}  ${enabled}${stateStr}${toolCount}${trustBadge}${operations}`,
       );
       if (cfg.description) lines.push(`    ${color.dim(cfg.description)}`);
+      // Tool inventory with server-claimed annotation badges. `describeTools`
+      // is a cache read (never wakes the server) and returns undefined for a
+      // server that is not connected — render no tool lines then.
+      const tools =
+        live && typeof mcpRegistry.describeTools === 'function'
+          ? mcpRegistry.describeTools(name)
+          : undefined;
+      for (const tool of tools ?? []) {
+        const badges = toolHintBadges(tool.annotations);
+        if (badges.length > 0) hintBadgesShown = true;
+        lines.push(
+          `    ${tool.name}${badges.length > 0 ? ` ${color.dim(badges.map((b) => `[${b}]`).join(' '))}` : ''}`,
+        );
+      }
+    }
+    if (hintBadgesShown) {
+      lines.push(
+        color.dim('    Tool hints are claimed by the server, not enforced by WrongStack.'),
+      );
     }
     lines.push('');
   }
@@ -300,6 +319,23 @@ async function runRestart(name: string, mcpRegistry: MCPRegistry): Promise<strin
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Plain-text badges for a server-claimed `MCPToolAnnotations` block. An absent
+ * hint renders no badge: the spec defaults (readOnly=false, destructive=true,
+ * openWorld=true) are not claims the server actually made, and the whole block
+ * is the server's untrusted self-report — annotations never gate execution.
+ */
+function toolHintBadges(annotations: MCPToolAnnotations | undefined): string[] {
+  if (!annotations) return [];
+  const badges: string[] = [];
+  if (annotations.readOnlyHint === true) badges.push('read-only');
+  if (annotations.readOnlyHint === false && annotations.destructiveHint === true) {
+    badges.push('destructive');
+  }
+  if (annotations.openWorldHint === true) badges.push('open-world');
+  return badges;
+}
 
 function stateBadge(state: string): string {
   switch (state) {

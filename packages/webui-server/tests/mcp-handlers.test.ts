@@ -395,6 +395,74 @@ describe('mcp.list (WebUI panel load / refresh)', () => {
     expect(server?.health).toMatchObject({ healthState: 'degraded', failures: { tool: 2 } });
     expect(JSON.stringify(server?.health)).not.toContain('command');
   });
+
+  it('carries the per-tool annotation hints the server claimed', async () => {
+    await seed({ gh: { name: 'gh', transport: 'stdio', command: 'npx', enabled: true } });
+    const ws = fakeWs();
+    await handleMcpList(
+      ws as never,
+      msg('mcp.list'),
+      configPath,
+      makeRegistry({
+        list: () => [
+          { name: 'gh', state: 'connected', toolCount: 3, tools: ['get', 'put', 'plain'] },
+        ],
+        describeTools: () => [
+          {
+            name: 'get',
+            inputSchema: {},
+            annotations: { title: 'Get things', readOnlyHint: true, openWorldHint: true },
+          },
+          {
+            name: 'put',
+            inputSchema: {},
+            annotations: { readOnlyHint: false, destructiveHint: true },
+          },
+          { name: 'plain', inputSchema: {} },
+        ],
+      }),
+    );
+    const server = (
+      ws.sent.find((m) => m.type === 'mcp.list')!.payload as {
+        servers: Array<{ tools: string[]; toolAnnotations?: Record<string, unknown> }>;
+      }
+    ).servers[0];
+    // Names stay untouched for existing consumers; hints ride along keyed by
+    // tool name. Tools the server left unannotated get no entry.
+    expect(server?.tools).toEqual(['get', 'put', 'plain']);
+    expect(server?.toolAnnotations).toEqual({
+      get: { title: 'Get things', readOnlyHint: true, openWorldHint: true },
+      put: { readOnlyHint: false, destructiveHint: true },
+    });
+  });
+
+  it('omits toolAnnotations when no tool is annotated (or the registry predates describeTools)', async () => {
+    await seed({ gh: { name: 'gh', transport: 'stdio', command: 'npx', enabled: true } });
+    for (const describeTools of [
+      // Annotated nothing: unannotated tools produce no entry → field absent.
+      (): Array<{ name: string; inputSchema: Record<string, unknown> }> => [
+        { name: 'plain', inputSchema: {} },
+      ],
+      // Older registry shape with no describeTools at all → field absent.
+      undefined,
+    ] as const) {
+      const ws = fakeWs();
+      const registry = makeRegistry({
+        list: () => [{ name: 'gh', state: 'connected', toolCount: 1, tools: ['plain'] }],
+        ...(describeTools ? { describeTools } : {}),
+      });
+      await handleMcpList(ws as never, msg('mcp.list'), configPath, registry);
+      const server = (
+        ws.sent.find((m) => m.type === 'mcp.list')!.payload as {
+          servers: Array<Record<string, unknown>>;
+        }
+      ).servers[0]!;
+      // Absent, not empty: absence of a hint is not a safety claim, and the
+      // field must stay optional for older clients.
+      expect('toolAnnotations' in server).toBe(false);
+      expect(server.tools).toEqual(['plain']);
+    }
+  });
 });
 
 // ── mcp.update (WebUI "Edit" dialog) ──────────────────────────────────────────
@@ -519,6 +587,49 @@ describe('mcp.wake / mcp.sleep / mcp.discover (server card buttons)', () => {
     };
     expect(d.tools).toEqual(['x', 'y', 'z']);
     expect(result(ws).success).toBe(true);
+  });
+
+  it('discover carries the annotations map for annotated tools', async () => {
+    const ws = fakeWs();
+    const registry = makeRegistry({
+      list: () => [{ name: 'github', state: 'connected', toolCount: 1, tools: ['x'] }],
+      describeTools: () => [
+        { name: 'x', inputSchema: {}, annotations: { readOnlyHint: true, title: 'Read X' } },
+      ],
+    });
+    await handleMcpDiscover(
+      ws as never,
+      msg('mcp.discover', { name: 'github' }),
+      configPath,
+      registry,
+    );
+    const d = ws.sent.find((m) => m.type === 'mcp.server.discovered')?.payload as {
+      tools: string[];
+      toolAnnotations?: Record<string, unknown>;
+    };
+    expect(d.tools).toEqual(['x']);
+    // Hints the SERVER claimed, keyed by tool name — display-only data.
+    expect(d.toolAnnotations).toEqual({ x: { readOnlyHint: true, title: 'Read X' } });
+  });
+
+  it('discover omits toolAnnotations when the server claims none', async () => {
+    const ws = fakeWs();
+    const registry = makeRegistry({
+      list: () => [{ name: 'github', state: 'connected', toolCount: 1, tools: ['x'] }],
+      describeTools: () => [{ name: 'x', inputSchema: {} }],
+    });
+    await handleMcpDiscover(
+      ws as never,
+      msg('mcp.discover', { name: 'github' }),
+      configPath,
+      registry,
+    );
+    const d = ws.sent.find((m) => m.type === 'mcp.server.discovered')?.payload as Record<
+      string,
+      unknown
+    >;
+    // Absent, not empty: absence of a hint is not a safety claim.
+    expect('toolAnnotations' in d).toBe(false);
   });
 
   it('wake reports failure (not crash) when the server fails to restart', async () => {

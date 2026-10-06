@@ -11,14 +11,14 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 
 import { useAppTranslation } from '@/i18n';
 
 import { Badge } from '../ui/badge';
 
 import { Button } from '../ui/button';
-
+import type { MCPToolHints } from './contracts.js';
 import type { OfficialServer } from './official-servers';
 
 /** Non-secret OAuth state pushed by the server for an HTTP MCP endpoint. */
@@ -37,6 +37,11 @@ export interface MCPServer {
   enabled: boolean;
   description?: string;
   tools?: string[];
+  /**
+   * Behaviour hints each tool's server CLAIMED (MCP annotations), keyed by tool
+   * name. Untrusted self-report, badges only — never enforced by WrongStack.
+   */
+  toolAnnotations?: Record<string, MCPToolHints>;
   error?: string;
   lastError?: string;
   pid?: number;
@@ -83,6 +88,60 @@ export function statusInfo(status: MCPServer['status']): { color: string } {
 export function StatusDot({ status }: { status: MCPServer['status'] }) {
   const { color } = statusInfo(status);
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+}
+
+/**
+ * Operator badges for the behaviour hints a tool's server CLAIMED (MCP
+ * annotations). Display-only by contract: the annotations block is the
+ * server's untrusted self-report and nothing in WrongStack enforces it.
+ *
+ * A badge appears only for an EXPLICIT claim — an absent hint renders nothing,
+ * because absence is not a safety claim (the spec's own defaults are
+ * readOnly=false / destructive=true / openWorld=true). `destructiveHint`
+ * additionally requires `readOnlyHint === false`, so a read-only tool never
+ * shows "Destructive" even if the server set both.
+ */
+export function ToolHintBadges({
+  hints,
+}: {
+  hints: MCPToolHints | undefined;
+}): ReactElement | null {
+  const { t } = useAppTranslation();
+  if (!hints) return null;
+  // Same qualifier on every badge: these are hints the server claims about
+  // itself, not anything WrongStack verifies or enforces.
+  const claimTitle = t('settings:mcp.hintClaimTitle');
+  return (
+    <>
+      {hints.readOnlyHint === true && (
+        <Badge
+          variant="outline"
+          className="border-success/30 bg-success/10 text-xs font-normal text-success"
+          title={claimTitle}
+        >
+          {t('settings:mcp.hintReadOnly')}
+        </Badge>
+      )}
+      {hints.readOnlyHint === false && hints.destructiveHint === true && (
+        <Badge
+          variant="outline"
+          className="border-destructive/30 bg-destructive/10 text-xs font-normal text-destructive"
+          title={claimTitle}
+        >
+          {t('settings:mcp.hintDestructive')}
+        </Badge>
+      )}
+      {hints.openWorldHint === true && (
+        <Badge
+          variant="outline"
+          className="border-info/30 bg-info/10 text-xs font-normal text-info"
+          title={claimTitle}
+        >
+          {t('settings:mcp.hintOpenWorld')}
+        </Badge>
+      )}
+    </>
+  );
 }
 
 /** Expandable server card */
@@ -276,9 +335,12 @@ export function ServerCard({
               </span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {server.tools.map((tool) => (
-                  <Badge key={tool} variant="secondary" className="text-xs">
-                    {tool}
-                  </Badge>
+                  <span key={tool} className="inline-flex items-center gap-1">
+                    <Badge variant="secondary" className="text-xs">
+                      {tool}
+                    </Badge>
+                    <ToolHintBadges hints={server.toolAnnotations?.[tool]} />
+                  </span>
                 ))}
               </div>
             </div>

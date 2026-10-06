@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T06:53:41.940Z
+**Generated:** 2026-10-06T06:54:45.210Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 37 |
 | Production source files | 4639 |
-| Production source lines | 1063130 |
-| Test files | 4114 |
+| Production source lines | 1063990 |
+| Test files | 4119 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15264 |
+| Relative module edges | 15271 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -38,7 +38,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/kanban | 104 | 82 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 54 | 58 | @wrongstack/core |
+| @wrongstack/mcp | 54 | 62 | @wrongstack/core |
 | @wrongstack/persistence | 8 | 19 | — |
 | @wrongstack/plug-lsp | 51 | 52 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 6 | @wrongstack/core, @wrongstack/tools |
@@ -58,7 +58,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 284 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 466 | 413 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 674 | 464 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 674 | 465 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 126 | 50 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 276 | 268 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -84,6 +84,7 @@ None.
 | Lines | File |
 |---:|---|
 | 930 | `packages/tools/src/codebase-index/writer.ts` |
+| 876 | `packages/mcp/src/client.ts` |
 | 855 | `packages/core/src/coordination/director.ts` |
 | 850 | `packages/cli/src/cli-main.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
@@ -102,8 +103,8 @@ None.
 | 811 | `packages/plugins/src/cost-tracker/index.ts` |
 | 811 | `packages/webui/src/components/CodeMap.tsx` |
 | 810 | `packages/cli/src/webui-server.ts` |
+| 810 | `packages/mcp/src/registry.ts` |
 | 809 | `packages/simpleui/src/file-explorer.tsx` |
-| 808 | `packages/mcp/src/client.ts` |
 | 807 | `packages/core/src/chronicle/file-observer.ts` |
 | 807 | `packages/security-scanner/src/skill-generator.ts` |
 | 806 | `packages/simpleui/src/lib/message-handler.ts` |
@@ -116,6 +117,7 @@ None.
 | 801 | `packages/sage/src/project-server.ts` |
 | 800 | `packages/webui/src/hooks/ws-handlers/chat-handlers.ts` |
 | 799 | `packages/sage/src/project-server-client.ts` |
+| 799 | `packages/webui-server/src/server/mcp-handlers.ts` |
 | 799 | `packages/webui-server/src/server/routes.ts` |
 | 798 | `packages/cli/src/subcommands/handlers/acp.ts` |
 | 798 | `packages/core/src/chronicle/sqlite-journal.ts` |
@@ -131,8 +133,6 @@ None.
 | 793 | `packages/plugins/src/session-recap/index.ts` |
 | 792 | `packages/core/src/session-catalog/project-server.ts` |
 | 791 | `packages/core/src/coordination/brain-monitor.ts` |
-| 791 | `packages/core/src/execution/compaction-elision.ts` |
-| 791 | `packages/core/src/storage/file-session-writer.ts` |
 
 ## Exports only tests reference
 

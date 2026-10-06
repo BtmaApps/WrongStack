@@ -1,6 +1,11 @@
-import { MCP_CONSTANTS } from './constants.js';
+import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
-import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
+import {
+  logMessageNotification,
+  parseServerMetadata,
+  progressNotification,
+  resourceUpdatedUri,
+} from './protocol.js';
 import { MAX_MCP_HTTP_BODY_BYTES, readBodyCapped } from './read-body.js';
 import { listAllTools, toToolCallResult } from './tool-schema.js';
 import {
@@ -134,6 +139,12 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     } else if (method === 'notifications/resources/updated') {
       const uri = resourceUpdatedUri(params);
       if (uri) this.notifyResourceUpdated(uri);
+    } else if (method === 'notifications/progress') {
+      const progress = progressNotification(params);
+      if (progress) this.notifyProgress(progress);
+    } else if (method === 'notifications/message') {
+      const log = logMessageNotification(params);
+      if (log) this.notifyLogMessage(log);
     }
   }
 
@@ -225,7 +236,14 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         throw new Error(`initialize failed: ${data.error.message}`);
       }
       this.serverMetadata = parseServerMetadata(data.result);
-      this.protocolVersion = this.serverMetadata.protocolVersion;
+      // Throws on a revision we do not implement: the catch below aborts the
+      // connect controller and marks the transport failed, and MCPClient's
+      // connect wrapper closes the transport — that is the disconnect the
+      // 2024-11-05 lifecycle asks for.
+      this.protocolVersion = assertSupportedServerProtocolVersion(
+        this.name,
+        this.serverMetadata.protocolVersion,
+      );
 
       // MCP Streamable HTTP spec: the server assigns a session via the
       // `Mcp-Session-Id` response header, which the client must echo on every
@@ -399,7 +417,14 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     if (this.state !== 'connected') {
       throw new Error(`streamable-http transport not connected (state=${this.state})`);
     }
-    const res = await this.postRaw('tools/call', { name, arguments: input }, opts);
+    // The progressToken opts the call into `notifications/progress` while it
+    // runs (2024-11-05 progress utility) — a server MAY answer with progress
+    // notifications carrying this token.
+    const res = await this.postRaw(
+      'tools/call',
+      { name, arguments: input, _meta: { progressToken: this.nextProgressToken() } },
+      opts,
+    );
     return toToolCallResult(res);
   }
 

@@ -252,7 +252,7 @@ describe('ServerRequestResponder', () => {
       { env: 'prod', notify: 'yes' }, // not a boolean
     ]) {
       answer.mockReturnValueOnce({ action: 'accept', content });
-      expect(await r.answer(elicitRequest(2))).toMatchObject({ error: { code: -32603 } });
+      expect(await r.answer(elicitRequest(2))).toMatchObject({ error: { code: -32602 } });
     }
 
     answer.mockReturnValueOnce({ action: 'decline' });
@@ -306,13 +306,13 @@ describe('ServerRequestResponder', () => {
     answer.mockReturnValueOnce({ action: 'accept', content: { note: '' } });
     expect(
       await r.answer(elicitRequest(4, { requestedSchema: noteSchema(['note'], { minLength: 3 }) })),
-    ).toMatchObject({ error: { code: -32603, message: expect.stringMatching(/at least 3/) } });
+    ).toMatchObject({ error: { code: -32602, message: expect.stringMatching(/at least 3/) } });
 
     // A genuine omission is still "required" — only the empty string changed.
     answer.mockReturnValueOnce({ action: 'accept', content: {} });
     expect(
       await r.answer(elicitRequest(5, { requestedSchema: noteSchema(['note'], {}) })),
-    ).toMatchObject({ error: { code: -32603, message: expect.stringMatching(/required/) } });
+    ).toMatchObject({ error: { code: -32602, message: expect.stringMatching(/required/) } });
 
     // The other valid falsy answers were already handled and stay that way.
     answer.mockReturnValueOnce({ action: 'accept', content: { note: 'x' } });
@@ -334,7 +334,7 @@ describe('ServerRequestResponder', () => {
     const first = r.answer(elicitRequest('a'));
     expect(r.awaitingUser).toBe(true);
     expect(await r.answer(elicitRequest('b'))).toMatchObject({
-      error: { code: -32603, message: expect.stringContaining('still waiting') },
+      error: { code: -32602, message: expect.stringContaining('still waiting') },
     });
     r.cancel({ requestId: 'a' });
     // A form the server gave up on is reported as cancelled, whatever the surface said.
@@ -364,7 +364,7 @@ describe('ServerRequestResponder', () => {
         await old;
         expect(responder.awaitingUser).toBe(true);
         await expect(responder.answer(elicitRequest('another'))).resolves.toMatchObject({
-          error: { code: -32603 },
+          error: { code: -32602 },
         });
         responder.cancel({ requestId: id });
         finish[1]?.();

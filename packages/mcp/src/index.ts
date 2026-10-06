@@ -75,6 +75,7 @@ export type {
   ConnectionState,
   JsonRpcResponse,
   MCPTool,
+  MCPToolAnnotations,
   ToolCallResult,
 } from './contracts.js';
 export type {

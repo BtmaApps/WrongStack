@@ -58,7 +58,7 @@ describe('tool refresh lifecycle across transports', () => {
       const old = deferred<Reply>();
       const entered = deferred<void>();
       const metadata = {
-        protocolVersion: '2025-06-18',
+        protocolVersion: '2024-11-05',
         capabilities: { tools: {} },
         serverInfo: { name: 'fixture', version: '1' },
       };
@@ -114,7 +114,7 @@ describe('tool refresh lifecycle across transports', () => {
       let first;
       readline.createInterface({ input: process.stdin }).on('line', (line) => {
         const message = JSON.parse(line);
-        if (message.method === 'initialize') send({ jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1' } } });
+        if (message.method === 'initialize') send({ jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1' } } });
         if (message.method === 'tools/list') {
           if (!first) { first = message.id; send({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' }); }
           else { send({ jsonrpc: '2.0', id: message.id, result: tools('new') }); send({ jsonrpc: '2.0', id: first, result: tools('old') }); }

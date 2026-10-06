@@ -49,7 +49,7 @@ describe('SSETransport coverage', () => {
           jsonrpc: '2.0',
           id: 1,
           result: {
-            protocolVersion: '2025-06-18',
+            protocolVersion: '2024-11-05',
             capabilities: { tools: {}, resources: {}, prompts: {} },
             serverInfo: { name: 'fixture', version: '1.0.0' },
           },

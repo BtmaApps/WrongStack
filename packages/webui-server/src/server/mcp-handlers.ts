@@ -22,6 +22,7 @@ import {
   MCP_ENV_MASK,
   type MCPRegistry,
   type MCPServerOperationalHealth,
+  type MCPToolAnnotations,
   type McpManageDeps,
   type McpServerInfo,
   type McpServerInput,
@@ -91,6 +92,13 @@ interface MCPServerView {
   enabled: boolean;
   description?: string;
   tools?: string[];
+  /**
+   * Behaviour hints each tool's server CLAIMED about itself (MCP annotations),
+   * keyed by tool name. Optional + additive: older clients ignore it. This is
+   * the server's untrusted self-report, surfaced for operator display only —
+   * nothing in the permission path reads it.
+   */
+  toolAnnotations?: Record<string, MCPToolHintView>;
   error?: string;
   pid?: number;
   lazy?: boolean;
@@ -99,6 +107,44 @@ interface MCPServerView {
   env?: Record<string, string>;
   url?: string;
   health?: MCPServerOperationalHealth;
+}
+
+/**
+ * The annotation fields carried on the wire. Reuses the sanitized
+ * `@wrongstack/mcp` contract but drops `idempotentHint` — the WebUI renders
+ * only these four.
+ */
+type MCPToolHintView = Pick<
+  MCPToolAnnotations,
+  'title' | 'readOnlyHint' | 'destructiveHint' | 'openWorldHint'
+>;
+
+/**
+ * Collect the per-tool annotation hints a server claimed, keyed by tool name.
+ *
+ * Returns `undefined` when there is nothing to show (unknown server, no
+ * annotated tools, or a registry that predates `describeTools`) so the wire
+ * field stays absent rather than empty — absence must not read as a claim.
+ */
+function toolAnnotationsFor(
+  registry: MCPRegistry,
+  serverName: string,
+): Record<string, MCPToolHintView> | undefined {
+  if (typeof registry.describeTools !== 'function') return undefined;
+  const described = registry.describeTools(serverName);
+  if (!described) return undefined;
+  const out: Record<string, MCPToolHintView> = {};
+  for (const tool of described) {
+    const hints = tool.annotations;
+    if (!hints) continue;
+    const view: MCPToolHintView = {};
+    if (hints.title !== undefined) view.title = hints.title;
+    if (hints.readOnlyHint !== undefined) view.readOnlyHint = hints.readOnlyHint;
+    if (hints.destructiveHint !== undefined) view.destructiveHint = hints.destructiveHint;
+    if (hints.openWorldHint !== undefined) view.openWorldHint = hints.openWorldHint;
+    out[tool.name] = view;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /** Map a raw registry state to the UI status union. */
@@ -158,6 +204,7 @@ function maskServerEnv(env: Record<string, string>): Record<string, string> {
 export function toView(
   info: McpServerInfo,
   health?: MCPServerOperationalHealth | undefined,
+  toolAnnotations?: Record<string, MCPToolHintView> | undefined,
 ): MCPServerView {
   const view: MCPServerView = {
     name: info.name,
@@ -180,6 +227,7 @@ export function toView(
   if (info.env !== undefined) view.env = maskServerEnv(info.env);
   if (info.url !== undefined) view.url = info.url;
   if (health !== undefined) view.health = health;
+  if (toolAnnotations !== undefined) view.toolAnnotations = toolAnnotations;
   return view;
 }
 
@@ -231,7 +279,11 @@ export async function handleMcpList(
   );
   send(ws, {
     type: 'mcp.list',
-    payload: { servers: servers.map((server) => toView(server, health.get(server.name))) },
+    payload: {
+      servers: servers.map((server) =>
+        toView(server, health.get(server.name), toolAnnotationsFor(mcpRegistry, server.name)),
+      ),
+    },
   });
 }
 
@@ -478,9 +530,16 @@ export async function handleMcpDiscover(
   if (!d) return;
   const result = await discoverMcp(name(msg), d);
   if (result.ok) {
+    // Hints the live server claimed for its freshly discovered tools. Absent
+    // (not empty) when the server annotated nothing — absence is no claim.
+    const toolAnnotations = toolAnnotationsFor(d.registry, name(msg));
     send(ws, {
       type: 'mcp.server.discovered',
-      payload: { name: name(msg), tools: result.tools ?? [] },
+      payload: {
+        name: name(msg),
+        tools: result.tools ?? [],
+        ...(toolAnnotations !== undefined ? { toolAnnotations } : {}),
+      },
     });
   }
   send(ws, {

@@ -1,4 +1,4 @@
-import type { MCPTool, ToolCallResult } from './contracts.js';
+import type { MCPTool, MCPToolAnnotations, ToolCallResult } from './contracts.js';
 import { parseUrlElicitation, type UrlElicitation } from './elicitation.js';
 
 /** `URLElicitationRequiredError` (spec 2025-11-25). */
@@ -6,6 +6,41 @@ const URL_ELICITATION_REQUIRED = -32042;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const ANNOTATION_HINTS = [
+  'readOnlyHint',
+  'destructiveHint',
+  'idempotentHint',
+  'openWorldHint',
+] as const;
+
+/** A hostile server must not be able to publish a megabyte-long display title. */
+const ANNOTATION_TITLE_MAX_CHARS = 512;
+
+/**
+ * `ToolAnnotations` (spec 2025-03-26) is the server's claim about its own
+ * behaviour, and the spec states a client MUST treat it as untrusted unless the
+ * server is trusted. So keep only the five keys the schema defines, and only
+ * when each carries the type the schema declares: an adversarial server cannot
+ * smuggle a non-string `title`, a string-shaped boolean hint, or arbitrary
+ * extra payload into whatever surfaces render this.
+ *
+ * Returns `undefined` when nothing usable survives, so the field is omitted
+ * rather than published as an empty object.
+ */
+function sanitizeToolAnnotations(value: unknown): MCPToolAnnotations | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const out: MCPToolAnnotations = {};
+  const title = value['title'];
+  if (typeof title === 'string' && title.length > 0) {
+    out.title = title.slice(0, ANNOTATION_TITLE_MAX_CHARS);
+  }
+  for (const hint of ANNOTATION_HINTS) {
+    const raw = value[hint];
+    if (typeof raw === 'boolean') out[hint] = raw;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
@@ -103,6 +138,7 @@ export function normalizeMCPTools(value: unknown): MCPTool[] {
       description?: unknown | undefined;
       inputSchema?: unknown | undefined;
       outputSchema?: unknown | undefined;
+      annotations?: unknown | undefined;
     };
     if (typeof t.name !== 'string') continue;
     const name = t.name.trim();
@@ -111,6 +147,7 @@ export function normalizeMCPTools(value: unknown): MCPTool[] {
       t.inputSchema && typeof t.inputSchema === 'object' && !Array.isArray(t.inputSchema)
         ? (t.inputSchema as Record<string, unknown>)
         : { type: 'object', properties: {} };
+    const annotations = sanitizeToolAnnotations(t.annotations);
     // Log when a tool's schema is absent or invalid — this could indicate a
     // broken, misbehaving, or (if the server is untrusted) adversarial MCP
     // server trying to confuse the LLM with misleading type info.
@@ -130,6 +167,7 @@ export function normalizeMCPTools(value: unknown): MCPTool[] {
       ...(typeof t.description === 'string' ? { description: t.description } : {}),
       inputSchema,
       ...(isPlainObject(t.outputSchema) ? { outputSchema: t.outputSchema } : {}),
+      ...(annotations ? { annotations } : {}),
     });
   }
   return tools;

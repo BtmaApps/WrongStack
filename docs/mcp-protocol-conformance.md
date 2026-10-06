@@ -27,6 +27,31 @@ The current revision replaced the `initialize` handshake with a different model:
 
 We speak none of this. The spec keeps a backward-compatibility path for handshake-based clients
 (`2025-11-25` and earlier), which is why we still interoperate — at `2024-11-05` feature level.
+That path is permissive, not guaranteed: it exists only where the *peer* also implements the
+handshake. Against a modern-only server we are the "Legacy client × Modern server = Fails" row of
+the spec's own compatibility matrix, and we now fail fast rather than limping along (see below).
+
+## Version adoption is enforced on both sides
+
+`initialize` asks for the newest revision in `SUPPORTED_PROTOCOL_VERSIONS`. A server that cannot
+honour it answers with a revision of its own — which describes the server, not a grant to us. So:
+
+- **As a server** (`negotiateProtocolVersion`, `packages/mcp/src/constants.ts`): we echo a
+  supported request, otherwise answer our own latest, and let the peer decide.
+- **As a client** (`assertSupportedServerProtocolVersion`, same file): a revision outside
+  `SUPPORTED_PROTOCOL_VERSIONS` is **not adopted**. We log a structured
+  `mcp.protocol_version_mismatch` warning naming the server, what it claimed and what we support,
+  then throw. Per `2024-11-05` lifecycle — "if the client does not support the version in the
+  server's response, it SHOULD disconnect" — that throw *is* the disconnect: each transport's
+  `connect()` catch aborts its controller, and `MCPClient.connect` closes the client, which
+  terminates the stdio child. Nothing after `initialize` is sent, so we never issue requests under
+  a revision we cannot honour, and the `MCP-Protocol-Version` header can no longer carry a version
+  we do not implement.
+
+Consequence worth knowing before debugging a "server won't connect" report: a server that ignores
+version negotiation and always answers its own newest revision now fails at startup with that
+warning instead of half-working. That is the intended trade — silent protocol guessing was the bug.
+The server's claimed revision remains visible via `getServerMetadata()` for diagnostics.
 
 ## Implemented
 
@@ -74,6 +99,23 @@ As a client we advertise `capabilities: { elicitation: { form: {}, url: {} } }` 
 handler (the CLI host always does), and `{}` otherwise. Sampling and roots are never advertised, so
 a server cannot call something we do not implement.
 
+## Caller-side error-code partition (our servers)
+
+Quotes are from the live spec markdown on `raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main`, path `docs/specification/2024-11-05/server/`, fetched 2026-10-05; line numbers are in those files.
+
+| Case | We return | Spec citation |
+| --- | --- | --- |
+| Unknown resource / unknown prompt name | `-32602` | `prompts.mdx:242` "Invalid prompt name: `-32602` (Invalid params)" |
+| Missing required prompt argument | `-32602` | `prompts.mdx:243` "Missing required arguments: `-32602` (Invalid params)" |
+| Missing required request field (`uri`, `name`), non-object `arguments`, invalid pagination cursor | `-32602` | `utilities/pagination.mdx:94` "Invalid cursors **SHOULD** result in an error with code -32602 (Invalid params)"; the other cases are grouped here because they are all caller-side `params` faults, and `prompts.mdx:243` / `resources.mdx` treat a missing required field as Invalid params |
+| Genuine host failure (tool handler throws) | `-32603` | `prompts.mdx:244` "Internal errors: `-32603` (Internal error)" — reserved for this case only |
+| Unknown tool | `-32602` | `tools.mdx:232` lists "Unknown tools" under protocol errors; `tools.mdx:248-249` shows `"code": -32602, "message": "Unknown tool: ..."` |
+| `inputSchema` violation | in-band `{ content, isError: true }`, **not** a protocol error | `tools.mdx:236` "Tool Execution Errors: Reported in tool results with `isError: true`", example at `tools.mdx:267` (SEP-1303) |
+
+Implementation: `packages/mcp/src/server-dispatch.ts` defines base `InvalidParamsError` with `InvalidLookupError extends InvalidParamsError`; the outer catch maps `err instanceof InvalidParamsError ? -32602 : -32603`, and schema refusals are returned as tool results so the model can self-correct, while the WS-026 `logger.warn` audit line is preserved. `elicitation.ts:494-497` (duplicate `elicitation/create` while one is awaiting the user; `INVALID_PARAMS` at `:495`) and `:518` (answer rejected by `validateElicitationContent`) answer `-32602` via the same `INVALID_PARAMS` constant; they are `return error(...)` calls, not throws, because the surrounding `catch` at `:520-521` converts a throw into `action: "cancel"` — which would misreport a refusal as a user cancel.
+
+One honest drift note: for *resource not found* the page we implement prescribes `-32002` (`resources.mdx:337-338` keeps `-32002` / `-32603`); `-32602` for that case is the **current** revision's renumbering. We answer `-32602` deliberately, so a strict `2024-11-05` client checking for `-32002` sees a different code.
+
 ## Elicitation
 
 A server's `elicitation/create` is answered by `ServerRequestResponder`
@@ -90,7 +132,7 @@ A server's `elicitation/create` is answered by `ServerRequestResponder`
 - **Validation.** Accepted content is checked against the schema (required fields, choices, bounds,
   integer-ness; numeric text is coerced). A rejected answer is asked again with the reason, a few
   times, before the request is cancelled.
-- **Limits.** One open form per server (a second request is refused `-32603`); a form nobody answers
+- **Limits.** One open form per server (a second request is refused `-32602`); a form nobody answers
   is cancelled after 10 minutes; the server's `notifications/cancelled` closes it. During eternal or
   parallel autonomy a form nobody answers within the tool-approval wait (120 s) is cancelled then,
   and a `clarify` form takes its recommended answers — nobody is expected at the keyboard.

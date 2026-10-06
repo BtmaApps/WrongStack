@@ -4,7 +4,7 @@ import type { Logger } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
 import { MCPClient } from './client.js';
 import { expandMcpEnvPlaceholders } from './config-env.js';
-import { MCP_CONSTANTS } from './constants.js';
+import { MCP_CONSTANTS, MCPUnsupportedProtocolVersionError } from './constants.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
 import type { MCPClientElicitationHandler } from './elicitation.js';
 import { manifestConfigHash, writeCapabilityManifest } from './manifest-cache.js';
@@ -236,14 +236,28 @@ export async function persistSlotCapabilityManifest(
   if (slot.manifestWrite === pending) slot.manifestWrite = undefined;
 }
 
+/**
+ * Base delay for the *within-cycle* connect retry loop (`500 * multiplier^attempt`).
+ *
+ * Deliberately separate from `RECONNECT.BASE_DELAY_MS`, which is the
+ * *across-cycle* backoff base the registry scheduler uses — the two run on
+ * different clocks (a failing spawn retries fast; a dropped server retries
+ * less often as cycles accumulate).
+ */
+const CONNECT_ATTEMPT_BASE_MS = 500;
+
 export async function attemptConnectSlot(
   ctx: RegistryConnectContext,
   slot: ServerSlot,
 ): Promise<void> {
   const MAX_ATTEMPTS = MCP_CONSTANTS.RECONNECT.MAX_ATTEMPTS;
+  const BACKOFF_MULTIPLIER = MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER;
   const generation = slot.startupGeneration;
   const isCurrent = () =>
     ctx.servers.get(slot.cfg.name) === slot && slot.startupGeneration === generation;
+  // A refusal from an earlier cycle must not be blamed for this attempt's
+  // failure, so start clean; the terminal branch below records a fresh one.
+  slot.protocolVersionRefusal = undefined;
   let attempt = 0;
   while (attempt < MAX_ATTEMPTS) {
     // A slot removed (forget/markDisabled) or replaced must not keep spawning.
@@ -345,11 +359,31 @@ export async function attemptConnectSlot(
       }
       // Superseded work must not retry or mutate the replacement's health.
       if (!isCurrent() || (slot.state as ConnectionState) === 'disconnected') return;
-      ctx.recordFailure(slot, 'transport', 'connect-attempt-failed', Date.now() - startedAt);
-      ctx.log.warn(`MCP server "${slot.cfg.name}" connect attempt ${attempt} failed`, err);
-      if (attempt >= MAX_ATTEMPTS) {
+      // A protocol-version refusal is deterministic: the same server answers the
+      // same way on every retry, so the remaining attempts — and a fresh child
+      // process per attempt on stdio — buy nothing. Fold it into the single
+      // terminal path below rather than duplicating that cleanup.
+      // Keep the typed error, not just "it failed": the demand-wake wrapper has
+      // nothing else to report the refused revision with.
+      const refusal = err instanceof MCPUnsupportedProtocolVersionError ? err : undefined;
+      const terminal = refusal !== undefined;
+      slot.protocolVersionRefusal = refusal;
+      ctx.recordFailure(
+        slot,
+        terminal ? 'protocol' : 'transport',
+        terminal ? 'unsupported-protocol-version' : 'connect-attempt-failed',
+        Date.now() - startedAt,
+      );
+      if (!terminal) {
+        ctx.log.warn(`MCP server "${slot.cfg.name}" connect attempt ${attempt} failed`, err);
+      }
+      if (terminal || attempt >= MAX_ATTEMPTS) {
+        // Only say "exhausted N attempts" when N attempts actually ran; a
+        // refusal stops at one and must not claim otherwise.
         ctx.log.error(
-          `MCP server "${slot.cfg.name}" connect exhausted after ${MAX_ATTEMPTS} attempts`,
+          terminal
+            ? `MCP server "${slot.cfg.name}" will not speak a protocol revision we implement — not retrying`
+            : `MCP server "${slot.cfg.name}" connect exhausted after ${MAX_ATTEMPTS} attempts`,
           err,
         );
         slot.state = 'failed';
@@ -366,7 +400,7 @@ export async function attemptConnectSlot(
         });
         return;
       }
-      const delay = 500 * 2 ** attempt;
+      const delay = CONNECT_ATTEMPT_BASE_MS * BACKOFF_MULTIPLIER ** attempt;
       await new Promise((r) => setTimeout(r, delay));
       if ((slot.state as ConnectionState) === 'disconnected' || !isCurrent()) {
         return;

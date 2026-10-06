@@ -84,9 +84,9 @@
       "runtimeOrMixed": 54
     },
     "@wrongstack/core/kernel": {
-      "files": 341,
+      "files": 343,
       "typeOnly": 153,
-      "runtimeOrMixed": 208
+      "runtimeOrMixed": 210
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -129,9 +129,9 @@
       "runtimeOrMixed": 49
     },
     "@wrongstack/core/registry": {
-      "files": 151,
+      "files": 153,
       "typeOnly": 65,
-      "runtimeOrMixed": 89
+      "runtimeOrMixed": 91
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -189,8 +189,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1344,
-      "typeOnly": 1187,
+      "files": 1346,
+      "typeOnly": 1189,
       "runtimeOrMixed": 406
     },
     "@wrongstack/core/types/limits": {
@@ -7536,6 +7536,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/progress-log-transports.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7587,6 +7593,12 @@
       "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-version-terminal.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -10038,6 +10050,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/progress-log-transports.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10077,6 +10095,12 @@
       "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-version-terminal.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",
@@ -16038,6 +16062,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/progress-log-transports.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-capability-lifecycle.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16087,6 +16117,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-version-terminal.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

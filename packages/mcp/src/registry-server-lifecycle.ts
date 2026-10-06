@@ -158,6 +158,13 @@ export async function ensureConnected(
   }
   const client = await host.singleFlightConnect(slot);
   if (!client) {
+    // The connect loop swallows its failure (a bad server must not reject
+    // `start()`), so this wrapper is the caller's only chance to learn WHY. A
+    // protocol-version refusal names the revision the server insisted on —
+    // exactly the detail a generic message hides — so rethrow that error as-is
+    // and keep it matchable by type downstream.
+    const refusal = slot.protocolVersionRefusal;
+    if (refusal) throw refusal;
     throw new Error(`MCP server "${name}" failed to connect on demand`);
   }
   slot.lastUsed = Date.now();

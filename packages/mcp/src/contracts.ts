@@ -21,6 +21,41 @@ export type ConnectionState =
   /** Lazy server: registered from a cached manifest, process not spawned. */
   | 'dormant';
 
+/**
+ * `ToolAnnotations` — optional properties describing a tool's behaviour, added
+ * in spec 2025-03-26 (PR #185) and unchanged in 2026-07-28.
+ *
+ * Verified against `schema/2025-03-26/schema.ts` and `schema/2026-07-28/schema.ts`:
+ * exactly these five fields, with the spec's own defaults documented below.
+ *
+ * These are the SERVER'S CLAIMS about itself. The spec is explicit that clients
+ * MUST treat annotations as untrusted unless the server is trusted, so this
+ * type is metadata to surface and record — never an input to a permission
+ * decision.
+ */
+export interface MCPToolAnnotations {
+  /** Human-readable title for display purposes. */
+  title?: string | undefined;
+  /** True when the tool does not modify its environment. Spec default: `false`. */
+  readOnlyHint?: boolean | undefined;
+  /**
+   * True when the tool may perform destructive updates; false when it only
+   * makes additive ones. Meaningful only when `readOnlyHint` is false.
+   * Spec default: `true`.
+   */
+  destructiveHint?: boolean | undefined;
+  /**
+   * True when repeating the call with the same arguments has no further
+   * effect. Meaningful only when `readOnlyHint` is false. Spec default: `false`.
+   */
+  idempotentHint?: boolean | undefined;
+  /**
+   * True when the tool interacts with the outside world (network, third-party
+   * APIs) rather than only the local environment. Spec default: `true`.
+   */
+  openWorldHint?: boolean | undefined;
+}
+
 /** Minimal MCP tool descriptor returned by `tools/list`. */
 export interface MCPTool {
   name: string;
@@ -28,6 +63,8 @@ export interface MCPTool {
   inputSchema: Record<string, unknown>;
   /** JSON Schema of the tool's `structuredContent` (spec 2025-06-18). */
   outputSchema?: Record<string, unknown> | undefined;
+  /** Server-claimed behaviour hints (spec 2025-03-26). Untrusted: display only. */
+  annotations?: MCPToolAnnotations | undefined;
 }
 
 /**

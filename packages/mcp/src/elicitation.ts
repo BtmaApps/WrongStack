@@ -1,6 +1,7 @@
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/core/types';
 import { sanitizeTerminalText } from '@wrongstack/core/utils';
 import type { UrlElicitation } from './contracts.js';
+import { INVALID_PARAMS } from './server-dispatch.js';
 
 export type { UrlElicitation };
 
@@ -488,7 +489,12 @@ export class ServerRequestResponder {
     // One form at a time per server: a second request while the user is still
     // answering the first is refused rather than stacked into a queue of forms.
     if (this.pending.size > 0) {
-      return error(-32603, 'Another elicitation from this server is still waiting on the user');
+      // Caller-side request error, not our failure: the server sent a second
+      // `elicitation/create` while the first is still on screen.
+      return error(
+        INVALID_PARAMS,
+        'Another elicitation from this server is still waiting on the user',
+      );
     }
     const controller = new AbortController();
     this.pending.set(id, controller);
@@ -506,7 +512,10 @@ export class ServerRequestResponder {
       // A page carries no content back: `accept` is the user's consent to open it.
       if (prompt.mode === 'url') return { jsonrpc: '2.0', id, result: { action: 'accept' } };
       const content = validateElicitationContent(prompt.fields, result.content);
-      if (!content.ok) return error(-32603, `Elicitation answer rejected: ${content.error}`);
+      // The answer the server handed back does not satisfy the schema this
+      // client advertised — an invalid-params condition, not an internal one.
+      if (!content.ok)
+        return error(INVALID_PARAMS, `Elicitation answer rejected: ${content.error}`);
       return { jsonrpc: '2.0', id, result: { action: 'accept', content: content.value } };
     } catch {
       return { jsonrpc: '2.0', id, result: { action: 'cancel' } };

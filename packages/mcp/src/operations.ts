@@ -106,6 +106,7 @@ const SAFE_OPERATION_REASONS = new Set([
   'resource-template-discovery-failed',
   'started',
   'tool-call-failed',
+  'unsupported-protocol-version',
 ]);
 
 export interface MCPServerOperationState {

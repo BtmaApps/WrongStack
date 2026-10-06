@@ -14,11 +14,15 @@
  * promise about what the peer may then use.
  *
  * WrongStack speaks the 2024-11-05 shape: tools, resources, prompts,
- * pagination, list_changed, resource subscriptions and cancellation. It does
- * NOT implement sampling (deliberately denied — see below), nor most additions
- * of later revisions: resource links, `completion/complete`, or progress
- * notifications. Listing a newer revision here would advertise capabilities
- * that are not there.
+ * pagination, list_changed, resource subscriptions, cancellation, and
+ * progress notifications (`notifications/progress`, with a
+ * `params._meta.progressToken` sent on every `tools/call`). It does
+ * NOT implement sampling (deliberately denied — see below), nor resource links
+ * (added by a later revision). It is also short of the 2024-11-05 shape
+ * itself in two places: `completion/complete` and client-initiated `ping`
+ * are 2024-11-05 and not implemented/not sent. Those are gaps in the
+ * revision we claim, not deferrals — recorded here so the list is not read
+ * as full conformance.
  *
  * Known drift, accepted: the HTTP layer already implements Streamable HTTP
  * (added 2025-03-26), the `MCP-Protocol-Version` header and OAuth resource
@@ -61,6 +65,70 @@ export function negotiateProtocolVersion(requested: unknown): string {
   return MCP_CONSTANTS.PROTOCOL_VERSION;
 }
 
+/**
+ * Decide which revision to speak *after* a server has answered `initialize`.
+ *
+ * The mirror image of {@link negotiateProtocolVersion}, and the client-side
+ * half of the same handshake rule. A server that cannot honour the revision we
+ * asked for replies with its own latest — which is a statement about the
+ * server, not a grant. Adopting it verbatim (what every transport used to do:
+ * `this.protocolVersion = serverMetadata.protocolVersion`) silently moved us
+ * onto a revision whose semantics we do not implement, and the value was then
+ * echoed back in the `MCP-Protocol-Version` header, so we told the server we
+ * spoke a protocol we were not speaking.
+ *
+ * The revision we claim is ours to keep, never the server's to assign. The
+ * version the server reported stays in `getServerMetadata()` for diagnostics;
+ * it does not drive our requests, and we do not speak it.
+ *
+ * On an unsupported revision this THROWS. `2024-11-05` lifecycle is explicit:
+ * "If the client does not support the version in the server's response, it
+ * SHOULD disconnect." Every transport already unwinds on a connect throw —
+ * `abort()`s its controller and marks `failed`, and `MCPClient.connect` runs
+ * `close()` before rethrowing, which for stdio terminates the child process.
+ * So throwing here IS the disconnect, and the reason is recorded first as a
+ * structured warn line because the generic connect-failure log that follows
+ * would otherwise bury it.
+ */
+export function assertSupportedServerProtocolVersion(serverName: string, reported: string): string {
+  if (SUPPORTED_PROTOCOL_VERSIONS.includes(reported)) return reported;
+  const message =
+    `MCP server "${serverName}" answered \`initialize\` with protocol revision ` +
+    `"${reported}", which this client does not implement (supported: ` +
+    `${SUPPORTED_PROTOCOL_VERSIONS.join(', ')}); disconnecting`;
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      event: 'mcp.protocol_version_mismatch',
+      server: serverName,
+      reported,
+      supported: [...SUPPORTED_PROTOCOL_VERSIONS],
+      message,
+      timestamp: new Date().toISOString(),
+    }),
+  );
+  throw new MCPUnsupportedProtocolVersionError(serverName, reported, message);
+}
+
+/**
+ * A refused `initialize` revision, as a type rather than a message pattern.
+ *
+ * The refusal is deterministic — the same server will answer the same way on
+ * every retry — so the registry's connect loop treats it as terminal instead
+ * of spending its remaining attempts (and every later demand-wake) on a
+ * handshake that can never succeed. Match on this class, never on the text.
+ */
+export class MCPUnsupportedProtocolVersionError extends Error {
+  override readonly name = 'MCPUnsupportedProtocolVersionError';
+  constructor(
+    readonly serverName: string,
+    readonly reported: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export const MCP_CONSTANTS = Object.freeze({
   /** MCP protocol version advertised during handshake: the newest we implement. */
   PROTOCOL_VERSION: SUPPORTED_PROTOCOL_VERSIONS[0] as string,
@@ -101,8 +169,15 @@ export const MCP_CONSTANTS = Object.freeze({
     SWEEP_INTERVAL_MS: 30_000,
   }),
 
-  /** JSON-RPC response timeout for outstanding requests. */
-  RESPONSE_TIMEOUT_MS: 500,
+  /**
+   * Default per-request timeout for JSON-RPC requests, used when a server
+   * config sets no `requestTimeoutMs`.
+   *
+   * This is the single source for the three fallbacks that each spelled the
+   * same number out inline (the HTTP request-timeout signal, the HTTP
+   * transport's per-request default, and `MCPClient.request`).
+   */
+  REQUEST_TIMEOUT_MS: 60_000,
 
   /** Max buffer size for the SSE reader. */
   SSE_READER_MAX_BUFFER: 256 * 1024,

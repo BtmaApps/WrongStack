@@ -18,7 +18,7 @@ import { OFFICIAL_SERVERS, type OfficialServer, toServerConfig } from './officia
 
 export type { MCPServer } from './MCPServerCards.js';
 
-import type { MCPServerConfig } from './contracts.js';
+import type { MCPServerConfig, MCPToolHints } from './contracts.js';
 
 export type { MCPServerConfig };
 
@@ -74,10 +74,23 @@ export function MCPSection(): ReactElement {
 
     const handleMcpServerDiscovered = (msg: WSServerMessage) => {
       if (msg.type === 'mcp.server.discovered') {
-        const p = msg.payload as { name: string; tools: string[] };
+        const p = msg.payload as {
+          name: string;
+          tools: string[];
+          toolAnnotations?: Record<string, MCPToolHints>;
+        };
         setServers((prev) =>
           prev.map((s) =>
-            s.name === p.name ? { ...s, status: 'sleeping' as const, tools: p.tools } : s,
+            s.name === p.name
+              ? {
+                  ...s,
+                  status: 'sleeping' as const,
+                  tools: p.tools,
+                  // Fresh discovery owns the hint set: a payload without
+                  // annotations clears stale badges rather than keeping them.
+                  toolAnnotations: p.toolAnnotations,
+                }
+              : s,
           ),
         );
         setPendingOp(null);

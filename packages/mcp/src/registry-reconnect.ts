@@ -43,7 +43,10 @@ export function scheduleRegistryReconnect({
     clearTimeout(slot.reconnectTimer);
     slot.reconnectTimer = undefined;
   }
-  const base = Math.min(baseReconnectDelayMs * 2 ** slot.reconnectCycles, maxReconnectDelayMs);
+  const base = Math.min(
+    baseReconnectDelayMs * MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER ** slot.reconnectCycles,
+    maxReconnectDelayMs,
+  );
   const jitter = base * MCP_CONSTANTS.RECONNECT.JITTER_FACTOR * (Math.random() * 2 - 1);
   const delay = Math.max(100, Math.round(base + jitter));
   slot.reconnectTimer = setTimeout(() => {

@@ -5,7 +5,11 @@ import type { MCPClientOptions, ToolsChangedListener } from './client-types.js';
 import type { ConnectionState, MCPTool } from './contracts.js';
 
 import type { ServerRequestResponder } from './elicitation.js';
-import type { MCPServerMetadata } from './protocol.js';
+import type {
+  MCPLogMessageNotification,
+  MCPProgressNotification,
+  MCPServerMetadata,
+} from './protocol.js';
 
 import { type HttpTransportOptions, SSETransport, StreamableHTTPTransport } from './transport.js';
 
@@ -19,6 +23,8 @@ export interface ClientHttpConnectionHost {
   toolsChangedListeners: Set<ToolsChangedListener>;
   emitCapabilityChanged: (capability: 'resources' | 'prompts') => void;
   emitResourceUpdated: (uri: string) => void;
+  emitProgress: (progress: MCPProgressNotification) => void;
+  emitLogMessage: (log: MCPLogMessageNotification) => void;
   _serverMetadata: MCPServerMetadata | undefined;
   httpTransport: StreamableHTTPTransport | undefined;
   serverRequests: ServerRequestResponder;
@@ -67,6 +73,8 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
   host.sseTransport.onResourcesChanged(() => host.emitCapabilityChanged('resources'));
   host.sseTransport.onResourceUpdated((uri) => host.emitResourceUpdated(uri));
   host.sseTransport.onPromptsChanged(() => host.emitCapabilityChanged('prompts'));
+  host.sseTransport.onProgress((progress) => host.emitProgress(progress));
+  host.sseTransport.onLogMessage((log) => host.emitLogMessage(log));
   try {
     await host.sseTransport.connect();
   } catch (err) {
@@ -134,6 +142,8 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
   host.httpTransport.onResourcesChanged(() => host.emitCapabilityChanged('resources'));
   host.httpTransport.onResourceUpdated((uri) => host.emitResourceUpdated(uri));
   host.httpTransport.onPromptsChanged(() => host.emitCapabilityChanged('prompts'));
+  host.httpTransport.onProgress((progress) => host.emitProgress(progress));
+  host.httpTransport.onLogMessage((log) => host.emitLogMessage(log));
   try {
     await host.httpTransport.connect();
   } catch (err) {

@@ -1,7 +1,13 @@
 import type { JsonRpcServerRequest, MCPClientOptions } from './client-types.js';
 import type { JsonRpcResponse } from './contracts.js';
 import type { ServerRequestResponder } from './elicitation.js';
-import { resourceUpdatedUri } from './protocol.js';
+import {
+  logMessageNotification,
+  type MCPLogMessageNotification,
+  type MCPProgressNotification,
+  progressNotification,
+  resourceUpdatedUri,
+} from './protocol.js';
 import { isJsonRpcResult } from './transport-jsonrpc.js';
 
 /**
@@ -27,6 +33,8 @@ export interface ClientStdioProtocolHost {
   handleToolsListChanged(): Promise<void>;
   emitCapabilityChanged(capability: 'resources' | 'prompts'): void;
   emitResourceUpdated(uri: string): void;
+  emitProgress(progress: MCPProgressNotification): void;
+  emitLogMessage(log: MCPLogMessageNotification): void;
   readonly pending: Map<
     number,
     { resolve: (res: JsonRpcResponse) => void; reject: (err: Error) => void; timer: NodeJS.Timeout }
@@ -110,6 +118,12 @@ export function receiveStdioLine(host: ClientStdioProtocolHost, line: string): v
     } else if (envelope['method'] === 'notifications/resources/updated') {
       const uri = resourceUpdatedUri(envelope['params']);
       if (uri) host.emitResourceUpdated(uri);
+    } else if (envelope['method'] === 'notifications/progress') {
+      const progress = progressNotification(envelope['params']);
+      if (progress) host.emitProgress(progress);
+    } else if (envelope['method'] === 'notifications/message') {
+      const log = logMessageNotification(envelope['params']);
+      if (log) host.emitLogMessage(log);
     }
     return;
   }

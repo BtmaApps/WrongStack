@@ -30,3 +30,19 @@ export interface MCPServerConfig {
   url?: string;
   lazy?: boolean;
 }
+
+/**
+ * Behaviour hints one MCP tool's server CLAIMED about itself (the protocol's
+ * tool annotations), carried on `mcp.list` / `mcp.server.discovered` payloads
+ * keyed by tool name. Display-only, untrusted self-report: nothing in
+ * WrongStack enforces these hints, and an absent hint is no claim at all (the
+ * spec's own defaults are readOnly=false / destructive=true / openWorld=true),
+ * so the UI renders a badge only for an explicitly claimed hint.
+ */
+export interface MCPToolHints {
+  /** Human-readable tool name the server reported. */
+  title?: string;
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  openWorldHint?: boolean;
+}

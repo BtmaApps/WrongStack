@@ -322,3 +322,139 @@ export function resourceUpdatedUri(params: unknown): string | undefined {
   if (/[\r\n]/.test(uri)) return undefined;
   return uri;
 }
+
+/**
+ * Maximum characters carried through from a progress/log notification's free
+ * text (`message`, serialized log `data`). The payload is
+ * attacker-controllable server output that lands in logs and consoles, so it
+ * is bounded the same way `resourceUpdatedUri` bounds a URI.
+ */
+const MAX_NOTIFICATION_TEXT_CHARS = 2_000;
+
+/**
+ * Maximum length accepted for identifier-shaped fields (`progressToken`
+ * string form, `logger`). Longer or control-carrying values make the
+ * notification malformed — identifiers are never prose, so there is nothing
+ * legitimate to clamp.
+ */
+const MAX_NOTIFICATION_ID_CHARS = 256;
+
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
+const HAS_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Clamp free text from a server notification. Control characters — a forged
+ * newline above all — become spaces: this text is displayed and logged as if
+ * it were ours, and a line break could impersonate a system message.
+ */
+function clampedNotificationText(value: string): string {
+  const sanitized = value.replace(CONTROL_CHARS, ' ');
+  return sanitized.length > MAX_NOTIFICATION_TEXT_CHARS
+    ? `${sanitized.slice(0, MAX_NOTIFICATION_TEXT_CHARS)}…`
+    : sanitized;
+}
+
+/** Accept a bounded, control-free identifier, or report it malformed. */
+function notificationId(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  if (value.length > MAX_NOTIFICATION_ID_CHARS) return undefined;
+  if (HAS_CONTROL_CHARS.test(value)) return undefined;
+  return value;
+}
+
+/** Serialize non-string log data to bounded text. Wire data is always JSON;
+ * the fallbacks keep the parser total for direct callers. */
+function serializedNotificationData(value: unknown): string {
+  if (typeof value === 'string') return clampedNotificationText(value);
+  try {
+    return clampedNotificationText(JSON.stringify(value) ?? String(value));
+  } catch {
+    return clampedNotificationText(String(value));
+  }
+}
+
+/** Parsed `notifications/progress` payload (2024-11-05 progress utility). */
+export interface MCPProgressNotification {
+  /** Echo of the `params._meta.progressToken` the originating request sent. */
+  progressToken: string | number;
+  /** Monotonically increasing progress value for the token's request. */
+  progress: number;
+  /** Expected final `progress` value, when the server sent one. */
+  total?: number | undefined;
+  /** Human-readable progress text (a later revision's optional field). */
+  message?: string | undefined;
+}
+
+/** Log levels `notifications/message` may carry. */
+export type MCPLogLevel = 'debug' | 'info' | 'notice' | 'warning' | 'error';
+
+/** Parsed `notifications/message` (logging) payload. */
+export interface MCPLogMessageNotification {
+  level: MCPLogLevel;
+  /** Name of the emitting subsystem, when the server sent one. */
+  logger?: string | undefined;
+  /** Log content serialized to bounded, control-free text. */
+  data?: string | undefined;
+}
+
+const MCP_LOG_LEVELS: ReadonlySet<string> = new Set([
+  'debug',
+  'info',
+  'notice',
+  'warning',
+  'error',
+]);
+
+/**
+ * Parse a `notifications/progress` payload (2024-11-05 progress utility).
+ *
+ * A server sends progress only while a request whose `params._meta` carried
+ * a `progressToken` is in flight, so the token in the result is the only
+ * correlation between a notification and the call that asked for it. Returns
+ * `undefined` for a malformed payload rather than throwing — a notification
+ * has no reply, so a bad one is ignored, not answered (same contract as
+ * {@link resourceUpdatedUri}). Optional fields (`total`, `message`) are
+ * dropped when invalid instead of failing the whole notification.
+ */
+export function progressNotification(params: unknown): MCPProgressNotification | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+  const input = params as Record<string, unknown>;
+  const rawToken = input['progressToken'];
+  const progressToken =
+    typeof rawToken === 'number' && Number.isFinite(rawToken) ? rawToken : notificationId(rawToken);
+  if (progressToken === undefined) return undefined;
+  const progress = input['progress'];
+  if (typeof progress !== 'number' || !Number.isFinite(progress) || progress < 0) {
+    return undefined;
+  }
+  const rawTotal = input['total'];
+  const total =
+    typeof rawTotal === 'number' && Number.isFinite(rawTotal) && rawTotal > 0
+      ? rawTotal
+      : undefined;
+  const rawMessage = input['message'];
+  const message =
+    typeof rawMessage === 'string' && rawMessage.length > 0
+      ? clampedNotificationText(rawMessage)
+      : undefined;
+  return { progressToken, progress, total, message };
+}
+
+/**
+ * Parse a `notifications/message` (logging) payload (2024-11-05 logging
+ * utility). The log `data` is serialized to text and clamped — it is
+ * attacker-controllable server output — and an out-of-enum `level` makes the
+ * notification malformed. Returns `undefined` rather than throwing; a
+ * notification has no reply.
+ */
+export function logMessageNotification(params: unknown): MCPLogMessageNotification | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+  const input = params as Record<string, unknown>;
+  const level = input['level'];
+  if (typeof level !== 'string' || !MCP_LOG_LEVELS.has(level)) return undefined;
+  return {
+    level: level as MCPLogLevel,
+    logger: notificationId(input['logger']),
+    data: input['data'] === undefined ? undefined : serializedNotificationData(input['data']),
+  };
+}

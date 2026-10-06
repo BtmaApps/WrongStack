@@ -19,8 +19,11 @@ import {
 } from '../src/authorization.js';
 import { StreamableHTTPTransport } from '../src/transport.js';
 
+// A revision this client implements, so the authorization tests below exercise
+// authorization and not version negotiation. The mismatch path has its own
+// test at the end of this describe block.
 const INIT_RESULT = {
-  protocolVersion: '2025-06-18',
+  protocolVersion: '2024-11-05',
   capabilities: { tools: {} },
   serverInfo: { name: 'auth-fixture', version: '1.0.0' },
 };
@@ -1236,10 +1239,61 @@ describe('HTTP transport authorization provider', () => {
       expect(initializeCalls).toBe(2);
       expect(seenAuthorization.slice(0, 2)).toEqual(['Bearer old-token', 'Bearer new-token']);
       expect(seenProtocolVersion.slice(0, 2)).toEqual([null, null]);
-      expect(seenProtocolVersion.slice(2)).toEqual(['2025-06-18', '2025-06-18']);
+      // The negotiated revision — not the server's self-description — is what
+      // goes on the wire. See the mismatch test below for the refused case.
+      expect(seenProtocolVersion.slice(2)).toEqual(['2024-11-05', '2024-11-05']);
       await transport.close();
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('disconnects instead of speaking a revision the server picked for it', async () => {
+    const originalFetch = globalThis.fetch;
+    const seenMethods: string[] = [];
+    const warnLogs: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnLogs.push(args.map(String).join(' '));
+    };
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { method?: string; id?: number };
+      seenMethods.push(body.method ?? '');
+      return Response.json({
+        jsonrpc: '2.0',
+        id: body.id ?? 0,
+        // A revision this client does not implement: answering with its own
+        // latest is the server saying it will not speak 2024-11-05.
+        result: { ...INIT_RESULT, protocolVersion: '2025-11-25' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const transport = new StreamableHTTPTransport({
+        name: 'future-server',
+        url: 'https://m.test/mcp',
+      });
+      await expect(transport.connect()).rejects.toThrow(/2025-11-25/);
+
+      // The disconnect is the whole point: nothing after `initialize` is sent,
+      // so we never issue requests under a revision we cannot honour.
+      expect(seenMethods).toEqual(['initialize']);
+      expect(transport.getState()).not.toBe('connected');
+      const mismatch = warnLogs
+        .filter((line) => line.includes('mcp.protocol_version_mismatch'))
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(mismatch).toHaveLength(1);
+      expect(mismatch[0]).toMatchObject({
+        level: 'warn',
+        event: 'mcp.protocol_version_mismatch',
+        server: 'future-server',
+        reported: '2025-11-25',
+        supported: ['2024-11-05'],
+      });
+      await transport.close();
+    } finally {
+      globalThis.fetch = originalFetch;
+      console.warn = originalWarn;
     }
   });
 

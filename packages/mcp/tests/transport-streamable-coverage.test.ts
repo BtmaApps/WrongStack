@@ -3,7 +3,7 @@ import { StreamableHTTPTransport } from '../src/transport.js';
 
 const originalFetch = globalThis.fetch;
 const INITIALIZE_RESULT = {
-  protocolVersion: '2025-06-18',
+  protocolVersion: '2024-11-05',
   capabilities: { tools: {}, resources: {}, prompts: {} },
   serverInfo: { name: 'fixture', version: '1.0.0' },
 };

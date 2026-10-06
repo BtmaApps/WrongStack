@@ -13,7 +13,7 @@ import type {
   MCPPromptInsertion,
   MCPResourceInsertion,
 } from './content-selection.js';
-import type { ConnectionState, MCPTool } from './contracts.js';
+import type { ConnectionState, MCPTool, MCPToolAnnotations } from './contracts.js';
 import type {
   MCPFailureKind,
   MCPOperationKind,
@@ -22,6 +22,8 @@ import type {
 } from './operations.js';
 import type {
   MCPGetPromptResult,
+  MCPLogMessageNotification,
+  MCPProgressNotification,
   MCPPrompt,
   MCPReadResourceResult,
   MCPResource,
@@ -245,7 +247,12 @@ export class MCPRegistry {
   describeTools(
     name: string,
   ):
-    | { name: string; description?: string | undefined; inputSchema: Record<string, unknown> }[]
+    | {
+        name: string;
+        description?: string | undefined;
+        inputSchema: Record<string, unknown>;
+        annotations?: MCPToolAnnotations | undefined;
+      }[]
     | undefined {
     const slot = this.servers.get(name);
     if (!slot) return undefined;
@@ -257,6 +264,10 @@ export class MCPRegistry {
         name: tool.name,
         ...(tool.description !== undefined ? { description: tool.description } : {}),
         inputSchema: structuredClone(tool.inputSchema),
+        // Behaviour hints the SERVER claimed (already sanitized to the five
+        // known keys by normalizeMCPTools). Surfaced for the operator only:
+        // nothing in the permission path reads this field.
+        ...(tool.annotations ? { annotations: tool.annotations } : {}),
       }));
   }
 
@@ -604,6 +615,20 @@ export class MCPRegistry {
     this.events.emit('mcp.resource.updated', { name, uri });
   };
 
+  private readonly onProgress = (name: string, progress: MCPProgressNotification): void => {
+    if (!this.servers.has(name)) return;
+    // Display-only telemetry for a long-running call; the payload is already
+    // clamped/sanitized by the parser (attacker-controllable server output).
+    this.events.emit('mcp.progress', { name, ...progress });
+  };
+
+  private readonly onLogMessage = (name: string, log: MCPLogMessageNotification): void => {
+    if (!this.servers.has(name)) return;
+    // Display-only server log line. Never consulted by permission, sandbox,
+    // or tool-call decisions.
+    this.events.emit('mcp.log', { name, ...log });
+  };
+
   private readonly onPromptsChanged = (name: string): void => {
     const slot = this.servers.get(name);
     if (!slot) return;
@@ -617,12 +642,16 @@ export class MCPRegistry {
     client.addResourcesChangedListener(this.onResourcesChanged);
     client.addPromptsChangedListener(this.onPromptsChanged);
     client.addResourceUpdatedListener?.(this.onResourceUpdated);
+    client.addProgressListener?.(this.onProgress);
+    client.addLogMessageListener?.(this.onLogMessage);
   }
 
   private removeCatalogListeners(client: MCPClient): void {
     client.removeResourcesChangedListener?.(this.onResourcesChanged);
     client.removePromptsChangedListener?.(this.onPromptsChanged);
     client.removeResourceUpdatedListener?.(this.onResourceUpdated);
+    client.removeProgressListener?.(this.onProgress);
+    client.removeLogMessageListener?.(this.onLogMessage);
   }
 
   private readonly onChildExit = (

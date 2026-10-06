@@ -1,7 +1,7 @@
-import type { Config, MCPServerConfig } from '@wrongstack/core/types';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Config, MCPServerConfig } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseMcpArgs, runMcpManagementCommand } from '../src/slash-commands/mcp-utils.js';
 
@@ -196,6 +196,130 @@ describe('runMcpManagementCommand — list', () => {
       },
     );
     expect(stripAnsi(out)).toContain('disabled');
+  });
+});
+
+describe('runMcpManagementCommand — list tool hint badges', () => {
+  interface FakeTool {
+    name: string;
+    annotations?: Record<string, boolean>;
+  }
+
+  /** Registry whose `github` slot exposes the given tools via describeTools. */
+  function registryWithTools(tools: FakeTool[]) {
+    return makeRegistry({
+      list: () => [
+        {
+          name: 'github',
+          state: 'connected',
+          toolCount: tools.length,
+          tools: tools.map((t) => t.name),
+        },
+      ],
+      describeTools: (server: string) =>
+        server === 'github'
+          ? tools.map((t) => ({
+              name: t.name,
+              inputSchema: {},
+              ...(t.annotations ? { annotations: t.annotations } : {}),
+            }))
+          : undefined,
+    });
+  }
+
+  function listDeps(mcpRegistry: unknown) {
+    return {
+      config: fakeConfig({ mcpServers: { github: fakePreset({ enabled: true }) } }),
+      configPath,
+      mcpRegistry: mcpRegistry as never,
+      allServerPresets: { github: fakePreset() },
+    };
+  }
+
+  it('shows read-only for readOnlyHint:true and suppresses destructive', async () => {
+    const registry = registryWithTools([
+      { name: 'search', annotations: { readOnlyHint: true, destructiveHint: true } },
+    ]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    expect(out).toContain('search [read-only]');
+    expect(out).not.toContain('[destructive]');
+  });
+
+  it('shows destructive for readOnlyHint:false + destructiveHint:true', async () => {
+    const registry = registryWithTools([
+      { name: 'delete_repo', annotations: { readOnlyHint: false, destructiveHint: true } },
+    ]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    expect(out).toContain('delete_repo [destructive]');
+    expect(out).not.toContain('[read-only]');
+  });
+
+  it('shows open-world for openWorldHint:true alongside read-only', async () => {
+    const registry = registryWithTools([
+      { name: 'fetch_url', annotations: { readOnlyHint: true, openWorldHint: true } },
+    ]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    expect(out).toContain('fetch_url [read-only] [open-world]');
+  });
+
+  it('renders no badges and no legend when the server sent no annotations', async () => {
+    const registry = registryWithTools([{ name: 'plain_tool' }, { name: 'bare_tool' }]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    expect(out).toContain('plain_tool');
+    expect(out).toContain('bare_tool');
+    expect(out).not.toContain('[read-only]');
+    expect(out).not.toContain('[destructive]');
+    expect(out).not.toContain('[open-world]');
+    expect(out).not.toContain('claimed by the server');
+  });
+
+  it('renders no badge when a hint is absent — absent is not a spec default', async () => {
+    // destructiveHint:true alone must not badge: the spec default readOnly=false
+    // was never actually claimed by the server.
+    const registry = registryWithTools([
+      { name: 'mystery', annotations: { destructiveHint: true } },
+    ]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    expect(out).toContain('mystery');
+    expect(out).not.toContain('[destructive]');
+    expect(out).not.toContain('[read-only]');
+    expect(out).not.toContain('[open-world]');
+  });
+
+  it('states the untrusted-hints legend exactly once when badges are shown', async () => {
+    const registry = registryWithTools([
+      { name: 'safe_read', annotations: { readOnlyHint: true, openWorldHint: true } },
+      { name: 'wipe_all', annotations: { readOnlyHint: false, destructiveHint: true } },
+    ]);
+    const out = stripAnsi(
+      await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry)),
+    );
+    const legendLines = out
+      .split('\n')
+      .filter((l) => l.includes('hints are claimed by the server, not enforced by WrongStack'));
+    expect(legendLines).toHaveLength(1);
+  });
+
+  it('omits tool lines without throwing when describeTools returns undefined', async () => {
+    const registry = makeRegistry({
+      list: () => [{ name: 'github', state: 'disconnected', toolCount: 2, tools: ['a', 'b'] }],
+      describeTools: () => undefined,
+    });
+    const out = await runMcpManagementCommand({ action: 'list', name: '' }, listDeps(registry));
+    const clean = stripAnsi(out);
+    expect(clean).toContain('github');
+    expect(clean).toContain('○ disconnected');
+    expect(clean).not.toContain('claimed by the server');
   });
 });
 
