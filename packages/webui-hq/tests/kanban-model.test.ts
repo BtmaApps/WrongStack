@@ -1,6 +1,10 @@
 import type { HqKanbanSnapshotPayload } from '@wrongstack/core/hq';
 import { describe, expect, it } from 'vitest';
-import { projectKanbanBoards, projectKanbanUrl } from '../src/domain/kanban-model.js';
+import {
+  matchesKanbanTask,
+  projectKanbanBoards,
+  projectKanbanUrl,
+} from '../src/domain/kanban-model.js';
 
 function snapshot(): HqKanbanSnapshotPayload {
   return {
@@ -67,6 +71,17 @@ function snapshot(): HqKanbanSnapshotPayload {
 }
 
 describe('HQ Kanban view model', () => {
+  it('searches task metadata and combines search with status without mutating the board', () => {
+    const board = projectKanbanBoards(snapshot())[0]!;
+    const task = board.columns[1]!.tasks[0]!;
+    const before = structuredClone(board);
+    expect(matchesKanbanTask(task, ' SHIP frontend ')).toBe(true);
+    expect(matchesKanbanTask(task, 'agent-a t2', 'in_progress')).toBe(true);
+    expect(matchesKanbanTask(task, 'ship', 'blocked')).toBe(false);
+    expect(matchesKanbanTask(task, 'does-not-exist')).toBe(false);
+    expect(matchesKanbanTask(task, '')).toBe(true);
+    expect(board).toEqual(before);
+  });
   it('builds an encoded project endpoint', () => {
     expect(projectKanbanUrl('proj/a b')).toBe('/api/projects/proj%2Fa%20b/kanban');
   });

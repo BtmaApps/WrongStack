@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:51:41.565Z",
+  "generatedAt": "2026-10-06T18:52:32.871Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4824,
-    "testFiles": 4160,
-    "sourceLines": 1077810,
+    "sourceFiles": 4826,
+    "testFiles": 4161,
+    "sourceLines": 1077706,
     "workspaceEdges": 133,
-    "moduleEdges": 15862,
+    "moduleEdges": 15867,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 958
+    "testOnlyExports": 957
   },
   "errors": [],
   "packageCycles": [],
@@ -874,8 +874,8 @@
     {
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
-      "sourceFiles": 123,
-      "testFiles": 51,
+      "sourceFiles": 125,
+      "testFiles": 52,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -891,7 +891,7 @@
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 51
+          "testFiles": 52
         }
       ]
     },
@@ -21240,6 +21240,12 @@
         ]
       },
       {
+        "file": "packages/webui-hq/tests/components/cockpit-operations.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/tests/components/transcript-turn.test.tsx",
         "projects": [
           "root-node"
@@ -26244,6 +26250,26 @@
       "syntax": "import"
     },
     {
+      "from": "packages/webui-hq/src/views/cockpit.tsx",
+      "specifier": "./cockpit-cards.js",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/webui-hq/src/views/cockpit.tsx",
+      "specifier": "./cockpit-sections.js",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/webui-hq/src/views/cockpit.tsx",
+      "specifier": "./use-cockpit-data.js",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/webui-hq/src/views/cockpit.tsx",
+      "specifier": "./cockpit-cards.js",
+      "syntax": "export"
+    },
+    {
       "from": "apps/desktop/src/renderer/src/main.tsx",
       "specifier": "./styles.css",
       "syntax": "import"
@@ -26434,11 +26460,6 @@
       "relativeImports": 1
     },
     {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "lines": 774,
-      "relativeImports": 12
-    },
-    {
       "file": "packages/cli/src/slash-commands/fallback.ts",
       "lines": 773,
       "relativeImports": 3
@@ -26502,6 +26523,11 @@
       "file": "packages/tools/src/todo.ts",
       "lines": 766,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "lines": 764,
+      "relativeImports": 12
     }
   ],
   "testOnlyExports": [
@@ -29628,10 +29654,6 @@
     {
       "file": "packages/webui-hq/src/domain/use-session-transcript.ts",
       "name": "coalesceStreamedText"
-    },
-    {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "name": "CommandLatencyCard"
     },
     {
       "file": "packages/webui-hq/src/views/events.tsx",

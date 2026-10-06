@@ -5,239 +5,48 @@
  * without navigation. Each one therefore ends in a jump to the surface that
  * can act on it, so the Cockpit is a starting point rather than a dead end.
  */
-import type { HqAlert, HqCommandLatencySummary, HqSnapshot } from '@wrongstack/core/hq';
 import {
-  Activity,
-  ArrowUpRight,
   BellRing,
   Bot,
   CircleDollarSign,
-  Command,
   Gauge,
-  type LucideIcon,
   Network,
   RadioTower,
   Server,
   ShieldCheck,
+  ShieldQuestion,
 } from 'lucide-react';
 import type * as React from 'react';
-import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { EmptyState, Mono, StatTile, StatusDot } from '../components/hq/primitives.js';
+import { EmptyState, Mono, StatTile } from '../components/hq/primitives.js';
 import { ShareBar } from '../components/hq/view-chrome.js';
 import { Badge, type BadgeTone } from '../components/ui/badge.js';
-import { Button } from '../components/ui/button.js';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
-import { fetchJson, postCommand } from '../data/api.js';
-import { type HqViewId, useHqStore } from '../data/store/index.js';
-import type { HqTone } from '../domain/status-tone.js';
-import { shortenId } from '../lib/format.js';
+import { attentionBreakdown } from '../data/selectors.js';
+import { useHqStore } from '../data/store/index.js';
+import { usePendingApprovals } from '../domain/use-pending-approvals.js';
+import { usePendingUserInputs } from '../domain/use-pending-user-inputs.js';
 import { formatClock, formatPercent, formatUsd } from '../lib/format.js';
-import { cn } from '../lib/utils.js';
+import { alertTone, CockpitCard, CommandLatencyCard, TokenStats } from './cockpit-cards.js';
+import { SystemHealthTiles } from './cockpit-health.js';
 import {
-  type MailboxGatewayHealth,
-  type SystemHealth,
-  SystemHealthTiles,
-} from './cockpit-health.js';
+  CockpitAttentionStrip,
+  CockpitCommandStrip,
+  CockpitHero,
+  type CockpitReviewItem,
+  type OperationalTone,
+} from './cockpit-sections.js';
+import { useCockpitAlerts, useCockpitFleetStats, useCockpitHealth } from './use-cockpit-data.js';
 
-const HEALTH_POLL_MS = 30_000;
-const ALERTS_POLL_MS = 15_000;
-/** Cockpit shows a digest, not the archive — the Attention view has the rest. */
-const ALERT_DIGEST_LIMIT = 12;
-const TOP_PROJECTS = 4;
-
-interface AlertsResponse {
-  active: HqAlert[];
-  history: HqAlert[];
-}
-
-interface AlertDigestEntry {
-  severity: string;
-  ruleId: string;
-  message: string;
-  /**
-   * ISO string from the live WS feed, epoch ms from `/api/alerts`. Kept as a
-   * union rather than normalised: the previous implementation tested
-   * `typeof … === 'string'` on the API's NUMBER and silently fell back to
-   * `Date.now()`, so every polled alert claimed to have just fired.
-   */
-  timestamp: string | number;
-}
-
-type QuickAction = 'pause-noisy' | 'status-request';
-
-function alertTone(severity: string): BadgeTone {
-  if (severity === 'critical' || severity === 'error' || severity === 'high') return 'error';
-  if (severity === 'warn' || severity === 'warning' || severity === 'medium') return 'warn';
-  if (severity === 'info' || severity === 'low') return 'info';
-  return 'idle';
-}
-
-/**
- * W4 #7/#19 — render a latency percentile at the precision an operator can act
- * on. `undefined` means "no acked sample carried both timestamps", which is not
- * the same as 0 ms and must not read as a healthy zero.
- */
-function formatLatencyMs(ms: number | undefined): string {
-  if (ms === undefined) return '—';
-  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
-}
-
-/**
- * W4 #7/#19 — the command-plane `dispatched -> acknowledged` percentile
- * read-out.
- *
- * Extracted from the Cockpit grid so it can be tested without mounting the
- * whole dashboard, and so the "no samples" case has exactly one rendering: an
- * unacked command has no latency, and showing `0 ms` for it would read as a
- * perfectly healthy round-trip. `sampleCount === 0` therefore renders the empty
- * state, not a zeroed row.
- */
-export function CommandLatencyCard({
-  latency,
-}: {
-  latency: HqCommandLatencySummary | undefined;
-}): React.ReactElement {
-  if (latency === undefined || latency.sampleCount === 0) {
-    return (
-      <EmptyState
-        title="No acknowledged commands yet"
-        hint="Latency appears once a dispatched command is acknowledged."
-      />
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <div className="flex items-baseline gap-3 text-xs">
-        <span className="text-muted-foreground">p50</span>
-        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p50Ms)}</Mono>
-        <span className="text-muted-foreground">p95</span>
-        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p95Ms)}</Mono>
-        <span className="text-muted-foreground">p99</span>
-        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p99Ms)}</Mono>
-      </div>
-      <div className="flex gap-3 text-[10px] text-muted-foreground">
-        <span>{latency.sampleCount} acked</span>
-        <span>max {formatLatencyMs(latency.maxMs)}</span>
-      </div>
-    </div>
-  );
-}
-
-function CockpitCard({
-  icon: Icon,
-  title,
-  cta,
-  view,
-  tone,
-  className,
-  children,
-}: {
-  icon: LucideIcon;
-  title: string;
-  cta: string;
-  view: HqViewId;
-  tone?: 'attention' | 'positive';
-  className?: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <Card
-      data-testid="cockpit-card"
-      data-tone={tone}
-      className={cn(tone === 'attention' && 'border-warning/50', className)}
-    >
-      <CardHeader>
-        <Icon />
-        <CardTitle>{title}</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[11px] text-muted-foreground"
-            onClick={() => useHqStore.getState().setActiveView(view)}
-          >
-            {cta}
-            <ArrowUpRight className="size-3" />
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-function HeroMetric({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  tone = 'idle',
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string | number;
-  detail: string;
-  tone?: HqTone;
-}): React.ReactElement {
-  return (
-    <div className="flex min-w-32 flex-col gap-0.5">
-      <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-        <Icon className="size-3" />
-        {label}
-      </span>
-      <span
-        className={cn(
-          'tabular font-display text-2xl leading-none',
-          tone === 'error'
-            ? 'text-destructive'
-            : tone === 'warn'
-              ? 'text-warning'
-              : tone === 'active'
-                ? 'text-success'
-                : 'text-foreground',
-        )}
-      >
-        {value}
-      </span>
-      <span className="text-[10px] text-muted-foreground">{detail}</span>
-    </div>
-  );
-}
-
-function TokenStats({
-  tokenStats,
-}: {
-  tokenStats: NonNullable<HqSnapshot['totals']['tokenStats']> | undefined;
-}): React.ReactElement {
-  // Absent on older snapshots — an additive field. Show a placeholder rather
-  // than zeros, so "no data yet" is distinguishable from "zero tokens issued".
-  if (tokenStats === undefined) {
-    return <EmptyState title="Token stats unavailable on this HQ version" />;
-  }
-  const { browserTotal, clientTotal, expired, expiringSoon } = tokenStats;
-  return (
-    <div className="flex flex-wrap gap-x-6 gap-y-3">
-      <StatTile label="browser" value={browserTotal} />
-      <StatTile label="client" value={clientTotal} />
-      <StatTile label="total" value={browserTotal + clientTotal} />
-      <StatTile label="expired" value={expired} tone={expired > 0 ? 'error' : 'idle'} />
-      <StatTile
-        label="expiring soon"
-        value={expiringSoon}
-        tone={expiringSoon > 0 ? 'warn' : 'idle'}
-      />
-    </div>
-  );
-}
+export { CommandLatencyCard } from './cockpit-cards.js';
 
 export function CockpitView(): React.ReactElement {
-  const { snapshot, alerts, selectedClientId, connected } = useHqStore(
+  const { snapshot, alerts, selectedClientId, connected, commandStatuses } = useHqStore(
     useShallow((state) => ({
       snapshot: state.snapshot,
       alerts: state.alerts,
       selectedClientId: state.selectedClientId,
       connected: state.connected,
+      commandStatuses: state.commandStatuses,
     })),
   );
 
@@ -259,324 +68,81 @@ export function CockpitView(): React.ReactElement {
     client.capabilities.includes('control.receive'),
   );
   const quickActionClient =
-    controllableClients.find((client) => client.clientId === selectedClientId) ??
-    controllableClients[0] ??
-    null;
+    selectedClientId === null
+      ? (controllableClients[0] ?? null)
+      : (controllableClients.find((client) => client.clientId === selectedClientId) ?? null);
+  const { approvals } = usePendingApprovals();
+  const inputs = usePendingUserInputs();
 
-  const [activeAlerts, setActiveAlerts] = useState<HqAlert[]>([]);
-  const [alertHistory, setAlertHistory] = useState<HqAlert[]>([]);
-  const [alertsError, setAlertsError] = useState<string | null>(null);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
-  const [gatewayHealth, setGatewayHealth] = useState<MailboxGatewayHealth | null>(null);
-  const [busyAction, setBusyAction] = useState<QuickAction | null>(null);
-  const [actionResult, setActionResult] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = (): void => {
-      fetchJson<SystemHealth>('/api/system/health')
-        .then((data) => {
-          if (cancelled) return;
-          setHealth(data);
-          setHealthError(null);
-        })
-        .catch((cause: unknown) => {
-          if (!cancelled) setHealthError(cause instanceof Error ? cause.message : String(cause));
-        });
-      // Optional detail: an older server without the route simply shows none.
-      fetchJson<MailboxGatewayHealth>('/api/health/mailbox')
-        .then((data) => {
-          if (!cancelled) setGatewayHealth(data);
-        })
-        .catch(() => {
-          if (!cancelled) setGatewayHealth(null);
-        });
-    };
-    load();
-    const timer = window.setInterval(load, HEALTH_POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = (): void => {
-      fetchJson<AlertsResponse>('/api/alerts')
-        .then((data) => {
-          if (cancelled) return;
-          setActiveAlerts(data.active);
-          setAlertHistory(data.history);
-          setAlertsError(null);
-        })
-        .catch((cause: unknown) => {
-          if (!cancelled) setAlertsError(cause instanceof Error ? cause.message : String(cause));
-        });
-    };
-    load();
-    const timer = window.setInterval(load, ALERTS_POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  /**
-   * The digest merges the live WS feed with the polled API and dedupes on
-   * (rule, message, time): the same alert legitimately arrives through both
-   * channels, and showing it twice makes the fleet look worse than it is.
-   */
-  const alertDigest = useMemo<AlertDigestEntry[]>(() => {
-    const fromLive = alerts
-      .slice(-30)
-      .reverse()
-      .map<AlertDigestEntry>((alert) => ({
-        severity: alert.severity,
-        ruleId: alert.type ?? 'hq.alert',
-        message: alert.message,
-        timestamp: alert.timestamp,
-      }));
-    const fromApi = [...activeAlerts, ...alertHistory]
-      .slice(-30)
-      .reverse()
-      .map<AlertDigestEntry>((entry) => ({
-        severity: entry.severity,
-        ruleId: entry.ruleId,
-        message: entry.message,
-        timestamp: entry.lastFiredAt ?? entry.firstFiredAt,
-      }));
-
-    const seen = new Set<string>();
-    const digest: AlertDigestEntry[] = [];
-    for (const entry of [...fromLive, ...fromApi]) {
-      const key = `${entry.ruleId}|${entry.message}|${entry.timestamp}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      digest.push(entry);
-      if (digest.length >= ALERT_DIGEST_LIMIT) break;
-    }
-    return digest;
-  }, [alerts, activeAlerts, alertHistory]);
-
-  const agents = useMemo(() => {
-    let total = 0;
-    let busy = 0;
-    let waiting = 0;
-    let errored = 0;
-    let activeSessions = 0;
-    for (const session of sessions) {
-      if (session.status === 'active') activeSessions += 1;
-      for (const agent of session.agents ?? []) {
-        total += 1;
-        if (agent.status === 'running' || agent.status === 'streaming') busy += 1;
-        else if (agent.status === 'waiting_user') waiting += 1;
-        else if (agent.status === 'error') errored += 1;
-      }
-    }
-    return { total, busy, waiting, errored, activeSessions };
-  }, [sessions]);
-
-  const clientVersions = useMemo(() => {
-    const versions = new Set<string>();
-    for (const c of clients) {
-      if (c.version) versions.add(`v${c.version.replace(/^v/, '')}`);
-    }
-    return Array.from(versions);
-  }, [clients]);
-
-  const topProjects = useMemo(
-    () =>
-      [...projects]
-        .sort((left, right) => right.totalCostUsd - left.totalCostUsd)
-        .slice(0, TOP_PROJECTS),
-    [projects],
+  const { health, healthError, gatewayHealth } = useCockpitHealth();
+  const { activeAlerts, alertsError, alertDigest } = useCockpitAlerts(alerts);
+  const { agents, clientVersions, topProjects, spawnBudget } = useCockpitFleetStats(
+    sessions,
+    clients,
+    projects,
+    fleets,
   );
 
-  /** Spawn ceilings, summed over the fleets that actually report them. */
-  const spawnBudget = useMemo(() => {
-    let used = 0;
-    let max = 0;
-    let remaining = 0;
-    let known = 0;
-    let mismatch = 0;
-    for (const fleet of fleets) {
-      if (typeof fleet.usedSpawns !== 'number' || typeof fleet.maxSpawns !== 'number') continue;
-      known += 1;
-      used += fleet.usedSpawns;
-      if (Number.isFinite(fleet.maxSpawns)) max += fleet.maxSpawns;
-      if (typeof fleet.remainingSpawns === 'number' && Number.isFinite(fleet.remainingSpawns)) {
-        remaining += fleet.remainingSpawns;
-      }
-      if (fleet.ceilingMismatch) mismatch += 1;
-    }
-    return known > 0 ? { used, max, remaining, mismatch } : null;
-  }, [fleets]);
-
-  async function dispatchQuickAction(action: QuickAction): Promise<void> {
-    if (quickActionClient === null) return;
-    setBusyAction(action);
-    setActionResult(null);
-    setActionError(null);
-    try {
-      const payload =
-        action === 'pause-noisy'
-          ? {
-              subject: 'HQ quick action: pause noisy agents',
-              body: 'HQ operator requests: pause non-critical/noisy agent work, reduce chatter, and keep only essential status updates until resumed.',
-              priority: 'high',
-            }
-          : {
-              subject: 'HQ quick action: status request',
-              body: 'HQ operator requests a concise status broadcast from active agents: current task, blocker if any, and next expected action.',
-              priority: 'normal',
-            };
-      const result = await postCommand(quickActionClient.clientId, 'broadcast', payload);
-      setActionResult(`queued ${result.commandId}`);
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
-  const attention = activeAlerts.length + governanceWarnings.length;
-  const operationalTone: 'degraded' | 'attention' | 'nominal' =
-    !connected || health?.status === 'degraded'
+  const signals = attentionBreakdown(snapshot, alerts, commandStatuses);
+  const promptCount = approvals.length + inputs.length;
+  const attention =
+    Math.max(activeAlerts.length, signals.alerts) +
+    signals.governance +
+    signals.agents +
+    signals.clients +
+    signals.commands +
+    promptCount;
+  const reviewItems: CockpitReviewItem[] = [
+    { label: 'Decisions waiting', count: promptCount, view: 'approvals', icon: ShieldQuestion },
+    { label: 'Blocked or errored agents', count: signals.agents, view: 'alerts', icon: Bot },
+    {
+      label: 'Alerts & governance',
+      count: Math.max(activeAlerts.length, signals.alerts) + signals.governance,
+      view: 'alerts',
+      icon: BellRing,
+    },
+    { label: 'Failed commands', count: signals.commands, view: 'control', icon: RadioTower },
+    { label: 'Disconnected clients', count: signals.clients, view: 'fleet', icon: Network },
+  ];
+  const operationalTone: OperationalTone =
+    !connected || snapshot === null || health?.status === 'degraded'
       ? 'degraded'
       : attention > 0
         ? 'attention'
         : 'nominal';
   const operationalLabel =
-    operationalTone === 'degraded'
-      ? 'Link degraded'
-      : operationalTone === 'attention'
-        ? 'Attention needed'
-        : 'Systems nominal';
+    snapshot === null
+      ? 'Waiting for telemetry'
+      : operationalTone === 'degraded'
+        ? 'Link degraded'
+        : operationalTone === 'attention'
+          ? 'Attention needed'
+          : 'Systems nominal';
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <section
-        data-testid="cockpit-hero"
-        data-tone={operationalTone}
-        className={cn(
-          'flex flex-wrap items-start gap-x-10 gap-y-4 border-l-2 bg-card/40 py-1 pl-4',
-          operationalTone === 'degraded'
-            ? 'border-destructive'
-            : operationalTone === 'attention'
-              ? 'border-warning'
-              : 'border-success',
-        )}
-      >
-        <div className="min-w-64 flex-1 space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
-            <StatusDot
-              tone={
-                operationalTone === 'degraded'
-                  ? 'error'
-                  : operationalTone === 'attention'
-                    ? 'warn'
-                    : 'active'
-              }
-              pulse={operationalTone === 'nominal' && connected}
-            />
-            {operationalLabel}
-          </div>
-          <h2 className="font-display text-2xl leading-none">Operational picture</h2>
-          <p className="max-w-prose text-xs text-muted-foreground">
-            Live fleet health, agent activity, governance and spend on one surface.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Mono>
-              {snapshot?.generatedAt !== undefined
-                ? `Snapshot ${formatClock(snapshot.generatedAt)}`
-                : 'Awaiting first snapshot'}
-            </Mono>
-            <Mono>{controllableClients.length} command-ready clients</Mono>
-            {activeAlerts.length > 0 && (
-              <Badge tone="error">{activeAlerts.length} active alerts</Badge>
-            )}
-            {governanceWarnings.length > 0 && (
-              <Badge tone="error">{governanceWarnings.length} governance advisories</Badge>
-            )}
-            {alertsError !== null && <Badge tone="error">{alertsError}</Badge>}
-          </div>
-        </div>
+      <CockpitHero
+        operationalTone={operationalTone}
+        operationalLabel={operationalLabel}
+        connected={connected}
+        snapshot={snapshot}
+        commandReadyClients={controllableClients.length}
+        activeAlertCount={activeAlerts.length}
+        governanceWarningCount={governanceWarnings.length}
+        alertsError={alertsError}
+        busyAgents={agents.busy}
+        machineCount={machines.length}
+        projectCount={projects.length}
+        attention={attention}
+      />
 
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <HeroMetric
-            icon={Bot}
-            label="Active agents"
-            value={totals?.activeAgents ?? 0}
-            detail={`${agents.busy} working`}
-          />
-          <HeroMetric
-            icon={Activity}
-            label="Live sessions"
-            value={totals?.activeSessions ?? 0}
-            detail={`${machines.length} machines`}
-          />
-          <HeroMetric
-            icon={BellRing}
-            label="Attention"
-            value={attention}
-            detail={attention > 0 ? 'review signals' : 'all clear'}
-            tone={attention > 0 ? 'warn' : 'active'}
-          />
-          <HeroMetric
-            icon={CircleDollarSign}
-            label="Total cost"
-            value={formatUsd(totals?.totalCostUsd ?? 0)}
-            detail={`${projects.length} projects`}
-          />
-        </div>
-      </section>
+      {attention > 0 && <CockpitAttentionStrip reviewItems={reviewItems} />}
 
-      <section
-        aria-label="Cockpit quick actions"
-        className="flex flex-wrap items-center gap-2 border border-border bg-card px-3 py-2"
-      >
-        <Command className="size-4 shrink-0 text-muted-foreground" />
-        <div className="flex flex-col leading-tight">
-          <strong className="text-xs">Command strip</strong>
-          <Mono>
-            {quickActionClient === null
-              ? 'No controllable client connected'
-              : `Target ${shortenId(quickActionClient.clientId, 9, 6)}`}
-          </Mono>
-        </div>
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={quickActionClient === null || busyAction !== null}
-            onClick={() => void dispatchQuickAction('pause-noisy')}
-            // A mailbox broadcast the agents read and may act on — nothing is
-            // halted. The label used to promise a pause the command never did;
-            // a hard stop is Control → abort.
-            title="Broadcasts a high-priority request to reduce activity. Agents are not stopped; use Control → abort for that."
-          >
-            {busyAction === 'pause-noisy' ? 'Queuing…' : 'Ask agents to quiet down'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={quickActionClient === null || busyAction !== null}
-            onClick={() => void dispatchQuickAction('status-request')}
-          >
-            {busyAction === 'status-request' ? 'Queuing…' : 'Request fleet status'}
-          </Button>
-          <Button size="sm" onClick={() => useHqStore.getState().setActiveView('control')}>
-            <RadioTower />
-            Open control
-          </Button>
-        </div>
-        {actionResult !== null && <Badge tone="info">{actionResult}</Badge>}
-        {actionError !== null && <Badge tone="error">{actionError}</Badge>}
-      </section>
+      <CockpitCommandStrip
+        quickActionClient={quickActionClient}
+        controllableClients={controllableClients}
+        snapshot={snapshot}
+      />
 
       {/* `grid-flow-row-dense` matters here: the cards have mixed spans and are
           conditionally rendered, so without it a wide card that cannot fit

@@ -80,7 +80,7 @@ export const HQ_VIEWS: readonly HqViewDefinition[] = [
     id: 'kanban',
     label: 'Kanban',
     eyebrow: 'Project work',
-    description: 'Read-only project boards synchronized across clones and machines.',
+    description: 'Project boards, task details and actions synchronized across machines.',
     group: 'Operations',
     icon: Columns3,
   },

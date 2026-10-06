@@ -27,6 +27,18 @@ export function attentionCount(
   alerts: readonly HqAlertMessage[],
   commandStatuses: readonly HqCommandAuditEntry[],
 ): number {
+  return Object.values(attentionBreakdown(snapshot, alerts, commandStatuses)).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
+/** The same actionable sources, kept separate for links to their resolution surface. */
+export function attentionBreakdown(
+  snapshot: HqSnapshot | null,
+  alerts: readonly HqAlertMessage[],
+  commandStatuses: readonly HqCommandAuditEntry[],
+): { alerts: number; governance: number; agents: number; clients: number; commands: number } {
   const governance = (snapshot?.projects ?? []).filter(
     (project) =>
       project.governance?.signal.level === 'warning' ||
@@ -43,7 +55,13 @@ export function attentionCount(
     (command) => command.ackStatus === 'failed' || command.ackStatus === 'rejected',
   ).length;
 
-  return actionableAlertCount(alerts) + governance + blockedAgents + lostClients + failedCommands;
+  return {
+    alerts: actionableAlertCount(alerts),
+    governance,
+    agents: blockedAgents,
+    clients: lostClients,
+    commands: failedCommands,
+  };
 }
 
 export function unreadMailboxCount(snapshot: HqSnapshot | null): number {

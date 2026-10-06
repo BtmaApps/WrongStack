@@ -74,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 159,
-      "typeOnly": 95,
+      "files": 158,
+      "typeOnly": 94,
       "runtimeOrMixed": 97
     },
     "@wrongstack/core/hq/protocol": {
@@ -6173,12 +6173,6 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/src/views/brain.tsx",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/hq",
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

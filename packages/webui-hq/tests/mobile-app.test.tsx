@@ -164,6 +164,18 @@ afterEach(() => {
 });
 
 describe('HQ mobile app', () => {
+  it('does not fetch protected data while showing the login gate', async () => {
+    useHqStore.setState({ authRequired: true, snapshot: null, events: [] });
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root.render(<MobileApp />));
+    expect(host.querySelector('[data-testid="hq-mobile"]')).toBeNull();
+    expect(host.textContent).toContain('WrongStack HQ');
+    expect(fetchJson).not.toHaveBeenCalled();
+    expect(postCommand).not.toHaveBeenCalled();
+  });
+
   it('renders the phone shell with session and agent selectors', async () => {
     await mount([
       client('control-client', ['telemetry.publish', 'session.summary', 'control.receive']),

@@ -511,6 +511,17 @@ describe.skipIf(!E2E)('HQ visual smoke (WSTACK_E2E=1)', () => {
       await shoot('alerts', '11-alerts');
       await shoot('kanban', '12-kanban');
       await shoot('settings', '13-security');
+      await shoot('approvals', '18-approvals');
+      await shoot('events', '19-events');
+
+      // Bookmark, reload and browser history must agree with store-driven navigation.
+      await shoot('cost', '20-cost-bookmark');
+      expect(new URL(page.url()).hash).toBe('#/cost');
+      await page.reload();
+      await page.waitForSelector('[data-testid="nav-item"][data-view="cost"][aria-current="page"]');
+      await shoot('cockpit', '21-cockpit-history');
+      await page.goBack();
+      await page.waitForSelector('[data-testid="nav-item"][data-view="cost"][aria-current="page"]');
 
       // Appearance: light/dark is a CLASS on <html> and the accent palette an
       // ATTRIBUTE, so both must actually land on the document element — a
@@ -547,6 +558,11 @@ describe.skipIf(!E2E)('HQ visual smoke (WSTACK_E2E=1)', () => {
 
       // Narrow viewport: the rail collapses to an overlay with a scrim, so the
       // content is never squeezed to nothing on a laptop half-screen.
+      await page.setViewportSize({ width: 1200, height: 900 });
+      await page.waitForTimeout(300);
+      expect(await page.locator('[data-testid="nav-sidebar"]').getAttribute('data-open')).toBe(
+        'false',
+      );
       await page.setViewportSize({ width: 820, height: 900 });
       await page.waitForTimeout(400);
       // Narrowing must fold the rail away rather than leave it covering the
