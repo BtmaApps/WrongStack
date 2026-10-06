@@ -1,211 +1,59 @@
 import { spawn } from 'node:child_process';
-import * as fs from 'node:fs';
 import * as net from 'node:net';
-import { fileURLToPath } from 'node:url';
-import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
+import { daemonSpawnArgs } from '@wrongstack/persistence';
 import { closeDaemonLogFd, openDaemonLogFd } from './daemon-log.js';
 import {
-  sageProjectServerEndpoint,
-  sageProjectServerLogPath,
-  sageProjectServerMetadataPath,
-} from './project-server-endpoint.js';
+  AUTH_RETRY_DELAY_MS,
+  AUTH_RETRY_MAX_ATTEMPTS,
+  CONNECT_ATTEMPT_TIMEOUT_MS,
+  cancellationError,
+  delay,
+  MAX_SERVER_WRITE_BUFFER_BYTES,
+  type PendingRequest,
+  type SageProjectServerCallOptions,
+  type SageProjectServerConnectionOptions,
+  type SageProjectServerConnectionState,
+  type SageProjectServerConnectionStatus,
+} from './project-server-client-contract.js';
+import {
+  connectWithElection,
+  handleServerMessage,
+  handleSocketClose,
+  receiveData,
+  type SageProjectServerConnectionInternals,
+  type SageProjectServerOutboundMessage,
+  sendRequest,
+} from './project-server-client-io.js';
+import {
+  isSageProjectServerAvailable,
+  readSageServerAuthToken,
+  resolveProjectServerUrl,
+} from './project-server-client-launch.js';
+import { sageProjectServerEndpoint, sageProjectServerLogPath } from './project-server-endpoint.js';
 import {
   encodeSageProjectServerMessage,
-  SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
   type SageProjectServerInfo,
   type SageProjectServerMessage,
-  type SageProjectServerMetadata,
   type SageRequestMetadata,
   type SageServerOperationName,
   type SageServerOperations,
 } from './project-server-protocol.js';
 
-const CONNECT_ATTEMPT_TIMEOUT_MS = 750;
-const SERVER_START_TIMEOUT_MS = 10_000;
-const DEFAULT_CALL_TIMEOUT_MS = 30_000;
-const MAX_FRAME_BUFFER_CHARS = 8 * 1024 * 1024;
-/**
- * Pause between retries of a request refused with `UnauthorizedSageRequest`.
- * On cold spawn the daemon binds the socket before `store.initialize()` +
- * `writeMetadata()` finish, so the first request can arrive while
- * `server.json` does not exist yet. The token is invalidated in `onMessage`;
- * this delay gives the daemon time to write the file before
- * `currentAuthToken()` re-reads it.
- */
-const AUTH_RETRY_DELAY_MS = 150;
-/**
- * How many auth-refused retries `call()` attempts before surfacing the error.
- * `onMessage` invalidates the cached token on every `UnauthorizedSageRequest`,
- * so each retry re-reads `server.json`. Bounded rather than a single shot
- * because a true cold spawn — SQLite open + migrations on a cold disk — can
- * take well over one delay interval before `writeMetadata()` lands; ~2s total
- * covers realistic init while still failing fast when the daemon is genuinely
- * unreachable.
- */
-const AUTH_RETRY_MAX_ATTEMPTS = 13;
-/**
- * Minimum spacing between detached-server spawn attempts inside one
- * `connectWithElection` window. The first spawn still fires immediately;
- * re-arming is cadence-bounded so a dead first daemon is recovered without
- * flooding the machine with losing candidates (the endpoint bind IS the
- * election, so an extra spawn that cannot win exits without side effects).
- * Mirrors the mailbox client's fix for the same single-shot-spawn defect.
- */
-const SPAWN_RETRY_CADENCE_MS = 750;
-
-type SageProjectServerConnectionStatus =
-  | 'unavailable'
-  | 'offline'
-  | 'connecting'
-  | 'connected'
-  | 'error'
-  | 'stopping';
-
-export interface SageProjectServerConnectionState {
-  status: SageProjectServerConnectionStatus;
-  connected: boolean;
-  projectRoot: string;
-  storageDirectory?: string | undefined;
-  endpoint: string;
-  pid?: number | undefined;
-  lastError?: string | undefined;
-}
-
-interface SageProjectServerCallOptions {
-  timeoutMs?: number | undefined;
-  signal?: AbortSignal | undefined;
-  meta: SageRequestMetadata;
-}
-
-interface PendingRequest {
-  resolve(value: unknown): void;
-  reject(reason: unknown): void;
-  timer: ReturnType<typeof setTimeout>;
-  signal?: AbortSignal | undefined;
-  onAbort?: (() => void) | undefined;
-}
-
-function resolveProjectServerUrl(): URL | null {
-  if (process.env['WRONGSTACK_SAGE_SERVER'] === '0') return null;
-  if (isStandaloneBinary()) return standaloneDaemonUrl('sage');
-  try {
-    const url = new URL('./project-server.js', import.meta.url);
-    if (url.protocol !== 'file:') return null;
-    const file = fileURLToPath(url);
-    // Primary probe: the seam existing callers and tests mock, and the fast
-    // path for the common available case.
-    if (fs.existsSync(file)) return url;
-    // existsSync folds transient stat errors (EMFILE/EPERM/EBUSY spikes
-    // under full-suite parallel load) into false. Verify with statSync
-    // before declaring the build missing: ENOENT = genuinely absent; any
-    // other error (or a contradictory success) = assume present — the
-    // recoverable direction, since a spawn against a missing file is a
-    // guarded dead child the retry loop survives, while a false negative
-    // was fatal to the connect window (mailbox sibling flake, observed
-    // 2026-09-15, shard 3/4).
-    try {
-      fs.statSync(file);
-      return url;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return null;
-      return url;
-    }
-  } catch {
-    // The package may be running directly from TypeScript source.
-  }
-  return null;
-}
-
-/**
- * Thrown by an attach-only connection (`spawnIfMissing: false`) when no daemon
- * is serving the project. Named so a caller can tell "WrongStack is not open
- * here" apart from a daemon that is running but failing.
- */
-export class SageProjectServerNotRunningError extends Error {
-  override readonly name = 'SageProjectServerNotRunning';
-  constructor(
-    readonly projectRoot: string,
-    cause?: unknown,
-  ) {
-    super(
-      `No running WrongStack SAGE daemon for ${projectRoot}. Open wstack (CLI, TUI or WebUI) in this project, then retry.`,
-      cause === undefined ? undefined : { cause },
-    );
-  }
-}
-
-export interface SageProjectServerConnectionOptions {
-  /**
-   * `false` = attach-only: connect to a daemon a WrongStack host already
-   * started, never spawn one. For external clients (the SAGE MCP bridge) that
-   * must not stand memory up on their own. Default `true`.
-   */
-  spawnIfMissing?: boolean | undefined;
-}
-
-export function isSageProjectServerAvailable(): boolean {
-  return resolveProjectServerUrl() !== null;
-}
-
-/**
- * A sleep whose timer stays REF'd on purpose.
- *
- * Both callers (`connectWithElection`'s retry pause and the auth retry in
- * `request`) are awaited by boot code that has nothing else pending on the
- * loop: the previous socket is destroyed before the pause and the next one
- * does not exist yet. An unref'd timer there let Node decide the loop was
- * empty and exit 0 *in the middle of boot* — the WebUI process vanished
- * before printing its banner, and CI reported only "exited before it was
- * ready (code 0)". A pending promise must hold the process open; the hold is
- * bounded by the caller's own deadline (10s election, 3 auth retries).
- */
-function delay(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-      reject(cancellationError(signal!));
-    };
-    if (signal) {
-      signal.addEventListener('abort', onAbort, { once: true });
-      if (signal.aborted) onAbort();
-    }
-  });
-}
-
-function cancellationError(signal: AbortSignal): Error {
-  return signal.reason instanceof Error ? signal.reason : new Error('SAGE request cancelled');
-}
-
-function remoteError(message: string, name?: string): Error {
-  const error = new Error(message);
-  if (name && name !== 'Error') error.name = name;
-  return error;
-}
-
-/**
- * Symmetric counterpart of the server's `MAX_CLIENT_WRITE_BUFFER_BYTES`
- * (project-server.ts): the same 8 MB ceiling on bytes queued for outbound
- * write. A stalled daemon must not grow this process's heap without bound —
- * destroying the socket routes pending calls through the existing
- * transport-death rejection and the connect/election reconnect, and the
- * daemon re-reads its state from SQLite on the next connection (H4,
- * docs/sage-phase4-design.md).
- */
-const MAX_SERVER_WRITE_BUFFER_BYTES = 8 * 1024 * 1024;
+export {
+  type SageProjectServerConnectionOptions,
+  type SageProjectServerConnectionState,
+  SageProjectServerNotRunningError,
+} from './project-server-client-contract.js';
+export { isSageProjectServerAvailable } from './project-server-client-launch.js';
 
 export class SageProjectServerConnection {
   private socket: net.Socket | null = null;
   private info: SageProjectServerInfo | null = null;
-  private buffer = '';
+  protected buffer = '';
   private connecting: Promise<void> | null = null;
-  private connectResolve: (() => void) | null = null;
+  protected connectResolve: (() => void) | null = null;
   private connectReject: ((error: unknown) => void) | null = null;
-  private nextId = 1;
+  protected nextId = 1;
   private readonly pending = new Map<number, PendingRequest>();
   private readonly eventListeners = new Set<
     (event: string, payload: unknown, meta?: SageRequestMetadata | undefined) => void
@@ -220,7 +68,7 @@ export class SageProjectServerConnection {
    */
   private authToken: string | undefined;
   /** Error reported by the live socket before it closed, if any. */
-  private closeCause: Error | null = null;
+  protected closeCause: Error | null = null;
   private closeController = new AbortController(); // close() aborts, then replaces it
 
   private readonly spawnIfMissing: boolean;
@@ -408,50 +256,17 @@ export class SageProjectServerConnection {
     return this.connecting;
   }
 
+  /**
+   * This connection as the structural view its extracted I/O takes (see
+   * project-server-client-io.ts). Members read only through it are
+   * `protected` rather than `private` so `noUnusedLocals` sees them as used.
+   */
+  private internals(): SageProjectServerConnectionInternals {
+    return this as unknown as SageProjectServerConnectionInternals;
+  }
+
   private async connectWithElection(spawnIfMissing: boolean): Promise<void> {
-    const deadline =
-      Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
-    let lastSpawnAt = 0;
-    let lastError: unknown = new Error('SAGE project server unavailable');
-    while (Date.now() < deadline) {
-      try {
-        await this.connectOnce();
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-      if (!spawnIfMissing) {
-        // Only the attach-only mode names the absence; `status()` and
-        // `shutdown()` probe with `false` too and keep their own handling.
-        if (!this.spawnIfMissing)
-          throw new SageProjectServerNotRunningError(this.projectRoot, lastError);
-        break;
-      }
-      // Re-arm the spawn on SPAWN_RETRY_CADENCE_MS. A single spawn attempt made
-      // a silently dead daemon (crash before bind, spawn-level error) fatal for
-      // the whole window: every remaining retry hit `connect ENOENT` against a
-      // pipe nothing would ever create, and the caller saw that raw error after
-      // SERVER_START_TIMEOUT_MS. The first spawn still fires immediately
-      // because lastSpawnAt starts at 0.
-      const now = Date.now();
-      if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS) {
-        // A synchronous throw from the spawn path — the resolver transiently
-        // failing to stat the dist entrypoint under load — must not unwind
-        // the whole retry window (mailbox sibling flake, observed 2026-09-15:
-        // one miss surfaced "entrypoint is unavailable" straight through
-        // call()). Degrade to "this tick spawned nothing"; lastSpawnAt stays
-        // unset so the next tick retries immediately rather than waiting out
-        // the cadence.
-        try {
-          this.spawnDetachedServer();
-          lastSpawnAt = now;
-        } catch {
-          // Resolution failures are retryable by the loop below.
-        }
-      }
-      await delay(75);
-    }
-    throw lastError;
+    return connectWithElection(this.internals(), spawnIfMissing);
   }
 
   /**
@@ -471,27 +286,16 @@ export class SageProjectServerConnection {
    * a single small `readFileSync` and closes the window without reordering the
    * daemon's startup.
    */
-  private currentAuthToken(): string | undefined {
+  protected currentAuthToken(): string | undefined {
     if (this.authToken === undefined) this.authToken = this.readAuthToken();
     return this.authToken;
   }
 
   private readAuthToken(): string | undefined {
-    try {
-      const raw = fs.readFileSync(
-        sageProjectServerMetadataPath(this.projectRoot, this.directory),
-        'utf8',
-      );
-      const parsed = JSON.parse(raw) as Partial<SageProjectServerMetadata>;
-      return typeof parsed.authToken === 'string' && parsed.authToken.length > 0
-        ? parsed.authToken
-        : undefined;
-    } catch {
-      return undefined;
-    }
+    return readSageServerAuthToken(this.projectRoot, this.directory);
   }
 
-  private connectOnce(): Promise<void> {
+  protected connectOnce(): Promise<void> {
     this.socket?.destroy();
     this.socket = null;
     this.info = null;
@@ -531,203 +335,22 @@ export class SageProjectServerConnection {
   }
 
   private request<T>(
-    message:
-      | {
-          type: 'request';
-          op: SageServerOperationName;
-          args: unknown;
-          meta: SageRequestMetadata;
-        }
-      | { type: 'shutdown'; reason?: string | undefined },
+    message: SageProjectServerOutboundMessage,
     options: SageProjectServerCallOptions,
   ): Promise<T> {
-    const socket = this.socket;
-    if (!socket || socket.destroyed) {
-      return Promise.reject(new Error('SAGE server connection is not available'));
-    }
-    // Wrap before Number.MAX_SAFE_INTEGER: float64 cannot represent 2^53 + 1,
-    // so an unchecked `++` saturates there and every later request would emit
-    // the previous wire id — `pending.set` would then overwrite the earlier
-    // request's routing entry and deliver responses to the wrong caller. A
-    // wrapped id can only collide with an in-flight request if 2^53 requests
-    // are outstanding simultaneously, which the per-request timeout makes
-    // impossible.
-    const id = this.nextId;
-    this.nextId = id >= Number.MAX_SAFE_INTEGER ? 1 : id + 1;
-    // Auth stamp: every outbound `request` — and `shutdown` (WS-028) —
-    // carries the authToken read from the daemon's owner-only `server.json`.
-    // The server-side gate enforces equality; a wrong or missing token causes
-    // an `UnauthorizedSageRequest` response. `clientId` is left to the server-assigned per-connection
-    // nonce (see `project-server.ts` `net.createServer`), so the client
-    // just forwards whatever value the caller passed in `meta.clientId`.
-    const outbound =
-      message.type === 'request'
-        ? {
-            ...message,
-            meta: {
-              clientId: message.meta.clientId,
-              authToken: this.currentAuthToken(),
-              ...(message.meta.sessionId !== undefined
-                ? { sessionId: message.meta.sessionId }
-                : {}),
-              ...(message.meta.traceId !== undefined ? { traceId: message.meta.traceId } : {}),
-            },
-            id,
-          }
-        : {
-            ...message,
-            id,
-            ...(message.type === 'shutdown' ? { authToken: this.currentAuthToken() } : {}),
-          };
-    return new Promise<T>((resolve, reject) => {
-      const rejectRequest = (error: unknown, notifyServer = false): void => {
-        const entry = this.pending.get(id);
-        if (!entry) return;
-        this.pending.delete(id);
-        this.cleanupPending(entry);
-        if (notifyServer) {
-          try {
-            this.write({ type: 'cancel', id });
-          } catch {
-            // Cancellation is best-effort on the wire. A failed notification
-            // must not prevent local cleanup or leave the caller unsettled.
-          }
-        }
-        entry.reject(error);
-      };
-      const timer = setTimeout(() => {
-        rejectRequest(
-          new Error(
-            `SAGE ${message.type === 'request' ? message.op : message.type} exceeded its ${options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS}ms timeout`,
-          ),
-          true,
-        );
-      }, options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS);
-      timer.unref?.();
-      const signal = options.signal;
-      const onAbort = signal
-        ? () => {
-            rejectRequest(cancellationError(signal), true);
-          }
-        : undefined;
-      this.pending.set(id, { resolve, reject, timer, signal, onAbort });
-      if (signal && onAbort) {
-        signal.addEventListener('abort', onAbort, { once: true });
-        if (signal.aborted) {
-          onAbort();
-          return;
-        }
-      }
-      try {
-        this.write(outbound);
-      } catch (error) {
-        rejectRequest(error);
-      }
-    });
+    return sendRequest<T>(this.internals(), message, options);
   }
 
   private onData(socket: net.Socket, chunk: string): void {
-    if (socket !== this.socket) return;
-    // The buffered prefix was already scanned and holds no newline; search
-    // only the new chunk. Rescanning the whole buffer — and re-slicing it per
-    // line — was quadratic in frame size: a multi-megabyte frame arriving in
-    // 64KB chunks was scanned from its first byte on every chunk. The search
-    // must run on `chunk` itself: `indexOf` on `buffer + chunk` (even from an
-    // offset) flattens the concatenation, an O(buffer) copy per chunk.
-    let newline = chunk.indexOf('\n');
-    if (newline < 0) {
-      this.buffer += chunk;
-    }
-    let start = 0;
-    while (newline >= 0) {
-      const line =
-        start === 0 ? this.buffer + chunk.slice(0, newline) : chunk.slice(start, newline);
-      start = newline + 1;
-      if (line) {
-        let message: SageProjectServerMessage;
-        try {
-          message = JSON.parse(line) as SageProjectServerMessage;
-        } catch {
-          socket.destroy(new Error('Invalid SAGE project server response'));
-          return;
-        }
-        this.onMessage(message);
-        // A handler may have torn this socket down (protocol mismatch).
-        if (socket !== this.socket || socket.destroyed) return;
-      }
-      newline = chunk.indexOf('\n', start);
-    }
-    if (start > 0) this.buffer = chunk.slice(start);
-    // Bound the one frame still being assembled, not the complete frames the
-    // chunk happened to carry alongside it.
-    if (this.buffer.length > MAX_FRAME_BUFFER_CHARS) {
-      socket.destroy(
-        new Error(
-          `SAGE server frame exceeded maximum size (${MAX_FRAME_BUFFER_CHARS} chars); page large results`,
-        ),
-      );
-    }
+    receiveData(this.internals(), socket, chunk);
   }
 
-  private onMessage(message: SageProjectServerMessage): void {
-    if (message.type === 'hello') {
-      if (message.protocolVersion !== SAGE_PROJECT_SERVER_PROTOCOL_VERSION) {
-        this.connectReject?.(
-          new Error(
-            `SAGE protocol mismatch: client=${SAGE_PROJECT_SERVER_PROTOCOL_VERSION}, server=${message.protocolVersion}`,
-          ),
-        );
-        this.socket?.destroy();
-        return;
-      }
-      this.info = message;
-      this.transition('connected', { pid: message.pid });
-      this.connectResolve?.();
-      return;
-    }
-    if (message.type === 'event') {
-      for (const listener of this.eventListeners) {
-        listener(message.event, message.payload, message.meta);
-      }
-      return;
-    }
-    const entry = this.pending.get(message.id);
-    if (!entry) return;
-    this.pending.delete(message.id);
-    this.cleanupPending(entry);
-    if (message.ok) entry.resolve(message.result);
-    else {
-      // On auth failure, invalidate the cached token so the next request
-      // re-reads server.json. This handles two race windows:
-      // 1. Cold spawn: daemon is listening but hasn't written server.json yet
-      // 2. Daemon restart: token changed while the client held a stale copy
-      if (message.errorName === 'UnauthorizedSageRequest') {
-        this.authToken = undefined;
-      }
-      entry.reject(remoteError(message.error, message.errorName));
-    }
+  protected onMessage(message: SageProjectServerMessage): void {
+    handleServerMessage(this.internals(), message);
   }
 
   private onClose(socket: net.Socket): void {
-    if (socket !== this.socket) return;
-    const wasConnected = this.info !== null;
-    this.socket = null;
-    this.info = null;
-    // Carry the socket error that caused the close (e.g. the frame-size guard
-    // in onData). Without it every rejected caller saw only a generic
-    // "connection closed" that pointed at the daemon instead of the payload.
-    const cause = this.closeCause;
-    this.closeCause = null;
-    const error = new Error(
-      cause
-        ? `SAGE project server connection closed: ${cause.message}`
-        : 'SAGE project server connection closed',
-    );
-    this.connectReject?.(error);
-    this.connectResolve = null;
-    this.connectReject = null;
-    this.rejectPending(error);
-    this.transition(wasConnected ? 'error' : 'offline', wasConnected ? { error } : {});
+    handleSocketClose(this.internals(), socket);
   }
 
   private cleanupPending(entry: PendingRequest): void {
@@ -746,7 +369,7 @@ export class SageProjectServerConnection {
     }
   }
 
-  private write(message: object): void {
+  protected write(message: object): void {
     const socket = this.socket;
     if (!socket || socket.destroyed) return;
     // The boolean return of socket.write is deliberately ignored: this cap is
@@ -764,7 +387,7 @@ export class SageProjectServerConnection {
     socket.write(encodeSageProjectServerMessage(message));
   }
 
-  private spawnDetachedServer(): void {
+  protected spawnDetachedServer(): void {
     const url = resolveProjectServerUrl();
     if (!url) throw new Error('Built SAGE project server is unavailable');
     const args = ['--project-root', this.projectRoot];

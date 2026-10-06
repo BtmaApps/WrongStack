@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:46:04.439Z
+**Generated:** 2026-10-06T18:47:16.880Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4692 |
-| Production source lines | 1073297 |
+| Production source files | 4704 |
+| Production source lines | 1073725 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15440 |
+| Relative module edges | 15478 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -48,7 +48,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/requirement-intake | 17 | 11 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 28 | 24 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
-| @wrongstack/sage | 132 | 126 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 144 | 126 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 41 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 19 | 31 | @wrongstack/core |
@@ -92,9 +92,7 @@ None.
 | 856 | `packages/cli/src/cli-main.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
 | 828 | `packages/plugins/src/accessibility-auditor/index.ts` |
-| 828 | `packages/sage/src/store-helpers.ts` |
 | 828 | `packages/sdd/src/sdd-parallel-run.ts` |
-| 826 | `packages/sage/src/sqlite-store.ts` |
 | 825 | `packages/plugins/src/migration-planner/index.ts` |
 | 824 | `packages/webui/src/components/RepositoryHistoryView.tsx` |
 | 822 | `packages/tui/src/use-app-controller.tsx` |
@@ -111,9 +109,7 @@ None.
 | 803 | `packages/webui/src/components/SidePanel/SkillsList.tsx` |
 | 802 | `packages/cli/src/boot.ts` |
 | 801 | `packages/cli/src/slash-commands/settings-mutations.ts` |
-| 801 | `packages/sage/src/project-server.ts` |
 | 800 | `packages/webui/src/hooks/ws-handlers/chat-handlers.ts` |
-| 799 | `packages/sage/src/project-server-client.ts` |
 | 799 | `packages/webui-server/src/server/mcp-handlers.ts` |
 | 799 | `packages/webui-server/src/server/routes.ts` |
 | 798 | `packages/cli/src/subcommands/handlers/acp.ts` |
@@ -133,6 +129,10 @@ None.
 | 788 | `packages/cli/src/goal-host.ts` |
 | 788 | `packages/providers/src/trusted-presets.ts` |
 | 788 | `packages/tui/src/app-view-pickers.tsx` |
+| 787 | `packages/core/src/coordination/mailbox-codecs.ts` |
+| 787 | `packages/core/src/security/directory-permission-policy.ts` |
+| 787 | `packages/webui/src/components/SidePanel/SessionPanel.tsx` |
+| 786 | `packages/governance/src/event-store.ts` |
 
 ## Exports only tests reference
 

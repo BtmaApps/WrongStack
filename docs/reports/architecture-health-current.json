@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:46:04.439Z",
+  "generatedAt": "2026-10-06T18:47:16.880Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4692,
+    "sourceFiles": 4704,
     "testFiles": 4160,
-    "sourceLines": 1073297,
+    "sourceLines": 1073725,
     "workspaceEdges": 133,
-    "moduleEdges": 15440,
+    "moduleEdges": 15478,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -600,7 +600,7 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 132,
+      "sourceFiles": 144,
       "testFiles": 126,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26288,21 +26288,6 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/sage/src/project-server.ts",
-      "lines": 801,
-      "relativeImports": 6
-    },
-    {
-      "file": "packages/sage/src/sqlite-store.ts",
-      "lines": 826,
-      "relativeImports": 34
-    },
-    {
-      "file": "packages/sage/src/store-helpers.ts",
-      "lines": 828,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/sdd/src/sdd-parallel-run.ts",
       "lines": 828,
       "relativeImports": 8
@@ -26450,19 +26435,9 @@
       "relativeImports": 1
     },
     {
-      "file": "packages/sage/src/store-helpers.ts",
-      "lines": 828,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/sdd/src/sdd-parallel-run.ts",
       "lines": 828,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/sage/src/sqlite-store.ts",
-      "lines": 826,
-      "relativeImports": 34
     },
     {
       "file": "packages/plugins/src/migration-planner/index.ts",
@@ -26545,19 +26520,9 @@
       "relativeImports": 8
     },
     {
-      "file": "packages/sage/src/project-server.ts",
-      "lines": 801,
-      "relativeImports": 6
-    },
-    {
       "file": "packages/webui/src/hooks/ws-handlers/chat-handlers.ts",
       "lines": 800,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/sage/src/project-server-client.ts",
-      "lines": 799,
-      "relativeImports": 3
     },
     {
       "file": "packages/webui-server/src/server/mcp-handlers.ts",
@@ -26653,6 +26618,26 @@
       "file": "packages/tui/src/app-view-pickers.tsx",
       "lines": 788,
       "relativeImports": 50
+    },
+    {
+      "file": "packages/core/src/coordination/mailbox-codecs.ts",
+      "lines": 787,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/core/src/security/directory-permission-policy.ts",
+      "lines": 787,
+      "relativeImports": 8
+    },
+    {
+      "file": "packages/webui/src/components/SidePanel/SessionPanel.tsx",
+      "lines": 787,
+      "relativeImports": 9
+    },
+    {
+      "file": "packages/governance/src/event-store.ts",
+      "lines": 786,
+      "relativeImports": 5
     }
   ],
   "testOnlyExports": [

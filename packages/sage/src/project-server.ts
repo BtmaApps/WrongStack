@@ -13,7 +13,7 @@ import {
   useDaemonPerfDefaults,
 } from '@wrongstack/core/utils';
 import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
-import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
+import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { SqliteMemoryPort } from './memory-port.js';
 import { detectNinepStoreMount, ninepStoreRefusalMessage, readSelfMounts } from './mount-probe.js';
 import { dispatch as dispatchSageOperation } from './project-server-dispatch.js';
@@ -22,58 +22,38 @@ import {
   sageProjectServerEndpoint,
   sageProjectServerMetadataPath,
 } from './project-server-endpoint.js';
+import { createHygieneRunner } from './project-server-hygiene.js';
+import { importLegacyFilesIntoStore } from './project-server-legacy-import.js';
+import {
+  armProjectServerSignalGuard,
+  drainAndDisposeAfterStop,
+  endClientsForShutdown,
+} from './project-server-lifecycle.js';
 import { type ClientState, type CompleteSageStore, parseArgs } from './project-server-options.js';
 import {
-  encodeSageProjectServerMessage,
-  SAGE_DISPATCH_FIELD_SPECS,
   SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
   type SageProjectServerClientMessage,
   type SageProjectServerInfo,
-  type SageProjectServerMessage,
   type SageProjectServerMetadata,
   type SageRequestMetadata,
   type SageServerOperationName,
   type SageServerOperations,
 } from './project-server-protocol.js';
+import { createSlowOperationReporter } from './project-server-slow-ops.js';
+import {
+  answerWhenSettled,
+  authorizeClientMessage,
+  broadcastMemoryEvent,
+  consumeClientFrames,
+  send,
+} from './project-server-wire.js';
 
 const DEFAULT_IDLE_MS = 5 * 60_000;
-const AUTO_HYGIENE_INTERVAL_MS = 60 * 60_000;
-const MAX_FRAME_BUFFER_CHARS = 8 * 1024 * 1024;
-/**
- * Dispatch duration above which a request is reported on stderr.
- *
- * SQLite is synchronous and this daemon runs one event loop, so a slow
- * operation is never slow for its caller alone — every other client of the
- * project waits behind it, and a queue deep enough makes them fail with their
- * own 30s call timeout somewhere else entirely. That is how an FTS join-order
- * regression (seconds per `searchSage` under one SQLite build, milliseconds
- * under another) stayed invisible until unrelated ops started timing out. One
- * throttled line names the op and the queue depth instead.
- *
- * `WRONGSTACK_SAGE_SLOW_OP_MS` overrides the threshold; 0 reports every
- * request, which is what the lifecycle test asserts against.
- */
-const SLOW_OPERATION_WARN_MS = (() => {
-  const raw = Number(process.env['WRONGSTACK_SAGE_SLOW_OP_MS']);
-  return Number.isFinite(raw) && raw >= 0 ? raw : 1_000;
-})();
-/** Per-op throttle so a persistent regression cannot flood stderr. */
-const SLOW_OPERATION_THROTTLE_MS = 60_000;
-const lastSlowReportAt = new Map<string, number>();
-
-function reportSlowOperation(op: SageServerOperationName, durationMs: number): void {
-  if (durationMs < SLOW_OPERATION_WARN_MS) return;
-  const now = Date.now();
-  const previous = lastSlowReportAt.get(op);
-  if (previous !== undefined && now - previous < SLOW_OPERATION_THROTTLE_MS) return;
-  lastSlowReportAt.set(op, now);
-  process.stderr.write(
-    `sage project server: ${op} took ${Math.round(durationMs)}ms ` +
-      `(queued=${pendingRequests}, clients=${clients.size}) — every client waits behind it
-`,
-  );
-}
-const MAX_LEGACY_IMPORT_BYTES = 5 * 1024 * 1024;
+/** Reports a dispatch that blocked the event loop (see project-server-slow-ops.ts). */
+const reportSlowOperation = createSlowOperationReporter(() => ({
+  pendingRequests,
+  clients: clients.size,
+}));
 
 // Long-lived daemon: lean SQLite residency unless the operator says
 // otherwise. Must run before any store opens.
@@ -143,14 +123,12 @@ const store = new SqliteMemoryPort({
   events,
   operationContext: () => requestContext.getStore(),
 }) as CompleteSageStore;
+const hygiene = createHygieneRunner(store);
 const clients = new Set<ClientState>();
 let pendingRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let silentClientSweep: ReturnType<typeof setInterval> | undefined;
 let stopping = false;
-let lastAutomaticHygieneAt = 0;
-let lastAutomaticHygieneReport: SageServerOperations['hygiene']['result'] | undefined;
-let automaticHygieneInFlight: Promise<SageServerOperations['hygiene']['result']> | undefined;
 /**
  * Dispatches that started but have not produced a response yet. Two consumers:
  * `stop()` answers every still-unsettled request with a clean stopping
@@ -158,13 +136,6 @@ let automaticHygieneInFlight: Promise<SageServerOperations['hygiene']['result']>
  * before `store.dispose()` so SQLite is not closed under a running operation.
  */
 const activeDispatches = new Set<Promise<unknown>>();
-/**
- * Grace window for that drain. Ops parked on a file lock or a slow fs read
- * cannot be cancelled (only `verify` observes the abort signal), so the wait
- * is bounded — shutdown must resolve deterministically, mirroring the 500ms
- * `server.close` fallback below.
- */
-const SHUTDOWN_DRAIN_GRACE_MS = 1_000;
 /**
  * Bounded force-destroy for the graceful end() close in `stop()`: a client
  * that stops reading must not hold shutdown open past this window.
@@ -181,7 +152,7 @@ const stopMemoryWatchdog = startSharedHeapWatchdog({
     clients: clients.size,
     pendingRequests,
     activeRequests: activeClientRequests(),
-    automaticHygieneInFlight: automaticHygieneInFlight !== undefined,
+    automaticHygieneInFlight: hygiene.automaticInFlight(),
   }),
 });
 
@@ -219,68 +190,8 @@ const ready = new Promise<void>((resolve, reject) => {
   rejectReady = reject;
 });
 
-/**
- * Cap on outbound bytes queued for one client before it is dropped. This
- * server broadcasts `memory.*` events to every client, and `socket.write()`
- * buffers without limit when its `false` return is ignored — so one client
- * that stops reading would otherwise grow the owner's heap indefinitely.
- * Memory state is in SQLite; a dropped client re-reads it on reconnect.
- */
-const MAX_CLIENT_WRITE_BUFFER_BYTES = 8 * 1024 * 1024;
-
-function writeEncoded(state: ClientState, encoded: string): void {
-  // `writableEnded` matters as much as `destroyed` here: after stop() has
-  // end()ed a socket, a dispatch completing during the drain would otherwise
-  // write-after-end (its bytes are dropped silently at best). The caller
-  // already holds the stopping rejection for that id.
-  if (state.socket.destroyed || state.socket.writableEnded) return;
-  if (
-    Buffer.byteLength(encoded, 'utf8') > MAX_CLIENT_WRITE_BUFFER_BYTES ||
-    state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES
-  ) {
-    state.socket.destroy(new Error('SAGE client fell too far behind on reads'));
-    return;
-  }
-  state.socket.write(encoded);
-}
-
-function send(state: ClientState, message: SageProjectServerMessage): void {
-  writeEncoded(state, encodeSageProjectServerMessage(message));
-}
-
-/** Encode once, write to every client — see the mailbox owner for rationale. */
-function broadcast(message: SageProjectServerMessage): void {
-  if (clients.size === 0) return;
-  const encoded = encodeSageProjectServerMessage(message);
-  for (const state of clients) {
-    if (!state.authenticated) continue;
-    try {
-      writeEncoded(state, encoded);
-    } catch {
-      state.socket.destroy();
-    }
-  }
-}
-
 events.onPattern('memory.*', (event, payload) => {
-  const store = requestContext.getStore();
-  // Strip server-only secrets (authToken) before broadcasting to every
-  // connected client. Without this, an event listener on one client
-  // would receive another client's authToken via the broadcast meta,
-  // turning the per-connection token into a shared secret.
-  const safeMeta = store
-    ? {
-        clientId: store.clientId,
-        ...(store.sessionId !== undefined ? { sessionId: store.sessionId } : {}),
-        ...(store.traceId !== undefined ? { traceId: store.traceId } : {}),
-      }
-    : undefined;
-  broadcast({
-    type: 'event',
-    event,
-    payload,
-    meta: safeMeta,
-  });
+  broadcastMemoryEvent(clients, event, payload, requestContext.getStore());
 });
 
 async function serverStatus(): Promise<SageServerOperations['ping']['result']> {
@@ -293,141 +204,27 @@ async function serverStatus(): Promise<SageServerOperations['ping']['result']> {
   };
 }
 
-async function importLegacyFiles(
-  files: string[],
-): Promise<SageServerOperations['importLegacyFiles']['result']> {
-  const result = { imported: 0, skipped: 0, files: 0 };
-  let totalBytes = 0;
-  for (const file of files) {
-    // Path containment: every imported file must live under `projectRoot`.
-    // This closes the threat where a same-UID caller invokes
-    // `importLegacyFiles(['/etc/passwd'])` or `['~/.ssh/id_rsa'])`. Files
-    // that legitimately live outside the project (e.g. a cross-project
-    // migration export staged in /tmp) require the operator to first copy
-    // them into the project boundary — explicit and reversible.
-    //
-    // Defense-in-depth: `path.resolve()` only normalises lexically and
-    // does NOT resolve symlinks. A symlink inside `projectRoot` that
-    // points outside it would pass the lexical check and then be read
-    // by `fsPromises.readFile()` (which follows symlinks), so we
-    // resolve to the real path first and check containment on that.
-    const resolved = await fsPromises.realpath(file);
-    const rel = path.relative(projectRoot, resolved);
-    // Canonical escape test: `..hidden` is a legal in-root first segment; a
-    // bare startsWith('..') would misread it as an escape.
-    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
-      throw new Error(`importLegacyFiles: file path must stay inside the project root: ${file}`);
-    }
-    const stat = await fsPromises.stat(resolved);
-    totalBytes += stat.size;
-    if (totalBytes > MAX_LEGACY_IMPORT_BYTES) {
-      throw new Error(`Legacy memory import exceeds ${MAX_LEGACY_IMPORT_BYTES} bytes`);
-    }
-    const raw = await fsPromises.readFile(resolved, 'utf8');
-    const imported = await store.importLegacy(raw);
-    result.imported += imported.imported;
-    result.skipped += imported.skipped;
-    result.files += 1;
-  }
-  return result;
-}
-
-async function runHygiene(
-  args: SageServerOperations['hygiene']['args'],
-): Promise<SageServerOperations['hygiene']['result']> {
-  if (args.automatic) {
-    const now = Date.now();
-    if (lastAutomaticHygieneReport && now - lastAutomaticHygieneAt < AUTO_HYGIENE_INTERVAL_MS) {
-      return lastAutomaticHygieneReport;
-    }
-    if (automaticHygieneInFlight) return automaticHygieneInFlight;
-    automaticHygieneInFlight = store
-      .hygiene(args.options)
-      .then((report) => {
-        lastAutomaticHygieneAt = Date.now();
-        lastAutomaticHygieneReport = report;
-        return report;
-      })
-      .finally(() => {
-        automaticHygieneInFlight = undefined;
-      });
-    return automaticHygieneInFlight;
-  }
-  return store.hygiene(args.options);
-}
 async function dispatch(
   op: SageServerOperationName,
   rawArgs: unknown,
   signal: AbortSignal,
 ): Promise<unknown> {
   return dispatchSageOperation(
-    { store, ready, serverStatus, runHygiene, importLegacyFiles },
+    {
+      store,
+      ready,
+      serverStatus,
+      runHygiene: (args) => hygiene.run(args),
+      importLegacyFiles: (files) => importLegacyFilesIntoStore(projectRoot, store, files),
+    },
     op,
     rawArgs,
     signal,
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-/** Validate the untrusted JSON envelope before auth or dispatch touches it. */
-function parseClientMessage(value: unknown): SageProjectServerClientMessage | undefined {
-  if (!isRecord(value) || !Number.isSafeInteger(value.id) || Number(value.id) < 0) return undefined;
-  switch (value.type) {
-    case 'request':
-      if (
-        typeof value.op !== 'string' ||
-        !Object.hasOwn(SAGE_DISPATCH_FIELD_SPECS, value.op) ||
-        !isRecord(value.meta)
-      )
-        return undefined;
-      return value as unknown as SageProjectServerClientMessage;
-    case 'cancel':
-    case 'shutdown':
-      return value as unknown as SageProjectServerClientMessage;
-    default:
-      return undefined;
-  }
-}
-
 function checkAuthToken(state: ClientState, message: SageProjectServerClientMessage): boolean {
-  // WS-028: `shutdown` is now gated too. It stops the daemon for every client
-  // in the project — a denial of service any same-UID process could trigger
-  // with one unauthenticated frame. `cancel` stays ungated: it only reaches
-  // the sending connection's own `state.active` map.
-  const supplied =
-    message.type === 'request'
-      ? message.meta.authToken
-      : message.type === 'shutdown'
-        ? message.authToken
-        : undefined;
-  // Constant time: `!==` returns as soon as two characters differ, leaking how
-  // long a guess's shared prefix was — the WS-110 class. Every sibling project
-  // daemon was converted; SAGE was missed and still compared raw, with no rate
-  // limit in front of it. `timingSafeTokenEqual` treats a missing `supplied`
-  // as a mismatch, so the rejection below keeps its exact previous semantics.
-  if (
-    (message.type === 'request' || message.type === 'shutdown') &&
-    !timingSafeTokenEqual(supplied, authToken)
-  ) {
-    void metadataGuard.reassert();
-    send(state, {
-      type: 'response',
-      id: message.id,
-      ok: false,
-      error:
-        'SAGE IPC request rejected: missing or invalid authToken. ' +
-        'Reconnect to refresh metadata (server.json#authToken).',
-      errorName: 'UnauthorizedSageRequest',
-    });
-    return false;
-  }
-  if (message.type === 'request' || message.type === 'shutdown') {
-    state.authenticated = true;
-  }
-  return true;
+  return authorizeClientMessage(state, message, authToken, () => void metadataGuard.reassert());
 }
 
 function handleMessage(state: ClientState, message: SageProjectServerClientMessage): void {
@@ -465,26 +262,11 @@ function handleMessage(state: ClientState, message: SageProjectServerClientMessa
   };
   const startedAt = Date.now();
   state.unsettled.add(message.id);
-  const tracked = requestContext
-    .run(safeMeta, () => dispatch(message.op, message.args, controller.signal))
-    .then((result) => {
-      state.unsettled.delete(message.id);
-      send(state, { type: 'response', id: message.id, ok: true, result });
-    })
-    .catch((error) => {
-      state.unsettled.delete(message.id);
-      try {
-        send(state, {
-          type: 'response',
-          id: message.id,
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-          errorName: error instanceof Error ? error.name : undefined,
-        });
-      } catch {
-        // socket already destroyed or write failed — nothing more to do
-      }
-    });
+  const tracked = answerWhenSettled(
+    state,
+    message.id,
+    requestContext.run(safeMeta, () => dispatch(message.op, message.args, controller.signal)),
+  );
   activeDispatches.add(tracked);
   void tracked.finally(() => {
     state.active.delete(message.id);
@@ -492,35 +274,6 @@ function handleMessage(state: ClientState, message: SageProjectServerClientMessa
     reportSlowOperation(message.op, Date.now() - startedAt);
     activeDispatches.delete(tracked);
   });
-}
-
-function onData(state: ClientState, chunk: string): void {
-  state.spoken = true;
-  state.buffer += chunk;
-  if (state.buffer.length > MAX_FRAME_BUFFER_CHARS) {
-    state.socket.destroy(new Error('SAGE request frame exceeded maximum size'));
-    return;
-  }
-  while (true) {
-    const newline = state.buffer.indexOf('\n');
-    if (newline < 0) return;
-    const line = state.buffer.slice(0, newline);
-    state.buffer = state.buffer.slice(newline + 1);
-    if (!line) continue;
-    let rawMessage: unknown;
-    try {
-      rawMessage = JSON.parse(line) as unknown;
-    } catch {
-      state.socket.destroy(new Error('Invalid SAGE project server request'));
-      return;
-    }
-    const message = parseClientMessage(rawMessage);
-    if (!message) {
-      state.socket.destroy(new Error('Invalid SAGE project server request'));
-      return;
-    }
-    handleMessage(state, message);
-  }
 }
 
 function scheduleIdleStop(): void {
@@ -593,33 +346,7 @@ async function stop(_reason: string): Promise<void> {
   // ordering, including the bounded close for Windows named-pipe handles
   // the kernel can retain.
   const closing = [...clients];
-  for (const state of closing) {
-    // Answer in-flight requests BEFORE the transport goes away: a caller with
-    // a dispatch in flight would otherwise see nothing but a bare connection
-    // close (its response can no longer be written once the socket is
-    // destroyed) and hang until its own call timeout. Settled requests are
-    // no longer in `unsettled` — their real response already went out.
-    for (const id of state.unsettled) {
-      send(state, {
-        type: 'response',
-        id,
-        ok: false,
-        error: 'SAGE project server is stopping; the request was not completed',
-        errorName: 'SageServerStoppingError',
-      });
-    }
-    for (const controller of state.active.values()) {
-      controller.abort(new Error('SAGE project server stopping'));
-    }
-    // end() — NOT destroy() — so the stopping rejections already queued are
-    // flushed before FIN: write()+destroy() in the same tick discards the
-    // pending userland write queue on Windows named pipes (observed in the
-    // round-29 proof: a congested client's parked in-flight request got a
-    // bare close instead of its SageServerStoppingError). A client that
-    // stops reading cannot hold shutdown open — the force-destroy below
-    // bounds the flush window.
-    state.socket.end();
-  }
+  endClientsForShutdown(closing);
   clients.clear();
   await new Promise<void>((resolve) => {
     server.close(() => {
@@ -634,25 +361,7 @@ async function stop(_reason: string): Promise<void> {
     }, SAGE_FORCE_DESTROY_MS);
     forceDestroyTimer.unref?.();
   });
-  // Bounded drain: give in-flight dispatches a short grace window to finish
-  // so `store.dispose()` does not close SQLite under a running operation (its
-  // caller would otherwise see "database is closed" instead of a clean result
-  // or rejection). Ops parked on a file lock or slow fs hold shutdown up to
-  // this grace, never longer — shutdown stays deterministic.
-  if (activeDispatches.size > 0) {
-    await Promise.race([
-      Promise.allSettled([...activeDispatches]),
-      new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, SHUTDOWN_DRAIN_GRACE_MS);
-        timer.unref?.();
-      }),
-    ]);
-  }
-  await store.dispose().catch(() => {});
-  if (process.platform !== 'win32') {
-    await fsPromises.rm(endpoint, { force: true }).catch(() => {});
-  }
-  await stopMemoryWatchdog();
+  await drainAndDisposeAfterStop({ activeDispatches, store, endpoint, stopMemoryWatchdog });
 }
 
 const server = net.createServer((socket) => {
@@ -679,7 +388,7 @@ const server = net.createServer((socket) => {
   };
   clients.add(state);
   send(state, { type: 'hello', ...serverInfo });
-  socket.on('data', (chunk: string) => onData(state, chunk));
+  socket.on('data', (chunk: string) => consumeClientFrames(state, chunk, handleMessage));
   socket.on('close', () => {
     for (const controller of state.active.values()) {
       controller.abort(new Error('SAGE client disconnected'));
@@ -748,53 +457,5 @@ void (async () => {
   }
 })();
 
-/**
- * One SIGINT/SIGTERM pair per PROCESS, not per module instance.
- *
- * The in-process test harness imports this module once per test case with a
- * `?case=<n>` query URL, so every case evaluates this module body fresh; a
- * bare top-level `process.once(signal, ...)` loop accumulates one handler
- * pair per case until Node raises MaxListenersExceededWarning in every
- * coverage run. The guard lives on globalThis under a Symbol.for key: the
- * first evaluation registers the pair, every evaluation re-targets it at its
- * own `stop`, and a fired signal removes the pair (once semantics).
- */
-interface SageSignalGuard {
-  arm(stop: (signal: string) => Promise<void>): void;
-}
-const SIGNAL_GUARD: unique symbol = Symbol.for('wrongstack.sage.project-server.signalGuard');
-
-const signalGuardStore = globalThis as typeof globalThis & {
-  [SIGNAL_GUARD]?: SageSignalGuard | undefined;
-};
-let signalGuard = signalGuardStore[SIGNAL_GUARD];
-if (!signalGuard) {
-  let current: (signal: string) => Promise<void> = async () => undefined;
-  let armed = false;
-  const handlers = new Map<string, () => void>();
-  const disarm = (): void => {
-    if (!armed) return;
-    armed = false;
-    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
-    handlers.clear();
-  };
-  signalGuard = {
-    arm(next) {
-      current = next;
-      if (armed) return;
-      armed = true;
-      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        const handler = (): void => {
-          disarm();
-          void current(signal).finally(() => {
-            process.exitCode = 0;
-          });
-        };
-        handlers.set(signal, handler);
-        process.on(signal, handler);
-      }
-    },
-  };
-  signalGuardStore[SIGNAL_GUARD] = signalGuard;
-}
-signalGuard.arm(stop);
+// One SIGINT/SIGTERM pair per PROCESS (see armProjectServerSignalGuard).
+armProjectServerSignalGuard(stop);
