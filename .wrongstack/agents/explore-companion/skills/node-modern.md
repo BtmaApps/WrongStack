@@ -1,19 +1,19 @@
-## Evidence — apply first
+## Scratch evidence
+- For mailbox probes, anchor scratch harnesses at `~/.wrongstack/projects/<dir>/_mailbox.sqlite`; inspect `messages` with `from_id, to_id, type, data`, parse `data` for `subject` and `body`, using `node:sqlite` `DatabaseSync` with `{ readOnly: true }`, following `.temp_files/dump-l4.mjs`.
+- In ignored `.temp_files/`, establish existence with direct `read`; claim ENOENT only after exact-directory `tree` with `truncated=false`. After grep timeout, narrow to `scripts/` and root `package.json`; label full-tree closure unverified.
 
-- Split repo-wide zero validation by scope for ignored-dir files. Use a body token only for explicit-path, ignored-scope control; validate tracked scope separately with `@playwright/test` against `package.json`, `pnpm-lock.yaml`, and `e2e/*.spec.ts`, using `files_with_matches` and `truncated=false`. Never infer tracked-scope validity from the ignored-file control.
-- In gitignored `.temp_files/`, establish existence with direct `read`; claim ENOENT only after exact-directory `tree` with `truncated=false`. After a repo-wide `grep` timeout, narrow to `scripts/` and root `package.json`; label full-tree closure unverified.
+## Test collection
+- Corroborate `packages/plugins/tests/*.test.ts` with `packages/plugins/vitest.config.ts` (`include: ['tests/**/*.test.ts']`), root `vitest.config.ts` (`packages/**/tests/**`), `packages/plugins/tsconfig.test.json` (`tests/**/*`) behind `pnpm check:test-types`, and `docs/reports/architecture-health-current.json` `projects`.
+- For `@wrongstack/tools` and `@wrongstack/providers`, use root `vitest.config.ts`; read `scripts.test` in `packages/tools/package.json` and `packages/providers/package.json` for `vitest run --root ../.. packages/tools/tests` and `vitest run --root ../.. packages/providers/tests`.
+- Treat `.temp_files/proof-driven-bug-hunter/<round>/` as noncollected by ordinary runs because root `test.exclude` is `'**/.temp_files/**'`; `tree` the directory and read `run.mjs` when present for hardcoded config/CWD before predicting invocation, with no shared runner assumed. Verify `resolve.alias` through direct manifest reads; gitignore-aware `glob` can falsely return zero for `node_modules/**`.
 
-## Collection and gates
+## ESM contracts
+- Before editing `packages/webui-server/src/server/route-family-dispatcher.ts` or callers, read `packages/webui-server/tests/host-dispatcher-parity.test.ts`; `balancedBlockAfter` depends on raw `createRouteFamilyDispatcher(` options formatting in `message-dispatcher.ts` and `embedded-message-router.ts`.
+- For `packages/core/src/types/spec.ts`, close consumers via both `from './spec.js'` and `@wrongstack/core/types/spec.js`; `packages/core/package.json` `exports` only `./types` and `./types/limits`, and `scripts/vitest-core-aliases.mjs` does not prove plain Node ESM support.
 
-- For `packages/plugins/tests/*.test.ts`, inspect both `packages/plugins/vitest.config.ts` (`include: ['tests/**/*.test.ts']`) and root `vitest.config.ts` (`packages/**/tests/**`), plus `packages/plugins/tsconfig.test.json` (`tests/**/*`) behind `pnpm check:test-types`. Corroborate project membership in `docs/reports/architecture-health-current.json`’s `projects` array.
-- For `@wrongstack/tools` and `@wrongstack/providers`, use root `vitest.config.ts`, not nonexistent package configs. Read `scripts.test` in `packages/tools/package.json` or `packages/providers/package.json`: respectively, `vitest run --root ../.. packages/tools/tests` and `vitest run --root ../.. packages/providers/tests`.
-- For `.temp_files/proof-driven-bug-hunter/<round>/`, `tree` the directory and read its config before predicting invocation; no shared runner exists. Root `test.exclude` is `'**/.temp_files/**'`, so ordinary explicit-path runs do not collect these tests. Read `run.mjs` when present for its hardcoded config path and CWD. Verify `resolve.alias` targets through direct manifest reads; gitignore-aware `glob` can falsely return zero for `node_modules/**`.
+## Workspace and scope
+- Read membership from `pnpm-workspace.yaml`, not root `workspaces`; distinguish `scripts/bump-version.mjs` version-only writes from manifest readers `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs`.
+- Validate tracked scope separately with `@playwright/test` against `package.json`, `pnpm-lock.yaml`, and `e2e/*.spec.ts`, using `files_with_matches` and `truncated=false`; never infer tracked-scope validity from ignored-file control.
 
-## Source contracts and ESM
-
-- Before editing `packages/webui-server/src/server/route-family-dispatcher.ts` or callers, read `packages/webui-server/tests/host-dispatcher-parity.test.ts`. Its `balancedBlockAfter` extraction depends on raw `createRouteFamilyDispatcher(` options formatting in `message-dispatcher.ts` and `embedded-message-router.ts`; formatting-only edits can fail it.
-- Close consumers of `packages/core/src/types/spec.ts` using both `from './spec.js'` and `@wrongstack/core/types/spec.js`. Check `packages/core/package.json`’s `exports`: with only `./types` and `./types/limits`, package-specifier resolution through `scripts/vitest-core-aliases.mjs` does not establish plain Node ESM support. Report the exposure anomaly.
-
-## Workspace
-
-- Read membership from `pnpm-workspace.yaml`, not root `workspaces`. Distinguish `scripts/bump-version.mjs`’s version-only writes from manifest-content readers: `scripts/build-portable.mjs`, `scripts/test-affected.mjs` (`SALT_FILES`), and `scripts/release-check-matrix.mjs`.
+## Retired
+- Do not assume `packages/governance/src/index.ts` is uniformly named-re-export; grep the module stem and read the export form (`protocol-decoder.js` uses `export * from './protocol-decoder.js'` at `index.ts:33`). Establish consumers with repo-root `files_with_matches`; close truncated content grep before reporting zero external importers.
