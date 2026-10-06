@@ -1,175 +1,53 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
-import type { Bm25Index } from './bm25.js';
-import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
-import {
-  commitBatch,
-  type IndexStoreBatchesHost,
-  replaceEmptyFile,
-} from './index-store-batches.js';
-import type { IndexStoreMaintenanceHost } from './index-store-maintenance.js';
+/**
+ * The code index store. Layered: {@link IndexStoreBase} (connection,
+ * transactions, helper hosts) → {@link IndexStoreDerivedLayers} (call graph,
+ * ranks, vectors, concepts) → IndexStore (symbol/file/ref writes, search,
+ * stats, maintenance).
+ */
+
+import { commitBatch, replaceEmptyFile } from './index-store-batches.js';
 import * as indexStoreMaintenance from './index-store-maintenance.js';
-import {
-  bindRefsByImports,
-  type RefBindingResult,
-  type RefBindingScope,
-} from './ref-binding-pass.js';
+import type { RefBindingResult, RefBindingScope } from './ref-binding-pass.js';
+import { bindRefsByImports } from './ref-binding-pass.js';
 import type {
-  CallSite,
-  CodeMapGraph,
   FileMeta,
   IndexStats,
   Symbol as IndexSymbol,
   Ref,
   SearchResult,
-  SymbolKind,
   SymbolLang,
 } from './schema.js';
-import { loadDatabaseSync, runSqliteWithRetry } from './sqlite-runtime.js';
 import type { IndexSummary } from './writer-admin.js';
 import * as writerAdmin from './writer-admin.js';
 import { bulkInsertRefsWithStatement } from './writer-bulk-insert.js';
 import {
   checkpointWal as checkpointWalFromHost,
-  close as closeFromHost,
-  dataVersion as dataVersionFromHost,
   deferSecondaryIndexes as deferSecondaryIndexesFromHost,
-  getOrBuildBm25 as getOrBuildBm25FromHost,
   optimizeFtsIfNeeded as optimizeFtsIfNeededFromHost,
-  recordFtsChurn as recordFtsChurnFromHost,
   restoreSecondaryIndexes as restoreSecondaryIndexesFromHost,
   setLastIndexed as setLastIndexedFromHost,
-  setMetadata as setMetadataFromHost,
-  stmt as stmtFromHost,
-  type WriterCacheLifecycleHost,
 } from './writer-cache-lifecycle.js';
-import type { ConceptCoverage, ConceptEdge, FileConcept, Subsystem } from './writer-concepts.js';
-import * as writerConcepts from './writer-concepts.js';
-import type { IndexDeletionHost } from './writer-deletion.js';
 import * as writerDeletion from './writer-deletion.js';
-import * as writerGraphReader from './writer-graph-reader.js';
-import { resolveIndexDir } from './writer-helpers.js';
-import { allocateSymbolIds, initIndexSchema } from './writer-init.js';
 import { optimizeStore } from './writer-maintenance.js';
 import * as writerMutations from './writer-mutations.js';
-import { applyIndexStorePragmas } from './writer-pragmas.js';
-import type { RankedFileRow } from './writer-rank.js';
-import * as writerRank from './writer-rank.js';
 import * as writerRefs from './writer-refs.js';
 import * as writerSearch from './writer-search.js';
 import type { WriterSearchFilter } from './writer-search-helpers.js';
+import { IndexStoreBase } from './writer-store-base.js';
+import { IndexStoreDerivedLayers } from './writer-store-derived.js';
 import { StorePool } from './writer-store-pool.js';
-import type { WriterSymbolQueriesHost } from './writer-symbol-queries.js';
-import * as writerSymbolQueries from './writer-symbol-queries.js';
-import type { IndexTransactionHost } from './writer-transactions.js';
-import * as writerTransactions from './writer-transactions.js';
-import type { FileVectorRow, VectorHit } from './writer-vectors.js';
-import * as writerVectors from './writer-vectors.js';
 
 export { codebaseIndexDirOverride, resolveIndexDir } from './writer-helpers.js';
 
 export { StorePool } from './writer-store-pool.js';
 
-const DB_FILE = 'index.db';
-
-export class IndexStore {
-  private db: DatabaseSync;
-  private atomicIndexUpdateActive = false;
-  private writeSavepointSequence = 0;
-  private readonly indexDir: string;
-  private ftsAvailable = false;
-  private vectorsAvailable = false;
-  private readonly stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>();
-  private bm25Cache: Bm25Index | null = null;
-  private bm25Dirty = true;
-  /** `PRAGMA data_version` the BM25 cache was built at. */
-  private bm25DataVersion = -1;
-
-  private stmt(sql: string): ReturnType<DatabaseSync['prepare']> {
-    return stmtFromHost(this.writerCacheLifecycleHost(), sql);
-  }
-
-  constructor(projectRoot: string, opts: { indexDir?: string | undefined } = {}) {
-    this.indexDir = resolveIndexDir(projectRoot, opts.indexDir);
-    fs.mkdirSync(this.indexDir, { recursive: true });
-    const Database = loadDatabaseSync();
-    this.db = new Database(path.join(this.indexDir, DB_FILE));
-    applyIndexStorePragmas(this.db);
-    this.initSchema();
-  }
-
-  runWithRetry<T>(fn: () => T): T {
-    return runSqliteWithRetry(fn);
-  }
-
-  async runAtomicIndexUpdate<T>(job: () => Promise<T>): Promise<T> {
-    return writerTransactions.runAtomicUpdate(this.indexTransactionHost(), job);
-  }
-
-  private beginWriteTransaction(): string | null {
-    return writerTransactions.beginIndexWrite(this.indexTransactionHost());
-  }
-
-  private commitWriteTransaction(savepoint: string | null): void {
-    writerTransactions.commitIndexWrite(this.indexTransactionHost(), savepoint);
-  }
-
-  /**
-   * Never throws: every caller is already propagating the failure that caused
-   * the rollback. When SQLite has rolled the transaction back itself (disk
-   * full, I/O error) the ROLLBACK fails with "no transaction is active", and
-   * that message used to replace the real error.
-   */
-  private rollbackWriteTransaction(savepoint: string | null): void {
-    writerTransactions.rollbackIndexWrite(this.indexTransactionHost(), savepoint);
-  }
-
-  private initSchema(): void {
-    const { ftsAvailable, vectorsAvailable } = initIndexSchema(
-      this.db,
-      (sql) => this.stmt(sql),
-      (key) => this.getMetadata(key),
-      (key, value) => this.setMetadata(key, value),
-      IndexStore.MAX_SQL_VARS,
-      () => this.invalidateBm25(),
-    );
-    this.ftsAvailable = ftsAvailable;
-    this.vectorsAvailable = vectorsAvailable;
-  }
-
-  private static readonly MAX_SQL_VARS = 900;
-
-  private runWriteTransaction<T>(operation: () => T): T {
-    return writerTransactions.runIndexWrite(this.indexTransactionHost(), operation);
-  }
-
-  private allocateSymbolIds(count: number): number {
-    return allocateSymbolIds(
-      (sql) => this.stmt(sql),
-      count,
-      () => this.getMaxSymbolId(),
-    );
-  }
-
-  private invalidateIncomingRefsForFiles(files: readonly string[]): Set<string> {
-    return writerDeletion.invalidateIncomingIndexRefs(this.indexDeletionHost(), files);
-  }
-
-  private resolveRefsForNamesUnsafe(names: Iterable<string>): number {
-    return writerRefs.resolveRefsForNamesUnsafe(
-      (sql) => this.stmt(sql),
-      IndexStore.MAX_SQL_VARS,
-      names,
-    );
-  }
-
+export class IndexStore extends IndexStoreDerivedLayers {
   insertSymbols(symbols: IndexSymbol[]): IndexSymbol[] {
     this.invalidateBm25();
     return this.runWriteTransaction(() => {
       const result = writerMutations.insertSymbolsWithStatement(
         (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
+        IndexStoreBase.MAX_SQL_VARS,
         this.ftsAvailable,
         this.vectorsAvailable,
         this.allocateSymbolIds.bind(this),
@@ -205,7 +83,7 @@ export class IndexStore {
     if (files.length === 0) return [];
     return writerAdmin.getFileMetasWithStatement(
       (sql) => this.stmt(sql),
-      IndexStore.MAX_SQL_VARS,
+      IndexStoreBase.MAX_SQL_VARS,
       files,
     );
   }
@@ -238,7 +116,7 @@ export class IndexStore {
   }> {
     return writerRefs.getUnresolvedImportsWithStatement(
       (sql) => this.stmt(sql),
-      IndexStore.MAX_SQL_VARS,
+      IndexStoreBase.MAX_SQL_VARS,
       onlyFiles,
     );
   }
@@ -257,7 +135,7 @@ export class IndexStore {
     if (targets.length === 0) return [];
     return writerRefs.getImportersOfFilesWithStatement(
       (sql) => this.stmt(sql),
-      IndexStore.MAX_SQL_VARS,
+      IndexStoreBase.MAX_SQL_VARS,
       targets,
     );
   }
@@ -270,7 +148,7 @@ export class IndexStore {
     if (targets.length === 0) return [];
     return writerRefs.getRefNamesTargetingWithStatement(
       (sql) => this.stmt(sql),
-      IndexStore.MAX_SQL_VARS,
+      IndexStoreBase.MAX_SQL_VARS,
       targets,
     );
   }
@@ -280,7 +158,7 @@ export class IndexStore {
     return bindRefsByImports(
       {
         stmt: (sql) => this.stmt(sql) as never,
-        maxSqlVars: IndexStore.MAX_SQL_VARS,
+        maxSqlVars: IndexStoreBase.MAX_SQL_VARS,
         write: (operation) => this.runWriteTransaction(operation),
       },
       scope,
@@ -299,7 +177,7 @@ export class IndexStore {
       this.db,
       (sql) => this.stmt(sql),
       this.runWithRetry.bind(this),
-      IndexStore.MAX_SQL_VARS,
+      IndexStoreBase.MAX_SQL_VARS,
       resolutions,
     );
   }
@@ -333,35 +211,6 @@ export class IndexStore {
     );
   }
 
-  private invalidateBm25(): void {
-    this.bm25Dirty = true;
-    this.bm25Cache = null;
-  }
-
-  /**
-   * The corpus is rebuilt when this connection wrote (bm25Dirty) OR another
-   * connection committed since it was built. Pooled stores stay open for the
-   * life of the host while the project daemon, an inline indexer or another
-   * process writes the same database; the dirty flag alone never saw those
-   * writes, so short-query results silently dropped every symbol added since.
-   */
-  private getOrBuildBm25(): Bm25Index {
-    return getOrBuildBm25FromHost(this.writerCacheLifecycleHost());
-  }
-
-  /** Changes whenever ANOTHER connection commits to this database. */
-  private dataVersion(): number {
-    return dataVersionFromHost(this.writerCacheLifecycleHost());
-  }
-
-  getAllIndexable(): Array<{ id: number; text: string }> {
-    return writerAdmin.getAllIndexableWithStatement((sql) => this.stmt(sql));
-  }
-
-  getMaxSymbolId(): number {
-    return writerAdmin.getMaxSymbolIdWithStatement((sql) => this.stmt(sql));
-  }
-
   getStats(): IndexStats {
     return writerAdmin.getStatsWithStatement((sql) => this.stmt(sql), this.indexDir);
   }
@@ -373,14 +222,6 @@ export class IndexStore {
 
   setLastIndexed(ts: number): void {
     setLastIndexedFromHost(this.writerCacheLifecycleHost(), ts);
-  }
-
-  getMetadata(key: string): string | undefined {
-    return writerAdmin.getMetadataWithStatement((sql) => this.stmt(sql), key);
-  }
-
-  setMetadata(key: string, value: string): void {
-    setMetadataFromHost(this.writerCacheLifecycleHost(), key, value);
   }
 
   clearAll(): void {
@@ -410,7 +251,7 @@ export class IndexStore {
       if (refs.length === 0) return;
       bulkInsertRefsWithStatement(
         (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
+        IndexStoreBase.MAX_SQL_VARS,
         refs.map((ref) => ({ ...ref, fromId })),
       );
     });
@@ -419,7 +260,7 @@ export class IndexStore {
   insertRefsBatch(refs: Ref[]): void {
     if (refs.length === 0) return;
     this.runWithRetry(() => {
-      bulkInsertRefsWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, refs);
+      bulkInsertRefsWithStatement((sql) => this.stmt(sql), IndexStoreBase.MAX_SQL_VARS, refs);
     });
   }
 
@@ -486,16 +327,6 @@ export class IndexStore {
   }
 
   /**
-   * Best-effort churn bookkeeping for {@link optimizeFtsIfNeeded}. Counts the
-   * FTS rows a mutation inserts or deletes so the maintenance gate can fire
-   * after real churn, not on a timer. Persisted in metadata so the counter
-   * survives store open/close cycles in the daemon pool.
-   */
-  private recordFtsChurn(rows: number): void {
-    recordFtsChurnFromHost(this.writerCacheLifecycleHost(), rows);
-  }
-
-  /**
    * P4.14: best-effort WAL checkpoint for idle-time maintenance.
    *
    * `wal_autocheckpoint` is PASSIVE and only attempts work after a COMMIT —
@@ -512,410 +343,6 @@ export class IndexStore {
 
   compactIfNeeded(options: { minBytes?: number; minFreeRatio?: number } = {}): boolean {
     return indexStoreMaintenance.compactIfNeeded(this.indexStoreMaintenanceHost(), options);
-  }
-
-  findIncomingCallsByName(
-    symbolName: string,
-    file?: string,
-    limit = 100,
-  ): { calls: CallSite[]; symbolFound: boolean; ambiguous: boolean; totalMatches: number } {
-    return writerSymbolQueries.findIncomingCallsByNameFromStore.call(
-      this.writerSymbolQueriesHost(),
-      symbolName,
-      file,
-      limit,
-    );
-  }
-
-  findOutgoingCallsByName(
-    symbolName: string,
-    file?: string,
-    limit = 100,
-  ): { calls: CallSite[]; symbolFound: boolean; unresolvedCount: number; totalMatches: number } {
-    return writerSymbolQueries.findOutgoingCallsByNameFromStore.call(
-      this.writerSymbolQueriesHost(),
-      symbolName,
-      file,
-      limit,
-    );
-  }
-
-  findTransitiveIncomingCallsByName(
-    symbolName: string,
-    file?: string,
-    limit = 200,
-  ): { calls: CallSite[]; symbolFound: boolean; ambiguous: boolean; totalMatches: number } {
-    return writerSymbolQueries.findTransitiveIncomingCallsByNameFromStore.call(
-      this.writerSymbolQueriesHost(),
-      symbolName,
-      file,
-      limit,
-    );
-  }
-
-  findTransitiveOutgoingCallsByName(
-    symbolName: string,
-    file?: string,
-    limit = 200,
-  ): { calls: CallSite[]; symbolFound: boolean; unresolvedCount: number; totalMatches: number } {
-    return writerSymbolQueries.findTransitiveOutgoingCallsByNameFromStore.call(
-      this.writerSymbolQueriesHost(),
-      symbolName,
-      file,
-      limit,
-    );
-  }
-
-  findRefsTo(symbolId: number): Ref[] {
-    return writerGraphReader.findRefsToWithStatement((sql) => this.stmt(sql), symbolId);
-  }
-
-  findRefsFrom(symbolId: number): Ref[] {
-    return writerGraphReader.findRefsFromWithStatement((sql) => this.stmt(sql), symbolId);
-  }
-
-  getPackageGraph(): CodeMapGraph {
-    return writerGraphReader.getPackageGraphWithStatement((sql) => this.stmt(sql));
-  }
-
-  getFileGraph(packageFilter: string): CodeMapGraph {
-    return writerGraphReader.getFileGraphWithStatement((sql) => this.stmt(sql), packageFilter);
-  }
-
-  getSymbolGraph(fileFilter: string): CodeMapGraph {
-    return writerGraphReader.getSymbolGraphWithStatement((sql) => this.stmt(sql), fileFilter);
-  }
-
-  getAllSymbols(): Array<{
-    id: number;
-    name: string;
-    file: string;
-    kind: SymbolKind;
-    line: number;
-    scope: string;
-  }> {
-    return writerSymbolQueries.getAllSymbols.call(this.writerSymbolQueriesHost());
-  }
-
-  /** Declarations in one file, in source order. */
-  getFileSymbols(
-    file: string,
-    limit: number,
-  ): Array<{ id: number; name: string; kind: string; line: number; signature: string }> {
-    return writerSymbolQueries.getFileSymbols.call(this.writerSymbolQueriesHost(), file, limit);
-  }
-
-  /** Declarations behind an arbitrary id list, for the retrieval walk. */
-  getSymbolsByIds(ids: readonly number[]): Array<{
-    id: number;
-    name: string;
-    kind: string;
-    lang: string;
-    file: string;
-    line: number;
-    signature: string;
-    scope: string;
-  }> {
-    return writerSymbolQueries.getSymbolsByIds.call(this.writerSymbolQueriesHost(), ids);
-  }
-
-  getAllResolvedRefs(): Array<{
-    fromId: number;
-    toId: number;
-    callType: string;
-  }> {
-    return writerSymbolQueries.getAllResolvedRefs.call(this.writerSymbolQueriesHost());
-  }
-
-  /**
-   * Replace both rank tables in one write. Called once per index run, after
-   * ref resolution has settled — a rank computed against half-resolved refs
-   * would describe a graph that never existed.
-   */
-  replaceRanks(symbols: readonly SymbolRankRow[], files: readonly FileRankRow[]): void {
-    this.runWriteTransaction(() => {
-      writerRank.replaceSymbolRanksWithStatement(
-        (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
-        symbols,
-      );
-      writerRank.replaceFileRanksWithStatement(
-        (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
-        files,
-      );
-    });
-  }
-
-  // ── Semantic file vectors ────────────────────────────────────────────────
-
-  /** Wipe stored vectors when the embedding model changed. */
-  reconcileVectorProvider(provider: string): boolean {
-    return this.runWithRetry(() =>
-      writerVectors.reconcileVectorProviderWithStatement(
-        (sql) => this.stmt(sql),
-        (key) => this.getMetadata(key),
-        (key, value) => this.setMetadata(key, value),
-        provider,
-      ),
-    );
-  }
-
-  getFileVectorStates(provider: string): Map<string, string> {
-    return writerVectors.getFileVectorStatesWithStatement((sql) => this.stmt(sql), provider);
-  }
-
-  upsertFileVectors(rows: readonly FileVectorRow[]): void {
-    this.runWriteTransaction(() => {
-      writerVectors.upsertFileVectorsWithStatement(
-        (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
-        rows,
-      );
-    });
-  }
-
-  pruneOrphanFileVectors(): number {
-    return this.runWithRetry(() =>
-      writerVectors.pruneOrphanFileVectorsWithStatement((sql) => this.stmt(sql)),
-    );
-  }
-
-  countFileVectors(): number {
-    return writerVectors.countFileVectorsWithStatement((sql) => this.stmt(sql));
-  }
-
-  searchFileVectors(query: Float32Array, limit: number, minScore: number): VectorHit[] {
-    return writerVectors.searchFileVectorsWithStatement(
-      (sql) => this.stmt(sql),
-      query,
-      limit,
-      minScore,
-    );
-  }
-
-  // ── Concept layer ────────────────────────────────────────────────────────
-
-  upsertFileConcept(concept: FileConcept): void {
-    this.runWriteTransaction(() => {
-      writerConcepts.upsertFileConceptWithStatement((sql) => this.stmt(sql), concept);
-    });
-  }
-
-  getFileConcept(file: string): FileConcept | undefined {
-    return writerConcepts.getFileConceptWithStatement((sql) => this.stmt(sql), file);
-  }
-
-  getAllFileConcepts(): FileConcept[] {
-    return writerConcepts.getAllFileConceptsWithStatement((sql) => this.stmt(sql));
-  }
-
-  getReadyConceptSummaries(): Map<string, string> {
-    return writerConcepts.getReadyConceptSummariesWithStatement((sql) => this.stmt(sql));
-  }
-
-  getConceptCoverage(): ConceptCoverage {
-    return writerConcepts.getConceptCoverageWithStatement((sql) => this.stmt(sql));
-  }
-
-  /** Flag summaries whose file has changed since they were written. */
-  markStaleConcepts(): number {
-    return this.runWithRetry(() =>
-      writerConcepts.markStaleConceptsWithStatement((sql) => this.stmt(sql)),
-    );
-  }
-
-  /** Drop summaries for files that are no longer indexed. */
-  pruneOrphanConcepts(): number {
-    return this.runWithRetry(() =>
-      writerConcepts.pruneOrphanConceptsWithStatement((sql) => this.stmt(sql)),
-    );
-  }
-
-  replaceSubsystems(subsystems: readonly Subsystem[], edges: readonly ConceptEdge[]): void {
-    this.runWriteTransaction(() => {
-      writerConcepts.replaceSubsystemsWithStatement(
-        (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
-        subsystems,
-        edges,
-      );
-    });
-  }
-
-  getSubsystems(): Subsystem[] {
-    return writerConcepts.getSubsystemsWithStatement((sql) => this.stmt(sql));
-  }
-
-  getConceptEdges(): ConceptEdge[] {
-    return writerConcepts.getConceptEdgesWithStatement((sql) => this.stmt(sql));
-  }
-
-  getPackageFileCounts(): Map<string, number> {
-    return writerRank.getPackageFileCountsWithStatement((sql) => this.stmt(sql));
-  }
-
-  getRankedFiles(limit: number): RankedFileRow[] {
-    return writerRank.getRankedFilesWithStatement((sql) => this.stmt(sql), limit);
-  }
-
-  getTopFileRanks(limit: number): FileRankRow[] {
-    return writerRank.getTopFileRanksWithStatement((sql) => this.stmt(sql), limit);
-  }
-
-  getTopSymbolRanks(limit: number): SymbolRankRow[] {
-    return writerRank.getTopSymbolRanksWithStatement((sql) => this.stmt(sql), limit);
-  }
-
-  getFileRankMap(): Map<string, number> {
-    return writerRank.getFileRankMapWithStatement((sql) => this.stmt(sql));
-  }
-
-  getRankCounts(): { symbols: number; files: number } {
-    return writerRank.getRankCountsWithStatement((sql) => this.stmt(sql));
-  }
-
-  getSymbolNameCandidates(): Map<number, number> {
-    return writerRank.getSymbolNameCandidatesWithStatement((sql) => this.stmt(sql));
-  }
-
-  /** Declaring file and homonym count per symbol, from one scan. */
-  getSymbolGraphFacts(): { fileOf: Map<number, string>; candidates: Map<number, number> } {
-    return writerSymbolQueries.getSymbolGraphFacts.call(this.writerSymbolQueriesHost());
-  }
-
-  getImportVisibility(): Map<string, Set<string>> {
-    return writerSymbolQueries.getImportVisibility.call(this.writerSymbolQueriesHost());
-  }
-
-  getAllImportRefs(): Array<{
-    sourceFile: string | null;
-    toName: string;
-    toId: number | null;
-    callType: string;
-    line: number;
-  }> {
-    return writerSymbolQueries.getAllImportRefs.call(this.writerSymbolQueriesHost());
-  }
-
-  close(): void {
-    closeFromHost(this.writerCacheLifecycleHost());
-  }
-
-  private indexStoreMaintenanceHost(): IndexStoreMaintenanceHost {
-    const self = this;
-    return {
-      stmt: (...args) => this.stmt(...args),
-      get ftsAvailable() {
-        return self.ftsAvailable;
-      },
-      getMetadata: (...args) => this.getMetadata(...args),
-      setMetadata: (...args) => this.setMetadata(...args),
-      runWithRetry: (...args) => this.runWithRetry(...args),
-      get db() {
-        return self.db;
-      },
-    };
-  }
-
-  private indexStoreBatchesHost(): IndexStoreBatchesHost {
-    const self = this;
-    return {
-      maxSqlVars: IndexStore.MAX_SQL_VARS,
-      invalidateBm25: (...args) => this.invalidateBm25(...args),
-      runWriteTransaction: (...args) => this.runWriteTransaction(...args),
-      stmt: (...args) => this.stmt(...args),
-      get ftsAvailable() {
-        return self.ftsAvailable;
-      },
-      set ftsAvailable(value) {
-        self.ftsAvailable = value;
-      },
-      get vectorsAvailable() {
-        return self.vectorsAvailable;
-      },
-      set vectorsAvailable(value) {
-        self.vectorsAvailable = value;
-      },
-      allocateSymbolIds: (...args) => this.allocateSymbolIds(...args),
-      invalidateIncomingRefsForFiles: (...args) => this.invalidateIncomingRefsForFiles(...args),
-      resolveRefsForNamesUnsafe: (...args) => this.resolveRefsForNamesUnsafe(...args),
-      recordFtsChurn: (...args) => this.recordFtsChurn(...args),
-    };
-  }
-
-  private indexDeletionHost(): IndexDeletionHost {
-    const self = this;
-    return {
-      maxSqlVars: IndexStore.MAX_SQL_VARS,
-      stmt: (...args) => this.stmt(...args),
-      invalidateBm25: (...args) => this.invalidateBm25(...args),
-      runWriteTransaction: (...args) => this.runWriteTransaction(...args),
-      invalidateIncomingRefsForFiles: (...args) => this.invalidateIncomingRefsForFiles(...args),
-      get ftsAvailable() {
-        return self.ftsAvailable;
-      },
-      get vectorsAvailable() {
-        return self.vectorsAvailable;
-      },
-      recordFtsChurn: (...args) => this.recordFtsChurn(...args),
-      resolveRefsForNamesUnsafe: (...args) => this.resolveRefsForNamesUnsafe(...args),
-      get db() {
-        return self.db;
-      },
-      stmtCache: this.stmtCache,
-      initSchema: (...args) => this.initSchema(...args),
-    };
-  }
-
-  private indexTransactionHost(): IndexTransactionHost {
-    const self = this;
-    return {
-      get atomicIndexUpdateActive() {
-        return self.atomicIndexUpdateActive;
-      },
-      set atomicIndexUpdateActive(value) {
-        self.atomicIndexUpdateActive = value;
-      },
-      runWithRetry: (...args) => this.runWithRetry(...args),
-      get db() {
-        return self.db;
-      },
-      invalidateBm25: (...args) => this.invalidateBm25(...args),
-      get writeSavepointSequence() {
-        return self.writeSavepointSequence;
-      },
-      set writeSavepointSequence(value) {
-        self.writeSavepointSequence = value;
-      },
-      beginWriteTransaction: (...args) => this.beginWriteTransaction(...args),
-      commitWriteTransaction: (...args) => this.commitWriteTransaction(...args),
-      rollbackWriteTransaction: (...args) => this.rollbackWriteTransaction(...args),
-    };
-  }
-
-  private writerSymbolQueriesHost(): WriterSymbolQueriesHost {
-    // Preserve the owner's instance and check each member against the helper contract.
-    void (this.stmt satisfies WriterSymbolQueriesHost['stmt']);
-    return this as unknown as WriterSymbolQueriesHost;
-  }
-
-  private writerCacheLifecycleHost(): WriterCacheLifecycleHost {
-    // Check the complete helper contract while preserving the owner's identity and receivers.
-    void ({
-      stmtCache: this.stmtCache,
-      db: this.db,
-      dataVersion: this.dataVersion,
-      bm25Cache: this.bm25Cache,
-      bm25Dirty: this.bm25Dirty,
-      bm25DataVersion: this.bm25DataVersion,
-      getAllIndexable: this.getAllIndexable,
-      stmt: this.stmt,
-      runWithRetry: this.runWithRetry,
-      getMetadata: this.getMetadata,
-      indexStoreMaintenanceHost: this.indexStoreMaintenanceHost,
-    } satisfies WriterCacheLifecycleHost);
-    return this as unknown as WriterCacheLifecycleHost;
   }
 }
 

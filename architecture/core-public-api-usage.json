@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 736,
+      "files": 741,
       "typeOnly": 67,
-      "runtimeOrMixed": 701
+      "runtimeOrMixed": 705
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -25030,6 +25030,18 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/codebase-index/indexer-batch-commit.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/codebase-index/indexer-batch-read.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/codebase-index/indexer-symbol-ownership.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -25038,7 +25050,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/codebase-index/indexer.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -25103,6 +25115,24 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/dead-code/files.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/fix-backup.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/fix-plan.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/dead-code/fix-verify.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -26578,7 +26608,7 @@
     },
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
-      "file": "packages/tools/src/dead-code/fix.ts",
+      "file": "packages/tools/src/dead-code/fix-verify.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

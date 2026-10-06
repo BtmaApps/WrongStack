@@ -59,7 +59,7 @@ describe('architecture health resolves the repository root from its own location
 
       // `packages/tools` is not under `packages/techstack` at all — a relative
       // reference that can only resolve when repoRoot is the repository root.
-      expect(stdout).toContain('packages/tools/src/dead-code/fix.ts');
+      expect(stdout).toContain('packages/tools/src/exec.ts');
     },
     300_000,
   );

@@ -1,11 +1,5 @@
-import { expectDefined } from '@wrongstack/core/utils';
 import type { IndexerOptions } from './indexer-discovery.js';
 import { discoverIndexerFiles } from './indexer-discovery.js';
-import {
-  assignRefsToSymbols,
-  moduleOwnerSymbol,
-  shouldUseParserWorkerPool,
-} from './indexer-symbol-ownership.js';
 
 export { shouldUseParserWorkerPool } from './indexer-symbol-ownership.js';
 
@@ -20,44 +14,24 @@ export { shouldUseParserWorkerPool } from './indexer-symbol-ownership.js';
  * 5. Return index statistics
  */
 
-import type { Stats } from 'node:fs';
-import * as fs from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import type { Context } from '@wrongstack/core/agent';
 import { indexParallelBatchSize, isFrugalPerf } from '@wrongstack/core/utils';
-import { xxhash64String as contentHashHex } from './content-hash.js';
-import { runGraphRankPass, shouldRefreshRanks } from './graph-rank-pass.js';
 import { throwIfAborted, YIELD_EVERY_N, yieldEventLoop } from './index-scheduling.js';
+import { gitBlobStamp, IndexSourceChangedError } from './index-source-files.js';
+import { commitBatchResults } from './indexer-batch-commit.js';
+import { parseBatchFiles, readBatchFiles } from './indexer-batch-read.js';
+import { finalizeIndexRun } from './indexer-finalize.js';
 import {
-  computeGitSnapshotKey,
-  gitBlobStamp,
-  IndexSourceChangedError,
-  isMissingPathError,
-  MAX_INDEX_FILE_BYTES,
-} from './index-source-files.js';
-import { detectLang } from './languages.js';
-import { type parseFileContent, parseFilesContent } from './parser-dispatch.js';
-import {
-  createRebuildParserPool,
-  getParserPool,
-  type ParserWorkerPool,
-} from './parser-worker-pool.js';
-import { recordFilesystemRead } from './perf-metrics.js';
-import { planRefBinding, runRefBinding } from './ref-binding-pass.js';
-import {
-  MODULE_RESOLUTION_VERSION,
-  MODULE_RESOLUTION_VERSION_KEY,
-  RELATION_STRUCTURE_KEY,
-  resolveProjectRelations,
-} from './relation-pass.js';
-import type { FileMeta, IndexResult, Symbol as IndexSymbol, Ref, SymbolLang } from './schema.js';
+  type IndexRunState,
+  MODULE_OWNER_VERSION,
+  MODULE_OWNER_VERSION_KEY,
+} from './indexer-run-state.js';
+import type { ParserWorkerPool } from './parser-worker-pool.js';
+import type { FileMeta, IndexResult } from './schema.js';
 import { IndexStore } from './writer.js';
 
-/**
- * Metadata key that changes whenever an index run changed rows or edges —
- * the content stamp for caches derived from the graph.
- */
-export const GRAPH_STAMP_KEY = 'graph_stamp';
+export { GRAPH_STAMP_KEY } from './indexer-run-state.js';
 
 /**
  * Parallel parse batch size — see {@link indexParallelBatchSize}.
@@ -69,19 +43,6 @@ export function resolveParallelBatch(): number {
 
 /** Balanced-profile batch width, used by a frugal process's rebuild. */
 const REBUILD_PARALLEL_BATCH = 40;
-
-/**
- * Detect AbortError (DOMException with name 'AbortError') thrown by signal-aware
- * fs.promises calls (stat, readFile). We must re-throw these so the cancellation
- * propagates — catching them as ordinary errors would keep the loop running.
- */
-function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === 'AbortError';
-}
-
-/** Bump to re-parse every symbol-less file once (they may now own refs). */
-const MODULE_OWNER_VERSION = '1';
-const MODULE_OWNER_VERSION_KEY = 'module_owner_version';
 
 /** Run a full or incremental index and return statistics. */
 export async function runIndexer(_ctx: Context, opts: IndexerOptions): Promise<IndexResult> {
@@ -132,16 +93,6 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   const startMs = Date.now();
   const errors: string[] = [];
   const langStats: Record<string, number> = {};
-  // P5.15: filesIndexed counts ONLY files parsed and committed with symbols
-  // (mirrors filesParsed). Skips/empties live in fileOutcomes. Invariant:
-  // exactly one counter (filesIndexed/filesParsed, filesSkipped, filesEmpty,
-  // filesFailed) bumps per file outcome — filesIndexed is the parsed branch.
-  let filesIndexed = 0;
-  let filesParsed = 0;
-  let filesSkipped = 0;
-  let filesEmpty = 0;
-  let filesFailed = 0;
-  let symbolsIndexed = 0;
   let { files, discoveredFiles, discoveryComplete, cleanBlobs, discoverySnapshotKey, dirtyHashes } =
     await discoverIndexerFiles({ projectRoot, opts, store, signal, ignore, errors, langs });
 
@@ -178,19 +129,23 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
         existingMeta.set(meta.file, { ...meta, contentHash: '', gitBlob: '' });
     }
   }
-  // What this run changes, for the relation and rank passes: a run that
-  // changed nothing must not redo repository-wide work.
-  const rewritten = new Set<string>();
-  const added = new Set<string>();
-  const deleted = new Set<string>();
-  /** Content hash each rewritten file's new rows were built from. */
-  const rewrittenHashes = new Map<string, string>();
-  /** Files whose read/parse/commit failed; their rows are the last good copy. */
-  const failed = new Set<string>();
-  const noteRewritten = (file: string, contentHash: string): void => {
-    rewritten.add(file);
-    rewrittenHashes.set(file, contentHash);
-    if (clearedAll || !existingMeta.has(file)) added.add(file);
+  const run: IndexRunState = {
+    clearedAll,
+    errors,
+    langStats,
+    filesIndexed: 0,
+    filesParsed: 0,
+    filesSkipped: 0,
+    filesEmpty: 0,
+    filesFailed: 0,
+    symbolsIndexed: 0,
+    existingMeta,
+    rewritten: new Set<string>(),
+    added: new Set<string>(),
+    deleted: new Set<string>(),
+    rewrittenHashes: new Map<string, string>(),
+    failed: new Set<string>(),
+    deferredRefNames: new Set<string>(),
   };
 
   // Per-file Git trust. A clean working copy only proves the file matches its
@@ -215,10 +170,10 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
         return true;
       }
       langStats[meta.lang] = (langStats[meta.lang] ?? 0) + meta.symbolCount;
-      symbolsIndexed += meta.symbolCount;
+      run.symbolsIndexed += meta.symbolCount;
       // P5.15: skipped files no longer count toward filesIndexed — the
       // headline is files actually parsed this run (see fileOutcomes).
-      filesSkipped++;
+      run.filesSkipped++;
       filesPreSkipped++;
       return false;
     });
@@ -233,10 +188,7 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   const frugalRebuild = clearedAll && isFrugalPerf();
   const parallelBatch = frugalRebuild ? REBUILD_PARALLEL_BATCH : resolveParallelBatch();
   const parserPoolCandidateCount = files.length;
-  let rebuildPool: ParserWorkerPool | undefined;
-  // Ref names awaiting resolution, resolved once after the batch loop — or
-  // not at all when the run ends with a whole-table resolution anyway.
-  const deferredRefNames = new Set<string>();
+  const rebuildPool: { current?: ParserWorkerPool | undefined } = {};
   let filesSinceLastYield = 0;
   try {
     for (let batchStart = 0; batchStart < files.length; batchStart += parallelBatch) {
@@ -265,540 +217,37 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
         throwIfAborted(signal);
       }
 
-      // Phase 1: Parallel stat + incremental skip + read + parse
-      const statOpts = signal ? { signal } : {};
-      const statReadParse = await Promise.allSettled(
-        batchFiles.map(
-          async (
-            file,
-          ): Promise<{
-            file: string;
-            stat: Stats;
-            lang: string;
-            parsed: Awaited<ReturnType<typeof parseFileContent>> | null;
-            content?: string;
-            contentHash?: string;
-            skippedMeta?: FileMeta;
-            error?: string;
-            missing?: boolean;
-          }> => {
-            let stat: Stats;
-            try {
-              stat = await (
-                fs.stat as (path: string, opts: { signal?: AbortSignal }) => Promise<Stats>
-              )(file, statOpts);
-            } catch (e) {
-              if (isAbortError(e)) throw e;
-              return {
-                file,
-                stat: null as never as Stats,
-                lang: '',
-                parsed: null,
-                error: `stat error: ${e instanceof Error ? e.message : String(e)}`,
-                missing: isMissingPathError(e),
-              };
-            }
-            if (!stat.isFile()) return { file, stat, lang: '', parsed: null };
-
-            const lang = detectLang(file);
-            if (!lang) return { file, stat, lang: '', parsed: null };
-            if (stat.size > MAX_INDEX_FILE_BYTES) {
-              return {
-                file,
-                stat,
-                lang,
-                parsed: null,
-                error: `file too large (${stat.size} bytes; max ${MAX_INDEX_FILE_BYTES})`,
-              };
-            }
-
-            const meta = force ? undefined : existingMeta.get(file);
-
-            // Discovery already hashed every dirty file for the Git snapshot. A
-            // match with the stored hash needs no second read; had the file
-            // changed since, the end-of-run snapshot check retries the run.
-            const snapshotHash = dirtyHashes?.get(file);
-            if (meta?.contentHash && snapshotHash === meta.contentHash) {
-              return {
-                file,
-                stat,
-                lang,
-                parsed: null,
-                contentHash: snapshotHash,
-                skippedMeta: { ...meta, mtimeMs: Math.floor(stat.mtimeMs) },
-              };
-            }
-
-            let content: string;
-            try {
-              content = await fs.readFile(file, { encoding: 'utf8', signal });
-              recordFilesystemRead(Buffer.byteLength(content, 'utf8'));
-            } catch (e) {
-              if (isAbortError(e)) throw e;
-              return {
-                file,
-                stat,
-                lang,
-                parsed: null,
-                error: `read error: ${e instanceof Error ? e.message : String(e)}`,
-              };
-            }
-
-            // Phase 2: content-hash short-circuit. mtime can change without the
-            // bytes changing (git checkout, touch, formatter that's a no-op).
-            // When the content hash matches what's stored, skip the expensive
-            // parse pass entirely — but still update mtime so the next run's
-            // fast path (the mtime check above) hits again.
-            //
-            // Compute the hash once here — it's reused in the return object so
-            // the batch-write path doesn't hash the same content a second time.
-            // Skip the short-circuit when there's no stored hash yet (first
-            // index of this file, or a legacy v4 DB that hasn't been populated).
-            // Without this guard, an empty stored hash would match an empty
-            // computed hash on every run, skipping parsing forever.
-            const contentHash = contentHashHex(content);
-            if (!force && meta && meta.contentHash && contentHash === meta.contentHash) {
-              return {
-                file,
-                stat,
-                lang,
-                parsed: null,
-                content,
-                contentHash,
-                skippedMeta: { ...meta, mtimeMs: Math.floor(stat.mtimeMs) },
-              };
-            }
-
-            // Phase 5: Parsing is deferred to a post-batch pass to avoid
-            // concurrent-mutation races inside Promise.allSettled callbacks.
-            // The callback returns the read content; the main thread decides
-            // whether to parse inline or delegate to the worker pool after all
-            // stat+hash checks have settled.
-            return { file, stat, lang, parsed: null, content, contentHash };
-          },
-        ),
-      );
-
-      // Phase 1.5: Post-batch parse pass. Files were stat+hash-checked and
-      // content-read in the parallel pass above, but parsing was deferred to
-      // avoid the concurrent-mutation race that an inline pool delegation
-      // inside each Promise.allSettled callback would create. Here we collect
-      // all files that need parsing, then either delegate to the worker pool
-      // (when available and the batch is large enough) or parse inline — both
-      // single-threaded, no race.
-      const toParse: Array<{
-        index: number;
-        file: string;
-        content: string;
-        lang: SymbolLang;
-      }> = [];
-      for (let pi = 0; pi < statReadParse.length; pi++) {
-        const s = statReadParse[pi]!;
-        if (s.status !== 'fulfilled') continue;
-        const r = s.value;
-        if (r.error || r.skippedMeta || !r.lang || r.parsed) continue;
-        if (r.content === undefined) continue;
-        toParse.push({
-          index: pi,
-          file: batchFiles[pi]!,
-          content: r.content,
-          lang: r.lang as SymbolLang,
-        });
-      }
-
-      if (toParse.length > 0) {
-        // Try the worker pool for large batches (Phase 5 — threshold-gated).
-        // Falls back to inline parsing when the pool isn't available or the
-        // batch is too small to justify spawn overhead. Activation is based on
-        // files-to-parse count, not total file count, so stat-skipped batches
-        // don't waste pool overhead on a tiny workload.
-        let pool: ParserWorkerPool | null = null;
-        if (
-          shouldUseParserWorkerPool(parserPoolCandidateCount, toParse.length, {
-            rebuild: clearedAll,
-          })
-        ) {
-          if (frugalRebuild) {
-            rebuildPool ??= createRebuildParserPool();
-            pool = rebuildPool;
-          } else {
-            pool = getParserPool();
-          }
-        }
-        if (pool) {
-          try {
-            await pool.ensureReady();
-            const parsedResults = await pool.parseFiles(
-              toParse.map((p) => ({ file: p.file, content: p.content, lang: p.lang })),
-            );
-            // Match by file path — pool results arrive in completion order
-            // (worker N may finish before worker M), not positional alignment.
-            // Files that errored inside a worker are absent from parsedResults;
-            // record them as parse errors so the commit loop doesn't silently
-            // index them with zero symbols.
-            const byFile = new Map(parsedResults.map((r) => [r.file, r]));
-            for (const item of toParse) {
-              const parsed = byFile.get(item.file);
-              const settled = statReadParse[item.index]!;
-              if (settled.status !== 'fulfilled') continue;
-              if (parsed) {
-                settled.value.parsed = parsed;
-              } else {
-                settled.value.error = `parse error: worker returned no result for ${item.file}`;
-              }
-            }
-          } catch {
-            // Pool failure — fall through to inline parsing for all files.
-            pool = null;
-          }
-        }
-
-        // Inline fallback (or when pool wasn't available). Parse in parallel
-        // — this is the same parallelism the pre-refactor code had via the
-        // single Promise.allSettled callback. Sequential parsing would
-        // regress incremental indexing latency. P3.8: one call for the whole
-        // slice, so Go/Python files inside it share one toolchain child
-        // process per chunk instead of one spawn per file.
-        if (!pool) {
-          const parsedAll = await parseFilesContent(
-            toParse.map((p) => ({ file: p.file, content: p.content, lang: p.lang })),
-          );
-          for (let pi2 = 0; pi2 < parsedAll.length && pi2 < toParse.length; pi2++) {
-            const settled = statReadParse[toParse[pi2]!.index]!;
-            if (settled.status !== 'fulfilled') continue;
-            const slot = parsedAll[pi2]!;
-            if (slot.result) {
-              settled.value.parsed = slot.result;
-            } else {
-              // A throwing parser no longer aborts the run — parseFilesContent
-              // contains it and carries the message (P3.8 fix; P2.5 surfaces it).
-              settled.value.error = `parse error: ${slot.error ?? `no result for ${toParse[pi2]!.file}`}`;
-            }
-          }
-        }
-      }
-
-      // Phase 2: Sequential SQLite writes — amortized across the whole batch.
-      //
-      // Each file is still parsed in parallel (Phase 1), but the writes
-      // happen in a single `commitBatch` transaction per outer batch
-      // (PARALLEL_BATCH = 20 files). This drops the commit count from
-      // ~5/file to 1/parallel-batch, which is the difference between
-      // 100 fsync round-trips and 5 on a 20-file slice.
-      const batchEntries: Array<{
-        file: string;
-        lang: SymbolLang;
-        symbols: IndexSymbol[];
-        refs: Ref[];
-        mtimeMs: number;
-        symbolCount: number;
-        contentHash: string;
-      }> = [];
-      const deleteForFiles: string[] = [];
-
-      for (let fi = 0; fi < statReadParse.length; fi++) {
-        const settled = statReadParse[fi]!;
-        const file = expectDefined(batchFiles[fi]);
-
-        if (settled.status === 'rejected') {
-          const err = settled.reason;
-          if (err instanceof Error && isAbortError(err)) throw err;
-          errors.push(`batch error: ${file}: ${err instanceof Error ? err.message : String(err)}`);
-          failed.add(file);
-          filesFailed++;
-          continue;
-        }
-
-        const result = settled.value;
-        if (result.error) {
-          // A missing path in a targeted watcher/edit run is authoritative: the
-          // source was deleted or renamed, so remove its previous index rows.
-          // Read/parse/permission failures are transient and retain the last good
-          // snapshot instead of replacing it with an empty one.
-          if (result.missing) {
-            // A deletion is a successful outcome, not a failure: reporting it as
-            // `stat error: ENOENT` made every watcher-observed delete or rename
-            // surface as "N error(s)" and count toward `failed`.
-            if (existingMeta.has(file)) {
-              store.deleteFile(file);
-              deleted.add(file);
-            }
-            continue;
-          }
-          errors.push(`${file}: ${result.error}`);
-          failed.add(file);
-          filesFailed++;
-          continue;
-        }
-
-        const { stat, lang, parsed } = result;
-        if (result.skippedMeta) {
-          langStats[lang] = (langStats[lang] ?? 0) + result.skippedMeta.symbolCount;
-          symbolsIndexed += result.skippedMeta.symbolCount;
-          // P5.15: content-hash skips don't count toward filesIndexed.
-          filesSkipped++;
-          // Content-hash short-circuit (Phase 2): mtime changed but content
-          // didn't. Persist the new mtime so the next run's fast path hits
-          // without re-reading the file.
-          const stored = existingMeta.get(file);
-          if (stored && stored.mtimeMs !== result.skippedMeta.mtimeMs) {
-            store.upsertFile({
-              file,
-              lang: lang as SymbolLang,
-              mtimeMs: result.skippedMeta.mtimeMs,
-              symbolCount: result.skippedMeta.symbolCount,
-              lastIndexed: Date.now(),
-              contentHash: result.skippedMeta.contentHash,
-            });
-          }
-          continue;
-        }
-
-        if (!lang || !parsed) {
-          if (lang) {
-            noteRewritten(file, result.contentHash ?? '');
-            store.upsertFile({
-              file,
-              lang: lang as SymbolLang,
-              mtimeMs: Math.floor(stat.mtimeMs),
-              symbolCount: 0,
-              lastIndexed: Date.now(),
-              contentHash: result.contentHash ?? '',
-            });
-            // P5.15: empty files don't count toward filesIndexed.
-            filesEmpty++;
-          }
-          continue;
-        }
-
-        // Empty symbol files still need their file row updated so future runs
-        // know the mtime. Single transaction clears stale rows + upserts meta.
-        const parsedRefs = parsed.refs ?? [];
-        if (parsed.symbols.length === 0 && parsedRefs.length === 0) {
-          noteRewritten(file, result.contentHash ?? '');
-          // After a clear there are no old rows to drop, and the drop's lookups
-          // would scan the unindexed tables once per empty file.
-          const writeEmpty = clearedAll
-            ? (meta: FileMeta) => store.upsertFile(meta)
-            : (meta: FileMeta) => store.replaceEmptyFile(meta);
-          writeEmpty({
-            file,
-            lang: lang as SymbolLang,
-            mtimeMs: Math.floor(stat.mtimeMs),
-            symbolCount: 0,
-            lastIndexed: Date.now(),
-            contentHash: result.contentHash ?? '',
-          });
-          // P5.15: empty files don't count toward filesIndexed.
-          filesEmpty++;
-          continue;
-        }
-
-        const symbols =
-          parsed.symbols.length > 0
-            ? parsed.symbols
-            : [moduleOwnerSymbol(file, lang as SymbolLang)];
-        batchEntries.push({
-          file,
-          lang: lang as SymbolLang,
-          symbols,
-          refs: parsedRefs,
-          mtimeMs: Math.floor(stat.mtimeMs),
-          symbolCount: symbols.length,
-          contentHash: result.contentHash ?? '',
-        });
-        deleteForFiles.push(file);
-        noteRewritten(file, result.contentHash ?? '');
-      }
-
-      if (batchEntries.length > 0) {
-        try {
-          store.commitBatch(batchEntries, {
-            // Nothing to replace after a clear (and no index to find it by).
-            deleteForFiles: clearedAll ? undefined : deleteForFiles,
-            deferResolution: deferredRefNames,
-          });
-          for (const entry of batchEntries) {
-            const count = entry.symbols.length;
-            symbolsIndexed += count;
-            langStats[entry.lang] = (langStats[entry.lang] ?? 0) + count;
-            filesIndexed++;
-            filesParsed++;
-          }
-        } catch (err) {
-          // If the batch commit fails, fall back to per-file writes so the
-          // user still gets a partial index. Per-file writes are slower but
-          // isolate failures.
-          const message = err instanceof Error ? err.message : String(err);
-          errors.push(`commitBatch failed: ${message} — falling back to per-file writes`);
-          for (const entry of batchEntries) {
-            try {
-              store.deleteRefsForFile(entry.file);
-              store.deleteSymbolsForFile(entry.file);
-              const symbolsWithIds = store.insertSymbols(entry.symbols);
-              symbolsIndexed += symbolsWithIds.length;
-              langStats[entry.lang] = (langStats[entry.lang] ?? 0) + symbolsWithIds.length;
-              filesIndexed++;
-              filesParsed++;
-              if (entry.refs.length > 0 && symbolsWithIds.length > 0) {
-                const fallbackBatch = assignRefsToSymbols(entry.refs, symbolsWithIds);
-                if (fallbackBatch.length > 0) store.insertRefsBatch(fallbackBatch);
-              }
-              store.resolveRefsForNames([
-                ...entry.symbols.map((symbol) => symbol.name),
-                ...entry.refs.map((ref) => ref.toName),
-              ]);
-              store.upsertFile({
-                file: entry.file,
-                lang: entry.lang,
-                mtimeMs: entry.mtimeMs,
-                symbolCount: entry.symbolCount,
-                lastIndexed: Date.now(),
-                contentHash: entry.contentHash,
-              });
-            } catch (innerErr) {
-              failed.add(entry.file);
-              filesFailed++;
-              errors.push(
-                `fallback write failed: ${entry.file}: ${innerErr instanceof Error ? innerErr.message : String(innerErr)}`,
-              );
-            }
-          }
-        }
-      }
+      const statReadParse = await readBatchFiles(batchFiles, {
+        signal,
+        force,
+        existingMeta,
+        dirtyHashes,
+      });
+      await parseBatchFiles(statReadParse, batchFiles, {
+        parserPoolCandidateCount,
+        clearedAll,
+        frugalRebuild,
+        rebuildPool,
+      });
+      commitBatchResults(store, run, statReadParse, batchFiles);
     }
   } finally {
     // The rebuild's private pool must not outlive the run (each worker holds
     // a TypeScript compiler); shut it down on success, failure and abort alike.
-    await rebuildPool?.shutdown();
+    await rebuildPool.current?.shutdown();
   }
 
-  if (clearedAll) store.restoreSecondaryIndexes();
-
-  // Remove stale entries for files deleted since last run.
-  // Instead of stat-ing every previously-indexed file (O(total indexed)),
-  // derive stale files from the discovered set: any existingMeta entry not
-  // in the scanned files is stale. Skip entirely for explicit file lists
-  // (targeted reindex — can't derive stale from a subset).
-  if (discoveredFiles && discoveryComplete && !clearedAll) {
-    for (const [file_] of existingMeta) {
-      if (!discoveredFiles.has(file_)) {
-        store.deleteFile(file_);
-        deleted.add(file_);
-      }
-    }
-  }
-
-  // Batch commits resolve only names touched by that batch. Existing databases
-  // get one global repair pass when this contract version changes; subsequent
-  // single-file watcher runs avoid rebuilding the full symbol-name map.
-  if (needsFullRefResolution) store.resolveRefs();
-  else if (deferredRefNames.size > 0) store.resolveRefsForNames(deferredRefNames);
-  // Import-aware binding runs after module resolution, but what it must
-  // revisit is read before: the relation pass clears the targets it keys on.
-  const bindingPlan = planRefBinding(store, {
-    changes: { rewritten, deleted },
-    full: clearedAll || needsFullRefResolution,
-    structureKey: RELATION_STRUCTURE_KEY,
-    moduleVersionCurrent:
-      store.getMetadata(MODULE_RESOLUTION_VERSION_KEY) === MODULE_RESOLUTION_VERSION,
+  return finalizeIndexRun(store, run, {
+    projectRoot,
+    opts,
+    force,
+    needsFullRefResolution,
+    discoveredFiles,
+    discoveryComplete,
+    cleanBlobs,
+    discoverySnapshotKey,
+    startMs,
+    relationGraphVersion,
+    refResolutionVersion,
   });
-  // Proportional to what changed: a watcher echo of an already-indexed edit,
-  // or a full scan over an unchanged checkout, re-resolves nothing.
-  const relationsResolved = await resolveProjectRelations(store, projectRoot, {
-    changes: { rewritten, added, deleted },
-    full: needsFullRefResolution,
-    projectScan: !opts.files,
-    errors,
-    signal,
-  });
-  const bindingsChanged = runRefBinding(store, bindingPlan, {
-    added,
-    structureKey: RELATION_STRUCTURE_KEY,
-    errors,
-    signal,
-  });
-  const relationsChanged = relationsResolved || bindingsChanged;
-  store.setMetadata('ref_resolution_version', refResolutionVersion);
-  // Only a run that saw every file has re-parsed every symbol-less one.
-  if (clearedAll || (!opts.files && !langs?.length && discoveryComplete)) {
-    store.setMetadata(MODULE_OWNER_VERSION_KEY, MODULE_OWNER_VERSION);
-  }
-  store.setMetadata('relation_graph_version', relationGraphVersion);
-  const changedFiles = rewritten.size + deleted.size;
-  // Centrality last: every ref now has its final to_id/to_file, so this is the
-  // first point at which the wiring graph is the graph the generation will
-  // publish. Failure is recorded in `errors` and never fails the run.
-  let ranksChanged = false;
-  if (shouldRefreshRanks(store, { changedFiles, force })) {
-    ranksChanged = runGraphRankPass(store, errors).computed;
-  }
-  const completeProjectScope =
-    !opts.files && (!langs || langs.length === 0) && (!opts.ignore || opts.ignore.length === 0);
-  if (completeProjectScope && discoverySnapshotKey !== undefined && cleanBlobs && discoveredFiles) {
-    // Every file Git reports clean now has rows built from its staged blob.
-    // Record that per file; a failed file keeps whatever it had (its rows are
-    // an older copy).
-    const blobUpdates = new Map<string, string>();
-    let blesses = false;
-    for (const file of discoveredFiles) {
-      if (failed.has(file)) continue;
-      const wasRewritten = rewrittenHashes.has(file);
-      const previous = existingMeta.get(file);
-      const hash = wasRewritten ? rewrittenHashes.get(file) : previous?.contentHash;
-      if (hash === undefined) continue;
-      const blob = cleanBlobs.get(file);
-      const desired = blob === undefined ? '' : gitBlobStamp(blob, hash);
-      // Rewrites already cleared the column; skipped rows kept theirs.
-      const current = wasRewritten ? '' : (previous?.gitBlob ?? '');
-      if (desired === current) continue;
-      blobUpdates.set(file, desired);
-      if (desired !== '') blesses = true;
-    }
-    // A new stamp vouches that the rows match the blob, which only holds if
-    // nothing moved between discovery and the reads — so re-list and compare
-    // before writing one. A run that stamps nothing (the steady state: every
-    // clean file already trusted) has nothing to vouch for and skips the
-    // extra git process.
-    if (blesses) {
-      const finalSnapshotKey = await computeGitSnapshotKey(projectRoot, discoveredFiles, signal);
-      if (finalSnapshotKey !== discoverySnapshotKey) {
-        throw new IndexSourceChangedError(
-          'Project files changed during indexing; retrying before publishing the generation.',
-        );
-      }
-    }
-    store.setGitBlobs(blobUpdates);
-  }
-  // Planner refresh belongs to bulk runs that moved real data, not the edit
-  // watcher hot path — nor a full scan that found nothing to do.
-  // P5.15: gate on actual work (parsed files), not the inflated legacy count.
-  if ((!opts.files && changedFiles > 0) || filesIndexed >= 50) store.optimize();
-
-  // `graph_stamp` is what content caches key on (the wiring-graph cache): it
-  // moves only when rows or edges did. `last_indexed` still records every
-  // full scan — it answers "when was this verified" — but a targeted run that
-  // changed nothing (the watcher's echo of an edit a tool already indexed)
-  // touches neither.
-  if (changedFiles > 0 || relationsChanged) {
-    store.setMetadata(GRAPH_STAMP_KEY, `${Date.now()}:${changedFiles}`);
-  }
-  if (changedFiles > 0 || !opts.files) store.setLastIndexed(Date.now());
-  const durationMs = Date.now() - startMs;
-
-  return {
-    filesIndexed,
-    fileOutcomes: {
-      parsed: filesParsed,
-      skipped: filesSkipped,
-      empty: filesEmpty,
-      failed: filesFailed,
-    },
-    symbolsIndexed,
-    langStats,
-    durationMs,
-    errors,
-    changedFiles,
-    contentChanged: changedFiles > 0 || relationsChanged || ranksChanged || clearedAll,
-  };
 }

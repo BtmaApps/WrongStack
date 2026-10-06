@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:47:16.880Z",
+  "generatedAt": "2026-10-06T18:48:12.334Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4704,
+    "sourceFiles": 4722,
     "testFiles": 4160,
-    "sourceLines": 1073725,
+    "sourceLines": 1074123,
     "workspaceEdges": 133,
-    "moduleEdges": 15478,
+    "moduleEdges": 15539,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -765,7 +765,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 293,
+      "sourceFiles": 311,
       "testFiles": 297,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26313,31 +26313,6 @@
       "relativeImports": 22
     },
     {
-      "file": "packages/tools/src/bash-kill-guard.ts",
-      "lines": 817,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/tools/src/codebase-index/indexer.ts",
-      "lines": 805,
-      "relativeImports": 16
-    },
-    {
-      "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 926,
-      "relativeImports": 36
-    },
-    {
-      "file": "packages/tools/src/dead-code/fix.ts",
-      "lines": 1247,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/tools/src/dead-code/parse.ts",
-      "lines": 1190,
-      "relativeImports": 0
-    },
-    {
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 822,
       "relativeImports": 40
@@ -26390,16 +26365,6 @@
   ],
   "hotspots": [
     {
-      "file": "packages/tools/src/dead-code/fix.ts",
-      "lines": 1247,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/tools/src/dead-code/parse.ts",
-      "lines": 1190,
-      "relativeImports": 0
-    },
-    {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
       "lines": 973,
       "relativeImports": 6
@@ -26408,11 +26373,6 @@
       "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
       "lines": 962,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 926,
-      "relativeImports": 36
     },
     {
       "file": "packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx",
@@ -26455,11 +26415,6 @@
       "relativeImports": 40
     },
     {
-      "file": "packages/tools/src/bash-kill-guard.ts",
-      "lines": 817,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/webui/src/stores/session-tab-store.ts",
       "lines": 813,
       "relativeImports": 19
@@ -26498,11 +26453,6 @@
       "file": "packages/sdd/src/spec-builder.ts",
       "lines": 805,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/tools/src/codebase-index/indexer.ts",
-      "lines": 805,
-      "relativeImports": 16
     },
     {
       "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
@@ -26638,6 +26588,31 @@
       "file": "packages/governance/src/event-store.ts",
       "lines": 786,
       "relativeImports": 5
+    },
+    {
+      "file": "packages/kanban/src/server/sqlite-storage.ts",
+      "lines": 786,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/core/src/coordination/fleet-supervisor.ts",
+      "lines": 785,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/plugins/src/lint-gate/index.ts",
+      "lines": 785,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/core/src/coordination/agent-status-tracker.ts",
+      "lines": 784,
+      "relativeImports": 3
+    },
+    {
+      "file": "packages/tools/src/exec.ts",
+      "lines": 784,
+      "relativeImports": 9
     }
   ],
   "testOnlyExports": [

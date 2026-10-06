@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:47:16.880Z
+**Generated:** 2026-10-06T18:48:12.334Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4704 |
-| Production source lines | 1073725 |
+| Production source files | 4722 |
+| Production source lines | 1074123 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15478 |
+| Relative module edges | 15539 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 115 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 49 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 293 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 311 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 468 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 676 | 468 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -83,11 +83,8 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1247 | `packages/tools/src/dead-code/fix.ts` |
-| 1190 | `packages/tools/src/dead-code/parse.ts` |
 | 973 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 962 | `packages/webui/src/components/ChatInput/slash-routing.ts` |
-| 926 | `packages/tools/src/codebase-index/writer.ts` |
 | 861 | `packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx` |
 | 856 | `packages/cli/src/cli-main.ts` |
 | 839 | `packages/webui-server/src/server/start-webui.ts` |
@@ -96,7 +93,6 @@ None.
 | 825 | `packages/plugins/src/migration-planner/index.ts` |
 | 824 | `packages/webui/src/components/RepositoryHistoryView.tsx` |
 | 822 | `packages/tui/src/use-app-controller.tsx` |
-| 817 | `packages/tools/src/bash-kill-guard.ts` |
 | 813 | `packages/webui/src/stores/session-tab-store.ts` |
 | 811 | `packages/plugins/src/cost-tracker/index.ts` |
 | 811 | `packages/webui/src/components/CodeMap.tsx` |
@@ -105,7 +101,6 @@ None.
 | 807 | `packages/security-scanner/src/skill-generator.ts` |
 | 806 | `packages/simpleui/src/lib/message-handler.ts` |
 | 805 | `packages/sdd/src/spec-builder.ts` |
-| 805 | `packages/tools/src/codebase-index/indexer.ts` |
 | 803 | `packages/webui/src/components/SidePanel/SkillsList.tsx` |
 | 802 | `packages/cli/src/boot.ts` |
 | 801 | `packages/cli/src/slash-commands/settings-mutations.ts` |
@@ -133,6 +128,11 @@ None.
 | 787 | `packages/core/src/security/directory-permission-policy.ts` |
 | 787 | `packages/webui/src/components/SidePanel/SessionPanel.tsx` |
 | 786 | `packages/governance/src/event-store.ts` |
+| 786 | `packages/kanban/src/server/sqlite-storage.ts` |
+| 785 | `packages/core/src/coordination/fleet-supervisor.ts` |
+| 785 | `packages/plugins/src/lint-gate/index.ts` |
+| 784 | `packages/core/src/coordination/agent-status-tracker.ts` |
+| 784 | `packages/tools/src/exec.ts` |
 
 ## Exports only tests reference
 

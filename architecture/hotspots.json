@@ -50,26 +50,6 @@
       "lines": 806,
       "relativeImports": 22
     },
-    "packages/tools/src/bash-kill-guard.ts": {
-      "lines": 817,
-      "relativeImports": 2
-    },
-    "packages/tools/src/codebase-index/indexer.ts": {
-      "lines": 805,
-      "relativeImports": 16
-    },
-    "packages/tools/src/codebase-index/writer.ts": {
-      "lines": 926,
-      "relativeImports": 36
-    },
-    "packages/tools/src/dead-code/fix.ts": {
-      "lines": 1247,
-      "relativeImports": 5
-    },
-    "packages/tools/src/dead-code/parse.ts": {
-      "lines": 1190,
-      "relativeImports": 0
-    },
     "packages/tui/src/use-app-controller.tsx": {
       "lines": 822,
       "relativeImports": 40
