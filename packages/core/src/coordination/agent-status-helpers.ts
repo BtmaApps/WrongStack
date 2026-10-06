@@ -211,7 +211,7 @@ function toolActivityKind(
   if (/^(read|view|open_file|read_file)|file_read/.test(normalized)) return 'read';
   if (/^(write|create|save)|file_write/.test(normalized)) return 'write';
   if (/edit|update|patch|replace|apply_patch/.test(normalized)) return 'edit';
-  if (/bash|shell|terminal|exec|command|powershell|cmd/.test(normalized)) return 'terminal';
+  if (/bash|shell|terminal|exec|command|powershell|pwsh|cmd/.test(normalized)) return 'terminal';
   if (/fetch|browser|browse|http|url|web/.test(normalized)) return 'web';
   if (/search|grep|find|glob|query/.test(normalized)) return 'search';
   return 'other';
