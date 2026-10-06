@@ -1367,9 +1367,6 @@
     "packages/tui/src/components/help-overlay.tsx": [
       "helpSections"
     ],
-    "packages/tui/src/components/history/banner-formation.ts": [
-      "BANNER_FORMATION_DURATION_MS"
-    ],
     "packages/tui/src/components/history/banner.tsx": [
       "bannerGradientColor",
       "brandMarkPinkRow"
