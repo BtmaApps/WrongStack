@@ -2,44 +2,42 @@
 
 ## Adjudication Standard
 
-- Treat review findings, suggested patches, and retractions as hypotheses. Validate them against the literal live source, complete producer-to-consumer flow, covering tests, explicit owner communications, and repository policy.
-- Immediately before citing or editing a file, reread it and inspect both `git status --short -- <path>` and `git diff -- <path>`. Include unstaged and untracked files; HEAD-only inspection can miss an already-applied source or manifest fix.
-- For test-based findings, first run `pnpm exec vitest run <flagged files>` from the repository root. If assertions just read as broken pass, reread the file and report the finding as already resolved with live citations; do not patch it.
-- Falsify missing-module, missing-export, and undeclared-identifier claims before changing code: search package-wide for both imported and exported identifiers, read every relevant import and lexical declaration, inspect covering tests, and run the package typecheck. Include untracked sources and paired `package.json` `exports`.
-- For an intentional, documented contract flip, derive the complete failing set from a baseline run rather than the reviewer’s cited assertions. Update stale tests and preserve migration helpers instead of restoring the old behavior. For `packages/cli/src/wiring/dep-watcher-bridge.ts`, absent configuration means enabled, while explicit `enabled: false` means skipped.
-- Treat pinned repository assertions and explicit owner policy as stronger evidence than unsupported reviewer expectations.
+- Treat every review finding, proposed patch, and retraction as a hypothesis. Validate it against the literal live source, complete producer-to-consumer flow, covering tests, relevant git history, and explicit owner policy before editing.
+- Immediately before citing or changing a file, reread it and inspect `git status --short -- <path>` plus `git diff -- <path>`; include untracked and unstaged work. Preserve changes that already resolve the finding, and finish only residual cleanup in a partially applied refactor.
+- Never inherit a reviewer’s line citation through a truncated or stale read. If the cited region was not inspected, mark the claim unverified; if the live file already handles it, report it resolved rather than patching duplicate logic.
+- Falsify missing-module, missing-export, duplicate-identifier, and undeclared-identifier claims with a package-wide symbol search, every relevant import/declaration, and a package typecheck. A clean typecheck is decisive for that compile claim and checked scope, not for runtime behavior.
+- Respect explicit ownership. If edits are prohibited, provide live read-only evidence and stop; do not change peer-owned diagnostics merely to make the local command green.
 
-## Concurrent Work and Ownership
+## Concurrent Work
 
-- Preserve working-tree changes that already resolve a finding. If a refactor is partially applied, finish only the residual cleanup rather than duplicating a declaration or implementation.
-- After an `edit` reports “file was modified externally,” reread and re-anchor to the current file. Preserve settled peer bodies verbatim; never retry a stale replacement.
-- Changing diagnostic coordinates, test counts, or failures on a co-modified tree indicate an unstable verification snapshot. Check the exact production and test paths with `git status --short`, rerun after peers settle, and report peer failures separately rather than absorbing them.
-- Respect explicit ownership instructions. If editing is prohibited, provide read-only evidence and stop. Before reapplying reverted code, check owner communications and pinning tests for intentional policy.
-- After concurrent changes settle, check for residual stale imports, call arity, unused parameters, and formatting, then verify the final tree rather than relying on an earlier snapshot.
+- After any “file was modified externally” notification, stop editing from the stale snapshot, reread the file, and re-anchor replacements to the current contents. Preserve settled peer bodies verbatim.
+- On a co-modified tree, report diagnostics outside the reviewed changed-file list separately with exact coordinates. Do not absorb peer failures into the local verdict.
+- Changing test counts, diagnostics, or failures during verification indicates an unstable snapshot. Check exact paths with `git status --short`, let peers settle, then rerun and verify the final tree for stale imports, call arity, unused parameters, and formatting.
 
-## Verification
+## Tests and Verification
 
-- Run the flagged suite before accepting deterministic broken-test claims: `pnpm exec vitest run <file>`. Discover covering tests with both `.test.ts` and `.test.tsx` searches.
-- Run package compilation checks with `node node_modules/typescript/bin/tsc --noEmit --pretty false -p <package>/tsconfig.json`. Use `packages/core/tsconfig.test.json` when checking core test typing.
-- Treat a clean typecheck as evidence only for its checked scope, not as proof of runtime correctness. Keep unrelated or peer-owned diagnostics separate.
-- For parse-error cascades ending in `Unterminated template literal`, investigate the earliest relevant diagnostic first; later locations may be parser fallout.
-- Use `pnpm exec biome check <file>` for scoped lint verification and `pnpm exec biome check --write <file>` only for necessary formatting or import cleanup. Never widen formatter writes across a shared tree.
-- Never pass an arbitrary arrow-function predicate to Vitest 5 `toThrow` or `toThrowError`; use `toThrow(/pattern/)` or `try`/`catch` with explicit `toContain` assertions.
+- Run `pnpm exec vitest run <flagged files>` from the repository root before accepting deterministic broken-test claims, then rerun the covering suite immediately after a fix. Discover coverage with both `.test.ts` and `.test.tsx` searches.
+- Establish test provenance with `git status --short` and `git log --oneline -5 -- <test file>`. Committed pins and explicit owner policy outrank reviewer expectations; an untracked `??` test with no history is a co-authored stale pin. When updating it, preserve unaffected assertions verbatim and add a dedicated regression for the restored contract.
+- Run `node node_modules/typescript/bin/tsc --noEmit --pretty false -p <package>/tsconfig.json`; use `packages/core/tsconfig.test.json` for core test typing. Keep clean-scope evidence distinct from unrelated runtime behavior.
+- Use `pnpm exec biome check <file>` for scoped linting and `pnpm exec biome check --write <file>` only for necessary formatting. Investigate the earliest diagnostic in parse-error cascades; later errors may be fallout. Never pass an arbitrary arrow-function predicate to Vitest 5 `toThrow`; use `toThrow(/pattern/)` or explicit `try`/`catch` assertions.
 
-## Cross-Cutting Checks
+## Race and State-Transition Checks
 
-- Do not infer a race from `void someAsyncFn()` alone. An async function without an `await` runs synchronously; inspect dependencies and actual suspension points.
-- Verify workflow findings against the live `.github/workflows/*.yml`, including unstaged paired changes.
-- For allegedly nonexistent pnpm filter targets, search all `**/package.json` files and confirm the exact package `name` and invoked script before changing commands.
+- Before reporting a guard hole, test semantic subsumption and write ordering, then construct a counterexample using actual suspension points. An async call is not asynchronous merely because it returns a promise, and a function with no `await` runs synchronously through its body.
+- In resume/start flows, validate cheap existence conditions before acquiring leases: load the graph and reject a missing id before `acquireGoalRunLease` or `acquireRunLease`, so invalid input cannot briefly hold a lease or mask not-found as `GoalRunLeaseBusyError`.
+- Acquire a run lease into a local variable, recheck `!host.stopping` immediately after the last await and directly before assigning `host.releaseRunLease`, then clear the local and release it in `finally`. `releaseActiveRunLease` cannot release a lease that was never handed off.
+- In `handleStop`, capture `startInFlight` at entry and use it to gate terminal-state persistence rather than consulting the lease field. When persistence is deliberately gated, do not retain an ungated parallel mutation such as `graph.runState`, which can desynchronize memory from disk.
+- Any synchronous listener gated by teardown-registry membership requires synchronous registration. In `packages/cli/src/wiring/dep-watcher.ts`, insert a deferred placeholder before awaiting `multiAgentHost.spawn()`, then adopt the real `director.awaitTasks([...])` completion; gate the placeholder on `getDirector?.()` at queue time and track directly if a director appears only after spawn.
 
 ## Project-Specific Contracts
 
-- Any `Tool` gate in `packages/core/src/sandbox/wrap.ts` must fail closed across both `execute` and `executeStream`; an execute-only path can bypass stream-only tools. Resolve policy per call with `resolveSandboxConfigForAgent(ctx?.agentId)` because process-global configuration alone ignores tightened per-agent overrides. Verify with the core typecheck and `pnpm exec vitest run packages/core/tests/sandbox packages/mcp/tests/wrap-tool-sandbox.test.ts`.
-- Preserve mutate-then-`appendHistory` ordering and the fresh under-lock read around `generateSuggestions` in `packages/requirement-intake/src/service.ts`. Replacing them with an outside-callback pre-`await` read can reintroduce phantom-history TOCTOU.
-- Before accepting a stale slot-attached diagnostic in the MCP registry lifecycle, verify that `attemptConnectSlot` clears `slot.protocolVersionRefusal` before suspension, the `!isCurrent() || state === 'disconnected'` guard blocks post-generation writes, and `stop()` bumps the generation before clearing `connecting`.
-- Reentrant registry helpers such as `packages/plugin-sdk/src/runtime/h1-state.ts` should track released callback identities in a `Set`, not use an iteration cap. Remove stale slots on `break`, and test exact callback invocation counts for self-rearm termination and distinct-child sweep completeness.
-- Proxy delegation in `packages/vector-memory/src/sage-port-wrapper.ts` must preserve fluent returns with `result === target ? delegated : result`; test with the `ClassInstancePort` prototype-method fixture in `packages/vector-memory/tests/sage-port-wrapper.test.ts`.
-- Inspect `packages/core/src/kernel/events/*.ts` before claiming an event payload field is missing.
-- Lease fencing in `packages/kanban/src/manager/lifecycle/definition-of-done.ts` must compare against live `task.assignment`; comparing against the report’s own lease can become tautological.
-- Validate transformed fixtures against equally transformed expectations, not raw scrubbed artifacts.
-- UTF-8 byte-bound truncation in `packages/core/src/chronicle/tool-adapter.ts` must remove dangling lead and continuation bytes; verify decoded validity and re-encoded length remain within budget.
+- When adjudicating goal stop-event races, verify the live synchronous prefix of `onGoalStop` in `packages/cli/src/goal-host.ts`: `runState = 'stopped'` and `stopped.unsubscribe()` occur before the first `await`, preventing later events from reaching `onDone` or `onFailed`. For workspace findings, inspect `prepareGoalWorkspace` under `packages/core/src/goal/` and the `await isGitWorkTree(runRoot)` gate in `packages/webui-server/src/server/goal-run.ts` before proposing another guard.
+- In `acceptsGoal` at `packages/webui/src/hooks/ws-handlers/goal-handlers.ts`, accept keyless payloads before applying goal-id selection. Keyless `goal.error` and `goal.stopped` events are valid broadcasts, including when `host.graph` is null.
+- Distinguish goal merge outcomes: hard failures call `markPhaseMergeFailed`, while an unresolved conflict (`ok: false`, `conflict: true`) parks and continues with phase `completed` and `integrationStatus: 'needs_review'` through `setIntegrationMetadata` in `packages/core/src/goal/phase-orchestrator-queries.ts`.
+- In `packages/core/src/goal/phase-task-execution.ts`, bound post-timeout settlement with `Promise.race` and an unref’d five-second grace period; no lease mechanism supports an unbounded wait. Record fulfilled tasks as completed even when `host.stopped` is true. Verify with `pnpm exec vitest run packages/core/tests/goal`.
+- A `Tool` gate in `packages/core/src/sandbox/wrap.ts` must fail closed in both `execute` and `executeStream`. Resolve policy per call with `resolveSandboxConfigForAgent(ctx?.agentId)` so tightened per-agent overrides are honored.
+- Preserve mutate-then-`appendHistory` ordering and the fresh under-lock read around `generateSuggestions` in `packages/requirement-intake/src/service.ts`; an outside-callback pre-`await` read reintroduces phantom-history TOCTOU.
+- Before accepting an MCP registry slot diagnostic, verify `attemptConnectSlot` clears `slot.protocolVersionRefusal` before suspension, post-generation writes are blocked by `!isCurrent() || state === 'disconnected'`, and `stop()` increments the generation before clearing `connecting`.
+- Reentrant cleanup in `packages/plugin-sdk/src/runtime/h1-state.ts` must track released callback identities in a `Set`, remove stale slots on `break`, and test exact invocation counts. Proxy delegation in `packages/vector-memory/src/sage-port-wrapper.ts` must preserve fluent returns with `result === target ? delegated : result`.
+- Inspect `packages/core/src/kernel/events/*.ts` before declaring an event field missing. Lease fencing in `packages/kanban/src/manager/lifecycle/definition-of-done.ts` must compare against live `task.assignment`, not the report’s own lease.
+- Validate transformed fixtures against equivalently transformed expectations. UTF-8 byte-bound truncation in `packages/core/src/chronicle/tool-adapter.ts` must remove dangling lead and continuation bytes while preserving decoded validity and the byte budget.

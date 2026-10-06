@@ -1,19 +1,21 @@
 ## SSE AbortController supersession [applied 18×, 18 ok]
 
-- Before approving or flagging `close()` guards in `packages/mcp/src/transport-sse.ts`, verify whether `close()` aborts without replacing `this.abortController`; this can keep `this.abortController === controller` valid after close.
-- Require stale `readSSEBody` finally paths and SSE callbacks to skip `streamSignal`, `rejectStreamPending`, and state transitions whenever the identity check fails, so they do not clobber a newer connection. If all invariants hold, return exactly `{"findings": []}`.
+- In `packages/mcp/src/transport-sse.ts`, distinguish shutdown from supersession: `close()` aborts without replacing `this.abortController`, so `this.abortController === controller` can remain valid after `close()`.
+- Require `readSSEBody` cleanup and SSE callbacks to skip `streamSignal`, `rejectStreamPending`, and state transitions whenever the identity check fails; stale work must not clobber a newer connection.
 
-## MCP constants, logging, and error reachability [applied 11×, 11 ok]
+## MCP constants, logging, and reachability [applied 11×, 11 ok]
 
-- If a diff replaces `500 * 2 ** attempt` with `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER`, read the live literal in `packages/mcp/src/constants.ts` before classifying it; only identical values are a behavior-preserving refactor, otherwise flag a timing regression.
-- Before flagging a suppressed `log.warn`, check whether `assertSupportedServerProtocolVersion` already emits a structured warn and whether the original `err` still reaches higher-level logging; do not report evidence loss when both signals survive.
-- For `err instanceof SomeErrorClass`, grep every throw site and confirm each throw sits inside the reviewed `try` around `client.connect()` and class identity survives intermediate wrappers; treat an unreachable instance check as inert.
+- For `500 * 2 ** attempt` → `MCP_CONSTANTS.RECONNECT.BACKOFF_MULTIPLIER`, read the live literal in `packages/mcp/src/constants.ts` and compare it with the removed multiplier before calling the change behavior-preserving; a mismatch is a timing regression.
+- Before flagging a newly suppressed `log.warn`, inspect `assertSupportedServerProtocolVersion` for its structured warn and trace whether the original `err` reaches a higher-level log; flag evidence loss only when that evidence is actually absent.
+- For `err instanceof SomeErrorClass`, grep every throw site and confirm it is reachable inside the `try` around `client.connect()` and that class identity survives intermediate wrappers; an unreachable `instanceof` gate is inert.
 
 ## Teardown tracking and default-on gates [applied 9×, 9 ok]
 
-- For `trackAudit`/`boundAuditWait` in `packages/cli/src/wiring/dep-watcher.ts`, verify load-bearing behavior, not comments: each tracked promise must be a never-rejecting `then(_,_)` completion so `Promise.race` cannot reject into `waitUntil`; the bound timer must be `unref()`; sibling-API tracking promises must be called without `await` inside the spawn `try`.
-- For a `cfg?.['enabled'] === true` → `!== false` default-on flip, confirm the producer returns the raw fragment, not `undefined`, when disabled; every newly reachable `cfg['key']` read gained optional chaining; and sibling `packages/cli/src/wiring/dep-watcher-bridge.ts` flips identically. If these hold, return exactly `{"findings": []}`.
+- For `trackAudit`/`boundAuditWait` in `packages/cli/src/wiring/dep-watcher.ts`, require every tracked promise to be a never-rejecting `then(_,_)` completion so `Promise.race` cannot reject into `waitUntil`; require the bound timer to be `unref()`'d, and require sibling tracking calls to remain unawaited inside the spawn `try`—`await` can turn tracking rejection into a dropped successful spawn.
+- For `cfg?.['enabled'] === true` → `!== false`, verify the producer returns the raw fragment rather than `undefined` when disabled, every newly reachable `cfg['key']` read uses optional chaining, and the sibling gate in `packages/cli/src/wiring/dep-watcher-bridge.ts` makes the same change.
 
-## Sandbox fail-closed asymmetry [applied 3×, 3 ok]
+## Sandbox fail-closed gates [applied 3×, 3 ok]
 
-- Treat pass conditions using `mode === 'off'` against exec wrapper `mode !== 'enforced'` as intentional fail-closed hardening only after checking `SandboxMode` in `packages/core/src/sandbox/types.ts` and pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`; return exactly `{"findings": []}` when the tests support the asymmetry.
+- Treat `mode === 'off'` (denying every other value) as intentional fail-closed hardening, not automatically a bug against the exec wrapper's `mode !== 'enforced'`; check `SandboxMode` in `packages/core/src/sandbox/types.ts` and the pinning tests in `packages/core/tests/sandbox/mcp-gate.test.ts`.
+
+When these targeted invariants hold and no finding remains, return exactly `{"findings": []}`.

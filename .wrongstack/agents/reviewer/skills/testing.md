@@ -1,14 +1,18 @@
 ## MCP server tests
-- Pin fixtures answering `initialize` to revisions in `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`); `assertSupportedServerProtocolVersion` fails before connect behavior for other revisions. Reserve `'2025-11-25'` for a deliberate-mismatch test.
-- When JSON-RPC error-code assertions become tool-result refusals, verify `packages/mcp/src/server-dispatch.ts` converts `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`, and assert only substrings built from that `err.message`: `${error.path}: ${error.message}` and `(+N more)` from `MAX_REPORTED_SCHEMA_ERRORS`.
+
+- Pin every fixture answering `initialize` to a revision listed in `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`); otherwise `assertSupportedServerProtocolVersion` fails before connect behavior under test. Keep `'2025-11-25'` isolated in a deliberate protocol-mismatch test.
+- When replacing JSON-RPC error-code assertions with tool-result refusals, verify `packages/mcp/src/server-dispatch.ts` converts `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`. Assert only substrings produced by that same `err.message`, including `${error.path}: ${error.message}` and `(+N more)` capping from `MAX_REPORTED_SCHEMA_ERRORS`.
 
 ## Live assertion checks
-- Before judging a changed expected value, read the live file/fixture. For `packages/mcp/tests/server.test.ts`, trust disk `toContain('target')` and `arguments: [{ name: 'target', required: true }]`; stale bundle `toContain('path')` is not self-inconsistency.
+
+- Before judging a changed assertion’s expected value, read the live test and fixture rather than relying on possibly stale review-bundle text. In `packages/mcp/tests/server.test.ts`, reconcile disk assertions such as `toContain('target')` with `arguments: [{ name: 'target', required: true }]`; do not report stale `toContain('path')` as an inconsistency.
 
 ## In-project exports
-- Read full `IN_PROJECT_DENIED_PATHS` (`packages/core/src/storage/config-loader/in-project-policy.ts`), not `path:` grep; dotted-path consumers make wildcard-shaped entries inert through `listInProjectDeniedPaths()`.
-- Keep `filterSafeForProject` mirror in `packages/cli/src/settings-menu.ts` and require a stripped field's parent in `PROJECT_SAFE_FIELDS`; absent assertion only meaningful if copied.
+
+- Before approving an export used by a literal dotted-path walker, read the full `IN_PROJECT_DENIED_PATHS` table in `packages/core/src/storage/config-loader/in-project-policy.ts`, not a truncated `path:` grep. Keep the `listInProjectDeniedPaths()` consumer and hand-maintained `filterSafeForProject` mirror in `packages/cli/src/settings-menu.ts` synchronized; wildcard-shaped entries otherwise become silently inert.
+- For allow-list-driven absence tests, first verify the stripped field’s top-level parent exists in `PROJECT_SAFE_FIELDS` (`packages/cli/src/settings-menu.ts`); otherwise the assertion proves only that the field was never copied.
 
 ## Browser audits
-- Tab sweeps: break only when first sampled element/selector repeats; assert minimum `stops`. Do not break on repeated `tag:name` (duplicate labels skip real wrap).
-- Focus rings: don't regex `/transparent/.test(getComputedStyle(el).outlineColor)`; Chromium gives `rgba(0, 0, 0, 0)`. Parse/compare alpha, not hue alone.
+
+- Detect Tab-sweep wrap by identity or a unique selector path matching the FIRST sampled element, and enforce a meaningful minimum-`stops` threshold. Never `break` on a repeated `tag:name`, because duplicate labels can stop the sweep before wrap.
+- Never test outline color with `/transparent/.test(getComputedStyle(el).outlineColor)`; Chromium serializes `transparent` as `rgba(0, 0, 0, 0)`. Parse alpha and assert visible opacity, using hue alone to accept fully transparent focus rings.
