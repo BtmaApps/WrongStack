@@ -7,7 +7,7 @@
  */
 import { CornerDownLeft, Search } from 'lucide-react';
 import type * as React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { HqViewId } from '../../data/store/index.js';
 import { cn } from '../../lib/utils.js';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog.js';
@@ -25,6 +25,8 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
 
   const results = useMemo(() => searchHqViews(query), [query]);
 
@@ -39,6 +41,13 @@ export function CommandPalette({
   useEffect(() => {
     setCursor((current) => (current >= results.length ? 0 : current));
   }, [results.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    resultsRef.current
+      ?.querySelector('[aria-selected="true"]')
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [cursor, open, results]);
 
   const commit = (view: HqViewId): void => {
     onSelect(view);
@@ -80,16 +89,33 @@ export function CommandPalette({
           <input
             ref={inputRef}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setCursor(0);
+            }}
             onKeyDown={onKeyDown}
             aria-label="Search HQ views"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={
+              results[cursor] === undefined ? undefined : `${listId}-${results[cursor]!.id}`
+            }
             placeholder="Search views…"
             data-testid="command-palette-input"
             className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
           />
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-1" data-testid="command-palette-results">
+        <div
+          ref={resultsRef}
+          id={listId}
+          role="listbox"
+          aria-label="HQ views"
+          className="max-h-80 overflow-y-auto p-1"
+          data-testid="command-palette-results"
+        >
           {results.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-muted-foreground">
               No surface matches “{query}”.
@@ -103,6 +129,8 @@ export function CommandPalette({
                   key={view.id}
                   type="button"
                   role="option"
+                  id={`${listId}-${view.id}`}
+                  tabIndex={-1}
                   aria-selected={selected}
                   data-testid="command-palette-item"
                   onMouseEnter={() => setCursor(index)}
@@ -124,6 +152,10 @@ export function CommandPalette({
               );
             })
           )}
+        </div>
+        <div className="flex items-center justify-between border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+          <span>{results.length} views</span>
+          <span>↑ ↓ Navigate · Enter Open · Esc Close</span>
         </div>
       </DialogContent>
     </Dialog>

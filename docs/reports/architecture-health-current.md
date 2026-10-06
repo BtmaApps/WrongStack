@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:51:41.565Z
+**Generated:** 2026-10-06T18:58:03.582Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4824 |
-| Production source lines | 1077810 |
-| Test files | 4160 |
+| Production source files | 4826 |
+| Production source lines | 1078211 |
+| Test files | 4161 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15862 |
+| Relative module edges | 15874 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -59,7 +59,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tui | 477 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 705 | 468 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
-| @wrongstack/webui-hq | 123 | 51 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/webui-hq | 125 | 52 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 292 | 273 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 8 | — |
@@ -83,6 +83,7 @@ None.
 
 | Lines | File |
 |---:|---|
+| 845 | `packages/webui-hq/src/views/cockpit.tsx` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
 | 795 | `packages/tools/src/codebase-index/ast-invariant-engine.ts` |
 | 794 | `packages/core/src/plugins/review-claim-registry.ts` |
@@ -119,7 +120,6 @@ None.
 | 775 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 775 | `packages/webui/src/components/FileExplorer.tsx` |
 | 775 | `packages/webui/src/components/RefinePanel.tsx` |
-| 774 | `packages/webui-hq/src/views/cockpit.tsx` |
 | 773 | `packages/cli/src/slash-commands/fallback.ts` |
 | 773 | `packages/providers/src/ai-gateway.ts` |
 | 773 | `packages/webui-server/src/server/http-server/api-handlers.ts` |

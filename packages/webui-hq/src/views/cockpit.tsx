@@ -19,6 +19,7 @@ import {
   RadioTower,
   Server,
   ShieldCheck,
+  ShieldQuestion,
 } from 'lucide-react';
 import type * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,11 +29,15 @@ import { ShareBar } from '../components/hq/view-chrome.js';
 import { Badge, type BadgeTone } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { Select } from '../components/ui/input.js';
 import { fetchJson, postCommand } from '../data/api.js';
+import { attentionBreakdown } from '../data/selectors.js';
 import { type HqViewId, useHqStore } from '../data/store/index.js';
+import { controlClientLabel } from '../domain/control-format.js';
 import type { HqTone } from '../domain/status-tone.js';
-import { shortenId } from '../lib/format.js';
-import { formatClock, formatPercent, formatUsd } from '../lib/format.js';
+import { usePendingApprovals } from '../domain/use-pending-approvals.js';
+import { usePendingUserInputs } from '../domain/use-pending-user-inputs.js';
+import { formatClock, formatPercent, formatUsd, shortenId } from '../lib/format.js';
 import { cn } from '../lib/utils.js';
 import {
   type MailboxGatewayHealth,
@@ -232,12 +237,13 @@ function TokenStats({
 }
 
 export function CockpitView(): React.ReactElement {
-  const { snapshot, alerts, selectedClientId, connected } = useHqStore(
+  const { snapshot, alerts, selectedClientId, connected, commandStatuses } = useHqStore(
     useShallow((state) => ({
       snapshot: state.snapshot,
       alerts: state.alerts,
       selectedClientId: state.selectedClientId,
       connected: state.connected,
+      commandStatuses: state.commandStatuses,
     })),
   );
 
@@ -259,9 +265,11 @@ export function CockpitView(): React.ReactElement {
     client.capabilities.includes('control.receive'),
   );
   const quickActionClient =
-    controllableClients.find((client) => client.clientId === selectedClientId) ??
-    controllableClients[0] ??
-    null;
+    selectedClientId === null
+      ? (controllableClients[0] ?? null)
+      : (controllableClients.find((client) => client.clientId === selectedClientId) ?? null);
+  const { approvals } = usePendingApprovals();
+  const inputs = usePendingUserInputs();
 
   const [activeAlerts, setActiveAlerts] = useState<HqAlert[]>([]);
   const [alertHistory, setAlertHistory] = useState<HqAlert[]>([]);
@@ -442,19 +450,41 @@ export function CockpitView(): React.ReactElement {
     }
   }
 
-  const attention = activeAlerts.length + governanceWarnings.length;
+  const signals = attentionBreakdown(snapshot, alerts, commandStatuses);
+  const promptCount = approvals.length + inputs.length;
+  const attention =
+    Math.max(activeAlerts.length, signals.alerts) +
+    signals.governance +
+    signals.agents +
+    signals.clients +
+    signals.commands +
+    promptCount;
+  const reviewItems: { label: string; count: number; view: HqViewId; icon: LucideIcon }[] = [
+    { label: 'Decisions waiting', count: promptCount, view: 'approvals', icon: ShieldQuestion },
+    { label: 'Blocked or errored agents', count: signals.agents, view: 'alerts', icon: Bot },
+    {
+      label: 'Alerts & governance',
+      count: Math.max(activeAlerts.length, signals.alerts) + signals.governance,
+      view: 'alerts',
+      icon: BellRing,
+    },
+    { label: 'Failed commands', count: signals.commands, view: 'control', icon: RadioTower },
+    { label: 'Disconnected clients', count: signals.clients, view: 'fleet', icon: Network },
+  ];
   const operationalTone: 'degraded' | 'attention' | 'nominal' =
-    !connected || health?.status === 'degraded'
+    !connected || snapshot === null || health?.status === 'degraded'
       ? 'degraded'
       : attention > 0
         ? 'attention'
         : 'nominal';
   const operationalLabel =
-    operationalTone === 'degraded'
-      ? 'Link degraded'
-      : operationalTone === 'attention'
-        ? 'Attention needed'
-        : 'Systems nominal';
+    snapshot === null
+      ? 'Waiting for telemetry'
+      : operationalTone === 'degraded'
+        ? 'Link degraded'
+        : operationalTone === 'attention'
+          ? 'Attention needed'
+          : 'Systems nominal';
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -509,13 +539,13 @@ export function CockpitView(): React.ReactElement {
           <HeroMetric
             icon={Bot}
             label="Active agents"
-            value={totals?.activeAgents ?? 0}
+            value={totals?.activeAgents ?? totals?.activeSubagents ?? '—'}
             detail={`${agents.busy} working`}
           />
           <HeroMetric
             icon={Activity}
             label="Live sessions"
-            value={totals?.activeSessions ?? 0}
+            value={totals?.activeSessions ?? '—'}
             detail={`${machines.length} machines`}
           />
           <HeroMetric
@@ -528,11 +558,37 @@ export function CockpitView(): React.ReactElement {
           <HeroMetric
             icon={CircleDollarSign}
             label="Total cost"
-            value={formatUsd(totals?.totalCostUsd ?? 0)}
+            value={totals === undefined ? '—' : formatUsd(totals.totalCostUsd)}
             detail={`${projects.length} projects`}
           />
         </div>
       </section>
+
+      {attention > 0 && (
+        <section
+          aria-label="Needs your attention"
+          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5"
+        >
+          {reviewItems
+            .filter((item) => item.count > 0)
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => useHqStore.getState().setActiveView(item.view)}
+                  className="flex items-center gap-2 border border-warning/35 bg-warning/5 px-3 py-2 text-left hover:bg-warning/10"
+                >
+                  <Icon className="size-4 shrink-0 text-warning" />
+                  <span className="flex-1 text-xs">{item.label}</span>
+                  <span className="tabular font-display text-lg font-semibold">{item.count}</span>
+                  <ArrowUpRight className="size-3 shrink-0 text-muted-foreground" />
+                </button>
+              );
+            })}
+        </section>
+      )}
 
       <section
         aria-label="Cockpit quick actions"
@@ -547,6 +603,21 @@ export function CockpitView(): React.ReactElement {
               : `Target ${shortenId(quickActionClient.clientId, 9, 6)}`}
           </Mono>
         </div>
+
+        <Select
+          aria-label="Quick action target"
+          className="w-full sm:w-64"
+          value={quickActionClient?.clientId ?? ''}
+          disabled={busyAction !== null || controllableClients.length === 0}
+          onChange={(event) => useHqStore.getState().selectClient(event.target.value || null)}
+        >
+          {quickActionClient === null && <option value="">Select a command target</option>}
+          {controllableClients.map((client) => (
+            <option key={client.clientId} value={client.clientId}>
+              {controlClientLabel(client, snapshot)}
+            </option>
+          ))}
+        </Select>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button

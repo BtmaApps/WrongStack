@@ -10,7 +10,7 @@
  */
 import { ArrowUpCircle, LogOut, PanelLeftOpen, Search, Wifi, WifiOff } from 'lucide-react';
 import type * as React from 'react';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { authorizedFetch, fetchJson } from '../../data/api.js';
 import { clearHqToken, resolveHqToken } from '../../data/auth/index.js';
@@ -18,6 +18,8 @@ import { useHqLocalPrefs } from '../../data/local-prefs.js';
 import { attentionCount, unreadMailboxCount } from '../../data/selectors.js';
 import { type HqViewId, useHqStore } from '../../data/store/index.js';
 import { useToastStore } from '../../data/toast-store.js';
+import { usePendingApprovals } from '../../domain/use-pending-approvals.js';
+import { usePendingUserInputs } from '../../domain/use-pending-user-inputs.js';
 import { applyPalette, applyTheme, watchSystemTheme } from '../../lib/theme.js';
 import { cn } from '../../lib/utils.js';
 import { Button } from '../ui/button.js';
@@ -27,15 +29,17 @@ import { AppearanceMenu } from './appearance-menu.js';
 import { ConnectionBanner, PeerLifecycleBanner } from './banners.js';
 import { CommandPalette } from './command-palette.js';
 import { NavSidebar } from './nav-sidebar.js';
+import { OperatorContext } from './operator-context.js';
 import { ToastOverlay } from './toast-overlay.js';
 import { TokenGate } from './token-gate.js';
+import { useViewNavigation } from './use-view-navigation.js';
 import { ViewErrorBoundary } from './view-error-boundary.js';
 import { HQ_VIEW_COMPONENTS } from './view-router.js';
 import { getHqView, HQ_VIEWS } from './views.js';
 
 /** Six hours: an update notice is advisory, not something to poll for. */
 const UPDATE_POLL_MS = 6 * 60 * 60 * 1000;
-const WIDE_VIEWPORT = 1180;
+const WIDE_VIEWPORT = 1280;
 
 interface HqUpdateStatus {
   current: string;
@@ -78,22 +82,23 @@ function useAppearance(): void {
 
 /** Toast on transport transitions — but never on the very first connect. */
 function useConnectionToasts(connected: boolean): void {
-  const [everConnected, setEverConnected] = useState(false);
+  const everConnected = useRef(false);
+  const previous = useRef(connected);
 
   useEffect(() => {
-    if (connected) {
-      if (everConnected) {
+    if (connected && !previous.current) {
+      if (everConnected.current) {
         useToastStore.getState().addToast('Reconnected to HQ server', 'success', 3_000);
       }
-      setEverConnected(true);
-      return;
     }
-    if (everConnected) {
+    if (!connected && previous.current && everConnected.current) {
       useToastStore
         .getState()
         .addToast('Connection lost — reconnecting with backoff…', 'warning', 4_000);
     }
-  }, [connected, everConnected]);
+    if (connected) everConnected.current = true;
+    previous.current = connected;
+  }, [connected]);
 }
 
 function useUpdateStatus(): HqUpdateStatus | null {
@@ -122,13 +127,19 @@ function useUpdateStatus(): HqUpdateStatus | null {
 }
 
 export function AppShell(): React.ReactElement {
-  const { snapshot, alerts, commandStatuses, activeView, authRequired, connected } = useHqStore(
+  const authRequired = useHqStore((state) => state.authRequired);
+  useAppearance();
+  if (authRequired) return <TokenGate hadToken={resolveHqToken() !== null} />;
+  return <AuthenticatedAppShell />;
+}
+
+function AuthenticatedAppShell(): React.ReactElement {
+  const { snapshot, alerts, commandStatuses, activeView, connected } = useHqStore(
     useShallow((state) => ({
       snapshot: state.snapshot,
       alerts: state.alerts,
       commandStatuses: state.commandStatuses,
       activeView: state.activeView,
-      authRequired: state.authRequired,
       connected: state.connected,
     })),
   );
@@ -138,10 +149,14 @@ export function AppShell(): React.ReactElement {
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < WIDE_VIEWPORT);
+  const mainRef = useRef<HTMLElement>(null);
 
-  useAppearance();
+  useViewNavigation();
   useConnectionToasts(connected);
   const update = useUpdateStatus();
+  const { approvals } = usePendingApprovals();
+  const inputs = usePendingUserInputs();
 
   // Narrowing the window turns the rail into an overlay; leaving it open would
   // bury the content behind a scrim the operator never asked for.
@@ -149,25 +164,40 @@ export function AppShell(): React.ReactElement {
     if (typeof window.matchMedia !== 'function') return;
     const query = window.matchMedia(`(max-width: ${WIDE_VIEWPORT - 1}px)`);
     const onChange = (event: MediaQueryListEvent): void => {
+      setNarrow(event.matches);
       if (event.matches) setNavOpen(false);
     };
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
 
-  const navigate = (view: HqViewId): void => {
+  useEffect(() => {
+    document.title = `${getHqView(activeView).label} · WrongStack HQ`;
+    if (mainRef.current !== null) mainRef.current.scrollTop = 0;
+  }, [activeView]);
+
+  const navigate = useCallback((view: HqViewId): void => {
     useHqStore.getState().setActiveView(view);
     if (window.innerWidth < WIDE_VIEWPORT) setNavOpen(false);
-  };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || event.isComposing) return;
       const meta = event.ctrlKey || event.metaKey;
       if (meta && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen((open) => !open);
         return;
       }
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="alertdialog"], [role="dialog"]:not(#hq-navigation)',
+        )
+      )
+        return;
       if (meta && event.key.toLowerCase() === 'b') {
         event.preventDefault();
         setNavOpen((open) => !open);
@@ -177,7 +207,7 @@ export function AppShell(): React.ReactElement {
         const target = HQ_VIEWS.find((view) => view.shortcut === Number(event.key));
         if (target !== undefined) {
           event.preventDefault();
-          useHqStore.getState().setActiveView(target.id);
+          navigate(target.id);
         }
         return;
       }
@@ -187,7 +217,7 @@ export function AppShell(): React.ReactElement {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [navOpen]);
+  }, [navOpen, navigate]);
 
   const logout = async (): Promise<void> => {
     setLoggingOut(true);
@@ -199,8 +229,6 @@ export function AppShell(): React.ReactElement {
       window.location.reload();
     }
   };
-
-  if (authRequired) return <TokenGate hadToken={resolveHqToken() !== null} />;
 
   const current = getHqView(activeView);
   const CurrentIcon = current.icon;
@@ -215,11 +243,22 @@ export function AppShell(): React.ReactElement {
           activeView={activeView}
           unreadCount={unreadMailboxCount(snapshot)}
           attentionCount={attention}
+          approvalCount={approvals.length + inputs.length}
+          narrow={narrow}
           onNavigate={navigate}
           onClose={() => setNavOpen(false)}
         />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col" inert={narrow && navOpen}>
+          <button
+            type="button"
+            onClick={() => {
+              mainRef.current?.focus();
+            }}
+            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-card focus:px-4 focus:py-2 focus:text-sm"
+          >
+            Skip to content
+          </button>
           <div className="brand-rule h-0.5 w-full shrink-0" />
 
           <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2">
@@ -229,6 +268,8 @@ export function AppShell(): React.ReactElement {
                 size="icon-sm"
                 onClick={() => setNavOpen(true)}
                 aria-label="Open HQ navigation"
+                aria-expanded={navOpen}
+                aria-controls="hq-navigation"
                 title="Open navigation (Ctrl+B)"
               >
                 <PanelLeftOpen className="size-3.5" />
@@ -300,8 +341,15 @@ export function AppShell(): React.ReactElement {
 
           <ConnectionBanner />
           <PeerLifecycleBanner />
+          <OperatorContext />
 
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main
+            id="hq-main"
+            ref={mainRef}
+            tabIndex={-1}
+            aria-label={current.label}
+            className="min-h-0 flex-1 overflow-y-auto"
+          >
             <ViewErrorBoundary view={activeView}>
               <Suspense fallback={<ViewSkeleton />}>
                 <ActiveView />

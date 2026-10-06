@@ -1,5 +1,5 @@
 /**
- * Kanban — read-only project boards, synchronized across clones and machines.
+ * Kanban — project boards and task actions, synchronized across clones and machines.
  *
  * Data comes from `/api/projects/:id/kanban`, polled on a slow timer AND
  * refreshed whenever a `kanban.snapshot` event lands, so a board that changes
@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState, Mono, StatTile } from '../../components/hq/primitives.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
-import { Select } from '../../components/ui/input.js';
+import { Input, Select } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
 import { fetchJson } from '../../data/api.js';
 import { useHqStore } from '../../data/store/index.js';
@@ -22,6 +22,7 @@ import { relativeTime } from '../../domain/control-format.js';
 import {
   type HqKanbanBoardView,
   type HqKanbanTaskView,
+  matchesKanbanTask,
   projectKanbanBoards,
   projectKanbanUrl,
 } from '../../domain/kanban-model.js';
@@ -126,10 +127,14 @@ function Board({
   board,
   selectedTaskId,
   onSelect,
+  query,
+  status,
 }: {
   board: HqKanbanBoardView;
   selectedTaskId: string | null;
   onSelect: (taskId: string) => void;
+  query: string;
+  status: string;
 }): React.ReactElement {
   if (board.columns.length === 0) {
     return <EmptyState title="This board has no columns yet" />;
@@ -145,6 +150,7 @@ function Board({
         // not consuming capacity and must not trip the limit.
         const inFlight = column.tasks.filter((task) => task.status !== 'completed').length;
         const overLimit = column.wipLimit !== undefined && inFlight > column.wipLimit;
+        const visibleTasks = column.tasks.filter((task) => matchesKanbanTask(task, query, status));
         return (
           <div
             key={column.id}
@@ -172,10 +178,12 @@ function Board({
               <Mono className="tabular ml-auto">{column.tasks.length}</Mono>
             </header>
             <div className="flex flex-col gap-1.5 overflow-y-auto p-1.5">
-              {column.tasks.length === 0 ? (
-                <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">No cards</p>
+              {visibleTasks.length === 0 ? (
+                <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+                  {column.tasks.length === 0 ? 'No cards' : 'No matching cards'}
+                </p>
               ) : (
-                column.tasks.map((task) => (
+                visibleTasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     task={task}
@@ -211,6 +219,8 @@ export function KanbanView(): React.ReactElement {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [taskStatus, setTaskStatus] = useState('all');
 
   // Monotonic request id: a response from a project we have since navigated
   // away from must be dropped, not painted.
@@ -285,6 +295,8 @@ export function KanbanView(): React.ReactElement {
 
   useEffect(() => {
     setSelectedTaskId(null);
+    setQuery('');
+    setTaskStatus('all');
   }, [boardId]);
 
   const board = boards.find((candidate) => candidate.id === boardId) ?? null;
@@ -306,6 +318,12 @@ export function KanbanView(): React.ReactElement {
     }
     return titles;
   }, [board]);
+  const matchingTasks =
+    board?.columns.reduce(
+      (count, column) =>
+        count + column.tasks.filter((task) => matchesKanbanTask(task, query, taskStatus)).length,
+      0,
+    ) ?? 0;
 
   if (projects.length === 0) {
     return (
@@ -436,7 +454,63 @@ export function KanbanView(): React.ReactElement {
 
           <KanbanQueueHealth board={board} />
 
-          <Board board={board} selectedTaskId={selectedTaskId} onSelect={setSelectedTaskId} />
+          <fieldset
+            className="flex min-w-0 flex-wrap items-center gap-2"
+            aria-label="Filter board tasks"
+          >
+            <Input
+              aria-label="Search board tasks"
+              placeholder="Search title, ID, assignee or label…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="w-full sm:w-80"
+            />
+            <Select
+              aria-label="Task status"
+              value={taskStatus}
+              onChange={(event) => setTaskStatus(event.target.value)}
+              className="w-40"
+            >
+              <option value="all">All statuses</option>
+              {[
+                'pending',
+                'ready',
+                'in_progress',
+                'review',
+                'blocked',
+                'failed',
+                'completed',
+                'archived',
+              ].map((status) => (
+                <option key={status} value={status}>
+                  {status.replaceAll('_', ' ')}
+                </option>
+              ))}
+            </Select>
+            <Mono>
+              {matchingTasks} / {board.taskCount} tasks
+            </Mono>
+            {(query !== '' || taskStatus !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setQuery('');
+                  setTaskStatus('all');
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </fieldset>
+
+          <Board
+            board={board}
+            selectedTaskId={selectedTaskId}
+            onSelect={setSelectedTaskId}
+            query={query}
+            status={taskStatus}
+          />
 
           {selectedTask !== null && (
             <KanbanTaskInspector

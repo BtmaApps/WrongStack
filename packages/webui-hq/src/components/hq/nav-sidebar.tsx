@@ -1,12 +1,13 @@
 /**
  * The HQ navigation rail.
  *
- * Collapses below 1180px and behind Ctrl+B; on narrow screens it becomes an
+ * Collapses below 1280px and behind Ctrl+B; on narrow screens it becomes an
  * overlay with a scrim, which is why the scrim is a real <button> rather than
  * a div — a click target that dismisses UI has to be reachable by keyboard.
  */
 import { PanelLeftClose } from 'lucide-react';
 import type * as React from 'react';
+import { useEffect, useRef } from 'react';
 import type { HqViewId } from '../../data/store/index.js';
 import { cn } from '../../lib/utils.js';
 import { Button } from '../ui/button.js';
@@ -17,6 +18,8 @@ export function NavSidebar({
   activeView,
   unreadCount,
   attentionCount,
+  approvalCount = 0,
+  narrow = false,
   onNavigate,
   onClose,
 }: {
@@ -24,16 +27,56 @@ export function NavSidebar({
   activeView: HqViewId;
   unreadCount: number;
   attentionCount: number;
+  approvalCount?: number;
+  narrow?: boolean;
   onNavigate: (view: HqViewId) => void;
   onClose: () => void;
 }): React.ReactElement {
+  const railRef = useRef<HTMLElement>(null);
+  const overlayProps: React.HTMLAttributes<HTMLElement> =
+    narrow && open ? { role: 'dialog', 'aria-modal': true } : {};
+  useEffect(() => {
+    if (!open || !narrow) return;
+    const previous = document.activeElement;
+    const rail = railRef.current;
+    if (rail === null) return;
+    const buttons = (): HTMLButtonElement[] => [
+      ...rail.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+    ];
+    (rail.querySelector<HTMLButtonElement>('[aria-current="page"]') ?? buttons()[0])?.focus();
+    const trapFocus = (event: KeyboardEvent): void => {
+      if (event.key !== 'Tab') return;
+      const targets = buttons();
+      const first = targets[0];
+      const last = targets.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    rail.addEventListener('keydown', trapFocus);
+    return () => {
+      rail.removeEventListener('keydown', trapFocus);
+      if (previous instanceof HTMLElement) previous.focus();
+    };
+  }, [open, narrow]);
   const badgeFor = (view: HqViewId): number =>
-    view === 'mailbox' ? unreadCount : view === 'alerts' ? attentionCount : 0;
+    view === 'mailbox'
+      ? unreadCount
+      : view === 'alerts'
+        ? attentionCount
+        : view === 'approvals'
+          ? approvalCount
+          : 0;
 
   return (
     <>
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Close HQ navigation"
         data-testid="nav-scrim"
         onClick={onClose}
@@ -44,6 +87,9 @@ export function NavSidebar({
       />
 
       <aside
+        id="hq-navigation"
+        ref={railRef}
+        {...overlayProps}
         aria-label="HQ navigation"
         data-testid="nav-sidebar"
         data-open={open}
@@ -117,7 +163,7 @@ export function NavSidebar({
                     )}
                     {view.shortcut !== undefined && badge === 0 && (
                       <kbd className="ml-auto text-[9px] text-muted-foreground/60">
-                        ⌥{view.shortcut}
+                        Alt {view.shortcut}
                       </kbd>
                     )}
                   </button>
@@ -126,6 +172,10 @@ export function NavSidebar({
             </section>
           ))}
         </nav>
+        <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+          <span>Ctrl K · Search</span>
+          <span className="float-right">Ctrl B · Navigation</span>
+        </div>
       </aside>
     </>
   );

@@ -23,6 +23,7 @@ vi.mock('../../src/data/api.js', () => ({
   authorizedFetch: vi.fn(() => Promise.resolve(new Response('{}', { status: 500 }))),
   postCommand: vi.fn(),
   postMailboxSend: vi.fn(),
+  fetchEvents: vi.fn(() => Promise.reject(new Error('offline'))),
 }));
 
 // React Flow measures its container; jsdom reports zeroes, which is fine, but
@@ -49,6 +50,8 @@ const { BrainView } = await import('../../src/views/brain.js');
 const { WorktreeView } = await import('../../src/views/worktree.js');
 const { ControlView } = await import('../../src/views/control/index.js');
 const { SettingsView } = await import('../../src/views/settings/index.js');
+const { ApprovalsView } = await import('../../src/views/approvals.js');
+const { EventsView } = await import('../../src/views/events.js');
 
 const VIEWS: [string, ComponentType][] = [
   ['cockpit', CockpitView],
@@ -63,6 +66,8 @@ const VIEWS: [string, ComponentType][] = [
   ['worktree', WorktreeView],
   ['control', ControlView],
   ['settings', SettingsView],
+  ['approvals', ApprovalsView],
+  ['events', EventsView],
 ];
 
 let root: Root | null = null;

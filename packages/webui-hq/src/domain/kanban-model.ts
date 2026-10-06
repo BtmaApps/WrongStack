@@ -56,6 +56,19 @@ export function projectKanbanUrl(projectId: string): string {
   return `/api/projects/${encodeURIComponent(projectId)}/kanban`;
 }
 
+/** Filters cards without changing the board's totals, ordering or WIP calculation. */
+export function matchesKanbanTask(task: HqKanbanTaskView, query: string, status = 'all'): boolean {
+  if (status !== 'all' && task.status !== status) return false;
+  const text = [task.id, task.title, task.description, task.assignee, ...task.labels]
+    .join(' ')
+    .toLowerCase();
+  return query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .every((word) => text.includes(word));
+}
+
 export function projectKanbanBoards(snapshot: HqKanbanSnapshotPayload): HqKanbanBoardView[] {
   return snapshot.boards
     .map((record) => parseBoard(record))

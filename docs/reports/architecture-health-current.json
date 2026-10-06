@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:51:41.565Z",
+  "generatedAt": "2026-10-06T18:58:03.582Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4824,
-    "testFiles": 4160,
-    "sourceLines": 1077810,
+    "sourceFiles": 4826,
+    "testFiles": 4161,
+    "sourceLines": 1078211,
     "workspaceEdges": 133,
-    "moduleEdges": 15862,
+    "moduleEdges": 15874,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -874,8 +874,8 @@
     {
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
-      "sourceFiles": 123,
-      "testFiles": 51,
+      "sourceFiles": 125,
+      "testFiles": 52,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -891,7 +891,7 @@
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 51
+          "testFiles": 52
         }
       ]
     },
@@ -21240,6 +21240,12 @@
         ]
       },
       {
+        "file": "packages/webui-hq/tests/components/cockpit-operations.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/tests/components/transcript-turn.test.tsx",
         "projects": [
           "root-node"
@@ -26251,8 +26257,19 @@
   ],
   "selfImports": [],
   "nonCommandSlashImports": [],
-  "hotspotCandidates": [],
+  "hotspotCandidates": [
+    {
+      "file": "packages/webui-hq/src/views/cockpit.tsx",
+      "lines": 845,
+      "relativeImports": 16
+    }
+  ],
   "hotspots": [
+    {
+      "file": "packages/webui-hq/src/views/cockpit.tsx",
+      "lines": 845,
+      "relativeImports": 16
+    },
     {
       "file": "packages/webui/src/lib/ws-client.ts",
       "lines": 797,
@@ -26432,11 +26449,6 @@
       "file": "packages/webui/src/components/RefinePanel.tsx",
       "lines": 775,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/webui-hq/src/views/cockpit.tsx",
-      "lines": 774,
-      "relativeImports": 12
     },
     {
       "file": "packages/cli/src/slash-commands/fallback.ts",

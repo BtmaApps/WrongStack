@@ -66,7 +66,7 @@ export function ConnectionBanner(): React.ReactElement | null {
     <div
       role="status"
       data-testid="connection-banner"
-      className="flex items-center gap-2 border-b border-warning/40 bg-warning/10 px-4 py-1.5 text-xs"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-warning/40 bg-warning/10 px-4 py-1.5 text-xs"
     >
       <PlugZap className="size-3.5 shrink-0 animate-pulse text-warning" />
       <span className="text-foreground">

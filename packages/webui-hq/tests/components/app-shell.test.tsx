@@ -26,6 +26,8 @@ vi.mock('../../src/data/api.js', () => ({
 const { AppShell } = await import('../../src/components/hq/app-shell.js');
 const { getHqView, HQ_VIEWS, searchHqViews } = await import('../../src/components/hq/views.js');
 const { useHqStore } = await import('../../src/data/store/index.js');
+const { useToastStore } = await import('../../src/data/toast-store.js');
+const { fetchJson } = await import('../../src/data/api.js');
 const { snapshot } = await import('../fixtures/hq.js');
 
 let root: Root | null = null;
@@ -41,6 +43,7 @@ function mount(): HTMLDivElement {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   useHqStore.setState({
     snapshot: null,
     alerts: [],
@@ -50,6 +53,9 @@ beforeEach(() => {
     connected: false,
     authRequired: false,
     peerEnvelope: null,
+    selectedSessionId: null,
+    selectedAgentId: null,
+    selectedClientId: null,
   });
 });
 
@@ -148,6 +154,7 @@ describe('AppShell', () => {
     const mounted = mount();
     expect(mounted.querySelector('[data-testid="hq-workbench"]')).toBeNull();
     expect(mounted.textContent).toContain('WrongStack HQ');
+    expect(fetchJson).not.toHaveBeenCalled();
   });
 
   it('applies the dark class to <html>, not a bespoke attribute', () => {
@@ -191,5 +198,59 @@ describe('AppShell', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
     });
     expect(rail()).not.toBe(before);
+  });
+
+  it('opens a bookmarked view and writes route changes from any caller', () => {
+    window.history.replaceState(null, '', '/#/cost');
+    mount();
+    expect(useHqStore.getState().activeView).toBe('cost');
+    act(() => useHqStore.getState().setActiveView('control'));
+    expect(window.location.hash).toBe('#/control');
+    expect(document.title).toBe('Control · WrongStack HQ');
+    act(() => {
+      window.history.replaceState(null, '', '/#/cost');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(useHqStore.getState().activeView).toBe('cost');
+  });
+
+  it('keeps connection notifications silent until a real loss/reconnect', () => {
+    useToastStore.getState().clearToasts();
+    mount();
+    act(() => useHqStore.getState().setConnected(true));
+    expect(useToastStore.getState().toasts).toHaveLength(0);
+    act(() => useHqStore.getState().setConnected(false));
+    expect(useToastStore.getState().toasts.map((toast) => toast.severity)).toEqual(['warning']);
+    act(() => useHqStore.getState().setConnected(true));
+    expect(useToastStore.getState().toasts.map((toast) => toast.severity)).toEqual([
+      'warning',
+      'success',
+    ]);
+  });
+
+  it('leaves editor shortcuts and handled key events alone', () => {
+    const mounted = mount();
+    const editor = document.createElement('textarea');
+    mounted.append(editor);
+    const rail = mounted.querySelector('[data-testid="nav-sidebar"]');
+    const before = rail?.getAttribute('data-open');
+    act(() => {
+      editor.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }),
+      );
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: '5', altKey: true, bubbles: true }));
+      const handled = new KeyboardEvent('keydown', { key: '5', altKey: true, cancelable: true });
+      handled.preventDefault();
+      window.dispatchEvent(handled);
+    });
+    expect(rail?.getAttribute('data-open')).toBe(before);
+    expect(useHqStore.getState().activeView).toBe('cockpit');
+  });
+
+  it('keeps bootstrap fragments out of the view router', () => {
+    window.history.replaceState(null, '', '/#bootstrap=one-time-code');
+    mount();
+    expect(window.location.hash).toBe('#bootstrap=one-time-code');
+    expect(useHqStore.getState().activeView).toBe('cockpit');
   });
 });

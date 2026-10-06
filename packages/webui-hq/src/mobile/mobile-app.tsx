@@ -116,25 +116,24 @@ function sessionLabel(session: HqSessionSnapshotPayload): string {
  * transcript, durable messaging and an explicitly confirmed interrupt.
  */
 export function MobileApp(): React.ReactElement {
-  const {
-    snapshot,
-    connected,
-    authRequired,
-    selectedSessionId,
-    selectedAgentId,
-    alerts,
-    commandStatuses,
-  } = useHqStore(
-    useShallow((state) => ({
-      snapshot: state.snapshot,
-      connected: state.connected,
-      authRequired: state.authRequired,
-      selectedSessionId: state.selectedSessionId,
-      selectedAgentId: state.selectedAgentId,
-      alerts: state.alerts,
-      commandStatuses: state.commandStatuses,
-    })),
-  );
+  const authRequired = useHqStore((state) => state.authRequired);
+  useMobileAppearance();
+  if (authRequired) return <TokenGate hadToken={resolveHqToken() !== null} passwordOnly />;
+  return <AuthenticatedMobileApp />;
+}
+
+function AuthenticatedMobileApp(): React.ReactElement {
+  const { snapshot, connected, selectedSessionId, selectedAgentId, alerts, commandStatuses } =
+    useHqStore(
+      useShallow((state) => ({
+        snapshot: state.snapshot,
+        connected: state.connected,
+        selectedSessionId: state.selectedSessionId,
+        selectedAgentId: state.selectedAgentId,
+        alerts: state.alerts,
+        commandStatuses: state.commandStatuses,
+      })),
+    );
   const sessions = snapshot?.liveSessions ?? [];
   const [pane, setPane] = useState<MobilePane>('console');
   const [delivery, setDelivery] = useState<DeliveryMode>('steer');
@@ -143,8 +142,6 @@ export function MobileApp(): React.ReactElement {
   const [busy, setBusy] = useState(false);
   const [interruptOpen, setInterruptOpen] = useState(false);
   const [status, setStatus] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
-
-  useMobileAppearance();
 
   useEffect(() => {
     document.title = 'WrongStack HQ Mobile';
@@ -247,8 +244,6 @@ export function MobileApp(): React.ReactElement {
       window.location.reload();
     }
   };
-
-  if (authRequired) return <TokenGate hadToken={resolveHqToken() !== null} passwordOnly />;
 
   return (
     <div
