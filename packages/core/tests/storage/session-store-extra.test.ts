@@ -1076,12 +1076,14 @@ describe('DefaultSessionStore — rebuildIndex / summary fallback / shard scan',
 
     const first = await store.list();
     const cacheAfterFirst = (
-      store as { _indexCache: { summaries: unknown[]; byId: Map<string, unknown> } | null }
+      store as unknown as {
+        _indexCache: { summaries: unknown[]; byId: Map<string, unknown> } | null;
+      }
     )._indexCache;
     expect(cacheAfterFirst?.summaries.length).toBeGreaterThanOrEqual(2);
 
     const second = await store.list();
-    const cacheAfterSecond = (store as { _indexCache: { summaries: unknown[] } | null })
+    const cacheAfterSecond = (store as unknown as { _indexCache: { summaries: unknown[] } | null })
       ._indexCache;
     expect(cacheAfterSecond).toBe(cacheAfterFirst);
     expect(second.map((s) => s.id)).toEqual(first.map((s) => s.id));
@@ -1094,7 +1096,9 @@ describe('DefaultSessionStore — rebuildIndex / summary fallback / shard scan',
 
     const third = await store.list();
     const cacheAfterThird = (
-      store as { _indexCache: { summaries: unknown[]; byId: Map<string, unknown> } | null }
+      store as unknown as {
+        _indexCache: { summaries: unknown[]; byId: Map<string, unknown> } | null;
+      }
     )._indexCache;
     expect(cacheAfterThird).not.toBe(cacheAfterFirst);
     // Growth on the same index file reuses the parsed map and consumes only
@@ -1110,7 +1114,7 @@ describe('DefaultSessionStore — rebuildIndex / summary fallback / shard scan',
       await w.close();
     }
     await store.list();
-    const cacheBefore = (store as { _indexCache: { byId: Map<string, unknown> } | null })
+    const cacheBefore = (store as unknown as { _indexCache: { byId: Map<string, unknown> } | null })
       ._indexCache;
 
     await fs.appendFile(
@@ -1120,7 +1124,7 @@ describe('DefaultSessionStore — rebuildIndex / summary fallback / shard scan',
     );
 
     const listed = await store.list();
-    const cacheAfter = (store as { _indexCache: { byId: Map<string, unknown> } | null })
+    const cacheAfter = (store as unknown as { _indexCache: { byId: Map<string, unknown> } | null })
       ._indexCache;
     expect(cacheAfter?.byId).toBe(cacheBefore?.byId);
     expect(listed.some((summary) => summary.id === 'keep-indexed')).toBe(true);
