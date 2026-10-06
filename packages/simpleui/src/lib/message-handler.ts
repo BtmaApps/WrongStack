@@ -12,37 +12,39 @@
  *   );
  */
 import { parseArtifactPresentation } from '@wrongstack/tools/artifact-presentation';
-import {
-  isFinalTurnStopReason,
-  type projectNextStepsToolInput,
-} from '@wrongstack/tools/next-steps';
-import {
-  projectChatMessage,
-  projectFleetMessage,
-  projectToolMessage,
-} from '@wrongstack/webui-protocol';
-import { projectFallbackPending } from '../fallback-modal.js';
-import type { AgentMode, ModelDescriptor, ServerMessage, SimpleSubagent } from '../types.js';
-import {
-  appendAgentTranscriptEntry,
-  LEADER_AGENT_ID,
-  mergeSubagentSnapshot,
-  projectAgentTimelineEntry,
-  projectCompletedAgentText,
-  stampAgentUpdates,
-} from './agent-model.js';
+import type { projectNextStepsToolInput } from '@wrongstack/tools/next-steps';
+import { projectChatMessage, projectToolMessage } from '@wrongstack/webui-protocol';
+import type { ServerMessage } from '../types.js';
 import { dispatchPresentArtifact } from './artifact-presentation.js';
-import {
-  boundSimpleChatText,
-  contentToText,
-  retainSimpleChatMessages,
-  updateSubagents,
-} from './chat-model.js';
-import { finiteNumber } from './context-load.js';
+import { boundSimpleChatText, retainSimpleChatMessages } from './chat-model.js';
 import { handleContextMessage } from './context-message-handler.js';
+import {
+  handleAgentStatusChangedMessage,
+  handleAgentTimelineMessage,
+  handleCoordinatorStatsMessage,
+  handleDelegationNoticeMessage,
+  handleFallbackPendingMessage,
+  handleModelSwitchedMessage,
+  handleProviderFallbackMessage,
+  handleSubagentEventMessage,
+} from './message-handler-agents.js';
+import {
+  handleFilesListMessage,
+  handleModesListMessage,
+  handleProviderCatalogMessage,
+  handleProviderModelsMessage,
+  handleProvidersSavedMessage,
+  handleRefineResultMessage,
+  handleResumeProgressMessage,
+} from './message-handler-catalog.js';
 import type { MessageHandlerDeps } from './message-handler-deps.js';
-import { delegationNoticeText, messageId } from './message-handler-notices.js';
+import { messageId } from './message-handler-notices.js';
 import { handleSessionStartMessage } from './message-handler-session-start.js';
+import {
+  handleProviderResponseMessage,
+  handleRunErrorMessage,
+  handleThinkingDeltaMessage,
+} from './message-handler-stream.js';
 import {
   closeStaleToolCalls,
   handleToolExecuted,
@@ -50,15 +52,8 @@ import {
   handleToolStarted,
 } from './message-handler-tool-events.js';
 import { projectAssistantMessage } from './message-projection.js';
-import {
-  parseCatalogProviders,
-  parseSavedProviderIds,
-  providersNeedingModels,
-} from './model-switch.js';
 import { parsePrefs } from './prefs-model.js';
 import { dequeueItem } from './queue-model.js';
-import type { RefineResultPayload } from './refine-model.js';
-import { projectRefineResult } from './refine-model.js';
 import { parseSessionSummaries } from './session-model.js';
 import { projectStatusNotice } from './status-notice.js';
 
@@ -86,32 +81,16 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
     prefsRef,
     queueRef,
     sessionIdRef,
-    activeModelRef,
-    refineStateRef,
-    refineEpochRef,
-    socketRef,
-    requestedModelsRef,
     setMessages,
     setRunning,
     setActivity,
     setToolCalls,
-    setSubagents,
-    setAgentTranscripts,
     setSessions,
-    setModels,
-    setModes,
-    setActiveModeId,
     setPrefs,
     setNotice,
     setQueue,
-    setRefineState,
-    setFileMatches,
-    setFilePickerIndex,
-    setFileSearching,
-    setProviderLabels,
     onChime,
     dispatchUserMessage,
-    requestProviderModels,
     worklists,
   } = deps;
 
@@ -231,105 +210,27 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'session.resume_progress': {
-        const sessionId = typeof payload['sessionId'] === 'string' ? payload['sessionId'] : '';
-        if (!sessionId) break;
-        deps.setResumeProgress?.({
-          sessionId,
-          stage: typeof payload['stage'] === 'string' ? payload['stage'] : 'open_journal',
-          loadedBytes: finiteNumber(payload['loadedBytes']),
-          totalBytes: finiteNumber(payload['totalBytes']),
-        });
+        handleResumeProgressMessage(message, deps);
         break;
       }
       case 'provider.catalog': {
-        const entries = parseCatalogProviders(payload);
-        const labels: Record<string, string> = {};
-        for (const entry of entries) {
-          labels[entry.id] = entry.label;
-        }
-        setProviderLabels(labels);
-        for (const id of providersNeedingModels({
-          catalog: entries,
-          currentProvider: activeModelRef.current?.provider,
-          alreadyRequested: requestedModelsRef.current,
-        })) {
-          requestProviderModels(id);
-        }
+        handleProviderCatalogMessage(message, deps);
         break;
       }
       case 'providers.saved': {
-        for (const id of providersNeedingModels({
-          savedIds: parseSavedProviderIds(payload),
-          currentProvider: activeModelRef.current?.provider,
-          alreadyRequested: requestedModelsRef.current,
-        })) {
-          requestProviderModels(id);
-        }
+        handleProvidersSavedMessage(message, deps);
         break;
       }
       case 'provider.models': {
-        const provider = typeof payload['provider'] === 'string' ? payload['provider'] : '';
-        const list = Array.isArray(payload['models'])
-          ? payload['models'].flatMap((entry) => {
-              if (!entry || typeof entry !== 'object') return [];
-              const item = entry as Record<string, unknown>;
-              if (typeof item['id'] !== 'string') return [];
-              return [
-                {
-                  id: item['id'],
-                  name: typeof item['name'] === 'string' ? item['name'] : item['id'],
-                  contextWindow: finiteNumber(item['contextWindow']) || undefined,
-                } satisfies ModelDescriptor,
-              ];
-            })
-          : [];
-        if (provider) {
-          const active = activeModelRef.current;
-          const nextList =
-            active?.provider === provider && !list.some((item) => item.id === active.model)
-              ? [{ id: active.model, name: active.model }, ...list]
-              : list;
-          setModels((current) => ({ ...current, [provider]: nextList }));
-        }
+        handleProviderModelsMessage(message, deps);
         break;
       }
       case 'files.list': {
-        const files = Array.isArray(payload['files'])
-          ? payload['files'].filter((file): file is string => typeof file === 'string')
-          : [];
-        setFileMatches(files);
-        setFilePickerIndex(0);
-        setFileSearching(false);
+        handleFilesListMessage(message, deps);
         break;
       }
       case 'provider.thinking_delta': {
-        const projection = projectChatMessage(message);
-        if (projection?.kind !== 'thinking-delta') break;
-        const { text } = projection;
-        setRunning(true);
-        setActivity('Thinking');
-        setMessages((current) => {
-          const last = current.at(-1);
-          if (last?.role === 'thinking' && last.streaming) {
-            return current.map((item, index) =>
-              index === current.length - 1
-                ? { ...item, text: boundSimpleChatText(item.text + text) }
-                : item,
-            );
-          }
-          return retainSimpleChatMessages([
-            ...current.map((item) =>
-              item.streaming && item.role === 'thinking' ? { ...item, streaming: false } : item,
-            ),
-            {
-              id: messageId('thinking'),
-              role: 'thinking',
-              text: boundSimpleChatText(text),
-              streaming: true,
-              ts: new Date().toISOString(),
-            },
-          ]);
-        });
+        handleThinkingDeltaMessage(message, deps);
         break;
       }
       case 'provider.text_delta': {
@@ -348,51 +249,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'provider.response': {
-        const projection = projectChatMessage(message);
-        if (projection?.kind !== 'response') break;
-        const responseText = contentToText(projection.content).trim();
-        // A `tool_use` stop means the agent loop runs again, so this text is
-        // prose the model wrote on its way to a tool call — not its answer.
-        // Only a turn-ending response may offer <nextsteps> suggestions.
-        const final = isFinalTurnStopReason(projection.stopReason);
-        setMessages((current) => {
-          const last = current.at(-1);
-          if (last?.role === 'assistant' && last.streaming) {
-            // The canonical response can legitimately extend what was streamed:
-            // the runtime appends a tool-produced <nextsteps> block to the
-            // turn-ending response, and that block never arrives as a delta.
-            // Adopt the canonical text when it is a strict extension of the
-            // streamed text — same rule the WebUI applies (protocol parity).
-            const streamedText = last.text.trim();
-            const extended =
-              streamedText.length > 0 &&
-              responseText.length > streamedText.length &&
-              responseText.startsWith(streamedText);
-            return current.map((item, index) =>
-              index === current.length - 1
-                ? {
-                    ...item,
-                    ...(extended ? { text: boundSimpleChatText(responseText) } : {}),
-                    streaming: false,
-                    final,
-                  }
-                : item,
-            );
-          }
-          return responseText
-            ? retainSimpleChatMessages([
-                ...current,
-                {
-                  id: messageId('assistant'),
-                  role: 'assistant',
-                  text: boundSimpleChatText(responseText),
-                  final,
-                  ts: new Date().toISOString(),
-                },
-              ])
-            : current;
-        });
-        setActivity('Working');
+        handleProviderResponseMessage(message, deps);
         break;
       }
       case 'provider.retry':
@@ -402,55 +259,15 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         );
         break;
       case 'provider.fallback': {
-        // The server broadcasts fallback events to every connected client.
-        // Only react to the session this tab is viewing — otherwise one
-        // session's resolution would clear another tab's pending modal.
-        if (
-          typeof payload['sessionId'] === 'string' &&
-          payload['sessionId'] !== sessionIdRef.current
-        ) {
-          break;
-        }
-        const target =
-          payload['to'] && typeof payload['to'] === 'object'
-            ? (payload['to'] as Record<string, unknown>)
-            : undefined;
-        const fallbackModel = typeof target?.['model'] === 'string' ? target['model'] : '';
-        setRunning(true);
-        setActivity(fallbackModel ? `Fallback · ${fallbackModel}` : 'Switching fallback model');
-        // Clear any pending fallback modal — the switch happened.
-        deps.setFallbackPending?.(null);
+        handleProviderFallbackMessage(message, deps);
         break;
       }
       case 'provider.model_switched': {
-        if (
-          typeof payload['sessionId'] === 'string' &&
-          payload['sessionId'] !== sessionIdRef.current
-        ) {
-          break;
-        }
-        const target =
-          payload['to'] && typeof payload['to'] === 'object'
-            ? (payload['to'] as Record<string, unknown>)
-            : undefined;
-        const model = typeof target?.['model'] === 'string' ? target['model'] : '';
-        setActivity(model ? `Model · ${model}` : 'Model switched');
+        handleModelSwitchedMessage(message, deps);
         break;
       }
       case 'provider.fallback_pending': {
-        // Server broadcasts reach every tab; only show the modal for the
-        // session this tab is viewing.
-        if (
-          typeof payload['sessionId'] === 'string' &&
-          payload['sessionId'] !== sessionIdRef.current
-        ) {
-          break;
-        }
-        // Show the fallback modal with countdown + manual pick.
-        const projected = projectFallbackPending(message);
-        if (projected) {
-          deps.setFallbackPending?.(projected);
-        }
+        handleFallbackPendingMessage(message, deps);
         break;
       }
       case 'stats.get':
@@ -477,27 +294,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
       case 'delegation.delivery_pending':
       case 'delegation.auto_wake_started':
       case 'delegation.auto_wake_suppressed': {
-        if (
-          typeof payload['sessionId'] === 'string' &&
-          payload['sessionId'] !== sessionIdRef.current
-        ) {
-          break;
-        }
-        const text = delegationNoticeText(message.type, payload);
-        if (!text) break;
-        // A runtime line, never a user bubble: a woken turn is not something
-        // the user typed. The queue stays user-only — nothing here drains it.
-        setMessages((current) =>
-          retainSimpleChatMessages([
-            ...current,
-            {
-              id: messageId('delegation'),
-              role: 'system',
-              text: boundSimpleChatText(text),
-              ts: new Date().toISOString(),
-            },
-          ]),
-        );
+        handleDelegationNoticeMessage(message, deps);
         break;
       }
       case 'iteration.started':
@@ -588,213 +385,40 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         setPrefs((current) => parsePrefs(payload, current));
         break;
       case 'modes.list': {
-        const list = Array.isArray(payload['modes'])
-          ? payload['modes'].flatMap((entry) => {
-              if (!entry || typeof entry !== 'object') return [];
-              const item = entry as Record<string, unknown>;
-              if (typeof item['id'] !== 'string') return [];
-              return [
-                {
-                  id: item['id'],
-                  name: typeof item['name'] === 'string' ? item['name'] : item['id'],
-                  description:
-                    typeof item['description'] === 'string' ? item['description'] : undefined,
-                } satisfies AgentMode,
-              ];
-            })
-          : [];
-        setModes(list);
-        if (typeof payload['activeId'] === 'string') setActiveModeId(payload['activeId']);
+        handleModesListMessage(message, deps);
         break;
       }
       case 'model.refine_result': {
-        const current = refineStateRef.current;
-        if (!current) break;
-        // No request is in flight during the countdown phase — drop any
-        // result that arrives now. A countdown state has no `epoch` stamped
-        // yet (the epoch is only attached when the request leaves in
-        // `refineStartNow`), so an epoch-based guard alone would silently
-        // accept orphans for any state whose epoch field is undefined.
-        // This status check is the most direct guard and must come first.
-        if (current.status === 'countdown') break;
-        // Stale-result guard: if the user flushed the panel mid-flight
-        // (startSend → setRefineState(null) → new countdown), the epoch
-        // on the incoming state will differ from the epoch we last attached
-        // to a `model.refine` request.  Drop the orphan — the state it
-        // refers to has been superseded.
-        if (current.epoch !== undefined && current.epoch !== refineEpochRef.current) break;
-        const action = projectRefineResult(payload as RefineResultPayload, current);
-        if (action.kind === 'retry') {
-          refineEpochRef.current++;
-          setRefineState({ ...action.state, epoch: refineEpochRef.current });
-          socketRef.current?.send('model.refine', {
-            text: action.state.original,
-            timeoutMs: action.timeoutMs,
-          });
-          break;
-        }
-        if (action.kind === 'send') {
-          setRefineState(null);
-          dispatchUserMessage(action.text);
-          break;
-        }
-        setRefineState(action.state);
+        handleRefineResultMessage(message, deps);
         break;
       }
       case 'error': {
-        const phase = typeof payload['phase'] === 'string' ? payload['phase'] : '';
-        if (phase === 'session.resume' || phase === 'session.focus') {
-          deps.setResumeProgress?.(null);
-        }
-        if (phase === 'rate_limit') {
-          // Rate-limit frames are transient throttles, not run failures.
-          // Show as a dismissible notice (not a permanent chat message) and
-          // do NOT drain the queue — dispatching now would just feed more
-          // messages into the throttled connection, re-triggering the
-          // limiter and flooding the chat with "SYSTEM Too many messages."
-          //
-          // Clear the running spinner: the server dropped the frame that
-          // triggered the limiter, so no run.result/error will ever arrive
-          // to clear it. Without this the UI stays stuck on "Thinking".
-          setRunning(false);
-          setActivity('');
-          setNotice({
-            id: messageId('rate-limit'),
-            text:
-              typeof payload['message'] === 'string'
-                ? payload['message']
-                : 'Too many messages. Please wait.',
-            tone: 'warning',
-          });
-          break;
-        }
-        const text = typeof payload['message'] === 'string' ? payload['message'] : 'Run failed';
-        setRunning(false);
-        setActivity('');
-        setMessages((current) =>
-          retainSimpleChatMessages([
-            ...current,
-            {
-              id: messageId('error'),
-              role: 'system',
-              text: boundSimpleChatText(text),
-              ts: new Date().toISOString(),
-            },
-          ]),
-        );
-        closeStaleToolCalls(setToolCalls);
-        drainQueue();
+        handleRunErrorMessage(message, deps, drainQueue);
         break;
       }
       case 'ctx.pct':
-        handleContextMessage(message, deps);
-        break;
-
       case 'ctx.max_context':
-        handleContextMessage(message, deps);
-        break;
-
       case 'tool.confirm_needed':
-        handleContextMessage(message, deps);
-        break;
-
       case 'tool.confirm_resolved':
-        handleContextMessage(message, deps);
-        break;
-
       case 'user.input_requested':
-        handleContextMessage(message, deps);
-        break;
-
       case 'user.input_resolved':
         handleContextMessage(message, deps);
         break;
 
       case 'coordinator.stats': {
-        const fleet = projectFleetMessage(message);
-        const statuses = fleet?.kind === 'coordinator' ? fleet.agents : [];
-        const snapshot = statuses.flatMap((entry) => {
-          if (!entry || typeof entry !== 'object') return [];
-          const item = entry as Record<string, unknown>;
-          const id = typeof item['id'] === 'string' ? item['id'] : '';
-          if (!id || id === LEADER_AGENT_ID) return [];
-          return [
-            {
-              id,
-              name: typeof item['name'] === 'string' ? item['name'] : id,
-              status: typeof item['status'] === 'string' ? item['status'] : 'idle',
-              task: typeof item['currentTask'] === 'string' ? item['currentTask'] : undefined,
-            } satisfies SimpleSubagent,
-          ];
-        });
-        setSubagents((current) =>
-          stampAgentUpdates(current, mergeSubagentSnapshot(current, snapshot)),
-        );
+        handleCoordinatorStatsMessage(message, deps);
         break;
       }
       case 'subagent.event': {
-        const id = typeof payload['subagentId'] === 'string' ? payload['subagentId'] : '';
-        setSubagents((current) =>
-          stampAgentUpdates(
-            current,
-            payload['kind'] === 'removed'
-              ? current.map((agent) =>
-                  agent.id === id ? { ...agent, status: 'stopped', task: undefined } : agent,
-                )
-              : updateSubagents(current, payload),
-          ),
-        );
-        if (payload['kind'] === 'task_completed' && id) {
-          const entry = projectCompletedAgentText(
-            payload,
-            messageId(`agent-${id}`),
-            typeof payload['name'] === 'string' ? payload['name'] : id,
-          );
-          if (entry) {
-            setAgentTranscripts((current) => ({
-              ...current,
-              [id]: appendAgentTranscriptEntry(current[id] ?? [], entry),
-            }));
-          }
-        }
+        handleSubagentEventMessage(message, deps);
         break;
       }
       case 'agent.timeline.message': {
-        const entry = projectAgentTimelineEntry(payload, messageId('agent-event'));
-        if (!entry) break;
-        setSubagents((current) => {
-          if (current.some((agent) => agent.id === entry.subagentId)) return current;
-          return [
-            ...current,
-            {
-              id: entry.subagentId,
-              name: entry.agentName,
-              status: 'running',
-            },
-          ];
-        });
-        setAgentTranscripts((current) => ({
-          ...current,
-          [entry.subagentId]: appendAgentTranscriptEntry(current[entry.subagentId] ?? [], entry),
-        }));
+        handleAgentTimelineMessage(message, deps);
         break;
       }
       case 'agent.status_changed': {
-        const id = typeof payload['subagentId'] === 'string' ? payload['subagentId'] : '';
-        if (!id || id === LEADER_AGENT_ID) break;
-        const agentName = typeof payload['agentName'] === 'string' ? payload['agentName'] : id;
-        setSubagents((current) => {
-          const exists = current.some((agent) => agent.id === id);
-          const patch = {
-            id,
-            name: agentName,
-            status: typeof payload['status'] === 'string' ? payload['status'] : 'idle',
-            task: typeof payload['task'] === 'string' ? payload['task'] : undefined,
-          } satisfies SimpleSubagent;
-          return exists
-            ? current.map((agent) => (agent.id === id ? { ...agent, ...patch } : agent))
-            : [...current, patch];
-        });
+        handleAgentStatusChangedMessage(message, deps);
         break;
       }
     }

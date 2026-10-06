@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-06T18:49:58.842Z
+**Generated:** 2026-10-06T18:50:48.938Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 37 |
-| Production source files | 4778 |
-| Production source lines | 1076089 |
+| Production source files | 4795 |
+| Production source lines | 1076863 |
 | Test files | 4160 |
 | Workspace dependency edges | 133 |
-| Relative module edges | 15712 |
+| Relative module edges | 15787 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -52,11 +52,11 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 45 | 41 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 21 | 31 | @wrongstack/core |
-| @wrongstack/simpleui | 115 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/simpleui | 123 | 89 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 51 | 49 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 41 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 311 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 468 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 477 | 418 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 25 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 676 | 468 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 123 | 51 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -86,11 +86,8 @@ None.
 | 962 | `packages/webui/src/components/ChatInput/slash-routing.ts` |
 | 861 | `packages/webui/src/components/DeadCodeScanPanel/DeadCodeScanPanel.tsx` |
 | 824 | `packages/webui/src/components/RepositoryHistoryView.tsx` |
-| 822 | `packages/tui/src/use-app-controller.tsx` |
 | 813 | `packages/webui/src/stores/session-tab-store.ts` |
 | 811 | `packages/webui/src/components/CodeMap.tsx` |
-| 809 | `packages/simpleui/src/file-explorer.tsx` |
-| 806 | `packages/simpleui/src/lib/message-handler.ts` |
 | 803 | `packages/webui/src/components/SidePanel/SkillsList.tsx` |
 | 800 | `packages/webui/src/hooks/ws-handlers/chat-handlers.ts` |
 | 797 | `packages/webui/src/lib/ws-client.ts` |
@@ -133,6 +130,9 @@ None.
 | 773 | `packages/cli/src/slash-commands/fallback.ts` |
 | 773 | `packages/providers/src/ai-gateway.ts` |
 | 773 | `packages/webui-server/src/server/http-server/api-handlers.ts` |
+| 772 | `packages/core/src/utils/term.ts` |
+| 772 | `packages/plugins/src/dep-guard/index.ts` |
+| 772 | `packages/tools/src/replace.ts` |
 
 ## Exports only tests reference
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T18:49:58.842Z",
+  "generatedAt": "2026-10-06T18:50:48.938Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 37,
-    "sourceFiles": 4778,
+    "sourceFiles": 4795,
     "testFiles": 4160,
-    "sourceLines": 1076089,
+    "sourceLines": 1076863,
     "workspaceEdges": 133,
-    "moduleEdges": 15712,
+    "moduleEdges": 15787,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -691,7 +691,7 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 115,
+      "sourceFiles": 123,
       "testFiles": 89,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -789,7 +789,7 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 468,
+      "sourceFiles": 477,
       "testFiles": 418,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -26253,21 +26253,6 @@
   "nonCommandSlashImports": [],
   "hotspotCandidates": [
     {
-      "file": "packages/simpleui/src/file-explorer.tsx",
-      "lines": 809,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/simpleui/src/lib/message-handler.ts",
-      "lines": 806,
-      "relativeImports": 22
-    },
-    {
-      "file": "packages/tui/src/use-app-controller.tsx",
-      "lines": 822,
-      "relativeImports": 40
-    },
-    {
       "file": "packages/webui/src/components/ChatInput/slash-routing.ts",
       "lines": 962,
       "relativeImports": 2
@@ -26320,11 +26305,6 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/tui/src/use-app-controller.tsx",
-      "lines": 822,
-      "relativeImports": 40
-    },
-    {
       "file": "packages/webui/src/stores/session-tab-store.ts",
       "lines": 813,
       "relativeImports": 19
@@ -26333,16 +26313,6 @@
       "file": "packages/webui/src/components/CodeMap.tsx",
       "lines": 811,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/simpleui/src/file-explorer.tsx",
-      "lines": 809,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/simpleui/src/lib/message-handler.ts",
-      "lines": 806,
-      "relativeImports": 22
     },
     {
       "file": "packages/webui/src/components/SidePanel/SkillsList.tsx",
@@ -26553,6 +26523,21 @@
       "file": "packages/webui-server/src/server/http-server/api-handlers.ts",
       "lines": 773,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/core/src/utils/term.ts",
+      "lines": 772,
+      "relativeImports": 0
+    },
+    {
+      "file": "packages/plugins/src/dep-guard/index.ts",
+      "lines": 772,
+      "relativeImports": 2
+    },
+    {
+      "file": "packages/tools/src/replace.ts",
+      "lines": 772,
+      "relativeImports": 5
     }
   ],
   "testOnlyExports": [

@@ -24,8 +24,8 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 261,
-      "typeOnly": 100,
+      "files": 263,
+      "typeOnly": 102,
       "runtimeOrMixed": 226
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -4048,7 +4048,13 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-app-controller.tsx",
+      "file": "packages/tui/src/use-controller-commands.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/src/use-controller-confirm-auth.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4063,6 +4069,12 @@
       "file": "packages/tui/src/use-controller-panel-hooks.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/src/use-controller-session-bridges.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",

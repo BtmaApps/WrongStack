@@ -2,18 +2,6 @@
   "schemaVersion": 1,
   "thresholdLines": 800,
   "files": {
-    "packages/simpleui/src/file-explorer.tsx": {
-      "lines": 809,
-      "relativeImports": 5
-    },
-    "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 806,
-      "relativeImports": 22
-    },
-    "packages/tui/src/use-app-controller.tsx": {
-      "lines": 822,
-      "relativeImports": 40
-    },
     "packages/webui/src/components/ChatInput/slash-routing.ts": {
       "lines": 962,
       "relativeImports": 2
